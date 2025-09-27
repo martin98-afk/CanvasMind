@@ -90,7 +90,7 @@ lowcode-platform/
 
 ```python
 # components/data/my_component.py
-from components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
 
 class MyComponent(BaseComponent):
     name = "我的组件"
