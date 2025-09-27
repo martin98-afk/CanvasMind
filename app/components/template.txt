@@ -1,0 +1,26 @@
+from dev_codes.components.base import BaseComponent, ComponentConfig, PortDefinition, PropertyDefinition, PropertyType
+
+
+class Component(BaseComponent):
+    config = ComponentConfig(
+        name="",
+        category="",
+        description="",
+        inputs=[
+            PortDefinition(name="", label="")
+        ],
+        outputs=[
+            PortDefinition(name="", label="")
+        ],
+        properties={
+            "solver": PropertyDefinition(
+                type=PropertyType.CHOICE,
+                default="liblinear",
+                label="求解器",
+                choices=["liblinear", "lbfgs", "newton-cg", "sag", "saga"]
+            )
+        }
+    )
+
+    def run(self, params, inputs=None):
+        pass
