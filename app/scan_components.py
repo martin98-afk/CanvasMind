@@ -31,7 +31,7 @@ def scan_components(components_dir="components"):
         try:
             # 计算相对于 script_dir 的路径，用于构建模块名
             rel_path = py_file.relative_to(script_dir)
-            module_path = str(rel_path).replace(os.sep, ".")[:-3]  # 去掉 .py
+            module_path = f"app.{str(rel_path).replace(os.sep, '.')[:-3]}"  # 去掉 .py
 
             module = importlib.import_module(module_path)
             for name, obj in inspect.getmembers(module, inspect.isclass):

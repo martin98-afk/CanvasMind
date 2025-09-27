@@ -7,9 +7,7 @@ class Component(BaseComponent):
     description="接收本地上传csv文件"
     inputs=[]
     outputs=[
-        PortDefinition(name="csv", label="csv文件", type=ArgumentType.CSV),
-        PortDefinition(name="value", label="参数1"),
-        PortDefinition(name="model", label="训练模型")
+        PortDefinition(name="csv", label="csv文件", type=ArgumentType.CSV)
     ]
 
     def run(self, params, inputs=None):

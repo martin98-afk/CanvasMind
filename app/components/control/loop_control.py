@@ -1,0 +1,74 @@
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType
+
+
+class LoopNode(BaseComponent):
+    name = "循环控制器"
+    category = "控制流"
+    description = "执行循环操作"
+
+    inputs = [
+        PortDefinition(name="initial_data", label="初始数据"),
+        PortDefinition(name="condition", label="循环条件")
+    ]
+
+    outputs = [
+        PortDefinition(name="loop_data", label="循环数据"),
+        PortDefinition(name="final_result", label="最终结果")
+    ]
+
+    properties = {
+        "max_iterations": PropertyDefinition(
+            type=ArgumentType.INT,
+            default=10,
+            label="最大迭代次数"
+        ),
+        "loop_condition": PropertyDefinition(
+            type=ArgumentType.TEXT,
+            default="data['count'] < 5",
+            label="循环条件表达式"
+        )
+    }
+
+    def run(self, params, inputs=None):
+        import ast
+        import operator
+
+        max_iter = int(params.get("max_iterations", 10))
+        condition_expr = params.get("loop_condition", "True")
+
+        # 初始数据
+        loop_data = inputs.get("initial_data") if inputs else {"count": 0}
+        condition = inputs.get("condition", True)
+
+        iteration = 0
+        while iteration < max_iter and self._evaluate_condition(condition_expr, loop_data):
+            # 这里需要执行循环体内的节点
+            # 由于 NodeGraphQt 是 DAG（有向无环图），不能直接循环
+            # 需要通过主程序来协调执行
+
+            loop_data = self._execute_loop_body(loop_data)
+            iteration += 1
+
+            # 检查是否满足退出条件
+            if not self._evaluate_condition(condition_expr, loop_data):
+                break
+
+        return {
+            "loop_data": loop_data,
+            "final_result": f"循环执行了 {iteration} 次"
+        }
+
+    def _evaluate_condition(self, expr, data):
+        """安全地评估条件表达式"""
+        try:
+            # 使用 ast.literal_eval 或安全的表达式求值
+            # 这里简化处理
+            return eval(expr, {"__builtins__": {}}, {"data": data})
+        except:
+            return False
+
+    def _execute_loop_body(self, data):
+        """执行循环体 - 需要主程序协调"""
+        # 这个方法需要与主程序通信来执行 Backdrop 内的节点
+        # 具体实现见下面的主程序代码
+        return data

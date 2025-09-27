@@ -8,7 +8,7 @@
 """
 from collections import deque, defaultdict
 
-from NodeGraphQt import NodeGraph
+from NodeGraphQt import NodeGraph, BackdropNode
 from PyQt5.QtCore import Qt, QThreadPool
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTreeWidgetItem
 from qfluentwidgets import (
@@ -190,6 +190,74 @@ class LowCodeWindow(FluentWindow):
 
         # 启动异步任务
         self.threadpool.start(worker)
+
+    def execute_backdrop_loop(self, backdrop_node, loop_config):
+        """执行 Backdrop 内的循环"""
+        # 获取 Backdrop 内的节点
+        nodes_in_backdrop = self._get_nodes_in_backdrop(backdrop_node)
+
+        # 拓扑排序（Backdrop 内部应该是无环的）
+        execution_order = self._topological_sort(nodes_in_backdrop)
+
+        # 循环执行
+        max_iterations = loop_config.get("max_iterations", 10)
+        current_data = loop_config.get("initial_data", {})
+
+        for iteration in range(max_iterations):
+            # 执行一次循环体
+            node_outputs = {}
+            for node in execution_order:
+                # 准备输入数据
+                inputs = self._prepare_node_inputs(node, node_outputs, current_data)
+                # 执行节点
+                output = node.execute_sync({"iteration": iteration, **inputs}, self)
+                node_outputs[node.id] = output
+
+            # 更新循环数据
+            current_data = self._update_loop_data(current_data, node_outputs)
+
+            # 检查退出条件
+            if self._check_exit_condition(loop_config, current_data, iteration):
+                break
+
+        return current_data
+
+    def _get_nodes_in_backdrop(self, backdrop_node):
+        """获取 Backdrop 内的所有节点"""
+        nodes_in_backdrop = []
+        for node in self.graph.all_nodes():
+            if hasattr(node, 'parent') and node.parent == backdrop_node:
+                nodes_in_backdrop.append(node)
+        return nodes_in_backdrop
+
+    # 通过代码创建 Backdrop
+    def create_backdrop(self, title="循环体"):
+        """创建包含指定节点的 Backdrop"""
+        from NodeGraphQt import BackdropNode
+
+        # 创建 backdrop 节点
+        backdrop = self.graph.create_node('Backdrop')
+        backdrop.set_name(title)
+
+        return backdrop
+
+    def _resize_backdrop_to_fit_nodes(self, backdrop, nodes):
+        """调整 backdrop 大小以适应包含的节点"""
+        if not nodes:
+            return
+
+        # 计算节点边界
+        min_x = min(node.pos()[0] for node in nodes)
+        min_y = min(node.pos()[1] for node in nodes)
+        max_x = max(node.pos()[0] + 200 for node in nodes)  # 200 是节点宽度估计
+        max_y = max(node.pos()[1] + 100 for node in nodes)  # 100 是节点高度估计
+
+        # 设置 backdrop 位置和大小
+        backdrop.set_pos(min_x - 20, min_y - 20)
+        width = max_x - min_x + 40
+        height = max_y - min_y + 40
+        backdrop.width = width
+        backdrop.height = height
 
     def on_node_finished(self, node, result):
         """节点执行完成回调"""
@@ -379,6 +447,8 @@ class LowCodeWindow(FluentWindow):
         graph = defaultdict(list)
 
         for node in nodes:
+            if isinstance(node, BackdropNode):
+                continue
             for input_port in node.input_ports():
                 for upstream_out in input_port.connected_ports():
                     upstream = get_port_node(upstream_out)
@@ -413,7 +483,7 @@ class LowCodeWindow(FluentWindow):
         graph_menu.add_command('运行工作流', self.run_workflow, 'Ctrl+R')
         graph_menu.add_command('保存工作流', self.save_graph, 'Ctrl+S')
         graph_menu.add_command('加载工作流', self.load_graph, 'Ctrl+O')
-
+        graph_menu.add_command('创建 Backdrop', lambda: self.create_backdrop("新分组"))
         # 添加分隔符
         graph_menu.add_separator()
 

@@ -111,8 +111,6 @@ class NodeListExecutor(QRunnable):
                     node_outputs[node.id] = output
                     self.signals.node_finished.emit(node.id, output)
                 except Exception as e:
-                    import traceback
-                    traceback.print_exc()
                     # 捕获单个节点的错误
                     self.signals.node_error.emit(node.id)
                     # 可选择继续执行或停止
