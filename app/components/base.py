@@ -27,7 +27,7 @@ class ArgumentType(str, Enum):
 
     # 验证是否是文件类型
     def is_file(self):
-        return self == ArgumentType.FILE or self == ArgumentType.FOLDER or self == ArgumentType.CSV
+        return self == ArgumentType.FILE or self == ArgumentType.FOLDER
 
 
 class PropertyDefinition(BaseModel):

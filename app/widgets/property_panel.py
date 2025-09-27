@@ -1,12 +1,9 @@
 import json
-import os
-import sys
 
 from NodeGraphQt import BackdropNode
-from PyQt5.QtWidgets import QVBoxLayout, QFrame, QHBoxLayout, QPushButton, QFileDialog
-from qfluentwidgets import CardWidget, BodyLabel, TextEdit, LineEdit, MessageBox, PushButton
+from PyQt5.QtWidgets import QVBoxLayout, QFrame, QPushButton, QFileDialog
+from qfluentwidgets import CardWidget, BodyLabel, TextEdit, PushButton
 
-from app.utils.json_serializer import output_serializable
 from app.components.base import ArgumentType
 
 
@@ -25,8 +22,16 @@ class PropertyPanel(CardWidget):
         while self.vbox.count():
             child = self.vbox.takeAt(0)
             if child.widget():
-                child.widget().deleteLater()
-            # QSpacerItem 会自动被清理，不需要额外处理
+                # 关键修复：断开所有按钮类型的信号连接后再删除
+                widget = child.widget()
+                try:
+                    # 断开 QPushButton 和 PushButton 的 clicked 信号
+                    if isinstance(widget, (QPushButton, PushButton)):
+                        widget.clicked.disconnect()
+                except (TypeError, RuntimeError):
+                    # 如果没有连接或已经断开，忽略错误
+                    pass
+                widget.deleteLater()
 
         self.current_node = node
         if not node or isinstance(node, BackdropNode):
@@ -60,30 +65,28 @@ class PropertyPanel(CardWidget):
         input_ports_info = self.get_node_input_ports_info(node)
 
         if input_ports_info:
-            for port_def in node.component_class.inputs:
+            for input_port, port_def in zip(node.input_ports(), node.component_class.inputs):
                 # 显示端口名称和标签
                 port_display = f"{port_def.label} ({port_def.name})"
                 self.vbox.addWidget(BodyLabel(f"  • {port_display}"))
 
                 # 显示数据（如果有）
-                upstream_data = self.get_upstream_data(node, port_def.name)
-                if upstream_data is not None:
-                    value_str = json.dumps(output_serializable(upstream_data), indent=2, ensure_ascii=False)
+                connected = input_port.connected_ports()
+                if connected:
+                    upstream_out = connected[0]
+                    upstream_node = upstream_out.node()
+                    upstream_data_display = upstream_node.get_output_value(upstream_out.name())
+                elif node._input_values.get(port_def.name) is not None:
+                    upstream_data_display = node._input_values.get(port_def.name)
                 else:
-                    value_str = "暂无数据"
+                    upstream_data_display = "暂无数据"
+
                 port_type = getattr(port_def, 'type', ArgumentType.TEXT)
                 # 根据端口类型显示不同控件
                 if port_type.is_file():
                     self._add_file_widget(node, port_def.name)
+                self._add_text_edit(upstream_data_display)
 
-                text_edit = TextEdit()
-                text_edit.setPlainText(value_str)
-                text_edit.setReadOnly(True)
-                text_edit.setMaximumHeight(80)
-                if node._input_values.get(port_def.name):
-                    text_edit.setPlainText(output_serializable(node._input_values[port_def.name]))
-
-                self.vbox.addWidget(text_edit)
         else:
             self.vbox.addWidget(BodyLabel("  无输入端口"))
 
@@ -91,34 +94,66 @@ class PropertyPanel(CardWidget):
         self.vbox.addWidget(BodyLabel("📤 输出端口:"))
         output_ports = node.component_class.outputs
         if output_ports:
-            result = self.get_node_result(node)
+            result = node._output_values
             for port_def in output_ports:
                 port_name = port_def.name
                 port_label = port_def.label
                 self.vbox.addWidget(BodyLabel(f"  • {port_label} ({port_name})"))
 
-                value = json.dumps(output_serializable(result.get(port_name)), indent=2,
-                                   ensure_ascii=False) if result and port_name in result else "暂无数据"
-                self._add_text_edit(value)
+                output_data = result.get(port_name) if result and port_name in result else "暂无数据"
+                self._add_text_edit(output_data)
         else:
             self.vbox.addWidget(BodyLabel("  无输出端口"))
 
         # 添加底部弹性空间
         self.vbox.addStretch(1)
 
+    def _add_text_edit(self, text):
+        """智能显示不同类型的数据"""
+        edit = TextEdit()
+
+        # 智能格式化不同类型的数据
+        if text is None:
+            display_text = "None"
+        elif isinstance(text, str):
+            display_text = text
+        elif hasattr(text, 'to_dict') and callable(getattr(text, 'to_dict')):
+            # pandas DataFrame 或类似对象
+            try:
+                display_text = f"[DataFrame] {text.shape[0]} rows, {text.shape[1]} columns"
+            except:
+                display_text = str(text)
+        elif hasattr(text, '__dict__') and not isinstance(text, (list, tuple, dict)):
+            # 自定义对象
+            try:
+                display_text = f"[{text.__class__.__name__}] {str(text)}"
+            except:
+                display_text = str(text)
+        elif isinstance(text, (list, tuple, dict)):
+            # 容器类型，使用 JSON 格式化
+            try:
+                display_text = json.dumps(text, indent=2, ensure_ascii=False, default=str)
+            except:
+                display_text = str(text)
+        else:
+            # 其他类型
+            display_text = str(text)
+
+        edit.setPlainText(display_text)
+        edit.setReadOnly(True)
+        edit.setMaximumHeight(80)
+        self.vbox.addWidget(edit)
+
     def _add_file_widget(self, node, port_name):
         """添加文件类型输出控件 - 包含文件选择功能"""
-        # 创建垂直布局（按钮在上，文本框在下）
-        container_layout = QVBoxLayout()
-
         # 文件选择按钮
         select_file_button = PushButton("📁 选择文件", self)
-        select_file_button.clicked.connect(lambda _, p=port_name, n=node: self._select_output_file(p, n))
-        container_layout.addWidget(select_file_button)
+        select_file_button.clicked.connect(lambda _, p=port_name, n=node: self._select_input_file(p, n))
 
-        self.vbox.addLayout(container_layout)
+        # 将水平布局添加到主布局
+        self.vbox.addWidget(select_file_button)
 
-    def _select_output_file(self, port_name, node):
+    def _select_input_file(self, port_name, node):
         """为输出端口选择文件"""
         # 根据端口类型设置文件过滤器
         if hasattr(node, 'component_class'):
@@ -160,9 +195,9 @@ class PropertyPanel(CardWidget):
             )
 
         if file_path:
-            self._update_output_file(node, port_name, file_path)
+            self._update_input_file(node, port_name, file_path)
 
-    def _update_output_file(self, node, port_name, file_path):
+    def _update_input_file(self, node, port_name, file_path):
         """更新输出文件路径并刷新显示"""
         # 更新主窗口的 node_results
         node._input_values[port_name] = file_path
@@ -175,13 +210,6 @@ class PropertyPanel(CardWidget):
         separator.setFrameShadow(QFrame.Sunken)
         separator.setStyleSheet("color: #444444;")
         self.vbox.addWidget(separator)
-
-    def _add_text_edit(self, text):
-        edit = TextEdit()
-        edit.setPlainText(str(text))
-        edit.setReadOnly(True)
-        edit.setMaximumHeight(80)
-        self.vbox.addWidget(edit)
 
     def get_node_description(self, node):
         """获取节点描述"""
@@ -211,9 +239,3 @@ class PropertyPanel(CardWidget):
             port_name = output_port.name()
             ports_info.append((port_name, port_name))
         return ports_info
-
-    def get_upstream_data(self, node, port_name):
-        return self.main_window.get_node_input(node, port_name)
-
-    def get_node_result(self, node):
-        return self.main_window.node_results.get(node.id, {})

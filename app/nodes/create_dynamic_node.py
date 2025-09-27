@@ -5,8 +5,10 @@ from io import StringIO
 
 from NodeGraphQt import BaseNode
 from PyQt5.QtWidgets import QFileDialog
+from loguru import logger
 
 from app.utils.json_serializer import output_serializable
+from app.utils.node_logger import NodeLogHandler
 from app.widgets.component_log_message_box import LogMessageBox
 
 
@@ -23,6 +25,9 @@ def create_node_class(component_class):
             self._node_logs = ""  # 节点独立日志存储
             self._output_values = {}  # 存储输出端口值
             self._input_values = {}
+            # 执行（捕获stdout/stderr）
+            log_capture = NodeLogHandler(self.id, self._log_message)
+            self.component_class.logger = log_capture.get_logger()
 
             # 添加属性
             for prop_name, prop_def in component_class.get_properties().items():
@@ -102,18 +107,12 @@ def create_node_class(component_class):
                 return
             super().set_property(name, value, push_undo)
 
-        def _log_message(self, message):
+        def _log_message(self, node_id, message):
             """记录节点日志"""
             if isinstance(message, str) and message.strip():
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                formatted_msg = f"[{timestamp}] {message}"
-                if not formatted_msg.endswith('\n'):
-                    formatted_msg += '\n'
-                self._node_logs += formatted_msg
-
-        def clear_logs(self):
-            """清空节点日志"""
-            self._node_logs = ""
+                if not message.endswith('\n'):
+                    message += '\n'
+                self._node_logs += message
 
         def get_logs(self):
             """获取节点日志"""
@@ -133,12 +132,9 @@ def create_node_class(component_class):
             """获取输出端口的值"""
             return self._output_values.get(port_name)
 
-        def on_run_complete(self, output_dict):
+        def on_run_complete(self, output):
             """节点运行完成后自动映射结果到输出端口"""
-            if not isinstance(output_dict, dict):
-                output_dict = {"out": output_dict}
-
-            self._output_values = output_dict
+            self._output_values = output
 
         def execute_sync(self, main_window=None):
             """
@@ -179,34 +175,20 @@ def create_node_class(component_class):
                     else:
                         inputs[port_name] = self._input_values.get(port_name)
 
-                # 执行（捕获stdout/stderr）
-                log_capture = StringIO()
-                try:
-                    with redirect_stdout(log_capture), redirect_stderr(log_capture):
-                        if comp_cls.get_inputs():
-                            output = comp_instance.run(params, inputs)
-                        else:
-                            output = comp_instance.run(params)
-
-                    # 获取捕获的日志
-                    captured_log = log_capture.getvalue()
-                    if captured_log:
-                        self._log_message("组件输出:")
-                        for line in captured_log.split('\n'):
-                            if line.strip():
-                                self._log_message(f"  {line}")
-                finally:
-                    log_capture.close()
+                if comp_cls.get_inputs():
+                    output = comp_instance.run(params, inputs)
+                else:
+                    output = comp_instance.run(params)
 
                 # 记录执行结果
-                self._log_message("✅ 节点执行完成")
+                component_class.logger.success("✅ 节点执行完成")
                 self.on_run_complete(output)
 
-                return output_serializable(output)
+                return output
 
             except Exception as e:
                 error_msg = f"❌ 节点执行失败: {str(e)}"
-                self._log_message(error_msg)
+                component_class.logger.error(error_msg)
                 raise e
 
     return DynamicNode

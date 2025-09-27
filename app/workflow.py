@@ -47,7 +47,6 @@ class LowCodeWindow(FluentWindow):
         self.component_map = scan_components()
 
         # 初始化状态存储
-        self.node_results = {}
         self.node_status = {}  # {node_id: status}
 
         # 初始化 NodeGraph
@@ -261,7 +260,6 @@ class LowCodeWindow(FluentWindow):
 
     def on_node_finished(self, node, result):
         """节点执行完成回调"""
-        self.node_results[node.id] = result
         self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
 
         # 刷新属性面板
@@ -310,7 +308,6 @@ class LowCodeWindow(FluentWindow):
         """简单节点完成回调（用于批量执行）"""
         node = self._get_node_by_id(node_id)
         if node:
-            self.node_results[node_id] = result
             self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
 
     def _get_node_by_id(self, node_id):
@@ -373,23 +370,10 @@ class LowCodeWindow(FluentWindow):
         if node:
             node_id = node.id
             # 清理数据
-            if node_id in self.node_results:
-                del self.node_results[node_id]
             if node_id in self.node_status:
                 del self.node_status[node_id]
 
             self.graph.delete_node(node)
-
-    def get_node_input(self, node, port_name):
-        """获取节点某个输入端口的上游数据"""
-        for input_port in node.input_ports():
-            if input_port.name() == port_name:
-                connected = input_port.connected_ports()
-                if connected:
-                    upstream_out = connected[0]
-                    upstream_node = get_port_node(upstream_out)
-                    return self.node_results.get(upstream_node.id, {}).get(upstream_out.name())
-        return None
 
     def on_selection_changed(self):
         selected_nodes = self.graph.selected_nodes()

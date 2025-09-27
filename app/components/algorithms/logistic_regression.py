@@ -17,7 +17,7 @@ class LogisticRegressionComponent(BaseComponent):
     category="算法"
     description="Logistic Regression classifier for CSV data"
     inputs=[
-        PortDefinition(name="file", label="输入CSV文件"),
+        PortDefinition(name="file", label="输入CSV文件", type=ArgumentType.CSV),
         PortDefinition(name="value", label="输入值")
     ]
     outputs=[
@@ -46,18 +46,9 @@ class LogisticRegressionComponent(BaseComponent):
     def run(self, params, inputs=None):
         try:
             self.logger.info(inputs)
-            # 验证输入
-            if not inputs or "file" not in inputs:
-                raise ValueError("Invalid input")
-
-            csv_file = inputs.get("file")
-            if not csv_file or not isinstance(csv_file, str):
-                raise ValueError("Invalid input")
-
-            self.logger.info(f"csv_file: {csv_file}")
 
             # 读取数据
-            df = pd.read_csv(csv_file)
+            df = inputs.get("file")
             self.logger.info(f"Data shape: {df.shape}")
 
             # 获取参数
