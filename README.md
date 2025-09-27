@@ -207,6 +207,7 @@ class MyComponent(BaseComponent):
 - [ ] 组件管理
 - [ ] 组件开发
 - [x] 组件参数
+- [ ] 组件输入端口校验
 - [x] 组件运行
 - [x] 组件日志
 - [x] 组件分组
