@@ -10,7 +10,10 @@ import os
 import importlib
 import inspect
 from pathlib import Path
+from loguru import logger
+
 from app.components.base import BaseComponent
+
 
 def scan_components(components_dir="components"):
     """扫描 components 目录（相对于脚本位置），返回 {full_path: component_class}"""
@@ -20,7 +23,7 @@ def scan_components(components_dir="components"):
     comp_map = {}
 
     if not comp_path.exists():
-        print(f"⚠️ Components directory '{comp_path}' not found. Creating demo components...")
+        logger.error(f"⚠️ Components directory '{comp_path}' not found. Creating demo components...")
         # _create_demo_components(script_dir, components_dir)
         comp_path = script_dir / components_dir
 
@@ -41,8 +44,9 @@ def scan_components(components_dir="components"):
                     component_name = getattr(obj, 'name', obj.__name__)
                     full_path = f"{category}/{component_name}"
                     comp_map[full_path] = obj
-                    print(f"✅ Loaded component: {full_path}")
+                    logger.info(f"✅ Loaded component: {full_path}")
         except Exception as e:
-            print(f"⚠️ Failed to load {py_file}: {e}")
+            import traceback
+            logger.error(f"⚠️ Failed to load {py_file}: {traceback.format_exc()}")
 
     return comp_map

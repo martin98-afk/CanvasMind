@@ -10,18 +10,21 @@ from collections import deque, defaultdict
 
 from NodeGraphQt import NodeGraph, BackdropNode
 from PyQt5.QtCore import Qt, QThreadPool
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTreeWidgetItem
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTreeWidgetItem, QPlainTextEdit
+from loguru import logger
 from qfluentwidgets import (
     FluentWindow, setTheme, Theme, FluentIcon as FIF, ToolButton, MessageBox, InfoBar,
-    InfoBarPosition
+    InfoBarPosition, NavigationItemPosition
 )
 
 from app.nodes.create_dynamic_node import create_node_class
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
 from app.utils.threading_utils import NodeListExecutor, Worker
-from app.utils.utils import get_port_node
+from app.utils.utils import get_port_node, get_icon
 from app.widgets.draggable_component_tree import DraggableTreeWidget
+from app.widgets.logger_dialog import QTextEditLogger
 from app.widgets.property_panel import PropertyPanel
 
 
@@ -33,6 +36,7 @@ class LowCodeWindow(FluentWindow):
         super().__init__()
         setTheme(Theme.DARK)
         from PyQt5.QtWidgets import QDesktopWidget
+        self.setup_log_viwer()
         screen_rect = QDesktopWidget().screenGeometry()
         screen_width, screen_height = screen_rect.width(), screen_rect.height()
         self.window_width = int(screen_width * 0.6)
@@ -101,6 +105,16 @@ class LowCodeWindow(FluentWindow):
 
         # ✅ 启用右键菜单（关键步骤）
         self._setup_context_menus()
+
+        # 下半部分按钮
+        log_interface = self.addSubInterface(
+            self.log_viewer, get_icon("系统运行日志"), '执行日志', NavigationItemPosition.BOTTOM)
+        log_interface.clicked.connect(
+            lambda: (
+                self.text_logger._clean_trailing_empty_lines(),
+                self.text_logger.scroll_to_bottom(force=True)
+            )
+        )
 
     def create_floating_buttons(self):
         """创建画布左上角的悬浮按钮"""
@@ -232,7 +246,6 @@ class LowCodeWindow(FluentWindow):
     # 通过代码创建 Backdrop
     def create_backdrop(self, title="循环体"):
         """创建包含指定节点的 Backdrop"""
-        from NodeGraphQt import BackdropNode
 
         # 创建 backdrop 节点
         backdrop = self.graph.create_node('Backdrop')
@@ -532,3 +545,73 @@ class LowCodeWindow(FluentWindow):
             duration=2000,
             parent=self
         )
+
+    def setup_log_viwer(self):
+        if not hasattr(self, 'log_viewer'):
+            self.log_viewer = QPlainTextEdit()
+            self.log_viewer.document().setDocumentMargin(0)
+            self.log_viewer.setObjectName('运行日志')
+            self.log_viewer.setReadOnly(True)
+            self.log_viewer.setFont(QFont("Consolas", 11))
+            self.log_viewer.setStyleSheet(f"""
+                QPlainTextEdit {{
+                    background-color: #0e1117;
+                    color: white;
+                    border: 1px solid #2c2f36;
+                    font-family: Consolas, monospace;
+                    font-size: 18px;
+                    padding: 10px;
+                }}
+                /* 纵向滚动条 */
+                QTextEdit QScrollBar:vertical {{
+                    background: transparent;
+                    width: 8px;
+                    margin: 0px;
+                }}
+                QTextEdit QScrollBar::handle:vertical {{
+                    background: #555555;
+                    border-radius: 4px;
+                    min-height: 20px;
+                }}
+                QTextEdit QScrollBar::handle:vertical:hover {{
+                    background: #888888;
+                }}
+                QTextEdit QScrollBar::add-line:vertical,
+                QTextEdit QScrollBar::sub-line:vertical {{
+                    height: 0px;
+                    background: none;
+                    border: none;
+                }}
+                QTextEdit QScrollBar::add-page:vertical, QTextEdit QScrollBar::sub-page:vertical {{
+                    background: none;
+                }}
+
+                /* 横向滚动条 */
+                QTextEdit QScrollBar:horizontal {{
+                    background: transparent;
+                    height: 8px;
+                    margin: 0px;
+                }}
+                QTextEdit QScrollBar::handle:horizontal {{
+                    background: #555555;
+                    border-radius: 4px;
+                    min-width: 20px;
+                }}
+                QTextEdit QScrollBar::handle:horizontal:hover {{
+                    background: #888888;
+                }}
+                QTextEdit QScrollBar::add-line:horizontal,
+                QTextEdit QScrollBar::sub-line:horizontal {{
+                    width: 0px;
+                    background: none;
+                    border: none;
+                }}
+                QTextEdit QScrollBar::add-page:horizontal, QTextEdit QScrollBar::sub-page:horizontal {{
+                    background: none;
+                }}
+            """)
+
+            # 创建 sink
+            self.text_logger = QTextEditLogger(self.log_viewer, max_lines=1000)
+            logger.remove()
+            logger.add(self.text_logger, format="{time:HH:mm:ss} | {level} | {file}:{line} {message}", level="DEBUG")
