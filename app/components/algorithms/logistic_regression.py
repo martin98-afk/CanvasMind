@@ -45,6 +45,7 @@ class LogisticRegressionComponent(BaseComponent):
 
     def run(self, params, inputs=None):
         try:
+            self.logger.info(inputs)
             # 验证输入
             if not inputs or "file" not in inputs:
                 raise ValueError("Invalid input")

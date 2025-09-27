@@ -1,8 +1,10 @@
 import json
+import os
+import sys
 
 from NodeGraphQt import BackdropNode
-from PyQt5.QtWidgets import QVBoxLayout, QFrame, QHBoxLayout
-from qfluentwidgets import CardWidget, BodyLabel, TextEdit, LineEdit
+from PyQt5.QtWidgets import QVBoxLayout, QFrame, QHBoxLayout, QPushButton, QFileDialog
+from qfluentwidgets import CardWidget, BodyLabel, TextEdit, LineEdit, MessageBox, PushButton
 
 from app.utils.json_serializer import output_serializable
 from app.components.base import ArgumentType
@@ -58,22 +60,29 @@ class PropertyPanel(CardWidget):
         input_ports_info = self.get_node_input_ports_info(node)
 
         if input_ports_info:
-            for port_name, port_label in input_ports_info:
+            for port_def in node.component_class.inputs:
                 # 显示端口名称和标签
-                port_display = f"{port_label} ({port_name})"
+                port_display = f"{port_def.label} ({port_def.name})"
                 self.vbox.addWidget(BodyLabel(f"  • {port_display}"))
 
                 # 显示数据（如果有）
-                upstream_data = self.get_upstream_data(node, port_name)
+                upstream_data = self.get_upstream_data(node, port_def.name)
                 if upstream_data is not None:
                     value_str = json.dumps(output_serializable(upstream_data), indent=2, ensure_ascii=False)
                 else:
                     value_str = "暂无数据"
+                port_type = getattr(port_def, 'type', ArgumentType.TEXT)
+                # 根据端口类型显示不同控件
+                if port_type.is_file():
+                    self._add_file_widget(node, port_def.name)
 
                 text_edit = TextEdit()
                 text_edit.setPlainText(value_str)
                 text_edit.setReadOnly(True)
                 text_edit.setMaximumHeight(80)
+                if node._input_values.get(port_def.name):
+                    text_edit.setPlainText(output_serializable(node._input_values[port_def.name]))
+
                 self.vbox.addWidget(text_edit)
         else:
             self.vbox.addWidget(BodyLabel("  无输入端口"))
@@ -86,78 +95,79 @@ class PropertyPanel(CardWidget):
             for port_def in output_ports:
                 port_name = port_def.name
                 port_label = port_def.label
-                port_type = getattr(port_def, 'type', ArgumentType.TEXT)
-
                 self.vbox.addWidget(BodyLabel(f"  • {port_label} ({port_name})"))
 
-                # 根据端口类型显示不同控件
-                if port_type.is_file():
-                    self._add_file_output_widget(node, port_name, port_type, result)
-                else:
-                    value = json.dumps(output_serializable(result.get(port_name)), indent=2,
-                                       ensure_ascii=False) if result and port_name in result else "暂无数据"
-                    self._add_text_edit(value)
+                value = json.dumps(output_serializable(result.get(port_name)), indent=2,
+                                   ensure_ascii=False) if result and port_name in result else "暂无数据"
+                self._add_text_edit(value)
         else:
             self.vbox.addWidget(BodyLabel("  无输出端口"))
 
         # 添加底部弹性空间
         self.vbox.addStretch(1)
 
-    def _add_file_output_widget(self, node, port_name, port_type, result):
-        """添加文件类型输出控件"""
-        file_path = result.get(port_name) if result else None
+    def _add_file_widget(self, node, port_name):
+        """添加文件类型输出控件 - 包含文件选择功能"""
+        # 创建垂直布局（按钮在上，文本框在下）
+        container_layout = QVBoxLayout()
 
-        # 创建水平布局
-        h_layout = QHBoxLayout()
+        # 文件选择按钮
+        select_file_button = PushButton("📁 选择文件", self)
+        select_file_button.clicked.connect(lambda _, p=port_name, n=node: self._select_output_file(p, n))
+        container_layout.addWidget(select_file_button)
 
-        # 文件路径显示
-        file_label = LineEdit()
-        file_label.setReadOnly(True)
-        if file_path and isinstance(file_path, str) and os.path.exists(file_path):
-            file_label.setText(file_path)
-            file_label.setToolTip(file_path)
-        else:
-            file_label.setText("无文件" if not file_path else str(file_path))
-            file_label.setStyleSheet("color: #888888;")
+        self.vbox.addLayout(container_layout)
 
-        # 文件操作按钮
-        if file_path and isinstance(file_path, str) and os.path.exists(file_path):
-            if os.path.isfile(file_path):
-                open_btn = PrimaryPushButton("📂 打开文件", self)
-                open_btn.clicked.connect(lambda _, fp=file_path: self._open_file(fp))
+    def _select_output_file(self, port_name, node):
+        """为输出端口选择文件"""
+        # 根据端口类型设置文件过滤器
+        if hasattr(node, 'component_class'):
+            # 查找对应的输出端口定义
+            output_ports = node.component_class.outputs
+            for port_def in output_ports:
+                if port_def.name == port_name:
+                    port_type = getattr(port_def, 'type', None)
+                    if port_type:
+                        if port_type == ArgumentType.CSV:
+                            file_filter = "CSV Files (*.csv)"
+                        elif port_type == ArgumentType.JSON:
+                            file_filter = "JSON Files (*.json)"
+                        elif port_type == ArgumentType.FOLDER:
+                            # 文件夹选择
+                            folder_path = QFileDialog.getExistingDirectory(
+                                self, "选择文件夹", ""
+                            )
+                            if folder_path:
+                                self._update_output_file(node, port_name, folder_path)
+                            return
+                        else:
+                            file_filter = "All Files (*)"
+                    break
             else:
-                open_btn = PrimaryPushButton("📁 打开文件夹", self)
-                open_btn.clicked.connect(lambda _, fp=file_path: self._open_folder(fp))
-            h_layout.addWidget(open_btn)
+                file_filter = "All Files (*)"
+        else:
+            file_filter = "All Files (*)"
 
-        h_layout.addWidget(file_label)
-        self.vbox.addLayout(h_layout)
+        # 文件选择对话框
+        if 'FOLDER' in file_filter or file_filter == "All Files (*)":
+            # 默认使用文件选择
+            file_path, _ = QFileDialog.getOpenFileName(
+                self, "选择文件", "", file_filter
+            )
+        else:
+            file_path, _ = QFileDialog.getOpenFileName(
+                self, "选择文件", "", file_filter
+            )
 
-    def _open_file(self, file_path):
-        """打开文件"""
-        import subprocess
-        try:
-            if sys.platform == "win32":
-                os.startfile(file_path)
-            elif sys.platform == "darwin":  # macOS
-                subprocess.call(["open", file_path])
-            else:  # Linux
-                subprocess.call(["xdg-open", file_path])
-        except Exception as e:
-            MessageBox("错误", f"无法打开文件: {str(e)}", self).exec()
+        if file_path:
+            self._update_output_file(node, port_name, file_path)
 
-    def _open_folder(self, folder_path):
-        """打开文件夹"""
-        import subprocess
-        try:
-            if sys.platform == "win32":
-                os.startfile(folder_path)
-            elif sys.platform == "darwin":  # macOS
-                subprocess.call(["open", folder_path])
-            else:  # Linux
-                subprocess.call(["xdg-open", folder_path])
-        except Exception as e:
-            MessageBox("错误", f"无法打开文件夹: {str(e)}", self).exec()
+    def _update_output_file(self, node, port_name, file_path):
+        """更新输出文件路径并刷新显示"""
+        # 更新主窗口的 node_results
+        node._input_values[port_name] = file_path
+        # 刷新属性面板以显示新选择的文件
+        self.update_properties(node)
 
     def _add_separator(self):
         separator = QFrame()

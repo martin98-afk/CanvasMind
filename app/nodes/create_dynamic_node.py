@@ -22,6 +22,7 @@ def create_node_class(component_class):
             self.component_class = component_class
             self._node_logs = ""  # 节点独立日志存储
             self._output_values = {}  # 存储输出端口值
+            self._input_values = {}
 
             # 添加属性
             for prop_name, prop_def in component_class.get_properties().items():
@@ -176,7 +177,7 @@ def create_node_class(component_class):
                                 upstream_data = main_window.node_results.get(upstream_node.id, {})
                                 inputs[port_name] = upstream_data.get(upstream_out.name())
                     else:
-                        inputs[port_name] = None
+                        inputs[port_name] = self._input_values.get(port_name)
 
                 # 执行（捕获stdout/stderr）
                 log_capture = StringIO()
