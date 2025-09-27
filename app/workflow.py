@@ -403,20 +403,20 @@ class LowCodeWindow(FluentWindow):
 
     def save_graph(self):
         self.graph.save_session('workflow.json')
-        print("工作流已保存到 workflow.json")
+        self.create_success_info("工作流已保存到 workflow.json", "")
 
     def load_graph(self):
         try:
             self.graph.load_session('workflow.json')
-            print("工作流已从 workflow.json 加载")
+            self.create_success_info("工作流已从 workflow.json 加载", "")
             # 重新初始化所有节点状态
             self.node_status = {}
             for node in self.graph.all_nodes():
                 self.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
                 if hasattr(node, 'status'):
                     node.status = NodeStatus.NODE_STATUS_UNRUN
-        except FileNotFoundError:
-            print("workflow.json 未找到！")
+        except Exception:
+            self.create_failed_info("错误", "workflow.json 未找到！")
 
     def build_component_tree(self, component_map):
         self.nav_view.clear()

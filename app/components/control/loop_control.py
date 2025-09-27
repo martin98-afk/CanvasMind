@@ -32,7 +32,7 @@ class LoopNode(BaseComponent):
     def run(self, params, inputs=None):
         import ast
         import operator
-
+        raise NotImplementedError("LoopNode.run() is not implemented")
         max_iter = int(params.get("max_iterations", 10))
         condition_expr = params.get("loop_condition", "True")
 
