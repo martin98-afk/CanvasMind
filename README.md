@@ -57,7 +57,7 @@ scikit-learn>=1.0.0
 
 ### 运行应用
 ```bash
-python lowcode_demo.py
+python main.py
 ```
 
 ## 📂 项目结构
