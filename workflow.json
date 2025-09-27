@@ -9,7 +9,7 @@
     "reject_connection_types":"{}"
   },
   "nodes":{
-    "0x16179a1e380":{
+    "0x25d7fd15e70":{
       "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_CSV_\u8bfb\u53d6\u5668",
       "icon":null,
       "name":"CSV \u8bfb\u53d6\u5668",
@@ -37,14 +37,49 @@
       "width":160,
       "height":60,
       "pos":[
-        55.797885139076925,
-        183.48919920734912
+        105.15755276210652,
+        309.0344407702722
       ],
       "layout_direction":0,
       "port_deletion_allowed":false,
       "subgraph_session":{}
     },
-    "0x16179a377c0":{
+    "0x25d7fd3fe80":{
+      "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_CSV_\u8bfb\u53d6\u5668",
+      "icon":null,
+      "name":"CSV \u8bfb\u53d6\u5668 1",
+      "color":[
+        80,
+        30,
+        30,
+        255
+      ],
+      "border_color":[
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color":[
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled":false,
+      "selected":true,
+      "visible":true,
+      "width":160,
+      "height":60,
+      "pos":[
+        72.96646518186981,
+        541.470925657454
+      ],
+      "layout_direction":0,
+      "port_deletion_allowed":false,
+      "subgraph_session":{}
+    },
+    "0x25d7fd3fbb0":{
       "type_":"dynamic.StatusDynamicNode_\u7b97\u6cd5_\u903b\u8f91\u56de\u5f52",
       "icon":null,
       "name":"\u903b\u8f91\u56de\u5f52",
@@ -67,13 +102,13 @@
         180
       ],
       "disabled":false,
-      "selected":true,
+      "selected":false,
       "visible":true,
       "width":253.0,
       "height":153.05,
       "pos":[
-        366.97839841469823,
-        138.42167659501777
+        435.65271858586993,
+        346.5907096138817
       ],
       "layout_direction":0,
       "port_deletion_allowed":false,
@@ -83,16 +118,113 @@
         "max_iter":"100",
         "test_size":"0.2"
       }
+    },
+    "0x25d7fd51a50":{
+      "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_\u6587\u672c\u8f93\u5165",
+      "icon":null,
+      "name":"\u6587\u672c\u8f93\u5165",
+      "color":[
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color":[
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color":[
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled":false,
+      "selected":true,
+      "visible":true,
+      "width":243.0,
+      "height":69.05000000000001,
+      "pos":[
+        64.1465507996302,
+        811.3671830872145
+      ],
+      "layout_direction":0,
+      "port_deletion_allowed":false,
+      "subgraph_session":{},
+      "custom":{
+        "input":"\u6587\u672c\u5185\u5bb9"
+      }
+    },
+    "0x25d7fd670d0":{
+      "type_":"dynamic.StatusDynamicNode_\u7b97\u6cd5_\u968f\u673a\u68ee\u6797\u5206\u7c7b\u5668",
+      "icon":null,
+      "name":"\u968f\u673a\u68ee\u6797\u5206\u7c7b\u5668",
+      "color":[
+        80,
+        30,
+        30,
+        255
+      ],
+      "border_color":[
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color":[
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled":false,
+      "selected":true,
+      "visible":true,
+      "width":269.0,
+      "height":107.9,
+      "pos":[
+        464.62907065678087,
+        825.2367075844317
+      ],
+      "layout_direction":0,
+      "port_deletion_allowed":false,
+      "subgraph_session":{},
+      "custom":{
+        "n_estimators":"100",
+        "max_depth":"None"
+      }
     }
   },
   "connections":[
     {
       "out":[
-        "0x16179a1e380",
+        "0x25d7fd15e70",
         "csv"
       ],
       "in":[
-        "0x16179a377c0",
+        "0x25d7fd3fbb0",
+        "file"
+      ]
+    },
+    {
+      "out":[
+        "0x25d7fd3fe80",
+        "csv"
+      ],
+      "in":[
+        "0x25d7fd3fbb0",
+        "value"
+      ]
+    },
+    {
+      "out":[
+        "0x25d7fd51a50",
+        "text"
+      ],
+      "in":[
+        "0x25d7fd670d0",
         "file"
       ]
     }

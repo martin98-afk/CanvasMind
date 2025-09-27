@@ -26,8 +26,8 @@ def create_node_class(component_class):
             self._output_values = {}  # 存储输出端口值
             self._input_values = {}
             # 执行（捕获stdout/stderr）
-            log_capture = NodeLogHandler(self.id, self._log_message)
-            self.component_class.logger = log_capture.get_logger()
+            self.log_capture = NodeLogHandler(self.id, self._log_message)
+            self.component_class.logger = self.log_capture.get_logger()
 
             # 添加属性
             for prop_name, prop_def in component_class.get_properties().items():
@@ -175,10 +175,12 @@ def create_node_class(component_class):
                     else:
                         inputs[port_name] = self._input_values.get(port_name)
 
+                self.log_capture.add_handler()
                 if comp_cls.get_inputs():
                     output = comp_instance.run(params, inputs)
                 else:
                     output = comp_instance.run(params)
+                self.log_capture.remove_handler()
 
                 # 记录执行结果
                 component_class.logger.success("✅ 节点执行完成")

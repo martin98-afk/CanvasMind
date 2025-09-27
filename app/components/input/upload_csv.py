@@ -16,3 +16,4 @@ class Component(BaseComponent):
             return {"csv": pd.read_csv(inputs["csv"])}
         except Exception as e:
             self.logger.error(f"无法读取csv文件: {str(e)}")
+            raise e

@@ -1,5 +1,4 @@
 from datetime import datetime
-
 from loguru import logger
 
 
@@ -9,12 +8,11 @@ class NodeLogHandler:
     def __init__(self, node_id: str, log_callback):
         self.node_id = node_id
         self.log_callback = log_callback
-        self.logger = None
         self.handler_id = None
+        self.logger = logger.bind(node_id=self.node_id)  # 提前 bind
 
     def _log_sink(self, message):
         """Loguru 日志接收器"""
-        # 提取消息内容（去除格式化）
         record = message.record
         timestamp = record["time"].strftime("%Y-%m-%d %H:%M:%S")
         function = record["function"]
@@ -27,19 +25,19 @@ class NodeLogHandler:
 
     def get_logger(self):
         """获取节点专用的 logger"""
-        if self.logger is None:
-            # 创建新的 logger 实例
-            self.logger = logger.bind(node_id=self.node_id)
-            # 添加处理器
-            self.handler_id = self.logger.add(
-                self._log_sink,
-                level="INFO",
-                enqueue=True  # 异步处理，避免阻塞
-            )
         return self.logger
+
+    def add_handler(self):
+        """添加日志处理器"""
+        # 添加处理器（只添加一次）
+        self.handler_id = logger.add(
+            self._log_sink,
+            level="INFO",
+            enqueue=True
+        )
 
     def remove_handler(self):
         """移除日志处理器"""
-        if self.logger and self.handler_id:
-            self.logger.remove(self.handler_id)
+        if self.handler_id is not None:
+            logger.remove(self.handler_id)  # 注意这里用全局 logger.remove
             self.handler_id = None
