@@ -6,21 +6,31 @@
 @time: 2025/9/26 15:02
 @desc: 
 """
+import os
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Dict, Any, Optional, List, Tuple, Type
 
+import pandas as pd
 from loguru import logger
 from pydantic import BaseModel, Field, create_model
 
 
-class ArgumentType(str, Enum):
+class PropertyType(str, Enum):
+    """属性类型"""
     TEXT = "text"
-    TEXT_AREA = "text_area"
     INT = "int"
     FLOAT = "float"
     BOOL = "bool"
     CHOICE = "choice"
+    COLUM_SELECT = "colum_select"
+
+
+class ArgumentType(str, Enum):
+    """参数类型"""
+    TEXT = "text"
+    INT = "int"
+    FLOAT = "float"
     FILE = "file"
     FOLDER = "folder"
     CSV = "csv"
@@ -29,10 +39,22 @@ class ArgumentType(str, Enum):
     def is_file(self):
         return self == ArgumentType.FILE or self == ArgumentType.FOLDER
 
+    def to_dict(self, value):
+        if self.is_file():
+            return {"type": "File", "filename": os.path.basename(value), "path": value}
+        elif self == ArgumentType.CSV and isinstance(value, pd.DataFrame):
+            return {
+                "type": "CSV",
+                "shape": f"[DataFrame] {value.shape[0]} rows, {value.shape[1]} columns",
+                "columns": value.columns
+            }
+        else:
+            return value
+
 
 class PropertyDefinition(BaseModel):
     """属性定义"""
-    type: ArgumentType = ArgumentType.TEXT
+    type: PropertyType = PropertyType.TEXT
     default: Any = ""
     label: str = ""
     choices: List[str] = Field(default_factory=list)

@@ -1,4 +1,4 @@
-from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType, PropertyType
 
 
 class LoopNode(BaseComponent):
@@ -18,12 +18,12 @@ class LoopNode(BaseComponent):
 
     properties = {
         "max_iterations": PropertyDefinition(
-            type=ArgumentType.INT,
+            type=PropertyType.INT,
             default=10,
             label="最大迭代次数"
         ),
         "loop_condition": PropertyDefinition(
-            type=ArgumentType.TEXT,
+            type=PropertyType.TEXT,
             default="data['count'] < 5",
             label="循环条件表达式"
         )

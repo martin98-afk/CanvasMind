@@ -36,7 +36,7 @@ def create_node_class(component_class):
                 label = prop_def.get("label", prop_name)
 
                 if prop_type == "bool":
-                    self.add_checkbox(prop_name, label, default)
+                    self.add_checkbox(prop_name, text=label, state=default)
 
                 elif prop_type == "int":
                     self.add_text_input(prop_name, label, text=str(default))

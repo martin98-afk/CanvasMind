@@ -9,7 +9,7 @@
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
-from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType, PropertyType
 
 
 class LogisticRegressionComponent(BaseComponent):
@@ -17,8 +17,8 @@ class LogisticRegressionComponent(BaseComponent):
     category="算法"
     description="Logistic Regression classifier for CSV data"
     inputs=[
-        PortDefinition(name="file", label="输入CSV文件", type=ArgumentType.CSV),
-        PortDefinition(name="value", label="输入值")
+        PortDefinition(name="feature", label="输入特征", type=ArgumentType.CSV),
+        PortDefinition(name="target", label="输入目标", type=ArgumentType.CSV)
     ]
     outputs=[
         PortDefinition(name="value", label="预测值"),
@@ -26,18 +26,18 @@ class LogisticRegressionComponent(BaseComponent):
     ]
     properties={
         "solver": PropertyDefinition(
-            type=ArgumentType.CHOICE,
+            type=PropertyType.CHOICE,
             default="liblinear",
             label="求解器",
             choices=["liblinear", "lbfgs", "newton-cg", "sag", "saga"]
         ),
         "max_iter": PropertyDefinition(
-            type=ArgumentType.INT,
+            type=PropertyType.INT,
             default=100,
             label="最大迭代次数"
         ),
         "test_size": PropertyDefinition(
-            type=ArgumentType.FLOAT,
+            type=PropertyType.FLOAT,
             default=0.2,
             label="测试集比例"
         )

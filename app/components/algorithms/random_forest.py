@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 
-from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType, PropertyType
 
 
 class RandomForestComponent(BaseComponent):
@@ -17,12 +17,12 @@ class RandomForestComponent(BaseComponent):
     ]
     properties = {
         "n_estimators": PropertyDefinition(
-            type=ArgumentType.INT,
+            type=PropertyType.INT,
             default=100,
             label="树数量"
         ),
         "max_depth": PropertyDefinition(
-            type=ArgumentType.INT,
+            type=PropertyType.INT,
             default=None,
             label="最大深度"
         )

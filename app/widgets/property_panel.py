@@ -85,7 +85,7 @@ class PropertyPanel(CardWidget):
                 # 根据端口类型显示不同控件
                 if port_type.is_file():
                     self._add_file_widget(node, port_def.name)
-                self._add_text_edit(upstream_data_display)
+                self._add_text_edit(port_type.to_dict(upstream_data_display))
 
         else:
             self.vbox.addWidget(BodyLabel("  无输入端口"))
@@ -101,7 +101,8 @@ class PropertyPanel(CardWidget):
                 self.vbox.addWidget(BodyLabel(f"  • {port_label} ({port_name})"))
 
                 output_data = result.get(port_name) if result and port_name in result else "暂无数据"
-                self._add_text_edit(output_data)
+                port_type = getattr(port_def, 'type', ArgumentType.TEXT)
+                self._add_text_edit(port_type.to_dict(output_data))
         else:
             self.vbox.addWidget(BodyLabel("  无输出端口"))
 
@@ -117,12 +118,6 @@ class PropertyPanel(CardWidget):
             display_text = "None"
         elif isinstance(text, str):
             display_text = text
-        elif hasattr(text, 'to_dict') and callable(getattr(text, 'to_dict')):
-            # pandas DataFrame 或类似对象
-            try:
-                display_text = f"[DataFrame] {text.shape[0]} rows, {text.shape[1]} columns"
-            except:
-                display_text = str(text)
         elif hasattr(text, '__dict__') and not isinstance(text, (list, tuple, dict)):
             # 自定义对象
             try:

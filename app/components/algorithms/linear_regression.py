@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 
-from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType, PropertyType
 
 
 class LinearRegressionComponent(BaseComponent):
@@ -17,7 +17,7 @@ class LinearRegressionComponent(BaseComponent):
     ]
     properties = {
         "fit_intercept": PropertyDefinition(
-            type=ArgumentType.BOOL,
+            type=PropertyType.BOOL,
             default=True,
             label="是否包含截距"
         )

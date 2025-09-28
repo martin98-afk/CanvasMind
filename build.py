@@ -41,7 +41,6 @@ def build():
         "--add-data", "icons;icons",
     ]
 
-    cmd.extend(generate_hidden_imports())
     cmd.append("main.py")
 
     print("📦 执行打包命令：")

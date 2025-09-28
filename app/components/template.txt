@@ -1,26 +1,42 @@
-from dev_codes.components.base import BaseComponent, ComponentConfig, PortDefinition, PropertyDefinition, PropertyType
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
 
+class MyComponent(BaseComponent):
+    name = "我的组件"
+    category = "数据处理"
+    description = "这是一个示例组件"
 
-class Component(BaseComponent):
-    config = ComponentConfig(
-        name="",
-        category="",
-        description="",
-        inputs=[
-            PortDefinition(name="", label="")
-        ],
-        outputs=[
-            PortDefinition(name="", label="")
-        ],
-        properties={
-            "solver": PropertyDefinition(
-                type=PropertyType.CHOICE,
-                default="liblinear",
-                label="求解器",
-                choices=["liblinear", "lbfgs", "newton-cg", "sag", "saga"]
-            )
-        }
-    )
+    inputs = [
+        PortDefinition(name="input_data", label="输入数据", type=ArgumentType.TEXT)
+    ]
+
+    outputs = [
+        PortDefinition(name="output_data", label="输出数据", type=ArgumentType.CSV),
+        PortDefinition(name="result", label="结果", type=ArgumentType.TEXT)
+    ]
+
+    properties = {
+        "parameter1": PropertyDefinition(
+            type=PropertyType.TEXT,
+            default="default_value",
+            label="参数1"
+        ),
+        "max_count": PropertyDefinition(
+            type=PropertyType.INT,
+            default=10,
+            label="最大数量"
+        )
+    }
 
     def run(self, params, inputs=None):
-        pass
+        # 组件逻辑
+        input_data = inputs.get("input_data") if inputs else "default"
+        param1 = params.get("parameter1", "default")
+        max_count = int(params.get("max_count", 10))
+
+        # 处理逻辑...
+        result_data = f"{input_data}_{param1}_{max_count}"
+
+        return {
+            "output_data": "/path/to/output.csv",  # 文件路径
+            "result": result_data                  # 文本结果
+        }
