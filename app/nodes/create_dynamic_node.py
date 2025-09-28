@@ -157,27 +157,31 @@ def create_node_class(component_class):
                     else:
                         params[prop_name] = default_value
 
-                # 输入
+                # 输入 - 关键修改：优先从 _input_values 获取
                 inputs = {}
                 for input_port in self.input_ports():
                     port_name = input_port.name()
-                    connected = input_port.connected_ports()
-                    if connected:
-                        upstream_out = connected[0]
-                        upstream_node = upstream_out.node()
-                        if hasattr(upstream_node, 'get_output_value'):
-                            inputs[port_name] = upstream_node.get_output_value(upstream_out.name())
-                        else:
-                            # 回退到主窗口的数据
-                            if main_window:
+
+                    # 优先从 _input_values 获取（包含列选择结果）
+                    if hasattr(self, '_input_values') and port_name in self._input_values:
+                        inputs[port_name] = self._input_values[port_name]
+                    else:
+                        # 如果没有 _input_values，尝试从连接获取
+                        connected = input_port.connected_ports()
+                        if connected:
+                            upstream_out = connected[0]
+                            upstream_node = upstream_out.node()
+                            if hasattr(upstream_node, 'get_output_value'):
+                                inputs[port_name] = upstream_node.get_output_value(upstream_out.name())
+                            elif main_window:
                                 upstream_data = main_window.node_results.get(upstream_node.id, {})
                                 inputs[port_name] = upstream_data.get(upstream_out.name())
-                    else:
-                        inputs[port_name] = self._input_values.get(port_name)
+                        else:
+                            inputs[port_name] = None
 
                 self.log_capture.add_handler()
                 if comp_cls.get_inputs():
-                    output = comp_instance.run(params, inputs)
+                    output = comp_instance.run(params, self._input_values)
                 else:
                     output = comp_instance.run(params)
                 self.log_capture.remove_handler()

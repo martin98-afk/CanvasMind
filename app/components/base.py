@@ -23,7 +23,6 @@ class PropertyType(str, Enum):
     FLOAT = "float"
     BOOL = "bool"
     CHOICE = "choice"
-    COLUM_SELECT = "colum_select"
 
 
 class ArgumentType(str, Enum):

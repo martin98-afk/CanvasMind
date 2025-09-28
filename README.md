@@ -207,7 +207,18 @@ class MyComponent(BaseComponent):
 ## 功能实现情况
 - [ ] 组件管理
 - [ ] 组件开发
-- [x] 组件参数
+- [ ] 组件参数
+  - [x] CSV 参数
+    - [x] CSV 参数信息预览
+    - [x] CSV 参数列选择
+    - [ ] CSV 数据分析
+  - [ ] EXCEL 参数
+  - [ ] SKLEARN 参数
+  - [ ] NUMPY 参数
+  - [ ] IMAGE 参数
+  - [x] JSON 参数
+  - [x] TEXT 参数
+  - [x] FILE 参数
 - [ ] 组件输入端口校验
 - [x] 组件运行
 - [x] 组件日志

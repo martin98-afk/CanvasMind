@@ -48,24 +48,19 @@ class LogisticRegressionComponent(BaseComponent):
             self.logger.info(inputs)
 
             # 读取数据
-            df = inputs.get("file")
-            self.logger.info(f"Data shape: {df.shape}")
-
+            feature = inputs.get("feature")
+            target = inputs.get("target")
             # 获取参数
             solver = params.get("solver", "liblinear")
             max_iter = int(params.get("max_iter", 100))
 
-            # 假设最后1列是目标变量，前面是特征
-            X = df.iloc[:, :-1]
-            y = df.iloc[:, -1]
-
             # 训练模型
             model = LogisticRegression(solver=solver, max_iter=max_iter, multi_class='ovr')
-            model.fit(X, y)
+            model.fit(feature, target)
 
             # 预测示例（使用第一行数据）
-            sample_prediction = model.predict([X.iloc[0]])
-            accuracy = model.score(X, y)
+            sample_prediction = model.predict([feature.iloc[0]])
+            accuracy = model.score(feature, target)
 
             self.logger.info(f"Model accuracy: {accuracy:.4f}")
 

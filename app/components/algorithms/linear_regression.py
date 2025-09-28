@@ -9,7 +9,8 @@ class LinearRegressionComponent(BaseComponent):
     category = "算法"
     description = "Linear Regression for CSV data"
     inputs = [
-        PortDefinition(name="file", label="输入CSV文件")
+        PortDefinition(name="feature", label="输入特征", type=ArgumentType.CSV),
+        PortDefinition(name="target", label="输入目标", type=ArgumentType.CSV)
     ]
     outputs = [
         PortDefinition(name="value", label="预测值"),
@@ -25,20 +26,13 @@ class LinearRegressionComponent(BaseComponent):
 
     def run(self, params, inputs=None):
         try:
-            if not inputs or "file" not in inputs:
-                raise ValueError("Invalid input")
-
-            csv_file = inputs["file"]
-            df = pd.read_csv(csv_file)
-
-            X = df.iloc[:, :-1]
-            y = df.iloc[:, -1]
-
+            feature = inputs.get("feature")
+            target = inputs.get("target")
             model = LinearRegression(fit_intercept=params.get("fit_intercept", True))
-            model.fit(X, y)
+            model.fit(feature, target)
 
-            prediction = model.predict([X.iloc[0]])
-            score = model.score(X, y)
+            prediction = model.predict([feature.iloc[0]])
+            score = model.score(feature, target)
 
             return {
                 "value": prediction.tolist(),
@@ -50,5 +44,6 @@ class LinearRegressionComponent(BaseComponent):
             }
 
         except Exception as e:
-            self.logger.error(f"Error in LinearRegressionComponent: {e}")
+            import traceback
+            self.logger.error(f"Error in LinearRegressionComponent: {traceback.format_exc()}")
             raise e
