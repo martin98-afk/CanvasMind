@@ -33,13 +33,14 @@ class ArgumentType(str, Enum):
     FILE = "file"
     FOLDER = "folder"
     CSV = "csv"
+    JSON = "json"
 
     # 验证是否是文件类型
     def is_file(self):
         return self == ArgumentType.FILE or self == ArgumentType.FOLDER
 
     def to_dict(self, value):
-        if self.is_file():
+        if self.is_file() and isinstance(value, str):
             return {"type": "File", "filename": os.path.basename(value), "path": value}
         elif self == ArgumentType.CSV and isinstance(value, pd.DataFrame):
             return {

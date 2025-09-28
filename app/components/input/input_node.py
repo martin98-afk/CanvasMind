@@ -6,7 +6,7 @@
 @time: 2025/9/26 14:41
 @desc: 
 """
-from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType, PropertyType
 
 
 class InputComponent(BaseComponent):
@@ -19,7 +19,7 @@ class InputComponent(BaseComponent):
     ]
     properties={
         "input": PropertyDefinition(
-            type=ArgumentType.TEXT,
+            type=PropertyType.TEXT,
             default="文本内容",
             label="输入文本"
         )

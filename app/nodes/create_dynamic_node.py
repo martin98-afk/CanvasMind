@@ -178,17 +178,16 @@ def create_node_class(component_class):
                                 inputs[port_name] = upstream_data.get(upstream_out.name())
                         else:
                             inputs[port_name] = None
-
                 if comp_cls.get_inputs():
-                    output = comp_instance.run(params, self._input_values)
+                    output = comp_instance.run(params, inputs)
                 else:
                     output = comp_instance.run(params)
+                if output is not None:
+                    # 记录执行结果
+                    component_class.logger.success("✅ 节点执行完成")
+                    self.on_run_complete(output)
 
-                # 记录执行结果
-                component_class.logger.success("✅ 节点执行完成")
-                self.on_run_complete(output)
-
-                return output
+                    return output
 
             except Exception as e:
                 error_msg = f"❌ 节点执行失败: {str(e)}"

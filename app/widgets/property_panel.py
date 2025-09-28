@@ -87,9 +87,6 @@ class PropertyPanel(CardWidget):
                     original_upstream_data = upstream_node.get_output_value(upstream_out.name())
 
                 port_type = getattr(port_def, 'type', ArgumentType.TEXT)
-                if port_type.is_file():
-                    self._add_file_widget(node, port_def.name)
-
                 # 处理 CSV/DataFrame 列选择
                 if isinstance(original_upstream_data, pd.DataFrame):
                     # 显示列选择控件
@@ -122,6 +119,9 @@ class PropertyPanel(CardWidget):
 
                 output_data = result.get(port_name) if result and port_name in result else "暂无数据"
                 port_type = getattr(port_def, 'type', ArgumentType.TEXT)
+                if port_type.is_file():
+                    self._add_file_widget(node, port_def.name)
+
                 self._add_text_edit(port_type.to_dict(output_data))
         else:
             self.vbox.addWidget(BodyLabel("  无输出端口"))
@@ -212,6 +212,7 @@ class PropertyPanel(CardWidget):
             if not hasattr(node, '_column_selector_initialized'):
                 node._column_selector_initialized = {}
             node._column_selector_initialized[port_name] = True
+            self.update_properties(node)
 
         list_widget.itemChanged.connect(on_item_changed)
         self._column_list_widgets[port_name] = list_widget
@@ -261,10 +262,10 @@ class PropertyPanel(CardWidget):
 
     def _add_file_widget(self, node, port_name):
         select_file_button = PushButton("📁 选择文件", self)
-        select_file_button.clicked.connect(lambda _, p=port_name, n=node: self._select_input_file(p, n))
+        select_file_button.clicked.connect(lambda _, p=port_name, n=node: self._select_upload_file(p, n))
         self.vbox.addWidget(select_file_button)
 
-    def _select_input_file(self, port_name, node):
+    def _select_upload_file(self, port_name, node):
         if hasattr(node, 'component_class'):
             output_ports = node.component_class.outputs
             for port_def in output_ports:
@@ -278,7 +279,7 @@ class PropertyPanel(CardWidget):
                         elif port_type == ArgumentType.FOLDER:
                             folder_path = QFileDialog.getExistingDirectory(self, "选择文件夹", "")
                             if folder_path:
-                                self._update_input_file(node, port_name, folder_path)
+                                self._update_output_file(node, port_name, folder_path)
                             return
                         else:
                             file_filter = "All Files (*)"
@@ -290,12 +291,12 @@ class PropertyPanel(CardWidget):
 
         file_path, _ = QFileDialog.getOpenFileName(self, "选择文件", "", file_filter)
         if file_path:
-            self._update_input_file(node, port_name, file_path)
+            self._update_output_file(node, port_name, file_path)
 
-    def _update_input_file(self, node, port_name, file_path):
+    def _update_output_file(self, node, port_name, file_path):
         if not hasattr(node, '_input_values'):
             node._input_values = {}
-        node._input_values[port_name] = file_path
+        node._output_values[port_name] = file_path
         self.update_properties(node)
 
     def _add_separator(self):
