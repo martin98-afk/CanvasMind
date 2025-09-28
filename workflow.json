@@ -9,7 +9,42 @@
     "reject_connection_types":"{}"
   },
   "nodes":{
-    "0x2c0733df0d0":{
+    "0x20a11c64250":{
+      "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_\u6587\u6863\u4e0a\u4f20",
+      "icon":null,
+      "name":"\u6587\u6863\u4e0a\u4f20",
+      "color":[
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color":[
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color":[
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled":false,
+      "selected":false,
+      "visible":true,
+      "width":160,
+      "height":60,
+      "pos":[
+        8.58429002139645,
+        223.1915405563077
+      ],
+      "layout_direction":0,
+      "port_deletion_allowed":false,
+      "subgraph_session":{}
+    },
+    "0x20a11c67af0":{
       "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_CSV_\u8bfb\u53d6\u5668",
       "icon":null,
       "name":"CSV \u8bfb\u53d6\u5668",
@@ -32,62 +67,22 @@
         180
       ],
       "disabled":false,
-      "selected":true,
+      "selected":false,
       "visible":true,
       "width":160,
       "height":60,
       "pos":[
-        -55.151672777281654,
-        206.67656570668797
+        303.6692595068993,
+        225.33761306165684
       ],
       "layout_direction":0,
       "port_deletion_allowed":false,
       "subgraph_session":{}
     },
-    "0x2c07340ca00":{
+    "0x20a11c65bd0":{
       "type_":"dynamic.StatusDynamicNode_\u7b97\u6cd5_\u903b\u8f91\u56de\u5f52",
       "icon":null,
       "name":"\u903b\u8f91\u56de\u5f52",
-      "color":[
-        80,
-        30,
-        30,
-        255
-      ],
-      "border_color":[
-        74,
-        84,
-        85,
-        255
-      ],
-      "text_color":[
-        255,
-        255,
-        255,
-        180
-      ],
-      "disabled":false,
-      "selected":false,
-      "visible":true,
-      "width":277.0,
-      "height":153.05,
-      "pos":[
-        282.7965340549258,
-        -26.906859115451425
-      ],
-      "layout_direction":0,
-      "port_deletion_allowed":false,
-      "subgraph_session":{},
-      "custom":{
-        "solver":"liblinear",
-        "max_iter":"100",
-        "test_size":"0.2"
-      }
-    },
-    "0x2c07340c610":{
-      "type_":"dynamic.StatusDynamicNode_\u7b97\u6cd5_\u7ebf\u6027\u56de\u5f52",
-      "icon":null,
-      "name":"\u7ebf\u6027\u56de\u5f52",
       "color":[
         25,
         70,
@@ -109,48 +104,50 @@
       "disabled":false,
       "selected":false,
       "visible":true,
-      "width":252.0,
-      "height":76.4,
+      "width":277.0,
+      "height":153.05,
       "pos":[
-        292.74700531633226,
-        435.40963044231967
+        679.2319479429941,
+        254.30959188386984
       ],
       "layout_direction":0,
       "port_deletion_allowed":false,
       "subgraph_session":{},
       "custom":{
-        "fit_intercept":true
+        "solver":"saga",
+        "max_iter":"100",
+        "test_size":"1"
       }
     }
   },
   "connections":[
     {
       "out":[
-        "0x2c0733df0d0",
+        "0x20a11c64250",
+        "file"
+      ],
+      "in":[
+        "0x20a11c67af0",
+        "csv"
+      ]
+    },
+    {
+      "out":[
+        "0x20a11c67af0",
         "csv"
       ],
       "in":[
-        "0x2c07340ca00",
+        "0x20a11c65bd0",
         "feature"
       ]
     },
     {
       "out":[
-        "0x2c0733df0d0",
+        "0x20a11c67af0",
         "csv"
       ],
       "in":[
-        "0x2c07340c610",
-        "feature"
-      ]
-    },
-    {
-      "out":[
-        "0x2c0733df0d0",
-        "csv"
-      ],
-      "in":[
-        "0x2c07340c610",
+        "0x20a11c65bd0",
         "target"
       ]
     }

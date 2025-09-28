@@ -1,13 +1,8 @@
 import os
-from contextlib import redirect_stdout, redirect_stderr
-from datetime import datetime
-from io import StringIO
 
 from NodeGraphQt import BaseNode
 from PyQt5.QtWidgets import QFileDialog
-from loguru import logger
 
-from app.utils.json_serializer import output_serializable
 from app.utils.node_logger import NodeLogHandler
 from app.widgets.component_log_message_box import LogMessageBox
 
@@ -161,23 +156,19 @@ def create_node_class(component_class):
                 inputs = {}
                 for input_port in self.input_ports():
                     port_name = input_port.name()
-
+                    connected = input_port.connected_ports()
+                    if not connected:
+                        continue
                     # 优先从 _input_values 获取（包含列选择结果）
                     if hasattr(self, '_input_values') and port_name in self._input_values:
                         inputs[port_name] = self._input_values[port_name]
                     else:
                         # 如果没有 _input_values，尝试从连接获取
-                        connected = input_port.connected_ports()
-                        if connected:
-                            upstream_out = connected[0]
-                            upstream_node = upstream_out.node()
-                            if hasattr(upstream_node, 'get_output_value'):
-                                inputs[port_name] = upstream_node.get_output_value(upstream_out.name())
-                            elif main_window:
-                                upstream_data = main_window.node_results.get(upstream_node.id, {})
-                                inputs[port_name] = upstream_data.get(upstream_out.name())
-                        else:
-                            inputs[port_name] = None
+                        upstream_out = connected[0]
+                        upstream_node = upstream_out.node()
+                        if hasattr(upstream_node, 'get_output_value'):
+                            inputs[port_name] = upstream_node.get_output_value(upstream_out.name())
+
                 if comp_cls.get_inputs():
                     output = comp_instance.run(params, inputs)
                 else:
