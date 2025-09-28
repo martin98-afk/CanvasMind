@@ -306,7 +306,9 @@ class LowCodeWindow(FluentWindow):
         """异步执行节点列表"""
         if not nodes:
             return
-
+        # 将所有node状态变为未运行
+        for node in nodes:
+            self.set_node_status(node, NodeStatus.NODE_STATUS_UNRUN)
         # 创建执行器
         executor = NodeListExecutor(self, nodes)
         executor.signals.finished.connect(lambda: self.create_success_info("完成", "工作流执行完成!"))

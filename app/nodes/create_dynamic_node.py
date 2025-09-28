@@ -179,12 +179,10 @@ def create_node_class(component_class):
                         else:
                             inputs[port_name] = None
 
-                self.log_capture.add_handler()
                 if comp_cls.get_inputs():
                     output = comp_instance.run(params, self._input_values)
                 else:
                     output = comp_instance.run(params)
-                self.log_capture.remove_handler()
 
                 # 记录执行结果
                 component_class.logger.success("✅ 节点执行完成")

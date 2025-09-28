@@ -10,10 +10,13 @@ class NodeLogHandler:
         self.log_callback = log_callback
         self.handler_id = None
         self.logger = logger.bind(node_id=self.node_id)  # 提前 bind
+        self.add_handler()
 
     def _log_sink(self, message):
         """Loguru 日志接收器"""
         record = message.record
+        if record["extra"].get("node_id") != self.node_id:
+            return  # 忽略其他节点的日志
         timestamp = record["time"].strftime("%Y-%m-%d %H:%M:%S")
         function = record["function"]
         line = record["line"]
@@ -33,11 +36,6 @@ class NodeLogHandler:
         self.handler_id = logger.add(
             self._log_sink,
             level="INFO",
-            enqueue=True
+            enqueue=True,
+            filter=lambda record: "node_id" in record["extra"]
         )
-
-    def remove_handler(self):
-        """移除日志处理器"""
-        if self.handler_id is not None:
-            logger.remove(self.handler_id)  # 注意这里用全局 logger.remove
-            self.handler_id = None
