@@ -96,7 +96,7 @@ lowcode-platform/
 
 ```python
 # components/data/my_component.py
-from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType, PropertyType
 
 
 class MyComponent(BaseComponent):
@@ -105,7 +105,7 @@ class MyComponent(BaseComponent):
     description = "这是一个示例组件"
 
     inputs = [
-        PortDefinition(name="input_data", label="输入数据", type=ArgumentType.TEXT)
+        PortDefinition(name="input_data", label="输入数据", type=ArgumentType.FILE)
     ]
 
     outputs = [
@@ -115,12 +115,12 @@ class MyComponent(BaseComponent):
 
     properties = {
         "parameter1": PropertyDefinition(
-            type=ArgumentType.TEXT,
+            type=PropertyType.TEXT,
             default="default_value",
             label="参数1"
         ),
         "max_count": PropertyDefinition(
-            type=ArgumentType.INT,
+            type=PropertyType.INT,
             default=10,
             label="最大数量"
         )
@@ -232,7 +232,7 @@ class MyComponent(BaseComponent):
   - [x] 模型画布导入
   - [ ] 模型输出结果导入
 - [ ] 模型运行环境控制
-- [ ] 输出节点预览
+- [x] 输出节点预览
 - [ ] 输出节点下载
 - [ ] 工具配置
 

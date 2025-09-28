@@ -45,7 +45,7 @@ class ArgumentType(str, Enum):
         elif self == ArgumentType.CSV and isinstance(value, pd.DataFrame):
             return {
                 "type": "CSV",
-                "shape": f"[DataFrame] {value.shape[0]} rows, {value.shape[1]} columns",
+                "shape": f"{value.shape[0]} rows, {value.shape[1]} columns",
                 "columns": value.columns
             }
         else:
