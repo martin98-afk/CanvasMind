@@ -60,11 +60,11 @@ def create_node_class(component_class):
 
             # 添加输入端口
             for port_name, label in component_class.get_inputs():
-                self.add_input(port_name, label)
+                self.add_input(port_name)
 
             # 添加输出端口
             for port_name, label in component_class.get_outputs():
-                self.add_output(port_name, label)
+                self.add_output(port_name)
 
         def _select_file(self, prop_name):
             """选择文件"""

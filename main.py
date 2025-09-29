@@ -1,10 +1,9 @@
 import sys
-import pre_imports
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication
 
-from app.workflow import LowCodeWindow
+from app.main_window import LowCodeWindow
 
 
 def enable_dpi_scale():

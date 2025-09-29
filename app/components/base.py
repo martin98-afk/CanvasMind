@@ -34,6 +34,7 @@ class ArgumentType(str, Enum):
     FOLDER = "folder"
     CSV = "csv"
     JSON = "json"
+    BOOL = "bool"
 
     # 验证是否是文件类型
     def is_file(self):

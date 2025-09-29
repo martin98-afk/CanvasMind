@@ -9,10 +9,86 @@
     "reject_connection_types":"{}"
   },
   "nodes":{
-    "0x2c0733df0d0":{
-      "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_CSV_\u8bfb\u53d6\u5668",
+    "0x1f80fb60520":{
+      "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_\u6587\u672c\u8f93\u5165",
       "icon":null,
-      "name":"CSV \u8bfb\u53d6\u5668",
+      "name":"\u6587\u672c\u8f93\u5165",
+      "color":[
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color":[
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color":[
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled":false,
+      "selected":false,
+      "visible":true,
+      "width":243.0,
+      "height":69.05000000000001,
+      "pos":[
+        -25.56382299945436,
+        208.6337812536115
+      ],
+      "layout_direction":0,
+      "port_deletion_allowed":false,
+      "subgraph_session":{},
+      "custom":{
+        "input":"\u6587\u672c\u5185\u5bb9"
+      }
+    },
+    "0x1f80fb85b40":{
+      "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_\u6587\u672c\u8f93\u5165",
+      "icon":null,
+      "name":"\u6587\u672c\u8f93\u5165 1",
+      "color":[
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color":[
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color":[
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled":false,
+      "selected":false,
+      "visible":true,
+      "width":255.0,
+      "height":69.05000000000001,
+      "pos":[
+        -34.63485696700272,
+        309.23979434823843
+      ],
+      "layout_direction":0,
+      "port_deletion_allowed":false,
+      "subgraph_session":{},
+      "custom":{
+        "input":"\u6587\u672c\u5185\u5bb92"
+      }
+    },
+    "0x1f80fb85b10":{
+      "type_":"dynamic.StatusDynamicNode_\u63a7\u5236\u6d41_\u6761\u4ef6\u5224\u65ad",
+      "icon":null,
+      "name":"\u6761\u4ef6\u5224\u65ad",
       "color":[
         25,
         70,
@@ -34,60 +110,24 @@
       "disabled":false,
       "selected":true,
       "visible":true,
-      "width":160,
-      "height":60,
+      "width":385.0,
+      "height":114.2,
       "pos":[
-        -55.151672777281654,
-        206.67656570668797
-      ],
-      "layout_direction":0,
-      "port_deletion_allowed":false,
-      "subgraph_session":{}
-    },
-    "0x2c07340ca00":{
-      "type_":"dynamic.StatusDynamicNode_\u7b97\u6cd5_\u903b\u8f91\u56de\u5f52",
-      "icon":null,
-      "name":"\u903b\u8f91\u56de\u5f52",
-      "color":[
-        80,
-        30,
-        30,
-        255
-      ],
-      "border_color":[
-        74,
-        84,
-        85,
-        255
-      ],
-      "text_color":[
-        255,
-        255,
-        255,
-        180
-      ],
-      "disabled":false,
-      "selected":false,
-      "visible":true,
-      "width":277.0,
-      "height":153.05,
-      "pos":[
-        282.7965340549258,
-        -26.906859115451425
+        322.61757565385676,
+        187.86382664186237
       ],
       "layout_direction":0,
       "port_deletion_allowed":false,
       "subgraph_session":{},
       "custom":{
-        "solver":"liblinear",
-        "max_iter":"100",
-        "test_size":"0.2"
+        "condition_expression":"condition_input==\"1\"",
+        "evaluation_mode":"python"
       }
     },
-    "0x2c07340c610":{
-      "type_":"dynamic.StatusDynamicNode_\u7b97\u6cd5_\u7ebf\u6027\u56de\u5f52",
+    "0x1f80fd8bf40":{
+      "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_\u6587\u672c\u8f93\u5165",
       "icon":null,
-      "name":"\u7ebf\u6027\u56de\u5f52",
+      "name":"\u6587\u672c\u8f93\u5165 2",
       "color":[
         25,
         70,
@@ -109,49 +149,49 @@
       "disabled":false,
       "selected":false,
       "visible":true,
-      "width":252.0,
-      "height":76.4,
+      "width":255.0,
+      "height":69.05000000000001,
       "pos":[
-        292.74700531633226,
-        435.40963044231967
+        -24.739183547859056,
+        118.74808102972358
       ],
       "layout_direction":0,
       "port_deletion_allowed":false,
       "subgraph_session":{},
       "custom":{
-        "fit_intercept":true
+        "input":"1"
       }
     }
   },
   "connections":[
     {
       "out":[
-        "0x2c0733df0d0",
-        "csv"
+        "0x1f80fb60520",
+        "text"
       ],
       "in":[
-        "0x2c07340ca00",
-        "feature"
+        "0x1f80fb85b10",
+        "true_data"
       ]
     },
     {
       "out":[
-        "0x2c0733df0d0",
-        "csv"
+        "0x1f80fb85b40",
+        "text"
       ],
       "in":[
-        "0x2c07340c610",
-        "feature"
+        "0x1f80fb85b10",
+        "false_data"
       ]
     },
     {
-      "out":[
-        "0x2c0733df0d0",
-        "csv"
-      ],
       "in":[
-        "0x2c07340c610",
-        "target"
+        "0x1f80fb85b10",
+        "condition_input"
+      ],
+      "out":[
+        "0x1f80fd8bf40",
+        "text"
       ]
     }
   ]

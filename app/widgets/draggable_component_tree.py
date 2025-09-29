@@ -1,11 +1,14 @@
 from PyQt5.QtCore import Qt, QMimeData, QRectF
 from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont
+from PyQt5.QtWidgets import QTreeWidgetItem
 # ----------------------------
 # 属性面板（右侧）
 # ----------------------------
 from qfluentwidgets import (
     TreeWidget
 )
+
+from app.scan_components import scan_components
 
 
 # ----------------------------
@@ -17,11 +20,7 @@ class DraggableTreeWidget(TreeWidget):
         self.setDragEnabled(True)
         self.setAcceptDrops(False)
         self.setDragDropMode(TreeWidget.DragOnly)
-        self.component_map = {}
-
-    def set_component_map(self, component_map):
-        """设置组件映射，用于拖拽预览"""
-        self.component_map = component_map
+        self.refresh_components()
 
     def startDrag(self, supportedActions):
         """开始拖拽操作，带预览"""
@@ -97,3 +96,25 @@ class DraggableTreeWidget(TreeWidget):
 
         painter.end()
         return pixmap
+
+    def build_component_tree(self):
+        self.clear()
+        categories = {}
+
+        for full_path, comp_cls in self.component_map.items():
+            category, name = full_path.split("/", 1)
+            if category not in categories:
+                cat_item = QTreeWidgetItem([category])
+                self.addTopLevelItem(cat_item)
+                categories[category] = cat_item
+            else:
+                cat_item = categories[category]
+            cat_item.addChild(QTreeWidgetItem([name]))
+
+        self.expandAll()
+
+    def refresh_components(self):
+        """刷新组件树"""
+        # 重新扫描组件目录
+        self.component_map = scan_components()
+        self.build_component_tree()

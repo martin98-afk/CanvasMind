@@ -4,6 +4,10 @@
 
 一个基于 **NodeGraphQt** 和 **qfluentwidgets** 的现代化低代码可视化编程平台，支持拖拽式组件编排、异步执行、文件操作和循环控制。
 
+## 📷 组件开发示意图
+
+<img src="./组件开发示意图.png" width="800">
+
 ## 🎉 工作流示意图
 
 <img src="./工作流示意图.png" width="800">
@@ -206,7 +210,7 @@ class MyComponent(BaseComponent):
 
 ## 功能实现情况
 - [ ] 组件管理
-- [ ] 组件开发
+- [x] 组件开发
 - [ ] 组件参数
   - [x] CSV 参数
     - [x] CSV 参数信息预览

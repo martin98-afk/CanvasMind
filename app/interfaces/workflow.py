@@ -1,72 +1,39 @@
-"""
-@author: mading
-@license: (C) Copyright: LUCULENT Corporation Limited.
-@contact: mading@luculent.net
-@file: workflow.py
-@time: 2025/9/26 14:21
-@desc: 
-"""
 from collections import deque, defaultdict
 
 from NodeGraphQt import NodeGraph, BackdropNode
 from PyQt5.QtCore import Qt, QThreadPool
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTreeWidgetItem, QPlainTextEdit
-from loguru import logger
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTreeWidgetItem
 from qfluentwidgets import (
-    FluentWindow, setTheme, Theme, FluentIcon as FIF, ToolButton, MessageBox, InfoBar,
-    InfoBarPosition, NavigationItemPosition
+    ToolButton, MessageBox, InfoBar,
+    InfoBarPosition, FluentIcon
 )
 
 from app.nodes.create_dynamic_node import create_node_class
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
 from app.utils.threading_utils import NodeListExecutor, Worker
-from app.utils.utils import get_port_node, get_icon
+from app.utils.utils import get_port_node
 from app.widgets.draggable_component_tree import DraggableTreeWidget
-from app.widgets.logger_dialog import QTextEditLogger
 from app.widgets.property_panel import PropertyPanel
 
 
 # ----------------------------
-# 主窗口
+# 主界面页面
 # ----------------------------
-class LowCodeWindow(FluentWindow):
+class CanvasPage(QWidget):
     def __init__(self):
         super().__init__()
-        setTheme(Theme.DARK)
-        from PyQt5.QtWidgets import QDesktopWidget
-        self.setup_log_viwer()
-        screen_rect = QDesktopWidget().screenGeometry()
-        screen_width, screen_height = screen_rect.width(), screen_rect.height()
-        self.window_width = int(screen_width * 0.6)
-        self.window_height = int(screen_height * 0.75)
-        self.resize(self.window_width, self.window_height)
+        self.setObjectName('canvas_page')
 
         # 初始化线程池
         self.threadpool = QThreadPool()
         print(f"Multithreading with maximum {self.threadpool.maxThreadCount()} threads")
 
-        # 扫描组件
-        self.component_map = scan_components()
-
         # 初始化状态存储
         self.node_status = {}  # {node_id: status}
-
+        self.node_type_map = {}
         # 初始化 NodeGraph
         self.graph = NodeGraph()
-
-        # 动态注册所有组件
-        self.node_type_map = {}
-
-        for full_path, comp_cls in self.component_map.items():
-            safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
-            node_class = create_node_class(comp_cls)
-            # 继承 StatusNode 以支持状态显示
-            node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
-            node_class.__name__ = f"StatusDynamicNode_{safe_name}"
-            self.graph.register_node(node_class)
-            self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
 
         self.canvas_widget = self.graph.viewer()
 
@@ -74,22 +41,17 @@ class LowCodeWindow(FluentWindow):
         self.nav_view = DraggableTreeWidget(self)
         self.nav_view.setHeaderHidden(True)
         self.nav_view.setFixedWidth(200)
-        self.nav_view.set_component_map(self.component_map)  # 设置组件映射用于预览
-        self.build_component_tree(self.component_map)
-
+        self.register_components()
         # 属性面板
         self.property_panel = PropertyPanel(self)
 
-        # 布局（移除日志面板）
-        central_widget = QWidget()
-        central_widget.setObjectName('central_widget')
-        main_layout = QVBoxLayout(central_widget)
+        # 布局
+        main_layout = QVBoxLayout(self)
         canvas_layout = QHBoxLayout()
         canvas_layout.addWidget(self.nav_view)
         canvas_layout.addWidget(self.canvas_widget, 1)
         canvas_layout.addWidget(self.property_panel, 0, Qt.AlignRight)
         main_layout.addLayout(canvas_layout)
-        self.addSubInterface(central_widget, FIF.APPLICATION, 'Canvas')
 
         # 创建悬浮按钮
         self.create_floating_buttons()
@@ -106,15 +68,18 @@ class LowCodeWindow(FluentWindow):
         # ✅ 启用右键菜单（关键步骤）
         self._setup_context_menus()
 
-        # 下半部分按钮
-        log_interface = self.addSubInterface(
-            self.log_viewer, get_icon("系统运行日志"), '执行日志', NavigationItemPosition.BOTTOM)
-        log_interface.clicked.connect(
-            lambda: (
-                self.text_logger._clean_trailing_empty_lines(),
-                self.text_logger.scroll_to_bottom(force=True)
-            )
-        )
+    def register_components(self):
+        # 扫描组件
+        self.component_map = scan_components()
+        for full_path, comp_cls in self.component_map.items():
+            safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
+            node_class = create_node_class(comp_cls)
+            # 继承 StatusNode 以支持状态显示
+            node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
+            node_class.__name__ = f"StatusDynamicNode_{safe_name}"
+            if f"dynamic.{node_class.__name__}" not in self.graph.registered_nodes():
+                self.graph.register_node(node_class)
+                self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
 
     def create_floating_buttons(self):
         """创建画布左上角的悬浮按钮"""
@@ -127,19 +92,19 @@ class LowCodeWindow(FluentWindow):
         button_layout.setContentsMargins(0, 0, 0, 0)
 
         # 运行按钮
-        self.run_btn = ToolButton(FIF.PLAY, self)
+        self.run_btn = ToolButton(FluentIcon.PLAY, self)
         self.run_btn.setToolTip("运行工作流")
         self.run_btn.clicked.connect(self.run_workflow)
         button_layout.addWidget(self.run_btn)
 
         # 导出按钮
-        self.export_btn = ToolButton(FIF.SAVE, self)
+        self.export_btn = ToolButton(FluentIcon.SAVE, self)
         self.export_btn.setToolTip("导出工作流")
         self.export_btn.clicked.connect(self.save_graph)
         button_layout.addWidget(self.export_btn)
 
         # 导入按钮
-        self.import_btn = ToolButton(FIF.FOLDER, self)
+        self.import_btn = ToolButton(FluentIcon.FOLDER, self)
         self.import_btn.setToolTip("导入工作流")
         self.import_btn.clicked.connect(self.load_graph)
         button_layout.addWidget(self.import_btn)
@@ -283,10 +248,7 @@ class LowCodeWindow(FluentWindow):
     def on_node_error(self, node):
         """节点执行错误回调"""
         self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
-        self.create_failed_info(
-            '错误',
-            f'节点 "{node.name()}" 执行失败！',
-        )
+        self.create_failed_info('错误', f'节点 "{node.name()}" 执行失败！')
         # 刷新属性面板
         if (self.property_panel.current_node and
                 self.property_panel.current_node.id == node.id):
@@ -295,10 +257,7 @@ class LowCodeWindow(FluentWindow):
     def on_node_error_simple(self, node_id):
         """简单节点错误回调（用于批量执行）"""
         node = self._get_node_by_id(node_id)
-        self.create_failed_info(
-            '错误',
-            f'节点 "{node.name()}" 执行失败！',
-        )
+        self.create_failed_info('错误', f'节点 "{node.name()}" 执行失败！')
         if node:
             self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
 
@@ -417,22 +376,6 @@ class LowCodeWindow(FluentWindow):
         except Exception:
             self.create_failed_info("错误", "workflow.json 未找到！")
 
-    def build_component_tree(self, component_map):
-        self.nav_view.clear()
-        categories = {}
-
-        for full_path, comp_cls in component_map.items():
-            category, name = full_path.split("/", 1)
-            if category not in categories:
-                cat_item = QTreeWidgetItem([category])
-                self.nav_view.addTopLevelItem(cat_item)
-                categories[category] = cat_item
-            else:
-                cat_item = categories[category]
-            cat_item.addChild(QTreeWidgetItem([name]))
-
-        self.nav_view.expandAll()
-
     def run_workflow(self):
         nodes = self.graph.all_nodes()
         if not nodes:
@@ -547,73 +490,3 @@ class LowCodeWindow(FluentWindow):
             duration=2000,
             parent=self
         )
-
-    def setup_log_viwer(self):
-        if not hasattr(self, 'log_viewer'):
-            self.log_viewer = QPlainTextEdit()
-            self.log_viewer.document().setDocumentMargin(0)
-            self.log_viewer.setObjectName('运行日志')
-            self.log_viewer.setReadOnly(True)
-            self.log_viewer.setFont(QFont("Consolas", 11))
-            self.log_viewer.setStyleSheet(f"""
-                QPlainTextEdit {{
-                    background-color: #0e1117;
-                    color: white;
-                    border: 1px solid #2c2f36;
-                    font-family: Consolas, monospace;
-                    font-size: 18px;
-                    padding: 10px;
-                }}
-                /* 纵向滚动条 */
-                QTextEdit QScrollBar:vertical {{
-                    background: transparent;
-                    width: 8px;
-                    margin: 0px;
-                }}
-                QTextEdit QScrollBar::handle:vertical {{
-                    background: #555555;
-                    border-radius: 4px;
-                    min-height: 20px;
-                }}
-                QTextEdit QScrollBar::handle:vertical:hover {{
-                    background: #888888;
-                }}
-                QTextEdit QScrollBar::add-line:vertical,
-                QTextEdit QScrollBar::sub-line:vertical {{
-                    height: 0px;
-                    background: none;
-                    border: none;
-                }}
-                QTextEdit QScrollBar::add-page:vertical, QTextEdit QScrollBar::sub-page:vertical {{
-                    background: none;
-                }}
-
-                /* 横向滚动条 */
-                QTextEdit QScrollBar:horizontal {{
-                    background: transparent;
-                    height: 8px;
-                    margin: 0px;
-                }}
-                QTextEdit QScrollBar::handle:horizontal {{
-                    background: #555555;
-                    border-radius: 4px;
-                    min-width: 20px;
-                }}
-                QTextEdit QScrollBar::handle:horizontal:hover {{
-                    background: #888888;
-                }}
-                QTextEdit QScrollBar::add-line:horizontal,
-                QTextEdit QScrollBar::sub-line:horizontal {{
-                    width: 0px;
-                    background: none;
-                    border: none;
-                }}
-                QTextEdit QScrollBar::add-page:horizontal, QTextEdit QScrollBar::sub-page:horizontal {{
-                    background: none;
-                }}
-            """)
-
-            # 创建 sink
-            self.text_logger = QTextEditLogger(self.log_viewer, max_lines=1000)
-            logger.remove()
-            logger.add(self.text_logger, format="{time:HH:mm:ss} | {level} | {file}:{line} {message}", level="DEBUG")

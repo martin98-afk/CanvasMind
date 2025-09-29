@@ -1,11 +1,4 @@
-"""
-@author: mading
-@license: (C) Copyright: LUCULENT Corporation Limited.
-@contact: mading@luculent.net
-@file: scan_components.py
-@time: 2025/9/26 15:05
-@desc: 
-"""
+
 import os
 import importlib
 import inspect
