@@ -3,9 +3,11 @@ from qfluentwidgets import LineEdit, BodyLabel, PrimaryPushButton, PushButton, M
 
 
 class NewComponentDialog(MessageBoxBase):
-    def __init__(self, parent=None, default_category=""):
+    def __init__(self, parent=None, default_name="", default_category="", default_description=""):
         super().__init__(parent)
         self._default_category = default_category
+        self._default_name = default_name
+        self._default_description = default_description
 
         # 创建 QWidget 作为内容区域
         self.content_widget = QWidget()
@@ -26,6 +28,10 @@ class NewComponentDialog(MessageBoxBase):
         self.description_edit = LineEdit()
         if self._default_category:
             self.category_edit.setText(self._default_category)
+        if self._default_name:
+            self.name_edit.setText(self._default_name)
+        if self._default_description:
+            self.description_edit.setText(self._default_description)
         # 添加到表单布局
         self.content_layout.addRow(BodyLabel("组件名称:"), self.name_edit) # 使用 BodyLabel 确保样式一致
         self.content_layout.addRow(BodyLabel("组件分类:"), self.category_edit)

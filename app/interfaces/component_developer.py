@@ -1,4 +1,5 @@
 import inspect
+import re
 from pathlib import Path
 
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -126,6 +127,7 @@ class ComponentDeveloperWidget(QWidget):
         """组件创建回调"""
         self._create_new_component(component_info)
 
+
     def _load_component(self, component):
         """加载组件到编辑器"""
         try:
@@ -186,6 +188,17 @@ class ComponentDeveloperWidget(QWidget):
         self.code_editor.set_code(template)
         # 对于新建的，原始文件路径为 None
         self._current_component_file = None
+        current_code = self.code_editor.get_code()
+        if not current_code.strip():
+            return
+        # 解析并更新基本信息
+        updated_code = self._update_basic_info_in_code(
+            current_code,
+            self.name_edit.text(),
+            self.category_edit.text(),
+            self.description_edit.text()
+        )
+        self.code_editor.set_code(updated_code)
 
     def _sync_ports_to_code(self):
         """同步端口到代码"""
@@ -277,7 +290,8 @@ class ComponentDeveloperWidget(QWidget):
             line = lines[i]
 
             # 查找 inputs 或 outputs 定义的开始行
-            if not inputs_replaced and 'inputs =' in line and ('[' in line or '[]' in line):
+            if (not inputs_replaced and re.search(r'(\s*inputs\s*=)(\s*\[)', line)
+                    and ('[' in line or '[]' in line)):
                 new_lines.append("    inputs = [")
                 for port in input_ports:
                     new_lines.append(
@@ -301,7 +315,8 @@ class ComponentDeveloperWidget(QWidget):
                         i = j + 1
                     else:
                         i += 1  # 如果格式不标准，只跳过当前行
-            elif not outputs_replaced and 'outputs =' in line and ('[' in line or '[]' in line):
+            elif (not outputs_replaced and re.search(r'(\s*outputs\s*=)(\s*\[)', line) and
+                  ('[' in line or '[]' in line)):
                 new_lines.append("    outputs = [")
                 for port in output_ports:
                     new_lines.append(
@@ -742,7 +757,7 @@ class PropertyEditorWidget(QWidget):
         self.table.setItem(row, 3, default_item)
         type_combo = QComboBox()
         type_combo.addItems(["text", "int", "float", "bool", "choice", "file", "folder"])
-        prop_type = getattr(prop_def, 'type', 'text')   # prop_def.get("type", "text")
+        prop_type = getattr(prop_def, 'type', 'text')  # prop_def.get("type", "text")
         type_combo.setCurrentText(prop_type)
         type_combo.currentTextChanged.connect(
             lambda text: self._on_type_changed(row, text)

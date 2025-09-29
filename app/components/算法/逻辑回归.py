@@ -1,36 +1,41 @@
 from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
-class LogisticRegressionComponent(BaseComponent):
-    name="逻辑回归"
-    category="算法"
-    description="Logistic Regression classifier for CSV data"
-    inputs=[
-        PortDefinition(name="feature", label="输入特征", type=ArgumentType.CSV),
-        PortDefinition(name="target", label="输入目标", type=ArgumentType.CSV)
+class test(BaseComponent):
+    name = "逻辑回归"
+    category = "算法"
+    description = "组件开发生成组件"
+    inputs = [
+        PortDefinition(name="feature", label="端口1", type=ArgumentType.CSV),
+        PortDefinition(name="target", label="端口2", type=ArgumentType.CSV),
     ]
-    outputs=[
-        PortDefinition(name="value", label="预测值"),
-        PortDefinition(name="model", label="训练模型")
+    outputs = [
+        PortDefinition(name="value", label="端口1", type=ArgumentType.TEXT),
+        PortDefinition(name="model", label="端口2", type=ArgumentType.TEXT),
     ]
-    properties={
+    properties = {
         "solver": PropertyDefinition(
             type=PropertyType.CHOICE,
             default="liblinear",
-            label="求解器",
-            choices=["liblinear", "lbfgs", "newton-cg", "sag", "saga"]
+            label="属性1",
+            choices=["liblinear"]
         ),
         "max_iter": PropertyDefinition(
             type=PropertyType.INT,
             default=100,
-            label="最大迭代次数"
+            label="属性2",
         ),
-        "test_size": PropertyDefinition(
-            type=PropertyType.FLOAT,
-            default=0.2,
-            label="测试集比例"
-        )
+        "prop_2": PropertyDefinition(
+            type=PropertyType.TEXT,
+            default="",
+            label="属性3",
+        ),
     }
 
     def run(self, params, inputs=None):
+        """
+        params: 节点属性（来自UI）
+        inputs: 上游输入（key=输入端口名）
+        return: 输出数据（key=输出端口名）
+        """
         from sklearn.linear_model import LogisticRegression
         try:
             self.logger.info(inputs)

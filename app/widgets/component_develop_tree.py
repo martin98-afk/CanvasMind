@@ -122,11 +122,7 @@ class ComponentTreeWidget(TreeWidget):
         # 获取当前选中项的父项（分类项）的文本
         default_category = ""
         if current_item:
-            if current_item.parent():  # 如果选中的是组件项
-                default_category = current_item.parent().text(0)
-            elif not current_item.childCount():  # 如果选中的是一个没有子项的分类项
-                default_category = current_item.text(0)
-            # 如果选中的是有子项的分类项，default_category 保持为空字符串
+            default_category = current_item.text(0)
 
         dialog = NewComponentDialog(self, default_category=default_category)
         if dialog.exec_() == QDialog.Accepted:

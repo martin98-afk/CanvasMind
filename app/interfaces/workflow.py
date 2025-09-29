@@ -32,6 +32,7 @@ class CanvasPage(QWidget):
         # 初始化状态存储
         self.node_status = {}  # {node_id: status}
         self.node_type_map = {}
+        self._registered_nodes = []
         # 初始化 NodeGraph
         self.graph = NodeGraph()
 
@@ -64,14 +65,16 @@ class CanvasPage(QWidget):
         self.canvas_widget.setAcceptDrops(True)
         self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
         self.canvas_widget.dropEvent = self.canvas_drop_event
-
         # ✅ 启用右键菜单（关键步骤）
         self._setup_context_menus()
 
     def register_components(self):
         # 扫描组件
+        self._registered_nodes.extend(list(self.graph.registered_nodes()))
         self.graph._node_factory.clear_registered_nodes()
         self.component_map = scan_components()
+        # 获取节点菜单（nodes menu）
+        nodes_menu = self.graph.get_context_menu('nodes')
         for full_path, comp_cls in self.component_map.items():
             safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
             node_class = create_node_class(comp_cls, full_path)
@@ -80,6 +83,17 @@ class CanvasPage(QWidget):
             node_class.__name__ = f"StatusDynamicNode_{safe_name}"
             self.graph.register_node(node_class)
             self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
+            if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
+                nodes_menu.add_command('▶ 运行此节点', lambda graph, node: self.run_single_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('⏩ 运行到此节点', lambda graph, node: self.run_to_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('⏭️ 从此节点开始运行', lambda graph, node: self.run_from_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('📄 查看节点日志', lambda graph, node: node.show_logs(),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('🗑️ 删除节点', lambda graph, node: self.delete_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
 
     def create_floating_buttons(self):
         """创建画布左上角的悬浮按钮"""
@@ -434,18 +448,6 @@ class CanvasPage(QWidget):
         edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
         edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
         edit_menu.add_command('删除选中', lambda graph: graph.delete_nodes(graph.selected_nodes()), 'Del')
-
-        # 获取节点菜单（nodes menu）
-        nodes_menu = self.graph.get_context_menu('nodes')
-
-        # 为所有动态节点添加通用命令
-        for node_type in self.node_type_map.values():
-            nodes_menu.add_command('▶ 运行此节点', lambda graph, node: self.run_single_node(node), node_type=node_type)
-            nodes_menu.add_command('⏩ 运行到此节点', lambda graph, node: self.run_to_node(node), node_type=node_type)
-            nodes_menu.add_command('⏭️ 从此节点开始运行', lambda graph, node: self.run_from_node(node),
-                                   node_type=node_type)
-            nodes_menu.add_command('📄 查看节点日志', lambda graph, node: node.show_logs(), node_type=node_type)
-            nodes_menu.add_command('🗑️ 删除节点', lambda graph, node: self.delete_node(node), node_type=node_type)
 
     def create_success_info(self, title, content):
         InfoBar.success(
