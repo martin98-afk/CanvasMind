@@ -1,17 +1,4 @@
-"""
-@author: mading
-@license: (C) Copyright: LUCULENT Corporation Limited.
-@contact: mading@luculent.net
-@file: logistic_regression.py
-@time: 2025/9/26 14:41
-@desc: 
-"""
-import pandas as pd
-from sklearn.linear_model import LogisticRegression
-
-from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType, PropertyType
-
-
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
 class LogisticRegressionComponent(BaseComponent):
     name="逻辑回归"
     category="算法"
@@ -44,6 +31,7 @@ class LogisticRegressionComponent(BaseComponent):
     }
 
     def run(self, params, inputs=None):
+        from sklearn.linear_model import LogisticRegression
         try:
             self.logger.info(inputs)
 

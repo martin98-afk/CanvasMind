@@ -1,14 +1,4 @@
-"""
-@author: mading
-@license: (C) Copyright: LUCULENT Corporation Limited.
-@contact: mading@luculent.net
-@file: logistic_regression.py
-@time: 2025/9/26 14:41
-@desc: 
-"""
-from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType, PropertyType
-
-
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
 class InputComponent(BaseComponent):
     name="文本输入"
     category="数据集成"

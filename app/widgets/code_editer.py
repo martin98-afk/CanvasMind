@@ -34,16 +34,6 @@ class CodeEditorWidget(QWidget):
         self.code_editor.setPlainText(self._get_default_code_template())
         self.code_editor.textChanged.connect(self._on_text_changed)
         layout.addWidget(self.code_editor)
-        # 操作按钮
-        button_layout = QHBoxLayout()
-        save_btn = PrimaryPushButton("💾 保存代码")
-        save_btn.clicked.connect(self._save_code)
-        format_btn = PushButton("🧹 格式化代码")
-        format_btn.clicked.connect(self._format_code)
-        button_layout.addWidget(save_btn)
-        button_layout.addWidget(format_btn)
-        button_layout.addStretch()
-        layout.addLayout(button_layout)
 
     def _setup_syntax_highlighting(self):
         """设置语法高亮"""
@@ -115,18 +105,6 @@ class MyComponent(BaseComponent):
             "output_data": result
         }
 '''
-
-    def _save_code(self):
-        """保存代码"""
-        # 实现保存逻辑
-        QMessageBox.information(self, "保存", "代码已保存！")
-
-    def _format_code(self):
-        """格式化代码"""
-        # 简单的格式化（实际项目中可以使用 autopep8 或 black）
-        code = self.code_editor.toPlainText()
-        # 这里可以添加格式化逻辑
-        self.code_editor.setPlainText(code)
 
     def get_code(self):
         """获取代码"""

@@ -1,14 +1,4 @@
-"""
-@author: mading
-@license: (C) Copyright: LUCULENT Corporation Limited.
-@contact: mading@luculent.net
-@file: conditional_node.py
-@time: 2025/9/29 08:45
-@desc: 
-"""
 from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
-
-
 class ConditionalNode(BaseComponent):
     name = "条件判断"
     category = "控制流"

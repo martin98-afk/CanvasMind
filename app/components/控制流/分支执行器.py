@@ -1,14 +1,4 @@
-"""
-@author: mading
-@license: (C) Copyright: LUCULENT Corporation Limited.
-@contact: mading@luculent.net
-@file: branch_executor.py
-@time: 2025/9/29 08:50
-@desc: 
-"""
 from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
-
-
 class BranchExecutorNode(BaseComponent):
     name = "分支执行器"
     category = "控制流"

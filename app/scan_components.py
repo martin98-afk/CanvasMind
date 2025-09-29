@@ -30,6 +30,7 @@ def scan_components(components_dir="components"):
             module_path = f"app.{str(rel_path).replace(os.sep, '.')[:-3]}"  # 去掉 .py
 
             module = importlib.import_module(module_path)
+            importlib.reload(module)
             for name, obj in inspect.getmembers(module, inspect.isclass):
                 if issubclass(obj, BaseComponent) and obj != BaseComponent:
                     # ✅ 关键修改：使用 getattr 获取 name 属性，提供默认回退

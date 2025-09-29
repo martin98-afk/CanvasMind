@@ -70,6 +70,7 @@ class CanvasPage(QWidget):
 
     def register_components(self):
         # 扫描组件
+        self.graph._node_factory.clear_registered_nodes()
         self.component_map = scan_components()
         for full_path, comp_cls in self.component_map.items():
             safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
@@ -77,9 +78,8 @@ class CanvasPage(QWidget):
             # 继承 StatusNode 以支持状态显示
             node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
             node_class.__name__ = f"StatusDynamicNode_{safe_name}"
-            if f"dynamic.{node_class.__name__}" not in self.graph.registered_nodes():
-                self.graph.register_node(node_class)
-                self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
+            self.graph.register_node(node_class)
+            self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
 
     def create_floating_buttons(self):
         """创建画布左上角的悬浮按钮"""

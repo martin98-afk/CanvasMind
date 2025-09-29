@@ -1,6 +1,4 @@
-from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType, PropertyType
-
-
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
 class LoopNode(BaseComponent):
     name = "循环控制器"
     category = "控制流"

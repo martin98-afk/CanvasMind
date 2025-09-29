@@ -1,31 +1,32 @@
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-
-from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType, PropertyType
-
-
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
 class RandomForestComponent(BaseComponent):
     name = "随机森林分类器"
     category = "算法"
     description = "Random Forest Classifier for CSV data"
     inputs = [
-        PortDefinition(name="file", label="输入CSV文件")
+        PortDefinition(name="file", label="输入CSV文件", type=ArgumentType.TEXT),
     ]
     outputs = [
-        PortDefinition(name="value", label="预测值"),
-        PortDefinition(name="model", label="训练模型")
+        PortDefinition(name="value", label="预测值", type=ArgumentType.TEXT),
+        PortDefinition(name="model", label="训练模型", type=ArgumentType.TEXT),
+        PortDefinition(name="port_2", label="端口3", type=ArgumentType.TEXT),
     ]
     properties = {
         "n_estimators": PropertyDefinition(
             type=PropertyType.INT,
             default=100,
-            label="树数量"
+            label="树数量",
         ),
         "max_depth": PropertyDefinition(
             type=PropertyType.INT,
             default=None,
-            label="最大深度"
-        )
+            label="最大深度",
+        ),
+        "prop_2": PropertyDefinition(
+            type=PropertyType.TEXT,
+            default="",
+            label="属性3",
+        ),
     }
 
     def run(self, params, inputs=None):
