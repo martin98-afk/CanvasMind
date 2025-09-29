@@ -1,669 +1,19 @@
-# Pasted_Text_1759112560921.py
-
-import ast
 import inspect
-import re
 from pathlib import Path
-from typing import Dict, Any
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtGui import QFont, QColor, QTextCharFormat, QSyntaxHighlighter
+
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTreeWidgetItem,
-    QTableWidgetItem, QHeaderView,
-    QComboBox, QMessageBox, QFileDialog,
-    QDialog, QDialogButtonBox, QFormLayout
+    QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTableWidgetItem, QHeaderView,
+    QComboBox, QMessageBox, QDialog, QDialogButtonBox, QFormLayout
 )
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PrimaryPushButton, PushButton,
-    TableWidget, TextEdit as FluentTextEdit, TreeWidget
+    TableWidget
 )
+
 from app.scan_components import scan_components
-
-
-# --- 新增：Python 语法高亮器 ---
-class PythonSyntaxHighlighter(QSyntaxHighlighter):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self.highlighting_rules = []
-
-        # 关键字
-        keyword_format = QTextCharFormat()
-        keyword_format.setForeground(QColor("#0000FF"))  # 蓝色
-        keywords = [
-            "and", "as", "assert", "break", "class", "continue", "def",
-            "del", "elif", "else", "except", "exec", "finally", "for",
-            "from", "global", "if", "import", "in", "is", "lambda",
-            "not", "or", "pass", "print", "raise", "return", "try",
-            "while", "with", "yield", "None", "True", "False"
-        ]
-        for keyword in keywords:
-            pattern = r'\b' + keyword + r'\b'
-            self.highlighting_rules.append((re.compile(pattern), keyword_format))
-
-        # 字符串 (单引号和双引号)
-        string_format = QTextCharFormat()
-        string_format.setForeground(QColor("#008000"))  # 绿色
-        self.highlighting_rules.append((re.compile(r'"[^"]*"'), string_format))
-        self.highlighting_rules.append((re.compile(r"'[^']*'"), string_format))
-
-        # 注释
-        comment_format = QTextCharFormat()
-        comment_format.setForeground(QColor("#808080"))  # 灰色
-        self.highlighting_rules.append((re.compile(r'#.*'), comment_format))
-
-        # 内建函数和类型 (例如 len, print, int, str)
-        builtin_format = QTextCharFormat()
-        builtin_format.setForeground(QColor("#008B8B"))  # 深青色
-        builtins = [
-            "len", "max", "min", "sum", "int", "float", "str", "list",
-            "dict", "set", "tuple", "print", "range", "enumerate",
-            "zip", "map", "filter", "input", "open", "type", "id",
-            "hasattr", "getattr", "setattr", "isinstance", "issubclass"
-        ]
-        for builtin in builtins:
-            pattern = r'\b' + builtin + r'\b'
-            self.highlighting_rules.append((re.compile(pattern), builtin_format))
-
-    def highlightBlock(self, text):
-        for pattern, fmt in self.highlighting_rules:
-            matches = pattern.finditer(text)
-            for match in matches:
-                start, end = match.span()
-                self.setFormat(start, end - start, fmt)
-
-
-# --- 组件树控件 (未改动) ---
-class ComponentTreeWidget(TreeWidget):
-    """组件树控件 - 支持右键菜单"""
-    component_selected = pyqtSignal(object)  # 选中组件信号
-    component_created = pyqtSignal(dict)  # 创建组件信号
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setHeaderHidden(True)
-        self.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(self._show_context_menu)
-        self._components = {}  # {full_path: component_class}
-        self._copied_component = None
-
-    def load_components(self, component_map: Dict[str, Any]):
-        """加载组件到树中"""
-        self.clear()
-        self._components = component_map
-        categories = {}
-        # 按分类组织组件
-        for full_path, comp_cls in component_map.items():
-            try:
-                category = getattr(comp_cls, 'category', 'General')
-                name = getattr(comp_cls, 'name', comp_cls.__name__)
-                display_path = f"{category}/{name}"
-                if category not in categories:
-                    cat_item = QTreeWidgetItem([category])
-                    self.addTopLevelItem(cat_item)
-                    categories[category] = cat_item
-                else:
-                    cat_item = categories[category]
-                comp_item = QTreeWidgetItem([name])
-                comp_item.setData(0, Qt.UserRole, display_path)
-                comp_item.setData(1, Qt.UserRole, full_path)  # 原始路径
-                cat_item.addChild(comp_item)
-            except Exception as e:
-                print(f"加载组件 {full_path} 失败: {e}")
-        self.expandAll()
-
-    def refresh_components(self):
-        """刷新组件树"""
-        # 重新扫描组件目录
-        component_map = scan_components()
-        self.load_components(component_map)
-
-    def _show_context_menu(self, position):
-        """显示右键菜单"""
-        from PyQt5.QtWidgets import QMenu
-        menu = QMenu(self)
-        # 新建组件
-        new_action = menu.addAction("🆕 新建组件")
-        new_action.triggered.connect(self._create_new_component)
-        # 复制组件
-        copy_action = menu.addAction("📋 复制组件")
-        copy_action.triggered.connect(self._copy_component)
-        # 粘贴组件
-        paste_action = menu.addAction("📌 粘贴组件")
-        paste_action.triggered.connect(self._paste_component)
-        paste_action.setEnabled(self._copied_component is not None)
-        # 导出组件
-        export_action = menu.addAction("📤 导出组件")
-        export_action.triggered.connect(self._export_component)
-        # 删除组件
-        delete_action = menu.addAction("🗑️ 删除组件")
-        delete_action.triggered.connect(self._delete_component)
-        # 刷新
-        refresh_action = menu.addAction("🔄 刷新组件")
-        refresh_action.triggered.connect(self.refresh_components)
-        menu.exec_(self.viewport().mapToGlobal(position))
-
-    def _create_new_component(self):
-        """创建新组件"""
-        dialog = NewComponentDialog(self)
-        if dialog.exec_() == QDialog.Accepted:
-            component_info = dialog.get_component_info()
-            self.component_created.emit(component_info)
-
-    def _copy_component(self):
-        """复制组件"""
-        current_item = self.currentItem()
-        if current_item and current_item.parent():
-            full_path = current_item.data(1, Qt.UserRole)
-            if full_path in self._components:
-                self._copied_component = self._components[full_path]
-                QMessageBox.information(self, "复制成功", "组件已复制到剪贴板")
-
-    def _paste_component(self):
-        """粘贴组件"""
-        if self._copied_component:
-            dialog = NewComponentDialog(self)
-            dialog.setWindowTitle("粘贴组件 - 设置新组件信息")
-            if dialog.exec_() == QDialog.Accepted:
-                component_info = dialog.get_component_info()
-                # 实现粘贴逻辑
-                self._paste_component_impl(component_info)
-
-    def _paste_component_impl(self, component_info):
-        """实现组件粘贴"""
-        try:
-            # 生成新组件代码
-            new_name = component_info["name"]
-            new_category = component_info["category"]
-            # 获取原组件源码
-            source_code = inspect.getsource(self._copied_component)
-            # 替换类名和基本信息
-            new_code = source_code.replace(
-                f"class {self._copied_component.__name__}",
-                f"class {new_name.replace(' ', '')}"
-            )
-            # 更新基本信息
-            lines = new_code.split('\n')
-            for i, line in enumerate(lines):
-                if 'name =' in line:
-                    lines[i] = f'    name = "{new_name}"'
-                elif 'category =' in line:
-                    lines[i] = f'    category = "{new_category}"'
-                elif 'description =' in line:
-                    lines[i] = f'    description = "{component_info.get("description", "")}"'
-            new_code = '\n'.join(lines)
-            # 保存到文件
-            self._save_component_code(new_category, new_name, new_code)
-            self.refresh_components()
-            QMessageBox.information(self, "成功", "组件粘贴成功！")
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"粘贴组件失败: {str(e)}")
-
-    def _export_component(self):
-        """导出组件"""
-        current_item = self.currentItem()
-        if current_item and current_item.parent():
-            full_path = current_item.data(1, Qt.UserRole)
-            if full_path in self._components:
-                comp_cls = self._components[full_path]
-                try:
-                    # 获取组件源码
-                    source_code = inspect.getsource(comp_cls)
-                    # 选择保存位置
-                    file_path, _ = QFileDialog.getSaveFileName(
-                        self, "导出组件", f"{comp_cls.name}.py", "Python Files (*.py)"
-                    )
-                    if file_path:
-                        with open(file_path, 'w', encoding='utf-8') as f:
-                            f.write(source_code)
-                        QMessageBox.information(self, "成功", "组件导出成功！")
-                except Exception as e:
-                    QMessageBox.critical(self, "错误", f"导出组件失败: {str(e)}")
-
-    def _delete_component(self):
-        """删除组件"""
-        current_item = self.currentItem()
-        if current_item and current_item.parent():
-            full_path = current_item.data(1, Qt.UserRole)
-            category = current_item.parent().text(0)
-            name = current_item.text(0)
-            reply = QMessageBox.question(
-                self, "删除组件", f"确定要删除组件 {category}/{name} 吗？",
-                QMessageBox.Yes | QMessageBox.No
-            )
-            if reply == QMessageBox.Yes:
-                try:
-                    # 删除对应的Python文件
-                    component_dir = Path("app") / Path("components") / category
-                    file_name = f"{name.replace(' ', '_').lower()}.py"
-                    file_path = component_dir / file_name
-                    if file_path.exists():
-                        file_path.unlink()
-                        self.refresh_components()
-                        QMessageBox.information(self, "成功", "组件删除成功！")
-                    else:
-                        QMessageBox.warning(self, "警告", "组件文件不存在")
-                except Exception as e:
-                    QMessageBox.critical(self, "错误", f"删除组件失败: {str(e)}")
-
-    def _save_component_code(self, category, name, code):
-        """保存组件代码到文件"""
-        components_dir = Path("app") / Path("components") / category
-        components_dir.mkdir(parents=True, exist_ok=True)
-        filename = f"{name.replace(' ', '_').lower()}.py"
-        filepath = components_dir / filename
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(code)
-
-
-# --- 新建组件对话框 (未改动) ---
-class NewComponentDialog(QDialog):
-    """新建组件对话框"""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("新建组件")
-        self.setModal(True)
-        self.resize(400, 200)
-        self._setup_ui()
-
-    def _setup_ui(self):
-        layout = QFormLayout(self)
-        self.name_edit = LineEdit()
-        self.category_edit = LineEdit()
-        self.description_edit = LineEdit()
-        layout.addRow("组件名称:", self.name_edit)
-        layout.addRow("组件分类:", self.category_edit)
-        layout.addRow("组件描述:", self.description_edit)
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addRow(button_box)
-
-    def get_component_info(self):
-        """获取组件信息"""
-        return {
-            "name": self.name_edit.text().strip(),
-            "category": self.category_edit.text().strip(),
-            "description": self.description_edit.text().strip()
-        }
-
-
-# --- 端口编辑器 (未改动) ---
-class PortEditorWidget(QWidget):
-    """端口编辑器 - 支持动态添加删除"""
-    ports_changed = pyqtSignal()  # 端口改变信号
-
-    def __init__(self, port_type="input", parent=None):
-        super().__init__(parent)
-        self.port_type = port_type
-        self._setup_ui()
-
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        # 标题
-        title = BodyLabel(f"{'📥 输入端口' if self.port_type == 'input' else '📤 输出端口'}")
-        layout.addWidget(title)
-        # 端口表格
-        self.table = TableWidget()
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.setRowCount(0)
-        self.table.itemChanged.connect(self._on_item_changed)
-        layout.addWidget(self.table)
-        # 操作按钮
-        button_layout = QHBoxLayout()
-        add_btn = PrimaryPushButton("➕ 添加端口")
-        add_btn.clicked.connect(self._add_port)
-        remove_btn = PushButton("➖ 删除选中")
-        remove_btn.clicked.connect(self._remove_port)
-        button_layout.addWidget(add_btn)
-        button_layout.addWidget(remove_btn)
-        button_layout.addStretch()
-        layout.addLayout(button_layout)
-
-    def _on_item_changed(self, item):
-        """表格项改变时发出信号"""
-        self.ports_changed.emit()
-
-    def _add_port(self):
-        """添加端口"""
-        row = self.table.rowCount()
-        self.table.insertRow(row)
-        # 端口名称
-        name_edit = QTableWidgetItem(f"port_{row}")
-        self.table.setItem(row, 0, name_edit)
-        # 端口标签
-        label_edit = QTableWidgetItem(f"端口{row + 1}")
-        self.table.setItem(row, 1, label_edit)
-        # 端口类型
-        type_combo = QComboBox()
-        type_combo.addItems(["text", "int", "float", "bool", "file", "csv", "json"])
-        self.table.setCellWidget(row, 2, type_combo)
-        type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
-
-    def _remove_port(self):
-        """删除选中端口"""
-        selected_ranges = self.table.selectedRanges()
-        if selected_ranges:
-            rows = []
-            for range_ in selected_ranges:
-                rows.extend(range(range_.topRow(), range_.bottomRow() + 1))
-            rows = sorted(set(rows), reverse=True)
-            for row in rows:
-                self.table.removeRow(row)
-            self.ports_changed.emit()
-
-    def get_ports(self):
-        """获取端口数据"""
-        ports = []
-        for row in range(self.table.rowCount()):
-            name_item = self.table.item(row, 0)
-            label_item = self.table.item(row, 1)
-            if name_item and label_item:
-                # 获取类型
-                type_widget = self.table.cellWidget(row, 2)
-                port_type = type_widget.currentText() if type_widget else "text"
-                ports.append({
-                    "name": name_item.text(),
-                    "label": label_item.text(),
-                    "type": port_type
-                })
-        return ports
-
-    def set_ports(self, ports):
-        """设置端口数据"""
-        self.table.setRowCount(0)
-        for port in ports:
-            self._add_port_row(port)
-
-    def _add_port_row(self, port):
-        """添加端口行"""
-        row = self.table.rowCount()
-        self.table.insertRow(row)
-        name_item = QTableWidgetItem(port.get("name", ""))
-        label_item = QTableWidgetItem(port.get("label", ""))
-        self.table.setItem(row, 0, name_item)
-        self.table.setItem(row, 1, label_item)
-        type_combo = QComboBox()
-        type_combo.addItems(["text", "int", "float", "bool", "file", "csv", "json"])
-        type_combo.setCurrentText(port.get("type", "text"))
-        type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
-        self.table.setCellWidget(row, 2, type_combo)
-
-
-# --- 属性编辑器 (未改动) ---
-class PropertyEditorWidget(QWidget):
-    """属性编辑器 - 支持动态添加删除"""
-    properties_changed = pyqtSignal()  # 属性改变信号
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._setup_ui()
-
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        title = BodyLabel(f"{'参数设置'}")
-        layout.addWidget(title)
-        # 属性表格
-        self.table = TableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "选项"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.setRowCount(0)
-        self.table.itemChanged.connect(self._on_item_changed)
-        layout.addWidget(self.table)
-        # 操作按钮
-        button_layout = QHBoxLayout()
-        add_btn = PrimaryPushButton("➕ 添加属性")
-        add_btn.clicked.connect(self._add_property)
-        remove_btn = PushButton("➖ 删除选中")
-        remove_btn.clicked.connect(self._remove_property)
-        button_layout.addWidget(add_btn)
-        button_layout.addWidget(remove_btn)
-        button_layout.addStretch()
-        layout.addLayout(button_layout)
-
-    def _on_item_changed(self, item):
-        """表格项改变时发出信号"""
-        self.properties_changed.emit()
-
-    def _add_property(self):
-        """添加属性"""
-        row = self.table.rowCount()
-        self.table.insertRow(row)
-        # 属性名
-        name_item = QTableWidgetItem(f"prop_{row}")
-        self.table.setItem(row, 0, name_item)
-        # 标签
-        label_item = QTableWidgetItem(f"属性{row + 1}")
-        self.table.setItem(row, 1, label_item)
-        # 类型
-        type_combo = QComboBox()
-        type_combo.addItems(["text", "int", "float", "bool", "choice", "file", "folder"])
-        self.table.setCellWidget(row, 2, type_combo)
-        type_combo.currentTextChanged.connect(
-            lambda text: self._on_type_changed(row, text)
-        )
-        # 默认值
-        default_item = QTableWidgetItem("")
-        self.table.setItem(row, 3, default_item)
-        # 选项（用于 choice 类型）
-        options_item = QTableWidgetItem("")
-        options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
-        self.table.setItem(row, 4, options_item)
-
-    def _on_type_changed(self, row, prop_type):
-        """属性类型改变时的处理"""
-        options_item = self.table.item(row, 4)
-        if options_item:
-            if prop_type == "choice":
-                options_item.setFlags(options_item.flags() | Qt.ItemIsEditable)
-                options_item.setText("")
-            else:
-                options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
-                options_item.setText("")
-        self.properties_changed.emit()
-
-    def _remove_property(self):
-        """删除选中属性"""
-        selected_ranges = self.table.selectedRanges()
-        if selected_ranges:
-            rows = []
-            for range_ in selected_ranges:
-                rows.extend(range(range_.topRow(), range_.bottomRow() + 1))
-            rows = sorted(set(rows), reverse=True)
-            for row in rows:
-                self.table.removeRow(row)
-            self.properties_changed.emit()
-
-    def get_properties(self):
-        """获取属性数据"""
-        properties = {}
-        for row in range(self.table.rowCount()):
-            name_item = self.table.item(row, 0)
-            label_item = self.table.item(row, 1)
-            type_widget = self.table.cellWidget(row, 2)
-            default_item = self.table.item(row, 3)
-            options_item = self.table.item(row, 4)
-            if name_item and type_widget and default_item:
-                prop_name = name_item.text()
-                prop_type = type_widget.currentText()
-                default_value = default_item.text()
-                properties[prop_name] = {
-                    "type": prop_type,
-                    "default": default_value,
-                    "label": label_item.text() if label_item else prop_name
-                }
-                if prop_type == "choice" and options_item:
-                    choices_text = options_item.text()
-                    if choices_text:
-                        properties[prop_name]["choices"] = [
-                            opt.strip() for opt in choices_text.split(",")
-                            if opt.strip()
-                        ]
-        return properties
-
-    def set_properties(self, properties):
-        """设置属性数据"""
-        self.table.setRowCount(0)
-        for prop_name, prop_def in properties.items():
-            self._add_property_row(prop_name, prop_def)
-
-    def _add_property_row(self, prop_name, prop_def):
-        """添加属性行"""
-        row = self.table.rowCount()
-        self.table.insertRow(row)
-        name_item = QTableWidgetItem(prop_name)
-        label_item = QTableWidgetItem(prop_def.get("label", prop_name))
-        default_item = QTableWidgetItem(str(prop_def.get("default", "")))
-        self.table.setItem(row, 0, name_item)
-        self.table.setItem(row, 1, label_item)
-        self.table.setItem(row, 3, default_item)
-        type_combo = QComboBox()
-        type_combo.addItems(["text", "int", "float", "bool", "choice", "file", "folder"])
-        prop_type = prop_def.get("type", "text")
-        type_combo.setCurrentText(prop_type)
-        type_combo.currentTextChanged.connect(
-            lambda text: self._on_type_changed(row, text)
-        )
-        self.table.setCellWidget(row, 2, type_combo)
-        options_item = QTableWidgetItem("")
-        if prop_type == "choice":
-            choices = prop_def.get("choices", [])
-            options_item.setText(",".join(choices))
-            options_item.setFlags(options_item.flags() | Qt.ItemIsEditable)
-        else:
-            options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
-        self.table.setItem(row, 4, options_item)
-
-
-# --- 代码编辑器 (新增语法高亮，优化同步) ---
-class CodeEditorWidget(QWidget):
-    """代码编辑器 - 支持Python语法高亮和自动同步"""
-    code_changed = pyqtSignal()  # 代码改变信号
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._setup_ui()
-        self._setup_syntax_highlighting()
-        self._setup_auto_sync()
-
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        # 代码编辑器
-        self.code_editor = FluentTextEdit()
-        font = QFont("Consolas", 10)
-        self.code_editor.setFont(font)
-        self.code_editor.setPlainText(self._get_default_code_template())
-        self.code_editor.textChanged.connect(self._on_text_changed)
-        layout.addWidget(self.code_editor)
-        # 操作按钮
-        button_layout = QHBoxLayout()
-        save_btn = PrimaryPushButton("💾 保存代码")
-        save_btn.clicked.connect(self._save_code)
-        format_btn = PushButton("🧹 格式化代码")
-        format_btn.clicked.connect(self._format_code)
-        button_layout.addWidget(save_btn)
-        button_layout.addWidget(format_btn)
-        button_layout.addStretch()
-        layout.addLayout(button_layout)
-
-    def _setup_syntax_highlighting(self):
-        """设置语法高亮"""
-        self.highlighter = PythonSyntaxHighlighter(self.code_editor.document())
-
-    def _setup_auto_sync(self):
-        """设置自动同步"""
-        self._sync_timer = QTimer()
-        self._sync_timer.setSingleShot(True)
-        self._sync_timer.timeout.connect(self._parse_and_sync)
-
-    def _on_text_changed(self):
-        """文本改变时启动同步定时器"""
-        self.code_changed.emit()
-        self._sync_timer.start(1000)  # 1秒后解析
-
-    def _parse_and_sync(self):
-        """解析代码并同步到UI"""
-        try:
-            code = self.code_editor.toPlainText()
-            if not code.strip():
-                return
-            # 解析Python代码
-            tree = ast.parse(code)
-            # 查找组件类定义
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ClassDef):
-                    # 解析类属性
-                    self._parse_component_class(node, code)
-                    break
-        except SyntaxError:
-            # 语法错误时不处理
-            pass
-        except Exception as e:
-            print(f"解析代码失败: {e}")
-
-    def _parse_component_class(self, class_node, code):
-        """解析组件类"""
-        # 这里可以发送信号给主界面更新UI
-        pass
-
-    def _get_default_code_template(self):
-        """获取默认代码模板"""
-        return '''from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
-class MyComponent(BaseComponent):
-    name = ""
-    category = ""
-    description = ""
-    inputs = [
-    ]
-    outputs = [
-    ]
-    properties = {
-    }
-    def run(self, params, inputs=None):
-        """
-        params: 节点属性（来自UI）
-        inputs: 上游输入（key=输入端口名）
-        return: 输出数据（key=输出端口名）
-        """
-        # 在这里编写你的组件逻辑
-        input_data = inputs.get("input_data") if inputs else None
-        param1 = params.get("param1", "default_value")
-        # 处理逻辑
-        result = f"处理结果: {input_data} + {param1}"
-        return {
-            "output_data": result
-        }
-'''
-
-    def _save_code(self):
-        """保存代码"""
-        # 实现保存逻辑
-        QMessageBox.information(self, "保存", "代码已保存！")
-
-    def _format_code(self):
-        """格式化代码"""
-        # 简单的格式化（实际项目中可以使用 autopep8 或 black）
-        code = self.code_editor.toPlainText()
-        # 这里可以添加格式化逻辑
-        self.code_editor.setPlainText(code)
-
-    def get_code(self):
-        """获取代码"""
-        return self.code_editor.toPlainText()
-
-    def set_code(self, code):
-        """设置代码"""
-        self.code_editor.setPlainText(code)
-        self._parse_and_sync()
+from app.widgets.code_editer import CodeEditorWidget
+from app.widgets.component_develop_tree import ComponentTreeWidget
 
 
 # --- 组件开发主界面 (布局调整，修复同步) ---
@@ -801,6 +151,9 @@ class ComponentDeveloperWidget(QWidget):
             # 加载代码
             try:
                 source_code = inspect.getsource(component)
+                # 记录原始文件路径
+                source_file = inspect.getfile(component)
+                self._current_component_file = Path(source_file)
                 self.code_editor.set_code(source_code)
             except:
                 # 如果无法获取源码，使用默认模板
@@ -810,6 +163,8 @@ class ComponentDeveloperWidget(QWidget):
                 template = template.replace("数据处理", getattr(component, 'category', ''))
                 template = template.replace("这是一个示例组件", getattr(component, 'description', ''))
                 self.code_editor.set_code(template)
+                # 对于新建的，原始文件路径为 None
+                self._current_component_file = None
         except Exception as e:
             QMessageBox.critical(self, "错误", f"加载组件失败: {str(e)}")
 
@@ -829,6 +184,8 @@ class ComponentDeveloperWidget(QWidget):
         template = template.replace("数据处理", component_info["category"])
         template = template.replace("这是一个示例组件", component_info["description"])
         self.code_editor.set_code(template)
+        # 对于新建的，原始文件路径为 None
+        self._current_component_file = None
 
     def _sync_ports_to_code(self):
         """同步端口到代码"""
@@ -1093,23 +450,40 @@ class ComponentDeveloperWidget(QWidget):
             if not code.strip():
                 QMessageBox.warning(self, "警告", "请输入组件代码！")
                 return
-            # 保存到文件
-            self._save_component_to_file(category, name, code)
+
+            # --- 检查并添加必要的导入语句 ---
+            if not code.startswith("from app.components.base import"):
+                # 简单的检查，如果开头不是预期的导入，就添加
+                import_line = "from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType\n"
+                if not code.startswith(import_line):
+                    code = import_line + code
+
+            # 保存到文件，传入原始文件路径
+            self._save_component_to_file(category, name, code, self._current_component_file)
             # 刷新组件树
             self.component_tree.refresh_components()
             QMessageBox.information(self, "成功", "组件保存成功！")
         except Exception as e:
             QMessageBox.critical(self, "错误", f"保存组件失败: {str(e)}")
 
-    def _save_component_to_file(self, category, name, code):
-        """保存组件到文件"""
+    def _save_component_to_file(self, category, name, code, original_file_path=None):
+        """保存组件到文件，可选择性地删除原始文件"""
         # 确保目录存在
         components_dir = Path("app") / Path("components") / category
         components_dir.mkdir(parents=True, exist_ok=True)
         # 生成文件名
         filename = f"{name.replace(' ', '_').lower()}.py"
         filepath = components_dir / filename
-        # 写入代码
+
+        # --- 删除原始文件 ---
+        if original_file_path and original_file_path.exists() and original_file_path != filepath:
+            try:
+                original_file_path.unlink()
+                print(f"已删除原始组件文件: {original_file_path}")
+            except Exception as e:
+                print(f"删除原始组件文件失败: {e}")
+
+        # 写入新代码
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(code)
         self._current_component_file = filepath
@@ -1130,3 +504,255 @@ class ComponentDeveloperWidget(QWidget):
             self.property_editor.set_properties({})
             self.code_editor.set_code(self.code_editor._get_default_code_template())
             self._current_component_file = None
+
+
+# --- 端口编辑器 (未改动) ---
+class PortEditorWidget(QWidget):
+    """端口编辑器 - 支持动态添加删除"""
+    ports_changed = pyqtSignal()  # 端口改变信号
+
+    def __init__(self, port_type="input", parent=None):
+        super().__init__(parent)
+        self.port_type = port_type
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        # 标题
+        title = BodyLabel(f"{'📥 输入端口' if self.port_type == 'input' else '📤 输出端口'}")
+        layout.addWidget(title)
+        # 端口表格
+        self.table = TableWidget()
+        self.table.setColumnCount(3)
+        self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型"])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.setRowCount(0)
+        self.table.itemChanged.connect(self._on_item_changed)
+        layout.addWidget(self.table)
+        # 操作按钮
+        button_layout = QHBoxLayout()
+        add_btn = PrimaryPushButton("➕ 添加端口")
+        add_btn.clicked.connect(self._add_port)
+        remove_btn = PushButton("➖ 删除选中")
+        remove_btn.clicked.connect(self._remove_port)
+        button_layout.addWidget(add_btn)
+        button_layout.addWidget(remove_btn)
+        button_layout.addStretch()
+        layout.addLayout(button_layout)
+
+    def _on_item_changed(self, item):
+        """表格项改变时发出信号"""
+        self.ports_changed.emit()
+
+    def _add_port(self):
+        """添加端口"""
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        # 端口名称
+        name_edit = QTableWidgetItem(f"port_{row}")
+        self.table.setItem(row, 0, name_edit)
+        # 端口标签
+        label_edit = QTableWidgetItem(f"端口{row + 1}")
+        self.table.setItem(row, 1, label_edit)
+        # 端口类型
+        type_combo = QComboBox()
+        type_combo.addItems(["text", "int", "float", "bool", "file", "csv", "json"])
+        self.table.setCellWidget(row, 2, type_combo)
+        type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
+
+    def _remove_port(self):
+        """删除选中端口"""
+        selected_ranges = self.table.selectedRanges()
+        if selected_ranges:
+            rows = []
+            for range_ in selected_ranges:
+                rows.extend(range(range_.topRow(), range_.bottomRow() + 1))
+            rows = sorted(set(rows), reverse=True)
+            for row in rows:
+                self.table.removeRow(row)
+            self.ports_changed.emit()
+
+    def get_ports(self):
+        """获取端口数据"""
+        ports = []
+        for row in range(self.table.rowCount()):
+            name_item = self.table.item(row, 0)
+            label_item = self.table.item(row, 1)
+            if name_item and label_item:
+                # 获取类型
+                type_widget = self.table.cellWidget(row, 2)
+                port_type = type_widget.currentText() if type_widget else "text"
+                ports.append({
+                    "name": name_item.text(),
+                    "label": label_item.text(),
+                    "type": port_type
+                })
+        return ports
+
+    def set_ports(self, ports):
+        """设置端口数据"""
+        self.table.setRowCount(0)
+        for port in ports:
+            self._add_port_row(port)
+
+    def _add_port_row(self, port):
+        """添加端口行"""
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        name_item = QTableWidgetItem(port.get("name", ""))
+        label_item = QTableWidgetItem(port.get("label", ""))
+        self.table.setItem(row, 0, name_item)
+        self.table.setItem(row, 1, label_item)
+        type_combo = QComboBox()
+        type_combo.addItems(["text", "int", "float", "bool", "file", "csv", "json"])
+        type_combo.setCurrentText(port.get("type", "text"))
+        type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
+        self.table.setCellWidget(row, 2, type_combo)
+
+
+# --- 属性编辑器 (未改动) ---
+class PropertyEditorWidget(QWidget):
+    """属性编辑器 - 支持动态添加删除"""
+    properties_changed = pyqtSignal()  # 属性改变信号
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        title = BodyLabel(f"{'参数设置'}")
+        layout.addWidget(title)
+        # 属性表格
+        self.table = TableWidget()
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "选项"])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.setRowCount(0)
+        self.table.itemChanged.connect(self._on_item_changed)
+        layout.addWidget(self.table)
+        # 操作按钮
+        button_layout = QHBoxLayout()
+        add_btn = PrimaryPushButton("➕ 添加属性")
+        add_btn.clicked.connect(self._add_property)
+        remove_btn = PushButton("➖ 删除选中")
+        remove_btn.clicked.connect(self._remove_property)
+        button_layout.addWidget(add_btn)
+        button_layout.addWidget(remove_btn)
+        button_layout.addStretch()
+        layout.addLayout(button_layout)
+
+    def _on_item_changed(self, item):
+        """表格项改变时发出信号"""
+        self.properties_changed.emit()
+
+    def _add_property(self):
+        """添加属性"""
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        # 属性名
+        name_item = QTableWidgetItem(f"prop_{row}")
+        self.table.setItem(row, 0, name_item)
+        # 标签
+        label_item = QTableWidgetItem(f"属性{row + 1}")
+        self.table.setItem(row, 1, label_item)
+        # 类型
+        type_combo = QComboBox()
+        type_combo.addItems(["text", "int", "float", "bool", "choice", "file", "folder"])
+        self.table.setCellWidget(row, 2, type_combo)
+        type_combo.currentTextChanged.connect(
+            lambda text: self._on_type_changed(row, text)
+        )
+        # 默认值
+        default_item = QTableWidgetItem("")
+        self.table.setItem(row, 3, default_item)
+        # 选项（用于 choice 类型）
+        options_item = QTableWidgetItem("")
+        options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
+        self.table.setItem(row, 4, options_item)
+
+    def _on_type_changed(self, row, prop_type):
+        """属性类型改变时的处理"""
+        options_item = self.table.item(row, 4)
+        if options_item:
+            if prop_type == "choice":
+                options_item.setFlags(options_item.flags() | Qt.ItemIsEditable)
+                options_item.setText("")
+            else:
+                options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
+                options_item.setText("")
+        self.properties_changed.emit()
+
+    def _remove_property(self):
+        """删除选中属性"""
+        selected_ranges = self.table.selectedRanges()
+        if selected_ranges:
+            rows = []
+            for range_ in selected_ranges:
+                rows.extend(range(range_.topRow(), range_.bottomRow() + 1))
+            rows = sorted(set(rows), reverse=True)
+            for row in rows:
+                self.table.removeRow(row)
+            self.properties_changed.emit()
+
+    def get_properties(self):
+        """获取属性数据"""
+        properties = {}
+        for row in range(self.table.rowCount()):
+            name_item = self.table.item(row, 0)
+            label_item = self.table.item(row, 1)
+            type_widget = self.table.cellWidget(row, 2)
+            default_item = self.table.item(row, 3)
+            options_item = self.table.item(row, 4)
+            if name_item and type_widget and default_item:
+                prop_name = name_item.text()
+                prop_type = type_widget.currentText()
+                default_value = default_item.text()
+                properties[prop_name] = {
+                    "type": prop_type,
+                    "default": default_value,
+                    "label": label_item.text() if label_item else prop_name
+                }
+                if prop_type == "choice" and options_item:
+                    choices_text = options_item.text()
+                    if choices_text:
+                        properties[prop_name]["choices"] = [
+                            opt.strip() for opt in choices_text.split(",")
+                            if opt.strip()
+                        ]
+        return properties
+
+    def set_properties(self, properties):
+        """设置属性数据"""
+        self.table.setRowCount(0)
+        for prop_name, prop_def in properties.items():
+            self._add_property_row(prop_name, prop_def)
+
+    def _add_property_row(self, prop_name, prop_def):
+        """添加属性行"""
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        name_item = QTableWidgetItem(prop_name)
+        label_item = QTableWidgetItem(prop_def.label)
+        default_item = QTableWidgetItem(str(getattr(prop_def, 'default', '')))
+        self.table.setItem(row, 0, name_item)
+        self.table.setItem(row, 1, label_item)
+        self.table.setItem(row, 3, default_item)
+        type_combo = QComboBox()
+        type_combo.addItems(["text", "int", "float", "bool", "choice", "file", "folder"])
+        prop_type = getattr(prop_def, 'type', 'text')   # prop_def.get("type", "text")
+        type_combo.setCurrentText(prop_type)
+        type_combo.currentTextChanged.connect(
+            lambda text: self._on_type_changed(row, text)
+        )
+        self.table.setCellWidget(row, 2, type_combo)
+        options_item = QTableWidgetItem("")
+        if prop_type == "choice":
+            choices = getattr(prop_def, 'choices', [])
+            options_item.setText(",".join(choices))
+            options_item.setFlags(options_item.flags() | Qt.ItemIsEditable)
+        else:
+            options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
+        self.table.setItem(row, 4, options_item)
