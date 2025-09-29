@@ -5,11 +5,11 @@ from pathlib import Path
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTableWidgetItem, QHeaderView,
-    QComboBox, QMessageBox, QDialog, QDialogButtonBox, QFormLayout
+    QMessageBox, QFormLayout
 )
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PrimaryPushButton, PushButton,
-    TableWidget
+    TableWidget, ComboBox
 )
 
 from app.scan_components import scan_components
@@ -91,9 +91,9 @@ class ComponentDeveloperWidget(QWidget):
         self.name_edit = LineEdit()
         self.category_edit = LineEdit()
         self.description_edit = LineEdit()
-        basic_layout.addRow("组件名称:", self.name_edit)
-        basic_layout.addRow("组件分类:", self.category_edit)
-        basic_layout.addRow("组件描述:", self.description_edit)
+        basic_layout.addRow(BodyLabel("组件名称:"), self.name_edit)
+        basic_layout.addRow(BodyLabel("组件分类:"), self.category_edit)
+        basic_layout.addRow(BodyLabel("组件描述:"), self.description_edit)
         layout.addWidget(BodyLabel("基本信息:"))
         layout.addWidget(basic_info_widget)
 
@@ -571,7 +571,7 @@ class PortEditorWidget(QWidget):
         label_edit = QTableWidgetItem(f"端口{row + 1}")
         self.table.setItem(row, 1, label_edit)
         # 端口类型
-        type_combo = QComboBox()
+        type_combo = ComboBox()
         type_combo.addItems(["text", "int", "float", "bool", "file", "csv", "json"])
         self.table.setCellWidget(row, 2, type_combo)
         type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
@@ -619,7 +619,7 @@ class PortEditorWidget(QWidget):
         label_item = QTableWidgetItem(port.get("label", ""))
         self.table.setItem(row, 0, name_item)
         self.table.setItem(row, 1, label_item)
-        type_combo = QComboBox()
+        type_combo = ComboBox()
         type_combo.addItems(["text", "int", "float", "bool", "file", "csv", "json"])
         type_combo.setCurrentText(port.get("type", "text"))
         type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
@@ -674,7 +674,7 @@ class PropertyEditorWidget(QWidget):
         label_item = QTableWidgetItem(f"属性{row + 1}")
         self.table.setItem(row, 1, label_item)
         # 类型
-        type_combo = QComboBox()
+        type_combo = ComboBox()
         type_combo.addItems(["text", "int", "float", "bool", "choice", "file", "folder"])
         self.table.setCellWidget(row, 2, type_combo)
         type_combo.currentTextChanged.connect(
@@ -755,7 +755,7 @@ class PropertyEditorWidget(QWidget):
         self.table.setItem(row, 0, name_item)
         self.table.setItem(row, 1, label_item)
         self.table.setItem(row, 3, default_item)
-        type_combo = QComboBox()
+        type_combo = ComboBox()
         type_combo.addItems(["text", "int", "float", "bool", "choice", "file", "folder"])
         prop_type = getattr(prop_def, 'type', 'text')  # prop_def.get("type", "text")
         type_combo.setCurrentText(prop_type)

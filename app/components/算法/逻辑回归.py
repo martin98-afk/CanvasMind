@@ -1,5 +1,5 @@
 from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
-class test(BaseComponent):
+class LogisticRegressionComponent(BaseComponent):
     name = "逻辑回归"
     category = "算法"
     description = "组件开发生成组件"
