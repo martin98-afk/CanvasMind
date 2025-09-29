@@ -9,14 +9,14 @@
     "reject_connection_types":"{}"
   },
   "nodes":{
-    "0x1e2b97c91b0":{
+    "0x24d3db6bee0":{
       "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_\u6587\u6863\u4e0a\u4f20",
       "icon":null,
       "name":"\u6587\u6863\u4e0a\u4f20",
       "color":[
-        13,
-        18,
-        23,
+        25,
+        70,
+        45,
         255
       ],
       "border_color":[
@@ -44,14 +44,14 @@
       "port_deletion_allowed":false,
       "subgraph_session":{}
     },
-    "0x1e2b97f6b60":{
+    "0x24d368499c0":{
       "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_CSV_\u8bfb\u53d6\u5668",
       "icon":null,
       "name":"CSV \u8bfb\u53d6\u5668",
       "color":[
-        13,
-        18,
-        23,
+        25,
+        70,
+        45,
         255
       ],
       "border_color":[
@@ -72,21 +72,21 @@
       "width":160,
       "height":60,
       "pos":[
-        326.9458454424809,
-        228.00170800594063
+        326.94584544248085,
+        229.07474425861517
       ],
       "layout_direction":0,
       "port_deletion_allowed":false,
       "subgraph_session":{}
     },
-    "0x1e2b97f7b20":{
+    "0x24d38788f40":{
       "type_":"dynamic.StatusDynamicNode_\u7b97\u6cd5_\u903b\u8f91\u56de\u5f52",
       "icon":null,
       "name":"\u903b\u8f91\u56de\u5f52",
       "color":[
-        13,
-        18,
-        23,
+        25,
+        70,
+        45,
         255
       ],
       "border_color":[
@@ -102,52 +102,51 @@
         180
       ],
       "disabled":false,
-      "selected":false,
+      "selected":true,
       "visible":true,
       "width":277.0,
-      "height":153.05,
+      "height":114.2,
       "pos":[
-        636.6840148090417,
-        249.5113031008407
+        740.3950143454439,
+        269.33209942131356
       ],
       "layout_direction":0,
       "port_deletion_allowed":false,
       "subgraph_session":{},
       "custom":{
         "solver":"liblinear",
-        "max_iter":"100",
-        "test_size":"0.2"
+        "max_iter":"100"
       }
     }
   },
   "connections":[
     {
       "out":[
-        "0x1e2b97c91b0",
+        "0x24d3db6bee0",
         "file"
       ],
       "in":[
-        "0x1e2b97f6b60",
+        "0x24d368499c0",
         "csv"
       ]
     },
     {
       "out":[
-        "0x1e2b97f6b60",
+        "0x24d368499c0",
         "csv"
       ],
       "in":[
-        "0x1e2b97f7b20",
+        "0x24d38788f40",
         "feature"
       ]
     },
     {
       "out":[
-        "0x1e2b97f6b60",
+        "0x24d368499c0",
         "csv"
       ],
       "in":[
-        "0x1e2b97f7b20",
+        "0x24d38788f40",
         "target"
       ]
     }

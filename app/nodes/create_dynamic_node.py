@@ -181,6 +181,8 @@ def create_node_class(component_class, full_path):
                     return output
 
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 error_msg = f"❌ 节点执行失败: {str(e)}"
                 component_class.logger.error(error_msg)
                 raise e

@@ -23,11 +23,6 @@ class LogisticRegressionComponent(BaseComponent):
             default=100,
             label="属性2",
         ),
-        "prop_2": PropertyDefinition(
-            type=PropertyType.TEXT,
-            default="",
-            label="属性3",
-        ),
     }
 
     def run(self, params, inputs=None):

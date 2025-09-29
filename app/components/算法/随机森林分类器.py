@@ -30,6 +30,9 @@ class RandomForestComponent(BaseComponent):
     }
 
     def run(self, params, inputs=None):
+        import pandas as pd
+        from sklearn.ensemble import RandomForestClassifier
+
         try:
             if not inputs or "file" not in inputs:
                 raise ValueError("Invalid input")
