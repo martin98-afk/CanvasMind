@@ -107,7 +107,7 @@ class NodeListExecutor(QRunnable):
             for node in self.nodes:
                 try:
                     # 执行单个节点
-                    output = node.execute_sync(self.main_window)
+                    output = node.execute_sync(self.main_window.component_map.get(node.FULL_PATH))
                     node_outputs[node.id] = output
                     self.signals.node_finished.emit(node.id, output)
                 except Exception as e:

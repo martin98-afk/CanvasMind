@@ -7,12 +7,13 @@ from app.utils.node_logger import NodeLogHandler
 from app.widgets.component_log_message_box import LogMessageBox
 
 
-def create_node_class(component_class):
+def create_node_class(component_class, full_path):
     """直接返回一个完整的节点类，支持文件上传按钮和独立日志"""
 
     class DynamicNode(BaseNode):
         __identifier__ = 'dynamic'
         NODE_NAME = component_class.name
+        FULL_PATH = full_path
 
         def __init__(self):
             super().__init__()
@@ -131,7 +132,7 @@ def create_node_class(component_class):
             """节点运行完成后自动映射结果到输出端口"""
             self._output_values = output
 
-        def execute_sync(self, main_window=None):
+        def execute_sync(self, comp_obj):
             """
             同步执行节点（由主窗口调用）
             upstream_outputs: {node_id: output_dict}
@@ -139,12 +140,11 @@ def create_node_class(component_class):
             """
             try:
                 # 获取组件类
-                comp_cls = self.component_class
-                comp_instance = comp_cls()
+                comp_instance = comp_obj()
 
                 # 参数
                 params = {}
-                component_properties = comp_cls.get_properties()
+                component_properties = comp_obj.get_properties()
                 for prop_name, prop_def in component_properties.items():
                     default_value = prop_def.get("default", "")
                     if self.has_property(prop_name):
@@ -169,7 +169,7 @@ def create_node_class(component_class):
                         if hasattr(upstream_node, 'get_output_value'):
                             inputs[port_name] = upstream_node.get_output_value(upstream_out.name())
 
-                if comp_cls.get_inputs():
+                if comp_obj.get_inputs():
                     output = comp_instance.run(params, inputs)
                 else:
                     output = comp_instance.run(params)

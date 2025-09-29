@@ -74,7 +74,7 @@ class CanvasPage(QWidget):
         self.component_map = scan_components()
         for full_path, comp_cls in self.component_map.items():
             safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
-            node_class = create_node_class(comp_cls)
+            node_class = create_node_class(comp_cls, full_path)
             # 继承 StatusNode 以支持状态显示
             node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
             node_class.__name__ = f"StatusDynamicNode_{safe_name}"
@@ -162,7 +162,7 @@ class CanvasPage(QWidget):
         self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
 
         # 创建 Worker
-        worker = Worker(node.execute_sync, self)
+        worker = Worker(node.execute_sync, self.component_map.get(node.FULL_PATH))
         worker.signals.finished.connect(lambda result: self.on_node_finished(node, result))
         worker.signals.error.connect(lambda: self.on_node_error(node))
 
