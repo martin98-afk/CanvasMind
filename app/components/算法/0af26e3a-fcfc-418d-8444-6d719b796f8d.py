@@ -1,27 +1,27 @@
 from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
 class LogisticRegressionComponent(BaseComponent):
     name = "逻辑回归"
-    category = "数据集成"
+    category = "算法"
     description = "组件开发生成组件"
     inputs = [
-        PortDefinition(name="feature", label="端口1", type=ArgumentType.CSV),
-        PortDefinition(name="target", label="端口2", type=ArgumentType.CSV),
+        PortDefinition(name="feature", label="特征", type=ArgumentType.CSV),
+        PortDefinition(name="target", label="目标", type=ArgumentType.CSV),
     ]
     outputs = [
-        PortDefinition(name="value", label="端口1", type=ArgumentType.TEXT),
-        PortDefinition(name="model", label="端口2", type=ArgumentType.TEXT),
+        PortDefinition(name="value", label="预测值", type=ArgumentType.TEXT),
+        PortDefinition(name="model", label="模型参数", type=ArgumentType.TEXT),
     ]
     properties = {
         "solver": PropertyDefinition(
             type=PropertyType.CHOICE,
             default="liblinear",
-            label="属性1",
+            label="求解器",
             choices=["liblinear"]
         ),
         "max_iter": PropertyDefinition(
             type=PropertyType.INT,
             default=100,
-            label="属性2",
+            label="最大迭代数",
         ),
     }
 

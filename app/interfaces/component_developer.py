@@ -6,11 +6,11 @@ from pathlib import Path
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTableWidgetItem, QHeaderView,
-    QMessageBox, QFormLayout
+    QFormLayout
 )
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PrimaryPushButton, PushButton,
-    TableWidget, ComboBox
+    TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, MessageBoxBase
 )
 
 from app.scan_components import scan_components
@@ -75,7 +75,7 @@ class ComponentDeveloperWidget(QWidget):
         # 保存按钮
         save_layout = QHBoxLayout()
         save_btn = PrimaryPushButton("💾 保存组件")
-        save_btn.clicked.connect(self._save_component)
+        save_btn.clicked.connect(lambda: self._save_component(True))
         cancel_btn = PushButton("❌ 取消")
         cancel_btn.clicked.connect(self._cancel_edit)
         save_layout.addStretch()
@@ -119,7 +119,7 @@ class ComponentDeveloperWidget(QWidget):
             component_map, _ = scan_components()
             self.component_tree.load_components(component_map)
         except Exception as e:
-            print(f"加载组件失败: {e}")
+            self._show_error(f"加载组件失败: {e}")
 
     def _on_component_selected(self, component):
         """组件选中回调"""
@@ -174,9 +174,10 @@ class ComponentDeveloperWidget(QWidget):
                 self.code_editor.set_code(template)
                 # 对于新建的，原始文件路径为 None
                 self._current_component_file = None
+
             self._sync_basic_info_to_code()
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"加载组件失败: {str(e)}")
+            self._show_error(f"加载组件失败: {str(e)}")
 
     def _create_new_component(self, component_info):
         """创建新组件"""
@@ -297,7 +298,7 @@ class ComponentDeveloperWidget(QWidget):
             line = lines[i]
 
             # 查找 inputs 或 outputs 定义的开始行
-            if (not inputs_replaced and re.search(r'(\s*inputs\s*=)(\s*\[)', line)
+            if (not inputs_replaced and re.search(r'^\s*inputs\s*=\s*', line)
                     and ('[' in line or '[]' in line)):
                 new_lines.append("    inputs = [")
                 for port in input_ports:
@@ -322,7 +323,7 @@ class ComponentDeveloperWidget(QWidget):
                         i = j + 1
                     else:
                         i += 1  # 如果格式不标准，只跳过当前行
-            elif (not outputs_replaced and re.search(r'(\s*outputs\s*=)(\s*\[)', line) and
+            elif (not outputs_replaced and re.search(r'^\s*outputs\s*=\s*', line) and
                   ('[' in line or '[]' in line)):
                 new_lines.append("    outputs = [")
                 for port in output_ports:
@@ -355,13 +356,15 @@ class ComponentDeveloperWidget(QWidget):
         if not inputs_replaced:
             # 找到类定义开始后，插入空的 inputs 定义
             for idx, l in enumerate(new_lines):
-                if l.strip().startswith('class ') and not any('inputs =' in ll for ll in new_lines[idx:]):
+                if l.strip().startswith('class ') and not any(
+                        re.search(r'^\s*inputs\s*=\s*', ll) for ll in new_lines[idx:]):
                     new_lines.insert(idx + 1, "    inputs = []")
                     break
         if not outputs_replaced:
             # 找到类定义开始后，插入空的 outputs 定义
             for idx, l in enumerate(new_lines):
-                if l.strip().startswith('class ') and not any('outputs =' in ll for ll in new_lines[idx:]):
+                if l.strip().startswith('class ') and not any(
+                        re.search(r'^\s*outputs\s*=\s*', ll) for ll in new_lines[idx:]):
                     new_lines.insert(idx + 2, "    outputs = []")  # 假设 inputs 已存在或刚插入
                     break
 
@@ -379,7 +382,8 @@ class ComponentDeveloperWidget(QWidget):
                 line = lines[i]
 
                 # 查找 properties 定义的开始行
-                if not properties_replaced and 'properties =' in line and ('{' in line or '{}' in line):
+                if not properties_replaced and re.search(r'^\s*properties\s*=\s*', line) and (
+                        '{' in line or '{}' in line):
                     new_lines.append("    properties = {")
                     for prop_name, prop_def in properties.items():
                         prop_type = prop_def['type']
@@ -432,7 +436,8 @@ class ComponentDeveloperWidget(QWidget):
             if not properties_replaced:
                 # 找到类定义开始后，插入空的 properties 定义
                 for idx, l in enumerate(new_lines):
-                    if l.strip().startswith('class ') and not any('properties =' in ll for ll in new_lines[idx:]):
+                    if l.strip().startswith('class ') and not any(
+                            re.search(r'^\s*properties\s*=\s*', ll) for ll in new_lines[idx:]):
                         new_lines.insert(idx + 3, "    properties = {}")  # 假设 inputs, outputs 已存在或刚插入
                         break
 
@@ -446,11 +451,11 @@ class ComponentDeveloperWidget(QWidget):
             lines = code.split('\n')
             new_lines = []
             for line in lines:
-                if 'name =' in line and '=' in line:
+                if re.search(r'^\s*name\s*=\s*', line):
                     new_lines.append(f'    name = "{name}"')
-                elif 'category =' in line and '=' in line:
+                elif re.search(r'^\s*category\s*=\s*', line):
                     new_lines.append(f'    category = "{category}"')
-                elif 'description =' in line and '=' in line:
+                elif re.search(r'^\s*description\s*=\s*', line):
                     new_lines.append(f'    description = "{description}"')
                 else:
                     new_lines.append(line)
@@ -465,12 +470,12 @@ class ComponentDeveloperWidget(QWidget):
             name = self.name_edit.text().strip()
             category = self.category_edit.text().strip()
             if not name or not category:
-                QMessageBox.warning(self, "警告", "请输入组件名称和分类！")
+                self._show_warning("请输入组件名称和分类！")
                 return
             # 生成组件代码
             code = self.code_editor.get_code()
             if not code.strip():
-                QMessageBox.warning(self, "警告", "请输入组件代码！")
+                self._show_warning("请输入组件代码！")
                 return
 
             # --- 检查并添加必要的导入语句 ---
@@ -484,26 +489,28 @@ class ComponentDeveloperWidget(QWidget):
             self._save_component_to_file(category, name, code, self._current_component_file, delete_original_file)
             # 刷新组件树
             self.component_tree.refresh_components()
-            QMessageBox.information(self, "成功", "组件保存成功！")
+            self._show_success("组件保存成功！")
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"保存组件失败: {str(e)}")
+            self._show_error(f"保存组件失败: {str(e)}")
 
     def _save_component_to_file(self, category, name, code, original_file_path=None, delete_original_file=True):
         """保存组件到文件，可选择性地删除原始文件"""
         # 确保目录存在
         components_dir = Path("app") / Path("components") / category
         components_dir.mkdir(parents=True, exist_ok=True)
-        # 生成文件名
-        filename = f"{str(uuid.uuid4()).replace(' ', '_').lower()}.py"
-        filepath = components_dir / filename
 
         # --- 删除原始文件 ---
-        if delete_original_file and original_file_path and original_file_path.exists() and original_file_path != filepath:
+        if delete_original_file and original_file_path and original_file_path.exists():
             try:
                 original_file_path.unlink()
                 print(f"已删除原始组件文件: {original_file_path}")
             except Exception as e:
                 print(f"删除原始组件文件失败: {e}")
+            # 生成文件名
+            filepath = original_file_path
+        else:
+            filename = f"{str(uuid.uuid4()).replace(' ', '_').lower()}.py"
+            filepath = components_dir / filename
 
         # 写入新代码
         with open(filepath, 'w', encoding='utf-8') as f:
@@ -512,11 +519,8 @@ class ComponentDeveloperWidget(QWidget):
 
     def _cancel_edit(self):
         """取消编辑"""
-        reply = QMessageBox.question(
-            self, "确认", "确定要取消编辑吗？未保存的更改将丢失。",
-            QMessageBox.Yes | QMessageBox.No
-        )
-        if reply == QMessageBox.Yes:
+        w = MessageBox("确认", "确定要取消编辑吗？未保存的更改将丢失。", self.window())
+        if w.exec():
             # 清空编辑器
             self.name_edit.clear()
             self.category_edit.clear()
@@ -526,6 +530,42 @@ class ComponentDeveloperWidget(QWidget):
             self.property_editor.set_properties({})
             self.code_editor.set_code(self.code_editor._get_default_code_template())
             self._current_component_file = None
+
+    def _show_warning(self, message):
+        """显示警告信息"""
+        InfoBar.warning(
+            title='警告',
+            content=message,
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=3000,
+            parent=self
+        )
+
+    def _show_error(self, message):
+        """显示错误信息"""
+        InfoBar.error(
+            title='错误',
+            content=message,
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=5000,
+            parent=self
+        )
+
+    def _show_success(self, message):
+        """显示成功信息"""
+        InfoBar.success(
+            title='成功',
+            content=message,
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=2000,
+            parent=self
+        )
 
 
 # --- 端口编辑器 (未改动) ---

@@ -6,11 +6,11 @@ from typing import Dict, Any
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QTreeWidgetItem,
-    QMessageBox, QFileDialog,
+    QFileDialog,
     QDialog
 )
 from qfluentwidgets import (
-    TreeWidget, RoundMenu, Action
+    TreeWidget, RoundMenu, Action, InfoBar, InfoBarPosition, MessageBox
 )
 
 from app.components.base import BaseComponent
@@ -118,7 +118,7 @@ class ComponentTreeWidget(TreeWidget):
                 comp_cls = self._components[full_path]
                 self.component_selected.emit(comp_cls)  # 发射信号，让主界面加载
             else:
-                QMessageBox.warning(self, "警告", "无法找到该组件的类定义。")
+                self._show_warning("无法找到该组件的类定义。")
 
     def _create_new_component(self):
         """创建新组件"""
@@ -140,7 +140,7 @@ class ComponentTreeWidget(TreeWidget):
             full_path = current_item.data(1, Qt.UserRole)
             if full_path in self._components:
                 self._copied_component = copy.deepcopy(self._components[full_path])
-                QMessageBox.information(self, "复制成功", "组件已复制到剪贴板")
+                self._show_success("组件已复制到剪贴板")
 
     def _paste_component(self):
         """粘贴组件"""
@@ -185,9 +185,9 @@ class ComponentTreeWidget(TreeWidget):
                     if file_path:
                         with open(file_path, 'w', encoding='utf-8') as f:
                             f.write(source_code)
-                        QMessageBox.information(self, "成功", "组件导出成功！")
+                        self._show_success("组件导出成功！")
                 except Exception as e:
-                    QMessageBox.critical(self, "错误", f"导出组件失败: {str(e)}")
+                    self._show_error(f"导出组件失败: {str(e)}")
 
     def _delete_component(self):
         """删除组件"""
@@ -196,11 +196,9 @@ class ComponentTreeWidget(TreeWidget):
             full_path = current_item.data(1, Qt.UserRole)
             category = current_item.parent().text(0)
             name = current_item.text(0)
-            reply = QMessageBox.question(
-                self, "删除组件", f"确定要删除组件 {category}/{name} 吗？",
-                QMessageBox.Yes | QMessageBox.No
-            )
-            if reply == QMessageBox.Yes:
+
+            w = MessageBox("删除组件", f"确定要删除组件 {category}/{name} 吗？", self.window())
+            if w.exec():
                 try:
                     # 删除对应的Python文件
                     component_dir = Path("app") / Path("components") / category
@@ -209,8 +207,44 @@ class ComponentTreeWidget(TreeWidget):
                     if file_path.exists():
                         file_path.unlink()
                         self.refresh_components()
-                        QMessageBox.information(self, "成功", "组件删除成功！")
+                        self._show_success("组件删除成功！")
                     else:
-                        QMessageBox.warning(self, "警告", "组件文件不存在")
+                        self._show_warning("组件文件不存在")
                 except Exception as e:
-                    QMessageBox.critical(self, "错误", f"删除组件失败: {str(e)}")
+                    self._show_error(f"删除组件失败: {str(e)}")
+
+    def _show_warning(self, message):
+        """显示警告信息"""
+        InfoBar.warning(
+            title='警告',
+            content=message,
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=3000,
+            parent=self
+        )
+
+    def _show_error(self, message):
+        """显示错误信息"""
+        InfoBar.error(
+            title='错误',
+            content=message,
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=5000,
+            parent=self
+        )
+
+    def _show_success(self, message):
+        """显示成功信息"""
+        InfoBar.success(
+            title='成功',
+            content=message,
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=2000,
+            parent=self
+        )

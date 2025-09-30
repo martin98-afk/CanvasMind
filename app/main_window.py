@@ -13,6 +13,8 @@ from app.widgets.logger_dialog import QTextEditLogger
 class LowCodeWindow(FluentWindow):
     def __init__(self):
         super().__init__()
+        # 初始化日志查看器
+        self.setup_log_viwer()
         setTheme(Theme.DARK)
         from PyQt5.QtWidgets import QDesktopWidget
         screen_rect = QDesktopWidget().screenGeometry()
@@ -20,10 +22,6 @@ class LowCodeWindow(FluentWindow):
         self.window_width = int(screen_width * 0.6)
         self.window_height = int(screen_height * 0.75)
         self.resize(self.window_width, self.window_height)
-
-        # 初始化日志查看器
-        self.setup_log_viwer()
-
         # 创建主界面页面
         self.canvas_page = CanvasPage()
         self.develop_page = ComponentDeveloperWidget(self)

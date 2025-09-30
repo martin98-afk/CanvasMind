@@ -3,9 +3,10 @@ from typing import Union, List
 
 import pandas as pd
 from NodeGraphQt import BackdropNode
-from PyQt5.QtWidgets import QVBoxLayout, QFrame, QPushButton, QFileDialog, QListWidget, QListWidgetItem, QWidget
+from PyQt5.QtWidgets import QVBoxLayout, QFrame, QPushButton, QFileDialog, QListWidget, QListWidgetItem, QWidget, \
+    QStackedWidget
 from PyQt5.QtCore import Qt
-from qfluentwidgets import CardWidget, BodyLabel, TextEdit, PushButton, ListWidget, SmoothScrollArea
+from qfluentwidgets import CardWidget, BodyLabel, TextEdit, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget
 
 from app.components.base import ArgumentType
 from app.widgets.variable_tree import VariableTreeWidget
@@ -16,16 +17,15 @@ class PropertyPanel(CardWidget):
         super().__init__(parent)
         self.main_window = main_window
         self.setFixedWidth(280)
-        # ✅ 使用 qfluentwidgets 的 SmoothScrollArea（自动适配深色主题）
+
+        # 使用 qfluentwidgets 的 SmoothScrollArea
         self.scroll_area = SmoothScrollArea(self)
         self.scroll_area.viewport().setStyleSheet("background-color: transparent;")
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        # 不需要额外样式，SmoothScrollArea 自带主题
 
-        # 内容容器：也建议用 qfluentwidgets 的组件，或至少设置背景
+        # 内容容器
         self.content_widget = QWidget()
-        # ✅ 关键：设置内容区域背景为透明或跟随主题
         self.content_widget.setStyleSheet("background: transparent;")
 
         self.vbox = QVBoxLayout(self.content_widget)
@@ -41,6 +41,10 @@ class PropertyPanel(CardWidget):
         self.current_node = None
         self._column_list_widgets = {}
         self._text_edit_widgets = {}
+
+        # 添加导航栏和堆叠窗口
+        self.segmented_widget = None
+        self.stacked_widget = None
 
     def update_properties(self, node):
         # 清理旧的控件引用
@@ -90,15 +94,29 @@ class PropertyPanel(CardWidget):
         separator.setStyleSheet("color: #444444;")
         self.vbox.addWidget(separator)
 
-        # 4. 输入端口
-        self.vbox.addWidget(BodyLabel("📥 输入端口:"))
+        # 创建导航栏和堆叠窗口
+        self.segmented_widget = SegmentedWidget()
 
+        # 添加导航项 - 使用正确的参数
+        self.segmented_widget.addItem('input', '输入端口')
+        self.segmented_widget.addItem('output', '输出端口')
+
+        self.stacked_widget = QStackedWidget()
+
+        # 添加输入端口页面
+        input_widget = QWidget()
+        input_layout = QVBoxLayout(input_widget)
+        input_layout.setContentsMargins(0, 0, 0, 0)
+        input_layout.setSpacing(8)
+
+        # 输入端口内容
+        input_layout.addWidget(BodyLabel("📥 输入端口:"))
         input_ports_info = self.get_node_input_ports_info(node)
 
         if input_ports_info:
             for input_port, port_def in zip(node.input_ports(), node.component_class.inputs):
                 port_display = f"{port_def.label} ({port_def.name})"
-                self.vbox.addWidget(BodyLabel(f"  • {port_display}"))
+                input_layout.addWidget(BodyLabel(f"  • {port_display}"))
 
                 # 获取原始上游数据（用于列选择）
                 connected = input_port.connected_ports()
@@ -112,43 +130,75 @@ class PropertyPanel(CardWidget):
                 # 处理 CSV/DataFrame 列选择
                 if isinstance(original_upstream_data, pd.DataFrame):
                     # 显示列选择控件
-                    self._add_column_selector_widget(node, port_def.name, original_upstream_data,
-                                                     original_upstream_data)
+                    self._add_column_selector_widget_to_layout(node, port_def.name, original_upstream_data,
+                                                               original_upstream_data, input_layout)
 
                     # 显示当前选中的数据（用于执行）
                     current_selected_data = self._get_current_input_value(node, port_def.name, original_upstream_data)
-                    self._add_text_edit(port_type.to_dict(current_selected_data), port_name=port_def.name)
+                    self._add_text_edit_to_layout(port_type.to_dict(current_selected_data), port_name=port_def.name,
+                                                  layout=input_layout)
                 else:
                     # 普通数据：直接显示上游数据或当前输入值
                     if connected:
                         display_data = original_upstream_data
                     else:
                         display_data = node._input_values.get(port_def.name, "暂无数据")
-                    self._add_text_edit(port_type.to_dict(display_data), port_name=port_def.name)
+                    self._add_text_edit_to_layout(port_type.to_dict(display_data), port_name=port_def.name,
+                                                  layout=input_layout)
 
         else:
-            self.vbox.addWidget(BodyLabel("  无输入端口"))
+            input_layout.addWidget(BodyLabel("  无输入端口"))
 
-        # 5. 输出端口
-        self.vbox.addWidget(BodyLabel("📤 输出端口:"))
+        input_layout.addStretch(1)
+
+        # 添加输出端口页面
+        output_widget = QWidget()
+        output_layout = QVBoxLayout(output_widget)
+        output_layout.setContentsMargins(0, 0, 0, 0)
+        output_layout.setSpacing(8)
+
+        # 输出端口内容
+        output_layout.addWidget(BodyLabel("📤 输出端口:"))
         output_ports = node.component_class.outputs
         if output_ports:
             result = node._output_values
             for port_def in output_ports:
                 port_name = port_def.name
                 port_label = port_def.label
-                self.vbox.addWidget(BodyLabel(f"  • {port_label} ({port_name})"))
+                output_layout.addWidget(BodyLabel(f"  • {port_label} ({port_name})"))
 
                 output_data = result.get(port_name) if result and port_name in result else "暂无数据"
                 port_type = getattr(port_def, 'type', ArgumentType.TEXT)
                 if port_type.is_file():
-                    self._add_file_widget(node, port_def.name)
+                    self._add_file_widget_to_layout(node, port_def.name, output_layout)
 
-                self._add_text_edit(port_type.to_dict(output_data), port_name=port_name)
+                self._add_text_edit_to_layout(port_type.to_dict(output_data), port_name=port_def.name,
+                                              layout=output_layout)
         else:
-            self.vbox.addWidget(BodyLabel("  无输出端口"))
+            output_layout.addWidget(BodyLabel("  无输出端口"))
 
-        self.vbox.addStretch(1)
+        output_layout.addStretch(1)
+
+        # 添加页面到堆叠窗口
+        self.stacked_widget.addWidget(input_widget)
+        self.stacked_widget.addWidget(output_widget)
+
+        # 连接导航栏信号
+        self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
+
+        # 添加导航栏和堆叠窗口到主布局
+        self.vbox.addWidget(self.segmented_widget)
+        self.vbox.addWidget(self.stacked_widget)
+
+        # 默认显示输入端口
+        self.segmented_widget.setCurrentItem('input')
+
+    def _on_segmented_changed(self, item_key):
+        """导航栏切换事件"""
+        if item_key == 'input':
+            self.stacked_widget.setCurrentIndex(0)
+        elif item_key == 'output':
+            self.stacked_widget.setCurrentIndex(1)
 
     def _get_current_input_value(self, node, port_name, original_data):
         """获取当前端口的输入值（考虑列选择）"""
@@ -167,8 +217,8 @@ class PropertyPanel(CardWidget):
             # 没有列选择，返回原始数据
             return original_data
 
-    def _add_column_selector_widget(self, node, port_name, data, original_data):
-        """添加多列选择控件 - 关键修复：正确保存和恢复状态"""
+    def _add_column_selector_widget_to_layout(self, node, port_name, data, original_data, layout):
+        """添加多列选择控件到指定布局 - 关键修复：正确保存和恢复状态"""
         columns = list(data.columns)
         if len(columns) == 0:
             return
@@ -241,8 +291,8 @@ class PropertyPanel(CardWidget):
         list_widget.itemChanged.connect(on_item_changed)
         self._column_list_widgets[port_name] = list_widget
 
-        self.vbox.addWidget(BodyLabel("  列选择（可多选）:"))
-        self.vbox.addWidget(list_widget)
+        layout.addWidget(BodyLabel("  列选择（可多选）:"))
+        layout.addWidget(list_widget)
 
     def _update_input_value_for_port(self, node, port_name, original_data, selected_columns):
         """更新指定端口的输入值"""
@@ -259,13 +309,19 @@ class PropertyPanel(CardWidget):
 
         node._input_values[port_name] = selected_data
 
-    def _add_text_edit(self, text, port_name=None):
+    def _add_text_edit_to_layout(self, text, port_name=None, layout=None):
+        """添加文本编辑控件到指定布局"""
         tree_widget = VariableTreeWidget(text)
-        # tree_widget.previewRequested.connect(self._handle_preview_request)
-        self.vbox.addWidget(tree_widget)
+        if layout is None:
+            layout = self.vbox
+        layout.addWidget(tree_widget)
         if port_name is not None:
             self._text_edit_widgets[port_name] = tree_widget
         return tree_widget
+
+    def _add_text_edit(self, text, port_name=None):
+        """兼容旧方法"""
+        return self._add_text_edit_to_layout(text, port_name)
 
     def _update_text_edit_for_port(self, port_name, new_value):
         """更新 VariableTreeWidget 的内容"""
@@ -300,10 +356,15 @@ class PropertyPanel(CardWidget):
             display_text = str(new_value)
         edit.setPlainText(display_text)
 
-    def _add_file_widget(self, node, port_name):
+    def _add_file_widget_to_layout(self, node, port_name, layout):
+        """添加文件选择控件到指定布局"""
         select_file_button = PushButton("📁 选择文件", self)
         select_file_button.clicked.connect(lambda _, p=port_name, n=node: self._select_upload_file(p, n))
-        self.vbox.addWidget(select_file_button)
+        layout.addWidget(select_file_button)
+
+    def _add_file_widget(self, node, port_name):
+        """兼容旧方法"""
+        self._add_file_widget_to_layout(node, port_name, self.vbox)
 
     def _select_upload_file(self, port_name, node):
         if hasattr(node, 'component_class'):
