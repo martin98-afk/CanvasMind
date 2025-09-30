@@ -1,8 +1,7 @@
 from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
-
 class MyComponent(BaseComponent):
     name = "测试安装包"
-    category = "算法"
+    category = "数据集成"
     description = "terst"
     inputs = [
     ]

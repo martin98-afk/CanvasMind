@@ -1,3 +1,4 @@
+import copy
 import inspect
 from pathlib import Path
 from typing import Dict, Any
@@ -12,6 +13,7 @@ from qfluentwidgets import (
     TreeWidget, RoundMenu, Action
 )
 
+from app.components.base import BaseComponent
 from app.scan_components import scan_components
 from app.widgets.new_component_dialog import NewComponentDialog
 
@@ -21,6 +23,7 @@ class ComponentTreeWidget(TreeWidget):
     """组件树控件 - 支持右键菜单"""
     component_selected = pyqtSignal(object)  # 选中组件信号
     component_created = pyqtSignal(dict)  # 创建组件信号
+    component_pasted = pyqtSignal()  # 组件复制信号
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -136,48 +139,34 @@ class ComponentTreeWidget(TreeWidget):
         if current_item and current_item.parent():
             full_path = current_item.data(1, Qt.UserRole)
             if full_path in self._components:
-                self._copied_component = self._components[full_path]
+                self._copied_component = copy.deepcopy(self._components[full_path])
                 QMessageBox.information(self, "复制成功", "组件已复制到剪贴板")
 
     def _paste_component(self):
         """粘贴组件"""
+        current_item = self.currentItem()
+        # 获取当前选中项的父项（分类项）的文本
+        default_category = ""
+        if current_item:
+            default_category = current_item.text(0)
+
         if self._copied_component:
-            dialog = NewComponentDialog(self)
+
+            dialog = NewComponentDialog(
+                self,
+                default_name=self._copied_component.name,
+                default_category=default_category,
+                default_description=self._copied_component.description
+            )
             dialog.setWindowTitle("粘贴组件 - 设置新组件信息")
             if dialog.exec_() == QDialog.Accepted:
                 component_info = dialog.get_component_info()
+                # 更新复制的组件信息
+                self._copied_component.name = component_info["name"]
+                self._copied_component.category = component_info["category"]
+                self._copied_component.description = component_info.get("description", "")
                 # 实现粘贴逻辑
-                self._paste_component_impl(component_info)
-
-    def _paste_component_impl(self, component_info):
-        """实现组件粘贴"""
-        try:
-            # 生成新组件代码
-            new_name = component_info["name"]
-            new_category = component_info["category"]
-            # 获取原组件源码
-            source_code = inspect.getsource(self._copied_component)
-            # 替换类名和基本信息
-            new_code = source_code.replace(
-                f"class {self._copied_component.__name__}",
-                f"class {new_name.replace(' ', '')}"
-            )
-            # 更新基本信息
-            lines = new_code.split('\n')
-            for i, line in enumerate(lines):
-                if 'name =' in line:
-                    lines[i] = f'    name = "{new_name}"'
-                elif 'category =' in line:
-                    lines[i] = f'    category = "{new_category}"'
-                elif 'description =' in line:
-                    lines[i] = f'    description = "{component_info.get("description", "")}"'
-            new_code = '\n'.join(lines)
-            # 保存到文件
-            self._save_component_code(new_category, new_name, new_code)
-            self.refresh_components()
-            QMessageBox.information(self, "成功", "组件粘贴成功！")
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"粘贴组件失败: {str(e)}")
+                self.component_pasted.emit()
 
     def _export_component(self):
         """导出组件"""
@@ -225,12 +214,3 @@ class ComponentTreeWidget(TreeWidget):
                         QMessageBox.warning(self, "警告", "组件文件不存在")
                 except Exception as e:
                     QMessageBox.critical(self, "错误", f"删除组件失败: {str(e)}")
-
-    def _save_component_code(self, category, name, code):
-        """保存组件代码到文件"""
-        components_dir = Path("app") / Path("components") / category
-        components_dir.mkdir(parents=True, exist_ok=True)
-        filename = f"{name.replace(' ', '_').lower()}.py"
-        filepath = components_dir / filename
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(code)

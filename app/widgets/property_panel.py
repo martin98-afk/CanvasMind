@@ -196,9 +196,8 @@ class PropertyPanel(CardWidget):
                 # 已经初始化过，保持空选择
                 selected_columns = []
             else:
-                # 第一次初始化，选第一列
                 if columns:
-                    selected_columns = [columns[0]]
+                    selected_columns = []
                     # 标记已初始化
                     if not hasattr(node, '_column_selector_initialized'):
                         node._column_selector_initialized = {}

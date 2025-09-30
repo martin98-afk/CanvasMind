@@ -102,6 +102,7 @@ class ComponentDeveloperWidget(QWidget):
         """连接信号"""
         self.component_tree.component_selected.connect(self._on_component_selected)
         self.component_tree.component_created.connect(self._on_component_created)
+        self.component_tree.component_pasted.connect(self._on_component_pasted)
         # 连接编辑器改变信号
         self.input_port_editor.ports_changed.connect(self._sync_ports_to_code)
         self.output_port_editor.ports_changed.connect(self._sync_ports_to_code)  # 修复：连接输出端口信号
@@ -127,7 +128,12 @@ class ComponentDeveloperWidget(QWidget):
     def _on_component_created(self, component_info):
         """组件创建回调"""
         self._create_new_component(component_info)
+        self._save_component()
 
+    def _on_component_pasted(self):
+        """组件粘贴回调"""
+        self._load_component(self.component_tree._copied_component)
+        self._save_component(delete_original_file=False)
 
     def _load_component(self, component):
         """加载组件到编辑器"""
@@ -168,6 +174,7 @@ class ComponentDeveloperWidget(QWidget):
                 self.code_editor.set_code(template)
                 # 对于新建的，原始文件路径为 None
                 self._current_component_file = None
+            self._sync_basic_info_to_code()
         except Exception as e:
             QMessageBox.critical(self, "错误", f"加载组件失败: {str(e)}")
 
@@ -451,7 +458,7 @@ class ComponentDeveloperWidget(QWidget):
         except:
             return code
 
-    def _save_component(self):
+    def _save_component(self, delete_original_file: bool = True):
         """保存组件"""
         try:
             # 验证基本信息
@@ -474,14 +481,14 @@ class ComponentDeveloperWidget(QWidget):
                     code = import_line + code
 
             # 保存到文件，传入原始文件路径
-            self._save_component_to_file(category, name, code, self._current_component_file)
+            self._save_component_to_file(category, name, code, self._current_component_file, delete_original_file)
             # 刷新组件树
             self.component_tree.refresh_components()
             QMessageBox.information(self, "成功", "组件保存成功！")
         except Exception as e:
             QMessageBox.critical(self, "错误", f"保存组件失败: {str(e)}")
 
-    def _save_component_to_file(self, category, name, code, original_file_path=None):
+    def _save_component_to_file(self, category, name, code, original_file_path=None, delete_original_file=True):
         """保存组件到文件，可选择性地删除原始文件"""
         # 确保目录存在
         components_dir = Path("app") / Path("components") / category
@@ -491,7 +498,7 @@ class ComponentDeveloperWidget(QWidget):
         filepath = components_dir / filename
 
         # --- 删除原始文件 ---
-        if original_file_path and original_file_path.exists() and original_file_path != filepath:
+        if delete_original_file and original_file_path and original_file_path.exists() and original_file_path != filepath:
             try:
                 original_file_path.unlink()
                 print(f"已删除原始组件文件: {original_file_path}")
