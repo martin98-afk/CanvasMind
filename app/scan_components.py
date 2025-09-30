@@ -14,7 +14,7 @@ def scan_components(components_dir="components"):
     comp_path = script_dir / components_dir
 
     comp_map = {}
-
+    file_map = {}
     if not comp_path.exists():
         logger.error(f"⚠️ Components directory '{comp_path}' not found. Creating demo components...")
         # _create_demo_components(script_dir, components_dir)
@@ -38,9 +38,9 @@ def scan_components(components_dir="components"):
                     component_name = getattr(obj, 'name', obj.__name__)
                     full_path = f"{category}/{component_name}"
                     comp_map[full_path] = obj
-                    logger.info(f"✅ Loaded component: {full_path}")
+                    file_map[full_path] = py_file
         except Exception as e:
             import traceback
             logger.error(f"⚠️ Failed to load {py_file}: {traceback.format_exc()}")
 
-    return comp_map
+    return comp_map, file_map

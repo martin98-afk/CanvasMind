@@ -116,5 +116,5 @@ class DraggableTreeWidget(TreeWidget):
     def refresh_components(self):
         """刷新组件树"""
         # 重新扫描组件目录
-        self.component_map = scan_components()
+        self.component_map, _ = scan_components()
         self.build_component_tree()

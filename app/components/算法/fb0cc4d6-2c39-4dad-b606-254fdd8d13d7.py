@@ -33,6 +33,7 @@ class LogisticRegressionComponent(BaseComponent):
         """
         from sklearn.linear_model import LogisticRegression
         try:
+            import matplotlib
             self.logger.info(inputs)
 
             # 读取数据

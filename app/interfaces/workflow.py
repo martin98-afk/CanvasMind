@@ -72,7 +72,7 @@ class CanvasPage(QWidget):
         # 扫描组件
         self._registered_nodes.extend(list(self.graph.registered_nodes()))
         self.graph._node_factory.clear_registered_nodes()
-        self.component_map = scan_components()
+        self.component_map, _ = scan_components()
         # 获取节点菜单（nodes menu）
         nodes_menu = self.graph.get_context_menu('nodes')
         for full_path, comp_cls in self.component_map.items():

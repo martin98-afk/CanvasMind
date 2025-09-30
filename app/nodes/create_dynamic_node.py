@@ -23,7 +23,6 @@ def create_node_class(component_class, full_path):
             self._input_values = {}
             # 执行（捕获stdout/stderr）
             self.log_capture = NodeLogHandler(self.id, self._log_message)
-            self.component_class.logger = self.log_capture.get_logger()
 
             # 添加属性
             for prop_name, prop_def in component_class.get_properties().items():
@@ -141,7 +140,7 @@ def create_node_class(component_class, full_path):
             try:
                 # 获取组件类
                 comp_instance = comp_obj()
-
+                comp_instance.logger = self.log_capture.get_logger()
                 # 参数
                 params = {}
                 component_properties = comp_obj.get_properties()
@@ -173,6 +172,7 @@ def create_node_class(component_class, full_path):
                     output = comp_instance.run(params, inputs)
                 else:
                     output = comp_instance.run(params)
+
                 if output is not None:
                     # 记录执行结果
                     component_class.logger.success("✅ 节点执行完成")
@@ -181,8 +181,6 @@ def create_node_class(component_class, full_path):
                     return output
 
             except Exception as e:
-                import traceback
-                traceback.print_exc()
                 error_msg = f"❌ 节点执行失败: {str(e)}"
                 component_class.logger.error(error_msg)
                 raise e

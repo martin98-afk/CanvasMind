@@ -1,5 +1,6 @@
 import inspect
 import re
+import uuid
 from pathlib import Path
 
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -114,7 +115,7 @@ class ComponentDeveloperWidget(QWidget):
     def _load_existing_components(self):
         """加载现有组件"""
         try:
-            component_map = scan_components()
+            component_map, _ = scan_components()
             self.component_tree.load_components(component_map)
         except Exception as e:
             print(f"加载组件失败: {e}")
@@ -181,7 +182,6 @@ class ComponentDeveloperWidget(QWidget):
         self.property_editor.set_properties({})
         # 生成代码模板
         template = self.code_editor._get_default_code_template()
-        template = template.replace("MyComponent", component_info["name"].replace(' ', ''))
         template = template.replace("我的组件", component_info["name"])
         template = template.replace("数据处理", component_info["category"])
         template = template.replace("这是一个示例组件", component_info["description"])
@@ -487,7 +487,7 @@ class ComponentDeveloperWidget(QWidget):
         components_dir = Path("app") / Path("components") / category
         components_dir.mkdir(parents=True, exist_ok=True)
         # 生成文件名
-        filename = f"{name.replace(' ', '_').lower()}.py"
+        filename = f"{str(uuid.uuid4()).replace(' ', '_').lower()}.py"
         filepath = components_dir / filename
 
         # --- 删除原始文件 ---

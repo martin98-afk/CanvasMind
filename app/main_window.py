@@ -4,6 +4,7 @@ from loguru import logger
 from qfluentwidgets import FluentWindow, Theme, setTheme, FluentIcon, NavigationItemPosition
 
 from app.interfaces.component_developer import ComponentDeveloperWidget
+from app.interfaces.package_manager import PackageManagerWidget
 from app.interfaces.workflow import CanvasPage
 from app.utils.utils import get_icon
 from app.widgets.logger_dialog import QTextEditLogger
@@ -26,16 +27,17 @@ class LowCodeWindow(FluentWindow):
         # 创建主界面页面
         self.canvas_page = CanvasPage()
         self.develop_page = ComponentDeveloperWidget(self)
-
+        self.package_manager = PackageManagerWidget(self)
         # 添加主界面页面
-        self.addSubInterface(self.develop_page, FluentIcon.APPLICATION, '组件开发')
-        canvas_interface = self.addSubInterface(self.canvas_page, FluentIcon.APPLICATION, '工作流画布')
+        self.addSubInterface(self.develop_page, get_icon("组件"), '组件开发')
+        canvas_interface = self.addSubInterface(self.canvas_page, get_icon("模型"), '工作流画布')
         canvas_interface.clicked.connect(
             lambda: (
                 self.canvas_page.nav_view.refresh_components(),
                 self.canvas_page.register_components()
             )
         )
+        self.addSubInterface(self.package_manager, get_icon("工具包"), '工具包管理')
         # 添加日志页面
         log_interface = self.addSubInterface(
             self.log_viewer, get_icon("系统运行日志"), '执行日志', NavigationItemPosition.BOTTOM)

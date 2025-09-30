@@ -29,6 +29,7 @@ class ComponentTreeWidget(TreeWidget):
         self.customContextMenuRequested.connect(self._show_context_menu)
         self._components = {}  # {full_path: component_class}
         self._copied_component = None
+        self.refresh_components()
 
     def load_components(self, component_map: Dict[str, Any]):
         """加载组件到树中"""
@@ -58,7 +59,7 @@ class ComponentTreeWidget(TreeWidget):
     def refresh_components(self):
         """刷新组件树"""
         # 重新扫描组件目录
-        component_map = scan_components()
+        component_map, self.file_map = scan_components()
         self.load_components(component_map)
 
     def _show_context_menu(self, position):
@@ -214,7 +215,7 @@ class ComponentTreeWidget(TreeWidget):
                 try:
                     # 删除对应的Python文件
                     component_dir = Path("app") / Path("components") / category
-                    file_name = f"{name.replace(' ', '_').lower()}.py"
+                    file_name = self.file_map.get(full_path)
                     file_path = component_dir / file_name
                     if file_path.exists():
                         file_path.unlink()

@@ -1,5 +1,4 @@
-from app.components.base import BaseComponent, PortDefinition, ArgumentType
-
+from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
 class Component(BaseComponent):
     name="CSV 读取器"
     category="数据集成"
