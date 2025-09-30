@@ -1,27 +1,23 @@
 from PyQt5.QtCore import Qt, pyqtSignal, QRunnable, pyqtSlot, QObject
 from PyQt5.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QFileDialog, QTableWidgetItem, QHeaderView, QWidget
+    QVBoxLayout, QHBoxLayout, QFileDialog, QTableWidgetItem, QHeaderView, QWidget, QSplitter
 )
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PrimaryPushButton, PushButton,
     TableWidget, ComboBox, ProgressBar,
-    InfoBar, InfoBarPosition, TextEdit, ToolButton, FluentIcon
+    InfoBar, InfoBarPosition, TextEdit, ToolButton, FluentIcon, SearchLineEdit
 )
 
 from app.utils.env_manager import env_manager
 
 
 class PackageManagerWidget(CardWidget):
-    """智能包管理器界面 - 优化版（铺满界面 + 操作类型选择）"""
+    """智能包管理器界面 - 优化版"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("package_manager")
-        # 移除固定宽度限制，让界面可以铺满
-        # self.setFixedWidth(320)  # ❌ 删除这行
         self.vbox = QVBoxLayout(self)
-        self.vbox.setContentsMargins(20, 20, 20, 20)
-        self.vbox.setSpacing(12)  # 增加间距
 
         self.current_env = "system"
         self._setup_ui()
@@ -47,22 +43,18 @@ class PackageManagerWidget(CardWidget):
 
         self.vbox.addLayout(env_layout)
 
-        # 操作类型选择 + 包名输入 + 执行按钮
+        # 操作区
         operation_layout = QHBoxLayout()
-
-        # 操作类型下拉框
         self.operation_combo = ComboBox()
         self.operation_combo.addItems(["安装", "更新", "卸载"])
         self.operation_combo.setCurrentText("安装")
         self.operation_combo.setFixedWidth(80)
         operation_layout.addWidget(self.operation_combo, 0)
 
-        # 包名输入框
         self.package_edit = LineEdit()
         self.package_edit.setPlaceholderText("输入包名，如: pandas>=1.0")
         operation_layout.addWidget(self.package_edit, 1)
 
-        # 执行按钮
         self.execute_btn = PrimaryPushButton(FluentIcon.PLAY, "执行", self)
         self.execute_btn.clicked.connect(self._execute_package_operation)
         self.execute_btn.setFixedWidth(80)
@@ -75,27 +67,34 @@ class PackageManagerWidget(CardWidget):
         self.progress_bar.setVisible(False)
         self.vbox.addWidget(self.progress_bar)
 
-        # 包列表标题和刷新按钮
-        packages_header_layout = QHBoxLayout()
-        packages_header_layout.addWidget(BodyLabel("已安装的包:"), 1)
+        # === 中间区域：包列表（左） & 日志（右） ===
+        splitter = QSplitter(Qt.Horizontal, self)
 
-        refresh_pkgs_btn = ToolButton(FluentIcon.SYNC, self)
-        refresh_pkgs_btn.setToolTip("刷新包列表")
-        refresh_pkgs_btn.clicked.connect(self._refresh_packages)
-        packages_header_layout.addWidget(refresh_pkgs_btn, 0)
+        # 左侧：包列表 + 搜索栏
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
 
-        self.vbox.addLayout(packages_header_layout)
+        # 搜索栏
+        search_layout = QHBoxLayout()
+        search_layout.addWidget(BodyLabel("已安装的包:"), 0)
 
-        # 包列表（增加高度）
+        self.search_edit = SearchLineEdit()
+        self.search_edit.setPlaceholderText("搜索包名...")
+        self.search_edit.textChanged.connect(self._filter_packages)
+        self.search_edit.searchSignal.connect(self._filter_packages)
+        self.search_edit.clearSignal.connect(self._refresh_packages)
+        search_layout.addWidget(self.search_edit, 1)
+
+        left_layout.addLayout(search_layout)
+
+        # 包列表
         self.package_list = TableWidget()
-        self.package_list.setColumnCount(3)  # 增加一列显示操作
+        self.package_list.setColumnCount(3)
         self.package_list.setHorizontalHeaderLabels(["包名", "版本", "操作"])
         self.package_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.package_list.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self.package_list.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.package_list.setRowCount(0)
-        self.package_list.setFixedHeight(200)  # 增加固定高度
-        self.vbox.addWidget(self.package_list)
+        left_layout.addWidget(self.package_list, 1)
 
         # 导入导出按钮
         io_layout = QHBoxLayout()
@@ -103,19 +102,36 @@ class PackageManagerWidget(CardWidget):
         export_btn.clicked.connect(self._export_requirements)
         import_btn = PushButton(text="📥 导入 requirements.txt", parent=self)
         import_btn.clicked.connect(self._import_requirements)
-
         io_layout.addWidget(export_btn)
         io_layout.addWidget(import_btn)
         io_layout.addStretch()
-        self.vbox.addLayout(io_layout)
+        left_layout.addLayout(io_layout)
 
-        # 日志输出（占据更多空间）
-        self.vbox.addWidget(BodyLabel("📋 安装日志:"))
+        splitter.addWidget(left_widget)
+
+        # 右侧：日志
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.addWidget(BodyLabel("📋 安装日志:"))
         self.log_output = TextEdit()
         self.log_output.setReadOnly(True)
-        # 让日志区域占据更多垂直空间
-        self.log_output.setMinimumHeight(300)  # 增加最小高度
-        self.vbox.addWidget(self.log_output, 1)  # 添加 stretch 参数让其自动扩展
+        right_layout.addWidget(self.log_output, 1)
+        splitter.addWidget(right_widget)
+
+        splitter.setStretchFactor(0, 3)  # 左侧默认占比
+        splitter.setStretchFactor(1, 4)  # 右侧默认占比
+        self.vbox.addWidget(splitter, 1)
+
+    # === 搜索功能 ===
+    def _filter_packages(self, keyword: str):
+        """搜索过滤包列表"""
+        keyword = keyword.lower().strip()
+        for row in range(self.package_list.rowCount()):
+            pkg_name_item = self.package_list.item(row, 0)
+            if not pkg_name_item:
+                continue
+            pkg_name = pkg_name_item.text().lower()
+            self.package_list.setRowHidden(row, keyword not in pkg_name)
 
     def _load_environments(self):
         """加载环境列表"""
@@ -406,21 +422,21 @@ class PackageOperationWorker(QRunnable):
             self.signals.progress.emit(f"▶ 正在{self.operation}包: {self.package}")
 
             if self.operation == "安装":
-                success = env_manager.install_package(self.env_name, self.package)
+                success = env_manager.install_package(self.signals.progress, self.env_name, self.package)
                 if success:
                     self.signals.finished.emit(True, f"✅ 包 {self.package} 安装成功！")
                 else:
                     self.signals.finished.emit(False, f"❌ 包 {self.package} 安装失败！")
 
             elif self.operation == "更新":
-                success = env_manager.update_package(self.env_name, self.package)
+                success = env_manager.update_package(self.signals.progress, self.env_name, self.package)
                 if success:
                     self.signals.finished.emit(True, f"✅ 包 {self.package} 更新成功！")
                 else:
                     self.signals.finished.emit(False, f"❌ 包 {self.package} 更新失败！")
 
             elif self.operation == "卸载":
-                success = env_manager.uninstall_package(self.env_name, self.package)
+                success = env_manager.uninstall_package(self.signals.progress, self.env_name, self.package)
                 if success:
                     self.signals.finished.emit(True, f"✅ 包 {self.package} 卸载成功！")
                 else:

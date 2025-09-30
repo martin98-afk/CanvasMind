@@ -8,6 +8,8 @@ from typing import List, Dict, Optional
 import venv
 import platform
 
+from PyQt5.QtCore import pyqtSignal
+
 
 class EnvironmentManager:
     """智能 Python 环境管理器"""
@@ -234,7 +236,7 @@ class EnvironmentManager:
             # 系统环境
             return sys.executable
 
-    def install_package(self, env_name: str, package: str, version: str = None) -> bool:
+    def install_package(self, progress_signal: pyqtSignal, env_name: str, package: str, version: str = None) -> bool:
         """在指定环境中安装包"""
         python_exe = self.get_python_executable(env_name)
         cmd = [python_exe, "-m", "pip", "install"]
@@ -244,13 +246,33 @@ class EnvironmentManager:
             cmd.append(package)
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            if result.returncode == 0:
+            # 执行命令并实时捕获输出
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,  # 合并 stderr 到 stdout
+                text=True,
+                bufsize=1,  # 行缓冲
+                universal_newlines=True
+            )
+
+            # 实时读取输出
+            while True:
+                output = process.stdout.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    # 发送实时进度
+                    progress_signal.emit(output.strip())
+
+            # 等待进程结束
+            return_code = process.poll()
+            if return_code == 0:
                 # 更新环境包列表
                 self._update_package_list(env_name)
                 return True
             else:
-                print(f"安装失败: {result.stderr}")
+                print(f"安装失败: {self.package} {self.operation}")
                 return False
         except subprocess.TimeoutExpired:
             print("安装超时")
@@ -259,19 +281,39 @@ class EnvironmentManager:
             print(f"安装错误: {e}")
             return False
 
-    def uninstall_package(self, env_name: str, package: str) -> bool:
+    def uninstall_package(self, progress_signal, env_name: str, package: str) -> bool:
         """在指定环境中卸载包"""
         python_exe = self.get_python_executable(env_name)
         cmd = [python_exe, "-m", "pip", "uninstall", package, "-y"]
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            if result.returncode == 0:
+            # 执行命令并实时捕获输出
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,  # 合并 stderr 到 stdout
+                text=True,
+                bufsize=1,  # 行缓冲
+                universal_newlines=True
+            )
+
+            # 实时读取输出
+            while True:
+                output = process.stdout.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    # 发送实时进度
+                    progress_signal.emit(output.strip())
+
+            # 等待进程结束
+            return_code = process.poll()
+            if return_code == 0:
                 # 更新环境包列表
                 self._update_package_list(env_name)
                 return True
             else:
-                print(f"卸载失败: {result.stderr}")
+                print(f"卸载失败")
                 return False
         except subprocess.TimeoutExpired:
             print("卸载超时")
@@ -346,19 +388,39 @@ class EnvironmentManager:
             print(f"导入错误: {e}")
             return False
 
-    def update_package(self, env_name: str, package: str) -> bool:
+    def update_package(self, progress_signal, env_name: str, package: str) -> bool:
         """在指定环境中更新包"""
         python_exe = self.get_python_executable(env_name)
         cmd = [python_exe, "-m", "pip", "install", "--upgrade", package]
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            if result.returncode == 0:
+            # 执行命令并实时捕获输出
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,  # 合并 stderr 到 stdout
+                text=True,
+                bufsize=1,  # 行缓冲
+                universal_newlines=True
+            )
+
+            # 实时读取输出
+            while True:
+                output = process.stdout.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    # 发送实时进度
+                    progress_signal.emit(output.strip())
+
+            # 等待进程结束
+            return_code = process.poll()
+            if return_code == 0:
                 # 更新环境包列表
                 self._update_package_list(env_name)
                 return True
             else:
-                print(f"更新失败: {result.stderr}")
+                print(f"更新失败")
                 return False
         except subprocess.TimeoutExpired:
             print("更新超时")
