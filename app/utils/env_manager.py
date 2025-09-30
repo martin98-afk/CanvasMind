@@ -9,6 +9,7 @@ import venv
 import platform
 
 from PyQt5.QtCore import pyqtSignal
+from loguru import logger
 
 
 class EnvironmentManager:
@@ -19,7 +20,57 @@ class EnvironmentManager:
         self.base_dir.mkdir(exist_ok=True)
         self.environments_file = self.base_dir / "environments.json"
         self._load_environments()
-        self._auto_discover_environments()
+
+        # ✅ 修复：只在主进程中自动发现环境
+        if self._is_main_process():
+            self._auto_discover_environments()
+
+    def _is_main_process(self) -> bool:
+        """判断是否为主进程（避免 PyInstaller 子进程重复初始化）"""
+        import sys
+        # 方法1：检查是否由 PyInstaller 启动
+        if getattr(sys, 'frozen', False):
+            # PyInstaller 打包后的程序
+            # 检查启动参数中是否有 conda/pip 等子命令
+            import inspect
+            frame = inspect.currentframe()
+            try:
+                # 向上查找调用栈
+                while frame:
+                    filename = frame.f_code.co_filename
+                    if 'subprocess' in filename or 'conda' in filename:
+                        return False  # 是子进程
+                    frame = frame.f_back
+            finally:
+                del frame
+            return True  # 是主进程
+
+        # 方法2：检查启动参数（更简单可靠）
+        import sys
+        # 如果启动参数中有这些关键词，说明是子进程
+        forbidden_args = ['-c', 'conda', 'pip', '--json', 'list']
+        for arg in sys.argv[1:]:
+            if arg in forbidden_args:
+                return False
+        return True
+
+    def _auto_discover_environments(self):
+        """自动发现环境（只在主进程中执行）"""
+        if not self._is_main_process():
+            return  # 子进程不执行
+
+        logger.info("🔍 正在自动发现环境...")
+        # 1. 发现 conda 环境
+        self._discover_conda_environments()
+
+        # 2. 发现 venv 环境
+        self._discover_venv_environments()
+
+        # 3. 发现 virtualenv 环境
+        self._discover_virtualenv_environments()
+
+        self._save_environments()
+        logger.info("✅ 环境发现完成")
 
     def _load_environments(self):
         """加载环境配置"""
@@ -28,7 +79,7 @@ class EnvironmentManager:
                 with open(self.environments_file, 'r', encoding='utf-8') as f:
                     self.environments = json.load(f)
             except Exception as e:
-                print(f"加载环境配置失败: {e}")
+                logger.error(f"加载环境配置失败: {e}")
                 self.environments = {}
         else:
             self.environments = {}
@@ -41,7 +92,7 @@ class EnvironmentManager:
     def _create_default_environment(self):
         """创建默认本地环境"""
         # 使用当前 Python 环境作为默认环境
-        self.environments["default"] = {
+        self.environments["system"] = {
             "path": sys.prefix,
             "name": "默认环境",
             "type": "system",
@@ -60,7 +111,7 @@ class EnvironmentManager:
                 "packages": []
             }
         except Exception as e:
-            print(f"创建本地环境失败: {e}")
+            logger.error(f"创建本地环境失败: {e}")
 
     def _save_environments(self):
         """保存环境配置"""
@@ -68,27 +119,19 @@ class EnvironmentManager:
             with open(self.environments_file, 'w', encoding='utf-8') as f:
                 json.dump(self.environments, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            print(f"保存环境配置失败: {e}")
-
-    def _auto_discover_environments(self):
-        """自动发现环境"""
-        # 1. 发现 conda 环境
-        self._discover_conda_environments()
-
-        # 2. 发现 venv 环境
-        self._discover_venv_environments()
-
-        # 3. 发现 virtualenv 环境
-        self._discover_virtualenv_environments()
-
-        self._save_environments()
+            logger.error(f"保存环境配置失败: {e}")
 
     def _discover_conda_environments(self):
         """发现 conda 环境"""
         try:
-            # 检查是否安装了 conda
-            result = subprocess.run(['conda', 'env', 'list', '--json'],
-                                    capture_output=True, text=True, timeout=10)
+            # ✅ 添加超时和错误抑制
+            result = subprocess.run(
+                ['conda', 'env', 'list', '--json'],
+                capture_output=True,
+                text=True,
+                timeout=5,  # 5秒超时
+                cwd=os.getcwd()  # 明确工作目录
+            )
             if result.returncode == 0:
                 conda_info = json.loads(result.stdout)
                 for env_path in conda_info.get('envs', []):
@@ -105,7 +148,9 @@ class EnvironmentManager:
                                 "packages": []
                             }
         except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError, Exception) as e:
-            print(f"发现 conda 环境失败: {e}")
+            # ✅ 静默处理错误，避免中断主程序
+            logger.error(f"⚠️ 发现 conda 环境失败（已忽略）: {e}")
+            pass  # 不抛出异常
 
     def _discover_venv_environments(self):
         """发现 venv 环境"""
@@ -163,7 +208,7 @@ class EnvironmentManager:
             else:
                 return "Unknown"
         except Exception as e:
-            print(f"获取 Python 版本失败: {e}")
+            logger.error(f"获取 Python 版本失败: {e}")
             return "Unknown"
 
     def _get_system_packages(self) -> List[Dict]:
@@ -175,7 +220,7 @@ class EnvironmentManager:
                 packages = json.loads(result.stdout)
                 return [{"name": pkg["name"], "version": pkg["version"]} for pkg in packages]
         except Exception as e:
-            print(f"获取系统包列表失败: {e}")
+            logger.error(f"获取系统包列表失败: {e}")
         return []
 
     def create_environment(self, name: str, python_version: tuple = None) -> str:
@@ -196,7 +241,7 @@ class EnvironmentManager:
             subprocess.run([python_exe, '-m', 'pip', 'install', '--upgrade', 'pip'],
                            capture_output=True, timeout=60)
         except Exception as e:
-            print(f"升级 pip 失败: {e}")
+            logger.error(f"升级 pip 失败: {e}")
 
         return str(env_path)
 
@@ -272,13 +317,13 @@ class EnvironmentManager:
                 self._update_package_list(env_name)
                 return True
             else:
-                print(f"安装失败: {self.package} {self.operation}")
+                logger.error(f"安装失败: {self.package} {self.operation}")
                 return False
         except subprocess.TimeoutExpired:
-            print("安装超时")
+            logger.error("安装超时")
             return False
         except Exception as e:
-            print(f"安装错误: {e}")
+            logger.error(f"安装错误: {e}")
             return False
 
     def uninstall_package(self, progress_signal, env_name: str, package: str) -> bool:
@@ -313,13 +358,13 @@ class EnvironmentManager:
                 self._update_package_list(env_name)
                 return True
             else:
-                print(f"卸载失败")
+                logger.error(f"卸载失败")
                 return False
         except subprocess.TimeoutExpired:
-            print("卸载超时")
+            logger.error("卸载超时")
             return False
         except Exception as e:
-            print(f"卸载错误: {e}")
+            logger.error(f"卸载错误: {e}")
             return False
 
     def list_packages(self, env_name: str) -> List[Dict]:
@@ -333,13 +378,13 @@ class EnvironmentManager:
                 packages = json.loads(result.stdout)
                 return [{"name": pkg["name"], "version": pkg["version"]} for pkg in packages]
             else:
-                print(f"获取包列表失败: {result.stderr}")
+                logger.error(f"获取包列表失败: {result.stderr}")
                 return []
         except subprocess.TimeoutExpired:
-            print("获取包列表超时")
+            logger.error("获取包列表超时")
             return []
         except Exception as e:
-            print(f"获取包列表错误: {e}")
+            logger.error(f"获取包列表错误: {e}")
             return []
 
     def _update_package_list(self, env_name: str):
@@ -361,10 +406,10 @@ class EnvironmentManager:
                     f.write(result.stdout)
                 return True
             else:
-                print(f"导出失败: {result.stderr}")
+                logger.error(f"导出失败: {result.stderr}")
                 return False
         except Exception as e:
-            print(f"导出错误: {e}")
+            logger.error(f"导出错误: {e}")
             return False
 
     def import_requirements(self, env_name: str, filepath: str) -> bool:
@@ -379,13 +424,13 @@ class EnvironmentManager:
                 self._update_package_list(env_name)
                 return True
             else:
-                print(f"导入失败: {result.stderr}")
+                logger.error(f"导入失败: {result.stderr}")
                 return False
         except subprocess.TimeoutExpired:
-            print("导入超时")
+            logger.error("导入超时")
             return False
         except Exception as e:
-            print(f"导入错误: {e}")
+            logger.error(f"导入错误: {e}")
             return False
 
     def update_package(self, progress_signal, env_name: str, package: str) -> bool:
@@ -420,13 +465,13 @@ class EnvironmentManager:
                 self._update_package_list(env_name)
                 return True
             else:
-                print(f"更新失败")
+                logger.error(f"更新失败")
                 return False
         except subprocess.TimeoutExpired:
-            print("更新超时")
+            logger.error("更新超时")
             return False
         except Exception as e:
-            print(f"更新错误: {e}")
+            logger.error(f"更新错误: {e}")
             return False
 
 
