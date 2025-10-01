@@ -1,22 +1,22 @@
-# 低代码可视化编程平台
+# ![Logo](images/logo2.png) 低代码可视化编程平台
 
-![Low-Code Platform](https://img.shields.io/badge/Python-3.8%2B-blue) ![NodeGraphQt](https://img.shields.io/badge/NodeGraphQt-v0.3%2B-orange) ![qfluentwidgets](https://img.shields.io/badge/qfluentwidgets-v1.0%2B-green)
+![Low-Code Platform](https://img.shields.io/badge/Python-3.8%2B-blue  ) ![NodeGraphQt](https://img.shields.io/badge/NodeGraphQt-v0.3%2B-orange  ) ![qfluentwidgets](https://img.shields.io/badge/qfluentwidgets-v1.0%2B-green  )
 
 一个基于 **NodeGraphQt** 和 **qfluentwidgets** 的现代化低代码可视化编程平台，支持拖拽式组件编排、异步执行、文件操作和循环控制。
 
 ## 📷 组件开发示意图
 
-<img src="./组件开发示意图.png" width="800">
+<img src="images/组件开发示意图.png" width="800">
 
 ## 🎉 工作流示意图
 
-<img src="./工作流示意图.png" width="800">
+<img src="images/工作流示意图.png" width="800">
 
-<img src="./工作流示意图2.png" width="800">
+<img src="images/工作流示意图2.png" width="800">
 
 ## 📦 运行环境管理示意图
 
-<img src="./运行环境管理示意图.png" width="800">
+<img src="images/运行环境管理示意图.png" width="800">
 
 ## 🌟 主要特性
 
@@ -267,9 +267,9 @@ class MyComponent(BaseComponent):
 
 ## 🙏 致谢
 
-- [NodeGraphQt](https://github.com/jchanvfx/NodeGraphQt) - 节点图框架
-- [qfluentwidgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets) - Fluent Design 组件库
-- [Loguru](https://github.com/Delgan/loguru) - Python 日志库
+- [NodeGraphQt](https://github.com/jchanvfx/NodeGraphQt  ) - 节点图框架
+- [qfluentwidgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets  ) - Fluent Design 组件库
+- [Loguru](https://github.com/Delgan/loguru  ) - Python 日志库
 
 ---
 

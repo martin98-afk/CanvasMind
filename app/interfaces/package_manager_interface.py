@@ -42,7 +42,8 @@ class PackageSummaryThread(QThread):
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=10  # 设置超时时间，避免长时间等待
+                timeout=10,  # 设置超时时间，避免长时间等待
+                creationflags=subprocess.CREATE_NO_WINDOW
             )
             output = result.stdout.strip()
             summary = ""
@@ -211,7 +212,7 @@ class EnvManagerUI(QWidget):
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(packageWidget)  # 左：搜索框 + 包列表
         splitter.addWidget(self.logEdit)  # 右：日志
-        splitter.setStretchFactor(0, 3)
+        splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 2)
 
         # ---------- 总布局 ----------
@@ -255,7 +256,8 @@ class EnvManagerUI(QWidget):
                 [python_exe, "-m", "pip", "list", "--format=json"],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
+                creationflags=subprocess.CREATE_NO_WINDOW
             )
             output = result.stdout.strip()
             # 提取 JSON 部分（第一个 [ 到最后一个 ]）

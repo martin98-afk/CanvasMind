@@ -49,7 +49,6 @@ class Component(BaseComponent):
             self.logger.info(inputs)
             from sklearn.linear_model import LogisticRegression
             import matplotlib
-            import seaborn
 
             # 读取数据
             feature = inputs.get("feature")

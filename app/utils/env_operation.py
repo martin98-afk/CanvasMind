@@ -40,13 +40,6 @@ class EnvironmentManager(QObject):
         self.meta = self._load_meta()
         self._scan_envs()
 
-        # QProcess实例
-        self.process = None
-        self.current_operation = None
-        self.current_log_callback = None
-        self.installer_path = None
-        self.current_env_name = None  # 记录当前正在操作的环境名
-
     def _load_meta(self):
         try:
             return json.loads(self.META_FILE.read_text(encoding="utf-8"))
@@ -505,15 +498,15 @@ class EnvironmentManager(QObject):
         # 通过conda获取环境路径 - Miniconda环境在envs子目录下
         try:
             conda_exe = self.miniconda_path / "Scripts" / "conda.exe"
-            process = QProcess()
+            self.process = QProcess()
             import platform
             if platform.system() == "Windows":
                 # 在Windows下隐藏窗口
                 self.process.setProcessEnvironment(self._get_hidden_window_environment())
-            process.start(str(conda_exe), ["info", "--envs", "--json"])
-            process.waitForFinished()
+            self.process.start(str(conda_exe), ["info", "--envs", "--json"])
+            self.process.waitForFinished()
 
-            output = process.readAllStandardOutput().data().decode("utf-8")
+            output = self.process.readAllStandardOutput().data().decode("utf-8")
             # 清理ANSI颜色代码
             output = self._clean_ansi_codes(output)
             envs_info = json.loads(output)
@@ -540,15 +533,15 @@ class EnvironmentManager(QObject):
     def ensure_pip(self, python_exe: str, log_callback=None) -> bool:
         """确保指定 Python 环境中有 pip"""
         # 检查pip是否存在
-        process = QProcess()
+        self.process = QProcess()
         import platform
         if platform.system() == "Windows":
             # 在Windows下隐藏窗口
             self.process.setProcessEnvironment(self._get_hidden_window_environment())
-        process.start(python_exe, ["-m", "pip", "--version"])
-        process.waitForFinished()
+        self.process.start(python_exe, ["-m", "pip", "--version"])
+        self.process.waitForFinished()
 
-        if process.exitCode() == 0:
+        if self.process.exitCode() == 0:
             if log_callback:
                 log_callback("pip 已存在 ✅")
             return True

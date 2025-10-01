@@ -1,7 +1,8 @@
+from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QPlainTextEdit
+from PyQt5.QtWidgets import QPlainTextEdit, QApplication, QDesktopWidget
 from loguru import logger
-from qfluentwidgets import FluentWindow, Theme, setTheme, FluentIcon, NavigationItemPosition
+from qfluentwidgets import FluentWindow, Theme, setTheme, FluentIcon, NavigationItemPosition, SplashScreen
 
 from app.interfaces.component_developer import ComponentDeveloperWidget
 from app.interfaces.package_manager_interface import EnvManagerUI
@@ -16,12 +17,21 @@ class LowCodeWindow(FluentWindow):
         # 初始化日志查看器
         self.setup_log_viwer()
         setTheme(Theme.DARK)
-        from PyQt5.QtWidgets import QDesktopWidget
+        # 自动最大化窗口
         screen_rect = QDesktopWidget().screenGeometry()
         screen_width, screen_height = screen_rect.width(), screen_rect.height()
-        self.window_width = int(screen_width * 0.8)
+        self.window_width = int(screen_width * 0.75)
         self.window_height = int(screen_height * 0.75)
         self.resize(self.window_width, self.window_height)
+        desktop = QApplication.desktop().availableGeometry()
+        w, h = desktop.width(), desktop.height()
+        self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
+        # 生成启动界面
+        # 1. 创建启动页面
+        self.setWindowIcon(get_icon("logo3"))
+        self.splashScreen = SplashScreen(self.windowIcon(), self)
+        self.splashScreen.setIconSize(QSize(400, 400))
+        self.show()
         # 创建主界面页面
         self.package_manager = EnvManagerUI()
         self.canvas_page = CanvasPage(self)
@@ -45,6 +55,7 @@ class LowCodeWindow(FluentWindow):
                 self.text_logger.scroll_to_bottom(force=True)
             )
         )
+        self.splashScreen.finish()
 
     def setup_log_viwer(self):
         if not hasattr(self, 'log_viewer'):

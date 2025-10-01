@@ -38,40 +38,29 @@ class ComponentDeveloperWidget(QWidget):
         # 组件树
         self.component_tree = ComponentTreeWidget()
         splitter.addWidget(self.component_tree)
-        # 右侧：开发区域
-        self.development_area = self._create_development_area()
+        # 右侧：开发区域 - 使用新的左右布局
+        self.development_area = self._create_development_area_new_layout()
         splitter.addWidget(self.development_area)
-        splitter.setSizes([200, 800])  # 调整大小比例，给右侧更多空间
+        splitter.setSizes([150, 800])  # 调整大小比例，给右侧更多空间
         layout.addWidget(splitter)
 
-    def _create_development_area(self):
-        """创建开发区域"""
+    def _create_development_area_new_layout(self):
+        """创建新的开发区域布局（左右两栏）"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
         # 组件基本信息
-        self._create_basic_info_section(layout)
-        # --- 新布局：端口和属性放在一行 ---
-        top_splitter = QSplitter(Qt.Horizontal)
-        # 输入输出端口编辑器
-        port_splitter = QSplitter(Qt.Horizontal)
-        self.input_port_editor = PortEditorWidget("input")
-        self.output_port_editor = PortEditorWidget("output")
-        port_splitter.addWidget(self.input_port_editor)
-        port_splitter.addWidget(self.output_port_editor)
-        port_splitter.setSizes([200, 200])  # 初始大小
-
-        # 属性编辑器
-        self.property_editor = PropertyEditorWidget()
-
-        top_splitter.addWidget(port_splitter)
-        top_splitter.addWidget(self.property_editor)
-        top_splitter.setSizes([400, 400])  # 初始大小
-        layout.addWidget(top_splitter)
-        # --- 代码编辑器 ---
-        self.code_editor = CodeEditorWidget()
-        layout.addWidget(BodyLabel("💻 组件代码:"))
-        layout.addWidget(self.code_editor)
+        # 左右分割器
+        main_splitter = QSplitter(Qt.Horizontal)
+        # 左侧：端口和属性
+        left_widget = self._create_left_panel()
+        main_splitter.addWidget(left_widget)
+        # 右侧：代码编辑器
+        right_widget = self._create_right_panel()
+        main_splitter.addWidget(right_widget)
+        # 设置初始比例
+        main_splitter.setSizes([400, 400])  # 左右各占一半
+        layout.addWidget(main_splitter)
         # 保存按钮
         save_layout = QHBoxLayout()
         save_btn = PrimaryPushButton("💾 保存组件")
@@ -84,8 +73,12 @@ class ComponentDeveloperWidget(QWidget):
         layout.addLayout(save_layout)
         return widget
 
-    def _create_basic_info_section(self, layout):
-        """创建基本信息区域"""
+    def _create_left_panel(self):
+        """创建左侧面板（端口和属性）"""
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+
         basic_info_widget = CardWidget()
         basic_layout = QFormLayout(basic_info_widget)
         basic_layout.setContentsMargins(20, 20, 20, 20)
@@ -95,8 +88,34 @@ class ComponentDeveloperWidget(QWidget):
         basic_layout.addRow(BodyLabel("组件名称:"), self.name_edit)
         basic_layout.addRow(BodyLabel("组件分类:"), self.category_edit)
         basic_layout.addRow(BodyLabel("组件描述:"), self.description_edit)
-        layout.addWidget(BodyLabel("基本信息:"))
-        layout.addWidget(basic_info_widget)
+        left_layout.addWidget(BodyLabel("基本信息:"))
+        left_layout.addWidget(basic_info_widget)
+        # 端口编辑器（上下布局）
+        port_splitter = QSplitter(Qt.Horizontal)
+        # 输入输出端口编辑器
+        self.input_port_editor = PortEditorWidget("input")
+        self.output_port_editor = PortEditorWidget("output")
+        port_splitter.addWidget(self.input_port_editor)
+        port_splitter.addWidget(self.output_port_editor)
+        port_splitter.setSizes([150, 150])  # 初始大小
+        left_layout.addWidget(BodyLabel("端口设置:"))
+        left_layout.addWidget(port_splitter)
+        # 属性编辑器
+        self.property_editor = PropertyEditorWidget()
+        left_layout.addWidget(BodyLabel("参数设置:"))
+        left_layout.addWidget(self.property_editor, stretch=1)
+        return left_widget
+
+    def _create_right_panel(self):
+        """创建右侧面板（代码编辑器）"""
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        # 代码编辑器
+        self.code_editor = CodeEditorWidget()
+        right_layout.addWidget(BodyLabel("💻 组件代码:"))
+        right_layout.addWidget(self.code_editor, stretch=1)
+        return right_widget
 
     def _connect_signals(self):
         """连接信号"""
@@ -696,8 +715,6 @@ class PropertyEditorWidget(QWidget):
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        title = BodyLabel(f"{'参数设置'}")
-        layout.addWidget(title)
         # 属性表格
         self.table = TableWidget()
         self.table.setColumnCount(5)

@@ -75,7 +75,7 @@ class CanvasPage(QWidget):
         self.env_selector_container = QWidget(self.canvas_widget)
         self.env_selector_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         # 放置在右上角
-        self.env_selector_container.move(self.canvas_widget.width() - 300, 10)
+        self.env_selector_container.move(self.canvas_widget.width() - 260, 10)
 
         # 创建布局
         env_layout = QHBoxLayout(self.env_selector_container)
@@ -121,7 +121,7 @@ class CanvasPage(QWidget):
         """画布大小改变时重新定位环境选择器"""
         super(type(self.canvas_widget), self.canvas_widget).resizeEvent(event)
         # 重新定位到右上角
-        self.env_selector_container.move(self.canvas_widget.width() - 300, 10)
+        self.env_selector_container.move(self.canvas_widget.width() - 260, 10)
 
     def on_environment_changed(self):
         """环境选择改变时的处理"""
