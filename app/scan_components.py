@@ -1,11 +1,11 @@
-
-import os
+# -*- coding: utf-8 -*-
 import importlib
 import inspect
+import os
 from pathlib import Path
+
 from loguru import logger
 
-from app.components import base
 from app.components.base import BaseComponent
 
 

@@ -1,9 +1,10 @@
-# app/widgets/variable_tree.py
+# -*- coding: utf-8 -*-
+import pandas as pd
+import numpy as np
+
 from PyQt5.QtWidgets import QTreeWidgetItem, QMenu, QAction
 from PyQt5.QtCore import Qt, pyqtSignal
 from qfluentwidgets import TreeWidget
-import pandas as pd
-import numpy as np
 
 
 class VariableTreeWidget(TreeWidget):

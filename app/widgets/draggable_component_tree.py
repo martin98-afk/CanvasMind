@@ -1,9 +1,7 @@
+# -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt, QMimeData, QRectF
 from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont
 from PyQt5.QtWidgets import QTreeWidgetItem
-# ----------------------------
-# 属性面板（右侧）
-# ----------------------------
 from qfluentwidgets import (
     TreeWidget
 )

@@ -1,12 +1,12 @@
+# -*- coding: utf-8 -*-
 import json
-from typing import Union, List
 
 import pandas as pd
 from NodeGraphQt import BackdropNode
-from PyQt5.QtWidgets import QVBoxLayout, QFrame, QPushButton, QFileDialog, QListWidget, QListWidgetItem, QWidget, \
-    QStackedWidget
 from PyQt5.QtCore import Qt
-from qfluentwidgets import CardWidget, BodyLabel, TextEdit, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget
+from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
+    QStackedWidget
+from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget
 
 from app.components.base import ArgumentType
 from app.widgets.variable_tree import VariableTreeWidget

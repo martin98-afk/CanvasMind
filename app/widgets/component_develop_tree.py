@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import copy
 import inspect
 from pathlib import Path

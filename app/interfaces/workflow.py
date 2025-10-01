@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from collections import deque, defaultdict
 
 from NodeGraphQt import NodeGraph, BackdropNode

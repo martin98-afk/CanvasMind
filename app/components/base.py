@@ -1,11 +1,4 @@
-"""
-@author: mading
-@license: (C) Copyright: LUCULENT Corporation Limited.
-@contact: mading@luculent.net
-@file: base.py
-@time: 2025/9/26 15:02
-@desc: 
-"""
+# -*- coding: utf-8 -*-
 import os
 from abc import ABC, abstractmethod
 from enum import Enum

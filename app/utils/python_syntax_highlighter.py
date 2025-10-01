@@ -1,4 +1,4 @@
-# Pasted_Text_1759112560921.py
+# -*- coding: utf-8 -*-
 import re
 
 from PyQt5.QtGui import QColor, QTextCharFormat, QSyntaxHighlighter

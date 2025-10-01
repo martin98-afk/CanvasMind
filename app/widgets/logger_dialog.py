@@ -1,7 +1,8 @@
+# -*- coding: utf-8 -*-
 from collections import deque
-from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor
+
 from PyQt5.QtCore import QObject, pyqtSignal, Qt
-import logging
+from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor
 
 
 class QTextEditLogger(QObject):

@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QFormLayout, QWidget
-from qfluentwidgets import LineEdit, BodyLabel, PrimaryPushButton, PushButton, MessageBoxBase
+from qfluentwidgets import LineEdit, BodyLabel, MessageBoxBase
 
 
 class NewComponentDialog(MessageBoxBase):

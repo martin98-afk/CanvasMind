@@ -1,11 +1,4 @@
-"""
-@author: mading
-@license: (C) Copyright: LUCULENT Corporation Limited.
-@contact: mading@luculent.net
-@file: component_log_message_box.py
-@time: 2025/8/1 09:56
-@desc: 
-"""
+# -*- coding: utf-8 -*-
 import html
 import re
 

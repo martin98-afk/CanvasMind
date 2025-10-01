@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import ast
 
 from PyQt5.QtCore import pyqtSignal, QTimer, Qt
@@ -189,7 +190,8 @@ class CodeEditorWidget(QWidget):
         pass
 
     def _get_default_code_template(self):
-        return '''import importlib.util
+        return '''# -*- coding: utf-8 -*-
+import importlib.util
 import pathlib
 base_path = pathlib.Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))

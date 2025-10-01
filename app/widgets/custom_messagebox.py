@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from qfluentwidgets import MessageBoxBase, SubtitleLabel, LineEdit, ComboBox
 
 

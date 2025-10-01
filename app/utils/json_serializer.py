@@ -1,11 +1,4 @@
-"""
-@author: mading
-@license: (C) Copyright: LUCULENT Corporation Limited.
-@contact: mading@luculent.net
-@file: json_serializer.py
-@time: 2025/9/26 17:30
-@desc: 
-"""
+# -*- coding: utf-8 -*-
 import numpy as np
 
 

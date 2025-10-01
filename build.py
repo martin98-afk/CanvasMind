@@ -1,4 +1,4 @@
-# gen_preimports.py
+# -*- coding: utf-8 -*-
 import ast
 
 import os

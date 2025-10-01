@@ -1,8 +1,9 @@
+# -*- coding: utf-8 -*-
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QPlainTextEdit, QApplication, QDesktopWidget
 from loguru import logger
-from qfluentwidgets import FluentWindow, Theme, setTheme, FluentIcon, NavigationItemPosition, SplashScreen
+from qfluentwidgets import FluentWindow, Theme, setTheme, NavigationItemPosition, SplashScreen
 
 from app.interfaces.component_developer import ComponentDeveloperWidget
 from app.interfaces.package_manager_interface import EnvManagerUI
