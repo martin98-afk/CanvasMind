@@ -479,11 +479,22 @@ class ComponentDeveloperWidget(QWidget):
                 return
 
             # --- 检查并添加必要的导入语句 ---
-            if not code.startswith("from app.components.base import"):
+            if not code.startswith("try:"):
                 # 简单的检查，如果开头不是预期的导入，就添加
-                import_line = "from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType\n"
-                if not code.startswith(import_line):
-                    code = import_line + code
+                import_line = """import importlib.util
+import pathlib
+base_path = pathlib.Path(__file__).parent.parent / "base.py"
+spec = importlib.util.spec_from_file_location("base", str(base_path))
+base_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(base_module)
+
+# 导入所需项目
+BaseComponent = base_module.BaseComponent
+PortDefinition = base_module.PortDefinition
+PropertyDefinition = base_module.PropertyDefinition
+PropertyType = base_module.PropertyType
+ArgumentType = base_module.ArgumentType\n\n\n"""
+                code = import_line + code
 
             # 保存到文件，传入原始文件路径
             self._save_component_to_file(category, name, code, self._current_component_file, delete_original_file)

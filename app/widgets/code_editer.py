@@ -189,7 +189,20 @@ class CodeEditorWidget(QWidget):
         pass
 
     def _get_default_code_template(self):
-        return '''from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
+        return '''import importlib.util
+import pathlib
+base_path = pathlib.Path(__file__).parent.parent / "base.py"
+spec = importlib.util.spec_from_file_location("base", str(base_path))
+base_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(base_module)
+
+# 导入所需项目
+BaseComponent = base_module.BaseComponent
+PortDefinition = base_module.PortDefinition
+PropertyDefinition = base_module.PropertyDefinition
+PropertyType = base_module.PropertyType
+ArgumentType = base_module.ArgumentType
+
 
 class Component(BaseComponent):
     name = ""

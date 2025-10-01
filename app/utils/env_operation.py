@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 from urllib.request import urlopen
 from PyQt5.QtCore import QObject, pyqtSignal, QProcess, QTimer
+from loguru import logger
 
 
 class EnvironmentManager(QObject):
@@ -35,6 +36,7 @@ class EnvironmentManager(QObject):
             self._save_meta({})
         # 检查是否已安装Miniconda
         self.miniconda_path = self.ENV_DIR / "miniconda"
+        logger.info(f"检查Miniconda安装状态: {self.miniconda_path}")
         self.meta = self._load_meta()
         self._scan_envs()
 
@@ -110,6 +112,10 @@ class EnvironmentManager(QObject):
             self.process.setProcessChannelMode(QProcess.MergedChannels)
             self.process.readyReadStandardOutput.connect(self._on_process_output)
             self.process.finished.connect(self._on_miniconda_install_finished)
+            import platform
+            if platform.system() == "Windows":
+                # 在Windows下隐藏窗口
+                self.process.setProcessEnvironment(self._get_hidden_window_environment())
 
             # 启动安装进程
             self.process.start(str(self.installer_path), [
@@ -118,9 +124,7 @@ class EnvironmentManager(QObject):
             ])
 
         except Exception as e:
-            if log_callback:
-                log_callback(f"Miniconda安装失败: {e}")
-            self.miniconda_install_finished.emit(e)
+            pass
 
     def _on_miniconda_install_finished(self, exit_code, exit_status):
         """Miniconda安装完成回调"""
@@ -148,7 +152,7 @@ class EnvironmentManager(QObject):
         except Exception as e:
             self.miniconda_install_finished.emit(e)
 
-    def download_and_install(self, version, log_callback=None):
+    def download_and_install(self, version, env_name=None, log_callback=None):
         """创建指定版本的Python环境（使用QProcess）"""
         if not self._is_miniconda_installed():
             if log_callback:
@@ -156,21 +160,21 @@ class EnvironmentManager(QObject):
             # 先安装Miniconda
             self.install_miniconda(log_callback)
             # 安装完成后延迟执行环境创建
-            QTimer.singleShot(3000, lambda: self._create_env_after_miniconda(version, log_callback))
+            QTimer.singleShot(3000, lambda: self._create_env_after_miniconda(version, env_name, log_callback))
             return
 
-        self._create_env_with_qprocess(version, log_callback)
+        self._create_env_with_qprocess(version, env_name, log_callback)
 
-    def _create_env_after_miniconda(self, version, log_callback):
+    def _create_env_after_miniconda(self, version, env_name, log_callback):
         """Miniconda安装后创建环境"""
         if self._is_miniconda_installed():
-            self._create_env_with_qprocess(version, log_callback)
+            self._create_env_with_qprocess(version, env_name, log_callback)
         else:
             if log_callback:
                 log_callback("Miniconda安装失败，无法创建环境")
             self.install_finished.emit(RuntimeError("Miniconda安装失败"))
 
-    def _create_env_with_qprocess(self, version, log_callback=None):
+    def _create_env_with_qprocess(self, version, env_name=None, log_callback=None):
         """使用QProcess创建环境"""
         # 提取主要版本号
         major_version = version.split('.')[0] + '.' + version.split('.')[1]
@@ -178,7 +182,9 @@ class EnvironmentManager(QObject):
             # 如果不是支持的版本，使用最接近的版本
             major_version = "3.11"
 
-        env_name = version  # 使用完整版本号作为环境名
+        # 如果没有指定环境名，使用版本号作为环境名
+        if env_name is None:
+            env_name = version
 
         # 检查环境是否已存在
         existing_envs = self.list_envs()
@@ -194,7 +200,7 @@ class EnvironmentManager(QObject):
             return
 
         if log_callback:
-            log_callback(f"正在创建Python {version}环境...")
+            log_callback(f"正在创建Python {version}环境，环境名为: {env_name}...")
 
         self.current_log_callback = log_callback
         self.current_operation = "create_env"
@@ -217,6 +223,10 @@ class EnvironmentManager(QObject):
         self.process = QProcess(self)
         self.process.setProcessChannelMode(QProcess.MergedChannels)
         self.process.readyReadStandardOutput.connect(self._on_process_output)
+        import platform
+        if platform.system() == "Windows":
+            # 在Windows下隐藏窗口
+            self.process.setProcessEnvironment(self._get_hidden_window_environment())
         self.process.finished.connect(
             lambda exit_code, exit_status:
             self._on_create_env_finished(exit_code, exit_status, env_name)
@@ -229,6 +239,103 @@ class EnvironmentManager(QObject):
             f"python={version}",
             "-y"
         ])
+
+    def clone_env(self, source_env, target_env, log_callback=None):
+        """克隆已有环境（使用QProcess）"""
+        if source_env not in self.list_envs():
+            error_msg = f"源环境 {source_env} 不存在"
+            if log_callback:
+                log_callback(error_msg)
+            self.install_finished.emit(RuntimeError(error_msg))
+            return
+
+        # 检查目标环境是否已存在
+        existing_envs = self.list_envs()
+        if target_env in existing_envs:
+            if log_callback:
+                log_callback(f"目标环境 {target_env} 已存在")
+            # 获取环境路径并更新元数据
+            python_exe = self.get_python_exe(target_env)
+            env_path = python_exe.parent
+            self.meta[target_env] = str(env_path)
+            self._save_meta(self.meta)
+            self.install_finished.emit(env_path)
+            return
+
+        if log_callback:
+            log_callback(f"正在克隆环境 {source_env} 到 {target_env}...")
+
+        self.current_log_callback = log_callback
+        self.current_operation = "clone_env"
+        self.current_env_name = target_env  # 记录当前环境名
+
+        conda_exe = self.miniconda_path / "Scripts" / "conda.exe"
+
+        # 克隆环境
+        cmd = [
+            str(conda_exe),
+            "create",
+            "--name", target_env,
+            "--clone", source_env,
+            "-y"  # 自动确认
+        ]
+
+        if log_callback:
+            log_callback(f"执行命令: {' '.join(cmd)}")
+
+        self.process = QProcess(self)
+        self.process.setProcessChannelMode(QProcess.MergedChannels)
+        self.process.readyReadStandardOutput.connect(self._on_process_output)
+        import platform
+        if platform.system() == "Windows":
+            # 在Windows下隐藏窗口
+            self.process.setProcessEnvironment(self._get_hidden_window_environment())
+        self.process.finished.connect(
+            lambda exit_code, exit_status:
+            self._on_clone_env_finished(exit_code, exit_status, target_env)
+        )
+
+        # 启动conda进程
+        self.process.start(str(conda_exe), [
+            "create",
+            "--name", target_env,
+            "--clone", source_env,
+            "-y"
+        ])
+
+    def _on_clone_env_finished(self, exit_code, exit_status, env_name):
+        """环境克隆完成回调"""
+        try:
+            if exit_code != 0:
+                error_msg = f"环境 {env_name} 克隆失败，退出码: {exit_code}"
+                if self.current_log_callback:
+                    self.current_log_callback(error_msg)
+                self.install_finished.emit(RuntimeError(error_msg))
+                return
+
+            # 验证环境是否创建成功
+            python_exe = self.get_python_exe(env_name)
+            if not python_exe.exists():
+                error_msg = f"环境 {env_name} 克隆失败，未找到 python.exe"
+                if self.current_log_callback:
+                    self.current_log_callback(error_msg)
+                self.install_finished.emit(RuntimeError(error_msg))
+                return
+
+            # 更新元数据 - 使用conda获取的正确路径
+            env_path = python_exe.parent
+            self.meta[env_name] = str(env_path)
+            self._save_meta(self.meta)
+            # 重新扫描环境以确保meta文件是最新的
+            self._scan_envs()
+            if self.current_log_callback:
+                self.current_log_callback(f"环境 {env_name} 克隆完成 ✅")
+
+            # 安装默认包
+            QTimer.singleShot(1000, lambda: self._install_default_packages(env_name, python_exe))
+
+        except Exception as e:
+            self.install_finished.emit(e)
 
     def _on_create_env_finished(self, exit_code, exit_status, env_name):
         """环境创建完成回调"""
@@ -295,7 +402,10 @@ class EnvironmentManager(QObject):
         self.process.readyReadStandardOutput.connect(self._on_process_output)
         self.process.finished.connect(lambda exit_code, exit_status:
                                     self._on_package_installed(exit_code, exit_status, python_exe, remaining))
-
+        import platform
+        if platform.system() == "Windows":
+            # 在Windows下隐藏窗口
+            self.process.setProcessEnvironment(self._get_hidden_window_environment())
         # 启动pip安装进程
         self.process.start(str(python_exe), ["-m", "pip", "install", package])
 
@@ -333,7 +443,10 @@ class EnvironmentManager(QObject):
         self.process.readyReadStandardOutput.connect(self._on_process_output)
         self.process.finished.connect(lambda exit_code, exit_status:
                                       self._on_remove_env_finished(exit_code, exit_status, env_name))
-
+        import platform
+        if platform.system() == "Windows":
+            # 在Windows下隐藏窗口
+            self.process.setProcessEnvironment(self._get_hidden_window_environment())
         # 启动删除环境进程
         self.process.start(str(conda_exe), [
             "env", "remove",
@@ -393,6 +506,10 @@ class EnvironmentManager(QObject):
         try:
             conda_exe = self.miniconda_path / "Scripts" / "conda.exe"
             process = QProcess()
+            import platform
+            if platform.system() == "Windows":
+                # 在Windows下隐藏窗口
+                self.process.setProcessEnvironment(self._get_hidden_window_environment())
             process.start(str(conda_exe), ["info", "--envs", "--json"])
             process.waitForFinished()
 
@@ -424,6 +541,10 @@ class EnvironmentManager(QObject):
         """确保指定 Python 环境中有 pip"""
         # 检查pip是否存在
         process = QProcess()
+        import platform
+        if platform.system() == "Windows":
+            # 在Windows下隐藏窗口
+            self.process.setProcessEnvironment(self._get_hidden_window_environment())
         process.start(python_exe, ["-m", "pip", "--version"])
         process.waitForFinished()
 
@@ -437,12 +558,20 @@ class EnvironmentManager(QObject):
             try:
                 # 安装pip
                 ensurepip_process = QProcess()
+                import platform
+                if platform.system() == "Windows":
+                    # 在Windows下隐藏窗口
+                    self.process.setProcessEnvironment(self._get_hidden_window_environment())
                 ensurepip_process.start(python_exe, ["-m", "ensurepip"])
                 ensurepip_process.waitForFinished()
 
                 if ensurepip_process.exitCode() == 0:
                     # 升级pip
                     pip_upgrade_process = QProcess()
+                    import platform
+                    if platform.system() == "Windows":
+                        # 在Windows下隐藏窗口
+                        self.process.setProcessEnvironment(self._get_hidden_window_environment())
                     pip_upgrade_process.start(python_exe, ["-m", "pip", "install", "--upgrade", "pip"])
                     pip_upgrade_process.waitForFinished()
 
@@ -462,3 +591,10 @@ class EnvironmentManager(QObject):
                 if log_callback:
                     log_callback(f"安装 pip 失败: {e}")
                 return False
+
+    def _get_hidden_window_environment(self):
+        """获取隐藏窗口的环境变量（Windows）"""
+        from PyQt5.QtCore import QProcessEnvironment
+        env = QProcessEnvironment.systemEnvironment()
+        # 在Windows下，设置一些环境变量来减少窗口显示
+        return env

@@ -19,7 +19,7 @@ class LowCodeWindow(FluentWindow):
         from PyQt5.QtWidgets import QDesktopWidget
         screen_rect = QDesktopWidget().screenGeometry()
         screen_width, screen_height = screen_rect.width(), screen_rect.height()
-        self.window_width = int(screen_width * 0.6)
+        self.window_width = int(screen_width * 0.8)
         self.window_height = int(screen_height * 0.75)
         self.resize(self.window_width, self.window_height)
         # 创建主界面页面

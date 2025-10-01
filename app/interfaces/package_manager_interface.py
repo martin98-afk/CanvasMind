@@ -2,11 +2,11 @@ import functools
 import json
 import re
 import subprocess
+
 from PyQt5.QtCore import QThread, pyqtSignal, QProcess, Qt, QTimer
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QTextEdit,
-    QInputDialog, QTableWidgetItem, QSplitter, QPushButton, QHeaderView, QSizePolicy, QLabel
+    QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem, QSplitter, QHeaderView, QSizePolicy
 )
 from qfluentwidgets import (
     ComboBox, PrimaryPushButton, LineEdit, TableWidget,
@@ -14,6 +14,7 @@ from qfluentwidgets import (
 )
 
 from app.utils.env_operation import EnvironmentManager
+from app.widgets.custom_messagebox import CustomComboDialog, CustomInputDialog
 
 
 class PackageSummaryThread(QThread):
@@ -434,9 +435,11 @@ class EnvManagerUI(QWidget):
             try:
                 self.mgr.remove_env(env_name)
                 self.mgr.remove_finished.connect(
-                    self.refresh_env_list(),
-                    InfoBar.success("成功", f"环境 {env_name} 已删除", parent=self),
-                    self.env_changed.emit()
+                    lambda: (
+                        self.refresh_env_list(),
+                        InfoBar.success("成功", f"环境 {env_name} 已删除", parent=self),
+                        self.env_changed.emit()
+                    )
                 )
 
                 if self.envCombo.count() > 0:
@@ -463,9 +466,20 @@ class EnvManagerUI(QWidget):
         self.process.readyReadStandardOutput.connect(self.on_ready_read)
         self.process.readyReadStandardError.connect(self.on_ready_read)
         self.process.finished.connect(self.on_finished)
-
+        # 设置进程属性以避免弹出窗口（Windows下）
+        import platform
+        if platform.system() == "Windows":
+            # 在Windows下隐藏窗口
+            self.process.setProcessEnvironment(self._get_hidden_window_environment())
         # start with executable and args
         self.process.start(python_exe, cmd)
+
+    def _get_hidden_window_environment(self):
+        """获取隐藏窗口的环境变量（Windows）"""
+        from PyQt5.QtCore import QProcessEnvironment
+        env = QProcessEnvironment.systemEnvironment()
+        # 在Windows下，设置一些环境变量来减少窗口显示
+        return env
 
     def on_ready_read(self):
         if not self.process:
@@ -484,26 +498,96 @@ class EnvManagerUI(QWidget):
             QTimer.singleShot(1000, lambda: self.load_packages(self.current_env))
 
     def create_env(self):
-        """新建环境：选择版本并自动下载安装"""
-        version, ok = QInputDialog.getItem(
-            self, "新建环境", "选择 Python 版本：",
-            list(self.mgr.MINICONDA_URLS.keys()), 0, False
+        """新建环境：选择版本和环境名"""
+        from qfluentwidgets import MessageBox
+
+        # 首先询问用户是否要克隆已有环境
+        clone_dialog = MessageBox(
+            "新建环境",
+            "是否要克隆已有环境？\n选择\"是\"克隆已有环境，选择\"否\"创建新环境",
+            self
         )
-        if not ok or not version:
-            return
+        clone_dialog.yesButton.setText("是，克隆环境")
+        clone_dialog.cancelButton.setText("否，创建新环境")
 
-        try:
-            self.mgr.download_and_install(version, log_callback=self.logEdit.append)
-            self.mgr.install_finished.connect(
-                lambda: (
-                    self.refresh_env_list(),
-                    InfoBar.success("成功", f"Python {version} 已安装", parent=self),
-                    self.envCombo.setCurrentText(version),
-                    self.env_changed.emit()
+        if clone_dialog.exec_():  # 返回True表示点击了"是"按钮
+            # 克隆环境
+            envs = self.mgr.list_envs()
+            if not envs:
+                InfoBar.warning("警告", "没有可用的环境可供克隆", parent=self)
+                return
+
+            # 创建选择源环境的对话框
+            source_env_dialog = CustomComboDialog("选择要克隆的源环境", envs, 0, self)
+            if source_env_dialog.exec_():
+                source_env = source_env_dialog.get_text()
+
+                # 创建输入目标环境名的对话框
+                target_env_dialog = CustomInputDialog(
+                    f"输入新环境名称（基于 {source_env}）",
+                    placeholder="请输入环境名称",
+                    currenttext=f"{source_env}_clone",
+                    parent=self
                 )
-            )
-        except Exception as e:
-            import traceback
-            print(traceback.format_exc())
-            InfoBar.error("错误", str(e), parent=self)
 
+                if target_env_dialog.exec_():
+                    target_env = target_env_dialog.get_text().strip()
+                    if not target_env:
+                        InfoBar.warning("警告", "请输入环境名称", parent=self)
+                        return
+
+                    try:
+                        self.mgr.clone_env(source_env, target_env, log_callback=self.logEdit.append)
+                        self.mgr.install_finished.connect(
+                            lambda: (
+                                self.refresh_env_list(),
+                                InfoBar.success("成功", f"环境 {target_env} 已克隆", parent=self),
+                                self.envCombo.setCurrentText(target_env),
+                                self.env_changed.emit()
+                            )
+                        )
+                    except Exception as e:
+                        import traceback
+                        print(traceback.format_exc())
+                        InfoBar.error("错误", str(e), parent=self)
+        else:  # 点击了"否"按钮，创建新环境
+            # 创建选择Python版本的对话框
+            version_dialog = CustomComboDialog(
+                "选择 Python 版本",
+                list(self.mgr.MINICONDA_URLS.keys()),
+                0,
+                self
+            )
+
+            if version_dialog.exec_():
+                version = version_dialog.get_text()
+
+                # 创建输入环境名称的对话框
+                env_name_dialog = CustomInputDialog(
+                    f"输入环境名称（默认为 {version}）",
+                    placeholder="请输入环境名称",
+                    currenttext=version,
+                    parent=self
+                )
+
+                if env_name_dialog.exec_():
+                    env_name = env_name_dialog.get_text().strip()
+
+                    # 如果用户没有输入环境名，使用默认版本号
+                    if not env_name.strip():
+                        env_name = version
+
+                    try:
+                        self.mgr.download_and_install(version, env_name=env_name, log_callback=self.logEdit.append)
+                        self.mgr.install_finished.connect(
+                            lambda: (
+                                self.refresh_env_list(),
+                                InfoBar.success("成功", f"环境 {env_name} 已创建", parent=self),
+                                self.envCombo.setCurrentText(env_name),
+                                self.env_changed.emit()
+                            )
+                        )
+                    except Exception as e:
+                        import traceback
+                        print(traceback.format_exc())
+                        InfoBar.error("错误", str(e), parent=self)

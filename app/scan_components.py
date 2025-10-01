@@ -5,6 +5,7 @@ import inspect
 from pathlib import Path
 from loguru import logger
 
+from app.components import base
 from app.components.base import BaseComponent
 
 
@@ -32,7 +33,7 @@ def scan_components(components_dir="components"):
             module = importlib.import_module(module_path)
             importlib.reload(module)
             for name, obj in inspect.getmembers(module, inspect.isclass):
-                if issubclass(obj, BaseComponent) and obj != BaseComponent:
+                if getattr(obj, 'category', None) is not None and obj != BaseComponent:
                     # ✅ 关键修改：使用 getattr 获取 name 属性，提供默认回退
                     category = getattr(obj, 'category', 'General')
                     component_name = getattr(obj, 'name', obj.__name__)

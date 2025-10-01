@@ -302,7 +302,9 @@ except Exception as e:
                     # 执行子进程
                     result = subprocess.run([
                         python_executable, temp_script_path
-                    ], capture_output=True, text=True, timeout=300)  # 5分钟超时
+                    ], capture_output=True, text=True, timeout=300,
+                        creationflags=subprocess.CREATE_NO_WINDOW
+                    )  # 5分钟超时
 
                     # 读取日志文件内容并添加到节点日志
                     log_content = file_log_handler.read_log_file()
