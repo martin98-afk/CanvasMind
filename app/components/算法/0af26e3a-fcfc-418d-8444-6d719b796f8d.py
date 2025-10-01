@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import importlib.util
 import pathlib
 base_path = pathlib.Path(__file__).parent.parent / "base.py"

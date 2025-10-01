@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import ast
 import inspect
 import re
 import uuid
@@ -11,11 +12,12 @@ from PyQt5.QtWidgets import (
 )
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PrimaryPushButton, PushButton,
-    TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, MessageBoxBase
+    TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, MessageBoxBase, FluentIcon
 )
 
+from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType
 from app.scan_components import scan_components
-from app.widgets.code_editer import CodeEditorWidget
+from app.widgets.code_editer import CodeEditorWidget, DEFAULT_CODE_TEMPLATE
 from app.widgets.component_develop_tree import ComponentTreeWidget
 
 
@@ -209,7 +211,7 @@ class ComponentDeveloperWidget(QWidget):
         self.output_port_editor.set_ports([])
         self.property_editor.set_properties({})
         # 生成代码模板
-        template = self.code_editor._get_default_code_template()
+        template = DEFAULT_CODE_TEMPLATE
         template = template.replace("我的组件", component_info["name"])
         template = template.replace("数据处理", component_info["category"])
         template = template.replace("这是一个示例组件", component_info["description"])
@@ -301,10 +303,34 @@ class ComponentDeveloperWidget(QWidget):
             print(f"同步基本信息到代码失败: {e}")
 
     def _sync_code_to_ui(self):
-        """同步代码到UI"""
-        # 这个方法在代码改变时调用，可以解析代码并更新UI
-        # 为了避免性能问题，这里可以使用防抖
-        pass
+        """从代码同步回UI"""
+        try:
+            code = self.code_editor.get_code()
+            if not code.strip():
+                return
+            tree = ast.parse(code)
+
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Assign):
+                    for target in node.targets:
+                        if isinstance(target, ast.Name):
+                            if target.id == "name" and isinstance(node.value, ast.Str):
+                                if self.name_edit.text() != node.value.s:
+                                    self.name_edit.blockSignals(True)
+                                    self.name_edit.setText(node.value.s)
+                                    self.name_edit.blockSignals(False)
+                            elif target.id == "category" and isinstance(node.value, ast.Str):
+                                if self.category_edit.text() != node.value.s:
+                                    self.category_edit.blockSignals(True)
+                                    self.category_edit.setText(node.value.s)
+                                    self.category_edit.blockSignals(False)
+                            elif target.id == "description" and isinstance(node.value, ast.Str):
+                                if self.description_edit.text() != node.value.s:
+                                    self.description_edit.blockSignals(True)
+                                    self.description_edit.setText(node.value.s)
+                                    self.description_edit.blockSignals(False)
+        except Exception as e:
+            print(f"解析代码失败: {e}")
 
     def _update_ports_in_code(self, code, input_ports, output_ports):
         """更新代码中的端口定义"""
@@ -501,20 +527,7 @@ class ComponentDeveloperWidget(QWidget):
             # --- 检查并添加必要的导入语句 ---
             if not code.startswith("try:"):
                 # 简单的检查，如果开头不是预期的导入，就添加
-                import_line = """import importlib.util
-import pathlib
-base_path = pathlib.Path(__file__).parent.parent / "base.py"
-spec = importlib.util.spec_from_file_location("base", str(base_path))
-base_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(base_module)
-
-# 导入所需项目
-BaseComponent = base_module.BaseComponent
-PortDefinition = base_module.PortDefinition
-PropertyDefinition = base_module.PropertyDefinition
-PropertyType = base_module.PropertyType
-ArgumentType = base_module.ArgumentType\n\n\n"""
-                code = import_line + code
+                code = COMPONENT_IMPORT_CODE + code
 
             # 保存到文件，传入原始文件路径
             self._save_component_to_file(category, name, code, self._current_component_file, delete_original_file)
@@ -607,50 +620,43 @@ class PortEditorWidget(QWidget):
     def __init__(self, port_type="input", parent=None):
         super().__init__(parent)
         self.port_type = port_type
-        self._setup_ui()
-
-    def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        # 标题
-        title = BodyLabel(f"{'📥 输入端口' if self.port_type == 'input' else '📤 输出端口'}")
-        layout.addWidget(title)
-        # 端口表格
-        self.table = TableWidget()
+
+        # 表格
+        self.table = TableWidget(self)
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.setRowCount(0)
-        self.table.itemChanged.connect(self._on_item_changed)
-        layout.addWidget(self.table)
-        # 操作按钮
+        self.table.itemChanged.connect(lambda item: self.ports_changed.emit())
+        # 在表头加按钮
         button_layout = QHBoxLayout()
-        add_btn = PrimaryPushButton("➕ 添加端口")
-        add_btn.clicked.connect(self._add_port)
-        remove_btn = PushButton("➖ 删除选中")
+        add_btn = PushButton(text=f"添加{'输入端口' if port_type == 'input' else '输出端口'}", icon=FluentIcon.ADD)
+        add_btn.clicked.connect(lambda: self._add_port())
+        remove_btn = PushButton(text="删除选中端口", icon=FluentIcon.CLOSE)
         remove_btn.clicked.connect(self._remove_port)
         button_layout.addWidget(add_btn)
         button_layout.addWidget(remove_btn)
-        button_layout.addStretch()
         layout.addLayout(button_layout)
+        layout.addWidget(self.table)
 
     def _on_item_changed(self, item):
         """表格项改变时发出信号"""
         self.ports_changed.emit()
 
-    def _add_port(self):
+    def _add_port(self, port: dict = {}):
         """添加端口"""
         row = self.table.rowCount()
         self.table.insertRow(row)
         # 端口名称
-        name_edit = QTableWidgetItem(f"port_{row}")
+        name_edit = QTableWidgetItem(port.get("name", f"port_{row}"))
         self.table.setItem(row, 0, name_edit)
         # 端口标签
-        label_edit = QTableWidgetItem(f"端口{row + 1}")
+        label_edit = QTableWidgetItem(port.get("label", f"端口{row + 1}"))
         self.table.setItem(row, 1, label_edit)
         # 端口类型
         type_combo = ComboBox()
-        type_combo.addItems(["text", "int", "float", "bool", "file", "csv", "json"])
+        type_combo.addItems([item.value for item in ArgumentType])
+        type_combo.setCurrentText(port.get("type", "text"))
         self.table.setCellWidget(row, 2, type_combo)
         type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
 
@@ -687,22 +693,7 @@ class PortEditorWidget(QWidget):
         """设置端口数据"""
         self.table.setRowCount(0)
         for port in ports:
-            self._add_port_row(port)
-
-    def _add_port_row(self, port):
-        """添加端口行"""
-        row = self.table.rowCount()
-        self.table.insertRow(row)
-        name_item = QTableWidgetItem(port.get("name", ""))
-        label_item = QTableWidgetItem(port.get("label", ""))
-        self.table.setItem(row, 0, name_item)
-        self.table.setItem(row, 1, label_item)
-        type_combo = ComboBox()
-        type_combo.addItems(["text", "int", "float", "bool", "file", "csv", "json"])
-        type_combo.setCurrentText(port.get("type", "text"))
-        type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
-        self.table.setCellWidget(row, 2, type_combo)
-
+            self._add_port(port)
 
 # --- 属性编辑器 (未改动) ---
 class PropertyEditorWidget(QWidget):
@@ -711,57 +702,53 @@ class PropertyEditorWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._setup_ui()
-
-    def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
         # 属性表格
         self.table = TableWidget()
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "选项"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.setRowCount(0)
-        self.table.itemChanged.connect(self._on_item_changed)
-        layout.addWidget(self.table)
-        # 操作按钮
+        self.table.itemChanged.connect(lambda item: self.properties_changed.emit())
+
         button_layout = QHBoxLayout()
-        add_btn = PrimaryPushButton("➕ 添加属性")
-        add_btn.clicked.connect(self._add_property)
-        remove_btn = PushButton("➖ 删除选中")
+        add_btn = PushButton(text="添加属性", icon=FluentIcon.ADD)
+        add_btn.clicked.connect(lambda: self._add_property())
+        remove_btn = PushButton(text="删除选中", icon=FluentIcon.CLOSE)
         remove_btn.clicked.connect(self._remove_property)
         button_layout.addWidget(add_btn)
         button_layout.addWidget(remove_btn)
-        button_layout.addStretch()
         layout.addLayout(button_layout)
+        layout.addWidget(self.table)
 
-    def _on_item_changed(self, item):
-        """表格项改变时发出信号"""
-        self.properties_changed.emit()
-
-    def _add_property(self):
+    def _add_property(self, prop_name: str=None, prop_def: PropertyType=None):
         """添加属性"""
         row = self.table.rowCount()
         self.table.insertRow(row)
         # 属性名
-        name_item = QTableWidgetItem(f"prop_{row}")
+        name_item = QTableWidgetItem(prop_name if prop_name else f"prop_{row}")
         self.table.setItem(row, 0, name_item)
         # 标签
-        label_item = QTableWidgetItem(f"属性{row + 1}")
+        label_item = QTableWidgetItem(getattr(prop_def, 'label', f"属性{row + 1}"))
         self.table.setItem(row, 1, label_item)
         # 类型
         type_combo = ComboBox()
-        type_combo.addItems(["text", "int", "float", "bool", "choice", "file", "folder"])
+        type_combo.addItems([item.value for item in PropertyType])
+        type_combo.setCurrentText(getattr(prop_def, 'type', 'text'))
         self.table.setCellWidget(row, 2, type_combo)
         type_combo.currentTextChanged.connect(
             lambda text: self._on_type_changed(row, text)
         )
         # 默认值
-        default_item = QTableWidgetItem("")
+        default_item = QTableWidgetItem(str(getattr(prop_def, 'default', '')))
         self.table.setItem(row, 3, default_item)
         # 选项（用于 choice 类型）
         options_item = QTableWidgetItem("")
-        options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
+        if getattr(prop_def, 'type', 'text') == "choice":
+            choices = getattr(prop_def, 'choices', [])
+            options_item.setText(",".join(choices))
+            options_item.setFlags(options_item.flags() | Qt.ItemIsEditable)
+        else:
+            options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
         self.table.setItem(row, 4, options_item)
 
     def _on_type_changed(self, row, prop_type):
@@ -819,31 +806,4 @@ class PropertyEditorWidget(QWidget):
         """设置属性数据"""
         self.table.setRowCount(0)
         for prop_name, prop_def in properties.items():
-            self._add_property_row(prop_name, prop_def)
-
-    def _add_property_row(self, prop_name, prop_def):
-        """添加属性行"""
-        row = self.table.rowCount()
-        self.table.insertRow(row)
-        name_item = QTableWidgetItem(prop_name)
-        label_item = QTableWidgetItem(prop_def.label)
-        default_item = QTableWidgetItem(str(getattr(prop_def, 'default', '')))
-        self.table.setItem(row, 0, name_item)
-        self.table.setItem(row, 1, label_item)
-        self.table.setItem(row, 3, default_item)
-        type_combo = ComboBox()
-        type_combo.addItems(["text", "int", "float", "bool", "choice", "file", "folder"])
-        prop_type = getattr(prop_def, 'type', 'text')  # prop_def.get("type", "text")
-        type_combo.setCurrentText(prop_type)
-        type_combo.currentTextChanged.connect(
-            lambda text: self._on_type_changed(row, text)
-        )
-        self.table.setCellWidget(row, 2, type_combo)
-        options_item = QTableWidgetItem("")
-        if prop_type == "choice":
-            choices = getattr(prop_def, 'choices', [])
-            options_item.setText(",".join(choices))
-            options_item.setFlags(options_item.flags() | Qt.ItemIsEditable)
-        else:
-            options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
-        self.table.setItem(row, 4, options_item)
+            self._add_property(prop_name, prop_def)

@@ -9,6 +9,22 @@ from loguru import logger
 from pydantic import BaseModel, Field, create_model
 
 
+COMPONENT_IMPORT_CODE = """# -*- coding: utf-8 -*-
+import importlib.util
+import pathlib
+base_path = pathlib.Path(__file__).parent.parent / "base.py"
+spec = importlib.util.spec_from_file_location("base", str(base_path))
+base_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(base_module)
+
+# 导入所需项目
+BaseComponent = base_module.BaseComponent
+PortDefinition = base_module.PortDefinition
+PropertyDefinition = base_module.PropertyDefinition
+PropertyType = base_module.PropertyType
+ArgumentType = base_module.ArgumentType\n\n\n"""
+
+
 class PropertyType(str, Enum):
     """属性类型"""
     TEXT = "text"
