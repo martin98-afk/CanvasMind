@@ -1,5 +1,5 @@
 from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
-class MyComponent(BaseComponent):
+class Component(BaseComponent):
     name = "测试安装包"
     category = "算法"
     description = "terst"

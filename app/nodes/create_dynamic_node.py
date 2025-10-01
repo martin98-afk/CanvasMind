@@ -1,5 +1,10 @@
 import os
-
+import sys
+import subprocess
+import json
+import tempfile
+import pickle
+import importlib.util
 from NodeGraphQt import BaseNode
 from PyQt5.QtWidgets import QFileDialog
 
@@ -7,13 +12,14 @@ from app.utils.node_logger import NodeLogHandler
 from app.widgets.component_log_message_box import LogMessageBox
 
 
-def create_node_class(component_class, full_path):
-    """直接返回一个完整的节点类，支持文件上传按钮和独立日志"""
+def create_node_class(component_class, full_path, file_path):
+    """直接返回一个完整的节点类，支持文件上传按钮和独立Python环境执行"""
 
     class DynamicNode(BaseNode):
         __identifier__ = 'dynamic'
         NODE_NAME = component_class.name
         FULL_PATH = full_path
+        FILE_PATH = file_path
 
         def __init__(self):
             super().__init__()
@@ -123,6 +129,10 @@ def create_node_class(component_class, full_path):
             """设置输出端口的值"""
             self._output_values[port_name] = value
 
+        def clear_output_value(self):
+            """清除输出端口的值"""
+            self._output_values = {}
+
         def get_output_value(self, port_name):
             """获取输出端口的值"""
             return self._output_values.get(port_name)
@@ -131,12 +141,222 @@ def create_node_class(component_class, full_path):
             """节点运行完成后自动映射结果到输出端口"""
             self._output_values = output
 
-        def execute_sync(self, comp_obj):
+        def execute_in_separate_env(self, comp_obj, python_executable=None):
             """
-            同步执行节点（由主窗口调用）
-            upstream_outputs: {node_id: output_dict}
-            main_window: 主窗口引用（用于状态更新，可选）
+            在独立Python环境中执行组件
+            python_executable: 目标Python解释器路径，如果为None则使用当前环境
             """
+            if python_executable is None:
+                python_executable = sys.executable
+
+            # 创建文件日志处理器
+            file_log_handler = NodeLogHandler(self.id, self._log_message, use_file_logging=True)
+
+            try:
+                # 准备执行参数
+                params = {}
+                component_properties = comp_obj.get_properties()
+                for prop_name, prop_def in component_properties.items():
+                    default_value = prop_def.get("default", "")
+                    if self.has_property(prop_name):
+                        params[prop_name] = self.get_property(prop_name)
+                    else:
+                        params[prop_name] = default_value
+
+                # 获取输入数据
+                inputs = {}
+                for input_port in self.input_ports():
+                    port_name = input_port.name()
+                    connected = input_port.connected_ports()
+                    if not connected:
+                        continue
+                    # 优先从 _input_values 获取（包含列选择结果）
+                    if hasattr(self, '_input_values') and port_name in self._input_values:
+                        inputs[port_name] = self._input_values[port_name]
+                    else:
+                        # 如果没有 _input_values，尝试从连接获取
+                        upstream_out = connected[0]
+                        upstream_node = upstream_out.node()
+                        if hasattr(upstream_node, 'get_output_value'):
+                            inputs[port_name] = upstream_node.get_output_value(upstream_out.name())
+
+                # 获取日志文件路径
+                log_file_path = file_log_handler.get_log_file_path()
+
+                # 创建临时脚本文件 - 使用UTF-8编码
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as temp_script:
+                    temp_script_path = temp_script.name
+
+                    # 生成执行脚本 - 添加UTF-8编码声明
+                    script_content = f'''# -*- coding: utf-8 -*-
+import sys
+import os
+import pickle
+import json
+import importlib.util
+import traceback
+from datetime import datetime
+from loguru import logger
+
+# 文件日志处理器
+class FileLogHandler:
+    def __init__(self, log_file_path, node_id):
+        self.log_file_path = log_file_path
+        self.node_id = node_id
+        self.logger = logger.bind(node_id=self.node_id)
+
+        # 添加文件处理器
+        self.handler_id = logger.add(
+            self._file_sink,
+            level="INFO",
+            enqueue=True,
+            filter=lambda record: "node_id" in record["extra"]
+        )
+
+    def _file_sink(self, message):
+        record = message.record
+        if record["extra"].get("node_id") != self.node_id:
+            return  # 忽略其他节点的日志
+        timestamp = record["time"].strftime("%Y-%m-%d %H:%M:%S")
+        function = record["function"]
+        line = record["line"]
+        level = record["level"].name
+        msg = record["message"]
+
+        formatted_msg = f"[{{timestamp}}] {{function}}-{{line}} {{level}}: {{msg}}\\n"
+
+        # 将日志写入文件
+        with open(self.log_file_path, 'a', encoding='utf-8') as f:
+            f.write(formatted_msg)
+
+    def info(self, msg):
+        self.logger.info(msg)
+
+    def success(self, msg):
+        self.logger.success(msg)
+
+    def warning(self, msg):
+        self.logger.warning(msg)
+
+    def error(self, msg):
+        self.logger.error(msg)
+
+    def debug(self, msg):
+        self.logger.debug(msg)
+
+# 从文件路径导入组件类
+spec = importlib.util.spec_from_file_location("{comp_obj.__name__}", r"{self.FILE_PATH}")
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+# 获取组件类
+comp_class = getattr(module, "{comp_obj.__name__}")
+
+# 读取输入参数
+with open(r"{temp_script_path}.params", 'rb') as f:
+    params, inputs = pickle.load(f)
+
+try:
+    # 创建组件实例
+    comp_instance = comp_class()
+
+    # 创建文件日志处理器并赋值给组件实例
+    comp_instance.logger = FileLogHandler(r"{log_file_path}", "{self.id}")
+
+    # 执行组件
+    if {len(comp_obj.get_inputs())} > 0:
+        output = comp_instance.run(params, inputs)
+    else:
+        output = comp_instance.run(params)
+
+    # 记录成功日志
+    comp_instance.logger.success("节点执行完成")
+
+    # 保存结果
+    with open(r"{temp_script_path}.result", 'wb') as f:
+        pickle.dump(output, f)
+
+    sys.exit(0)
+
+except Exception as e:
+    # 保存错误信息
+    error_info = {{
+        "error": str(e),
+        "traceback": traceback.format_exc()
+    }}
+    with open(r"{temp_script_path}.error", 'wb') as f:
+        pickle.dump(error_info, f)
+
+    # 记录错误日志
+    comp_instance.logger.error(f"执行失败: {{e}}")
+    print(f"EXECUTION_ERROR: {{e}}", flush=True)
+    sys.exit(1)
+        '''
+                    temp_script.write(script_content)
+
+                try:
+                    # 保存参数到临时文件
+                    with open(f"{temp_script_path}.params", 'wb') as f:
+                        pickle.dump((params, inputs), f)
+
+                    # 执行子进程
+                    result = subprocess.run([
+                        python_executable, temp_script_path
+                    ], capture_output=True, text=True, timeout=300)  # 5分钟超时
+
+                    # 读取日志文件内容并添加到节点日志
+                    log_content = file_log_handler.read_log_file()
+                    if log_content.strip():
+                        self._log_message(self.id, log_content)
+
+                    # 处理执行结果
+                    if os.path.exists(f"{temp_script_path}.result"):
+                        with open(f"{temp_script_path}.result", 'rb') as f:
+                            output = pickle.load(f)
+
+                        # 记录成功日志
+                        component_class.logger.success("✅ 节点在独立环境执行完成")
+                        if output is not None:
+                            self.on_run_complete(output)
+                            return output
+
+                    elif os.path.exists(f"{temp_script_path}.error"):
+                        with open(f"{temp_script_path}.error", 'rb') as f:
+                            error_info = pickle.load(f)
+
+                        error_msg = f"❌ 节点在独立环境执行失败: {error_info['error']}"
+                        component_class.logger.error(error_msg)
+                        print(error_info['traceback'])  # 输出详细错误信息
+                        raise Exception(error_info['error'])
+
+                    else:
+                        error_msg = f"❌ 节点执行异常: {result.stderr}"
+                        component_class.logger.error(error_msg)
+                        raise Exception(result.stderr)
+
+                finally:
+                    # 清理临时文件
+                    for ext in ['', '.params', '.result', '.error']:
+                        temp_file = f"{temp_script_path}{ext}"
+                        if os.path.exists(temp_file):
+                            os.remove(temp_file)
+            except Exception as e:
+                raise e
+
+        def execute_sync(self, comp_obj, use_separate_env=True, python_executable=None):
+            """
+            执行节点，支持在独立Python环境中运行
+            use_separate_env: 是否使用独立环境
+            python_executable: 目标Python解释器路径
+            """
+            if use_separate_env:
+                return self.execute_in_separate_env(comp_obj, python_executable)
+            else:
+                # 保持原有的同步执行方式
+                return self._execute_in_current_env(comp_obj)
+
+        def _execute_in_current_env(self, comp_obj):
+            """在当前环境中执行（原有逻辑）"""
             try:
                 # 获取组件类
                 comp_instance = comp_obj()
@@ -151,7 +371,7 @@ def create_node_class(component_class, full_path):
                     else:
                         params[prop_name] = default_value
 
-                # 输入 - 关键修改：优先从 _input_values 获取
+                # 输入
                 inputs = {}
                 for input_port in self.input_ports():
                     port_name = input_port.name()
@@ -177,7 +397,6 @@ def create_node_class(component_class, full_path):
                     # 记录执行结果
                     component_class.logger.success("✅ 节点执行完成")
                     self.on_run_complete(output)
-
                     return output
 
             except Exception as e:

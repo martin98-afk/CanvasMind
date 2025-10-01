@@ -116,7 +116,7 @@ class ComponentDeveloperWidget(QWidget):
     def _load_existing_components(self):
         """加载现有组件"""
         try:
-            component_map, _ = scan_components()
+            component_map, file_map = scan_components()
             self.component_tree.load_components(component_map)
         except Exception as e:
             self._show_error(f"加载组件失败: {e}")
@@ -496,7 +496,7 @@ class ComponentDeveloperWidget(QWidget):
     def _save_component_to_file(self, category, name, code, original_file_path=None, delete_original_file=True):
         """保存组件到文件，可选择性地删除原始文件"""
         # 确保目录存在
-        components_dir = Path("app") / Path("components") / category
+        components_dir = Path(__file__).parent.parent / Path("components") / category
         components_dir.mkdir(parents=True, exist_ok=True)
 
         # --- 删除原始文件 ---

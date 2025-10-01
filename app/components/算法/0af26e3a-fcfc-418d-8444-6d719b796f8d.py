@@ -1,5 +1,5 @@
 from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
-class LogisticRegressionComponent(BaseComponent):
+class Component(BaseComponent):
     name = "逻辑回归"
     category = "算法"
     description = "组件开发生成组件"
@@ -32,9 +32,10 @@ class LogisticRegressionComponent(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         try:
+            self.logger.info(inputs)
             from sklearn.linear_model import LogisticRegression
             import matplotlib
-            self.logger.info(inputs)
+            import seaborn
 
             # 读取数据
             feature = inputs.get("feature")

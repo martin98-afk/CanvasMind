@@ -191,7 +191,7 @@ class CodeEditorWidget(QWidget):
     def _get_default_code_template(self):
         return '''from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
 
-class MyComponent(BaseComponent):
+class Component(BaseComponent):
     name = ""
     category = ""
     description = ""

@@ -1,5 +1,5 @@
 from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
-class RandomForestComponent(BaseComponent):
+class Component(BaseComponent):
     name = "随机森林分类器"
     category = "算法"
     description = "Random Forest Classifier for CSV data"

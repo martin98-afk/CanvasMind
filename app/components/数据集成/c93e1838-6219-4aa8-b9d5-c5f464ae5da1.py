@@ -1,5 +1,5 @@
 from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, PropertyType, ArgumentType
-class InputComponent(BaseComponent):
+class Component(BaseComponent):
     name = "文本输入"
     category = "数据集成"
     description = "文本输入内容"

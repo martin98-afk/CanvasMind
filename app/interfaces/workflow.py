@@ -2,10 +2,10 @@ from collections import deque, defaultdict
 
 from NodeGraphQt import NodeGraph, BackdropNode
 from PyQt5.QtCore import Qt, QThreadPool
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTreeWidgetItem
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
 from qfluentwidgets import (
     ToolButton, MessageBox, InfoBar,
-    InfoBarPosition, FluentIcon
+    InfoBarPosition, FluentIcon, ComboBox
 )
 
 from app.nodes.create_dynamic_node import create_node_class
@@ -21,10 +21,10 @@ from app.widgets.property_panel import PropertyPanel
 # 主界面页面
 # ----------------------------
 class CanvasPage(QWidget):
-    def __init__(self):
+    def __init__(self, parent=None):
         super().__init__()
         self.setObjectName('canvas_page')
-
+        self.parent = parent
         # 初始化线程池
         self.threadpool = QThreadPool()
         print(f"Multithreading with maximum {self.threadpool.maxThreadCount()} threads")
@@ -54,8 +54,9 @@ class CanvasPage(QWidget):
         canvas_layout.addWidget(self.property_panel, 0, Qt.AlignRight)
         main_layout.addLayout(canvas_layout)
 
-        # 创建悬浮按钮
+        # 创建悬浮按钮和环境选择
         self.create_floating_buttons()
+        self.create_environment_selector()
 
         # 信号连接
         scene = self.graph.viewer().scene()
@@ -68,16 +69,97 @@ class CanvasPage(QWidget):
         # ✅ 启用右键菜单（关键步骤）
         self._setup_context_menus()
 
+    def create_environment_selector(self):
+        """创建运行环境选择下拉框"""
+        # 创建下拉框容器
+        self.env_selector_container = QWidget(self.canvas_widget)
+        self.env_selector_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        # 放置在右上角
+        self.env_selector_container.move(self.canvas_widget.width() - 300, 10)
+
+        # 创建布局
+        env_layout = QHBoxLayout(self.env_selector_container)
+        env_layout.setSpacing(5)
+        env_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 添加标签
+        env_label = ToolButton(self)
+        env_label.setText("环境:")
+        env_label.setFixedSize(50, 30)
+
+        # 创建环境选择下拉框
+        self.env_combo = ComboBox(self.env_selector_container)
+        self.env_combo.setFixedWidth(200)
+        # 设置默认选项
+        self.env_combo.setCurrentIndex(0)
+        self.load_env_combos()
+        # 连接信号
+        self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
+        self.parent.package_manager.env_changed.connect(self.load_env_combos)
+
+        env_layout.addWidget(env_label)
+        env_layout.addWidget(self.env_combo)
+        env_layout.addStretch()
+
+        self.env_selector_container.setLayout(env_layout)
+        self.env_selector_container.show()
+
+        # 当画布大小改变时，重新定位环境选择器
+        self.canvas_widget.resizeEvent = self._on_canvas_resize
+
+    def load_env_combos(self):
+        self.env_combo.clear()
+        # 添加选项
+        self.env_combo.addItem("系统环境", userData="system")
+        # 添加环境管理器中的环境
+        if hasattr(self.parent, 'package_manager') and self.parent.package_manager:
+            envs = self.parent.package_manager.mgr.list_envs()
+            for env in envs:
+                self.env_combo.addItem(f"独立环境：{env}", userData=env)
+
+    def _on_canvas_resize(self, event):
+        """画布大小改变时重新定位环境选择器"""
+        super(type(self.canvas_widget), self.canvas_widget).resizeEvent(event)
+        # 重新定位到右上角
+        self.env_selector_container.move(self.canvas_widget.width() - 300, 10)
+
+    def on_environment_changed(self):
+        """环境选择改变时的处理"""
+        current_text = self.env_combo.currentText()
+        current_data = self.env_combo.currentData()
+
+        if current_data == "system":
+            self.create_info("环境切换", f"当前运行环境: {current_text}")
+        else:
+            self.create_info("环境切换", f"当前运行环境: {current_text}")
+
+    def get_current_python_exe(self):
+        """获取当前选择的Python解释器路径"""
+        current_data = self.env_combo.currentData()
+
+        if current_data == "system":
+            return None
+        else:
+            # 返回环境管理器中的Python路径
+            if hasattr(self.parent, 'package_manager') and self.parent.package_manager:
+                try:
+                    return str(self.parent.package_manager.mgr.get_python_exe(current_data))
+                except Exception as e:
+                    self.create_failed_info("错误", f"获取环境 {current_data} 的Python路径失败: {str(e)}")
+                    return None  # 返回系统Python作为备选
+            else:
+                return None
+
     def register_components(self):
         # 扫描组件
         self._registered_nodes.extend(list(self.graph.registered_nodes()))
         self.graph._node_factory.clear_registered_nodes()
-        self.component_map, _ = scan_components()
+        self.component_map, self.file_map = scan_components()
         # 获取节点菜单（nodes menu）
         nodes_menu = self.graph.get_context_menu('nodes')
         for full_path, comp_cls in self.component_map.items():
             safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
-            node_class = create_node_class(comp_cls, full_path)
+            node_class = create_node_class(comp_cls, full_path, self.file_map.get(full_path))
             # 继承 StatusNode 以支持状态显示
             node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
             node_class.__name__ = f"StatusDynamicNode_{safe_name}"
@@ -176,11 +258,16 @@ class CanvasPage(QWidget):
         self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
 
         # 创建 Worker
-        worker = Worker(node.execute_sync, self.component_map.get(node.FULL_PATH))
-        worker.signals.finished.connect(lambda result: self.on_node_finished(node, result))
-        worker.signals.error.connect(lambda: self.on_node_error(node))
-
         # 启动异步任务
+        current_python_exe = self.get_current_python_exe()  # 使用当前选择的Python环境
+        worker = Worker(
+            node.execute_sync,
+            self.component_map.get(node.FULL_PATH),
+            True if current_python_exe else False,
+            current_python_exe
+        )
+        worker.signals.finished.connect(lambda result: self.on_node_finished(node, result))
+        worker.signals.error.connect(lambda error: self.on_node_error(node))
         self.threadpool.start(worker)
 
     def execute_backdrop_loop(self, backdrop_node, loop_config):
@@ -253,7 +340,6 @@ class CanvasPage(QWidget):
     def on_node_finished(self, node, result):
         """节点执行完成回调"""
         self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
-
         # 刷新属性面板
         if (self.property_panel.current_node and
                 self.property_panel.current_node.id == node.id):
@@ -261,6 +347,7 @@ class CanvasPage(QWidget):
 
     def on_node_error(self, node):
         """节点执行错误回调"""
+        node.clear_output_value()
         self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
         self.create_failed_info('错误', f'节点 "{node.name()}" 执行失败！')
         # 刷新属性面板
@@ -271,6 +358,7 @@ class CanvasPage(QWidget):
     def on_node_error_simple(self, node_id):
         """简单节点错误回调（用于批量执行）"""
         node = self._get_node_by_id(node_id)
+        node.clear_output_value()
         self.create_failed_info('错误', f'节点 "{node.name()}" 执行失败！')
         if node:
             self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
@@ -283,7 +371,7 @@ class CanvasPage(QWidget):
         for node in nodes:
             self.set_node_status(node, NodeStatus.NODE_STATUS_UNRUN)
         # 创建执行器
-        executor = NodeListExecutor(self, nodes)
+        executor = NodeListExecutor(self, nodes, self.get_current_python_exe())  # 使用当前选择的Python环境
         executor.signals.finished.connect(lambda: self.create_success_info("完成", "工作流执行完成!"))
         executor.signals.error.connect(lambda: self.create_failed_info("错误", f"工作流执行失败!"))
         executor.signals.node_finished.connect(self.on_node_finished_simple)

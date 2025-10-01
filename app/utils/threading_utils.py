@@ -1,13 +1,16 @@
 import asyncio
 import os
+import pickle
+import subprocess
 import traceback
+from collections import defaultdict
+from multiprocessing.shared_memory import SharedMemory
+from pathlib import Path
+from urllib.request import urlopen
 
 import aiohttp
 import requests
-
-from collections import defaultdict
 from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot, QThread
-from loguru import logger
 
 
 class WorkerSignals(QObject):
@@ -94,11 +97,12 @@ class Worker(QRunnable):
 # 节点列表执行器（用于批量异步执行）
 # ----------------------------
 class NodeListExecutor(QRunnable):
-    def __init__(self, main_window, nodes):
+    def __init__(self, main_window, nodes, python_exe=None):
         super().__init__()
         self.signals = WorkerSignals()
         self.main_window = main_window
         self.nodes = nodes
+        self.python_exe = python_exe
 
     @pyqtSlot()
     def run(self):
@@ -107,7 +111,16 @@ class NodeListExecutor(QRunnable):
             for node in self.nodes:
                 try:
                     # 执行单个节点
-                    output = node.execute_sync(self.main_window.component_map.get(node.FULL_PATH))
+                    if self.python_exe is None:
+                        output = node.execute_sync(
+                            self.main_window.component_map.get(node.FULL_PATH),
+                            use_separate_env=False
+                        )
+                    else:
+                        output = node.execute_sync(
+                            self.main_window.component_map.get(node.FULL_PATH),
+                            python_executable=self.python_exe
+                        )
                     node_outputs[node.id] = output
                     self.signals.node_finished.emit(node.id, output)
                 except Exception as e:
@@ -118,6 +131,38 @@ class NodeListExecutor(QRunnable):
             self.signals.finished.emit(None)
         except Exception as e:
             self.signals.error.emit()
+
+
+class PythonDownloadWorker(QThread):
+    progress = pyqtSignal(str)    # 实时日志输出
+    finished = pyqtSignal(bool, Path)  # 完成，是否成功 + 文件路径
+
+    def __init__(self, url: str, save_path: Path):
+        super().__init__()
+        self.url = url
+        self.save_path = save_path
+
+    def run(self):
+        try:
+            self.progress.emit(f"开始下载 {self.url} ...")
+            with urlopen(self.url) as resp, open(self.save_path, "wb") as f:
+                total = resp.length or 0
+                downloaded = 0
+                chunk_size = 1024 * 32
+                while True:
+                    chunk = resp.read(chunk_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total:
+                        pct = downloaded / total * 100
+                        self.progress.emit(f"下载进度: {pct:.1f}%")
+            self.progress.emit("下载完成 ✅")
+            self.finished.emit(True, self.save_path)
+        except Exception as e:
+            self.progress.emit(f"[错误] 下载失败: {e}")
+            self.finished.emit(False, self.save_path)
 
 
 class DownloadThread(QThread):

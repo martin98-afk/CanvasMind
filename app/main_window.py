@@ -4,7 +4,7 @@ from loguru import logger
 from qfluentwidgets import FluentWindow, Theme, setTheme, FluentIcon, NavigationItemPosition
 
 from app.interfaces.component_developer import ComponentDeveloperWidget
-from app.interfaces.package_manager import PackageManagerWidget
+from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.workflow import CanvasPage
 from app.utils.utils import get_icon
 from app.widgets.logger_dialog import QTextEditLogger
@@ -23,9 +23,9 @@ class LowCodeWindow(FluentWindow):
         self.window_height = int(screen_height * 0.75)
         self.resize(self.window_width, self.window_height)
         # 创建主界面页面
-        self.canvas_page = CanvasPage()
+        self.package_manager = EnvManagerUI()
+        self.canvas_page = CanvasPage(self)
         self.develop_page = ComponentDeveloperWidget(self)
-        self.package_manager = PackageManagerWidget(self)
         # 添加主界面页面
         self.addSubInterface(self.develop_page, get_icon("组件"), '组件开发')
         canvas_interface = self.addSubInterface(self.canvas_page, get_icon("模型"), '工作流画布')
