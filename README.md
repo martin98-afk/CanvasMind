@@ -1,10 +1,20 @@
-<div style="text-align: center;">
-    <img src="images/logo2.png" width="400">
+
+<p align="center">
+  <img width="50%" align="center" src="images/logo2.png" alt="logo">
+</p>
+
+<h1 align="center">
+  低代码可视化编程平台
+</h1>
+
+<div align="center">
+
+![Low-Code Platform](https://img.shields.io/badge/Python-3.8%2B-blue  )
+![NodeGraphQt](https://img.shields.io/badge/NodeGraphQt-v0.3%2B-orange  )
+![qfluentwidgets](https://img.shields.io/badge/qfluentwidgets-v1.0%2B-green  )
+
 </div>
 
-# 低代码可视化编程平台
-
-![Low-Code Platform](https://img.shields.io/badge/Python-3.8%2B-blue  ) ![NodeGraphQt](https://img.shields.io/badge/NodeGraphQt-v0.3%2B-orange  ) ![qfluentwidgets](https://img.shields.io/badge/qfluentwidgets-v1.0%2B-green  )
 
 一个基于 **NodeGraphQt** 和 **qfluentwidgets** 的现代化低代码可视化编程平台，支持拖拽式组件编排、异步执行、文件操作和循环控制。
 
@@ -201,7 +211,7 @@ class MyComponent(BaseComponent):
 ### 日志系统
 - 每个节点独立存储日志
 - 自动添加时间戳
-- 支持 Loguru 日志库
+- 支持 Loguru 日志库，组件内部使用 `self.logger` 记录日志
 - 组件内部 `print()` 输出自动捕获
 
 ### 数据流
