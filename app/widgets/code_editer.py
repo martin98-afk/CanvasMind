@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 import ast
 
-from PyQt5.QtCore import pyqtSignal, QTimer, Qt
-from PyQt5.QtGui import QFont, QTextCursor, QTextOption
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from qfluentwidgets import TextEdit as FluentTextEdit
+from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QRect, QSize
+from PyQt5.QtGui import QFont, QTextCursor, QTextOption, QColor, QPainter, QTextFormat, QPalette
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPlainTextEdit, QTextEdit
+from qfluentwidgets import TextEdit
 
 from app.utils.python_syntax_highlighter import PythonSyntaxHighlighter
-
 
 DEFAULT_CODE_TEMPLATE = '''class Component(BaseComponent):
     name = ""
@@ -37,8 +36,118 @@ DEFAULT_CODE_TEMPLATE = '''class Component(BaseComponent):
 '''
 
 
+# ---------------- 行号区 ----------------
+class LineNumberArea(QWidget):
+    def __init__(self, editor):
+        super().__init__(editor)
+        self.codeEditor = editor
+
+    def sizeHint(self):
+        return QSize(self.codeEditor.line_number_area_width(), 0)
+
+    def paintEvent(self, event):
+        self.codeEditor.lineNumberAreaPaintEvent(event)
+
+
+class CodeEditor(QPlainTextEdit):
+    """带行号和当前行高亮的代码编辑器"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.lineNumberArea = LineNumberArea(self)
+        self.set_dark_theme()
+        # 行号区宽度调整
+        self.blockCountChanged.connect(self.update_line_number_area_width)
+        self.updateRequest.connect(self.update_line_number_area)
+        self.cursorPositionChanged.connect(self.highlight_current_line)
+
+        self.update_line_number_area_width(0)
+        self.highlight_current_line()
+
+    def set_dark_theme(self):
+        # 设置整体调色板
+        palette = self.palette()
+        palette.setColor(QPalette.Base, QColor("#1e1e1e"))  # 编辑区背景
+        palette.setColor(QPalette.Text, QColor("#dcdcdc"))  # 普通文本
+        palette.setColor(QPalette.Highlight, QColor("#264f78"))  # 选中区域背景
+        palette.setColor(QPalette.HighlightedText, QColor("#ffffff"))
+        self.setPalette(palette)
+
+        # 设置字体
+        self.setStyleSheet("""
+            QPlainTextEdit {
+                background-color: #1e1e1e;
+                color: #dcdcdc;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 13px;
+            }
+        """)
+
+    def line_number_area_width(self):
+        digits = len(str(max(1, self.blockCount())))
+        return 3 + self.fontMetrics().horizontalAdvance('9') * digits
+
+    def update_line_number_area_width(self, _):
+        self.setViewportMargins(self.line_number_area_width(), 0, 0, 0)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        cr = self.contentsRect()
+        self.lineNumberArea.setGeometry(QRect(cr.left(), cr.top(),
+                                              self.line_number_area_width(), cr.height()))
+
+    def update_line_number_area(self, rect, dy):
+        if dy:
+            self.lineNumberArea.scroll(0, dy)
+        else:
+            self.lineNumberArea.update(0, rect.y(),
+                                       self.lineNumberArea.width(), rect.height())
+        if rect.contains(self.viewport().rect()):
+            self.update_line_number_area_width(0)
+
+    def highlight_current_line(self):
+        extraSelections = []
+
+        if not self.isReadOnly():
+            selection = QTextEdit.ExtraSelection()
+
+            # 深色主题下的当前行背景色
+            lineColor = QColor("#2a2d2e")
+
+            selection.format.setBackground(lineColor)
+            selection.format.setProperty(QTextFormat.FullWidthSelection, True)
+            selection.cursor = self.textCursor()
+            selection.cursor.clearSelection()
+            extraSelections.append(selection)
+
+        self.setExtraSelections(extraSelections)
+
+    def lineNumberAreaPaintEvent(self, event):
+        painter = QPainter(self.lineNumberArea)
+        painter.fillRect(event.rect(), QColor("#252526"))  # 行号区背景
+
+        block = self.firstVisibleBlock()
+        blockNumber = block.blockNumber()
+        top = int(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
+        bottom = top + int(self.blockBoundingRect(block).height())
+
+        # 行号颜色
+        painter.setPen(QColor("#858585"))
+
+        while block.isValid() and top <= event.rect().bottom():
+            if block.isVisible() and bottom >= event.rect().top():
+                number = str(blockNumber + 1)
+                painter.drawText(0, top, self.lineNumberArea.width(), self.fontMetrics().height(),
+                                 Qt.AlignRight, number)
+            block = block.next()
+            top = bottom
+            bottom = top + int(self.blockBoundingRect(block).height())
+            blockNumber += 1
+
+
+# ---------------- 主部件 ----------------
 class CodeEditorWidget(QWidget):
-    """代码编辑器 - 支持Python语法高亮、自动缩进、智能括号、同步UI"""
+    """代码编辑器 - 支持Python语法高亮、自动缩进、智能括号、同步UI、行号、错误提示"""
 
     code_changed = pyqtSignal()
     parsed_component = pyqtSignal(dict)   # 新增：解析后的组件信息（name/category/description）
@@ -54,19 +163,17 @@ class CodeEditorWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.code_editor = FluentTextEdit()
-        font = QFont("Consolas", 10)
+        self.code_editor = CodeEditor()
+        font = QFont("Consolas", 11)
         self.code_editor.setFont(font)
 
-        # === 关键：符合Python编码习惯的设置 ===
-        self.code_editor.setTabStopDistance(4 * self.code_editor.fontMetrics().horizontalAdvance(' '))  # Tab 显示为4空格宽
-        self.code_editor.setTabChangesFocus(False)  # Tab 不切换焦点，用于缩进
-        self.code_editor.setWordWrapMode(QTextOption.WrapMode.NoWrap)  # 不自动换行（代码编辑器通常如此）
-        self.code_editor.setLineWrapMode(FluentTextEdit.LineWrapMode.NoWrap)
+        # IDE 常见设置
+        self.code_editor.setTabStopDistance(4 * self.code_editor.fontMetrics().horizontalAdvance(' '))
+        self.code_editor.setWordWrapMode(QTextOption.NoWrap)
 
         # 事件绑定
         self.code_editor.textChanged.connect(self._on_text_changed)
-        self.code_editor.installEventFilter(self)  # 用于拦截 Tab/Enter 键
+        self.code_editor.installEventFilter(self)
 
         # 设置默认模板
         self.code_editor.setPlainText(DEFAULT_CODE_TEMPLATE)
@@ -82,26 +189,25 @@ class CodeEditorWidget(QWidget):
 
     # ---------------- 编辑增强 ----------------
     def eventFilter(self, obj, event):
-        """拦截键盘事件，支持自动括号、缩进、换行等"""
         if obj == self.code_editor and event.type() == event.KeyPress:
             key = event.key()
             text = event.text()
             cursor = self.code_editor.textCursor()
             doc = self.code_editor.document()
 
-            # 1. 自动成对括号/引号
+            # 自动成对括号/引号
             if self._handle_auto_pairs(cursor, text):
                 return True
 
-            # 2. 智能跳过闭合符
+            # 跳过闭合符
             if self._handle_skip_closer(cursor, text, doc):
                 return True
 
-            # 3. 删除空括号对
+            # 删除成对符号
             if key == Qt.Key_Backspace and self._handle_backspace(cursor, doc):
                 return True
 
-            # 4. 缩进逻辑
+            # Tab 缩进
             if key == Qt.Key_Tab:
                 if cursor.selection().isEmpty():
                     cursor.insertText("    ")
@@ -112,12 +218,12 @@ class CodeEditorWidget(QWidget):
                 self._unindent_selection()
                 return True
 
-            # 5. 智能换行
+            # 智能换行
             if key in (Qt.Key_Return, Qt.Key_Enter):
                 self._handle_newline(cursor)
                 return True
 
-            # 6. 常用快捷键（Ctrl+/ 注释、Ctrl+D 复制行）
+            # 快捷键
             if event.modifiers() == Qt.ControlModifier and key == Qt.Key_Slash:
                 self._toggle_comment()
                 return True
@@ -170,9 +276,9 @@ class CodeEditorWidget(QWidget):
     def _toggle_comment(self):
         cursor = self.code_editor.textCursor()
         cursor.select(QTextCursor.LineUnderCursor)
-        line = cursor.selectedText().replace('\u2029', '')  # Qt 的换行符
+        line = cursor.selectedText().replace('\u2029', '')
         if line.strip().startswith("#"):
-            cursor.insertText(line.lstrip('# '))
+            cursor.insertText(line.lstrip('# ').lstrip())
         else:
             cursor.insertText("# " + line)
 
@@ -215,7 +321,7 @@ class CodeEditorWidget(QWidget):
     # ---------------- AST 解析 ----------------
     def _on_text_changed(self):
         self.code_changed.emit()
-        self._sync_timer.start(800)  # 延迟 0.8s，避免频繁解析
+        self._sync_timer.start(800)
 
     def _parse_and_sync(self):
         try:
@@ -227,14 +333,12 @@ class CodeEditorWidget(QWidget):
                 if isinstance(node, ast.ClassDef) and node.name == "Component":
                     self._parse_component_class(node, code)
                     break
-        except SyntaxError:
-            # TODO: 可以在此高亮错误行
-            pass
+        except SyntaxError as e:
+            self._mark_syntax_error(e)
         except Exception as e:
             print(f"解析代码失败: {e}")
 
     def _parse_component_class(self, class_node, code):
-        """简单解析 Component 类的基础属性"""
         component_info = {"name": "", "category": "", "description": ""}
         for stmt in class_node.body:
             if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
@@ -243,6 +347,22 @@ class CodeEditorWidget(QWidget):
                     if target.id in component_info:
                         component_info[target.id] = stmt.value.s
         self.parsed_component.emit(component_info)
+
+    # ---------------- 错误高亮 ----------------
+    def _mark_syntax_error(self, error: SyntaxError):
+        extraSelections = []
+        selection = TextEdit.ExtraSelection()
+        lineColor = QColor(Qt.red).lighter(160)
+        selection.format.setUnderlineStyle(QTextFormat.SpellCheckUnderline)
+        selection.format.setUnderlineColor(Qt.red)
+
+        cursor = self.code_editor.textCursor()
+        cursor.movePosition(QTextCursor.Start)
+        if error.lineno:
+            cursor.movePosition(QTextCursor.Down, QTextCursor.MoveAnchor, error.lineno - 1)
+        selection.cursor = cursor
+        extraSelections.append(selection)
+        self.code_editor.setExtraSelections(extraSelections)
 
     # ---------------- 工具方法 ----------------
     def get_code(self):

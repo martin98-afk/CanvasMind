@@ -188,8 +188,8 @@ class ComponentDeveloperWidget(QWidget):
                 self.code_editor.set_code(source_code)
             except:
                 # 如果无法获取源码，使用默认模板
-                template = self.code_editor._get_default_code_template()
-                template = template.replace("MyComponent", component.__name__)
+                template = DEFAULT_CODE_TEMPLATE
+                template = template.replace("Component", component.__name__)
                 template = template.replace("我的组件", getattr(component, 'name', ''))
                 template = template.replace("数据处理", getattr(component, 'category', ''))
                 template = template.replace("这是一个示例组件", getattr(component, 'description', ''))
@@ -304,33 +304,7 @@ class ComponentDeveloperWidget(QWidget):
 
     def _sync_code_to_ui(self):
         """从代码同步回UI"""
-        try:
-            code = self.code_editor.get_code()
-            if not code.strip():
-                return
-            tree = ast.parse(code)
-
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Assign):
-                    for target in node.targets:
-                        if isinstance(target, ast.Name):
-                            if target.id == "name" and isinstance(node.value, ast.Str):
-                                if self.name_edit.text() != node.value.s:
-                                    self.name_edit.blockSignals(True)
-                                    self.name_edit.setText(node.value.s)
-                                    self.name_edit.blockSignals(False)
-                            elif target.id == "category" and isinstance(node.value, ast.Str):
-                                if self.category_edit.text() != node.value.s:
-                                    self.category_edit.blockSignals(True)
-                                    self.category_edit.setText(node.value.s)
-                                    self.category_edit.blockSignals(False)
-                            elif target.id == "description" and isinstance(node.value, ast.Str):
-                                if self.description_edit.text() != node.value.s:
-                                    self.description_edit.blockSignals(True)
-                                    self.description_edit.setText(node.value.s)
-                                    self.description_edit.blockSignals(False)
-        except Exception as e:
-            print(f"解析代码失败: {e}")
+        pass
 
     def _update_ports_in_code(self, code, input_ports, output_ports):
         """更新代码中的端口定义"""
@@ -572,7 +546,7 @@ class ComponentDeveloperWidget(QWidget):
             self.input_port_editor.set_ports([])
             self.output_port_editor.set_ports([])
             self.property_editor.set_properties({})
-            self.code_editor.set_code(self.code_editor._get_default_code_template())
+            self.code_editor.set_code(DEFAULT_CODE_TEMPLATE)
             self._current_component_file = None
 
     def _show_warning(self, message):
@@ -630,9 +604,9 @@ class PortEditorWidget(QWidget):
         self.table.itemChanged.connect(lambda item: self.ports_changed.emit())
         # 在表头加按钮
         button_layout = QHBoxLayout()
-        add_btn = PushButton(text=f"添加{'输入端口' if port_type == 'input' else '输出端口'}", icon=FluentIcon.ADD)
+        add_btn = PushButton(text=f"添加端口", icon=FluentIcon.ADD)
         add_btn.clicked.connect(lambda: self._add_port())
-        remove_btn = PushButton(text="删除选中端口", icon=FluentIcon.CLOSE)
+        remove_btn = PushButton(text="删除端口", icon=FluentIcon.CLOSE)
         remove_btn.clicked.connect(self._remove_port)
         button_layout.addWidget(add_btn)
         button_layout.addWidget(remove_btn)
