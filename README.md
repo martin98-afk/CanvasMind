@@ -73,41 +73,14 @@
 pip install -r requirements.txt
 ```
 
-### requirements.txt
-```txt
-NodeGraphQt>=0.3.0
-qfluentwidgets>=1.0.0
-PyQt5>=5.15.0
-loguru>=0.6.0
-pandas>=1.3.0
-scikit-learn>=1.0.0
-```
-
 ### 运行应用
 ```bash
 python main.py
 ```
 
-## 📂 项目结构
-
-```
-lowcode-platform/
-├── lowcode_demo.py          # 主应用程序
-├── components/              # 组件定义目录
-│   ├── __init__.py
-│   ├── base.py             # 组件基类
-│   ├── data/               # 数据处理组件
-│   │   └── csv_reader.py
-│   ├── algorithms/         # 算法组件
-│   │   └── logistic_regression.py
-│   └── control/            # 控制流组件
-│       └── loop_controller.py
-├── dev_codes/
-│   ├── nodes/              # 节点类定义
-│   ├── utils/              # 工具函数
-│   └── widgets/            # 自定义控件
-├── requirements.txt
-└── README.md
+### pyinstaller打包应用
+```bash
+pyinstaller --onedir --windowed --add-data "app;app" --add-data "icons;icons" -i icons/logo3.png main.py
 ```
 
 ## 🧪 组件开发
@@ -118,10 +91,21 @@ lowcode-platform/
 
 ```python
 # components/data/my_component.py
-from app.components.base import BaseComponent, PortDefinition, PropertyDefinition, ArgumentType, PropertyType
+import importlib.util
+import pathlib
+base_path = pathlib.Path(__file__).parent.parent / "base.py"
+spec = importlib.util.spec_from_file_location("base", str(base_path))
+base_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(base_module)
 
+# 导入所需项目
+BaseComponent = base_module.BaseComponent
+PortDefinition = base_module.PortDefinition
+PropertyDefinition = base_module.PropertyDefinition
+PropertyType = base_module.PropertyType
+ArgumentType = base_module.ArgumentType
 
-class MyComponent(BaseComponent):
+class Component(BaseComponent):
     name = "我的组件"
     category = "数据处理"
     description = "这是一个示例组件"
@@ -250,6 +234,8 @@ class MyComponent(BaseComponent):
 - [x] 模型运行
   - [x] 运行环境切换
   - [x] 三种运行模式
+  - [ ] 循环控制器
+  - [ ] 逻辑控制器
 - [ ] 模型导出
   - [x] 模型画布保存
   - [ ] 模型输出结果保存
@@ -284,7 +270,3 @@ class MyComponent(BaseComponent):
 - [NodeGraphQt](https://github.com/jchanvfx/NodeGraphQt  ) - 节点图框架
 - [qfluentwidgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets  ) - Fluent Design 组件库
 - [Loguru](https://github.com/Delgan/loguru  ) - Python 日志库
-
----
-
-**低代码可视化编程平台** - 让编程更简单，让创造更高效！
