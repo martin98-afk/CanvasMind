@@ -1,5 +1,6 @@
-<img src="images/logo2.png" width="400">
-
+<div style="text-align: center;">
+    <img src="images/logo2.png" width="400">
+</div>
 
 # 低代码可视化编程平台
 
