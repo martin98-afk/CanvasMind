@@ -535,7 +535,7 @@ class ComponentDeveloperWidget(QWidget):
     def _on_code_text_changed(self):
         # 如果当前正在根据分析更新 requirements，不要再次触发分析
         if not self._updating_requirements_from_analysis:
-            self._analysis_timer.start(4000)  # 2秒后分析
+            self._analysis_timer.start(2000)  # 2秒后分析
 
     # --- 新增：requirements 文本改变时停止分析定时器 ---
     def _on_requirements_text_changed(self):

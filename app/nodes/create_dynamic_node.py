@@ -11,6 +11,7 @@ from NodeGraphQt import BaseNode
 from PyQt5.QtWidgets import QFileDialog
 from loguru import logger
 
+from app.components.base import ArgumentType
 from app.utils.node_logger import NodeLogHandler
 from app.widgets.component_log_message_box import LogMessageBox
 
@@ -30,6 +31,7 @@ def create_node_class(component_class, full_path, file_path):
             self._node_logs = ""  # 节点独立日志存储
             self._output_values = {}  # 存储输出端口值
             self._input_values = {}
+            self.column_select = {}
             # 执行（捕获stdout/stderr）
             self.log_capture = NodeLogHandler(self.id, self._log_message)
 
@@ -173,15 +175,11 @@ def create_node_class(component_class, full_path, file_path):
                     connected = input_port.connected_ports()
                     if not connected:
                         continue
-                    # 优先从 _input_values 获取（包含列选择结果）
-                    if hasattr(self, '_input_values') and port_name in self._input_values:
-                        inputs[port_name] = self._input_values[port_name]
-                    else:
-                        # 如果没有 _input_values，尝试从连接获取
-                        upstream_out = connected[0]
-                        upstream_node = upstream_out.node()
-                        if hasattr(upstream_node, 'get_output_value'):
-                            inputs[port_name] = upstream_node.get_output_value(upstream_out.name())
+                    upstream_out = connected[0]
+                    upstream_node = upstream_out.node()
+                    inputs[port_name] = upstream_node._output_values.get(upstream_out.name())
+                    if port_name in self.column_select:
+                        inputs[f"{port_name}_column_select"] = self.column_select.get(port_name)
 
                 # 获取日志文件路径
                 log_file_path = file_log_handler.get_log_file_path()
@@ -290,9 +288,9 @@ try:
 
     # 执行组件
     if {len(comp_obj.get_inputs())} > 0:
-        output = comp_instance.run(params, inputs)
+        output = comp_instance.execute(params, inputs)
     else:
-        output = comp_instance.run(params)
+        output = comp_instance.execute(params)
 
     # 记录成功日志
     comp_instance.logger.success("节点执行完成")
@@ -428,9 +426,15 @@ except Exception as e:
 
                         # 记录成功日志
                         component_class.logger.success("✅ 节点在独立环境执行完成")
-                        if output is not None:
-                            self.on_run_complete(output)
-                            return output
+
+                        # 检查是否有UPLOAD类型输出且结果为None的情况
+                        for port in comp_obj.outputs:
+                            if port.type == ArgumentType.UPLOAD:
+                                continue
+                            else:
+                                self.set_output_value(port.name, output.get(port.name))
+
+                        return output
 
                     elif os.path.exists(f"{temp_script_path}.error"):
                         with open(f"{temp_script_path}.error", 'rb') as f:
@@ -501,9 +505,14 @@ except Exception as e:
                             inputs[port_name] = upstream_node.get_output_value(upstream_out.name())
 
                 if comp_obj.get_inputs():
-                    output = comp_instance.run(params, inputs)
+                    output = comp_instance.execute(params, inputs)
                 else:
-                    output = comp_instance.run(params)
+                    output = comp_instance.execute(params)
+
+                # 检查是否有UPLOAD类型输出且结果为None的情况
+                has_upload_output = any(port.type == "upload" for port in comp_obj.outputs)
+                if has_upload_output and output is None:
+                    output = {}  # 转换为空字典
 
                 if output is not None:
                     # 记录执行结果

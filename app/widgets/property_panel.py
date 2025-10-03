@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 
+import numpy as np
 import pandas as pd
+from loguru import logger
 from NodeGraphQt import BackdropNode
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
-    QStackedWidget
-from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget
+    QStackedWidget, QLabel
+from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
+    ComboBox
 
 from app.components.base import ArgumentType
 from app.widgets.variable_tree import VariableTreeWidget
@@ -41,7 +45,6 @@ class PropertyPanel(CardWidget):
         self.current_node = None
         self._column_list_widgets = {}
         self._text_edit_widgets = {}
-
         # 添加导航栏和堆叠窗口
         self.segmented_widget = None
         self.stacked_widget = None
@@ -61,6 +64,8 @@ class PropertyPanel(CardWidget):
                         widget.clicked.disconnect()
                     elif hasattr(widget, 'itemChanged') and widget.receivers(widget.itemChanged) > 0:
                         widget.itemChanged.disconnect()
+                    elif hasattr(widget, 'currentTextChanged') and widget.receivers(widget.currentTextChanged) > 0:
+                        widget.currentTextChanged.disconnect()
                 except (TypeError, RuntimeError):
                     pass
                 widget.deleteLater()
@@ -127,24 +132,43 @@ class PropertyPanel(CardWidget):
                     original_upstream_data = upstream_node.get_output_value(upstream_out.name())
 
                 port_type = getattr(port_def, 'type', ArgumentType.TEXT)
-                # 处理 CSV/DataFrame 列选择
+
+                # 根据端口类型添加不同的控件
                 if port_type == ArgumentType.CSV:
-                    # 显示列选择控件
+                    # CSV类型：显示列选择控件
                     self._add_column_selector_widget_to_layout(node, port_def.name, original_upstream_data,
                                                                original_upstream_data, input_layout)
-
                     # 显示当前选中的数据（用于执行）
                     current_selected_data = self._get_current_input_value(node, port_def.name, original_upstream_data)
-                    self._add_text_edit_to_layout(port_type.to_dict(current_selected_data), port_name=port_def.name,
-                                                  layout=input_layout)
+                    self._add_text_edit_to_layout(current_selected_data, port_name=port_def.name, layout=input_layout)
                 else:
                     # 普通数据：直接显示上游数据或当前输入值
                     if connected:
                         display_data = original_upstream_data
                     else:
                         display_data = node._input_values.get(port_def.name, "暂无数据")
-                    self._add_text_edit_to_layout(port_type.to_dict(display_data), port_name=port_def.name,
-                                                  layout=input_layout)
+                    try:
+                        if display_data != "暂无数据":
+                            if port_type.is_file():
+                                # FILE类型：显示文件路径选择
+                                display_data = {
+                                    "file_name": os.path.basename(display_data),
+                                    "file_type": port_type.value,
+                                    "file_path": display_data
+                                }
+                            elif port_type == ArgumentType.JSON:
+                                display_data = json.loads(display_data)
+                            elif port_type.is_number():
+                                display_data = float(display_data)
+                            elif port_type.is_bool():
+                                display_data = bool(display_data)
+                            elif port_type.is_array():
+                                display_data = np.array(eval(display_data))
+                    except:
+                        logger.error(f"无法解析输入数据：{display_data}")
+                        display_data = "暂无数据"
+
+                    self._add_text_edit_to_layout(display_data, port_name=port_def.name, layout=input_layout)
 
         else:
             input_layout.addWidget(BodyLabel("  无输入端口"))
@@ -167,13 +191,35 @@ class PropertyPanel(CardWidget):
                 port_label = port_def.label
                 output_layout.addWidget(BodyLabel(f"  • {port_label} ({port_name})"))
 
-                output_data = result.get(port_name) if result and port_name in result else "暂无数据"
+                display_data = result.get(port_name) if result and port_name in result else "暂无数据"
                 port_type = getattr(port_def, 'type', ArgumentType.TEXT)
-                if port_type.is_file():
-                    self._add_file_widget_to_layout(node, port_def.name, output_layout)
 
-                self._add_text_edit_to_layout(port_type.to_dict(output_data), port_name=port_def.name,
-                                              layout=output_layout)
+                # 根据端口类型添加不同的控件
+                if port_type == ArgumentType.UPLOAD:
+                    self._add_upload_widget_to_layout(node, port_def.name, output_layout)
+                try:
+                    if isinstance(display_data, str) and display_data != "暂无数据":
+                        if port_type.is_file():
+                            # FILE类型：显示文件路径选择
+                            display_data = {
+                                "file_name": os.path.basename(display_data),
+                                "file_type": port_type.value,
+                                "file_path": display_data
+                            }
+
+                        elif port_type == ArgumentType.JSON:
+                            display_data = json.loads(display_data)
+                        elif port_type.is_array():
+                            display_data = np.array(eval(display_data))
+                        elif port_type.is_number():
+                            display_data = float(display_data)
+                        elif port_type.is_bool():
+                            display_data = bool(display_data)
+                except:
+                    logger.error(f"无法解析输出数据：{display_data}")
+                    display_data = "暂无数据"
+
+                self._add_text_edit_to_layout(display_data, port_name=port_def.name, layout=output_layout)
         else:
             output_layout.addWidget(BodyLabel("  无输出端口"))
 
@@ -234,23 +280,21 @@ class PropertyPanel(CardWidget):
             list_widget.addItem(item)
 
         # 关键修复：正确恢复选中状态
-        selected_columns = node._input_values.get(f"{port_name}_selected_columns", [])
+        selected_columns = node.column_select.get(f"{port_name}", [])
 
-        # 如果没有选中任何列，不要默认选第一列！
         # 只有在第一次初始化时才默认选第一列
         if not selected_columns:
             # 检查是否是第一次初始化（没有上游数据变化）
-            if hasattr(node, '_column_selector_initialized') and node._column_selector_initialized.get(port_name,
-                                                                                                       False):
+            if hasattr(node, '_column_select') and node._column_select.get(port_name, False):
                 # 已经初始化过，保持空选择
                 selected_columns = []
             else:
                 if columns:
                     selected_columns = []
                     # 标记已初始化
-                    if not hasattr(node, '_column_selector_initialized'):
-                        node._column_selector_initialized = {}
-                    node._column_selector_initialized[port_name] = True
+                    if not hasattr(node, '_column_select'):
+                        node._column_select = {}
+                    node._column_select[port_name] = True
 
         # 设置复选框状态
         for i in range(list_widget.count()):
@@ -260,8 +304,10 @@ class PropertyPanel(CardWidget):
             else:
                 item.setCheckState(Qt.Unchecked)
 
-        # 更新节点的列选择状态（确保保存）
-        node._input_values[f"{port_name}_selected_columns"] = selected_columns
+        # 记录每个端口的列选择状态
+        for port in node.input_ports():
+            if port.name == port_name:
+                port.select_column = selected_columns
 
         # 连接信号
         def on_item_changed(item):
@@ -273,19 +319,7 @@ class PropertyPanel(CardWidget):
                     current_selected.append(item_i.text())
 
             # 更新节点的列选择状态
-            node._input_values[f"{port_name}_selected_columns"] = current_selected
-
-            # 更新输入值
-            self._update_input_value_for_port(node, port_name, original_data, current_selected)
-
-            # 标记已初始化
-            if not hasattr(node, '_column_selector_initialized'):
-                node._column_selector_initialized = {}
-            node._column_selector_initialized[port_name] = True
-
-            # ✅ 关键优化：只更新文本框，不再调用 update_properties！
-            selected_data = node._input_values.get(port_name, "未选择列")
-            self._update_text_edit_for_port(port_name, selected_data)
+            node.column_select[port_name] = current_selected
 
         list_widget.itemChanged.connect(on_item_changed)
         self._column_list_widgets[port_name] = list_widget
@@ -355,50 +389,47 @@ class PropertyPanel(CardWidget):
             display_text = str(new_value)
         edit.setPlainText(display_text)
 
-    def _add_file_widget_to_layout(self, node, port_name, layout):
-        """添加文件选择控件到指定布局"""
-        select_file_button = PushButton("📁 选择文件", self)
-        select_file_button.clicked.connect(lambda _, p=port_name, n=node: self._select_upload_file(p, n))
-        layout.addWidget(select_file_button)
+    def _add_upload_widget_to_layout(self, node, port_name, layout):
+        """添加上传文件控件到指定布局"""
+        upload_widget = QWidget()
+        upload_layout = QVBoxLayout(upload_widget)
+        upload_layout.setSpacing(4)
+        upload_layout.setContentsMargins(0, 0, 0, 0)
 
-    def _add_file_widget(self, node, port_name):
-        """兼容旧方法"""
-        self._add_file_widget_to_layout(node, port_name, self.vbox)
+        upload_button = PushButton("📁 上传文件", self)
+        upload_button.clicked.connect(lambda _, p=port_name, n=node: self._select_upload_file(p, n))
+        upload_layout.addWidget(upload_button)
+
+        layout.addWidget(upload_widget)
 
     def _select_upload_file(self, port_name, node):
-        if hasattr(node, 'component_class'):
-            output_ports = node.component_class.outputs
-            for port_def in output_ports:
-                if port_def.name == port_name:
-                    port_type = getattr(port_def, 'type', None)
-                    if port_type:
-                        if port_type == ArgumentType.CSV:
-                            file_filter = "CSV Files (*.csv)"
-                        elif port_type == ArgumentType.JSON:
-                            file_filter = "JSON Files (*.json)"
-                        elif port_type == ArgumentType.FOLDER:
-                            folder_path = QFileDialog.getExistingDirectory(self, "选择文件夹", "")
-                            if folder_path:
-                                self._update_output_file(node, port_name, folder_path)
-                            return
-                        else:
-                            file_filter = "All Files (*)"
-                    break
-            else:
-                file_filter = "All Files (*)"
-        else:
-            file_filter = "All Files (*)"
+        """选择上传文件"""
+        current_path = node._output_values.get(port_name, "")
+        directory = os.path.dirname(current_path) if current_path else ""
 
-        file_path, _ = QFileDialog.getOpenFileName(self, "选择文件", "", file_filter)
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "上传文件", directory, "All Files (*)"
+        )
+        if file_path:
+            node._output_values[port_name] = file_path
+
+    def _add_file_widget_to_layout(self, node, port_name, layout):
+        """添加文件选择控件到指定布局（用于输出端口）"""
+        select_file_button = PushButton("📁 选择文件", self)
+        select_file_button.clicked.connect(lambda _, p=port_name, n=node: self._select_output_file(p, n))
+        layout.addWidget(select_file_button)
+
+    def _select_output_file(self, port_name, node):
+        """选择输出文件（用于UPLOAD类型输出端口）"""
+        file_path, _ = QFileDialog.getOpenFileName(self, "选择文件", "", "All Files (*)")
         if file_path:
             self._update_output_file(node, port_name, file_path)
 
     def _update_output_file(self, node, port_name, file_path):
-        if not hasattr(node, '_input_values'):
-            node._input_values = {}
         node._output_values[port_name] = file_path
-        # 注意：这里如果需要更新输出显示，也可以局部更新，但通常不需要
-        # 如果确实需要，可调用 self._update_text_edit_for_port(port_name, file_path)
+        # 更新显示
+        if port_name in self._text_edit_widgets:
+            self._text_edit_widgets[port_name].set_data(file_path)
 
     def _add_separator(self):
         separator = QFrame()

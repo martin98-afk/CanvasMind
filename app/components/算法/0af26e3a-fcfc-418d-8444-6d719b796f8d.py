@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 import pathlib
-import os
-os.environ['PYTHONIOENCODING'] = 'utf-8'
 base_path = pathlib.Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
@@ -20,14 +18,14 @@ class Component(BaseComponent):
     name = "逻辑回归"
     category = "算法"
     description = "组件开发生成组件"
-    requirements = "scikit-learn,matplotlib"
+    requirements = "matplotlib,scikit-learn"
     inputs = [
         PortDefinition(name="feature", label="特征", type=ArgumentType.CSV),
         PortDefinition(name="target", label="目标", type=ArgumentType.CSV),
     ]
     outputs = [
-        PortDefinition(name="value", label="预测值", type=ArgumentType.TEXT),
-        PortDefinition(name="model", label="模型参数", type=ArgumentType.TEXT),
+        PortDefinition(name="value", label="预测值", type=ArgumentType.ARRAY),
+        PortDefinition(name="model", label="模型参数", type=ArgumentType.JSON),
     ]
     properties = {
         "solver": PropertyDefinition(
@@ -66,7 +64,7 @@ class Component(BaseComponent):
             model.fit(feature, target)
 
             # 预测示例（使用第一行数据）
-            sample_prediction = model.predict([feature.iloc[0]])
+            sample_prediction = model.predict(feature.iloc[-10:])
             accuracy = model.score(feature, target)
 
             self.logger.info(f"Model accuracy: {accuracy:.4f}")
