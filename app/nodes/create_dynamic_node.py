@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
+import inspect
 import os
 import pickle
+import re
 import subprocess
 import sys
 import tempfile
 
 from NodeGraphQt import BaseNode
 from PyQt5.QtWidgets import QFileDialog
+from loguru import logger
 
 from app.utils.node_logger import NodeLogHandler
 from app.widgets.component_log_message_box import LogMessageBox
@@ -183,11 +186,30 @@ def create_node_class(component_class, full_path, file_path):
                 # 获取日志文件路径
                 log_file_path = file_log_handler.get_log_file_path()
 
+                # --- 新增：尝试从组件源码获取 requirements ---
+                requirements_str = getattr(comp_obj, 'requirements', '')  # 从类属性获取
+                if not requirements_str:
+                    try:
+                        # 如果类属性没有，尝试从源码解析
+                        source_code = inspect.getsource(comp_obj)
+                        # 解析 requirements = "..." 行
+                        lines = source_code.split('\n')
+                        for line in lines:
+                            if line.strip().startswith('requirements ='):
+                                req_line = line.split('=', 1)[1].strip().strip('"\'')  # 去掉赋值号、引号和空格
+                                requirements_str = req_line
+                                break
+                    except Exception as e:
+                        print(f"警告：无法从组件代码解析 requirements: {e}")
+                        requirements_str = ""  # 如果解析失败，设为空字符串
+
                 # 创建临时脚本文件 - 使用UTF-8编码
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as temp_script:
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False,
+                                                 encoding='utf-8') as temp_script:
                     temp_script_path = temp_script.name
 
                     # 生成执行脚本 - 添加UTF-8编码声明
+                    # --- 修改：脚本不再预先安装，而是先尝试执行，捕获 ImportError 后再安装 ---
                     script_content = f'''# -*- coding: utf-8 -*-
 import sys
 import os
@@ -197,6 +219,9 @@ import importlib.util
 import traceback
 from datetime import datetime
 from loguru import logger
+import subprocess
+import re
+
 # 文件日志处理器
 class FileLogHandler:
     def __init__(self, log_file_path, node_id):
@@ -243,19 +268,20 @@ class FileLogHandler:
     def debug(self, msg):
         self.logger.debug(msg)
 
-# 从文件路径导入组件类
-spec = importlib.util.spec_from_file_location("{comp_obj.__name__}", r"{self.FILE_PATH}")
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
-
-# 获取组件类
-comp_class = getattr(module, "{comp_obj.__name__}")
-
-# 读取输入参数
-with open(r"{temp_script_path}.params", 'rb') as f:
-    params, inputs = pickle.load(f)
-
+# --- 尝试导入组件并执行 ---
 try:
+    # 从文件路径导入组件类
+    spec = importlib.util.spec_from_file_location("{comp_obj.__name__}", r"{self.FILE_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    # 获取组件类
+    comp_class = getattr(module, "{comp_obj.__name__}")
+
+    # 读取输入参数
+    with open(r"{temp_script_path}.params", 'rb') as f:
+        params, inputs = pickle.load(f)
+
     # 创建组件实例
     comp_instance = comp_class()
 
@@ -275,22 +301,48 @@ try:
     with open(r"{temp_script_path}.result", 'wb') as f:
         pickle.dump(output, f)
 
-    sys.exit(0)
+    sys.exit(0) # 成功退出
 
-except Exception as e:
-    # 保存错误信息
+except ImportError as e:
+    # 捕获导入错误
+    error_msg = str(e)
+    print(f"EXECUTION_IMPORT_ERROR: {{error_msg}}", flush=True) # 使用特定前缀标记 ImportError
+    # 保存错误信息，包含特定标记，以便主进程识别
     error_info = {{
         "error": str(e),
-        "traceback": traceback.format_exc()
+        "traceback": traceback.format_exc(),
+        "type": "ImportError" # 添加错误类型标记
     }}
     with open(r"{temp_script_path}.error", 'wb') as f:
         pickle.dump(error_info, f)
 
     # 记录错误日志
-    comp_instance.logger.error(f"执行失败: {{e}}")
-    print(f"EXECUTION_ERROR: {{e}}", flush=True)
-    sys.exit(1)
-        '''
+    if 'comp_instance' in locals() and hasattr(comp_instance, 'logger'):
+        comp_instance.logger.error(f"执行失败 (ImportError): {{e}}")
+    else:
+        temp_logger = FileLogHandler(r"{log_file_path}", "{self.id}")
+        temp_logger.error(f"执行失败 (ImportError): {{e}}")
+    sys.exit(1) # 失败退出
+
+except Exception as e:
+    # 捕获其他错误
+    error_info = {{
+        "error": str(e),
+        "traceback": traceback.format_exc(),
+        "type": "Other" # 添加错误类型标记
+    }}
+    with open(r"{temp_script_path}.error", 'wb') as f:
+        pickle.dump(error_info, f)
+
+    # 记录错误日志
+    if 'comp_instance' in locals() and hasattr(comp_instance, 'logger'):
+        comp_instance.logger.error(f"执行失败 (Other): {{e}}")
+    else:
+        temp_logger = FileLogHandler(r"{log_file_path}", "{self.id}")
+        temp_logger.error(f"执行失败 (Other): {{e}}")
+    print(f"EXECUTION_ERROR: {{e}}", flush=True) # 使用通用前缀标记其他错误
+    sys.exit(1) # 失败退出
+            '''
                     temp_script.write(script_content)
 
                 try:
@@ -298,20 +350,78 @@ except Exception as e:
                     with open(f"{temp_script_path}.params", 'wb') as f:
                         pickle.dump((params, inputs), f)
 
-                    # 执行子进程
+                    # --- 修改：执行子进程，并根据结果判断是否需要安装 ---
                     result = subprocess.run(
-                    [python_executable, temp_script_path],
-                        capture_output=True, text=True, timeout=300,
+                        [python_executable, temp_script_path],
+                        capture_output=True, text=True, timeout=300,  # 5分钟超时
                         creationflags=subprocess.CREATE_NO_WINDOW,
                         encoding='utf-8'  # 或 'utf-8-sig'
-                    )  # 5分钟超时
+                    )
 
                     # 读取日志文件内容并添加到节点日志
                     log_content = file_log_handler.read_log_file()
                     if log_content.strip():
                         self._log_message(self.id, log_content)
 
-                    # 处理执行结果
+                    # --- 检查是否是 ImportError 导致的失败 ---
+                    needs_install = False
+                    if result.returncode != 0:
+                        # 检查是否有 .error 文件
+                        error_file_path = f"{temp_script_path}.error"
+                        if os.path.exists(error_file_path):
+                            with open(error_file_path, 'rb') as f:
+                                error_info = pickle.load(f)
+                            # 如果错误类型是 ImportError，则需要安装
+                            if error_info.get("type") == "ImportError":
+                                needs_install = True
+                        else:
+                            # 如果没有 .error 文件，但有 stderr，也可能是 ImportError 但未被捕获到文件
+                            # 这种情况比较少见，但可以检查 stderr 内容
+                            if "ImportError" in result.stderr:
+                                needs_install = True
+
+                    if needs_install:
+                        logger.info("检测到 ImportError，开始根据 requirements 安装包...")
+                        # --- 安装逻辑 ---
+                        if requirements_str.strip():
+                            logger.info(f"requirements: {requirements_str}")
+                            packages = [pkg.strip() for pkg in requirements_str.split(',')]
+                            packages = [pkg for pkg in packages if pkg]  # 过滤空字符串
+
+                            for pkg in packages:
+                                if pkg:  # 确保包名不为空
+                                    try:
+                                        logger.info(f"正在安装 {pkg} ...")
+                                        install_result = subprocess.run(
+                                            [python_executable, "-m", "pip", "install", pkg],
+                                            capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW,
+                                            check=True
+                                        )
+                                        logger.info(f"安装 {pkg} 成功。")
+                                    except subprocess.CalledProcessError as e:
+                                        logger.info(f"安装 {pkg} 失败: {e.stderr}")
+                                        # 可以选择在此处 raise 或者记录错误继续安装下一个
+                                        # 这里选择记录错误并继续
+                                        logger.info(f"  -> 警告: 继续尝试安装其他包。")
+                                        continue  # 继续安装下一个包
+                        else:
+                            logger.info("组件 requirements 为空，无法自动安装缺失的包。")
+
+                        # 安装完成后，再次运行子进程
+                        logger.info("安装完成，重新执行组件...")
+                        result = subprocess.run(
+                            [python_executable, temp_script_path],
+                            capture_output=True, text=True, timeout=300,  # 5分钟超时
+                            creationflags=subprocess.CREATE_NO_WINDOW,
+                            encoding='utf-8'  # 或 'utf-8-sig'
+                        )
+
+                        # 再次读取日志
+                        log_content = file_log_handler.read_log_file()
+                        if log_content.strip():
+                            self._log_message(self.id, log_content)
+
+                    # --- 处理最终执行结果 ---
                     if os.path.exists(f"{temp_script_path}.result"):
                         with open(f"{temp_script_path}.result", 'rb') as f:
                             output = pickle.load(f)
@@ -328,7 +438,7 @@ except Exception as e:
 
                         error_msg = f"❌ 节点在独立环境执行失败: {error_info['error']}"
                         component_class.logger.error(error_msg)
-                        print(error_info['traceback'])  # 输出详细错误信息
+                        logger.error(error_info['traceback'])  # 输出详细错误信息
                         raise Exception(error_info['error'])
 
                     else:

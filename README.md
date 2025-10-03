@@ -1,4 +1,3 @@
-
 <p align="center">
   <img width="50%" align="center" src="images/logo2.png" alt="logo">
 </p>
@@ -9,9 +8,9 @@
 
 <div align="center">
 
-![Low-Code Platform](https://img.shields.io/badge/Python-3.8%2B-blue  )
-![NodeGraphQt](https://img.shields.io/badge/NodeGraphQt-v0.3%2B-orange  )
-![qfluentwidgets](https://img.shields.io/badge/qfluentwidgets-v1.0%2B-green  )
+![Low-Code Platform](https://img.shields.io/badge/Python-3.8%2B-blue    )
+![NodeGraphQt](https://img.shields.io/badge/NodeGraphQt-v0.3%2B-orange    )
+![qfluentwidgets](https://img.shields.io/badge/qfluentwidgets-v1.0%2B-green    )
 
 </div>
 
@@ -61,6 +60,7 @@
 - **Pydantic 配置** - 使用 Pydantic 模型定义组件输入/输出/属性
 - **独立日志系统** - 每个节点独立存储执行日志
 - **状态持久化** - 支持工作流的导入/导出
+- **依赖管理** - 组件可定义 `requirements` 字段，运行时自动安装缺失包
 
 ## 🚀 快速开始
 
@@ -109,6 +109,8 @@ class Component(BaseComponent):
     name = "我的组件"
     category = "数据处理"
     description = "这是一个示例组件"
+    # --- 新增：定义组件依赖 ---
+    requirements = "pandas~=1.3.0,numpy,scikit-learn"
 
     inputs = [
         PortDefinition(name="input_data", label="输入数据", type=ArgumentType.FILE)
@@ -148,6 +150,7 @@ class Component(BaseComponent):
 ```
 
 2. **自动加载** - 组件会自动被扫描并添加到组件面板
+3. **自动依赖安装** - 当运行工作流时，如果该组件因缺少依赖包而执行失败，系统会根据 `requirements` 字段自动安装所需包，然后重试执行。
 
 ### 组件类型支持
 
@@ -176,6 +179,7 @@ class Component(BaseComponent):
 2. **文件操作** - 在属性面板中点击文件选择按钮
 3. **工作流管理** - 使用左上角按钮保存/加载工作流
 4. **节点分组** - 选中多个节点右键创建 Backdrop
+5. **依赖管理** - 组件运行失败时，系统会根据其 `requirements` 尝试自动安装。
 
 ### 快捷键
 - `Ctrl+R` - 运行工作流
@@ -252,6 +256,7 @@ class Component(BaseComponent):
 - [x] 输出节点预览
 - [ ] 输出节点变量下载
 - [ ] 工具配置
+- [x] 组件依赖管理 (requirements)
 
 ## 🤝 贡献指南
 
@@ -267,6 +272,6 @@ class Component(BaseComponent):
 
 ## 🙏 致谢
 
-- [NodeGraphQt](https://github.com/jchanvfx/NodeGraphQt  ) - 节点图框架
-- [qfluentwidgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets  ) - Fluent Design 组件库
-- [Loguru](https://github.com/Delgan/loguru  ) - Python 日志库
+- [NodeGraphQt](https://github.com/jchanvfx/NodeGraphQt    ) - 节点图框架
+- [qfluentwidgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets    ) - Fluent Design 组件库
+- [Loguru](https://github.com/Delgan/loguru    ) - Python 日志库
