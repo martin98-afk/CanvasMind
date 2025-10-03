@@ -149,21 +149,7 @@ class PropertyPanel(CardWidget):
                         display_data = node._input_values.get(port_def.name, "暂无数据")
                     try:
                         if display_data != "暂无数据":
-                            if port_type.is_file():
-                                # FILE类型：显示文件路径选择
-                                display_data = {
-                                    "file_name": os.path.basename(display_data),
-                                    "file_type": port_type.value,
-                                    "file_path": display_data
-                                }
-                            elif port_type == ArgumentType.JSON:
-                                display_data = json.loads(display_data)
-                            elif port_type.is_number():
-                                display_data = float(display_data)
-                            elif port_type.is_bool():
-                                display_data = bool(display_data)
-                            elif port_type.is_array():
-                                display_data = np.array(eval(display_data))
+                            display_data = port_type.serialize(display_data)
                     except:
                         logger.error(f"无法解析输入数据：{display_data}")
                         display_data = "暂无数据"
@@ -199,23 +185,10 @@ class PropertyPanel(CardWidget):
                     self._add_upload_widget_to_layout(node, port_def.name, output_layout)
                 try:
                     if isinstance(display_data, str) and display_data != "暂无数据":
-                        if port_type.is_file():
-                            # FILE类型：显示文件路径选择
-                            display_data = {
-                                "file_name": os.path.basename(display_data),
-                                "file_type": port_type.value,
-                                "file_path": display_data
-                            }
-
-                        elif port_type == ArgumentType.JSON:
-                            display_data = json.loads(display_data)
-                        elif port_type.is_array():
-                            display_data = np.array(eval(display_data))
-                        elif port_type.is_number():
-                            display_data = float(display_data)
-                        elif port_type.is_bool():
-                            display_data = bool(display_data)
+                        display_data = port_type.serialize(display_data)
                 except:
+                    import traceback
+                    traceback.print_exc()
                     logger.error(f"无法解析输出数据：{display_data}")
                     display_data = "暂无数据"
 

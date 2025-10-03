@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
+import os
 
-from PyQt5.QtWidgets import QTreeWidgetItem, QMenu, QAction
+from PyQt5.QtWidgets import QTreeWidgetItem, QMenu, QAction, QDialog, QLabel, QVBoxLayout, QScrollArea
 from PyQt5.QtCore import Qt, pyqtSignal
-from qfluentwidgets import TreeWidget
+from PyQt5.QtGui import QPixmap, QIcon, QImage
+from qfluentwidgets import TreeWidget, RoundMenu
 
 
 class VariableTreeWidget(TreeWidget):
@@ -61,6 +63,12 @@ class VariableTreeWidget(TreeWidget):
 
         item = QTreeWidgetItem(parent_item, [display_text])
 
+        # 为图像对象添加缩略图
+        if self._is_image_file(obj) or self._is_pil_image(obj):
+            pixmap = self._get_thumbnail_pixmap(obj)
+            if pixmap:
+                item.setIcon(0, QIcon(pixmap))
+
         # 只有容器类型才添加子项（PyCharm 行为）
         if isinstance(obj, dict):
             for k, v in obj.items():
@@ -105,18 +113,87 @@ class VariableTreeWidget(TreeWidget):
             return f"tuple({len(obj)})"
         elif isinstance(obj, set):
             return f"set({len(obj)})"
+        elif self._is_image_file(obj):
+            return f"<Image: {os.path.basename(str(obj))}>"
+        elif self._is_pil_image(obj):
+            return f"<PIL Image: {obj.size}>"
         elif hasattr(obj, '__class__'):
             return f"<{obj.__class__.__module__}.{obj.__class__.__name__}>"
         else:
             return str(obj)
+
+    def _is_image_file(self, obj):
+        """检查是否为图像文件路径"""
+        if isinstance(obj, str) and os.path.isfile(obj):
+            image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
+            return os.path.splitext(obj.lower())[1] in image_extensions
+        return False
+
+    def _is_pil_image(self, obj):
+        """检查是否为PIL图像对象"""
+        try:
+            from PIL import Image
+            return isinstance(obj, Image.Image)
+        except ImportError:
+            return False
+
+    def _get_thumbnail_pixmap(self, obj, max_size=150):
+        """获取缩略图pixmap"""
+        if isinstance(obj, str) and os.path.isfile(obj):
+            # 文件路径
+            pixmap = QPixmap(obj)
+        elif self._is_pil_image(obj):
+            # PIL图像对象 - 使用手动转换方法
+            try:
+                from PIL import Image
+                # 转换为RGB或RGBA格式
+                if obj.mode not in ('RGB', 'RGBA'):
+                    if obj.mode == 'P':
+                        obj = obj.convert('RGBA')
+                    else:
+                        obj = obj.convert('RGB')
+
+                # 获取图像数据
+                width, height = obj.size
+                data = obj.tobytes('raw', obj.mode)
+
+                # 创建QImage
+                if obj.mode == 'RGBA':
+                    qimage = QImage(data, width, height, QImage.Format_RGBA8888)
+                else:
+                    qimage = QImage(data, width, height, QImage.Format_RGB888)
+
+                pixmap = QPixmap.fromImage(qimage)
+            except Exception as e:
+                print(f"转换PIL图像失败: {e}")
+                return None
+        else:
+            return None
+
+        if pixmap and not pixmap.isNull():
+            # 缩放到指定大小，保持宽高比
+            scaled_pixmap = pixmap.scaled(
+                max_size, max_size,  # 从80增加到120
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            return scaled_pixmap
+        return None
 
     def contextMenuEvent(self, event):
         item = self.itemAt(event.pos())
         if not item or self._original_data is None:
             return
 
-        menu = QMenu(self)
-        if isinstance(self._original_data, pd.DataFrame):
+        menu = RoundMenu()
+
+        # 检查是否为图像数据
+        if self._is_image_file(self._original_data) or self._is_pil_image(self._original_data):
+            image_action = QAction("🖼️ 预览原图", self)
+            image_action.triggered.connect(lambda: self._preview_image(self._original_data))
+            menu.addAction(image_action)
+            menu.addSeparator()
+        elif isinstance(self._original_data, pd.DataFrame):
             action = QAction("🔍 预览完整数据表", self)
             action.triggered.connect(lambda: self.previewRequested.emit(self._original_data))
             menu.addAction(action)
@@ -128,6 +205,71 @@ class VariableTreeWidget(TreeWidget):
         menu.addAction(copy_action)
 
         menu.exec_(event.globalPos())
+
+    def _preview_image(self, image_data):
+        """预览图像"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("图像预览")
+
+        layout = QVBoxLayout(dialog)
+        scroll_area = QScrollArea(dialog)
+        label = QLabel()
+        label.setAlignment(Qt.AlignCenter)
+
+        if isinstance(image_data, str) and os.path.isfile(image_data):
+            # 文件路径
+            pixmap = QPixmap(image_data)
+        elif self._is_pil_image(image_data):
+            # PIL图像对象 - 使用手动转换方法
+            try:
+                from PIL import Image
+                # 转换为RGB或RGBA格式
+                if image_data.mode not in ('RGB', 'RGBA'):
+                    if image_data.mode == 'P':
+                        image_data = image_data.convert('RGBA')
+                    else:
+                        image_data = image_data.convert('RGB')
+
+                # 获取图像数据
+                width, height = image_data.size
+                data = image_data.tobytes('raw', image_data.mode)
+
+                # 创建QImage
+                if image_data.mode == 'RGBA':
+                    qimage = QImage(data, width, height, QImage.Format_RGBA8888)
+                else:
+                    qimage = QImage(data, width, height, QImage.Format_RGB888)
+
+                pixmap = QPixmap.fromImage(qimage)
+            except Exception as e:
+                print(f"转换PIL图像失败: {e}")
+                pixmap = None
+        else:
+            pixmap = None
+
+        if pixmap and not pixmap.isNull():
+            # 设置图像到标签
+            label.setPixmap(pixmap)
+
+            # 根据图像大小设置对话框大小，但不超过屏幕大小
+            screen_size = dialog.screen().size()
+            max_width = min(pixmap.width(), int(screen_size.width() * 0.8))
+            max_height = min(pixmap.height(), int(screen_size.height() * 0.8))
+
+            # 设置对话框大小
+            dialog.resize(max_width, max_height)
+
+            # 设置滚动区域的最小大小
+            scroll_area.setMinimumSize(max_width, max_height)
+        else:
+            label.setText("无法加载图像")
+            dialog.resize(400, 300)
+
+        scroll_area.setWidget(label)
+        scroll_area.setWidgetResizable(True)  # 允许标签随滚动区域大小调整
+        layout.addWidget(scroll_area)
+
+        dialog.exec_()
 
     def _copy_value(self, text):
         from PyQt5.QtWidgets import QApplication

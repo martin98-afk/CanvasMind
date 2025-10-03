@@ -7,7 +7,9 @@ from enum import Enum
 from typing import Dict, Any, Optional, List, Tuple, Type, Union
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+from PIL import Image
 from loguru import logger
 from pydantic import BaseModel, Field, create_model
 
@@ -66,6 +68,30 @@ class ArgumentType(str, Enum):
 
     def is_bool(self):
         return self == ArgumentType.BOOL
+
+    def is_image(self):
+        return self == ArgumentType.IMAGE
+
+    def serialize(self, display_data):
+        if self.is_file():
+            # FILE类型：显示文件路径选择
+            display_data = {
+                "file_name": os.path.basename(display_data),
+                "file_type": self.value,
+                "file_path": display_data
+            }
+        elif self == ArgumentType.JSON:
+            display_data = json.loads(display_data)
+        elif self.is_number():
+            display_data = float(display_data)
+        elif self.is_bool():
+            display_data = bool(display_data)
+        elif self.is_array():
+            display_data = np.array(eval(display_data))
+        elif self.is_image():
+            display_data = Image.open(display_data)
+
+        return display_data
 
 class PropertyDefinition(BaseModel):
     """属性定义"""

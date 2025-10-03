@@ -222,10 +222,11 @@ class Component(BaseComponent):
     - [x] CSV 参数信息预览
     - [x] CSV 参数列选择
     - [ ] CSV 数据分析
-  - [ ] EXCEL 参数
-  - [ ] SKLEARN 参数
-  - [ ] NUMPY 参数
-  - [ ] IMAGE 参数
+  - [x] EXCEL 参数
+  - [x] SKLEARN 参数
+  - [x] Torch 参数
+  - [x] NUMPY 参数
+  - [x] IMAGE 参数
   - [x] JSON 参数
   - [x] TEXT 参数
   - [x] FILE 参数
