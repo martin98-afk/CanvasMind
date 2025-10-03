@@ -375,13 +375,20 @@ class CanvasPage(QWidget):
         executor = NodeListExecutor(self, nodes, self.get_current_python_exe())  # 使用当前选择的Python环境
         executor.signals.finished.connect(lambda: self.create_success_info("完成", "工作流执行完成!"))
         executor.signals.error.connect(lambda: self.create_failed_info("错误", f"工作流执行失败!"))
+        executor.signals.node_started.connect(self.on_node_started_simple)
         executor.signals.node_finished.connect(self.on_node_finished_simple)
         executor.signals.node_error.connect(self.on_node_error_simple)
 
         # 启动执行器
         self.threadpool.start(executor)
 
-    def on_node_finished_simple(self, node_id, result):
+    def on_node_started_simple(self, node_id):
+        """简单节点完成回调（用于批量执行）"""
+        node = self._get_node_by_id(node_id)
+        if node:
+            self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
+
+    def on_node_finished_simple(self, node_id):
         """简单节点完成回调（用于批量执行）"""
         node = self._get_node_by_id(node_id)
         if node:

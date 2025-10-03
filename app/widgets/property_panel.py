@@ -128,7 +128,7 @@ class PropertyPanel(CardWidget):
 
                 port_type = getattr(port_def, 'type', ArgumentType.TEXT)
                 # 处理 CSV/DataFrame 列选择
-                if isinstance(original_upstream_data, pd.DataFrame):
+                if port_type == ArgumentType.CSV:
                     # 显示列选择控件
                     self._add_column_selector_widget_to_layout(node, port_def.name, original_upstream_data,
                                                                original_upstream_data, input_layout)
@@ -219,10 +219,9 @@ class PropertyPanel(CardWidget):
 
     def _add_column_selector_widget_to_layout(self, node, port_name, data, original_data, layout):
         """添加多列选择控件到指定布局 - 关键修复：正确保存和恢复状态"""
-        columns = list(data.columns)
-        if len(columns) == 0:
+        if not isinstance(data, pd.DataFrame) or len(list(data.columns)) == 0:
             return
-
+        columns = list(data.columns)
         list_widget = ListWidget(self)
         list_widget.setSelectionMode(ListWidget.NoSelection)
         list_widget.setFixedHeight(180)  # ✅ 高度从 120 增至 180

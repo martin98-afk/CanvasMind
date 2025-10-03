@@ -16,7 +16,8 @@ class WorkerSignals(QObject):
     error = pyqtSignal(str)
     progress = pyqtSignal(object)  # 保持兼容，可发送任意对象
     # 新增信号用于批量执行
-    node_finished = pyqtSignal(str, object)  # (node_id, result)
+    node_started = pyqtSignal(str)
+    node_finished = pyqtSignal(str)  # (node_id, result)
     node_error = pyqtSignal(str)        # (node_id, error_message)
 
 
@@ -106,8 +107,9 @@ class NodeListExecutor(QRunnable):
     def run(self):
         try:
             node_outputs = {}
-            for node in self.nodes:
+            for i, node in enumerate(self.nodes):
                 try:
+                    self.signals.node_started.emit(node.id)
                     # 执行单个节点
                     if self.python_exe is None:
                         output = node.execute_sync(
@@ -120,7 +122,7 @@ class NodeListExecutor(QRunnable):
                             python_executable=self.python_exe
                         )
                     node_outputs[node.id] = output
-                    self.signals.node_finished.emit(node.id, output)
+                    self.signals.node_finished.emit(node.id)
                 except Exception as e:
                     # 捕获单个节点的错误
                     self.signals.node_error.emit(node.id)

@@ -9,7 +9,7 @@
     "reject_connection_types":"{}"
   },
   "nodes":{
-    "0x24d3db6bee0":{
+    "0x231aa1f5bd0":{
       "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_\u6587\u6863\u4e0a\u4f20",
       "icon":null,
       "name":"\u6587\u6863\u4e0a\u4f20",
@@ -32,19 +32,19 @@
         180
       ],
       "disabled":false,
-      "selected":false,
+      "selected":true,
       "visible":true,
       "width":160,
       "height":60,
       "pos":[
-        -21.50959509490006,
-        198.96375462782555
+        -14.490853245771092,
+        203.64291586057823
       ],
       "layout_direction":0,
       "port_deletion_allowed":false,
       "subgraph_session":{}
     },
-    "0x24d368499c0":{
+    "0x231aaba7610":{
       "type_":"dynamic.StatusDynamicNode_\u6570\u636e\u96c6\u6210_CSV_\u8bfb\u53d6\u5668",
       "icon":null,
       "name":"CSV \u8bfb\u53d6\u5668",
@@ -79,7 +79,7 @@
       "port_deletion_allowed":false,
       "subgraph_session":{}
     },
-    "0x24d38788f40":{
+    "0x231aabe5a20":{
       "type_":"dynamic.StatusDynamicNode_\u7b97\u6cd5_\u903b\u8f91\u56de\u5f52",
       "icon":null,
       "name":"\u903b\u8f91\u56de\u5f52",
@@ -102,7 +102,7 @@
         180
       ],
       "disabled":false,
-      "selected":true,
+      "selected":false,
       "visible":true,
       "width":277.0,
       "height":114.2,
@@ -117,36 +117,95 @@
         "solver":"liblinear",
         "max_iter":"100"
       }
+    },
+    "0x231aac10c40":{
+      "type_":"dynamic.StatusDynamicNode_\u7b97\u6cd5_\u903b\u8f91\u56de\u5f52\u6d4b\u8bd5",
+      "icon":null,
+      "name":"\u903b\u8f91\u56de\u5f52\u6d4b\u8bd5",
+      "color":[
+        13,
+        18,
+        23,
+        255
+      ],
+      "border_color":[
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color":[
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled":false,
+      "selected":false,
+      "visible":true,
+      "width":277.0,
+      "height":114.2,
+      "pos":[
+        797.796990184326,
+        524.0660580682962
+      ],
+      "layout_direction":0,
+      "port_deletion_allowed":false,
+      "subgraph_session":{},
+      "custom":{
+        "solver":"liblinear",
+        "max_iter":"100"
+      }
     }
   },
   "connections":[
     {
       "out":[
-        "0x24d3db6bee0",
+        "0x231aa1f5bd0",
         "file"
       ],
       "in":[
-        "0x24d368499c0",
+        "0x231aaba7610",
         "csv"
       ]
     },
     {
       "out":[
-        "0x24d368499c0",
+        "0x231aaba7610",
         "csv"
       ],
       "in":[
-        "0x24d38788f40",
+        "0x231aabe5a20",
         "feature"
       ]
     },
     {
       "out":[
-        "0x24d368499c0",
+        "0x231aaba7610",
         "csv"
       ],
       "in":[
-        "0x24d38788f40",
+        "0x231aabe5a20",
+        "target"
+      ]
+    },
+    {
+      "out":[
+        "0x231aaba7610",
+        "csv"
+      ],
+      "in":[
+        "0x231aac10c40",
+        "feature"
+      ]
+    },
+    {
+      "out":[
+        "0x231aaba7610",
+        "csv"
+      ],
+      "in":[
+        "0x231aac10c40",
         "target"
       ]
     }
