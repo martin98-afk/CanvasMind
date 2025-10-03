@@ -426,9 +426,12 @@ class BaseComponent(ABC):
 
             return stored_result
 
+        except ImportError as e:
+            self.logger.error(f"环境安装包缺失: {e}")
+            raise e
+
         except Exception as e:
             import traceback
             # 捕获其他错误并包装为组件错误
             error_msg = f"组件执行失败: {traceback.format_exc()}"
-            self.logger.error(error_msg)
             raise ComponentError(error_msg, "EXECUTION_ERROR")
