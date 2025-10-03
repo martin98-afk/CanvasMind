@@ -197,7 +197,6 @@ import importlib.util
 import traceback
 from datetime import datetime
 from loguru import logger
-
 # 文件日志处理器
 class FileLogHandler:
     def __init__(self, log_file_path, node_id):
@@ -300,10 +299,11 @@ except Exception as e:
                         pickle.dump((params, inputs), f)
 
                     # 执行子进程
-                    result = subprocess.run([
-                        python_executable, temp_script_path
-                    ], capture_output=True, text=True, timeout=300,
-                        creationflags=subprocess.CREATE_NO_WINDOW
+                    result = subprocess.run(
+                    [python_executable, temp_script_path],
+                        capture_output=True, text=True, timeout=300,
+                        creationflags=subprocess.CREATE_NO_WINDOW,
+                        encoding='utf-8'  # 或 'utf-8-sig'
                     )  # 5分钟超时
 
                     # 读取日志文件内容并添加到节点日志

@@ -2,9 +2,8 @@
 import ast
 
 from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QRect, QSize
-from PyQt5.QtGui import QFont, QTextCursor, QTextOption, QColor, QPainter, QTextFormat, QPalette
+from PyQt5.QtGui import QFont, QTextCursor, QTextOption, QColor, QPainter, QTextFormat, QPalette, QTextCharFormat
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPlainTextEdit, QTextEdit
-from qfluentwidgets import TextEdit
 
 from app.utils.python_syntax_highlighter import PythonSyntaxHighlighter
 
@@ -12,6 +11,7 @@ DEFAULT_CODE_TEMPLATE = '''class Component(BaseComponent):
     name = ""
     category = ""
     description = ""
+    requirements = ""
     inputs = [
     ]
     outputs = [
@@ -150,7 +150,7 @@ class CodeEditorWidget(QWidget):
     """代码编辑器 - 支持Python语法高亮、自动缩进、智能括号、同步UI、行号、错误提示"""
 
     code_changed = pyqtSignal()
-    parsed_component = pyqtSignal(dict)   # 新增：解析后的组件信息（name/category/description）
+    parsed_component = pyqtSignal(dict)  # 新增：解析后的组件信息（name/category/description）
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -192,8 +192,14 @@ class CodeEditorWidget(QWidget):
         if obj == self.code_editor and event.type() == event.KeyPress:
             key = event.key()
             text = event.text()
+            modifiers = event.modifiers()
             cursor = self.code_editor.textCursor()
             doc = self.code_editor.document()
+
+            # Shift+Enter 换行（在当前行末尾换行，不改变当前行内容）
+            if modifiers == Qt.ShiftModifier and key in (Qt.Key_Return, Qt.Key_Enter):
+                self._handle_shift_enter(cursor)
+                return True
 
             # 自动成对括号/引号
             if self._handle_auto_pairs(cursor, text):
@@ -224,14 +230,143 @@ class CodeEditorWidget(QWidget):
                 return True
 
             # 快捷键
-            if event.modifiers() == Qt.ControlModifier and key == Qt.Key_Slash:
+            if modifiers == Qt.ControlModifier and key == Qt.Key_Slash:
                 self._toggle_comment()
                 return True
-            if event.modifiers() == Qt.ControlModifier and key == Qt.Key_D:
+            if modifiers == Qt.ControlModifier and key == Qt.Key_D:
                 self._duplicate_line()
                 return True
 
         return super().eventFilter(obj, event)
+
+    def _handle_shift_enter(self, cursor):
+        """处理 Shift+Enter 换行 - 在当前行末尾换行，不改变当前行内容，光标移到下一行"""
+        # 移动到行末
+        cursor.movePosition(QTextCursor.EndOfLine)
+        # 获取当前行的缩进
+        current_line = cursor.block().text()
+        leading_spaces = len(current_line) - len(current_line.lstrip(' '))
+        indent = ' ' * leading_spaces
+        # 在行末插入换行和缩进
+        cursor.insertText('\n' + indent)
+        # 确保光标在正确位置
+        self.code_editor.setTextCursor(cursor)
+
+    def _get_indent_from_brackets(self, line_text, cursor_pos):
+        """根据括号嵌套计算缩进"""
+        open_brackets = ['(', '[', '{']
+        close_brackets = [')', ']', '}']
+
+        indent_level = 0
+        in_string = False
+        string_char = None
+        escaped = False
+
+        for i, char in enumerate(line_text):
+            if i >= cursor_pos:
+                break
+            if char == '\\' and not escaped:
+                escaped = True
+                continue
+            if not escaped and char in ['"', "'"]:
+                if not in_string:
+                    in_string = True
+                    string_char = char
+                elif char == string_char:
+                    in_string = False
+                    string_char = None
+            elif not in_string:
+                if char in open_brackets:
+                    indent_level += 1
+                elif char in close_brackets:
+                    indent_level = max(0, indent_level - 1)
+            escaped = False
+
+        return indent_level
+
+    def _is_empty_bracket_pair(self, line_text, cursor_pos):
+        """检查是否在空括号对中"""
+        open_brackets = ['(', '[', '{']
+        close_brackets = [')', ']', '}']
+
+        # 检查当前位置前后是否是空括号对
+        if cursor_pos > 0 and cursor_pos < len(line_text):
+            prev_char = line_text[cursor_pos - 1]
+            next_char = line_text[cursor_pos]
+            if (prev_char in open_brackets and next_char in close_brackets and
+                    open_brackets.index(prev_char) == close_brackets.index(next_char)):
+                return True
+        return False
+
+    def _handle_newline(self, cursor):
+        """处理回车换行，支持括号自动缩进"""
+        current_line = cursor.block().text()
+        current_pos = cursor.positionInBlock()
+
+        # 检查是否在空括号对中
+        if self._is_empty_bracket_pair(current_line, current_pos):
+            # 在空括号对中换行，格式化为：
+            # {
+            #     |
+            # }
+            base_indent = len(current_line) - len(current_line.lstrip(' '))
+            bracket_indent = self._get_indent_from_brackets(current_line, current_pos - 1)
+            outer_indent = ' ' * (base_indent + bracket_indent * 4)
+            inner_indent = ' ' * (base_indent + (bracket_indent + 1) * 4)
+
+            # 获取当前光标位置的字符
+            cursor_pos = cursor.position()
+
+            # 保存当前光标位置
+            current_pos = cursor.position()
+
+            # 移动到左括号后，插入换行和缩进内容
+            # 首先将光标移到左括号的位置（即当前位置-1）
+            cursor.movePosition(QTextCursor.Left, QTextCursor.MoveAnchor, 1)
+            # 获取左括号位置
+            left_bracket_pos = cursor.position()
+
+            # 移动到右括号位置（即原始光标位置）
+            cursor.setPosition(current_pos)
+            # 选中左右括号之间的内容（即空的括号对）
+            cursor.setPosition(left_bracket_pos, QTextCursor.KeepAnchor)
+
+            # 重新设置光标到原始位置的左括号处
+            cursor.setPosition(left_bracket_pos)
+
+            # 现在在左括号后插入换行和内容
+            cursor.movePosition(QTextCursor.Right)  # 移动到左括号后
+            cursor.insertText('\n' + inner_indent + '\n' + outer_indent)
+
+            # 将光标移动到中间行（新插入的缩进行）
+            cursor.movePosition(QTextCursor.Up)  # 上移一行到中间行
+            cursor.movePosition(QTextCursor.EndOfLine)  # 移动到行末
+
+            # 设置光标到正确位置
+            self.code_editor.setTextCursor(cursor)
+        else:
+            # 计算括号缩进
+            bracket_indent = self._calculate_bracket_indent(current_line, current_pos)
+
+            # 计算基础缩进
+            leading_spaces = len(current_line) - len(current_line.lstrip(' '))
+            indent = ' ' * leading_spaces
+
+            # 如果当前行以冒号结尾，增加额外缩进
+            if current_line.rstrip().endswith(':'):
+                indent += '    '
+
+            # 选择更合适的缩进（括号缩进优先）
+            final_indent = max(bracket_indent, indent, key=len)
+
+            cursor.insertText('\n' + final_indent)
+
+    def _calculate_bracket_indent(self, current_line, cursor_pos):
+        """计算括号缩进"""
+        indent_level = self._get_indent_from_brackets(current_line, cursor_pos)
+        base_indent = len(current_line) - len(current_line.lstrip(' '))
+        bracket_indent = base_indent + (indent_level * 4)  # 每层4个空格
+        return ' ' * bracket_indent
 
     def _handle_auto_pairs(self, cursor, text):
         pairs = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'"}
@@ -264,14 +399,6 @@ class CodeEditorWidget(QWidget):
                 cursor.removeSelectedText()
                 return True
         return False
-
-    def _handle_newline(self, cursor):
-        current_line = cursor.block().text()
-        leading_spaces = len(current_line) - len(current_line.lstrip(' '))
-        indent = ' ' * leading_spaces
-        if current_line.rstrip().endswith(':'):
-            indent += '    '
-        cursor.insertText('\n' + indent)
 
     def _toggle_comment(self):
         cursor = self.code_editor.textCursor()
@@ -351,15 +478,22 @@ class CodeEditorWidget(QWidget):
     # ---------------- 错误高亮 ----------------
     def _mark_syntax_error(self, error: SyntaxError):
         extraSelections = []
-        selection = TextEdit.ExtraSelection()
+        selection = QTextEdit.ExtraSelection()
         lineColor = QColor(Qt.red).lighter(160)
-        selection.format.setUnderlineStyle(QTextFormat.SpellCheckUnderline)
+        # 修正：使用正确的 UnderlineStyle 常量
+        selection.format.setUnderlineStyle(QTextCharFormat.WaveUnderline)
         selection.format.setUnderlineColor(Qt.red)
 
         cursor = self.code_editor.textCursor()
         cursor.movePosition(QTextCursor.Start)
+
         if error.lineno:
+            # 移动到错误行的开始
             cursor.movePosition(QTextCursor.Down, QTextCursor.MoveAnchor, error.lineno - 1)
+            # 选中整行
+            cursor.select(QTextCursor.LineUnderCursor)  # 关键修改：选中整行
+
+        # 将选中范围设置给 selection.cursor
         selection.cursor = cursor
         extraSelections.append(selection)
         self.code_editor.setExtraSelections(extraSelections)

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import sys
 
 from PyQt5.QtCore import Qt
@@ -19,6 +20,7 @@ def enable_dpi_scale():
 # 启动应用
 # ----------------------------
 if __name__ == '__main__':
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
     # 启用 DPI 缩放
     enable_dpi_scale()
 

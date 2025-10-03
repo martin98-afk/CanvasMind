@@ -5,14 +5,14 @@ import re
 import uuid
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTableWidgetItem, QHeaderView,
     QFormLayout
 )
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PrimaryPushButton, PushButton,
-    TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, MessageBoxBase, FluentIcon
+    TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit
 )
 
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType
@@ -25,6 +25,15 @@ from app.widgets.component_develop_tree import ComponentTreeWidget
 class ComponentDeveloperWidget(QWidget):
     """组件开发主界面"""
 
+    MODULE_TO_PACKAGE_MAP = {
+        'sklearn': 'scikit-learn',
+        'PIL': 'Pillow',
+        'yaml': 'PyYAML',
+        'cv2': 'opencv-python',
+        'bs4': 'beautifulsoup4',
+        # 可以根据需要添加更多
+    }
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("ComponentDeveloperWidget")
@@ -32,6 +41,12 @@ class ComponentDeveloperWidget(QWidget):
         self._setup_ui()
         self._connect_signals()
         self._load_existing_components()
+        # --- 添加一个定时器用于延迟分析 ---
+        self._analysis_timer = QTimer()
+        self._analysis_timer.setSingleShot(True)
+        self._analysis_timer.timeout.connect(self._analyze_code_for_requirements)
+        # --- 添加一个标志，防止循环更新 ---
+        self._updating_requirements_from_analysis = False
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -82,16 +97,37 @@ class ComponentDeveloperWidget(QWidget):
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
 
+        # --- 基本信息卡片 ---
         basic_info_widget = CardWidget()
-        basic_layout = QFormLayout(basic_info_widget)
-        basic_layout.setContentsMargins(20, 20, 20, 20)
+        # 使用水平布局来并排放置信息和依赖
+        basic_info_h_layout = QHBoxLayout(basic_info_widget)
+        basic_info_h_layout.setContentsMargins(0, 0, 0, 0)  # 设置整体边距
+
+        # 左侧：名称、分类、描述
+        left_form_widget = QWidget()  # 容器用于左侧表单
+        left_form_layout = QFormLayout(left_form_widget)
         self.name_edit = LineEdit()
         self.category_edit = LineEdit()
         self.description_edit = LineEdit()
-        basic_layout.addRow(BodyLabel("组件名称:"), self.name_edit)
-        basic_layout.addRow(BodyLabel("组件分类:"), self.category_edit)
-        basic_layout.addRow(BodyLabel("组件描述:"), self.description_edit)
-        left_layout.addWidget(BodyLabel("基本信息:"))
+        left_form_layout.addRow(BodyLabel("组件基本信息:"))
+        left_form_layout.addRow(BodyLabel("组件名称:"), self.name_edit)
+        left_form_layout.addRow(BodyLabel("组件分类:"), self.category_edit)
+        left_form_layout.addRow(BodyLabel("组件描述:"), self.description_edit)
+
+        # 右侧：依赖 requirements
+        right_req_widget = QWidget()  # 容器用于右侧依赖
+        right_req_layout = QVBoxLayout(right_req_widget)  # 垂直布局放标签和编辑器
+        right_req_layout.addWidget(BodyLabel("组件依赖:"))  # 标签
+        self.requirements_edit = TextEdit()  # 使用 qfluentwidgets 的 TextEdit
+        self.requirements_edit.setFixedHeight(115)  # 设置固定高度，或使用 setMaximumHeight
+        right_req_layout.addWidget(self.requirements_edit)  # 编辑器
+
+        # 将左右两个容器添加到水平布局
+        basic_info_h_layout.addWidget(left_form_widget)
+        basic_info_h_layout.addWidget(right_req_widget)
+        # 设置拉伸因子，让左侧稍微窄一些，右侧稍微宽一些，或者相等
+        basic_info_h_layout.setStretch(0, 1)  # 左侧 (信息)
+        basic_info_h_layout.setStretch(1, 1)  # 右侧 (依赖)
         left_layout.addWidget(basic_info_widget)
         # 端口编辑器（上下布局）
         port_splitter = QSplitter(Qt.Horizontal)
@@ -130,10 +166,14 @@ class ComponentDeveloperWidget(QWidget):
         self.output_port_editor.ports_changed.connect(self._sync_ports_to_code)  # 修复：连接输出端口信号
         self.property_editor.properties_changed.connect(self._sync_properties_to_code)
         self.code_editor.code_changed.connect(self._sync_code_to_ui)
+        self.code_editor.code_changed.connect(self._on_code_text_changed)
         # 连接基本信息改变信号
         self.name_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.category_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.description_edit.textChanged.connect(self._sync_basic_info_to_code)
+        self.requirements_edit.textChanged.connect(self._sync_basic_info_to_code)
+        self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
+
 
     def _load_existing_components(self):
         """加载现有组件"""
@@ -164,6 +204,7 @@ class ComponentDeveloperWidget(QWidget):
             self.name_edit.setText(getattr(component, 'name', ''))
             self.category_edit.setText(getattr(component, 'category', ''))
             self.description_edit.setText(getattr(component, 'description', ''))
+            self.requirements_edit.setText(getattr(component, 'requirements', '').replace(',', '\n'))
             # 加载输入端口
             inputs = getattr(component, 'inputs', [])
             self.input_port_editor.set_ports([
@@ -226,7 +267,8 @@ class ComponentDeveloperWidget(QWidget):
             current_code,
             self.name_edit.text(),
             self.category_edit.text(),
-            self.description_edit.text()
+            self.description_edit.text(),
+            self.requirements_edit.toPlainText().replace("\n", ",")
         )
         self.code_editor.set_code(updated_code)
 
@@ -289,7 +331,8 @@ class ComponentDeveloperWidget(QWidget):
                 current_code,
                 self.name_edit.text(),
                 self.category_edit.text(),
-                self.description_edit.text()
+                self.description_edit.text(),
+                self.requirements_edit.toPlainText().replace("\n", ",")
             )
             # 更新代码编辑器
             self.code_editor.code_editor.blockSignals(True)
@@ -465,23 +508,118 @@ class ComponentDeveloperWidget(QWidget):
         except:
             return code
 
-    def _update_basic_info_in_code(self, code, name, category, description):
+    def _update_basic_info_in_code(self, code, name, category, description, requirements):
         """更新代码中的基本信息"""
         try:
             lines = code.split('\n')
             new_lines = []
-            for line in lines:
+            for i, line in enumerate(lines):
                 if re.search(r'^\s*name\s*=\s*', line):
                     new_lines.append(f'    name = "{name}"')
                 elif re.search(r'^\s*category\s*=\s*', line):
                     new_lines.append(f'    category = "{category}"')
                 elif re.search(r'^\s*description\s*=\s*', line):
                     new_lines.append(f'    description = "{description}"')
+                elif re.search(r'^\s*requirements\s*=\s*', line):
+                    new_lines.append(f'    requirements = "{requirements}"')
                 else:
                     new_lines.append(line)
+                if ("requirements" not in code and len(requirements) > 0 and i > 1 and
+                        re.search(r'^\s*description\s*=\s*', line)):
+                    new_lines.append(f'    requirements = "{requirements}"')
             return '\n'.join(new_lines)
         except:
             return code
+
+    # --- 新增：代码文本改变时启动分析定时器 ---
+    def _on_code_text_changed(self):
+        # 如果当前正在根据分析更新 requirements，不要再次触发分析
+        if not self._updating_requirements_from_analysis:
+            self._analysis_timer.start(4000)  # 2秒后分析
+
+    # --- 新增：requirements 文本改变时停止分析定时器 ---
+    def _on_requirements_text_changed(self):
+        self._analysis_timer.stop()
+
+    # --- 新增：分析代码中的导入语句 ---
+    def _analyze_code_for_requirements(self):
+        """分析当前代码编辑器中的代码，提取导入的包名"""
+        code = self.code_editor.code_editor.toPlainText()
+        if not code.strip():
+            return set()  # 返回空集合
+
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            # 代码有语法错误，无法分析，返回空集合
+            print("代码语法错误，无法分析依赖。")
+            return set()
+
+        imported_modules = set()  # 使用集合去重
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    module_name = alias.name.split('.')[0]  # 取顶级模块名
+                    imported_modules.add(module_name)
+            elif isinstance(node, ast.ImportFrom):
+                module_name = node.module.split('.')[0] if node.module else None
+                if module_name:
+                    imported_modules.add(module_name)
+
+        # 过滤掉内置模块和相对导入
+        builtin_modules = set(
+            ['__future__', 'abc', 'aifc', 'argparse', 'array', 'ast', 'asynchat', 'asyncio', 'asyncore', 'atexit',
+             'audioop', 'base64', 'bdb', 'binascii', 'binhex', 'bisect', 'builtins', 'bz2', 'cProfile', 'calendar',
+             'cgi', 'cgitb', 'chunk', 'cmath', 'cmd', 'code', 'codecs', 'codeop', 'collections', 'colorsys',
+             'compileall', 'concurrent', 'configparser', 'contextlib', 'contextvars', 'copy', 'copyreg', 'crypt', 'csv',
+             'ctypes', 'curses', 'dataclasses', 'datetime', 'dbm', 'decimal', 'difflib', 'dis', 'distutils', 'doctest',
+             'email', 'encodings', 'ensurepip', 'enum', 'errno', 'faulthandler', 'fcntl', 'filecmp', 'fileinput',
+             'fnmatch', 'formatter', 'fractions', 'ftplib', 'functools', 'gc', 'getopt', 'getpass', 'gettext', 'glob',
+             'graphlib', 'grp', 'gzip', 'hashlib', 'heapq', 'hmac', 'html', 'http', 'idlelib', 'imaplib', 'imghdr',
+             'imp', 'importlib', 'inspect', 'io', 'ipaddress', 'itertools', 'json', 'keyword', 'lib2to3', 'linecache',
+             'locale', 'logging', 'lzma', 'mailbox', 'mailcap', 'marshal', 'math', 'mimetypes', 'mmap', 'modulefinder',
+             'msilib', 'msvcrt', 'multiprocessing', 'netrc', 'nis', 'nntplib', 'ntpath', 'numbers', 'operator',
+             'optparse', 'os', 'ossaudiodev', 'parser', 'pathlib', 'pdb', 'pickle', 'pickletools', 'pipes', 'pkgutil',
+             'platform', 'plistlib', 'poplib', 'posix', 'posixpath', 'pprint', 'profile', 'pstats', 'pty', 'pwd',
+             'py_compile', 'pyclbr', 'pydoc', 'queue', 'quopri', 'random', 're', 'readline', 'reprlib', 'resource',
+             'rlcompleter', 'runpy', 'sched', 'secrets', 'select', 'selectors', 'shelve', 'shlex', 'shutil', 'signal',
+             'site', 'smtpd', 'smtplib', 'sndhdr', 'socket', 'socketserver', 'spwd', 'sqlite3', 'sre', 'sre_compile',
+             'sre_constants', 'sre_parse', 'ssl', 'stat', 'statistics', 'string', 'stringprep', 'struct', 'subprocess',
+             'sunau', 'symbol', 'symtable', 'sys', 'sysconfig', 'syslog', 'tabnanny', 'tarfile', 'telnetlib',
+             'tempfile', 'termios', 'test', 'textwrap', 'threading', 'time', 'timeit', 'tkinter', 'token', 'tokenize',
+             'trace', 'traceback', 'tracemalloc', 'tty', 'turtle', 'turtledemo', 'types', 'typing', 'unicodedata',
+             'unittest', 'urllib', 'uu', 'uuid', 'venv', 'warnings', 'wave', 'weakref', 'webbrowser', 'winreg',
+             'winsound', 'wsgiref', 'xdrlib', 'xml', 'xmlrpc', 'zipapp', 'zipfile', 'zipimport', 'zlib', 'zoneinfo'])
+        external_packages = imported_modules - builtin_modules
+
+        # 应用映射表
+        resolved_packages = set()
+        for mod_name in external_packages:
+            pkg_name = self.MODULE_TO_PACKAGE_MAP.get(mod_name, mod_name)
+            resolved_packages.add(pkg_name)
+
+        # 将结果设置到 requirements_edit
+        if not self._updating_requirements_from_analysis:
+            self._updating_requirements_from_analysis = True
+
+            # 记录代码编辑器的光标位置
+            code_editor_cursor = self.code_editor.code_editor.textCursor()
+            code_pos = code_editor_cursor.position()
+
+            # 更新 requirements_edit
+            self.requirements_edit.setPlainText('\n'.join(sorted(resolved_packages)))  # 排序并换行分隔
+
+            # 恢复代码编辑器的焦点和光标位置
+            self.code_editor.code_editor.setFocus()
+            code_editor_cursor.setPosition(code_pos)
+            self.code_editor.code_editor.setTextCursor(code_editor_cursor)
+
+            # --- 新增：显式重新触发一次高亮 ---
+            # 确保高亮状态与视觉光标位置一致
+            self.code_editor.code_editor.highlight_current_line()
+
+            self._updating_requirements_from_analysis = False
 
     def _save_component(self, delete_original_file: bool = True):
         """保存组件"""

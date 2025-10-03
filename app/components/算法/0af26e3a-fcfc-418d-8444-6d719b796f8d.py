@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 import pathlib
+import os
+os.environ['PYTHONIOENCODING'] = 'utf-8'
 base_path = pathlib.Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
@@ -18,6 +20,7 @@ class Component(BaseComponent):
     name = "逻辑回归"
     category = "算法"
     description = "组件开发生成组件"
+    requirements = "scikit-learn,matplotlib"
     inputs = [
         PortDefinition(name="feature", label="特征", type=ArgumentType.CSV),
         PortDefinition(name="target", label="目标", type=ArgumentType.CSV),
