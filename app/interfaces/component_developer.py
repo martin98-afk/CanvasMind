@@ -366,7 +366,7 @@ class ComponentDeveloperWidget(QWidget):
                 new_lines.append("    inputs = [")
                 for port in input_ports:
                     new_lines.append(
-                        f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\", type=ArgumentType.{port['type'].upper()}),")
+                        f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\", type=ArgumentType.{port['type'].name}),")
                 new_lines.append("    ]")
                 inputs_replaced = True
                 # 跳过原 inputs 定义的其余行
@@ -391,7 +391,7 @@ class ComponentDeveloperWidget(QWidget):
                 new_lines.append("    outputs = [")
                 for port in output_ports:
                     new_lines.append(
-                        f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\", type=ArgumentType.{port['type'].upper()}),")
+                        f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\", type=ArgumentType.{port['type'].name}),")
                 new_lines.append("    ]")
                 outputs_replaced = True
                 # 跳过原 outputs 定义的其余行
@@ -463,7 +463,7 @@ class ComponentDeveloperWidget(QWidget):
                         else:
                             default_value = f'"{default_value}"'
                         new_lines.append(f'        "{prop_name}": PropertyDefinition(')
-                        new_lines.append(f'            type=PropertyType.{prop_type.upper()},')
+                        new_lines.append(f'            type=PropertyType.{prop_type.name},')
                         new_lines.append(f'            default={default_value},')
                         new_lines.append(f'            label="{label}",')
                         # 处理 choice 类型的选项
@@ -767,7 +767,8 @@ class PortEditorWidget(QWidget):
         self.table.setItem(row, 1, label_edit)
         # 端口类型
         type_combo = ComboBox()
-        type_combo.addItems([item.value for item in ArgumentType])
+        for item in ArgumentType:
+            type_combo.addItem(item.value, userData=item)  # value 显示，userData 存 enum 成员
         type_combo.setCurrentText(port.get("type", "text"))
         self.table.setCellWidget(row, 2, type_combo)
         type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
@@ -793,7 +794,10 @@ class PortEditorWidget(QWidget):
             if name_item and label_item:
                 # 获取类型
                 type_widget = self.table.cellWidget(row, 2)
-                port_type = type_widget.currentText() if type_widget else "text"
+                if type_widget is None:
+                    port_type = ArgumentType.TEXT
+                else:
+                    port_type = type_widget.currentData()
                 ports.append({
                     "name": name_item.text(),
                     "label": label_item.text(),
@@ -844,7 +848,8 @@ class PropertyEditorWidget(QWidget):
         self.table.setItem(row, 1, label_item)
         # 类型
         type_combo = ComboBox()
-        type_combo.addItems([item.value for item in PropertyType])
+        for item in PropertyType:
+            type_combo.addItem(item.value, userData=item)
         type_combo.setCurrentText(getattr(prop_def, 'type', 'text'))
         self.table.setCellWidget(row, 2, type_combo)
         type_combo.currentTextChanged.connect(
@@ -898,7 +903,10 @@ class PropertyEditorWidget(QWidget):
             options_item = self.table.item(row, 4)
             if name_item and type_widget and default_item:
                 prop_name = name_item.text()
-                prop_type = type_widget.currentText()
+                if type_widget is None:
+                    prop_type = PropertyType.TEXT
+                else:
+                    prop_type = type_widget.currentData()
                 default_value = default_item.text()
                 properties[prop_name] = {
                     "type": prop_type,

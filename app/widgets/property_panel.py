@@ -8,7 +8,7 @@ from loguru import logger
 from NodeGraphQt import BackdropNode
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
-    QStackedWidget, QLabel
+    QStackedWidget, QLabel, QHBoxLayout
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
     ComboBox
 
@@ -92,12 +92,7 @@ class PropertyPanel(CardWidget):
             desc_label.setStyleSheet("color: #888888; font-size: 12px;")
             self.vbox.addWidget(desc_label)
 
-        # 添加分隔线
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        separator.setStyleSheet("color: #444444;")
-        self.vbox.addWidget(separator)
+        self._add_seperator()
 
         # 创建导航栏和堆叠窗口
         self.segmented_widget = SegmentedWidget()
@@ -212,6 +207,14 @@ class PropertyPanel(CardWidget):
         # 默认显示输入端口
         self.segmented_widget.setCurrentItem('input')
 
+    def _add_seperator(self):
+        # 添加分隔线
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        separator.setStyleSheet("color: #444444;")
+        self.vbox.addWidget(separator)
+
     def _on_segmented_changed(self, item_key):
         """导航栏切换事件"""
         if item_key == 'input':
@@ -237,68 +240,85 @@ class PropertyPanel(CardWidget):
             return original_data
 
     def _add_column_selector_widget_to_layout(self, node, port_name, data, original_data, layout):
-        """添加多列选择控件到指定布局 - 关键修复：正确保存和恢复状态"""
-        if not isinstance(data, pd.DataFrame) or len(list(data.columns)) == 0:
+        """优化：使用 CardWidget 分组 + 全选/清空按钮 + 更清晰的视觉层次"""
+        if not isinstance(data, pd.DataFrame) or data.empty:
             return
+
         columns = list(data.columns)
+        if not columns:
+            return
+
+        # === 创建列选择卡片 ===
+        column_card = CardWidget(self)
+        column_card.setFixedHeight(220)  # 留出按钮空间
+        card_layout = QVBoxLayout(column_card)
+        card_layout.setContentsMargins(4, 4, 4, 4)
+        card_layout.setSpacing(8)
+
+        # 标题
+        title_label = BodyLabel("列选择:")
+        card_layout.addWidget(title_label)
+
+        # 列表
         list_widget = ListWidget(self)
         list_widget.setSelectionMode(ListWidget.NoSelection)
-        list_widget.setFixedHeight(180)  # ✅ 高度从 120 增至 180
+        list_widget.setFixedHeight(140)
 
-        # 添加所有列作为复选框
         for col in columns:
             item = QListWidgetItem(col)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Unchecked)
             list_widget.addItem(item)
 
-        # 关键修复：正确恢复选中状态
-        selected_columns = node.column_select.get(f"{port_name}", [])
+        # 恢复选中状态
+        selected_columns = node.column_select.get(port_name, [])
+        if not selected_columns and columns:
+            # 默认全选（更符合用户预期）
+            selected_columns = columns.copy()
+            node.column_select[port_name] = selected_columns
 
-        # 只有在第一次初始化时才默认选第一列
-        if not selected_columns:
-            # 检查是否是第一次初始化（没有上游数据变化）
-            if hasattr(node, '_column_select') and node._column_select.get(port_name, False):
-                # 已经初始化过，保持空选择
-                selected_columns = []
-            else:
-                if columns:
-                    selected_columns = []
-                    # 标记已初始化
-                    if not hasattr(node, '_column_select'):
-                        node._column_select = {}
-                    node._column_select[port_name] = True
-
-        # 设置复选框状态
         for i in range(list_widget.count()):
             item = list_widget.item(i)
-            if item.text() in selected_columns:
-                item.setCheckState(Qt.Checked)
-            else:
-                item.setCheckState(Qt.Unchecked)
+            item.setCheckState(Qt.Checked if item.text() in selected_columns else Qt.Unchecked)
 
-        # 记录每个端口的列选择状态
-        for port in node.input_ports():
-            if port.name == port_name:
-                port.select_column = selected_columns
+        card_layout.addWidget(list_widget)
 
-        # 连接信号
-        def on_item_changed(item):
-            # 收集所有选中的列
-            current_selected = []
+        # 操作按钮
+        btn_layout = QHBoxLayout()
+        select_all_btn = PushButton("全选", self)
+        clear_btn = PushButton("清空", self)
+
+        def select_all():
             for i in range(list_widget.count()):
-                item_i = list_widget.item(i)
-                if item_i.checkState() == Qt.Checked:
-                    current_selected.append(item_i.text())
+                list_widget.item(i).setCheckState(Qt.Checked)
+            _on_selection_changed()
 
-            # 更新节点的列选择状态
+        def clear_all():
+            for i in range(list_widget.count()):
+                list_widget.item(i).setCheckState(Qt.Unchecked)
+            _on_selection_changed()
+
+        def _on_selection_changed():
+            current_selected = [
+                list_widget.item(i).text()
+                for i in range(list_widget.count())
+                if list_widget.item(i).checkState() == Qt.Checked
+            ]
             node.column_select[port_name] = current_selected
+            # 更新下方数据预览
+            self._update_text_edit_for_port(port_name, data[current_selected])
 
-        list_widget.itemChanged.connect(on_item_changed)
+        select_all_btn.clicked.connect(select_all)
+        clear_btn.clicked.connect(clear_all)
+        list_widget.itemChanged.connect(_on_selection_changed)
+
+        btn_layout.addWidget(select_all_btn)
+        btn_layout.addWidget(clear_btn)
+        btn_layout.addStretch()
+        card_layout.addLayout(btn_layout)
+
+        layout.addWidget(column_card)
         self._column_list_widgets[port_name] = list_widget
-
-        layout.addWidget(BodyLabel("  列选择（可多选）:"))
-        layout.addWidget(list_widget)
 
     def _update_input_value_for_port(self, node, port_name, original_data, selected_columns):
         """更新指定端口的输入值"""
@@ -317,10 +337,18 @@ class PropertyPanel(CardWidget):
 
     def _add_text_edit_to_layout(self, text, port_name=None, layout=None):
         """添加文本编辑控件到指定布局"""
+        info_card = CardWidget(self)
+        card_layout = QVBoxLayout(info_card)
+        card_layout.setContentsMargins(4, 4, 4, 4)
+        # 标题
+        title_label = BodyLabel("数据信息:")
+        card_layout.addWidget(title_label)
+
         tree_widget = VariableTreeWidget(text)
+        card_layout.addWidget(tree_widget)
         if layout is None:
             layout = self.vbox
-        layout.addWidget(tree_widget)
+        layout.addWidget(info_card)
         if port_name is not None:
             self._text_edit_widgets[port_name] = tree_widget
         return tree_widget

@@ -503,6 +503,16 @@ class CodeEditorWidget(QWidget):
         return self.code_editor.toPlainText().replace('\r\n', '\n').replace('\r', '\n')
 
     def set_code(self, code):
+        # 保存当前滚动位置
+        scrollbar = self.code_editor.verticalScrollBar()
+        current_scroll_pos = scrollbar.value()
+        current_cursor_pos = self.code_editor.textCursor().position()
+
         normalized = code.replace('\r\n', '\n').replace('\r', '\n')
         self.code_editor.setPlainText(normalized)
-        self._parse_and_sync()
+
+        # 恢复滚动位置和光标位置
+        scrollbar.setValue(current_scroll_pos)
+        cursor = self.code_editor.textCursor()
+        cursor.setPosition(current_cursor_pos)
+        self.code_editor.setTextCursor(cursor)

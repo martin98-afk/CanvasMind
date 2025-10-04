@@ -111,12 +111,11 @@ class CanvasPage(QWidget):
     def load_env_combos(self):
         self.env_combo.clear()
         # 添加选项
-        self.env_combo.addItem("系统环境", userData="system")
         # 添加环境管理器中的环境
         if hasattr(self.parent, 'package_manager') and self.parent.package_manager:
             envs = self.parent.package_manager.mgr.list_envs()
             for env in envs:
-                self.env_combo.addItem(f"独立环境：{env}", userData=env)
+                self.env_combo.addItem(env, userData=env)
 
     def _on_canvas_resize(self, event):
         """画布大小改变时重新定位环境选择器"""
