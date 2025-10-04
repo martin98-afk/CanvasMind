@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import json
+import os
+import uuid
 from collections import deque, defaultdict
 
 from NodeGraphQt import NodeGraph, BackdropNode
@@ -13,7 +16,7 @@ from app.nodes.create_dynamic_node import create_node_class
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
 from app.utils.threading_utils import NodeListExecutor, Worker
-from app.utils.utils import get_port_node
+from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json
 from app.widgets.draggable_component_tree import DraggableTreeWidget
 from app.widgets.property_panel import PropertyPanel
 
@@ -24,6 +27,8 @@ from app.widgets.property_panel import PropertyPanel
 class CanvasPage(QWidget):
     def __init__(self, parent=None):
         super().__init__()
+        self.parent = parent
+        self.file_path = None  # 新增：当前文件路径
         self.setObjectName('canvas_page')
         self.parent = parent
         # 初始化线程池
@@ -196,17 +201,44 @@ class CanvasPage(QWidget):
         # 导出按钮
         self.export_btn = ToolButton(FluentIcon.SAVE, self)
         self.export_btn.setToolTip("导出工作流")
-        self.export_btn.clicked.connect(self.save_graph)
+        self.export_btn.clicked.connect(self._save_via_dialog)
         button_layout.addWidget(self.export_btn)
 
         # 导入按钮
         self.import_btn = ToolButton(FluentIcon.FOLDER, self)
         self.import_btn.setToolTip("导入工作流")
-        self.import_btn.clicked.connect(self.load_graph)
+        self.import_btn.clicked.connect(self._open_via_dialog)
+
         button_layout.addWidget(self.import_btn)
 
         button_container.setLayout(button_layout)
         button_container.show()
+
+    def _save_via_dialog(self):
+        from PyQt5.QtWidgets import QFileDialog
+        if self.file_path:
+            # 默认使用当前路径
+            default_path = self.file_path
+        else:
+            default_path = "workflow"
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "保存工作流", default_path, "工作流文件 (*.workflow.json)"
+        )
+        if file_path:
+            if not file_path.endswith('.workflow.json'):
+                file_path += '.workflow.json'
+            self.save_full_workflow(file_path)
+            self.file_path = file_path
+
+    def _open_via_dialog(self):
+        from PyQt5.QtWidgets import QFileDialog
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "打开工作流", "", "工作流文件 (*.workflow.json)"
+        )
+        if file_path:
+            self.load_full_workflow(file_path)
+            self.file_path = file_path
 
     def canvas_drag_enter_event(self, event):
         """画布拖拽进入事件"""
@@ -468,22 +500,76 @@ class CanvasPage(QWidget):
     def on_node_selected(self, node):
         self.property_panel.update_properties(node)
 
-    def save_graph(self):
-        self.graph.save_session('workflow.json')
-        self.create_success_info("工作流已保存到 workflow.json", "")
+    def save_full_workflow(self, file_path):
+        graph_data = self.graph.serialize_session()
 
-    def load_graph(self):
-        try:
-            self.graph.load_session('workflow.json')
-            self.create_success_info("工作流已从 workflow.json 加载", "")
-            # 重新初始化所有节点状态
-            self.node_status = {}
-            for node in self.graph.all_nodes():
-                self.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
-                if hasattr(node, 'status'):
-                    node.status = NodeStatus.NODE_STATUS_UNRUN
-        except Exception:
-            self.create_failed_info("错误", "workflow.json 未找到！")
+        runtime = {
+            "environment": self.env_combo.currentData(),
+            "node_states": {},
+            "node_inputs": {},
+            "node_outputs": {},
+            "column_select": {},
+        }
+
+        for node in self.graph.all_nodes():
+            if isinstance(node, BackdropNode):
+                continue
+
+            # ✅ 使用 (FULL_PATH, name) 作为稳定 key
+            full_path = getattr(node, 'FULL_PATH', 'unknown')
+            node_name = node.name()  # 或 node.model.name
+            stable_key = f"{full_path}||{node_name}"
+
+            runtime["node_states"][stable_key] = self.node_status.get(node.id, "unrun")
+            runtime["node_inputs"][stable_key] = serialize_for_json(getattr(node, '_input_values', {}))
+            runtime["node_outputs"][stable_key] = serialize_for_json(getattr(node, '_output_values', {}))
+            runtime["column_select"][stable_key] = getattr(node, 'column_select', {})
+
+        full_data = {
+            "version": "1.0",
+            "graph": graph_data,
+            "runtime": runtime
+        }
+
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(full_data, f, indent=2, ensure_ascii=False)
+
+    def load_full_workflow(self, file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            full_data = json.load(f)
+
+        # 加载图
+        self.graph.deserialize_session(full_data["graph"])
+
+        # 恢复环境
+        env = full_data.get("runtime", {}).get("environment")
+        if env:
+            for i in range(self.env_combo.count()):
+                if self.env_combo.itemData(i) == env:
+                    self.env_combo.setCurrentIndex(i)
+                    break
+
+        # 恢复节点状态
+        rt = full_data.get("runtime", {})
+        for node in self.graph.all_nodes():
+            if isinstance(node, BackdropNode):
+                continue
+
+            # ✅ 用相同方式生成 stable_key
+            full_path = getattr(node, 'FULL_PATH', 'unknown')
+            node_name = node.name()
+            stable_key = f"{full_path}||{node_name}"
+
+            # 恢复数据
+            node._input_values = deserialize_from_json(rt.get("node_inputs", {}).get(stable_key, {}))
+            node._output_values = deserialize_from_json(rt.get("node_outputs", {}).get(stable_key, {}))
+            node.column_select = rt.get("column_select", {}).get(stable_key, {})
+
+            status_str = rt.get("node_states", {}).get(stable_key, "unrun")
+            status_enum = getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
+            self.node_status[node.id] = status_enum  # 注意：这里仍用新 node.id 存状态
+            if hasattr(node, 'status'):
+                node.status = status_enum
 
     def run_workflow(self):
         nodes = self.graph.all_nodes()
@@ -532,8 +618,8 @@ class CanvasPage(QWidget):
 
         # 添加画布级别的菜单项
         graph_menu.add_command('运行工作流', self.run_workflow, 'Ctrl+R')
-        graph_menu.add_command('保存工作流', self.save_graph, 'Ctrl+S')
-        graph_menu.add_command('加载工作流', self.load_graph, 'Ctrl+O')
+        graph_menu.add_command('保存工作流', self._save_via_dialog, 'Ctrl+S')
+        graph_menu.add_command('加载工作流', self._open_via_dialog, 'Ctrl+O')
         graph_menu.add_command('创建 Backdrop', lambda: self.create_backdrop("新分组"))
         # 添加分隔符
         graph_menu.add_separator()
