@@ -608,11 +608,13 @@ class ComponentDeveloperWidget(QWidget):
             code_pos = code_editor_cursor.position()
 
             # 更新 requirements_edit
-            self.requirements_edit.setPlainText('\n'.join(sorted(resolved_packages)))  # 排序并换行分隔
-
+            original_text = self.requirements_edit.toPlainText()
+            new_text = '\n'.join(sorted(resolved_packages))
+            self.requirements_edit.setPlainText(new_text)  # 排序并换行分隔
+            add_len = len(new_text) - len(original_text)
             # 恢复代码编辑器的焦点和光标位置
             self.code_editor.code_editor.setFocus()
-            code_editor_cursor.setPosition(code_pos)
+            code_editor_cursor.setPosition(code_pos + add_len)
             self.code_editor.code_editor.setTextCursor(code_editor_cursor)
 
             # --- 新增：显式重新触发一次高亮 ---
