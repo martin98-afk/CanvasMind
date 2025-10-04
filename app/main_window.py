@@ -50,7 +50,8 @@ class LowCodeWindow(FluentWindow):
                 self.canvas_page.register_components()
             )
         )
-        project_interface = self.addSubInterface(self.project_manager, get_icon("模型"), '导出项目管理')
+        project_interface = self.addSubInterface(self.project_manager, get_icon("项目"), '导出项目管理')
+        project_interface.clicked.connect(self.project_manager.load_projects)
         self.addSubInterface(self.package_manager, get_icon("工具包"), '工具包管理')
         # 添加日志页面
         log_interface = self.addSubInterface(

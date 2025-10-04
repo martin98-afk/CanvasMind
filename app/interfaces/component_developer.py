@@ -617,7 +617,7 @@ class ComponentDeveloperWidget(QWidget):
 
             # --- 新增：显式重新触发一次高亮 ---
             # 确保高亮状态与视觉光标位置一致
-            self.code_editor.code_editor.highlight_current_line()
+            self.code_editor.code_editor.update_extra_selections()
 
             self._updating_requirements_from_analysis = False
 

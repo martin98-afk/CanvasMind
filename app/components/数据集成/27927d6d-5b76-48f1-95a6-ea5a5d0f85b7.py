@@ -15,10 +15,11 @@ ArgumentType = base_module.ArgumentType
 
 
 class Component(BaseComponent):
-    inputs = []
     name = "文档上传"
     category = "数据集成"
     description = "接收本地上传文件"
+    inputs = [
+    ]
     outputs = [
         PortDefinition(name="file", label="csv文件", type=ArgumentType.UPLOAD),
     ]

@@ -82,7 +82,7 @@ class ProjectCard(CardWidget):
 
         # 操作按钮
         btn_layout = QHBoxLayout()
-        self.run_btn = PrimaryPushButton("▶ 运行", self)
+        self.run_btn = PrimaryPushButton(text="运行", icon=FluentIcon.PLAY, parent=self)
         self.run_btn.setFixedWidth(80)
         self.view_log_btn = ToolButton(FluentIcon.VIEW, self)
         self.view_log_btn.setToolTip("查看日志")
@@ -129,10 +129,12 @@ class ProjectCard(CardWidget):
     def update_status(self, is_running=False):
         """更新运行状态"""
         if is_running:
-            self.run_btn.setText("⏹ 停止")
+            self.run_btn.setText("停止")
+            self.run_btn.setIcon(FluentIcon.PAUSE)
             self.run_btn.setEnabled(False)
         else:
-            self.run_btn.setText("▶ 运行")
+            self.run_btn.setText("运行")
+            self.run_btn.setIcon(FluentIcon.PLAY)
             self.run_btn.setEnabled(True)
 
 
