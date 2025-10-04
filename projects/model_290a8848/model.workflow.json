@@ -2,11 +2,11 @@
   "version": "1.0",
   "graph": {
     "nodes": {
-      "826f068d-f037-4fe5-8e06-7ca0bda13df8": {
+      "41ab670b-22b6-42e3-9c06-d64cdfbb5e7d": {
         "name": "逻辑回归推理",
         "type_": "dynamic.StatusDynamicNode_算法_逻辑回归推理",
         "pos": [
-          906.578443673229,
+          904.1070297547715,
           416.0836653064971
         ],
         "custom": {
@@ -14,7 +14,19 @@
           "FILE_PATH": ""
         }
       },
-      "b31b3081-3854-4e07-9fc5-5bb5b8a7ad4a": {
+      "3f384fef-0bcd-4018-bb55-35562b301a70": {
+        "name": "文档上传",
+        "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
+        "pos": [
+          -183.96624472573845,
+          403.05973767191267
+        ],
+        "custom": {
+          "FULL_PATH": "数据集成/文档上传",
+          "FILE_PATH": ""
+        }
+      },
+      "7838edf1-2f22-4fdc-9e23-6b3b235814c7": {
         "name": "CSV 读取器",
         "type_": "dynamic.StatusDynamicNode_数据集成_CSV_读取器",
         "pos": [
@@ -30,11 +42,21 @@
     "connections": [
       {
         "out": [
-          "b31b3081-3854-4e07-9fc5-5bb5b8a7ad4a",
+          "3f384fef-0bcd-4018-bb55-35562b301a70",
+          "file"
+        ],
+        "in": [
+          "7838edf1-2f22-4fdc-9e23-6b3b235814c7",
+          "csv"
+        ]
+      },
+      {
+        "out": [
+          "7838edf1-2f22-4fdc-9e23-6b3b235814c7",
           "csv"
         ],
         "in": [
-          "826f068d-f037-4fe5-8e06-7ca0bda13df8",
+          "41ab670b-22b6-42e3-9c06-d64cdfbb5e7d",
           "feature"
         ]
       }
@@ -45,11 +67,13 @@
     "environment": "3.10",
     "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.10\\python.exe",
     "node_id2stable_key": {
-      "826f068d-f037-4fe5-8e06-7ca0bda13df8": "算法/逻辑回归推理||逻辑回归推理",
-      "b31b3081-3854-4e07-9fc5-5bb5b8a7ad4a": "数据集成/CSV 读取器||CSV 读取器"
+      "41ab670b-22b6-42e3-9c06-d64cdfbb5e7d": "算法/逻辑回归推理||逻辑回归推理",
+      "3f384fef-0bcd-4018-bb55-35562b301a70": "数据集成/文档上传||文档上传",
+      "7838edf1-2f22-4fdc-9e23-6b3b235814c7": "数据集成/CSV 读取器||CSV 读取器"
     },
     "node_states": {
       "算法/逻辑回归推理||逻辑回归推理": "success",
+      "数据集成/文档上传||文档上传": "success",
       "数据集成/CSV 读取器||CSV 读取器": "success"
     },
     "node_inputs": {
@@ -1270,6 +1294,7 @@
         },
         "model": "C:\\Users\\black\\AppData\\Local\\Temp\\tmpc_d6tbqs.pkl"
       },
+      "数据集成/文档上传||文档上传": {},
       "数据集成/CSV 读取器||CSV 读取器": {
         "csv": "D:/work/qfluent_json_configuration_new/iris.csv"
       }
@@ -1428,6 +1453,9 @@
           2,
           2
         ]
+      },
+      "数据集成/文档上传||文档上传": {
+        "file": "D:/work/qfluent_json_configuration_new/iris.csv"
       },
       "数据集成/CSV 读取器||CSV 读取器": {
         "csv": {
@@ -2655,6 +2683,7 @@
           "versicolor"
         ]
       },
+      "数据集成/文档上传||文档上传": {},
       "数据集成/CSV 读取器||CSV 读取器": {}
     }
   }

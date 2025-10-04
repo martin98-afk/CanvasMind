@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import importlib.util
 import pathlib
 base_path = pathlib.Path(__file__).parent.parent / "base.py"
@@ -17,6 +18,7 @@ class Component(BaseComponent):
     name = "随机森林分类器"
     category = "算法"
     description = "Random Forest Classifier for CSV data"
+    requirements = "pandas,scikit-learn"
     inputs = [
         PortDefinition(name="file", label="输入CSV文件", type=ArgumentType.TEXT),
     ]

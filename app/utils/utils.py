@@ -1,12 +1,86 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+import re
 import sys
 
 import numpy as np
 import pandas as pd
 from PyQt5.QtGui import QIcon
 
+# ANSI 颜色代码映射
+ANSI_COLOR_MAP = {
+    '30': '#000000',  # 黑色
+    '31': '#ff0000',  # 红色
+    '32': '#00ff00',  # 绿色
+    '33': '#ffff00',  # 黄色
+    '34': '#0000ff',  # 蓝色
+    '35': '#ff00ff',  # 紫色
+    '36': '#00ffff',  # 青色
+    '37': '#ffffff',  # 白色
+    '90': '#808080',  # 亮黑
+    '91': '#ff5555',  # 亮红
+    '92': '#50fa7b',  # 亮绿
+    '93': '#f1fa8c',  # 亮黄
+    '94': '#8be9fd',  # 亮蓝
+    '95': '#ff79c6',  # 亮紫
+    '96': '#8be9fd',  # 亮青
+    '97': '#ffffff',  # 亮白
+}
+
+
+def ansi_to_html(text):
+    """
+    将 ANSI 颜色代码转换为 HTML span 标签
+    """
+    if not text:
+        return ""
+
+    # 移除光标控制序列（如 \x1b[2K）
+    text = re.sub(r'\x1b\[[0-9;]*[ABCDHfJKmnsu]', '', text)
+
+    # 处理颜色代码
+    def replace_ansi(match):
+        codes = match.group(1).split(';')
+        color = None
+        bold = False
+
+        for code in codes:
+            if code in ANSI_COLOR_MAP:
+                color = ANSI_COLOR_MAP[code]
+            elif code == '1':
+                bold = True
+
+        if color:
+            style = f"color: {color};"
+            if bold:
+                style += " font-weight: bold;"
+            return f'<span style="{style}">'
+        elif bold:
+            return '<span style="font-weight: bold;">'
+        else:
+            return '<span>'
+
+    # 替换 ANSI 开始序列 \x1b[...m
+    text = re.sub(r'\x1b\[([0-9;]*)m', replace_ansi, text)
+
+    # 替换 ANSI 结束序列 \x1b[0m 为 </span>
+    text = re.sub(r'\x1b\[0m', '</span>', text)
+
+    # 处理剩余的 ANSI 序列（清理）
+    text = re.sub(r'\x1b\[[0-9;]*m', '', text)
+
+    # 转换换行符
+    text = text.replace('\n', '<br>')
+
+    return text
+
+
+def ansi_to_rich_text(text):
+    """
+    将 ANSI 转换为 Qt Rich Text（备用方案）
+    """
+    return f"<pre style='font-family: Consolas, monospace;'>{ansi_to_html(text)}</pre>"
 
 def resource_path(relative_path):
     """获取打包后资源文件的绝对路径"""

@@ -5,7 +5,9 @@ from PyQt5.QtWidgets import QPlainTextEdit, QApplication, QDesktopWidget
 from loguru import logger
 from qfluentwidgets import FluentWindow, Theme, setTheme, NavigationItemPosition, SplashScreen
 
+from app.interfaces.canvas_interface import CanvasPage
 from app.interfaces.component_developer import ComponentDeveloperWidget
+from app.interfaces.exported_project_interface import ExportedProjectsPage
 from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.workflow_manager import WorkflowManager
 from app.utils.utils import get_icon
@@ -35,17 +37,20 @@ class LowCodeWindow(FluentWindow):
         self.show()
         # 创建主界面页面
         self.package_manager = EnvManagerUI()
-        self.canvas_page = WorkflowManager(self)
+        self.package_manager.mgr.install_miniconda()
+        self.canvas_page = CanvasPage(self)
         self.develop_page = ComponentDeveloperWidget(self)
+        self.project_manager = ExportedProjectsPage(self)
         # 添加主界面页面
         self.addSubInterface(self.develop_page, get_icon("组件"), '组件开发')
         canvas_interface = self.addSubInterface(self.canvas_page, get_icon("模型"), '工作流画布')
-        # canvas_interface.clicked.connect(
-        #     lambda: (
-        #         self.canvas_page.nav_view.refresh_components(),
-        #         self.canvas_page.register_components()
-        #     )
-        # )
+        canvas_interface.clicked.connect(
+            lambda: (
+                self.canvas_page.nav_view.refresh_components(),
+                self.canvas_page.register_components()
+            )
+        )
+        project_interface = self.addSubInterface(self.project_manager, get_icon("模型"), '导出项目管理')
         self.addSubInterface(self.package_manager, get_icon("工具包"), '工具包管理')
         # 添加日志页面
         log_interface = self.addSubInterface(
