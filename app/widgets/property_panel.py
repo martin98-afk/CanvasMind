@@ -314,7 +314,6 @@ class PropertyPanel(CardWidget):
 
         btn_layout.addWidget(select_all_btn)
         btn_layout.addWidget(clear_btn)
-        btn_layout.addStretch()
         card_layout.addLayout(btn_layout)
 
         layout.addWidget(column_card)

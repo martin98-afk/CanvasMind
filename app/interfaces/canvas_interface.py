@@ -464,27 +464,6 @@ class CanvasPage(QWidget):
                 with open(req_path, 'w', encoding='utf-8') as f:
                     f.write('\n'.join(sorted(requirements)))
 
-            # 8. 生成运行脚本
-            run_script = '''# -*- coding: utf-8 -*-
-import sys
-import os
-from loguru import logger
-
-# 添加当前目录到 Python 路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from runner.workflow_runner import execute_workflow
-
-if __name__ == "__main__":
-    # 可以传入外部输入参数
-    # inputs = {"node_id": {"input_port": "value"}}
-    outputs = execute_workflow("model.workflow.json")
-    logger.info("模型执行完成，输出:")
-    for node_id, output in outputs.items():
-        logger.info(f"  {node_id}: {output}")
-        '''
-            (export_path / "run.py").write_text(run_script, encoding='utf-8')
-
             # 9. 复制 workflow_runner.py 和 utils
             current_dir = Path(__file__).parent
             runner_src = current_dir / ".." / "runner"
@@ -495,6 +474,11 @@ if __name__ == "__main__":
             base_src = current_dir.parent / "components" / "base.py"
             if base_src.exists():
                 shutil.copy(str(base_src), str(components_dir / "base.py"))
+
+            # 转移 run.py
+            run_src = export_path / "runner" / "run.py"
+            if run_src.exists():
+                shutil.move(str(run_src), str(export_path / "run.py"))
 
             # 转移 scan_components
             scan_src = export_path / "runner" / "scan_components.py"
