@@ -614,7 +614,6 @@ class ComponentDeveloperWidget(QWidget):
             self.requirements_edit.setPlainText(new_text)  # 排序并换行分隔
             add_len = len(new_text) - len(original_text)
             # 恢复代码编辑器的焦点和光标位置
-            self.code_editor.code_editor.setFocus()
             code_editor_cursor.setPosition(code_pos + add_len)
             self.code_editor.code_editor.setTextCursor(code_editor_cursor)
 
@@ -659,7 +658,11 @@ class ComponentDeveloperWidget(QWidget):
         components_dir.mkdir(parents=True, exist_ok=True)
 
         # --- 删除原始文件 ---
-        if delete_original_file and original_file_path and original_file_path.exists():
+        if delete_original_file and original_file_path and (components_dir / original_file_path.name).exists():
+            # 删除原文件
+            original_file_path.unlink()
+            filepath = original_file_path
+        elif delete_original_file and original_file_path and not (components_dir / original_file_path.name).exists():
             # 使用shutil将源文件移到新的组件目录
             shutil.move(str(original_file_path), str(components_dir))
             filepath = components_dir / original_file_path.name

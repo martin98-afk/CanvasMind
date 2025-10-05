@@ -272,7 +272,7 @@ class CanvasPage(QWidget):
         for node in nodes_to_export:
             node_name = node.name()
             # 组件参数
-            editable_params = node.component_class.get_properties()
+            editable_params = node.model.custom_properties
             for param_name, param_value in editable_params.items():
                 candidate_inputs.append({
                     "type": "组件超参数",
@@ -424,7 +424,7 @@ class CanvasPage(QWidget):
 
             for node in nodes_to_export:
                 # 组件参数
-                editable_params = getattr(node, 'get_properties', lambda: {})()
+                editable_params = node.model.custom_properties
                 exported_params = {
                     param_name: _process_value_for_export(param_value, inputs_dir, export_path)
                     for param_name, param_value in editable_params.items()
