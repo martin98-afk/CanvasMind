@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import platform
 import re
 import shutil
 from pathlib import Path
@@ -51,22 +52,15 @@ class EnvironmentManager(QObject):
         self.META_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
     def _scan_envs(self):
-        """扫描 envs/ 下的环境"""
-        # 清理旧 meta 中不存在的项
+        """只扫描 self.miniconda_path 下的环境"""
         new_meta = {}
-        for d in self.ENV_DIR.iterdir():
-            if d.is_dir() and (d / "python.exe").exists():
-                new_meta[d.name] = str(d)
-        # 扫描Miniconda环境目录
-        miniconda_envs_dir = self.ENV_DIR / "miniconda" / "envs"
+
+        # 1. 扫描你自己的 Miniconda 的 envs 目录
+        miniconda_envs_dir = self.miniconda_path / "envs"
         if miniconda_envs_dir.exists():
             for d in miniconda_envs_dir.iterdir():
                 if d.is_dir() and (d / "python.exe").exists():
                     new_meta[d.name] = str(d)
-        # 保留已经记录但在 envs 以外手动加入的（兼容之前的 meta）
-        for k, v in self.meta.items():
-            if k not in new_meta and Path(v).exists() and (Path(v) / "python.exe").exists():
-                new_meta[k] = v
         self.meta = new_meta
         self._save_meta(self.meta)
 
@@ -488,43 +482,22 @@ class EnvironmentManager(QObject):
         return list(self.meta.keys())
 
     def get_python_exe(self, env_name: str) -> Path:
-        """获取指定环境的Python解释器路径"""
-        # 检查是否是已知环境
-        if env_name in self.meta:
-            path = Path(self.meta[env_name])
-            exe_path = path / "python.exe"
-            if exe_path.exists():
-                return exe_path
+        # 只在自己的 miniconda/envs 下查找
+        env_path = self.miniconda_path / "envs" / env_name
+        python_exe = env_path / "python.exe"
+        if python_exe.exists():
+            # 更新 meta 缓存（可选）
+            self.meta[env_name] = str(env_path)
+            self._save_meta(self.meta)
+            return python_exe
 
-        # 通过conda获取环境路径 - Miniconda环境在envs子目录下
-        try:
-            conda_exe = self.miniconda_path / "Scripts" / "conda.exe"
-            self.process = QProcess()
-            import platform
-            if platform.system() == "Windows":
-                # 在Windows下隐藏窗口
-                self.process.setProcessEnvironment(self._get_hidden_window_environment())
-            self.process.start(str(conda_exe), ["info", "--envs", "--json"])
-            self.process.waitForFinished()
+        # 如果 env_name 是 "miniconda"，返回 base 环境
+        if env_name == "miniconda":
+            base_exe = self.miniconda_path / "python.exe"
+            if base_exe.exists():
+                return base_exe
 
-            output = self.process.readAllStandardOutput().data().decode("utf-8")
-            # 清理ANSI颜色代码
-            output = self._clean_ansi_codes(output)
-            envs_info = json.loads(output)
-            for env_path in envs_info.get("envs", []):
-                if Path(env_path).name == env_name:
-                    exe_path = Path(env_path) / "python.exe"
-                    if exe_path.exists():
-                        # 更新元数据缓存
-                        self.meta[env_name] = str(Path(env_path))
-                        self._save_meta(self.meta)
-                        return exe_path
-        except Exception as e:
-            if self.current_log_callback:
-                self.current_log_callback(f"获取环境路径失败: {e}")
-            pass
-
-        raise RuntimeError(f"环境 {env_name} 不存在或缺少 python.exe")
+        raise RuntimeError(f"环境 {env_name} 不存在于 {self.miniconda_path / 'envs'}")
 
     def _clean_ansi_codes(self, text):
         """清理ANSI颜色代码"""
