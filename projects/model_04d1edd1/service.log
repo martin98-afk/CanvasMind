@@ -1,4 +1,4 @@
-INFO:     Started server process [27812]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8004 (Press CTRL+C to quit)
+Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\projects\model_04d1edd1\api_server.py", line 9, in <module>
+    from fastapi import FastAPI, HTTPException, UploadFile
+ModuleNotFoundError: No module named 'fastapi'
