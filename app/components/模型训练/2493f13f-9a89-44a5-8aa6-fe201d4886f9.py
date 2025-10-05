@@ -15,18 +15,30 @@ ArgumentType = base_module.ArgumentType
 
 
 class Component(BaseComponent):
-    name = "逻辑回归推理"
-    category = "算法"
+    name = "逻辑回归训练"
+    category = "模型训练"
     description = "组件开发生成组件"
-    requirements = "matplotlib,scikit-learn"
+    requirements = "matplotlib,numpy,scikit-learn"
     inputs = [
         PortDefinition(name="feature", label="特征", type=ArgumentType.CSV),
-        PortDefinition(name="model", label="模型", type=ArgumentType.SKLEARNMODEL),
+        PortDefinition(name="target", label="目标", type=ArgumentType.CSV),
     ]
     outputs = [
         PortDefinition(name="value", label="预测值", type=ArgumentType.ARRAY),
+        PortDefinition(name="model", label="端口3", type=ArgumentType.SKLEARNMODEL),
     ]
     properties = {
+        "solver": PropertyDefinition(
+            type=PropertyType.CHOICE,
+            default="liblinear",
+            label="求解器",
+            choices=["liblinear"]
+        ),
+        "max_iter": PropertyDefinition(
+            type=PropertyType.INT,
+            default=100,
+            label="最大迭代数",
+        ),
     }
 
     def run(self, params, inputs=None):
@@ -39,18 +51,28 @@ class Component(BaseComponent):
             self.logger.info(inputs)
             from sklearn.linear_model import LogisticRegression
             import matplotlib
+            import numpy as np
 
             # 读取数据
             feature = inputs.get("feature")
-            model = inputs.get("model")
-            self.logger.info(feature)
-            # 训练模型
-            result = model.predict(feature)
-            # 预测示例（使用第一行数据）
+            target = inputs.get("target")
+            # 获取参数
+            solver = params.get("solver", "liblinear")
+            max_iter = int(params.get("max_iter", 100))
 
-            self.logger.info(f"Model predict: {result}")
+            # 训练模型
+            model = LogisticRegression(solver=solver, max_iter=max_iter, multi_class='ovr')
+            model.fit(feature, target)
+
+            # 预测示例（使用第一行数据）
+            sample_prediction = model.predict([feature.iloc[0]])
+            accuracy = model.score(feature, target)
+
+            self.logger.info(f"Model accuracy: {accuracy:.4f}")
+
             return {
-                "value": result.tolist()
+                "value": sample_prediction.tolist(),
+                "model": model
             }
 
         except Exception as e:

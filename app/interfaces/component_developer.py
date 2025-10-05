@@ -2,6 +2,7 @@
 import ast
 import inspect
 import re
+import shutil
 import uuid
 from pathlib import Path
 
@@ -659,13 +660,9 @@ class ComponentDeveloperWidget(QWidget):
 
         # --- 删除原始文件 ---
         if delete_original_file and original_file_path and original_file_path.exists():
-            try:
-                original_file_path.unlink()
-                print(f"已删除原始组件文件: {original_file_path}")
-            except Exception as e:
-                print(f"删除原始组件文件失败: {e}")
-            # 生成文件名
-            filepath = original_file_path
+            # 使用shutil将源文件移到新的组件目录
+            shutil.move(str(original_file_path), str(components_dir))
+            filepath = components_dir / original_file_path.name
         else:
             filename = f"{str(uuid.uuid4()).replace(' ', '_').lower()}.py"
             filepath = components_dir / filename

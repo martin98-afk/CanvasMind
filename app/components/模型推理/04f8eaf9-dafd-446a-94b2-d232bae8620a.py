@@ -15,30 +15,18 @@ ArgumentType = base_module.ArgumentType
 
 
 class Component(BaseComponent):
-    name = "逻辑回归"
-    category = "算法"
+    name = "逻辑回归推理(csv)"
+    category = "模型推理"
     description = "组件开发生成组件"
     requirements = "matplotlib,scikit-learn"
     inputs = [
         PortDefinition(name="feature", label="特征", type=ArgumentType.CSV),
-        PortDefinition(name="target", label="目标", type=ArgumentType.CSV),
+        PortDefinition(name="model", label="模型", type=ArgumentType.SKLEARNMODEL),
     ]
     outputs = [
         PortDefinition(name="value", label="预测值", type=ArgumentType.ARRAY),
-        PortDefinition(name="model", label="模型参数", type=ArgumentType.JSON),
     ]
     properties = {
-        "solver": PropertyDefinition(
-            type=PropertyType.CHOICE,
-            default="liblinear",
-            label="求解器",
-            choices=["liblinear"]
-        ),
-        "max_iter": PropertyDefinition(
-            type=PropertyType.INT,
-            default=100,
-            label="最大迭代数",
-        ),
     }
 
     def run(self, params, inputs=None):
@@ -54,28 +42,15 @@ class Component(BaseComponent):
 
             # 读取数据
             feature = inputs.get("feature")
-            target = inputs.get("target")
-            # 获取参数
-            solver = params.get("solver", "liblinear")
-            max_iter = int(params.get("max_iter", 100))
-
+            model = inputs.get("model")
+            self.logger.info(feature)
             # 训练模型
-            model = LogisticRegression(solver=solver, max_iter=max_iter, multi_class='ovr')
-            model.fit(feature, target)
-
+            result = model.predict(feature)
             # 预测示例（使用第一行数据）
-            sample_prediction = model.predict(feature.iloc[-10:])
-            accuracy = model.score(feature, target)
 
-            self.logger.info(f"Model accuracy: {accuracy:.4f}")
-
+            self.logger.info(f"Model predict: {result}")
             return {
-                "value": sample_prediction.tolist(),
-                "model": {
-                    "accuracy": accuracy,
-                    "classes": model.classes_.tolist(),
-                    "coef": model.coef_.tolist() if hasattr(model, 'coef_') else None
-                }
+                "value": result.tolist()
             }
 
         except Exception as e:

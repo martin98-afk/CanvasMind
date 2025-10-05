@@ -86,8 +86,10 @@ class ArgumentType(str, Enum):
             display_data = float(display_data)
         elif self.is_bool():
             display_data = bool(display_data)
-        elif self.is_array():
+        elif self.is_array() and isinstance(display_data, str):
             display_data = np.array(eval(display_data))
+        elif self.is_array() and isinstance(display_data, list):
+            display_data = np.array(display_data)
         elif self.is_image():
             display_data = Image.open(display_data)
 

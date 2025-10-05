@@ -48,48 +48,8 @@ class VariableTreeWidget(TreeWidget):
             if top_item.childCount() > 0:
                 self.expandItem(top_item)
 
-    def _build_tree(self, obj, parent_item, key, max_depth, current_depth=0):
-        if current_depth > max_depth:
-            item = QTreeWidgetItem(parent_item, ["<max recursion depth>"])
-            item.setForeground(0, Qt.gray)
-            return
-
-        # 根据是否有 key 决定显示格式
-        if key == "":
-            # 顶层对象
-            display_text = self._format_value(obj)
-        else:
-            display_text = f"{key}: {self._format_value(obj)}"
-
-        item = QTreeWidgetItem(parent_item, [display_text])
-
-        # 为图像对象添加缩略图
-        if self._is_image_file(obj) or self._is_pil_image(obj):
-            pixmap = self._get_thumbnail_pixmap(obj)
-            if pixmap:
-                item.setIcon(0, QIcon(pixmap))
-
-        # 只有容器类型才添加子项（PyCharm 行为）
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                self._build_tree(v, item, str(k), max_depth, current_depth + 1)
-        elif isinstance(obj, (list, tuple)):
-            for i, v in enumerate(obj):
-                self._build_tree(v, item, str(i), max_depth, current_depth + 1)
-        elif isinstance(obj, set):
-            for i, v in enumerate(obj):
-                self._build_tree(v, item, f"[{i}]", max_depth, current_depth + 1)
-        elif hasattr(obj, '__dict__') and obj.__dict__:
-            for attr_name, attr_value in obj.__dict__.items():
-                self._build_tree(attr_value, item, attr_name, max_depth, current_depth + 1)
-        elif hasattr(obj, '__slots__'):
-            for slot in getattr(obj, '__slots__', []):
-                if hasattr(obj, slot):
-                    attr_value = getattr(obj, slot)
-                    self._build_tree(attr_value, item, slot, max_depth, current_depth + 1)
-
     def _format_value(self, obj):
-        """PyCharm 风格的值格式化"""
+        """返回用于显示的字符串，格式：{Type: info} value..."""
         if obj is None:
             return "None"
         elif isinstance(obj, bool):
@@ -99,28 +59,126 @@ class VariableTreeWidget(TreeWidget):
                 return f"'{obj}'"
             else:
                 return f"'{obj[:47]}...'"
-        elif isinstance(obj, (int, float, np.number)):
+        elif isinstance(obj, (int, float)):
             return str(obj)
+        elif isinstance(obj, np.number):
+            return str(obj)
+        elif isinstance(obj, np.ndarray):
+            shape_str = str(obj.shape).replace(" ", "")
+            total = obj.size
+            if total <= 20 and obj.ndim <= 2:
+                try:
+                    s = np.array2string(obj, separator=' ', threshold=20, edgeitems=3)
+                    if s.startswith('array(') and s.endswith(')'):
+                        s = s[6:-1]
+                    return f"{{ndarray: {shape_str}}} [{s}]"
+                except:
+                    return f"{{ndarray: {shape_str}}}"
+            else:
+                return f"{{ndarray: {shape_str}}} <dtype={obj.dtype}> ..."
         elif isinstance(obj, pd.DataFrame):
-            return f"<DataFrame({obj.shape[0]}, {obj.shape[1]})>"
+            return f"{{DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
         elif isinstance(obj, pd.Series):
-            return f"<Series({len(obj)})>"
+            return f"{{Series: ({len(obj)})}}"
         elif isinstance(obj, dict):
-            return f"dict({len(obj)})"
+            return f"{{dict: {len(obj)}}}"
         elif isinstance(obj, list):
-            return f"list({len(obj)})"
+            return f"{{list: {len(obj)}}}"
         elif isinstance(obj, tuple):
-            return f"tuple({len(obj)})"
+            return f"{{tuple: {len(obj)}}}"
         elif isinstance(obj, set):
-            return f"set({len(obj)})"
+            return f"{{set: {len(obj)}}}"
         elif self._is_image_file(obj):
-            return f"<Image: {os.path.basename(str(obj))}>"
+            return f"{{Image}} '{os.path.basename(str(obj))}'"
         elif self._is_pil_image(obj):
-            return f"<PIL Image: {obj.size}>"
+            return f"{{PIL.Image}} size={obj.size}"
         elif hasattr(obj, '__class__'):
-            return f"<{obj.__class__.__module__}.{obj.__class__.__name__}>"
+            cls = obj.__class__
+            mod = cls.__module__
+            name = cls.__name__
+            if mod == 'builtins':
+                return f"{{{name}}}"
+            else:
+                return f"{{{mod}.{name}}}"
         else:
             return str(obj)
+
+    def _build_tree(self, obj, parent_item, key, max_depth, current_depth=0):
+        if current_depth > max_depth:
+            item = QTreeWidgetItem(parent_item, ["<max recursion depth>"])
+            item.setForeground(0, Qt.gray)
+            return
+
+        # 构建显示文本
+        if key == "":
+            display_text = self._format_value(obj)
+        else:
+            display_text = f"{key}: {self._format_value(obj)}"
+
+        item = QTreeWidgetItem(parent_item, [display_text])
+
+        # 图像缩略图（保持不变）
+        if self._is_image_file(obj) or self._is_pil_image(obj):
+            pixmap = self._get_thumbnail_pixmap(obj)
+            if pixmap:
+                item.setIcon(0, QIcon(pixmap))
+
+        # ========== 根据类型决定是否展开子项 ==========
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                self._build_tree(v, item, str(k), max_depth, current_depth + 1)
+
+        elif isinstance(obj, (list, tuple)):
+            for i, v in enumerate(obj):
+                self._build_tree(v, item, str(i), max_depth, current_depth + 1)
+
+        elif isinstance(obj, set):
+            for i, v in enumerate(obj):
+                self._build_tree(v, item, f"[{i}]", max_depth, current_depth + 1)
+
+        elif isinstance(obj, np.ndarray):
+            # 添加 ndarray 的常用属性（像 PyCharm 一样）
+            attrs = {
+                'shape': obj.shape,
+                'dtype': str(obj.dtype),
+                'size': obj.size,
+                'ndim': obj.ndim,
+            }
+            for attr_name, attr_val in attrs.items():
+                self._build_tree(attr_val, item, attr_name, max_depth, current_depth + 1)
+
+            # 如果是小数组，也允许展开元素（可选）
+            if obj.size <= 20:
+                if obj.ndim == 1:
+                    for i in range(obj.shape[0]):
+                        self._build_tree(obj[i], item, f"[{i}]", max_depth, current_depth + 1)
+                elif obj.ndim == 2:
+                    for i in range(obj.shape[0]):
+                        row_item = QTreeWidgetItem(item, [f"[{i}]"])
+                        for j in range(obj.shape[1]):
+                            self._build_tree(obj[i, j], row_item, str(j), max_depth, current_depth + 1)
+
+        elif isinstance(obj, pd.DataFrame):
+            # 展开列名
+            for col in obj.columns:
+                self._build_tree(obj[col], item, str(col), max_depth, current_depth + 1)
+
+        elif isinstance(obj, pd.Series):
+            # 展开索引和值
+            for idx in obj.index[:20]:  # 限制数量
+                self._build_tree(obj[idx], item, str(idx), max_depth, current_depth + 1)
+
+        elif hasattr(obj, '__dict__') and obj.__dict__:
+            for attr_name, attr_value in obj.__dict__.items():
+                if not attr_name.startswith('_'):  # 隐藏私有属性（可选）
+                    self._build_tree(attr_value, item, attr_name, max_depth, current_depth + 1)
+
+        elif hasattr(obj, '__slots__'):
+            for slot in getattr(obj, '__slots__', []):
+                if hasattr(obj, slot):
+                    attr_value = getattr(obj, slot)
+                    if not slot.startswith('_'):
+                        self._build_tree(attr_value, item, slot, max_depth, current_depth + 1)
 
     def _is_image_file(self, obj):
         """检查是否为图像文件路径"""
