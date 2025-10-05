@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from pathlib import Path
 from collections import defaultdict
+
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel
 from qfluentwidgets import (
     MessageBoxBase, ScrollArea, VBoxLayout,
     SubtitleLabel, StrongBodyLabel, CardWidget,

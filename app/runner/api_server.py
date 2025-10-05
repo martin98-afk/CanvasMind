@@ -117,4 +117,9 @@ if __name__ == "__main__":
 
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=args.port)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=args.port,
+        log_level="info"
+    )
