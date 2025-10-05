@@ -242,8 +242,31 @@ class CodeEditor(QPlainTextEdit):
         return -1
 
     def is_foldable(self, block):
-        text = block.text().strip()
-        return text.startswith(('class ', 'def ', 'if ', 'elif ', 'else:', 'for ', 'while ', 'try:', 'except ', 'with '))
+        text = block.text()
+        stripped = text.strip()
+        if not stripped:
+            return False
+
+        # 1. 传统控制结构
+        if stripped.startswith(('class ', 'def ', 'if ', 'elif ', 'for ', 'while ', 'try:', 'with ')):
+            # 检查是否真的有子块（排除单行语句）
+            return not stripped.endswith(': pass') and not stripped.endswith(': ...')
+
+        # 2. 赋值语句中的容器：inputs = [ 或 properties = {
+        if '=' in stripped:
+            # 找到 = 后的内容
+            parts = stripped.split('=', 1)
+            rhs = parts[1].strip()
+            # 检查是否以 [ 或 { 开头，且未在同一行闭合
+            if (rhs.startswith('[') and not rhs.rstrip().endswith(']')) or \
+                    (rhs.startswith('{') and not rhs.rstrip().endswith('}')):
+                return True
+
+        # 3. 独立的容器开始（如直接写 [ 或 {）
+        if stripped.startswith(('[', '{')) and not stripped.rstrip().endswith((']', '}')):
+            return True
+
+        return False
 
     def toggle_fold(self, block_number):
         doc = self.document()
@@ -257,17 +280,36 @@ class CodeEditor(QPlainTextEdit):
             block.setUserData(data)
         data.folded = not data.folded
 
-        # 隐藏/显示后续块
+        # 计算当前块的缩进（考虑非空行）
+        current_line = block.text()
+        base_indent = len(current_line) - len(current_line.lstrip())
+
+        # 查找折叠结束位置
         next_block = block.next()
-        indent = len(block.text()) - len(block.text().lstrip())
+        end_block = block  # 默认只折叠自己（安全）
+
         while next_block.isValid():
-            next_indent = len(next_block.text()) - len(next_block.text().lstrip())
-            if next_indent <= indent:
+            next_line = next_block.text()
+            # 跳过空行和纯注释行
+            if not next_line.strip() or next_line.strip().startswith('#'):
+                next_block = next_block.next()
+                continue
+
+            next_indent = len(next_line) - len(next_line.lstrip())
+            # 如果缩进 <= base_indent，说明回到同级或上级，停止
+            if next_indent <= base_indent:
                 break
-            next_block.setVisible(not data.folded)
+
+            end_block = next_block
             next_block = next_block.next()
 
-        # 重新计算文档布局
+        # 隐藏/显示从 block.next() 到 end_block 的所有块
+        current = block.next()
+        while current.isValid() and current != end_block.next():
+            current.setVisible(not data.folded)
+            current = current.next()
+
+        # 通知文档更新
         self.document().markContentsDirty(block.position(), doc.characterCount())
         self.update()
         self.lineNumberArea.update()
