@@ -15,4 +15,3 @@ if __name__ == "__main__":
     logger.info("模型执行完成，输出:")
     for node_id, output in outputs.items():
         logger.info(f"  {node_id}: {output}")
-        

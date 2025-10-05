@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
 import json
-import pathlib
 import shutil
 import uuid
-
-from pathlib import Path
 from collections import deque, defaultdict
+from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
 from PyQt5.QtCore import Qt, QThreadPool
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from qfluentwidgets import (
     ToolButton, MessageBox, InfoBar,
     InfoBarPosition, FluentIcon, ComboBox
@@ -21,6 +19,8 @@ from app.scan_components import scan_components
 from app.utils.threading_utils import NodeListExecutor, Worker
 from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json
 from app.widgets.draggable_component_tree import DraggableTreeWidget
+from app.widgets.input_selection_dialog import InputSelectionDialog
+from app.widgets.output_selection_dialog import OutputSelectionDialog
 from app.widgets.property_panel import PropertyPanel
 
 
@@ -84,7 +84,7 @@ class CanvasPage(QWidget):
         self.env_selector_container = QWidget(self.canvas_widget)
         self.env_selector_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         # 放置在右上角
-        self.env_selector_container.move(self.canvas_widget.width() - 260, 10)
+        self.env_selector_container.move(self.canvas_widget.width() - 200, 10)
 
         # 创建布局
         env_layout = QHBoxLayout(self.env_selector_container)
@@ -98,7 +98,7 @@ class CanvasPage(QWidget):
 
         # 创建环境选择下拉框
         self.env_combo = ComboBox(self.env_selector_container)
-        self.env_combo.setFixedWidth(200)
+        self.env_combo.setFixedWidth(140)
         # 设置默认选项
         self.env_combo.setCurrentIndex(0)
         self.load_env_combos()
@@ -211,14 +211,12 @@ class CanvasPage(QWidget):
         self.import_btn = ToolButton(FluentIcon.FOLDER, self)
         self.import_btn.setToolTip("导入工作流")
         self.import_btn.clicked.connect(self._open_via_dialog)
-
+        button_layout.addWidget(self.import_btn)
         # 导出模型按钮
         self.export_model_btn = ToolButton(FluentIcon.SHARE, self)
         self.export_model_btn.setToolTip("导出选中节点为独立模型")
         self.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
         button_layout.addWidget(self.export_model_btn)
-
-        button_layout.addWidget(self.import_btn)
 
         button_container.setLayout(button_layout)
         button_container.show()
@@ -257,8 +255,7 @@ class CanvasPage(QWidget):
             event.ignore()
 
     def export_selected_nodes_as_project(self):
-        """导出选中节点为独立项目（仅选中节点，不包含上游依赖）"""
-
+        """导出选中节点为独立项目（支持交互式定义输入/输出接口）"""
         selected_nodes = self.graph.selected_nodes()
         if not selected_nodes:
             self.create_warning_info("导出失败", "请先选中要导出的节点！")
@@ -270,28 +267,97 @@ class CanvasPage(QWidget):
             self.create_warning_info("导出失败", "选中的节点无效（只有分组节点）！")
             return
 
-        # 检查未连接的输入端口
-        unconnected_inputs = []
+        # === 收集所有候选输入项 ===
+        candidate_inputs = []
         for node in nodes_to_export:
-            for input_port in node.input_ports():
-                if not input_port.connected_ports():
-                    unconnected_inputs.append(f"• {node.name()} → {input_port.name()}")
+            node_name = node.name()
+            # 组件参数
+            editable_params = node.component_class.get_properties()
+            for param_name, param_value in editable_params.items():
+                candidate_inputs.append({
+                    "type": "组件超参数",
+                    "node_id": node.id,  # ✅ 直接用原始 id
+                    "node_name": node_name,
+                    "param_name": param_name,
+                    "current_value": param_value,
+                    "display_name": f"{node_name} → {param_name}",
+                })
+            # 输入端口
+            for port in node.input_ports():
+                port_name = port.name()
+                connected = port.connected_ports()
+                if connected:
+                    # 从上游取值（和导出逻辑一致）
+                    upstream_out = connected[0]
+                    upstream_node = upstream_out.node()
+                    current_val = upstream_node._output_values.get(upstream_out.name(), None)
+                else:
+                    # 未连接：用用户输入值
+                    current_val = getattr(node, '_input_values', {}).get(port_name, None)
 
-        if unconnected_inputs:
-            msg = "检测到未连接的输入端口，这些端口需要在运行时提供数据：\n\n" + "\n".join(unconnected_inputs)
-            msg += "\n\n是否继续导出？"
-            reply = QMessageBox.question(
-                self, "未连接输入", msg,
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
-            )
-            if reply == QMessageBox.No:
+                candidate_inputs.append({
+                    "type": "组件输入",
+                    "node_id": node.id,
+                    "node_name": node_name,
+                    "port_name": port_name,
+                    "current_value": current_val,
+                    "display_name": f"{port_name} → {node_name}",
+                })
+
+        # === 收集所有候选输出项 ===
+        candidate_outputs = []
+        for node in nodes_to_export:
+            node_name = node.name()
+            outputs = getattr(node, '_output_values', {})
+            for out_name, out_val in outputs.items():
+                candidate_outputs.append({
+                    "node_id": node.id,  # ✅ 直接用原始 id
+                    "node_name": node_name,
+                    "output_name": out_name,
+                    "sample_value": str(out_val)[:50] + "..." if len(str(out_val)) > 50 else str(out_val),
+                    "display_name": f"{node_name} → {out_name}",
+                })
+
+        # === 弹出选择对话框（qfluentwidgets 风格）===
+        if candidate_inputs:
+            input_dialog = InputSelectionDialog(candidate_inputs, self)
+            if not input_dialog.exec():
                 return
+            selected_input_items = input_dialog.get_selected_items()
+        else:
+            selected_input_items = []
 
-        # 选择导出目录
-        project_dir_str = QFileDialog.getExistingDirectory(
-            self, "选择导出目录", "", QFileDialog.ShowDirsOnly
-        )
+        if candidate_outputs:
+            output_dialog = OutputSelectionDialog(candidate_outputs, self)
+            if not output_dialog.exec():
+                return
+            selected_output_items = output_dialog.get_selected_items()
+        else:
+            selected_output_items = []
+
+        # === 构建 project_spec.json（使用自定义 key）===
+        project_spec = {"version": "1.0", "inputs": {}, "outputs": {}}
+
+        for item in selected_input_items:
+            key = item.get("custom_key", f"input_{len(project_spec['inputs'])}")
+            project_spec["inputs"][key] = {
+                "node_id": item["node_id"],
+                "type": item["type"]
+            }
+            if item["type"] == "组件超参数":
+                project_spec["inputs"][key]["param_name"] = item["param_name"]
+            else:
+                project_spec["inputs"][key]["port_name"] = item["port_name"]
+
+        for item in selected_output_items:
+            key = item.get("custom_key", f"output_{len(project_spec['outputs'])}")
+            project_spec["outputs"][key] = {
+                "node_id": item["node_id"],
+                "output_name": item["output_name"]
+            }
+
+        # === 选择导出目录 ===
+        project_dir_str = QFileDialog.getExistingDirectory(self, "选择导出目录", "", QFileDialog.ShowDirsOnly)
         if not project_dir_str:
             return
 
@@ -301,90 +367,43 @@ class CanvasPage(QWidget):
         export_path.mkdir(parents=True, exist_ok=True)
 
         try:
-            # 1. 创建项目目录结构
+            # 创建目录
             components_dir = export_path / "components"
             inputs_dir = export_path / "inputs"
             components_dir.mkdir(parents=True, exist_ok=True)
             inputs_dir.mkdir(parents=True, exist_ok=True)
 
-            # 2. 收集需要的组件
+            # 收集组件（不再需要 node_id_map！）
             used_components = set()
-            node_id_map = {}  # old_id -> new_id
-            new_nodes_data = {}
-            new_connections = []
+            new_nodes_data = {}  # key: 原始 node.id
 
             for node in nodes_to_export:
                 used_components.add(node.FULL_PATH)
-                new_id = str(uuid.uuid4())
-                node_id_map[node.id] = new_id
+                # ✅ 直接用 node.id 作为 key
+                new_nodes_data[node.id] = None  # 占位，后面填充
 
-            # 3. 复制组件代码
-            component_path_map = {}  # old_path -> new_relative_path (as str with forward slash)
+            # 复制组件代码
+            component_path_map = {}
             for full_path in used_components:
                 if full_path in self.file_map:
                     src_path = Path(self.file_map[full_path])
                     if src_path.exists():
-                        # 尝试保持原始目录结构: 假设 src_path 是在某个根目录下的组件
-                        # 原逻辑: relpath(src, dirname(dirname(src))) — 这其实是取最后两级？
-                        # 例如: /a/b/c.py → relpath to /a → b/c.py
                         try:
-                            # 获取 src 的父目录的父目录作为 base
                             base_dir = src_path.parent.parent
                             if base_dir in src_path.parents:
                                 src_rel_path = src_path.relative_to(base_dir)
                             else:
-                                # fallback: just use filename
                                 src_rel_path = src_path.name
                         except ValueError:
-                            # 如果 relative_to 失败（不在父目录中），回退到文件名
                             src_rel_path = src_path.name
-
                         dst_path = components_dir / src_rel_path
                         dst_path.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copy2(str(src_path), str(dst_path))
-                        # 记录相对于项目根目录的路径（使用正斜杠）
                         rel_to_project = ("components" / src_rel_path).as_posix()
                         component_path_map[str(src_path)] = rel_to_project
 
-            # 4. 构建节点数据和连接
-            for node in nodes_to_export:
-                new_id = node_id_map[node.id]
-                node_data = {
-                    "name": node.name(),
-                    "type_": node.type_,
-                    "pos": node.pos(),
-                    "custom": {
-                        "FULL_PATH": node.FULL_PATH,
-                        "FILE_PATH": component_path_map.get(self.file_map.get(node.FULL_PATH, ""), "")
-                    }
-                }
-                new_nodes_data[new_id] = node_data
-
-            # 只保留选中节点之间的连接
-            original_connections = self.graph.serialize_session()["connections"]
-            for conn in original_connections:
-                out_id, out_port = conn["out"]
-                in_id, in_port = conn["in"]
-                if out_id in node_id_map and in_id in node_id_map:
-                    new_connections.append({
-                        "out": [node_id_map[out_id], out_port],
-                        "in": [node_id_map[in_id], in_port]
-                    })
-
-            # 5. 构建 runtime 数据（包含当前输入值）
-            runtime_data = {
-                "environment": self.env_combo.currentData(),
-                "environment_exe": self.get_current_python_exe(),
-                "node_id2stable_key": {},
-                "node_states": {},
-                "node_inputs": {},
-                "node_outputs": {},
-                "column_select": {},
-            }
-
-            # 辅助函数：处理文件路径重写
+            # === 构建节点数据（用原始 node.id）===
             def _process_value_for_export(value, inputs_dir: Path, export_path: Path):
-                """处理值，如果是文件路径则复制到 inputs_dir 并返回相对路径"""
                 if isinstance(value, str):
                     file_path = Path(value)
                     if file_path.is_file():
@@ -404,15 +423,18 @@ class CanvasPage(QWidget):
                 return value
 
             for node in nodes_to_export:
-                new_id = node_id_map[node.id]
-                full_path = getattr(node, 'FULL_PATH', 'unknown')
-                node_name = node.name()
-                stable_key = f"{full_path}||{node_name}"
+                # 组件参数
+                editable_params = getattr(node, 'get_properties', lambda: {})()
+                exported_params = {
+                    param_name: _process_value_for_export(param_value, inputs_dir, export_path)
+                    for param_name, param_value in editable_params.items()
+                }
 
+                # === 修复：正确处理所有输入端口（连接 + 未连接）===
                 current_inputs = {}
-                for input_port in node.input_ports():
-                    port_name = input_port.name()
-                    connected = input_port.connected_ports()
+                for port in node.input_ports():
+                    port_name = port.name()
+                    connected = port.connected_ports()
                     if connected:
                         upstream_out = connected[0]
                         upstream_node = upstream_out.node()
@@ -422,18 +444,60 @@ class CanvasPage(QWidget):
                         else:
                             current_inputs[port_name] = None
                     else:
-                        current_inputs[port_name] = None
+                        current_val = getattr(node, '_input_values', {}).get(port_name, None)
+                        current_inputs[port_name] = _process_value_for_export(current_val, inputs_dir, export_path)
 
-                runtime_data["node_id2stable_key"][new_id] = stable_key
+                node_data = {
+                    "name": node.name(),
+                    "type_": node.type_,
+                    "pos": node.pos(),
+                    "custom": {
+                        "FULL_PATH": node.FULL_PATH,
+                        "FILE_PATH": component_path_map.get(self.file_map.get(node.FULL_PATH, ""), ""),
+                        "params": exported_params,
+                        "input_values": serialize_for_json(current_inputs)  # ✅ 包含文件路径重写
+                    }
+                }
+                new_nodes_data[node.id] = node_data
+
+            # === 构建连接（用原始 node.id）===
+            original_connections = self.graph.serialize_session()["connections"]
+            new_connections = []
+            node_ids_set = {node.id for node in nodes_to_export}  # 快速查找
+
+            for conn in original_connections:
+                out_id, out_port = conn["out"]
+                in_id, in_port = conn["in"]
+                # ✅ 只保留两端都在选中节点中的连接
+                if out_id in node_ids_set and in_id in node_ids_set:
+                    new_connections.append({
+                        "out": [out_id, out_port],  # ✅ 原始 id
+                        "in": [in_id, in_port]  # ✅ 原始 id
+                    })
+
+            # runtime_data（用原始 node.id）
+            runtime_data = {
+                "environment": self.env_combo.currentData(),
+                "environment_exe": self.get_current_python_exe(),
+                "node_id2stable_key": {},
+                "node_states": {},
+                "node_outputs": {},
+                "column_select": {},
+            }
+
+            for node in nodes_to_export:
+                full_path = getattr(node, 'FULL_PATH', 'unknown')
+                node_name = node.name()
+                stable_key = f"{full_path}||{node_name}"
+                runtime_data["node_id2stable_key"][node.id] = stable_key  # ✅ 原始 id
                 runtime_data["node_states"][stable_key] = self.node_status.get(node.id, "unrun")
-                runtime_data["node_inputs"][stable_key] = serialize_for_json(current_inputs)
                 runtime_data["node_outputs"][stable_key] = serialize_for_json(getattr(node, '_output_values', {}))
                 runtime_data["column_select"][stable_key] = getattr(node, 'column_select', {})
 
-            # 6. 保存项目文件
+            # 保存
             graph_data = {
-                "nodes": new_nodes_data,
-                "connections": new_connections,
+                "nodes": new_nodes_data,  # key: 原始 node.id
+                "connections": new_connections,  # 用原始 node.id
                 "grid": self.graph.serialize_session().get("grid", None)
             }
 
@@ -443,11 +507,14 @@ class CanvasPage(QWidget):
                 "runtime": runtime_data
             }
 
-            model_json_path = export_path / "model.workflow.json"
-            with open(model_json_path, 'w', encoding='utf-8') as f:
-                json.dump(project_data, f, indent=2, ensure_ascii=False)
+            (export_path / "model.workflow.json").write_text(
+                json.dumps(project_data, indent=2, ensure_ascii=False), encoding='utf-8'
+            )
+            (export_path / "project_spec.json").write_text(
+                json.dumps(project_spec, indent=2, ensure_ascii=False), encoding='utf-8'
+            )
 
-            # 7. 生成 requirements.txt
+            # requirements.txt
             requirements = set()
             for full_path in used_components:
                 comp_cls = self.component_map.get(full_path)
@@ -458,50 +525,40 @@ class CanvasPage(QWidget):
                             pkg = pkg.strip()
                             if pkg:
                                 requirements.add(pkg)
-
             if requirements:
-                req_path = export_path / "requirements.txt"
-                with open(req_path, 'w', encoding='utf-8') as f:
-                    f.write('\n'.join(sorted(requirements)))
+                (export_path / "requirements.txt").write_text('\n'.join(sorted(requirements)), encoding='utf-8')
 
-            # 9. 复制 workflow_runner.py 和 utils
+            # 复制 runner 和 base.py
             current_dir = Path(__file__).parent
             runner_src = current_dir / ".." / "runner"
             if runner_src.exists():
                 shutil.copytree(str(runner_src), str(export_path / "runner"), dirs_exist_ok=True)
 
-            # 复制 base.py
             base_src = current_dir.parent / "components" / "base.py"
             if base_src.exists():
                 shutil.copy(str(base_src), str(components_dir / "base.py"))
 
-            # 转移 run.py
-            run_src = export_path / "runner" / "run.py"
-            if run_src.exists():
-                shutil.move(str(run_src), str(export_path / "run.py"))
+            # 移动 run.py 和 scan_components
+            for file in ["run.py", "scan_components.py", "api_server.py"]:
+                src = export_path / "runner" / file
+                if src.exists():
+                    shutil.move(str(src), str(export_path / file))
 
-            # 转移 scan_components
-            scan_src = export_path / "runner" / "scan_components.py"
-            if scan_src.exists():
-                shutil.move(str(scan_src), str(export_path / "scan_components.py"))
-
-            # 10. 创建 README
+            # README
             readme_content = f"""# 导出的模型项目
 
     ## 目录结构
-    - `model.workflow.json`: 工作流定义文件
+    - `model.workflow.json`: 工作流定义文件（使用原始节点ID）
+    - `project_spec.json`: **项目输入/输出接口规范**
     - `components/`: 组件代码
-    - `inputs/`: 输入文件（如模型文件、数据文件）
+    - `inputs/`: 输入文件
     - `requirements.txt`: 依赖包列表
     - `run.py`: 运行脚本
 
     ## 使用方法
     1. 安装依赖: `pip install -r requirements.txt`
-    2. 运行模型: `python run.py`
-
-    ## 注意事项
-    - 未连接的输入端口需要在运行时提供数据
-    - 文件路径已重写为相对路径
+    2. 准备输入: 创建 `inputs.json`，如 `{{"input_0": "hello"}}`
+    3. 运行: `python run.py --input inputs.json`
     """
             (export_path / "README.md").write_text(readme_content, encoding='utf-8')
 
