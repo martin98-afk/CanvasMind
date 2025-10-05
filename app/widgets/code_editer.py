@@ -96,8 +96,20 @@ class CodeEditor(QPlainTextEdit):
         key = event.key()
         modifiers = event.modifiers()
 
-        # ========== 1. 补全确认 ==========
-        if (key in (Qt.Key_Return, Qt.Key_Enter)
+        # ========== 1. Shift+Enter: 简单换行 ==========
+        if modifiers == Qt.ShiftModifier and key in (Qt.Key_Return, Qt.Key_Enter):
+            cursor = self.textCursor()
+            self._parent_widget._handle_shift_enter(cursor)
+            return
+
+        # ========== 2. 智能回车缩进（普通回车）==========
+        if key in (Qt.Key_Return, Qt.Key_Enter) and modifiers == Qt.NoModifier:
+            cursor = self.textCursor()
+            self._parent_widget._handle_newline(cursor)
+            return
+
+        # ========== 3. Tab 补全 ==========
+        if (key in (Qt.Key_Return, Qt.Key_Tab)
                 and modifiers == Qt.NoModifier
                 and self._parent_widget
                 and self._parent_widget.completer.popup().isVisible()):
@@ -107,19 +119,7 @@ class CodeEditor(QPlainTextEdit):
             )
             return  # 阻止默认行为
 
-        # ========== 2. Shift+Enter: 简单换行 ==========
-        if modifiers == Qt.ShiftModifier and key in (Qt.Key_Return, Qt.Key_Enter):
-            cursor = self.textCursor()
-            self._parent_widget._handle_shift_enter(cursor)
-            return
-
-        # ========== 3. 智能回车缩进（普通回车）==========
-        if key in (Qt.Key_Return, Qt.Key_Enter) and modifiers == Qt.NoModifier:
-            cursor = self.textCursor()
-            self._parent_widget._handle_newline(cursor)
-            return
-
-        # ========== 4. 其他按键交给父类（Tab/Backspace等由eventFilter处理）==========
+        # ========== 4. 其他按键交给 eventFilter 处理（包括 Tab、Backspace、符号等）==========
         super().keyPressEvent(event)
 
     def set_dark_theme(self):
@@ -468,38 +468,50 @@ class CodeEditorWidget(QWidget):
         if obj == self.code_editor and event.type() == event.KeyPress:
             key = event.key()
             text = event.text()
-            # modifiers = event.modifiers()  # 不再需要判断回车
-
-            # 删除所有关于 Qt.Key_Return / Qt.Key_Enter 的处理！
-
-            # 只保留：自动括号、Tab、Backspace、快捷键、补全触发等
             cursor = self.code_editor.textCursor()
             doc = self.code_editor.document()
 
-            # 自动成对括号/引号
-            if self._handle_auto_pairs(cursor, text):
-                return True
+            # ========== 【关键】先关闭补全弹窗（避免干扰成对符号） ==========
+            if self.completer.popup().isVisible():
+                if key in (Qt.Key_Space, Qt.Key_Tab, Qt.Key_Period, Qt.Key_Escape,
+                           Qt.Key_ParenRight, Qt.Key_BraceRight, Qt.Key_BracketRight,
+                           Qt.Key_QuoteDbl, Qt.Key_Apostrophe):
+                    self.completer.popup().hide()
+                    if key == Qt.Key_Escape:
+                        return True  # 只有 Escape 需要提前返回
 
-            # 跳过闭合符
+            # ========== 跳过闭合符（修复引号跳过问题） ==========
             if self._handle_skip_closer(cursor, text, doc):
                 return True
 
-            # 删除成对符号
+            # ========== 自动成对括号/引号 ==========
+            if self._handle_auto_pairs(cursor, text, doc):
+                return True
+
+            # ========== 删除成对符号 ==========
             if key == Qt.Key_Backspace and self._handle_backspace(cursor, doc):
                 return True
 
-            # Tab 缩进
+            # ========== Tab: 补全确认 或 缩进（核心修改） ==========
             if key == Qt.Key_Tab:
-                if cursor.selection().isEmpty():
-                    cursor.insertText("    ")
+                if self.completer.popup().isVisible():
+                    # 用 Tab 确认补全
+                    self._insert_completion(self.completer.currentCompletion())
+                    return True
                 else:
-                    self._indent_selection()
-                return True
+                    # 普通缩进
+                    if cursor.selection().isEmpty():
+                        cursor.insertText("    ")
+                    else:
+                        self._indent_selection()
+                    return True
+
+            # ========== Backtab: 反向缩进 ==========
             elif key == Qt.Key_Backtab:
                 self._unindent_selection()
                 return True
 
-            # 快捷键
+            # ========== 快捷键 ==========
             if event.modifiers() == Qt.ControlModifier:
                 if key == Qt.Key_Slash:
                     self._toggle_comment()
@@ -508,21 +520,15 @@ class CodeEditorWidget(QWidget):
                     self._duplicate_line()
                     return True
 
-            # 触发补全（非回车键）
+            # ========== 触发补全（非标识符字符不触发） ==========
             if not self.completer.popup().isVisible():
                 if text.isalnum() or text == '_':
                     QTimer.singleShot(0, self._update_completer_prefix)
             else:
-                # 更新过滤
                 QTimer.singleShot(0, self._update_completer_prefix)
 
-            # 关闭补全的按键
-            if self.completer.popup().isVisible():
-                if key in (Qt.Key_Space, Qt.Key_Tab, Qt.Key_Period, Qt.Key_Escape,
-                           Qt.Key_ParenRight, Qt.Key_BraceRight, Qt.Key_BracketRight):
-                    self.completer.popup().hide()
-                    if key == Qt.Key_Escape:
-                        return True
+            # 其他按键交给父类
+            return super().eventFilter(obj, event)
 
         return super().eventFilter(obj, event)
 
@@ -617,12 +623,13 @@ class CodeEditorWidget(QWidget):
         bracket_indent = base_indent + (indent_level * 4)
         return ' ' * bracket_indent
 
-    def _handle_auto_pairs(self, cursor, text):
+    def _handle_auto_pairs(self, cursor, text, doc):
         pairs = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'"}
+        pos = cursor.position()
         if text in pairs:
             if cursor.hasSelection():
                 cursor.insertText(text + cursor.selectedText() + pairs[text])
-            else:
+            elif not doc.characterAt(pos) == text:
                 cursor.insertText(text + pairs[text])
                 cursor.movePosition(QTextCursor.Left)
                 self.code_editor.setTextCursor(cursor)
@@ -632,10 +639,19 @@ class CodeEditorWidget(QWidget):
     def _handle_skip_closer(self, cursor, text, doc):
         if text in [')', ']', '}', '"', "'"]:
             pos = cursor.position()
-            if pos < doc.characterCount() - 1 and doc.characterAt(pos) == text:
-                cursor.movePosition(QTextCursor.Right)
-                self.code_editor.setTextCursor(cursor)
-                return True
+            if pos < doc.characterCount() and doc.characterAt(pos) == text:
+                # 对引号：仅当光标前一个字符也是相同引号时才跳过（即处于 "" 或 '' 中间）
+                if text in ('"', "'"):
+                    if pos > 0 and doc.characterAt(pos - 1) == text:
+                        cursor.movePosition(QTextCursor.Right)
+                        self.code_editor.setTextCursor(cursor)
+                        return True
+                    else:
+                        return False
+                else:
+                    cursor.movePosition(QTextCursor.Right)
+                    self.code_editor.setTextCursor(cursor)
+                    return True
         return False
 
     def _handle_backspace(self, cursor, doc):

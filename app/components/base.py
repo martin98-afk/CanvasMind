@@ -286,7 +286,10 @@ class BaseComponent(ABC):
 
     def _read_torch_model(self, data: Union[str, Path]) -> Any:
         """读取torch模型"""
-        import torch
+        try:
+            import torch
+        except:
+            pass
         if isinstance(data, (str, Path)) and os.path.exists(data):
             return torch.jit.load(data)
         else:
@@ -369,7 +372,10 @@ class BaseComponent(ABC):
 
     def _store_torch_model(self, model: Any) -> str:
         """存储torch模型"""
-        import torch
+        try:
+            import torch
+        except:
+            pass
         import tempfile
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pth') as tmp:
             # 使用torch.jit.script进行模型序列化
