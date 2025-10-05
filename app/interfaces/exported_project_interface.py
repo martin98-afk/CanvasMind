@@ -51,11 +51,13 @@ class ProjectRunnerThread(QThread):
     def __init__(self, project_path, parent=None):
         super().__init__(parent)
         self.project_path = project_path
+        with open(os.path.join(project_path, "model.workflow.json"), 'r', encoding='utf-8') as f:
+            self.python_exe = json.load(f).get("runtime").get("environment_exe")
 
     def run(self):
         try:
             result = subprocess.run(
-                [sys.executable, "run.py"],
+                [self.python_exe, "run.py"],
                 cwd=self.project_path,
                 capture_output=True,
                 text=True,
@@ -98,15 +100,18 @@ class MicroserviceManager:
 
         # 日志文件路径
         log_file = os.path.join(project_path, "service.log")
-
-        cmd = [sys.executable, "api_server.py", "--port", str(port)]
+        # 获取项目python_exe
+        with open(os.path.join(project_path, "model.workflow.json"), 'r', encoding='utf-8') as f:
+            python_exe = json.load(f).get("runtime").get("environment_exe")
+        cmd = [python_exe, "api_server.py", "--port", str(port)]
         with open(log_file, 'w', encoding='utf-8') as log_f:
             process = subprocess.Popen(
                 cmd,
                 cwd=project_path,
                 stdout=log_f,
                 stderr=subprocess.STDOUT,  # 合并 stderr 到 stdout
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+                encoding='utf-8'
             )
 
         self.services[project_path] = {

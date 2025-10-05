@@ -32,9 +32,13 @@
 
 <img src="images/子图导出项目输出参数选择示意图.png" width="800">
 
-## 📦 项目管理示意图
+### 项目管理示意图
 
 <img src="images/导出项目管理示意图.png" width="800">
+
+### 项目服务日志示意图
+
+<img src="images/项目服务日志示意图.png" width="800">
 
 ## 📦 运行环境管理示意图
 
