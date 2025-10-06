@@ -69,7 +69,7 @@ class OutputSelectionDialog(MessageBoxBase):
 
                     key_edit = LineEdit()
                     key_edit.setFixedWidth(120)
-                    default_key = f"output_{len(self.item_widgets)}"
+                    default_key = item.get("output_name")
                     key_edit.setText(default_key)
                     key_edit.setPlaceholderText("输出key")
 

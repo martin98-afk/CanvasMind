@@ -19,7 +19,7 @@ class WorkflowCard(CardWidget):
 
     def _setup_ui(self):
         self.setFixedHeight(220)
-        self.setFixedWidth(300)
+        self.setFixedWidth(310)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -67,7 +67,7 @@ class WorkflowCard(CardWidget):
         btn_layout.setSpacing(8)
 
         open_btn = PrimaryPushButton("打开画布", self, FluentIcon.EDIT)
-        open_btn.setFixedWidth(100)
+        open_btn.setFixedWidth(130)
         open_btn.clicked.connect(self._on_open_clicked)
 
         tool_layout = QHBoxLayout()

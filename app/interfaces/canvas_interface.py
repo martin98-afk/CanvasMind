@@ -37,6 +37,7 @@ class CanvasPage(QWidget):
         super().__init__()
         self.parent = parent
         self.file_path = object_name  # 新增：当前文件路径
+        self.workflow_name = object_name.stem.split(".")[0]
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
         self.parent = parent
         # 初始化线程池
@@ -71,6 +72,7 @@ class CanvasPage(QWidget):
 
         # 创建悬浮按钮和环境选择
         self.create_floating_buttons()
+        self.create_name_label()
         self.create_environment_selector()
 
         # 信号连接
@@ -88,6 +90,8 @@ class CanvasPage(QWidget):
     def eventFilter(self, obj, event):
         if obj is self.canvas_widget and event.type() == event.Resize:
             self.env_selector_container.move(self.canvas_widget.width() - 200, 10)
+            workflow_name_length = len(self.workflow_name) * 15
+            self.name_container.move(int(self.canvas_widget.width() // 2) - workflow_name_length // 2, 10)
         return super().eventFilter(obj, event)
 
     def create_environment_selector(self):
@@ -220,6 +224,31 @@ class CanvasPage(QWidget):
         button_container.setLayout(button_layout)
         button_container.show()
 
+    def create_name_label(self):
+        """创建画布左上角的悬浮按钮"""
+        # 创建下拉框容器
+        self.name_container = QWidget(self.canvas_widget)
+        self.name_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        # 放置在右上角
+        # 计算workflow_name的长度
+        workflow_name_length = len(self.workflow_name) * 15
+        self.name_container.move(int(self.canvas_widget.width() // 2) - workflow_name_length // 2, 10)
+
+        # 创建布局
+        env_layout = QHBoxLayout(self.name_container)
+        env_layout.setSpacing(5)
+        env_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 添加标签
+        env_label = ToolButton(self)
+        env_label.setText(self.workflow_name)
+
+        env_layout.addWidget(env_label)
+        env_layout.addStretch()
+
+        self.name_container.setLayout(env_layout)
+        self.name_container.show()
+
     def _save_via_dialog(self):
         if self.file_path:
             # 默认使用当前路径
@@ -245,7 +274,6 @@ class CanvasPage(QWidget):
         )
         if file_path:
             self.load_full_workflow(file_path)
-            self.file_path = file_path
 
     def canvas_drag_enter_event(self, event):
         """画布拖拽进入事件"""
@@ -878,8 +906,7 @@ class CanvasPage(QWidget):
                 image.fill(Qt.white)
             else:
                 # 扩展一点边距，避免裁剪
-                margin = 20
-                rect.adjust(-margin, -margin, margin, margin)
+                rect.adjust(-25, -25, 120, 200)
                 image = QImage(rect.size().toSize(), QImage.Format_ARGB32)
                 image.fill(Qt.white)  # 背景设为白色（可选）
 

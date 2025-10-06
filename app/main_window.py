@@ -5,7 +5,6 @@ from PyQt5.QtWidgets import QPlainTextEdit, QApplication, QDesktopWidget
 from loguru import logger
 from qfluentwidgets import FluentWindow, Theme, setTheme, NavigationItemPosition, SplashScreen, FluentIcon
 
-from app.interfaces.canvas_interface import CanvasPage
 from app.interfaces.component_developer import ComponentDeveloperWidget
 from app.interfaces.exported_project_interface import ExportedProjectsPage
 from app.interfaces.package_manager_interface import EnvManagerUI

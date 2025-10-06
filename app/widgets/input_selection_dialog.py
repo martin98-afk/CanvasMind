@@ -106,7 +106,7 @@ class InputSelectionDialog(MessageBoxBase):
                     # Key 输入框
                     key_edit = LineEdit()
                     key_edit.setFixedWidth(120)
-                    default_key = f"input_{len(self.item_widgets)}"
+                    default_key = item.get("port_name") or item.get("param_name")
                     key_edit.setText(default_key)
                     key_edit.setPlaceholderText("输入key")
 

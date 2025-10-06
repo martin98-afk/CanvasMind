@@ -50,6 +50,31 @@ class ComponentDeveloperWidget(QWidget):
         self._updating_requirements_from_analysis = False
 
     def _setup_ui(self):
+        self.setStyleSheet("""
+                QSplitter {
+                    background-color: #2D2D2D;
+                    border: 1px solid #444444;
+                }
+
+                QSplitter::handle {
+                    background-color: #444444;
+                    border: 1px solid #555555;
+                }
+
+                QSplitter::handle:hover {
+                    background-color: #555555;
+                }
+
+                QSplitter::handle:horizontal {
+                    width: 4px;
+                    background-image: url(:/qss_icons/rc/toolbar_separator_vertical.png);
+                }
+
+                QSplitter::handle:vertical {
+                    height: 4px;
+                    background-image: url(:/qss_icons/rc/toolbar_separator_horizontal.png);
+                }
+            """)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         # 左侧：组件树和开发区域

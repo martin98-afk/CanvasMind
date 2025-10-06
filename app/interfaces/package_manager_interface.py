@@ -134,6 +134,31 @@ class EnvManagerUI(QWidget):
         super().__init__()
         self.setObjectName("EnvManagerUI")
         self.resize(1000, 600)
+        self.setStyleSheet("""
+                QSplitter {
+                    background-color: #2D2D2D;
+                    border: 1px solid #444444;
+                }
+
+                QSplitter::handle {
+                    background-color: #444444;
+                    border: 1px solid #555555;
+                }
+
+                QSplitter::handle:hover {
+                    background-color: #555555;
+                }
+
+                QSplitter::handle:horizontal {
+                    width: 4px;
+                    background-image: url(:/qss_icons/rc/toolbar_separator_vertical.png);
+                }
+
+                QSplitter::handle:vertical {
+                    height: 4px;
+                    background-image: url(:/qss_icons/rc/toolbar_separator_horizontal.png);
+                }
+            """)
 
         self.mgr = EnvironmentManager()
         self.process = None
@@ -147,21 +172,21 @@ class EnvManagerUI(QWidget):
         self.refresh_env_list()
         self.envCombo.currentIndexChanged.connect(self.on_env_changed)
 
-        self.newEnvBtn = PrimaryPushButton("新建环境", self, icon=FluentIcon.ADD)
+        self.newEnvBtn = PrimaryPushButton("新建", self, icon=FluentIcon.ADD)
         self.newEnvBtn.clicked.connect(self.create_env)
 
-        self.deleteEnvBtn = PushButton("删除环境", self, icon=FluentIcon.DELETE)
-        self.deleteEnvBtn.clicked.connect(self.delete_env)
+        self.cloneEnvBtn = PrimaryPushButton("克隆", self, icon=FluentIcon.COPY)
+        self.cloneEnvBtn.clicked.connect(self.clone_env)
 
-        self.refreshEnvBtn = PushButton("刷新", self, icon=FluentIcon.SYNC)
-        self.refreshEnvBtn.clicked.connect(self.on_env_changed)
+        self.deleteEnvBtn = PushButton("删除", self, icon=FluentIcon.DELETE)
+        self.deleteEnvBtn.clicked.connect(self.delete_env)
 
         topLayout = QHBoxLayout()
         topLayout.addWidget(BodyLabel("Python环境:"))
         topLayout.addWidget(self.envCombo, stretch=1)
         topLayout.addWidget(self.newEnvBtn)
+        topLayout.addWidget(self.cloneEnvBtn)
         topLayout.addWidget(self.deleteEnvBtn)
-        topLayout.addWidget(self.refreshEnvBtn)
 
         # ---------- 第二行操作 ----------
         self.actionCombo = ComboBox(self)
@@ -502,95 +527,84 @@ class EnvManagerUI(QWidget):
 
     def create_env(self):
         """新建环境：选择版本和环境名"""
-        from qfluentwidgets import MessageBox
-
-        # 首先询问用户是否要克隆已有环境
-        clone_dialog = MessageBox(
-            "新建环境",
-            "是否要克隆已有环境？\n选择\"是\"克隆已有环境，选择\"否\"创建新环境",
+        # 创建选择Python版本的对话框
+        version_dialog = CustomComboDialog(
+            "选择 Python 版本",
+            list(self.mgr.MINICONDA_URLS.keys()),
+            0,
             self
         )
-        clone_dialog.yesButton.setText("是，克隆环境")
-        clone_dialog.cancelButton.setText("否，创建新环境")
 
-        if clone_dialog.exec_():  # 返回True表示点击了"是"按钮
-            # 克隆环境
-            envs = self.mgr.list_envs()
-            if not envs:
-                InfoBar.warning("警告", "没有可用的环境可供克隆", parent=self)
-                return
+        if version_dialog.exec_():
+            version = version_dialog.get_text()
 
-            # 创建选择源环境的对话框
-            source_env_dialog = CustomComboDialog("选择要克隆的源环境", envs, 0, self)
-            if source_env_dialog.exec_():
-                source_env = source_env_dialog.get_text()
-
-                # 创建输入目标环境名的对话框
-                target_env_dialog = CustomInputDialog(
-                    f"输入新环境名称（基于 {source_env}）",
-                    placeholder="请输入环境名称",
-                    currenttext=f"{source_env}_clone",
-                    parent=self
-                )
-
-                if target_env_dialog.exec_():
-                    target_env = target_env_dialog.get_text().strip()
-                    if not target_env:
-                        InfoBar.warning("警告", "请输入环境名称", parent=self)
-                        return
-
-                    try:
-                        self.mgr.clone_env(source_env, target_env, log_callback=self.logEdit.append)
-                        self.mgr.install_finished.connect(
-                            lambda: (
-                                self.refresh_env_list(),
-                                InfoBar.success("成功", f"环境 {target_env} 已克隆", parent=self),
-                                self.envCombo.setCurrentText(target_env),
-                                self.env_changed.emit()
-                            )
-                        )
-                    except Exception as e:
-                        import traceback
-                        print(traceback.format_exc())
-                        InfoBar.error("错误", str(e), parent=self)
-        else:  # 点击了"否"按钮，创建新环境
-            # 创建选择Python版本的对话框
-            version_dialog = CustomComboDialog(
-                "选择 Python 版本",
-                list(self.mgr.MINICONDA_URLS.keys()),
-                0,
-                self
+            # 创建输入环境名称的对话框
+            env_name_dialog = CustomInputDialog(
+                f"输入环境名称（默认为 {version}）",
+                placeholder="请输入环境名称",
+                currenttext=version,
+                parent=self
             )
 
-            if version_dialog.exec_():
-                version = version_dialog.get_text()
+            if env_name_dialog.exec_():
+                env_name = env_name_dialog.get_text().strip()
 
-                # 创建输入环境名称的对话框
-                env_name_dialog = CustomInputDialog(
-                    f"输入环境名称（默认为 {version}）",
-                    placeholder="请输入环境名称",
-                    currenttext=version,
-                    parent=self
-                )
+                # 如果用户没有输入环境名，使用默认版本号
+                if not env_name.strip():
+                    env_name = version
 
-                if env_name_dialog.exec_():
-                    env_name = env_name_dialog.get_text().strip()
-
-                    # 如果用户没有输入环境名，使用默认版本号
-                    if not env_name.strip():
-                        env_name = version
-
-                    try:
-                        self.mgr.download_and_install(version, env_name=env_name, log_callback=self.logEdit.append)
-                        self.mgr.install_finished.connect(
-                            lambda: (
-                                self.refresh_env_list(),
-                                InfoBar.success("成功", f"环境 {env_name} 已创建", parent=self),
-                                self.envCombo.setCurrentText(env_name),
-                                self.env_changed.emit()
-                            )
+                try:
+                    self.mgr.download_and_install(version, env_name=env_name, log_callback=self.logEdit.append)
+                    self.mgr.install_finished.connect(
+                        lambda: (
+                            self.refresh_env_list(),
+                            InfoBar.success("成功", f"环境 {env_name} 已创建", parent=self),
+                            self.envCombo.setCurrentText(env_name),
+                            self.env_changed.emit()
                         )
-                    except Exception as e:
-                        import traceback
-                        print(traceback.format_exc())
-                        InfoBar.error("错误", str(e), parent=self)
+                    )
+                except Exception as e:
+                    import traceback
+                    print(traceback.format_exc())
+                    InfoBar.error("错误", str(e), parent=self)
+
+    def clone_env(self):
+        # 克隆环境
+        envs = self.mgr.list_envs()
+        if not envs:
+            InfoBar.warning("警告", "没有可用的环境可供克隆", parent=self)
+            return
+
+        # 创建选择源环境的对话框
+        source_env_dialog = CustomComboDialog("选择要克隆的源环境", envs, 0, self)
+        if source_env_dialog.exec_():
+            source_env = source_env_dialog.get_text()
+
+            # 创建输入目标环境名的对话框
+            target_env_dialog = CustomInputDialog(
+                f"输入新环境名称（基于 {source_env}）",
+                placeholder="请输入环境名称",
+                currenttext=f"{source_env}_clone",
+                parent=self
+            )
+
+            if target_env_dialog.exec_():
+                target_env = target_env_dialog.get_text().strip()
+                if not target_env:
+                    InfoBar.warning("警告", "请输入环境名称", parent=self)
+                    return
+
+                try:
+                    self.mgr.clone_env(source_env, target_env, log_callback=self.logEdit.append)
+                    self.mgr.install_finished.connect(
+                        lambda: (
+                            self.refresh_env_list(),
+                            InfoBar.success("成功", f"环境 {target_env} 已克隆", parent=self),
+                            self.envCombo.setCurrentText(target_env),
+                            self.env_changed.emit()
+                        )
+                    )
+                except Exception as e:
+                    import traceback
+                    print(traceback.format_exc())
+                    InfoBar.error("错误", str(e), parent=self)

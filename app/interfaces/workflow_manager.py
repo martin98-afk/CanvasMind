@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -13,7 +14,6 @@ from app.interfaces.canvas_interface import CanvasPage
 from app.utils.utils import get_icon
 from app.widgets.custom_messagebox import CustomInputDialog
 from app.widgets.workflow_card import WorkflowCard
-from envs.miniconda.Lib import shutil
 
 
 class WorkflowCanvasGalleryPage(QWidget):
@@ -61,12 +61,10 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.flow_layout.setAnimation(250, QEasingCurve.OutQuad)
         self.flow_layout.setContentsMargins(30, 30, 30, 30)
         self.flow_layout.setVerticalSpacing(20)
-        self.flow_layout.setHorizontalSpacing(50)
+        self.flow_layout.setHorizontalSpacing(30)
 
         self.scroll_area.setWidget(self.scroll_widget)
         layout.addWidget(self.scroll_area)
-
-        self.load_workflows()
 
     def _open_workflow_dir(self):
         try:
@@ -113,7 +111,8 @@ class WorkflowCanvasGalleryPage(QWidget):
             canvas_interface.clicked.connect(
                 lambda: (
                     canvas_page.nav_view.refresh_components(),
-                    canvas_page.register_components()
+                    canvas_page.register_components(),
+                    canvas_page._setup_pipeline_style()
                 )
             )
             self.opened_workflows[file_path] = canvas_page
@@ -186,6 +185,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         try:
             file_path.unlink()
             InfoBar.success("删除成功", f"画布 “{file_path.stem}” 已删除", parent=self)
+            if file_path in self.opened_workflows:
+                self.parent_window.removeInterface(self.opened_workflows[file_path])
+                del self.opened_workflows[file_path]
             self.load_workflows()
         except Exception as e:
             InfoBar.error("删除失败", str(e), parent=self)
