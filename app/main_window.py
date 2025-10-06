@@ -3,12 +3,14 @@ from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QPlainTextEdit, QApplication, QDesktopWidget
 from loguru import logger
-from qfluentwidgets import FluentWindow, Theme, setTheme, NavigationItemPosition, SplashScreen
+from qfluentwidgets import FluentWindow, Theme, setTheme, NavigationItemPosition, SplashScreen, FluentIcon
 
 from app.interfaces.canvas_interface import CanvasPage
 from app.interfaces.component_developer import ComponentDeveloperWidget
 from app.interfaces.exported_project_interface import ExportedProjectsPage
 from app.interfaces.package_manager_interface import EnvManagerUI
+from app.interfaces.settings_interface import SettingInterface
+from app.interfaces.update_checker import UpdateChecker
 from app.interfaces.workflow_manager import WorkflowManager
 from app.utils.utils import get_icon
 from app.widgets.logger_dialog import QTextEditLogger
@@ -25,6 +27,7 @@ class LowCodeWindow(FluentWindow):
         screen_width, screen_height = screen_rect.width(), screen_rect.height()
         self.window_width = int(screen_width * 0.75)
         self.window_height = int(screen_height * 0.75)
+        self.navigationInterface.setExpandWidth(200)
         self.resize(self.window_width, self.window_height)
         desktop = QApplication.desktop().availableGeometry()
         w, h = desktop.width(), desktop.height()
@@ -53,6 +56,17 @@ class LowCodeWindow(FluentWindow):
         project_interface = self.addSubInterface(self.project_manager, get_icon("项目"), '导出项目管理')
         project_interface.clicked.connect(self.project_manager.load_projects)
         self.addSubInterface(self.package_manager, get_icon("工具包"), '工具包管理')
+        # 更新按钮
+        self.updater = UpdateChecker(self)
+        self.updater.check_update()
+        self.navigationInterface.addItem(
+            routeKey='update',
+            icon=FluentIcon.SYNC,
+            text='检查更新',
+            onClick=self.updater.check_update,
+            selectable=False,
+            position=NavigationItemPosition.BOTTOM,
+        )
         # 添加日志页面
         log_interface = self.addSubInterface(
             self.log_viewer, get_icon("系统运行日志"), '执行日志', NavigationItemPosition.BOTTOM)
@@ -61,6 +75,11 @@ class LowCodeWindow(FluentWindow):
                 self.text_logger._clean_trailing_empty_lines(),
                 self.text_logger.scroll_to_bottom(force=True)
             )
+        )
+        # 配置管理界面
+        self.setting_card = SettingInterface(self)
+        self.addSubInterface(
+            self.setting_card, FluentIcon.SETTING, '系统设置', NavigationItemPosition.BOTTOM
         )
         self.splashScreen.finish()
 

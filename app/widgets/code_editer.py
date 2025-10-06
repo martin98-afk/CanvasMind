@@ -642,7 +642,7 @@ class CodeEditorWidget(QWidget):
             if pos < doc.characterCount() and doc.characterAt(pos) == text:
                 # 对引号：仅当光标前一个字符也是相同引号时才跳过（即处于 "" 或 '' 中间）
                 if text in ('"', "'"):
-                    if pos > 0 and doc.characterAt(pos - 1) == text:
+                    if pos > 0:
                         cursor.movePosition(QTextCursor.Right)
                         self.code_editor.setTextCursor(cursor)
                         return True

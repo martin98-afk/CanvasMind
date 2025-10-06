@@ -24,6 +24,7 @@ class Component(BaseComponent):
     ]
     outputs = [
         PortDefinition(name="output", label="端口1", type=ArgumentType.ARRAY),
+        PortDefinition(name="columns", label="端口2", type=ArgumentType.ARRAY),
     ]
     properties = {
     }
@@ -37,5 +38,6 @@ class Component(BaseComponent):
         # 在这里编写你的组件逻辑
         
         return {
-            "output": inputs.get("input").values
+            "output": inputs.get("input").values,
+            "columns": [column for column in inputs.get("input").columns]
         }

@@ -15,10 +15,10 @@ ArgumentType = base_module.ArgumentType
 
 
 class Component(BaseComponent):
-    name = "图像分类训练"
+    name = "图像分类测试"
     category = "模型训练"
-    description = ""
-    requirements = "torch,torchvision"
+    description = "使用pytorch中ResNet18预训练模型测试torch运行可行性"
+    requirements = "Pillow,torch,torchvision"
     inputs = [
         PortDefinition(name="input_image", label="端口1", type=ArgumentType.IMAGE),
     ]
