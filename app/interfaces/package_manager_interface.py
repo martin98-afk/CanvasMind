@@ -134,6 +134,31 @@ class EnvManagerUI(QWidget):
         super().__init__()
         self.setObjectName("EnvManagerUI")
         self.resize(1000, 600)
+        self.setStyleSheet("""
+                QSplitter {
+                    background-color: #2D2D2D;
+                    border: 1px solid #444444;
+                }
+
+                QSplitter::handle {
+                    background-color: #444444;
+                    border: 1px solid #555555;
+                }
+
+                QSplitter::handle:hover {
+                    background-color: #555555;
+                }
+
+                QSplitter::handle:horizontal {
+                    width: 4px;
+                    background-image: url(:/qss_icons/rc/toolbar_separator_vertical.png);
+                }
+
+                QSplitter::handle:vertical {
+                    height: 4px;
+                    background-image: url(:/qss_icons/rc/toolbar_separator_horizontal.png);
+                }
+            """)
 
         self.mgr = EnvironmentManager()
         self.process = None

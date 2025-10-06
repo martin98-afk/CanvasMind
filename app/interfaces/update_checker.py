@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 import time
+import shutil
 import zipfile
 
 from PyQt5.QtCore import Qt
@@ -11,7 +12,6 @@ from qfluentwidgets import Dialog, InfoBar, InfoBarPosition, InfoBarIcon
 from app.utils.config import Settings
 from app.utils.threading_utils import AsyncUpdateChecker, DownloadThread
 from app.utils.utils import resource_path
-from envs.miniconda.Lib import shutil
 
 
 class UpdateChecker(QWidget):
@@ -26,7 +26,6 @@ class UpdateChecker(QWidget):
         self.token = cfg.github_token
         self.progress_dialog = None
         self.download_thread = None
-        self.current_version = self._get_current_version()
         self.update_zip_path = None  # 新增：记录 ZIP 路径
 
     def _show_update_dialog(self, latest_release):
