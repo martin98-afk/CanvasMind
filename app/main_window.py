@@ -11,7 +11,7 @@ from app.interfaces.exported_project_interface import ExportedProjectsPage
 from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
-from app.interfaces.workflow_manager import WorkflowManager
+from app.interfaces.workflow_manager import WorkflowCanvasGalleryPage
 from app.utils.utils import get_icon
 from app.widgets.logger_dialog import QTextEditLogger
 
@@ -41,21 +41,17 @@ class LowCodeWindow(FluentWindow):
         # 创建主界面页面
         self.package_manager = EnvManagerUI()
         self.package_manager.mgr.install_miniconda()
-        self.canvas_page = CanvasPage(self)
         self.develop_page = ComponentDeveloperWidget(self)
         self.project_manager = ExportedProjectsPage(self)
+        self.workflow_manager = WorkflowCanvasGalleryPage(self)
         # 添加主界面页面
         self.addSubInterface(self.develop_page, get_icon("组件"), '组件开发')
-        canvas_interface = self.addSubInterface(self.canvas_page, get_icon("模型"), '工作流画布')
-        canvas_interface.clicked.connect(
-            lambda: (
-                self.canvas_page.nav_view.refresh_components(),
-                self.canvas_page.register_components()
-            )
-        )
+        workflow_interface = self.addSubInterface(self.workflow_manager, get_icon("工作流"), '工作流管理')
+        workflow_interface.clicked.connect(self.workflow_manager.load_workflows)
         project_interface = self.addSubInterface(self.project_manager, get_icon("项目"), '导出项目管理')
         project_interface.clicked.connect(self.project_manager.load_projects)
         self.addSubInterface(self.package_manager, get_icon("工具包"), '工具包管理')
+
         # 更新按钮
         self.updater = UpdateChecker(self)
         self.updater.check_update()

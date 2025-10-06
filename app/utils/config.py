@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+from pathlib import Path
+
 from qfluentwidgets import ConfigSerializer, ConfigItem, QConfig, OptionsValidator, BoolValidator, FolderListValidator, \
-    RangeValidator
+    RangeValidator, OptionsConfigItem
 from enum import Enum
 
 
@@ -39,13 +41,25 @@ class Settings(QConfig):
     # GitCode 配置（如有）
     gitcode_repo = ConfigItem("Patch", "GitCode/Repo", "yourname/yourrepo")
 
+    # ========== 新增：画布路径 ==========
+    workflow_paths = ConfigItem(
+        "Workflow",
+        "Paths", [Path(__file__).parent.parent.parent / Path("workflows")],
+        FolderListValidator()
+    )
     # ========== 新增：项目路径 ==========
-    project_paths = ConfigItem("Project", "Paths", [], FolderListValidator())
+    project_paths = ConfigItem(
+        "Project",
+        "Paths", [Path(__file__).parent.parent.parent / Path("projects")],
+        FolderListValidator()
+    )
 
     # ========== 新增：画布设置 ==========
     canvas_show_grid = ConfigItem("Canvas", "ShowGrid", True, BoolValidator())
     canvas_grid_size = ConfigItem("Canvas", "GridSize", 20, RangeValidator(10, 30))
     canvas_auto_save = ConfigItem("Canvas", "AutoSave", True, BoolValidator())
     canvas_auto_save_interval = ConfigItem("Canvas", "AutoSaveInterval", 60, RangeValidator(60, 120))
-    canvas_default_zoom = ConfigItem("Canvas", "DefaultZoom", "100%",
+    canvas_pipelayout = OptionsConfigItem("Canvas", "PipeLayout", "折线",
+                                            OptionsValidator(["直线", "曲线", "折线"]))
+    canvas_default_zoom = OptionsConfigItem("Canvas", "DefaultZoom", "100%",
                                      OptionsValidator(["50%", "75%", "100%", "125%", "150%"]))

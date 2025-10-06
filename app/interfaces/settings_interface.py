@@ -35,6 +35,7 @@ class SettingInterface(ScrollArea):
         self.vBoxLayout.setSpacing(20)
 
         # ========== 新增设置 ==========
+        self.setup_workflow_paths_settings()
         self.setup_project_paths_settings()  # 本地项目路径
         self.setup_canvas_settings()        # 画布详细设置
 
@@ -55,6 +56,23 @@ class SettingInterface(ScrollArea):
 
         self.exportGroup.addSettingCard(self.exportDirCard)
         self.vBoxLayout.addWidget(self.exportGroup)
+
+    # ==================== 新增：项目路径管理 ====================
+
+    def setup_workflow_paths_settings(self):
+        """本地项目路径管理"""
+        self.workflowPathsGroup = SettingCardGroup(" 画布管理", self.view)
+
+        self.workflowPathsCard = FolderListSettingCard(
+            configItem=self.cfg.workflow_paths,
+            title="本地画布路径",
+            content="管理多个画布工作目录",
+            directory=resource_path("./workflows"),
+            parent=self.workflowPathsGroup
+        )
+
+        self.workflowPathsGroup.addSettingCard(self.workflowPathsCard)
+        self.vBoxLayout.addWidget(self.workflowPathsGroup)
 
     # ==================== 新增：项目路径管理 ====================
 
@@ -113,20 +131,30 @@ class SettingInterface(ScrollArea):
         )
         self.autoSaveIntervalCard.clicked.connect(self.onAutoSaveIntervalClicked)
 
-        # self.defaultZoomCard = OptionsSettingCard(
-        #     self.cfg.canvas_default_zoom,
-        #     FIF.ZOOM,
-        #     "默认缩放比例",
-        #     "新建画布时的初始缩放",
-        #     OptionsValidator(options=["50%", "75%", "100%", "125%", "150%"]),
-        #     parent=self.canvasGroup
-        # )
+        self.defaultZoomCard = OptionsSettingCard(
+            self.cfg.canvas_default_zoom,
+            FIF.ZOOM,
+            "默认缩放比例",
+            "新建画布时的初始缩放",
+            texts=["50%", "75%", "100%", "125%", "150%"],
+            parent=self.canvasGroup
+        )
+        self.pipelayoutCard = OptionsSettingCard(
+            self.cfg.canvas_pipelayout,
+            FIF.ZOOM,
+            "流程图连线类型",
+            "",
+            texts=["直线", "曲线", "折线"],
+            parent=self.canvasGroup
+        )
 
         self.canvasGroup.addSettingCard(self.showGridCard)
         self.canvasGroup.addSettingCard(self.gridSizeCard)
         self.canvasGroup.addSettingCard(self.autoSaveCard)
         self.canvasGroup.addSettingCard(self.autoSaveIntervalCard)
-        # self.canvasGroup.addSettingCard(self.defaultZoomCard)
+        self.canvasGroup.addSettingCard(self.pipelayoutCard)
+        self.canvasGroup.addSettingCard(self.defaultZoomCard)
+
         self.vBoxLayout.addWidget(self.canvasGroup)
 
     # ==================== 信号处理方法 ====================

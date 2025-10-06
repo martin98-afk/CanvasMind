@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import json
+import pathlib
 import shutil
-import uuid
 from collections import deque, defaultdict
 from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
+from NodeGraphQt.constants import PipeLayoutEnum
 from PyQt5.QtCore import Qt, QThreadPool
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from qfluentwidgets import (
@@ -16,8 +17,10 @@ from qfluentwidgets import (
 from app.nodes.create_dynamic_node import create_node_class
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
+from app.utils.config import Settings
 from app.utils.threading_utils import NodeListExecutor, Worker
 from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json
+from app.widgets.custom_messagebox import CustomInputDialog
 from app.widgets.draggable_component_tree import DraggableTreeWidget
 from app.widgets.input_selection_dialog import InputSelectionDialog
 from app.widgets.output_selection_dialog import OutputSelectionDialog
@@ -28,11 +31,11 @@ from app.widgets.property_panel import PropertyPanel
 # 主界面页面
 # ----------------------------
 class CanvasPage(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, object_name=None):
         super().__init__()
         self.parent = parent
-        self.file_path = None  # 新增：当前文件路径
-        self.setObjectName('canvas_page')
+        self.file_path = object_name  # 新增：当前文件路径
+        self.setObjectName('canvas_page' if object_name is None else str(object_name))
         self.parent = parent
         # 初始化线程池
         self.threadpool = QThreadPool()
@@ -44,7 +47,8 @@ class CanvasPage(QWidget):
         self._registered_nodes = []
         # 初始化 NodeGraph
         self.graph = NodeGraph()
-
+        self.config = Settings.get_instance()
+        self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
 
         # 组件面板 - 使用可拖拽的树
@@ -218,6 +222,9 @@ class CanvasPage(QWidget):
         if self.file_path:
             # 默认使用当前路径
             default_path = self.file_path
+            self.save_full_workflow(default_path)
+
+            return
         else:
             default_path = "workflow"
 
@@ -348,13 +355,13 @@ class CanvasPage(QWidget):
             }
 
         # === 选择导出目录 ===
-        project_dir_str = QFileDialog.getExistingDirectory(self, "选择导出目录", "", QFileDialog.ShowDirsOnly)
-        if not project_dir_str:
-            return
 
-        project_dir = Path(project_dir_str)
-        project_name = "model_" + str(uuid.uuid4())[:8]
-        export_path = project_dir / project_name
+        project_name_dialog = CustomInputDialog("请输入项目名", "项目名", parent=self)
+        if project_name_dialog.exec():
+            project_name = pathlib.Path(project_name_dialog.get_text())
+        else:
+            return
+        export_path = pathlib.Path(self.config.project_paths.value[0]) / project_name
         export_path.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -849,13 +856,15 @@ class CanvasPage(QWidget):
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(full_data, f, indent=2, ensure_ascii=False)
 
+        self.file_path = file_path
+
     def load_full_workflow(self, file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
             full_data = json.load(f)
 
         # 加载图
         self.graph.deserialize_session(full_data["graph"])
-
+        self._setup_pipeline_style()
         # 恢复环境
         env = full_data.get("runtime", {}).get("environment")
         if env:
@@ -923,6 +932,15 @@ class CanvasPage(QWidget):
             return
 
         self.run_node_list_async(order)
+
+    def _setup_pipeline_style(self):
+        # 设置画布曲线类型
+        if self.config.canvas_pipelayout.value == "折线":
+            self.graph.set_pipe_style(PipeLayoutEnum.ANGLE.value)
+        elif self.config.canvas_pipelayout.value == "曲线":
+            self.graph.set_pipe_style(PipeLayoutEnum.CURVED.value)
+        elif self.config.canvas_pipelayout.value == "直线":
+            self.graph.set_pipe_style(PipeLayoutEnum.STRAIGHT.value)
 
     def _setup_context_menus(self):
         """设置画布和节点的右键菜单"""

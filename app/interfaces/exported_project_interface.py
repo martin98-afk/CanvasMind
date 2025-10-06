@@ -2,48 +2,22 @@
 import errno
 import json
 import os
-import subprocess
-import sys
-import socket
 import shutil
+import subprocess
 import time
-from datetime import datetime
-from typing import Optional
 
-import psutil
-from PyQt5.QtCore import QThread, pyqtSignal, QUrl, QEvent
-from PyQt5.QtGui import QDesktopServices, QFont
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QDialog, QTextEdit
+from PyQt5.QtCore import QThread, pyqtSignal, QEasingCurve
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QDialog, QTextEdit
 from qfluentwidgets import (
-    ScrollArea, CardWidget, BodyLabel, PrimaryPushButton,
+    ScrollArea, PrimaryPushButton,
     ToolButton, FluentIcon, SearchLineEdit, InfoBar,
-    MessageBox, StateToolTip, HyperlinkButton, FlowLayout
+    MessageBox, StateToolTip, FlowLayout
 )
 
+from app.utils.service_manager import SERVICE_MANAGER
 from app.utils.utils import ansi_to_html
-from app.widgets.service_request_dialog import ServiceRequestDialog
-
-# 全局已用端口集合（避免冲突）
-USED_PORTS = set()
-
-
-def find_available_port(start=8000, end=9000):
-    """查找可用端口"""
-    for port in range(start, end + 1):
-        if port not in USED_PORTS:
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind(("0.0.0.0", port))
-                USED_PORTS.add(port)
-                return port
-            except OSError:
-                continue
-    raise RuntimeError(f"无法在 {start}-{end} 范围内找到可用端口")
-
-
-def release_port(port):
-    """释放端口"""
-    USED_PORTS.discard(port)
+from app.widgets.project_card import ProjectCard
 
 
 class ProjectRunnerThread(QThread):
@@ -91,284 +65,6 @@ class ProjectRunnerThread(QThread):
             self.error.emit(str(e))
 
 
-class MicroserviceManager:
-    def __init__(self):
-        self.services = {}
-        self._restore_services()
-
-    def start_service(self, project_path: str) -> str:
-        if project_path in self.services:
-            return self.services[project_path]["url"]
-
-        service_script = os.path.join(project_path, "api_server.py")
-        if not os.path.exists(service_script):
-            raise FileNotFoundError("未找到微服务代码 (api_server.py)")
-
-        port = find_available_port()
-        url = f"http://0.0.0.0:{port}/run"
-        log_file = os.path.join(project_path, "service.log")
-
-        workflow_path = os.path.join(project_path, "model.workflow.json")
-        with open(workflow_path, 'r', encoding='utf-8') as f:
-            python_exe = json.load(f).get("runtime", {}).get("environment_exe")
-            if not python_exe:
-                raise ValueError("未指定 Python 解释器路径")
-
-        cmd = [python_exe, "api_server.py", "--port", str(port)]
-        with open(log_file, 'w', encoding='utf-8') as log_f:
-            process = subprocess.Popen(
-                cmd,
-                cwd=project_path,
-                stdout=log_f,
-                stderr=subprocess.STDOUT,  # 合并 stderr 到 stdout
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
-                encoding='utf-8'
-            )
-
-        self.services[project_path] = {
-            "process": process,
-            "port": port,
-            "url": url,
-            "log_file": log_file  # 注意：现在 log_file 可能不存在！
-        }
-        return url
-
-    def _restore_services(self):
-        if not os.path.exists("projects"):
-            return
-
-        for item in os.listdir("projects"):
-            project_path = os.path.join("projects", item)
-            if not os.path.isdir(project_path):
-                continue
-
-            log_file = os.path.join(project_path, "service.log")
-            workflow_file = os.path.join(project_path, "model.workflow.json")
-            if not (os.path.exists(log_file) and os.path.exists(workflow_file)):
-                continue
-
-            try:
-                with open(log_file, 'r', encoding='utf-8') as f:
-                    log_content = f.read()
-                if "Uvicorn running on" not in log_content:
-                    continue
-
-                import re
-                port_match = re.search(r"Uvicorn running on http://[^:]+:(\d+)", log_content)
-                if not port_match:
-                    continue
-                port = int(port_match.group(1))
-
-                if not self._is_port_in_use(port):
-                    continue
-
-                is_our_service = False
-                for proc in psutil.process_iter(['pid', 'cmdline']):
-                    try:
-                        cmdline = proc.info['cmdline']
-                        if cmdline and 'api_server.py' in ' '.join(cmdline) and f'--port {port}' in ' '.join(cmdline) and project_path in ' '.join(cmdline):
-                            is_our_service = True
-                            break
-                    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                        continue
-
-                if is_our_service:
-                    url = f"http://0.0.0.0:{port}/run"
-                    self.services[project_path] = {
-                        "process": None,  # 无法获取原进程对象
-                        "port": port,
-                        "url": url,
-                        "log_file": log_file
-                    }
-                    USED_PORTS.add(port)
-            except Exception as e:
-                print(f"恢复服务失败 {project_path}: {e}")
-
-    def _is_port_in_use(self, port):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            return s.connect_ex(('0.0.0.0', port)) == 0
-
-    def stop_service(self, project_path: str):
-        if project_path not in self.services:
-            return
-
-        service = self.services[project_path]
-        process = service["process"]
-        port = service["port"]
-
-        try:
-            if process is not None:
-                process.terminate()
-                try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait()
-        except Exception:
-            pass
-
-        release_port(port)
-        del self.services[project_path]
-
-    def is_running(self, project_path: str) -> bool:
-        return project_path in self.services
-
-    def get_url(self, project_path: str) -> Optional[str]:
-        return self.services.get(project_path, {}).get("url").replace("0.0.0.0", "127.0.0.1")
-
-
-SERVICE_MANAGER = MicroserviceManager()
-
-
-class ProjectCard(CardWidget):
-    def __init__(self, project_path, parent=None):
-        super().__init__(parent)
-        self.project_path = project_path
-        self.project_name = os.path.basename(project_path)
-        self.service_url_label = None
-        self._setup_ui()
-
-    def _setup_ui(self):
-        # 固定高度，保证流式布局整齐
-        self.setFixedHeight(220)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-
-        # 项目名称
-        self.name_label = BodyLabel(self.project_name)
-        self.name_label.setFont(QFont("Microsoft YaHei", 14, QFont.Bold))
-        layout.addWidget(self.name_label)
-
-        # 项目信息
-        info_text = self._get_project_info()
-        self.info_label = BodyLabel(info_text)
-        self.info_label.setWordWrap(True)
-        self.info_label.setMaximumHeight(80)
-        self.info_label.setStyleSheet("color: #888888; font-size: 12px;")
-        layout.addWidget(self.info_label)
-
-        # 服务 URL（初始隐藏）
-        self.service_url_label = HyperlinkButton("", "服务地址")
-        self.service_url_label.setVisible(False)
-        layout.addWidget(self.service_url_label)
-
-        # 按钮布局
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(8)
-
-        self.run_btn = PrimaryPushButton(text="运行", icon=FluentIcon.PLAY, parent=self)
-        self.run_btn.setFixedWidth(80)
-
-        self.service_btn = PrimaryPushButton(text="上线", icon=FluentIcon.LINK, parent=self)
-        self.service_btn.setFixedWidth(80)
-
-        self.request_btn = PrimaryPushButton(text="请求", icon=FluentIcon.SEND, parent=self)
-        self.request_btn.setFixedWidth(80)
-        self.request_btn.setEnabled(False)
-        self.request_btn.clicked.connect(self._open_request_dialog)
-
-        self.view_log_btn = ToolButton(FluentIcon.VIEW, self)
-        self.view_log_btn.setToolTip("查看日志")
-
-        self.open_folder_btn = ToolButton(FluentIcon.FOLDER, self)
-        self.open_folder_btn.setToolTip("打开文件夹")
-
-        self.delete_btn = ToolButton(FluentIcon.DELETE, self)
-        self.delete_btn.setToolTip("删除项目")
-
-        left_btns = QHBoxLayout()
-        left_btns.addWidget(self.run_btn)
-        left_btns.addWidget(self.service_btn)
-        left_btns.addWidget(self.request_btn)
-
-        right_btns = QHBoxLayout()
-        right_btns.addWidget(self.view_log_btn)
-        right_btns.addWidget(self.open_folder_btn)
-        right_btns.addWidget(self.delete_btn)
-
-        btn_layout.addLayout(left_btns)
-        btn_layout.addStretch()
-        btn_layout.addLayout(right_btns)
-
-        layout.addLayout(btn_layout)
-
-        self._update_service_button()
-
-    def _update_service_button(self):
-        if SERVICE_MANAGER.is_running(self.project_path):
-            self.service_btn.setText("下线")
-            self.service_btn.setIcon(FluentIcon.PAUSE)
-            self.request_btn.setEnabled(True)
-            url = SERVICE_MANAGER.get_url(self.project_path)
-            if url:
-                self.service_url_label.setUrl(QUrl(url))
-                self.service_url_label.setText(url)
-                self.service_url_label.setVisible(True)
-        else:
-            self.service_btn.setText("上线")
-            self.service_btn.setIcon(FluentIcon.LINK)
-            self.request_btn.setEnabled(False)
-            self.service_url_label.setVisible(False)
-
-    def _get_project_info(self):
-        info_lines = []
-        try:
-            stat = os.stat(self.project_path)
-            create_time = datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d")
-            info_lines.append(f"创建: {create_time}")
-        except Exception:
-            info_lines.append("创建: 未知")
-
-        req_file = os.path.join(self.project_path, "requirements.txt")
-        if os.path.exists(req_file):
-            try:
-                with open(req_file, 'r', encoding='utf-8') as f:
-                    packages = [line.strip() for line in f if line.strip() and not line.startswith('#')]
-                    if packages:
-                        deps = ", ".join(packages[:5])
-                        if len(packages) > 5:
-                            deps += f" +{len(packages) - 5} 个"
-                        info_lines.append(f"依赖: {deps}")
-            except Exception:
-                pass
-
-        components_dir = os.path.join(self.project_path, "components")
-        if os.path.exists(components_dir):
-            try:
-                comp_count = sum([len(files) for r, d, files in os.walk(components_dir)])
-                info_lines.append(f"组件: {comp_count} 个")
-            except Exception:
-                pass
-
-        if os.path.exists(os.path.join(self.project_path, "api_server.py")):
-            info_lines.append("支持微服务")
-
-        return "\n".join(info_lines)
-
-    def _open_request_dialog(self):
-        if not SERVICE_MANAGER.is_running(self.project_path):
-            InfoBar.warning("服务未运行", "请先点击'上线'启动服务", parent=self.parent())
-            return
-
-        url = SERVICE_MANAGER.get_url(self.project_path)
-        if not url:
-            return
-
-        dialog = ServiceRequestDialog(self.project_path, url, self.parent())
-        dialog.exec()
-
-    def update_status(self, is_running=False):
-        if is_running:
-            self.run_btn.setText("停止")
-            self.run_btn.setIcon(FluentIcon.PAUSE)
-            self.run_btn.setEnabled(False)
-        else:
-            self.run_btn.setText("运行")
-            self.run_btn.setIcon(FluentIcon.PLAY)
-            self.run_btn.setEnabled(True)
-
-
 class ExportedProjectsPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -414,9 +110,11 @@ class ExportedProjectsPage(QWidget):
 
         self.scroll_widget = QWidget()
         self.scroll_widget.setStyleSheet("background-color: transparent;")
-        self.flow_layout = FlowLayout(self.scroll_widget)
-        self.flow_layout.setSpacing(20)
-        self.flow_layout.setContentsMargins(0, 0, 0, 0)
+        self.flow_layout = FlowLayout(self.scroll_widget, needAni=True)
+        self.flow_layout.setAnimation(250, QEasingCurve.OutQuad)
+        self.flow_layout.setContentsMargins(30, 30, 30, 30)
+        self.flow_layout.setVerticalSpacing(20)
+        self.flow_layout.setHorizontalSpacing(50)
 
         self.scroll_area.setWidget(self.scroll_widget)
         layout.addWidget(self.scroll_area)
