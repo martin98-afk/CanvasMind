@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
 from qfluentwidgets import CardWidget, BodyLabel, PrimaryPushButton, FluentIcon, ToolButton
 import os
 from datetime import datetime
@@ -13,7 +13,7 @@ class WorkflowCard(CardWidget):
         super().__init__(parent)
         self.home = parent
         self.file_path = file_path
-        self.workflow_name = file_path.stem.split(".")[0]  # 去掉后缀
+        self.workflow_name = file_path.stem.split(".")[0]  # ✅ 直接用 .stem，它已经去掉了所有后缀（包括 .workflow.json）
         self._setup_ui()
 
     def _setup_ui(self):
@@ -39,27 +39,48 @@ class WorkflowCard(CardWidget):
         except Exception:
             info_lines.append("创建: 未知")
 
-        # 可选：读取 workflow 内容获取描述（谨慎，避免卡顿）
-        # try:
-        #     with open(self.file_path, 'r', encoding='utf-8') as f:
-        #         data = json.load(f)
-        #         desc = data.get("metadata", {}).get("description", "")
-        #         if desc:
-        #             info_lines.append(f"描述: {desc[:50]}...")
-        # except Exception:
-        #     pass
-
         info_label = BodyLabel("\n".join(info_lines))
         info_label.setStyleSheet("color: #888888; font-size: 12px;")
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
 
-        # 打开按钮
+        # 按钮区域：打开 + 右侧工具按钮
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+
         open_btn = PrimaryPushButton("打开画布", self, FluentIcon.EDIT)
+        open_btn.setFixedWidth(100)
         open_btn.clicked.connect(self._on_open_clicked)
-        layout.addWidget(open_btn)
+
+        # 工具按钮（复制、删除）
+        tool_layout = QHBoxLayout()
+        tool_layout.setSpacing(4)
+
+        copy_btn = ToolButton(FluentIcon.COPY, self)
+        copy_btn.setToolTip("复制画布")
+        copy_btn.clicked.connect(self._on_copy_clicked)
+
+        delete_btn = ToolButton(FluentIcon.DELETE, self)
+        delete_btn.setToolTip("删除画布")
+        delete_btn.clicked.connect(self._on_delete_clicked)
+
+        tool_layout.addWidget(copy_btn)
+        tool_layout.addWidget(delete_btn)
+
+        btn_layout.addWidget(open_btn)
+        btn_layout.addStretch()
+        btn_layout.addLayout(tool_layout)
+
+        layout.addLayout(btn_layout)
 
     def _on_open_clicked(self):
-        # 触发信号，由父页面处理打开逻辑
         if hasattr(self.home, 'open_canvas'):
             self.home.open_canvas(self.file_path)
+
+    def _on_copy_clicked(self):
+        if hasattr(self.home, 'duplicate_workflow'):
+            self.home.duplicate_workflow(self.file_path)
+
+    def _on_delete_clicked(self):
+        if hasattr(self.home, 'delete_workflow'):
+            self.home.delete_workflow(self.file_path)

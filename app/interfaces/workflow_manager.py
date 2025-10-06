@@ -6,13 +6,14 @@ from PyQt5.QtCore import QEasingCurve
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedWidget, QHBoxLayout
 from Qt import Qt
 from qfluentwidgets import (
-    TabBar, BodyLabel, ScrollArea, PrimaryPushButton, FluentIcon, ToolButton, FlowLayout
+    TabBar, BodyLabel, ScrollArea, PrimaryPushButton, FluentIcon, ToolButton, FlowLayout, InfoBar
 )
 
 from app.interfaces.canvas_interface import CanvasPage
 from app.utils.utils import get_icon
 from app.widgets.custom_messagebox import CustomInputDialog
 from app.widgets.workflow_card import WorkflowCard
+from envs.miniconda.Lib import shutil
 
 
 class WorkflowCanvasGalleryPage(QWidget):
@@ -21,6 +22,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.setObjectName("workflow_canvas_gallery_page")
         self.parent_window = parent
         self.workflow_dir = self._get_workflow_dir()
+        self.opened_workflows = {}
         self._setup_ui()
 
     def _get_workflow_dir(self):
@@ -104,7 +106,7 @@ class WorkflowCanvasGalleryPage(QWidget):
     def open_canvas(self, file_path: Path):
         """由 WorkflowCard 调用，打开画布"""
         # 方式1：切换主窗口当前页面为 CanvasPage（推荐）
-        if self.parent_window:
+        if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path)
             canvas_page.load_full_workflow(file_path)
             canvas_interface = self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.stem, parent=self)
@@ -114,7 +116,9 @@ class WorkflowCanvasGalleryPage(QWidget):
                     canvas_page.register_components()
                 )
             )
-            self.parent_window.switchTo(canvas_page)
+            self.opened_workflows[file_path] = canvas_page
+
+        self.parent_window.switchTo(self.opened_workflows[file_path])
 
     def new_canvas(self):
         """创建新的空白 workflow 文件并打开"""
@@ -134,14 +138,54 @@ class WorkflowCanvasGalleryPage(QWidget):
             counter += 1
 
         # 创建空白 workflow 结构（根据你的 CanvasPage.load_full_workflow 期望的格式）
-        canvas_page = CanvasPage(self.parent_window, object_name=file_path)
-        canvas_page.save_full_workflow(file_path)
-        canvas_interface = self.parent_window.addSubInterface(
-            canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
-        canvas_interface.clicked.connect(
-            lambda: (
-                canvas_page.nav_view.refresh_components(),
-                canvas_page.register_components()
+        if file_path not in self.opened_workflows:
+            canvas_page = CanvasPage(self.parent_window, object_name=file_path)
+            canvas_page.save_full_workflow(file_path)
+            canvas_interface = self.parent_window.addSubInterface(
+                canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
+            canvas_interface.clicked.connect(
+                lambda: (
+                    canvas_page.nav_view.refresh_components(),
+                    canvas_page.register_components()
+                )
             )
-        )
-        self.parent_window.switchTo(canvas_page)
+            self.opened_workflows[file_path] = canvas_page
+        self.parent_window.switchTo(self.opened_workflows[file_path])
+
+    def duplicate_workflow(self, src_path: Path):
+        dialog = CustomInputDialog("复制画布", "请输入新画布名称", src_path.stem + "_copy", self)
+        if not dialog.exec():
+            return
+        new_name = dialog.get_text().strip()
+        if not new_name:
+            InfoBar.warning("名称无效", "画布名称不能为空", parent=self)
+            return
+
+        dest_path = self.workflow_dir / f"{new_name}.workflow.json"
+        counter = 1
+        base_name = new_name
+        while dest_path.exists():
+            new_name = f"{base_name}_{counter}"
+            dest_path = self.workflow_dir / f"{new_name}.workflow.json"
+            counter += 1
+
+        try:
+            shutil.copy2(src_path, dest_path)
+            InfoBar.success("复制成功", f"已创建 {new_name}", parent=self)
+            self.load_workflows()
+        except Exception as e:
+            InfoBar.error("复制失败", str(e), parent=self)
+
+    def delete_workflow(self, file_path: Path):
+        from qfluentwidgets import MessageBox, InfoBar
+
+        w = MessageBox("确认删除", f"确定要删除画布 “{file_path.stem}” 吗？\n此操作不可恢复！", self)
+        if not w.exec():
+            return
+
+        try:
+            file_path.unlink()
+            InfoBar.success("删除成功", f"画布 “{file_path.stem}” 已删除", parent=self)
+            self.load_workflows()
+        except Exception as e:
+            InfoBar.error("删除失败", str(e), parent=self)
