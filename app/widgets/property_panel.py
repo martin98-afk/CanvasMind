@@ -82,6 +82,7 @@ class PropertyPanel(CardWidget):
 
         # 1. 节点标题
         title = BodyLabel(f"📌 {node.name()}")
+        title.setWordWrap(True)
         title.setStyleSheet("font-size: 16px; font-weight: bold;")
         self.vbox.addWidget(title)
 
@@ -89,6 +90,7 @@ class PropertyPanel(CardWidget):
         description = self.get_node_description(node)
         if description and description.strip():
             desc_label = BodyLabel(f"📝 {description}")
+            desc_label.setWordWrap(True)
             desc_label.setStyleSheet("color: #888888; font-size: 12px;")
             self.vbox.addWidget(desc_label)
 

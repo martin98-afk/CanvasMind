@@ -73,7 +73,9 @@ class ArgumentType(str, Enum):
         return self == ArgumentType.IMAGE
 
     def serialize(self, display_data):
-        if self.is_file():
+        if display_data is None:
+            return display_data
+        if self.is_file() and len(display_data) > 0:
             # FILE类型：显示文件路径选择
             display_data = {
                 "file_name": os.path.basename(display_data),
