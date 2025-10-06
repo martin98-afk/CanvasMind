@@ -14,7 +14,7 @@ class EnvironmentManager(QObject):
 
     # 信号
     log_signal = pyqtSignal(str)
-    install_finished = pyqtSignal(object)  # 传递结果或异常
+    install_finished = pyqtSignal()  # 传递结果或异常
     miniconda_install_finished = pyqtSignal(object)
     remove_finished = pyqtSignal(object)
 
@@ -338,7 +338,7 @@ class EnvironmentManager(QObject):
         if not remaining_packages:
             if self._current_log_callback:
                 self._current_log_callback("默认包安装完成 ✅")
-            self.install_finished.emit(self.meta.get(self._current_log_callback_env_name or env_name))
+            self.install_finished.emit()
             return
 
         package = remaining_packages[0]
