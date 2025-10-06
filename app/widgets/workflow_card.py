@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
 
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
+from PyQt5.QtCore import Qt
 from qfluentwidgets import CardWidget, BodyLabel, PrimaryPushButton, FluentIcon, ToolButton
 import os
 from datetime import datetime
@@ -13,7 +14,7 @@ class WorkflowCard(CardWidget):
         super().__init__(parent)
         self.home = parent
         self.file_path = file_path
-        self.workflow_name = file_path.stem.split(".")[0]  # ✅ 直接用 .stem，它已经去掉了所有后缀（包括 .workflow.json）
+        self.workflow_name = file_path.stem.split(".")[0]  # 保留原有逻辑
         self._setup_ui()
 
     def _setup_ui(self):
@@ -22,8 +23,7 @@ class WorkflowCard(CardWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(10)
-
+        layout.setSpacing(8)
         # 标题
         name_label = BodyLabel(self.workflow_name)
         name_label.setWordWrap(True)
@@ -44,7 +44,25 @@ class WorkflowCard(CardWidget):
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
 
-        # 按钮区域：打开 + 右侧工具按钮
+        # === 尝试加载预览图 ===
+        preview_path = self._get_preview_path()
+        if preview_path and preview_path.exists():
+            # 创建图片标签
+            img_label = QLabel(self)
+            pixmap = QPixmap(str(preview_path))
+
+            # 缩放图片以适应卡片宽度（保持宽高比）
+            scaled_pixmap = pixmap.scaled(
+                268,  # 留出左右 margin (300 - 2*16 = 268)
+                120,  # 高度预留，可根据需要调整
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            img_label.setPixmap(scaled_pixmap)
+            img_label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(img_label)
+
+        # 按钮区域
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
 
@@ -52,7 +70,6 @@ class WorkflowCard(CardWidget):
         open_btn.setFixedWidth(100)
         open_btn.clicked.connect(self._on_open_clicked)
 
-        # 工具按钮（复制、删除）
         tool_layout = QHBoxLayout()
         tool_layout.setSpacing(4)
 
@@ -72,6 +89,11 @@ class WorkflowCard(CardWidget):
         btn_layout.addLayout(tool_layout)
 
         layout.addLayout(btn_layout)
+
+    def _get_preview_path(self) -> Path:
+        """返回对应的预览图路径（xxx.workflow.json → xxx.png）"""
+        base_name = self.file_path.parent / self.file_path.stem.split(".")[0]
+        return base_name.with_suffix(".png")
 
     def _on_open_clicked(self):
         if hasattr(self.home, 'open_canvas'):

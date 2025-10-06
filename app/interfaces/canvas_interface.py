@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 import pathlib
 import shutil
 from collections import deque, defaultdict
@@ -7,7 +8,8 @@ from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
 from NodeGraphQt.constants import PipeLayoutEnum
-from PyQt5.QtCore import Qt, QThreadPool
+from PyQt5.QtCore import Qt, QThreadPool, QRectF
+from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from qfluentwidgets import (
     ToolButton, MessageBox, InfoBar,
@@ -856,7 +858,44 @@ class CanvasPage(QWidget):
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(full_data, f, indent=2, ensure_ascii=False)
 
-        self.file_path = file_path
+        # ✅ 自动生成预览图（同目录，同名，.png）
+        self._generate_canvas_thumbnail(file_path)
+
+    def _generate_canvas_thumbnail(self, workflow_path):
+        """根据工作流文件路径生成同名 PNG 预览图"""
+        try:
+            # 构造预览图路径：xxx.workflow.json → xxx.png
+            base_name = os.path.splitext(os.path.splitext(workflow_path)[0])[0]  # 去掉 .workflow.json
+            png_path = base_name + ".png"
+
+            # 获取场景和边界
+            scene = self.graph.viewer().scene()
+            rect = scene.itemsBoundingRect()
+
+            if rect.isEmpty():
+                # 如果没有节点，创建一个空白图
+                image = QImage(800, 600, QImage.Format_ARGB32)
+                image.fill(Qt.white)
+            else:
+                # 扩展一点边距，避免裁剪
+                margin = 20
+                rect.adjust(-margin, -margin, margin, margin)
+                image = QImage(rect.size().toSize(), QImage.Format_ARGB32)
+                image.fill(Qt.white)  # 背景设为白色（可选）
+
+                painter = QPainter(image)
+                # 将场景渲染到 QImage
+                scene.render(painter, target=QRectF(image.rect()), source=rect)
+                painter.end()
+
+            # 保存图像
+            image.save(png_path, "PNG")
+            print(f"✅ 预览图已保存: {png_path}")
+
+        except Exception as e:
+            print(f"⚠️ 生成预览图失败: {e}")
+            # 可选：弹出警告
+            # self.create_warning_info("预览图", f"生成失败: {str(e)}")
 
     def load_full_workflow(self, file_path):
         with open(file_path, 'r', encoding='utf-8') as f:

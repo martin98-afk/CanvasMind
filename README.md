@@ -20,6 +20,10 @@
 
 <img src="images/组件开发示意图.png" width="800">
 
+## 📷 工作流管理界面示意图
+
+<img src="images/工作流管理示意图.png" width="800">
+
 ## 🎉 工作流示意图
 
 <img src="images/工作流示意图.png" width="800">
