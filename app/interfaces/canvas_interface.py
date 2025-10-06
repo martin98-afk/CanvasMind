@@ -75,8 +75,14 @@ class CanvasPage(QWidget):
         self.canvas_widget.setAcceptDrops(True)
         self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
         self.canvas_widget.dropEvent = self.canvas_drop_event
+        self.canvas_widget.installEventFilter(self)
         # ✅ 启用右键菜单（关键步骤）
         self._setup_context_menus()
+
+    def eventFilter(self, obj, event):
+        if obj is self.canvas_widget and event.type() == event.Resize:
+            self.env_selector_container.move(self.canvas_widget.width() - 200, 10)
+        return super().eventFilter(obj, event)
 
     def create_environment_selector(self):
         """创建运行环境选择下拉框"""
@@ -113,9 +119,6 @@ class CanvasPage(QWidget):
         self.env_selector_container.setLayout(env_layout)
         self.env_selector_container.show()
 
-        # 当画布大小改变时，重新定位环境选择器
-        self.canvas_widget.resizeEvent = self._on_canvas_resize
-
     def load_env_combos(self):
         self.env_combo.clear()
         # 添加选项
@@ -124,12 +127,6 @@ class CanvasPage(QWidget):
             envs = self.parent.package_manager.mgr.list_envs()
             for env in envs:
                 self.env_combo.addItem(env, userData=env)
-
-    def _on_canvas_resize(self, event):
-        """画布大小改变时重新定位环境选择器"""
-        super(type(self.canvas_widget), self.canvas_widget).resizeEvent(event)
-        # 重新定位到右上角
-        self.env_selector_container.move(self.canvas_widget.width() - 200, 10)
 
     def on_environment_changed(self):
         """环境选择改变时的处理"""
@@ -144,19 +141,15 @@ class CanvasPage(QWidget):
     def get_current_python_exe(self):
         """获取当前选择的Python解释器路径"""
         current_data = self.env_combo.currentData()
-
-        if current_data == "system":
-            return None
+        # 返回环境管理器中的Python路径
+        if hasattr(self.parent, 'package_manager') and self.parent.package_manager and current_data:
+            try:
+                return str(self.parent.package_manager.mgr.get_python_exe(current_data))
+            except Exception as e:
+                self.create_failed_info("错误", f"获取环境 {current_data} 的Python路径失败: {str(e)}")
+                return None  # 返回系统Python作为备选
         else:
-            # 返回环境管理器中的Python路径
-            if hasattr(self.parent, 'package_manager') and self.parent.package_manager:
-                try:
-                    return str(self.parent.package_manager.mgr.get_python_exe(current_data))
-                except Exception as e:
-                    self.create_failed_info("错误", f"获取环境 {current_data} 的Python路径失败: {str(e)}")
-                    return None  # 返回系统Python作为备选
-            else:
-                return None
+            return None
 
     def register_components(self):
         # 扫描组件
@@ -222,7 +215,6 @@ class CanvasPage(QWidget):
         button_container.show()
 
     def _save_via_dialog(self):
-        from PyQt5.QtWidgets import QFileDialog
         if self.file_path:
             # 默认使用当前路径
             default_path = self.file_path
@@ -239,7 +231,6 @@ class CanvasPage(QWidget):
             self.file_path = file_path
 
     def _open_via_dialog(self):
-        from PyQt5.QtWidgets import QFileDialog
         file_path, _ = QFileDialog.getOpenFileName(
             self, "打开工作流", "", "工作流文件 (*.workflow.json)"
         )
@@ -398,7 +389,7 @@ class CanvasPage(QWidget):
                             src_rel_path = src_path.name
                         dst_path = components_dir / src_rel_path
                         dst_path.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copy2(str(src_path), str(dst_path))
+                        shutil.copy2(src_path, dst_path)
                         rel_to_project = ("components" / src_rel_path).as_posix()
                         component_path_map[str(src_path)] = rel_to_project
 
@@ -411,7 +402,7 @@ class CanvasPage(QWidget):
                             filename = file_path.name
                             dst_path = inputs_dir / filename
                             if not dst_path.exists():
-                                shutil.copy2(str(file_path), str(dst_path))
+                                shutil.copy2(file_path, dst_path)
                             return ("inputs" / filename).as_posix()
                         except Exception as e:
                             print(f"警告：无法复制文件 {value}: {e}")
