@@ -97,6 +97,7 @@ class ArgumentType(str, Enum):
 
         return display_data
 
+
 class PropertyDefinition(BaseModel):
     """属性定义"""
     type: PropertyType = PropertyType.TEXT

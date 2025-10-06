@@ -27,12 +27,41 @@ class ComponentDeveloperWidget(QWidget):
     """组件开发主界面"""
 
     MODULE_TO_PACKAGE_MAP = {
+        # 机器学习 / 计算机视觉
         'sklearn': 'scikit-learn',
-        'PIL': 'Pillow',
-        'yaml': 'PyYAML',
+        'skimage': 'scikit-image',
         'cv2': 'opencv-python',
+
+        # 图像处理
+        'PIL': 'Pillow',  # from PIL import Image
+
+        # Web 解析
         'bs4': 'beautifulsoup4',
-        # 可以根据需要添加更多
+
+        # 配置与序列化
+        'yaml': 'PyYAML',
+        'dateutil': 'python-dateutil',  # from dateutil.parser import ...
+        'jwt': 'PyJWT',  # import jwt
+
+        # 加密
+        'Crypto': 'pycryptodome',  # 注意：不是 pycrypto
+        # 'Cryptodome': 'pycryptodomex',  # 如果用这个变体才需要
+
+        # 串口通信
+        'serial': 'pyserial',
+
+        # Markdown 渲染
+        'markdown': 'Markdown',  # 包名首字母大写
+
+        # Faker 数据生成
+        'faker': 'Faker',  # 包名大写
+
+        # 类型提示（可选）
+        'typing_extensions': 'typing-extensions',  # 模块名下划线，包名中划线
+
+        # TOML（第三方库）
+        'tomli': 'tomli',
+        'tomli_w': 'tomli-w',
     }
 
     def __init__(self, parent=None):
@@ -105,16 +134,6 @@ class ComponentDeveloperWidget(QWidget):
         # 设置初始比例
         main_splitter.setSizes([400, 400])  # 左右各占一半
         layout.addWidget(main_splitter)
-        # 保存按钮
-        save_layout = QHBoxLayout()
-        save_btn = PrimaryPushButton("💾 保存组件")
-        save_btn.clicked.connect(lambda: self._save_component(True))
-        cancel_btn = PushButton("❌ 取消")
-        cancel_btn.clicked.connect(self._cancel_edit)
-        save_layout.addStretch()
-        save_layout.addWidget(cancel_btn)
-        save_layout.addWidget(save_btn)
-        layout.addLayout(save_layout)
         return widget
 
     def _create_left_panel(self):
@@ -163,11 +182,9 @@ class ComponentDeveloperWidget(QWidget):
         port_splitter.addWidget(self.input_port_editor)
         port_splitter.addWidget(self.output_port_editor)
         port_splitter.setSizes([150, 150])  # 初始大小
-        left_layout.addWidget(BodyLabel("端口设置:"))
-        left_layout.addWidget(port_splitter)
+        left_layout.addWidget(port_splitter, stretch=1)
         # 属性编辑器
         self.property_editor = PropertyEditorWidget()
-        left_layout.addWidget(BodyLabel("参数设置:"))
         left_layout.addWidget(self.property_editor, stretch=1)
         return left_widget
 
@@ -180,6 +197,15 @@ class ComponentDeveloperWidget(QWidget):
         self.code_editor = CodeEditorWidget()
         right_layout.addWidget(BodyLabel("💻 组件代码:"))
         right_layout.addWidget(self.code_editor, stretch=1)
+        # 保存按钮
+        save_layout = QHBoxLayout()
+        save_btn = PrimaryPushButton(text="保存组件", icon=FluentIcon.SAVE, parent=self)
+        save_btn.clicked.connect(lambda: self._save_component(True))
+        cancel_btn = PushButton(text="取消", icon=FluentIcon.CLOSE, parent=self)
+        cancel_btn.clicked.connect(self._cancel_edit)
+        save_layout.addWidget(save_btn)
+        save_layout.addWidget(cancel_btn)
+        right_layout.addLayout(save_layout)
         return right_widget
 
     def _connect_signals(self):
@@ -760,7 +786,6 @@ class PortEditorWidget(QWidget):
         super().__init__(parent)
         self.port_type = port_type
         layout = QVBoxLayout(self)
-
         # 表格
         self.table = TableWidget(self)
         self.table.setColumnCount(3)
@@ -769,9 +794,10 @@ class PortEditorWidget(QWidget):
         self.table.itemChanged.connect(lambda item: self.ports_changed.emit())
         # 在表头加按钮
         button_layout = QHBoxLayout()
-        add_btn = PushButton(text=f"添加端口", icon=FluentIcon.ADD)
+        button_layout.addWidget(BodyLabel("输入端口:" if port_type == "input" else "输出端口:"))
+        add_btn = PushButton(text=f"添加", icon=FluentIcon.ADD)
         add_btn.clicked.connect(lambda: self._add_port())
-        remove_btn = PushButton(text="删除端口", icon=FluentIcon.CLOSE)
+        remove_btn = PushButton(text="删除", icon=FluentIcon.CLOSE)
         remove_btn.clicked.connect(self._remove_port)
         button_layout.addWidget(add_btn)
         button_layout.addWidget(remove_btn)
@@ -854,9 +880,10 @@ class PropertyEditorWidget(QWidget):
         self.table.itemChanged.connect(lambda item: self.properties_changed.emit())
 
         button_layout = QHBoxLayout()
-        add_btn = PushButton(text="添加属性", icon=FluentIcon.ADD)
+        button_layout.addWidget(BodyLabel("参数设置:"))
+        add_btn = PushButton(text="添加", icon=FluentIcon.ADD)
         add_btn.clicked.connect(lambda: self._add_property())
-        remove_btn = PushButton(text="删除选中", icon=FluentIcon.CLOSE)
+        remove_btn = PushButton(text="删除", icon=FluentIcon.CLOSE)
         remove_btn.clicked.connect(self._remove_property)
         button_layout.addWidget(add_btn)
         button_layout.addWidget(remove_btn)
