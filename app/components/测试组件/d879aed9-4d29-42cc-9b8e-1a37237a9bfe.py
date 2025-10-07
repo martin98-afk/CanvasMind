@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import importlib.util
 import pathlib
 base_path = pathlib.Path(__file__).parent.parent / "base.py"
@@ -15,7 +16,7 @@ ArgumentType = base_module.ArgumentType
 
 class ConditionalNode(BaseComponent):
     name = "条件判断"
-    category = "控制流"
+    category = "测试组件"
     description = "根据条件表达式决定执行哪个分支"
 
     inputs = [

@@ -903,7 +903,7 @@ class PropertyEditorWidget(QWidget):
         # 属性表格
         self.table = TableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "操作"])
+        self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "选项"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.itemChanged.connect(lambda item: self.properties_changed.emit())
 

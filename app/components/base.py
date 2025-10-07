@@ -13,7 +13,6 @@ from PIL import Image
 from loguru import logger
 from pydantic import BaseModel, Field, create_model
 
-
 COMPONENT_IMPORT_CODE = """# -*- coding: utf-8 -*-
 import importlib.util
 import pathlib
@@ -200,23 +199,42 @@ class BaseComponent(ABC):
 
     @classmethod
     def get_params_model(cls) -> Type[BaseModel]:
-        """动态创建参数模型"""
-        fields = {}
+        """动态创建参数模型（支持 CHOICE / DYNAMICFORM）"""
+        fields: Dict[str, tuple] = {}
+
         for prop_name, prop_def in cls.properties.items():
             if prop_def.type == PropertyType.INT:
                 field_type = int
-                default = prop_def.default if prop_def.default != "" else 0
+                default_val = _parse_default_value(prop_def.default, int)
+
             elif prop_def.type == PropertyType.FLOAT:
                 field_type = float
-                default = prop_def.default if prop_def.default != "" else 0.0
+                default_val = _parse_default_value(prop_def.default, float)
+
             elif prop_def.type == PropertyType.BOOL:
                 field_type = bool
-                default = prop_def.default if prop_def.default != "" else False
-            else:
-                field_type = str
-                default = prop_def.default if prop_def.default != "" else ""
+                default_val = _parse_default_value(prop_def.default, bool)
 
-            fields[prop_name] = (field_type, default)
+            elif prop_def.type == PropertyType.CHOICE:
+                # 使用 Literal 限制选项
+                from typing import Literal
+                choices = prop_def.choices or ["option1"]
+                # 动态创建 Literal 类型
+                field_type = Literal[tuple(choices)]  # type: ignore
+                default_val = prop_def.default if prop_def.default in choices else choices[0]
+
+            elif prop_def.type == PropertyType.DYNAMICFORM:
+                # 创建嵌套模型，并用 List[Model] 表示
+                item_model = _create_dynamic_form_model(prop_name, prop_def.schema or {})
+                field_type = List[item_model]  # type: ignore
+                default_val = []  # 默认空列表
+
+            else:  # TEXT 等
+                field_type = str
+                default_val = prop_def.default if prop_def.default != "" else ""
+
+            # 使用 Field 确保默认值正确
+            fields[prop_name] = (field_type, Field(default=default_val))
 
         return create_model(f"{cls.__name__}Params", **fields)
 
@@ -459,3 +477,48 @@ class BaseComponent(ABC):
             # 捕获其他错误并包装为组件错误
             error_msg = f"组件执行失败: {traceback.format_exc()}"
             raise ComponentError(error_msg, "EXECUTION_ERROR")
+
+
+def _parse_default_value(default_str: str, target_type: type) -> Any:
+    """安全解析默认值"""
+    if default_str == "" or default_str is None:
+        if target_type == int:
+            return 0
+        elif target_type == float:
+            return 0.0
+        elif target_type == bool:
+            return False
+        else:
+            return ""
+
+    try:
+        if target_type == int:
+            return int(default_str)
+        elif target_type == float:
+            return float(default_str)
+        elif target_type == bool:
+            return default_str.lower() in ("true", "1", "yes", "on")
+        else:
+            return str(default_str)
+    except (ValueError, TypeError):
+        # 转换失败，返回类型默认值
+        return _parse_default_value("", target_type)
+
+
+def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition']) -> Type[BaseModel]:
+    """为 DYNAMICFORM 创建嵌套模型"""
+    fields = {}
+    for field_name, field_def in schema.items():
+        if field_def.type == PropertyType.INT:
+            ft = int
+        elif field_def.type == PropertyType.FLOAT:
+            ft = float
+        elif field_def.type == PropertyType.BOOL:
+            ft = bool
+        else:
+            ft = str
+
+        default_val = _parse_default_value(field_def.default, ft)
+        fields[field_name] = (ft, default_val)
+
+    return create_model(f"{name}Item", **fields)
