@@ -103,6 +103,8 @@ from datetime import datetime
 from loguru import logger
 import subprocess
 import re
+import warnings
+warnings.filterwarnings("ignore")
 
 
 class FileLogHandler:

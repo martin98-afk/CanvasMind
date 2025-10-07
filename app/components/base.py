@@ -500,7 +500,7 @@ def _parse_default_value(default_str: str, target_type: type) -> Any:
             return int(default_str)
         elif target_type == float:
             return float(default_str)
-        elif target_type == bool:
+        elif target_type == bool and isinstance(default_str, str):
             return default_str.lower() in ("true", "1", "yes", "on")
         else:
             return str(default_str)
