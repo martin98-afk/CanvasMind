@@ -23,7 +23,7 @@ from app.utils.config import Settings
 from app.utils.threading_utils import NodeListExecutor, Worker
 from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json
 from app.widgets.custom_messagebox import CustomInputDialog
-from app.widgets.draggable_component_tree import DraggableTreeWidget
+from app.widgets.draggable_component_tree import DraggableTreeWidget, DraggableTreePanel
 from app.widgets.input_selection_dialog import InputSelectionDialog
 from app.widgets.output_selection_dialog import OutputSelectionDialog
 from app.widgets.property_panel import PropertyPanel
@@ -66,9 +66,9 @@ class CanvasPage(QWidget):
         self.canvas_widget = self.graph.viewer()
 
         # 组件面板 - 使用可拖拽的树
-        self.nav_view = DraggableTreeWidget(self)
-        self.nav_view.setHeaderHidden(True)
-        self.nav_view.setFixedWidth(200)
+        self.nav_panel = DraggableTreePanel(self)
+        self.nav_view = self.nav_panel.tree
+
         self.register_components()
         # 属性面板
         self.property_panel = PropertyPanel(self)
@@ -76,7 +76,7 @@ class CanvasPage(QWidget):
         # 布局
         main_layout = QVBoxLayout(self)
         canvas_layout = QHBoxLayout()
-        canvas_layout.addWidget(self.nav_view)
+        canvas_layout.addWidget(self.nav_panel)
         canvas_layout.addWidget(self.canvas_widget, 1)
         canvas_layout.addWidget(self.property_panel, 0, Qt.AlignRight)
         main_layout.addLayout(canvas_layout)

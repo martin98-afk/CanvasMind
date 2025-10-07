@@ -327,7 +327,7 @@ class EnvironmentManager(QObject):
 
             QTimer.singleShot(1000, lambda: self._install_default_packages(env_name, python_exe))
         except Exception as e:
-            self.install_finished.emit(e)
+            self.install_finished.emit()
 
     def _install_default_packages(self, env_name, python_exe):
         if self._current_log_callback:
