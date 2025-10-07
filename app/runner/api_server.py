@@ -97,6 +97,7 @@ async def run_workflow(input: InputModel):
             str(PROJECT_DIR / "model.workflow.json"),
             external_inputs=external_inputs
         )
+        logger.info(f"工作流执行成功，结果：{outputs}")
         return {"result": outputs}
 
     except Exception as e:
