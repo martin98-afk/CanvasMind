@@ -7,7 +7,7 @@ from collections import deque, defaultdict
 from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
-from NodeGraphQt.constants import PipeLayoutEnum, LayoutDirectionEnum
+from NodeGraphQt.constants import PipeLayoutEnum
 from PyQt5.QtCore import Qt, QThreadPool, QRectF
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
@@ -193,6 +193,9 @@ class CanvasPage(QWidget):
                 nodes_menu.add_command('⏩ 运行到此节点', lambda graph, node: self.run_to_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('⏭️ 从此节点开始运行', lambda graph, node: self.run_from_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                # 编辑组件
+                nodes_menu.add_command('📝 编辑组件', lambda graph, node: self.edit_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('📄 查看节点日志', lambda graph, node: node.show_logs(),
                                        node_type=f"dynamic.{node_class.__name__}")
@@ -1009,6 +1012,11 @@ class CanvasPage(QWidget):
             return
 
         self.run_node_list_async(order)
+
+    def edit_node(self, node):
+        # 跳转到组件开发界面对应的组件
+        self.parent.switchTo(self.parent.develop_page)
+        self.parent.develop_page._load_component(node.component_class)
 
     def _setup_pipeline_style(self):
         self.graph.set_pipe_style(

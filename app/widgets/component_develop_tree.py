@@ -14,7 +14,6 @@ from qfluentwidgets import (
     TreeWidget, RoundMenu, Action, InfoBar, InfoBarPosition, MessageBox
 )
 
-from app.components.base import BaseComponent
 from app.scan_components import scan_components
 from app.widgets.new_component_dialog import NewComponentDialog
 
@@ -28,6 +27,7 @@ class ComponentTreeWidget(TreeWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.parent = parent
         self.setHeaderHidden(True)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
@@ -129,7 +129,7 @@ class ComponentTreeWidget(TreeWidget):
         if current_item:
             default_category = current_item.text(0)
 
-        dialog = NewComponentDialog(self, default_category=default_category)
+        dialog = NewComponentDialog(self.parent, default_category=default_category)
         if dialog.exec_() == QDialog.Accepted:
             component_info = dialog.get_component_info()
             self.component_created.emit(component_info)
@@ -154,7 +154,7 @@ class ComponentTreeWidget(TreeWidget):
         if self._copied_component:
 
             dialog = NewComponentDialog(
-                self,
+                self.parent,
                 default_name=self._copied_component.name,
                 default_category=default_category,
                 default_description=self._copied_component.description

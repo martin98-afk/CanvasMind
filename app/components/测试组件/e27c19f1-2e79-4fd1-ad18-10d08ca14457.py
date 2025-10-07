@@ -33,43 +33,44 @@ class Component(BaseComponent):
     
     properties = {
         "conditions": PropertyDefinition(
-                type=PropertyType.DYNAMICFORM,
-                schema={
-                    "变量": PropertyDefinition(
-                        type=PropertyType.CHOICE,
-                        label="选择变量",
-                        choices=["var1", "var2", "var3"],
-                        default="var1"
-                    ),
-                    "操作符": PropertyDefinition(
-                        type=PropertyType.CHOICE,
-                        label="比较操作符",
-                        choices=[">", "<", "==", ">=", "<=", "!="],
-                        default="=="
-                    ),
-                    "常量": PropertyDefinition(
-                        type=PropertyType.TEXT,
-                        label="常量值",
-                        default="0"
-                    ),
-                    "取反": PropertyDefinition(
-                        type=PropertyType.BOOL,
-                        label="取反（not）",
-                        default=False
-                    )
-                }
-            ),
+            type=PropertyType.DYNAMICFORM,
+            label="",
+            schema={
+                "取反": PropertyDefinition(
+                    type=PropertyType.CHOICE,
+                    default=" ",
+                    label="选择变量",
+                    choices=[" ", "not"]
+                ),"变量": PropertyDefinition(
+                    type=PropertyType.CHOICE,
+                    default="var1",
+                    label="选择变量",
+                    choices=["var1", "var2", "var3"]
+                ),
+                "操作符": PropertyDefinition(
+                    type=PropertyType.CHOICE,
+                    default="==",
+                    label="比较操作符",
+                    choices=[">", "<", "==", ">=", "<=", "!="]
+                ),
+                "常量": PropertyDefinition(
+                    type=PropertyType.TEXT,
+                    default="0",
+                    label="常量值",
+                ),
+            }
+        ),
         "组合方式": PropertyDefinition(
             type=PropertyType.CHOICE,
+            default="and",
             label="条件组合逻辑",
-            choices=["and", "or"],
-            default="and"
+            choices=["and", "or"]
         ),
         "整体取反": PropertyDefinition(
             type=PropertyType.BOOL,
+            default=False,
             label="最终结果取反",
-            default=False
-        )
+        ),
     }
 
     def run(self, params, inputs = None):
@@ -92,7 +93,7 @@ class Component(BaseComponent):
                 var_name = cond.get("变量", "var1")
                 op = cond.get("操作符", "==")
                 const_str = str(cond.get("常量", "0")).strip()
-                negate = cond.get("取反", False)
+                negate = cond.get("取反", "")
 
                 var_val = var_values.get(var_name)
                 if var_val is None:
@@ -105,13 +106,17 @@ class Component(BaseComponent):
                         continue
                 except ValueError:
                     raise ValueError(f"常量 '{const_str}' 无法转换为数字")
-
+                self.logger.info(const_val)
+                self.logger.info(var_val)
+                
                 # 执行比较
                 try:
                     if op == ">":
                         res = var_val > const_val
+                        self.logger.info(res)
                     elif op == "<":
                         res = var_val < const_val
+                        self.logger.info(res)
                     elif op == "==":
                         res = var_val == const_val
                     elif op == ">=":
@@ -126,11 +131,13 @@ class Component(BaseComponent):
                     raise RuntimeError(f"条件计算出错: {e}")
 
                 # 单条件取反
-                if negate:
+                self.logger.info(bool(negate))
+                if negate == "not":
                     res = not res
 
                 results.append(res)
-
+                
+            self.logger.info(results)
             # 组合所有条件
             combine_mode = params.get("组合方式", "and")
             if combine_mode == "and":
@@ -139,7 +146,7 @@ class Component(BaseComponent):
                 final_result = any(results)
 
         # 整体取反
-        if params.get("整体取反", False):
+        if bool(params.get("整体取反", False)):
             final_result = not final_result
 
         return {"output": final_result}

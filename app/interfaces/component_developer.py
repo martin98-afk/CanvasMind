@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import ast
 import inspect
-import json
 import re
 import shutil
 import uuid
@@ -110,7 +109,7 @@ class ComponentDeveloperWidget(QWidget):
         # 左侧：组件树和开发区域
         splitter = QSplitter(Qt.Horizontal)
         # 组件树
-        self.component_tree = ComponentTreeWidget()
+        self.component_tree = ComponentTreeWidget(self)
         splitter.addWidget(self.component_tree)
         # 右侧：开发区域 - 使用新的左右布局
         self.development_area = self._create_development_area_new_layout()

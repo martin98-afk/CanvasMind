@@ -137,7 +137,9 @@ class PropertyPanel(CardWidget):
                                                                original_upstream_data, input_layout)
                     # 显示当前选中的数据（用于执行）
                     current_selected_data = self._get_current_input_value(node, port_def.name, original_upstream_data)
-                    self._add_text_edit_to_layout(current_selected_data, port_name=port_def.name, layout=input_layout)
+                    self._add_text_edit_to_layout(
+                        current_selected_data, port_type=port_type, port_name=port_def.name, layout=input_layout
+                    )
                 else:
                     # 普通数据：直接显示上游数据或当前输入值
                     if connected:
@@ -153,7 +155,9 @@ class PropertyPanel(CardWidget):
                         logger.error(f"无法解析输入数据：{display_data}")
                         display_data = "暂无数据"
 
-                    self._add_text_edit_to_layout(display_data, port_name=port_def.name, layout=input_layout)
+                    self._add_text_edit_to_layout(
+                        display_data, port_type=port_type, port_name=port_def.name, layout=input_layout
+                    )
 
         else:
             input_layout.addWidget(BodyLabel("  无输入端口"))
@@ -338,7 +342,7 @@ class PropertyPanel(CardWidget):
 
         node._input_values[port_name] = selected_data
 
-    def _add_text_edit_to_layout(self, text, port_name=None, layout=None):
+    def _add_text_edit_to_layout(self, text, port_type=None, port_name=None, layout=None):
         """添加文本编辑控件到指定布局"""
         info_card = CardWidget(self)
         card_layout = QVBoxLayout(info_card)
@@ -347,7 +351,7 @@ class PropertyPanel(CardWidget):
         title_label = BodyLabel("数据信息:")
         card_layout.addWidget(title_label)
 
-        tree_widget = VariableTreeWidget(text)
+        tree_widget = VariableTreeWidget(text, port_type, parent=self.main_window)
         card_layout.addWidget(tree_widget)
         if layout is None:
             layout = self.vbox
