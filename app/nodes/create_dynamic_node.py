@@ -182,11 +182,26 @@ def create_node_class(component_class, full_path, file_path):
                 params = {}
                 component_properties = comp_obj.get_properties()
                 for prop_name, prop_def in component_properties.items():
+                    prop_type = prop_def.get("type", PropertyType.TEXT)
                     default_value = prop_def.get("default", "")
-                    if self.has_property(prop_name):
-                        params[prop_name] = self.get_property(prop_name)
+
+                    if prop_type == PropertyType.DYNAMICFORM:
+                        # ✅ 从自定义 widget 获取值
+                        try:
+                            widget = self.get_widget(prop_name)
+                            if widget:
+                                params[prop_name] = widget.get_value()  # 返回 list of dict
+                            else:
+                                params[prop_name] = default_value or []
+                        except Exception as e:
+                            print(f"获取动态表单 {prop_name} 失败: {e}")
+                            params[prop_name] = []
                     else:
-                        params[prop_name] = default_value
+                        # 原生属性：使用 get_property
+                        if self.has_property(prop_name):
+                            params[prop_name] = self.get_property(prop_name)
+                        else:
+                            params[prop_name] = default_value
 
                 # 获取输入数据
                 inputs = {}

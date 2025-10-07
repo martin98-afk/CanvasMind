@@ -36,7 +36,7 @@ class Component(BaseComponent):
         ),
         "max_iter": PropertyDefinition(
             type=PropertyType.INT,
-            default=100,
+            default="100",
             label="最大迭代数",
         ),
     }

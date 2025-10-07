@@ -49,6 +49,7 @@ class Component(BaseComponent):
         """
         try:
             self.logger.info(inputs)
+            self.logger.info(params)
             from sklearn.linear_model import LogisticRegression
             import matplotlib
             import numpy as np

@@ -491,7 +491,7 @@ class ComponentDeveloperWidget(QWidget):
         return '\n'.join(new_lines)
 
     def _update_properties_in_code(self, code, properties):
-        """更新代码中的属性定义"""
+        """更新代码中的属性定义（兼容 dict 和 PropertyDefinition 对象）"""
         try:
             lines = code.split('\n')
             new_lines = []
@@ -500,91 +500,117 @@ class ComponentDeveloperWidget(QWidget):
 
             while i < len(lines):
                 line = lines[i]
-
-                # 查找 properties 定义的开始行
                 if not properties_replaced and re.search(r'^\s*properties\s*=\s*', line) and (
                         '{' in line or '{}' in line):
                     new_lines.append("    properties = {")
                     for prop_name, prop_def in properties.items():
-                        prop_type = prop_def['type']
-                        default_value = prop_def['default']
-                        label = prop_def['label']
-                        # 格式化默认值
-                        if prop_type in ['int', 'float']:
-                            try:
-                                default_value = str(eval(default_value)) if default_value else "0"
-                            except:
-                                default_value = "0" if prop_type == 'int' else "0.0"
-                        elif prop_type == 'bool':
-                            default_value = "True" if default_value.lower() in ['true', '1', 'yes'] else "False"
+                        # ✅ 统一提取字段：兼容 dict 和对象
+                        if isinstance(prop_def, dict):
+                            prop_type = prop_def.get('type', PropertyType.TEXT)
+                            default_value = prop_def.get('default', '')
+                            label = prop_def.get('label', prop_name)
+                            choices = prop_def.get('choices', [])
+                            schema = prop_def.get('schema', {})
                         else:
-                            default_value = f'"{default_value}"'
-                        if prop_type == PropertyType.DYNAMICFORM:
-                            schema_dict = prop_def.get('schema', {})
-                            # 构建嵌套的 PropertyDefinition
-                            schema_code_lines = []
-                            for field_name, field_def in schema_dict.items():
-                                schema_code_lines.append(f'            "{field_name}": PropertyDefinition(')
-                                schema_code_lines.append(f'                type=PropertyType.{field_def["type"].name},')
-                                schema_code_lines.append(f'                default="{field_def.get("default", "")}",')
-                                schema_code_lines.append(
-                                    f'                label="{field_def.get("label", field_name)}",')
-                                if field_def["type"] == PropertyType.CHOICE and "choices" in field_def:
-                                    choices_str = ', '.join([f'"{c}"' for c in field_def["choices"]])
-                                    schema_code_lines.append(f'                choices=[{choices_str}]')
-                                schema_code_lines.append('            ),')
+                            # 假设是 PropertyDefinition 对象
+                            prop_type = getattr(prop_def, 'type', PropertyType.TEXT)
+                            default_value = getattr(prop_def, 'default', '')
+                            label = getattr(prop_def, 'label', prop_name)
+                            choices = getattr(prop_def, 'choices', [])
+                            schema = getattr(prop_def, 'schema', {})
 
+                        # 处理 DYNAMICFORM
+                        if prop_type == PropertyType.DYNAMICFORM:
                             new_lines.append(f'        "{prop_name}": PropertyDefinition(')
                             new_lines.append(f'            type=PropertyType.DYNAMICFORM,')
                             new_lines.append(f'            label="{label}",')
-                            new_lines.append('            schema={')
-                            new_lines.extend(schema_code_lines)
-                            new_lines.append('            }')
+                            if schema:
+                                new_lines.append('            schema={')
+                                for field_name, field_def in schema.items():
+                                    # field_def 一定是 dict（因为来自 get_properties）
+                                    if not isinstance(field_def, dict):
+                                        field_def = field_def.dict()
+                                    field_type = field_def.get('type', PropertyType.TEXT)
+                                    field_default = field_def.get('default', '')
+                                    field_label = field_def.get('label', field_name)
+                                    field_choices = field_def.get('choices', [])
+
+                                    new_lines.append(f'                "{field_name}": PropertyDefinition(')
+                                    new_lines.append(f'                    type=PropertyType.{field_type.name},')
+                                    # 格式化默认值
+                                    if field_type == PropertyType.INT:
+                                        fv = str(int(field_default)) if field_default else "0"
+                                    elif field_type == PropertyType.FLOAT:
+                                        fv = str(float(field_default)) if field_default else "0.0"
+                                    elif field_type == PropertyType.BOOL:
+                                        fv = "True" if str(field_default).lower() in ("true", "1", "yes") else "False"
+                                    else:
+                                        fv = f'"{field_default}"'
+                                    new_lines.append(f'                    default={fv},')
+                                    new_lines.append(f'                    label="{field_label}",')
+                                    if field_type == PropertyType.CHOICE and field_choices:
+                                        choices_str = ', '.join([f'"{c}"' for c in field_choices])
+                                        new_lines.append(f'                    choices=[{choices_str}]')
+                                    new_lines.append('                ),')
+                                new_lines.append('            }')
+                            new_lines.append('        ),')
+
                         else:
+                            # 普通类型
+                            if prop_type == PropertyType.INT:
+                                dv = str(int(default_value)) if default_value else "0"
+                            elif prop_type == PropertyType.FLOAT:
+                                dv = str(float(default_value)) if default_value else "0.0"
+                            elif prop_type == PropertyType.BOOL:
+                                dv = "True" if str(default_value).lower() in ("true", "1", "yes") else "False"
+                            else:
+                                dv = f'"{default_value}"'
+
                             new_lines.append(f'        "{prop_name}": PropertyDefinition(')
                             new_lines.append(f'            type=PropertyType.{prop_type.name},')
-                            new_lines.append(f'            default={default_value},')
+                            new_lines.append(f'            default={dv},')
                             new_lines.append(f'            label="{label}",')
-                            # 处理 choice 类型的选项
-                            if prop_type == PropertyType.CHOICE and 'choices' in prop_def:
-                                choices = prop_def['choices']
-                                choices_str = ', '.join([f'"{choice}"' for choice in choices])
+                            if prop_type == PropertyType.CHOICE and choices:
+                                choices_str = ', '.join([f'"{c}"' for c in choices])
                                 new_lines.append(f'            choices=[{choices_str}]')
-                        new_lines.append('        ),')
+                            new_lines.append('        ),')
+
                     new_lines.append("    }")
                     properties_replaced = True
-                    # 跳过原 properties 定义的其余行
-                    if '{}' not in line:  # 如果不是空字典
+
+                    # 跳过原 properties 块（略，同原逻辑）
+                    if '{}' not in line:
                         bracket_count = line.count('{') - line.count('}')
                         j = i + 1
                         while j < len(lines) and bracket_count > 0:
                             bracket_count += lines[j].count('{') - lines[j].count('}')
                             j += 1
                         i = j
-                    else:  # 如果是空字典 {{ ... }}
-                        # 查找下一个非注释、非空白行，判断是否是 }} 结尾
+                    else:
                         j = i + 1
                         while j < len(lines) and (not lines[j].strip() or lines[j].strip().startswith('#')):
                             j += 1
                         if j < len(lines) and lines[j].strip() == '}':
                             i = j + 1
                         else:
-                            i += 1  # 如果格式不标准，只跳过当前行
+                            i += 1
                 else:
                     new_lines.append(line)
                     i += 1
 
-            # 如果代码中没有找到 properties 行，则添加它
+            # 如果未找到 properties，插入默认（略）
             if not properties_replaced:
-                # 找到类定义开始后，插入空的 properties 定义
                 for idx, l in enumerate(new_lines):
                     if l.strip().startswith('class ') and not any(
                             re.search(r'^\s*properties\s*=\s*', ll) for ll in new_lines[idx:]):
-                        new_lines.insert(idx + 3, "    properties = {}")  # 假设 inputs, outputs 已存在或刚插入
+                        new_lines.insert(idx + 3, "    properties = {}")
                         break
 
             return '\n'.join(new_lines)
-        except:
+        except Exception as e:
+            print(f"_update_properties_in_code error: {e}")
+            import traceback
+            traceback.print_exc()
             return code
 
     def _update_basic_info_in_code(self, code, name, category, description, requirements):

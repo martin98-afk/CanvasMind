@@ -38,10 +38,10 @@ class Component(BaseComponent):
             type=PropertyType.DYNAMICFORM,
             label="最大迭代数",
             schema={
-            "type": PropertyDefinition(
+            "test": PropertyDefinition(
                 type=PropertyType.CHOICE,
                 default="int",
-                label="参数类型",
+                label="属性1",
                 choices=["int", "float"]
             ),
             }
