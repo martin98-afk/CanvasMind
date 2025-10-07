@@ -902,6 +902,7 @@ class CanvasPage(QWidget):
 
         # ✅ 自动生成预览图（同目录，同名，.png）
         self._generate_canvas_thumbnail(file_path)
+        self.create_success_info("保存成功", "工作流保存成功！")
 
     def _generate_canvas_thumbnail(self, workflow_path):
         """根据工作流文件路径生成同名 PNG 预览图"""
@@ -973,6 +974,7 @@ class CanvasPage(QWidget):
             self.set_node_status(
                 node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
             )
+        self.create_success_info("加载成功", "工作流加载成功！")
 
     def run_workflow(self):
         nodes = self.graph.all_nodes()
