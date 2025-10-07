@@ -64,7 +64,6 @@ def run_component_in_subprocess(
 
         # 第一次执行
         result = _run_subprocess(python_executable, temp_script_path, timeout)
-
         # 检查是否需要安装依赖
         needs_install = _check_needs_install(result, temp_script_path)
 
@@ -104,6 +103,8 @@ from datetime import datetime
 from loguru import logger
 import subprocess
 import re
+import warnings
+warnings.filterwarnings("ignore")
 
 
 class FileLogHandler:
@@ -159,12 +160,18 @@ except Exception as e:
 
 
 def _run_subprocess(python_executable, script_path, timeout):
-    return subprocess.run(
+    result = subprocess.run(
         [python_executable, script_path],
         capture_output=True, text=True, timeout=timeout,
         creationflags=subprocess.CREATE_NO_WINDOW,
         encoding='utf-8'
     )
+    # 调试时可打印子进程日志
+    if result.stdout.strip():
+        logger.debug("子进程 stdout:\n{}", result.stdout)
+    if result.stderr.strip():
+        logger.warning("子进程 stderr:\n{}", result.stderr)
+    return result
 
 
 def _check_needs_install(result, temp_script_path):

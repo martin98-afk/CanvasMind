@@ -15,9 +15,9 @@ ArgumentType = base_module.ArgumentType
 
 
 class Component(BaseComponent):
-    name = "逻辑回归训练"
-    category = "模型训练"
-    description = "组件开发生成组件"
+    name = "动态表单测试"
+    category = "测试组件"
+    description = "动态表单测试组件"
     requirements = "matplotlib,numpy,scikit-learn"
     inputs = [
         PortDefinition(name="feature", label="特征", type=ArgumentType.CSV),
@@ -35,9 +35,16 @@ class Component(BaseComponent):
             choices=["liblinear"]
         ),
         "max_iter": PropertyDefinition(
-            type=PropertyType.INT,
-            default=100,
+            type=PropertyType.DYNAMICFORM,
             label="最大迭代数",
+            schema={
+            "test": PropertyDefinition(
+                type=PropertyType.CHOICE,
+                default="int",
+                label="属性1",
+                choices=["int", "float"]
+            ),
+            }
         ),
     }
 
@@ -49,7 +56,6 @@ class Component(BaseComponent):
         """
         try:
             self.logger.info(inputs)
-            self.logger.info(params)
             from sklearn.linear_model import LogisticRegression
             import matplotlib
             import numpy as np
@@ -59,7 +65,8 @@ class Component(BaseComponent):
             target = inputs.get("target")
             # 获取参数
             solver = params.get("solver", "liblinear")
-            max_iter = int(params.get("max_iter", 100))
+            max_iter = params.get("max_iter", 100)
+            self.logger.info(max_iter)
 
             # 训练模型
             model = LogisticRegression(solver=solver, max_iter=max_iter, multi_class='ovr')

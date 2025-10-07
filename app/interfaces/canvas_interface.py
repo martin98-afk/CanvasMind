@@ -7,7 +7,7 @@ from collections import deque, defaultdict
 from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
-from NodeGraphQt.constants import PipeLayoutEnum
+from NodeGraphQt.constants import PipeLayoutEnum, LayoutDirectionEnum
 from PyQt5.QtCore import Qt, QThreadPool, QRectF
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
@@ -33,6 +33,17 @@ from app.widgets.property_panel import PropertyPanel
 # 主界面页面
 # ----------------------------
 class CanvasPage(QWidget):
+
+    PIPELINE_STYLE = {
+        "折线": PipeLayoutEnum.ANGLE.value,
+        "曲线": PipeLayoutEnum.CURVED.value,
+        "直线": PipeLayoutEnum.STRAIGHT.value,
+    }
+    PIPELINE_DIRECTION = {
+        "水平": 0,
+        "垂直": 1
+    }
+
     def __init__(self, parent=None, object_name=None):
         super().__init__()
         self.parent = parent
@@ -235,18 +246,18 @@ class CanvasPage(QWidget):
         self.name_container.move(int(self.canvas_widget.width() // 2) - workflow_name_length // 2, 10)
 
         # 创建布局
-        env_layout = QHBoxLayout(self.name_container)
-        env_layout.setSpacing(5)
-        env_layout.setContentsMargins(0, 0, 0, 0)
+        name_layout = QHBoxLayout(self.name_container)
+        name_layout.setSpacing(5)
+        name_layout.setContentsMargins(0, 0, 0, 0)
 
         # 添加标签
-        env_label = ToolButton(self)
-        env_label.setText(self.workflow_name)
+        name_label = ToolButton(self)
+        name_label.setText(self.workflow_name)
 
-        env_layout.addWidget(env_label)
-        env_layout.addStretch()
+        name_layout.addWidget(name_label)
+        name_layout.addStretch()
 
-        self.name_container.setLayout(env_layout)
+        self.name_container.setLayout(name_layout)
         self.name_container.show()
 
     def _save_via_dialog(self):
@@ -1000,13 +1011,12 @@ class CanvasPage(QWidget):
         self.run_node_list_async(order)
 
     def _setup_pipeline_style(self):
-        # 设置画布曲线类型
-        if self.config.canvas_pipelayout.value == "折线":
-            self.graph.set_pipe_style(PipeLayoutEnum.ANGLE.value)
-        elif self.config.canvas_pipelayout.value == "曲线":
-            self.graph.set_pipe_style(PipeLayoutEnum.CURVED.value)
-        elif self.config.canvas_pipelayout.value == "直线":
-            self.graph.set_pipe_style(PipeLayoutEnum.STRAIGHT.value)
+        self.graph.set_pipe_style(
+            self.PIPELINE_STYLE.get(self.config.canvas_pipelayout.value)
+        )
+        self.graph.set_layout_direction(
+            self.PIPELINE_DIRECTION.get(self.config.canvas_direction.value)
+        )
 
     def _setup_context_menus(self):
         """设置画布和节点的右键菜单"""

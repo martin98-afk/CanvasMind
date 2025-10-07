@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import importlib.util
 import pathlib
 base_path = pathlib.Path(__file__).parent.parent / "base.py"
@@ -15,7 +16,7 @@ ArgumentType = base_module.ArgumentType
 
 class LoopNode(BaseComponent):
     name = "循环控制器"
-    category = "控制流"
+    category = "测试组件"
     description = "执行循环操作"
 
     inputs = [

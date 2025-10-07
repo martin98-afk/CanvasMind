@@ -61,5 +61,7 @@ class Settings(QConfig):
     canvas_auto_save_interval = ConfigItem("Canvas", "AutoSaveInterval", 60, RangeValidator(60, 120))
     canvas_pipelayout = OptionsConfigItem("Canvas", "PipeLayout", "折线",
                                             OptionsValidator(["直线", "曲线", "折线"]))
+    canvas_direction = OptionsConfigItem("Canvas", "Direction", "水平",
+                                          OptionsValidator(["水平", "垂直"]))
     canvas_default_zoom = OptionsConfigItem("Canvas", "DefaultZoom", "100%",
                                      OptionsValidator(["50%", "75%", "100%", "125%", "150%"]))
