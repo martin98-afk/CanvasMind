@@ -147,12 +147,21 @@ class SettingInterface(ScrollArea):
             texts=["直线", "曲线", "折线"],
             parent=self.canvasGroup
         )
+        self.pipeDirectionCard = OptionsSettingCard(
+            self.cfg.canvas_direction,
+            FIF.ZOOM,
+            "流程图延展方向",
+            "",
+            texts=["水平", "垂直"],
+            parent=self.canvasGroup
+        )
 
         self.canvasGroup.addSettingCard(self.showGridCard)
         self.canvasGroup.addSettingCard(self.gridSizeCard)
         self.canvasGroup.addSettingCard(self.autoSaveCard)
         self.canvasGroup.addSettingCard(self.autoSaveIntervalCard)
         self.canvasGroup.addSettingCard(self.pipelayoutCard)
+        self.canvasGroup.addSettingCard(self.pipeDirectionCard)
         self.canvasGroup.addSettingCard(self.defaultZoomCard)
 
         self.vBoxLayout.addWidget(self.canvasGroup)

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import ast
 import inspect
+import json
 import re
 import shutil
 import uuid
@@ -9,14 +10,14 @@ from pathlib import Path
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTableWidgetItem, QHeaderView,
-    QFormLayout
+    QFormLayout, QDialog
 )
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PrimaryPushButton, PushButton,
-    TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit
+    TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit, MessageBoxBase, SubtitleLabel
 )
 
-from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType
+from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition
 from app.scan_components import scan_components
 from app.widgets.code_editer import CodeEditorWidget, DEFAULT_CODE_TEMPLATE
 from app.widgets.component_develop_tree import ComponentTreeWidget
@@ -195,7 +196,7 @@ class ComponentDeveloperWidget(QWidget):
         right_layout.setContentsMargins(0, 0, 0, 0)
         # 代码编辑器
         self.code_editor = CodeEditorWidget()
-        right_layout.addWidget(BodyLabel("💻 组件代码:"))
+        right_layout.addWidget(BodyLabel("组件代码:"))
         right_layout.addWidget(self.code_editor, stretch=1)
         # 保存按钮
         save_layout = QHBoxLayout()
@@ -233,6 +234,8 @@ class ComponentDeveloperWidget(QWidget):
             component_map, file_map = scan_components()
             self.component_tree.load_components(component_map)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self._show_error(f"加载组件失败: {e}")
 
     def _on_component_selected(self, component):
@@ -292,6 +295,8 @@ class ComponentDeveloperWidget(QWidget):
 
             self._sync_basic_info_to_code()
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self._show_error(f"加载组件失败: {str(e)}")
 
     def _create_new_component(self, component_info):
@@ -514,15 +519,37 @@ class ComponentDeveloperWidget(QWidget):
                             default_value = "True" if default_value.lower() in ['true', '1', 'yes'] else "False"
                         else:
                             default_value = f'"{default_value}"'
-                        new_lines.append(f'        "{prop_name}": PropertyDefinition(')
-                        new_lines.append(f'            type=PropertyType.{prop_type.name},')
-                        new_lines.append(f'            default={default_value},')
-                        new_lines.append(f'            label="{label}",')
-                        # 处理 choice 类型的选项
-                        if prop_type == 'choice' and 'choices' in prop_def:
-                            choices = prop_def['choices']
-                            choices_str = ', '.join([f'"{choice}"' for choice in choices])
-                            new_lines.append(f'            choices=[{choices_str}]')
+                        if prop_type == PropertyType.DYNAMICFORM:
+                            schema_dict = prop_def.get('schema', {})
+                            # 构建嵌套的 PropertyDefinition
+                            schema_code_lines = []
+                            for field_name, field_def in schema_dict.items():
+                                schema_code_lines.append(f'            "{field_name}": PropertyDefinition(')
+                                schema_code_lines.append(f'                type=PropertyType.{field_def["type"].name},')
+                                schema_code_lines.append(f'                default="{field_def.get("default", "")}",')
+                                schema_code_lines.append(
+                                    f'                label="{field_def.get("label", field_name)}",')
+                                if field_def["type"] == PropertyType.CHOICE and "choices" in field_def:
+                                    choices_str = ', '.join([f'"{c}"' for c in field_def["choices"]])
+                                    schema_code_lines.append(f'                choices=[{choices_str}]')
+                                schema_code_lines.append('            ),')
+
+                            new_lines.append(f'        "{prop_name}": PropertyDefinition(')
+                            new_lines.append(f'            type=PropertyType.DYNAMICFORM,')
+                            new_lines.append(f'            label="{label}",')
+                            new_lines.append('            schema={')
+                            new_lines.extend(schema_code_lines)
+                            new_lines.append('            }')
+                        else:
+                            new_lines.append(f'        "{prop_name}": PropertyDefinition(')
+                            new_lines.append(f'            type=PropertyType.{prop_type.name},')
+                            new_lines.append(f'            default={default_value},')
+                            new_lines.append(f'            label="{label}",')
+                            # 处理 choice 类型的选项
+                            if prop_type == PropertyType.CHOICE and 'choices' in prop_def:
+                                choices = prop_def['choices']
+                                choices_str = ', '.join([f'"{choice}"' for choice in choices])
+                                new_lines.append(f'            choices=[{choices_str}]')
                         new_lines.append('        ),')
                     new_lines.append("    }")
                     properties_replaced = True
@@ -871,11 +898,12 @@ class PropertyEditorWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._dynamic_form_schemas = {}  # 新增：存储每个动态表单的 schema
         layout = QVBoxLayout(self)
         # 属性表格
         self.table = TableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "选项"])
+        self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "操作"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.itemChanged.connect(lambda item: self.properties_changed.emit())
 
@@ -914,24 +942,57 @@ class PropertyEditorWidget(QWidget):
         self.table.setItem(row, 3, default_item)
         # 选项（用于 choice 类型）
         options_item = QTableWidgetItem("")
-        if getattr(prop_def, 'type', 'text') == "choice":
+        if getattr(prop_def, 'type', PropertyType.TEXT) == PropertyType.CHOICE:
             choices = getattr(prop_def, 'choices', [])
             options_item.setText(",".join(choices))
             options_item.setFlags(options_item.flags() | Qt.ItemIsEditable)
         else:
             options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
-        self.table.setItem(row, 4, options_item)
+
+        # 替换原来的“选项”列：改为“操作”列
+        action_widget = QWidget()
+        action_layout = QHBoxLayout(action_widget)
+        action_layout.setContentsMargins(0, 0, 0, 0)
+
+        if getattr(prop_def, 'type', PropertyType.TEXT) == PropertyType.DYNAMICFORM:
+            edit_btn = PushButton("编辑表单")
+            edit_btn.clicked.connect(lambda _, r=row: self._edit_dynamic_form(r))
+            action_layout.addWidget(edit_btn)
+        else:
+            # 原来的选项输入框
+            options_item = QTableWidgetItem("")
+            if getattr(prop_def, 'type', PropertyType.TEXT) == PropertyType.CHOICE:
+                choices = getattr(prop_def, 'choices', [])
+                options_item.setText(",".join(choices))
+            self.table.setItem(row, 4, options_item)
+            return  # 不设置 widget
+
+        self.table.setCellWidget(row, 4, action_widget)
 
     def _on_type_changed(self, row, prop_type):
         """属性类型改变时的处理"""
         options_item = self.table.item(row, 4)
         if options_item:
-            if prop_type == "choice":
-                options_item.setFlags(options_item.flags() | Qt.ItemIsEditable)
-                options_item.setText("")
+            # 替换原来的“选项”列：改为“操作”列
+            action_widget = QWidget()
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(0, 0, 0, 0)
+
+            if prop_type == PropertyType.DYNAMICFORM:
+                edit_btn = PushButton("编辑表单")
+                edit_btn.clicked.connect(lambda _, r=row: self._edit_dynamic_form(r))
+                action_layout.addWidget(edit_btn)
+                self.table.setCellWidget(row, 4, action_widget)
             else:
-                options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
-                options_item.setText("")
+                # 原来的选项输入框
+                options_item = QTableWidgetItem("")
+                if prop_type == PropertyType.CHOICE:
+                    options_item.setFlags(options_item.flags() | Qt.ItemIsEditable)
+                    options_item.setText("")
+                else:
+                    options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
+                    options_item.setText("")
+
         self.properties_changed.emit()
 
     def _remove_property(self):
@@ -947,37 +1008,100 @@ class PropertyEditorWidget(QWidget):
             self.properties_changed.emit()
 
     def get_properties(self):
-        """获取属性数据"""
+        """获取属性数据（支持 DYNAMICFORM）"""
         properties = {}
         for row in range(self.table.rowCount()):
             name_item = self.table.item(row, 0)
             label_item = self.table.item(row, 1)
             type_widget = self.table.cellWidget(row, 2)
             default_item = self.table.item(row, 3)
-            options_item = self.table.item(row, 4)
-            if name_item and type_widget and default_item:
-                prop_name = name_item.text()
-                if type_widget is None:
-                    prop_type = PropertyType.TEXT
-                else:
-                    prop_type = type_widget.currentData()
-                default_value = default_item.text()
-                properties[prop_name] = {
-                    "type": prop_type,
-                    "default": default_value,
-                    "label": label_item.text() if label_item else prop_name
-                }
-                if prop_type == "choice" and options_item:
-                    choices_text = options_item.text()
-                    if choices_text:
-                        properties[prop_name]["choices"] = [
-                            opt.strip() for opt in choices_text.split(",")
-                            if opt.strip()
-                        ]
+            # options_item = self.table.item(row, 4)  # 不再用于 DYNAMICFORM
+
+            if not (name_item and type_widget):
+                continue
+
+            prop_name = name_item.text()
+            prop_type = type_widget.currentData() or PropertyType.TEXT
+            default_value = default_item.text() if default_item else ""
+
+            prop_dict = {
+                "type": prop_type,
+                "default": default_value,
+                "label": label_item.text() if label_item else prop_name
+            }
+
+            if prop_type == PropertyType.CHOICE:
+                # 从第4列读取选项（保持兼容）
+                options_item = self.table.item(row, 4)
+                if options_item and options_item.text():
+                    prop_dict["choices"] = [
+                        opt.strip() for opt in options_item.text().split(",") if opt.strip()
+                    ]
+
+            elif prop_type == PropertyType.DYNAMICFORM:
+                # ✅ 从内部存储读取 schema
+                if prop_name in self._dynamic_form_schemas:
+                    prop_dict["schema"] = self._dynamic_form_schemas[prop_name]
+
+            properties[prop_name] = prop_dict
+
         return properties
 
+    def _edit_dynamic_form(self, row):
+        """编辑动态表单结构"""
+        try:
+            name_item = self.table.item(row, 0)
+            if not name_item or not name_item.text().strip():
+                InfoBar.warning("警告", "请先填写属性名", parent=self, duration=2000)
+                return
+
+            prop_name = name_item.text()
+            current_schema = self._dynamic_form_schemas.get(prop_name, {})
+
+            dialog = DynamicFormEditorDialog(current_schema, self.window())
+            if dialog.exec() == QDialog.Accepted:
+                new_schema = dialog.get_schema()
+                self._dynamic_form_schemas[prop_name] = new_schema
+                self.properties_changed.emit()
+                InfoBar.success("成功", f"已保存表单结构: {prop_name}", parent=self, duration=1500)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self, duration=3000)
+
     def set_properties(self, properties):
-        """设置属性数据"""
+        """设置属性数据（支持 DYNAMICFORM）"""
         self.table.setRowCount(0)
+        self._dynamic_form_schemas.clear()  # 清空旧 schema
+
         for prop_name, prop_def in properties.items():
+            if isinstance(prop_def, dict):
+                prop_def = PropertyDefinition(**prop_def)
+            prop_type = getattr(prop_def, 'type', PropertyType.TEXT)
+
+            if prop_type == PropertyType.DYNAMICFORM:
+                # 保存 schema 到内部存储
+                self._dynamic_form_schemas[prop_name] = getattr(prop_def, 'schema', {})
+
+            # 调用 _add_property（它会根据类型显示“编辑表单”按钮）
             self._add_property(prop_name, prop_def)
+
+
+class DynamicFormEditorDialog(MessageBoxBase):
+    """动态表单编辑器对话框"""
+    def __init__(self, schema: dict, parent=None):
+        super().__init__(parent)
+        self.widget.setMinimumSize(600, 400)
+        self.schema = schema or {}
+        self.editor = PropertyEditorWidget()
+        self.editor.set_properties(self.schema)
+
+        # 标题
+        self.titleLabel = SubtitleLabel("编辑动态表单结构")
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addWidget(self.editor)
+
+    def get_schema(self):
+        """获取编辑后的 schema"""
+        return self.editor.get_properties()

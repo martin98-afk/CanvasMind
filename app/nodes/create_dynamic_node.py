@@ -2,7 +2,6 @@
 import inspect
 import os
 import pickle
-import re
 import subprocess
 import sys
 import tempfile
@@ -11,9 +10,10 @@ from NodeGraphQt import BaseNode
 from PyQt5.QtWidgets import QFileDialog
 from loguru import logger
 
-from app.components.base import ArgumentType
+from app.components.base import ArgumentType, PropertyType
 from app.utils.node_logger import NodeLogHandler
 from app.widgets.component_log_message_box import LogMessageBox
+from app.widgets.dynamic_form_widget import DynamicFormWidgetWrapper
 
 
 def create_node_class(component_class, full_path, file_path):
@@ -28,47 +28,67 @@ def create_node_class(component_class, full_path, file_path):
         def __init__(self):
             super().__init__()
             self.component_class = component_class
-            self._node_logs = ""  # 节点独立日志存储
-            self._output_values = {}  # 存储输出端口值
+            self._node_logs = ""
+            self._output_values = {}
             self._input_values = {}
             self.column_select = {}
-            # 执行（捕获stdout/stderr）
             self.log_capture = NodeLogHandler(self.id, self._log_message)
 
-            # 添加属性
+            # === 动态生成属性 ===
             for prop_name, prop_def in component_class.get_properties().items():
-                prop_type = prop_def.get("type", "text")
+                prop_type = prop_def.get("type", PropertyType.TEXT)
                 default = prop_def.get("default", "")
                 label = prop_def.get("label", prop_name)
 
-                if prop_type == "bool":
+                if prop_type == PropertyType.BOOL:
                     self.add_checkbox(prop_name, text=label, state=default)
 
-                elif prop_type == "int":
+                elif prop_type in (PropertyType.INT, PropertyType.FLOAT):
                     self.add_text_input(prop_name, label, text=str(default))
 
-                elif prop_type == "float":
-                    self.add_text_input(prop_name, label, text=str(default))
-
-                elif prop_type == "choice":
+                elif prop_type == PropertyType.CHOICE:
                     choices = prop_def.get("choices", [])
                     if choices:
                         self.add_combo_menu(prop_name, label, items=choices)
-                        if default in choices:
-                            self.set_property(prop_name, default)
-                        else:
-                            self.set_property(prop_name, choices[0])
-                    else:
-                        self.add_text_input(prop_name, label, text=str(default))
+                        self.set_property(prop_name, default if default in choices else choices[0])
+
+                elif prop_type == PropertyType.DYNAMICFORM:
+                    # ✅ 关键：使用自定义 widget 实现动态表单
+                    raw_schema = prop_def.get("schema", {})
+
+                    # ✅ 转换 schema：将每个字段的定义转为 {type: "text", choices: [...]} 格式
+                    processed_schema = {}
+                    for field_name, field_def in raw_schema.items():
+                        field_type_enum = PropertyType(field_def["type"])
+                        processed_schema[field_name] = {
+                            "type": field_type_enum.name,
+                            "label": field_def.get("label", field_name),
+                            "choices": field_def.get("choices", [])
+                        }
+
+                    widget = DynamicFormWidgetWrapper(
+                        parent=self.view,
+                        name=prop_name,
+                        label=label,
+                        schema=processed_schema
+                    )
+                    self.add_custom_widget(widget, tab='Properties')
+
+                # elif prop_type == "code":
+                #     widget = CodeEditorWidgetWrapper(
+                #         parent=self.view,
+                #         name=prop_name,
+                #         label=label,
+                #         language=prop_def.get("language", "python")
+                #     )
+                #     self.add_custom_widget(widget, tab='Properties')
+
                 else:
-                    # 默认文本输入
                     self.add_text_input(prop_name, label, text=str(default))
 
-            # 添加输入端口
+            # TODO === 端口（可后续支持动态端口）===
             for port_name, label in component_class.get_inputs():
                 self.add_input(port_name)
-
-            # 添加输出端口
             for port_name, label in component_class.get_outputs():
                 self.add_output(port_name)
 

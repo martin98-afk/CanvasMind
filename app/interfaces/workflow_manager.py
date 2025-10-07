@@ -107,7 +107,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path)
             canvas_page.load_full_workflow(file_path)
-            canvas_interface = self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.stem, parent=self)
+            canvas_interface = self.parent_window.addSubInterface(
+                canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self
+            )
             canvas_interface.clicked.connect(
                 lambda: (
                     canvas_page.nav_view.refresh_components(),

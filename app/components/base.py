@@ -32,28 +32,43 @@ ArgumentType = base_module.ArgumentType\n\n\n"""
 
 class PropertyType(str, Enum):
     """属性类型"""
-    TEXT = "text"
-    INT = "int"
-    FLOAT = "float"
-    BOOL = "bool"
-    CHOICE = "choice"
+    TEXT = "文本"
+    INT = "整数"
+    FLOAT = "浮点数"
+    BOOL = "复选框"
+    CHOICE = "下拉框"
+    DYNAMICFORM = "动态表单"
+
+
+class PropertyDefinition(BaseModel):
+    """属性定义"""
+    type: PropertyType = PropertyType.TEXT
+    default: Any = ""
+    label: str = ""
+    choices: List[str] = Field(default_factory=list)
+    filter: str = "All Files (*)"  # 用于文件类型过滤
+    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义
+
+    class Config:
+        # 允许递归引用
+        arbitrary_types_allowed = True
 
 
 class ArgumentType(str, Enum):
     """参数类型"""
-    TEXT = "text"
-    INT = "int"
-    FLOAT = "float"
-    BOOL = "bool"
-    ARRAY = "array"
+    TEXT = "文本"
+    INT = "整数"
+    FLOAT = "浮点数"
+    BOOL = "布尔值"
+    ARRAY = "列表"
     CSV = "csv"
     JSON = "json"
     EXCEL = "excel"
-    FILE = "file"
-    UPLOAD = "upload"
-    SKLEARNMODEL = "sklearn-model"
-    TORCHMODEL = "torch-model"
-    IMAGE = "image"
+    FILE = "文件"
+    UPLOAD = "上传"
+    SKLEARNMODEL = "sklearn模型"
+    TORCHMODEL = "torch模型"
+    IMAGE = "图片"
 
     # 验证是否是文件类型
     def is_file(self):
@@ -96,15 +111,6 @@ class ArgumentType(str, Enum):
             display_data = Image.open(display_data)
 
         return display_data
-
-
-class PropertyDefinition(BaseModel):
-    """属性定义"""
-    type: PropertyType = PropertyType.TEXT
-    default: Any = ""
-    label: str = ""
-    choices: List[str] = Field(default_factory=list)
-    filter: str = "All Files (*)"  # 用于文件类型过滤
 
 
 class PortDefinition(BaseModel):
@@ -152,9 +158,16 @@ class BaseComponent(ABC):
         """返回输出端口定义：[('port_name', 'Port Label')]"""
         return [(port.name, port.label) for port in cls.outputs]
 
+    # @classmethod
+    # def get_properties(cls) -> Dict[str, Dict[str, Any]]:
+    #     """返回属性定义"""
+    #     return {
+    #         prop_name: prop_def.dict(exclude_unset=True)
+    #         for prop_name, prop_def in cls.properties.items()
+    #     }
+
     @classmethod
     def get_properties(cls) -> Dict[str, Dict[str, Any]]:
-        """返回属性定义"""
         return {
             prop_name: prop_def.dict(exclude_unset=True)
             for prop_name, prop_def in cls.properties.items()
