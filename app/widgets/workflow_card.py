@@ -51,7 +51,8 @@ class WorkflowCard(CardWidget):
         try:
             stat = self.file_path.stat()
             create_time = datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M")
-            info_lines.append(f"创建: {create_time}")
+            change_time = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
+            info_lines.append(f"创建: {create_time}   |    修改: {change_time}")
         except Exception:
             info_lines.append("创建: 未知")
 
