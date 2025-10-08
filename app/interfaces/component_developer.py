@@ -218,7 +218,7 @@ class ComponentDeveloperWidget(QWidget):
 
     def _connect_signals(self):
         """连接信号"""
-        self.component_tree.component_selected.connect(self._on_component_selected)
+        self.component_tree.component_selected.connect(self._load_component)
         self.component_tree.component_created.connect(self._on_component_created)
         self.component_tree.component_pasted.connect(self._on_component_pasted)
         # 连接编辑器改变信号
@@ -245,10 +245,6 @@ class ComponentDeveloperWidget(QWidget):
             traceback.print_exc()
             self._show_error(f"加载组件失败: {e}")
 
-    def _on_component_selected(self, component):
-        """组件选中回调"""
-        self._load_component(component)
-
     def _on_component_created(self, component_info):
         """组件创建回调"""
         self._create_new_component(component_info)
@@ -258,6 +254,12 @@ class ComponentDeveloperWidget(QWidget):
         """组件粘贴回调"""
         self._load_component(self.component_tree._copied_component)
         self._save_component(delete_original_file=False)
+
+    def _load_component_filepath(self, component_path: Path):
+        """根据文件路径重载组件"""
+        file_map = {value: key for key, value in self.component_tree._file_map.items()}
+        full_path = file_map.get(component_path)
+        self._load_component(self.component_tree._components[full_path])
 
     def _load_component(self, component):
         """加载组件到编辑器"""
@@ -780,6 +782,8 @@ class ComponentDeveloperWidget(QWidget):
             # 刷新组件树
             self.component_tree.refresh_components()
             self._show_success("组件保存成功！")
+            # 重新加载当前组件
+            self._load_component_filepath(self._current_component_file)
         except Exception as e:
             self._show_error(f"保存组件失败: {str(e)}")
 

@@ -64,6 +64,8 @@ class RangeWidget(QtWidgets.QWidget):
             self.value_edit.setText(f"{self.min_val:.1f}")
 
     def set_value(self, value):
+        if isinstance(value, str) and len(value) == 0:
+            value = self.min_val
         value = float(value) if self.is_float else int(value)
         if value < self.min_val:
             value = self.min_val
