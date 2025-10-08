@@ -435,6 +435,13 @@ class BaseComponent(ABC):
 
     def _store_image_data(self, image: Any) -> str:
         """存储图像数据"""
+        # 如果是ndarray图像
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(image)
+        elif isinstance(image, Image.Image):
+            pass
+        else:
+            raise ComponentError(f"无法存储图像数据: {type(image)}")
         import tempfile
         with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
             image.save(tmp.name, 'PNG')

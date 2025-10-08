@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
 from pathlib import Path
 
-from PyQt5.QtGui import QFont, QPixmap
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
 from PyQt5.QtCore import Qt
-from qfluentwidgets import CardWidget, BodyLabel, PrimaryPushButton, FluentIcon, ToolButton
-import os
-from datetime import datetime
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
+from qfluentwidgets import CardWidget, BodyLabel, PrimaryPushButton, FluentIcon, ToolButton, ImageLabel
 
 
 class WorkflowCard(CardWidget):
@@ -24,8 +23,25 @@ class WorkflowCard(CardWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(8)
+        # === 尝试加载预览图 ===
+        preview_path = self._get_preview_path()
+        if preview_path and preview_path.exists():
+            # 创建图片标签
+            img_label = ImageLabel(str(preview_path), self)
+            img_label.setFixedSize(200, 100)
+            img_label.setBorderRadius(8, 8, 8, 8)
+            layout.addWidget(img_label, 0, Qt.AlignCenter)
+        else:
+            # 占位符：无预览图
+            placeholder = BodyLabel("无预览图")
+            placeholder.setFixedSize(200, 100)
+            placeholder.setAlignment(Qt.AlignCenter)
+            placeholder.setStyleSheet("color: #aaa; background-color: #f5f5f5; border-radius: 8px;")
+            layout.addWidget(placeholder, 0, Qt.AlignCenter)
+
         # 标题
         name_label = BodyLabel(self.workflow_name)
+        name_label.setAlignment(Qt.AlignCenter)
         name_label.setWordWrap(True)
         name_label.setFont(QFont("Microsoft YaHei", 13, QFont.Bold))
         layout.addWidget(name_label)
@@ -43,24 +59,6 @@ class WorkflowCard(CardWidget):
         info_label.setStyleSheet("color: #888888; font-size: 12px;")
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
-
-        # === 尝试加载预览图 ===
-        preview_path = self._get_preview_path()
-        if preview_path and preview_path.exists():
-            # 创建图片标签
-            img_label = QLabel(self)
-            pixmap = QPixmap(str(preview_path))
-
-            # 缩放图片以适应卡片宽度（保持宽高比）
-            scaled_pixmap = pixmap.scaled(
-                268,  # 留出左右 margin (300 - 2*16 = 268)
-                120,  # 高度预留，可根据需要调整
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            )
-            img_label.setPixmap(scaled_pixmap)
-            img_label.setAlignment(Qt.AlignCenter)
-            layout.addWidget(img_label)
 
         # 按钮区域
         btn_layout = QHBoxLayout()

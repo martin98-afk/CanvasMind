@@ -97,6 +97,7 @@ async def run_workflow(input: InputModel):
             str(PROJECT_DIR / "model.workflow.json"),
             external_inputs=external_inputs
         )
+        logger.info(f"工作流执行成功，结果：{outputs}")
         return {"result": outputs}
 
     except Exception as e:
@@ -117,4 +118,9 @@ if __name__ == "__main__":
 
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=args.port)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=args.port,
+        log_level="info"
+    )

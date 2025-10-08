@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "graph_name": "workflow",
+  "inputs": {
+    "file": {
+      "node_id": "0x22467cae110",
+      "type": "组件输入",
+      "port_name": "file"
+    }
+  },
+  "outputs": {
+    "predict_class": {
+      "node_id": "0x22467e0f700",
+      "output_name": "predict_class"
+    },
+    "confidence": {
+      "node_id": "0x22467e0f700",
+      "output_name": "confidence"
+    },
+    "model": {
+      "node_id": "0x22467e0f700",
+      "output_name": "model"
+    }
+  }
+}

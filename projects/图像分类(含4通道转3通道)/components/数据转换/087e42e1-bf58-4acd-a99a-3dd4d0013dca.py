@@ -15,23 +15,26 @@ ArgumentType = base_module.ArgumentType
 
 
 class Component(BaseComponent):
-    name = "CSV 读取器"
-    category = "数据集成"
-    description = "接收本地上传csv文件"
-    requirements = "pandas"
+    name = "文件转图片"
+    category = "数据转换"
+    description = ""
+    requirements = "Pillow"
     inputs = [
-        PortDefinition(name="csv", label="csv文件", type=ArgumentType.UPLOAD),
+        PortDefinition(name="file", label="端口1", type=ArgumentType.UPLOAD),
     ]
     outputs = [
-        PortDefinition(name="csv", label="csv文件", type=ArgumentType.CSV),
+        PortDefinition(name="image", label="端口1", type=ArgumentType.IMAGE),
     ]
+    properties = {
+    }
 
     def run(self, params, inputs=None):
-        try:
-            import pandas as pd
-            self.logger.info(inputs)
-            self.logger.info(f"开始读取csv文件: {inputs['csv']}")
-            return {"csv": pd.read_csv(inputs["csv"])}
-        except Exception as e:
-            self.logger.error(f"无法读取csv文件: {str(e)}")
-            raise e
+        """
+        params: 节点属性（来自UI）
+        inputs: 上游输入（key=输入端口名）
+        return: 输出数据（key=输出端口名）
+        """
+        from PIL import Image
+        return {
+            "image": Image.open(inputs.get("file"))
+        }

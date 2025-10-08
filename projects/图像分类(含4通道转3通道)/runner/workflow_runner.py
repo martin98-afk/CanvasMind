@@ -2,7 +2,8 @@ import json
 import sys
 from pathlib import Path
 from loguru import logger
-
+import warnings
+warnings.filterwarnings("ignore")
 # 确保能导入你的组件
 sys.path.append(str(Path(__file__).parent.parent))
 

@@ -19,6 +19,34 @@ from app.utils.env_operation import EnvironmentManager
 from app.widgets.custom_messagebox import CustomComboDialog, CustomInputDialog
 
 
+class PackageListThread(QThread):
+    packages_loaded = pyqtSignal(str)      # 成功时发送 stdout
+    error_occurred = pyqtSignal(Exception) # 失败时发送异常
+
+    def __init__(self, python_exe, parent=None):
+        super().__init__(parent)
+        self.python_exe = python_exe
+
+    def run(self):
+
+        kwargs = {}
+        if platform.system() == "Windows":
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+
+        try:
+            result = subprocess.run(
+                [self.python_exe, "-m", "pip", "list", "--format=json"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=15,  # 可适当延长
+                **kwargs
+            )
+            self.packages_loaded.emit(result.stdout.strip())
+        except Exception as e:
+            self.error_occurred.emit(e)
+
+
 class EnvManagerUI(QWidget):
     env_changed = pyqtSignal()
 
@@ -157,26 +185,26 @@ class EnvManagerUI(QWidget):
             self.load_packages(self.current_env)
 
     def load_packages(self, env_name):
-        """调用 pip list 获取环境中的包并填充表格"""
+        """启动线程获取包列表"""
         self.packageTable.setRowCount(0)
+        self.logEdit.append(f"[信息] 正在加载环境 {env_name} 的包列表...")
+
         try:
             python_exe = str(self.mgr.get_python_exe(env_name))
         except Exception as e:
-            self.logEdit.append(f"[错误] {e}")
+            self.logEdit.append(f"[错误] 获取 Python 路径失败: {e}")
             return
-        kwargs = {}
-        if platform.system() == "Windows":
-            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
 
-        result = subprocess.run(
-            [python_exe, "-m", "pip", "list", "--format=json"],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=10,
-            **kwargs
-        )
-        self.on_load_packages(result.stdout.strip())
+        # 如果已有线程在运行，先终止（可选）
+        if hasattr(self, '_pkg_thread') and self._pkg_thread.isRunning():
+            self._pkg_thread.quit()
+            self._pkg_thread.wait()
+
+        # 创建并启动新线程
+        self._pkg_thread = PackageListThread(python_exe)
+        self._pkg_thread.packages_loaded.connect(self.on_load_packages)
+        self._pkg_thread.error_occurred.connect(self.on_load_packages_error)
+        self._pkg_thread.start()
 
     def on_load_packages(self, package_list):
         # 提取 JSON 部分（第一个 [ 到最后一个 ]）
@@ -191,8 +219,10 @@ class EnvManagerUI(QWidget):
         self._repopulate_table(pkgs)
 
     def on_load_packages_error(self, e):
-        stderr = e.stderr if hasattr(e, "stderr") else ""
-        self.logEdit.append(f"[错误] 获取包列表失败: {stderr or e}")
+        error_msg = str(e)
+        if hasattr(e, 'stderr') and e.stderr:
+            error_msg = e.stderr.strip() or error_msg
+        self.logEdit.append(f"[错误] 获取包列表失败: {error_msg}")
 
     def _repopulate_table(self, pkgs):
         """根据传入 pkgs 列表刷新表格（内部使用）"""

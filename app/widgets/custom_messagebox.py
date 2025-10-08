@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-from qfluentwidgets import MessageBoxBase, SubtitleLabel, LineEdit, ComboBox
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QVBoxLayout, QSplitter, QWidget
+from qfluentwidgets import MessageBoxBase, SubtitleLabel, LineEdit, ComboBox, BodyLabel, PlainTextEdit, TextEdit
 
 
 class CustomInputDialog(MessageBoxBase):
@@ -46,3 +48,71 @@ class CustomComboDialog(MessageBoxBase):
 
     def get_text(self):
         return self.comboBox.currentText()
+
+
+class ProjectExportDialog(MessageBoxBase):
+    """项目导出配置对话框：项目名 + requirements 预览 + README 编辑"""
+
+    def __init__(self, project_name: str = "", requirements: str = "", readme: str = "", parent=None):
+        super().__init__(parent)
+        self.titleLabel = SubtitleLabel("导出为独立项目")
+        self.project_name_edit = LineEdit()
+        self.project_name_edit.setText(project_name)
+        self.project_name_edit.setPlaceholderText("请输入项目名称")
+        self.project_name_edit.setClearButtonEnabled(True)
+
+        # 左侧：requirements 预览（只读）
+        self.req_label = BodyLabel("依赖包 (requirements.txt)")
+        self.req_edit = TextEdit()
+        self.req_edit.setPlainText(requirements)
+
+        # 右侧：README 编辑
+        self.readme_label = BodyLabel("项目说明 (README.md)")
+        self.readme_edit = TextEdit()
+        self.readme_edit.setPlainText(readme)
+
+        # 布局
+        top_layout = QVBoxLayout()
+        top_layout.addWidget(self.titleLabel)
+        top_layout.addWidget(self.project_name_edit)
+
+        # 中间区域：左右分栏
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setChildrenCollapsible(False)
+
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.addWidget(self.req_label)
+        left_layout.addWidget(self.req_edit)
+
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.addWidget(self.readme_label)
+        right_layout.addWidget(self.readme_edit)
+
+        splitter.addWidget(left_widget)
+        splitter.addWidget(right_widget)
+        splitter.setSizes([200, 300])  # 默认比例
+
+        self.viewLayout.addLayout(top_layout)
+        self.viewLayout.addWidget(splitter, stretch=1)
+
+        # 按钮
+        self.yesButton.setText("导出")
+        self.cancelButton.setText("取消")
+
+        # 回车提交
+        self.project_name_edit.returnPressed.connect(self.accept)
+        self.widget.setMinimumWidth(850)
+        self.widget.setMinimumHeight(650)
+
+    def get_project_name(self):
+        return self.project_name_edit.text().strip()
+
+    def get_readme_content(self):
+        return self.readme_edit.toPlainText()
+
+    def get_requirements(self):
+        return self.req_edit.toPlainText()
