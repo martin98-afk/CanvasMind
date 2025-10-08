@@ -130,7 +130,4 @@ class Component(BaseComponent):
             }
 
         except Exception as e:
-            import traceback
-            error_msg = f"调用大模型失败: {traceback.format_exc()}"
-            self.logger.error(error_msg)
             raise e
