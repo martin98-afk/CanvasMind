@@ -32,8 +32,10 @@ ArgumentType = base_module.ArgumentType\n\n\n"""
 class PropertyType(str, Enum):
     """属性类型"""
     TEXT = "文本"
+    LONGTEXT = "长文本"
     INT = "整数"
     FLOAT = "浮点数"
+    RANGE = "范围"
     BOOL = "复选框"
     CHOICE = "下拉框"
     DYNAMICFORM = "动态表单"
@@ -47,6 +49,9 @@ class PropertyDefinition(BaseModel):
     choices: List[str] = Field(default_factory=list)
     filter: str = "All Files (*)"  # 用于文件类型过滤
     schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义
+    min: float = Field(default=0.0, description="最小值")
+    max: float = Field(default=100.0, description="最大值")
+    step: float = Field(default=1.0, description="步长")
 
     class Config:
         # 允许递归引用
@@ -222,7 +227,10 @@ class BaseComponent(ABC):
                 # 动态创建 Literal 类型
                 field_type = Literal[tuple(choices)]  # type: ignore
                 default_val = prop_def.default if prop_def.default in choices else choices[0]
-
+            elif prop_def.type == PropertyType.RANGE:
+                field_type = float if isinstance(prop_def.step, float) else int
+                default_val = _parse_default_value(prop_def.default, field_type)
+                fields[prop_name] = (field_type, Field(default=default_val, ge=prop_def.min, le=prop_def.max))
             elif prop_def.type == PropertyType.DYNAMICFORM:
                 # 创建嵌套模型，并用 List[Model] 表示
                 item_model = _create_dynamic_form_model(prop_name, prop_def.schema or {})

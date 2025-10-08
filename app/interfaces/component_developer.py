@@ -3,6 +3,7 @@ import ast
 import inspect
 import re
 import shutil
+import textwrap
 import uuid
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentTyp
 from app.scan_components import scan_components
 from app.widgets.code_editer import CodeEditorWidget, DEFAULT_CODE_TEMPLATE
 from app.widgets.component_develop_tree import ComponentTreeWidget, ComponentTreePanel
+from app.widgets.longtext_dialog import LongTextEditorDialog
 
 
 # --- 组件开发主界面 (布局调整，修复同步) ---
@@ -495,7 +497,7 @@ class ComponentDeveloperWidget(QWidget):
         return '\n'.join(new_lines)
 
     def _update_properties_in_code(self, code, properties):
-        """更新代码中的属性定义（兼容 dict 和 PropertyDefinition 对象）"""
+        """更新代码中的属性定义（兼容 dict 和 PropertyDefinition 对象，支持 RANGE / LONGTEXT）"""
         try:
             lines = code.split('\n')
             new_lines = []
@@ -515,13 +517,18 @@ class ComponentDeveloperWidget(QWidget):
                             label = prop_def.get('label', prop_name)
                             choices = prop_def.get('choices', [])
                             schema = prop_def.get('schema', {})
+                            min_val = prop_def.get('min', 0)
+                            max_val = prop_def.get('max', 100)
+                            step_val = prop_def.get('step', 1)
                         else:
-                            # 假设是 PropertyDefinition 对象
                             prop_type = getattr(prop_def, 'type', PropertyType.TEXT)
                             default_value = getattr(prop_def, 'default', '')
                             label = getattr(prop_def, 'label', prop_name)
                             choices = getattr(prop_def, 'choices', [])
                             schema = getattr(prop_def, 'schema', {})
+                            min_val = getattr(prop_def, 'min', 0)
+                            max_val = getattr(prop_def, 'max', 100)
+                            step_val = getattr(prop_def, 'step', 1)
 
                         # 处理 DYNAMICFORM
                         if prop_type == PropertyType.DYNAMICFORM:
@@ -531,7 +538,6 @@ class ComponentDeveloperWidget(QWidget):
                             if schema:
                                 new_lines.append('            schema={')
                                 for field_name, field_def in schema.items():
-                                    # field_def 一定是 dict（因为来自 get_properties）
                                     if not isinstance(field_def, dict):
                                         field_def = field_def.dict()
                                     field_type = field_def.get('type', PropertyType.TEXT)
@@ -541,7 +547,6 @@ class ComponentDeveloperWidget(QWidget):
 
                                     new_lines.append(f'                "{field_name}": PropertyDefinition(')
                                     new_lines.append(f'                    type=PropertyType.{field_type.name},')
-                                    # 格式化默认值
                                     if field_type == PropertyType.INT:
                                         fv = str(int(field_default)) if field_default else "0"
                                     elif field_type == PropertyType.FLOAT:
@@ -560,13 +565,22 @@ class ComponentDeveloperWidget(QWidget):
                             new_lines.append('        ),')
 
                         else:
-                            # 普通类型
+                            # 普通类型（包括 RANGE / LONGTEXT）
                             if prop_type == PropertyType.INT:
                                 dv = str(int(default_value)) if default_value else "0"
                             elif prop_type == PropertyType.FLOAT:
                                 dv = str(float(default_value)) if default_value else "0.0"
                             elif prop_type == PropertyType.BOOL:
                                 dv = "True" if str(default_value).lower() in ("true", "1", "yes") else "False"
+                            elif prop_type == PropertyType.LONGTEXT:
+                                # ✅ 使用三引号包裹长文本
+                                if default_value:
+                                    # 转义三引号（简单处理）
+                                    safe_text = default_value.replace('"""', '\\"\\"\\"')
+                                    # 使用 textwrap.dedent 保持缩进整洁
+                                    dv = '"""' + textwrap.dedent(safe_text) + '"""'
+                                else:
+                                    dv = '""""""'  # 空三引号
                             else:
                                 dv = f'"{default_value}"'
 
@@ -574,15 +588,24 @@ class ComponentDeveloperWidget(QWidget):
                             new_lines.append(f'            type=PropertyType.{prop_type.name},')
                             new_lines.append(f'            default={dv},')
                             new_lines.append(f'            label="{label}",')
+
+                            # CHOICE 的 choices
                             if prop_type == PropertyType.CHOICE and choices:
                                 choices_str = ', '.join([f'"{c}"' for c in choices])
                                 new_lines.append(f'            choices=[{choices_str}]')
+
+                            # RANGE 的 min, max, step
+                            if prop_type == PropertyType.RANGE:
+                                new_lines.append(f'            min={min_val},')
+                                new_lines.append(f'            max={max_val},')
+                                new_lines.append(f'            step={step_val},')
+
                             new_lines.append('        ),')
 
                     new_lines.append("    }")
                     properties_replaced = True
 
-                    # 跳过原 properties 块（略，同原逻辑）
+                    # 跳过原 properties 块（略）
                     if '{}' not in line:
                         bracket_count = line.count('{') - line.count('}')
                         j = i + 1
@@ -877,6 +900,7 @@ class PortEditorWidget(QWidget):
         self.table.setItem(row, 1, label_edit)
         # 端口类型
         type_combo = ComboBox()
+        type_combo.setMaxVisibleItems(6)
         for item in ArgumentType:
             type_combo.addItem(item.value, userData=item)  # value 显示，userData 存 enum 成员
         type_combo.setCurrentText(port.get("type", "text"))
@@ -960,12 +984,13 @@ class PropertyEditorWidget(QWidget):
         self.table.setItem(row, 1, label_item)
         # 类型
         type_combo = ComboBox()
+        type_combo.setMaxVisibleItems(6)
         for item in PropertyType:
             type_combo.addItem(item.value, userData=item)
         type_combo.setCurrentText(getattr(prop_def, 'type', 'text'))
         self.table.setCellWidget(row, 2, type_combo)
         type_combo.currentTextChanged.connect(
-            lambda text: self._on_type_changed(row, text)
+            lambda text: self._on_type_changed(row)
         )
         # 默认值
         default_item = QTableWidgetItem(str(getattr(prop_def, 'default', '')))
@@ -988,6 +1013,18 @@ class PropertyEditorWidget(QWidget):
             edit_btn = PushButton("编辑表单")
             edit_btn.clicked.connect(lambda _, r=row: self._edit_dynamic_form(r))
             action_layout.addWidget(edit_btn)
+            self.table.setCellWidget(row, 4, action_widget)
+        elif getattr(prop_def, 'type', PropertyType.TEXT) == PropertyType.RANGE:
+            # 显示范围配置：min, max, step
+            min_val = prop_def.get("min", 0) if isinstance(prop_def, dict) else getattr(prop_def, 'min', 0)
+            max_val = prop_def.get("max", 100) if isinstance(prop_def, dict) else getattr(prop_def, 'max', 100)
+            step_val = prop_def.get("step", 1) if isinstance(prop_def, dict) else getattr(prop_def, 'step', 1)
+            options_text = f"min={min_val}, max={max_val}, step={step_val}"
+            self.table.setItem(row, 4, QTableWidgetItem(options_text))
+        elif getattr(prop_def, 'type', PropertyType.TEXT) == PropertyType.LONGTEXT:
+            btn = PushButton("编辑文本")
+            btn.clicked.connect(lambda _, r=row: self._edit_long_text(r))
+            self.table.setCellWidget(row, 4, btn)
         else:
             # 原来的选项输入框
             options_item = QTableWidgetItem("")
@@ -995,33 +1032,34 @@ class PropertyEditorWidget(QWidget):
                 choices = getattr(prop_def, 'choices', [])
                 options_item.setText(",".join(choices))
             self.table.setItem(row, 4, options_item)
-            return  # 不设置 widget
 
-        self.table.setCellWidget(row, 4, action_widget)
+    def _on_type_changed(self, row):
+        type_widget = self.table.cellWidget(row, 2)
+        if not type_widget:
+            return
+        prop_type = type_widget.currentData() or PropertyType.TEXT
 
-    def _on_type_changed(self, row, prop_type):
-        """属性类型改变时的处理"""
-        options_item = self.table.item(row, 4)
-        if options_item:
-            # 替换原来的“选项”列：改为“操作”列
-            action_widget = QWidget()
-            action_layout = QHBoxLayout(action_widget)
-            action_layout.setContentsMargins(0, 0, 0, 0)
+        # 清除第4列
+        self.table.setItem(row, 4, None)
 
-            if prop_type == PropertyType.DYNAMICFORM:
-                edit_btn = PushButton("编辑表单")
-                edit_btn.clicked.connect(lambda _, r=row: self._edit_dynamic_form(r))
-                action_layout.addWidget(edit_btn)
-                self.table.setCellWidget(row, 4, action_widget)
-            else:
-                # 原来的选项输入框
-                options_item = QTableWidgetItem("")
-                if prop_type == PropertyType.CHOICE:
-                    options_item.setFlags(options_item.flags() | Qt.ItemIsEditable)
-                    options_item.setText("")
-                else:
-                    options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
-                    options_item.setText("")
+        if prop_type == PropertyType.CHOICE:
+            item = QTableWidgetItem("")
+            item.setFlags(item.flags() | Qt.ItemIsEditable)
+            self.table.setItem(row, 4, item)
+        elif prop_type == PropertyType.RANGE:
+            # 默认范围配置
+            item = QTableWidgetItem("min=0, max=100, step=1")
+            self.table.setItem(row, 4, item)
+        elif prop_type == PropertyType.LONGTEXT:
+            btn = PushButton("编辑文本")
+            btn.clicked.connect(lambda _, r=row: self._edit_long_text(r))
+            self.table.setCellWidget(row, 4, btn)
+        elif prop_type == PropertyType.DYNAMICFORM:
+            btn = PushButton("编辑表单")
+            btn.clicked.connect(lambda _, r=row: self._edit_dynamic_form(r))
+            self.table.setCellWidget(row, 4, btn)
+        else:
+            self.table.setItem(row, 4, QTableWidgetItem("-"))
 
         self.properties_changed.emit()
 
@@ -1068,6 +1106,20 @@ class PropertyEditorWidget(QWidget):
                         opt.strip() for opt in options_item.text().split(",") if opt.strip()
                     ]
 
+            elif prop_type == PropertyType.RANGE:
+                # 解析 "min=0, max=100, step=1" 字符串
+                options_item = self.table.item(row, 4)
+                if options_item and options_item.text():
+                    opts = {}
+                    for part in options_item.text().split(","):
+                        if "=" in part:
+                            k, v = part.strip().split("=")
+                            try:
+                                opts[k] = float(v) if '.' in v else int(v)
+                            except:
+                                opts[k] = 0
+                    prop_dict.update(opts)  # 添加 min, max, step
+
             elif prop_type == PropertyType.DYNAMICFORM:
                 # ✅ 从内部存储读取 schema
                 if prop_name in self._dynamic_form_schemas:
@@ -1094,6 +1146,30 @@ class PropertyEditorWidget(QWidget):
                 self._dynamic_form_schemas[prop_name] = new_schema
                 self.properties_changed.emit()
                 InfoBar.success("成功", f"已保存表单结构: {prop_name}", parent=self, duration=1500)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self, duration=3000)
+
+    def _edit_long_text(self, row):
+        """编辑长文本"""
+        try:
+            name_item = self.table.item(row, 0)
+            if not name_item or not name_item.text().strip():
+                InfoBar.warning("警告", "请先填写属性名", parent=self, duration=2000)
+                return
+
+            default_item = self.table.item(row, 3)
+            current_text = default_item.text() if default_item else ""
+
+            dialog = LongTextEditorDialog(current_text, self.window())
+            if dialog.exec() == QDialog.Accepted:
+                new_text = dialog.text_edit.toPlainText()
+                if default_item:
+                    default_item.setText(new_text)
+                self.properties_changed.emit()
+                InfoBar.success("成功", "长文本已更新", parent=self, duration=1500)
 
         except Exception as e:
             import traceback

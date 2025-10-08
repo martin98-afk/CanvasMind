@@ -37,6 +37,14 @@ class Component(BaseComponent):
                 ),
             }
         ),
+        "prop_1": PropertyDefinition(
+            type=PropertyType.RANGE,
+            default="12",
+            label="属性2",
+            min=0,
+            max=100,
+            step=1,
+        ),
     }
 
     def run(self, params, inputs=None):
@@ -48,7 +56,7 @@ class Component(BaseComponent):
         # 在这里编写你的组件逻辑
         input = inputs.get("input")
         param = params.get("prop_0")
-        self.logger.info(param)
+        self.logger.info(params)
         output = {}
         self.logger.info(input)
         self.logger.info(input.columns)

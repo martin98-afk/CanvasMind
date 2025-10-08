@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
-import json
-from enum import Enum
 
 import numpy as np
 import pandas as pd
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap, QIcon, QImage, QStandardItemModel, QStandardItem
-from PyQt5.QtWidgets import QTreeWidgetItem, QAction, QDialog, QLabel, QVBoxLayout, QScrollArea, QWidget, \
-    QFileDialog, QApplication, QTableWidget, QTableWidgetItem
-from qfluentwidgets import TreeWidget, RoundMenu, MessageBoxBase, TextEdit, SegmentedWidget, TableWidget
+from PyQt5.QtGui import QPixmap, QIcon, QImage
+from PyQt5.QtWidgets import QTreeWidgetItem, QAction, QDialog, QLabel, QVBoxLayout, QScrollArea, QFileDialog, \
+    QApplication, QTableWidget, QTableWidgetItem
+from qfluentwidgets import TreeWidget, RoundMenu, MessageBoxBase, TextEdit, SegmentedWidget
 
 from app.components.base import ArgumentType
 

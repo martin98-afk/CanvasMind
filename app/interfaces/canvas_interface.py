@@ -183,7 +183,7 @@ class CanvasPage(QWidget):
         nodes_menu = self.graph.get_context_menu('nodes')
         for full_path, comp_cls in self.component_map.items():
             safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
-            node_class = create_node_class(comp_cls, full_path, self.file_map.get(full_path))
+            node_class = create_node_class(comp_cls, full_path, self.file_map.get(full_path), self)
             # 继承 StatusNode 以支持状态显示
             node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
             node_class.__name__ = f"StatusDynamicNode_{safe_name}"
@@ -311,7 +311,7 @@ class CanvasPage(QWidget):
             if not nodes_to_export:
                 self.create_warning_info("导出失败", "选中的节点无效（只有分组节点）！")
                 return
-
+            nodes_to_export.sort(key=lambda node: (node.pos()[0], node.pos()[1]))
             # === 收集所有候选输入项 ===
             candidate_inputs = []
             for node in nodes_to_export:
@@ -360,6 +360,7 @@ class CanvasPage(QWidget):
                         "sample_value": str(out_val)[:50] + "..." if len(str(out_val)) > 50 else str(out_val),
                         "display_name": f"{node_name} → {out_name}",
                     })
+
 
             # === 弹出选择对话框 ===
             if candidate_inputs:

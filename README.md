@@ -32,13 +32,20 @@
 
 <img src="images/工作流示意图3.png" width="800">
 
+## 复杂组件控件示意图
+
+<img src="images/复杂组件控件示意图.png" width="800">
+
 ## 📦 子图导出示意图
 
 <img src="images/子图导出项目输入参数选择示意图.png" width="800">
 
 <img src="images/子图导出项目输出参数选择示意图.png" width="800">
 
-### 项目管理示意图
+<img src="images/子图导出项目项目生成示意图.png" width="800">
+
+
+### 导出项目管理示意图
 
 <img src="images/导出项目管理示意图.png" width="800">
 
@@ -111,62 +118,33 @@ pyinstaller --onedir --windowed --add-data "app;app" --add-data "icons;icons" -i
 
 ```python
 # components/data/my_component.py
-import importlib.util
-import pathlib
-base_path = pathlib.Path(__file__).parent.parent / "base.py"
-spec = importlib.util.spec_from_file_location("base", str(base_path))
-base_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(base_module)
-
-# 导入所需项目
-BaseComponent = base_module.BaseComponent
-PortDefinition = base_module.PortDefinition
-PropertyDefinition = base_module.PropertyDefinition
-PropertyType = base_module.PropertyType
-ArgumentType = base_module.ArgumentType
-
 class Component(BaseComponent):
-    name = "我的组件"
-    category = "数据处理"
-    description = "这是一个示例组件"
-    # --- 新增：定义组件依赖 ---
-    requirements = "pandas~=1.3.0,numpy,scikit-learn"
-
+    name = ""
+    category = ""
+    description = ""
+    requirements = ""
     inputs = [
-        PortDefinition(name="input_data", label="输入数据", type=ArgumentType.FILE)
     ]
-
     outputs = [
-        PortDefinition(name="output_data", label="输出数据", type=ArgumentType.CSV),
-        PortDefinition(name="result", label="结果", type=ArgumentType.TEXT)
     ]
-
     properties = {
-        "parameter1": PropertyDefinition(
-            type=PropertyType.TEXT,
-            default="default_value",
-            label="参数1"
-        ),
-        "max_count": PropertyDefinition(
-            type=PropertyType.INT,
-            default=10,
-            label="最大数量"
-        )
     }
 
     def run(self, params, inputs=None):
-        # 组件逻辑
-        input_data = inputs.get("input_data") if inputs else "default"
-        param1 = params.get("parameter1", "default")
-        max_count = int(params.get("max_count", 10))
-
-        # 处理逻辑...
-        result_data = f"{input_data}_{param1}_{max_count}"
-
+        """
+        params: 节点属性（来自UI）
+        inputs: 上游输入（key=输入端口名）
+        return: 输出数据（key=输出端口名）
+        """
+        # 在这里编写你的组件逻辑
+        input_data = inputs.get("input_data") if inputs else None
+        param1 = params.get("param1", "default_value")
+        # 处理逻辑
+        result = f"处理结果: {input_data} + {param1}"
         return {
-            "output_data": "/path/to/output.csv",  # 文件路径
-            "result": result_data  # 文本结果
+            "output_data": result
         }
+
 ```
 
 2. **自动加载** - 组件会自动被扫描并添加到组件面板
