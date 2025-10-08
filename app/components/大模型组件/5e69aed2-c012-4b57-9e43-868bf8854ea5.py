@@ -29,14 +29,14 @@ class Component(BaseComponent):
 
     properties = {
         "template": PropertyDefinition(
-            type=PropertyType.TEXT,
+            type=PropertyType.LONGTEXT,
+            default="""你好，{{name}}！今天是{{day}}。""",
             label="提示词模板",
-            default="你好，{{name}}！今天是{{day}}。",
         ),
     }
 
     def run(self, params, inputs = None):
-
+        import re
         template = params.get("template", "")
         variables = inputs.get("variables", {}) if inputs else {}
 
@@ -53,5 +53,6 @@ class Component(BaseComponent):
             return str(variables.get(key, match.group(0)))
 
         prompt = re.sub(r"\{\{(\w+)\}\}", replace_match, template)
-
+        self.logger.info(prompt)
+        
         return {"prompt": prompt}
