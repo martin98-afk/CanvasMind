@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from loguru import logger
 from qfluentwidgets import (
     ToolButton, MessageBox, InfoBar,
-    InfoBarPosition, FluentIcon, ComboBox
+    InfoBarPosition, FluentIcon, ComboBox, LineEdit
 )
 
 from app.components.base import PropertyType
@@ -24,9 +24,9 @@ from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
 from app.utils.config import Settings
 from app.utils.threading_utils import NodeListExecutor, Worker
-from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json, resource_path
-from app.widgets.custom_messagebox import CustomInputDialog, ProjectExportDialog
-from app.widgets.draggable_component_tree import DraggableTreeWidget, DraggableTreePanel
+from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json
+from app.widgets.custom_messagebox import ProjectExportDialog
+from app.widgets.draggable_component_tree import DraggableTreePanel
 from app.widgets.input_selection_dialog import InputSelectionDialog
 from app.widgets.output_selection_dialog import OutputSelectionDialog
 from app.widgets.property_panel import PropertyPanel
@@ -47,7 +47,7 @@ class CanvasPage(QWidget):
         "垂直": 1
     }
 
-    def __init__(self, parent=None, object_name=None):
+    def __init__(self, parent=None, object_name: Path=None):
         super().__init__()
         self.parent = parent
         self.file_path = object_name  # 新增：当前文件路径
@@ -56,7 +56,6 @@ class CanvasPage(QWidget):
         self.parent = parent
         # 初始化线程池
         self.threadpool = QThreadPool()
-        print(f"Multithreading with maximum {self.threadpool.maxThreadCount()} threads")
 
         # 初始化状态存储
         self.node_status = {}  # {node_id: status}
@@ -100,6 +99,9 @@ class CanvasPage(QWidget):
         self.canvas_widget.installEventFilter(self)
         # ✅ 启用右键菜单（关键步骤）
         self._setup_context_menus()
+
+    def update_workflow_name(self, name):
+        self.workflow_name = name
 
     def eventFilter(self, obj, event):
         if obj is self.canvas_widget and event.type() == event.Resize:
@@ -257,8 +259,9 @@ class CanvasPage(QWidget):
         name_layout.setContentsMargins(0, 0, 0, 0)
 
         # 添加标签
-        name_label = ToolButton(self)
+        name_label = LineEdit(self)
         name_label.setText(self.workflow_name)
+        name_label.textChanged.connect(self.update_workflow_name)
 
         name_layout.addWidget(name_label)
         name_layout.addStretch()
@@ -267,23 +270,17 @@ class CanvasPage(QWidget):
         self.name_container.show()
 
     def _save_via_dialog(self):
-        if self.file_path:
+        if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
             # 默认使用当前路径
             default_path = self.file_path
             self.save_full_workflow(default_path)
 
             return
         else:
-            default_path = "workflow"
+            file_path = self.file_path.parent / f"{self.workflow_name}.workflow.json"
 
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "保存工作流", default_path, "工作流文件 (*.workflow.json)"
-        )
-        if file_path:
-            if not file_path.endswith('.workflow.json'):
-                file_path += '.workflow.json'
-            self.save_full_workflow(file_path)
-            self.file_path = file_path
+        self.save_full_workflow(file_path)
+        self.file_path = file_path
 
     def _open_via_dialog(self):
         file_path, _ = QFileDialog.getOpenFileName(

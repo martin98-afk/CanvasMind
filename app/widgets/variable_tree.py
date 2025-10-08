@@ -120,7 +120,7 @@ class VariableTreeWidget(TreeWidget):
                     if len(obj) <= 50:
                         return f"'{obj}'"
                     else:
-                        return f"'{obj[:47]}...' (右键预览)"
+                        return f"'{obj[:200]}...' (右键预览)"
                 else:
                     return f"'{str(obj)}'"
 
@@ -142,7 +142,7 @@ class VariableTreeWidget(TreeWidget):
                     else:
                         return f"📁 '{os.path.basename(obj)}'"
                 else:
-                    return f"'{obj[:47]}...' (右键预览)"
+                    return f"'{obj[:200]}...' (右键预览)"
         elif isinstance(obj, (int, float)):
             return str(obj)
         elif isinstance(obj, np.number):

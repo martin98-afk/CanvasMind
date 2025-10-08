@@ -37,6 +37,7 @@ class Component(BaseComponent):
 
     def run(self, params, inputs = None):
         import re
+        self.logger.info(inputs)
         template = params.get("template", "")
         variables = inputs.get("variables", {}) if inputs else {}
 
