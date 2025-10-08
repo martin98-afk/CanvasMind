@@ -434,11 +434,12 @@ class VariableTreeWidget(TreeWidget):
     # =============== 其他预览方法 ===============
     def _preview_text(self, text):
         w = MessageBoxBase(parent=self.parent_widget)
-        w.yesButton.setText("关闭")
+        w.yesButton.hide()
+        w.cancelButton.setText("关闭")
         text_edit = TextEdit()
         text_edit.setPlainText(text)
         text_edit.setReadOnly(True)
-        text_edit.setMinimumSize(500, 300)
+        text_edit.setMinimumSize(700, 500)
         w.viewLayout.addWidget(text_edit)
         w.exec_()
 
