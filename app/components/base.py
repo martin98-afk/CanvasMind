@@ -382,6 +382,13 @@ class BaseComponent(ABC):
         """存储CSV数据"""
         if isinstance(data, pd.DataFrame):
             return data
+        elif isinstance(data, (str, Path)):
+            if os.path.exists(data):
+                return pd.read_csv(data)
+            else:
+                # 如果是CSV字符串
+                import io
+                return pd.read_csv(io.StringIO(data))
         else:
             raise ComponentError(f"无法存储CSV数据: {type(data)}")
 
@@ -391,12 +398,17 @@ class BaseComponent(ABC):
 
     def _store_excel_data(self, data: pd.DataFrame) -> str:
         """存储Excel数据"""
+        import io
         if isinstance(data, pd.DataFrame):
-            import io
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 data.to_excel(writer, index=False)
             return output.getvalue()
+        elif isinstance(data, (str, Path)):
+            if os.path.exists(data):
+                return pd.read_excel(data)
+            else:
+                return pd.read_excel(io.StringIO(data))
         else:
             raise ComponentError(f"无法存储Excel数据: {type(data)}")
 
@@ -423,6 +435,13 @@ class BaseComponent(ABC):
 
     def _store_image_data(self, image: Any) -> str:
         """存储图像数据"""
+        # 如果是ndarray图像
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(image)
+        elif isinstance(image, Image.Image):
+            pass
+        else:
+            raise ComponentError(f"无法存储图像数据: {type(image)}")
         import tempfile
         with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
             image.save(tmp.name, 'PNG')
@@ -442,7 +461,6 @@ class BaseComponent(ABC):
             # 验证参数
             params_model = self.get_params_model()
             validated_params = params_model(**params).dict()
-
             # 验证并读取输入数据
             validated_inputs = {}
             if inputs:

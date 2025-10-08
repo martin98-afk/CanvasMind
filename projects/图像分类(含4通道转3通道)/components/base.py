@@ -13,7 +13,6 @@ from PIL import Image
 from loguru import logger
 from pydantic import BaseModel, Field, create_model
 
-
 COMPONENT_IMPORT_CODE = """# -*- coding: utf-8 -*-
 import importlib.util
 import pathlib
@@ -32,28 +31,43 @@ ArgumentType = base_module.ArgumentType\n\n\n"""
 
 class PropertyType(str, Enum):
     """属性类型"""
-    TEXT = "text"
-    INT = "int"
-    FLOAT = "float"
-    BOOL = "bool"
-    CHOICE = "choice"
+    TEXT = "文本"
+    INT = "整数"
+    FLOAT = "浮点数"
+    BOOL = "复选框"
+    CHOICE = "下拉框"
+    DYNAMICFORM = "动态表单"
+
+
+class PropertyDefinition(BaseModel):
+    """属性定义"""
+    type: PropertyType = PropertyType.TEXT
+    default: Any = ""
+    label: str = ""
+    choices: List[str] = Field(default_factory=list)
+    filter: str = "All Files (*)"  # 用于文件类型过滤
+    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义
+
+    class Config:
+        # 允许递归引用
+        arbitrary_types_allowed = True
 
 
 class ArgumentType(str, Enum):
     """参数类型"""
-    TEXT = "text"
-    INT = "int"
-    FLOAT = "float"
-    BOOL = "bool"
-    ARRAY = "array"
+    TEXT = "文本"
+    INT = "整数"
+    FLOAT = "浮点数"
+    BOOL = "布尔值"
+    ARRAY = "列表"
     CSV = "csv"
     JSON = "json"
     EXCEL = "excel"
-    FILE = "file"
-    UPLOAD = "upload"
-    SKLEARNMODEL = "sklearn-model"
-    TORCHMODEL = "torch-model"
-    IMAGE = "image"
+    FILE = "文件"
+    UPLOAD = "上传"
+    SKLEARNMODEL = "sklearn模型"
+    TORCHMODEL = "torch模型"
+    IMAGE = "图片"
 
     # 验证是否是文件类型
     def is_file(self):
@@ -73,7 +87,9 @@ class ArgumentType(str, Enum):
         return self == ArgumentType.IMAGE
 
     def serialize(self, display_data):
-        if self.is_file():
+        if display_data is None:
+            return display_data
+        if self.is_file() and len(display_data) > 0:
             # FILE类型：显示文件路径选择
             display_data = {
                 "file_name": os.path.basename(display_data),
@@ -86,20 +102,14 @@ class ArgumentType(str, Enum):
             display_data = float(display_data)
         elif self.is_bool():
             display_data = bool(display_data)
-        elif self.is_array():
+        elif self.is_array() and isinstance(display_data, str):
             display_data = np.array(eval(display_data))
+        elif self.is_array() and isinstance(display_data, list):
+            display_data = np.array(display_data)
         elif self.is_image():
             display_data = Image.open(display_data)
 
         return display_data
-
-class PropertyDefinition(BaseModel):
-    """属性定义"""
-    type: PropertyType = PropertyType.TEXT
-    default: Any = ""
-    label: str = ""
-    choices: List[str] = Field(default_factory=list)
-    filter: str = "All Files (*)"  # 用于文件类型过滤
 
 
 class PortDefinition(BaseModel):
@@ -147,9 +157,16 @@ class BaseComponent(ABC):
         """返回输出端口定义：[('port_name', 'Port Label')]"""
         return [(port.name, port.label) for port in cls.outputs]
 
+    # @classmethod
+    # def get_properties(cls) -> Dict[str, Dict[str, Any]]:
+    #     """返回属性定义"""
+    #     return {
+    #         prop_name: prop_def.dict(exclude_unset=True)
+    #         for prop_name, prop_def in cls.properties.items()
+    #     }
+
     @classmethod
     def get_properties(cls) -> Dict[str, Dict[str, Any]]:
-        """返回属性定义"""
         return {
             prop_name: prop_def.dict(exclude_unset=True)
             for prop_name, prop_def in cls.properties.items()
@@ -182,23 +199,42 @@ class BaseComponent(ABC):
 
     @classmethod
     def get_params_model(cls) -> Type[BaseModel]:
-        """动态创建参数模型"""
-        fields = {}
+        """动态创建参数模型（支持 CHOICE / DYNAMICFORM）"""
+        fields: Dict[str, tuple] = {}
+
         for prop_name, prop_def in cls.properties.items():
             if prop_def.type == PropertyType.INT:
                 field_type = int
-                default = prop_def.default if prop_def.default != "" else 0
+                default_val = _parse_default_value(prop_def.default, int)
+
             elif prop_def.type == PropertyType.FLOAT:
                 field_type = float
-                default = prop_def.default if prop_def.default != "" else 0.0
+                default_val = _parse_default_value(prop_def.default, float)
+
             elif prop_def.type == PropertyType.BOOL:
                 field_type = bool
-                default = prop_def.default if prop_def.default != "" else False
-            else:
-                field_type = str
-                default = prop_def.default if prop_def.default != "" else ""
+                default_val = _parse_default_value(prop_def.default, bool)
 
-            fields[prop_name] = (field_type, default)
+            elif prop_def.type == PropertyType.CHOICE:
+                # 使用 Literal 限制选项
+                from typing import Literal
+                choices = prop_def.choices or ["option1"]
+                # 动态创建 Literal 类型
+                field_type = Literal[tuple(choices)]  # type: ignore
+                default_val = prop_def.default if prop_def.default in choices else choices[0]
+
+            elif prop_def.type == PropertyType.DYNAMICFORM:
+                # 创建嵌套模型，并用 List[Model] 表示
+                item_model = _create_dynamic_form_model(prop_name, prop_def.schema or {})
+                field_type = List[item_model]  # type: ignore
+                default_val = []  # 默认空列表
+
+            else:  # TEXT 等
+                field_type = str
+                default_val = prop_def.default if prop_def.default != "" else ""
+
+            # 使用 Field 确保默认值正确
+            fields[prop_name] = (field_type, Field(default=default_val))
 
         return create_model(f"{cls.__name__}Params", **fields)
 
@@ -212,6 +248,8 @@ class BaseComponent(ABC):
                 return int(input_value) if input_value is not None else 0
             elif input_type == ArgumentType.FLOAT:
                 return float(input_value) if input_value is not None else 0.0
+            elif input_type == ArgumentType.ARRAY and isinstance(input_value, (list, tuple)):
+                return np.array(input_value) if input_value is not None else 0.0
             elif input_type == ArgumentType.CSV:
                 return self._read_csv_data(input_value)
             elif input_type == ArgumentType.JSON:
@@ -284,7 +322,10 @@ class BaseComponent(ABC):
 
     def _read_torch_model(self, data: Union[str, Path]) -> Any:
         """读取torch模型"""
-        import torch
+        try:
+            import torch
+        except:
+            pass
         if isinstance(data, (str, Path)) and os.path.exists(data):
             return torch.jit.load(data)
         else:
@@ -316,6 +357,8 @@ class BaseComponent(ABC):
                 return int(output_value) if output_value is not None else 0
             elif output_type == ArgumentType.FLOAT:
                 return float(output_value) if output_value is not None else 0.0
+            elif output_type == ArgumentType.ARRAY and isinstance(output_value, np.ndarray):
+                return output_value.tolist() if output_value is not None else np.zeros(0)
             elif output_type == ArgumentType.CSV:
                 return self._store_csv_data(output_value)
             elif output_type == ArgumentType.JSON:
@@ -339,6 +382,13 @@ class BaseComponent(ABC):
         """存储CSV数据"""
         if isinstance(data, pd.DataFrame):
             return data
+        elif isinstance(data, (str, Path)):
+            if os.path.exists(data):
+                return pd.read_csv(data)
+            else:
+                # 如果是CSV字符串
+                import io
+                return pd.read_csv(io.StringIO(data))
         else:
             raise ComponentError(f"无法存储CSV数据: {type(data)}")
 
@@ -348,12 +398,17 @@ class BaseComponent(ABC):
 
     def _store_excel_data(self, data: pd.DataFrame) -> str:
         """存储Excel数据"""
+        import io
         if isinstance(data, pd.DataFrame):
-            import io
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 data.to_excel(writer, index=False)
             return output.getvalue()
+        elif isinstance(data, (str, Path)):
+            if os.path.exists(data):
+                return pd.read_excel(data)
+            else:
+                return pd.read_excel(io.StringIO(data))
         else:
             raise ComponentError(f"无法存储Excel数据: {type(data)}")
 
@@ -367,7 +422,10 @@ class BaseComponent(ABC):
 
     def _store_torch_model(self, model: Any) -> str:
         """存储torch模型"""
-        import torch
+        try:
+            import torch
+        except:
+            pass
         import tempfile
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pth') as tmp:
             # 使用torch.jit.script进行模型序列化
@@ -377,6 +435,13 @@ class BaseComponent(ABC):
 
     def _store_image_data(self, image: Any) -> str:
         """存储图像数据"""
+        # 如果是ndarray图像
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(image)
+        elif isinstance(image, Image.Image):
+            pass
+        else:
+            raise ComponentError(f"无法存储图像数据: {type(image)}")
         import tempfile
         with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
             image.save(tmp.name, 'PNG')
@@ -396,7 +461,6 @@ class BaseComponent(ABC):
             # 验证参数
             params_model = self.get_params_model()
             validated_params = params_model(**params).dict()
-
             # 验证并读取输入数据
             validated_inputs = {}
             if inputs:
@@ -435,3 +499,48 @@ class BaseComponent(ABC):
             # 捕获其他错误并包装为组件错误
             error_msg = f"组件执行失败: {traceback.format_exc()}"
             raise ComponentError(error_msg, "EXECUTION_ERROR")
+
+
+def _parse_default_value(default_str: str, target_type: type) -> Any:
+    """安全解析默认值"""
+    if default_str == "" or default_str is None:
+        if target_type == int:
+            return 0
+        elif target_type == float:
+            return 0.0
+        elif target_type == bool:
+            return False
+        else:
+            return ""
+
+    try:
+        if target_type == int:
+            return int(default_str)
+        elif target_type == float:
+            return float(default_str)
+        elif target_type == bool and isinstance(default_str, str):
+            return default_str.lower() in ("true", "1", "yes", "on")
+        else:
+            return str(default_str)
+    except (ValueError, TypeError):
+        # 转换失败，返回类型默认值
+        return _parse_default_value("", target_type)
+
+
+def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition']) -> Type[BaseModel]:
+    """为 DYNAMICFORM 创建嵌套模型"""
+    fields = {}
+    for field_name, field_def in schema.items():
+        if field_def.type == PropertyType.INT:
+            ft = int
+        elif field_def.type == PropertyType.FLOAT:
+            ft = float
+        elif field_def.type == PropertyType.BOOL:
+            ft = bool
+        else:
+            ft = str
+
+        default_val = _parse_default_value(field_def.default, ft)
+        fields[field_name] = (ft, default_val)
+
+    return create_model(f"{name}Item", **fields)

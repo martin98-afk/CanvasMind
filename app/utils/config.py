@@ -5,6 +5,8 @@ from qfluentwidgets import ConfigSerializer, ConfigItem, QConfig, OptionsValidat
     RangeValidator, OptionsConfigItem
 from enum import Enum
 
+from app.utils.utils import resource_path
+
 
 class PatchPlatform(Enum):
     GITHUB = "github"
@@ -44,13 +46,13 @@ class Settings(QConfig):
     # ========== 新增：画布路径 ==========
     workflow_paths = ConfigItem(
         "Workflow",
-        "Paths", [Path(__file__).parent.parent.parent / Path("workflows")],
+        "Paths", ["./workflows"],
         FolderListValidator()
     )
     # ========== 新增：项目路径 ==========
     project_paths = ConfigItem(
         "Project",
-        "Paths", [Path(__file__).parent.parent.parent / Path("projects")],
+        "Paths", ["./projects"],
         FolderListValidator()
     )
 

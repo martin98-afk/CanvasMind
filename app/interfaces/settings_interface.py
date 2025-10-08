@@ -67,7 +67,7 @@ class SettingInterface(ScrollArea):
             configItem=self.cfg.workflow_paths,
             title="本地画布路径",
             content="管理多个画布工作目录",
-            directory=resource_path("./workflows"),
+            directory="./",
             parent=self.workflowPathsGroup
         )
 
@@ -84,7 +84,7 @@ class SettingInterface(ScrollArea):
             configItem=self.cfg.project_paths,
             title="本地项目路径",
             content="管理多个项目工作目录",
-            directory=resource_path("./projects"),
+            directory="./",
             parent=self.projectPathsGroup
         )
 

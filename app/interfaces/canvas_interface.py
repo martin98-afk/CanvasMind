@@ -4,13 +4,15 @@ import os
 import pathlib
 import shutil
 from collections import deque, defaultdict
+from datetime import datetime
 from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
-from NodeGraphQt.constants import PipeLayoutEnum, LayoutDirectionEnum
+from NodeGraphQt.constants import PipeLayoutEnum
 from PyQt5.QtCore import Qt, QThreadPool, QRectF
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
+from loguru import logger
 from qfluentwidgets import (
     ToolButton, MessageBox, InfoBar,
     InfoBarPosition, FluentIcon, ComboBox
@@ -21,9 +23,9 @@ from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
 from app.utils.config import Settings
 from app.utils.threading_utils import NodeListExecutor, Worker
-from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json
-from app.widgets.custom_messagebox import CustomInputDialog
-from app.widgets.draggable_component_tree import DraggableTreeWidget
+from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json, resource_path
+from app.widgets.custom_messagebox import CustomInputDialog, ProjectExportDialog
+from app.widgets.draggable_component_tree import DraggableTreeWidget, DraggableTreePanel
 from app.widgets.input_selection_dialog import InputSelectionDialog
 from app.widgets.output_selection_dialog import OutputSelectionDialog
 from app.widgets.property_panel import PropertyPanel
@@ -66,9 +68,9 @@ class CanvasPage(QWidget):
         self.canvas_widget = self.graph.viewer()
 
         # 组件面板 - 使用可拖拽的树
-        self.nav_view = DraggableTreeWidget(self)
-        self.nav_view.setHeaderHidden(True)
-        self.nav_view.setFixedWidth(200)
+        self.nav_panel = DraggableTreePanel(self)
+        self.nav_view = self.nav_panel.tree
+
         self.register_components()
         # 属性面板
         self.property_panel = PropertyPanel(self)
@@ -76,7 +78,7 @@ class CanvasPage(QWidget):
         # 布局
         main_layout = QVBoxLayout(self)
         canvas_layout = QHBoxLayout()
-        canvas_layout.addWidget(self.nav_view)
+        canvas_layout.addWidget(self.nav_panel)
         canvas_layout.addWidget(self.canvas_widget, 1)
         canvas_layout.addWidget(self.property_panel, 0, Qt.AlignRight)
         main_layout.addLayout(canvas_layout)
@@ -194,6 +196,9 @@ class CanvasPage(QWidget):
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('⏭️ 从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
+                # 编辑组件
+                nodes_menu.add_command('📝 编辑组件', lambda graph, node: self.edit_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('📄 查看节点日志', lambda graph, node: node.show_logs(),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('🗑️ 删除节点', lambda graph, node: self.delete_node(node),
@@ -295,133 +300,236 @@ class CanvasPage(QWidget):
 
     def export_selected_nodes_as_project(self):
         """导出选中节点为独立项目（支持交互式定义输入/输出接口）"""
-        selected_nodes = self.graph.selected_nodes()
-        if not selected_nodes:
-            self.create_warning_info("导出失败", "请先选中要导出的节点！")
-            return
-
-        # 过滤掉 Backdrop 节点
-        nodes_to_export = [node for node in selected_nodes if not isinstance(node, BackdropNode)]
-        if not nodes_to_export:
-            self.create_warning_info("导出失败", "选中的节点无效（只有分组节点）！")
-            return
-
-        # === 收集所有候选输入项 ===
-        candidate_inputs = []
-        for node in nodes_to_export:
-            node_name = node.name()
-            # 组件参数
-            editable_params = node.model.custom_properties
-            for param_name, param_value in editable_params.items():
-                candidate_inputs.append({
-                    "type": "组件超参数",
-                    "node_id": node.id,  # ✅ 直接用原始 id
-                    "node_name": node_name,
-                    "param_name": param_name,
-                    "current_value": param_value,
-                    "display_name": f"{node_name} → {param_name}",
-                })
-            # 输入端口
-            for port in node.input_ports():
-                port_name = port.name()
-                connected = port.connected_ports()
-                if connected:
-                    # 从上游取值（和导出逻辑一致）
-                    upstream_out = connected[0]
-                    upstream_node = upstream_out.node()
-                    current_val = upstream_node._output_values.get(upstream_out.name(), None)
-                else:
-                    # 未连接：用用户输入值
-                    current_val = getattr(node, '_input_values', {}).get(port_name, None)
-
-                candidate_inputs.append({
-                    "type": "组件输入",
-                    "node_id": node.id,
-                    "node_name": node_name,
-                    "port_name": port_name,
-                    "current_value": current_val,
-                    "display_name": f"{port_name} → {node_name}",
-                })
-
-        # === 收集所有候选输出项 ===
-        candidate_outputs = []
-        for node in nodes_to_export:
-            node_name = node.name()
-            outputs = getattr(node, '_output_values', {})
-            for out_name, out_val in outputs.items():
-                candidate_outputs.append({
-                    "node_id": node.id,  # ✅ 直接用原始 id
-                    "node_name": node_name,
-                    "output_name": out_name,
-                    "sample_value": str(out_val)[:50] + "..." if len(str(out_val)) > 50 else str(out_val),
-                    "display_name": f"{node_name} → {out_name}",
-                })
-
-        # === 弹出选择对话框（qfluentwidgets 风格）===
-        if candidate_inputs:
-            input_dialog = InputSelectionDialog(candidate_inputs, self)
-            if not input_dialog.exec():
-                return
-            selected_input_items = input_dialog.get_selected_items()
-        else:
-            selected_input_items = []
-
-        if candidate_outputs:
-            output_dialog = OutputSelectionDialog(candidate_outputs, self)
-            if not output_dialog.exec():
-                return
-            selected_output_items = output_dialog.get_selected_items()
-        else:
-            selected_output_items = []
-
-        # === 构建 project_spec.json（使用自定义 key）===
-        project_spec = {"version": "1.0", "inputs": {}, "outputs": {}}
-
-        for item in selected_input_items:
-            key = item.get("custom_key", f"input_{len(project_spec['inputs'])}")
-            project_spec["inputs"][key] = {
-                "node_id": item["node_id"],
-                "type": item["type"]
-            }
-            if item["type"] == "组件超参数":
-                project_spec["inputs"][key]["param_name"] = item["param_name"]
-            else:
-                project_spec["inputs"][key]["port_name"] = item["port_name"]
-
-        for item in selected_output_items:
-            key = item.get("custom_key", f"output_{len(project_spec['outputs'])}")
-            project_spec["outputs"][key] = {
-                "node_id": item["node_id"],
-                "output_name": item["output_name"]
-            }
-
-        # === 选择导出目录 ===
-
-        project_name_dialog = CustomInputDialog("请输入项目名", "项目名", parent=self)
-        if project_name_dialog.exec():
-            project_name = pathlib.Path(project_name_dialog.get_text())
-        else:
-            return
-        export_path = pathlib.Path(self.config.project_paths.value[0]) / project_name
-        export_path.mkdir(parents=True, exist_ok=True)
-
         try:
+            selected_nodes = self.graph.selected_nodes()
+            if not selected_nodes:
+                self.create_warning_info("导出失败", "请先选中要导出的节点！")
+                return
+
+            # 过滤掉 Backdrop 节点
+            nodes_to_export = [node for node in selected_nodes if not isinstance(node, BackdropNode)]
+            if not nodes_to_export:
+                self.create_warning_info("导出失败", "选中的节点无效（只有分组节点）！")
+                return
+
+            # === 收集所有候选输入项 ===
+            candidate_inputs = []
+            for node in nodes_to_export:
+                node_name = node.name()
+                # 组件参数
+                editable_params = node.model.custom_properties
+                for param_name, param_value in editable_params.items():
+                    candidate_inputs.append({
+                        "type": "组件超参数",
+                        "node_id": node.id,
+                        "node_name": node_name,
+                        "param_name": param_name,
+                        "current_value": param_value,
+                        "display_name": f"{node_name} → {param_name}",
+                    })
+                # 输入端口
+                for port in node.input_ports():
+                    port_name = port.name()
+                    connected = port.connected_ports()
+                    if connected:
+                        upstream_out = connected[0]
+                        upstream_node = upstream_out.node()
+                        current_val = upstream_node._output_values.get(upstream_out.name(), None)
+                    else:
+                        current_val = getattr(node, '_input_values', {}).get(port_name, None)
+
+                    candidate_inputs.append({
+                        "type": "组件输入",
+                        "node_id": node.id,
+                        "node_name": node_name,
+                        "port_name": port_name,
+                        "current_value": current_val,
+                        "display_name": f"{port_name} → {node_name}",
+                    })
+
+            # === 收集所有候选输出项 ===
+            candidate_outputs = []
+            for node in nodes_to_export:
+                node_name = node.name()
+                outputs = getattr(node, '_output_values', {})
+                for out_name, out_val in outputs.items():
+                    candidate_outputs.append({
+                        "node_id": node.id,
+                        "node_name": node_name,
+                        "output_name": out_name,
+                        "sample_value": str(out_val)[:50] + "..." if len(str(out_val)) > 50 else str(out_val),
+                        "display_name": f"{node_name} → {out_name}",
+                    })
+
+            # === 弹出选择对话框 ===
+            if candidate_inputs:
+                input_dialog = InputSelectionDialog(candidate_inputs, self)
+                if not input_dialog.exec():
+                    return
+                selected_input_items = input_dialog.get_selected_items()
+            else:
+                selected_input_items = []
+
+            if candidate_outputs:
+                output_dialog = OutputSelectionDialog(candidate_outputs, self)
+                if not output_dialog.exec():
+                    return
+                selected_output_items = output_dialog.get_selected_items()
+            else:
+                selected_output_items = []
+
+            # === 构建 project_spec.json ===
+            project_spec = {"version": "1.0", "graph_name": self.workflow_name, "inputs": {}, "outputs": {}}
+
+            for item in selected_input_items:
+                key = item.get("custom_key", f"input_{len(project_spec['inputs'])}")
+                project_spec["inputs"][key] = {
+                    "node_id": item["node_id"],
+                    "type": item["type"]
+                }
+                if item["type"] == "组件超参数":
+                    project_spec["inputs"][key]["param_name"] = item["param_name"]
+                else:
+                    project_spec["inputs"][key]["port_name"] = item["port_name"]
+
+            for item in selected_output_items:
+                key = item.get("custom_key", f"output_{len(project_spec['outputs'])}")
+                project_spec["outputs"][key] = {
+                    "node_id": item["node_id"],
+                    "output_name": item["output_name"]
+                }
+
+            # === 收集组件和依赖 ===
+            used_components = set()
+            for node in nodes_to_export:
+                used_components.add(node.FULL_PATH)
+
+            requirements = set()
+            for full_path in used_components:
+                comp_cls = self.component_map.get(full_path)
+                if comp_cls:
+                    req_str = getattr(comp_cls, 'requirements', '')
+                    if req_str:
+                        for pkg in req_str.split(','):
+                            pkg = pkg.strip()
+                            if pkg:
+                                requirements.add(pkg)
+
+            # === 构建详细 README（关键增强）===
+            project_name_placeholder = self.workflow_name
+            original_canvas = getattr(self, 'workflow_name', '未知画布')
+            export_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # 输入描述
+            input_desc = []
+            if selected_input_items:
+                for i, item in enumerate(selected_input_items):
+                    key = item.get("custom_key", f"input_{i}")
+                    if item["type"] == "组件超参数":
+                        desc = f"- `{key}`: 超参数 `{item['param_name']}` of `{item['node_name']}`"
+                    else:
+                        desc = f"- `{key}`: 输入端口 `{item['port_name']}` of `{item['node_name']}`"
+                    input_desc.append(desc)
+            else:
+                input_desc = ["- 无外部输入"]
+
+            # 输出描述
+            output_desc = []
+            if selected_output_items:
+                for i, item in enumerate(selected_output_items):
+                    key = item.get("custom_key", f"output_{i}")
+                    desc = f"- `{key}`: 输出 `{item['output_name']}` from `{item['node_name']}`"
+                    output_desc.append(desc)
+            else:
+                output_desc = ["- 无外部输出"]
+
+            # 组件列表
+            component_names = []
+            for full_path in used_components:
+                name = os.path.basename(full_path).replace('.py', '')
+                component_names.append(f"- `{name}`")
+            if not component_names:
+                component_names = ["- 无组件"]
+
+            # 连接数估算
+            original_connections = self.graph.serialize_session()["connections"]
+            node_ids_set = {node.id for node in nodes_to_export}
+            conn_count = sum(
+                1 for conn in original_connections
+                if conn["out"][0] in node_ids_set and conn["in"][0] in node_ids_set
+            )
+
+            # 详细 README 内容
+            detailed_readme = f"""# {project_name_placeholder}
+    
+> 从 **{original_canvas}** 导出的子项目 · {export_time}
+
+---
+
+## 📌 项目概览
+
+- **来源画布**: `{original_canvas}`
+- **导出时间**: `{export_time}`
+- **节点数量**: {len(nodes_to_export)}
+- **内部连接**: {conn_count}
+- **组件数量**: {len(component_names)}
+
+## 🧩 输入接口
+
+{chr(10).join(input_desc)}
+
+## 📤 输出接口
+
+{chr(10).join(output_desc)}
+
+## 🧱 包含组件
+
+{chr(10).join(component_names)}
+
+## 📂 目录结构
+
+- `model.workflow.json`: 工作流定义文件（使用原始节点ID）
+- `project_spec.json`: **项目输入/输出接口规范**
+- `components/`: 组件代码
+- `inputs/`: 输入文件
+- `requirements.txt`: 依赖包列表
+- `run.py`: 运行脚本
+- `api_server.py`: 微服务脚本
+
+## ▶️ 使用方法
+
+1. 安装依赖: `pip install -r requirements.txt`
+2. 准备输入: 创建 `inputs.json`，如 `{{"input_0": "hello"}}`
+3. 直接运行: `python run.py --input inputs.json`
+4. 创建微服务: `python api_server.py --port 8888`
+"""
+
+            # === 弹出新对话框 ===
+            export_dialog = ProjectExportDialog(
+                project_name=project_name_placeholder,
+                requirements='\n'.join(sorted(requirements)) if requirements else "# 无依赖",
+                readme=detailed_readme,
+                parent=self
+            )
+
+            if not export_dialog.exec():
+                return
+
+            project_name = export_dialog.get_project_name()
+            if not project_name:
+                self.create_warning_info("导出失败", "项目名不能为空！")
+                return
+
+            export_path = pathlib.Path("./projects") / project_name
+            export_path.mkdir(parents=True, exist_ok=True)
+
             # 创建目录
             components_dir = export_path / "components"
             inputs_dir = export_path / "inputs"
             components_dir.mkdir(parents=True, exist_ok=True)
             inputs_dir.mkdir(parents=True, exist_ok=True)
 
-            # 收集组件（不再需要 node_id_map！）
-            used_components = set()
-            new_nodes_data = {}  # key: 原始 node.id
-
-            for node in nodes_to_export:
-                used_components.add(node.FULL_PATH)
-                # ✅ 直接用 node.id 作为 key
-                new_nodes_data[node.id] = None  # 占位，后面填充
-
-            # 复制组件代码
+            # 复制组件代码（略，保持你原有逻辑）
             component_path_map = {}
             for full_path in used_components:
                 if full_path in self.file_map:
@@ -441,7 +549,7 @@ class CanvasPage(QWidget):
                         rel_to_project = ("components" / src_rel_path).as_posix()
                         component_path_map[str(src_path)] = rel_to_project
 
-            # === 构建节点数据（用原始 node.id）===
+            # 构建节点数据（略，保持你原有逻辑）
             def _process_value_for_export(value, inputs_dir: Path, export_path: Path):
                 if isinstance(value, str):
                     file_path = Path(value)
@@ -461,15 +569,14 @@ class CanvasPage(QWidget):
                     return [_process_value_for_export(v, inputs_dir, export_path) for v in value]
                 return value
 
+            new_nodes_data = {}
             for node in nodes_to_export:
-                # 组件参数
                 editable_params = node.model.custom_properties
                 exported_params = {
                     param_name: _process_value_for_export(param_value, inputs_dir, export_path)
                     for param_name, param_value in editable_params.items()
                 }
 
-                # === 修复：正确处理所有输入端口（连接 + 未连接）===
                 current_inputs = {}
                 for port in node.input_ports():
                     port_name = port.name()
@@ -494,27 +601,22 @@ class CanvasPage(QWidget):
                         "FULL_PATH": node.FULL_PATH,
                         "FILE_PATH": component_path_map.get(self.file_map.get(node.FULL_PATH, ""), ""),
                         "params": exported_params,
-                        "input_values": serialize_for_json(current_inputs)  # ✅ 包含文件路径重写
+                        "input_values": serialize_for_json(current_inputs)
                     }
                 }
                 new_nodes_data[node.id] = node_data
 
-            # === 构建连接（用原始 node.id）===
+            # 构建连接
             original_connections = self.graph.serialize_session()["connections"]
             new_connections = []
-            node_ids_set = {node.id for node in nodes_to_export}  # 快速查找
-
+            node_ids_set = {node.id for node in nodes_to_export}
             for conn in original_connections:
                 out_id, out_port = conn["out"]
                 in_id, in_port = conn["in"]
-                # ✅ 只保留两端都在选中节点中的连接
                 if out_id in node_ids_set and in_id in node_ids_set:
-                    new_connections.append({
-                        "out": [out_id, out_port],  # ✅ 原始 id
-                        "in": [in_id, in_port]  # ✅ 原始 id
-                    })
+                    new_connections.append({"out": [out_id, out_port], "in": [in_id, in_port]})
 
-            # runtime_data（用原始 node.id）
+            # runtime_data
             runtime_data = {
                 "environment": self.env_combo.currentData(),
                 "environment_exe": self.get_current_python_exe(),
@@ -523,23 +625,21 @@ class CanvasPage(QWidget):
                 "node_outputs": {},
                 "column_select": {},
             }
-
             for node in nodes_to_export:
                 full_path = getattr(node, 'FULL_PATH', 'unknown')
                 node_name = node.name()
                 stable_key = f"{full_path}||{node_name}"
-                runtime_data["node_id2stable_key"][node.id] = stable_key  # ✅ 原始 id
+                runtime_data["node_id2stable_key"][node.id] = stable_key
                 runtime_data["node_states"][stable_key] = self.node_status.get(node.id, "unrun")
                 runtime_data["node_outputs"][stable_key] = serialize_for_json(getattr(node, '_output_values', {}))
                 runtime_data["column_select"][stable_key] = getattr(node, 'column_select', {})
 
-            # 保存
+            # 保存文件
             graph_data = {
-                "nodes": new_nodes_data,  # key: 原始 node.id
-                "connections": new_connections,  # 用原始 node.id
+                "nodes": new_nodes_data,
+                "connections": new_connections,
                 "grid": self.graph.serialize_session().get("grid", None)
             }
-
             project_data = {
                 "version": "1.0",
                 "graph": graph_data,
@@ -553,21 +653,10 @@ class CanvasPage(QWidget):
                 json.dumps(project_spec, indent=2, ensure_ascii=False), encoding='utf-8'
             )
 
-            # requirements.txt
-            requirements = set()
-            for full_path in used_components:
-                comp_cls = self.component_map.get(full_path)
-                if comp_cls:
-                    req_str = getattr(comp_cls, 'requirements', '')
-                    if req_str:
-                        for pkg in req_str.split(','):
-                            pkg = pkg.strip()
-                            if pkg:
-                                requirements.add(pkg)
-            if requirements:
-                (export_path / "requirements.txt").write_text('\n'.join(sorted(requirements)), encoding='utf-8')
+            # 保存 requirements 和 README（使用用户编辑后的内容）
+            (export_path / "requirements.txt").write_text(export_dialog.get_requirements(), encoding='utf-8')
 
-            # 复制 runner 和 base.py
+            # 复制 runner 等（略）
             current_dir = Path(__file__).parent
             runner_src = current_dir / ".." / "runner"
             if runner_src.exists():
@@ -577,35 +666,20 @@ class CanvasPage(QWidget):
             if base_src.exists():
                 shutil.copy(str(base_src), str(components_dir / "base.py"))
 
-            # 移动 run.py 和 scan_components
             for file in ["run.py", "scan_components.py", "api_server.py"]:
                 src = export_path / "runner" / file
                 if src.exists():
                     shutil.move(str(src), str(export_path / file))
 
-            # README
-            readme_content = f"""# 导出的模型项目
-
-    ## 目录结构
-    - `model.workflow.json`: 工作流定义文件（使用原始节点ID）
-    - `project_spec.json`: **项目输入/输出接口规范**
-    - `components/`: 组件代码
-    - `inputs/`: 输入文件
-    - `requirements.txt`: 依赖包列表
-    - `run.py`: 运行脚本
-
-    ## 使用方法
-    1. 安装依赖: `pip install -r requirements.txt`
-    2. 准备输入: 创建 `inputs.json`，如 `{{"input_0": "hello"}}`
-    3. 运行: `python run.py --input inputs.json`
-    """
-            (export_path / "README.md").write_text(readme_content, encoding='utf-8')
+            # ✅ 保存用户编辑后的 README
+            (export_path / "README.md").write_text(export_dialog.get_readme_content(), encoding='utf-8')
+            self._generate_selected_nodes_thumbnail(export_path)
 
             self.create_success_info("导出成功", f"模型项目已导出到:\n{export_path}")
 
         except Exception as e:
             import traceback
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             self.create_failed_info("导出失败", f"错误: {str(e)}")
 
     def canvas_drop_event(self, event):
@@ -899,6 +973,46 @@ class CanvasPage(QWidget):
 
         # ✅ 自动生成预览图（同目录，同名，.png）
         self._generate_canvas_thumbnail(file_path)
+        self.create_success_info("保存成功", "工作流保存成功！")
+
+    def _generate_selected_nodes_thumbnail(self, export_path: pathlib.Path):
+        """为选中的节点生成缩略图并保存到 export_path 下（如 preview.png）"""
+        try:
+            selected_nodes = self.graph.selected_nodes()
+            if not selected_nodes:
+                return  # 无选中节点，不生成
+
+            # 获取选中节点的包围盒
+            scene = self.graph.viewer().scene()
+            rect = QRectF()
+            for node in selected_nodes:
+                item_rect = node.view.sceneBoundingRect()
+                rect = rect.united(item_rect)
+
+            if rect.isEmpty():
+                return
+
+            # 扩展边距
+            rect.adjust(-25, -25, 25, 25)
+
+            # 创建图像
+            image = QImage(rect.size().toSize(), QImage.Format_ARGB32)
+            image.fill(Qt.white)
+
+            painter = QPainter(image)
+            # 渲染选中区域
+            scene.render(painter, target=QRectF(image.rect()), source=rect)
+            painter.end()
+
+            # 保存为 preview.png
+            preview_path = export_path / "preview.png"
+            image.save(str(preview_path), "PNG")
+            print(f"✅ 子图预览图已保存: {preview_path}")
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.create_warning_info("预览图", f"生成失败: {str(e)}")
 
     def _generate_canvas_thumbnail(self, workflow_path):
         """根据工作流文件路径生成同名 PNG 预览图"""
@@ -909,7 +1023,10 @@ class CanvasPage(QWidget):
 
             # 获取场景和边界
             scene = self.graph.viewer().scene()
-            rect = scene.itemsBoundingRect()
+            rect = QRectF()
+            for node in self.graph.all_nodes():
+                item_rect = node.view.sceneBoundingRect()
+                rect = rect.united(item_rect)
 
             if rect.isEmpty():
                 # 如果没有节点，创建一个空白图
@@ -917,7 +1034,7 @@ class CanvasPage(QWidget):
                 image.fill(Qt.white)
             else:
                 # 扩展一点边距，避免裁剪
-                rect.adjust(-25, -25, 120, 200)
+                rect.adjust(-100, -100, 90, 90)
                 image = QImage(rect.size().toSize(), QImage.Format_ARGB32)
                 image.fill(Qt.white)  # 背景设为白色（可选）
 
@@ -931,9 +1048,8 @@ class CanvasPage(QWidget):
             print(f"✅ 预览图已保存: {png_path}")
 
         except Exception as e:
-            print(f"⚠️ 生成预览图失败: {e}")
             # 可选：弹出警告
-            # self.create_warning_info("预览图", f"生成失败: {str(e)}")
+            self.create_warning_info("预览图", f"生成失败: {str(e)}")
 
     def load_full_workflow(self, file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -970,6 +1086,7 @@ class CanvasPage(QWidget):
             self.set_node_status(
                 node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
             )
+        self.create_success_info("加载成功", "工作流加载成功！")
 
     def run_workflow(self):
         nodes = self.graph.all_nodes()
@@ -1009,6 +1126,11 @@ class CanvasPage(QWidget):
             return
 
         self.run_node_list_async(order)
+
+    def edit_node(self, node):
+        # 跳转到组件开发界面对应的组件
+        self.parent.switchTo(self.parent.develop_page)
+        self.parent.develop_page._load_component(node.component_class)
 
     def _setup_pipeline_style(self):
         self.graph.set_pipe_style(

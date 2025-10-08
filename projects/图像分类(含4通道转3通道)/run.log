@@ -1,0 +1,19 @@
+
+[32m2025-10-08 11:33:50.029[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m139[0m - [1m执行节点: 文件转图片[0m
+[32m2025-10-08 11:33:50.728[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-08 11:33:50.679[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[0m
+[32m2025-10-08 11:33:50.734[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m139[0m - [1m执行节点: 图像4通道转3通道[0m
+[32m2025-10-08 11:33:51.444[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-08 11:33:51.335[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1m(1024, 1024, 3)[0m
+[32m2025-10-08 11:33:51.399[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[0m
+[32m2025-10-08 11:33:51.451[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m139[0m - [1m执行节点: 图像分类测试[0m
+[32m2025-10-08 11:33:54.340[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-08 11:33:53.863[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1mModel loaded on cpu[0m
+[32m2025-10-08 11:33:54.057[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[0m
+[32m2025-10-08 11:33:54.347[0m | [1mINFO    [0m | [36m__main__[0m:[36m<module>[0m:[36m15[0m - [1m模型执行完成，输出:[0m
+[32m2025-10-08 11:33:54.347[0m | [1mINFO    [0m | [36m__main__[0m:[36m<module>[0m:[36m17[0m - [1m  predict_class: digital clock[0m
+[32m2025-10-08 11:33:54.347[0m | [1mINFO    [0m | [36m__main__[0m:[36m<module>[0m:[36m17[0m - [1m  confidence: 0.857114315032959[0m
+[32m2025-10-08 11:33:54.347[0m | [1mINFO    [0m | [36m__main__[0m:[36m<module>[0m:[36m17[0m - [1m  model: C:\Users\black\AppData\Local\Temp\tmpyenqmjir.pth[0m

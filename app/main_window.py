@@ -24,9 +24,9 @@ class LowCodeWindow(FluentWindow):
         # 自动最大化窗口
         screen_rect = QDesktopWidget().screenGeometry()
         screen_width, screen_height = screen_rect.width(), screen_rect.height()
-        self.window_width = int(screen_width * 0.75)
-        self.window_height = int(screen_height * 0.75)
-        self.navigationInterface.setExpandWidth(200)
+        self.window_width = int(screen_width * 0.8)
+        self.window_height = int(screen_height * 0.8)
+        self.navigationInterface.setExpandWidth(175)
         self.resize(self.window_width, self.window_height)
         desktop = QApplication.desktop().availableGeometry()
         w, h = desktop.width(), desktop.height()
@@ -44,13 +44,13 @@ class LowCodeWindow(FluentWindow):
         self.project_manager = ExportedProjectsPage(self)
         self.workflow_manager = WorkflowCanvasGalleryPage(self)
         # 添加主界面页面
-        self.addSubInterface(self.develop_page, get_icon("组件"), '组件开发')
-        workflow_interface = self.addSubInterface(self.workflow_manager, get_icon("工作流"), '工作流管理')
+        self.addSubInterface(self.develop_page, get_icon("组件"), '组件管理')
+        workflow_interface = self.addSubInterface(self.workflow_manager, get_icon("工作流"), '画布管理')
         workflow_interface.clicked.connect(self.workflow_manager.load_workflows)
-        project_interface = self.addSubInterface(self.project_manager, get_icon("项目"), '导出项目管理')
+        project_interface = self.addSubInterface(self.project_manager, get_icon("项目"), '项目管理')
         project_interface.clicked.connect(self.project_manager.load_projects)
-        self.addSubInterface(self.package_manager, get_icon("工具包"), '工具包管理')
-
+        package_interface = self.addSubInterface(self.package_manager, get_icon("工具包"), '环境管理')
+        package_interface.clicked.connect(self.package_manager.on_env_changed)
         # 更新按钮
         self.updater = UpdateChecker(self)
         self.updater.check_update()

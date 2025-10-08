@@ -3,6 +3,7 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -91,6 +92,7 @@ def resource_path(relative_path):
     else:
         # 开发环境，直接使用当前路径
         base_path = os.path.abspath(".")
+
     return os.path.join(base_path, relative_path)
 
 

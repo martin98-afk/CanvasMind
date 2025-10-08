@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import functools
 import json
+import platform
 import re
 import subprocess
 
@@ -18,113 +19,32 @@ from app.utils.env_operation import EnvironmentManager
 from app.widgets.custom_messagebox import CustomComboDialog, CustomInputDialog
 
 
-class PackageSummaryThread(QThread):
-    """异步获取包摘要信息的线程"""
-    summary_ready = pyqtSignal(str, str)  # package_name, summary
-    error_occurred = pyqtSignal(str, str)  # package_name, error
+class PackageListThread(QThread):
+    packages_loaded = pyqtSignal(str)      # 成功时发送 stdout
+    error_occurred = pyqtSignal(Exception) # 失败时发送异常
 
-    def __init__(self, python_exe, package_name):
-        super().__init__()
+    def __init__(self, python_exe, parent=None):
+        super().__init__(parent)
         self.python_exe = python_exe
-        self.package_name = package_name
-        self._is_terminated = False
-
-    def terminate(self):
-        self._is_terminated = True
-        super().terminate()
 
     def run(self):
-        if self._is_terminated:
-            return
+
+        kwargs = {}
+        if platform.system() == "Windows":
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
 
         try:
             result = subprocess.run(
-                [self.python_exe, "-m", "pip", "show", self.package_name],
+                [self.python_exe, "-m", "pip", "list", "--format=json"],
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=10,  # 设置超时时间，避免长时间等待
-                creationflags=subprocess.CREATE_NO_WINDOW
+                timeout=15,  # 可适当延长
+                **kwargs
             )
-            output = result.stdout.strip()
-            summary = ""
-            for line in output.split('\n'):
-                if line.startswith('Summary:'):
-                    summary = line.split(':', 1)[1].strip()
-                    break
-
-            if not self._is_terminated:
-                self.summary_ready.emit(self.package_name, summary or "No summary")
-        except subprocess.TimeoutExpired:
-            if not self._is_terminated:
-                self.error_occurred.emit(self.package_name, "获取超时")
+            self.packages_loaded.emit(result.stdout.strip())
         except Exception as e:
-            if not self._is_terminated:
-                self.error_occurred.emit(self.package_name, str(e))
-
-
-class SummaryManager:
-    """包摘要管理器，限制并发线程数量"""
-
-    def __init__(self, max_threads=5):
-        self.max_threads = max_threads
-        self.active_threads = {}
-        self.pending_tasks = []
-        self.python_exe = None
-
-    def set_python_exe(self, python_exe):
-        self.python_exe = python_exe
-
-    def add_task(self, package_name, row, column, callback):
-        """添加获取包摘要的任务"""
-        if len(self.active_threads) < self.max_threads:
-            # 直接启动线程
-            self._start_thread(package_name, row, column, callback)
-        else:
-            # 添加到待处理队列
-            self.pending_tasks.append((package_name, row, column, callback))
-
-    def _start_thread(self, package_name, row, column, callback):
-        """启动获取包摘要的线程"""
-        if not self.python_exe:
-            return
-
-        thread = PackageSummaryThread(self.python_exe, package_name)
-        thread.summary_ready.connect(lambda name, summary: callback(row, column, name, summary))
-        thread.error_occurred.connect(lambda name, error: callback(row, column, name, f"错误: {error}"))
-
-        # 保存线程引用
-        self.active_threads[package_name] = {
-            'thread': thread,
-            'callback': callback,
-            'row': row,
-            'column': column
-        }
-
-        thread.start()
-
-    def on_thread_finished(self, package_name):
-        """线程完成时调用"""
-        if package_name in self.active_threads:
-            del self.active_threads[package_name]
-
-        # 处理待处理的任务
-        if self.pending_tasks and len(self.active_threads) < self.max_threads:
-            package_name, row, column, callback = self.pending_tasks.pop(0)
-            self._start_thread(package_name, row, column, callback)
-
-    def cancel_all(self):
-        """取消所有线程和待处理任务"""
-        # 终止所有活跃线程
-        for info in list(self.active_threads.values()):
-            thread = info['thread']
-            if thread.isRunning():
-                thread.terminate()
-                thread.wait()
-        self.active_threads.clear()
-
-        # 清空待处理队列
-        self.pending_tasks.clear()
+            self.error_occurred.emit(e)
 
 
 class EnvManagerUI(QWidget):
@@ -164,8 +84,6 @@ class EnvManagerUI(QWidget):
         self.process = None
         self.current_env = None
         self.pkgs_data = []  # 保存完整包列表数据
-        self.package_summaries = {}  # 缓存包摘要信息
-        self.summary_manager = SummaryManager(max_threads=3)  # 限制并发线程数
 
         # ---------- 顶部环境选择 ----------
         self.envCombo = ComboBox(self)
@@ -262,70 +180,63 @@ class EnvManagerUI(QWidget):
 
     def on_env_changed(self):
         # 取消所有正在运行的摘要获取线程
-        self.summary_manager.cancel_all()
-        self.package_summaries.clear()
         self.current_env = self.envCombo.currentText()
         if self.current_env:
             self.load_packages(self.current_env)
 
     def load_packages(self, env_name):
-        """调用 pip list 获取环境中的包并填充表格"""
+        """启动线程获取包列表"""
         self.packageTable.setRowCount(0)
+        self.logEdit.append(f"[信息] 正在加载环境 {env_name} 的包列表...")
+
         try:
             python_exe = str(self.mgr.get_python_exe(env_name))
         except Exception as e:
-            self.logEdit.append(f"[错误] {e}")
+            self.logEdit.append(f"[错误] 获取 Python 路径失败: {e}")
             return
 
-        try:
-            result = subprocess.run(
-                [python_exe, "-m", "pip", "list", "--format=json"],
-                capture_output=True,
-                text=True,
-                check=True,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-            output = result.stdout.strip()
-            # 提取 JSON 部分（第一个 [ 到最后一个 ]）
-            match = re.search(r"\[.*\]", output, re.S)
-            if match:
-                pkgs = json.loads(match.group(0))
-            else:
-                pkgs = []
-        except subprocess.CalledProcessError as e:
-            # pip 可能把信息输出到 stderr
-            stderr = e.stderr if hasattr(e, "stderr") else ""
-            self.logEdit.append(f"[错误] 获取包列表失败: {stderr or e}")
-            pkgs = []
-        except Exception as e:
-            self.logEdit.append(f"[错误] 获取包列表失败: {e}")
+        # 如果已有线程在运行，先终止（可选）
+        if hasattr(self, '_pkg_thread') and self._pkg_thread.isRunning():
+            self._pkg_thread.quit()
+            self._pkg_thread.wait()
+
+        # 创建并启动新线程
+        self._pkg_thread = PackageListThread(python_exe)
+        self._pkg_thread.packages_loaded.connect(self.on_load_packages)
+        self._pkg_thread.error_occurred.connect(self.on_load_packages_error)
+        self._pkg_thread.start()
+
+    def on_load_packages(self, package_list):
+        # 提取 JSON 部分（第一个 [ 到最后一个 ]）
+        match = re.search(r"\[.*\]", package_list, re.S)
+        if match:
+            pkgs = json.loads(match.group(0))
+        else:
             pkgs = []
 
         # 保存完整数据，供搜索使用
         self.pkgs_data = pkgs
         self._repopulate_table(pkgs)
 
+    def on_load_packages_error(self, e):
+        error_msg = str(e)
+        if hasattr(e, 'stderr') and e.stderr:
+            error_msg = e.stderr.strip() or error_msg
+        self.logEdit.append(f"[错误] 获取包列表失败: {error_msg}")
+
     def _repopulate_table(self, pkgs):
         """根据传入 pkgs 列表刷新表格（内部使用）"""
         # 取消所有正在运行的摘要获取线程
-        self.summary_manager.cancel_all()
-        self.package_summaries.clear()
-
         self.packageTable.setRowCount(0)
         # 设置Python解释器路径
         if self.current_env:
             python_exe = str(self.mgr.get_python_exe(self.current_env))
-            self.summary_manager.set_python_exe(python_exe)
-
         for row, pkg in enumerate(pkgs):
             name = pkg.get("name", "")
             version = pkg.get("version", "")
             self.packageTable.insertRow(row)
             self.packageTable.setItem(row, 0, QTableWidgetItem(name))
             self.packageTable.setItem(row, 1, QTableWidgetItem(version))
-
-            # 异步获取包摘要
-            # self._get_package_summary_async(name, row, 2)
 
             # 操作按钮：更新、卸载
             btn_widget = QWidget()
@@ -346,38 +257,6 @@ class EnvManagerUI(QWidget):
             btn_layout.addStretch()
 
             self.packageTable.setCellWidget(row, 2, btn_widget)
-
-    def _get_package_summary_async(self, package_name, row, column):
-        """异步获取包的简短描述"""
-        if not self.current_env:
-            return
-
-        # 检查是否已有缓存
-        if package_name in self.package_summaries:
-            summary = self.package_summaries[package_name]
-            item = self.packageTable.item(row, column)
-            if item:
-                item.setText(summary)
-            return
-
-        # 添加到摘要管理器
-        self.summary_manager.add_task(
-            package_name, row, column,
-            self._on_summary_result
-        )
-
-    def _on_summary_result(self, row, column, package_name, result):
-        """包摘要获取完成或失败"""
-        # 更新缓存
-        self.package_summaries[package_name] = result
-
-        # 更新表格
-        item = self.packageTable.item(row, column)
-        if item:
-            item.setText(result)
-
-        # 通知摘要管理器线程已完成
-        self.summary_manager.on_thread_finished(package_name)
 
     def on_search_text_changed(self, text):
         """按搜索文本过滤已安装包"""

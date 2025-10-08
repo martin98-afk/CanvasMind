@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import ast
 import inspect
-import json
 import re
 import shutil
 import uuid
@@ -20,7 +19,7 @@ from qfluentwidgets import (
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition
 from app.scan_components import scan_components
 from app.widgets.code_editer import CodeEditorWidget, DEFAULT_CODE_TEMPLATE
-from app.widgets.component_develop_tree import ComponentTreeWidget
+from app.widgets.component_develop_tree import ComponentTreeWidget, ComponentTreePanel
 
 
 # --- 组件开发主界面 (布局调整，修复同步) ---
@@ -109,9 +108,14 @@ class ComponentDeveloperWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         # 左侧：组件树和开发区域
         splitter = QSplitter(Qt.Horizontal)
-        # 组件树
-        self.component_tree = ComponentTreeWidget()
-        splitter.addWidget(self.component_tree)
+        self_layout = QVBoxLayout(self)
+        self_layout.setContentsMargins(0, 0, 0, 0)
+        self_layout.setSpacing(0)
+
+        # 👇 替换这里：使用带搜索框的面板
+        self.component_tree_panel = ComponentTreePanel(self)
+        self.component_tree = self.component_tree_panel.tree  # 保留对 tree 的直接引用（如果已有代码依赖）
+        splitter.addWidget(self.component_tree_panel)
         # 右侧：开发区域 - 使用新的左右布局
         self.development_area = self._create_development_area_new_layout()
         splitter.addWidget(self.development_area)
@@ -232,7 +236,7 @@ class ComponentDeveloperWidget(QWidget):
         """加载现有组件"""
         try:
             component_map, file_map = scan_components()
-            self.component_tree.load_components(component_map)
+            self.component_tree.load_components(component_map, file_map)
         except Exception as e:
             import traceback
             traceback.print_exc()

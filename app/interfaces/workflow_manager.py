@@ -4,10 +4,10 @@ import subprocess
 from pathlib import Path
 
 from PyQt5.QtCore import QEasingCurve
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedWidget, QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from Qt import Qt
 from qfluentwidgets import (
-    TabBar, BodyLabel, ScrollArea, PrimaryPushButton, FluentIcon, ToolButton, FlowLayout, InfoBar
+    BodyLabel, ScrollArea, PrimaryPushButton, FluentIcon, FlowLayout, InfoBar
 )
 
 from app.interfaces.canvas_interface import CanvasPage
