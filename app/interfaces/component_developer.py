@@ -3,6 +3,7 @@ import ast
 import inspect
 import re
 import shutil
+import textwrap
 import uuid
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentTyp
 from app.scan_components import scan_components
 from app.widgets.code_editer import CodeEditorWidget, DEFAULT_CODE_TEMPLATE
 from app.widgets.component_develop_tree import ComponentTreeWidget, ComponentTreePanel
+from app.widgets.longtext_dialog import LongTextEditorDialog
 
 
 # --- 组件开发主界面 (布局调整，修复同步) ---
@@ -495,7 +497,7 @@ class ComponentDeveloperWidget(QWidget):
         return '\n'.join(new_lines)
 
     def _update_properties_in_code(self, code, properties):
-        """更新代码中的属性定义（兼容 dict 和 PropertyDefinition 对象，支持 RANGE）"""
+        """更新代码中的属性定义（兼容 dict 和 PropertyDefinition 对象，支持 RANGE / LONGTEXT）"""
         try:
             lines = code.split('\n')
             new_lines = []
@@ -563,13 +565,22 @@ class ComponentDeveloperWidget(QWidget):
                             new_lines.append('        ),')
 
                         else:
-                            # 普通类型（包括 RANGE）
+                            # 普通类型（包括 RANGE / LONGTEXT）
                             if prop_type == PropertyType.INT:
                                 dv = str(int(default_value)) if default_value else "0"
                             elif prop_type == PropertyType.FLOAT:
                                 dv = str(float(default_value)) if default_value else "0.0"
                             elif prop_type == PropertyType.BOOL:
                                 dv = "True" if str(default_value).lower() in ("true", "1", "yes") else "False"
+                            elif prop_type == PropertyType.LONGTEXT:
+                                # ✅ 使用三引号包裹长文本
+                                if default_value:
+                                    # 转义三引号（简单处理）
+                                    safe_text = default_value.replace('"""', '\\"\\"\\"')
+                                    # 使用 textwrap.dedent 保持缩进整洁
+                                    dv = '"""' + textwrap.dedent(safe_text) + '"""'
+                                else:
+                                    dv = '""""""'  # 空三引号
                             else:
                                 dv = f'"{default_value}"'
 
@@ -594,7 +605,7 @@ class ComponentDeveloperWidget(QWidget):
                     new_lines.append("    }")
                     properties_replaced = True
 
-                    # 跳过原 properties 块
+                    # 跳过原 properties 块（略）
                     if '{}' not in line:
                         bracket_count = line.count('{') - line.count('}')
                         j = i + 1
@@ -614,7 +625,7 @@ class ComponentDeveloperWidget(QWidget):
                     new_lines.append(line)
                     i += 1
 
-            # 如果未找到 properties，插入默认
+            # 如果未找到 properties，插入默认（略）
             if not properties_replaced:
                 for idx, l in enumerate(new_lines):
                     if l.strip().startswith('class ') and not any(
@@ -889,6 +900,7 @@ class PortEditorWidget(QWidget):
         self.table.setItem(row, 1, label_edit)
         # 端口类型
         type_combo = ComboBox()
+        type_combo.setMaxVisibleItems(6)
         for item in ArgumentType:
             type_combo.addItem(item.value, userData=item)  # value 显示，userData 存 enum 成员
         type_combo.setCurrentText(port.get("type", "text"))
@@ -972,6 +984,7 @@ class PropertyEditorWidget(QWidget):
         self.table.setItem(row, 1, label_item)
         # 类型
         type_combo = ComboBox()
+        type_combo.setMaxVisibleItems(6)
         for item in PropertyType:
             type_combo.addItem(item.value, userData=item)
         type_combo.setCurrentText(getattr(prop_def, 'type', 'text'))
@@ -1008,6 +1021,10 @@ class PropertyEditorWidget(QWidget):
             step_val = prop_def.get("step", 1) if isinstance(prop_def, dict) else getattr(prop_def, 'step', 1)
             options_text = f"min={min_val}, max={max_val}, step={step_val}"
             self.table.setItem(row, 4, QTableWidgetItem(options_text))
+        elif getattr(prop_def, 'type', PropertyType.TEXT) == PropertyType.LONGTEXT:
+            btn = PushButton("编辑文本")
+            btn.clicked.connect(lambda _, r=row: self._edit_long_text(r))
+            self.table.setCellWidget(row, 4, btn)
         else:
             # 原来的选项输入框
             options_item = QTableWidgetItem("")
@@ -1033,6 +1050,10 @@ class PropertyEditorWidget(QWidget):
             # 默认范围配置
             item = QTableWidgetItem("min=0, max=100, step=1")
             self.table.setItem(row, 4, item)
+        elif prop_type == PropertyType.LONGTEXT:
+            btn = PushButton("编辑文本")
+            btn.clicked.connect(lambda _, r=row: self._edit_long_text(r))
+            self.table.setCellWidget(row, 4, btn)
         elif prop_type == PropertyType.DYNAMICFORM:
             btn = PushButton("编辑表单")
             btn.clicked.connect(lambda _, r=row: self._edit_dynamic_form(r))
@@ -1125,6 +1146,30 @@ class PropertyEditorWidget(QWidget):
                 self._dynamic_form_schemas[prop_name] = new_schema
                 self.properties_changed.emit()
                 InfoBar.success("成功", f"已保存表单结构: {prop_name}", parent=self, duration=1500)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self, duration=3000)
+
+    def _edit_long_text(self, row):
+        """编辑长文本"""
+        try:
+            name_item = self.table.item(row, 0)
+            if not name_item or not name_item.text().strip():
+                InfoBar.warning("警告", "请先填写属性名", parent=self, duration=2000)
+                return
+
+            default_item = self.table.item(row, 3)
+            current_text = default_item.text() if default_item else ""
+
+            dialog = LongTextEditorDialog(current_text, self.window())
+            if dialog.exec() == QDialog.Accepted:
+                new_text = dialog.text_edit.toPlainText()
+                if default_item:
+                    default_item.setText(new_text)
+                self.properties_changed.emit()
+                InfoBar.success("成功", "长文本已更新", parent=self, duration=1500)
 
         except Exception as e:
             import traceback

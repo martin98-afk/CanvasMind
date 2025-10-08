@@ -32,6 +32,7 @@ ArgumentType = base_module.ArgumentType\n\n\n"""
 class PropertyType(str, Enum):
     """属性类型"""
     TEXT = "文本"
+    LONGTEXT = "长文本"
     INT = "整数"
     FLOAT = "浮点数"
     RANGE = "范围"

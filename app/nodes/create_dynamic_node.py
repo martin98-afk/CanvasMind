@@ -14,10 +14,11 @@ from app.components.base import ArgumentType, PropertyType
 from app.utils.node_logger import NodeLogHandler
 from app.widgets.component_log_message_box import LogMessageBox
 from app.widgets.dynamic_form_widget import DynamicFormWidgetWrapper
+from app.widgets.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.range_widget import RangeWidgetWrapper
 
 
-def create_node_class(component_class, full_path, file_path):
+def create_node_class(component_class, full_path, file_path, parent_window=None):
     """直接返回一个完整的节点类，支持文件上传按钮和独立Python环境执行"""
 
     class DynamicNode(BaseNode):
@@ -52,7 +53,15 @@ def create_node_class(component_class, full_path, file_path):
                     if choices:
                         self.add_combo_menu(prop_name, label, items=choices)
                         self.set_property(prop_name, default if default in choices else choices[0])
-
+                elif prop_type == PropertyType.LONGTEXT:
+                    widget = LongTextWidgetWrapper(
+                        parent=self.view,
+                        name=prop_name,
+                        label=label,
+                        default=default,
+                        window=parent_window
+                    )
+                    self.add_custom_widget(widget, tab='Properties')
                 elif prop_type == PropertyType.RANGE:
                     # 从 prop_def 提取范围参数
                     min_val = prop_def.get("min", 0)

@@ -90,7 +90,22 @@ class PythonSyntaxHighlighter(QSyntaxHighlighter):
 
     def highlightBlock(self, text):
         """逐行高亮"""
-        # 1. 基础规则（关键字、数字等）
+        # === 1. 多行字符串处理（必须最先处理！）===
+        self.setCurrentBlockState(0)
+        prev_state = self.previousBlockState()
+
+        # 检查是否延续上一行的多行字符串
+        if prev_state == 1:  # 三单引号
+            self.match_multiline(text, self.tri_single, 1, self.styles["string"])
+        elif prev_state == 2:  # 三双引号
+            self.match_multiline(text, self.tri_double, 2, self.styles["string"])
+        else:
+            # 尝试新开始的多行字符串（优先于单行字符串！）
+            if not self.match_multiline(text, self.tri_single, 1, self.styles["string"]):
+                self.match_multiline(text, self.tri_double, 2, self.styles["string"])
+
+        # === 2. 基础规则（关键字、数字等）===
+        # 但要跳过多行字符串已覆盖的区域（可选优化，此处简化）
         for expression, nth, fmt in self.compiled_rules:
             index = expression.indexIn(text)
             while index >= 0:
@@ -103,13 +118,12 @@ class PythonSyntaxHighlighter(QSyntaxHighlighter):
                     self.setFormat(index, length, fmt)
                 index = expression.indexIn(text, index + length)
 
-        # 2. 注释（必须在字符串之后处理，避免字符串内 # 被误判）
+        # === 3. 注释（必须在字符串之后）===
         comment_start = -1
         in_string = False
         quote_char = None
         escaped = False
 
-        # 简单状态机：跳过字符串内的 #
         for i, char in enumerate(text):
             if char == '\\' and not escaped:
                 escaped = True
@@ -129,46 +143,40 @@ class PythonSyntaxHighlighter(QSyntaxHighlighter):
 
         if comment_start != -1:
             self.setFormat(comment_start, len(text) - comment_start, self.styles["comment"])
-            # TODO/FIXME 高亮
             for marker in ["TODO", "FIXME", "HACK", "XXX"]:
                 idx = text.find(marker, comment_start)
                 if idx != -1:
                     self.setFormat(idx, len(marker), self.styles["todo"])
 
-        # 3. 字符串（单行）- 必须在注释之后，因为注释可能包含引号
-        # 支持: "str", 'str', r"str", R'str', b"str", B'str', f"str", F'str' 及其组合
-        string_re = QRegExp(r"([fF]?[rR]?[bB]?\"\"\"|([fF]?[rR]?[bB]?\"([^\"\\]|\\.)*\")|([fF]?[rR]?[bB]?'''|([fF]?[rR]?[bB]?'([^'\\]|\\.)*')))")
+        # === 4. 单行字符串（在多行字符串之后！）===
+        # 注意：跳过已由多行字符串处理的部分（简化：假设 match_multiline 已覆盖）
+        # 使用更安全的正则：只匹配非三引号的字符串
+        string_re = QRegExp(r"([fF]?[rR]?[bB]?\"([^\"\\]|\\.)*\"|([fF]?[rR]?[bB]?'([^'\\]|\\.)*'))")
         i = string_re.indexIn(text)
         while i >= 0:
             full_match = string_re.cap(0)
             length = len(full_match)
 
-            # 检查是否为多行字符串（已由下面的 match_multiline 处理）
-            if full_match.startswith(('"""', "'''")):
-                i = string_re.indexIn(text, i + length)
-                continue
+            # 检查是否在多行字符串区域内（简化：跳过，因为多行已先处理）
+            # 实际上，如果多行字符串正确处理，这里不会匹配到三引号内容
 
-            # 单行字符串
             is_fstring = full_match.startswith(('f', 'F'))
             self.setFormat(i, length, self.styles["string"])
 
             if is_fstring:
-                # 高亮 f-string 中的 {} 内容（但跳过 {{ 和 }}）
                 content = full_match
                 brace_start = 0
                 while True:
                     open_brace = content.find('{', brace_start)
                     if open_brace == -1:
                         break
-                    # 跳过转义的 {{
                     if open_brace + 1 < len(content) and content[open_brace + 1] == '{':
                         brace_start = open_brace + 2
                         continue
                     close_brace = content.find('}', open_brace)
                     if close_brace == -1:
                         break
-                    # 提取 { 和 } 之间的内容（不包括格式说明符 :...）
-                    inner = content[open_brace+1:close_brace]
+                    inner = content[open_brace + 1:close_brace]
                     if ':' in inner:
                         var_part = inner.split(':', 1)[0]
                         var_len = len(var_part)
@@ -179,49 +187,24 @@ class PythonSyntaxHighlighter(QSyntaxHighlighter):
 
             i = string_re.indexIn(text, i + length)
 
-        # 4. 多行字符串处理
-        self.setCurrentBlockState(0)
-
-        # 检查是否从多行字符串中继续
-        prev_state = self.previousBlockState()
-        if prev_state == 1:  # 三单引号
-            self.match_multiline(text, self.tri_single, 1, self.styles["string"])
-        elif prev_state == 2:  # 三双引号
-            self.match_multiline(text, self.tri_double, 2, self.styles["string"])
-        else:
-            # 新开始的多行字符串
-            if not self.match_multiline(text, self.tri_single, 1, self.styles["string"]):
-                self.match_multiline(text, self.tri_double, 2, self.styles["string"])
-
     def match_multiline(self, text, delimiter, in_state, style):
-        """处理多行字符串，避免影响后续内容"""
         start = 0
-        set_state = False
-
-        # 如果前一个 block 已经在字符串里
         if self.previousBlockState() == in_state:
             start = 0
-            set_state = True
         else:
             start = delimiter.indexIn(text)
             if start >= 0:
-                set_state = True
-
-        if not set_state:
-            return False
+                self.setFormat(start, 3, style)  # 高亮开头 """
+                start += 3
 
         while start >= 0:
-            # 跳过转义的引号（但 Python 中三引号不能转义，所以简化处理）
-            end = delimiter.indexIn(text, start + 3)
+            end = delimiter.indexIn(text, start)
             if end >= 0:
-                # 找到闭合
-                length = end - start + 3
+                self.setFormat(start, end - start + 3, style)
                 self.setCurrentBlockState(0)
+                return False
             else:
-                # 未闭合，持续到行尾
+                self.setFormat(start, len(text) - start, style)
                 self.setCurrentBlockState(in_state)
-                length = len(text) - start
-            self.setFormat(start, length, style)
-            start = delimiter.indexIn(text, start + length)
-
-        return self.currentBlockState() != 0
+                return True
+        return False

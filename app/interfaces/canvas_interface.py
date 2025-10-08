@@ -183,7 +183,7 @@ class CanvasPage(QWidget):
         nodes_menu = self.graph.get_context_menu('nodes')
         for full_path, comp_cls in self.component_map.items():
             safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
-            node_class = create_node_class(comp_cls, full_path, self.file_map.get(full_path))
+            node_class = create_node_class(comp_cls, full_path, self.file_map.get(full_path), self)
             # 继承 StatusNode 以支持状态显示
             node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
             node_class.__name__ = f"StatusDynamicNode_{safe_name}"

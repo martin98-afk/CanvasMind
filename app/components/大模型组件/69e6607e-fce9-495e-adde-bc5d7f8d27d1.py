@@ -32,31 +32,31 @@ class Component(BaseComponent):
     properties = {
         "model": PropertyDefinition(
             type=PropertyType.TEXT,
-            label="模型名称",
             default="gpt-3.5-turbo",
+            label="模型名称",
         ),
         "api_key": PropertyDefinition(
             type=PropertyType.TEXT,
-            label="API Key",
             default="",
+            label="API Key",
         ),
         "system_prompt": PropertyDefinition(
-            type=PropertyType.TEXT,
+            type=PropertyType.LONGTEXT,
+            default="""你是一个乐于助人的AI助手。""",
             label="系统提示词",
-            default="你是一个乐于助人的AI助手。",
         ),
         "temperature": PropertyDefinition(
             type=PropertyType.RANGE,
-            label="温度（随机性）",
             default="0.7",
+            label="温度（随机性）",
             min=0.0,
             max=2.0,
             step=0.1,
         ),
         "max_tokens": PropertyDefinition(
             type=PropertyType.INT,
+            default=1000,
             label="最大生成长度",
-            default="1000",
         ),
     }
 
@@ -69,7 +69,7 @@ class Component(BaseComponent):
         import os
         import json
         from openai import OpenAI
-
+        self.logger.info(params)
         # 获取输入
         user_input = inputs.get("user_input", "").strip() if inputs else ""
         history = inputs.get("history", []) if inputs else []
