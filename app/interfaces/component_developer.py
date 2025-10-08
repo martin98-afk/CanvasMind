@@ -14,7 +14,8 @@ from PyQt5.QtWidgets import (
 )
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PrimaryPushButton, PushButton,
-    TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit, MessageBoxBase, SubtitleLabel
+    TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit, MessageBoxBase, SubtitleLabel,
+    ToolButton
 )
 
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition
@@ -875,9 +876,9 @@ class PortEditorWidget(QWidget):
         # 在表头加按钮
         button_layout = QHBoxLayout()
         button_layout.addWidget(BodyLabel("输入端口:" if port_type == "input" else "输出端口:"))
-        add_btn = PushButton(text=f"添加", icon=FluentIcon.ADD)
+        add_btn = ToolButton(FluentIcon.ADD, parent=self)
         add_btn.clicked.connect(lambda: self._add_port())
-        remove_btn = PushButton(text="删除", icon=FluentIcon.CLOSE)
+        remove_btn = ToolButton(FluentIcon.CLOSE, parent=self)
         remove_btn.clicked.connect(self._remove_port)
         button_layout.addWidget(add_btn)
         button_layout.addWidget(remove_btn)
@@ -893,10 +894,10 @@ class PortEditorWidget(QWidget):
         row = self.table.rowCount()
         self.table.insertRow(row)
         # 端口名称
-        name_edit = QTableWidgetItem(port.get("name", f"port_{row}"))
+        name_edit = QTableWidgetItem(port.get("name", f"input{row + 1}" if self.port_type == "input" else f"output{row + 1}"))
         self.table.setItem(row, 0, name_edit)
         # 端口标签
-        label_edit = QTableWidgetItem(port.get("label", f"端口{row + 1}"))
+        label_edit = QTableWidgetItem(port.get("label", f"输入{row + 1}" if self.port_type == "input" else f"输出{row + 1}"))
         self.table.setItem(row, 1, label_edit)
         # 端口类型
         type_combo = ComboBox()
@@ -963,9 +964,9 @@ class PropertyEditorWidget(QWidget):
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(BodyLabel("参数设置:"))
-        add_btn = PushButton(text="添加", icon=FluentIcon.ADD)
+        add_btn = ToolButton(FluentIcon.ADD, parent=self)
         add_btn.clicked.connect(lambda: self._add_property())
-        remove_btn = PushButton(text="删除", icon=FluentIcon.CLOSE)
+        remove_btn = ToolButton(FluentIcon.CLOSE, parent=self)
         remove_btn.clicked.connect(self._remove_property)
         button_layout.addWidget(add_btn)
         button_layout.addWidget(remove_btn)
@@ -1039,15 +1040,15 @@ class PropertyEditorWidget(QWidget):
             return
         prop_type = type_widget.currentData() or PropertyType.TEXT
 
-        # 清除第4列
-        self.table.setItem(row, 4, None)
+        # ✅ 关键修复：同时清除 item 和 cell widget
+        self.table.setItem(row, 4, None)  # 清除文本项
+        self.table.setCellWidget(row, 4, None)  # 清除按钮等 widget
 
         if prop_type == PropertyType.CHOICE:
             item = QTableWidgetItem("")
             item.setFlags(item.flags() | Qt.ItemIsEditable)
             self.table.setItem(row, 4, item)
         elif prop_type == PropertyType.RANGE:
-            # 默认范围配置
             item = QTableWidgetItem("min=0, max=100, step=1")
             self.table.setItem(row, 4, item)
         elif prop_type == PropertyType.LONGTEXT:

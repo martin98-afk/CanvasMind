@@ -15,17 +15,18 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from loguru import logger
 from qfluentwidgets import (
     ToolButton, MessageBox, InfoBar,
-    InfoBarPosition, FluentIcon, ComboBox
+    InfoBarPosition, FluentIcon, ComboBox, LineEdit
 )
 
+from app.components.base import PropertyType
 from app.nodes.create_dynamic_node import create_node_class
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
 from app.utils.config import Settings
 from app.utils.threading_utils import NodeListExecutor, Worker
-from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json, resource_path
-from app.widgets.custom_messagebox import CustomInputDialog, ProjectExportDialog
-from app.widgets.draggable_component_tree import DraggableTreeWidget, DraggableTreePanel
+from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json
+from app.widgets.custom_messagebox import ProjectExportDialog
+from app.widgets.draggable_component_tree import DraggableTreePanel
 from app.widgets.input_selection_dialog import InputSelectionDialog
 from app.widgets.output_selection_dialog import OutputSelectionDialog
 from app.widgets.property_panel import PropertyPanel
@@ -46,7 +47,7 @@ class CanvasPage(QWidget):
         "垂直": 1
     }
 
-    def __init__(self, parent=None, object_name=None):
+    def __init__(self, parent=None, object_name: Path=None):
         super().__init__()
         self.parent = parent
         self.file_path = object_name  # 新增：当前文件路径
@@ -55,7 +56,6 @@ class CanvasPage(QWidget):
         self.parent = parent
         # 初始化线程池
         self.threadpool = QThreadPool()
-        print(f"Multithreading with maximum {self.threadpool.maxThreadCount()} threads")
 
         # 初始化状态存储
         self.node_status = {}  # {node_id: status}
@@ -99,6 +99,9 @@ class CanvasPage(QWidget):
         self.canvas_widget.installEventFilter(self)
         # ✅ 启用右键菜单（关键步骤）
         self._setup_context_menus()
+
+    def update_workflow_name(self, name):
+        self.workflow_name = name
 
     def eventFilter(self, obj, event):
         if obj is self.canvas_widget and event.type() == event.Resize:
@@ -256,8 +259,9 @@ class CanvasPage(QWidget):
         name_layout.setContentsMargins(0, 0, 0, 0)
 
         # 添加标签
-        name_label = ToolButton(self)
+        name_label = LineEdit(self)
         name_label.setText(self.workflow_name)
+        name_label.textChanged.connect(self.update_workflow_name)
 
         name_layout.addWidget(name_label)
         name_layout.addStretch()
@@ -266,23 +270,17 @@ class CanvasPage(QWidget):
         self.name_container.show()
 
     def _save_via_dialog(self):
-        if self.file_path:
+        if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
             # 默认使用当前路径
             default_path = self.file_path
             self.save_full_workflow(default_path)
 
             return
         else:
-            default_path = "workflow"
+            file_path = self.file_path.parent / f"{self.workflow_name}.workflow.json"
 
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "保存工作流", default_path, "工作流文件 (*.workflow.json)"
-        )
-        if file_path:
-            if not file_path.endswith('.workflow.json'):
-                file_path += '.workflow.json'
-            self.save_full_workflow(file_path)
-            self.file_path = file_path
+        self.save_full_workflow(file_path)
+        self.file_path = file_path
 
     def _open_via_dialog(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -312,13 +310,16 @@ class CanvasPage(QWidget):
                 self.create_warning_info("导出失败", "选中的节点无效（只有分组节点）！")
                 return
             nodes_to_export.sort(key=lambda node: (node.pos()[0], node.pos()[1]))
-            # === 收集所有候选输入项 ===
             candidate_inputs = []
             for node in nodes_to_export:
                 node_name = node.name()
-                # 组件参数
+                comp_cls = self.component_map.get(node.FULL_PATH)
+
+                # 组件参数（超参数）
                 editable_params = node.model.custom_properties
                 for param_name, param_value in editable_params.items():
+                    prop_def = comp_cls.properties.get(param_name)
+
                     candidate_inputs.append({
                         "type": "组件超参数",
                         "node_id": node.id,
@@ -326,11 +327,36 @@ class CanvasPage(QWidget):
                         "param_name": param_name,
                         "current_value": param_value,
                         "display_name": f"{node_name} → {param_name}",
+                        "format": getattr(prop_def, 'type', PropertyType.TEXT).name if prop_def else "TEXT"
                     })
+                    logger.info(prop_def.dict())
+                    if prop_def.type == PropertyType.RANGE:
+                        candidate_inputs[-1].update({
+                            "min": float(prop_def.min),
+                            "max": float(prop_def.max),
+                            "step": float(prop_def.step)
+                        })
+                    elif prop_def.type == PropertyType.DYNAMICFORM and prop_def.schema:
+                        candidate_inputs[-1]["schema"] = {
+                            key: {
+                                "type": getattr(value, 'type', PropertyType.TEXT).name if value else "TEXT"
+                            }
+                            for key, value in prop_def.schema.items()
+                        }
+
                 # 输入端口
                 for port in node.input_ports():
                     port_name = port.name()
+                    # 获取端口类型（ArgumentType）
+                    port_type = "TEXT"
+                    if comp_cls and hasattr(comp_cls, 'inputs'):
+                        for inp in comp_cls.inputs:
+                            if inp.name == port_name:
+                                port_type = inp.type.name
+                                break
+
                     connected = port.connected_ports()
+                    current_val = None
                     if connected:
                         upstream_out = connected[0]
                         upstream_node = upstream_out.node()
@@ -345,22 +371,31 @@ class CanvasPage(QWidget):
                         "port_name": port_name,
                         "current_value": current_val,
                         "display_name": f"{port_name} → {node_name}",
+                        "format": port_type  # ← ArgumentType 的 name，如 "JSON"
                     })
 
             # === 收集所有候选输出项 ===
             candidate_outputs = []
             for node in nodes_to_export:
                 node_name = node.name()
+                comp_cls = self.component_map.get(node.FULL_PATH)
                 outputs = getattr(node, '_output_values', {})
                 for out_name, out_val in outputs.items():
+                    out_format = "TEXT"
+                    if comp_cls and hasattr(comp_cls, 'outputs'):
+                        for out in comp_cls.outputs:
+                            if out.name == out_name:
+                                out_format = out.type.name
+                                break
+
                     candidate_outputs.append({
                         "node_id": node.id,
                         "node_name": node_name,
                         "output_name": out_name,
                         "sample_value": str(out_val)[:50] + "..." if len(str(out_val)) > 50 else str(out_val),
                         "display_name": f"{node_name} → {out_name}",
+                        "format": out_format  # ← 新增
                     })
-
 
             # === 弹出选择对话框 ===
             if candidate_inputs:
@@ -384,20 +419,14 @@ class CanvasPage(QWidget):
 
             for item in selected_input_items:
                 key = item.get("custom_key", f"input_{len(project_spec['inputs'])}")
-                project_spec["inputs"][key] = {
-                    "node_id": item["node_id"],
-                    "type": item["type"]
-                }
-                if item["type"] == "组件超参数":
-                    project_spec["inputs"][key]["param_name"] = item["param_name"]
-                else:
-                    project_spec["inputs"][key]["port_name"] = item["port_name"]
+                project_spec["inputs"][key] = item
 
             for item in selected_output_items:
                 key = item.get("custom_key", f"output_{len(project_spec['outputs'])}")
                 project_spec["outputs"][key] = {
                     "node_id": item["node_id"],
-                    "output_name": item["output_name"]
+                    "output_name": item["output_name"],
+                    "format": item["format"]  # ← 新增
                 }
 
             # === 收集组件和依赖 ===
@@ -426,10 +455,11 @@ class CanvasPage(QWidget):
             if selected_input_items:
                 for i, item in enumerate(selected_input_items):
                     key = item.get("custom_key", f"input_{i}")
+                    fmt = item["format"]
                     if item["type"] == "组件超参数":
-                        desc = f"- `{key}`: 超参数 `{item['param_name']}` of `{item['node_name']}`"
+                        desc = f"- `{key}` (`{fmt}`): 超参数 `{item['param_name']}` of `{item['node_name']}`"
                     else:
-                        desc = f"- `{key}`: 输入端口 `{item['port_name']}` of `{item['node_name']}`"
+                        desc = f"- `{key}` (`{fmt}`): 输入端口 `{item['port_name']}` of `{item['node_name']}`"
                     input_desc.append(desc)
             else:
                 input_desc = ["- 无外部输入"]
@@ -439,7 +469,8 @@ class CanvasPage(QWidget):
             if selected_output_items:
                 for i, item in enumerate(selected_output_items):
                     key = item.get("custom_key", f"output_{i}")
-                    desc = f"- `{key}`: 输出 `{item['output_name']}` from `{item['node_name']}`"
+                    fmt = item["format"]
+                    desc = f"- `{key}` (`{fmt}`): 输出 `{item['output_name']}` from `{item['node_name']}`"
                     output_desc.append(desc)
             else:
                 output_desc = ["- 无外部输出"]

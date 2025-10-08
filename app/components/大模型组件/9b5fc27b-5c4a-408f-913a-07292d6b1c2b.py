@@ -65,4 +65,4 @@ class Component(BaseComponent):
                     "is_valid": False
                 }
             else:
-                raise ValueError(f"JSON 解析失败: {e}")
+                raise e
