@@ -46,13 +46,13 @@ class Settings(QConfig):
     # ========== 新增：画布路径 ==========
     workflow_paths = ConfigItem(
         "Workflow",
-        "Paths", [resource_path("./workflows")],
+        "Paths", ["./workflows"],
         FolderListValidator()
     )
     # ========== 新增：项目路径 ==========
     project_paths = ConfigItem(
         "Project",
-        "Paths", [resource_path("./projects")],
+        "Paths", ["./projects"],
         FolderListValidator()
     )
 
