@@ -14,6 +14,7 @@ from app.components.base import ArgumentType, PropertyType
 from app.utils.node_logger import NodeLogHandler
 from app.widgets.component_log_message_box import LogMessageBox
 from app.widgets.dynamic_form_widget import DynamicFormWidgetWrapper
+from app.widgets.range_widget import RangeWidgetWrapper
 
 
 def create_node_class(component_class, full_path, file_path):
@@ -51,6 +52,24 @@ def create_node_class(component_class, full_path, file_path):
                     if choices:
                         self.add_combo_menu(prop_name, label, items=choices)
                         self.set_property(prop_name, default if default in choices else choices[0])
+
+                elif prop_type == PropertyType.RANGE:
+                    # 从 prop_def 提取范围参数
+                    min_val = prop_def.get("min", 0)
+                    max_val = prop_def.get("max", 100)
+                    step_val = prop_def.get("step", 1)
+                    default_val = prop_def.get("default", min_val)
+
+                    widget = RangeWidgetWrapper(
+                        parent=self.view,
+                        name=prop_name,
+                        label=label,
+                        min_val=min_val,
+                        max_val=max_val,
+                        step=step_val,
+                        default=default_val
+                    )
+                    self.add_custom_widget(widget, tab='Properties')
 
                 elif prop_type == PropertyType.DYNAMICFORM:
                     # ✅ 关键：使用自定义 widget 实现动态表单
