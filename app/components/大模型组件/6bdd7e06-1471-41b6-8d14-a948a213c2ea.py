@@ -25,20 +25,19 @@ class Component(BaseComponent):
     ]
     outputs = [
         PortDefinition(name="cleaned_text", label="清理后文本", type=ArgumentType.TEXT),
-        PortDefinition(name="has_think_removed", label="是否移除了思考", type=ArgumentType.BOOL),
+        PortDefinition(name="think_text", label="思考内容", type=ArgumentType.TEXT),
     ]
 
     properties = {
         "remove_empty_lines": PropertyDefinition(
             type=PropertyType.BOOL,
+            default=True,
             label="是否移除空行",
-            default="True",
         ),
         "keep_inner_if_no_outer": PropertyDefinition(
             type=PropertyType.BOOL,
+            default=True,
             label="若只有 <think> 内容，是否保留内部",
-            default="True",
-    description = "移除大模型输出中被 <think>...</think> 包裹的思考过程，仅保留外部内容"
         ),
     }
 
@@ -51,11 +50,12 @@ class Component(BaseComponent):
         if not raw_text:
             return {
                 "cleaned_text": "",
-                "has_think_removed": False
+                "think_text": ""
             }
 
         # 使用非贪婪模式匹配 <think>...</think>，支持跨行
         think_pattern = r"<think>.*?</think>"
+        think_text = re.findall(think_pattern, raw_text, re.DOTALL | re.IGNORECASE)[0]
         has_think = bool(re.search(think_pattern, raw_text, re.DOTALL | re.IGNORECASE))
 
         # 移除所有 <think>...</think> 块
@@ -77,5 +77,5 @@ class Component(BaseComponent):
 
         return {
             "cleaned_text": cleaned,
-            "has_think_removed": has_think
+            "think_text": think_text
         }
