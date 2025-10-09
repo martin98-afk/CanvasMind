@@ -298,6 +298,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         [python_executable, temp_script_path],
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
+                        encoding='utf-8',
                         **kwargs
                     )
 

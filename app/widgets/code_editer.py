@@ -388,7 +388,7 @@ class CodeEditorWidget(QWidget):
         super().__init__(parent)
         self._setup_auto_sync()
         # Initialize linting BEFORE UI connects textChanged (to avoid race on first setPlainText)
-        self._setup_linting()
+        # self._setup_linting()
         self._setup_ui()
         self._setup_syntax_highlighting()
         self._setup_shortcuts()
@@ -461,7 +461,7 @@ class CodeEditorWidget(QWidget):
         # Ctrl+H: replace focus
         QShortcut(Qt.CTRL + Qt.Key_H, self.code_editor, activated=lambda: self._toggle_find_panel(focus_replace=True))
         # Ctrl+Shift+F: Black format
-        QShortcut(Qt.CTRL + Qt.SHIFT + Qt.Key_F, self.code_editor, activated=self._format_with_black)
+        # QShortcut(Qt.CTRL + Qt.SHIFT + Qt.Key_F, self.code_editor, activated=self._format_with_black)
         # Ctrl+G: go to line
         QShortcut(Qt.CTRL + Qt.Key_G, self.code_editor, activated=self._goto_line)
 
