@@ -27,12 +27,13 @@ class Component(BaseComponent):
     outputs = [
         PortDefinition(name="response", label="模型回复", type=ArgumentType.TEXT),
         PortDefinition(name="raw_output", label="原始响应", type=ArgumentType.JSON),
+        PortDefinition(name="history", label="对话历史", type=ArgumentType.JSON),
     ]
 
     properties = {
         "model": PropertyDefinition(
             type=PropertyType.TEXT,
-            default="qwen/qwen3-30b-a3b",  # 示例：Ollama 模型名
+            default="qwen3-30b-a3b",
             label="模型名称",
         ),
         "api_key": PropertyDefinition(
@@ -42,12 +43,12 @@ class Component(BaseComponent):
         ),
         "base_url": PropertyDefinition(
             type=PropertyType.TEXT,
-            default="http://127.0.0.1:1234/v1",  # Ollama 默认地址
+            default="http://168.168.10.110:20000",
             label="API 基础地址（本地模型必填）",
         ),
         "system_prompt": PropertyDefinition(
             type=PropertyType.LONGTEXT,
-            default="你是一个乐于助人的AI助手。",
+            default="""你是一个乐于助人的AI助手。""",
             label="系统提示词",
         ),
         "temperature": PropertyDefinition(
@@ -62,6 +63,22 @@ class Component(BaseComponent):
             type=PropertyType.INT,
             default=1000,
             label="最大生成长度",
+        ),
+        "model_params": PropertyDefinition(
+            type=PropertyType.DYNAMICFORM,
+            label="模型配置",
+            schema={
+                "key": PropertyDefinition(
+                    type=PropertyType.TEXT,
+                    default="",
+                    label="属性1",
+                ),
+                "value": PropertyDefinition(
+                    type=PropertyType.TEXT,
+                    default="",
+                    label="属性2",
+                ),
+            }
         ),
     }
 
@@ -111,22 +128,36 @@ class Component(BaseComponent):
                     "raw_output": {"error": "Missing API Key or base_url"}
                 }
             client = OpenAI(api_key=api_key)
+            
+        # 解析额外模型配置信息
+        extra_body={}
+        for item in params.get("model_params"):
+            extra_body[item["key"]] = {"type": item["value"]}
 
         try:
             response = client.chat.completions.create(
+                extra_body=extra_body,
                 model=model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
+            self.logger.info(response)
 
             reply = response.choices[0].message.content.strip()
             raw_data = response.model_dump()
+            history.extend(
+                [
+                    {"role": "user", "content": user_input},
+                    {"role": "assistant", "content": reply}
+                ]
+            )
 
             self.logger.info(f"模型回复: {reply[:100]}...")
             return {
                 "response": reply,
-                "raw_output": raw_data
+                "raw_output": raw_data,
+                "history": history
             }
 
         except Exception as e:

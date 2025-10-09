@@ -40,8 +40,9 @@ class Component(BaseComponent):
                     type=PropertyType.CHOICE,
                     default=" ",
                     label="选择变量",
-                    choices=[" ", "not"]
-                ),"变量": PropertyDefinition(
+                    choices=["/", "not"]
+                ),
+                "变量": PropertyDefinition(
                     type=PropertyType.CHOICE,
                     default="var1",
                     label="选择变量",

@@ -56,6 +56,9 @@ class ComponentDeveloperWidget(QWidget):
         # Markdown 渲染
         'markdown': 'Markdown',  # 包名首字母大写
 
+        # 文档解析
+        'docx': 'python-docx',
+
         # Faker 数据生成
         'faker': 'Faker',  # 包名大写
 

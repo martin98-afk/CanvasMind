@@ -18,7 +18,7 @@ class Component(BaseComponent):
     name = "文档内容提取"
     category = "大模型组件"
     description = ""
-    requirements = "docx,pandas,pdfplumber,pptx"
+    requirements = "python-docx,pandas,pdfplumber,pptx,openpyxl,exceptions"
 
     inputs = [
         PortDefinition(name="file_path", label="文档路径", type=ArgumentType.UPLOAD),

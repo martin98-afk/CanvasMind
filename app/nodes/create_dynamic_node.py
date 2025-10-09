@@ -98,7 +98,8 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         parent=self.view,
                         name=prop_name,
                         label=label,
-                        schema=processed_schema
+                        schema=processed_schema,
+                        window=parent_window
                     )
                     self.add_custom_widget(widget, tab='Properties')
 
@@ -175,7 +176,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
         def show_logs(self):
             """显示节点日志"""
             log_content = self.get_logs()
-            w = LogMessageBox(log_content, self.view.viewer())
+            w = LogMessageBox(log_content, parent_window)
             w.exec()
 
         def set_output_value(self, port_name, value):

@@ -41,10 +41,10 @@ class LogMessageBox(MessageBoxBase):
 
         # 设置最小高度（屏幕高度的70%）
         if parent and hasattr(parent, 'window_height'):
-            min_height = int(0.7 * parent.window_height)
+            min_height = int(0.6 * parent.window_height)
         else:
             try:
-                min_height = int(0.7 * self.screen().availableGeometry().height())
+                min_height = int(0.6 * self.screen().availableGeometry().height())
             except:
                 min_height = 500  # 默认高度
 
