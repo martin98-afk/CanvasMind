@@ -17,7 +17,7 @@ from qfluentwidgets import (
 )
 
 from app.scan_components import scan_components
-from app.widgets.new_component_dialog import NewComponentDialog
+from app.widgets.dialog_widget.new_component_dialog import NewComponentDialog
 
 
 class ComponentTreeWidget(TreeWidget):

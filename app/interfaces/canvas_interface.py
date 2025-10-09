@@ -25,10 +25,10 @@ from app.scan_components import scan_components
 from app.utils.config import Settings
 from app.utils.threading_utils import NodeListExecutor, Worker
 from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json
-from app.widgets.custom_messagebox import ProjectExportDialog
-from app.widgets.draggable_component_tree import DraggableTreePanel
-from app.widgets.input_selection_dialog import InputSelectionDialog
-from app.widgets.output_selection_dialog import OutputSelectionDialog
+from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
+from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
+from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
+from app.widgets.dialog_widget.output_selection_dialog import OutputSelectionDialog
 from app.widgets.property_panel import PropertyPanel
 
 

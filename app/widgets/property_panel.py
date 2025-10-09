@@ -2,18 +2,16 @@
 import json
 import os
 
-import numpy as np
 import pandas as pd
 from loguru import logger
 from NodeGraphQt import BackdropNode
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
-    QStackedWidget, QLabel, QHBoxLayout
-from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
-    ComboBox
+    QStackedWidget, QHBoxLayout
+from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget
 
 from app.components.base import ArgumentType
-from app.widgets.variable_tree import VariableTreeWidget
+from app.widgets.tree_widget.variable_tree import VariableTreeWidget
 
 
 class PropertyPanel(CardWidget):
@@ -83,7 +81,7 @@ class PropertyPanel(CardWidget):
         # 1. 节点标题
         title = BodyLabel(f"📌 {node.name()}")
         title.setWordWrap(True)
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
         self.vbox.addWidget(title)
 
         # 2. 节点描述

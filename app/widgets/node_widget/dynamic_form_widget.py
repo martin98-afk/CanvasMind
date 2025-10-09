@@ -2,10 +2,10 @@
 from NodeGraphQt import NodeBaseWidget
 from PyQt5.QtWidgets import QComboBox
 from Qt import QtWidgets, QtCore
-from qfluentwidgets import LineEdit, ComboBox, PushButton, FluentIcon, ToolButton
+from qfluentwidgets import LineEdit, PushButton, FluentIcon, ToolButton
 
 from app.components.base import PropertyType
-from app.widgets.longtext_dialog import LongTextWidget
+from app.widgets.node_widget.longtext_dialog import LongTextWidget
 
 
 class FormFieldWidget(QtWidgets.QWidget):
@@ -112,7 +112,8 @@ class DynamicFormWidget(QtWidgets.QWidget):
             self.container.removeWidget(field)
             field.setParent(None)
             field.deleteLater()
-            self.sizeHintChanged.emit()
+            # ✅ 关键：延迟触发 sizeHintChanged，确保 deleteLater 生效
+            QtCore.QTimer.singleShot(50, self.sizeHintChanged.emit)
 
     def get_data(self):
         return [f.get_data() for f in self.field_widgets]
@@ -136,7 +137,11 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
 
     def _update_node(self):
         if self.node and self.node.view:
-            QtCore.QTimer.singleShot(0, lambda: self.node.view.draw_node())
+            # ✅ 三重保障：先 adjustSize，再强制更新
+            self.get_custom_widget().adjustSize()
+            self.node.view.update()
+            # 使用稍长延迟确保布局完成
+            QtCore.QTimer.singleShot(30, lambda: self.node.view.draw_node())
 
     def get_value(self):
         return self.get_custom_widget().get_data()

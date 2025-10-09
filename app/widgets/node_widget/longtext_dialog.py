@@ -39,7 +39,6 @@ class LongTextWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.summary_label)
         layout.addWidget(self.edit_btn)
-        layout.addStretch()
 
     def _get_summary(self):
         if not self._text:

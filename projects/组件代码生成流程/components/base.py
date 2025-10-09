@@ -350,18 +350,8 @@ class BaseComponent(ABC):
     def _read_file_data(self, data: Union[str, Path]) -> str:
         """读取文件数据"""
         if isinstance(data, (str, Path)) and os.path.exists(data):
-            try:
-                with open(data, 'r', encoding='utf-8') as f:
-                    return f.read()
-            except UnicodeDecodeError as e:
-                try:
-                    with open(data, 'r', encoding='gbk') as f:
-                        return f.read()
-                except UnicodeDecodeError as e:
-                    with open(data, 'rb') as f:
-                        return f.read().decode('utf-8', 'ignore')
-            except:
-                raise e
+            with open(data, 'r', encoding='utf-8') as f:
+                return f.read()
         else:
             raise ComponentError(f"无法读取文件数据: {data}")
 

@@ -12,10 +12,13 @@ from loguru import logger
 
 from app.components.base import ArgumentType, PropertyType
 from app.utils.node_logger import NodeLogHandler
-from app.widgets.component_log_message_box import LogMessageBox
-from app.widgets.dynamic_form_widget import DynamicFormWidgetWrapper
-from app.widgets.longtext_dialog import LongTextWidgetWrapper
-from app.widgets.range_widget import RangeWidgetWrapper
+from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
+from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
+from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
+from app.widgets.node_widget.longtext_dialog import LongTextWidgetWrapper
+from app.widgets.node_widget.range_widget import RangeWidgetWrapper
+from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
+from app.widgets.tree_widget.component_log_message_box import LogMessageBox
 
 
 def create_node_class(component_class, full_path, file_path, parent_window=None):
@@ -43,15 +46,17 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 label = prop_def.get("label", prop_name)
 
                 if prop_type == PropertyType.BOOL:
-                    self.add_checkbox(prop_name, text=label, state=default)
-
-                elif prop_type in (PropertyType.INT, PropertyType.FLOAT):
-                    self.add_text_input(prop_name, label, text=str(default))
-
+                    self.add_custom_widget(
+                        CheckBoxWidgetWrapper(parent=self.view, name=prop_name, text=label, state=default),
+                        tab="properties"
+                    )
                 elif prop_type == PropertyType.CHOICE:
                     choices = prop_def.get("choices", [])
                     if choices:
-                        self.add_combo_menu(prop_name, label, items=choices)
+                        self.add_custom_widget(
+                            ComboBoxWidgetWrapper(parent=self.view, name=prop_name, label=label, items=choices),
+                            tab="properties"
+                        )
                         self.set_property(prop_name, default if default in choices else choices[0])
                 elif prop_type == PropertyType.LONGTEXT:
                     widget = LongTextWidgetWrapper(
@@ -68,7 +73,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     max_val = prop_def.get("max", 100)
                     step_val = prop_def.get("step", 1)
                     default_val = prop_def.get("default", min_val)
-
                     widget = RangeWidgetWrapper(
                         parent=self.view,
                         name=prop_name,
@@ -79,7 +83,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         default=default_val
                     )
                     self.add_custom_widget(widget, tab='Properties')
-
                 elif prop_type == PropertyType.DYNAMICFORM:
                     # ✅ 关键：使用自定义 widget 实现动态表单
                     raw_schema = prop_def.get("schema", {})
@@ -113,7 +116,15 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 #     self.add_custom_widget(widget, tab='Properties')
 
                 else:
-                    self.add_text_input(prop_name, label, text=str(default))
+                    self.add_custom_widget(
+                        TextWidgetWrapper(
+                            parent=self.view,
+                            name=prop_name,
+                            label=label,
+                            default=str(default),
+                            window=parent_window
+                        ), tab='Properties'
+                    )
 
             # TODO === 端口（可后续支持动态端口）===
             for port_name, label in component_class.get_inputs():

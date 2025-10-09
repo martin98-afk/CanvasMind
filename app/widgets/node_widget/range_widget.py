@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from Qt import QtWidgets, QtCore
 from NodeGraphQt import NodeBaseWidget
+from qfluentwidgets import Slider, LineEdit
+
 
 class RangeWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(object)
@@ -15,13 +17,13 @@ class RangeWidget(QtWidgets.QWidget):
         self.is_float = isinstance(step, float) or isinstance(min_val, float)
 
         # 滑块（QSlider 只支持整数，所以用缩放）
-        self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.slider = Slider(QtCore.Qt.Horizontal)
         self.slider.setMinimum(0)
         self.slider.setMaximum(int((max_val - min_val) / step))
         self.slider.setSingleStep(1)
 
         # 数值显示
-        self.value_edit = QtWidgets.QLineEdit()
+        self.value_edit = LineEdit()
         self.value_edit.setFixedWidth(60)
         self.value_edit.setAlignment(QtCore.Qt.AlignCenter)
 

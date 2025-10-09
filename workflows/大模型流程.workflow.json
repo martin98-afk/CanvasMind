@@ -1,0 +1,1176 @@
+{
+  "version": "1.0",
+  "graph": {
+    "graph": {
+      "layout_direction": 0,
+      "acyclic": true,
+      "pipe_collision": false,
+      "pipe_slicing": true,
+      "pipe_style": 2,
+      "accept_connection_types": "{}",
+      "reject_connection_types": "{}"
+    },
+    "nodes": {
+      "0x216197c5330": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_知识库查询",
+        "icon": null,
+        "name": "知识库查询",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 361.0,
+        "height": 139.4,
+        "pos": [
+          -204.34115340155054,
+          297.90789206436585
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "top_k": "3",
+          "knowledge_base_id": "default_kb"
+        }
+      },
+      "0x21619a7cbb0": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+        "icon": null,
+        "name": "文本输入",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 303.0,
+        "height": 84.80000000000001,
+        "pos": [
+          -613.3863891986165,
+          333.62659129216536
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "input": "文本内容"
+        }
+      },
+      "0x21619a7e1d0": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON输出解析",
+        "icon": null,
+        "name": "JSON输出解析",
+        "color": [
+          80,
+          30,
+          30,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 272.0,
+        "height": 76.4,
+        "pos": [
+          -196.6799821459551,
+          517.7170557473992
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "strict": true
+        }
+      },
+      "0x216110fb790": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
+        "icon": null,
+        "name": "文档上传",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 160,
+        "height": 60,
+        "pos": [
+          -528.6451498730935,
+          530.1863893770967
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {}
+      },
+      "0x216110f8250": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_模板参数输入",
+        "icon": null,
+        "name": "模板参数输入",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 479.0,
+        "height": 163.55,
+        "pos": [
+          -842.4855836689916,
+          762.4729524651614
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "variable": [
+            {
+              "name": "name",
+              "type": "mading"
+            },
+            {
+              "name": "day",
+              "type": "2025/10/8"
+            }
+          ]
+        }
+      },
+      "0x21619a81900": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
+        "icon": null,
+        "name": "提示词模板",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 361.0,
+        "height": 84.80000000000001,
+        "pos": [
+          -150.16307401863872,
+          771.9360851569719
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "template": "你好，{{name}}！今天是{{day}}。"
+        }
+      },
+      "0x21619940f70": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
+        "icon": null,
+        "name": "大模型对话",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 373.0,
+        "height": 411.35,
+        "pos": [
+          450.5702541588545,
+          885.2446415271352
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "model": "qwen/qwen3-30b-a3b",
+          "api_key": "",
+          "base_url": "http://127.0.0.1:1234/v1",
+          "system_prompt": "你是一个乐于助人的AI助手。",
+          "temperature": 0.7,
+          "max_tokens": "1000",
+          "model_params": []
+        }
+      },
+      "0x216198c79a0": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
+        "icon": null,
+        "name": "提示词模板 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 361.0,
+        "height": 84.80000000000001,
+        "pos": [
+          -173.59750009076976,
+          882.4864037571477
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "template": "你好，{{name}}！今天是{{day}}。"
+        }
+      },
+      "0x216198c4f70": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
+        "icon": null,
+        "name": "长文本输入",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 315.0,
+        "height": 84.80000000000001,
+        "pos": [
+          -510.30535695891706,
+          1077.8898866377128
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "input_text": "[]"
+        }
+      },
+      "0x2161980ada0": {
+        "type_": "dynamic.StatusDynamicNode_数据转换_文本转json",
+        "icon": null,
+        "name": "文本转json",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 160,
+        "height": 60,
+        "pos": [
+          45.129045173237564,
+          1086.5685491710274
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {}
+      },
+      "0x216198c79d0": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
+        "icon": null,
+        "name": "文档上传 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 160,
+        "height": 60,
+        "pos": [
+          -443.4630600248292,
+          1307.1943574636655
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {}
+      },
+      "0x21619ab59f0": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_文档内容提取",
+        "icon": null,
+        "name": "文档内容提取",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 361.0,
+        "height": 113.15,
+        "pos": [
+          -190.90406874190336,
+          1299.3793065981165
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "extract_images": false,
+          "page_range": ""
+        }
+      },
+      "0x216110f9660": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
+        "icon": null,
+        "name": "提示词模板 2",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 361.0,
+        "height": 84.80000000000001,
+        "pos": [
+          304.8306904104586,
+          1334.929023768037
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "template": "总结该文档内容：{{doc}}\n输出结果用json格式包装"
+        }
+      },
+      "0x21619809d20": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
+        "icon": null,
+        "name": "大模型对话 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 525.0,
+        "height": 452.3,
+        "pos": [
+          887.9858515560511,
+          1213.4176437855
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "model": "qwen3-30b-a3b",
+          "api_key": "",
+          "base_url": "http://168.168.10.110:20000",
+          "system_prompt": "你是一个文档总结专家，善于从杂乱无章的文档识别结果中总结出关键信息。",
+          "temperature": 0.7,
+          "max_tokens": "10000",
+          "model_params": []
+        }
+      },
+      "0x21619507010": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON输出解析",
+        "icon": null,
+        "name": "JSON输出解析 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 272.0,
+        "height": 76.4,
+        "pos": [
+          1509.5629521986905,
+          1381.1374242827292
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "strict": true
+        }
+      },
+      "0x21619718df0": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
+        "icon": null,
+        "name": "大模型对话 2",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 373.0,
+        "height": 411.35,
+        "pos": [
+          927.5327489967435,
+          1711.1733237869357
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "model": "qwen3-30b-a3b",
+          "api_key": "",
+          "base_url": "http://168.168.10.110:20000",
+          "system_prompt": "你是一个文档总结专家，善于从杂乱无章的文档识别结果中总结出关键信息。",
+          "temperature": 0.0,
+          "max_tokens": "1000",
+          "model_params": []
+        }
+      },
+      "0x21619993d60": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
+        "icon": null,
+        "name": "长文本输入 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 327.0,
+        "height": 84.80000000000001,
+        "pos": [
+          -702.6407203017791,
+          2140.7224856827934
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "input_text": "我的需求是开发一个大模型对话组件"
+        }
+      },
+      "0x21611095660": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
+        "icon": null,
+        "name": "JSON文本包装",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 337.0,
+        "height": 84.80000000000001,
+        "pos": [
+          -144.79213432850406,
+          2141.3077796346497
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "prop_0": "text"
+        }
+      },
+      "0x21614912dd0": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
+        "icon": null,
+        "name": "提示词模板 3",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 361.0,
+        "height": 84.80000000000001,
+        "pos": [
+          282.2639898654651,
+          2139.0697758616793
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "template": "##  任务\n根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码\n\n## 组件输入输出参数定义代码\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n\n## 组件属性参数定义代码\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n## 我的组件样例代码\nclass Component(BaseComponent):\n    name = \"提示词模板\"\n    category = \"大模型组件\"\n    description = \"\"\n    requirements = \"\"\n\n    inputs = [\n        PortDefinition(name=\"variables\", label=\"变量字典\", type=ArgumentType.JSON),\n    ]\n    outputs = [\n        PortDefinition(name=\"prompt\", label=\"生成的提示词\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"template\": PropertyDefinition(\n            type=PropertyType.LONGTEXT,\n            default=\"\"\"你好，{{name}}！今天是{{day}}。\"\"\",\n            label=\"提示词模板\",\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        import re\n        self.logger.info(inputs)\n        template = params.get(\"template\", \"\")\n        variables = inputs.get(\"variables\", {}) if inputs else {}\n\n        if isinstance(variables, str):\n            import json\n            try:\n                variables = json.loads(variables)\n            except:\n                variables = {}\n\n        # 替换 {{key}} 为变量值\n        def replace_match(match):\n            key = match.group(1)\n            return str(variables.get(key, match.group(0)))\n\n        prompt = re.sub(r\"\\{\\{(\\w+)\\}\\}\", replace_match, template)\n        self.logger.info(prompt)\n        \n        return {\"prompt\": prompt}\n\n## 我的组件开发需求\n{{text}}\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码\n"
+        }
+      },
+      "0x21614912d70": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON输出解析",
+        "icon": null,
+        "name": "JSON输出解析 2",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 272.0,
+        "height": 76.4,
+        "pos": [
+          2053.9668913769087,
+          2157.1429026646792
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "strict": false
+        }
+      },
+      "0x21619882b90": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
+        "icon": null,
+        "name": "大模型对话 3",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 525.0,
+        "height": 452.3,
+        "pos": [
+          1099.3513862084872,
+          2142.9398106827744
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "model": "qwen3-30b-a3b",
+          "api_key": "",
+          "base_url": "http://168.168.10.110:20000",
+          "system_prompt": "你是一个代码编辑专家，能够根据用户的需求生成专业的python代码。",
+          "temperature": 0.7,
+          "max_tokens": "30000",
+          "model_params": [
+            {
+              "key": "enable_thinking",
+              "value": "False"
+            }
+          ]
+        }
+      }
+    },
+    "connections": [
+      {
+        "in": [
+          "0x216197c5330",
+          "query"
+        ],
+        "out": [
+          "0x21619a7cbb0",
+          "text"
+        ]
+      },
+      {
+        "in": [
+          "0x21619a7e1d0",
+          "llm_output"
+        ],
+        "out": [
+          "0x216110fb790",
+          "file"
+        ]
+      },
+      {
+        "out": [
+          "0x216110f8250",
+          "output"
+        ],
+        "in": [
+          "0x21619a81900",
+          "variables"
+        ]
+      },
+      {
+        "out": [
+          "0x216110f8250",
+          "output"
+        ],
+        "in": [
+          "0x216198c79a0",
+          "variables"
+        ]
+      },
+      {
+        "in": [
+          "0x21619940f70",
+          "user_input"
+        ],
+        "out": [
+          "0x216198c79a0",
+          "prompt"
+        ]
+      },
+      {
+        "in": [
+          "0x21619940f70",
+          "history"
+        ],
+        "out": [
+          "0x2161980ada0",
+          "output"
+        ]
+      },
+      {
+        "out": [
+          "0x216198c4f70",
+          "output"
+        ],
+        "in": [
+          "0x2161980ada0",
+          "input"
+        ]
+      },
+      {
+        "out": [
+          "0x216198c79d0",
+          "file"
+        ],
+        "in": [
+          "0x21619ab59f0",
+          "file_path"
+        ]
+      },
+      {
+        "out": [
+          "0x21619ab59f0",
+          "text"
+        ],
+        "in": [
+          "0x216110f9660",
+          "variables"
+        ]
+      },
+      {
+        "out": [
+          "0x216110f9660",
+          "prompt"
+        ],
+        "in": [
+          "0x21619809d20",
+          "user_input"
+        ]
+      },
+      {
+        "out": [
+          "0x216110f9660",
+          "prompt"
+        ],
+        "in": [
+          "0x21619718df0",
+          "user_input"
+        ]
+      },
+      {
+        "out": [
+          "0x21619809d20",
+          "response"
+        ],
+        "in": [
+          "0x21619507010",
+          "llm_output"
+        ]
+      },
+      {
+        "out": [
+          "0x21619993d60",
+          "output"
+        ],
+        "in": [
+          "0x21611095660",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x21611095660",
+          "output1"
+        ],
+        "in": [
+          "0x21614912dd0",
+          "variables"
+        ]
+      },
+      {
+        "out": [
+          "0x21614912dd0",
+          "prompt"
+        ],
+        "in": [
+          "0x21619882b90",
+          "user_input"
+        ]
+      },
+      {
+        "in": [
+          "0x21614912d70",
+          "llm_output"
+        ],
+        "out": [
+          "0x21619882b90",
+          "response"
+        ]
+      }
+    ]
+  },
+  "runtime": {
+    "environment": "3.11",
+    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.11\\python.exe",
+    "node_id2stable_key": {
+      "0x216197c5330": "大模型组件/知识库查询||知识库查询",
+      "0x21619a7cbb0": "数据集成/文本输入||文本输入",
+      "0x21619a7e1d0": "大模型组件/JSON输出解析||JSON输出解析",
+      "0x216110fb790": "数据集成/文档上传||文档上传",
+      "0x216110f8250": "大模型组件/模板参数输入||模板参数输入",
+      "0x21619a81900": "大模型组件/提示词模板||提示词模板",
+      "0x21619940f70": "大模型组件/大模型对话||大模型对话",
+      "0x216198c79a0": "大模型组件/提示词模板||提示词模板 1",
+      "0x216198c4f70": "数据集成/长文本输入||长文本输入",
+      "0x2161980ada0": "数据转换/文本转json||文本转json",
+      "0x216198c79d0": "数据集成/文档上传||文档上传 1",
+      "0x21619ab59f0": "大模型组件/文档内容提取||文档内容提取",
+      "0x216110f9660": "大模型组件/提示词模板||提示词模板 2",
+      "0x21619809d20": "大模型组件/大模型对话||大模型对话 1",
+      "0x21619507010": "大模型组件/JSON输出解析||JSON输出解析 1",
+      "0x21619718df0": "大模型组件/大模型对话||大模型对话 2",
+      "0x21619993d60": "数据集成/长文本输入||长文本输入 1",
+      "0x21611095660": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x21614912dd0": "大模型组件/提示词模板||提示词模板 3",
+      "0x21614912d70": "大模型组件/JSON输出解析||JSON输出解析 2",
+      "0x21619882b90": "大模型组件/大模型对话||大模型对话 3"
+    },
+    "node_states": {
+      "大模型组件/知识库查询||知识库查询": "success",
+      "数据集成/文本输入||文本输入": "success",
+      "大模型组件/JSON输出解析||JSON输出解析": "failed",
+      "数据集成/文档上传||文档上传": "success",
+      "大模型组件/模板参数输入||模板参数输入": "success",
+      "大模型组件/提示词模板||提示词模板": "success",
+      "大模型组件/大模型对话||大模型对话": "success",
+      "大模型组件/提示词模板||提示词模板 1": "success",
+      "数据集成/长文本输入||长文本输入": "success",
+      "数据转换/文本转json||文本转json": "success",
+      "数据集成/文档上传||文档上传 1": "success",
+      "大模型组件/文档内容提取||文档内容提取": "success",
+      "大模型组件/提示词模板||提示词模板 2": "success",
+      "大模型组件/大模型对话||大模型对话 1": "success",
+      "大模型组件/JSON输出解析||JSON输出解析 1": "success",
+      "大模型组件/大模型对话||大模型对话 2": "success",
+      "数据集成/长文本输入||长文本输入 1": "success",
+      "大模型组件/JSON文本包装||JSON文本包装": "success",
+      "大模型组件/提示词模板||提示词模板 3": "success",
+      "大模型组件/JSON输出解析||JSON输出解析 2": "success",
+      "大模型组件/大模型对话||大模型对话 3": "success"
+    },
+    "node_inputs": {
+      "大模型组件/知识库查询||知识库查询": {},
+      "数据集成/文本输入||文本输入": {},
+      "大模型组件/JSON输出解析||JSON输出解析": {},
+      "数据集成/文档上传||文档上传": {},
+      "大模型组件/模板参数输入||模板参数输入": {},
+      "大模型组件/提示词模板||提示词模板": {},
+      "大模型组件/大模型对话||大模型对话": {},
+      "大模型组件/提示词模板||提示词模板 1": {},
+      "数据集成/长文本输入||长文本输入": {},
+      "数据转换/文本转json||文本转json": {},
+      "数据集成/文档上传||文档上传 1": {},
+      "大模型组件/文档内容提取||文档内容提取": {},
+      "大模型组件/提示词模板||提示词模板 2": {},
+      "大模型组件/大模型对话||大模型对话 1": {},
+      "大模型组件/JSON输出解析||JSON输出解析 1": {},
+      "大模型组件/大模型对话||大模型对话 2": {},
+      "数据集成/长文本输入||长文本输入 1": {},
+      "大模型组件/JSON文本包装||JSON文本包装": {},
+      "大模型组件/提示词模板||提示词模板 3": {},
+      "大模型组件/JSON输出解析||JSON输出解析 2": {},
+      "大模型组件/大模型对话||大模型对话 3": {}
+    },
+    "node_outputs": {
+      "大模型组件/知识库查询||知识库查询": {
+        "context": "Python 是一种高级编程语言。\n\n大模型可以生成文本、代码等。",
+        "documents": "[\n  {\n    \"content\": \"Python 是一种高级编程语言。\",\n    \"score\": 0.95\n  },\n  {\n    \"content\": \"大模型可以生成文本、代码等。\",\n    \"score\": 0.89\n  }\n]"
+      },
+      "数据集成/文本输入||文本输入": {
+        "text": "文本内容"
+      },
+      "大模型组件/JSON输出解析||JSON输出解析": {},
+      "数据集成/文档上传||文档上传": {
+        "file": "D:/work/WorkFlowGUI/requirements.txt"
+      },
+      "大模型组件/模板参数输入||模板参数输入": {
+        "output": "{\n  \"name\": \"mading\",\n  \"day\": \"2025/10/8\"\n}"
+      },
+      "大模型组件/提示词模板||提示词模板": {
+        "prompt": "C:\\Users\\black\\AppData\\Local\\Temp\\tmpf0mpoosn.txt"
+      },
+      "大模型组件/大模型对话||大模型对话": {
+        "response": "<think>\n好的，用户发来消息：\"你好，mading！今天是2025/10/8。\" 我需要先分析用户的意图和需求。\n\n首先，用户称呼我为\"mading\"，这可能是一个昵称或者打字错误？不过作为AI助手，应该保持友好和包容的态度，不必纠正，直接回应即可。接着用户提到今天是2025年10月8日，看起来像是在确认日期或进行某种时间相关的互动。\n\n接下来要考虑的是用户的潜在需求。可能的情况有：用户想测试我的时间感知能力，或者需要基于当前日期的某些帮助，比如提醒、安排活动等。也有可能只是随意打招呼，没有特别的需求。\n\n作为乐于助人的AI助手，我应该以友好的态度回应，并主动提供帮助。可以先确认今天的日期是否正确（虽然用户已经给出），然后询问是否有任何需要协助的地方。同时保持自然的语气，避免过于机械化的回复。\n\n另外要注意的是，2025年的日期可能对某些功能有影响，比如日历相关服务或时间敏感的信息。但作为基础AI，主要任务还是提供信息和帮助，不需要涉及具体的时间计算或预测。\n\n在回应中需要包含以下几点：\n1. 确认用户提供的日期\n2. 表达友好问候\n3. 主动询问是否有需要协助的地方\n\n同时保持口语化和简洁的表达方式，避免使用复杂句子结构。可以加入表情符号增加亲切感，但不要过多。\n\n现在组织语言：首先回应用户的问候，确认日期，然后主动提供帮助。例如：\"你好！今天确实是2025年10月8日呢~有什么我可以帮你的吗？😊\" 这样既礼貌又开放，鼓励用户进一步交流。\n</think>\n\n你好！今天确实是2025年10月8日呢~有什么我可以帮你的吗？😊",
+        "raw_output": "{\n  \"id\": \"chatcmpl-m5dubnel4m2jmui8gjqnt\",\n  \"choices\": [\n    {\n      \"finish_reason\": \"stop\",\n      \"index\": 0,\n      \"logprobs\": null,\n      \"message\": {\n        \"content\": \"<think>\\n好的，用户发来消息：\\\"你好，mading！今天是2025/10/8。\\\" 我需要先分析用户的意图和需求。\\n\\n首先，用户称呼我为\\\"mading\\\"，这可能是一个昵称或者打字错误？不过作为AI助手，应该保持友好和包容的态度，不必纠正，直接回应即可。接着用户提到今天是2025年10月8日，看起来像是在确认日期或进行某种时间相关的互动。\\n\\n接下来要考虑的是用户的潜在需求。可能的情况有：用户想测试我的时间感知能力，或者需要基于当前日期的某些帮助，比如提醒、安排活动等。也有可能只是随意打招呼，没有特别的需求。\\n\\n作为乐于助人的AI助手，我应该以友好的态度回应，并主动提供帮助。可以先确认今天的日期是否正确（虽然用户已经给出），然后询问是否有任何需要协助的地方。同时保持自然的语气，避免过于机械化的回复。\\n\\n另外要注意的是，2025年的日期可能对某些功能有影响，比如日历相关服务或时间敏感的信息。但作为基础AI，主要任务还是提供信息和帮助，不需要涉及具体的时间计算或预测。\\n\\n在回应中需要包含以下几点：\\n1. 确认用户提供的日期\\n2. 表达友好问候\\n3. 主动询问是否有需要协助的地方\\n\\n同时保持口语化和简洁的表达方式，避免使用复杂句子结构。可以加入表情符号增加亲切感，但不要过多。\\n\\n现在组织语言：首先回应用户的问候，确认日期，然后主动提供帮助。例如：\\\"你好！今天确实是2025年10月8日呢~有什么我可以帮你的吗？😊\\\" 这样既礼貌又开放，鼓励用户进一步交流。\\n</think>\\n\\n你好！今天确实是2025年10月8日呢~有什么我可以帮你的吗？😊\",\n        \"refusal\": null,\n        \"role\": \"assistant\",\n        \"annotations\": null,\n        \"audio\": null,\n        \"function_call\": null,\n        \"tool_calls\": []\n      }\n    }\n  ],\n  \"created\": 1759918106,\n  \"model\": \"qwen/qwen3-30b-a3b\",\n  \"object\": \"chat.completion\",\n  \"service_tier\": null,\n  \"system_fingerprint\": \"qwen/qwen3-30b-a3b\",\n  \"usage\": {\n    \"completion_tokens\": 392,\n    \"prompt_tokens\": 39,\n    \"total_tokens\": 431,\n    \"completion_tokens_details\": null,\n    \"prompt_tokens_details\": null\n  },\n  \"stats\": {}\n}"
+      },
+      "大模型组件/提示词模板||提示词模板 1": {
+        "prompt": "你好，mading！今天是2025/10/8。"
+      },
+      "数据集成/长文本输入||长文本输入": {
+        "output": "[]"
+      },
+      "数据转换/文本转json||文本转json": {
+        "output": "[]"
+      },
+      "数据集成/文档上传||文档上传 1": {
+        "file": "D:/work/AIProduct/07 LLMPlatform/合同风险识别/现场签证单1.docx"
+      },
+      "大模型组件/文档内容提取||文档内容提取": {
+        "text": "{\n  \"doc\": \"现场签证单\\n编码：XAQZ-JZ-Z-QZ                                       N0.034\\n项目名称 | 项目名称 | 不连沟煤矿工程 | 不连沟煤矿工程 | 项目编号 | XA-51318Q724K31 | XA-51318Q724K31 |\\n工程地点 | 工程地点 | 内蒙古准格尔旗大路镇 | 内蒙古准格尔旗大路镇 | 时  间 | 2019年11月17日 | 2019年11月17日 |\\n合同名称 | 合同名称 | 不连沟煤矿主井工程 | 不连沟煤矿主井工程 | 不连沟煤矿主井工程 | 不连沟煤矿主井工程 | 不连沟煤矿主井工程 |\\n建设单位 | 建设单位 | 内蒙古蒙泰不连沟煤业有限责任公司 | 内蒙古蒙泰不连沟煤业有限责任公司 | 内蒙古蒙泰不连沟煤业有限责任公司 | 内蒙古蒙泰不连沟煤业有限责任公司 | 内蒙古蒙泰不连沟煤业有限责任公司 |\\n施工单位 | 施工单位 | 中煤工程技术有限公司 | 中煤工程技术有限公司 | 中煤工程技术有限公司 | 中煤工程技术有限公司 | 中煤工程技术有限公司 |\\n签证主题 | 签证主题 | 排水闸下游护坡工程施工 | 排水闸下游护坡工程施工 | 排水闸下游护坡工程施工 | 排水闸下游护坡工程施工 | 排水闸下游护坡工程施工 |\\n签证原因 |\\n因排水闸东西侧护坡破损严重重新浇筑 |\\n因排水闸东西侧护坡破损严重重新浇筑 |\\n因排水闸东西侧护坡破损严重重新浇筑 |\\n因排水闸东西侧护坡破损严重重新浇筑 |\\n因排水闸东西侧护坡破损严重重新浇筑 |\\n因排水闸东西侧护坡破损严重重新浇筑 |\\n签证内容(可附图) |\\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\\n请建设单位和监理单位予以确认。 |\\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\\n请建设单位和监理单位予以确认。 |\\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\\n请建设单位和监理单位予以确认。 |\\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\\n请建设单位和监理单位予以确认。 |\\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\\n请建设单位和监理单位予以确认。 |\\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\\n请建设单位和监理单位予以确认。 |\\n建设单位(签字盖章) | 建设单位(签字盖章) | 建设单位(签字盖章) | 监理单位(签字盖章) | 监理单位(签字盖章) | EPC总承包单位(签字盖章) | EPC总承包单位(签字盖章) |\\n现场负责人\\n项目负责人：\\n主管副总经理： 总经理：\\n年 月     日 |\\n现场负责人\\n项目负责人：\\n主管副总经理： 总经理：\\n年 月     日 |\\n现场负责人\\n项目负责人：\\n主管副总经理： 总经理：\\n年 月     日 |\\n专业工程师：\\n|\\n专业工程师：\\n|\\n项目负责人 |\\n|\\n现场负责人\\n项目负责人：\\n主管副总经理： 总经理：\\n年 月     日 |\\n现场负责人\\n项目负责人：\\n主管副总经理： 总经理：\\n年 月     日 |\\n现场负责人\\n项目负责人：\\n主管副总经理： 总经理：\\n年 月     日 |\\n专业工程师：\\n|\\n专业工程师：\\n| 技术负责人：\\n| 技术负责人：\\n|\"\n}",
+        "metadata": "{\n  \"file_path\": \"D:/work/AIProduct/07 LLMPlatform/合同风险识别/现场签证单1.docx\",\n  \"format\": \".docx\",\n  \"pages\": 0\n}"
+      },
+      "大模型组件/提示词模板||提示词模板 2": {
+        "prompt": "总结该文档内容：现场签证单\n编码：XAQZ-JZ-Z-QZ                                       N0.034\n项目名称 | 项目名称 | 不连沟煤矿工程 | 不连沟煤矿工程 | 项目编号 | XA-51318Q724K31 | XA-51318Q724K31 |\n工程地点 | 工程地点 | 内蒙古准格尔旗大路镇 | 内蒙古准格尔旗大路镇 | 时  间 | 2019年11月17日 | 2019年11月17日 |\n合同名称 | 合同名称 | 不连沟煤矿主井工程 | 不连沟煤矿主井工程 | 不连沟煤矿主井工程 | 不连沟煤矿主井工程 | 不连沟煤矿主井工程 |\n建设单位 | 建设单位 | 内蒙古蒙泰不连沟煤业有限责任公司 | 内蒙古蒙泰不连沟煤业有限责任公司 | 内蒙古蒙泰不连沟煤业有限责任公司 | 内蒙古蒙泰不连沟煤业有限责任公司 | 内蒙古蒙泰不连沟煤业有限责任公司 |\n施工单位 | 施工单位 | 中煤工程技术有限公司 | 中煤工程技术有限公司 | 中煤工程技术有限公司 | 中煤工程技术有限公司 | 中煤工程技术有限公司 |\n签证主题 | 签证主题 | 排水闸下游护坡工程施工 | 排水闸下游护坡工程施工 | 排水闸下游护坡工程施工 | 排水闸下游护坡工程施工 | 排水闸下游护坡工程施工 |\n签证原因 |\n因排水闸东西侧护坡破损严重重新浇筑 |\n因排水闸东西侧护坡破损严重重新浇筑 |\n因排水闸东西侧护坡破损严重重新浇筑 |\n因排水闸东西侧护坡破损严重重新浇筑 |\n因排水闸东西侧护坡破损严重重新浇筑 |\n因排水闸东西侧护坡破损严重重新浇筑 |\n签证内容(可附图) |\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\n请建设单位和监理单位予以确认。 |\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\n请建设单位和监理单位予以确认。 |\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\n请建设单位和监理单位予以确认。 |\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\n请建设单位和监理单位予以确认。 |\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\n请建设单位和监理单位予以确认。 |\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\n请建设单位和监理单位予以确认。 |\n建设单位(签字盖章) | 建设单位(签字盖章) | 建设单位(签字盖章) | 监理单位(签字盖章) | 监理单位(签字盖章) | EPC总承包单位(签字盖章) | EPC总承包单位(签字盖章) |\n现场负责人\n项目负责人：\n主管副总经理： 总经理：\n年 月     日 |\n现场负责人\n项目负责人：\n主管副总经理： 总经理：\n年 月     日 |\n现场负责人\n项目负责人：\n主管副总经理： 总经理：\n年 月     日 |\n专业工程师：\n|\n专业工程师：\n|\n项目负责人 |\n|\n现场负责人\n项目负责人：\n主管副总经理： 总经理：\n年 月     日 |\n现场负责人\n项目负责人：\n主管副总经理： 总经理：\n年 月     日 |\n现场负责人\n项目负责人：\n主管副总经理： 总经理：\n年 月     日 |\n专业工程师：\n|\n专业工程师：\n| 技术负责人：\n| 技术负责人：\n|\n输出结果用json格式包装"
+      },
+      "大模型组件/大模型对话||大模型对话 1": {
+        "response": "<think>\n好的，我现在需要处理用户提供的文档内容，并生成一个符合要求的JSON格式总结。首先，我要仔细阅读用户提供的文档内容，理解其结构和关键信息。\n\n文档看起来是一个现场签证单，包含多个字段，如项目名称、工程地点、合同名称、建设单位、施工单位、签证主题、签证原因、签证内容等。不过，用户提供的文档中有一些重复和格式问题，比如多个相同的字段重复出现，可能是因为扫描或转换错误导致的。例如，“项目名称”和“工程地点”多次出现，可能需要合并或提取唯一值。\n\n接下来，我需要识别每个字段的实际值。例如，项目名称是“不连沟煤矿工程”，工程地点是“内蒙古准格尔旗大路镇”，合同名称是“不连沟煤矿主井工程”，建设单位是“内蒙古蒙泰不连沟煤业有限责任公司”，施工单位是“中煤工程技术有限公司”，签证主题是“排水闸下游护坡工程施工”。签证原因和内容部分提到因为护坡破损严重，需要重新浇筑，并计算了增加的费用为7042.3元。\n\n需要注意的是，文档中有多处重复的字段，比如“签证原因”和“签证内容”部分重复多次，可能需要去重，只保留一次。此外，签字部分的信息可能不完整，比如建设单位、监理单位、EPC总承包单位的签字部分可能缺少具体名称，但用户可能只需要提取已有的信息。\n\n然后，我需要将提取的信息组织成JSON格式，确保每个字段对应正确的值。可能需要处理一些格式问题，比如“编码”字段的值是“XAQZ-JZ-Z-QZ N0.034”，需要确认是否正确，或者是否有拼写错误，比如“N0.”是否应为“No.”，但根据用户提供的原文，可能需要保持原样。\n\n另外，签证内容中的计算部分需要正确解析，确保数值和单位正确无误。例如，16.8m长，8m宽，0.1m厚，523.98元/m³，计算得出7042.3元，需要确认计算是否正确，但用户可能只需要提取数值，不需要验证计算。\n\n最后，检查是否有遗漏的字段或错误的映射，确保所有关键信息都被正确提取，并按照用户要求用JSON格式包装，不使用Markdown，只输出纯JSON。\n</think>\n\n{\n  \"document_type\": \"现场签证单\",\n  \"code\": \"XAQZ-JZ-Z-QZ N0.034\",\n  \"project_name\": \"不连沟煤矿工程\",\n  \"engineering_location\": \"内蒙古准格尔旗大路镇\",\n  \"contract_name\": \"不连沟煤矿主井工程\",\n  \"construction_unit\": \"内蒙古蒙泰不连沟煤业有限责任公司\",\n  \"construction_company\": \"中煤工程技术有限公司\",\n  \"visa_subject\": \"排水闸下游护坡工程施工\",\n  \"visa_reason\": \"因排水闸东西侧护坡破损严重重新浇筑\",\n  \"visa_content\": \"因排水闸东西侧护坡破损严重，经业主、监理同意对东西侧原护坡进行凿除、重新浇筑。现场测定：护坡尺寸16.8m×8m，增加费用计算为16.8×8×0.1×523.98=7042.3元\",\n  \"additional_notes\": \"需建设单位和监理单位确认\",\n  \"date\": \"2019年11月17日\",\n  \"calculation_details\": {\n    \"length\": \"16.8m\",\n    \"width\": \"8m\",\n    \"thickness\": \"0.1m\",\n    \"unit_price\": \"523.98元/m³\",\n    \"total_cost\": \"7042.3元\"\n  },\n  \"signatories\": {\n    \"construction_unit\": \"需签字盖章\",\n    \"supervision_unit\": \"专业工程师签字\",\n    \"epc_construction\": \"需签字盖章\"\n  }\n}",
+        "raw_output": "{\n  \"id\": \"chatcmpl-a031327ba7e64458a4098d7f32e8f876\",\n  \"choices\": [\n    {\n      \"finish_reason\": \"stop\",\n      \"index\": 0,\n      \"logprobs\": null,\n      \"message\": {\n        \"content\": \"<think>\\n好的，我现在需要处理用户提供的文档内容，并生成一个符合要求的JSON格式总结。首先，我要仔细阅读用户提供的文档内容，理解其结构和关键信息。\\n\\n文档看起来是一个现场签证单，包含多个字段，如项目名称、工程地点、合同名称、建设单位、施工单位、签证主题、签证原因、签证内容等。不过，用户提供的文档中有一些重复和格式问题，比如多个相同的字段重复出现，可能是因为扫描或转换错误导致的。例如，“项目名称”和“工程地点”多次出现，可能需要合并或提取唯一值。\\n\\n接下来，我需要识别每个字段的实际值。例如，项目名称是“不连沟煤矿工程”，工程地点是“内蒙古准格尔旗大路镇”，合同名称是“不连沟煤矿主井工程”，建设单位是“内蒙古蒙泰不连沟煤业有限责任公司”，施工单位是“中煤工程技术有限公司”，签证主题是“排水闸下游护坡工程施工”。签证原因和内容部分提到因为护坡破损严重，需要重新浇筑，并计算了增加的费用为7042.3元。\\n\\n需要注意的是，文档中有多处重复的字段，比如“签证原因”和“签证内容”部分重复多次，可能需要去重，只保留一次。此外，签字部分的信息可能不完整，比如建设单位、监理单位、EPC总承包单位的签字部分可能缺少具体名称，但用户可能只需要提取已有的信息。\\n\\n然后，我需要将提取的信息组织成JSON格式，确保每个字段对应正确的值。可能需要处理一些格式问题，比如“编码”字段的值是“XAQZ-JZ-Z-QZ N0.034”，需要确认是否正确，或者是否有拼写错误，比如“N0.”是否应为“No.”，但根据用户提供的原文，可能需要保持原样。\\n\\n另外，签证内容中的计算部分需要正确解析，确保数值和单位正确无误。例如，16.8m长，8m宽，0.1m厚，523.98元/m³，计算得出7042.3元，需要确认计算是否正确，但用户可能只需要提取数值，不需要验证计算。\\n\\n最后，检查是否有遗漏的字段或错误的映射，确保所有关键信息都被正确提取，并按照用户要求用JSON格式包装，不使用Markdown，只输出纯JSON。\\n</think>\\n\\n{\\n  \\\"document_type\\\": \\\"现场签证单\\\",\\n  \\\"code\\\": \\\"XAQZ-JZ-Z-QZ N0.034\\\",\\n  \\\"project_name\\\": \\\"不连沟煤矿工程\\\",\\n  \\\"engineering_location\\\": \\\"内蒙古准格尔旗大路镇\\\",\\n  \\\"contract_name\\\": \\\"不连沟煤矿主井工程\\\",\\n  \\\"construction_unit\\\": \\\"内蒙古蒙泰不连沟煤业有限责任公司\\\",\\n  \\\"construction_company\\\": \\\"中煤工程技术有限公司\\\",\\n  \\\"visa_subject\\\": \\\"排水闸下游护坡工程施工\\\",\\n  \\\"visa_reason\\\": \\\"因排水闸东西侧护坡破损严重重新浇筑\\\",\\n  \\\"visa_content\\\": \\\"因排水闸东西侧护坡破损严重，经业主、监理同意对东西侧原护坡进行凿除、重新浇筑。现场测定：护坡尺寸16.8m×8m，增加费用计算为16.8×8×0.1×523.98=7042.3元\\\",\\n  \\\"additional_notes\\\": \\\"需建设单位和监理单位确认\\\",\\n  \\\"date\\\": \\\"2019年11月17日\\\",\\n  \\\"calculation_details\\\": {\\n    \\\"length\\\": \\\"16.8m\\\",\\n    \\\"width\\\": \\\"8m\\\",\\n    \\\"thickness\\\": \\\"0.1m\\\",\\n    \\\"unit_price\\\": \\\"523.98元/m³\\\",\\n    \\\"total_cost\\\": \\\"7042.3元\\\"\\n  },\\n  \\\"signatories\\\": {\\n    \\\"construction_unit\\\": \\\"需签字盖章\\\",\\n    \\\"supervision_unit\\\": \\\"专业工程师签字\\\",\\n    \\\"epc_construction\\\": \\\"需签字盖章\\\"\\n  }\\n}\",\n        \"refusal\": null,\n        \"role\": \"assistant\",\n        \"annotations\": null,\n        \"audio\": null,\n        \"function_call\": null,\n        \"tool_calls\": [],\n        \"reasoning_content\": null\n      },\n      \"stop_reason\": null,\n      \"token_ids\": null\n    }\n  ],\n  \"created\": 1759973695,\n  \"model\": \"qwen3-30b-a3b\",\n  \"object\": \"chat.completion\",\n  \"service_tier\": null,\n  \"system_fingerprint\": null,\n  \"usage\": {\n    \"completion_tokens\": 861,\n    \"prompt_tokens\": 1308,\n    \"total_tokens\": 2169,\n    \"completion_tokens_details\": null,\n    \"prompt_tokens_details\": null\n  },\n  \"prompt_logprobs\": null,\n  \"prompt_token_ids\": null,\n  \"kv_transfer_params\": null\n}"
+      },
+      "大模型组件/JSON输出解析||JSON输出解析 1": {
+        "parsed_json": "{\n  \"document_type\": \"现场签证单\",\n  \"code\": \"XAQZ-JZ-Z-QZ N0.034\",\n  \"project_name\": \"不连沟煤矿工程\",\n  \"engineering_location\": \"内蒙古准格尔旗大路镇\",\n  \"contract_name\": \"不连沟煤矿主井工程\",\n  \"construction_unit\": \"内蒙古蒙泰不连沟煤业有限责任公司\",\n  \"construction_company\": \"中煤工程技术有限公司\",\n  \"visa_subject\": \"排水闸下游护坡工程施工\",\n  \"visa_reason\": \"因排水闸东西侧护坡破损严重重新浇筑\",\n  \"visa_content\": \"因排水闸东西侧护坡破损严重，经业主、监理同意对东西侧原护坡进行凿除、重新浇筑。现场测定：护坡尺寸16.8m×8m，增加费用计算为16.8×8×0.1×523.98=7042.3元\",\n  \"additional_notes\": \"需建设单位和监理单位确认\",\n  \"date\": \"2019年11月17日\",\n  \"calculation_details\": {\n    \"length\": \"16.8m\",\n    \"width\": \"8m\",\n    \"thickness\": \"0.1m\",\n    \"unit_price\": \"523.98元/m³\",\n    \"total_cost\": \"7042.3元\"\n  },\n  \"signatories\": {\n    \"construction_unit\": \"需签字盖章\",\n    \"supervision_unit\": \"专业工程师签字\",\n    \"epc_construction\": \"需签字盖章\"\n  }\n}",
+        "is_valid": true
+      },
+      "大模型组件/大模型对话||大模型对话 2": {
+        "response": "<think>\n好的，我现在需要处理用户提供的这个文档内容，并生成一个符合要求的JSON格式总结。首先，我要仔细阅读用户提供的文档内容，理解其中的各个字段和结构。\n\n文档看起来像是一份现场签证单，里面包含多个字段，比如项目名称、工程地点、合同名称、建设单位、施工单位、签证主题、签证原因、签证内容等。不过，用户提供的文档中有一些重复的字段，比如项目名称、工程地点、合同名称、建设单位等多次出现，可能是因为表格格式导致的重复。我需要正确解析这些信息，避免重复或错误的字段。\n\n首先，我需要确定每个字段对应的正确值。例如，项目名称应该是“不连沟煤矿工程”，工程地点是“内蒙古准格尔旗大路镇”，合同名称是“不连沟煤矿主井工程”，建设单位是“内蒙古蒙泰不连沟煤业有限责任公司”，施工单位是“中煤工程技术有限公司”，签证主题是“排水闸下游护坡工程施工”。签证原因部分多次重复，内容是“因排水闸东西侧护坡破损严重重新浇筑”，所以这里可能需要将多个重复的条目合并为一个。\n\n签证内容部分有详细的计算，包括长度、宽度、增加费用的计算公式，以及需要建设单位和监理单位确认。这部分需要准确提取，并确保数值和单位正确无误。例如，16.8米长，8米宽，体积计算为16.8*8*0.1，然后乘以单价523.98元/m³，得到7042.3元。这部分需要正确解析，并作为字符串或数值存储。\n\n接下来是签字部分，包括建设单位、监理单位、EPC总承包单位的签字盖章，以及各个负责人如现场负责人、项目负责人、主管副总经理、经理等，但这些部分可能没有填写具体名字，只有职位和日期，所以可能需要留空或者标记为“待填写”。\n\n在处理过程中，需要注意重复的字段，例如“项目名称”和“工程地点”在文档中重复了多次，可能需要合并为一个条目。同样，签证原因和签证内容部分也重复了多次，需要合并为一个条目，避免重复。\n\n然后，根据用户的要求，将结果包装成JSON格式。需要确保每个字段对应正确的值，结构清晰。例如：\n\n{\n  \"文档类型\": \"现场签证单\",\n  \"编码\": \"XAQZ-JZ-Z-QZ\",\n  \"项目名称\": \"不连沟煤矿工程\",\n  \"工程地点\": \"内蒙古准格尔旗大路镇\",\n  \"合同名称\": \"不连沟煤矿主井工程\",\n  \"建设单位\": \"内蒙古蒙泰不连沟煤业有限责任公司\",\n  \"施工单位\": \"中煤工程技术有限公司\",\n  \"签证主题\": \"排水闸下游护坡工程施工\",\n  \"签证原因\": \"因排水闸东西侧护坡破损严重重新浇筑\",\n  \"签证内容\": \"因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。请建设单位和监理单位予以确认。\",\n  \"建设单位签字\": \"待填写\",\n  \"监理单位签字\": \"待填写\",\n  \"EPC总承包单位签字\": \"待填写\",\n  \"日期\": \"年 月     日\"\n}\n\n需要注意的是，部分字段如“建设单位签字”可能包含多个部分，比如现场负责人、项目负责人等，但文档中这些部分可能没有具体填写，所以可能需要留空或标记为“待填写”。此外，日期字段在文档中显示为“年 月     日”，可能需要保持原样或提示用户填写。\n\n还需要检查是否有遗漏的字段，比如“项目编号”在文档中出现，但用户提供的示例中可能没有明确提到，需要确认。例如，文档中有“项目编号 | XA-51318Q724K31”，所以需要将其作为“项目编号”字段加入JSON中。\n\n另外，签证内容中的计算部分需要确保数值正确，可能需要将公式作为字符串保留，或者计算出结果。但用户可能希望保留原始公式，因此应作为字符串处理。\n\n最后，确保JSON格式正确，键名准确，没有语法错误，并且所有必要的信息都被包含进去。可能需要多次检查，确保每个字段都正确映射，没有遗漏或错误。\n</think>\n\n{\n  \"文档类型\": \"现场签证单\",",
+        "raw_output": "{\n  \"id\": \"chatcmpl-558a5818d3bf4954a5780a365f0e86d5\",\n  \"choices\": [\n    {\n      \"finish_reason\": \"length\",\n      \"index\": 0,\n      \"logprobs\": null,\n      \"message\": {\n        \"content\": \"<think>\\n好的，我现在需要处理用户提供的这个文档内容，并生成一个符合要求的JSON格式总结。首先，我要仔细阅读用户提供的文档内容，理解其中的各个字段和结构。\\n\\n文档看起来像是一份现场签证单，里面包含多个字段，比如项目名称、工程地点、合同名称、建设单位、施工单位、签证主题、签证原因、签证内容等。不过，用户提供的文档中有一些重复的字段，比如项目名称、工程地点、合同名称、建设单位等多次出现，可能是因为表格格式导致的重复。我需要正确解析这些信息，避免重复或错误的字段。\\n\\n首先，我需要确定每个字段对应的正确值。例如，项目名称应该是“不连沟煤矿工程”，工程地点是“内蒙古准格尔旗大路镇”，合同名称是“不连沟煤矿主井工程”，建设单位是“内蒙古蒙泰不连沟煤业有限责任公司”，施工单位是“中煤工程技术有限公司”，签证主题是“排水闸下游护坡工程施工”。签证原因部分多次重复，内容是“因排水闸东西侧护坡破损严重重新浇筑”，所以这里可能需要将多个重复的条目合并为一个。\\n\\n签证内容部分有详细的计算，包括长度、宽度、增加费用的计算公式，以及需要建设单位和监理单位确认。这部分需要准确提取，并确保数值和单位正确无误。例如，16.8米长，8米宽，体积计算为16.8*8*0.1，然后乘以单价523.98元/m³，得到7042.3元。这部分需要正确解析，并作为字符串或数值存储。\\n\\n接下来是签字部分，包括建设单位、监理单位、EPC总承包单位的签字盖章，以及各个负责人如现场负责人、项目负责人、主管副总经理、经理等，但这些部分可能没有填写具体名字，只有职位和日期，所以可能需要留空或者标记为“待填写”。\\n\\n在处理过程中，需要注意重复的字段，例如“项目名称”和“工程地点”在文档中重复了多次，可能需要合并为一个条目。同样，签证原因和签证内容部分也重复了多次，需要合并为一个条目，避免重复。\\n\\n然后，根据用户的要求，将结果包装成JSON格式。需要确保每个字段对应正确的值，结构清晰。例如：\\n\\n{\\n  \\\"文档类型\\\": \\\"现场签证单\\\",\\n  \\\"编码\\\": \\\"XAQZ-JZ-Z-QZ\\\",\\n  \\\"项目名称\\\": \\\"不连沟煤矿工程\\\",\\n  \\\"工程地点\\\": \\\"内蒙古准格尔旗大路镇\\\",\\n  \\\"合同名称\\\": \\\"不连沟煤矿主井工程\\\",\\n  \\\"建设单位\\\": \\\"内蒙古蒙泰不连沟煤业有限责任公司\\\",\\n  \\\"施工单位\\\": \\\"中煤工程技术有限公司\\\",\\n  \\\"签证主题\\\": \\\"排水闸下游护坡工程施工\\\",\\n  \\\"签证原因\\\": \\\"因排水闸东西侧护坡破损严重重新浇筑\\\",\\n  \\\"签证内容\\\": \\\"因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。请建设单位和监理单位予以确认。\\\",\\n  \\\"建设单位签字\\\": \\\"待填写\\\",\\n  \\\"监理单位签字\\\": \\\"待填写\\\",\\n  \\\"EPC总承包单位签字\\\": \\\"待填写\\\",\\n  \\\"日期\\\": \\\"年 月     日\\\"\\n}\\n\\n需要注意的是，部分字段如“建设单位签字”可能包含多个部分，比如现场负责人、项目负责人等，但文档中这些部分可能没有具体填写，所以可能需要留空或标记为“待填写”。此外，日期字段在文档中显示为“年 月     日”，可能需要保持原样或提示用户填写。\\n\\n还需要检查是否有遗漏的字段，比如“项目编号”在文档中出现，但用户提供的示例中可能没有明确提到，需要确认。例如，文档中有“项目编号 | XA-51318Q724K31”，所以需要将其作为“项目编号”字段加入JSON中。\\n\\n另外，签证内容中的计算部分需要确保数值正确，可能需要将公式作为字符串保留，或者计算出结果。但用户可能希望保留原始公式，因此应作为字符串处理。\\n\\n最后，确保JSON格式正确，键名准确，没有语法错误，并且所有必要的信息都被包含进去。可能需要多次检查，确保每个字段都正确映射，没有遗漏或错误。\\n</think>\\n\\n{\\n  \\\"文档类型\\\": \\\"现场签证单\\\",\\n\",\n        \"refusal\": null,\n        \"role\": \"assistant\",\n        \"annotations\": null,\n        \"audio\": null,\n        \"function_call\": null,\n        \"tool_calls\": [],\n        \"reasoning_content\": null\n      },\n      \"stop_reason\": null,\n      \"token_ids\": null\n    }\n  ],\n  \"created\": 1759973926,\n  \"model\": \"qwen3-30b-a3b\",\n  \"object\": \"chat.completion\",\n  \"service_tier\": null,\n  \"system_fingerprint\": null,\n  \"usage\": {\n    \"completion_tokens\": 1000,\n    \"prompt_tokens\": 1295,\n    \"total_tokens\": 2295,\n    \"completion_tokens_details\": null,\n    \"prompt_tokens_details\": null\n  },\n  \"prompt_logprobs\": null,\n  \"prompt_token_ids\": null,\n  \"kv_transfer_params\": null\n}",
+        "history": "[\n  {\n    \"role\": \"user\",\n    \"content\": \"总结该文档内容：现场签证单\\n编码：XAQZ-JZ-Z-QZ                                       N0.034\\n项目名称 | 项目名称 | 不连沟煤矿工程 | 不连沟煤矿工程 | 项目编号 | XA-51318Q724K31 | XA-51318Q724K31 |\\n工程地点 | 工程地点 | 内蒙古准格尔旗大路镇 | 内蒙古准格尔旗大路镇 | 时  间 | 2019年11月17日 | 2019年11月17日 |\\n合同名称 | 合同名称 | 不连沟煤矿主井工程 | 不连沟煤矿主井工程 | 不连沟煤矿主井工程 | 不连沟煤矿主井工程 | 不连沟煤矿主井工程 |\\n建设单位 | 建设单位 | 内蒙古蒙泰不连沟煤业有限责任公司 | 内蒙古蒙泰不连沟煤业有限责任公司 | 内蒙古蒙泰不连沟煤业有限责任公司 | 内蒙古蒙泰不连沟煤业有限责任公司 | 内蒙古蒙泰不连沟煤业有限责任公司 |\\n施工单位 | 施工单位 | 中煤工程技术有限公司 | 中煤工程技术有限公司 | 中煤工程技术有限公司 | 中煤工程技术有限公司 | 中煤工程技术有限公司 |\\n签证主题 | 签证主题 | 排水闸下游护坡工程施工 | 排水闸下游护坡工程施工 | 排水闸下游护坡工程施工 | 排水闸下游护坡工程施工 | 排水闸下游护坡工程施工 |\\n签证原因 |\\n因排水闸东西侧护坡破损严重重新浇筑 |\\n因排水闸东西侧护坡破损严重重新浇筑 |\\n因排水闸东西侧护坡破损严重重新浇筑 |\\n因排水闸东西侧护坡破损严重重新浇筑 |\\n因排水闸东西侧护坡破损严重重新浇筑 |\\n因排水闸东西侧护坡破损严重重新浇筑 |\\n签证内容(可附图) |\\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\\n请建设单位和监理单位予以确认。 |\\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\\n请建设单位和监理单位予以确认。 |\\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\\n请建设单位和监理单位予以确认。 |\\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\\n请建设单位和监理单位予以确认。 |\\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\\n请建设单位和监理单位予以确认。 |\\n因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。\\n请建设单位和监理单位予以确认。 |\\n建设单位(签字盖章) | 建设单位(签字盖章) | 建设单位(签字盖章) | 监理单位(签字盖章) | 监理单位(签字盖章) | EPC总承包单位(签字盖章) | EPC总承包单位(签字盖章) |\\n现场负责人\\n项目负责人：\\n主管副总经理： 总经理：\\n年 月     日 |\\n现场负责人\\n项目负责人：\\n主管副总经理： 总经理：\\n年 月     日 |\\n现场负责人\\n项目负责人：\\n主管副总经理： 总经理：\\n年 月     日 |\\n专业工程师：\\n|\\n专业工程师：\\n|\\n项目负责人 |\\n|\\n现场负责人\\n项目负责人：\\n主管副总经理： 总经理：\\n年 月     日 |\\n现场负责人\\n项目负责人：\\n主管副总经理： 总经理：\\n年 月     日 |\\n现场负责人\\n项目负责人：\\n主管副总经理： 总经理：\\n年 月     日 |\\n专业工程师：\\n|\\n专业工程师：\\n| 技术负责人：\\n| 技术负责人：\\n|\\n输出结果用json格式包装\"\n  },\n  {\n    \"role\": \"assistant\",\n    \"content\": \"<think>\\n好的，我现在需要处理用户提供的这个文档内容，并生成一个符合要求的JSON格式总结。首先，我要仔细阅读用户提供的文档内容，理解其中的各个字段和结构。\\n\\n文档看起来像是一份现场签证单，里面包含多个字段，比如项目名称、工程地点、合同名称、建设单位、施工单位、签证主题、签证原因、签证内容等。不过，用户提供的文档中有一些重复的字段，比如项目名称、工程地点、合同名称、建设单位等多次出现，可能是因为表格格式导致的重复。我需要正确解析这些信息，避免重复或错误的字段。\\n\\n首先，我需要确定每个字段对应的正确值。例如，项目名称应该是“不连沟煤矿工程”，工程地点是“内蒙古准格尔旗大路镇”，合同名称是“不连沟煤矿主井工程”，建设单位是“内蒙古蒙泰不连沟煤业有限责任公司”，施工单位是“中煤工程技术有限公司”，签证主题是“排水闸下游护坡工程施工”。签证原因部分多次重复，内容是“因排水闸东西侧护坡破损严重重新浇筑”，所以这里可能需要将多个重复的条目合并为一个。\\n\\n签证内容部分有详细的计算，包括长度、宽度、增加费用的计算公式，以及需要建设单位和监理单位确认。这部分需要准确提取，并确保数值和单位正确无误。例如，16.8米长，8米宽，体积计算为16.8*8*0.1，然后乘以单价523.98元/m³，得到7042.3元。这部分需要正确解析，并作为字符串或数值存储。\\n\\n接下来是签字部分，包括建设单位、监理单位、EPC总承包单位的签字盖章，以及各个负责人如现场负责人、项目负责人、主管副总经理、经理等，但这些部分可能没有填写具体名字，只有职位和日期，所以可能需要留空或者标记为“待填写”。\\n\\n在处理过程中，需要注意重复的字段，例如“项目名称”和“工程地点”在文档中重复了多次，可能需要合并为一个条目。同样，签证原因和签证内容部分也重复了多次，需要合并为一个条目，避免重复。\\n\\n然后，根据用户的要求，将结果包装成JSON格式。需要确保每个字段对应正确的值，结构清晰。例如：\\n\\n{\\n  \\\"文档类型\\\": \\\"现场签证单\\\",\\n  \\\"编码\\\": \\\"XAQZ-JZ-Z-QZ\\\",\\n  \\\"项目名称\\\": \\\"不连沟煤矿工程\\\",\\n  \\\"工程地点\\\": \\\"内蒙古准格尔旗大路镇\\\",\\n  \\\"合同名称\\\": \\\"不连沟煤矿主井工程\\\",\\n  \\\"建设单位\\\": \\\"内蒙古蒙泰不连沟煤业有限责任公司\\\",\\n  \\\"施工单位\\\": \\\"中煤工程技术有限公司\\\",\\n  \\\"签证主题\\\": \\\"排水闸下游护坡工程施工\\\",\\n  \\\"签证原因\\\": \\\"因排水闸东西侧护坡破损严重重新浇筑\\\",\\n  \\\"签证内容\\\": \\\"因排水闸东西侧护坡破损严重，经业主、监理同意我单位对东西侧原护坡进行凿除、重新浇筑，经监理、业主现场测定:对原有护坡凿除、浇筑:16.8m长，8m宽，合计增加费用:16.8*8*0.1*523.98元/m3=7042.3元。请建设单位和监理单位予以确认。\\\",\\n  \\\"建设单位签字\\\": \\\"待填写\\\",\\n  \\\"监理单位签字\\\": \\\"待填写\\\",\\n  \\\"EPC总承包单位签字\\\": \\\"待填写\\\",\\n  \\\"日期\\\": \\\"年 月     日\\\"\\n}\\n\\n需要注意的是，部分字段如“建设单位签字”可能包含多个部分，比如现场负责人、项目负责人等，但文档中这些部分可能没有具体填写，所以可能需要留空或标记为“待填写”。此外，日期字段在文档中显示为“年 月     日”，可能需要保持原样或提示用户填写。\\n\\n还需要检查是否有遗漏的字段，比如“项目编号”在文档中出现，但用户提供的示例中可能没有明确提到，需要确认。例如，文档中有“项目编号 | XA-51318Q724K31”，所以需要将其作为“项目编号”字段加入JSON中。\\n\\n另外，签证内容中的计算部分需要确保数值正确，可能需要将公式作为字符串保留，或者计算出结果。但用户可能希望保留原始公式，因此应作为字符串处理。\\n\\n最后，确保JSON格式正确，键名准确，没有语法错误，并且所有必要的信息都被包含进去。可能需要多次检查，确保每个字段都正确映射，没有遗漏或错误。\\n</think>\\n\\n{\\n  \\\"文档类型\\\": \\\"现场签证单\\\",\"\n  }\n]"
+      },
+      "数据集成/长文本输入||长文本输入 1": {
+        "output": "我的需求是开发一个大模型对话组件"
+      },
+      "大模型组件/JSON文本包装||JSON文本包装": {
+        "output1": "{\n  \"text\": \"我的需求是开发一个大模型对话组件\"\n}"
+      },
+      "大模型组件/提示词模板||提示词模板 3": {
+        "prompt": "##  任务\n根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码\n\n## 组件输入输出参数定义代码\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n\n## 组件属性参数定义代码\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n## 我的组件样例代码\nclass Component(BaseComponent):\n    name = \"提示词模板\"\n    category = \"大模型组件\"\n    description = \"\"\n    requirements = \"\"\n\n    inputs = [\n        PortDefinition(name=\"variables\", label=\"变量字典\", type=ArgumentType.JSON),\n    ]\n    outputs = [\n        PortDefinition(name=\"prompt\", label=\"生成的提示词\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"template\": PropertyDefinition(\n            type=PropertyType.LONGTEXT,\n            default=\"\"\"你好，{{name}}！今天是{{day}}。\"\"\",\n            label=\"提示词模板\",\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        import re\n        self.logger.info(inputs)\n        template = params.get(\"template\", \"\")\n        variables = inputs.get(\"variables\", {}) if inputs else {}\n\n        if isinstance(variables, str):\n            import json\n            try:\n                variables = json.loads(variables)\n            except:\n                variables = {}\n\n        # 替换 {{key}} 为变量值\n        def replace_match(match):\n            key = match.group(1)\n            return str(variables.get(key, match.group(0)))\n\n        prompt = re.sub(r\"\\{\\{(\\w+)\\}\\}\", replace_match, template)\n        self.logger.info(prompt)\n        \n        return {\"prompt\": prompt}\n\n## 我的组件开发需求\n我的需求是开发一个大模型对话组件\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码\n"
+      },
+      "大模型组件/JSON输出解析||JSON输出解析 2": {
+        "parsed_json": "{\n  \"raw_text\": \"<think>\\n好的，我 need to generate a Python component code for a large model dialogue component based on the user's requirements. Let me start by understanding the existing code structure and the user's needs.\\n\\nFirst, the user provided the existing component code for a \\\"提示词模板\\\" (Prompt Template) component. The new component is supposed to be a \\\"大模型对话组件\\\" (Large Model Dialogue Component). The key differences would be in the inputs, outputs, properties, and the run method.\\n\\nThe existing component has inputs like 'variables' (JSON type), and outputs 'prompt' (text). The properties include a 'template' which is a long text. The run method uses a regex substitution to replace variables in the template.\\n\\nFor the dialogue component, the inputs might need to include a 'dialogue' (maybe a list of messages or a JSON structure), and the output could be the generated response. The properties might include a 'prompt' template, maybe parameters for the model like temperature, max_length, etc.\\n\\nThe user's requirements mention that the code should not include the input/output/property definitions, as they are already written. Also, third-party imports should be done inside functions, not at the top. So I need to make sure that any imports like re, json, or others are done within the run method.\\n\\nLooking at the sample code, the run method uses re and json. So for the dialogue component, maybe similar imports are needed. Also, the component's name, category, description, and requirements need to be set appropriately.\\n\\nThe properties might include things like 'system_prompt' (a template for the system message), 'temperature', 'max_tokens', etc. The inputs could be the dialogue history, and the output would be the model's response.\\n\\nI need to structure the component class with the correct name, category, description, and requirements. The inputs and outputs should be defined as PortDefinitions. The properties should include the necessary parameters.\\n\\nIn the run method, the logic would involve generating a response based on the input dialogue and the template. Maybe using a model to generate the response, but since the user's example uses a template replacement, perhaps this component is more about formatting the dialogue into a specific structure rather than actual model inference.\\n\\nWait, the user's example uses a template to replace variables. For a dialogue component, maybe the template is the structure of the dialogue, and the inputs are the variables that fill in the placeholders. But the exact logic depends on the component's purpose.\\n\\nAssuming the component is for generating a dialogue structure, the run method would take the variables and fill them into the template. However, if it's for actual dialogue generation, it might require a model. But since the user's example doesn't involve a model, maybe this component is just about formatting.\\n\\nSo, the properties might include a 'dialogue_template' which is a long text, and the inputs would be the variables. The output is the generated dialogue string.\\n\\nAlternatively, if the component is for a chatbot, the inputs might be the user message, and the output is the response. But the user's example has inputs as variables, so maybe similar here.\\n\\nI need to make sure the code follows the structure of the sample, with the same class name, attributes, and methods. The properties should be a dictionary with PropertyDefinition instances.\\n\\nAlso, the user mentioned that the code should not include the input/output/property definitions, so I don't need to include those classes. The code should only have the component class.\\n\\nNow, putting it all together:\\n\\n- The component's name is \\\"大模型对话组件\\\" (Large Model Dialogue Component)\\n- Category is \\\"大模型组件\\\" (Large Model Component)\\n- Description should explain its purpose\\n- Requirements might be empty or specify dependencies\\n- Inputs: Maybe a 'dialogue' port with type JSON or TEXT, depending on how the dialogue is structured.\\n- Outputs: 'response' as the generated dialogue or response.\\n- Properties: Include a 'template' for the dialogue structure, maybe parameters like temperature, max_length, etc.\\n\\nIn the run method, process the inputs, apply the template, and return the output.\\n\\nAlso, ensure that any imports (like re, json) are done inside the run method, not at the top.\\n\\nLet me draft the code accordingly.\\n</think>\\n\\n```python\\nclass Component(BaseComponent):\\n    name = \\\"大模型对话组件\\\"\\n    category = \\\"大模型组件\\\"\\n    description = \\\"基于模板生成对话内容的组件\\\"\\n    requirements = \\\"\\\"\\n\\n    inputs = [\\n        PortDefinition(name=\\\"dialogue\\\", label=\\\"对话数据\\\", type=ArgumentType.JSON),\\n    ]\\n    outputs = [\\n        PortDefinition(name=\\\"response\\\", label=\\\"生成的对话\\\", type=ArgumentType.TEXT),\\n    ]\\n\\n    properties = {\\n        \\\"template\\\": PropertyDefinition(\\n            type=PropertyType.LONGTEXT,\\n            default=\\\"\\\"\\\"[系统] 你好，{{name}}！今天是{{day}}。\\n[用户] {{message}}\\\"\\\"\\\",\\n            label=\\\"对话模板\\\",\\n        ),\\n        \\\"temperature\\\": PropertyDefinition(\\n            type=PropertyType.FLOAT,\\n            default=0.7,\\n            label=\\\"温度\\\",\\n            min=0.0,\\n            max=1.0,\\n            step=0.1\\n        ),\\n        \\\"max_length\\\": PropertyDefinition(\\n            type=PropertyType.INT,\\n            default=200,\\n            label=\\\"最大长度\\\",\\n            min=50,\\n            max=1000,\\n            step=50\\n        )\\n    }\\n\\n    def run(self, params, inputs=None):\\n        import re\\n        import json\\n        \\n        self.logger.info(\\\"开始处理对话模板\\\")\\n        template = params.get(\\\"template\\\", \\\"\\\")\\n        dialogue_data = inputs.get(\\\"dialogue\\\", {}) if inputs else {}\\n        \\n        # 处理对话变量\\n        def replace_variables(match):\\n            key = match.group(1)\\n            return str(dialogue_data.get(key, match.group(0)))\\n        \\n        # 替换模板中的变量\\n        processed_template = re.sub(r\\\"\\\\{\\\\{(\\\\w+)\\\\}\\\\}\\\", replace_variables, template)\\n        \\n        # 添加模型参数信息\\n        processed_template += f\\\"\\\\n\\\\n[参数] 温度: {params.get('temperature', 0.7)}, 最大长度: {params.get('max_length', 200)}\\\"\\n        \\n        self.logger.info(\\\"对话模板处理完成\\\")\\n        return {\\\"response\\\": processed_template}\\n```\",\n  \"error\": \"Expecting value: line 2 column 21 (char 22)\"\n}",
+        "is_valid": false
+      },
+      "大模型组件/大模型对话||大模型对话 3": {
+        "response": "<think>\n好的，我 need to generate a Python component code for a large model dialogue component based on the user's requirements. Let me start by understanding the existing code structure and the user's needs.\n\nFirst, the user provided the existing component code for a \"提示词模板\" (Prompt Template) component. The new component is supposed to be a \"大模型对话组件\" (Large Model Dialogue Component). The key differences would be in the inputs, outputs, properties, and the run method.\n\nThe existing component has inputs like 'variables' (JSON type), and outputs 'prompt' (text). The properties include a 'template' which is a long text. The run method uses a regex substitution to replace variables in the template.\n\nFor the dialogue component, the inputs might need to include a 'dialogue' (maybe a list of messages or a JSON structure), and the output could be the generated response. The properties might include a 'prompt' template, maybe parameters for the model like temperature, max_length, etc.\n\nThe user's requirements mention that the code should not include the input/output/property definitions, as they are already written. Also, third-party imports should be done inside functions, not at the top. So I need to make sure that any imports like re, json, or others are done within the run method.\n\nLooking at the sample code, the run method uses re and json. So for the dialogue component, maybe similar imports are needed. Also, the component's name, category, description, and requirements need to be set appropriately.\n\nThe properties might include things like 'system_prompt' (a template for the system message), 'temperature', 'max_tokens', etc. The inputs could be the dialogue history, and the output would be the model's response.\n\nI need to structure the component class with the correct name, category, description, and requirements. The inputs and outputs should be defined as PortDefinitions. The properties should include the necessary parameters.\n\nIn the run method, the logic would involve generating a response based on the input dialogue and the template. Maybe using a model to generate the response, but since the user's example uses a template replacement, perhaps this component is more about formatting the dialogue into a specific structure rather than actual model inference.\n\nWait, the user's example uses a template to replace variables. For a dialogue component, maybe the template is the structure of the dialogue, and the inputs are the variables that fill in the placeholders. But the exact logic depends on the component's purpose.\n\nAssuming the component is for generating a dialogue structure, the run method would take the variables and fill them into the template. However, if it's for actual dialogue generation, it might require a model. But since the user's example doesn't involve a model, maybe this component is just about formatting.\n\nSo, the properties might include a 'dialogue_template' which is a long text, and the inputs would be the variables. The output is the generated dialogue string.\n\nAlternatively, if the component is for a chatbot, the inputs might be the user message, and the output is the response. But the user's example has inputs as variables, so maybe similar here.\n\nI need to make sure the code follows the structure of the sample, with the same class name, attributes, and methods. The properties should be a dictionary with PropertyDefinition instances.\n\nAlso, the user mentioned that the code should not include the input/output/property definitions, so I don't need to include those classes. The code should only have the component class.\n\nNow, putting it all together:\n\n- The component's name is \"大模型对话组件\" (Large Model Dialogue Component)\n- Category is \"大模型组件\" (Large Model Component)\n- Description should explain its purpose\n- Requirements might be empty or specify dependencies\n- Inputs: Maybe a 'dialogue' port with type JSON or TEXT, depending on how the dialogue is structured.\n- Outputs: 'response' as the generated dialogue or response.\n- Properties: Include a 'template' for the dialogue structure, maybe parameters like temperature, max_length, etc.\n\nIn the run method, process the inputs, apply the template, and return the output.\n\nAlso, ensure that any imports (like re, json) are done inside the run method, not at the top.\n\nLet me draft the code accordingly.\n</think>\n\n```python\nclass Component(BaseComponent):\n    name = \"大模型对话组件\"\n    category = \"大模型组件\"\n    description = \"基于模板生成对话内容的组件\"\n    requirements = \"\"\n\n    inputs = [\n        PortDefinition(name=\"dialogue\", label=\"对话数据\", type=ArgumentType.JSON),\n    ]\n    outputs = [\n        PortDefinition(name=\"response\", label=\"生成的对话\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"template\": PropertyDefinition(\n            type=PropertyType.LONGTEXT,\n            default=\"\"\"[系统] 你好，{{name}}！今天是{{day}}。\n[用户] {{message}}\"\"\",\n            label=\"对话模板\",\n        ),\n        \"temperature\": PropertyDefinition(\n            type=PropertyType.FLOAT,\n            default=0.7,\n            label=\"温度\",\n            min=0.0,\n            max=1.0,\n            step=0.1\n        ),\n        \"max_length\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=200,\n            label=\"最大长度\",\n            min=50,\n            max=1000,\n            step=50\n        )\n    }\n\n    def run(self, params, inputs=None):\n        import re\n        import json\n        \n        self.logger.info(\"开始处理对话模板\")\n        template = params.get(\"template\", \"\")\n        dialogue_data = inputs.get(\"dialogue\", {}) if inputs else {}\n        \n        # 处理对话变量\n        def replace_variables(match):\n            key = match.group(1)\n            return str(dialogue_data.get(key, match.group(0)))\n        \n        # 替换模板中的变量\n        processed_template = re.sub(r\"\\{\\{(\\w+)\\}\\}\", replace_variables, template)\n        \n        # 添加模型参数信息\n        processed_template += f\"\\n\\n[参数] 温度: {params.get('temperature', 0.7)}, 最大长度: {params.get('max_length', 200)}\"\n        \n        self.logger.info(\"对话模板处理完成\")\n        return {\"response\": processed_template}\n```",
+        "raw_output": "{\n  \"id\": \"chatcmpl-bdf4707951ad4c7795bc41119c8019a5\",\n  \"choices\": [\n    {\n      \"finish_reason\": \"stop\",\n      \"index\": 0,\n      \"logprobs\": null,\n      \"message\": {\n        \"content\": \"<think>\\n好的，我 need to generate a Python component code for a large model dialogue component based on the user's requirements. Let me start by understanding the existing code structure and the user's needs.\\n\\nFirst, the user provided the existing component code for a \\\"提示词模板\\\" (Prompt Template) component. The new component is supposed to be a \\\"大模型对话组件\\\" (Large Model Dialogue Component). The key differences would be in the inputs, outputs, properties, and the run method.\\n\\nThe existing component has inputs like 'variables' (JSON type), and outputs 'prompt' (text). The properties include a 'template' which is a long text. The run method uses a regex substitution to replace variables in the template.\\n\\nFor the dialogue component, the inputs might need to include a 'dialogue' (maybe a list of messages or a JSON structure), and the output could be the generated response. The properties might include a 'prompt' template, maybe parameters for the model like temperature, max_length, etc.\\n\\nThe user's requirements mention that the code should not include the input/output/property definitions, as they are already written. Also, third-party imports should be done inside functions, not at the top. So I need to make sure that any imports like re, json, or others are done within the run method.\\n\\nLooking at the sample code, the run method uses re and json. So for the dialogue component, maybe similar imports are needed. Also, the component's name, category, description, and requirements need to be set appropriately.\\n\\nThe properties might include things like 'system_prompt' (a template for the system message), 'temperature', 'max_tokens', etc. The inputs could be the dialogue history, and the output would be the model's response.\\n\\nI need to structure the component class with the correct name, category, description, and requirements. The inputs and outputs should be defined as PortDefinitions. The properties should include the necessary parameters.\\n\\nIn the run method, the logic would involve generating a response based on the input dialogue and the template. Maybe using a model to generate the response, but since the user's example uses a template replacement, perhaps this component is more about formatting the dialogue into a specific structure rather than actual model inference.\\n\\nWait, the user's example uses a template to replace variables. For a dialogue component, maybe the template is the structure of the dialogue, and the inputs are the variables that fill in the placeholders. But the exact logic depends on the component's purpose.\\n\\nAssuming the component is for generating a dialogue structure, the run method would take the variables and fill them into the template. However, if it's for actual dialogue generation, it might require a model. But since the user's example doesn't involve a model, maybe this component is just about formatting.\\n\\nSo, the properties might include a 'dialogue_template' which is a long text, and the inputs would be the variables. The output is the generated dialogue string.\\n\\nAlternatively, if the component is for a chatbot, the inputs might be the user message, and the output is the response. But the user's example has inputs as variables, so maybe similar here.\\n\\nI need to make sure the code follows the structure of the sample, with the same class name, attributes, and methods. The properties should be a dictionary with PropertyDefinition instances.\\n\\nAlso, the user mentioned that the code should not include the input/output/property definitions, so I don't need to include those classes. The code should only have the component class.\\n\\nNow, putting it all together:\\n\\n- The component's name is \\\"大模型对话组件\\\" (Large Model Dialogue Component)\\n- Category is \\\"大模型组件\\\" (Large Model Component)\\n- Description should explain its purpose\\n- Requirements might be empty or specify dependencies\\n- Inputs: Maybe a 'dialogue' port with type JSON or TEXT, depending on how the dialogue is structured.\\n- Outputs: 'response' as the generated dialogue or response.\\n- Properties: Include a 'template' for the dialogue structure, maybe parameters like temperature, max_length, etc.\\n\\nIn the run method, process the inputs, apply the template, and return the output.\\n\\nAlso, ensure that any imports (like re, json) are done inside the run method, not at the top.\\n\\nLet me draft the code accordingly.\\n</think>\\n\\n```python\\nclass Component(BaseComponent):\\n    name = \\\"大模型对话组件\\\"\\n    category = \\\"大模型组件\\\"\\n    description = \\\"基于模板生成对话内容的组件\\\"\\n    requirements = \\\"\\\"\\n\\n    inputs = [\\n        PortDefinition(name=\\\"dialogue\\\", label=\\\"对话数据\\\", type=ArgumentType.JSON),\\n    ]\\n    outputs = [\\n        PortDefinition(name=\\\"response\\\", label=\\\"生成的对话\\\", type=ArgumentType.TEXT),\\n    ]\\n\\n    properties = {\\n        \\\"template\\\": PropertyDefinition(\\n            type=PropertyType.LONGTEXT,\\n            default=\\\"\\\"\\\"[系统] 你好，{{name}}！今天是{{day}}。\\n[用户] {{message}}\\\"\\\"\\\",\\n            label=\\\"对话模板\\\",\\n        ),\\n        \\\"temperature\\\": PropertyDefinition(\\n            type=PropertyType.FLOAT,\\n            default=0.7,\\n            label=\\\"温度\\\",\\n            min=0.0,\\n            max=1.0,\\n            step=0.1\\n        ),\\n        \\\"max_length\\\": PropertyDefinition(\\n            type=PropertyType.INT,\\n            default=200,\\n            label=\\\"最大长度\\\",\\n            min=50,\\n            max=1000,\\n            step=50\\n        )\\n    }\\n\\n    def run(self, params, inputs=None):\\n        import re\\n        import json\\n        \\n        self.logger.info(\\\"开始处理对话模板\\\")\\n        template = params.get(\\\"template\\\", \\\"\\\")\\n        dialogue_data = inputs.get(\\\"dialogue\\\", {}) if inputs else {}\\n        \\n        # 处理对话变量\\n        def replace_variables(match):\\n            key = match.group(1)\\n            return str(dialogue_data.get(key, match.group(0)))\\n        \\n        # 替换模板中的变量\\n        processed_template = re.sub(r\\\"\\\\{\\\\{(\\\\w+)\\\\}\\\\}\\\", replace_variables, template)\\n        \\n        # 添加模型参数信息\\n        processed_template += f\\\"\\\\n\\\\n[参数] 温度: {params.get('temperature', 0.7)}, 最大长度: {params.get('max_length', 200)}\\\"\\n        \\n        self.logger.info(\\\"对话模板处理完成\\\")\\n        return {\\\"response\\\": processed_template}\\n```\",\n        \"refusal\": null,\n        \"role\": \"assistant\",\n        \"annotations\": null,\n        \"audio\": null,\n        \"function_call\": null,\n        \"tool_calls\": [],\n        \"reasoning_content\": null\n      },\n      \"stop_reason\": null,\n      \"token_ids\": null\n    }\n  ],\n  \"created\": 1759982108,\n  \"model\": \"qwen3-30b-a3b\",\n  \"object\": \"chat.completion\",\n  \"service_tier\": null,\n  \"system_fingerprint\": null,\n  \"usage\": {\n    \"completion_tokens\": 1319,\n    \"prompt_tokens\": 807,\n    \"total_tokens\": 2126,\n    \"completion_tokens_details\": null,\n    \"prompt_tokens_details\": null\n  },\n  \"prompt_logprobs\": null,\n  \"prompt_token_ids\": null,\n  \"kv_transfer_params\": null\n}",
+        "history": "[\n  {\n    \"role\": \"user\",\n    \"content\": \"##  任务\\n根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码\\n\\n## 组件输入输出参数定义代码\\nclass ArgumentType(str, Enum):\\n    \\\"\\\"\\\"参数类型\\\"\\\"\\\"\\n    TEXT = \\\"文本\\\"\\n    INT = \\\"整数\\\"\\n    FLOAT = \\\"浮点数\\\"\\n    BOOL = \\\"布尔值\\\"\\n    ARRAY = \\\"列表\\\"\\n    CSV = \\\"csv\\\"\\n    JSON = \\\"json\\\"\\n    EXCEL = \\\"excel\\\"\\n    FILE = \\\"文件\\\"\\n    UPLOAD = \\\"上传\\\"\\n    SKLEARNMODEL = \\\"sklearn模型\\\"\\n    TORCHMODEL = \\\"torch模型\\\"\\n    IMAGE = \\\"图片\\\"\\n\\nclass PortDefinition(BaseModel):\\n    \\\"\\\"\\\"端口定义\\\"\\\"\\\"\\n    name: str\\n    label: str\\n    type: ArgumentType = ArgumentType.TEXT\\n\\n## 组件属性参数定义代码\\nclass PropertyType(str, Enum):\\n    \\\"\\\"\\\"属性类型\\\"\\\"\\\"\\n    TEXT = \\\"文本\\\"\\n    LONGTEXT = \\\"长文本\\\"\\n    INT = \\\"整数\\\"\\n    FLOAT = \\\"浮点数\\\"\\n    RANGE = \\\"范围\\\"\\n    BOOL = \\\"复选框\\\"\\n    CHOICE = \\\"下拉框\\\"\\n    DYNAMICFORM = \\\"动态表单\\\"\\n\\n\\nclass PropertyDefinition(BaseModel):\\n    \\\"\\\"\\\"属性定义\\\"\\\"\\\"\\n    type: PropertyType = PropertyType.TEXT\\n    default: Any = \\\"\\\"\\n    label: str = \\\"\\\"\\n    choices: List[str] = Field(default_factory=list)\\n    filter: str = \\\"All Files (*)\\\"  # 用于文件类型过滤\\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\\n    min: float = Field(default=0.0, description=\\\"最小值\\\")\\n    max: float = Field(default=100.0, description=\\\"最大值\\\")\\n    step: float = Field(default=1.0, description=\\\"步长\\\")\\n\\n    class Config:\\n        # 允许递归引用\\n        arbitrary_types_allowed = True\\n\\n## 我的组件样例代码\\nclass Component(BaseComponent):\\n    name = \\\"提示词模板\\\"\\n    category = \\\"大模型组件\\\"\\n    description = \\\"\\\"\\n    requirements = \\\"\\\"\\n\\n    inputs = [\\n        PortDefinition(name=\\\"variables\\\", label=\\\"变量字典\\\", type=ArgumentType.JSON),\\n    ]\\n    outputs = [\\n        PortDefinition(name=\\\"prompt\\\", label=\\\"生成的提示词\\\", type=ArgumentType.TEXT),\\n    ]\\n\\n    properties = {\\n        \\\"template\\\": PropertyDefinition(\\n            type=PropertyType.LONGTEXT,\\n            default=\\\"\\\"\\\"你好，{{name}}！今天是{{day}}。\\\"\\\"\\\",\\n            label=\\\"提示词模板\\\",\\n        ),\\n    }\\n\\n    def run(self, params, inputs = None):\\n        import re\\n        self.logger.info(inputs)\\n        template = params.get(\\\"template\\\", \\\"\\\")\\n        variables = inputs.get(\\\"variables\\\", {}) if inputs else {}\\n\\n        if isinstance(variables, str):\\n            import json\\n            try:\\n                variables = json.loads(variables)\\n            except:\\n                variables = {}\\n\\n        # 替换 {{key}} 为变量值\\n        def replace_match(match):\\n            key = match.group(1)\\n            return str(variables.get(key, match.group(0)))\\n\\n        prompt = re.sub(r\\\"\\\\{\\\\{(\\\\w+)\\\\}\\\\}\\\", replace_match, template)\\n        self.logger.info(prompt)\\n        \\n        return {\\\"prompt\\\": prompt}\\n\\n## 我的组件开发需求\\n我的需求是开发一个大模型对话组件\\n\\n## 代码输出要求\\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\\n\\n## 生成的组件代码\"\n  },\n  {\n    \"role\": \"assistant\",\n    \"content\": \"<think>\\n好的，我 need to generate a Python component code for a large model dialogue component based on the user's requirements. Let me start by understanding the existing code structure and the user's needs.\\n\\nFirst, the user provided the existing component code for a \\\"提示词模板\\\" (Prompt Template) component. The new component is supposed to be a \\\"大模型对话组件\\\" (Large Model Dialogue Component). The key differences would be in the inputs, outputs, properties, and the run method.\\n\\nThe existing component has inputs like 'variables' (JSON type), and outputs 'prompt' (text). The properties include a 'template' which is a long text. The run method uses a regex substitution to replace variables in the template.\\n\\nFor the dialogue component, the inputs might need to include a 'dialogue' (maybe a list of messages or a JSON structure), and the output could be the generated response. The properties might include a 'prompt' template, maybe parameters for the model like temperature, max_length, etc.\\n\\nThe user's requirements mention that the code should not include the input/output/property definitions, as they are already written. Also, third-party imports should be done inside functions, not at the top. So I need to make sure that any imports like re, json, or others are done within the run method.\\n\\nLooking at the sample code, the run method uses re and json. So for the dialogue component, maybe similar imports are needed. Also, the component's name, category, description, and requirements need to be set appropriately.\\n\\nThe properties might include things like 'system_prompt' (a template for the system message), 'temperature', 'max_tokens', etc. The inputs could be the dialogue history, and the output would be the model's response.\\n\\nI need to structure the component class with the correct name, category, description, and requirements. The inputs and outputs should be defined as PortDefinitions. The properties should include the necessary parameters.\\n\\nIn the run method, the logic would involve generating a response based on the input dialogue and the template. Maybe using a model to generate the response, but since the user's example uses a template replacement, perhaps this component is more about formatting the dialogue into a specific structure rather than actual model inference.\\n\\nWait, the user's example uses a template to replace variables. For a dialogue component, maybe the template is the structure of the dialogue, and the inputs are the variables that fill in the placeholders. But the exact logic depends on the component's purpose.\\n\\nAssuming the component is for generating a dialogue structure, the run method would take the variables and fill them into the template. However, if it's for actual dialogue generation, it might require a model. But since the user's example doesn't involve a model, maybe this component is just about formatting.\\n\\nSo, the properties might include a 'dialogue_template' which is a long text, and the inputs would be the variables. The output is the generated dialogue string.\\n\\nAlternatively, if the component is for a chatbot, the inputs might be the user message, and the output is the response. But the user's example has inputs as variables, so maybe similar here.\\n\\nI need to make sure the code follows the structure of the sample, with the same class name, attributes, and methods. The properties should be a dictionary with PropertyDefinition instances.\\n\\nAlso, the user mentioned that the code should not include the input/output/property definitions, so I don't need to include those classes. The code should only have the component class.\\n\\nNow, putting it all together:\\n\\n- The component's name is \\\"大模型对话组件\\\" (Large Model Dialogue Component)\\n- Category is \\\"大模型组件\\\" (Large Model Component)\\n- Description should explain its purpose\\n- Requirements might be empty or specify dependencies\\n- Inputs: Maybe a 'dialogue' port with type JSON or TEXT, depending on how the dialogue is structured.\\n- Outputs: 'response' as the generated dialogue or response.\\n- Properties: Include a 'template' for the dialogue structure, maybe parameters like temperature, max_length, etc.\\n\\nIn the run method, process the inputs, apply the template, and return the output.\\n\\nAlso, ensure that any imports (like re, json) are done inside the run method, not at the top.\\n\\nLet me draft the code accordingly.\\n</think>\\n\\n```python\\nclass Component(BaseComponent):\\n    name = \\\"大模型对话组件\\\"\\n    category = \\\"大模型组件\\\"\\n    description = \\\"基于模板生成对话内容的组件\\\"\\n    requirements = \\\"\\\"\\n\\n    inputs = [\\n        PortDefinition(name=\\\"dialogue\\\", label=\\\"对话数据\\\", type=ArgumentType.JSON),\\n    ]\\n    outputs = [\\n        PortDefinition(name=\\\"response\\\", label=\\\"生成的对话\\\", type=ArgumentType.TEXT),\\n    ]\\n\\n    properties = {\\n        \\\"template\\\": PropertyDefinition(\\n            type=PropertyType.LONGTEXT,\\n            default=\\\"\\\"\\\"[系统] 你好，{{name}}！今天是{{day}}。\\n[用户] {{message}}\\\"\\\"\\\",\\n            label=\\\"对话模板\\\",\\n        ),\\n        \\\"temperature\\\": PropertyDefinition(\\n            type=PropertyType.FLOAT,\\n            default=0.7,\\n            label=\\\"温度\\\",\\n            min=0.0,\\n            max=1.0,\\n            step=0.1\\n        ),\\n        \\\"max_length\\\": PropertyDefinition(\\n            type=PropertyType.INT,\\n            default=200,\\n            label=\\\"最大长度\\\",\\n            min=50,\\n            max=1000,\\n            step=50\\n        )\\n    }\\n\\n    def run(self, params, inputs=None):\\n        import re\\n        import json\\n        \\n        self.logger.info(\\\"开始处理对话模板\\\")\\n        template = params.get(\\\"template\\\", \\\"\\\")\\n        dialogue_data = inputs.get(\\\"dialogue\\\", {}) if inputs else {}\\n        \\n        # 处理对话变量\\n        def replace_variables(match):\\n            key = match.group(1)\\n            return str(dialogue_data.get(key, match.group(0)))\\n        \\n        # 替换模板中的变量\\n        processed_template = re.sub(r\\\"\\\\{\\\\{(\\\\w+)\\\\}\\\\}\\\", replace_variables, template)\\n        \\n        # 添加模型参数信息\\n        processed_template += f\\\"\\\\n\\\\n[参数] 温度: {params.get('temperature', 0.7)}, 最大长度: {params.get('max_length', 200)}\\\"\\n        \\n        self.logger.info(\\\"对话模板处理完成\\\")\\n        return {\\\"response\\\": processed_template}\\n```\"\n  }\n]"
+      }
+    },
+    "column_select": {
+      "大模型组件/知识库查询||知识库查询": {},
+      "数据集成/文本输入||文本输入": {},
+      "大模型组件/JSON输出解析||JSON输出解析": {},
+      "数据集成/文档上传||文档上传": {},
+      "大模型组件/模板参数输入||模板参数输入": {},
+      "大模型组件/提示词模板||提示词模板": {},
+      "大模型组件/大模型对话||大模型对话": {},
+      "大模型组件/提示词模板||提示词模板 1": {},
+      "数据集成/长文本输入||长文本输入": {},
+      "数据转换/文本转json||文本转json": {},
+      "数据集成/文档上传||文档上传 1": {},
+      "大模型组件/文档内容提取||文档内容提取": {},
+      "大模型组件/提示词模板||提示词模板 2": {},
+      "大模型组件/大模型对话||大模型对话 1": {},
+      "大模型组件/JSON输出解析||JSON输出解析 1": {},
+      "大模型组件/大模型对话||大模型对话 2": {},
+      "数据集成/长文本输入||长文本输入 1": {},
+      "大模型组件/JSON文本包装||JSON文本包装": {},
+      "大模型组件/提示词模板||提示词模板 3": {},
+      "大模型组件/JSON输出解析||JSON输出解析 2": {},
+      "大模型组件/大模型对话||大模型对话 3": {}
+    }
+  }
+}
