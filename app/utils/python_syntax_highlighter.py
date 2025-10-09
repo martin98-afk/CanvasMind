@@ -90,6 +90,28 @@ class PythonSyntaxHighlighter(QSyntaxHighlighter):
 
     def highlightBlock(self, text):
         """逐行高亮"""
+        # Visualize trailing spaces and leading tabs
+        if text.endswith(' ') or '\t' in text[:len(text) - len(text.lstrip('\t')) + 1]:
+            trail_idx = len(text) - len(text.rstrip(' '))
+            if trail_idx < len(text):
+                fmt_ws = QTextCharFormat()
+                fmt_ws.setUnderlineStyle(QTextCharFormat.DotLine)
+                fmt_ws.setUnderlineColor(QColor('#555555'))
+                self.setFormat(trail_idx, len(text) - trail_idx, fmt_ws)
+            # leading tabs
+            lead_tabs = 0
+            for ch in text:
+                if ch == '\t':
+                    lead_tabs += 1
+                elif ch == ' ':
+                    continue
+                else:
+                    break
+            if lead_tabs:
+                fmt_tab = QTextCharFormat()
+                fmt_tab.setBackground(QColor(40, 40, 40))
+                fmt_tab.setForeground(QColor('#888888'))
+                self.setFormat(0, lead_tabs, fmt_tab)
         # === 1. 多行字符串处理（必须最先处理！）===
         self.setCurrentBlockState(0)
         prev_state = self.previousBlockState()
@@ -103,6 +125,10 @@ class PythonSyntaxHighlighter(QSyntaxHighlighter):
             # 尝试新开始的多行字符串（优先于单行字符串！）
             if not self.match_multiline(text, self.tri_single, 1, self.styles["string"]):
                 self.match_multiline(text, self.tri_double, 2, self.styles["string"])
+
+        # 如果当前仍在多行字符串内部，则不再应用其它规则，避免被覆盖
+        if self.currentBlockState() in (1, 2):
+            return
 
         # === 2. 基础规则（关键字、数字等）===
         # 但要跳过多行字符串已覆盖的区域（可选优化，此处简化）

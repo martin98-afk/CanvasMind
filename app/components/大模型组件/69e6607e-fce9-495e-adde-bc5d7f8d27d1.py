@@ -103,10 +103,11 @@ class Component(BaseComponent):
         base_url = params.get("base_url", "").strip()
         system_prompt = params.get("system_prompt", "你是一个乐于助人的AI助手。")
         temperature = float(params.get("temperature", 0.7))
-        max_tokens = int(params.get("max_tokens", 1000))
-
+        max_tokens = int(params.get("max_tokens", 1000))    
+        self.logger.info(model)
+        self.logger.info(system_prompt)
         if not user_input:
-            return {"response": "", "raw_output": {}}
+            return {"response": "", "raw_output": {}}    
 
         # 构建消息
         messages = [{"role": "system", "content": system_prompt}]
@@ -128,7 +129,7 @@ class Component(BaseComponent):
                     "raw_output": {"error": "Missing API Key or base_url"}
                 }
             client = OpenAI(api_key=api_key)
-            
+
         # 解析额外模型配置信息
         extra_body={}
         for item in params.get("model_params"):
@@ -152,8 +153,6 @@ class Component(BaseComponent):
                     {"role": "assistant", "content": reply}
                 ]
             )
-
-            self.logger.info(f"模型回复: {reply[:100]}...")
             return {
                 "response": reply,
                 "raw_output": raw_data,

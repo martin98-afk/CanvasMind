@@ -301,7 +301,7 @@ class ComponentDeveloperWidget(QWidget):
                 template = template.replace("我的组件", getattr(component, 'name', ''))
                 template = template.replace("数据处理", getattr(component, 'category', ''))
                 template = template.replace("这是一个示例组件", getattr(component, 'description', ''))
-                self.code_editor.set_code(template)
+                self.code_editor.replace_text_preserving_view(template)
                 # 对于新建的，原始文件路径为 None
                 self._current_component_file = None
 
@@ -325,7 +325,7 @@ class ComponentDeveloperWidget(QWidget):
         template = template.replace("我的组件", component_info["name"])
         template = template.replace("数据处理", component_info["category"])
         template = template.replace("这是一个示例组件", component_info["description"])
-        self.code_editor.set_code(template)
+        self.code_editor.replace_text_preserving_view(template)
         # 对于新建的，原始文件路径为 None
         self._current_component_file = None
         current_code = self.code_editor.get_code()
@@ -339,7 +339,12 @@ class ComponentDeveloperWidget(QWidget):
             self.description_edit.text(),
             self.requirements_edit.toPlainText().replace("\n", ",")
         )
-        self.code_editor.set_code(updated_code)
+        if updated_code != current_code:
+            self.code_editor.suspend_sync()
+            try:
+                self.code_editor.replace_text_preserving_view(updated_code)
+            finally:
+                self.code_editor.resume_sync()
 
     def _sync_ports_to_code(self):
         """同步端口到代码"""
@@ -354,14 +359,13 @@ class ComponentDeveloperWidget(QWidget):
                 self.input_port_editor.get_ports(),  # 修复：传入输入端口
                 self.output_port_editor.get_ports()  # 修复：传入输出端口
             )
-            # 更新代码编辑器（避免触发递归）
-            self.code_editor.code_editor.blockSignals(True)
-            cursor_pos = self.code_editor.code_editor.textCursor().position()
-            self.code_editor.set_code(updated_code)
-            cursor = self.code_editor.code_editor.textCursor()
-            cursor.setPosition(min(cursor_pos, len(updated_code)))
-            self.code_editor.code_editor.setTextCursor(cursor)
-            self.code_editor.code_editor.blockSignals(False)
+            # 更新代码编辑器（非破坏式，保持撤销/选择）
+            if updated_code != current_code:
+                self.code_editor.suspend_sync()
+                try:
+                    self.code_editor.replace_text_preserving_view(updated_code)
+                finally:
+                    self.code_editor.resume_sync()
         except Exception as e:
             print(f"同步端口到代码失败: {e}")
 
@@ -377,14 +381,13 @@ class ComponentDeveloperWidget(QWidget):
                 current_code,
                 self.property_editor.get_properties()
             )
-            # 更新代码编辑器
-            self.code_editor.code_editor.blockSignals(True)
-            cursor_pos = self.code_editor.code_editor.textCursor().position()
-            self.code_editor.set_code(updated_code)
-            cursor = self.code_editor.code_editor.textCursor()
-            cursor.setPosition(min(cursor_pos, len(updated_code)))
-            self.code_editor.code_editor.setTextCursor(cursor)
-            self.code_editor.code_editor.blockSignals(False)
+            # 更新代码编辑器（非破坏式，保持撤销/选择）
+            if updated_code != current_code:
+                self.code_editor.suspend_sync()
+                try:
+                    self.code_editor.replace_text_preserving_view(updated_code)
+                finally:
+                    self.code_editor.resume_sync()
         except Exception as e:
             print(f"同步属性到代码失败: {e}")
 
@@ -403,14 +406,13 @@ class ComponentDeveloperWidget(QWidget):
                 self.description_edit.text(),
                 self.requirements_edit.toPlainText().replace("\n", ",")
             )
-            # 更新代码编辑器
-            self.code_editor.code_editor.blockSignals(True)
-            cursor_pos = self.code_editor.code_editor.textCursor().position()
-            self.code_editor.set_code(updated_code)
-            cursor = self.code_editor.code_editor.textCursor()
-            cursor.setPosition(min(cursor_pos, len(updated_code)))
-            self.code_editor.code_editor.setTextCursor(cursor)
-            self.code_editor.code_editor.blockSignals(False)
+            # 更新代码编辑器（非破坏式，保持撤销/选择）
+            if updated_code != current_code:
+                self.code_editor.suspend_sync()
+                try:
+                    self.code_editor.replace_text_preserving_view(updated_code)
+                finally:
+                    self.code_editor.resume_sync()
         except Exception as e:
             print(f"同步基本信息到代码失败: {e}")
 

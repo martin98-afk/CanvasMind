@@ -5,7 +5,8 @@ from datetime import datetime
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QGuiApplication
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 from qfluentwidgets import (
     CardWidget, BodyLabel, PrimaryPushButton,
     ToolButton, FluentIcon, InfoBar,
@@ -53,12 +54,17 @@ class ProjectCard(CardWidget):
 
     def _setup_ui(self):
         # 更现代的高度和圆角
-        self.setFixedHeight(300)
+        self.setFixedHeight(310)
         self.setBorderRadius(12)
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 16, 20, 16)
         main_layout.setSpacing(12)
+        self.setStyleSheet("""
+            QWidget#ProjectCardTitle { font-size: 14px; font-weight: 600; }
+            QLabel.projectMetaKey { color: #666; }
+            QLabel.projectMetaVal { color: #333; }
+        """)
 
         preview_path = os.path.join(self.project_path, "preview.png")
         if os.path.exists(preview_path):
@@ -82,21 +88,15 @@ class ProjectCard(CardWidget):
         self.name_label = BodyLabel(self.project_name)
         self.name_label.setFont(QFont("Microsoft YaHei", 14, QFont.DemiBold))
         self.name_label.setAlignment(Qt.AlignCenter)
+        self.name_label.setObjectName("ProjectCardTitle")
         main_layout.addWidget(self.name_label)
 
-        # === 元信息区域（始终显示）===
-        self.meta_layout = QVBoxLayout()
-        self.meta_layout.setSpacing(4)
-        self.meta_layout.setAlignment(Qt.AlignLeft)
-
-        meta_info = self._get_meta_info_lines()
-        for text in meta_info:
-            label = BodyLabel(text)
-            label.setFont(QFont("Microsoft YaHei", 10))
-            label.setStyleSheet("color: #666; padding-left: 4px;")
-            self.meta_layout.addWidget(label)
-
-        main_layout.addLayout(self.meta_layout)
+        # === 元信息区域（网格，更清晰）===
+        self.meta_grid = QGridLayout()
+        self.meta_grid.setSpacing(6)
+        self.meta_grid.setAlignment(Qt.AlignLeft)
+        self._populate_meta_grid()
+        main_layout.addLayout(self.meta_grid)
 
         # === 服务状态（动态，初始隐藏）===
         self.status_label = ClickableLabel(parent=self)
@@ -155,9 +155,38 @@ class ProjectCard(CardWidget):
         self._update_service_button()
         self.request_btn.clicked.connect(self._open_request_dialog)
 
-    def _get_meta_info_lines(self):
-        lines = []
+        # 悬浮阴影
+        self._shadow = QGraphicsDropShadowEffect(self)
+        self._shadow.setBlurRadius(22)
+        self._shadow.setXOffset(0)
+        self._shadow.setYOffset(4)
+        self._shadow.setColor(Qt.black)
+        self.setGraphicsEffect(None)
 
+    def enterEvent(self, event):
+        try:
+            self.setGraphicsEffect(self._shadow)
+        except Exception:
+            pass
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        try:
+            self.setGraphicsEffect(None)
+        except Exception:
+            pass
+        super().leaveEvent(event)
+
+    def _populate_meta_grid(self):
+        def add_row(r, key, val):
+            k = BodyLabel(key)
+            k.setProperty("class", "projectMetaKey")
+            v = BodyLabel(val)
+            v.setProperty("class", "projectMetaVal")
+            self.meta_grid.addWidget(k, r, 0)
+            self.meta_grid.addWidget(v, r, 1)
+
+        row = 0
         # 来自画布
         spec_file = os.path.join(self.project_path, "project_spec.json")
         if os.path.exists(spec_file):
@@ -166,7 +195,7 @@ class ProjectCard(CardWidget):
                     spec = json.load(f)
                     original = spec.get("original_canvas") or spec.get("graph_name")
                     if original and original not in ("unknown", ""):
-                        lines.append(f"来自: {original}")
+                        add_row(row, "来自", original); row += 1
             except Exception:
                 pass
 
@@ -174,7 +203,7 @@ class ProjectCard(CardWidget):
         try:
             stat = os.stat(self.project_path)
             create_time = datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d")
-            lines.append(f"创建: {create_time}")
+            add_row(row, "创建", create_time); row += 1
         except Exception:
             pass
 
@@ -188,11 +217,9 @@ class ProjectCard(CardWidget):
                         deps = ", ".join(packages[:3])
                         if len(packages) > 3:
                             deps += f" +{len(packages) - 3}"
-                        lines.append(f"依赖: {deps}")
+                        add_row(row, "依赖", deps); row += 1
             except Exception:
                 pass
-
-        return lines if lines else ["暂无元信息"]
 
     def _update_service_button(self):
         if SERVICE_MANAGER.is_running(self.project_path):

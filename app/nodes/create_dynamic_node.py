@@ -296,10 +296,8 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
                     proc = subprocess.Popen(
                         [python_executable, temp_script_path],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        text=True,
-                        encoding='utf-8',
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
                         **kwargs
                     )
 
@@ -307,6 +305,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     start_time = time.time()
                     timeout = 300  # 5分钟
                     cancelled = False
+                    last_log_pos = 0
 
                     while proc.poll() is None:
                         # 检查取消
@@ -327,8 +326,20 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                             except subprocess.TimeoutExpired:
                                 proc.kill()
 
-                            self._log_message("❌ 节点执行超时（5分钟）")
+                            self._log_message(self.id, "❌ 节点执行超时（5分钟）")
                             raise Exception("❌ 节点执行超时（5分钟）")
+
+                        # 增量读取日志，实时输出
+                        try:
+                            if os.path.exists(log_file_path):
+                                with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                                    lf.seek(last_log_pos)
+                                    new_content = lf.read()
+                                    if new_content:
+                                        self._log_message(self.id, new_content)
+                                        last_log_pos = lf.tell()
+                        except Exception:
+                            pass
 
                         time.sleep(0.1)  # 避免 CPU 占用过高
 
@@ -336,13 +347,16 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         self._log_message(self.id, "执行已被用户取消")
                         raise Exception("执行已被用户取消")
 
-                    # ✅ 关键：子进程结束后，立即读取所有输出
-                    stdout, stderr = proc.communicate()  # 只调用一次！
-
-                    # 读取日志文件（无论成功失败）
-                    log_content = self.log_capture.read_log_file()
-                    if log_content.strip():
-                        self._log_message(self.id, log_content)
+                    # 读取剩余日志（无论成功失败）
+                    try:
+                        if os.path.exists(log_file_path):
+                            with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                                lf.seek(last_log_pos)
+                                tail_content = lf.read()
+                                if tail_content:
+                                    self._log_message(self.id, tail_content)
+                    except Exception:
+                        pass
 
                     # 检查是否成功
                     if proc.returncode == 0:
@@ -374,10 +388,9 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     raise Exception(error_info['error'])
 
                 else:
-                    # 读取 stderr
-                    _, stderr = proc.communicate()
-                    error_msg = f"❌ 节点执行异常: {stderr or '未知错误'}"
+                    # 未生成结果或错误文件，视为未知异常
+                    error_msg = "❌ 节点执行异常: 未知错误"
                     self._log_message(self.id, error_msg)
-                    raise Exception(stderr or "未知错误")
+                    raise Exception("未知错误")
 
     return DynamicNode

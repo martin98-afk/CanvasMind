@@ -844,7 +844,7 @@ class CanvasPage(QWidget):
     def on_node_error_simple(self, node_id):
         """简单节点错误回调（用于批量执行）"""
         node = self._get_node_by_id(node_id)
-        node.clear_output_value()
+        node._output_values = {}
         self.create_failed_info('错误', f'节点 "{node.name()}" 执行失败！')
         if node:
             self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
