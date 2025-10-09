@@ -50,6 +50,11 @@ class Component(BaseComponent):
         mock_docs = [
             {"content": "Python 是一种高级编程语言。", "score": 0.95},
             {"content": "大模型可以生成文本、代码等。", "score": 0.89},
+            {"content": "大模型可以生成文本、代码等。", "score": 0.89},
+            {"content": "大模型可以生成文本、代码等。", "score": 0.89},
+            {"content": "大模型可以生成文本、代码等。", "score": 0.89},
+            {"content": "大模型可以生成文本、代码等。", "score": 0.89},
+            {"content": "大模型可以生成文本、代码等。", "score": 0.89},
         ][:top_k]
 
         context = "\n\n".join([doc["content"] for doc in mock_docs])

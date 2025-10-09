@@ -23,7 +23,7 @@ from app.nodes.create_dynamic_node import create_node_class
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
 from app.utils.config import Settings
-from app.utils.threading_utils import NodeListExecutor, Worker
+from app.utils.threading_utils import NodeListExecutor
 from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
 from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
@@ -193,7 +193,7 @@ class CanvasPage(QWidget):
             self.graph.register_node(node_class)
             self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
             if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
-                nodes_menu.add_command('▶ 运行此节点', lambda graph, node: self.run_single_node(node),
+                nodes_menu.add_command('▶ 运行此节点', lambda graph, node: self.run_node_list_async([node]),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('⏩ 运行到此节点', lambda graph, node: self.run_to_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
@@ -222,7 +222,12 @@ class CanvasPage(QWidget):
         self.run_btn.setToolTip("运行工作流")
         self.run_btn.clicked.connect(self.run_workflow)
         button_layout.addWidget(self.run_btn)
-
+        # 停止按钮
+        self.stop_btn = ToolButton(FluentIcon.PAUSE, self)
+        self.stop_btn.setToolTip("停止运行")
+        self.stop_btn.clicked.connect(self.stop_workflow)
+        self.stop_btn.setEnabled(False)
+        button_layout.addWidget(self.stop_btn)
         # 导出按钮
         self.export_btn = ToolButton(FluentIcon.SAVE, self)
         self.export_btn.setToolTip("导出工作流")
@@ -751,24 +756,6 @@ class CanvasPage(QWidget):
                 self.property_panel.current_node.id == node.id):
             self.property_panel.update_properties(self.property_panel.current_node)
 
-    def run_single_node(self, node):
-        """异步运行单个节点"""
-        # 通知节点开始运行
-        self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
-
-        # 创建 Worker
-        # 启动异步任务
-        current_python_exe = self.get_current_python_exe()  # 使用当前选择的Python环境
-        worker = Worker(
-            node.execute_sync,
-            self.component_map.get(node.FULL_PATH),
-            True if current_python_exe else False,
-            current_python_exe
-        )
-        worker.signals.finished.connect(lambda result: self.on_node_finished(node, result))
-        worker.signals.error.connect(lambda error: self.on_node_error(node))
-        self.threadpool.start(worker)
-
     def execute_backdrop_loop(self, backdrop_node, loop_config):
         """执行 Backdrop 内的循环"""
         # 获取 Backdrop 内的节点
@@ -871,14 +858,39 @@ class CanvasPage(QWidget):
             self.set_node_status(node, NodeStatus.NODE_STATUS_UNRUN)
         # 创建执行器
         executor = NodeListExecutor(self, nodes, self.get_current_python_exe())  # 使用当前选择的Python环境
-        executor.signals.finished.connect(lambda: self.create_success_info("完成", "工作流执行完成!"))
-        executor.signals.error.connect(lambda: self.create_failed_info("错误", f"工作流执行失败!"))
+        self._current_executor = executor
+
+        executor.signals.finished.connect(self._on_workflow_finished)
+        executor.signals.error.connect(self._on_workflow_error)
         executor.signals.node_started.connect(self.on_node_started_simple)
         executor.signals.node_finished.connect(self.on_node_finished_simple)
         executor.signals.node_error.connect(self.on_node_error_simple)
 
         # 启动执行器
         self.threadpool.start(executor)
+        self.run_btn.setEnabled(False)
+        self.stop_btn.setEnabled(True)
+
+    def stop_workflow(self):
+        if hasattr(self, '_current_executor') and self._current_executor:
+            self._current_executor.cancel()
+            self.create_info("已停止", "正在终止任务...")
+            self.run_btn.setEnabled(True)
+            self.stop_btn.setEnabled(False)
+            self._current_executor = None
+
+    def _on_workflow_finished(self):
+        self._cleanup_execution()
+        self.create_success_info("完成", "工作流执行完成!")
+
+    def _on_workflow_error(self):
+        self._cleanup_execution()
+        self.create_failed_info("错误", "工作流执行失败!")
+
+    def _cleanup_execution(self):
+        self._current_executor = None
+        self.run_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
 
     def on_node_started_simple(self, node_id):
         """简单节点完成回调（用于批量执行）"""

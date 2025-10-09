@@ -132,7 +132,7 @@ class Component(BaseComponent):
         # 解析额外模型配置信息
         extra_body={}
         for item in params.get("model_params"):
-            extra_body[item["key"]] = item["value"]
+            extra_body[item["key"]] = json.loads(item["value"])
 
         try:
             response = client.chat.completions.create(

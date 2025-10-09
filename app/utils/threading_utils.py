@@ -33,7 +33,7 @@ class Worker(QRunnable):
         self.policy = kwargs.pop("policy", "extend")
         self.return_type = kwargs.pop("return_type", "Dict")
         self.kwargs = kwargs
-
+        self._is_cancelled = False
         # ✅ 新增：是否启用进度回调模式
         self.use_progress_callback = kwargs.pop("use_progress_callback", False)
 
@@ -47,8 +47,14 @@ class Worker(QRunnable):
         except:
             self.fn = fn
 
+    def cancel(self):
+        """外部调用以取消任务"""
+        self._is_cancelled = True
+
     @pyqtSlot()
     def run(self):
+        if self._is_cancelled:
+            return
         try:
             if isinstance(self.fn, list):
                 # ========== 旧逻辑：执行多个函数 ==========
@@ -102,35 +108,38 @@ class NodeListExecutor(QRunnable):
         self.main_window = main_window
         self.nodes = nodes
         self.python_exe = python_exe
+        self._is_cancelled = False
+
+    def cancel(self):
+        self._is_cancelled = True
+
+    def _check_cancel(self):
+        return self._is_cancelled
 
     @pyqtSlot()
     def run(self):
         try:
-            node_outputs = {}
-            for i, node in enumerate(self.nodes):
+            for node in self.nodes:
+                if self._is_cancelled:
+                    return
+                self.signals.node_started.emit(node.id)
                 try:
-                    self.signals.node_started.emit(node.id)
-                    # 执行单个节点
-                    if self.python_exe is None:
-                        output = node.execute_sync(
-                            self.main_window.component_map.get(node.FULL_PATH),
-                            use_separate_env=False
-                        )
-                    else:
-                        output = node.execute_sync(
-                            self.main_window.component_map.get(node.FULL_PATH),
-                            python_executable=self.python_exe
-                        )
-                    node_outputs[node.id] = output
+                    output = node.execute_sync(
+                        self.main_window.component_map.get(node.FULL_PATH),
+                        python_executable=self.python_exe,
+                        check_cancel=self._check_cancel  # ✅ 关键：传入取消检查
+                    )
+                    if self._is_cancelled:
+                        return
                     self.signals.node_finished.emit(node.id)
                 except Exception as e:
-                    # 捕获单个节点的错误
                     self.signals.node_error.emit(node.id)
-                    # 可选择继续执行或停止
-                    return
-            self.signals.finished.emit(None)
+                    return  # 停止后续执行
+            if not self._is_cancelled:
+                self.signals.finished.emit(None)
         except Exception as e:
-            self.signals.error.emit()
+            if not self._is_cancelled:
+                self.signals.error.emit(str(e))
 
 
 class PythonDownloadWorker(QThread):
@@ -275,3 +284,22 @@ class AsyncUpdateChecker(QThread):
             result = None
         finally:
             self.finished.emit(result)
+
+
+# === 后台扫描器（避免阻塞 UI）===
+class WorkflowScanner(QObject):
+    finished = pyqtSignal(list)  # List[Path]
+
+    def __init__(self, workflow_dir: Path):
+        super().__init__()
+        self.workflow_dir = workflow_dir
+
+    def scan(self):
+        try:
+            files = list(self.workflow_dir.glob("*.workflow.json"))
+            # 按修改时间倒序（在后台线程中排序）
+            files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            self.finished.emit(files)
+        except Exception as e:
+            print(f"扫描 workflow 目录失败: {e}")
+            self.finished.emit([])
