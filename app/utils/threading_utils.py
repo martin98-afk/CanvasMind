@@ -124,7 +124,7 @@ class NodeListExecutor(QRunnable):
                     return
                 self.signals.node_started.emit(node.id)
                 try:
-                    output = node.execute_sync(
+                    node.execute_sync(
                         self.main_window.component_map.get(node.FULL_PATH),
                         python_executable=self.python_exe,
                         check_cancel=self._check_cancel  # ✅ 关键：传入取消检查

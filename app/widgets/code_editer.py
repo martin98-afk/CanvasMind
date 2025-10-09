@@ -3,9 +3,20 @@ import ast
 import keyword
 import builtins
 
-from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QRect, QSize
+from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QRect, QSize, QPoint
 from PyQt5.QtGui import QFont, QTextCursor, QTextOption, QColor, QPainter, QTextFormat, QPalette, QTextCharFormat, QTextBlockUserData
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPlainTextEdit, QTextEdit, QCompleter
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPlainTextEdit, QTextEdit, QCompleter, QShortcut, QToolTip, QHBoxLayout, QLineEdit, QPushButton, QCheckBox, QLabel, QInputDialog
+
+import os
+import re
+import subprocess
+import sys
+import tempfile
+
+try:
+    import jedi  # type: ignore
+except Exception:
+    jedi = None
 
 from app.utils.python_syntax_highlighter import PythonSyntaxHighlighter
 
@@ -81,6 +92,7 @@ class CodeEditor(QPlainTextEdit):
         super().__init__(parent)
         self.lineNumberArea = LineNumberArea(self)
         self.set_dark_theme()
+        self.setMouseTracking(True)
 
         # 行号区宽度调整
         self.blockCountChanged.connect(self.update_line_number_area_width)
@@ -89,8 +101,26 @@ class CodeEditor(QPlainTextEdit):
 
         self.update_line_number_area_width(0)
 
+        self._hover_timer = QTimer(self)
+        self._hover_timer.setSingleShot(True)
+        self._hover_timer.timeout.connect(self._show_hover_tooltip)
+        self._last_hover_pos = None
+
     def setParentWidget(self, widget):
         self._parent_widget = widget
+
+    def mouseMoveEvent(self, event):
+        self._last_hover_pos = event.pos()
+        # Delay hover tooltip to avoid flicker
+        self._hover_timer.start(400)
+        super().mouseMoveEvent(event)
+
+    def _show_hover_tooltip(self):
+        if not self._parent_widget:
+            return
+        if not self._last_hover_pos:
+            return
+        self._parent_widget._maybe_show_hover_doc(self._last_hover_pos)
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -357,8 +387,12 @@ class CodeEditorWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._setup_auto_sync()
+        # Initialize linting BEFORE UI connects textChanged (to avoid race on first setPlainText)
+        self._setup_linting()
         self._setup_ui()
         self._setup_syntax_highlighting()
+        self._setup_shortcuts()
+        self._suspend_sync_depth = 0
 
 
     def _setup_ui(self):
@@ -376,8 +410,20 @@ class CodeEditorWidget(QWidget):
         self.code_editor.textChanged.connect(self._on_text_changed)
         self.code_editor.installEventFilter(self)
 
-        self.code_editor.setPlainText(DEFAULT_CODE_TEMPLATE)
+        self._replace_all_text(DEFAULT_CODE_TEMPLATE)
+
+        # Find/Replace panel
+        self.find_panel = self._create_find_replace_panel()
+        self.find_panel.setVisible(False)
+
+        layout.addWidget(self.find_panel)
         layout.addWidget(self.code_editor)
+
+        # status line: line:col
+        self.status_label = QLabel("Ln 1, Col 1", self)
+        self.status_label.setStyleSheet("color:#9aa0a6; padding:3px 6px; background:#202124;")
+        layout.addWidget(self.status_label)
+        self.code_editor.cursorPositionChanged.connect(self._update_status_label)
 
     def _setup_syntax_highlighting(self):
         self.highlighter = PythonSyntaxHighlighter(self.code_editor.document())
@@ -398,12 +444,86 @@ class CodeEditorWidget(QWidget):
         self.completer.setCompletionMode(QCompleter.PopupCompletion)
         self.completer.setCaseSensitivity(Qt.CaseInsensitive)
         self.completer.activated.connect(self._insert_completion)
+        self._extra_completions = set()
+
+    def _setup_shortcuts(self):
+        # Ctrl+Space: Jedi completion
+        QShortcut(Qt.CTRL + Qt.Key_Space, self.code_editor, activated=self._trigger_jedi_completion)
+        # Ctrl+Shift+Space: Signature help
+        QShortcut(Qt.CTRL + Qt.SHIFT + Qt.Key_Space, self.code_editor, activated=self._show_signature_help)
+        # Ctrl+B: Go to definition
+        QShortcut(Qt.CTRL + Qt.Key_B, self.code_editor, activated=self._go_to_definition)
+        # Ctrl+F: Toggle find panel
+        QShortcut(Qt.CTRL + Qt.Key_F, self.code_editor, activated=self._toggle_find_panel)
+        # F3 Shift+F3: next/prev
+        QShortcut(Qt.Key_F3, self.code_editor, activated=lambda: self._find_next(backward=False))
+        QShortcut(Qt.SHIFT + Qt.Key_F3, self.code_editor, activated=lambda: self._find_next(backward=True))
+        # Ctrl+H: replace focus
+        QShortcut(Qt.CTRL + Qt.Key_H, self.code_editor, activated=lambda: self._toggle_find_panel(focus_replace=True))
+        # Ctrl+Shift+F: Black format
+        QShortcut(Qt.CTRL + Qt.SHIFT + Qt.Key_F, self.code_editor, activated=self._format_with_black)
+        # Ctrl+G: go to line
+        QShortcut(Qt.CTRL + Qt.Key_G, self.code_editor, activated=self._goto_line)
+
+    def _setup_linting(self):
+        self._lint_timer = QTimer(self)
+        self._lint_timer.setSingleShot(True)
+        self._lint_timer.timeout.connect(self._run_linter)
+        self._lint_results = []
+
+    def _create_find_replace_panel(self):
+        panel = QWidget(self)
+        h = QHBoxLayout(panel)
+        h.setContentsMargins(6, 6, 6, 6)
+        self.find_input = QLineEdit(panel)
+        self.find_input.setPlaceholderText("Find")
+        self.chk_regex = QCheckBox("Regex", panel)
+        self.chk_case = QCheckBox("Aa", panel)
+        btn_prev = QPushButton("Prev", panel)
+        btn_next = QPushButton("Next", panel)
+        self.replace_input = QLineEdit(panel)
+        self.replace_input.setPlaceholderText("Replace")
+        btn_replace = QPushButton("Replace", panel)
+        btn_replace_all = QPushButton("All", panel)
+        self.lbl_hits = QLabel("", panel)
+
+        h.addWidget(self.find_input)
+        h.addWidget(self.chk_regex)
+        h.addWidget(self.chk_case)
+        h.addWidget(btn_prev)
+        h.addWidget(btn_next)
+        h.addSpacing(12)
+        h.addWidget(self.replace_input)
+        h.addWidget(btn_replace)
+        h.addWidget(btn_replace_all)
+        h.addSpacing(12)
+        h.addWidget(self.lbl_hits)
+
+        btn_prev.clicked.connect(lambda: self._find_next(backward=True))
+        btn_next.clicked.connect(lambda: self._find_next(backward=False))
+        btn_replace.clicked.connect(self._replace_once)
+        btn_replace_all.clicked.connect(self._replace_all)
+        self.find_input.textChanged.connect(self._update_find_highlight)
+        self.find_input.returnPressed.connect(lambda: self._find_next(backward=False))
+        self.replace_input.returnPressed.connect(self._replace_once)
+
+        panel.setStyleSheet("""
+            QWidget { background: #202124; }
+            QLineEdit { background:#2b2d30; color:#e8eaed; border:1px solid #3c4043; padding:3px 6px; }
+            QLabel { color:#9aa0a6; }
+            QCheckBox { color:#c0c4c9; }
+            QPushButton { background:#303134; color:#e8eaed; border:1px solid #3c4043; padding:3px 6px; }
+            QPushButton:hover { background:#3a3b3e; }
+        """)
+
+        return panel
 
     def _insert_completion(self, completion):
         cursor = self.code_editor.textCursor()
         cursor.select(QTextCursor.WordUnderCursor)
         cursor.insertText(completion)
         self.code_editor.setTextCursor(cursor)
+        self.completer.popup().hide()
 
     def _text_under_cursor(self):
         cursor = self.code_editor.textCursor()
@@ -519,6 +639,9 @@ class CodeEditorWidget(QWidget):
                 if key == Qt.Key_D:
                     self._duplicate_line()
                     return True
+                if key == Qt.Key_F:
+                    self._toggle_find_panel()
+                    return True
 
             # ========== 触发补全（非标识符字符不触发） ==========
             if not self.completer.popup().isVisible():
@@ -531,6 +654,300 @@ class CodeEditorWidget(QWidget):
             return super().eventFilter(obj, event)
 
         return super().eventFilter(obj, event)
+
+    # ===== Jedi integration =====
+    def _trigger_jedi_completion(self):
+        if jedi is None:
+            return
+        source = self.get_code()
+        tc = self.code_editor.textCursor()
+        line = tc.blockNumber() + 1
+        col = tc.positionInBlock()
+        try:
+            script = jedi.Script(source=source)
+            comps = script.complete(line=line, column=col)
+            if not comps:
+                words = sorted(self._buffer_symbols_union())
+            else:
+                words = sorted({c.name for c in comps} | self._buffer_symbols_union())
+            self.completer.model().setStringList(words)
+            # set prefix to current word
+            prefix = self._text_under_cursor()
+            self.completer.setCompletionPrefix(prefix)
+            self._show_completer_popup()
+        except Exception:
+            pass
+
+    def set_extra_completions(self, words):
+        try:
+            for w in words or []:
+                if isinstance(w, str) and w:
+                    self._extra_completions.add(w)
+        except Exception:
+            pass
+
+    def _buffer_symbols_union(self):
+        symbols = set()
+        try:
+            code = self.get_code()
+            for m in re.finditer(r"\b[A-Za-z_][A-Za-z0-9_]*\b", code):
+                symbols.add(m.group(0))
+            for m in re.finditer(r"\b(inputs|outputs|properties)\s*=\s*(\[|\{)", code):
+                symbols.add(m.group(1))
+        except Exception:
+            pass
+        return symbols | self._extra_completions
+
+    def _show_completer_popup(self):
+        popup = self.completer.popup()
+        model = self.completer.completionModel()
+        if model.rowCount() == 0:
+            popup.hide()
+            return
+        max_rows = 10
+        row_height = popup.sizeHintForRow(0) or 20
+        popup_height = min(model.rowCount(), max_rows) * row_height + 4
+        popup_width = max(popup.sizeHintForColumn(0) + popup.verticalScrollBar().sizeHint().width(), 180)
+        cursor_rect = self.code_editor.cursorRect()
+        point = self.code_editor.mapToGlobal(cursor_rect.bottomLeft())
+        popup.setGeometry(point.x(), point.y(), popup_width, popup_height)
+        popup.show()
+
+    def _show_signature_help(self):
+        if jedi is None:
+            return
+        source = self.get_code()
+        tc = self.code_editor.textCursor()
+        line = tc.blockNumber() + 1
+        col = tc.positionInBlock()
+        try:
+            script = jedi.Script(source=source)
+            sigs = script.get_signatures(line=line, column=col)
+            if not sigs:
+                return
+            sig = sigs[0]
+            label = sig.to_string()
+            QToolTip.showText(self.code_editor.mapToGlobal(self.code_editor.cursorRect().bottomRight()), label, self.code_editor)
+        except Exception:
+            pass
+
+    def _go_to_definition(self):
+        if jedi is None:
+            return
+        source = self.get_code()
+        tc = self.code_editor.textCursor()
+        line = tc.blockNumber() + 1
+        col = tc.positionInBlock()
+        try:
+            script = jedi.Script(source=source)
+            defs = script.goto(line=line, column=col, follow_imports=True, follow_builtin_imports=True)
+            if not defs:
+                return
+            d = defs[0]
+            if d.line is None or d.column is None:
+                return
+            self._jump_to(d.line, d.column)
+        except Exception:
+            pass
+
+    def _jump_to(self, line, column):
+        cursor = self.code_editor.textCursor()
+        cursor.movePosition(QTextCursor.Start)
+        if line > 1:
+            cursor.movePosition(QTextCursor.Down, n=line - 1)
+        cursor.movePosition(QTextCursor.Right, n=column)
+        self.code_editor.setTextCursor(cursor)
+        self.code_editor.setFocus()
+
+    # ===== Hover docs =====
+    def _maybe_show_hover_doc(self, pos: QPoint):
+        if jedi is None:
+            return
+        cursor = self.code_editor.cursorForPosition(pos)
+        if not cursor or cursor.atBlockEnd():
+            return
+        cursor.select(QTextCursor.WordUnderCursor)
+        if not cursor.selectedText():
+            return
+        tc = self.code_editor.textCursor()
+        self.code_editor.setTextCursor(cursor)
+        try:
+            source = self.get_code()
+            line = cursor.blockNumber() + 1
+            col = cursor.positionInBlock()
+            script = jedi.Script(source=source)
+            helps = script.help(line=line, column=col)
+            doc = None
+            if helps:
+                doc = helps[0].docstring()
+            if not doc:
+                self.code_editor.setTextCursor(tc)
+                return
+            global_pos = self.code_editor.mapToGlobal(self.code_editor.cursorRect(cursor).bottomRight())
+            QToolTip.showText(global_pos, doc, self.code_editor)
+        except Exception:
+            pass
+        finally:
+            self.code_editor.setTextCursor(tc)
+
+    # ===== Find/Replace =====
+    def _toggle_find_panel(self, focus_replace=False):
+        self.find_panel.setVisible(not self.find_panel.isVisible())
+        if self.find_panel.isVisible():
+            sel = self.code_editor.textCursor().selectedText().replace('\u2029', '\n')
+            if sel and '\n' not in sel:
+                self.find_input.setText(sel)
+            (self.replace_input if focus_replace else self.find_input).setFocus()
+
+    def _pattern(self):
+        text = self.find_input.text()
+        if not text:
+            return None
+        flags = 0 if self.chk_case.isChecked() else re.IGNORECASE
+        try:
+            if self.chk_regex.isChecked():
+                return re.compile(text, flags)
+            return re.compile(re.escape(text), flags)
+        except re.error:
+            return None
+
+    def _find_next(self, backward=False):
+        pat = self._pattern()
+        if not pat:
+            return
+        doc_text = self.get_code()
+        cursor = self.code_editor.textCursor()
+        pos = cursor.position()
+        self._highlight_all_matches(pat, doc_text)
+        if backward:
+            hay = doc_text[:pos]
+            matches = list(pat.finditer(hay))
+            if not matches:
+                return
+            m = matches[-1]
+        else:
+            m = pat.search(doc_text, pos)
+            if not m:
+                # wrap search
+                m = pat.search(doc_text, 0)
+                if not m:
+                    return
+        start, end = m.start(), m.end()
+        self._set_selection(start, end)
+        self._update_hits_count(pat, doc_text)
+
+    def _highlight_all_matches(self, pat, text):
+        try:
+            extras = [e for e in self.code_editor.extraSelections() if getattr(e, 'searchHighlight', False) is False]
+        except Exception:
+            extras = []
+        fmt = QTextCharFormat()
+        fmt.setBackground(QColor('#3949ab'))
+        fmt.setForeground(QColor('#ffffff'))
+        for m in pat.finditer(text):
+            cur = self.code_editor.textCursor()
+            cur.setPosition(m.start())
+            cur.setPosition(m.end(), QTextCursor.KeepAnchor)
+            ex = QTextEdit.ExtraSelection()
+            ex.format = fmt
+            ex.cursor = cur
+            ex.searchHighlight = True
+            extras.append(ex)
+        self.code_editor.setExtraSelections(extras)
+
+    def _set_selection(self, start, end):
+        cursor = self.code_editor.textCursor()
+        cursor.setPosition(start)
+        cursor.setPosition(end, QTextCursor.KeepAnchor)
+        self.code_editor.setTextCursor(cursor)
+        self.code_editor.centerCursor()
+
+    def _update_hits_count(self, pat, text):
+        try:
+            count = len(list(pat.finditer(text)))
+        except Exception:
+            count = 0
+        self.lbl_hits.setText(f"{count} hits")
+
+    def _update_find_highlight(self):
+        # lightweight: only update count for now
+        pat = self._pattern()
+        if not pat:
+            self.lbl_hits.setText("")
+            return
+        self._update_hits_count(pat, self.get_code())
+
+    def _replace_once(self):
+        sel = self.code_editor.textCursor().selectedText().replace('\u2029', '\n')
+        pat = self._pattern()
+        if not pat:
+            return
+        replacement = self.replace_input.text()
+        if sel:
+            try:
+                new_text = pat.sub(replacement, sel, count=1)
+            except Exception:
+                return
+            self.code_editor.textCursor().insertText(new_text)
+            return
+        self._find_next(backward=False)
+
+    def _replace_all(self):
+        pat = self._pattern()
+        if not pat:
+            return
+        replacement = self.replace_input.text()
+        text = self.get_code()
+        try:
+            new_text, n = pat.subn(replacement, text)
+        except Exception:
+            return
+        if n > 0:
+            self._replace_all_text(new_text)
+            self.lbl_hits.setText(f"{n} replaced")
+
+    # ===== Black formatting =====
+    def _format_with_black(self):
+        code = self.get_code()
+        cursor_pos = self.code_editor.textCursor().position()
+        try:
+            # Try using python -m black via subprocess for reliability
+            with tempfile.TemporaryDirectory() as td:
+                tmp_file = os.path.join(td, "tmp.py")
+                with open(tmp_file, "w", encoding="utf-8") as f:
+                    f.write(code)
+                # Use --quiet to minimize output
+                cmd = [sys.executable, "-m", "black", "--quiet", "--line-length", "88", tmp_file]
+                proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                if proc.returncode != 0:
+                    return
+                with open(tmp_file, "r", encoding="utf-8") as f:
+                    formatted = f.read()
+        except Exception:
+            # Fallback: do nothing on failure
+            return
+        if formatted and formatted != code:
+            self._replace_all_text(formatted)
+            c = self.code_editor.textCursor()
+            c.setPosition(min(cursor_pos, len(formatted)))
+            self.code_editor.setTextCursor(c)
+
+    def _replace_all_text(self, new_text):
+        scrollbar = self.code_editor.verticalScrollBar()
+        scroll_pos = scrollbar.value()
+        tc = self.code_editor.textCursor()
+        sel_start = tc.selectionStart()
+        sel_end = tc.selectionEnd()
+        tc.beginEditBlock()
+        tc.select(QTextCursor.Document)
+        tc.insertText(new_text)
+        tc.endEditBlock()
+        self.code_editor.setTextCursor(tc)
+        if sel_start != sel_end:
+            tc.setPosition(max(0, min(sel_start, len(new_text))))
+            tc.setPosition(max(0, min(sel_end, len(new_text))), QTextCursor.KeepAnchor)
+            self.code_editor.setTextCursor(tc)
+        scrollbar.setValue(scroll_pos)
 
     def _handle_shift_enter(self, cursor):
         cursor.movePosition(QTextCursor.EndOfLine)
@@ -669,12 +1086,42 @@ class CodeEditorWidget(QWidget):
 
     def _toggle_comment(self):
         cursor = self.code_editor.textCursor()
-        cursor.select(QTextCursor.LineUnderCursor)
-        line = cursor.selectedText().replace('\u2029', '')
-        if line.strip().startswith("#"):
-            cursor.insertText(line.lstrip('# ').lstrip())
+        doc = self.code_editor.document()
+        start = cursor.selectionStart()
+        end = cursor.selectionEnd()
+        c = QTextCursor(doc)
+        c.setPosition(start)
+        c.movePosition(QTextCursor.StartOfLine)
+        start_line_pos = c.position()
+        c.setPosition(end)
+        if c.atBlockStart() and end > start:
+            c.movePosition(QTextCursor.Left)
+        c.movePosition(QTextCursor.EndOfLine)
+        end_line_pos = c.position()
+        c.setPosition(start_line_pos)
+        c.setPosition(end_line_pos, QTextCursor.KeepAnchor)
+        lines = c.selectedText().split('\u2029')
+        def is_commented(s):
+            return bool(re.match(r"^\s*#", s))
+        all_commented = all((t.strip() == '' or is_commented(t)) for t in lines)
+        new_lines = []
+        if all_commented:
+            for t in lines:
+                if not t.strip():
+                    new_lines.append(t)
+                    continue
+                new_lines.append(re.sub(r"^(\s*)#\s?", r"\1", t))
         else:
-            cursor.insertText("# " + line)
+            for t in lines:
+                if not t.strip():
+                    new_lines.append(t)
+                else:
+                    m = re.match(r"^(\s*)", t)
+                    indent = m.group(1) if m else ''
+                    new_lines.append(f"{indent}# " + t[len(indent):])
+        cursor.beginEditBlock()
+        c.insertText("\n".join(new_lines))
+        cursor.endEditBlock()
 
     def _duplicate_line(self):
         cursor = self.code_editor.textCursor()
@@ -715,6 +1162,9 @@ class CodeEditorWidget(QWidget):
     def _on_text_changed(self):
         self.code_changed.emit()
         self._sync_timer.start(800)
+        # Guard: lint timer may not exist if setup failed in environment
+        if hasattr(self, '_lint_timer') and self._lint_timer is not None:
+            self._lint_timer.start(1200)
 
         # 自动关闭补全窗口
         current_word = self._text_under_cursor()
@@ -735,6 +1185,8 @@ class CodeEditorWidget(QWidget):
             self._mark_syntax_error(e)
         except Exception as e:
             print(f"解析代码失败: {e}")
+        # after AST parse, also render lints if any
+        self._apply_lint_decorations()
 
     def _parse_component_class(self, class_node, code):
         component_info = {"name": "", "category": "", "description": ""}
@@ -763,18 +1215,137 @@ class CodeEditorWidget(QWidget):
         extraSelections.append(selection)
         self.code_editor.setExtraSelections(extraSelections)
 
+    def _apply_lint_decorations(self):
+        if not self._lint_results:
+            return
+        extras = list(self.code_editor.extraSelections())
+        for (ln, col, msg) in self._lint_results:
+            try:
+                cur = self.code_editor.textCursor()
+                cur.movePosition(QTextCursor.Start)
+                if ln > 1:
+                    cur.movePosition(QTextCursor.Down, n=ln - 1)
+                cur.movePosition(QTextCursor.Right, n=max(0, col))
+                cur.movePosition(QTextCursor.NextWord, QTextCursor.KeepAnchor)
+                ex = QTextEdit.ExtraSelection()
+                fmt = QTextCharFormat()
+                fmt.setUnderlineStyle(QTextCharFormat.WaveUnderline)
+                fmt.setUnderlineColor(QColor('#cc7832'))
+                ex.format = fmt
+                ex.cursor = cur
+                extras.append(ex)
+            except Exception:
+                continue
+        self.code_editor.setExtraSelections(extras)
+
+    def _run_linter(self):
+        code = self.get_code()
+        if not code.strip():
+            self._lint_results = []
+            return
+        # Try ruff first, then flake8
+        self._lint_results = []
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                tmp = os.path.join(td, 'lint.py')
+                with open(tmp, 'w', encoding='utf-8') as f:
+                    f.write(code)
+                # ruff json
+                cmd = [sys.executable, '-m', 'ruff', 'check', '--quiet', '--format', 'json', tmp]
+                proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+                if proc.returncode in (0, 1) and proc.stdout:
+                    import json as _json
+                    try:
+                        items = _json.loads(proc.stdout)
+                        for it in items:
+                            loc = it.get('location', {})
+                            ln = loc.get('row', 1)
+                            col = loc.get('column', 0)
+                            msg = it.get('message', '')
+                            self._lint_results.append((ln, col, msg))
+                    except Exception:
+                        pass
+                elif proc.returncode == 2:
+                    pass
+        except Exception:
+            # fallback to flake8
+            try:
+                with tempfile.TemporaryDirectory() as td:
+                    tmp = os.path.join(td, 'lint.py')
+                    with open(tmp, 'w', encoding='utf-8') as f:
+                        f.write(code)
+                    cmd = [sys.executable, '-m', 'flake8', tmp, '--format=%(row)d:%(col)d:%(code)s %(text)s']
+                    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+                    if proc.stdout:
+                        for line in proc.stdout.splitlines():
+                            try:
+                                parts = line.strip().split(':', 3)
+                                if len(parts) == 4:
+                                    ln = int(parts[0])
+                                    col = int(parts[1])
+                                    msg = parts[3]
+                                    self._lint_results.append((ln, col, msg))
+                            except Exception:
+                                continue
+            except Exception:
+                self._lint_results = []
+        self._apply_lint_decorations()
+
+    # ===== Status line and navigation =====
+    def _update_status_label(self):
+        cur = self.code_editor.textCursor()
+        ln = cur.blockNumber() + 1
+        col = cur.positionInBlock() + 1
+        self.status_label.setText(f"Ln {ln}, Col {col}")
+
+    def _goto_line(self):
+        cur = self.code_editor.textCursor()
+        ln = cur.blockNumber() + 1
+        num, ok = QInputDialog.getInt(self, "Go to Line", "Line number:", ln, 1, 10**9, 1)
+        if not ok:
+            return
+        cursor = self.code_editor.textCursor()
+        cursor.movePosition(QTextCursor.Start)
+        if num > 1:
+            cursor.movePosition(QTextCursor.Down, n=num - 1)
+        self.code_editor.setTextCursor(cursor)
+        self.code_editor.centerCursor()
+
     def get_code(self):
         return self.code_editor.toPlainText().replace('\r\n', '\n').replace('\r', '\n')
 
     def set_code(self, code):
+        self.replace_text_preserving_view(code)
+
+    # ---- Safe update helpers ----
+    def suspend_sync(self):
+        self._suspend_sync_depth += 1
+
+    def resume_sync(self):
+        if self._suspend_sync_depth > 0:
+            self._suspend_sync_depth -= 1
+
+    def replace_text_preserving_view(self, new_text: str):
+        doc_text = self.get_code()
+        if new_text == doc_text:
+            return
         scrollbar = self.code_editor.verticalScrollBar()
-        current_scroll_pos = scrollbar.value()
-        current_cursor_pos = self.code_editor.textCursor().position()
-
-        normalized = code.replace('\r\n', '\n').replace('\r', '\n')
-        self.code_editor.setPlainText(normalized)
-
-        scrollbar.setValue(current_scroll_pos)
+        scroll_pos = scrollbar.value()
         cursor = self.code_editor.textCursor()
-        cursor.setPosition(current_cursor_pos)
-        self.code_editor.setTextCursor(cursor)
+        sel_start = cursor.selectionStart()
+        sel_end = cursor.selectionEnd()
+        self.code_editor.blockSignals(True)
+        cursor.beginEditBlock()
+        cursor.select(QTextCursor.Document)
+        cursor.insertText(new_text.replace('\r\n', '\n').replace('\r', '\n'))
+        cursor.endEditBlock()
+        self.code_editor.blockSignals(False)
+        # restore selection
+        c = self.code_editor.textCursor()
+        if sel_start != sel_end:
+            c.setPosition(max(0, min(sel_start, len(new_text))))
+            c.setPosition(max(0, min(sel_end, len(new_text))), QTextCursor.KeepAnchor)
+        else:
+            c.setPosition(max(0, min(cursor.position(), len(new_text))))
+        self.code_editor.setTextCursor(c)
+        scrollbar.setValue(scroll_pos)

@@ -1,0 +1,160 @@
+{
+  "version": "1.0",
+  "graph": {
+    "nodes": {
+      "0x22b2dac5f00": {
+        "name": "长文本输入 1",
+        "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
+        "pos": [
+          -702.6407203017791,
+          2140.7224856827934
+        ],
+        "custom": {
+          "FULL_PATH": "数据集成/长文本输入",
+          "FILE_PATH": "",
+          "params": {
+            "input_text": "我的需求是开发一个大模型对话组件"
+          },
+          "input_values": {}
+        }
+      },
+      "0x22b33afaad0": {
+        "name": "JSON文本包装",
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
+        "pos": [
+          -144.79213432850406,
+          2141.3077796346497
+        ],
+        "custom": {
+          "FULL_PATH": "大模型组件/JSON文本包装",
+          "FILE_PATH": "",
+          "params": {
+            "prop_0": "text"
+          },
+          "input_values": {
+            "input1": "我的需求是开发一个大模型对话组件"
+          }
+        }
+      },
+      "0x22b33b12590": {
+        "name": "提示词模板 3",
+        "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
+        "pos": [
+          282.2639898654651,
+          2139.0697758616793
+        ],
+        "custom": {
+          "FULL_PATH": "大模型组件/提示词模板",
+          "FILE_PATH": "",
+          "params": {
+            "template": "##  任务\n根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码\n\n## 组件输入输出参数定义代码\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n\n## 组件属性参数定义代码\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n## 我的组件样例代码\nclass Component(BaseComponent):\n    name = \"提示词模板\"\n    category = \"大模型组件\"\n    description = \"\"\n    requirements = \"\"\n\n    inputs = [\n        PortDefinition(name=\"variables\", label=\"变量字典\", type=ArgumentType.JSON),\n    ]\n    outputs = [\n        PortDefinition(name=\"prompt\", label=\"生成的提示词\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"template\": PropertyDefinition(\n            type=PropertyType.LONGTEXT,\n            default=\"\"\"你好，{{name}}！今天是{{day}}。\"\"\",\n            label=\"提示词模板\",\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        import re\n        self.logger.info(inputs)\n        template = params.get(\"template\", \"\")\n        variables = inputs.get(\"variables\", {}) if inputs else {}\n\n        if isinstance(variables, str):\n            import json\n            try:\n                variables = json.loads(variables)\n            except:\n                variables = {}\n\n        # 替换 {{key}} 为变量值\n        def replace_match(match):\n            key = match.group(1)\n            return str(variables.get(key, match.group(0)))\n\n        prompt = re.sub(r\"\\{\\{(\\w+)\\}\\}\", replace_match, template)\n        self.logger.info(prompt)\n        \n        return {\"prompt\": prompt}\n\n## 我的组件开发需求\n{{text}}\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码\n"
+          },
+          "input_values": {
+            "variables": "{\n  \"text\": \"我的需求是开发一个大模型对话组件\"\n}"
+          }
+        }
+      },
+      "0x22b2d35e680": {
+        "name": "大模型对话",
+        "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
+        "pos": [
+          768.8395765637517,
+          2677.7046550617647
+        ],
+        "custom": {
+          "FULL_PATH": "大模型组件/大模型对话",
+          "FILE_PATH": "",
+          "params": {
+            "model": "qwen/qwen3-30b-a3b",
+            "api_key": "",
+            "base_url": "http://127.0.0.1:1234/v1",
+            "system_prompt": "你是一个代码编辑专家，能够根据用户的需求生成专业的python代码。",
+            "temperature": 0.7,
+            "max_tokens": "1000",
+            "model_params": [
+              {
+                "key": "chat_template_kwargs",
+                "value": "{\"enable_thinking\": false}"
+              }
+            ]
+          },
+          "input_values": {
+            "user_input": "##  任务\n根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码\n\n## 组件输入输出参数定义代码\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n\n## 组件属性参数定义代码\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n## 我的组件样例代码\nclass Component(BaseComponent):\n    name = \"提示词模板\"\n    category = \"大模型组件\"\n    description = \"\"\n    requirements = \"\"\n\n    inputs = [\n        PortDefinition(name=\"variables\", label=\"变量字典\", type=ArgumentType.JSON),\n    ]\n    outputs = [\n        PortDefinition(name=\"prompt\", label=\"生成的提示词\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"template\": PropertyDefinition(\n            type=PropertyType.LONGTEXT,\n            default=\"\"\"你好，{{name}}！今天是{{day}}。\"\"\",\n            label=\"提示词模板\",\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        import re\n        self.logger.info(inputs)\n        template = params.get(\"template\", \"\")\n        variables = inputs.get(\"variables\", {}) if inputs else {}\n\n        if isinstance(variables, str):\n            import json\n            try:\n                variables = json.loads(variables)\n            except:\n                variables = {}\n\n        # 替换 {{key}} 为变量值\n        def replace_match(match):\n            key = match.group(1)\n            return str(variables.get(key, match.group(0)))\n\n        prompt = re.sub(r\"\\{\\{(\\w+)\\}\\}\", replace_match, template)\n        self.logger.info(prompt)\n        \n        return {\"prompt\": prompt}\n\n## 我的组件开发需求\n我的需求是开发一个大模型对话组件\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码\n",
+            "history": "[]"
+          }
+        }
+      }
+    },
+    "connections": [
+      {
+        "out": [
+          "0x22b33b12590",
+          "prompt"
+        ],
+        "in": [
+          "0x22b2d35e680",
+          "user_input"
+        ]
+      },
+      {
+        "out": [
+          "0x22b2dac5f00",
+          "output"
+        ],
+        "in": [
+          "0x22b33afaad0",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x22b33afaad0",
+          "output1"
+        ],
+        "in": [
+          "0x22b33b12590",
+          "variables"
+        ]
+      }
+    ],
+    "grid": null
+  },
+  "runtime": {
+    "environment": "3.11",
+    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.11\\python.exe",
+    "node_id2stable_key": {
+      "0x22b2dac5f00": "数据集成/长文本输入||长文本输入 1",
+      "0x22b33afaad0": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x22b33b12590": "大模型组件/提示词模板||提示词模板 3",
+      "0x22b2d35e680": "大模型组件/大模型对话||大模型对话"
+    },
+    "node_states": {
+      "数据集成/长文本输入||长文本输入 1": "success",
+      "大模型组件/JSON文本包装||JSON文本包装": "success",
+      "大模型组件/提示词模板||提示词模板 3": "success",
+      "大模型组件/大模型对话||大模型对话": "success"
+    },
+    "node_outputs": {
+      "数据集成/长文本输入||长文本输入 1": {
+        "output": "我的需求是开发一个大模型对话组件"
+      },
+      "大模型组件/JSON文本包装||JSON文本包装": {
+        "output1": "{\n  \"text\": \"我的需求是开发一个大模型对话组件\"\n}"
+      },
+      "大模型组件/提示词模板||提示词模板 3": {
+        "prompt": "##  任务\n根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码\n\n## 组件输入输出参数定义代码\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n\n## 组件属性参数定义代码\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n## 我的组件样例代码\nclass Component(BaseComponent):\n    name = \"提示词模板\"\n    category = \"大模型组件\"\n    description = \"\"\n    requirements = \"\"\n\n    inputs = [\n        PortDefinition(name=\"variables\", label=\"变量字典\", type=ArgumentType.JSON),\n    ]\n    outputs = [\n        PortDefinition(name=\"prompt\", label=\"生成的提示词\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"template\": PropertyDefinition(\n            type=PropertyType.LONGTEXT,\n            default=\"\"\"你好，{{name}}！今天是{{day}}。\"\"\",\n            label=\"提示词模板\",\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        import re\n        self.logger.info(inputs)\n        template = params.get(\"template\", \"\")\n        variables = inputs.get(\"variables\", {}) if inputs else {}\n\n        if isinstance(variables, str):\n            import json\n            try:\n                variables = json.loads(variables)\n            except:\n                variables = {}\n\n        # 替换 {{key}} 为变量值\n        def replace_match(match):\n            key = match.group(1)\n            return str(variables.get(key, match.group(0)))\n\n        prompt = re.sub(r\"\\{\\{(\\w+)\\}\\}\", replace_match, template)\n        self.logger.info(prompt)\n        \n        return {\"prompt\": prompt}\n\n## 我的组件开发需求\n我的需求是开发一个大模型对话组件\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码\n"
+      },
+      "大模型组件/大模型对话||大模型对话": {
+        "response": "<think>\n好的，我需要根据用户提供的信息生成一个符合要求的大模型对话组件代码。首先，我要仔细阅读用户的需求和已有的代码结构。\n\n用户的任务是自动生成Python组件代码，已经提供了ArgumentType、PortDefinition、PropertyType和PropertyDefinition这些类的定义。但用户要求输出的代码不需要包含这些参数定义部分，所以我的生成代码中不能有这些类的定义，只需要关注组件本身的实现。\n\n接下来，我需要分析用户提供的样例代码。样例是一个名为“提示词模板”的组件，它接收一个JSON类型的输入variables，并通过替换模板中的变量生成prompt输出。属性里有一个长文本的template参数，用于定义提示词模板。\n\n用户的当前需求是开发一个大模型对话组件。这可能涉及到与大模型的交互，比如调用API、处理对话历史、生成回复等。需要确定这个组件的具体功能和输入输出。\n\n根据样例代码的结构，组件类继承自BaseComponent，并包含name、category、description、requirements等属性，以及inputs、outputs、properties定义，还有run方法。\n\n我需要考虑大模型对话组件可能的功能。例如，可能需要接收用户输入的对话历史，生成回复。或者进行意图识别、对话管理等。但具体功能需要根据用户的实际需求来定。\n\n假设这个大模型对话组件的主要功能是基于给定的对话历史生成回复。那么输入可能包括对话历史（如列表或字符串），输出是生成的回复文本。属性可能包括模型参数，比如温度、最大长度等。\n\n接下来，我需要构建inputs和outputs部分。例如：\n\ninputs可能有：\n- \"dialogue_history\": 类型可能是TEXT或ARRAY，用于接收对话历史。\n- 可能还有其他输入，如用户查询等。\n\noutputs可能有：\n- \"response\": 生成的回复文本。\n\n属性properties可能包括：\n- model_name: 下拉框选择不同的模型\n- temperature: 范围类型，控制生成随机性\n- max_length: 整数，最大生成长度\n- top_p: 浮点数，用于核采样\n\n但需要根据用户的具体需求调整。由于用户没有给出详细的需求，可能需要做一些合理的假设。\n\n另外，用户的代码要求中提到第三方工具包只能在函数内导入，不能在文件开头导入，并且不要引入Dict、List这些类型定义。所以在run方法中如果需要用到如re、json等模块，应该在函数内部导入，但根据样例代码，似乎允许在文件开头导入，不过用户可能希望避免在全局导入，所以需要确认。\n\n但根据用户的样例代码，在run方法中使用了re和json的导入，比如：\n\ndef run(self, params, inputs = None):\n    import re\n    self.logger.info(inputs)\n    template = params.get(\"template\", \"\")\n    variables = inputs.get(\"variables\", {}) if inputs else {}\n\n    if isinstance(variables, str):\n        import json\n        try:\n            variables = json.loads(variables)\n        except:\n            variables = {}\n\n所以，用户允许在函数内部导入模块。因此，在生成的代码中，如果需要使用其他库如requests、torch等，应该在run方法内导入。\n\n接下来，构建组件类的结构：\n\nclass Component(BaseComponent):\n    name = \"大模型对话组件\"\n    category = \"大模型组件\"\n    description = \"基于对话历史生成大模型回复\"\n    requirements = \"\"  # 可能需要安装的依赖\n\n    inputs = [\n        PortDefinition(name=\"dialogue_history\", label=\"对话历史\", type=ArgumentType.TEXT),\n    ]\n    outputs = [\n        PortDefinition(name=\"response\", label=\"生成的回复\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"model_name\": PropertyDefinition(\n            type=PropertyType.CHOICE,\n            choices=[\"gpt-3.5-turbo\", \"gpt-4\", \"chatglm\"],\n            default=\"gpt-3.5-turbo\",\n            label=\"模型名称\"\n        ),\n        \"temperature\": PropertyDefinition(\n            type=PropertyType.RANGE,\n            min=0.0,\n            max=1.0,\n            step=0.1,\n            default=0.7,\n            label=\"温度\"\n        ),\n        \"max_length\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=200,\n            label=\"最大长度\"\n        )\n    }\n\n    def run(self, params, inputs=None):\n        # 实现对话生成逻辑\n        pass\n\n但是需要考虑具体的实现方式。例如，如果使用某个API，可能需要在run中调用相应的接口。比如假设使用OpenAI的API：\n\ndef run(self, params, inputs=None):\n    import openai\n    dialogue_history = inputs.get(\"dialogue_history\", \"\")\n    model_name = params",
+        "raw_output": "{\n  \"id\": \"chatcmpl-lhgpo6wg68qm8434i9lf6d\",\n  \"choices\": [\n    {\n      \"finish_reason\": \"length\",\n      \"index\": 0,\n      \"logprobs\": null,\n      \"message\": {\n        \"content\": \"<think>\\n好的，我需要根据用户提供的信息生成一个符合要求的大模型对话组件代码。首先，我要仔细阅读用户的需求和已有的代码结构。\\n\\n用户的任务是自动生成Python组件代码，已经提供了ArgumentType、PortDefinition、PropertyType和PropertyDefinition这些类的定义。但用户要求输出的代码不需要包含这些参数定义部分，所以我的生成代码中不能有这些类的定义，只需要关注组件本身的实现。\\n\\n接下来，我需要分析用户提供的样例代码。样例是一个名为“提示词模板”的组件，它接收一个JSON类型的输入variables，并通过替换模板中的变量生成prompt输出。属性里有一个长文本的template参数，用于定义提示词模板。\\n\\n用户的当前需求是开发一个大模型对话组件。这可能涉及到与大模型的交互，比如调用API、处理对话历史、生成回复等。需要确定这个组件的具体功能和输入输出。\\n\\n根据样例代码的结构，组件类继承自BaseComponent，并包含name、category、description、requirements等属性，以及inputs、outputs、properties定义，还有run方法。\\n\\n我需要考虑大模型对话组件可能的功能。例如，可能需要接收用户输入的对话历史，生成回复。或者进行意图识别、对话管理等。但具体功能需要根据用户的实际需求来定。\\n\\n假设这个大模型对话组件的主要功能是基于给定的对话历史生成回复。那么输入可能包括对话历史（如列表或字符串），输出是生成的回复文本。属性可能包括模型参数，比如温度、最大长度等。\\n\\n接下来，我需要构建inputs和outputs部分。例如：\\n\\ninputs可能有：\\n- \\\"dialogue_history\\\": 类型可能是TEXT或ARRAY，用于接收对话历史。\\n- 可能还有其他输入，如用户查询等。\\n\\noutputs可能有：\\n- \\\"response\\\": 生成的回复文本。\\n\\n属性properties可能包括：\\n- model_name: 下拉框选择不同的模型\\n- temperature: 范围类型，控制生成随机性\\n- max_length: 整数，最大生成长度\\n- top_p: 浮点数，用于核采样\\n\\n但需要根据用户的具体需求调整。由于用户没有给出详细的需求，可能需要做一些合理的假设。\\n\\n另外，用户的代码要求中提到第三方工具包只能在函数内导入，不能在文件开头导入，并且不要引入Dict、List这些类型定义。所以在run方法中如果需要用到如re、json等模块，应该在函数内部导入，但根据样例代码，似乎允许在文件开头导入，不过用户可能希望避免在全局导入，所以需要确认。\\n\\n但根据用户的样例代码，在run方法中使用了re和json的导入，比如：\\n\\ndef run(self, params, inputs = None):\\n    import re\\n    self.logger.info(inputs)\\n    template = params.get(\\\"template\\\", \\\"\\\")\\n    variables = inputs.get(\\\"variables\\\", {}) if inputs else {}\\n\\n    if isinstance(variables, str):\\n        import json\\n        try:\\n            variables = json.loads(variables)\\n        except:\\n            variables = {}\\n\\n所以，用户允许在函数内部导入模块。因此，在生成的代码中，如果需要使用其他库如requests、torch等，应该在run方法内导入。\\n\\n接下来，构建组件类的结构：\\n\\nclass Component(BaseComponent):\\n    name = \\\"大模型对话组件\\\"\\n    category = \\\"大模型组件\\\"\\n    description = \\\"基于对话历史生成大模型回复\\\"\\n    requirements = \\\"\\\"  # 可能需要安装的依赖\\n\\n    inputs = [\\n        PortDefinition(name=\\\"dialogue_history\\\", label=\\\"对话历史\\\", type=ArgumentType.TEXT),\\n    ]\\n    outputs = [\\n        PortDefinition(name=\\\"response\\\", label=\\\"生成的回复\\\", type=ArgumentType.TEXT),\\n    ]\\n\\n    properties = {\\n        \\\"model_name\\\": PropertyDefinition(\\n            type=PropertyType.CHOICE,\\n            choices=[\\\"gpt-3.5-turbo\\\", \\\"gpt-4\\\", \\\"chatglm\\\"],\\n            default=\\\"gpt-3.5-turbo\\\",\\n            label=\\\"模型名称\\\"\\n        ),\\n        \\\"temperature\\\": PropertyDefinition(\\n            type=PropertyType.RANGE,\\n            min=0.0,\\n            max=1.0,\\n            step=0.1,\\n            default=0.7,\\n            label=\\\"温度\\\"\\n        ),\\n        \\\"max_length\\\": PropertyDefinition(\\n            type=PropertyType.INT,\\n            default=200,\\n            label=\\\"最大长度\\\"\\n        )\\n    }\\n\\n    def run(self, params, inputs=None):\\n        # 实现对话生成逻辑\\n        pass\\n\\n但是需要考虑具体的实现方式。例如，如果使用某个API，可能需要在run中调用相应的接口。比如假设使用OpenAI的API：\\n\\ndef run(self, params, inputs=None):\\n    import openai\\n    dialogue_history = inputs.get(\\\"dialogue_history\\\", \\\"\\\")\\n    model_name = params\",\n        \"refusal\": null,\n        \"role\": \"assistant\",\n        \"annotations\": null,\n        \"audio\": null,\n        \"function_call\": null,\n        \"tool_calls\": []\n      }\n    }\n  ],\n  \"created\": 1760022781,\n  \"model\": \"qwen/qwen3-30b-a3b\",\n  \"object\": \"chat.completion\",\n  \"service_tier\": null,\n  \"system_fingerprint\": \"qwen/qwen3-30b-a3b\",\n  \"usage\": {\n    \"completion_tokens\": 994,\n    \"prompt_tokens\": 807,\n    \"total_tokens\": 1801,\n    \"completion_tokens_details\": null,\n    \"prompt_tokens_details\": null\n  },\n  \"stats\": {}\n}",
+        "history": "[\n  {\n    \"role\": \"user\",\n    \"content\": \"##  任务\\n根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码\\n\\n## 组件输入输出参数定义代码\\nclass ArgumentType(str, Enum):\\n    \\\"\\\"\\\"参数类型\\\"\\\"\\\"\\n    TEXT = \\\"文本\\\"\\n    INT = \\\"整数\\\"\\n    FLOAT = \\\"浮点数\\\"\\n    BOOL = \\\"布尔值\\\"\\n    ARRAY = \\\"列表\\\"\\n    CSV = \\\"csv\\\"\\n    JSON = \\\"json\\\"\\n    EXCEL = \\\"excel\\\"\\n    FILE = \\\"文件\\\"\\n    UPLOAD = \\\"上传\\\"\\n    SKLEARNMODEL = \\\"sklearn模型\\\"\\n    TORCHMODEL = \\\"torch模型\\\"\\n    IMAGE = \\\"图片\\\"\\n\\nclass PortDefinition(BaseModel):\\n    \\\"\\\"\\\"端口定义\\\"\\\"\\\"\\n    name: str\\n    label: str\\n    type: ArgumentType = ArgumentType.TEXT\\n\\n## 组件属性参数定义代码\\nclass PropertyType(str, Enum):\\n    \\\"\\\"\\\"属性类型\\\"\\\"\\\"\\n    TEXT = \\\"文本\\\"\\n    LONGTEXT = \\\"长文本\\\"\\n    INT = \\\"整数\\\"\\n    FLOAT = \\\"浮点数\\\"\\n    RANGE = \\\"范围\\\"\\n    BOOL = \\\"复选框\\\"\\n    CHOICE = \\\"下拉框\\\"\\n    DYNAMICFORM = \\\"动态表单\\\"\\n\\n\\nclass PropertyDefinition(BaseModel):\\n    \\\"\\\"\\\"属性定义\\\"\\\"\\\"\\n    type: PropertyType = PropertyType.TEXT\\n    default: Any = \\\"\\\"\\n    label: str = \\\"\\\"\\n    choices: List[str] = Field(default_factory=list)\\n    filter: str = \\\"All Files (*)\\\"  # 用于文件类型过滤\\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\\n    min: float = Field(default=0.0, description=\\\"最小值\\\")\\n    max: float = Field(default=100.0, description=\\\"最大值\\\")\\n    step: float = Field(default=1.0, description=\\\"步长\\\")\\n\\n    class Config:\\n        # 允许递归引用\\n        arbitrary_types_allowed = True\\n\\n## 我的组件样例代码\\nclass Component(BaseComponent):\\n    name = \\\"提示词模板\\\"\\n    category = \\\"大模型组件\\\"\\n    description = \\\"\\\"\\n    requirements = \\\"\\\"\\n\\n    inputs = [\\n        PortDefinition(name=\\\"variables\\\", label=\\\"变量字典\\\", type=ArgumentType.JSON),\\n    ]\\n    outputs = [\\n        PortDefinition(name=\\\"prompt\\\", label=\\\"生成的提示词\\\", type=ArgumentType.TEXT),\\n    ]\\n\\n    properties = {\\n        \\\"template\\\": PropertyDefinition(\\n            type=PropertyType.LONGTEXT,\\n            default=\\\"\\\"\\\"你好，{{name}}！今天是{{day}}。\\\"\\\"\\\",\\n            label=\\\"提示词模板\\\",\\n        ),\\n    }\\n\\n    def run(self, params, inputs = None):\\n        import re\\n        self.logger.info(inputs)\\n        template = params.get(\\\"template\\\", \\\"\\\")\\n        variables = inputs.get(\\\"variables\\\", {}) if inputs else {}\\n\\n        if isinstance(variables, str):\\n            import json\\n            try:\\n                variables = json.loads(variables)\\n            except:\\n                variables = {}\\n\\n        # 替换 {{key}} 为变量值\\n        def replace_match(match):\\n            key = match.group(1)\\n            return str(variables.get(key, match.group(0)))\\n\\n        prompt = re.sub(r\\\"\\\\{\\\\{(\\\\w+)\\\\}\\\\}\\\", replace_match, template)\\n        self.logger.info(prompt)\\n        \\n        return {\\\"prompt\\\": prompt}\\n\\n## 我的组件开发需求\\n我的需求是开发一个大模型对话组件\\n\\n## 代码输出要求\\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\\n\\n## 生成的组件代码\"\n  },\n  {\n    \"role\": \"assistant\",\n    \"content\": \"<think>\\n好的，我需要根据用户提供的信息生成一个符合要求的大模型对话组件代码。首先，我要仔细阅读用户的需求和已有的代码结构。\\n\\n用户的任务是自动生成Python组件代码，已经提供了ArgumentType、PortDefinition、PropertyType和PropertyDefinition这些类的定义。但用户要求输出的代码不需要包含这些参数定义部分，所以我的生成代码中不能有这些类的定义，只需要关注组件本身的实现。\\n\\n接下来，我需要分析用户提供的样例代码。样例是一个名为“提示词模板”的组件，它接收一个JSON类型的输入variables，并通过替换模板中的变量生成prompt输出。属性里有一个长文本的template参数，用于定义提示词模板。\\n\\n用户的当前需求是开发一个大模型对话组件。这可能涉及到与大模型的交互，比如调用API、处理对话历史、生成回复等。需要确定这个组件的具体功能和输入输出。\\n\\n根据样例代码的结构，组件类继承自BaseComponent，并包含name、category、description、requirements等属性，以及inputs、outputs、properties定义，还有run方法。\\n\\n我需要考虑大模型对话组件可能的功能。例如，可能需要接收用户输入的对话历史，生成回复。或者进行意图识别、对话管理等。但具体功能需要根据用户的实际需求来定。\\n\\n假设这个大模型对话组件的主要功能是基于给定的对话历史生成回复。那么输入可能包括对话历史（如列表或字符串），输出是生成的回复文本。属性可能包括模型参数，比如温度、最大长度等。\\n\\n接下来，我需要构建inputs和outputs部分。例如：\\n\\ninputs可能有：\\n- \\\"dialogue_history\\\": 类型可能是TEXT或ARRAY，用于接收对话历史。\\n- 可能还有其他输入，如用户查询等。\\n\\noutputs可能有：\\n- \\\"response\\\": 生成的回复文本。\\n\\n属性properties可能包括：\\n- model_name: 下拉框选择不同的模型\\n- temperature: 范围类型，控制生成随机性\\n- max_length: 整数，最大生成长度\\n- top_p: 浮点数，用于核采样\\n\\n但需要根据用户的具体需求调整。由于用户没有给出详细的需求，可能需要做一些合理的假设。\\n\\n另外，用户的代码要求中提到第三方工具包只能在函数内导入，不能在文件开头导入，并且不要引入Dict、List这些类型定义。所以在run方法中如果需要用到如re、json等模块，应该在函数内部导入，但根据样例代码，似乎允许在文件开头导入，不过用户可能希望避免在全局导入，所以需要确认。\\n\\n但根据用户的样例代码，在run方法中使用了re和json的导入，比如：\\n\\ndef run(self, params, inputs = None):\\n    import re\\n    self.logger.info(inputs)\\n    template = params.get(\\\"template\\\", \\\"\\\")\\n    variables = inputs.get(\\\"variables\\\", {}) if inputs else {}\\n\\n    if isinstance(variables, str):\\n        import json\\n        try:\\n            variables = json.loads(variables)\\n        except:\\n            variables = {}\\n\\n所以，用户允许在函数内部导入模块。因此，在生成的代码中，如果需要使用其他库如requests、torch等，应该在run方法内导入。\\n\\n接下来，构建组件类的结构：\\n\\nclass Component(BaseComponent):\\n    name = \\\"大模型对话组件\\\"\\n    category = \\\"大模型组件\\\"\\n    description = \\\"基于对话历史生成大模型回复\\\"\\n    requirements = \\\"\\\"  # 可能需要安装的依赖\\n\\n    inputs = [\\n        PortDefinition(name=\\\"dialogue_history\\\", label=\\\"对话历史\\\", type=ArgumentType.TEXT),\\n    ]\\n    outputs = [\\n        PortDefinition(name=\\\"response\\\", label=\\\"生成的回复\\\", type=ArgumentType.TEXT),\\n    ]\\n\\n    properties = {\\n        \\\"model_name\\\": PropertyDefinition(\\n            type=PropertyType.CHOICE,\\n            choices=[\\\"gpt-3.5-turbo\\\", \\\"gpt-4\\\", \\\"chatglm\\\"],\\n            default=\\\"gpt-3.5-turbo\\\",\\n            label=\\\"模型名称\\\"\\n        ),\\n        \\\"temperature\\\": PropertyDefinition(\\n            type=PropertyType.RANGE,\\n            min=0.0,\\n            max=1.0,\\n            step=0.1,\\n            default=0.7,\\n            label=\\\"温度\\\"\\n        ),\\n        \\\"max_length\\\": PropertyDefinition(\\n            type=PropertyType.INT,\\n            default=200,\\n            label=\\\"最大长度\\\"\\n        )\\n    }\\n\\n    def run(self, params, inputs=None):\\n        # 实现对话生成逻辑\\n        pass\\n\\n但是需要考虑具体的实现方式。例如，如果使用某个API，可能需要在run中调用相应的接口。比如假设使用OpenAI的API：\\n\\ndef run(self, params, inputs=None):\\n    import openai\\n    dialogue_history = inputs.get(\\\"dialogue_history\\\", \\\"\\\")\\n    model_name = params\"\n  }\n]"
+      }
+    },
+    "column_select": {
+      "数据集成/长文本输入||长文本输入 1": {},
+      "大模型组件/JSON文本包装||JSON文本包装": {},
+      "大模型组件/提示词模板||提示词模板 3": {},
+      "大模型组件/大模型对话||大模型对话": {}
+    }
+  }
+}

@@ -27,6 +27,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.workflow_dir = self._get_workflow_dir()
         self.opened_workflows = {}
         self._is_loading = False
+        self._pending_workflows = []
+        self._batch_timer = None
+        self._batch_size = 2
         self._setup_ui()
         # 首次加载延迟触发，避免构造函数卡顿
         QTimer.singleShot(50, self.load_workflows)
@@ -111,11 +114,29 @@ class WorkflowCanvasGalleryPage(QWidget):
             self.flow_layout.addWidget(placeholder)
             return
 
-        # ✅ 关键：批量创建卡片，但避免一次性 addWidget 太多
-        # 如果文件很多（>20），可考虑分页或懒加载，此处假设 <50
-        for wf_path in workflow_files:
-            card = WorkflowCard(wf_path, self)
-            self.flow_layout.addWidget(card)
+        # ✅ 关键：分批增量创建卡片，避免一次性大量创建导致 UI 卡顿
+        self._pending_workflows = list(workflow_files)
+        if self._batch_timer is None:
+            self._batch_timer = QTimer(self)
+            self._batch_timer.setInterval(0)  # 尽快，但让出事件循环
+            self._batch_timer.timeout.connect(self._add_next_batch)
+        if not self._batch_timer.isActive():
+            self._batch_timer.start()
+
+    def _add_next_batch(self):
+        if not self._pending_workflows:
+            if self._batch_timer and self._batch_timer.isActive():
+                self._batch_timer.stop()
+            return
+        # 一次添加最多 _batch_size 个
+        batch = self._pending_workflows[:self._batch_size]
+        self._pending_workflows = self._pending_workflows[self._batch_size:]
+        for wf_path in batch:
+            try:
+                card = WorkflowCard(wf_path, self)
+                self.flow_layout.addWidget(card)
+            except Exception:
+                pass
 
     # --- 以下方法保持不变 ---
     def open_canvas(self, file_path: Path):
