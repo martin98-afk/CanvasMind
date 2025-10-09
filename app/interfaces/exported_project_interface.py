@@ -17,7 +17,7 @@ from qfluentwidgets import (
 
 from app.utils.service_manager import SERVICE_MANAGER
 from app.utils.utils import ansi_to_html
-from app.widgets.project_card import ProjectCard
+from app.widgets.card_widget.project_card import ProjectCard
 
 
 class ProjectRunnerThread(QThread):

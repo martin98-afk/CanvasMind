@@ -16,7 +16,7 @@ from qfluentwidgets import (
 )
 
 from app.utils.env_operation import EnvironmentManager
-from app.widgets.custom_messagebox import CustomComboDialog, CustomInputDialog
+from app.widgets.dialog_widget.custom_messagebox import CustomComboDialog, CustomInputDialog
 
 
 class PackageListThread(QThread):

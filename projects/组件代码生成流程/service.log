@@ -1,0 +1,134 @@
+INFO:     Started server process [3600]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+[32m2025-10-09 12:04:48.116[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m139[0m - [1m执行节点: 长文本输入 1[0m
+[32m2025-10-09 12:04:54.495[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-09 12:04:54.150[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[0m
+[32m2025-10-09 12:04:54.523[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m139[0m - [1m执行节点: JSON文本包装[0m
+[32m2025-10-09 12:04:59.586[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-09 12:04:59.418[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[0m
+[32m2025-10-09 12:04:59.610[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m139[0m - [1m执行节点: 提示词模板 3[0m
+[32m2025-10-09 12:05:02.941[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-09 12:05:02.801[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1m{'variables': {'text': '我现在要搞一个数据归一化组件'}}[0m
+[32m2025-10-09 12:05:02.802[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1m##  任务
+根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码
+
+## 组件输入输出参数定义代码
+class ArgumentType(str, Enum):
+    """参数类型"""
+    TEXT = "文本"
+    INT = "整数"
+    FLOAT = "浮点数"
+    BOOL = "布尔值"
+    ARRAY = "列表"
+    CSV = "csv"
+    JSON = "json"
+    EXCEL = "excel"
+    FILE = "文件"
+    UPLOAD = "上传"
+    SKLEARNMODEL = "sklearn模型"
+    TORCHMODEL = "torch模型"
+    IMAGE = "图片"
+
+class PortDefinition(BaseModel):
+    """端口定义"""
+    name: str
+    label: str
+    type: ArgumentType = ArgumentType.TEXT
+
+## 组件属性参数定义代码
+class PropertyType(str, Enum):
+    """属性类型"""
+    TEXT = "文本"
+    LONGTEXT = "长文本"
+    INT = "整数"
+    FLOAT = "浮点数"
+    RANGE = "范围"
+    BOOL = "复选框"
+    CHOICE = "下拉框"
+    DYNAMICFORM = "动态表单"
+
+
+class PropertyDefinition(BaseModel):
+    """属性定义"""
+    type: PropertyType = PropertyType.TEXT
+    default: Any = ""
+    label: str = ""
+    choices: List[str] = Field(default_factory=list)
+    filter: str = "All Files (*)"  # 用于文件类型过滤
+    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义
+    min: float = Field(default=0.0, description="最小值")
+    max: float = Field(default=100.0, description="最大值")
+    step: float = Field(default=1.0, description="步长")
+
+    class Config:
+        # 允许递归引用
+        arbitrary_types_allowed = True
+
+## 我的组件样例代码
+class Component(BaseComponent):
+    name = "提示词模板"
+    category = "大模型组件"
+    description = ""
+    requirements = ""
+
+    inputs = [
+        PortDefinition(name="variables", label="变量字典", type=ArgumentType.JSON),
+    ]
+    outputs = [
+        PortDefinition(name="prompt", label="生成的提示词", type=ArgumentType.TEXT),
+    ]
+
+    properties = {
+        "template": PropertyDefinition(
+            type=PropertyType.LONGTEXT,
+            default="""你好，{{name}}！今天是{{day}}。""",
+            label="提示词模板",
+        ),
+    }
+
+    def run(self, params, inputs = None):
+        import re
+        self.logger.info(inputs)
+        template = params.get("template", "")
+        variables = inputs.get("variables", {}) if inputs else {}
+
+        if isinstance(variables, str):
+            import json
+            try:
+                variables = json.loads(variables)
+            except:
+                variables = {}
+
+        # 替换 {{key}} 为变量值
+        def replace_match(match):
+            key = match.group(1)
+            return str(variables.get(key, match.group(0)))
+
+        prompt = re.sub(r"\{\{(\w+)\}\}", replace_match, template)
+        self.logger.info(prompt)
+        
+        return {"prompt": prompt}
+
+## 我的组件开发需求
+我现在要搞一个数据归一化组件
+
+## 代码输出要求
+输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。
+
+## 生成的组件代码
+[0m
+[32m2025-10-09 12:05:02.802[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[0m
+[32m2025-10-09 12:05:02.957[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m139[0m - [1m执行节点: 大模型对话 3[0m
+[32m2025-10-09 12:05:22.393[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-09 12:05:22.014[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1mChatCompletion(id='chatcmpl-58ca6ed64ce7456997209480f5473f71', choices=[Choice(finish_reason='stop', index=0, logprobs=None, message=ChatCompletionMessage(content='<think>\n好的，我现在需要根据用户提供的组件输入输出参数定义、属性参数定义以及样例代码，生成一个数据归一化组件的Python代码。首先，我需要理解用户的需求。用户提到要创建一个数据归一化组件，这通常涉及将数据缩放到0-1的范围或者其他的归一化方法。\n\n首先，我需要查看用户提供的样例代码，了解其结构。样例中的Component类有inputs、outputs、properties，以及run方法。输入可能是一个变量字典，输出是生成的提示词。属性中有template，用于模板替换。\n\n现在，用户需要的是数据归一化组件，所以输入可能需要一个数据列或矩阵，输出是归一化后的数据。属性可能需要选择归一化方法（如Min-Max、Z-Score），可能还有是否处理缺失值等参数。\n\n接下来，根据用户的要求，代码不需要包含输入输出参数定义，这些已经存在。第三方库只能在函数内部导入，不能在文件开头。同时，不能使用Dict、List这些类型注解，所以可能需要使用普通的字典和列表。\n\n首先，定义组件的inputs和outputs。输入可能是一个数据列，类型可能是ARRAY或CSV，输出是归一化后的数据，类型可能是ARRAY。例如：\n\ninputs = [\n    PortDefinition(name="data", label="输入数据", type=ArgumentType.ARRAY),\n]\noutputs = [\n    PortDefinition(name="normalized_data", label="归一化后的数据", type=ArgumentType.ARRAY),\n]\n\n然后，属性部分需要定义归一化方法，可能还有是否使用z-score等。例如，属性可能包括method（下拉框，选项为Min-Max、Z-Score），可能还有其他参数如处理缺失值的选项。\n\n属性定义可能像：\n\nproperties = {\n    "method": PropertyDefinition(\n        type=PropertyType.CHOICE,\n        default="minmax",\n        label="归一化方法",\n        choices=["minmax", "zscore"],\n    ),\n    "handle_missing": PropertyDefinition(\n        type=PropertyType.CHOICE,\n        default="none",\n        label="处理缺失值",\n        choices=["none", "mean", "median", "constant"],\n    ),\n    "constant_value": PropertyDefinition(\n        type=PropertyType.FLOAT,\n        default=0.0,\n        label="常量值",\n        min=0.0,\n        max=100.0,\n        step=0.1,\n    ),\n}\n\n不过，用户可能希望更具体的参数，比如是否应用到所有特征，或者是否有其他选项。需要根据常见的归一化组件来设计属性。\n\n接下来，run方法需要实现归一化逻辑。在函数内部，可能需要导入必要的库，如numpy或sklearn。例如，对于Min-Max归一化，可以使用 sklearn.preprocessing.MinMaxScaler，而Z-Score则使用StandardScaler。但用户要求只能在函数内部导入，所以需要在run方法中动态导入。\n\n处理输入数据时，需要将输入的数据转换为数组，处理缺失值，然后应用归一化方法。例如：\n\ndef run(self, params, inputs=None):\n    import numpy as np\n    from sklearn.preprocessing import MinMaxScaler, StandardScaler\n\n    data = inputs.get("data", [])\n    method = params.get("method", "minmax")\n    handle_missing = params.get("handle_missing", "none")\n    constant_value = params.get("constant_value", 0.0)\n\n    # 处理缺失值\n    if handle_missing == "mean":\n        # 计算均值，填充缺失值\n        data = np.array(data)\n        # 这里可能需要更复杂的处理，比如逐列计算均值\n        # 示例：假设data是二维数组，计算每列的均值\n        # 这里简化处理，实际可能需要更复杂的逻辑\n        pass\n    # 其他处理缺失值的逻辑...\n\n    # 应用归一化方法\n    if method == "minmax":\n        scaler = MinMaxScaler()\n        normalized_data = scaler.fit_transform(data)\n    elif method == "zscore":\n        scaler = StandardScaler()\n        normalized_data = scaler.fit_transform(data)\n    else:\n        normalized_data = data\n\n    return {"normalized_data": normalized_data.tolist()}\n\n不过，需要考虑输入数据的结构。比如，如果输入是二维数组，可能需要处理每个特征。另外，处理缺失值的部分需要更详细的实现，比如使用numpy的nan处理函数。\n\n另外，用户可能希望属性中的某些参数根据选择显示或隐藏，比如当handle_missing设置为constant时，显示constant_value参数。但根据用户提供的PropertyDefinition，可能没有这个功能，所以可能需要在属性中设置条件，但用户提供的代码中没有提到，可能不需要处理。\n\n最后，确保组件的name、category、description等属性正确。例如：\n\nclass Component(BaseComponent):\n    name = "数据归一化"\n    category = "数据预处理组件"\n    description = "对输入数据进行归一化处理，支持Min-Max和Z-Score方法。"\n\n    inputs = [...] \n    outputs = [...]\n    properties = {...}\n\n需要检查是否符合用户提供的样例结构，比如属性是否使用正确的类型和默认值。\n\n可能还需要处理输入数据的类型转换，比如将输入的列表转换为numpy数组，或者处理可能的异常情况。\n\n综上，生成的代码应该包括正确的输入输出端口定义，属性定义，以及实现归一化逻辑的run方法，其中导入必要的库在函数内部，并处理各种参数。\n</think>\n\n```python\nclass Component(BaseComponent):\n    name = "数据归一化"\n    category = "数据预处理组件"\n    description = "对输入数据进行归一化处理，支持Min-Max和Z-Score方法。"\n\n    inputs = [\n        PortDefinition(name="data", label="输入数据", type=ArgumentType.ARRAY),\n    ]\n    outputs = [\n        PortDefinition(name="normalized_data", label="归一化后的数据", type=ArgumentType.ARRAY),\n    ]\n\n    properties = {\n        "method": PropertyDefinition(\n            type=PropertyType.CHOICE,\n            default="minmax",\n            label="归一化方法",\n            choices=["minmax", "zscore"],\n        ),\n        "handle_missing": PropertyDefinition(\n            type=PropertyType.CHOICE,\n            default="none",\n            label="处理缺失值",\n            choices=["none", "mean", "median", "constant"],\n        ),\n        "constant_value": PropertyDefinition(\n            type=PropertyType.FLOAT,\n            default=0.0,\n            label="常量值",\n            min=0.0,\n            max=100.0,\n            step=0.1,\n        ),\n    }\n\n    def run(self, params, inputs=None):\n        import numpy as np\n        from sklearn.preprocessing import MinMaxScaler, StandardScaler\n        \n        data = np.array(inputs.get("data", []))\n        method = params.get("method", "minmax")\n        handle_missing = params.get("handle_missing", "none")\n        constant_value = params.get("constant_value", 0.0)\n        \n        # 处理缺失值\n        if handle_missing == "mean":\n            data = np.nan_to_num(data, nan=np.nanmean(data))\n        elif handle_missing == "median":\n            data = np.nan_to_num(data, nan=np.nanmedian(data))\n        elif handle_missing == "constant":\n            data = np.nan_to_num(data, nan=constant_value)\n        \n        # 执行归一化\n        if method == "minmax":\n            scaler = MinMaxScaler()\n            normalized_data = scaler.fit_transform(data)\n        elif method == "zscore":\n            scaler = StandardScaler()\n            normalized_data = scaler.fit_transform(data)\n        else:\n            normalized_data = data\n        \n        return {"normalized_data": normalized_data.tolist()}\n```', refusal=None, role='assistant', annotations=None, audio=None, function_call=None, tool_calls=[], reasoning_content=None), stop_reason=None, token_ids=None)], created=1759982759, model='qwen3-30b-a3b', object='chat.completion', service_tier=None, system_fingerprint=None, usage=CompletionUsage(completion_tokens=1657, prompt_tokens=807, total_tokens=2464, completion_tokens_details=None, prompt_tokens_details=None), prompt_logprobs=None, prompt_token_ids=None, kv_transfer_params=None)[0m
+[32m2025-10-09 12:05:22.015[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1m模型回复: <think>
+好的，我现在需要根据用户提供的组件输入输出参数定义、属性参数定义以及样例代码，生成一个数据归一化组件的Python代码。首先，我需要理解用户的需求。用户提到要创建一个数据归一化组件，这...[0m
+[32m2025-10-09 12:05:22.016[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[0m
+[32m2025-10-09 12:05:22.421[0m | [1mINFO    [0m | [36m__main__[0m:[36mrun_workflow[0m:[36m117[0m - [1m工作流执行成功，结果：{'response': '<think>\n好的，我现在需要根据用户提供的组件输入输出参数定义、属性参数定义以及样例代码，生成一个数据归一化组件的Python代码。首先，我需要理解用户的需求。用户提到要创建一个数据归一化组件，这通常涉及将数据缩放到0-1的范围或者其他的归一化方法。\n\n首先，我需要查看用户提供的样例代码，了解其结构。样例中的Component类有inputs、outputs、properties，以及run方法。输入可能是一个变量字典，输出是生成的提示词。属性中有template，用于模板替换。\n\n现在，用户需要的是数据归一化组件，所以输入可能需要一个数据列或矩阵，输出是归一化后的数据。属性可能需要选择归一化方法（如Min-Max、Z-Score），可能还有是否处理缺失值等参数。\n\n接下来，根据用户的要求，代码不需要包含输入输出参数定义，这些已经存在。第三方库只能在函数内部导入，不能在文件开头。同时，不能使用Dict、List这些类型注解，所以可能需要使用普通的字典和列表。\n\n首先，定义组件的inputs和outputs。输入可能是一个数据列，类型可能是ARRAY或CSV，输出是归一化后的数据，类型可能是ARRAY。例如：\n\ninputs = [\n    PortDefinition(name="data", label="输入数据", type=ArgumentType.ARRAY),\n]\noutputs = [\n    PortDefinition(name="normalized_data", label="归一化后的数据", type=ArgumentType.ARRAY),\n]\n\n然后，属性部分需要定义归一化方法，可能还有是否使用z-score等。例如，属性可能包括method（下拉框，选项为Min-Max、Z-Score），可能还有其他参数如处理缺失值的选项。\n\n属性定义可能像：\n\nproperties = {\n    "method": PropertyDefinition(\n        type=PropertyType.CHOICE,\n        default="minmax",\n        label="归一化方法",\n        choices=["minmax", "zscore"],\n    ),\n    "handle_missing": PropertyDefinition(\n        type=PropertyType.CHOICE,\n        default="none",\n        label="处理缺失值",\n        choices=["none", "mean", "median", "constant"],\n    ),\n    "constant_value": PropertyDefinition(\n        type=PropertyType.FLOAT,\n        default=0.0,\n        label="常量值",\n        min=0.0,\n        max=100.0,\n        step=0.1,\n    ),\n}\n\n不过，用户可能希望更具体的参数，比如是否应用到所有特征，或者是否有其他选项。需要根据常见的归一化组件来设计属性。\n\n接下来，run方法需要实现归一化逻辑。在函数内部，可能需要导入必要的库，如numpy或sklearn。例如，对于Min-Max归一化，可以使用 sklearn.preprocessing.MinMaxScaler，而Z-Score则使用StandardScaler。但用户要求只能在函数内部导入，所以需要在run方法中动态导入。\n\n处理输入数据时，需要将输入的数据转换为数组，处理缺失值，然后应用归一化方法。例如：\n\ndef run(self, params, inputs=None):\n    import numpy as np\n    from sklearn.preprocessing import MinMaxScaler, StandardScaler\n\n    data = inputs.get("data", [])\n    method = params.get("method", "minmax")\n    handle_missing = params.get("handle_missing", "none")\n    constant_value = params.get("constant_value", 0.0)\n\n    # 处理缺失值\n    if handle_missing == "mean":\n        # 计算均值，填充缺失值\n        data = np.array(data)\n        # 这里可能需要更复杂的处理，比如逐列计算均值\n        # 示例：假设data是二维数组，计算每列的均值\n        # 这里简化处理，实际可能需要更复杂的逻辑\n        pass\n    # 其他处理缺失值的逻辑...\n\n    # 应用归一化方法\n    if method == "minmax":\n        scaler = MinMaxScaler()\n        normalized_data = scaler.fit_transform(data)\n    elif method == "zscore":\n        scaler = StandardScaler()\n        normalized_data = scaler.fit_transform(data)\n    else:\n        normalized_data = data\n\n    return {"normalized_data": normalized_data.tolist()}\n\n不过，需要考虑输入数据的结构。比如，如果输入是二维数组，可能需要处理每个特征。另外，处理缺失值的部分需要更详细的实现，比如使用numpy的nan处理函数。\n\n另外，用户可能希望属性中的某些参数根据选择显示或隐藏，比如当handle_missing设置为constant时，显示constant_value参数。但根据用户提供的PropertyDefinition，可能没有这个功能，所以可能需要在属性中设置条件，但用户提供的代码中没有提到，可能不需要处理。\n\n最后，确保组件的name、category、description等属性正确。例如：\n\nclass Component(BaseComponent):\n    name = "数据归一化"\n    category = "数据预处理组件"\n    description = "对输入数据进行归一化处理，支持Min-Max和Z-Score方法。"\n\n    inputs = [...] \n    outputs = [...]\n    properties = {...}\n\n需要检查是否符合用户提供的样例结构，比如属性是否使用正确的类型和默认值。\n\n可能还需要处理输入数据的类型转换，比如将输入的列表转换为numpy数组，或者处理可能的异常情况。\n\n综上，生成的代码应该包括正确的输入输出端口定义，属性定义，以及实现归一化逻辑的run方法，其中导入必要的库在函数内部，并处理各种参数。\n</think>\n\n```python\nclass Component(BaseComponent):\n    name = "数据归一化"\n    category = "数据预处理组件"\n    description = "对输入数据进行归一化处理，支持Min-Max和Z-Score方法。"\n\n    inputs = [\n        PortDefinition(name="data", label="输入数据", type=ArgumentType.ARRAY),\n    ]\n    outputs = [\n        PortDefinition(name="normalized_data", label="归一化后的数据", type=ArgumentType.ARRAY),\n    ]\n\n    properties = {\n        "method": PropertyDefinition(\n            type=PropertyType.CHOICE,\n            default="minmax",\n            label="归一化方法",\n            choices=["minmax", "zscore"],\n        ),\n        "handle_missing": PropertyDefinition(\n            type=PropertyType.CHOICE,\n            default="none",\n            label="处理缺失值",\n            choices=["none", "mean", "median", "constant"],\n        ),\n        "constant_value": PropertyDefinition(\n            type=PropertyType.FLOAT,\n            default=0.0,\n            label="常量值",\n            min=0.0,\n            max=100.0,\n            step=0.1,\n        ),\n    }\n\n    def run(self, params, inputs=None):\n        import numpy as np\n        from sklearn.preprocessing import MinMaxScaler, StandardScaler\n        \n        data = np.array(inputs.get("data", []))\n        method = params.get("method", "minmax")\n        handle_missing = params.get("handle_missing", "none")\n        constant_value = params.get("constant_value", 0.0)\n        \n        # 处理缺失值\n        if handle_missing == "mean":\n            data = np.nan_to_num(data, nan=np.nanmean(data))\n        elif handle_missing == "median":\n            data = np.nan_to_num(data, nan=np.nanmedian(data))\n        elif handle_missing == "constant":\n            data = np.nan_to_num(data, nan=constant_value)\n        \n        # 执行归一化\n        if method == "minmax":\n            scaler = MinMaxScaler()\n            normalized_data = scaler.fit_transform(data)\n        elif method == "zscore":\n            scaler = StandardScaler()\n            normalized_data = scaler.fit_transform(data)\n        else:\n            normalized_data = data\n        \n        return {"normalized_data": normalized_data.tolist()}\n```'}[0m
+INFO:     127.0.0.1:52229 - "POST /run HTTP/1.1" 200 OK

@@ -15,7 +15,7 @@ ArgumentType = base_module.ArgumentType
 
 
 class Component(BaseComponent):
-    name = "逻辑判断"
+    name = "test"
     category = "测试组件"
     description = ""
     requirements = ""
@@ -40,7 +40,7 @@ class Component(BaseComponent):
                     type=PropertyType.CHOICE,
                     default=" ",
                     label="选择变量",
-                    choices=["/", "not"]
+                    choices=["not"]
                 ),
                 "变量": PropertyDefinition(
                     type=PropertyType.CHOICE,
@@ -55,7 +55,7 @@ class Component(BaseComponent):
                     choices=[">", "<", "==", ">=", "<=", "!="]
                 ),
                 "常量": PropertyDefinition(
-                    type=PropertyType.TEXT,
+                    type=PropertyType.LONGTEXT,
                     default="0",
                     label="常量值",
                 ),

@@ -3,18 +3,18 @@ import os
 import json
 from datetime import datetime
 
-from PyQt5.QtCore import Qt, QUrl
-from PyQt5.QtGui import QFont, QColor, QGuiApplication
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QGuiApplication
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
 from qfluentwidgets import (
     CardWidget, BodyLabel, PrimaryPushButton,
     ToolButton, FluentIcon, InfoBar,
-    HyperlinkButton, ImageLabel
+    ImageLabel
 )
 
 
 from app.utils.service_manager import SERVICE_MANAGER
-from app.widgets.service_request_dialog import ServiceRequestDialog
+from app.widgets.dialog_widget.service_request_dialog import ServiceRequestDialog
 
 
 class ClickableLabel(BodyLabel):

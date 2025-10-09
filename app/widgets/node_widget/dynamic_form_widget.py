@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 from NodeGraphQt import NodeBaseWidget
+from PyQt5.QtWidgets import QComboBox
 from Qt import QtWidgets, QtCore
+from qfluentwidgets import LineEdit, PushButton, FluentIcon, ToolButton
 
 from app.components.base import PropertyType
+from app.widgets.node_widget.longtext_dialog import LongTextWidget
 
 
 class FormFieldWidget(QtWidgets.QWidget):
@@ -20,20 +23,43 @@ class FormFieldWidget(QtWidgets.QWidget):
 
         for key, defn in schema.items():
             if defn["type"] == PropertyType.TEXT.name:
-                widget = QtWidgets.QLineEdit()
+                widget = LineEdit()
+                widget.setFixedWidth(150)
                 widget.textChanged.connect(self.changed)
                 self.fields[key] = widget
                 layout.addWidget(widget)
+            elif defn["type"] == PropertyType.LONGTEXT.name:
+                widget = LongTextWidget(parent)
+                widget.valueChanged.connect(self.changed)
+                self.fields[key] = widget
+                layout.addWidget(widget)
             elif defn["type"] == PropertyType.CHOICE.name:
-                widget = QtWidgets.QComboBox()
+                widget = QComboBox(parent)
+                widget.setStyleSheet("""
+                QComboBox {
+                    border: 1px solid #d0d0d0;
+                    border-radius: 5px;
+                    padding: 4px 8px;
+                    background: transparent;
+                    color: white;
+                }
+                QComboBox::drop-down {
+                    width: 30px;
+                    border: none;
+                    background: transparent;
+                    color: white;
+                }
+                QComboBox QAbstractItemView {
+                    border: 1px solid #d0d0d0;
+                    selection-background-color: #e0e0e0;
+                }
+                """)
                 widget.addItems(defn.get("choices", []))
-                widget.currentTextChanged.connect(self.changed)
+                widget.currentIndexChanged.connect(self.changed)
                 self.fields[key] = widget
                 layout.addWidget(widget)
 
-        btn_remove = QtWidgets.QPushButton("×")
-        btn_remove.setFixedSize(20, 20)
-        btn_remove.setStyleSheet("background: #ff6b6b; color: white; border-radius: 10px;")
+        btn_remove = ToolButton(FluentIcon.CLOSE)
         btn_remove.clicked.connect(lambda: self.removed.emit(self))
         layout.addWidget(btn_remove)
 
@@ -55,10 +81,11 @@ class DynamicFormWidget(QtWidgets.QWidget):
 
     def __init__(self, schema, parent=None):
         super().__init__(parent)
+        self.parent = parent
         self.schema = schema
         self.field_widgets = []
 
-        self.btn_add = QtWidgets.QPushButton("➕ Add")
+        self.btn_add = PushButton("Add", icon=FluentIcon.ADD)
         self.container = QtWidgets.QVBoxLayout()
         self.container.setSpacing(4)
 
@@ -70,7 +97,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
         self.btn_add.clicked.connect(self.add_field)
 
     def add_field(self, data=None):
-        field = FormFieldWidget(self.schema)
+        field = FormFieldWidget(self.schema, parent=self.parent)
         if data:
             field.set_data(data)
         field.removed.connect(self.remove_field)
@@ -85,7 +112,8 @@ class DynamicFormWidget(QtWidgets.QWidget):
             self.container.removeWidget(field)
             field.setParent(None)
             field.deleteLater()
-            self.sizeHintChanged.emit()
+            # ✅ 关键：延迟触发 sizeHintChanged，确保 deleteLater 生效
+            QtCore.QTimer.singleShot(50, self.sizeHintChanged.emit)
 
     def get_data(self):
         return [f.get_data() for f in self.field_widgets]
@@ -99,17 +127,21 @@ class DynamicFormWidget(QtWidgets.QWidget):
 
 
 class DynamicFormWidgetWrapper(NodeBaseWidget):
-    def __init__(self, parent=None, name="", label="", schema=None):
+    def __init__(self, parent=None, name="", label="", schema=None, window=None):
         super().__init__(parent)
         self.set_name(name)
         self.set_label(label)
-        widget = DynamicFormWidget(schema or {})
+        widget = DynamicFormWidget(schema or {}, parent=window)
         self.set_custom_widget(widget)
         widget.sizeHintChanged.connect(self._update_node)
 
     def _update_node(self):
         if self.node and self.node.view:
-            QtCore.QTimer.singleShot(0, lambda: self.node.view.draw_node())
+            # ✅ 三重保障：先 adjustSize，再强制更新
+            self.get_custom_widget().adjustSize()
+            self.node.view.update()
+            # 使用稍长延迟确保布局完成
+            QtCore.QTimer.singleShot(30, lambda: self.node.view.draw_node())
 
     def get_value(self):
         return self.get_custom_widget().get_data()

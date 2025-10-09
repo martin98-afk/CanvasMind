@@ -21,8 +21,8 @@ from qfluentwidgets import (
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition
 from app.scan_components import scan_components
 from app.widgets.code_editer import CodeEditorWidget, DEFAULT_CODE_TEMPLATE
-from app.widgets.component_develop_tree import ComponentTreeWidget, ComponentTreePanel
-from app.widgets.longtext_dialog import LongTextEditorDialog
+from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
+from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 
 
 # --- 组件开发主界面 (布局调整，修复同步) ---
@@ -55,6 +55,9 @@ class ComponentDeveloperWidget(QWidget):
 
         # Markdown 渲染
         'markdown': 'Markdown',  # 包名首字母大写
+
+        # 文档解析
+        'docx': 'python-docx',
 
         # Faker 数据生成
         'faker': 'Faker',  # 包名大写

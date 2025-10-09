@@ -12,8 +12,8 @@ from qfluentwidgets import (
 
 from app.interfaces.canvas_interface import CanvasPage
 from app.utils.utils import get_icon
-from app.widgets.custom_messagebox import CustomInputDialog
-from app.widgets.workflow_card import WorkflowCard
+from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
+from app.widgets.card_widget.workflow_card import WorkflowCard
 
 
 class WorkflowCanvasGalleryPage(QWidget):

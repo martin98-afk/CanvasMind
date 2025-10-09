@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "graph_name": "大模型流程",
+  "inputs": {
+    "input_text": {
+      "type": "组件超参数",
+      "node_id": "0x1f4f443aa10",
+      "node_name": "长文本输入 1",
+      "param_name": "input_text",
+      "current_value": "我现在要做一个随机森林预测模型组件，输入数据分别是feature的csv以及target的csv，输出为预测结果以及模型文件。",
+      "display_name": "长文本输入 1 → input_text",
+      "format": "LONGTEXT",
+      "custom_key": "input_text"
+    }
+  },
+  "outputs": {
+    "response": {
+      "node_id": "0x1f4f408cd60",
+      "output_name": "response",
+      "format": "TEXT"
+    }
+  }
+}
