@@ -18,7 +18,7 @@ class WorkflowCard(CardWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setFixedHeight(280)
+        self.setFixedHeight(300)
         self.setFixedWidth(320)
         self.setBorderRadius(12)
 
@@ -35,13 +35,13 @@ class WorkflowCard(CardWidget):
         if preview_path and preview_path.exists():
             # 创建图片标签
             img_label = ImageLabel(str(preview_path), self)
-            img_label.setFixedSize(200, 100)
+            img_label.setFixedSize(250, 150)
             img_label.setBorderRadius(8, 8, 8, 8)
             layout.addWidget(img_label, 0, Qt.AlignCenter)
         else:
             # 占位符：无预览图
             placeholder = BodyLabel("无预览图")
-            placeholder.setFixedSize(200, 100)
+            placeholder.setFixedSize(250, 150)
             placeholder.setAlignment(Qt.AlignCenter)
             placeholder.setStyleSheet("color: #aaa; background-color: #f5f5f5; border-radius: 8px;")
             layout.addWidget(placeholder, 0, Qt.AlignCenter)
@@ -72,13 +72,8 @@ class WorkflowCard(CardWidget):
             k2.setProperty("class", "workflowMetaKey")
             v2 = BodyLabel(change_time)
             v2.setProperty("class", "workflowMetaVal")
-            k3 = BodyLabel("大小")
-            k3.setProperty("class", "workflowMetaKey")
-            v3 = BodyLabel(f"{size_kb} KB")
-            v3.setProperty("class", "workflowMetaVal")
             meta_grid.addWidget(k1, row, 0); meta_grid.addWidget(v1, row, 1); row += 1
             meta_grid.addWidget(k2, row, 0); meta_grid.addWidget(v2, row, 1); row += 1
-            meta_grid.addWidget(k3, row, 0); meta_grid.addWidget(v3, row, 1); row += 1
         except Exception:
             k = BodyLabel("信息")
             k.setProperty("class", "workflowMetaKey")

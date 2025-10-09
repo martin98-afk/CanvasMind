@@ -12,7 +12,7 @@ class ComboBoxWidget(QtWidgets.QWidget):
         super().__init__()
         self.items = list(items) if items else []
         self._value = self.items[0] if self.items else ""
-        self.combobox = FluentComboProxy(self)
+        self.combobox = QComboBox(self)
         self.combobox.setMaxVisibleItems(12)
         if self.items:
             self.combobox.addItems(self.items)

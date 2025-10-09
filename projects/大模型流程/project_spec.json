@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "graph_name": "大模型流程",
+  "inputs": {
+    "input_text": {
+      "type": "组件超参数",
+      "node_id": "0x22b2dac5f00",
+      "node_name": "长文本输入 1",
+      "param_name": "input_text",
+      "current_value": "我的需求是开发一个大模型对话组件",
+      "display_name": "长文本输入 1 → input_text",
+      "format": "LONGTEXT",
+      "custom_key": "input_text"
+    },
+    "max_tokens": {
+      "type": "组件超参数",
+      "node_id": "0x22b2d35e680",
+      "node_name": "大模型对话",
+      "param_name": "max_tokens",
+      "current_value": "1000",
+      "display_name": "大模型对话 → max_tokens",
+      "format": "INT",
+      "custom_key": "max_tokens"
+    }
+  },
+  "outputs": {
+    "response": {
+      "node_id": "0x22b2d35e680",
+      "output_name": "response",
+      "format": "TEXT"
+    }
+  }
+}
