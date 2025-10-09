@@ -133,8 +133,6 @@ class NodeListExecutor(QRunnable):
                         return
                     self.signals.node_finished.emit(node.id)
                 except Exception as e:
-                    if self._is_cancelled:
-                        return
                     self.signals.node_error.emit(node.id)
                     return  # 停止后续执行
             if not self._is_cancelled:

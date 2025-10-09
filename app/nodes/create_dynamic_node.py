@@ -327,16 +327,19 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                             except subprocess.TimeoutExpired:
                                 proc.kill()
 
-                            component_class.logger.error("❌ 节点执行超时（5分钟）")
+                            self._log_message("❌ 节点执行超时（5分钟）")
                             raise Exception("❌ 节点执行超时（5分钟）")
 
                         time.sleep(0.1)  # 避免 CPU 占用过高
 
                     if cancelled:
-                        component_class.logger.error("执行已被用户取消")
+                        self._log_message(self.id, "执行已被用户取消")
                         raise Exception("执行已被用户取消")
 
-                    # 读取日志
+                    # ✅ 关键：子进程结束后，立即读取所有输出
+                    stdout, stderr = proc.communicate()  # 只调用一次！
+
+                    # 读取日志文件（无论成功失败）
                     log_content = self.log_capture.read_log_file()
                     if log_content.strip():
                         self._log_message(self.id, log_content)
@@ -367,15 +370,14 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     with open(error_path, 'rb') as f:
                         error_info = pickle.load(f)
                     error_msg = f"❌ 节点执行失败: {error_info['error']}"
-                    component_class.logger.error(error_msg)
-                    logger.error(error_info['traceback'])
+                    self._log_message(self.id, error_msg)
                     raise Exception(error_info['error'])
 
                 else:
                     # 读取 stderr
                     _, stderr = proc.communicate()
                     error_msg = f"❌ 节点执行异常: {stderr or '未知错误'}"
-                    component_class.logger.error(error_msg)
+                    self._log_message(self.id, error_msg)
                     raise Exception(stderr or "未知错误")
 
     return DynamicNode
