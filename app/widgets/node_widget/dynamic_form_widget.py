@@ -22,13 +22,7 @@ class FormFieldWidget(QtWidgets.QWidget):
         layout.setSpacing(6)
 
         for key, defn in schema.items():
-            if defn["type"] == PropertyType.TEXT.name:
-                widget = LineEdit()
-                widget.setFixedWidth(150)
-                widget.textChanged.connect(self.changed)
-                self.fields[key] = widget
-                layout.addWidget(widget)
-            elif defn["type"] == PropertyType.LONGTEXT.name:
+            if defn["type"] == PropertyType.LONGTEXT.name:
                 widget = LongTextWidget(parent)
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
@@ -58,6 +52,15 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.currentIndexChanged.connect(self.changed)
                 self.fields[key] = widget
                 layout.addWidget(widget)
+            # if defn["type"] == PropertyType.TEXT.name:
+            else:
+                widget = LineEdit()
+                widget.setFixedWidth(150)
+                widget.setText(defn.get("default", ""))
+                widget.setPlaceholderText(defn.get("label", ""))
+                widget.textChanged.connect(self.changed)
+                self.fields[key] = widget
+                layout.addWidget(widget)\
 
         btn_remove = ToolButton(FluentIcon.CLOSE)
         btn_remove.clicked.connect(lambda: self.removed.emit(self))

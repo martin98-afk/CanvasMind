@@ -14,7 +14,7 @@ class TextWidget(QtWidgets.QWidget):
         self._text = default_text
 
         self.summary_label = LineEdit()
-
+        self.summary_label.setText(default_text)
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.summary_label)

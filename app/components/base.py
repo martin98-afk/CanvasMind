@@ -360,7 +360,7 @@ class BaseComponent(ABC):
                 except UnicodeDecodeError as e:
                     with open(data, 'rb') as f:
                         return f.read().decode('utf-8', 'ignore')
-            except:
+            except Exception as e:
                 raise e
         else:
             raise ComponentError(f"无法读取文件数据: {data}")
