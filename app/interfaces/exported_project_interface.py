@@ -5,14 +5,15 @@ import os
 import shutil
 import subprocess
 import time
+from pathlib import Path
 
-from PyQt5.QtCore import QThread, pyqtSignal, QEasingCurve
+from PyQt5.QtCore import QThread, pyqtSignal, QEasingCurve, Qt
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QDialog, QTextEdit
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QDialog, QTextEdit, QLabel, QFileDialog
 from qfluentwidgets import (
     ScrollArea, PrimaryPushButton,
-    ToolButton, FluentIcon, SearchLineEdit, InfoBar,
-    MessageBox, StateToolTip, FlowLayout
+    InfoBar,
+    MessageBox, StateToolTip, FlowLayout, CardWidget, BodyLabel
 )
 
 from app.utils.service_manager import SERVICE_MANAGER
@@ -83,25 +84,6 @@ class ExportedProjectsPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
 
-        # 工具栏
-        toolbar_layout = QHBoxLayout()
-        self.search_line = SearchLineEdit(self)
-        self.search_line.setPlaceholderText("搜索项目...")
-        self.search_line.setFixedWidth(300)
-
-        self.refresh_btn = ToolButton(FluentIcon.SYNC, self)
-        self.refresh_btn.setToolTip("刷新项目列表")
-        self.refresh_btn.clicked.connect(self.load_projects)
-
-        self.open_export_dir_btn = PrimaryPushButton("📁 打开导出目录", self)
-        self.open_export_dir_btn.clicked.connect(self._open_export_directory)
-
-        toolbar_layout.addWidget(self.search_line)
-        toolbar_layout.addWidget(self.refresh_btn)
-        toolbar_layout.addWidget(self.open_export_dir_btn)
-        toolbar_layout.addStretch()
-        layout.addLayout(toolbar_layout)
-
         # 流式布局区域
         self.scroll_area = ScrollArea(self)
         self.scroll_area.setViewportMargins(0, 0, 0, 0)
@@ -121,6 +103,36 @@ class ExportedProjectsPage(QWidget):
 
         self.load_projects()
 
+    def _create_import_card(self):
+        """创建“导入画布”卡片（使用 Fluent 图标）"""
+        from qfluentwidgets import FluentIcon  # 确保导入
+
+        import_card = CardWidget()
+        import_card.setBorderRadius(12)
+        import_card.setFixedSize(400, 320)
+        layout = QVBoxLayout(import_card)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # 使用 FluentIcon.FOLDER_ADD 图标
+        icon = FluentIcon.FOLDER_ADD.icon()
+        icon_label = QLabel()
+        icon_label.setPixmap(icon.pixmap(64, 64))  # 64x64 像素图标
+        icon_label.setAlignment(Qt.AlignCenter)
+
+        text_label = BodyLabel("导入项目")
+        text_label.setAlignment(Qt.AlignCenter)
+
+        layout.addStretch()
+        layout.addWidget(icon_label)
+        layout.addSpacing(40)
+        layout.addWidget(text_label)
+        layout.addStretch()
+
+        import_card.mousePressEvent = lambda e: self.import_projects()
+        import_card.setCursor(Qt.PointingHandCursor)
+        return import_card
+
     def _open_export_directory(self):
         try:
             if os.name == 'nt':
@@ -130,14 +142,56 @@ class ExportedProjectsPage(QWidget):
         except Exception as e:
             self.create_error_info("打开失败", str(e))
 
+    def import_projects(self):
+        """导入外部项目文件夹"""
+        folder_path = QFileDialog.getExistingDirectory(
+            self,
+            "选择项目文件夹",
+            "",
+            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks
+        )
+        if not folder_path:
+            return
+
+        src_path = Path(folder_path)
+        if not src_path.is_dir():
+            self.create_error_info("无效选择", "请选择一个有效的项目文件夹")
+            return
+
+        # 检查是否包含必需的 model.workflow.json
+        workflow_file = src_path / "model.workflow.json"
+        if not workflow_file.exists():
+            self.create_error_info("导入失败", "所选文件夹中缺少 model.workflow.json")
+            return
+
+        # 获取项目名称（文件夹名）
+        base_name = src_path.name
+        if not base_name.strip():
+            base_name = "imported_project"
+
+        # 生成目标路径（避免重名）
+        dest_path = Path(self.export_dir) / base_name
+        counter = 1
+        while dest_path.exists():
+            dest_path = Path(self.export_dir) / f"{base_name}_{counter}"
+            counter += 1
+
+        try:
+            # 复制整个文件夹
+            shutil.copytree(src_path, dest_path)
+
+            self.create_success_info("导入成功", f"项目 “{dest_path.name}” 已导入")
+            self.load_projects()  # 刷新列表
+        except Exception as e:
+            self.create_error_info("导入失败", f"错误: {str(e)}")
+
     def load_projects(self):
         # 清空所有卡片
         while self.flow_layout.count():
             item = self.flow_layout.takeAt(0)
             item.deleteLater()
 
-        if not os.path.exists(self.export_dir):
-            return
+        self.flow_layout.addWidget(self._create_import_card())
 
         project_dirs = []
         for item in os.listdir(self.export_dir):

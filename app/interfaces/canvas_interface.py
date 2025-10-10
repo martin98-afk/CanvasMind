@@ -266,6 +266,8 @@ class CanvasPage(QWidget):
         # 添加标签
         name_label = LineEdit(self)
         name_label.setText(self.workflow_name)
+        # 将其长度设定与文字长度相等
+        name_label.setFixedWidth(workflow_name_length)
         name_label.textChanged.connect(self.update_workflow_name)
 
         name_layout.addWidget(name_label)

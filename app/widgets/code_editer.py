@@ -109,6 +109,25 @@ class CodeEditor(QPlainTextEdit):
     def setParentWidget(self, widget):
         self._parent_widget = widget
 
+    def wheelEvent(self, event):
+        if event.modifiers() == Qt.ControlModifier:
+            # 获取当前字体
+            font = self.font()
+            size = font.pointSize()
+            # 滚轮向上：放大；向下：缩小
+            if event.angleDelta().y() > 0:
+                new_size = min(size + 1, 32)  # 限制最大字号
+            else:
+                new_size = max(size - 1, 8)  # 限制最小字号
+            if new_size != size:
+                font.setPointSize(new_size)
+                self.setFont(font)
+                # 可选：同步更新 tab 宽度（保持 4 个空格对齐）
+                self.setTabStopDistance(4 * self.fontMetrics().horizontalAdvance(' '))
+            event.accept()
+        else:
+            super().wheelEvent(event)
+
     def mouseMoveEvent(self, event):
         self._last_hover_pos = event.pos()
         # Delay hover tooltip to avoid flicker
@@ -165,7 +184,6 @@ class CodeEditor(QPlainTextEdit):
                 background-color: #1e1e1e;
                 color: #dcdcdc;
                 font-family: Consolas, "Courier New", monospace;
-                font-size: 13px;
             }
         """)
 
@@ -401,7 +419,7 @@ class CodeEditorWidget(QWidget):
 
         self.code_editor = CodeEditor()
         self.code_editor.setParentWidget(self)  # 新增：让 editor 知道 widget
-        font = QFont("Consolas", 11)
+        font = QFont("Consolas", 13)
         self.code_editor.setFont(font)
         self._setup_completer()
         self.code_editor.setTabStopDistance(4 * self.code_editor.fontMetrics().horizontalAdvance(' '))

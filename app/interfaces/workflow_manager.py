@@ -1,15 +1,14 @@
-# -*- coding: utf-8 -*-
 import os
 import shutil
 import subprocess
 from pathlib import Path
 from typing import List
 
-from PyQt5.QtCore import QEasingCurve, QTimer, QThread
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
-from Qt import Qt
+from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt
+from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QFileDialog
 from qfluentwidgets import (
-    BodyLabel, ScrollArea, PrimaryPushButton, FluentIcon, FlowLayout, InfoBar
+    ScrollArea, FlowLayout, InfoBar, FluentIcon, CardWidget, BodyLabel
 )
 
 from app.interfaces.canvas_interface import CanvasPage
@@ -31,7 +30,6 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._batch_timer = None
         self._batch_size = 2
         self._setup_ui()
-        # 首次加载延迟触发，避免构造函数卡顿
         QTimer.singleShot(50, self.load_workflows)
 
     def _get_workflow_dir(self):
@@ -43,16 +41,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
 
-        # 工具栏
-        toolbar = QHBoxLayout()
-        self.new_btn = PrimaryPushButton(text="新建画布", icon=FluentIcon.ADD, parent=self)
-        self.new_btn.clicked.connect(self.new_canvas)
-        self.open_dir_btn = PrimaryPushButton(text="打开目录", parent=self, icon=FluentIcon.FOLDER)
-        self.open_dir_btn.clicked.connect(self._open_workflow_dir)
-        toolbar.addWidget(self.new_btn)
-        toolbar.addWidget(self.open_dir_btn)
-        toolbar.addStretch()
-        layout.addLayout(toolbar)
+        # 移除工具栏：不再显示“新建”和“打开目录”按钮
 
         # 滚动区域
         self.scroll_area = ScrollArea(self)
@@ -84,7 +73,7 @@ class WorkflowCanvasGalleryPage(QWidget):
             return
         self._is_loading = True
 
-        # 清空现有内容（立即响应）
+        # 清空现有内容（包括“新建”卡片）
         self._clear_layout()
 
         # 启动后台扫描
@@ -99,26 +88,94 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._thread.start()
 
     def _clear_layout(self):
-        """快速清空布局（不 deleteLater，避免卡顿）"""
+        """清空布局"""
         while self.flow_layout.count():
             item = self.flow_layout.takeAt(0)
             item.deleteLater()
 
+    def _create_new_card(self):
+        """创建“新建画布”卡片"""
+        new_card = CardWidget()
+        new_card.setFixedSize(320, 300)
+        new_card.setBorderRadius(12)
+        layout = QVBoxLayout(new_card)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # 使用 FluentIcon.FOLDER_ADD 图标
+        icon = FluentIcon.ADD.icon()
+        plus_label = QLabel()
+        plus_label.setPixmap(icon.pixmap(64, 64))  # 64x64 像素图标
+        plus_label.setAlignment(Qt.AlignCenter)
+
+        # 文字提示
+        text_label = BodyLabel("新建画布")
+        text_label.setAlignment(Qt.AlignCenter)
+
+        layout.addStretch()
+        layout.addWidget(plus_label)
+        layout.addSpacing(40)
+        layout.addWidget(text_label)
+        layout.addStretch()
+
+        # 点击事件
+        new_card.mousePressEvent = lambda e: self.new_canvas()
+        new_card.setCursor(Qt.PointingHandCursor)
+
+        return new_card
+
+    def _create_import_card(self):
+        """创建“导入画布”卡片（使用 Fluent 图标）"""
+        from qfluentwidgets import FluentIcon  # 确保导入
+
+        import_card = CardWidget()
+        import_card.setFixedSize(320, 300)
+        import_card.setBorderRadius(12)
+        layout = QVBoxLayout(import_card)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # 使用 FluentIcon.FOLDER_ADD 图标
+        icon = FluentIcon.FOLDER_ADD.icon()
+        icon_label = QLabel()
+        icon_label.setPixmap(icon.pixmap(64, 64))  # 64x64 像素图标
+        icon_label.setAlignment(Qt.AlignCenter)
+
+        text_label = BodyLabel("导入画布")
+        text_label.setAlignment(Qt.AlignCenter)
+
+        layout.addStretch()
+        layout.addWidget(icon_label)
+        layout.addSpacing(40)
+        layout.addWidget(text_label)
+        layout.addStretch()
+
+        import_card.mousePressEvent = lambda e: self.import_canvas()
+        import_card.setCursor(Qt.PointingHandCursor)
+        return import_card
+
     def _on_scan_finished(self, workflow_files: List[Path]):
         self._is_loading = False
 
+        # 先添加“新建”和“导入”卡片（始终在最前面）
+        new_card = self._create_new_card()
+        import_card = self._create_import_card()
+        self.flow_layout.addWidget(new_card)
+        self.flow_layout.addWidget(import_card)
+
         if not workflow_files:
-            placeholder = BodyLabel("暂无模型文件\n将 .workflow.json 文件放入 workflows/ 目录即可显示")
+            placeholder = QLabel("暂无模型文件\n将 .workflow.json 文件放入 workflows/ 目录即可显示")
             placeholder.setAlignment(Qt.AlignCenter)
-            placeholder.setStyleSheet("color: #888888; font-size: 14px;")
+            placeholder.setStyleSheet("color: #888888; font-size: 14px; background-color: transparent;")
+            placeholder.setWordWrap(True)
             self.flow_layout.addWidget(placeholder)
             return
 
-        # ✅ 关键：分批增量创建卡片，避免一次性大量创建导致 UI 卡顿
+        # 分批加载真实卡片
         self._pending_workflows = list(workflow_files)
         if self._batch_timer is None:
             self._batch_timer = QTimer(self)
-            self._batch_timer.setInterval(0)  # 尽快，但让出事件循环
+            self._batch_timer.setInterval(0)
             self._batch_timer.timeout.connect(self._add_next_batch)
         if not self._batch_timer.isActive():
             self._batch_timer.start()
@@ -128,7 +185,6 @@ class WorkflowCanvasGalleryPage(QWidget):
             if self._batch_timer and self._batch_timer.isActive():
                 self._batch_timer.stop()
             return
-        # 一次添加最多 _batch_size 个
         batch = self._pending_workflows[:self._batch_size]
         self._pending_workflows = self._pending_workflows[self._batch_size:]
         for wf_path in batch:
@@ -138,7 +194,7 @@ class WorkflowCanvasGalleryPage(QWidget):
             except Exception:
                 pass
 
-    # --- 以下方法保持不变 ---
+    # --- 以下方法保持不变（仅微调）---
     def open_canvas(self, file_path: Path):
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path)
@@ -185,7 +241,56 @@ class WorkflowCanvasGalleryPage(QWidget):
             )
             self.opened_workflows[file_path] = canvas_page
         self.parent_window.switchTo(self.opened_workflows[file_path])
-        self.load_workflows()  # 刷新列表
+        self.load_workflows()  # 刷新列表（会重新插入“新建”卡片）
+
+    def import_canvas(self):
+        """导入外部画布文件"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择画布文件",
+            "",
+            "Workflow Files (*.workflow.json);;All Files (*)"
+        )
+        if not file_path:
+            return
+
+        src_path = Path(file_path)
+        if not src_path.exists():
+            InfoBar.error("文件不存在", "请选择有效的画布文件", parent=self)
+            return
+
+        # 提取原始名称（不含 .workflow.json）
+        stem = src_path.stem
+        if stem.endswith('.workflow'):
+            base_name = stem[:-9]  # 移除 ".workflow"
+        else:
+            base_name = stem
+
+        if not base_name:
+            base_name = "imported_workflow"
+
+        # 生成目标路径（避免重名）
+        dest_path = self.workflow_dir / f"{base_name}.workflow.json"
+        counter = 1
+        while dest_path.exists():
+            dest_path = self.workflow_dir / f"{base_name}_{counter}.workflow.json"
+            counter += 1
+
+        # 复制主文件
+        try:
+            shutil.copy2(src_path, dest_path)
+
+            # 尝试复制同名 .png 预览图
+            src_png = src_path.parent / f'{base_name}.png'
+            if src_png.exists():
+                dest_png = dest_path.parent / f'{base_name}.png'
+                shutil.copy2(src_png, dest_png)
+
+            InfoBar.success("导入成功", f"已导入 {dest_path.stem}", parent=self)
+            self.load_workflows()  # 刷新列表
+
+        except Exception as e:
+            InfoBar.error("导入失败", str(e), parent=self)
 
     def duplicate_workflow(self, src_path: Path):
         dialog = CustomInputDialog("复制画布", "请输入新画布名称", src_path.stem.split(".")[0] + "_copy", self)
