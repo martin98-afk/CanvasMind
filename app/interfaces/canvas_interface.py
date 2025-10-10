@@ -9,7 +9,8 @@ from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
 from NodeGraphQt.constants import PipeLayoutEnum
-from PyQt5.QtCore import Qt, QThreadPool, QRectF
+from PyQt5 import QtCore
+from PyQt5.QtCore import Qt, QThreadPool, QRectF, QPointF
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from loguru import logger
@@ -23,13 +24,13 @@ from app.nodes.create_dynamic_node import create_node_class
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
 from app.utils.config import Settings
-from app.utils.threading_utils import NodeListExecutor
+from app.utils.threading_utils import NodeListExecutor, WorkflowLoader, ThumbnailGenerator
 from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_json
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
-from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
 from app.widgets.dialog_widget.output_selection_dialog import OutputSelectionDialog
 from app.widgets.property_panel import PropertyPanel
+from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 
 
 # ----------------------------
@@ -105,9 +106,11 @@ class CanvasPage(QWidget):
 
     def eventFilter(self, obj, event):
         if obj is self.canvas_widget and event.type() == event.Resize:
+            # 移动环境选择器
             self.env_selector_container.move(self.canvas_widget.width() - 200, 10)
-            workflow_name_length = len(self.workflow_name) * 15
-            self.name_container.move(int(self.canvas_widget.width() // 2) - workflow_name_length // 2, 10)
+            # 重新定位名称容器（自动计算宽度并居中）
+            self._position_name_container()
+
         return super().eventFilter(obj, event)
 
     def create_environment_selector(self):
@@ -249,32 +252,64 @@ class CanvasPage(QWidget):
         button_container.show()
 
     def create_name_label(self):
-        """创建画布左上角的悬浮按钮"""
-        # 创建下拉框容器
+        """创建画布顶部居中的可编辑名称控件"""
         self.name_container = QWidget(self.canvas_widget)
         self.name_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        # 放置在右上角
-        # 计算workflow_name的长度
-        workflow_name_length = len(self.workflow_name) * 15
-        self.name_container.move(int(self.canvas_widget.width() // 2) - workflow_name_length // 2, 10)
 
-        # 创建布局
-        name_layout = QHBoxLayout(self.name_container)
-        name_layout.setSpacing(5)
-        name_layout.setContentsMargins(0, 0, 0, 0)
-
-        # 添加标签
-        name_label = LineEdit(self)
+        name_label = LineEdit(self.name_container)
         name_label.setText(self.workflow_name)
-        # 将其长度设定与文字长度相等
-        name_label.setFixedWidth(workflow_name_length)
         name_label.textChanged.connect(self.update_workflow_name)
 
+        # 初始宽度（后续会动态调整）
+        self._update_name_label_width(name_label)
+
+        name_layout = QHBoxLayout(self.name_container)
+        name_layout.setContentsMargins(0, 0, 0, 0)
+        name_layout.setSpacing(5)
         name_layout.addWidget(name_label)
         name_layout.addStretch()
-
         self.name_container.setLayout(name_layout)
         self.name_container.show()
+
+        # ✅ 关键：延迟定位，确保 canvas 尺寸已确定
+        QtCore.QTimer.singleShot(0, self._position_name_container)
+
+    def _update_name_label_width(self, line_edit):
+        """根据当前文本内容动态设置 LineEdit 宽度"""
+        text = line_edit.text() or " "  # 避免空文本宽度为0
+        font_metrics = line_edit.fontMetrics()
+        # 计算文本宽度 + 内边距（qfluentwidgets 的 LineEdit 通常有左右 padding）
+        text_width = font_metrics.horizontalAdvance(text)
+        # 添加左右内边距（根据 qfluentwidgets 默认样式，通常 10~16px）
+        padding = 24  # 可根据实际调整（左右各12）
+        total_width = text_width + padding
+        # 设置最小宽度避免太窄
+        line_edit.setFixedWidth(max(total_width, 80))
+
+    def _position_name_container(self):
+        if not hasattr(self, 'name_container') or not self.name_container.isVisible():
+            return
+        if not hasattr(self, 'canvas_widget') or self.canvas_widget.width() <= 0:
+            return
+
+        name_edit = self.name_container.findChild(LineEdit)
+        if not name_edit:
+            return
+
+        # 更新宽度（确保与当前文本一致）
+        self._update_name_label_width(name_edit)
+
+        # 居中
+        container_width = self.name_container.width()
+        x = max(0, (self.canvas_widget.width() - container_width) // 2)
+        self.name_container.move(x, 10)
+
+    def update_workflow_name(self, text):
+        self.workflow_name = text
+        # 可选：只更新宽度，不重新居中（推荐）
+        name_edit = self.name_container.findChild(LineEdit)
+        if name_edit:
+            self._update_name_label_width(name_edit)
 
     def _save_via_dialog(self):
         if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
@@ -290,6 +325,7 @@ class CanvasPage(QWidget):
         self.file_path = file_path
 
     def _open_via_dialog(self):
+        # 添加creationflags参数以防止出现白色控制台窗口
         file_path, _ = QFileDialog.getOpenFileName(
             self, "打开工作流", "", "工作流文件 (*.workflow.json)"
         )
@@ -336,7 +372,6 @@ class CanvasPage(QWidget):
                         "display_name": f"{node_name} → {param_name}",
                         "format": getattr(prop_def, 'type', PropertyType.TEXT).name if prop_def else "TEXT"
                     })
-                    logger.info(prop_def.dict())
                     if prop_def.type == PropertyType.RANGE:
                         candidate_inputs[-1].update({
                             "min": float(prop_def.min),
@@ -1010,8 +1045,8 @@ class CanvasPage(QWidget):
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(full_data, f, indent=2, ensure_ascii=False)
 
-        # ✅ 自动生成预览图（同目录，同名，.png）
-        self._generate_canvas_thumbnail(file_path)
+        # ✅ 异步生成预览图（同目录，同名，.png）
+        self._generate_canvas_thumbnail_async(file_path)
         self.create_success_info("保存成功", "工作流保存成功！")
 
     def _generate_selected_nodes_thumbnail(self, export_path: pathlib.Path):
@@ -1053,6 +1088,19 @@ class CanvasPage(QWidget):
             traceback.print_exc()
             self.create_warning_info("预览图", f"生成失败: {str(e)}")
 
+    def _generate_canvas_thumbnail_async(self, workflow_path):
+        """异步生成画布缩略图"""
+        self.thumbnail_thread = ThumbnailGenerator(self.graph, workflow_path)
+        self.thumbnail_thread.finished.connect(self._on_thumbnail_generated)
+        self.thumbnail_thread.start()
+
+    def _on_thumbnail_generated(self, png_path):
+        """缩略图生成完成的回调"""
+        if png_path:
+            logger.info(f"✅ 预览图已保存: {png_path}")
+        else:
+            self.create_warning_info("预览图", "生成失败")
+
     def _generate_canvas_thumbnail(self, workflow_path):
         """根据工作流文件路径生成同名 PNG 预览图"""
         try:
@@ -1091,41 +1139,78 @@ class CanvasPage(QWidget):
             self.create_warning_info("预览图", f"生成失败: {str(e)}")
 
     def load_full_workflow(self, file_path):
-        with open(file_path, 'r', encoding='utf-8') as f:
-            full_data = json.load(f)
+        # 禁用按钮防止重复加载
+        self.import_btn.setEnabled(False)
+        self.create_info("加载中", "正在异步加载工作流...")
+        
+        # 启动异步加载线程
+        self.workflow_loader = WorkflowLoader(file_path, self.graph, self.node_type_map)
+        self.workflow_loader.finished.connect(self._on_workflow_loaded)
+        self.workflow_loader.start()
 
-        # 加载图
-        self.graph.deserialize_session(full_data["graph"])
-        self._setup_pipeline_style()
-        # 恢复环境
-        env = full_data.get("runtime", {}).get("environment")
-        if env:
-            for i in range(self.env_combo.count()):
-                if self.env_combo.itemData(i) == env:
-                    self.env_combo.setCurrentIndex(i)
-                    break
+    def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data):
+        """工作流加载完成的回调"""
+        try:
+            # 加载图
+            self.graph.deserialize_session(graph_data)
+            self._setup_pipeline_style()
+            
+            # 恢复环境
+            env = runtime_data.get("environment")
+            if env:
+                for i in range(self.env_combo.count()):
+                    if self.env_combo.itemData(i) == env:
+                        self.env_combo.setCurrentIndex(i)
+                        break
 
-        # 恢复节点状态
-        rt = full_data.get("runtime", {})
-        for node in self.graph.all_nodes():
-            if isinstance(node, BackdropNode):
-                continue
+            # 恢复节点状态
+            for node in self.graph.all_nodes():
 
-            # ✅ 用相同方式生成 stable_key
-            full_path = getattr(node, 'FULL_PATH', 'unknown')
-            node_name = node.name()
-            stable_key = f"{full_path}||{node_name}"
+                if node and not isinstance(node, BackdropNode):
+                    full_path = getattr(node, 'FULL_PATH', 'unknown')
+                    node_name = node.name()
+                    stable_key = f"{full_path}||{node_name}"
+                    node_status = node_status_data.get(stable_key)
+                    # 恢复数据
+                    node._input_values = deserialize_from_json(node_status.get("input_values", {}))
+                    node._output_values = deserialize_from_json(node_status.get("output_values", {}))
+                    node.column_select = node_status.get("column_select", {})
+                    
+                    status_str = node_status.get("status", "unrun")
+                    self.set_node_status(
+                        node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
+                    )
+            self._fit_view_to_all_nodes()
+            self.create_success_info("加载成功", "工作流加载成功！")
+        except Exception as e:
+            self.create_failed_info("加载失败", f"工作流加载失败: {str(e)}")
+        finally:
+            # 重新启用按钮
+            self.import_btn.setEnabled(True)
 
-            # 恢复数据
-            node._input_values = deserialize_from_json(rt.get("node_inputs", {}).get(stable_key, {}))
-            node._output_values = deserialize_from_json(rt.get("node_outputs", {}).get(stable_key, {}))
-            node.column_select = rt.get("column_select", {}).get(stable_key, {})
+    def _fit_view_to_all_nodes(self):
+        """适配你的 Viewer：重置缩放 + 居中所有节点（使用 PyQt5 原生 API）"""
+        nodes = [n for n in self.graph.all_nodes() if not isinstance(n, BackdropNode)]
+        if not nodes:
+            return
 
-            status_str = rt.get("node_states", {}).get(stable_key, "unrun")
-            self.set_node_status(
-                node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
-            )
-        self.create_success_info("加载成功", "工作流加载成功！")
+        # 计算所有节点的包围盒中心
+        min_x = min(n.pos()[0] for n in nodes)
+        min_y = min(n.pos()[1] for n in nodes)
+        max_x = max(n.pos()[0] + n.view.width for n in nodes)
+        max_y = max(n.pos()[1] + n.view.height for n in nodes)
+
+        center_x = (min_x + max_x) / 2
+        center_y = (min_y + max_y) / 2
+
+        # 获取 viewer（它是 QGraphicsView 子类）
+        viewer = self.graph.viewer()
+
+        # 1. 重置缩放和平移（回到初始状态）
+        viewer.reset_zoom()
+
+        # 2. 使用 PyQt5 原生方法居中
+        viewer.centerOn(center_x, center_y)  # 注意：是 centerOn，不是 center_on
 
     def run_workflow(self):
         nodes = self.graph.all_nodes()

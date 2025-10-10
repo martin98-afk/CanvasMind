@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
+import warnings
+warnings.filterwarnings("ignore")
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication

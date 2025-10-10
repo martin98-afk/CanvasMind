@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTableWidgetItem, QHeaderView,
     QFormLayout, QDialog
 )
+from loguru import logger
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PrimaryPushButton, PushButton,
     TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit, MessageBoxBase, SubtitleLabel,
@@ -681,33 +682,26 @@ class ComponentDeveloperWidget(QWidget):
     def _on_requirements_text_changed(self):
         self._analysis_timer.stop()
 
-    # --- 新增：分析代码中的导入语句 ---
     def _analyze_code_for_requirements(self):
-        """分析当前代码编辑器中的代码，提取导入的包名"""
         code = self.code_editor.code_editor.toPlainText()
         if not code.strip():
-            return set()  # 返回空集合
+            return
 
         try:
             tree = ast.parse(code)
         except SyntaxError:
-            # 代码有语法错误，无法分析，返回空集合
             print("代码语法错误，无法分析依赖。")
-            return set()
+            return
 
-        imported_modules = set()  # 使用集合去重
-
+        imported_modules = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    module_name = alias.name.split('.')[0]  # 取顶级模块名
-                    imported_modules.add(module_name)
+                    imported_modules.add(alias.name.split('.')[0])
             elif isinstance(node, ast.ImportFrom):
-                module_name = node.module.split('.')[0] if node.module else None
-                if module_name:
-                    imported_modules.add(module_name)
+                if node.module:
+                    imported_modules.add(node.module.split('.')[0])
 
-        # 过滤掉内置模块和相对导入
         builtin_modules = set(
             ['__future__', 'abc', 'aifc', 'argparse', 'array', 'ast', 'asynchat', 'asyncio', 'asyncore', 'atexit',
              'audioop', 'base64', 'bdb', 'binascii', 'binhex', 'bisect', 'builtins', 'bz2', 'cProfile', 'calendar',
@@ -730,37 +724,81 @@ class ComponentDeveloperWidget(QWidget):
              'tempfile', 'termios', 'test', 'textwrap', 'threading', 'time', 'timeit', 'tkinter', 'token', 'tokenize',
              'trace', 'traceback', 'tracemalloc', 'tty', 'turtle', 'turtledemo', 'types', 'typing', 'unicodedata',
              'unittest', 'urllib', 'uu', 'uuid', 'venv', 'warnings', 'wave', 'weakref', 'webbrowser', 'winreg',
-             'winsound', 'wsgiref', 'xdrlib', 'xml', 'xmlrpc', 'zipapp', 'zipfile', 'zipimport', 'zlib', 'zoneinfo'])
+             'winsound', 'wsgiref', 'xdrlib', 'xml', 'xmlrpc', 'zipapp', 'zipfile', 'zipimport', 'zlib', 'zoneinfo']
+        )
         external_packages = imported_modules - builtin_modules
 
-        # 应用映射表
-        resolved_packages = set()
-        for mod_name in external_packages:
-            pkg_name = self.MODULE_TO_PACKAGE_MAP.get(mod_name, mod_name)
-            resolved_packages.add(pkg_name)
+        resolved_packages = {
+            self.MODULE_TO_PACKAGE_MAP.get(mod, mod)
+            for mod in external_packages
+        }
 
-        # 将结果设置到 requirements_edit
+        current_text = self.requirements_edit.toPlainText()
+        if not current_text.strip() and not resolved_packages:
+            return  # 空代码 + 空依赖，无需更新
+
+        # 解析当前依赖
+        other_lines, package_lines = self._parse_requirements_lines(current_text)
+        current_pkg_names = set(package_lines.keys())
+
+        # 代码中需要的包（标准化）
+        needed_pkgs = {pkg.lower() for pkg in resolved_packages}
+
+        # 要保留的包行：代码中仍需要的
+        kept_package_lines = [
+            package_lines[pkg] for pkg in needed_pkgs if pkg in package_lines
+        ]
+
+        # 新增的包（无版本）
+        new_pkgs = needed_pkgs - current_pkg_names
+        new_package_lines = sorted([pkg for pkg in resolved_packages if pkg.lower() in new_pkgs])
+
+        # 重建内容：其他行 + 保留的包 + 新包
+        all_lines = other_lines + kept_package_lines + new_package_lines
+        updated_text = '\n'.join(all_lines)
+
+        # 避免无意义更新
+        if updated_text == current_text:
+            return
+
+        # 更新 UI（保留你的光标逻辑）
         if not self._updating_requirements_from_analysis:
             self._updating_requirements_from_analysis = True
-
-            # 记录代码编辑器的光标位置
-            code_editor_cursor = self.code_editor.code_editor.textCursor()
-            code_pos = code_editor_cursor.position()
-
-            # 更新 requirements_edit
-            original_text = self.requirements_edit.toPlainText()
-            new_text = '\n'.join(sorted(resolved_packages))
-            self.requirements_edit.setPlainText(new_text)  # 排序并换行分隔
-            add_len = len(new_text) - len(original_text)
-            # 恢复代码编辑器的焦点和光标位置
-            code_editor_cursor.setPosition(code_pos + add_len)
-            self.code_editor.code_editor.setTextCursor(code_editor_cursor)
-
-            # --- 新增：显式重新触发一次高亮 ---
-            # 确保高亮状态与视觉光标位置一致
+            code_cursor = self.code_editor.code_editor.textCursor()
+            pos = code_cursor.position()
+            self.requirements_edit.setPlainText(updated_text)
+            code_cursor.setPosition(pos + len(updated_text) - len(current_text))
+            self.code_editor.code_editor.setTextCursor(code_cursor)
             self.code_editor.code_editor.update_extra_selections()
-
             self._updating_requirements_from_analysis = False
+
+    def _parse_requirements_lines(self, text):
+        """
+        返回 (保留的行列表, 包名集合)
+        保留用户原始行（含版本、注释等），但记录其包名用于比对
+        """
+        lines = []
+        package_lines = {}  # pkg_name_lower -> original_line
+
+        for line in text.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith('#'):
+                lines.append(line)  # 保留空行和注释
+                continue
+
+            # 提取包名
+            match = re.match(r'^([a-zA-Z0-9._-]+)', stripped)
+            if match:
+                pkg_name = match.group(1).lower()
+                # 如果同一个包出现多次，保留第一个（或最后一个，按需）
+                if pkg_name not in package_lines:
+                    package_lines[pkg_name] = line
+                # 不立即加入 lines，稍后按需保留
+            else:
+                # 无法识别的行（如 -e .），保留
+                lines.append(line)
+
+        return lines, package_lines
 
     def _save_component(self, delete_original_file: bool = True):
         """保存组件"""

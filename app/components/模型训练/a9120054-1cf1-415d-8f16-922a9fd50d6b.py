@@ -31,12 +31,12 @@ class Component(BaseComponent):
         "top_k": PropertyDefinition(
             type=PropertyType.INT,
             default=1,
-            label="属性1",
+            label="取前k个结果",
         ),
         "device": PropertyDefinition(
             type=PropertyType.CHOICE,
             default="cpu",
-            label="属性2",
+            label="运行设备",
             choices=["cpu", "cuda"]
         ),
     }

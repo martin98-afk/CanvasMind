@@ -21,15 +21,16 @@ class ImageLoader(QObject):
         self.image_path = image_path
 
     def load_image(self):
-        """在单独线程中加载图片"""
+        """在单独线程中加载原图（不缩放）"""
         try:
             pixmap = QPixmap(self.image_path)
-            if not pixmap.isNull():
-                # 缩放到合适大小
-                pixmap = pixmap.scaled(250, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            self.image_loaded.emit(pixmap)
+            if pixmap.isNull():
+                self.image_loaded.emit(QPixmap())
+            else:
+                # ✅ 关键：不缩放，发送原始高清 pixmap
+                self.image_loaded.emit(pixmap)
         except Exception:
-            self.image_loaded.emit(QPixmap())  # 发送空的Pixmap表示加载失败
+            self.image_loaded.emit(QPixmap())
 
 
 class WorkflowCard(CardWidget):
@@ -78,22 +79,10 @@ class WorkflowCard(CardWidget):
         self._img_label = None
         preview_path = self._get_preview_path()
 
-        if self._preview_pixmap:
-            # 使用预加载的 QPixmap
-            self._img_label = ImageLabel(self)
-            self._img_label.setPixmap(self._preview_pixmap.scaled(
-                250, 150,
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            ))
+        if preview_path.exists():
+            self._img_label = ImageLabel(str(preview_path), self)
             self._img_label.setFixedSize(250, 150)
             self._img_label.setBorderRadius(8, 8, 8, 8)
-        elif preview_path and preview_path.exists():
-            # 异步加载预览图
-            self._img_label = ImageLabel(self)
-            self._img_label.setFixedSize(250, 150)
-            self._img_label.setBorderRadius(8, 8, 8, 8)
-            self._load_preview_image_async(preview_path)
         else:
             # 占位符
             placeholder = BodyLabel("无预览图")
@@ -204,19 +193,24 @@ class WorkflowCard(CardWidget):
         self._image_thread.start()
 
     def _on_image_loaded(self, pixmap: QPixmap):
-        """图片加载完成的回调"""
-        if not pixmap.isNull() and self._img_label:
-            self._img_label.setPixmap(pixmap)
-        elif self._img_label:
-            # 加载失败显示占位符
-            placeholder = BodyLabel("预览图加载失败")
-            placeholder.setAlignment(Qt.AlignCenter)
-            placeholder.setStyleSheet("color: #aaa; background-color: #f5f5f5; border-radius: 8px;")
-            # 替换ImageLabel为占位符
-            parent_layout = self._img_label.parentWidget().layout()
-            parent_layout.replaceWidget(self._img_label, placeholder)
-            self._img_label.deleteLater()
-            self._img_label = placeholder
+        """图片加载完成的回调（高质量缩放）"""
+        if pixmap.isNull() or not self._img_label:
+            return
+
+        # ✅ 关键1: 禁用自动缩放
+        self._img_label.setScaledContents(False)
+
+        # ✅ 关键2: 手动高质量缩放
+        scaled_pixmap = pixmap.scaled(
+            self._img_label.width(),
+            self._img_label.height(),
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation  # 启用双线性/双三次插值
+        )
+
+        # ✅ 关键3: 居中显示（因为 KeepAspectRatio 可能留空）
+        self._img_label.setPixmap(scaled_pixmap)
+        self._img_label.setAlignment(Qt.AlignCenter)  # 确保居中
 
     def enterEvent(self, event):
         self._shadow.setColor(QColor(0, 0, 0, 60))  # 半透明黑色阴影

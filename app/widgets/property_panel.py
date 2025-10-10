@@ -149,18 +149,16 @@ class PropertyPanel(CardWidget):
                         display_data = node._input_values.get(port_def.name, "暂无数据")
                     try:
                         if not isinstance(display_data, str) or display_data != "暂无数据":
-                            logger.info(original_upstream_data)
                             display_data = port_type.serialize(display_data) if len(connected) <= 1 else \
                                 [port_type.serialize(data) for data in original_upstream_data]
+                        self._add_text_edit_to_layout(
+                            display_data, port_type=port_type, port_name=port_def.name, layout=input_layout
+                        )
                     except:
                         import traceback
                         traceback.print_exc()
                         logger.error(f"无法解析输入数据：{display_data}")
                         display_data = "暂无数据"
-
-                    self._add_text_edit_to_layout(
-                        display_data, port_type=port_type, port_name=port_def.name, layout=input_layout
-                    )
 
         else:
             input_layout.addWidget(BodyLabel("  无输入端口"))
