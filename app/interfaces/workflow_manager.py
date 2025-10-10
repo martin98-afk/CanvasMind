@@ -1,21 +1,65 @@
 import os
 import shutil
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
-from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QFileDialog
 from qfluentwidgets import (
-    ScrollArea, FlowLayout, InfoBar, FluentIcon, CardWidget, BodyLabel
+    FlowLayout, InfoBar, FluentIcon, CardWidget, BodyLabel, SmoothScrollArea
 )
 
 from app.interfaces.canvas_interface import CanvasPage
-from app.utils.threading_utils import WorkflowScanner
 from app.utils.utils import get_icon
 from app.widgets.card_widget.workflow_card import WorkflowCard
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
+
+
+class WorkflowFileInfoScanner(QThread):
+    """扫描工作流文件信息的线程"""
+    scan_finished = pyqtSignal(list, dict, dict)  # (文件列表, 文件信息, 预览图信息)
+
+    def __init__(self, workflow_dir: Path):
+        super().__init__()
+        self.workflow_dir = workflow_dir
+
+    def run(self):
+        workflow_files = []
+        file_info_map = {}
+        preview_map = {}
+        
+        # 收集所有工作流文件
+        if self.workflow_dir.exists():
+            workflow_files = list(self.workflow_dir.glob("*.workflow.json"))
+            workflow_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            
+            # 预加载文件信息和预览图
+            for wf_path in workflow_files:
+                try:
+                    stat = wf_path.stat()
+                    file_info_map[str(wf_path)] = {
+                        'ctime': datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M"),
+                        'mtime': datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M"),
+                        'size_kb': stat.st_size // 1024
+                    }
+                    
+                    # 预加载预览图
+                    preview_path = wf_path.parent / f"{wf_path.stem.split('.')[0]}.png"
+                    if preview_path.exists():
+                        pixmap = QPixmap(str(preview_path))
+                        if not pixmap.isNull():
+                            preview_map[str(wf_path)] = pixmap.scaled(
+                                250, 150, 
+                                Qt.KeepAspectRatio, 
+                                Qt.SmoothTransformation
+                            )
+                except Exception:
+                    pass  # 忽略单个文件错误
+                    
+        self.scan_finished.emit(workflow_files, file_info_map, preview_map)
 
 
 class WorkflowCanvasGalleryPage(QWidget):
@@ -28,7 +72,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._is_loading = False
         self._pending_workflows = []
         self._batch_timer = None
-        self._batch_size = 2
+        self._batch_size = 20  # 进一步增加批量大小
+        self._file_info_map = {}  # 存储预加载的文件信息
+        self._preview_map = {}    # 存储预加载的预览图
         self._setup_ui()
         QTimer.singleShot(50, self.load_workflows)
 
@@ -40,11 +86,8 @@ class WorkflowCanvasGalleryPage(QWidget):
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
-
-        # 移除工具栏：不再显示“新建”和“打开目录”按钮
-
         # 滚动区域
-        self.scroll_area = ScrollArea(self)
+        self.scroll_area = SmoothScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setStyleSheet("border: none; background-color: transparent;")
 
@@ -73,17 +116,17 @@ class WorkflowCanvasGalleryPage(QWidget):
             return
         self._is_loading = True
 
-        # 清空现有内容（包括“新建”卡片）
+        # 清空现有内容（包括"新建"卡片）
         self._clear_layout()
 
-        # 启动后台扫描
-        self._scanner = WorkflowScanner(self.workflow_dir)
+        # 启动后台扫描（包含文件信息和预览图）
+        self._scanner = WorkflowFileInfoScanner(self.workflow_dir)
         self._thread = QThread()
         self._scanner.moveToThread(self._thread)
-        self._thread.started.connect(self._scanner.scan)
-        self._scanner.finished.connect(self._on_scan_finished)
-        self._scanner.finished.connect(self._thread.quit)
-        self._scanner.finished.connect(self._scanner.deleteLater)
+        self._thread.started.connect(self._scanner.run)
+        self._scanner.scan_finished.connect(self._on_detailed_scan_finished)
+        self._scanner.scan_finished.connect(self._thread.quit)
+        self._scanner.scan_finished.connect(self._scanner.deleteLater)
         self._thread.finished.connect(self._thread.deleteLater)
         self._thread.start()
 
@@ -94,7 +137,7 @@ class WorkflowCanvasGalleryPage(QWidget):
             item.deleteLater()
 
     def _create_new_card(self):
-        """创建“新建画布”卡片"""
+        """创建"新建画布"卡片"""
         new_card = CardWidget()
         new_card.setFixedSize(320, 300)
         new_card.setBorderRadius(12)
@@ -125,7 +168,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         return new_card
 
     def _create_import_card(self):
-        """创建“导入画布”卡片（使用 Fluent 图标）"""
+        """创建"导入画布"卡片（使用 Fluent 图标）"""
         from qfluentwidgets import FluentIcon  # 确保导入
 
         import_card = CardWidget()
@@ -154,10 +197,13 @@ class WorkflowCanvasGalleryPage(QWidget):
         import_card.setCursor(Qt.PointingHandCursor)
         return import_card
 
-    def _on_scan_finished(self, workflow_files: List[Path]):
+    def _on_detailed_scan_finished(self, workflow_files: List[Path], file_info_map: dict, preview_map: dict):
+        """处理详细扫描结果"""
         self._is_loading = False
+        self._file_info_map = file_info_map
+        self._preview_map = preview_map
 
-        # 先添加“新建”和“导入”卡片（始终在最前面）
+        # 先添加"新建"和"导入"卡片（始终在最前面）
         new_card = self._create_new_card()
         import_card = self._create_import_card()
         self.flow_layout.addWidget(new_card)
@@ -175,7 +221,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._pending_workflows = list(workflow_files)
         if self._batch_timer is None:
             self._batch_timer = QTimer(self)
-            self._batch_timer.setInterval(0)
+            self._batch_timer.setInterval(10)  # 减少间隔时间
             self._batch_timer.timeout.connect(self._add_next_batch)
         if not self._batch_timer.isActive():
             self._batch_timer.start()
@@ -189,7 +235,10 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._pending_workflows = self._pending_workflows[self._batch_size:]
         for wf_path in batch:
             try:
-                card = WorkflowCard(wf_path, self)
+                # 传递预加载的信息
+                file_info = self._file_info_map.get(str(wf_path))
+                preview_pixmap = self._preview_map.get(str(wf_path))
+                card = WorkflowCard(wf_path, self, file_info, preview_pixmap)
                 self.flow_layout.addWidget(card)
             except Exception:
                 pass
@@ -241,7 +290,7 @@ class WorkflowCanvasGalleryPage(QWidget):
             )
             self.opened_workflows[file_path] = canvas_page
         self.parent_window.switchTo(self.opened_workflows[file_path])
-        self.load_workflows()  # 刷新列表（会重新插入“新建”卡片）
+        self.load_workflows()  # 刷新列表（会重新插入"新建"卡片）
 
     def import_canvas(self):
         """导入外部画布文件"""
@@ -313,7 +362,8 @@ class WorkflowCanvasGalleryPage(QWidget):
 
         try:
             shutil.copy2(src_path, dest_path)
-            shutil.copy2(src_png, dest_png)
+            if src_png.exists():
+                shutil.copy2(src_png, dest_png)
             InfoBar.success("复制成功", f"已创建 {new_name}", parent=self)
             self.load_workflows()
         except Exception as e:
@@ -322,13 +372,18 @@ class WorkflowCanvasGalleryPage(QWidget):
     def delete_workflow(self, file_path: Path):
         from qfluentwidgets import MessageBox, InfoBar
 
-        w = MessageBox("确认删除", f"确定要删除画布 “{file_path.stem}” 吗？\n此操作不可恢复！", self)
+        w = MessageBox("确认删除", f"确定要删除画布 \"{file_path.stem}\" 吗？\n此操作不可恢复！", self)
         if not w.exec():
             return
 
         try:
             file_path.unlink()
-            InfoBar.success("删除成功", f"画布 “{file_path.stem}” 已删除", parent=self)
+            # 同时删除预览图
+            preview_path = self.workflow_dir / f"{file_path.stem.split('.')[0]}.png"
+            if preview_path.exists():
+                preview_path.unlink()
+                
+            InfoBar.success("删除成功", f"画布 '{file_path.stem}' 已删除", parent=self)
             if file_path in self.opened_workflows:
                 self.parent_window.removeInterface(self.opened_workflows[file_path])
                 del self.opened_workflows[file_path]

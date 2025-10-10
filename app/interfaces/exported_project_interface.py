@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QDialog, QTextEdit, QLabel, QF
 from qfluentwidgets import (
     ScrollArea, PrimaryPushButton,
     InfoBar,
-    MessageBox, StateToolTip, FlowLayout, CardWidget, BodyLabel
+    MessageBox, StateToolTip, FlowLayout, CardWidget, BodyLabel, SmoothScrollArea
 )
 
 from app.utils.service_manager import SERVICE_MANAGER
@@ -85,7 +85,7 @@ class ExportedProjectsPage(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
 
         # 流式布局区域
-        self.scroll_area = ScrollArea(self)
+        self.scroll_area = SmoothScrollArea(self)
         self.scroll_area.setViewportMargins(0, 0, 0, 0)
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setStyleSheet("border: none; background-color: transparent;")

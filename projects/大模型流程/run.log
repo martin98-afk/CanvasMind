@@ -1,16 +1,32 @@
 
-[32m2025-10-09 23:11:24.173[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m139[0m - [1m执行节点: 长文本输入 1[0m
-[32m2025-10-09 23:11:24.785[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
-[32m2025-10-09 23:11:24.743[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[32m2025-10-10 18:55:59.584[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: 组件输入[0m
+[32m2025-10-10 18:56:00.250[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-10 18:56:00.206[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
 [0m
-[32m2025-10-09 23:11:24.791[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m139[0m - [1m执行节点: JSON文本包装[0m
-[32m2025-10-09 23:11:25.394[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
-[32m2025-10-09 23:11:25.350[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[32m2025-10-10 18:56:00.256[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: 组件输出[0m
+[32m2025-10-10 18:56:00.876[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-10 18:56:00.827[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
 [0m
-[32m2025-10-09 23:11:25.395[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m139[0m - [1m执行节点: 提示词模板 3[0m
-[32m2025-10-09 23:11:25.986[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
-[32m2025-10-09 23:11:25.942[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1m{'variables': {'text': '我的需求是开发一个大模型对话组件'}}[0m
-[32m2025-10-09 23:11:25.942[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1m##  任务
+[32m2025-10-10 18:56:00.883[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: 组件意图[0m
+[32m2025-10-10 18:56:01.514[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-10 18:56:01.457[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[0m
+[32m2025-10-10 18:56:01.521[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: JSON文本包装 1[0m
+[32m2025-10-10 18:56:02.129[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-10 18:56:02.074[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[0m
+[32m2025-10-10 18:56:02.135[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: JSON文本包装 3[0m
+[32m2025-10-10 18:56:02.739[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-10 18:56:02.686[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[0m
+[32m2025-10-10 18:56:02.746[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: JSON文本包装[0m
+[32m2025-10-10 18:56:03.416[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-10 18:56:03.364[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[0m
+[32m2025-10-10 18:56:03.422[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: 提示词模板 3[0m
+[32m2025-10-10 18:56:04.021[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-10 18:56:03.976[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1m{'variables': [{'intention': '我的需求是开发一个逻辑回归组件'}, {'input': '输入是两个csv，一个是feature，一个是target'}, {'output': '输出是target预测结果和模型'}]}[0m
+[32m2025-10-10 18:56:03.976[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1m##  任务
 根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码
 
 ## 组件输入输出参数定义代码
@@ -26,8 +42,8 @@ class ArgumentType(str, Enum):
     EXCEL = "excel"
     FILE = "文件"
     UPLOAD = "上传"
-    SKLEARNMODEL = "sklearn模型"
-    TORCHMODEL = "torch模型"
+    SKLEARNMODEL = "sklearn模型"    # 模型类型不需要保存到本地，直接返回后后端代码会自动进行存储
+    TORCHMODEL = "torch模型"    # 模型类型不需要保存到本地，直接返回后后端代码会自动进行存储
     IMAGE = "图片"
 
 class PortDefinition(BaseModel):
@@ -110,169 +126,134 @@ class Component(BaseComponent):
         
         return {"prompt": prompt}
 
-## 我的组件开发需求
-我的需求是开发一个大模型对话组件
+## 组件开发需求
+我的需求是开发一个逻辑回归组件
+
+## 组件输入参数
+输入是两个csv，一个是feature，一个是target
+
+## 组件输出参数
+输出是target预测结果和模型
 
 ## 代码输出要求
 输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。
 
 ## 生成的组件代码
 [0m
-[32m2025-10-09 23:11:25.942[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[32m2025-10-10 18:56:03.976[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
 [0m
-[32m2025-10-09 23:11:25.993[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m139[0m - [1m执行节点: 大模型对话[0m
-[32m2025-10-09 23:11:26.614[0m | [34m[1mDEBUG   [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m171[0m - [34m[1m子进程 stdout:
-EXECUTION_ERROR: 组件执行失败: Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 264, in read_input_data
-    return self._read_json_data(input_value)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 309, in _read_json_data
-    raise ComponentError(f"无法读取JSON数据: {type(data)}")
-base.ComponentError: 无法读取JSON数据: <class 'NoneType'>
+[32m2025-10-10 18:56:04.028[0m | [1mINFO    [0m | [36m__main__[0m:[36m<module>[0m:[36m15[0m - [1m模型执行完成，输出:[0m
+[32m2025-10-10 18:56:04.028[0m | [1mINFO    [0m | [36m__main__[0m:[36m<module>[0m:[36m17[0m - [1m  prompt: ##  任务
+根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码
 
-During handling of the above exception, another exception occurred:
+## 组件输入输出参数定义代码
+class ArgumentType(str, Enum):
+    """参数类型"""
+    TEXT = "文本"
+    INT = "整数"
+    FLOAT = "浮点数"
+    BOOL = "布尔值"
+    ARRAY = "列表"
+    CSV = "csv"
+    JSON = "json"
+    EXCEL = "excel"
+    FILE = "文件"
+    UPLOAD = "上传"
+    SKLEARNMODEL = "sklearn模型"    # 模型类型不需要保存到本地，直接返回后后端代码会自动进行存储
+    TORCHMODEL = "torch模型"    # 模型类型不需要保存到本地，直接返回后后端代码会自动进行存储
+    IMAGE = "图片"
 
-Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 487, in execute
-    validated_inputs[port.name] = self.read_input_data(
-                                  ^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 278, in read_input_data
-    raise ComponentError(f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR")
-base.ComponentError: 读取输入 history 失败: 无法读取JSON数据: <class 'NoneType'>
+class PortDefinition(BaseModel):
+    """端口定义"""
+    name: str
+    label: str
+    type: ArgumentType = ArgumentType.TEXT
 
+## 组件属性参数定义代码
+class PropertyType(str, Enum):
+    """属性类型"""
+    TEXT = "文本"
+    LONGTEXT = "长文本"
+    INT = "整数"
+    FLOAT = "浮点数"
+    RANGE = "范围"
+    BOOL = "复选框"
+    CHOICE = "下拉框"
+    DYNAMICFORM = "动态表单"
+
+
+class PropertyDefinition(BaseModel):
+    """属性定义"""
+    type: PropertyType = PropertyType.TEXT
+    default: Any = ""
+    label: str = ""
+    choices: List[str] = Field(default_factory=list)
+    filter: str = "All Files (*)"  # 用于文件类型过滤
+    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义
+    min: float = Field(default=0.0, description="最小值")
+    max: float = Field(default=100.0, description="最大值")
+    step: float = Field(default=1.0, description="步长")
+
+    class Config:
+        # 允许递归引用
+        arbitrary_types_allowed = True
+
+## 我的组件样例代码
+class Component(BaseComponent):
+    name = "提示词模板"
+    category = "大模型组件"
+    description = ""
+    requirements = ""
+
+    inputs = [
+        PortDefinition(name="variables", label="变量字典", type=ArgumentType.JSON),
+    ]
+    outputs = [
+        PortDefinition(name="prompt", label="生成的提示词", type=ArgumentType.TEXT),
+    ]
+
+    properties = {
+        "template": PropertyDefinition(
+            type=PropertyType.LONGTEXT,
+            default="""你好，{{name}}！今天是{{day}}。""",
+            label="提示词模板",
+        ),
+    }
+
+    def run(self, params, inputs = None):
+        import re
+        self.logger.info(inputs)
+        template = params.get("template", "")
+        variables = inputs.get("variables", {}) if inputs else {}
+
+        if isinstance(variables, str):
+            import json
+            try:
+                variables = json.loads(variables)
+            except:
+                variables = {}
+
+        # 替换 {{key}} 为变量值
+        def replace_match(match):
+            key = match.group(1)
+            return str(variables.get(key, match.group(0)))
+
+        prompt = re.sub(r"\{\{(\w+)\}\}", replace_match, template)
+        self.logger.info(prompt)
+        
+        return {"prompt": prompt}
+
+## 组件开发需求
+我的需求是开发一个逻辑回归组件
+
+## 组件输入参数
+输入是两个csv，一个是feature，一个是target
+
+## 组件输出参数
+输出是target预测结果和模型
+
+## 代码输出要求
+输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。
+
+## 生成的组件代码
 [0m
-[32m2025-10-09 23:11:26.622[0m | [31m[1mERROR   [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m149[0m - [31m[1m节点执行失败 大模型对话: 组件执行失败: 组件执行失败: Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 264, in read_input_data
-    return self._read_json_data(input_value)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 309, in _read_json_data
-    raise ComponentError(f"无法读取JSON数据: {type(data)}")
-base.ComponentError: 无法读取JSON数据: <class 'NoneType'>
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 487, in execute
-    validated_inputs[port.name] = self.read_input_data(
-                                  ^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 278, in read_input_data
-    raise ComponentError(f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR")
-base.ComponentError: 读取输入 history 失败: 无法读取JSON数据: <class 'NoneType'>
-
-Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 264, in read_input_data
-    return self._read_json_data(input_value)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 309, in _read_json_data
-    raise ComponentError(f"无法读取JSON数据: {type(data)}")
-base.ComponentError: 无法读取JSON数据: <class 'NoneType'>
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 487, in execute
-    validated_inputs[port.name] = self.read_input_data(
-                                  ^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 278, in read_input_data
-    raise ComponentError(f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR")
-base.ComponentError: 读取输入 history 失败: 无法读取JSON数据: <class 'NoneType'>
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "C:\Users\black\AppData\Local\Temp\tmpj3bskwnz.py", line 43, in <module>
-    output = comp_instance.execute(params, inputs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 519, in execute
-    raise ComponentError(error_msg, "EXECUTION_ERROR")
-base.ComponentError: 组件执行失败: Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 264, in read_input_data
-    return self._read_json_data(input_value)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 309, in _read_json_data
-    raise ComponentError(f"无法读取JSON数据: {type(data)}")
-base.ComponentError: 无法读取JSON数据: <class 'NoneType'>
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 487, in execute
-    validated_inputs[port.name] = self.read_input_data(
-                                  ^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 278, in read_input_data
-    raise ComponentError(f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR")
-base.ComponentError: 读取输入 history 失败: 无法读取JSON数据: <class 'NoneType'>
-
-[0m
-[32m2025-10-09 23:11:26.623[0m | [31m[1mERROR   [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m151[0m - [31m[1mTraceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\runner\workflow_runner.py", line 140, in execute_workflow
-    output = run_component_in_subprocess(
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\runner\component_executor.py", line 82, in run_component_in_subprocess
-    raise RuntimeError(f"组件执行失败: {error_info['error']}\n{error_info['traceback']}")
-RuntimeError: 组件执行失败: 组件执行失败: Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 264, in read_input_data
-    return self._read_json_data(input_value)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 309, in _read_json_data
-    raise ComponentError(f"无法读取JSON数据: {type(data)}")
-base.ComponentError: 无法读取JSON数据: <class 'NoneType'>
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 487, in execute
-    validated_inputs[port.name] = self.read_input_data(
-                                  ^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 278, in read_input_data
-    raise ComponentError(f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR")
-base.ComponentError: 读取输入 history 失败: 无法读取JSON数据: <class 'NoneType'>
-
-Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 264, in read_input_data
-    return self._read_json_data(input_value)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 309, in _read_json_data
-    raise ComponentError(f"无法读取JSON数据: {type(data)}")
-base.ComponentError: 无法读取JSON数据: <class 'NoneType'>
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 487, in execute
-    validated_inputs[port.name] = self.read_input_data(
-                                  ^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 278, in read_input_data
-    raise ComponentError(f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR")
-base.ComponentError: 读取输入 history 失败: 无法读取JSON数据: <class 'NoneType'>
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "C:\Users\black\AppData\Local\Temp\tmpj3bskwnz.py", line 43, in <module>
-    output = comp_instance.execute(params, inputs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 519, in execute
-    raise ComponentError(error_msg, "EXECUTION_ERROR")
-base.ComponentError: 组件执行失败: Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 264, in read_input_data
-    return self._read_json_data(input_value)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 309, in _read_json_data
-    raise ComponentError(f"无法读取JSON数据: {type(data)}")
-base.ComponentError: 无法读取JSON数据: <class 'NoneType'>
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 487, in execute
-    validated_inputs[port.name] = self.read_input_data(
-                                  ^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\WorkFlowGUI\projects\大模型流程\components\base.py", line 278, in read_input_data
-    raise ComponentError(f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR")
-base.ComponentError: 读取输入 history 失败: 无法读取JSON数据: <class 'NoneType'>
-
-
-[0m
-[32m2025-10-09 23:11:26.623[0m | [1mINFO    [0m | [36m__main__[0m:[36m<module>[0m:[36m15[0m - [1m模型执行完成，输出:[0m
-[32m2025-10-09 23:11:26.623[0m | [1mINFO    [0m | [36m__main__[0m:[36m<module>[0m:[36m17[0m - [1m  response: None[0m
