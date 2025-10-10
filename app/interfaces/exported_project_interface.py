@@ -109,7 +109,7 @@ class ExportedProjectsPage(QWidget):
 
         import_card = CardWidget()
         import_card.setBorderRadius(12)
-        import_card.setFixedSize(400, 320)
+        import_card.setFixedSize(400, 330)
         layout = QVBoxLayout(import_card)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)

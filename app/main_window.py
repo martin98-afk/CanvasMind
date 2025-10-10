@@ -34,6 +34,7 @@ class LowCodeWindow(FluentWindow):
         # 生成启动界面
         # 1. 创建启动页面
         self.setWindowIcon(get_icon("logo3"))
+        self.setWindowTitle("AI Lowcode Canvas")
         self.splashScreen = SplashScreen(self.windowIcon(), self)
         self.splashScreen.setIconSize(QSize(400, 400))
         self.show()
@@ -44,9 +45,9 @@ class LowCodeWindow(FluentWindow):
         self.project_manager = ExportedProjectsPage(self)
         self.workflow_manager = WorkflowCanvasGalleryPage(self)
         # 添加主界面页面
-        self.addSubInterface(self.develop_page, get_icon("组件"), '组件管理')
         workflow_interface = self.addSubInterface(self.workflow_manager, get_icon("工作流"), '画布管理')
         workflow_interface.clicked.connect(self.workflow_manager.load_workflows)
+        self.addSubInterface(self.develop_page, get_icon("组件"), '组件管理')
         project_interface = self.addSubInterface(self.project_manager, get_icon("项目"), '项目管理')
         project_interface.clicked.connect(self.project_manager.load_projects)
         package_interface = self.addSubInterface(self.package_manager, get_icon("工具包"), '环境管理')

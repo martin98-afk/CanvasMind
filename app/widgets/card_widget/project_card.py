@@ -54,7 +54,7 @@ class ProjectCard(CardWidget):
 
     def _setup_ui(self):
         # 更现代的高度和圆角
-        self.setFixedSize(400, 320)
+        self.setFixedSize(400, 330)
         self.setBorderRadius(12)
 
         main_layout = QVBoxLayout(self)

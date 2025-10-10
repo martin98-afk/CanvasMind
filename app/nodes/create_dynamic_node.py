@@ -175,13 +175,17 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             current_path = self.get_property(prop_name)
             directory = os.path.dirname(current_path) if current_path else ""
             file_filter = self.model.properties.get(f"{prop_name}_file_filter", "All Files (*)")
-            path, _ = QFileDialog.getOpenFileName(None, "选择文件", directory, file_filter)
+            # 添加creationflags参数以防止出现白色控制台窗口
+            path, _ = QFileDialog.getOpenFileName(
+                None, "选择文件", directory, file_filter
+            )
             if path:
                 self.set_property(prop_name, path)
 
         def _select_folder(self, prop_name):
             current_path = self.get_property(prop_name)
-            directory = current_path if current_path and os.path.isdir(current_path) else ""
+            directory = current_path if current_path else ""
+            # 添加creationflags参数以防止出现白色控制台窗口
             path = QFileDialog.getExistingDirectory(None, "选择文件夹", directory)
             if path:
                 self.set_property(prop_name, path)
@@ -189,7 +193,10 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
         def _select_csv(self, prop_name):
             current_path = self.get_property(prop_name)
             directory = os.path.dirname(current_path) if current_path else ""
-            path, _ = QFileDialog.getOpenFileName(None, "选择CSV文件", directory, "CSV Files (*.csv)")
+            # 添加creationflags参数以防止出现白色控制台窗口
+            path, _ = QFileDialog.getOpenFileName(
+                None, "选择CSV文件", directory, "CSV Files (*.csv)"
+            )
             if path:
                 self.set_property(prop_name, path)
 

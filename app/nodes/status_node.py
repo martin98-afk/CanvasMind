@@ -30,9 +30,8 @@ class StatusNode(BaseNode):
 
     @status.setter
     def status(self, value):
-        if value != self._status:
-            self._status = value
-            self._update_status_color()
+        self._status = value
+        self._update_status_color()
 
     def _update_status_color(self):
         """根据状态更新节点颜色（使用淡色）"""

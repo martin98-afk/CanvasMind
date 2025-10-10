@@ -247,7 +247,6 @@ class WorkflowCanvasGalleryPage(QWidget):
     def open_canvas(self, file_path: Path):
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path)
-            canvas_page.load_full_workflow(file_path)
             canvas_interface = self.parent_window.addSubInterface(
                 canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self
             )
@@ -261,6 +260,7 @@ class WorkflowCanvasGalleryPage(QWidget):
             self.opened_workflows[file_path] = canvas_page
 
         self.parent_window.switchTo(self.opened_workflows[file_path])
+        self.opened_workflows[file_path].load_full_workflow(file_path)
 
     def new_canvas(self):
         name_dialog = CustomInputDialog("新建画布", "请输入画布名称", parent=self)
@@ -294,6 +294,7 @@ class WorkflowCanvasGalleryPage(QWidget):
 
     def import_canvas(self):
         """导入外部画布文件"""
+        # 添加creationflags参数以防止出现白色控制台窗口
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "选择画布文件",

@@ -29,30 +29,10 @@ class FormFieldWidget(QtWidgets.QWidget):
                 layout.addWidget(widget)
             elif defn["type"] == PropertyType.CHOICE.name:
                 widget = QComboBox(parent)
-                widget.setStyleSheet("""
-                QComboBox {
-                    border: 1px solid #d0d0d0;
-                    border-radius: 5px;
-                    padding: 4px 8px;
-                    background: transparent;
-                    color: white;
-                }
-                QComboBox::drop-down {
-                    width: 30px;
-                    border: none;
-                    background: transparent;
-                    color: white;
-                }
-                QComboBox QAbstractItemView {
-                    border: 1px solid #d0d0d0;
-                    selection-background-color: #e0e0e0;
-                }
-                """)
                 widget.addItems(defn.get("choices", []))
                 widget.currentIndexChanged.connect(self.changed)
                 self.fields[key] = widget
                 layout.addWidget(widget)
-            # if defn["type"] == PropertyType.TEXT.name:
             else:
                 widget = LineEdit()
                 widget.setFixedWidth(150)
@@ -60,7 +40,7 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.setPlaceholderText(defn.get("label", ""))
                 widget.textChanged.connect(self.changed)
                 self.fields[key] = widget
-                layout.addWidget(widget)\
+                layout.addWidget(widget)
 
         btn_remove = ToolButton(FluentIcon.CLOSE)
         btn_remove.clicked.connect(lambda: self.removed.emit(self))
