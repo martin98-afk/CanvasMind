@@ -121,11 +121,14 @@ class PropertyPanel(CardWidget):
                 # 获取原始上游数据（用于列选择）
                 connected = input_port.connected_ports()
                 original_upstream_data = None
-                if connected:
+                if len(connected) == 1:
                     upstream_out = connected[0]
                     upstream_node = upstream_out.node()
                     original_upstream_data = upstream_node.get_output_value(upstream_out.name())
-
+                else:
+                    original_upstream_data = [
+                        upstream.node().get_output_value(upstream.name()) for upstream in connected
+                    ]
                 port_type = getattr(port_def, 'type', ArgumentType.TEXT)
 
                 # 根据端口类型添加不同的控件
@@ -146,7 +149,9 @@ class PropertyPanel(CardWidget):
                         display_data = node._input_values.get(port_def.name, "暂无数据")
                     try:
                         if not isinstance(display_data, str) or display_data != "暂无数据":
-                            display_data = port_type.serialize(display_data)
+                            logger.info(original_upstream_data)
+                            display_data = port_type.serialize(display_data) if len(connected) <= 1 else \
+                                [port_type.serialize(data) for data in original_upstream_data]
                     except:
                         import traceback
                         traceback.print_exc()

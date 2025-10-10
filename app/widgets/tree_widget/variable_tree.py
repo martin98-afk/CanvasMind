@@ -318,7 +318,7 @@ class VariableTreeWidget(TreeWidget):
 
         menu = RoundMenu(parent=self)
 
-        if isinstance(obj, str) and len(obj) > 50 and not os.path.isfile(obj):
+        if isinstance(obj, str) and not os.path.isfile(obj):
             action = QAction("🔍 预览完整文本", self)
             action.triggered.connect(lambda: self._preview_text(obj))
             menu.addAction(action)

@@ -266,6 +266,8 @@ class CanvasPage(QWidget):
         # 添加标签
         name_label = LineEdit(self)
         name_label.setText(self.workflow_name)
+        # 将其长度设定与文字长度相等
+        name_label.setFixedWidth(workflow_name_length)
         name_label.textChanged.connect(self.update_workflow_name)
 
         name_layout.addWidget(name_label)
@@ -596,7 +598,7 @@ class CanvasPage(QWidget):
                             dst_path = inputs_dir / filename
                             if not dst_path.exists():
                                 shutil.copy2(file_path, dst_path)
-                            return ("inputs" / filename).as_posix()
+                            return (Path("inputs") / filename).as_posix()
                         except Exception as e:
                             print(f"警告：无法复制文件 {value}: {e}")
                             return value
@@ -618,7 +620,7 @@ class CanvasPage(QWidget):
                 for port in node.input_ports():
                     port_name = port.name()
                     connected = port.connected_ports()
-                    if connected:
+                    if connected and len(connected) == 1:
                         upstream_out = connected[0]
                         upstream_node = upstream_out.node()
                         value = upstream_node._output_values.get(upstream_out.name())
@@ -626,6 +628,14 @@ class CanvasPage(QWidget):
                             current_inputs[port_name] = _process_value_for_export(value, inputs_dir, export_path)
                         else:
                             current_inputs[port_name] = None
+                    elif len(connected) > 1:
+                        current_inputs[port_name] = [
+                            _process_value_for_export(
+                                upstream_out.node()._output_values.get(upstream_out.name()), inputs_dir, export_path
+                            )
+                            if upstream_out.node()._output_values.get(upstream_out.name()) is not None else None
+                            for upstream_out in connected
+                        ]
                     else:
                         current_val = getattr(node, '_input_values', {}).get(port_name, None)
                         current_inputs[port_name] = _process_value_for_export(current_val, inputs_dir, export_path)
@@ -823,24 +833,6 @@ class CanvasPage(QWidget):
         backdrop.width = width
         backdrop.height = height
 
-    def on_node_finished(self, node, result):
-        """节点执行完成回调"""
-        self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
-        # 刷新属性面板
-        if (self.property_panel.current_node and
-                self.property_panel.current_node.id == node.id):
-            self.property_panel.update_properties(node)
-
-    def on_node_error(self, node):
-        """节点执行错误回调"""
-        node.clear_output_value()
-        self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
-        self.create_failed_info('错误', f'节点 "{node.name()}" 执行失败！')
-        # 刷新属性面板
-        if (self.property_panel.current_node and
-                self.property_panel.current_node.id == node.id):
-            self.property_panel.update_properties(node)
-
     def on_node_error_simple(self, node_id):
         """简单节点错误回调（用于批量执行）"""
         node = self._get_node_by_id(node_id)
@@ -848,6 +840,8 @@ class CanvasPage(QWidget):
         self.create_failed_info('错误', f'节点 "{node.name()}" 执行失败！')
         if node:
             self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
+        self.run_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
 
     def run_node_list_async(self, nodes):
         """异步执行节点列表"""
@@ -882,6 +876,7 @@ class CanvasPage(QWidget):
     def _on_workflow_finished(self):
         self._cleanup_execution()
         self.create_success_info("完成", "工作流执行完成!")
+        self.save_full_workflow(self.file_path)
 
     def _on_workflow_error(self):
         self._cleanup_execution()

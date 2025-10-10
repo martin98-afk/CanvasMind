@@ -437,7 +437,7 @@ class ComponentDeveloperWidget(QWidget):
                 new_lines.append("    inputs = [")
                 for port in input_ports:
                     new_lines.append(
-                        f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\", type=ArgumentType.{port['type'].name}),")
+                        f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\", type=ArgumentType.{port['type'].name}, connection=\"{port.get('connection', 'single')}\"),")
                 new_lines.append("    ]")
                 inputs_replaced = True
                 # 跳过原 inputs 定义的其余行

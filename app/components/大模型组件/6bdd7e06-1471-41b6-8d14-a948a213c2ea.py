@@ -15,7 +15,7 @@ ArgumentType = base_module.ArgumentType
 
 
 class Component(BaseComponent):
-    name = "移除思考过程（<think>标签）"
+    name = "移除思考过程"
     category = "大模型组件"
     description = "移除大模型输出中被 <think>...</think> 包裹的思考过程，仅保留外部内容"
     requirements = ""

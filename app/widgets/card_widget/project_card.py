@@ -54,7 +54,7 @@ class ProjectCard(CardWidget):
 
     def _setup_ui(self):
         # 更现代的高度和圆角
-        self.setFixedHeight(310)
+        self.setFixedSize(400, 320)
         self.setBorderRadius(12)
 
         main_layout = QVBoxLayout(self)
@@ -69,11 +69,11 @@ class ProjectCard(CardWidget):
         preview_path = os.path.join(self.project_path, "preview.png")
         if os.path.exists(preview_path):
             self.image_label = ImageLabel(preview_path, self)
-            self.image_label.setFixedSize(220, 100)
+            self.image_label.setFixedSize(250, 150)
             self.image_label.setBorderRadius(8, 8, 8, 8)  # ✅ 修复：四个角都设为8
         else:
             self.image_label = BodyLabel("无预览图")
-            self.image_label.setFixedSize(220, 100)
+            self.image_label.setFixedSize(250, 150)
             self.image_label.setAlignment(Qt.AlignCenter)
             self.image_label.setStyleSheet("""
                 color: #999;

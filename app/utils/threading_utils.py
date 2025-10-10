@@ -9,6 +9,7 @@ from urllib.request import urlopen
 import aiohttp
 import requests
 from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot, QThread
+from loguru import logger
 
 
 class WorkerSignals(QObject):
@@ -133,12 +134,14 @@ class NodeListExecutor(QRunnable):
                         return
                     self.signals.node_finished.emit(node.id)
                 except Exception as e:
+                    logger.error(traceback.format_exc())
                     self.signals.node_error.emit(node.id)
                     return  # 停止后续执行
             if not self._is_cancelled:
                 self.signals.finished.emit(None)
         except Exception as e:
             if not self._is_cancelled:
+                logger.error(traceback.format_exc())
                 self.signals.error.emit(str(e))
 
 

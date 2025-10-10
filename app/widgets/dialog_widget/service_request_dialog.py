@@ -186,7 +186,7 @@ class ServiceRequestDialog(QDialog):
             response = requests.post(
                 self.service_url,
                 json=payload,
-                timeout=30
+                timeout=300
             )
             response.raise_for_status()
             result = response.json()

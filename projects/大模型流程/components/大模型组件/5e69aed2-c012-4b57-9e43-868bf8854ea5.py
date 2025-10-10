@@ -21,7 +21,7 @@ class Component(BaseComponent):
     requirements = ""
 
     inputs = [
-        PortDefinition(name="variables", label="变量字典", type=ArgumentType.JSON),
+        PortDefinition(name="variables", label="变量字典", type=ArgumentType.JSON, connection="multi"), 
     ]
     outputs = [
         PortDefinition(name="prompt", label="生成的提示词", type=ArgumentType.TEXT),
@@ -40,20 +40,20 @@ class Component(BaseComponent):
         self.logger.info(inputs)
         template = params.get("template", "")
         variables = inputs.get("variables", {}) if inputs else {}
+        for variable in variables:
+            if isinstance(variable, str):
+                import json
+                try:
+                    variables = json.loads(variable)
+                except:
+                    variables = {}
 
-        if isinstance(variables, str):
-            import json
-            try:
-                variables = json.loads(variables)
-            except:
-                variables = {}
+            # 替换 {{key}} 为变量值
+            def replace_match(match):
+                key = match.group(1)
+                return str(variable.get(key, match.group(0)))
 
-        # 替换 {{key}} 为变量值
-        def replace_match(match):
-            key = match.group(1)
-            return str(variables.get(key, match.group(0)))
-
-        prompt = re.sub(r"\{\{(\w+)\}\}", replace_match, template)
-        self.logger.info(prompt)
+            template = re.sub(r"\{\{(\w+)\}\}", replace_match, template)
+        self.logger.info(template)
         
-        return {"prompt": prompt}
+        return {"prompt": template}

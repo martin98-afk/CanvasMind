@@ -109,6 +109,25 @@ class CodeEditor(QPlainTextEdit):
     def setParentWidget(self, widget):
         self._parent_widget = widget
 
+    def wheelEvent(self, event):
+        if event.modifiers() == Qt.ControlModifier:
+            # 获取当前字体
+            font = self.font()
+            size = font.pointSize()
+            # 滚轮向上：放大；向下：缩小
+            if event.angleDelta().y() > 0:
+                new_size = min(size + 1, 32)  # 限制最大字号
+            else:
+                new_size = max(size - 1, 8)  # 限制最小字号
+            if new_size != size:
+                font.setPointSize(new_size)
+                self.setFont(font)
+                # 可选：同步更新 tab 宽度（保持 4 个空格对齐）
+                self.setTabStopDistance(4 * self.fontMetrics().horizontalAdvance(' '))
+            event.accept()
+        else:
+            super().wheelEvent(event)
+
     def mouseMoveEvent(self, event):
         self._last_hover_pos = event.pos()
         # Delay hover tooltip to avoid flicker
@@ -165,7 +184,6 @@ class CodeEditor(QPlainTextEdit):
                 background-color: #1e1e1e;
                 color: #dcdcdc;
                 font-family: Consolas, "Courier New", monospace;
-                font-size: 13px;
             }
         """)
 
@@ -388,7 +406,7 @@ class CodeEditorWidget(QWidget):
         super().__init__(parent)
         self._setup_auto_sync()
         # Initialize linting BEFORE UI connects textChanged (to avoid race on first setPlainText)
-        self._setup_linting()
+        # self._setup_linting()
         self._setup_ui()
         self._setup_syntax_highlighting()
         self._setup_shortcuts()
@@ -401,7 +419,7 @@ class CodeEditorWidget(QWidget):
 
         self.code_editor = CodeEditor()
         self.code_editor.setParentWidget(self)  # 新增：让 editor 知道 widget
-        font = QFont("Consolas", 11)
+        font = QFont("Consolas", 13)
         self.code_editor.setFont(font)
         self._setup_completer()
         self.code_editor.setTabStopDistance(4 * self.code_editor.fontMetrics().horizontalAdvance(' '))
@@ -461,7 +479,7 @@ class CodeEditorWidget(QWidget):
         # Ctrl+H: replace focus
         QShortcut(Qt.CTRL + Qt.Key_H, self.code_editor, activated=lambda: self._toggle_find_panel(focus_replace=True))
         # Ctrl+Shift+F: Black format
-        QShortcut(Qt.CTRL + Qt.SHIFT + Qt.Key_F, self.code_editor, activated=self._format_with_black)
+        # QShortcut(Qt.CTRL + Qt.SHIFT + Qt.Key_F, self.code_editor, activated=self._format_with_black)
         # Ctrl+G: go to line
         QShortcut(Qt.CTRL + Qt.Key_G, self.code_editor, activated=self._goto_line)
 
@@ -1186,7 +1204,7 @@ class CodeEditorWidget(QWidget):
         except Exception as e:
             print(f"解析代码失败: {e}")
         # after AST parse, also render lints if any
-        self._apply_lint_decorations()
+        # self._apply_lint_decorations()
 
     def _parse_component_class(self, class_node, code):
         component_info = {"name": "", "category": "", "description": ""}
