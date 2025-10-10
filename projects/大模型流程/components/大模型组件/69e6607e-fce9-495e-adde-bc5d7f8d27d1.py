@@ -86,7 +86,7 @@ class Component(BaseComponent):
         import os
         import json
         from openai import OpenAI
-
+        self.logger.info(params)
         # 获取输入
         user_input = inputs.get("user_input", "").strip() if inputs else ""
         history = inputs.get("history", []) if inputs else []

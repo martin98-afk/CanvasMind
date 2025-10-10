@@ -1186,7 +1186,7 @@ class CodeEditorWidget(QWidget):
         except Exception as e:
             print(f"解析代码失败: {e}")
         # after AST parse, also render lints if any
-        self._apply_lint_decorations()
+        # self._apply_lint_decorations()
 
     def _parse_component_class(self, class_node, code):
         component_info = {"name": "", "category": "", "description": ""}

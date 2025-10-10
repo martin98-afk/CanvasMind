@@ -1,9 +1,13 @@
 import json
 import sys
-from pathlib import Path
-from loguru import logger
 import warnings
 warnings.filterwarnings("ignore")
+
+from collections import defaultdict
+from pathlib import Path
+from loguru import logger
+from threading import Lock
+
 # 确保能导入你的组件
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -110,11 +114,16 @@ def execute_workflow(file_path, external_inputs=None):
 
     # 6. 构建执行顺序
     execution_order = build_execution_graph(nodes, graph_data)
-
+    outputs_lock = Lock()
     # 7. 执行节点
     for node_id in execution_order:
         node = nodes[node_id]
-        node_inputs = node["input_values"].copy()
+        # 构建输入字典（支持多输入端口聚合）
+        node_inputs = {}
+
+        # 先复制静态 input_values
+        for port, val in node["input_values"].items():
+            node_inputs[port] = val
 
         # 处理列选择
         stable_key = runtime_data.get("node_id2stable_key", {}).get(node_id, "")
@@ -123,16 +132,24 @@ def execute_workflow(file_path, external_inputs=None):
             if cols:
                 node_inputs[f"{port_name}_column_select"] = cols
 
-        # 覆盖已连接端口的输入（来自上游）
+        # 聚合来自上游的输入（支持多连接）
+        input_port_values = defaultdict(list)
         for conn in graph_data["connections"]:
             if conn["in"][0] == node_id:
-                out_node_id = conn["out"][0]
-                out_port_name = conn["out"][1]
-                in_port_name = conn["in"][1]
-                if out_node_id in node_outputs:
-                    actual_output = node_outputs[out_node_id].get(out_port_name)
-                    if actual_output is not None:
-                        node_inputs[in_port_name] = actual_output
+                out_nid, out_port = conn["out"]
+                in_port = conn["in"][1]
+                with outputs_lock:
+                    if out_nid in node_outputs:
+                        val = node_outputs[out_nid].get(out_port)
+                        if val is not None:
+                            input_port_values[in_port].append(val)
+
+        # 合并：如果一个端口有多个输入，用列表；否则用单个值
+        for port, vals in input_port_values.items():
+            if len(vals) == 1:
+                node_inputs[port] = vals[0]
+            else:
+                node_inputs[port] = vals  # 多输入端口自动为列表
 
         # 执行
         try:
@@ -147,9 +164,7 @@ def execute_workflow(file_path, external_inputs=None):
             node_outputs[node_id] = output or {}
         except Exception as e:
             logger.error(f"节点执行失败 {node['name']}: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            node_outputs[node_id] = {}
+            raise e
 
     # 8. ✅ 按 project_spec 提取最终输出
     final_outputs = {}

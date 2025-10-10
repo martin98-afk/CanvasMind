@@ -15,6 +15,7 @@ from loguru import logger
 from app.components.base import ArgumentType, PropertyType
 from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.node_logger import NodeLogHandler
+from app.utils.utils import draw_square_port
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
@@ -162,8 +163,11 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     )
 
             # === 端口 ===
-            for port_name, label in component_class.get_inputs():
-                self.add_input(port_name)
+            for port_name, label, connection in component_class.get_inputs():
+                if connection == "single":
+                    self.add_input(port_name)
+                else:
+                    self.add_input(port_name, True, painter_func=draw_square_port)
             for port_name, label in component_class.get_outputs():
                 self.add_output(port_name)
 
@@ -247,9 +251,14 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 port_name = input_port.name()
                 connected = input_port.connected_ports()
                 if connected:
-                    upstream = connected[0]
-                    value = upstream.node()._output_values.get(upstream.name())
-                    inputs[port_name] = value
+                    if len(connected) == 1:
+                        upstream = connected[0]
+                        value = upstream.node()._output_values.get(upstream.name())
+                        inputs[port_name] = value
+                    else:
+                        inputs[port_name] = [
+                            upstream.node()._output_values.get(upstream.name()) for upstream in connected
+                        ]
                     if port_name in self.column_select:
                         inputs[f"{port_name}_column_select"] = self.column_select.get(port_name)
 

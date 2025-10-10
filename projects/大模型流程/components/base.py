@@ -2,9 +2,10 @@
 import os
 import json
 import pickle
+import re
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, Any, Optional, List, Tuple, Type, Union
+from typing import Dict, Any, Optional, List, Tuple, Type, Union, Literal
 from pathlib import Path
 
 import numpy as np
@@ -101,7 +102,7 @@ class ArgumentType(str, Enum):
                 "file_type": self.value,
                 "file_path": display_data
             }
-        elif self == ArgumentType.JSON:
+        elif self == ArgumentType.JSON and len(display_data) > 0:
             display_data = json.loads(display_data)
         elif self.is_number():
             display_data = float(display_data)
@@ -122,6 +123,7 @@ class PortDefinition(BaseModel):
     name: str
     label: str
     type: ArgumentType = ArgumentType.TEXT
+    connection: Literal["single", "multi"] = "single"
 
 
 class ComponentError(Exception):
@@ -153,9 +155,9 @@ class BaseComponent(ABC):
         pass
 
     @classmethod
-    def get_inputs(cls) -> List[Tuple[str, str]]:
+    def get_inputs(cls) -> List[Tuple[str, str, str]]:
         """返回输入端口定义：[('port_name', 'Port Label')]"""
-        return [(port.name, port.label) for port in cls.inputs]
+        return [(port.name, port.label, port.connection) for port in cls.inputs]
 
     @classmethod
     def get_outputs(cls) -> List[Tuple[str, str]]:
@@ -295,13 +297,15 @@ class BaseComponent(ABC):
         """读取JSON数据"""
         if isinstance(data, dict):
             return data
+        elif isinstance(data, list):
+            return data
         elif isinstance(data, str):
             if os.path.exists(data):
                 with open(data, 'r', encoding='utf-8') as f:
                     return json.load(f)
             else:
                 # 如果是JSON字符串
-                return json.loads(data)
+                return json.loads(re.sub(r"'", '"', data))
         elif isinstance(data, Path):
             with open(data, 'r', encoding='utf-8') as f:
                 return json.load(f)
@@ -412,7 +416,7 @@ class BaseComponent(ABC):
 
     def _store_json_data(self, data: Union[dict, list]) -> str:
         """存储JSON数据"""
-        return json.dumps(data, ensure_ascii=False, indent=2)
+        return data
 
     def _store_excel_data(self, data: pd.DataFrame) -> str:
         """存储Excel数据"""
@@ -484,9 +488,15 @@ class BaseComponent(ABC):
             if inputs:
                 for port in self.inputs:
                     if port.name in inputs:
-                        validated_inputs[port.name] = self.read_input_data(
-                            port.name, inputs[port.name], port.type
-                        )
+                        if port.connection == "single":
+                            validated_inputs[port.name] = self.read_input_data(
+                                port.name, inputs[port.name], port.type
+                            )
+                        else:
+                            validated_inputs[port.name] = [
+                                self.read_input_data(port.name, input_data, port.type)
+                                for input_data in inputs[port.name]
+                            ]
                     if f"{port.name}_column_select" in inputs:
                         validated_inputs[port.name] = validated_inputs[port.name][inputs[f"{port.name}_column_select"]]
 

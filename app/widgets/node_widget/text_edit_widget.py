@@ -15,9 +15,16 @@ class TextWidget(QtWidgets.QWidget):
 
         self.summary_label = LineEdit()
         self.summary_label.setText(default_text)
+        # 修改信号连接方式
+        self.summary_label.textChanged.connect(self._on_text_changed)
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.summary_label)
+
+    def _on_text_changed(self, text):
+        """处理文本变化事件"""
+        self._text = text
+        self.valueChanged.emit(text)
 
     def get_value(self):
         return self._text
