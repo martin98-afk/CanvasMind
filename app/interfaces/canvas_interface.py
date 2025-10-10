@@ -372,7 +372,6 @@ class CanvasPage(QWidget):
                         "display_name": f"{node_name} → {param_name}",
                         "format": getattr(prop_def, 'type', PropertyType.TEXT).name if prop_def else "TEXT"
                     })
-                    logger.info(prop_def.dict())
                     if prop_def.type == PropertyType.RANGE:
                         candidate_inputs[-1].update({
                             "min": float(prop_def.min),
