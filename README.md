@@ -241,8 +241,12 @@ python run.py
 ```
 model_xxxxxxxx/
 ├── model.workflow.json    # 工作流定义（包含节点配置、连接关系、列选择等）
+├── preject_spec.json      # 项目输入输出定义信息
+├── preview.png            # 项目导出时画布节点预览图
+├── REAMDME.md             # 项目信息展示
 ├── requirements.txt       # 自动分析的依赖包列表
 ├── run.py                 # 一键运行脚本
+├── api_server.py          # 一键微服务脚本
 ├── scan_components.py     # 组件扫描器
 ├── runner/                # 执行器模块
 │   ├── component_executor.py
@@ -257,6 +261,12 @@ model_xxxxxxxx/
 ## 功能实现情况
 - [x] 组件管理
 - [x] 组件开发
+- [ ] 支持组件类型
+  - [x] 基本组件
+  - [x] 多输入组件
+  - [ ] backdrop节点集成
+  - [ ] circle节点集成
+- [x] 组件依赖自动管理 (requirements)
 - [ ] 逻辑控制预制组件
   - [x] 逻辑判断
   - [ ] 当如果就
@@ -267,6 +277,7 @@ model_xxxxxxxx/
   - [x] CSV 参数
     - [x] CSV 参数信息预览
     - [x] CSV 参数列选择
+    - [x] CSV 数据预览
     - [ ] CSV 数据分析
   - [x] EXCEL 参数
   - [x] SKLEARN 参数
@@ -275,10 +286,15 @@ model_xxxxxxxx/
   - [x] IMAGE 参数
   - [x] JSON 参数
   - [x] TEXT 参数
+    - [x] 文本数据预览
   - [x] FILE 参数
 - [x] 组件输入端口校验
 - [x] 组件运行
 - [x] 组件日志
+  - [x] 实时日志读取保存
+  - [ ] 组件日志持久化存储
+- [x] 输出节点预览
+- [ ] 输出节点变量下载
 - [x] 组件分组
 - [x] 组件预览
   - [x] 节点拖拽预览
@@ -290,16 +306,19 @@ model_xxxxxxxx/
 - [x] 画布导出
   - [x] 模型画布保存
   - [x] 模型输出结果保存
+  - [x] 画布预览图保存
 - [x] 画布导入
   - [x] 模型画布导入
   - [x] 模型输出结果导入
 - [x] 模型导出
   - [x] 导出独立模型项目
+  - [x] 项目预览图保存
   - [x] 自动检测依赖包
   - [x] 导出项目可运行性检测
   - [x] 自动包装API接口
   - [ ] 自动生成API文档
   - [x] API 输入输出节点定义
+- [ ] 导出项目编辑
 - [x] 模型运行环境控制
   - [x] 安装包安装、强制重装、更新、卸载
   - [x] 组件安装包同步
@@ -307,10 +326,7 @@ model_xxxxxxxx/
   - [x] 运行环境切换
   - [x] 工具包列表信息
   - [x] 安装实时日志
-- [x] 输出节点预览
-- [ ] 输出节点变量下载
 - [x] 工具配置
-- [x] 组件依赖管理 (requirements)
 
 ## 🤝 贡献指南
 
