@@ -247,6 +247,7 @@ class WorkflowCanvasGalleryPage(QWidget):
     def open_canvas(self, file_path: Path):
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path)
+            canvas_page.canvas_deleted.connect(lambda: self.opened_workflows.pop(file_path))
             canvas_interface = self.parent_window.addSubInterface(
                 canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self
             )
@@ -258,9 +259,9 @@ class WorkflowCanvasGalleryPage(QWidget):
                 )
             )
             self.opened_workflows[file_path] = canvas_page
+            self.opened_workflows[file_path].load_full_workflow(file_path)
 
         self.parent_window.switchTo(self.opened_workflows[file_path])
-        self.opened_workflows[file_path].load_full_workflow(file_path)
 
     def new_canvas(self):
         name_dialog = CustomInputDialog("新建画布", "请输入画布名称", parent=self)

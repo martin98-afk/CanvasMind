@@ -10,7 +10,7 @@ from pathlib import Path
 from NodeGraphQt import NodeGraph, BackdropNode
 from NodeGraphQt.constants import PipeLayoutEnum
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QThreadPool, QRectF, QPointF
+from PyQt5.QtCore import Qt, QThreadPool, QRectF, QPointF, pyqtSignal
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from loguru import logger
@@ -29,6 +29,7 @@ from app.utils.utils import get_port_node, serialize_for_json, deserialize_from_
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
 from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
 from app.widgets.dialog_widget.output_selection_dialog import OutputSelectionDialog
+from app.widgets.minimap_widget import MinimapWidget
 from app.widgets.property_panel import PropertyPanel
 from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 
@@ -38,6 +39,7 @@ from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 # ----------------------------
 class CanvasPage(QWidget):
 
+    canvas_deleted = pyqtSignal()
     PIPELINE_STYLE = {
         "折线": PipeLayoutEnum.ANGLE.value,
         "曲线": PipeLayoutEnum.CURVED.value,
@@ -86,9 +88,7 @@ class CanvasPage(QWidget):
 
         # 创建悬浮按钮和环境选择
         self.create_floating_buttons()
-        self.create_name_label()
         self.create_environment_selector()
-
         # 信号连接
         scene = self.graph.viewer().scene()
         scene.selectionChanged.connect(self.on_selection_changed)
@@ -101,15 +101,14 @@ class CanvasPage(QWidget):
         # ✅ 启用右键菜单（关键步骤）
         self._setup_context_menus()
 
-    def update_workflow_name(self, name):
-        self.workflow_name = name
-
     def eventFilter(self, obj, event):
         if obj is self.canvas_widget and event.type() == event.Resize:
+            self.button_container.move(self.canvas_widget.width() - 50, self.canvas_widget.height() // 2 - 100)
             # 移动环境选择器
             self.env_selector_container.move(self.canvas_widget.width() - 200, 10)
             # 重新定位名称容器（自动计算宽度并居中）
             self._position_name_container()
+            self._position_minimap()
 
         return super().eventFilter(obj, event)
 
@@ -210,13 +209,46 @@ class CanvasPage(QWidget):
                 nodes_menu.add_command('🗑️ 删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
 
+    def create_minimap(self):
+        """创建右下角缩略图导航器"""
+        self.minimap = MinimapWidget(self)
+        QtCore.QTimer.singleShot(0, self._position_minimap)  # ✅ 关键：延迟定位
+
+        # 监听画布变化（可选：节点增删、缩放、平移时更新）
+        self.graph.node_created.connect(self._on_graph_changed)
+        self.graph.nodes_deleted.connect(self._on_graph_changed)
+        self.graph.port_connected.connect(self._on_graph_changed)
+        self.graph.port_disconnected.connect(self._on_graph_changed)
+
+        self.canvas_widget.installEventFilter(self)
+
+        self.minimap.show()
+
+    def _on_graph_changed(self):
+        """图结构变化时延迟更新缩略图"""
+        QtCore.QTimer.singleShot(300, self.minimap.update_minimap)
+
+    def _position_minimap(self):
+        if not hasattr(self, 'minimap') or not self.minimap.isVisible():
+            return
+        cw = self.canvas_widget
+        if cw.width() <= 0 or cw.height() <= 0:
+            # 尺寸无效，稍后再试（可选递归）
+            QtCore.QTimer.singleShot(50, self._position_minimap)
+            return
+
+        margin = 10
+        x = margin  # 左下角：靠左
+        y = cw.height() - self.minimap.height() - margin  # 靠底
+        self.minimap.move(x, y)
+
     def create_floating_buttons(self):
         """创建画布左上角的悬浮按钮"""
-        button_container = QWidget(self.canvas_widget)
-        button_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        button_container.move(10, 10)
+        self.button_container = QWidget(self.canvas_widget)
+        self.button_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.button_container.move(self.canvas_widget.width() - 50, self.canvas_widget.height() // 2 - 100)
 
-        button_layout = QHBoxLayout(button_container)
+        button_layout = QVBoxLayout(self.button_container)
         button_layout.setSpacing(5)
         button_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -248,8 +280,18 @@ class CanvasPage(QWidget):
         self.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
         button_layout.addWidget(self.export_model_btn)
 
-        button_container.setLayout(button_layout)
-        button_container.show()
+        self.close_btn = ToolButton(FluentIcon.CLOSE, self)
+        self.close_btn.setToolTip("关闭当前画布")
+        self.close_btn.clicked.connect(self.close_current_canvas)
+        button_layout.addWidget(self.close_btn)
+
+        self.button_container.setLayout(button_layout)
+        self.button_container.show()
+
+    def close_current_canvas(self):
+        self.canvas_deleted.emit()
+        self.parent.switchTo(self)
+        self.parent.removeInterface(self)
 
     def create_name_label(self):
         """创建画布顶部居中的可编辑名称控件"""
@@ -269,22 +311,20 @@ class CanvasPage(QWidget):
         name_layout.addWidget(name_label)
         name_layout.addStretch()
         self.name_container.setLayout(name_layout)
+        QtCore.QTimer.singleShot(0, self._position_name_container)  # ✅ 关键：延迟定位
         self.name_container.show()
 
-        # ✅ 关键：延迟定位，确保 canvas 尺寸已确定
-        QtCore.QTimer.singleShot(0, self._position_name_container)
-
     def _update_name_label_width(self, line_edit):
-        """根据当前文本内容动态设置 LineEdit 宽度"""
-        text = line_edit.text() or " "  # 避免空文本宽度为0
+        """根据当前文本内容动态设置 LineEdit 和容器宽度"""
+        text = line_edit.text() or " "
         font_metrics = line_edit.fontMetrics()
-        # 计算文本宽度 + 内边距（qfluentwidgets 的 LineEdit 通常有左右 padding）
         text_width = font_metrics.horizontalAdvance(text)
-        # 添加左右内边距（根据 qfluentwidgets 默认样式，通常 10~16px）
-        padding = 24  # 可根据实际调整（左右各12）
+        padding = 24  # 左右内边距
         total_width = text_width + padding
-        # 设置最小宽度避免太窄
         line_edit.setFixedWidth(max(total_width, 80))
+
+        # ✅ 关键：同步更新容器宽度
+        self.name_container.setFixedWidth(line_edit.width())
 
     def _position_name_container(self):
         if not hasattr(self, 'name_container') or not self.name_container.isVisible():
@@ -306,10 +346,11 @@ class CanvasPage(QWidget):
 
     def update_workflow_name(self, text):
         self.workflow_name = text
-        # 可选：只更新宽度，不重新居中（推荐）
         name_edit = self.name_container.findChild(LineEdit)
         if name_edit:
             self._update_name_label_width(name_edit)
+            # ✅ 重新居中（因为宽度变了）
+            QtCore.QTimer.singleShot(0, self._position_name_container)
 
     def _save_via_dialog(self):
         if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
@@ -1180,6 +1221,8 @@ class CanvasPage(QWidget):
                     self.set_node_status(
                         node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
                     )
+            self.create_name_label()
+            self.create_minimap()
             self._fit_view_to_all_nodes()
             self.create_success_info("加载成功", "工作流加载成功！")
         except Exception as e:
