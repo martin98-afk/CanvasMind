@@ -1,13 +1,35 @@
 # -*- coding: utf-8 -*-
+import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from PyQt5.QtCore import Qt, QEvent, QObject
+from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont, QColor, QPixmap
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QWidget
 from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 from qfluentwidgets import CardWidget, BodyLabel, PrimaryPushButton, FluentIcon, ToolButton, ImageLabel
+
+
+class ImageLoader(QObject):
+    """异步加载图片的辅助类"""
+    image_loaded = pyqtSignal(QPixmap)
+
+    def __init__(self, image_path: str):
+        super().__init__()
+        self.image_path = image_path
+
+    def load_image(self):
+        """在单独线程中加载图片"""
+        try:
+            pixmap = QPixmap(self.image_path)
+            if not pixmap.isNull():
+                # 缩放到合适大小
+                pixmap = pixmap.scaled(250, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.image_loaded.emit(pixmap)
+        except Exception:
+            self.image_loaded.emit(QPixmap())  # 发送空的Pixmap表示加载失败
 
 
 class WorkflowCard(CardWidget):
@@ -30,6 +52,9 @@ class WorkflowCard(CardWidget):
         self.workflow_name = file_path.stem.split(".")[0]  # 保留原有逻辑
         self._file_info = file_info
         self._preview_pixmap = preview_pixmap
+        self._img_label = None
+        self._image_loader = None
+        self._image_thread = None
 
         self._setup_ui()
 
@@ -50,24 +75,25 @@ class WorkflowCard(CardWidget):
         """)
 
         # === 预览图区域 ===
-        img_label = None
+        self._img_label = None
         preview_path = self._get_preview_path()
 
         if self._preview_pixmap:
             # 使用预加载的 QPixmap
-            img_label = ImageLabel(self)
-            img_label.setPixmap(self._preview_pixmap.scaled(
+            self._img_label = ImageLabel(self)
+            self._img_label.setPixmap(self._preview_pixmap.scaled(
                 250, 150,
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
             ))
-            img_label.setFixedSize(250, 150)
-            img_label.setBorderRadius(8, 8, 8, 8)
+            self._img_label.setFixedSize(250, 150)
+            self._img_label.setBorderRadius(8, 8, 8, 8)
         elif preview_path and preview_path.exists():
-            # 同步加载（仅当未预加载时，不推荐大量使用）
-            img_label = ImageLabel(str(preview_path), self)
-            img_label.setFixedSize(250, 150)
-            img_label.setBorderRadius(8, 8, 8, 8)
+            # 异步加载预览图
+            self._img_label = ImageLabel(self)
+            self._img_label.setFixedSize(250, 150)
+            self._img_label.setBorderRadius(8, 8, 8, 8)
+            self._load_preview_image_async(preview_path)
         else:
             # 占位符
             placeholder = BodyLabel("无预览图")
@@ -76,8 +102,8 @@ class WorkflowCard(CardWidget):
             placeholder.setStyleSheet("color: #aaa; background-color: #f5f5f5; border-radius: 8px;")
             layout.addWidget(placeholder, 0, Qt.AlignCenter)
 
-        if img_label:
-            layout.addWidget(img_label, 0, Qt.AlignCenter)
+        if self._img_label:
+            layout.addWidget(self._img_label, 0, Qt.AlignCenter)
 
         # 标题
         name_label = BodyLabel(self.workflow_name)
@@ -160,6 +186,38 @@ class WorkflowCard(CardWidget):
         self._shadow.setColor(Qt.transparent)  # 初始透明
         self.setGraphicsEffect(self._shadow)
 
+    def _load_preview_image_async(self, preview_path: Path):
+        """异步加载预览图"""
+        # 创建线程和加载器
+        self._image_loader = ImageLoader(str(preview_path))
+        self._image_thread = QThread()
+        
+        # 移动到线程并连接信号
+        self._image_loader.moveToThread(self._image_thread)
+        self._image_thread.started.connect(self._image_loader.load_image)
+        self._image_loader.image_loaded.connect(self._on_image_loaded)
+        self._image_loader.image_loaded.connect(self._image_thread.quit)
+        self._image_loader.image_loaded.connect(self._image_loader.deleteLater)
+        self._image_thread.finished.connect(self._image_thread.deleteLater)
+        
+        # 启动线程
+        self._image_thread.start()
+
+    def _on_image_loaded(self, pixmap: QPixmap):
+        """图片加载完成的回调"""
+        if not pixmap.isNull() and self._img_label:
+            self._img_label.setPixmap(pixmap)
+        elif self._img_label:
+            # 加载失败显示占位符
+            placeholder = BodyLabel("预览图加载失败")
+            placeholder.setAlignment(Qt.AlignCenter)
+            placeholder.setStyleSheet("color: #aaa; background-color: #f5f5f5; border-radius: 8px;")
+            # 替换ImageLabel为占位符
+            parent_layout = self._img_label.parentWidget().layout()
+            parent_layout.replaceWidget(self._img_label, placeholder)
+            self._img_label.deleteLater()
+            self._img_label = placeholder
+
     def enterEvent(self, event):
         self._shadow.setColor(QColor(0, 0, 0, 60))  # 半透明黑色阴影
         super().enterEvent(event)
@@ -184,3 +242,10 @@ class WorkflowCard(CardWidget):
     def _on_delete_clicked(self):
         if hasattr(self.home, 'delete_workflow'):
             self.home.delete_workflow(self.file_path)
+
+    def closeEvent(self, event):
+        """清理线程资源"""
+        if self._image_thread and self._image_thread.isRunning():
+            self._image_thread.quit()
+            self._image_thread.wait()
+        super().closeEvent(event)
