@@ -10,7 +10,7 @@ from pathlib import Path
 from NodeGraphQt import NodeGraph, BackdropNode
 from NodeGraphQt.constants import PipeLayoutEnum
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QThreadPool, QRectF, QPointF
+from PyQt5.QtCore import Qt, QThreadPool, QRectF, QPointF, pyqtSignal
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from loguru import logger
@@ -39,6 +39,7 @@ from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 # ----------------------------
 class CanvasPage(QWidget):
 
+    canvas_deleted = pyqtSignal()
     PIPELINE_STYLE = {
         "折线": PipeLayoutEnum.ANGLE.value,
         "曲线": PipeLayoutEnum.CURVED.value,
@@ -279,8 +280,18 @@ class CanvasPage(QWidget):
         self.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
         button_layout.addWidget(self.export_model_btn)
 
+        self.close_btn = ToolButton(FluentIcon.CLOSE, self)
+        self.close_btn.setToolTip("关闭当前画布")
+        self.close_btn.clicked.connect(self.close_current_canvas)
+        button_layout.addWidget(self.close_btn)
+
         self.button_container.setLayout(button_layout)
         self.button_container.show()
+
+    def close_current_canvas(self):
+        self.canvas_deleted.emit()
+        self.parent.switchTo(self)
+        self.parent.removeInterface(self)
 
     def create_name_label(self):
         """创建画布顶部居中的可编辑名称控件"""
