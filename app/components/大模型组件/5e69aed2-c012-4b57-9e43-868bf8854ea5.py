@@ -40,6 +40,7 @@ class Component(BaseComponent):
         self.logger.info(inputs)
         template = params.get("template", "")
         variables = inputs.get("variables", {}) if inputs else {}
+        variables = [variables] if not isinstance(variables, list) else variables
         for variable in variables:
             if isinstance(variable, str):
                 import json

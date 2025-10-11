@@ -221,8 +221,9 @@ class CanvasPage(QWidget):
         self.graph.port_disconnected.connect(self._on_graph_changed)
 
         self.canvas_widget.installEventFilter(self)
-
-        self.minimap.show()
+        
+        # 延迟显示缩略图以避免阻塞主线程
+        QtCore.QTimer.singleShot(500, self.minimap.show)
 
     def _on_graph_changed(self):
         """图结构变化时延迟更新缩略图"""
@@ -290,7 +291,7 @@ class CanvasPage(QWidget):
 
     def close_current_canvas(self):
         self.canvas_deleted.emit()
-        self.parent.switchTo(self)
+        self.parent.switchTo(self.parent.workflow_manager)
         self.parent.removeInterface(self)
 
     def create_name_label(self):
@@ -312,6 +313,7 @@ class CanvasPage(QWidget):
         name_layout.addStretch()
         self.name_container.setLayout(name_layout)
         QtCore.QTimer.singleShot(0, self._position_name_container)  # ✅ 关键：延迟定位
+        # 延迟显示以避免阻塞主线程
         self.name_container.show()
 
     def _update_name_label_width(self, line_edit):
@@ -600,16 +602,6 @@ class CanvasPage(QWidget):
 ## 🧱 包含组件
 
 {chr(10).join(component_names)}
-
-## 📂 目录结构
-
-- `model.workflow.json`: 工作流定义文件（使用原始节点ID）
-- `project_spec.json`: **项目输入/输出接口规范**
-- `components/`: 组件代码
-- `inputs/`: 输入文件
-- `requirements.txt`: 依赖包列表
-- `run.py`: 运行脚本
-- `api_server.py`: 微服务脚本
 
 ## ▶️ 使用方法
 
@@ -1187,12 +1179,18 @@ class CanvasPage(QWidget):
         # 启动异步加载线程
         self.workflow_loader = WorkflowLoader(file_path, self.graph, self.node_type_map)
         self.workflow_loader.finished.connect(self._on_workflow_loaded)
+        self.workflow_loader.progress.connect(self._on_workflow_loading_progress)  # 连接进度信号
         self.workflow_loader.start()
+
+    def _on_workflow_loading_progress(self, message):
+        """处理加载进度更新"""
+        self.create_info("加载进度", message)
 
     def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data):
         """工作流加载完成的回调"""
         try:
             # 加载图
+            self.create_info("加载中", "正在构建节点图...")
             self.graph.deserialize_session(graph_data)
             self._setup_pipeline_style()
             
@@ -1205,27 +1203,39 @@ class CanvasPage(QWidget):
                         break
 
             # 恢复节点状态
-            for node in self.graph.all_nodes():
-
+            self.create_info("加载中", "正在恢复节点状态...")
+            all_nodes = self.graph.all_nodes()
+            total_nodes = len(all_nodes)
+            
+            for index, node in enumerate(all_nodes):
+                # 每处理50个节点更新一次进度
+                if index % 50 == 0:
+                    self.create_info("加载中", f"正在恢复节点状态 ({index}/{total_nodes})...")
+                
                 if node and not isinstance(node, BackdropNode):
                     full_path = getattr(node, 'FULL_PATH', 'unknown')
                     node_name = node.name()
                     stable_key = f"{full_path}||{node_name}"
                     node_status = node_status_data.get(stable_key)
-                    # 恢复数据
-                    node._input_values = deserialize_from_json(node_status.get("input_values", {}))
-                    node._output_values = deserialize_from_json(node_status.get("output_values", {}))
-                    node.column_select = node_status.get("column_select", {})
-                    
-                    status_str = node_status.get("status", "unrun")
-                    self.set_node_status(
-                        node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
-                    )
+                    if node_status:
+                        # 恢复数据
+                        node._input_values = deserialize_from_json(node_status.get("input_values", {}))
+                        node._output_values = deserialize_from_json(node_status.get("output_values", {}))
+                        node.column_select = node_status.get("column_select", {})
+                        
+                        status_str = node_status.get("status", "unrun")
+                        self.set_node_status(
+                            node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
+                        )
+            
             self.create_name_label()
-            self.create_minimap()
-            self._fit_view_to_all_nodes()
+            # self.create_minimap()
+            # 延迟适配视图以避免阻塞主线程
+            self._delayed_fit_view()
             self.create_success_info("加载成功", "工作流加载成功！")
         except Exception as e:
+            import traceback
+            logger.error(f"❌ 加载失败: {traceback.format_exc()}")
             self.create_failed_info("加载失败", f"工作流加载失败: {str(e)}")
         finally:
             # 重新启用按钮
@@ -1254,6 +1264,10 @@ class CanvasPage(QWidget):
 
         # 2. 使用 PyQt5 原生方法居中
         viewer.centerOn(center_x, center_y)  # 注意：是 centerOn，不是 center_on
+
+    def _delayed_fit_view(self):
+        """延迟适配视图，避免阻塞主线程"""
+        QtCore.QTimer.singleShot(100, self._fit_view_to_all_nodes)
 
     def run_workflow(self):
         nodes = self.graph.all_nodes()

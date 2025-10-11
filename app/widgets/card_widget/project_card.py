@@ -88,6 +88,7 @@ class ProjectCard(CardWidget):
         self.name_label = BodyLabel(self.project_name)
         self.name_label.setFont(QFont("Microsoft YaHei", 14, QFont.DemiBold))
         self.name_label.setAlignment(Qt.AlignCenter)
+        self.name_label.setWordWrap(True)
         self.name_label.setObjectName("ProjectCardTitle")
         main_layout.addWidget(self.name_label)
 

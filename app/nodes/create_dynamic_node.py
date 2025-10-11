@@ -12,7 +12,7 @@ from NodeGraphQt import BaseNode
 from PyQt5.QtWidgets import QFileDialog
 from loguru import logger
 
-from app.components.base import ArgumentType, PropertyType
+from app.components.base import ArgumentType, PropertyType, ConnectionType
 from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import draw_square_port
@@ -91,7 +91,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             self.log_capture = NodeLogHandler(self.id, self._log_message, use_file_logging=True)
 
             # === 动态生成属性 ===
-            for prop_name, prop_def in component_class.get_properties().items():
+            for i, (prop_name, prop_def) in enumerate(component_class.get_properties().items()):
                 prop_type = prop_def.get("type", PropertyType.TEXT)
                 default = prop_def.get("default", "")
                 label = prop_def.get("label", prop_name)
@@ -105,7 +105,10 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     choices = prop_def.get("choices", [])
                     if choices:
                         self.add_custom_widget(
-                            ComboBoxWidgetWrapper(parent=self.view, name=prop_name, label=label, items=choices),
+                            ComboBoxWidgetWrapper(
+                                parent=self.view, name=prop_name, label=label, items=choices,
+                                z_value=len(component_class.get_properties()) - i
+                            ),
                             tab="properties"
                         )
                         self.set_property(prop_name, default if default in choices else choices[0])
@@ -148,7 +151,8 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         name=prop_name,
                         label=label,
                         schema=processed_schema,
-                        window=parent_window
+                        window=parent_window,
+                        z_value=len(component_class.get_properties()) - i
                     )
                     self.add_custom_widget(widget, tab='Properties')
                 else:
@@ -164,7 +168,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
             # === 端口 ===
             for port_name, label, connection in component_class.get_inputs():
-                if connection == "single":
+                if connection == ConnectionType.SINGLE:
                     self.add_input(port_name)
                 else:
                     self.add_input(port_name, True, painter_func=draw_square_port)
