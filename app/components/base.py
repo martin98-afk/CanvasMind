@@ -27,13 +27,14 @@ BaseComponent = base_module.BaseComponent
 PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
-ArgumentType = base_module.ArgumentType\n\n\n"""
+ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType\n\n\n"""
 
 
 class ConnectionType(str, Enum):
     """连接类型"""
-    SINGLE = "single"
-    MULTIPLE = "multi"
+    SINGLE = "单输入"
+    MULTIPLE = "多输入"
 
 
 class PropertyType(str, Enum):

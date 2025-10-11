@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -21,7 +22,7 @@ class Component(BaseComponent):
     requirements = ""
 
     inputs = [
-        PortDefinition(name="variables", label="变量字典", type=ArgumentType.JSON, connection="multi"), 
+        PortDefinition(name="variables", label="变量字典", type=ArgumentType.JSON, connection=ConnectionType.MULTIPLE),
     ]
     outputs = [
         PortDefinition(name="prompt", label="生成的提示词", type=ArgumentType.TEXT),

@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -20,7 +21,7 @@ class Component(BaseComponent):
     description = "接收本地上传csv文件"
     requirements = "pandas"
     inputs = [
-        PortDefinition(name="csv", label="csv文件", type=ArgumentType.UPLOAD),
+        PortDefinition(name="csv", label="csv文件", type=ArgumentType.UPLOAD, connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="csv", label="csv文件", type=ArgumentType.CSV),

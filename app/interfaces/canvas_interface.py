@@ -8,10 +8,9 @@ from datetime import datetime
 from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
-from NodeGraphQt.constants import PipeLayoutEnum, PipeEnum
-from NodeGraphQt.qgraphics.port import PortItem
+from NodeGraphQt.constants import PipeLayoutEnum
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QThreadPool, QRectF, QPointF, pyqtSignal
+from PyQt5.QtCore import Qt, QThreadPool, QRectF, pyqtSignal
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from loguru import logger

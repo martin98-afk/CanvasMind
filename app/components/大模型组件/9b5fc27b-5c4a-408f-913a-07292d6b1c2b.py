@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -21,7 +22,7 @@ class Component(BaseComponent):
     requirements = ""
 
     inputs = [
-        PortDefinition(name="llm_output", label="模型原始输出", type=ArgumentType.TEXT, connection="single"),
+        PortDefinition(name="llm_output", label="模型原始输出", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="parsed_json", label="解析后的 JSON", type=ArgumentType.TEXT),
