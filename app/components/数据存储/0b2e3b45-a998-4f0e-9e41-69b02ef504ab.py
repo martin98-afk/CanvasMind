@@ -21,7 +21,7 @@ class Component(BaseComponent):
     requirements = ""
 
     inputs = [
-        PortDefinition(name="text", label="输入文本", type=ArgumentType.TEXT, connection="single"),
+        PortDefinition(name="text", label="输入文本", type=ArgumentType.TEXT),
     ]
     outputs = [
         PortDefinition(name="file_path", label="保存路径", type=ArgumentType.TEXT),
