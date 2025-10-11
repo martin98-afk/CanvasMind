@@ -352,6 +352,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         while dest_path.exists():
             new_name = f"{base_name}_{counter}"
             dest_path = self.workflow_dir / f"{new_name}.workflow.json"
+            dest_png = self.workflow_dir / f"{new_name}.png"
             counter += 1
 
         try:

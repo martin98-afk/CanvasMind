@@ -1,15 +1,53 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QSplitter, QFrame, QVBoxLayout, QDialog, QScrollArea, QWidget
+from PyQt5.QtCore import Qt, QObject, pyqtSignal, QThreadPool, QRunnable
+from PyQt5.QtWidgets import QSplitter, QFrame, QVBoxLayout, QDialog, QScrollArea, QWidget, QMessageBox
 from qfluentwidgets import (
     LineEdit, SpinBox, DoubleSpinBox, CheckBox,
     PrimaryPushButton, BodyLabel, StrongBodyLabel,
     CardWidget, VBoxLayout, TextEdit, setFont
 )
 import requests
+
+
+# === 异步任务封装 ===
+class RequestWorker(QRunnable):
+    def __init__(self, url, payload, timeout=300):
+        super().__init__()
+        self.url = url
+        self.payload = payload
+        self.timeout = timeout
+        self.signals = RequestSignals()
+
+    def run(self):
+        try:
+            response = requests.post(
+                self.url,
+                json=self.payload,
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            result = response.json()
+            self.signals.success.emit(result)
+        except requests.exceptions.Timeout:
+            self.signals.error.emit("请求超时，请检查网络或服务状态。")
+        except requests.exceptions.ConnectionError:
+            self.signals.error.emit("无法连接到服务，请确认服务是否运行。")
+        except requests.exceptions.HTTPError as e:
+            self.signals.error.emit(f"HTTP 错误: {e.response.status_code} - {e.response.reason}")
+        except ValueError:  # 包括 JSONDecodeError
+            self.signals.error.emit("服务返回了无效的 JSON 格式。")
+        except Exception as e:
+            self.signals.error.emit(f"未知错误: {str(e)}")
+
+
+class RequestSignals(QObject):
+    success = pyqtSignal(object)
+    error = pyqtSignal(str)
 
 
 class ServiceRequestDialog(QDialog):
@@ -19,6 +57,7 @@ class ServiceRequestDialog(QDialog):
         self.service_url = service_url
         self.spec = self._load_spec()
         self.input_widgets = {}
+        self.thread_pool = QThreadPool.globalInstance()  # 使用全局线程池
 
         self.setWindowTitle(f"服务请求 - {os.path.basename(project_path)}")
         self.resize(960, 600)
@@ -26,14 +65,18 @@ class ServiceRequestDialog(QDialog):
 
     def _load_spec(self):
         spec_path = os.path.join(self.project_path, "project_spec.json")
-        with open(spec_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        try:
+            with open(spec_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            QMessageBox.critical(self, "加载错误", f"无法加载项目配置：\n{str(e)}")
+            return {"inputs": {}}
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(16)
-        # 分割器
+
         splitter = QSplitter(Qt.Horizontal)
         splitter.setHandleWidth(8)
         splitter.setStyleSheet("QSplitter::handle { background: #3c3c40; }")
@@ -45,12 +88,10 @@ class ServiceRequestDialog(QDialog):
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(12)
 
-        # 参数标题
         param_title = StrongBodyLabel("请求参数")
         setFont(param_title, 14)
         left_layout.addWidget(param_title)
 
-        # 滚动区域（避免参数多时溢出）
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setStyleSheet("QScrollArea { border: none; background: transparent; }")
@@ -59,7 +100,6 @@ class ServiceRequestDialog(QDialog):
         scroll_layout.setSpacing(12)
         scroll_layout.setContentsMargins(0, 0, 0, 0)
 
-        # 动态生成参数卡片
         inputs = self.spec.get("inputs", {})
         if not inputs:
             empty_label = BodyLabel("无输入参数")
@@ -75,7 +115,6 @@ class ServiceRequestDialog(QDialog):
         scroll_area.setWidget(scroll_content)
         left_layout.addWidget(scroll_area)
 
-        # 发送按钮（固定在底部）
         self.send_btn = PrimaryPushButton("发送请求")
         self.send_btn.setFixedHeight(36)
         self.send_btn.clicked.connect(self._send_request)
@@ -108,37 +147,30 @@ class ServiceRequestDialog(QDialog):
         """)
         right_layout.addWidget(self.result_text)
 
-        # 添加到分割器
         splitter.addWidget(left_frame)
         splitter.addWidget(right_frame)
-        splitter.setSizes([480, 480])  # 960 总宽，各占一半
-
+        splitter.setSizes([480, 480])
         main_layout.addWidget(splitter)
 
     def _create_param_card(self, key, cfg):
-        """创建单个参数卡片"""
         card = CardWidget()
         card.setFixedHeight(80)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(16, 12, 16, 12)
         layout.setSpacing(8)
 
-        # 参数名
         name_label = StrongBodyLabel(key)
         setFont(name_label, 12)
         layout.addWidget(name_label)
 
-        # 输入控件
         default_val = cfg.get("current_value")
         widget = self._create_input_widget(key, default_val)
         widget.setFixedHeight(32)
         layout.addWidget(widget)
         self.input_widgets[key] = widget
-
         return card
 
     def _create_input_widget(self, key, default_val):
-        """根据默认值类型创建输入控件"""
         if isinstance(default_val, bool):
             cb = CheckBox()
             cb.setChecked(default_val)
@@ -161,39 +193,54 @@ class ServiceRequestDialog(QDialog):
             return le
         else:
             le = LineEdit()
-            le.setPlaceholderText("输入值")
+            le.setPlaceholderText("输入值（支持 JSON）")
             le.setClearButtonEnabled(True)
             return le
 
     def _send_request(self):
-        """发送请求到微服务"""
+        # 1. 收集参数
+        payload = {}
+        for key, widget in self.input_widgets.items():
+            if isinstance(widget, CheckBox):
+                value = widget.isChecked()
+            elif isinstance(widget, (SpinBox, DoubleSpinBox)):
+                value = widget.value()
+            else:  # LineEdit
+                text = widget.text().strip()
+                if not text:
+                    value = ""
+                elif text.startswith(('{', '[')):
+                    try:
+                        value = json.loads(text)
+                    except json.JSONDecodeError:
+                        value = text  # 保留原始字符串
+                else:
+                    value = text
+            payload[key] = value
+
+        # 2. 禁用按钮，显示加载状态
+        self.send_btn.setEnabled(False)
+        self.send_btn.setText("请求中...")
+        self.result_text.setPlaceholderText("正在发送请求，请稍候...")
+
+        # 3. 启动异步任务
+        worker = RequestWorker(self.service_url, payload, timeout=30)  # 缩短超时更合理
+        worker.signals.success.connect(self._on_request_success)
+        worker.signals.error.connect(self._on_request_error)
+        self.thread_pool.start(worker)
+
+    def _on_request_success(self, result):
+        self._restore_button()
         try:
-            payload = {}
-            for key, widget in self.input_widgets.items():
-                if isinstance(widget, CheckBox):
-                    value = widget.isChecked()
-                elif isinstance(widget, (SpinBox, DoubleSpinBox)):
-                    value = widget.value()
-                else:  # LineEdit
-                    value = widget.text()
-                    if value.startswith(('{', '[')):
-                        try:
-                            value = json.loads(value)
-                        except:
-                            pass
-                payload[key] = value
-
-            response = requests.post(
-                self.service_url,
-                json=payload,
-                timeout=300
-            )
-            response.raise_for_status()
-            result = response.json()
-
             formatted = json.dumps(result, indent=2, ensure_ascii=False)
-            self.result_text.setPlainText(formatted)
+        except Exception:
+            formatted = str(result)
+        self.result_text.setPlainText(formatted)
 
-        except Exception as e:
-            error_msg = f"请求失败:\n{str(e)}"
-            self.result_text.setPlainText(error_msg)
+    def _on_request_error(self, error_msg):
+        self._restore_button()
+        self.result_text.setPlainText(f"❌ 请求失败:\n{error_msg}")
+
+    def _restore_button(self):
+        self.send_btn.setEnabled(True)
+        self.send_btn.setText("发送请求")

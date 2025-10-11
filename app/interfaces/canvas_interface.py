@@ -68,6 +68,7 @@ class CanvasPage(QWidget):
         self._clipboard_data = None  # 存储复制的节点数据
         # 初始化 NodeGraph
         self.graph = NodeGraph()
+        self.graph.use_OpenGL()
         self.config = Settings.get_instance()
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
@@ -215,12 +216,11 @@ class CanvasPage(QWidget):
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_separator()
                 # 编辑组件
                 nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('自动布局', lambda graph, node: self._auto_layout_selected(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
