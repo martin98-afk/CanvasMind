@@ -18,11 +18,11 @@ from app.widgets.logger_dialog import QTextEditLogger
 class LowCodeWindow(FluentWindow):
     def __init__(self):
         super().__init__()
+        setTheme(Theme.DARK)
         self.setWindowIcon(get_icon("logo3"))
         self.setWindowTitle("AI Lowcode Canvas")
         # 初始化日志查看器
         self.setup_log_viwer()
-        setTheme(Theme.DARK)
         # 自动最大化窗口
         screen_rect = QDesktopWidget().screenGeometry()
         screen_width, screen_height = screen_rect.width(), screen_rect.height()

@@ -1,32 +1,32 @@
 
-[32m2025-10-10 18:55:59.584[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: 组件输入[0m
-[32m2025-10-10 18:56:00.250[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
-[32m2025-10-10 18:56:00.206[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[32m2025-10-11 20:17:27.341[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: 组件输入[0m
+[32m2025-10-11 20:17:28.005[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-11 20:17:27.952[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
 [0m
-[32m2025-10-10 18:56:00.256[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: 组件输出[0m
-[32m2025-10-10 18:56:00.876[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
-[32m2025-10-10 18:56:00.827[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[32m2025-10-11 20:17:28.012[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: 组件输出[0m
+[32m2025-10-11 20:17:28.686[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-11 20:17:28.630[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
 [0m
-[32m2025-10-10 18:56:00.883[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: 组件意图[0m
-[32m2025-10-10 18:56:01.514[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
-[32m2025-10-10 18:56:01.457[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[32m2025-10-11 20:17:28.692[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: 组件意图[0m
+[32m2025-10-11 20:17:29.401[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-11 20:17:29.336[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
 [0m
-[32m2025-10-10 18:56:01.521[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: JSON文本包装 1[0m
-[32m2025-10-10 18:56:02.129[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
-[32m2025-10-10 18:56:02.074[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[32m2025-10-11 20:17:29.407[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: JSON文本包装 1[0m
+[32m2025-10-11 20:17:30.057[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-11 20:17:30.003[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
 [0m
-[32m2025-10-10 18:56:02.135[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: JSON文本包装 3[0m
-[32m2025-10-10 18:56:02.739[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
-[32m2025-10-10 18:56:02.686[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[32m2025-10-11 20:17:30.063[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: JSON文本包装 3[0m
+[32m2025-10-11 20:17:30.703[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-11 20:17:30.657[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
 [0m
-[32m2025-10-10 18:56:02.746[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: JSON文本包装[0m
-[32m2025-10-10 18:56:03.416[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
-[32m2025-10-10 18:56:03.364[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[32m2025-10-11 20:17:30.709[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: JSON文本包装[0m
+[32m2025-10-11 20:17:31.300[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-11 20:17:31.253[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
 [0m
-[32m2025-10-10 18:56:03.422[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: 提示词模板 3[0m
-[32m2025-10-10 18:56:04.021[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
-[32m2025-10-10 18:56:03.976[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1m{'variables': [{'intention': '我的需求是开发一个逻辑回归组件'}, {'input': '输入是两个csv，一个是feature，一个是target'}, {'output': '输出是target预测结果和模型'}]}[0m
-[32m2025-10-10 18:56:03.976[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1m##  任务
+[32m2025-10-11 20:17:31.306[0m | [1mINFO    [0m | [36mrunner.workflow_runner[0m:[36mexecute_workflow[0m:[36m156[0m - [1m执行节点: 提示词模板 3[0m
+[32m2025-10-11 20:17:31.960[0m | [33m[1mWARNING [0m | [36mrunner.component_executor[0m:[36m_run_subprocess[0m:[36m173[0m - [33m[1m子进程 stderr:
+[32m2025-10-11 20:17:31.906[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1m{'variables': [{'intention': '我的需求是开发一个逻辑回归组件'}, {'input': '输入是两个csv，一个是feature，一个是target'}, {'output': '输出是target预测结果和模型'}]}[0m
+[32m2025-10-11 20:17:31.907[0m | [1mINFO    [0m | [36m__main__[0m:[36minfo[0m:[36m26[0m - [1m##  任务
 根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码
 
 ## 组件输入输出参数定义代码
@@ -140,10 +140,10 @@ class Component(BaseComponent):
 
 ## 生成的组件代码
 [0m
-[32m2025-10-10 18:56:03.976[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
+[32m2025-10-11 20:17:31.907[0m | [32m[1mSUCCESS [0m | [36m__main__[0m:[36msuccess[0m:[36m27[0m - [32m[1m执行完成[0m
 [0m
-[32m2025-10-10 18:56:04.028[0m | [1mINFO    [0m | [36m__main__[0m:[36m<module>[0m:[36m15[0m - [1m模型执行完成，输出:[0m
-[32m2025-10-10 18:56:04.028[0m | [1mINFO    [0m | [36m__main__[0m:[36m<module>[0m:[36m17[0m - [1m  prompt: ##  任务
+[32m2025-10-11 20:17:31.967[0m | [1mINFO    [0m | [36m__main__[0m:[36m<module>[0m:[36m15[0m - [1m模型执行完成，输出:[0m
+[32m2025-10-11 20:17:31.968[0m | [1mINFO    [0m | [36m__main__[0m:[36m<module>[0m:[36m17[0m - [1m  prompt: ##  任务
 根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码
 
 ## 组件输入输出参数定义代码

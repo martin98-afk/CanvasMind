@@ -8,7 +8,8 @@ from datetime import datetime
 from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
-from NodeGraphQt.constants import PipeLayoutEnum
+from NodeGraphQt.constants import PipeLayoutEnum, PipeEnum
+from NodeGraphQt.qgraphics.port import PortItem
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QThreadPool, QRectF, QPointF, pyqtSignal
 from PyQt5.QtGui import QImage, QPainter
@@ -68,7 +69,6 @@ class CanvasPage(QWidget):
         self._clipboard_data = None  # 存储复制的节点数据
         # 初始化 NodeGraph
         self.graph = NodeGraph()
-        self.graph.use_OpenGL()
         self.config = Settings.get_instance()
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
@@ -373,10 +373,7 @@ class CanvasPage(QWidget):
     def _save_via_dialog(self):
         if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
             # 默认使用当前路径
-            default_path = self.file_path
-            self.save_full_workflow(default_path)
-
-            return
+            file_path = self.file_path
         else:
             file_path = self.file_path.parent / f"{self.workflow_name}.workflow.json"
 
@@ -845,6 +842,7 @@ class CanvasPage(QWidget):
         # 更新节点视觉状态
         if hasattr(node, 'status'):
             node.status = status
+        self._highlight_node_connections(node, status)
         # 如果当前选中的是这个节点，更新属性面板
         if (self.property_panel.current_node and
                 self.property_panel.current_node.id == node.id):
@@ -976,6 +974,61 @@ class CanvasPage(QWidget):
         node = self._get_node_by_id(node_id)
         if node:
             self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
+
+    def _highlight_node_connections(self, node, status):
+        """根据节点状态高亮其输入/输出连线"""
+        viewer = self.graph.viewer()
+        pipes = viewer.all_pipes()
+
+        from NodeGraphQt.constants import PipeEnum
+
+        # 默认样式
+        default_color = PipeEnum.COLOR.value  # (175, 95, 30, 255)
+        default_width = 2
+        default_style = PipeEnum.DRAW_TYPE_DEFAULT.value
+
+        # 先恢复该节点所有相关连线为默认样式
+        for pipe in pipes:
+            if pipe.output_port.node.id == node.id or pipe.input_port.node.id == node.id:
+                pipe.set_pipe_styling(
+                    color=default_color,
+                    width=default_width,
+                    style=default_style
+                )
+
+        # 如果是运行中，才高亮
+        if status == NodeStatus.NODE_STATUS_RUNNING:
+            input_color = (64, 158, 255, 255)  # 蓝色（输入）
+            output_color = (50, 205, 50, 255)  # 绿色（输出）
+
+            # 高亮输入连线（上游 → 当前节点）
+            for input_port in node.input_ports():
+                for out_port in input_port.connected_ports():
+                    pipe = self._find_pipe_by_ports(out_port, input_port, pipes)
+                    if pipe:
+                        pipe.set_pipe_styling(
+                            color=input_color,
+                            width=default_width,
+                            style=default_style
+                        )
+
+            # 高亮输出连线（当前节点 → 下游）
+            for output_port in node.output_ports():
+                for in_port in output_port.connected_ports():
+                    pipe = self._find_pipe_by_ports(output_port, in_port, pipes)
+                    if pipe:
+                        pipe.set_pipe_styling(
+                            color=output_color,
+                            width=default_width,
+                            style=default_style
+                        )
+
+    def _find_pipe_by_ports(self, out_port, in_port, pipes):
+        """根据两个端口从 pipes 列表中查找对应的 PipeItem"""
+        for pipe in pipes:
+            if pipe.output_port == out_port.view and pipe.input_port == in_port.view:
+                return pipe
+        return None
 
     def on_node_finished_simple(self, node_id):
         """简单节点完成回调（用于批量执行）"""
@@ -1147,51 +1200,13 @@ class CanvasPage(QWidget):
         """缩略图生成完成的回调"""
         if png_path:
             logger.info(f"✅ 预览图已保存: {png_path}")
+            self.canvas_saved.emit(self.file_path)
         else:
             self.create_warning_info("预览图", "生成失败")
-
-    def _generate_canvas_thumbnail(self, workflow_path):
-        """根据工作流文件路径生成同名 PNG 预览图"""
-        try:
-            # 构造预览图路径：xxx.workflow.json → xxx.png
-            base_name = os.path.splitext(os.path.splitext(workflow_path)[0])[0]  # 去掉 .workflow.json
-            png_path = base_name + ".png"
-
-            # 获取场景和边界
-            scene = self.graph.viewer().scene()
-            rect = QRectF()
-            for node in self.graph.all_nodes():
-                item_rect = node.view.sceneBoundingRect()
-                rect = rect.united(item_rect)
-
-            if rect.isEmpty():
-                # 如果没有节点，创建一个空白图
-                image = QImage(800, 600, QImage.Format_ARGB32)
-                image.fill(Qt.white)
-            else:
-                # 扩展一点边距，避免裁剪
-                rect.adjust(-100, -100, 90, 90)
-                image = QImage(rect.size().toSize(), QImage.Format_ARGB32)
-                image.fill(Qt.white)  # 背景设为白色（可选）
-
-                painter = QPainter(image)
-                # 将场景渲染到 QImage
-                scene.render(painter, target=QRectF(image.rect()), source=rect)
-                painter.end()
-
-            # 保存图像
-            image.save(png_path, "PNG")
-            logger.info(f"✅ 预览图已保存: {png_path}")
-            self.canvas_saved.emit(self.file_path)
-
-        except Exception as e:
-            # 可选：弹出警告
-            self.create_warning_info("预览图", f"生成失败: {str(e)}")
 
     def load_full_workflow(self, file_path):
         # 禁用按钮防止重复加载
         self.import_btn.setEnabled(False)
-        self.create_info("加载中", "正在异步加载工作流...")
         
         # 启动异步加载线程
         self.workflow_loader = WorkflowLoader(file_path, self.graph, self.node_type_map)
@@ -1253,33 +1268,9 @@ class CanvasPage(QWidget):
             # 重新启用按钮
             self.import_btn.setEnabled(True)
 
-    def _fit_view_to_all_nodes(self):
-        """适配你的 Viewer：重置缩放 + 居中所有节点（使用 PyQt5 原生 API）"""
-        nodes = [n for n in self.graph.all_nodes() if not isinstance(n, BackdropNode)]
-        if not nodes:
-            return
-
-        # 计算所有节点的包围盒中心
-        min_x = min(n.pos()[0] for n in nodes)
-        min_y = min(n.pos()[1] for n in nodes)
-        max_x = max(n.pos()[0] + n.view.width for n in nodes)
-        max_y = max(n.pos()[1] + n.view.height for n in nodes)
-
-        center_x = (min_x + max_x) / 2
-        center_y = (min_y + max_y) / 2
-
-        # 获取 viewer（它是 QGraphicsView 子类）
-        viewer = self.graph.viewer()
-
-        # 1. 重置缩放和平移（回到初始状态）
-        viewer.reset_zoom()
-
-        # 2. 使用 PyQt5 原生方法居中
-        viewer.centerOn(center_x, center_y)  # 注意：是 centerOn，不是 center_on
-
     def _delayed_fit_view(self):
         """延迟适配视图，避免阻塞主线程"""
-        QtCore.QTimer.singleShot(100, self._fit_view_to_all_nodes)
+        QtCore.QTimer.singleShot(100, lambda: self.graph._viewer.zoom_to_nodes(self.graph._viewer.all_nodes()))
 
     def run_workflow(self):
         nodes = self.graph.all_nodes()
