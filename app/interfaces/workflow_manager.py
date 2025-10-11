@@ -245,6 +245,7 @@ class WorkflowCanvasGalleryPage(QWidget):
                     self._schedule_refresh()
                 )
             )
+            canvas_page.canvas_saved.connect(self._on_canvas_saved)
             canvas_interface = self.parent_window.addSubInterface(
                 canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self
             )
@@ -282,6 +283,7 @@ class WorkflowCanvasGalleryPage(QWidget):
                     self._schedule_refresh()
                 )
             )
+            canvas_page.canvas_saved.connect(self._on_canvas_saved)
             canvas_page.save_full_workflow(file_path)
             canvas_interface = self.parent_window.addSubInterface(
                 canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
@@ -381,3 +383,9 @@ class WorkflowCanvasGalleryPage(QWidget):
             self._schedule_refresh()  # 替换为防抖刷新
         except Exception as e:
             InfoBar.error("删除失败", str(e), parent=self)
+
+    def _on_canvas_saved(self, workflow_path: Path):
+        """当画布保存完成时，刷新对应卡片的预览图"""
+        card = self._card_map.get(workflow_path)
+        if card and hasattr(card, 'refresh_preview'):
+            card.refresh_preview()

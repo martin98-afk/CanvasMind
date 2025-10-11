@@ -40,6 +40,7 @@ from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 class CanvasPage(QWidget):
 
     canvas_deleted = pyqtSignal()
+    canvas_saved = pyqtSignal(Path)
     PIPELINE_STYLE = {
         "折线": PipeLayoutEnum.ANGLE.value,
         "曲线": PipeLayoutEnum.CURVED.value,
@@ -64,12 +65,13 @@ class CanvasPage(QWidget):
         self.node_status = {}  # {node_id: status}
         self.node_type_map = {}
         self._registered_nodes = []
+        self._clipboard_data = None  # 存储复制的节点数据
         # 初始化 NodeGraph
         self.graph = NodeGraph()
         self.config = Settings.get_instance()
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
-
+        self.canvas_widget.keyPressEvent = self._canvas_key_press_event
         # 组件面板 - 使用可拖拽的树
         self.nav_panel = DraggableTreePanel(self)
         self.nav_view = self.nav_panel.tree
@@ -100,6 +102,18 @@ class CanvasPage(QWidget):
         self.canvas_widget.installEventFilter(self)
         # ✅ 启用右键菜单（关键步骤）
         self._setup_context_menus()
+
+    def _canvas_key_press_event(self, event):
+        """处理画布快捷键"""
+        if event.modifiers() == QtCore.Qt.ControlModifier:
+            if event.key() == QtCore.Qt.Key_C:
+                self._copy_selected_nodes()
+                return
+            elif event.key() == QtCore.Qt.Key_V:
+                self._paste_nodes()
+                return
+        # 其他按键交给原生处理
+        super(type(self.graph.viewer()), self.graph.viewer()).keyPressEvent(event)
 
     def eventFilter(self, obj, event):
         if obj is self.canvas_widget and event.type() == event.Resize:
@@ -195,18 +209,20 @@ class CanvasPage(QWidget):
             self.graph.register_node(node_class)
             self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
             if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
-                nodes_menu.add_command('▶ 运行此节点', lambda graph, node: self.run_node_list_async([node]),
+                nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node_list_async([node]),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('⏩ 运行到此节点', lambda graph, node: self.run_to_node(node),
+                nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('⏭️ 从此节点开始运行', lambda graph, node: self.run_from_node(node),
+                nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 # 编辑组件
-                nodes_menu.add_command('📝 编辑组件', lambda graph, node: self.edit_node(node),
+                nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('📄 查看节点日志', lambda graph, node: node.show_logs(),
+                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('🗑️ 删除节点', lambda graph, node: self.delete_node(node),
+                nodes_menu.add_command('自动布局', lambda graph, node: self._auto_layout_selected(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
 
     def create_minimap(self):
@@ -1165,7 +1181,8 @@ class CanvasPage(QWidget):
 
             # 保存图像
             image.save(png_path, "PNG")
-            print(f"✅ 预览图已保存: {png_path}")
+            logger.info(f"✅ 预览图已保存: {png_path}")
+            self.canvas_saved.emit(self.file_path)
 
         except Exception as e:
             # 可选：弹出警告
@@ -1179,12 +1196,7 @@ class CanvasPage(QWidget):
         # 启动异步加载线程
         self.workflow_loader = WorkflowLoader(file_path, self.graph, self.node_type_map)
         self.workflow_loader.finished.connect(self._on_workflow_loaded)
-        self.workflow_loader.progress.connect(self._on_workflow_loading_progress)  # 连接进度信号
         self.workflow_loader.start()
-
-    def _on_workflow_loading_progress(self, message):
-        """处理加载进度更新"""
-        self.create_info("加载进度", message)
 
     def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data):
         """工作流加载完成的回调"""
@@ -1330,16 +1342,69 @@ class CanvasPage(QWidget):
         # 添加画布级别的菜单项
         graph_menu.add_command('运行工作流', self.run_workflow, 'Ctrl+R')
         graph_menu.add_command('保存工作流', self._save_via_dialog, 'Ctrl+S')
-        graph_menu.add_command('加载工作流', self._open_via_dialog, 'Ctrl+O')
-        graph_menu.add_command('创建 Backdrop', lambda: self.create_backdrop("新分组"))
+        graph_menu.add_separator()
+        graph_menu.add_command('自动布局', lambda: self._auto_layout_selected(), 'Ctrl+L')  # 建议快捷键 Ctrl+L
         # 添加分隔符
         graph_menu.add_separator()
-
+        graph_menu.add_command('创建 Backdrop', lambda: self.create_backdrop("新分组"))
         # 添加自定义菜单
         edit_menu = graph_menu.add_menu('编辑')
         edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
         edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
         edit_menu.add_command('删除选中', lambda graph: graph.delete_nodes(graph.selected_nodes()), 'Del')
+
+    def _auto_layout_selected(self, node=None):
+        """仅对选中的节点进行自动布局"""
+        selected = self.graph.selected_nodes()
+        if selected:
+            self.graph.auto_layout_nodes(nodes=selected, start_nodes=[node] if node else None)
+        else:
+            self.graph.auto_layout_nodes(nodes=self.graph.all_nodes(), start_nodes=[node] if node else None)
+
+    def _copy_selected_nodes(self):
+        """复制选中的节点（支持多选）"""
+        selected_nodes = self.graph.selected_nodes()
+        if not selected_nodes:
+            return
+
+        # 序列化选中节点（NodeGraphQt 原生支持）
+        self._clipboard_data = self.graph.copy_nodes()
+        self.create_info("复制成功", f"已复制 {len(selected_nodes)} 个节点")
+
+    def _paste_nodes(self):
+        """粘贴节点（自动偏移避免重叠）"""
+        if not self._clipboard_data:
+            return
+
+        # 获取当前选中节点的中心（作为参考点）
+        selected_nodes = self.graph.selected_nodes()
+        if selected_nodes:
+            avg_x = sum(n.pos()[0] for n in selected_nodes) / len(selected_nodes)
+            avg_y = sum(n.pos()[1] for n in selected_nodes) / len(selected_nodes)
+            offset = (50, 50)  # 相对于选中中心偏移
+        else:
+            # 无选中节点，粘贴到视图中心
+            viewer = self.graph.viewer()
+            center = viewer.mapToScene(viewer.rect().center())
+            avg_x, avg_y = center.x(), center.y()
+            offset = (0, 0)
+
+        # 粘贴节点
+        pasted_nodes = self.graph.paste_nodes(self._clipboard_data)
+
+        # 调整位置（避免重叠）
+        if pasted_nodes:
+            # 计算粘贴节点的包围盒
+            min_x = min(n.pos()[0] for n in pasted_nodes)
+            min_y = min(n.pos()[1] for n in pasted_nodes)
+            # 应用偏移
+            for node in pasted_nodes:
+                x, y = node.pos()
+                new_x = x - min_x + avg_x + offset[0]
+                new_y = y - min_y + avg_y + offset[1]
+                node.set_pos(new_x, new_y)
+
+            self.create_info("粘贴成功", f"已粘贴 {len(pasted_nodes)} 个节点")
 
     def create_success_info(self, title, content):
         InfoBar.success(
