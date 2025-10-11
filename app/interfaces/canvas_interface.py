@@ -8,7 +8,8 @@ from datetime import datetime
 from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
-from NodeGraphQt.constants import PipeLayoutEnum
+from NodeGraphQt.constants import PipeLayoutEnum, PipeEnum
+from NodeGraphQt.qgraphics.port import PortItem
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QThreadPool, QRectF, QPointF, pyqtSignal
 from PyQt5.QtGui import QImage, QPainter
@@ -40,6 +41,7 @@ from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 class CanvasPage(QWidget):
 
     canvas_deleted = pyqtSignal()
+    canvas_saved = pyqtSignal(Path)
     PIPELINE_STYLE = {
         "折线": PipeLayoutEnum.ANGLE.value,
         "曲线": PipeLayoutEnum.CURVED.value,
@@ -64,12 +66,13 @@ class CanvasPage(QWidget):
         self.node_status = {}  # {node_id: status}
         self.node_type_map = {}
         self._registered_nodes = []
+        self._clipboard_data = None  # 存储复制的节点数据
         # 初始化 NodeGraph
         self.graph = NodeGraph()
         self.config = Settings.get_instance()
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
-
+        self.canvas_widget.keyPressEvent = self._canvas_key_press_event
         # 组件面板 - 使用可拖拽的树
         self.nav_panel = DraggableTreePanel(self)
         self.nav_view = self.nav_panel.tree
@@ -100,6 +103,18 @@ class CanvasPage(QWidget):
         self.canvas_widget.installEventFilter(self)
         # ✅ 启用右键菜单（关键步骤）
         self._setup_context_menus()
+
+    def _canvas_key_press_event(self, event):
+        """处理画布快捷键"""
+        if event.modifiers() == QtCore.Qt.ControlModifier:
+            if event.key() == QtCore.Qt.Key_C:
+                self._copy_selected_nodes()
+                return
+            elif event.key() == QtCore.Qt.Key_V:
+                self._paste_nodes()
+                return
+        # 其他按键交给原生处理
+        super(type(self.graph.viewer()), self.graph.viewer()).keyPressEvent(event)
 
     def eventFilter(self, obj, event):
         if obj is self.canvas_widget and event.type() == event.Resize:
@@ -195,18 +210,19 @@ class CanvasPage(QWidget):
             self.graph.register_node(node_class)
             self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
             if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
-                nodes_menu.add_command('▶ 运行此节点', lambda graph, node: self.run_node_list_async([node]),
+                nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node_list_async([node]),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('⏩ 运行到此节点', lambda graph, node: self.run_to_node(node),
+                nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('⏭️ 从此节点开始运行', lambda graph, node: self.run_from_node(node),
+                nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_separator()
                 # 编辑组件
-                nodes_menu.add_command('📝 编辑组件', lambda graph, node: self.edit_node(node),
+                nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('📄 查看节点日志', lambda graph, node: node.show_logs(),
+                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('🗑️ 删除节点', lambda graph, node: self.delete_node(node),
+                nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
 
     def create_minimap(self):
@@ -221,8 +237,9 @@ class CanvasPage(QWidget):
         self.graph.port_disconnected.connect(self._on_graph_changed)
 
         self.canvas_widget.installEventFilter(self)
-
-        self.minimap.show()
+        
+        # 延迟显示缩略图以避免阻塞主线程
+        QtCore.QTimer.singleShot(500, self.minimap.show)
 
     def _on_graph_changed(self):
         """图结构变化时延迟更新缩略图"""
@@ -290,7 +307,7 @@ class CanvasPage(QWidget):
 
     def close_current_canvas(self):
         self.canvas_deleted.emit()
-        self.parent.switchTo(self)
+        self.parent.switchTo(self.parent.workflow_manager)
         self.parent.removeInterface(self)
 
     def create_name_label(self):
@@ -312,6 +329,7 @@ class CanvasPage(QWidget):
         name_layout.addStretch()
         self.name_container.setLayout(name_layout)
         QtCore.QTimer.singleShot(0, self._position_name_container)  # ✅ 关键：延迟定位
+        # 延迟显示以避免阻塞主线程
         self.name_container.show()
 
     def _update_name_label_width(self, line_edit):
@@ -355,10 +373,7 @@ class CanvasPage(QWidget):
     def _save_via_dialog(self):
         if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
             # 默认使用当前路径
-            default_path = self.file_path
-            self.save_full_workflow(default_path)
-
-            return
+            file_path = self.file_path
         else:
             file_path = self.file_path.parent / f"{self.workflow_name}.workflow.json"
 
@@ -601,16 +616,6 @@ class CanvasPage(QWidget):
 
 {chr(10).join(component_names)}
 
-## 📂 目录结构
-
-- `model.workflow.json`: 工作流定义文件（使用原始节点ID）
-- `project_spec.json`: **项目输入/输出接口规范**
-- `components/`: 组件代码
-- `inputs/`: 输入文件
-- `requirements.txt`: 依赖包列表
-- `run.py`: 运行脚本
-- `api_server.py`: 微服务脚本
-
 ## ▶️ 使用方法
 
 1. 安装依赖: `pip install -r requirements.txt`
@@ -837,6 +842,7 @@ class CanvasPage(QWidget):
         # 更新节点视觉状态
         if hasattr(node, 'status'):
             node.status = status
+        self._highlight_node_connections(node, status)
         # 如果当前选中的是这个节点，更新属性面板
         if (self.property_panel.current_node and
                 self.property_panel.current_node.id == node.id):
@@ -968,6 +974,61 @@ class CanvasPage(QWidget):
         node = self._get_node_by_id(node_id)
         if node:
             self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
+
+    def _highlight_node_connections(self, node, status):
+        """根据节点状态高亮其输入/输出连线"""
+        viewer = self.graph.viewer()
+        pipes = viewer.all_pipes()
+
+        from NodeGraphQt.constants import PipeEnum
+
+        # 默认样式
+        default_color = PipeEnum.COLOR.value  # (175, 95, 30, 255)
+        default_width = 2
+        default_style = PipeEnum.DRAW_TYPE_DEFAULT.value
+
+        # 先恢复该节点所有相关连线为默认样式
+        for pipe in pipes:
+            if pipe.output_port.node.id == node.id or pipe.input_port.node.id == node.id:
+                pipe.set_pipe_styling(
+                    color=default_color,
+                    width=default_width,
+                    style=default_style
+                )
+
+        # 如果是运行中，才高亮
+        if status == NodeStatus.NODE_STATUS_RUNNING:
+            input_color = (64, 158, 255, 255)  # 蓝色（输入）
+            output_color = (50, 205, 50, 255)  # 绿色（输出）
+
+            # 高亮输入连线（上游 → 当前节点）
+            for input_port in node.input_ports():
+                for out_port in input_port.connected_ports():
+                    pipe = self._find_pipe_by_ports(out_port, input_port, pipes)
+                    if pipe:
+                        pipe.set_pipe_styling(
+                            color=input_color,
+                            width=default_width,
+                            style=default_style
+                        )
+
+            # 高亮输出连线（当前节点 → 下游）
+            for output_port in node.output_ports():
+                for in_port in output_port.connected_ports():
+                    pipe = self._find_pipe_by_ports(output_port, in_port, pipes)
+                    if pipe:
+                        pipe.set_pipe_styling(
+                            color=output_color,
+                            width=default_width,
+                            style=default_style
+                        )
+
+    def _find_pipe_by_ports(self, out_port, in_port, pipes):
+        """根据两个端口从 pipes 列表中查找对应的 PipeItem"""
+        for pipe in pipes:
+            if pipe.output_port == out_port.view and pipe.input_port == in_port.view:
+                return pipe
+        return None
 
     def on_node_finished_simple(self, node_id):
         """简单节点完成回调（用于批量执行）"""
@@ -1139,50 +1200,13 @@ class CanvasPage(QWidget):
         """缩略图生成完成的回调"""
         if png_path:
             logger.info(f"✅ 预览图已保存: {png_path}")
+            self.canvas_saved.emit(self.file_path)
         else:
             self.create_warning_info("预览图", "生成失败")
-
-    def _generate_canvas_thumbnail(self, workflow_path):
-        """根据工作流文件路径生成同名 PNG 预览图"""
-        try:
-            # 构造预览图路径：xxx.workflow.json → xxx.png
-            base_name = os.path.splitext(os.path.splitext(workflow_path)[0])[0]  # 去掉 .workflow.json
-            png_path = base_name + ".png"
-
-            # 获取场景和边界
-            scene = self.graph.viewer().scene()
-            rect = QRectF()
-            for node in self.graph.all_nodes():
-                item_rect = node.view.sceneBoundingRect()
-                rect = rect.united(item_rect)
-
-            if rect.isEmpty():
-                # 如果没有节点，创建一个空白图
-                image = QImage(800, 600, QImage.Format_ARGB32)
-                image.fill(Qt.white)
-            else:
-                # 扩展一点边距，避免裁剪
-                rect.adjust(-100, -100, 90, 90)
-                image = QImage(rect.size().toSize(), QImage.Format_ARGB32)
-                image.fill(Qt.white)  # 背景设为白色（可选）
-
-                painter = QPainter(image)
-                # 将场景渲染到 QImage
-                scene.render(painter, target=QRectF(image.rect()), source=rect)
-                painter.end()
-
-            # 保存图像
-            image.save(png_path, "PNG")
-            print(f"✅ 预览图已保存: {png_path}")
-
-        except Exception as e:
-            # 可选：弹出警告
-            self.create_warning_info("预览图", f"生成失败: {str(e)}")
 
     def load_full_workflow(self, file_path):
         # 禁用按钮防止重复加载
         self.import_btn.setEnabled(False)
-        self.create_info("加载中", "正在异步加载工作流...")
         
         # 启动异步加载线程
         self.workflow_loader = WorkflowLoader(file_path, self.graph, self.node_type_map)
@@ -1193,6 +1217,7 @@ class CanvasPage(QWidget):
         """工作流加载完成的回调"""
         try:
             # 加载图
+            self.create_info("加载中", "正在构建节点图...")
             self.graph.deserialize_session(graph_data)
             self._setup_pipeline_style()
             
@@ -1205,55 +1230,47 @@ class CanvasPage(QWidget):
                         break
 
             # 恢复节点状态
-            for node in self.graph.all_nodes():
-
+            self.create_info("加载中", "正在恢复节点状态...")
+            all_nodes = self.graph.all_nodes()
+            total_nodes = len(all_nodes)
+            
+            for index, node in enumerate(all_nodes):
+                # 每处理50个节点更新一次进度
+                if index % 50 == 0:
+                    self.create_info("加载中", f"正在恢复节点状态 ({index}/{total_nodes})...")
+                
                 if node and not isinstance(node, BackdropNode):
                     full_path = getattr(node, 'FULL_PATH', 'unknown')
                     node_name = node.name()
                     stable_key = f"{full_path}||{node_name}"
                     node_status = node_status_data.get(stable_key)
-                    # 恢复数据
-                    node._input_values = deserialize_from_json(node_status.get("input_values", {}))
-                    node._output_values = deserialize_from_json(node_status.get("output_values", {}))
-                    node.column_select = node_status.get("column_select", {})
-                    
-                    status_str = node_status.get("status", "unrun")
-                    self.set_node_status(
-                        node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
-                    )
+                    if node_status:
+                        # 恢复数据
+                        node._input_values = deserialize_from_json(node_status.get("input_values", {}))
+                        node._output_values = deserialize_from_json(node_status.get("output_values", {}))
+                        node.column_select = node_status.get("column_select", {})
+                        
+                        status_str = node_status.get("status", "unrun")
+                        self.set_node_status(
+                            node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
+                        )
+            
             self.create_name_label()
-            self.create_minimap()
-            self._fit_view_to_all_nodes()
+            # self.create_minimap()
+            # 延迟适配视图以避免阻塞主线程
+            self._delayed_fit_view()
             self.create_success_info("加载成功", "工作流加载成功！")
         except Exception as e:
+            import traceback
+            logger.error(f"❌ 加载失败: {traceback.format_exc()}")
             self.create_failed_info("加载失败", f"工作流加载失败: {str(e)}")
         finally:
             # 重新启用按钮
             self.import_btn.setEnabled(True)
 
-    def _fit_view_to_all_nodes(self):
-        """适配你的 Viewer：重置缩放 + 居中所有节点（使用 PyQt5 原生 API）"""
-        nodes = [n for n in self.graph.all_nodes() if not isinstance(n, BackdropNode)]
-        if not nodes:
-            return
-
-        # 计算所有节点的包围盒中心
-        min_x = min(n.pos()[0] for n in nodes)
-        min_y = min(n.pos()[1] for n in nodes)
-        max_x = max(n.pos()[0] + n.view.width for n in nodes)
-        max_y = max(n.pos()[1] + n.view.height for n in nodes)
-
-        center_x = (min_x + max_x) / 2
-        center_y = (min_y + max_y) / 2
-
-        # 获取 viewer（它是 QGraphicsView 子类）
-        viewer = self.graph.viewer()
-
-        # 1. 重置缩放和平移（回到初始状态）
-        viewer.reset_zoom()
-
-        # 2. 使用 PyQt5 原生方法居中
-        viewer.centerOn(center_x, center_y)  # 注意：是 centerOn，不是 center_on
+    def _delayed_fit_view(self):
+        """延迟适配视图，避免阻塞主线程"""
+        QtCore.QTimer.singleShot(100, lambda: self.graph._viewer.zoom_to_nodes(self.graph._viewer.all_nodes()))
 
     def run_workflow(self):
         nodes = self.graph.all_nodes()
@@ -1316,16 +1333,69 @@ class CanvasPage(QWidget):
         # 添加画布级别的菜单项
         graph_menu.add_command('运行工作流', self.run_workflow, 'Ctrl+R')
         graph_menu.add_command('保存工作流', self._save_via_dialog, 'Ctrl+S')
-        graph_menu.add_command('加载工作流', self._open_via_dialog, 'Ctrl+O')
-        graph_menu.add_command('创建 Backdrop', lambda: self.create_backdrop("新分组"))
+        graph_menu.add_separator()
+        graph_menu.add_command('自动布局', lambda: self._auto_layout_selected(), 'Ctrl+L')  # 建议快捷键 Ctrl+L
         # 添加分隔符
         graph_menu.add_separator()
-
+        graph_menu.add_command('创建 Backdrop', lambda: self.create_backdrop("新分组"))
         # 添加自定义菜单
         edit_menu = graph_menu.add_menu('编辑')
         edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
         edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
         edit_menu.add_command('删除选中', lambda graph: graph.delete_nodes(graph.selected_nodes()), 'Del')
+
+    def _auto_layout_selected(self, node=None):
+        """仅对选中的节点进行自动布局"""
+        selected = self.graph.selected_nodes()
+        if selected:
+            self.graph.auto_layout_nodes(nodes=selected, start_nodes=[node] if node else None)
+        else:
+            self.graph.auto_layout_nodes(nodes=self.graph.all_nodes(), start_nodes=[node] if node else None)
+
+    def _copy_selected_nodes(self):
+        """复制选中的节点（支持多选）"""
+        selected_nodes = self.graph.selected_nodes()
+        if not selected_nodes:
+            return
+
+        # 序列化选中节点（NodeGraphQt 原生支持）
+        self._clipboard_data = self.graph.copy_nodes()
+        self.create_info("复制成功", f"已复制 {len(selected_nodes)} 个节点")
+
+    def _paste_nodes(self):
+        """粘贴节点（自动偏移避免重叠）"""
+        if not self._clipboard_data:
+            return
+
+        # 获取当前选中节点的中心（作为参考点）
+        selected_nodes = self.graph.selected_nodes()
+        if selected_nodes:
+            avg_x = sum(n.pos()[0] for n in selected_nodes) / len(selected_nodes)
+            avg_y = sum(n.pos()[1] for n in selected_nodes) / len(selected_nodes)
+            offset = (50, 50)  # 相对于选中中心偏移
+        else:
+            # 无选中节点，粘贴到视图中心
+            viewer = self.graph.viewer()
+            center = viewer.mapToScene(viewer.rect().center())
+            avg_x, avg_y = center.x(), center.y()
+            offset = (0, 0)
+
+        # 粘贴节点
+        pasted_nodes = self.graph.paste_nodes(self._clipboard_data)
+
+        # 调整位置（避免重叠）
+        if pasted_nodes:
+            # 计算粘贴节点的包围盒
+            min_x = min(n.pos()[0] for n in pasted_nodes)
+            min_y = min(n.pos()[1] for n in pasted_nodes)
+            # 应用偏移
+            for node in pasted_nodes:
+                x, y = node.pos()
+                new_x = x - min_x + avg_x + offset[0]
+                new_y = y - min_y + avg_y + offset[1]
+                node.set_pos(new_x, new_y)
+
+            self.create_info("粘贴成功", f"已粘贴 {len(pasted_nodes)} 个节点")
 
     def create_success_info(self, title, content):
         InfoBar.success(

@@ -30,6 +30,12 @@ PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType\n\n\n"""
 
 
+class ConnectionType(str, Enum):
+    """连接类型"""
+    SINGLE = "single"
+    MULTIPLE = "multi"
+
+
 class PropertyType(str, Enum):
     """属性类型"""
     TEXT = "文本"
@@ -93,7 +99,7 @@ class ArgumentType(str, Enum):
         return self == ArgumentType.IMAGE
 
     def serialize(self, display_data):
-        if display_data is None:
+        if display_data is None or len(display_data) == 0:
             return display_data
         if self.is_file() and len(display_data) > 0:
             # FILE类型：显示文件路径选择
@@ -123,7 +129,7 @@ class PortDefinition(BaseModel):
     name: str
     label: str
     type: ArgumentType = ArgumentType.TEXT
-    connection: Literal["single", "multi"] = "single"
+    connection: ConnectionType = ConnectionType.SINGLE
 
 
 class ComponentError(Exception):
@@ -295,6 +301,8 @@ class BaseComponent(ABC):
 
     def _read_json_data(self, data: Union[str, dict, Path]) -> Union[dict, list]:
         """读取JSON数据"""
+        if len(data) == 0:
+            return {}
         if isinstance(data, dict):
             return data
         elif isinstance(data, list):
@@ -304,6 +312,7 @@ class BaseComponent(ABC):
                 with open(data, 'r', encoding='utf-8') as f:
                     return json.load(f)
             else:
+                self.logger.info(data)
                 # 如果是JSON字符串
                 return json.loads(re.sub(r"'", '"', data))
         elif isinstance(data, Path):
@@ -488,7 +497,8 @@ class BaseComponent(ABC):
             if inputs:
                 for port in self.inputs:
                     if port.name in inputs:
-                        if port.connection == "single":
+                        if (port.connection == ConnectionType.SINGLE or
+                                (port.connection == ConnectionType.MULTIPLE and not isinstance(inputs[port.name], list))):
                             validated_inputs[port.name] = self.read_input_data(
                                 port.name, inputs[port.name], port.type
                             )

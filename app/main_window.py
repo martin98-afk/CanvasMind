@@ -18,9 +18,11 @@ from app.widgets.logger_dialog import QTextEditLogger
 class LowCodeWindow(FluentWindow):
     def __init__(self):
         super().__init__()
+        setTheme(Theme.DARK)
+        self.setWindowIcon(get_icon("logo3"))
+        self.setWindowTitle("AI Lowcode Canvas")
         # 初始化日志查看器
         self.setup_log_viwer()
-        setTheme(Theme.DARK)
         # 自动最大化窗口
         screen_rect = QDesktopWidget().screenGeometry()
         screen_width, screen_height = screen_rect.width(), screen_rect.height()
@@ -33,8 +35,6 @@ class LowCodeWindow(FluentWindow):
         self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
         # 生成启动界面
         # 1. 创建启动页面
-        self.setWindowIcon(get_icon("logo3"))
-        self.setWindowTitle("AI Lowcode Canvas")
         self.splashScreen = SplashScreen(self.windowIcon(), self)
         self.splashScreen.setIconSize(QSize(400, 400))
         self.show()
@@ -46,7 +46,7 @@ class LowCodeWindow(FluentWindow):
         self.workflow_manager = WorkflowCanvasGalleryPage(self)
         # 添加主界面页面
         workflow_interface = self.addSubInterface(self.workflow_manager, get_icon("工作流"), '画布管理')
-        workflow_interface.clicked.connect(self.workflow_manager.load_workflows)
+        workflow_interface.clicked.connect(self.workflow_manager._schedule_refresh)
         self.addSubInterface(self.develop_page, get_icon("组件"), '组件管理')
         project_interface = self.addSubInterface(self.project_manager, get_icon("项目"), '项目管理')
         project_interface.clicked.connect(self.project_manager.load_projects)

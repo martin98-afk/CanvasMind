@@ -198,6 +198,7 @@ class ThumbnailGenerator(QThread):
 class WorkflowLoader(QThread):
     """异步加载工作流的线程类"""
     finished = pyqtSignal(dict, dict, dict)  # graph_data, runtime_data, node_status_data
+    progress = pyqtSignal(str)  # 添加进度信号
 
     def __init__(self, file_path, graph, node_type_map):
         super().__init__()
@@ -208,6 +209,7 @@ class WorkflowLoader(QThread):
     def run(self):
         """在后台线程中加载工作流"""
         try:
+            self.progress.emit("正在读取工作流文件...")
             with open(self.file_path, 'r', encoding='utf-8') as f:
                 full_data = json.load(f)
 
@@ -216,7 +218,16 @@ class WorkflowLoader(QThread):
 
             # 准备节点状态数据
             node_status_data = {}
-            for node_id, node_data in graph_data.get("nodes", {}).items():
+            nodes_data = graph_data.get("nodes", {})
+            total_nodes = len(nodes_data)
+            
+            self.progress.emit(f"正在处理 {total_nodes} 个节点...")
+            
+            for index, (node_id, node_data) in enumerate(nodes_data.items()):
+                # 发送进度更新
+                if index % 10 == 0:  # 每10个节点更新一次进度
+                    self.progress.emit(f"正在处理节点 {index}/{total_nodes}...")
+                    
                 node_type = node_data.get("type_", "")
                 if node_type in self.node_type_map.values():
                     # 找到对应的 full_path
@@ -237,6 +248,7 @@ class WorkflowLoader(QThread):
                             "column_select": runtime_data.get("column_select", {}).get(stable_key, {}),
                         }
 
+            self.progress.emit("节点处理完成，准备加载...")
             self.finished.emit(graph_data, runtime_data, node_status_data)
         except Exception as e:
             logger.error(f"工作流加载失败: {str(e)}")

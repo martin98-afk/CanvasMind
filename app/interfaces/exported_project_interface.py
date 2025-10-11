@@ -11,7 +11,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, QEasingCurve, Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QDialog, QTextEdit, QLabel, QFileDialog
 from qfluentwidgets import (
-    ScrollArea, PrimaryPushButton,
+    PrimaryPushButton,
     InfoBar,
     MessageBox, StateToolTip, FlowLayout, CardWidget, BodyLabel, SmoothScrollArea
 )

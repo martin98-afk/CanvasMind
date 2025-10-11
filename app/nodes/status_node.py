@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 
 from NodeGraphQt import BaseNode
+from Qt import Qt
 
 
 @dataclass

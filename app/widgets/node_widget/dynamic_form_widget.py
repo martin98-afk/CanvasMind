@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 from NodeGraphQt import NodeBaseWidget
+from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from PyQt5.QtWidgets import QComboBox
 from Qt import QtWidgets, QtCore
 from qfluentwidgets import LineEdit, PushButton, FluentIcon, ToolButton
 
 from app.components.base import PropertyType
+from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.node_widget.longtext_dialog import LongTextWidget
 
 
@@ -27,8 +29,8 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
                 layout.addWidget(widget)
-            elif defn["type"] == PropertyType.CHOICE.name:
-                widget = QComboBox(parent)
+            elif defn["type"] == PropertyType.CHOICE.name:  # 修复条件判断
+                widget = CustomComboBox(parent)  # 使用自定义ComboBox
                 widget.addItems(defn.get("choices", []))
                 widget.currentIndexChanged.connect(self.changed)
                 self.fields[key] = widget
@@ -110,8 +112,9 @@ class DynamicFormWidget(QtWidgets.QWidget):
 
 
 class DynamicFormWidgetWrapper(NodeBaseWidget):
-    def __init__(self, parent=None, name="", label="", schema=None, window=None):
+    def __init__(self, parent=None, name="", label="", schema=None, window=None, z_value=1):
         super().__init__(parent)
+        self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
         self.set_label(label)
         widget = DynamicFormWidget(schema or {}, parent=window)
@@ -120,11 +123,7 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
 
     def _update_node(self):
         if self.node and self.node.view:
-            # ✅ 三重保障：先 adjustSize，再强制更新
-            self.get_custom_widget().adjustSize()
-            self.node.view.update()
-            # 使用稍长延迟确保布局完成
-            QtCore.QTimer.singleShot(30, lambda: self.node.view.draw_node())
+            QtCore.QTimer.singleShot(0, lambda: self.node.view.draw_node())
 
     def get_value(self):
         return self.get_custom_widget().get_data()

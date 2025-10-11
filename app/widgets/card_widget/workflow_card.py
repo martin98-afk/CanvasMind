@@ -12,34 +12,12 @@ from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 from qfluentwidgets import CardWidget, BodyLabel, PrimaryPushButton, FluentIcon, ToolButton, ImageLabel
 
 
-class ImageLoader(QObject):
-    """异步加载图片的辅助类"""
-    image_loaded = pyqtSignal(QPixmap)
-
-    def __init__(self, image_path: str):
-        super().__init__()
-        self.image_path = image_path
-
-    def load_image(self):
-        """在单独线程中加载原图（不缩放）"""
-        try:
-            pixmap = QPixmap(self.image_path)
-            if pixmap.isNull():
-                self.image_loaded.emit(QPixmap())
-            else:
-                # ✅ 关键：不缩放，发送原始高清 pixmap
-                self.image_loaded.emit(pixmap)
-        except Exception:
-            self.image_loaded.emit(QPixmap())
-
-
 class WorkflowCard(CardWidget):
     def __init__(
         self,
         file_path: Path,
         parent: Optional[QWidget] = None,
         file_info: Optional[Dict[str, Any]] = None,
-        preview_pixmap: Optional[QPixmap] = None
     ):
         """
         :param file_path: 工作流文件路径 (.workflow.json)
@@ -52,8 +30,7 @@ class WorkflowCard(CardWidget):
         self.file_path = file_path
         self.workflow_name = file_path.stem.split(".")[0]  # 保留原有逻辑
         self._file_info = file_info
-        self._preview_pixmap = preview_pixmap
-        self._img_label = None
+        self.image_label = None
         self._image_loader = None
         self._image_thread = None
 
@@ -76,29 +53,33 @@ class WorkflowCard(CardWidget):
         """)
 
         # === 预览图区域 ===
-        self._img_label = None
+        self.image_label = None
         preview_path = self._get_preview_path()
 
         if preview_path.exists():
-            self._img_label = ImageLabel(str(preview_path), self)
-            self._img_label.setFixedSize(250, 150)
-            self._img_label.setBorderRadius(8, 8, 8, 8)
+            self.image_label = ImageLabel(str(preview_path), self)
+            self.image_label.setFixedSize(250, 150)
+            self.image_label.setBorderRadius(8, 8, 8, 8)
         else:
-            # 占位符
-            placeholder = BodyLabel("无预览图")
-            placeholder.setFixedSize(250, 150)
-            placeholder.setAlignment(Qt.AlignCenter)
-            placeholder.setStyleSheet("color: #aaa; background-color: #f5f5f5; border-radius: 8px;")
-            layout.addWidget(placeholder, 0, Qt.AlignCenter)
+            self.image_label = BodyLabel("无预览图")
+            self.image_label.setFixedSize(250, 150)
+            self.image_label.setAlignment(Qt.AlignCenter)
+            self.image_label.setStyleSheet("""
+                            color: #999;
+                            background-color: #fafafa;
+                            border-radius: 8px;
+                            border: 1px dashed #e0e0e0;
+                            font-size: 12px;
+                        """)
 
-        if self._img_label:
-            layout.addWidget(self._img_label, 0, Qt.AlignCenter)
+        layout.addWidget(self.image_label, 0, Qt.AlignCenter)
 
         # 标题
         name_label = BodyLabel(self.workflow_name)
+        name_label.setFont(QFont("Microsoft YaHei", 13, QFont.Bold))
         name_label.setAlignment(Qt.AlignCenter)
         name_label.setWordWrap(True)
-        name_label.setFont(QFont("Microsoft YaHei", 13, QFont.Bold))
+
         name_label.setObjectName("WorkflowCardTitle")
         layout.addWidget(name_label)
 
@@ -167,58 +148,32 @@ class WorkflowCard(CardWidget):
 
         layout.addLayout(btn_layout)
 
-        # === 阴影效果（始终存在，通过颜色控制显隐）===
-        self._shadow = QGraphicsDropShadowEffect(self)
-        self._shadow.setBlurRadius(22)
-        self._shadow.setXOffset(0)
-        self._shadow.setYOffset(4)
-        self._shadow.setColor(Qt.transparent)  # 初始透明
-        self.setGraphicsEffect(self._shadow)
+    # 在 WorkflowCard 中
+    def refresh_preview(self):
+        """强制重新加载预览图"""
+        preview_path = self._get_preview_path()
+        layout = self.layout()
 
-    def _load_preview_image_async(self, preview_path: Path):
-        """异步加载预览图"""
-        # 创建线程和加载器
-        self._image_loader = ImageLoader(str(preview_path))
-        self._image_thread = QThread()
-        
-        # 移动到线程并连接信号
-        self._image_loader.moveToThread(self._image_thread)
-        self._image_thread.started.connect(self._image_loader.load_image)
-        self._image_loader.image_loaded.connect(self._on_image_loaded)
-        self._image_loader.image_loaded.connect(self._image_thread.quit)
-        self._image_loader.image_loaded.connect(self._image_loader.deleteLater)
-        self._image_thread.finished.connect(self._image_thread.deleteLater)
-        
-        # 启动线程
-        self._image_thread.start()
+        if preview_path.exists():
+            # 替换为新的 ImageLabel
+            new_label = ImageLabel(str(preview_path), self)
+            new_label.setFixedSize(250, 150)
+            new_label.setBorderRadius(8, 8, 8, 8)
+        else:
+            # 替换为“无预览图”
+            new_label = BodyLabel("无预览图")
+            new_label.setFixedSize(250, 150)
+            new_label.setAlignment(Qt.AlignCenter)
+            new_label.setStyleSheet("""color: #999;
+                            background-color: #fafafa;
+                            border-radius: 8px;
+                            border: 1px dashed #e0e0e0;
+                            font-size: 12px;""")  # 同 _setup_ui 中的样式
 
-    def _on_image_loaded(self, pixmap: QPixmap):
-        """图片加载完成的回调（高质量缩放）"""
-        if pixmap.isNull() or not self._img_label:
-            return
-
-        # ✅ 关键1: 禁用自动缩放
-        self._img_label.setScaledContents(False)
-
-        # ✅ 关键2: 手动高质量缩放
-        scaled_pixmap = pixmap.scaled(
-            self._img_label.width(),
-            self._img_label.height(),
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation  # 启用双线性/双三次插值
-        )
-
-        # ✅ 关键3: 居中显示（因为 KeepAspectRatio 可能留空）
-        self._img_label.setPixmap(scaled_pixmap)
-        self._img_label.setAlignment(Qt.AlignCenter)  # 确保居中
-
-    def enterEvent(self, event):
-        self._shadow.setColor(QColor(0, 0, 0, 60))  # 半透明黑色阴影
-        super().enterEvent(event)
-
-    def leaveEvent(self, event):
-        self._shadow.setColor(Qt.transparent)
-        super().leaveEvent(event)
+        # 替换 widget
+        layout.replaceWidget(self.image_label, new_label)
+        self.image_label.deleteLater()
+        self.image_label = new_label
 
     def _get_preview_path(self) -> Path:
         """返回对应的预览图路径（xxx.workflow.json → xxx.png）"""

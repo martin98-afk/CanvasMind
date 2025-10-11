@@ -18,19 +18,21 @@
 一个基于 **NodeGraphQt** 和 **qfluentwidgets** 的现代化低代码可视化编程平台，支持拖拽式组件编排、异步执行、文件操作、循环控制，并可将工作流一键导出为独立可运行项目，实现从开发到部署的无缝衔接。
 ## 📷 组件开发示意图
 
-<img src="images/组件开发示意图.png" width="800">
+<img src="images/组件开发示意图.gif" width="800">
 
 ## 📷 工作流管理界面示意图
 
-<img src="images/工作流管理示意图.png" width="800">
+<img src="images/工作流管理示意图.gif" width="800">
 
 ## 🎉 工作流示意图
 
-<img src="images/工作流示意图.png" width="800">
+<img src="images/工作流示意图.gif" width="800">
 
-<img src="images/工作流示意图2.png" width="800">
+<img src="images/工作流示意图2.gif" width="800">
 
-<img src="images/工作流示意图3.png" width="800">
+## 📦 模型运行效果
+
+<img src="images/模型运行效果.gif" width="800">
 
 ## 复杂组件控件示意图
 
@@ -38,12 +40,7 @@
 
 ## 📦 子图导出示意图
 
-<img src="images/子图导出项目输入参数选择示意图.png" width="800">
-
-<img src="images/子图导出项目输出参数选择示意图.png" width="800">
-
-<img src="images/子图导出项目项目生成示意图.png" width="800">
-
+<img src="images/项目导出示意图.gif" width="800">  
 
 ### 导出项目管理示意图
 
