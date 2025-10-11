@@ -51,6 +51,9 @@ class WorkflowScheduler(QObject):
 
         self._execute_nodes(execution_order)
 
+    def run(self, node):
+        self._execute_nodes([node])
+
     def run_to(self, target_node):
         """执行到目标节点（含所有上游）"""
         nodes = self._get_ancestors_and_self(target_node)

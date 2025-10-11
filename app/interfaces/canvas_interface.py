@@ -138,6 +138,12 @@ class CanvasPage(QWidget):
         self._connect_scheduler_signals()
         self._scheduler.run_to(target_node)
 
+    def run_node(self, node):
+        """从起始节点开始执行"""
+        self._scheduler = self._create_scheduler()
+        self._connect_scheduler_signals()
+        self._scheduler.run(node)
+
     def run_from_node(self, start_node):
         """从起始节点开始执行"""
         self._scheduler = self._create_scheduler()
@@ -208,6 +214,7 @@ class CanvasPage(QWidget):
         current_data = self.env_combo.currentData()
         if hasattr(self.parent, 'package_manager') and self.parent.package_manager and current_data:
             try:
+                logger.info(f"获取环境 {current_data} 的Python路径: {str(self.parent.package_manager.mgr.get_python_exe(current_data))}")
                 return str(self.parent.package_manager.mgr.get_python_exe(current_data))
             except Exception as e:
                 self.create_failed_info("错误", f"获取环境 {current_data} 的Python路径失败: {str(e)}")
@@ -227,7 +234,7 @@ class CanvasPage(QWidget):
             self.graph.register_node(node_class)
             self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
             if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
-                nodes_menu.add_command('运行此节点', lambda graph, node: self.run_from_node(node),
+                nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
