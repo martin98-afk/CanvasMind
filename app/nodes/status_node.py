@@ -9,6 +9,7 @@ from Qt import Qt
 class NodeStatus:
     """节点状态枚举类"""
     NODE_STATUS_UNRUN = "unrun"  # 未运行
+    NODE_STATUS_PENDING = "pending"  # 等待运行
     NODE_STATUS_RUNNING = "running"  # 运行中
     NODE_STATUS_SUCCESS = "success"  # 运行成功
     NODE_STATUS_FAILED = "failed"  # 运行失败
@@ -48,3 +49,6 @@ class StatusNode(BaseNode):
         elif self._status == NodeStatus.NODE_STATUS_FAILED:
             # 淡红色 - 失败
             self.set_color(80, 30, 30)  # 深红底色，确保白字清晰
+        elif self._status == NodeStatus.NODE_STATUS_PENDING:
+            # 淡灰色 - 等待运行
+            self.set_color(60, 60, 60)

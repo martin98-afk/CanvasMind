@@ -236,13 +236,13 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
         def on_run_complete(self, output):
             self._output_values = output
 
-        def execute_sync(self, comp_obj, use_separate_env=True, python_executable=None, check_cancel=None):
+        def execute_sync(self, comp_obj, python_executable=None, check_cancel=None):
             """
             在独立Python环境中执行组件
             :param check_cancel: 可选回调函数，返回 True 表示应取消执行
             """
             if python_executable is None:
-                python_executable = sys.executable
+                raise Exception("未指定Python执行环境。")
 
             # === 收集参数（一次性遍历）===
             params = {}

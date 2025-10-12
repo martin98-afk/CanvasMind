@@ -12,18 +12,17 @@ from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTableWidgetItem, QHeaderView,
     QFormLayout, QDialog
 )
-from loguru import logger
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PrimaryPushButton, PushButton,
     TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit, MessageBoxBase, SubtitleLabel,
     ToolButton
 )
 
-from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition
+from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition, ConnectionType
 from app.scan_components import scan_components
 from app.widgets.code_editer import CodeEditorWidget, DEFAULT_CODE_TEMPLATE
-from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
+from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
 
 
 # --- 组件开发主界面 (布局调整，修复同步) ---
@@ -126,7 +125,7 @@ class ComponentDeveloperWidget(QWidget):
         # 右侧：开发区域 - 使用新的左右布局
         self.development_area = self._create_development_area_new_layout()
         splitter.addWidget(self.development_area)
-        splitter.setSizes([150, 800])  # 调整大小比例，给右侧更多空间
+        splitter.setSizes([125, 850])  # 调整大小比例，给右侧更多空间
         layout.addWidget(splitter)
 
     def _create_development_area_new_layout(self):
@@ -193,7 +192,7 @@ class ComponentDeveloperWidget(QWidget):
         self.output_port_editor = PortEditorWidget("output")
         port_splitter.addWidget(self.input_port_editor)
         port_splitter.addWidget(self.output_port_editor)
-        port_splitter.setSizes([150, 150])  # 初始大小
+        port_splitter.setSizes([200, 100])  # 初始大小
         left_layout.addWidget(port_splitter, stretch=1)
         # 属性编辑器
         self.property_editor = PropertyEditorWidget()
@@ -238,7 +237,6 @@ class ComponentDeveloperWidget(QWidget):
         self.requirements_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
 
-
     def _load_existing_components(self):
         """加载现有组件"""
         try:
@@ -276,7 +274,12 @@ class ComponentDeveloperWidget(QWidget):
             # 加载输入端口
             inputs = getattr(component, 'inputs', [])
             self.input_port_editor.set_ports([
-                {"name": port.name, "label": port.label, "type": getattr(port, 'type', 'text')}
+                {
+                    "name": port.name,
+                    "label": port.label,
+                    "type": getattr(port, 'type', ArgumentType.TEXT),
+                    "connection": getattr(port, 'connection', ConnectionType.SINGLE),
+                }
                 for port in inputs
             ])
             # 加载输出端口
@@ -438,7 +441,9 @@ class ComponentDeveloperWidget(QWidget):
                 new_lines.append("    inputs = [")
                 for port in input_ports:
                     new_lines.append(
-                        f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\", type=ArgumentType.{port['type'].name}, connection=\"{port.get('connection', 'single')}\"),")
+                        f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\", "
+                        f"type=ArgumentType.{port['type'].name}, "
+                        f"connection=ConnectionType.{port.get('connection', ConnectionType.SINGLE.value).name}),")
                 new_lines.append("    ]")
                 inputs_replaced = True
                 # 跳过原 inputs 定义的其余行
@@ -905,22 +910,27 @@ class ComponentDeveloperWidget(QWidget):
         )
 
 
-# --- 端口编辑器 (未改动) ---
+# --- 端口编辑器（已修改）---
 class PortEditorWidget(QWidget):
     """端口编辑器 - 支持动态添加删除"""
-    ports_changed = pyqtSignal()  # 端口改变信号
+    ports_changed = pyqtSignal()
 
     def __init__(self, port_type="input", parent=None):
         super().__init__(parent)
         self.port_type = port_type
         layout = QVBoxLayout(self)
-        # 表格
+
+        # 表格：增加第4列
         self.table = TableWidget(self)
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型"])
+        if port_type == "input":
+            self.table.setColumnCount(4)
+            self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型", "连接方式"])
+        else:
+            self.table.setColumnCount(3)
+            self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.itemChanged.connect(lambda item: self.ports_changed.emit())
-        # 在表头加按钮
+
         button_layout = QHBoxLayout()
         button_layout.addWidget(BodyLabel("输入端口:" if port_type == "input" else "输出端口:"))
         add_btn = ToolButton(FluentIcon.ADD, parent=self)
@@ -929,34 +939,39 @@ class PortEditorWidget(QWidget):
         remove_btn.clicked.connect(self._remove_port)
         button_layout.addWidget(add_btn)
         button_layout.addWidget(remove_btn)
+
         layout.addLayout(button_layout)
         layout.addWidget(self.table)
 
-    def _on_item_changed(self, item):
-        """表格项改变时发出信号"""
-        self.ports_changed.emit()
-
     def _add_port(self, port: dict = {}):
-        """添加端口"""
         row = self.table.rowCount()
         self.table.insertRow(row)
-        # 端口名称
-        name_edit = QTableWidgetItem(port.get("name", f"input{row + 1}" if self.port_type == "input" else f"output{row + 1}"))
-        self.table.setItem(row, 0, name_edit)
-        # 端口标签
-        label_edit = QTableWidgetItem(port.get("label", f"输入{row + 1}" if self.port_type == "input" else f"输出{row + 1}"))
-        self.table.setItem(row, 1, label_edit)
-        # 端口类型
+
+        name = port.get("name", f"input{row + 1}" if self.port_type == "input" else f"output{row + 1}")
+        label = port.get("label", f"输入{row + 1}" if self.port_type == "input" else f"输出{row + 1}")
+        port_type = port.get("type", ArgumentType.TEXT)
+
+        self.table.setItem(row, 0, QTableWidgetItem(name))
+        self.table.setItem(row, 1, QTableWidgetItem(label))
+
         type_combo = ComboBox()
         type_combo.setMaxVisibleItems(6)
         for item in ArgumentType:
-            type_combo.addItem(item.value, userData=item)  # value 显示，userData 存 enum 成员
-        type_combo.setCurrentText(port.get("type", "text"))
+            type_combo.addItem(item.value, userData=item)
+        type_combo.setCurrentText(port_type.value)
         self.table.setCellWidget(row, 2, type_combo)
         type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
 
+        if self.port_type == "input":
+            connection = port.get("connection", ConnectionType.SINGLE)
+            conn_combo = ComboBox()
+            conn_combo.addItems([ConnectionType.SINGLE.value, ConnectionType.MULTIPLE.value])
+            conn_combo.setProperty("raw_values", [ConnectionType.SINGLE, ConnectionType.MULTIPLE])
+            conn_combo.setCurrentIndex(0 if connection == ConnectionType.SINGLE else 1)
+            self.table.setCellWidget(row, 3, conn_combo)
+            conn_combo.currentIndexChanged.connect(lambda: self.ports_changed.emit())
+
     def _remove_port(self):
-        """删除选中端口"""
         selected_ranges = self.table.selectedRanges()
         if selected_ranges:
             rows = []
@@ -968,30 +983,36 @@ class PortEditorWidget(QWidget):
             self.ports_changed.emit()
 
     def get_ports(self):
-        """获取端口数据"""
         ports = []
         for row in range(self.table.rowCount()):
             name_item = self.table.item(row, 0)
             label_item = self.table.item(row, 1)
-            if name_item and label_item:
-                # 获取类型
-                type_widget = self.table.cellWidget(row, 2)
-                if type_widget is None:
-                    port_type = ArgumentType.TEXT
-                else:
-                    port_type = type_widget.currentData()
-                ports.append({
-                    "name": name_item.text(),
-                    "label": label_item.text(),
-                    "type": port_type
-                })
+            if not (name_item and label_item):
+                continue
+
+            type_widget = self.table.cellWidget(row, 2)
+            port_type = type_widget.currentData() if type_widget else ArgumentType.TEXT
+
+            conn_widget = self.table.cellWidget(row, 3)
+            if conn_widget:
+                raw_vals = [ConnectionType.SINGLE, ConnectionType.MULTIPLE]
+                connection = raw_vals[conn_widget.currentIndex()]
+            else:
+                connection = ConnectionType.SINGLE
+
+            ports.append({
+                "name": name_item.text(),
+                "label": label_item.text(),
+                "type": port_type,
+                "connection": connection
+            })
         return ports
 
     def set_ports(self, ports):
-        """设置端口数据"""
         self.table.setRowCount(0)
         for port in ports:
             self._add_port(port)
+
 
 # --- 属性编辑器 (未改动) ---
 class PropertyEditorWidget(QWidget):
@@ -1020,12 +1041,12 @@ class PropertyEditorWidget(QWidget):
         layout.addLayout(button_layout)
         layout.addWidget(self.table)
 
-    def _add_property(self, prop_name: str=None, prop_def: PropertyType=None):
+    def _add_property(self, prop_name: str = None, prop_def: PropertyType = None):
         """添加属性"""
         row = self.table.rowCount()
         self.table.insertRow(row)
         # 属性名
-        name_item = QTableWidgetItem(prop_name if prop_name else f"prop_{row}")
+        name_item = QTableWidgetItem(prop_name if prop_name else f"prop{row+1}")
         self.table.setItem(row, 0, name_item)
         # 标签
         label_item = QTableWidgetItem(getattr(prop_def, 'label', f"属性{row + 1}"))
@@ -1244,6 +1265,7 @@ class PropertyEditorWidget(QWidget):
 
 class DynamicFormEditorDialog(MessageBoxBase):
     """动态表单编辑器对话框"""
+
     def __init__(self, schema: dict, parent=None):
         super().__init__(parent)
         self.widget.setMinimumSize(600, 400)

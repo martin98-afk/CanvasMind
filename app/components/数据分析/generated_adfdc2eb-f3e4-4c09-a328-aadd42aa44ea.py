@@ -20,7 +20,7 @@ class Component(BaseComponent):
     description = "执行因子分析以降维和发现变量间潜在结构"
     requirements = "scikit-learn>=1.0.2,pandas>=1.3.0,numpy"
     inputs = [
-        PortDefinition(name="data", label="输入数据", type=ArgumentType.CSV, connection="single"),
+        PortDefinition(name="data", label="输入数据", type=ArgumentType.CSV),
     ]
     outputs = [
         PortDefinition(name="results", label="因子分析结果", type=ArgumentType.JSON),

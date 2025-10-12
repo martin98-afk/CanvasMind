@@ -27,13 +27,14 @@ BaseComponent = base_module.BaseComponent
 PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
-ArgumentType = base_module.ArgumentType\n\n\n"""
+ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType\n\n\n"""
 
 
 class ConnectionType(str, Enum):
     """连接类型"""
-    SINGLE = "single"
-    MULTIPLE = "multi"
+    SINGLE = "单输入"
+    MULTIPLE = "多输入"
 
 
 class PropertyType(str, Enum):
@@ -143,8 +144,8 @@ class ComponentError(Exception):
 class BaseComponent(ABC):
     """所有组件必须继承此类"""
     # 组件配置（子类需要定义）
-    name: str = "Unnamed Component"
-    category: str = "General"
+    name: str = ""
+    category: str = ""
     description: str = ""
     inputs: List[PortDefinition] = []
     outputs: List[PortDefinition] = []
@@ -169,14 +170,6 @@ class BaseComponent(ABC):
     def get_outputs(cls) -> List[Tuple[str, str]]:
         """返回输出端口定义：[('port_name', 'Port Label')]"""
         return [(port.name, port.label) for port in cls.outputs]
-
-    # @classmethod
-    # def get_properties(cls) -> Dict[str, Dict[str, Any]]:
-    #     """返回属性定义"""
-    #     return {
-    #         prop_name: prop_def.dict(exclude_unset=True)
-    #         for prop_name, prop_def in cls.properties.items()
-    #     }
 
     @classmethod
     def get_properties(cls) -> Dict[str, Dict[str, Any]]:

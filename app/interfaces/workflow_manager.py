@@ -251,8 +251,8 @@ class WorkflowCanvasGalleryPage(QWidget):
             )
             canvas_interface.clicked.connect(
                 lambda: (
-                    canvas_page.nav_view.refresh_components(),
                     canvas_page.register_components(),
+                    canvas_page.nav_view.refresh_components(),
                     canvas_page._setup_pipeline_style()
                 )
             )
@@ -289,8 +289,9 @@ class WorkflowCanvasGalleryPage(QWidget):
                 canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
             canvas_interface.clicked.connect(
                 lambda: (
+                    canvas_page.register_components(),
                     canvas_page.nav_view.refresh_components(),
-                    canvas_page.register_components()
+                    canvas_page._setup_pipeline_style()
                 )
             )
             canvas_page.create_name_label()

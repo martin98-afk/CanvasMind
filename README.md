@@ -38,6 +38,14 @@
 
 <img src="images/复杂组件控件示意图.png" width="800">
 
+## 循环控制流逻辑示意图
+
+<img src="images/循环控制示意图.png" width="800">
+
+## 循环节点运行效果
+
+<img src="images/循环节点执行示意图.gif" width="800">
+
 ## 📦 子图导出示意图
 
 <img src="images/项目导出示意图.gif" width="800">  
@@ -284,7 +292,8 @@ model_xxxxxxxx/
 - [ ] 支持组件类型
   - [x] 基本组件
   - [x] 多输入组件
-  - [ ] backdrop节点集成
+  - [x] backdrop节点集成
+  - [x] 输入输出节点集成
   - [ ] circle节点集成
 - [x] 组件依赖自动管理 (requirements)
 - [ ] 逻辑控制预制组件
