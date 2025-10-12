@@ -360,10 +360,6 @@ class CanvasPage(QWidget):
     def create_backdrop_node(self, key):
         selected_nodes = self.graph.selected_nodes()
 
-        if not selected_nodes:
-            # 可选：提示用户或直接返回
-            return
-
         # 检查是否已有输入/输出端口节点
         input_port_node = None
         output_port_node = None
@@ -375,28 +371,34 @@ class CanvasPage(QWidget):
                 output_port_node = node
 
         # 获取当前选中节点的边界（用于定位新端口或计算 backdrop）
-        min_x = min(n.x_pos() for n in selected_nodes)
-        max_x = max(n.x_pos() + n.view.width for n in selected_nodes)
-        min_y = min(n.y_pos() for n in selected_nodes)
-        max_y = max(n.y_pos() + n.view.height for n in selected_nodes)
+        if selected_nodes:
+            min_x = min(n.x_pos() for n in selected_nodes)
+            max_x = max(n.x_pos() + n.view.width for n in selected_nodes)
+            min_y = min(n.y_pos() for n in selected_nodes)
+            max_y = max(n.y_pos() + n.view.height for n in selected_nodes)
 
-        # 如果没有输入端口，创建一个并放到最左边
-        if input_port_node is None:
+            # 如果没有输入端口，创建一个并放到最左边
+            if input_port_node is None:
+                input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
+                input_width = input_port_node.view.width
+                input_x = min_x - input_width - 50
+                center_y = (min_y + max_y) / 2 - input_port_node.view.height / 2
+                input_port_node.set_pos(input_x, center_y)
+                selected_nodes.append(input_port_node)  # 加入列表用于 wrap
+
+            # 如果没有输出端口，创建一个并放到最右边
+            if output_port_node is None:
+                output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
+                output_width = output_port_node.view.width
+                output_x = max_x + 50
+                center_y = (min_y + max_y) / 2 - output_port_node.view.height / 2
+                output_port_node.set_pos(output_x, center_y)
+                selected_nodes.append(output_port_node)  # 加入列表用于 wrap
+        else:
             input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
-            input_width = input_port_node.view.width
-            input_x = min_x - input_width - 50
-            center_y = (min_y + max_y) / 2 - input_port_node.view.height / 2
-            input_port_node.set_pos(input_x, center_y)
-            selected_nodes.append(input_port_node)  # 加入列表用于 wrap
-
-        # 如果没有输出端口，创建一个并放到最右边
-        if output_port_node is None:
             output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-            output_width = output_port_node.view.width
-            output_x = max_x + 50
-            center_y = (min_y + max_y) / 2 - output_port_node.view.height / 2
-            output_port_node.set_pos(output_x, center_y)
-            selected_nodes.append(output_port_node)  # 加入列表用于 wrap
+            output_port_node.set_x_pos(output_port_node.x_pos() + 600)
+            selected_nodes = [input_port_node, output_port_node]
 
         # 创建 backdrop 并包裹所有节点（包括已有的或新创建的）
         backdrop_node = self.graph.create_node(f"control_flow.{key}")
@@ -404,7 +406,7 @@ class CanvasPage(QWidget):
 
         # 可选配置
         if key == "ControlFlowIterateNode":
-            backdrop_node.set_iterate_config({"iterate_nums": 3})
+            backdrop_node.model.add_property("iterate_nums", 3)
 
     def close_current_canvas(self):
         self.canvas_deleted.emit()

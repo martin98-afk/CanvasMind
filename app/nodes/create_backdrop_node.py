@@ -37,6 +37,7 @@ class ControlFlowBackdrop(BackdropNode):
         self._control_flow_type = None  # 'loop' or 'branch'
         self._loop_config = {}
         self._branch_config = {}
+        self.model.add_property("iterate_nums", 5)
 
     @property
     def control_flow_type(self):
@@ -218,10 +219,6 @@ class ControlFlowIterateNode(ControlFlowBackdrop):
 
     NODE_NAME = "迭代控制流区域"
     TYPE = "iterate"
-    iterate_config = {}
-
-    def set_iterate_config(self, kwargs):
-        self.iterate_config = kwargs
 
 
 class ControlFlowBackdropNodeItem(BackdropNodeItem):

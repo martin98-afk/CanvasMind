@@ -259,7 +259,6 @@ class WorkflowLoader(QThread):
 
             graph_data = full_data.get("graph", {})
             runtime_data = full_data.get("runtime", {})
-
             # 准备节点状态数据
             node_status_data = {}
             nodes_data = graph_data.get("nodes", {})
@@ -284,12 +283,9 @@ class WorkflowLoader(QThread):
                     if full_path:
                         node_name = node_data.get("name", "Unknown")
                         stable_key = f"{full_path}||{node_name}"
-                        status_str = runtime_data.get("node_states", {}).get(stable_key, "unrun")
                         node_status_data[stable_key] = {
-                            "status": status_str,
-                            "input_values": runtime_data.get("node_inputs", {}).get(stable_key, {}),
-                            "output_values": runtime_data.get("node_outputs", {}).get(stable_key, {}),
-                            "column_select": runtime_data.get("column_select", {}).get(stable_key, {}),
+                            key: value.get(stable_key)
+                            for key, value in runtime_data.items() if key not in ("environment", "environment_exe", "node_id2stable_key")
                         }
 
             self.progress.emit("节点处理完成，准备加载...")

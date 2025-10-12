@@ -279,9 +279,9 @@ class WorkflowScheduler(QObject):
                     results.extend(inputs)
             # 5. 迭代执行逻辑
             elif backdrop.TYPE == "iterate":
-                print(backdrop.iterate_config.get("iterate_nums"))
+                print(backdrop.model.get_property("iterate_nums"))
                 results = None
-                for i in range(backdrop.iterate_config.get("iterate_nums")):   # 暂时只支持迭代指定次数
+                for i in range(backdrop.model.get_property("iterate_nums")):   # 暂时只支持迭代指定次数
                     input_proxy.set_output_value(input_data)
                     # 执行内部节点（同步）
                     for node in execution_order:

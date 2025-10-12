@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1fbbac57970": {
+      "0x23e2c8ebbe0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -46,7 +46,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbace06a0": {
+      "0x23e2c9748e0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_CSV_读取器",
         "icon": null,
         "name": "CSV 读取器",
@@ -81,7 +81,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbace06d0": {
+      "0x23e2c974910": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传 1",
@@ -116,7 +116,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbeb2200": {
+      "0x23e2f972440": {
         "type_": "dynamic.StatusDynamicNode_数据集成_输入array",
         "icon": null,
         "name": "输入array",
@@ -154,7 +154,7 @@
           "param1": "1,2,3,4"
         }
       },
-      "0x1fbbbeb2830": {
+      "0x23e2f972890": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(csv)",
         "icon": null,
         "name": "逻辑回归推理(csv)",
@@ -189,7 +189,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbecd6c0": {
+      "0x23e2c975c60": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy)",
@@ -224,7 +224,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbee83a0": {
+      "0x23e2f9b01f0": {
         "type_": "dynamic.StatusDynamicNode_数据转换_文件转图片",
         "icon": null,
         "name": "文件转图片",
@@ -259,7 +259,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbeeafb0": {
+      "0x23e2f9b2a70": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_MinMax归一化",
         "icon": null,
         "name": "MinMax归一化",
@@ -294,7 +294,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbf05c90": {
+      "0x23e2f9d13c0": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_归一化推理(npy)",
         "icon": null,
         "name": "归一化推理(npy)",
@@ -329,7 +329,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbf20850": {
+      "0x23e2f9d1540": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy) 1",
@@ -364,7 +364,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbf23610": {
+      "0x23e2f9f6620": {
         "type_": "dynamic.StatusDynamicNode_模型训练_图像分类测试",
         "icon": null,
         "name": "图像分类测试",
@@ -403,7 +403,7 @@
           "device": "cpu"
         }
       },
-      "0x1fbbbf47be0": {
+      "0x23e2fa12860": {
         "type_": "dynamic.StatusDynamicNode_数据转换_csv转npy",
         "icon": null,
         "name": "csv转npy",
@@ -438,7 +438,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbf5e920": {
+      "0x23e2fa29210": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入",
@@ -476,7 +476,7 @@
           "input": "12"
         }
       },
-      "0x1fbbbf7d7e0": {
+      "0x23e2fa2bd00": {
         "type_": "dynamic.StatusDynamicNode_测试组件_逻辑判断",
         "icon": null,
         "name": "逻辑判断",
@@ -529,7 +529,7 @@
           "整体取反": false
         }
       },
-      "0x1fbbbf95e10": {
+      "0x23e2fa47d00": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 1",
@@ -567,7 +567,7 @@
           "input": "1"
         }
       },
-      "0x1fbbbf7e590": {
+      "0x23e30a3a380": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练",
@@ -606,7 +606,7 @@
           "max_iter": "100"
         }
       },
-      "0x1fbbbf062c0": {
+      "0x23e2f9f69e0": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_图像4通道转3通道",
         "icon": null,
         "name": "图像4通道转3通道",
@@ -641,7 +641,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbfb8910": {
+      "0x23e2f9f4dc0": {
         "type_": "dynamic.StatusDynamicNode_模型训练_图像分类测试",
         "icon": null,
         "name": "图像分类测试 1",
@@ -680,7 +680,7 @@
           "device": "cpu"
         }
       },
-      "0x1fbbbfb8a00": {
+      "0x23e30a59660": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传 3",
@@ -715,7 +715,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbfce620": {
+      "0x23e30a59a80": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -750,7 +750,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbfcfe50": {
+      "0x23e30a66530": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -785,7 +785,7 @@
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbfe1210": {
+      "0x23e30a67d60": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": null,
         "name": "迭代控制流区域",
@@ -823,10 +823,10 @@
           "backdrop_text": ""
         }
       },
-      "0x1fbbc0c3340": {
-        "type_": "dynamic.StatusDynamicNode_数据分析_因子分析",
+      "0x23e31c15390": {
+        "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
-        "name": "因子分析",
+        "name": "输入端口 1",
         "color": [
           13,
           18,
@@ -848,57 +848,90 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 337.0,
-        "height": 177.20000000000002,
-        "pos": [
-          -740.6997697804168,
-          1009.9488736331089
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "n_components": "2",
-          "rotation": "varimax",
-          "standardize": true
-        }
-      },
-      "0x1fbbbf964d0": {
-        "type_": "dynamic.StatusDynamicNode_数据转换_文件转图片",
-        "icon": null,
-        "name": "文件转图片 1",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 160,
+        "width": 165.0,
         "height": 60,
         "pos": [
-          -69.44973864096846,
-          1042.0885841898455
+          -987.0945471425871,
+          1041.0209899679826
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbf949d0": {
+      "0x23e30af7bb0": {
+        "type_": "control_flow.ControlFlowIterateNode",
+        "icon": null,
+        "name": "迭代控制流区域 1",
+        "color": [
+          5,
+          129,
+          138,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 1369.2500311394483,
+        "height": 522.2326283331597,
+        "pos": [
+          -1007.5762066566219,
+          955.9488736331091
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "backdrop_text": ""
+        }
+      },
+      "0x23e30b26380": {
+        "type_": "control_flow.ControlFlowOutputPort",
+        "icon": null,
+        "name": "输出端口 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          180.98049932392954,
+          1060.1743273885345
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {}
+      },
+      "0x23e30aa6b00": {
         "type_": "dynamic.StatusDynamicNode_数据存储_组件保存",
         "icon": null,
         "name": "组件保存",
@@ -926,17 +959,17 @@
         "width": 160,
         "height": 60,
         "pos": [
-          -296.41795161993184,
-          1014.132823400055
+          -294.2943884961372,
+          1014.1328234000553
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {}
       },
-      "0x1fbbbeb2b00": {
-        "type_": "dynamic.StatusDynamicNode_数据分析_因子分析",
+      "0x23e30a81150": {
+        "type_": "dynamic.StatusDynamicNode_数据转换_文件转图片",
         "icon": null,
-        "name": "因子分析 1",
+        "name": "文件转图片 1",
         "color": [
           13,
           18,
@@ -958,22 +991,17 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 337.0,
-        "height": 177.20000000000002,
+        "width": 160,
+        "height": 60,
         "pos": [
-          -738.4758489994433,
-          1246.9815019662685
+          -67.3261755171738,
+          1042.0885841898457
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "n_components": "2",
-          "rotation": "varimax",
-          "standardize": true
-        }
+        "subgraph_session": {}
       },
-      "0x1fbbbeb2890": {
+      "0x23e30abda80": {
         "type_": "dynamic.StatusDynamicNode_数据转换_文件转图片",
         "icon": null,
         "name": "文件转图片 2",
@@ -1001,223 +1029,323 @@
         "width": 160,
         "height": 60,
         "pos": [
-          -79.04554773645236,
-          1272.0293745971296
+          -76.9219846126577,
+          1272.0293745971298
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {}
+      },
+      "0x23e30a65c90": {
+        "type_": "dynamic.StatusDynamicNode_数据分析_因子分析",
+        "icon": null,
+        "name": "因子分析",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 337.0,
+        "height": 177.20000000000002,
+        "pos": [
+          -738.576206656622,
+          1009.9488736331091
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "n_components": "2",
+          "rotation": "varimax",
+          "standardize": true
+        }
+      },
+      "0x23e30abd630": {
+        "type_": "dynamic.StatusDynamicNode_数据分析_因子分析",
+        "icon": null,
+        "name": "因子分析 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 337.0,
+        "height": 177.20000000000002,
+        "pos": [
+          -736.3522858756486,
+          1246.9815019662688
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "n_components": "2",
+          "rotation": "varimax",
+          "standardize": true
+        }
       }
     },
     "connections": [
       {
         "out": [
-          "0x1fbbac57970",
+          "0x23e2c8ebbe0",
           "file"
         ],
         "in": [
-          "0x1fbbace06a0",
+          "0x23e2c9748e0",
           "csv"
         ]
       },
       {
         "out": [
-          "0x1fbbace06a0",
+          "0x23e2c9748e0",
           "csv"
         ],
         "in": [
-          "0x1fbbbeb2830",
+          "0x23e2f972890",
           "feature"
         ]
       },
       {
         "out": [
-          "0x1fbbace06a0",
+          "0x23e2c9748e0",
           "csv"
         ],
         "in": [
-          "0x1fbbbeeafb0",
+          "0x23e2f9b2a70",
           "input"
         ]
       },
       {
         "out": [
-          "0x1fbbace06a0",
+          "0x23e2c9748e0",
           "csv"
         ],
         "in": [
-          "0x1fbbbf47be0",
+          "0x23e2fa12860",
           "input"
         ]
       },
       {
         "out": [
-          "0x1fbbace06a0",
+          "0x23e2c9748e0",
           "csv"
         ],
         "in": [
-          "0x1fbbbf7e590",
+          "0x23e30a3a380",
           "feature"
         ]
       },
       {
         "out": [
-          "0x1fbbace06a0",
+          "0x23e2c9748e0",
           "csv"
         ],
         "in": [
-          "0x1fbbbf7e590",
+          "0x23e30a3a380",
           "target"
         ]
       },
       {
         "out": [
-          "0x1fbbace06d0",
+          "0x23e2c974910",
           "file"
         ],
         "in": [
-          "0x1fbbbee83a0",
+          "0x23e2f9b01f0",
           "file"
         ]
       },
       {
         "out": [
-          "0x1fbbbeb2200",
+          "0x23e2f972440",
           "output"
         ],
         "in": [
-          "0x1fbbbf05c90",
+          "0x23e2f9d13c0",
           "input"
         ]
       },
       {
         "in": [
-          "0x1fbbbeb2830",
+          "0x23e2f972890",
           "model"
         ],
         "out": [
-          "0x1fbbbf7e590",
+          "0x23e30a3a380",
           "model"
         ]
       },
       {
         "in": [
-          "0x1fbbbecd6c0",
+          "0x23e2c975c60",
           "feature"
         ],
         "out": [
-          "0x1fbbbf47be0",
+          "0x23e2fa12860",
           "output"
         ]
       },
       {
         "in": [
-          "0x1fbbbecd6c0",
+          "0x23e2c975c60",
           "model"
         ],
         "out": [
-          "0x1fbbbf7e590",
+          "0x23e30a3a380",
           "model"
         ]
       },
       {
         "out": [
-          "0x1fbbbee83a0",
+          "0x23e2f9b01f0",
           "image"
         ],
         "in": [
-          "0x1fbbbf062c0",
+          "0x23e2f9f69e0",
           "input"
         ]
       },
       {
         "out": [
-          "0x1fbbbeeafb0",
+          "0x23e2f9b2a70",
           "scaler"
         ],
         "in": [
-          "0x1fbbbf05c90",
+          "0x23e2f9d13c0",
           "scaler"
         ]
       },
       {
         "out": [
-          "0x1fbbbf05c90",
+          "0x23e2f9d13c0",
           "output"
         ],
         "in": [
-          "0x1fbbbf20850",
+          "0x23e2f9d1540",
           "feature"
         ]
       },
       {
         "in": [
-          "0x1fbbbf20850",
+          "0x23e2f9d1540",
           "model"
         ],
         "out": [
-          "0x1fbbbf7e590",
+          "0x23e30a3a380",
           "model"
         ]
       },
       {
         "in": [
-          "0x1fbbbf23610",
+          "0x23e2f9f6620",
           "input_image"
         ],
         "out": [
-          "0x1fbbbf062c0",
+          "0x23e2f9f69e0",
           "output"
         ]
       },
       {
         "out": [
-          "0x1fbbbf5e920",
+          "0x23e2fa29210",
           "text"
         ],
         "in": [
-          "0x1fbbbf7d7e0",
+          "0x23e2fa2bd00",
           "var1"
         ]
       },
       {
         "in": [
-          "0x1fbbbf7d7e0",
+          "0x23e2fa2bd00",
           "var3"
         ],
         "out": [
-          "0x1fbbbf95e10",
+          "0x23e2fa47d00",
           "text"
         ]
       },
       {
         "out": [
-          "0x1fbbbf062c0",
+          "0x23e2f9f69e0",
           "output"
         ],
         "in": [
-          "0x1fbbbfb8910",
+          "0x23e2f9f4dc0",
           "input_image"
         ]
       },
       {
         "out": [
-          "0x1fbbc0c3340",
-          "results"
+          "0x23e31c15390",
+          "output"
         ],
         "in": [
-          "0x1fbbbf949d0",
-          "text"
+          "0x23e30a65c90",
+          "data"
         ]
       },
       {
         "in": [
-          "0x1fbbbf964d0",
-          "file"
+          "0x23e30b26380",
+          "input"
         ],
         "out": [
-          "0x1fbbbf949d0",
+          "0x23e30a81150",
+          "image"
+        ]
+      },
+      {
+        "in": [
+          "0x23e30aa6b00",
+          "text"
+        ],
+        "out": [
+          "0x23e30a65c90",
+          "results"
+        ]
+      },
+      {
+        "out": [
+          "0x23e30aa6b00",
           "file_path"
+        ],
+        "in": [
+          "0x23e30a81150",
+          "file"
         ]
       }
     ]
@@ -1226,32 +1354,34 @@
     "environment": "3.11",
     "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.11\\python.exe",
     "node_id2stable_key": {
-      "0x1fbbac57970": "数据集成/文档上传||文档上传",
-      "0x1fbbace06a0": "数据集成/CSV 读取器||CSV 读取器",
-      "0x1fbbace06d0": "数据集成/文档上传||文档上传 1",
-      "0x1fbbbeb2200": "数据集成/输入array||输入array",
-      "0x1fbbbeb2830": "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)",
-      "0x1fbbbecd6c0": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
-      "0x1fbbbee83a0": "数据转换/文件转图片||文件转图片",
-      "0x1fbbbeeafb0": "数据预处理/MinMax归一化||MinMax归一化",
-      "0x1fbbbf05c90": "数据预处理/归一化推理(npy)||归一化推理(npy)",
-      "0x1fbbbf20850": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
-      "0x1fbbbf23610": "模型训练/图像分类测试||图像分类测试",
-      "0x1fbbbf47be0": "数据转换/csv转npy||csv转npy",
-      "0x1fbbbf5e920": "数据集成/文本输入||文本输入",
-      "0x1fbbbf7d7e0": "测试组件/逻辑判断||逻辑判断",
-      "0x1fbbbf95e10": "数据集成/文本输入||文本输入 1",
-      "0x1fbbbf7e590": "模型训练/逻辑回归训练||逻辑回归训练",
-      "0x1fbbbf062c0": "数据预处理/图像4通道转3通道||图像4通道转3通道",
-      "0x1fbbbfb8910": "模型训练/图像分类测试||图像分类测试 1",
-      "0x1fbbbfb8a00": "数据集成/文档上传||文档上传 3",
-      "0x1fbbbfce620": "控制流/输入端口||输入端口",
-      "0x1fbbbfcfe50": "控制流/输出端口||输出端口",
-      "0x1fbbc0c3340": "数据分析/因子分析||因子分析",
-      "0x1fbbbf964d0": "数据转换/文件转图片||文件转图片 1",
-      "0x1fbbbf949d0": "数据存储/组件保存||组件保存",
-      "0x1fbbbeb2b00": "数据分析/因子分析||因子分析 1",
-      "0x1fbbbeb2890": "数据转换/文件转图片||文件转图片 2"
+      "0x23e2c8ebbe0": "数据集成/文档上传||文档上传",
+      "0x23e2c9748e0": "数据集成/CSV 读取器||CSV 读取器",
+      "0x23e2c974910": "数据集成/文档上传||文档上传 1",
+      "0x23e2f972440": "数据集成/输入array||输入array",
+      "0x23e2f972890": "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)",
+      "0x23e2c975c60": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
+      "0x23e2f9b01f0": "数据转换/文件转图片||文件转图片",
+      "0x23e2f9b2a70": "数据预处理/MinMax归一化||MinMax归一化",
+      "0x23e2f9d13c0": "数据预处理/归一化推理(npy)||归一化推理(npy)",
+      "0x23e2f9d1540": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
+      "0x23e2f9f6620": "模型训练/图像分类测试||图像分类测试",
+      "0x23e2fa12860": "数据转换/csv转npy||csv转npy",
+      "0x23e2fa29210": "数据集成/文本输入||文本输入",
+      "0x23e2fa2bd00": "测试组件/逻辑判断||逻辑判断",
+      "0x23e2fa47d00": "数据集成/文本输入||文本输入 1",
+      "0x23e30a3a380": "模型训练/逻辑回归训练||逻辑回归训练",
+      "0x23e2f9f69e0": "数据预处理/图像4通道转3通道||图像4通道转3通道",
+      "0x23e2f9f4dc0": "模型训练/图像分类测试||图像分类测试 1",
+      "0x23e30a59660": "数据集成/文档上传||文档上传 3",
+      "0x23e30a59a80": "控制流/输入端口||输入端口",
+      "0x23e30a66530": "控制流/输出端口||输出端口",
+      "0x23e31c15390": "控制流/输入端口||输入端口 1",
+      "0x23e30b26380": "控制流/输出端口||输出端口 1",
+      "0x23e30aa6b00": "数据存储/组件保存||组件保存",
+      "0x23e30a81150": "数据转换/文件转图片||文件转图片 1",
+      "0x23e30abda80": "数据转换/文件转图片||文件转图片 2",
+      "0x23e30a65c90": "数据分析/因子分析||因子分析",
+      "0x23e30abd630": "数据分析/因子分析||因子分析 1"
     },
     "node_states": {
       "数据集成/文档上传||文档上传": "success",
@@ -1275,11 +1405,13 @@
       "数据集成/文档上传||文档上传 3": "success",
       "控制流/输入端口||输入端口": "unrun",
       "控制流/输出端口||输出端口": "unrun",
-      "数据分析/因子分析||因子分析": "unrun",
-      "数据转换/文件转图片||文件转图片 1": "unrun",
+      "控制流/输入端口||输入端口 1": "unrun",
+      "控制流/输出端口||输出端口 1": "unrun",
       "数据存储/组件保存||组件保存": "unrun",
-      "数据分析/因子分析||因子分析 1": "unrun",
-      "数据转换/文件转图片||文件转图片 2": "unrun"
+      "数据转换/文件转图片||文件转图片 1": "unrun",
+      "数据转换/文件转图片||文件转图片 2": "unrun",
+      "数据分析/因子分析||因子分析": "unrun",
+      "数据分析/因子分析||因子分析 1": "unrun"
     },
     "node_inputs": {
       "数据集成/文档上传||文档上传": {},
@@ -1303,11 +1435,13 @@
       "数据集成/文档上传||文档上传 3": {},
       "控制流/输入端口||输入端口": {},
       "控制流/输出端口||输出端口": {},
-      "数据分析/因子分析||因子分析": {},
-      "数据转换/文件转图片||文件转图片 1": {},
+      "控制流/输入端口||输入端口 1": {},
+      "控制流/输出端口||输出端口 1": {},
       "数据存储/组件保存||组件保存": {},
-      "数据分析/因子分析||因子分析 1": {},
-      "数据转换/文件转图片||文件转图片 2": {}
+      "数据转换/文件转图片||文件转图片 1": {},
+      "数据转换/文件转图片||文件转图片 2": {},
+      "数据分析/因子分析||因子分析": {},
+      "数据分析/因子分析||因子分析 1": {}
     },
     "node_outputs": {
       "数据集成/文档上传||文档上传": {
@@ -4875,11 +5009,13 @@
       },
       "控制流/输入端口||输入端口": {},
       "控制流/输出端口||输出端口": {},
-      "数据分析/因子分析||因子分析": {},
-      "数据转换/文件转图片||文件转图片 1": {},
+      "控制流/输入端口||输入端口 1": {},
+      "控制流/输出端口||输出端口 1": {},
       "数据存储/组件保存||组件保存": {},
-      "数据分析/因子分析||因子分析 1": {},
-      "数据转换/文件转图片||文件转图片 2": {}
+      "数据转换/文件转图片||文件转图片 1": {},
+      "数据转换/文件转图片||文件转图片 2": {},
+      "数据分析/因子分析||因子分析": {},
+      "数据分析/因子分析||因子分析 1": {}
     },
     "column_select": {
       "数据集成/文档上传||文档上传": {},
@@ -4934,11 +5070,13 @@
       "数据集成/文档上传||文档上传 3": {},
       "控制流/输入端口||输入端口": {},
       "控制流/输出端口||输出端口": {},
-      "数据分析/因子分析||因子分析": {},
-      "数据转换/文件转图片||文件转图片 1": {},
+      "控制流/输入端口||输入端口 1": {},
+      "控制流/输出端口||输出端口 1": {},
       "数据存储/组件保存||组件保存": {},
-      "数据分析/因子分析||因子分析 1": {},
-      "数据转换/文件转图片||文件转图片 2": {}
+      "数据转换/文件转图片||文件转图片 1": {},
+      "数据转换/文件转图片||文件转图片 2": {},
+      "数据分析/因子分析||因子分析": {},
+      "数据分析/因子分析||因子分析 1": {}
     }
   }
 }
