@@ -8,7 +8,6 @@ from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
 from NodeGraphQt.constants import PipeLayoutEnum
-from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QImage, QPainter
@@ -20,7 +19,7 @@ from qfluentwidgets import (
 )
 
 from app.components.base import PropertyType
-from app.nodes.create_backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
+from app.nodes.create_backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode
 from app.nodes.create_dynamic_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
@@ -367,7 +366,6 @@ class CanvasPage(QWidget):
         node.wrap_nodes(selected_nodes)
         node.auto_size()
         if key == "ControlFlowIterateNode":
-            print("迭代初始化")
             node.set_iterate_config({"iterate_nums": 3})
 
     def close_current_canvas(self):
