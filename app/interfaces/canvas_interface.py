@@ -108,14 +108,20 @@ class CanvasPage(QWidget):
     # ========================
     def _create_scheduler(self):
         """创建工作流调度器"""
-        return WorkflowScheduler(
+        scheduler = WorkflowScheduler(
             graph=self.graph,
             component_map=self.component_map,
             get_node_status=self.get_node_status,
-            set_node_status=self.set_node_status,
             get_python_exe=self.get_current_python_exe,
             parent=self
         )
+        scheduler.node_status_changed.connect(self.set_node_status_by_id)
+        return scheduler
+
+    def set_node_status_by_id(self, node_id, status):
+        node = self._get_node_by_id(node_id)
+        if node:
+            self.set_node_status(node, status)
 
     def _connect_scheduler_signals(self):
         """连接调度器信号到 UI 回调"""
@@ -691,7 +697,7 @@ class CanvasPage(QWidget):
                                 shutil.copy2(file_path, dst_path)
                             return (Path("inputs") / filename).as_posix()
                         except Exception as e:
-                            print(f"警告：无法复制文件 {value}: {e}")
+                            logger.error(f"警告：无法复制文件 {value}: {e}")
                             return value
                 elif isinstance(value, dict):
                     return {k: _process_value_for_export(v, inputs_dir, export_path) for k, v in value.items()}
@@ -821,7 +827,6 @@ class CanvasPage(QWidget):
             self.create_failed_info("导出失败", f"错误: {str(e)}")
 
     def canvas_drop_event(self, event):
-        print(event.mimeData().text())
         if event.mimeData().hasText():
             full_path = event.mimeData().text()
             node_type = self.node_type_map.get(full_path)
@@ -994,7 +999,7 @@ class CanvasPage(QWidget):
             # 保存为 preview.png
             preview_path = export_path / "preview.png"
             image.save(str(preview_path), "PNG")
-            print(f"✅ 子图预览图已保存: {preview_path}")
+            logger.info(f"✅ 子图预览图已保存: {preview_path}")
 
         except Exception as e:
             import traceback

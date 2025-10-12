@@ -15,6 +15,8 @@ from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot, QThread, QRec
 from PyQt5.QtGui import QPainter, QImage
 from loguru import logger
 
+from app.nodes.create_backdrop_node import ControlFlowBackdrop
+
 
 class WorkerSignals(QObject):
     finished = pyqtSignal(object)
@@ -116,7 +118,8 @@ class NodeListExecutor(QRunnable):
         self,
         main_window,  # 保留兼容性（但 execute_sync 不再需要它）
         nodes: List,
-        python_exe: Optional[str] = None
+        python_exe: Optional[str] = None,
+        scheduler: Optional[Any] = None,
     ):
         super().__init__()
         self.signals = WorkerSignals()
@@ -126,6 +129,7 @@ class NodeListExecutor(QRunnable):
         self._is_cancelled = False
         # ✅ 关键：由调度器注入 component_map
         self.component_map = {}
+        self.scheduler = scheduler
 
     def cancel(self):
         """请求取消执行"""
@@ -151,13 +155,17 @@ class NodeListExecutor(QRunnable):
                     comp_cls = self.component_map.get(node.FULL_PATH)
                     if comp_cls is None:
                         raise ValueError(f"未找到组件类: {node.FULL_PATH}")
-
-                    # 执行节点（同步）
-                    node.execute_sync(
-                        comp_cls,
-                        python_executable=self.python_exe,
-                        check_cancel=self._check_cancel
-                    )
+                    if getattr(node, "execute_sync", None) is not None:
+                        # 执行节点（同步）
+                        node.execute_sync(
+                            comp_cls,
+                            python_executable=self.python_exe,
+                            check_cancel=self._check_cancel
+                        )
+                    elif isinstance(node, ControlFlowBackdrop):
+                        self.scheduler._execute_loop_backdrop_sync(node)
+                    else:
+                        pass
 
                     if self._is_cancelled:
                         return
@@ -449,5 +457,5 @@ class WorkflowScanner(QObject):
             files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
             self.finished.emit(files)
         except Exception as e:
-            print(f"扫描 workflow 目录失败: {e}")
+            logger.error(f"扫描 workflow 目录失败: {e}")
             self.finished.emit([])

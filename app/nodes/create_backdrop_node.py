@@ -19,22 +19,35 @@ class CustomPortInputNode(PortInputNode):
     __identifier__ = 'control_flow'
     category = "控制流"
     NODE_NAME = '输入端口'
+    FULL_PATH = f"{category}/{NODE_NAME}"
 
     def __init__(self, qgraphics_item=None, parent_port=None):
         super(CustomPortInputNode, self).__init__(qgraphics_item or PortInputNodeItem)
         self._parent_port = parent_port
         self.add_output()
+        self._output_values = {}
+
+    def set_output_value(self, value):
+        self._output_values[self._outputs[0].name()] = value
+
+    def get_output_value(self, name):
+        return self._output_values.get(name)
 
 
 class CustomPortOutputNode(PortOutputNode):
     __identifier__ = 'control_flow'
     category = "控制流"
     NODE_NAME = '输出端口'
+    FULL_PATH = f"{category}/{NODE_NAME}"
 
     def __init__(self, qgraphics_item=None, parent_port=None):
         super(CustomPortOutputNode, self).__init__(qgraphics_item or PortOutputNodeItem)
         self._parent_port = parent_port
         self.add_input()
+        self._input_values = {}
+
+    def get_input_value(self):
+        return self._input_values
 
 
 class ControlFlowBackdrop(BackdropNode):
@@ -46,11 +59,13 @@ class ControlFlowBackdrop(BackdropNode):
     category = "控制流"
     __identifier__ = 'control_flow'
     NODE_NAME = '控制流区域'
+    FULL_PATH = f"{category}/{NODE_NAME}"
 
     def __init__(self):
         super(ControlFlowBackdrop, self).__init__(ControlFlowBackdropNodeItem)
         self._inputs = []
         self._outputs = []
+        self._output_values = {}
         # === 初始化默认端口 ===
         self.add_input("inputs", multi_input=True, display_name=True)
         self.add_output("outputs", display_name=True)
@@ -58,15 +73,12 @@ class ControlFlowBackdrop(BackdropNode):
         self._control_flow_type = None  # 'loop' or 'branch'
         self._loop_config = {}
         self._branch_config = {}
+        self.set_as_loop()
 
-    def set_as_loop(self, data_source_port: str = "input_list", output_port: str = "output_list"):
+    def set_as_loop(self):
         """配置为循环体"""
         self._control_flow_type = "loop"
         self.set_name("🔁 循环体")
-        # 添加输入端口（接收要迭代的列表）
-        self.add_input(data_source_port)
-        # 添加输出端口（输出聚合结果）
-        self.add_output(output_port)
 
     def set_as_branch(self, condition_port: str = "condition"):
         """配置为条件分支"""
@@ -124,6 +136,36 @@ class ControlFlowBackdrop(BackdropNode):
         self._outputs.append(port)
         self.model.outputs[port.name()] = port.model
         return port
+
+    def connected_output_nodes(self):
+        """
+        Returns all nodes connected from the output ports.
+
+        Returns:
+            dict: {<output_port>: <node_list>}
+        """
+        nodes = OrderedDict()
+        for p in self.output_ports():
+            nodes[p] = [cp.node() for cp in p.connected_ports()]
+        return nodes
+
+    def input_ports(self):
+        """
+        Return all input ports.
+
+        Returns:
+            list[NodeGraphQt.Port]: node input ports.
+        """
+        return self._inputs
+
+    def output_ports(self):
+        """
+        Return all output ports.
+
+        Returns:
+            list[NodeGraphQt.Port]: node output ports.
+        """
+        return self._outputs
 
     def inputs(self):
         return {p.name(): p for p in self._inputs}
@@ -209,6 +251,12 @@ class ControlFlowBackdrop(BackdropNode):
             out_port (NodeGraphQt.Port): output port that was disconnected.
         """
         return
+
+    def set_output_value(self, value):
+        self._output_values[self._outputs[0].name()] = value
+
+    def get_output_value(self, name):
+        return self._output_values.get(name)
 
 
 class ControlFlowBackdropNodeItem(BackdropNodeItem):

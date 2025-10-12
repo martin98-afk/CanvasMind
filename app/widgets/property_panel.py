@@ -48,7 +48,7 @@ class PropertyPanel(CardWidget):
         self.stacked_widget = None
 
     def update_properties(self, node):
-        if getattr(node, "component_class", None) is None:
+        if node is None or node.type_.startswith("control_flow"):
             return
         # 清理旧的控件引用
         self._column_list_widgets.clear()
@@ -423,6 +423,8 @@ class PropertyPanel(CardWidget):
         )
         if file_path:
             node._output_values[port_name] = file_path
+
+        self.update_properties(node)
 
     def _add_file_widget_to_layout(self, node, port_name, layout):
         """添加文件选择控件到指定布局（用于输出端口）"""
