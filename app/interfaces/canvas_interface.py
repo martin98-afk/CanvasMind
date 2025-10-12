@@ -6,7 +6,8 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from NodeGraphQt import NodeGraph, BackdropNode
+from NodeGraphQt import NodeGraph, BackdropNode, NodeObject, BaseNode, GroupNode
+from NodeGraphQt.base.commands import NodesRemovedCmd
 from NodeGraphQt.constants import PipeLayoutEnum
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
@@ -19,7 +20,7 @@ from qfluentwidgets import (
 )
 
 from app.components.base import PropertyType
-from app.nodes.create_backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode
+from app.nodes.create_backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
 from app.nodes.create_dynamic_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
@@ -358,15 +359,52 @@ class CanvasPage(QWidget):
 
     def create_backdrop_node(self, key):
         selected_nodes = self.graph.selected_nodes()
-        input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
-        output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-        output_port_node.set_x_pos(output_port_node.x_pos() + 600)
-        selected_nodes = selected_nodes + [input_port_node, output_port_node]
-        node = self.graph.create_node(f"control_flow.{key}")
-        node.wrap_nodes(selected_nodes)
-        node.auto_size()
+
+        if not selected_nodes:
+            # 可选：提示用户或直接返回
+            return
+
+        # 检查是否已有输入/输出端口节点
+        input_port_node = None
+        output_port_node = None
+
+        for node in selected_nodes:
+            if node.type_ == "control_flow.ControlFlowInputPort":
+                input_port_node = node
+            elif node.type_ == "control_flow.ControlFlowOutputPort":
+                output_port_node = node
+
+        # 获取当前选中节点的边界（用于定位新端口或计算 backdrop）
+        min_x = min(n.x_pos() for n in selected_nodes)
+        max_x = max(n.x_pos() + n.view.width for n in selected_nodes)
+        min_y = min(n.y_pos() for n in selected_nodes)
+        max_y = max(n.y_pos() + n.view.height for n in selected_nodes)
+
+        # 如果没有输入端口，创建一个并放到最左边
+        if input_port_node is None:
+            input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
+            input_width = input_port_node.view.width
+            input_x = min_x - input_width - 50
+            center_y = (min_y + max_y) / 2 - input_port_node.view.height / 2
+            input_port_node.set_pos(input_x, center_y)
+            selected_nodes.append(input_port_node)  # 加入列表用于 wrap
+
+        # 如果没有输出端口，创建一个并放到最右边
+        if output_port_node is None:
+            output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
+            output_width = output_port_node.view.width
+            output_x = max_x + 50
+            center_y = (min_y + max_y) / 2 - output_port_node.view.height / 2
+            output_port_node.set_pos(output_x, center_y)
+            selected_nodes.append(output_port_node)  # 加入列表用于 wrap
+
+        # 创建 backdrop 并包裹所有节点（包括已有的或新创建的）
+        backdrop_node = self.graph.create_node(f"control_flow.{key}")
+        backdrop_node.wrap_nodes(selected_nodes)
+
+        # 可选配置
         if key == "ControlFlowIterateNode":
-            node.set_iterate_config({"iterate_nums": 3})
+            backdrop_node.set_iterate_config({"iterate_nums": 3})
 
     def close_current_canvas(self):
         self.canvas_deleted.emit()
@@ -1108,13 +1146,33 @@ class CanvasPage(QWidget):
         graph_menu.add_command('运行工作流', self.run_workflow, 'Ctrl+R')
         graph_menu.add_command('保存工作流', self._save_via_dialog, 'Ctrl+S')
         graph_menu.add_separator()
-        graph_menu.add_command('自动布局', lambda: self._auto_layout_selected(), 'Ctrl+L')
+        graph_menu.add_command('撤销', self._undo, 'Ctrl+Z')
+        graph_menu.add_command('重做', self._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
+        graph_menu.add_command('自动布局', self._auto_layout_selected, 'Ctrl+L')
         graph_menu.add_separator()
         graph_menu.add_command('创建 Backdrop', lambda: self.create_backdrop("新分组"))
         edit_menu = graph_menu.add_menu('编辑')
         edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
         edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
         edit_menu.add_command('删除选中', lambda graph: graph.delete_nodes(graph.selected_nodes()), 'Del')
+
+    def _undo(self):
+        try:
+            if self.graph.undo_stack().canUndo():
+                self.graph.undo_stack().undo()
+            else:
+                self.create_info("提示", "没有可撤销的操作")
+        except Exception as e:
+            logger.warning(f"撤销失败: {e}")
+
+    def _redo(self):
+        try:
+            if self.graph.undo_stack().canRedo():
+                self.graph.undo_stack().redo()
+            else:
+                self.create_info("提示", "没有可重做的操作")
+        except Exception as e:
+            logger.warning(f"重做失败: {e}")
 
     def _auto_layout_selected(self, node=None):
         selected = self.graph.selected_nodes()
