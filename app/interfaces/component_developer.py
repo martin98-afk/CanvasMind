@@ -125,7 +125,7 @@ class ComponentDeveloperWidget(QWidget):
         # 右侧：开发区域 - 使用新的左右布局
         self.development_area = self._create_development_area_new_layout()
         splitter.addWidget(self.development_area)
-        splitter.setSizes([150, 800])  # 调整大小比例，给右侧更多空间
+        splitter.setSizes([125, 850])  # 调整大小比例，给右侧更多空间
         layout.addWidget(splitter)
 
     def _create_development_area_new_layout(self):
@@ -192,7 +192,7 @@ class ComponentDeveloperWidget(QWidget):
         self.output_port_editor = PortEditorWidget("output")
         port_splitter.addWidget(self.input_port_editor)
         port_splitter.addWidget(self.output_port_editor)
-        port_splitter.setSizes([150, 150])  # 初始大小
+        port_splitter.setSizes([200, 100])  # 初始大小
         left_layout.addWidget(port_splitter, stretch=1)
         # 属性编辑器
         self.property_editor = PropertyEditorWidget()
@@ -1046,7 +1046,7 @@ class PropertyEditorWidget(QWidget):
         row = self.table.rowCount()
         self.table.insertRow(row)
         # 属性名
-        name_item = QTableWidgetItem(prop_name if prop_name else f"prop_{row}")
+        name_item = QTableWidgetItem(prop_name if prop_name else f"prop{row+1}")
         self.table.setItem(row, 0, name_item)
         # 标签
         label_item = QTableWidgetItem(getattr(prop_def, 'label', f"属性{row + 1}"))

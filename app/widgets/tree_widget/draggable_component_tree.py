@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
+from NodeGraphQt import BaseNode
 from PyQt5.QtCore import Qt, QMimeData, QRectF
 from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont
 from PyQt5.QtWidgets import QTreeWidgetItem, QWidget, QVBoxLayout
 from qfluentwidgets import TreeWidget, SearchLineEdit, FluentStyleSheet
 
+from app.components.base import BaseComponent
 from app.scan_components import scan_components
 
 
 class DraggableTreeWidget(TreeWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.parent = parent
         self.setDragEnabled(True)
         self.setAcceptDrops(False)
         self.setDragDropMode(TreeWidget.DragOnly)
@@ -20,11 +23,13 @@ class DraggableTreeWidget(TreeWidget):
         self.clear()
         self._all_items = []
         categories = {}
-
-        for full_path, comp_cls in self.component_map.items():
+        for full_path, comp_cls in self.parent.component_map.items():
             try:
                 category = getattr(comp_cls, 'category', 'General')
                 name = getattr(comp_cls, 'name', comp_cls.__name__)
+                if not isinstance(name, str):
+                    name = comp_cls.NODE_NAME
+
                 display_path = f"{category}/{name}"
 
                 if category not in categories:
@@ -41,14 +46,14 @@ class DraggableTreeWidget(TreeWidget):
                 cat_item.addChild(comp_item)
                 self._all_items.append(comp_item)
             except Exception as e:
-                print(f"构建组件树失败: {e}")
+                import traceback
+                traceback.print_exc()
 
         self.expandAll()
 
     def refresh_components(self):
         """刷新组件树"""
         try:
-            self.component_map, _ = scan_components()
             self.build_component_tree()
         except Exception as e:
             print(f"刷新组件失败: {e}")
@@ -71,51 +76,56 @@ class DraggableTreeWidget(TreeWidget):
             drag.setHotSpot(preview.rect().center())
             drag.exec_(Qt.CopyAction)
 
-    def create_drag_preview(self, full_path):
-        """创建拖拽预览 pixmap"""
-        comp_cls = self.component_map.get(full_path)
-        if not comp_cls:
-            pixmap = QPixmap(120, 60)
-            pixmap.fill(Qt.transparent)
-            painter = QPainter(pixmap)
-            painter.setPen(QPen(QColor("#4A90E2"), 2))
-            painter.drawRect(0, 0, 119, 59)
-            painter.setPen(Qt.black)
-            painter.drawText(QRectF(10, 20, 100, 20), Qt.AlignLeft, "组件")
-            painter.end()
-            return pixmap
-
-        pixmap = QPixmap(150, 90)
+    def get_default_preview(self, name):
+        pixmap = QPixmap(120, 60)
         pixmap.fill(Qt.transparent)
         painter = QPainter(pixmap)
-
         painter.setPen(QPen(QColor("#4A90E2"), 2))
-        painter.setBrush(QColor("#2D2D2D"))
-        painter.drawRect(0, 0, 149, 89)
-
-        painter.setPen(Qt.white)
-        font = QFont()
-        font.setPointSize(10)
-        font.setBold(True)
-        painter.setFont(font)
-        painter.drawText(QRectF(10, 10, 130, 20), Qt.AlignLeft, comp_cls.name)
-
-        painter.setPen(QColor("#888888"))
-        font.setBold(False)
-        painter.setFont(font)
-        painter.drawText(QRectF(10, 35, 130, 15), Qt.AlignLeft, f"类别: {comp_cls.category}")
-
-        inputs = getattr(comp_cls, 'get_inputs', lambda: [])()
-        outputs = getattr(comp_cls, 'get_outputs', lambda: [])()
-        if inputs:
-            painter.setPen(QColor("#2ECC71"))
-            painter.drawText(QRectF(10, 55, 130, 15), Qt.AlignLeft, f"输入: {len(inputs)}")
-        if outputs:
-            painter.setPen(QColor("#E74C3C"))
-            painter.drawText(QRectF(10, 70, 130, 15), Qt.AlignLeft, f"输出: {len(outputs)}")
-
+        painter.drawRect(0, 0, 119, 59)
+        painter.setPen(Qt.black)
+        painter.drawText(QRectF(10, 20, 100, 20), Qt.AlignLeft, name)
         painter.end()
         return pixmap
+
+    def create_drag_preview(self, full_path):
+        """创建拖拽预览 pixmap"""
+        comp_cls = self.parent.component_map.get(full_path)
+        if not comp_cls or comp_cls.__name__.startswith("ControlFlow"):
+            return self.get_default_preview(full_path)
+        try:
+            pixmap = QPixmap(150, 90)
+            pixmap.fill(Qt.transparent)
+            painter = QPainter(pixmap)
+
+            painter.setPen(QPen(QColor("#4A90E2"), 2))
+            painter.setBrush(QColor("#2D2D2D"))
+            painter.drawRect(0, 0, 149, 89)
+
+            painter.setPen(Qt.white)
+            font = QFont()
+            font.setPointSize(10)
+            font.setBold(True)
+            painter.setFont(font)
+            painter.drawText(QRectF(10, 10, 130, 20), Qt.AlignLeft, comp_cls.name)
+
+            painter.setPen(QColor("#888888"))
+            font.setBold(False)
+            painter.setFont(font)
+            painter.drawText(QRectF(10, 35, 130, 15), Qt.AlignLeft, f"类别: {comp_cls.category}")
+
+            inputs = getattr(comp_cls, 'get_inputs', lambda: [])()
+            outputs = getattr(comp_cls, 'get_outputs', lambda: [])()
+            if inputs:
+                painter.setPen(QColor("#2ECC71"))
+                painter.drawText(QRectF(10, 55, 130, 15), Qt.AlignLeft, f"输入: {len(inputs)}")
+            if outputs:
+                painter.setPen(QColor("#E74C3C"))
+                painter.drawText(QRectF(10, 70, 130, 15), Qt.AlignLeft, f"输出: {len(outputs)}")
+
+            painter.end()
+            return pixmap
+        except:
+            return self.get_default_preview(full_path)
 
     # ==================== 搜索功能 ====================
     def filter_items(self, keyword: str):

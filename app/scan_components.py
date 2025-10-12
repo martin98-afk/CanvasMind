@@ -36,6 +36,8 @@ def scan_components(components_dir="components"):
                 if getattr(obj, 'category', None) is not None and obj != BaseComponent:
                     # ✅ 关键修改：使用 getattr 获取 name 属性，提供默认回退
                     category = getattr(obj, 'category', 'General')
+                    if category == "":
+                        continue
                     component_name = getattr(obj, 'name', obj.__name__)
                     full_path = f"{category}/{component_name}"
                     comp_map[full_path] = obj

@@ -48,6 +48,8 @@ class PropertyPanel(CardWidget):
         self.stacked_widget = None
 
     def update_properties(self, node):
+        if getattr(node, "component_class", None) is None:
+            return
         # 清理旧的控件引用
         self._column_list_widgets.clear()
         self._text_edit_widgets.clear()

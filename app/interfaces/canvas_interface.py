@@ -8,6 +8,7 @@ from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
 from NodeGraphQt.constants import PipeLayoutEnum
+from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QImage, QPainter
@@ -19,6 +20,7 @@ from qfluentwidgets import (
 )
 
 from app.components.base import PropertyType
+from app.nodes.create_backdrop_node import ControlFlowBackdrop, CustomPortInputNode, CustomPortOutputNode
 from app.nodes.create_dynamic_node import create_node_class
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
@@ -70,10 +72,9 @@ class CanvasPage(QWidget):
         self.canvas_widget.keyPressEvent = self._canvas_key_press_event
 
         # 组件面板
+        self.register_components()
         self.nav_panel = DraggableTreePanel(self)
         self.nav_view = self.nav_panel.tree
-        self.register_components()
-
         # 属性面板
         self.property_panel = PropertyPanel(self)
 
@@ -225,6 +226,7 @@ class CanvasPage(QWidget):
         self._registered_nodes.extend(list(self.graph.registered_nodes()))
         self.graph._node_factory.clear_registered_nodes()
         self.component_map, self.file_map = scan_components()
+        # 普通节点
         nodes_menu = self.graph.get_context_menu('nodes')
         for full_path, comp_cls in self.component_map.items():
             safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
@@ -247,6 +249,30 @@ class CanvasPage(QWidget):
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
+
+        # 控制流节点
+        backdrop_node = ControlFlowBackdrop
+        backdrop_path = f"{backdrop_node.category}/{backdrop_node.NODE_NAME}"
+        backdrop_node.__name__ = "ControlFlowBackdrop"
+        self.graph.register_node(backdrop_node)
+        self.node_type_map[backdrop_path] = f"control_flow.{backdrop_node.__name__}"
+        self.component_map[backdrop_path] = backdrop_node
+
+        # 输入端口节点
+        input_port_node = CustomPortInputNode
+        input_port_path = f"{input_port_node.category}/{input_port_node.NODE_NAME}"
+        input_port_node.__name__ = "ControlFlowInputPort"
+        self.graph.register_node(input_port_node)
+        self.node_type_map[input_port_path] = f"control_flow.{input_port_node.__name__}"
+        self.component_map[input_port_path] = input_port_node
+
+        # 输出端口节点
+        output_port_node = CustomPortOutputNode
+        output_port_path = f"{output_port_node.category}/{output_port_node.NODE_NAME}"
+        output_port_node.__name__ = "ControlFlowOutputPort"
+        self.graph.register_node(output_port_node)
+        self.node_type_map[output_port_path] = f"control_flow.{output_port_node.__name__}"
+        self.component_map[output_port_path] = output_port_node
 
     def create_minimap(self):
         self.minimap = MinimapWidget(self)
@@ -795,6 +821,7 @@ class CanvasPage(QWidget):
             self.create_failed_info("导出失败", f"错误: {str(e)}")
 
     def canvas_drop_event(self, event):
+        print(event.mimeData().text())
         if event.mimeData().hasText():
             full_path = event.mimeData().text()
             node_type = self.node_type_map.get(full_path)
