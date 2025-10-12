@@ -204,7 +204,7 @@ class WorkflowScheduler(QObject):
             logger.error(traceback.format_exc())
             self.error.emit(f"启动执行器失败: {str(e)}")
 
-    def _execute_loop_backdrop_sync(self, backdrop):
+    def _execute_backdrop_sync(self, backdrop):
         """同步执行循环型 Backdrop（在主线程中调用）"""
         try:
             # 获取上游结果
@@ -221,7 +221,7 @@ class WorkflowScheduler(QObject):
                             [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
                         )
             # 1. 获取输入数据（来自 backdrop 的 inputs 端口）
-            if not isinstance(input_data, (list, tuple, dict)):
+            if not isinstance(input_data, (list, tuple, dict)) and backdrop.TYPE == "loop":
                 input_data = [input_data]
             # 2. 获取内部节点
             internal_nodes = backdrop.nodes()
@@ -245,46 +245,77 @@ class WorkflowScheduler(QObject):
             if execution_order is None:
                 raise ValueError(f"循环体 {backdrop.name()} 内部存在依赖环")
 
-            results = []
-            for data in input_data:
-                input_proxy.set_output_value(data)
-                print("设定数据成功")
-                # 执行内部节点（同步）
-                for node in execution_order:
-                    comp_cls = self.component_map.get(node.FULL_PATH)
-                    if not comp_cls:
-                        raise ValueError(f"未找到组件类: {node.FULL_PATH}")
-                    self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
-                    print("运行状态设定成功")
-                    try:
-                        node.execute_sync(comp_cls, python_executable=self.get_python_exe())
-                        print("运行成功")
-                        self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
-                        print("状态设定成功")
-                    except Exception as e:
-                        self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
-                        raise e
+            # 4. 循环执行逻辑
+            if backdrop.TYPE == "loop":
+                results = []
+                for data in input_data:
+                    input_proxy.set_output_value(data)
+                    # 执行内部节点（同步）
+                    for node in execution_order:
+                        comp_cls = self.component_map.get(node.FULL_PATH)
+                        if not comp_cls:
+                            raise ValueError(f"未找到组件类: {node.FULL_PATH}")
+                        self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
+                        try:
+                            node.execute_sync(comp_cls, python_executable=self.get_python_exe())
+                            self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
+                        except Exception as e:
+                            self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
+                            raise e
+                    # 收集输出
+                    inputs = []
+                    for input_port in output_proxy.input_ports():
+                        connected = input_port.connected_ports()
 
-                # 收集输出
-                inputs = []
-                for input_port in output_proxy.input_ports():
-                    connected = input_port.connected_ports()
+                        if connected:
+                            if len(connected) == 1:
+                                upstream = connected[0]
+                                value = upstream.node()._output_values.get(upstream.name())
+                                inputs.append(value)
+                            else:
+                                inputs.extend(
+                                    [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
+                                )
+                    results.extend(inputs)
+            # 5. 迭代执行逻辑
+            elif backdrop.TYPE == "iterate":
+                print(backdrop.iterate_config.get("iterate_nums"))
+                results = None
+                for i in range(backdrop.iterate_config.get("iterate_nums")):   # 暂时只支持迭代指定次数
+                    input_proxy.set_output_value(input_data)
+                    # 执行内部节点（同步）
+                    for node in execution_order:
+                        comp_cls = self.component_map.get(node.FULL_PATH)
+                        if not comp_cls:
+                            raise ValueError(f"未找到组件类: {node.FULL_PATH}")
+                        self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
+                        try:
+                            node.execute_sync(comp_cls, python_executable=self.get_python_exe())
+                            self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
+                        except Exception as e:
+                            self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
+                            raise e
+                    # 收集输出
+                    outputs = []
+                    for input_port in output_proxy.input_ports():
+                        connected = input_port.connected_ports()
 
-                    if connected:
-                        if len(connected) == 1:
-                            upstream = connected[0]
-                            value = upstream.node()._output_values.get(upstream.name())
-                            inputs.append(value)
-                        else:
-                            inputs.extend(
-                                [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
-                            )
-                print(inputs)
-                results.extend(inputs)
+                        if connected:
+                            if len(connected) == 1:
+                                upstream = connected[0]
+                                value = upstream.node()._output_values.get(upstream.name())
+                                outputs = value
+                            else:
+                                outputs.extend(
+                                    [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
+                                )
+                    input_data = outputs
+
+                results = outputs
 
             # 6. 设置 Backdrop 的输出
             backdrop.set_output_value(results)
-            # self.set_node_status(backdrop, NodeStatus.NODE_STATUS_SUCCESS)
+            self.set_node_status(backdrop, NodeStatus.NODE_STATUS_SUCCESS)
         except:
             import traceback
             logger.error(traceback.format_exc())

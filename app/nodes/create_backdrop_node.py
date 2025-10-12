@@ -1,53 +1,16 @@
 # -*- coding: utf-8 -*-
+from collections import OrderedDict
+
 from NodeGraphQt import BackdropNode, Port
 from NodeGraphQt.constants import ITEM_CACHE_MODE
-from NodeGraphQt.errors import PortError
-from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
-from NodeGraphQt.qgraphics.node_port_in import PortInputNodeItem
-from NodeGraphQt.qgraphics.node_port_out import PortOutputNodeItem
-from NodeGraphQt.qgraphics.port import CustomPortItem
-from Qt import QtCore, QtGui, QtWidgets
-from collections import OrderedDict
-from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
-from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
-from NodeGraphQt.qgraphics.port import PortItem
 from NodeGraphQt.constants import PortTypeEnum, Z_VAL_NODE
+from NodeGraphQt.errors import PortError
+from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
+from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
+from NodeGraphQt.qgraphics.port import CustomPortItem
+from NodeGraphQt.qgraphics.port import PortItem
 from PyQt5 import QtCore, QtGui, QtWidgets
-
-
-class CustomPortInputNode(PortInputNode):
-    __identifier__ = 'control_flow'
-    category = "控制流"
-    NODE_NAME = '输入端口'
-    FULL_PATH = f"{category}/{NODE_NAME}"
-
-    def __init__(self, qgraphics_item=None, parent_port=None):
-        super(CustomPortInputNode, self).__init__(qgraphics_item or PortInputNodeItem)
-        self._parent_port = parent_port
-        self.add_output()
-        self._output_values = {}
-
-    def set_output_value(self, value):
-        self._output_values[self._outputs[0].name()] = value
-
-    def get_output_value(self, name):
-        return self._output_values.get(name)
-
-
-class CustomPortOutputNode(PortOutputNode):
-    __identifier__ = 'control_flow'
-    category = "控制流"
-    NODE_NAME = '输出端口'
-    FULL_PATH = f"{category}/{NODE_NAME}"
-
-    def __init__(self, qgraphics_item=None, parent_port=None):
-        super(CustomPortOutputNode, self).__init__(qgraphics_item or PortOutputNodeItem)
-        self._parent_port = parent_port
-        self.add_input()
-        self._input_values = {}
-
-    def get_input_value(self):
-        return self._input_values
+from Qt import QtCore, QtGui, QtWidgets
 
 
 class ControlFlowBackdrop(BackdropNode):
@@ -69,25 +32,11 @@ class ControlFlowBackdrop(BackdropNode):
         # === 初始化默认端口 ===
         self.add_input("inputs", multi_input=True, display_name=True)
         self.add_output("outputs", display_name=True)
+        self.set_size(700, 700)
         # === 添加默认多输入/多输出端口 ===
         self._control_flow_type = None  # 'loop' or 'branch'
         self._loop_config = {}
         self._branch_config = {}
-        self.set_as_loop()
-
-    def set_as_loop(self):
-        """配置为循环体"""
-        self._control_flow_type = "loop"
-        self.set_name("🔁 循环体")
-
-    def set_as_branch(self, condition_port: str = "condition"):
-        """配置为条件分支"""
-        self._control_flow_type = "branch"
-        self.set_name("🔀 条件分支")
-        # 添加条件输入端口
-        self.add_input(condition_port)
-        # 可选：添加输出端口（用于合并分支结果）
-        self.add_output("result")
 
     @property
     def control_flow_type(self):
@@ -257,6 +206,22 @@ class ControlFlowBackdrop(BackdropNode):
 
     def get_output_value(self, name):
         return self._output_values.get(name)
+
+
+class ControlFlowLoopNode(ControlFlowBackdrop):
+
+    NODE_NAME = "循环控制流区域"
+    TYPE = "loop"
+
+
+class ControlFlowIterateNode(ControlFlowBackdrop):
+
+    NODE_NAME = "迭代控制流区域"
+    TYPE = "iterate"
+    iterate_config = {}
+
+    def set_iterate_config(self, kwargs):
+        self.iterate_config = kwargs
 
 
 class ControlFlowBackdropNodeItem(BackdropNodeItem):

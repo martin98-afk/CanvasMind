@@ -20,14 +20,15 @@ from qfluentwidgets import (
 )
 
 from app.components.base import PropertyType
-from app.nodes.create_backdrop_node import ControlFlowBackdrop, CustomPortInputNode, CustomPortOutputNode
+from app.nodes.create_backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
 from app.nodes.create_dynamic_node import create_node_class
+from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
 from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导入
 from app.utils.config import Settings
 from app.utils.threading_utils import ThumbnailGenerator
-from app.utils.utils import serialize_for_json, deserialize_from_json
+from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
 from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
 from app.widgets.dialog_widget.output_selection_dialog import OutputSelectionDialog
@@ -89,6 +90,7 @@ class CanvasPage(QWidget):
         # 创建悬浮按钮和环境选择
         self.create_floating_buttons()
         self.create_environment_selector()
+        self.create_floating_nodes()
 
         # 信号连接
         scene = self.graph.viewer().scene()
@@ -179,6 +181,7 @@ class CanvasPage(QWidget):
     def eventFilter(self, obj, event):
         if obj is self.canvas_widget and event.type() == event.Resize:
             self.button_container.move(self.canvas_widget.width() - 50, self.canvas_widget.height() // 2 - 100)
+            self.nodes_container.move(10, self.canvas_widget.height() // 2 - 100)
             self.env_selector_container.move(self.canvas_widget.width() - 200, 10)
             self._position_name_container()
             # self._position_minimap()
@@ -256,29 +259,25 @@ class CanvasPage(QWidget):
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
 
-        # 控制流节点
-        backdrop_node = ControlFlowBackdrop
-        backdrop_path = f"{backdrop_node.category}/{backdrop_node.NODE_NAME}"
-        backdrop_node.__name__ = "ControlFlowBackdrop"
-        self.graph.register_node(backdrop_node)
-        self.node_type_map[backdrop_path] = f"control_flow.{backdrop_node.__name__}"
-        self.component_map[backdrop_path] = backdrop_node
+        # 迭代节点
+        iterate_node = ControlFlowIterateNode
+        iterate_node.__name__ = "ControlFlowIterateNode"
+        self.graph.register_node(iterate_node)
+
+        # 循环节点
+        loop_node = ControlFlowLoopNode
+        loop_node.__name__ = "ControlFlowLoopNode"
+        self.graph.register_node(loop_node)
 
         # 输入端口节点
         input_port_node = CustomPortInputNode
-        input_port_path = f"{input_port_node.category}/{input_port_node.NODE_NAME}"
         input_port_node.__name__ = "ControlFlowInputPort"
         self.graph.register_node(input_port_node)
-        self.node_type_map[input_port_path] = f"control_flow.{input_port_node.__name__}"
-        self.component_map[input_port_path] = input_port_node
 
         # 输出端口节点
         output_port_node = CustomPortOutputNode
-        output_port_path = f"{output_port_node.category}/{output_port_node.NODE_NAME}"
         output_port_node.__name__ = "ControlFlowOutputPort"
         self.graph.register_node(output_port_node)
-        self.node_type_map[output_port_path] = f"control_flow.{output_port_node.__name__}"
-        self.component_map[output_port_path] = output_port_node
 
     def create_minimap(self):
         self.minimap = MinimapWidget(self)
@@ -339,6 +338,37 @@ class CanvasPage(QWidget):
         button_layout.addWidget(self.close_btn)
         self.button_container.setLayout(button_layout)
         self.button_container.show()
+
+    def create_floating_nodes(self):
+        self.nodes_container = QWidget(self.canvas_widget)
+        self.nodes_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.nodes_container.move(10, self.canvas_widget.height() // 2 - 100)
+        node_layout = QVBoxLayout(self.nodes_container)
+        node_layout.setSpacing(5)
+        node_layout.setContentsMargins(0, 0, 0, 0)
+        self.iterate_node = ToolButton(FluentIcon.SYNC, self)
+        self.iterate_node.setToolTip("创建迭代")
+        self.iterate_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowIterateNode"))
+        node_layout.addWidget(self.iterate_node)
+        self.loop_node = ToolButton(get_icon("无限"), self)
+        self.loop_node.setToolTip("创建循环")
+        self.loop_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowLoopNode"))
+        node_layout.addWidget(self.loop_node)
+        self.nodes_container.setLayout(node_layout)
+        self.nodes_container.show()
+
+    def create_backdrop_node(self, key):
+        selected_nodes = self.graph.selected_nodes()
+        input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
+        output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
+        output_port_node.set_x_pos(output_port_node.x_pos() + 600)
+        selected_nodes = selected_nodes + [input_port_node, output_port_node]
+        node = self.graph.create_node(f"control_flow.{key}")
+        node.wrap_nodes(selected_nodes)
+        node.auto_size()
+        if key == "ControlFlowIterateNode":
+            print("迭代初始化")
+            node.set_iterate_config({"iterate_nums": 3})
 
     def close_current_canvas(self):
         self.canvas_deleted.emit()

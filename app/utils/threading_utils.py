@@ -151,11 +151,11 @@ class NodeListExecutor(QRunnable):
                 self.signals.node_started.emit(node.id)
 
                 try:
-                    # 获取组件类
-                    comp_cls = self.component_map.get(node.FULL_PATH)
-                    if comp_cls is None:
-                        raise ValueError(f"未找到组件类: {node.FULL_PATH}")
                     if getattr(node, "execute_sync", None) is not None:
+                        # 获取组件类
+                        comp_cls = self.component_map.get(node.FULL_PATH)
+                        if comp_cls is None:
+                            raise ValueError(f"未找到组件类: {node.FULL_PATH}")
                         # 执行节点（同步）
                         node.execute_sync(
                             comp_cls,
@@ -163,7 +163,8 @@ class NodeListExecutor(QRunnable):
                             check_cancel=self._check_cancel
                         )
                     elif isinstance(node, ControlFlowBackdrop):
-                        self.scheduler._execute_loop_backdrop_sync(node)
+                        print("测试")
+                        self.scheduler._execute_backdrop_sync(node)
                     else:
                         pass
 
