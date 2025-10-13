@@ -16,6 +16,20 @@ from PIL import Image
 from loguru import logger
 from pydantic import create_model
 
+
+DEFAULT_PYTHON_ENV_VARS = {
+    "PYTHONPATH": ".",
+    "PYTHONUNBUFFERED": "1",
+    "PYTHONIOENCODING": "utf-8",
+    "PYTHONWARNINGS": "ignore",
+    "TZ": "Asia/Shanghai",
+    "LANG": "en_US.UTF-8",
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "CUDA_VISIBLE_DEVICES": "0",
+}
+
+
 COMPONENT_IMPORT_CODE = """# -*- coding: utf-8 -*-
 import importlib.util
 import pathlib
@@ -40,11 +54,38 @@ class VariableScope(str, Enum):
 
 
 class ExecutionEnvironment(BaseModel):
+    # 预定义字段（保留类型提示）
     user_id: Optional[str] = None
     canvas_id: Optional[str] = None
     session_id: Optional[str] = None
     run_id: Optional[str] = None
+
+    # 所有动态环境变量存储在这里
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    def get_all_env_vars(self) -> Dict[str, Any]:
+        """获取所有环境变量（预定义 + 动态）"""
+        result = self.metadata.copy()
+        # 添加预定义字段（非 None 值）
+        for field in ["user_id", "canvas_id", "session_id", "run_id"]:
+            val = getattr(self, field)
+            if val is not None:
+                result[field] = val
+        return result
+
+    def set_env_var(self, key: str, value: Any):
+        """设置环境变量"""
+        if key in ["user_id", "canvas_id", "session_id", "run_id"]:
+            setattr(self, key, value)
+        else:
+            self.metadata[key] = value
+
+    def delete_env_var(self, key: str):
+        """删除环境变量"""
+        if key in ["user_id", "canvas_id", "session_id", "run_id"]:
+            setattr(self, key, None)
+        else:
+            self.metadata.pop(key, None)
 
 
 class CustomVariable(BaseModel):
@@ -57,6 +98,13 @@ class CustomVariable(BaseModel):
 class GlobalVariableContext(BaseModel):
     env: ExecutionEnvironment = Field(default_factory=ExecutionEnvironment)
     custom: Dict[str, CustomVariable] = Field(default_factory=dict)
+    node_vars: Dict[str, Any] = Field(default_factory=dict)
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # 初始化默认 Python 环境变量（仅当 metadata 为空时）
+        if not self.env.metadata:
+            self.env.metadata.update(DEFAULT_PYTHON_ENV_VARS)
 
     class Config:
         # 允许任意类型（因为 value 可能是 list/dict 等）
@@ -75,9 +123,12 @@ class GlobalVariableContext(BaseModel):
         else:
             self.custom[key].value = value
 
+    def set_output(self, node_id: str, output_name: str, output_value: Any):
+        self.node_vars[f"{node_id} {output_name}"] = output_value
+
     def to_dict(self) -> Dict[str, Any]:
         """兼容旧逻辑：返回扁平字典（仅 custom 变量）"""
-        return {k: v.value for k, v in self.custom.items()} | self.env.dict()
+        return {k: v.value for k, v in self.custom.items()} | self.env.get_all_env_vars() | self.node_vars
 
 
 class ConnectionType(str, Enum):
@@ -283,7 +334,7 @@ class BaseComponent(ABC):
     @classmethod
     def get_params_model(cls) -> Type[BaseModel]:
         """动态创建参数模型（支持 CHOICE / DYNAMICFORM）"""
-        fields: Dict[str, tuple] = {"global_variable": (GlobalVariableContext, Field(default={}))}
+        fields: Dict[str, tuple] = {"global_variable": (Dict, Field(default={}))}
 
         for prop_name, prop_def in cls.properties.items():
             if prop_def.type == PropertyType.INT:

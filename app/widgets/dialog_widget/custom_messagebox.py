@@ -29,6 +29,38 @@ class CustomInputDialog(MessageBoxBase):
         return self.lineEdit.text()
 
 
+class CustomTwoInputDialog(MessageBoxBase):
+    """自定义输入对话框"""
+
+    def __init__(self, title1: str, placeholder1: str = "", title2: str="", placeholder2: str = "", parent=None):
+        super().__init__(parent)
+        self.titleLabel = SubtitleLabel(title1)
+        self.lineEdit = LineEdit()
+
+        self.lineEdit.setPlaceholderText(placeholder1)
+        self.lineEdit.setClearButtonEnabled(True)
+
+        self.titleLabel2 = SubtitleLabel(title2)
+        self.lineEdit2 = LineEdit()
+
+        self.lineEdit2.setPlaceholderText(placeholder2)
+        self.lineEdit2.setClearButtonEnabled(True)
+
+        # 将组件添加到布局中
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addWidget(self.lineEdit)
+        self.viewLayout.addWidget(self.titleLabel2)
+        self.viewLayout.addWidget(self.lineEdit2)
+        self.lineEdit.returnPressed.connect(self.accept)
+
+        # 设置对话框的最小宽度
+        self.widget.setMinimumWidth(350)
+
+    def get_text(self):
+        return self.lineEdit.text(), self.lineEdit2.text()
+
+
+
 class CustomComboDialog(MessageBoxBase):
     """自定义组合框对话框"""
 
