@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -35,7 +36,7 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         import numpy as np
-        self.logger.info(np.array(inputs.get("input"))[..., :3].shape)
+        self.logger.info(np.array(inputs.input)[..., :3].shape)
         return {
-            "output": np.array(inputs.get("input"))[..., :3]
+            "output": np.array(inputs.input)[..., :3]
         }

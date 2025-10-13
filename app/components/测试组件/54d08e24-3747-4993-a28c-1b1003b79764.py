@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class BranchExecutorNode(BaseComponent):
@@ -40,10 +41,10 @@ class BranchExecutorNode(BaseComponent):
     }
 
     def run(self, params, inputs=None):
-        condition = inputs.get("condition", False) if inputs else False
-        true_data = inputs.get("true_branch") if inputs else None
-        false_data = inputs.get("false_branch") if inputs else None
-        mode = params.get("execution_mode", "conditional")
+        condition = inputs.condition if inputs else False
+        true_data = inputs.true_branch if inputs else None
+        false_data = inputs.false_branch if inputs else None
+        mode = params.execution_mode
 
         if mode == "conditional":
             if condition:

@@ -12,13 +12,14 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
     name = "逻辑回归"
     category = "模型训练"
     description = "组件开发生成组件"
-    requirements = "matplotlib,scikit-learn"
+    requirements = "scikit-learn,matplotlib"
     inputs = [
         PortDefinition(name="feature", label="特征", type=ArgumentType.CSV),
         PortDefinition(name="target", label="目标", type=ArgumentType.CSV),
@@ -53,11 +54,11 @@ class Component(BaseComponent):
             import matplotlib
 
             # 读取数据
-            feature = inputs.get("feature")
-            target = inputs.get("target")
+            feature = inputs.feature
+            target = inputs.target
             # 获取参数
-            solver = params.get("solver", "liblinear")
-            max_iter = int(params.get("max_iter", 100))
+            solver = params.solver
+            max_iter = int(params.max_iter)
 
             # 训练模型
             model = LogisticRegression(solver=solver, max_iter=max_iter, multi_class='ovr')

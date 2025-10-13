@@ -12,13 +12,14 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
     name = "文档内容提取"
     category = "大模型组件"
     description = ""
-    requirements = "python-docx,pandas,pdfplumber,pptx,openpyxl,exceptions"
+    requirements = "pdfplumber,pandas,python-docx,pptx"
 
     inputs = [
         PortDefinition(name="file_path", label="文档路径", type=ArgumentType.UPLOAD),
@@ -47,7 +48,7 @@ class Component(BaseComponent):
         from typing import Any, Dict, Optional
         from pathlib import Path    
 
-        file_path = inputs.get("file_path") if inputs else None
+        file_path = inputs.file_path if inputs else None
         if not file_path or not os.path.exists(file_path):
             error_msg = "错误：文档路径无效或文件不存在"
             self.logger.error(error_msg)
@@ -56,8 +57,8 @@ class Component(BaseComponent):
                 "metadata": {"error": "File not found"}
             }
 
-        extract_images = params.get("extract_images", False)
-        page_range_str = params.get("page_range", "").strip()
+        extract_images = params.extract_images
+        page_range_str = params.page_range.strip()
 
         # 解析页码范围（简单支持 "1-3" 或 "2"）
         page_range = None

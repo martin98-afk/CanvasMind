@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -39,5 +40,5 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         return {
-            "output": params.get("input_text")
+            "output": params.input_text
         }

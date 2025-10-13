@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -38,7 +39,7 @@ class Component(BaseComponent):
         # 在这里编写你的组件逻辑
         from sklearn.preprocessing import MinMaxScaler
         import pandas as pd
-        input = inputs.get("input")
+        input = inputs.input
         scaler = MinMaxScaler()
         output = scaler.fit_transform(input)
         output = pd.DataFrame(output, columns=input.columns)

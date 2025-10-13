@@ -38,5 +38,5 @@ class Component(BaseComponent):
         self.logger.info(inputs)
         from PIL import Image
         return {
-            "image": Image.open(inputs.get("file"))
+            "image": Image.open(inputs.file)
         }

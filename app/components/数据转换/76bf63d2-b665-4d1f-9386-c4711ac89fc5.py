@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -38,6 +39,6 @@ class Component(BaseComponent):
         # 在这里编写你的组件逻辑
         
         return {
-            "output": inputs.get("input").values,
-            "columns": [column for column in inputs.get("input").columns]
+            "output": inputs.input.values,
+            "columns": [column for column in inputs.input.columns]
         }

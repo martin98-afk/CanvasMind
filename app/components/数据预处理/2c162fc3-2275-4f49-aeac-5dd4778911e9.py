@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -39,7 +40,7 @@ class Component(BaseComponent):
         input = inputs.get("input")
         if len(input.shape) == 1:
             input = input[None, :]
-        output = inputs.get("scaler").transform(input)
+        output = inputs.scaler.transform(input)
         return {
             "output": output
         }

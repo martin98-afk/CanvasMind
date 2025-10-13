@@ -522,6 +522,7 @@ class PropertyPanel(CardWidget):
         self._add_seperator()
         # 5. 内部节点列表
         self._add_internal_nodes_section(node)
+        self.vbox.addStretch(1)
 
     def _add_loop_config_section(self, node):
         """添加循环配置区域"""

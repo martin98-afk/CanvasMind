@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -42,8 +43,8 @@ class Component(BaseComponent):
     }
 
     def run(self, params, inputs = None):
-        query = inputs.get("query", "") if inputs else ""
-        top_k = int(params.get("top_k", 3))
+        query = inputs.query if inputs else ""
+        top_k = int(params.top_k)
 
         # TODO: 实际项目中替换为真实检索逻辑
         # 示例：模拟返回相关文档

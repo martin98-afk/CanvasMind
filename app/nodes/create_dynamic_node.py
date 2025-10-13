@@ -259,7 +259,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     params[prop_name] = self.get_property(prop_name) if self.has_property(prop_name) else default
             # === 全局变量 ===
             properties =  self.model.get_property("global_variable")
-            logger.info(properties)
             params.update({"global_variable": properties})
 
             # === 收集输入 ===

@@ -12,13 +12,14 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
     name = "图像分类测试"
     category = "模型训练"
     description = "使用pytorch中ResNet18预训练模型测试torch运行可行性"
-    requirements = "Pillow,torch,torchvision"
+    requirements = "torch,torchvision,Pillow"
     inputs = [
         PortDefinition(name="input_image", label="端口1", type=ArgumentType.IMAGE),
     ]
@@ -65,12 +66,12 @@ class Component(BaseComponent):
         from PIL import Image
         import io
         import base64
-        self.load_model(params.get("device"))
+        self.load_model(params.device)
         # 在这里编写你的组件逻辑
-        input_image = inputs.get("input_image")
+        input_image = inputs.input_image
         if input_image is None:
             raise ValueError("未提供图像！")
-        top_k = params.get("top_k", 1)
+        top_k = params.top_k
         input_tensor = self.process(input_image).unsqueeze(0).to(self.device)
         with torch.no_grad():
             output = self.model(input_tensor)

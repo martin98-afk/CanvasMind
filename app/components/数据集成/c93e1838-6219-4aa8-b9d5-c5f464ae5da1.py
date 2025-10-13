@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import importlib.util
 import pathlib
 base_path = pathlib.Path(__file__).parent.parent / "base.py"
@@ -11,6 +12,8 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
+
 
 class Component(BaseComponent):
     name = "文本输入"
@@ -30,4 +33,4 @@ class Component(BaseComponent):
     }
 
     def run(self, params, inputs=None):
-        return {"text": params["input"]}
+        return {"text": params.input}

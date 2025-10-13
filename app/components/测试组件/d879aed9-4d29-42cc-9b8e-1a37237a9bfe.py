@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class ConditionalNode(BaseComponent):
@@ -46,8 +47,8 @@ class ConditionalNode(BaseComponent):
     }
 
     def run(self, params, inputs=None):
-        condition_expr = params.get("condition_expression", "True")
-        eval_mode = params.get("evaluation_mode", "python")
+        condition_expr = params.condition_expression
+        eval_mode = params.evaluation_mode
 
         # 准备评估上下文
         context = {"data": {}}
@@ -67,11 +68,11 @@ class ConditionalNode(BaseComponent):
 
             # 根据结果选择输出
             if result:
-                true_output = inputs.get("true_data") if inputs else "True branch"
+                true_output = inputs.true_data if inputs else "True branch"
                 false_output = None
             else:
                 true_output = None
-                false_output = inputs.get("false_data") if inputs else "False branch"
+                false_output = inputs.false_data if inputs else "False branch"
 
             return {
                 "true_output": true_output,

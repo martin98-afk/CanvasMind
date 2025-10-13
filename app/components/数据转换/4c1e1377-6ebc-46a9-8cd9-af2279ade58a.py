@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -36,5 +37,5 @@ class Component(BaseComponent):
         """
         import json
         return {
-            "output": json.loads(inputs.get("input"))
+            "output": json.loads(inputs.input)
         }

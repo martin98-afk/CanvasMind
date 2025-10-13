@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -50,7 +51,7 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         # 在这里编写你的组件逻辑
-        param = params.get("variable")
+        param = params.variable
         output = {}
         for item in param:
             output[item["name"]] = item["type"]

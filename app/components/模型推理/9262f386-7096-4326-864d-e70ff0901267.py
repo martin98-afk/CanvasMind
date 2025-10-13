@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -39,10 +40,10 @@ class Component(BaseComponent):
             self.logger.info(inputs)
             from sklearn.linear_model import LogisticRegression
             # 读取数据
-            feature = inputs.get("feature")
+            feature = inputs.feature
             if len(feature.shape) == 1:
                 feature = feature[None, :]
-            model = inputs.get("model")
+            model = inputs.model
             self.logger.info(feature)
             # 训练模型
             result = model.predict(feature)

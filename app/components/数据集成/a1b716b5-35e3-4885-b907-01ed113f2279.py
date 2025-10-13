@@ -41,5 +41,5 @@ class Component(BaseComponent):
         """
         import numpy as np
         return {
-            "output": np.array([float(item) for item in params.get("param1").split(",")])
+            "output": np.array([float(item) for item in params.param1.split(",")])
         }

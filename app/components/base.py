@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
-import os
 import json
+import os
 import pickle
 import re
 from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Dict, Any, Optional, List, Tuple, Type, Union, Literal
 from pathlib import Path
+from typing import List, Tuple, Type, Union
+from typing import Any, Dict, Optional
+from pydantic import BaseModel, Field
+from enum import Enum
 
 import numpy as np
 import pandas as pd
 from PIL import Image
 from loguru import logger
-from pydantic import BaseModel, Field, create_model
-
-from app.nodes.global_variables import GlobalVariableContext
+from pydantic import create_model
 
 COMPONENT_IMPORT_CODE = """# -*- coding: utf-8 -*-
 import importlib.util
@@ -31,6 +31,53 @@ PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType\n\n\n"""
+
+
+class VariableScope(str, Enum):
+    GLOBAL = "global"
+    CANVAS = "canvas"
+    SESSION = "session"
+
+
+class ExecutionEnvironment(BaseModel):
+    user_id: Optional[str] = None
+    canvas_id: Optional[str] = None
+    session_id: Optional[str] = None
+    run_id: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CustomVariable(BaseModel):
+    value: Any = None
+    description: Optional[str] = None
+    scope: VariableScope = VariableScope.GLOBAL
+    read_only: bool = False
+
+
+class GlobalVariableContext(BaseModel):
+    env: ExecutionEnvironment = Field(default_factory=ExecutionEnvironment)
+    custom: Dict[str, CustomVariable] = Field(default_factory=dict)
+
+    class Config:
+        # 允许任意类型（因为 value 可能是 list/dict 等）
+        arbitrary_types_allowed = True
+
+    def get(self, key: str, default=None) -> Any:
+        """兼容旧 dict 用法：global_vars.get('key')"""
+        if key in self.custom:
+            return self.custom[key].value
+        return default
+
+    def set(self, key: str, value: Any) -> None:
+        """设置自定义变量（忽略只读检查，由业务层控制）"""
+        if key not in self.custom:
+            self.custom[key] = CustomVariable(value=value)
+        else:
+            self.custom[key].value = value
+
+    def to_dict(self) -> Dict[str, Any]:
+        """兼容旧逻辑：返回扁平字典（仅 custom 变量）"""
+        return {k: v.value for k, v in self.custom.items()} | self.env.dict()
 
 
 class ConnectionType(str, Enum):
@@ -87,7 +134,7 @@ class ArgumentType(str, Enum):
     # 验证是否是文件类型
     def is_file(self):
         return self in [ArgumentType.FILE, ArgumentType.EXCEL, ArgumentType.SKLEARNMODEL,
-                       ArgumentType.TORCHMODEL, ArgumentType.UPLOAD]
+                        ArgumentType.TORCHMODEL, ArgumentType.UPLOAD]
 
     def is_number(self):
         return self in [ArgumentType.INT, ArgumentType.FLOAT]
@@ -138,8 +185,28 @@ class PortDefinition(BaseModel):
     connection: ConnectionType = ConnectionType.SINGLE
 
 
+class InputModelMixin:
+    """为输入模型添加 .get() 方法，兼容字典用法"""
+
+    def get(self, key: str, default=None):
+        """
+        类似 dict.get()：
+        - 如果字段存在且不为 None，返回值
+        - 如果字段不存在或值为 None，返回 default
+        """
+        if hasattr(self, key):
+            value = getattr(self, key)
+            return value if value is not None else default
+        return default
+
+    # 可选：支持 in 操作（如 "image" in inputs）
+    def __contains__(self, key: str) -> bool:
+        return hasattr(self, key) and getattr(self, key) is not None
+
+
 class ComponentError(Exception):
     """组件执行错误"""
+
     def __init__(self, message: str, error_code: str = "COMPONENT_ERROR"):
         self.message = message
         self.error_code = error_code
@@ -158,7 +225,7 @@ class BaseComponent(ABC):
     logger = logger
 
     @abstractmethod
-    def run(self, params: Dict[str, Any], inputs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def run(self, params: BaseModel, inputs: BaseModel = None) -> Dict[str, Any]:
         """
         params: 节点属性（来自UI）
         inputs: 上游输入（key=输入端口名）
@@ -194,11 +261,16 @@ class BaseComponent(ABC):
 
     @classmethod
     def get_input_model(cls) -> Type[BaseModel]:
-        """动态创建输入数据模型"""
+        """动态创建输入数据模型，并支持 .get() 方法"""
         fields = {}
         for port in cls.inputs:
-            fields[port.name] = (Any, None)  # 所有输入端口都是可选的
-        return create_model(f"{cls.__name__}Input", **fields)
+            # 所有输入端口都是可选的，默认 None
+            fields[port.name] = (Any, None)
+
+        # 创建模型，并混入 InputModelMixin
+        model_name = f"{cls.__name__}Input"
+        base_classes = (InputModelMixin, BaseModel)
+        return create_model(model_name, __base__=base_classes, **fields)
 
     @classmethod
     def get_output_model(cls) -> Type[BaseModel]:
@@ -489,14 +561,16 @@ class BaseComponent(ABC):
         try:
             # 验证参数
             params_model = self.get_params_model()
-            validated_params = params_model(**params).dict()
+            validated_params = params_model(**params)
+            input_model_cls = self.get_input_model()
             # 验证并读取输入数据
             validated_inputs = {}
             if inputs:
                 for port in self.inputs:
                     if port.name in inputs:
                         if (port.connection == ConnectionType.SINGLE or
-                                (port.connection == ConnectionType.MULTIPLE and not isinstance(inputs[port.name], list))):
+                                (port.connection == ConnectionType.MULTIPLE and not isinstance(inputs[port.name],
+                                                                                               list))):
                             validated_inputs[port.name] = self.read_input_data(
                                 port.name, inputs[port.name], port.type
                             )
@@ -508,6 +582,7 @@ class BaseComponent(ABC):
                     if f"{port.name}_column_select" in inputs:
                         validated_inputs[port.name] = validated_inputs[port.name][inputs[f"{port.name}_column_select"]]
 
+            validated_inputs = input_model_cls(**validated_inputs)
             # 执行组件逻辑
             result = self.run(validated_params, validated_inputs)
 

@@ -45,9 +45,9 @@ class Component(BaseComponent):
 
     def run(self, params, inputs=None):
 
-        text = inputs.get("llm_output", "") if inputs else ""
-        strict = params.get("strict", False)
-        parse_type = params.get("type", "json")
+        text = inputs.llm_output if inputs else ""
+        strict = params.strict
+        parse_type = params.type
 
         try:
             if parse_type == "json":

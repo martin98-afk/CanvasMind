@@ -12,13 +12,14 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
     name = "动态表单测试"
     category = "测试组件"
     description = "动态表单测试组件"
-    requirements = "matplotlib,numpy,scikit-learn"
+    requirements = "numpy,scikit-learn,matplotlib"
     inputs = [
         PortDefinition(name="feature", label="特征", type=ArgumentType.CSV),
         PortDefinition(name="target", label="目标", type=ArgumentType.CSV),
@@ -61,11 +62,11 @@ class Component(BaseComponent):
             import numpy as np
 
             # 读取数据
-            feature = inputs.get("feature")
-            target = inputs.get("target")
+            feature = inputs.feature
+            target = inputs.target
             # 获取参数
-            solver = params.get("solver", "liblinear")
-            max_iter = params.get("max_iter", 100)
+            solver = params.solver
+            max_iter = params.max_iter
             self.logger.info(max_iter)
 
             # 训练模型

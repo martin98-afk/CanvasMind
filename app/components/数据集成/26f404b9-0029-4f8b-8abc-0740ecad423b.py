@@ -31,8 +31,8 @@ class Component(BaseComponent):
         try:
             import pandas as pd
             self.logger.info(inputs)
-            self.logger.info(f"开始读取csv文件: {inputs['csv']}")
-            return {"csv": pd.read_csv(inputs["csv"])}
+            self.logger.info(f"开始读取csv文件: {inputs.csv}")
+            return {"csv": pd.read_csv(inputs.csv)}
         except Exception as e:
             self.logger.error(f"无法读取csv文件: {str(e)}")
             raise e

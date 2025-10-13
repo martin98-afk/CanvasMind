@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class LoopNode(BaseComponent):
@@ -46,12 +47,12 @@ class LoopNode(BaseComponent):
         import ast
         import operator
         raise NotImplementedError("LoopNode.run() is not implemented")
-        max_iter = int(params.get("max_iterations", 10))
-        condition_expr = params.get("loop_condition", "True")
+        max_iter = int(params.max_iterations)
+        condition_expr = params.loop_condition
 
         # 初始数据
-        loop_data = inputs.get("initial_data") if inputs else {"count": 0}
-        condition = inputs.get("condition", True)
+        loop_data = inputs.initial_data if inputs else {"count": 0}
+        condition = inputs.condition
 
         iteration = 0
         while iteration < max_iter and self._evaluate_condition(condition_expr, loop_data):

@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -60,7 +61,7 @@ ArgumentType = base_module.ArgumentType\n\n\n"""
         file_full_path = file_path / file_name
         
         # 获取输入文本
-        text = inputs.get("text", "") if inputs else ""
+        text = inputs.text if inputs else ""
         self.logger.info(inputs)
         # 保存文本到文件
         with open(file_full_path, "w", encoding="utf-8") as f:

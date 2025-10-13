@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -88,8 +89,8 @@ class Component(BaseComponent):
         from openai import OpenAI
         self.logger.info(params)
         # 获取输入
-        user_input = inputs.get("user_input", "").strip() if inputs else ""
-        history = inputs.get("history", []) if inputs else []
+        user_input = inputs.user_input.strip() if inputs else ""
+        history = inputs.history if inputs else []
 
         if isinstance(history, str):
             try:
@@ -98,12 +99,12 @@ class Component(BaseComponent):
                 history = []
 
         # 获取参数
-        model = params.get("model", "qwen:7b")
-        api_key = params.get("api_key") or os.getenv("OPENAI_API_KEY")
-        base_url = params.get("base_url", "").strip()
-        system_prompt = params.get("system_prompt", "你是一个乐于助人的AI助手。")
-        temperature = float(params.get("temperature", 0.7))
-        max_tokens = int(params.get("max_tokens", 1000))    
+        model = params.model
+        api_key = params.api_key
+        base_url = params.base_url.strip()
+        system_prompt = params.system_prompt
+        temperature = float(params.temperature)
+        max_tokens = int(params.max_tokens)    
         self.logger.info(model)
         self.logger.info(system_prompt)
         if not user_input:
@@ -132,7 +133,7 @@ class Component(BaseComponent):
 
         # 解析额外模型配置信息
         extra_body={}
-        for item in params.get("model_params"):
+        for item in params.model_params:
             extra_body[item["key"]] = json.loads(item["value"])
 
         try:

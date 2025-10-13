@@ -12,13 +12,14 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
     name = "逻辑回归推理(csv)"
     category = "模型推理"
     description = "组件开发生成组件"
-    requirements = "matplotlib,scikit-learn"
+    requirements = "scikit-learn,matplotlib"
     inputs = [
         PortDefinition(name="feature", label="特征", type=ArgumentType.CSV),
         PortDefinition(name="model", label="模型", type=ArgumentType.SKLEARNMODEL),
@@ -41,8 +42,8 @@ class Component(BaseComponent):
             import matplotlib
 
             # 读取数据
-            feature = inputs.get("feature")
-            model = inputs.get("model")
+            feature = inputs.feature
+            model = inputs.model
             self.logger.info(feature)
             # 训练模型
             result = model.predict(feature)

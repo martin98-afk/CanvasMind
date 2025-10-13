@@ -7,7 +7,7 @@ from NodeGraphQt import BackdropNode
 from PyQt5.QtCore import QObject, pyqtSignal
 from loguru import logger
 
-from app.nodes.global_variables import GlobalVariableContext, ExecutionEnvironment, CustomVariable
+from app.components.base import GlobalVariableContext, ExecutionEnvironment, CustomVariable
 from app.nodes.status_node import NodeStatus
 from app.scheduler.node_list_executor import NodeListExecutor
 from app.utils.utils import get_port_node
@@ -227,7 +227,6 @@ class WorkflowScheduler(QObject):
     def _execute_backdrop_sync(self, backdrop):
         """同步执行循环型 Backdrop（在主线程中调用）"""
         try:
-            logger.info(f"执行 Backdrop: {backdrop.name()}")
             # 获取上游结果
             input_data = []
             for input_port in backdrop.input_ports():
@@ -244,15 +243,16 @@ class WorkflowScheduler(QObject):
             # 1. 获取输入数据（来自 backdrop 的 inputs 端口）
             if not isinstance(input_data, (list, tuple, dict)) and backdrop.TYPE == "loop":
                 input_data = [input_data]
-            # 4. 查找输入/输出代理节点
+            # 2. 查找输入/输出代理节点
             input_proxy, output_proxy, execute_nodes = backdrop.get_nodes()
-            logger.info(f"内部节点: {execute_nodes}")
             if input_proxy is None or output_proxy is None:
                 raise ValueError(f"循环体 {backdrop.name()} 缺少输入/输出代理节点")
 
             # 3. 拓扑排序内部节点
             if execute_nodes is None:
                 raise ValueError(f"循环体 {backdrop.name()} 内部存在依赖环")
+            # 注册全局变量
+            self.register_global_variable(execute_nodes)
 
             backdrop.model.set_property("current_index", 0)
             self.property_changed.emit(backdrop.id)
@@ -295,7 +295,6 @@ class WorkflowScheduler(QObject):
             # 5. 迭代执行逻辑
             elif backdrop.TYPE == "iterate":
                 results = None
-                logger.info(f"迭代次数: {backdrop.model.get_property('loop_nums')}")
                 for index in range(backdrop.model.get_property("loop_nums")):   # 暂时只支持迭代指定次数
                     input_proxy.set_output_value(input_data)
                     # 执行内部节点（同步）
@@ -329,7 +328,6 @@ class WorkflowScheduler(QObject):
                     input_data = outputs
                     backdrop.model.set_property("current_index", index+1)
                     self.property_changed.emit(backdrop.id)
-                    logger.info(f"迭代次数： {index+1} 迭代结果: {outputs}")
 
                 results = outputs
 
