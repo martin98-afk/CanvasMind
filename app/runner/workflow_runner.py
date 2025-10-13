@@ -78,7 +78,7 @@ def build_internal_graph(internal_nodes, graph_data):
     return order
 
 
-def build_node_inputs(node, graph_data, internal_outputs, global_outputs):
+def build_node_inputs(node, graph_data, internal_outputs):
     """构建节点输入"""
     inputs = {}
     inputs.update(node.get("input_values", {}))
@@ -90,25 +90,14 @@ def build_node_inputs(node, graph_data, internal_outputs, global_outputs):
             val = None
             if out_nid in internal_outputs:
                 val = internal_outputs[out_nid].get(out_port)
-            elif out_nid in global_outputs:
-                val = global_outputs[out_nid].get(out_port)
             if val is not None:
                 inputs[in_port] = val
     return inputs
 
 
-def execute_loop_node(loop_node, all_nodes, graph_data, global_outputs, runtime_data, type="loop"):
+def execute_loop_node(loop_node, all_nodes, graph_data, input_data, runtime_data, type="loop"):
     """执行一个循环控制流节点"""
-    # 1. 获取输入数据（来自 inputs 端口）
-    input_data = None
-    for conn in graph_data["connections"]:
-        if conn["in"][0] == loop_node["node_id"] and conn["in"][1] == "inputs":
-            out_nid = conn["out"][0]
-            if out_nid in global_outputs:
-                input_data = global_outputs[out_nid].get(conn["out"][1])
-                break
-
-    if input_data is None:
+    if input_data:
         input_data = loop_node["input_values"].get("inputs", [])
     if not isinstance(input_data, (list, tuple)) and type == "loop":
         input_data = [input_data]
@@ -147,7 +136,7 @@ def execute_loop_node(loop_node, all_nodes, graph_data, global_outputs, runtime_
             # 执行内部节点
             for nid in internal_order:
                 n = execute_nodes[nid]
-                node_inputs = build_node_inputs(n, graph_data, internal_outputs, global_outputs)
+                node_inputs = build_node_inputs(n, graph_data, internal_outputs)
                 output = run_component_in_subprocess(
                     comp_class=n["class"],
                     file_path=n["file_path"],
@@ -179,7 +168,7 @@ def execute_loop_node(loop_node, all_nodes, graph_data, global_outputs, runtime_
             # 执行内部节点
             for nid in internal_order:
                 n = execute_nodes[nid]
-                node_inputs = build_node_inputs(n, graph_data, internal_outputs, global_outputs)
+                node_inputs = build_node_inputs(n, graph_data, internal_outputs)
                 output = run_component_in_subprocess(
                     comp_class=n["class"],
                     file_path=n["file_path"],
@@ -283,48 +272,49 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
     # 7. 执行节点
     for node_id in execution_order:
         node = nodes[node_id]
+        # 构建输入字典（支持多输入端口聚合）
+        node_inputs = {}
+
+        # 先复制静态 input_values
+        for port, val in node["input_values"].items():
+            node_inputs[port] = val
+
+        # 处理列选择
+        stable_key = runtime_data.get("node_id2stable_key", {}).get(node_id, "")
+        column_select = runtime_data.get("column_select", {}).get(stable_key, {})
+        for port_name, cols in column_select.items():
+            if cols:
+                node_inputs[f"{port_name}_column_select"] = cols
+
+        # 聚合来自上游的输入（支持多连接）
+        input_port_values = defaultdict(list)
+        for conn in graph_data["connections"]:
+            if conn["in"][0] == node_id:
+                out_nid, out_port = conn["out"]
+                in_port = conn["in"][1]
+                with outputs_lock:
+                    if out_nid in node_outputs:
+                        val = node_outputs[out_nid].get(out_port)
+                        if val is not None:
+                            input_port_values[in_port].append(val)
+
+        # 合并：如果一个端口有多个输入，用列表；否则用单个值
+        for port, vals in input_port_values.items():
+            if len(vals) == 1:
+                node_inputs[port] = vals[0]
+            else:
+                node_inputs[port] = vals  # 多输入端口自动为列表
 
         if node["is_loop_node"]:
             # ✅ 执行循环节点
-            output = execute_loop_node(node, nodes, graph_data, node_outputs, runtime_data, type="loop")
+            output = execute_loop_node(
+                node, nodes, graph_data, [item for item in node_inputs.values()][0], runtime_data, type="loop")
             node_outputs[node_id] = output
         elif node["is_iterate_node"]:
-            output = execute_loop_node(node, nodes, graph_data, node_outputs, runtime_data, type="iterate")
+            output = execute_loop_node(
+                node, nodes, graph_data, [item for item in node_inputs.values()][0], runtime_data, type="iterate")
             node_outputs[node_id] = output
         else:
-            # 构建输入字典（支持多输入端口聚合）
-            node_inputs = {}
-
-            # 先复制静态 input_values
-            for port, val in node["input_values"].items():
-                node_inputs[port] = val
-
-            # 处理列选择
-            stable_key = runtime_data.get("node_id2stable_key", {}).get(node_id, "")
-            column_select = runtime_data.get("column_select", {}).get(stable_key, {})
-            for port_name, cols in column_select.items():
-                if cols:
-                    node_inputs[f"{port_name}_column_select"] = cols
-
-            # 聚合来自上游的输入（支持多连接）
-            input_port_values = defaultdict(list)
-            for conn in graph_data["connections"]:
-                if conn["in"][0] == node_id:
-                    out_nid, out_port = conn["out"]
-                    in_port = conn["in"][1]
-                    with outputs_lock:
-                        if out_nid in node_outputs:
-                            val = node_outputs[out_nid].get(out_port)
-                            if val is not None:
-                                input_port_values[in_port].append(val)
-
-            # 合并：如果一个端口有多个输入，用列表；否则用单个值
-            for port, vals in input_port_values.items():
-                if len(vals) == 1:
-                    node_inputs[port] = vals[0]
-                else:
-                    node_inputs[port] = vals  # 多输入端口自动为列表
-
             # 执行
             try:
                 logger.info(f"执行节点: {node['name']}")
