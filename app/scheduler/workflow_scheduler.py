@@ -32,21 +32,13 @@ class WorkflowScheduler(QObject):
         component_map: Dict[str, Any],
         get_node_status: Callable,
         get_python_exe: Callable[[], Optional[str]],
+        global_variables: GlobalVariableContext,
         parent=None
     ):
         super().__init__(parent)
         self.parent = parent
         self.graph = graph
-        self.global_variables = GlobalVariableContext(
-            env=ExecutionEnvironment(
-                canvas_id=graph.id if hasattr(graph, 'id') else "default",
-                session_id="sess_123",  # 可从外部传入
-                run_id=str(int(datetime.utcnow().timestamp()))
-            ),
-            custom={
-                "wo": CustomVariable(value="caolege1bi", description="示例变量")
-            }
-        )
+        self.global_variables = global_variables
         self.component_map = component_map
         self.get_node_status = get_node_status
         self.get_python_exe = get_python_exe

@@ -19,7 +19,7 @@ from qfluentwidgets import (
     InfoBarPosition, FluentIcon, ComboBox, LineEdit
 )
 
-from app.components.base import PropertyType
+from app.components.base import PropertyType, GlobalVariableContext, ExecutionEnvironment
 from app.nodes.create_backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
 from app.nodes.create_dynamic_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
@@ -64,14 +64,19 @@ class CanvasPage(QWidget):
         self._registered_nodes = []
         self._clipboard_data = None
         self._scheduler = None  # ← 新增：调度器引用
-
         # 初始化 NodeGraph
         self.graph = NodeGraph()
         self.config = Settings.get_instance()
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
         self.canvas_widget.keyPressEvent = self._canvas_key_press_event
-
+        self.global_variables = GlobalVariableContext(
+            env=ExecutionEnvironment(
+                canvas_id=self.graph.id if hasattr(self.graph, 'id') else "default",
+                session_id="sess_123",  # 可从外部传入
+                run_id=str(int(datetime.utcnow().timestamp()))
+            )
+        )
         # 组件面板
         self.register_components()
         self.nav_panel = DraggableTreePanel(self)
@@ -115,6 +120,7 @@ class CanvasPage(QWidget):
             component_map=self.component_map,
             get_node_status=self.get_node_status,
             get_python_exe=self.get_current_python_exe,
+            global_variables=self.global_variables,
             parent=self
         )
         scheduler.node_status_changed.connect(self.set_node_status_by_id)
@@ -1047,7 +1053,6 @@ class CanvasPage(QWidget):
             "graph": graph_data,
             "runtime": runtime
         }
-        print(full_data)
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(full_data, f, indent=2, ensure_ascii=False)
         self._generate_canvas_thumbnail_async(file_path)

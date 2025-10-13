@@ -40,6 +40,7 @@ class Component(BaseComponent):
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
+        self.logger.info(params.dict())
         # 在这里编写你的组件逻辑
         input = inputs.input1
         return {

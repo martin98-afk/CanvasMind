@@ -51,7 +51,7 @@
             "user_id": null,
             "canvas_id": "default",
             "session_id": "sess_123",
-            "run_id": "1760335181",
+            "run_id": "1760335989",
             "metadata": {}
           }
         }
@@ -96,7 +96,7 @@
             "user_id": null,
             "canvas_id": "default",
             "session_id": "sess_123",
-            "run_id": "1760335181",
+            "run_id": "1760335989",
             "metadata": {}
           }
         }
@@ -179,7 +179,7 @@
             "user_id": null,
             "canvas_id": "default",
             "session_id": "sess_123",
-            "run_id": "1760334155",
+            "run_id": "1760335989",
             "metadata": {}
           },
           "param1": "1,2,3,4"
@@ -339,7 +339,7 @@
             "user_id": null,
             "canvas_id": "default",
             "session_id": "sess_123",
-            "run_id": "1760335199",
+            "run_id": "1760335989",
             "metadata": {}
           }
         }
@@ -367,7 +367,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 160,
         "height": 72.2,
@@ -384,7 +384,7 @@
             "user_id": null,
             "canvas_id": "default",
             "session_id": "sess_123",
-            "run_id": "1760335900",
+            "run_id": "1760335989",
             "metadata": {}
           }
         }
@@ -412,7 +412,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 160,
         "height": 72.2,
@@ -429,7 +429,7 @@
             "user_id": null,
             "canvas_id": "default",
             "session_id": "sess_123",
-            "run_id": "1760330740",
+            "run_id": "1760335989",
             "metadata": {}
           }
         }
@@ -547,7 +547,14 @@
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
-          "global_variable": {},
+          "global_variable": {
+            "wo": "caolege1bi",
+            "user_id": null,
+            "canvas_id": "default",
+            "session_id": "sess_123",
+            "run_id": "1760335989",
+            "metadata": {}
+          },
           "solver": "liblinear",
           "max_iter": "100"
         }
@@ -3461,7 +3468,7 @@
             149
           ]
         },
-        "scaler": "C:\\Users\\black\\AppData\\Local\\Temp\\tmpowqrs101.pkl"
+        "scaler": "C:\\Users\\black\\AppData\\Local\\Temp\\tmp2f6sb3f1.pkl"
       },
       "数据预处理/归一化推理(npy)||归一化推理(npy)": {
         "output": [
@@ -4393,7 +4400,7 @@
         "value": [
           0
         ],
-        "model": "C:\\Users\\mading\\AppData\\Local\\Temp\\tmpb_ig55q6.pkl"
+        "model": "C:\\Users\\black\\AppData\\Local\\Temp\\tmpo7comq4y.pkl"
       },
       "数据预处理/图像4通道转3通道||图像4通道转3通道": {},
       "模型训练/图像分类测试||图像分类测试 1": {},
