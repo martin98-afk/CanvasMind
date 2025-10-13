@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict, deque
+from typing import Optional, List
 
 from NodeGraphQt import BackdropNode, Port
 from NodeGraphQt.constants import ITEM_CACHE_MODE
@@ -12,11 +13,13 @@ from NodeGraphQt.qgraphics.port import PortItem
 from PyQt5 import QtCore, QtGui, QtWidgets
 from Qt import QtCore, QtGui, QtWidgets
 
+from app.utils.utils import get_port_node, draw_square_port
+
 
 class ControlFlowBackdrop(BackdropNode):
     """
     支持控制流的增强型 Backdrop
-    - 可配置为 Loop / Branch
+    - 可配置为 Loop / iterate
     - 动态添加输入/输出端口
     """
     category = "控制流"
@@ -29,15 +32,13 @@ class ControlFlowBackdrop(BackdropNode):
         self._inputs = []
         self._outputs = []
         self._output_values = {}
-        # === 初始化默认端口 ===
+        # === 初始化默认端口默认多输入/多输出端口 ===
         self.add_input("inputs", multi_input=True, display_name=True)
         self.add_output("outputs", display_name=True)
-        self.set_size(700, 700)
         # === 添加默认多输入/多输出端口 ===
-        self._control_flow_type = None  # 'loop' or 'branch'
-        self._loop_config = {}
-        self._branch_config = {}
-        self.model.add_property("iterate_nums", 5)
+        self.model.add_property("current_index", 0)
+        self.model.add_property("loop_nums", 5)
+        self.model.add_property("max_iterations", 1000)
 
     @property
     def control_flow_type(self):
@@ -49,12 +50,58 @@ class ControlFlowBackdrop(BackdropNode):
     def get_branch_config(self):
         return self._branch_config
 
+    def get_nodes(self):
+        """获取控制流区域内输入、输出端口以及经过拓扑排序后的执行节点"""
+        execute_nodes = []
+        input_proxy, output_proxy = None, None
+        for node in self.nodes():
+            if node.type_ == "control_flow.ControlFlowInputPort":
+                input_proxy = node
+            elif node.type_ == "control_flow.ControlFlowOutputPort":
+                output_proxy = node
+            else:
+                execute_nodes.append(node)
+        return input_proxy, output_proxy, self._topological_sort(execute_nodes)
+
+    def _topological_sort(self, nodes: List) -> Optional[List]:
+        """对节点列表进行拓扑排序，检测循环依赖"""
+        if not nodes:
+            return []
+
+        # 构建子图依赖
+        in_degree = {node: 0 for node in nodes}
+        graph_deps = defaultdict(list)
+
+        node_set = set(nodes)
+        for node in nodes:
+            for input_port in node.input_ports():
+                for upstream_out in input_port.connected_ports():
+                    upstream = get_port_node(upstream_out)
+                    if upstream in node_set:
+                        graph_deps[upstream].append(node)
+                        in_degree[node] += 1
+
+        # Kahn 算法
+        queue = deque([n for n in nodes if in_degree[n] == 0])
+        execution_order = []
+        while queue:
+            n = queue.popleft()
+            execution_order.append(n)
+            for neighbor in graph_deps[n]:
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+
+        if len(execution_order) != len(nodes):
+            return None  # 存在环
+        return execution_order
+
     def add_input(self, name='input', multi_input=False, display_name=True, color=None, locked=False,
                   painter_func=None):
         """手动实现 add_input（模仿 BaseNode）"""
         if name in self.inputs().keys():
             raise ValueError(f'输入端口 "{name}" 已存在')
-        view = self.view.add_input(name, multi_input, display_name, locked)
+        view = self.view.add_input(name, multi_input, display_name, locked, painter_func=draw_square_port)
         if color:
             view.color = color
             view.border_color = [min(255, max(0, i + 80)) for i in color]
@@ -210,15 +257,17 @@ class ControlFlowBackdrop(BackdropNode):
 
 
 class ControlFlowLoopNode(ControlFlowBackdrop):
-
+    category = "控制流"
     NODE_NAME = "循环控制流区域"
     TYPE = "loop"
+    FULL_PATH = f"{category}/{NODE_NAME}"
 
 
 class ControlFlowIterateNode(ControlFlowBackdrop):
-
+    category = "控制流"
     NODE_NAME = "迭代控制流区域"
     TYPE = "iterate"
+    FULL_PATH = f"{category}/{NODE_NAME}"
 
 
 class ControlFlowBackdropNodeItem(BackdropNodeItem):

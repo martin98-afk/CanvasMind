@@ -4,13 +4,14 @@ import os
 
 import pandas as pd
 from loguru import logger
-from NodeGraphQt import BackdropNode
+from NodeGraphQt import BackdropNode, BaseNode
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
     QStackedWidget, QHBoxLayout
-from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget
+from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, ProgressBar
 
 from app.components.base import ArgumentType
+from app.nodes.create_backdrop_node import ControlFlowBackdrop
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
 
 
@@ -48,12 +49,9 @@ class PropertyPanel(CardWidget):
         self.stacked_widget = None
 
     def update_properties(self, node):
-        if node is None or node.type_.startswith("control_flow"):
-            return
         # 清理旧的控件引用
         self._column_list_widgets.clear()
         self._text_edit_widgets.clear()
-
         # 清理布局中的所有控件
         while self.vbox.count():
             child = self.vbox.takeAt(0)
@@ -69,154 +67,156 @@ class PropertyPanel(CardWidget):
                 except (TypeError, RuntimeError):
                     pass
                 widget.deleteLater()
-
         self.current_node = node
-        if not node or isinstance(node, BackdropNode):
+        if not node:
             label = BodyLabel("请选择一个节点查看详情。")
             self.vbox.addWidget(label)
             return
 
-        # 确保节点有 _input_values 属性
-        if not hasattr(node, '_input_values'):
-            node._input_values = {}
+        elif isinstance(node, ControlFlowBackdrop):
+            self._update_control_flow_properties(node)
+        elif isinstance(node, BaseNode):
+            # 确保节点有 _input_values 属性
+            if not hasattr(node, '_input_values'):
+                node._input_values = {}
 
-        # 1. 节点标题
-        title = BodyLabel(f"📌 {node.name()}")
-        title.setWordWrap(True)
-        title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
-        self.vbox.addWidget(title)
+            # 1. 节点标题
+            title = BodyLabel(f"📌 {node.name()}")
+            title.setWordWrap(True)
+            title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+            self.vbox.addWidget(title)
 
-        # 2. 节点描述
-        description = self.get_node_description(node)
-        if description and description.strip():
-            desc_label = BodyLabel(f"📝 {description}")
-            desc_label.setWordWrap(True)
-            desc_label.setStyleSheet("color: #888888; font-size: 12px;")
-            self.vbox.addWidget(desc_label)
+            # 2. 节点描述
+            description = self.get_node_description(node)
+            if description and description.strip():
+                desc_label = BodyLabel(f"📝 {description}")
+                desc_label.setWordWrap(True)
+                desc_label.setStyleSheet("color: #888888; font-size: 12px;")
+                self.vbox.addWidget(desc_label)
 
-        self._add_seperator()
+            self._add_seperator()
 
-        # 创建导航栏和堆叠窗口
-        self.segmented_widget = SegmentedWidget()
+            # 创建导航栏和堆叠窗口
+            self.segmented_widget = SegmentedWidget()
 
-        # 添加导航项 - 使用正确的参数
-        self.segmented_widget.addItem('input', '输入端口')
-        self.segmented_widget.addItem('output', '输出端口')
+            # 添加导航项 - 使用正确的参数
+            self.segmented_widget.addItem('input', '输入端口')
+            self.segmented_widget.addItem('output', '输出端口')
 
-        self.stacked_widget = QStackedWidget()
+            self.stacked_widget = QStackedWidget()
 
-        # 添加输入端口页面
-        input_widget = QWidget()
-        input_layout = QVBoxLayout(input_widget)
-        input_layout.setContentsMargins(0, 0, 0, 0)
-        input_layout.setSpacing(8)
+            # 添加输入端口页面
+            input_widget = QWidget()
+            input_layout = QVBoxLayout(input_widget)
+            input_layout.setContentsMargins(0, 0, 0, 0)
+            input_layout.setSpacing(8)
 
-        # 输入端口内容
-        input_layout.addWidget(BodyLabel("📥 输入端口:"))
-        input_ports_info = self.get_node_input_ports_info(node)
+            # 输入端口内容
+            input_layout.addWidget(BodyLabel("📥 输入端口:"))
+            input_ports_info = self.get_node_input_ports_info(node)
 
-        if input_ports_info:
-            for input_port, port_def in zip(node.input_ports(), node.component_class.inputs):
-                port_display = f"{port_def.label} ({port_def.name})"
-                input_layout.addWidget(BodyLabel(f"  • {port_display}"))
+            if input_ports_info:
+                for input_port, port_def in zip(node.input_ports(), node.component_class.inputs):
+                    port_display = f"{port_def.label} ({port_def.name})"
+                    input_layout.addWidget(BodyLabel(f"  • {port_display}"))
 
-                # 获取原始上游数据（用于列选择）
-                connected = input_port.connected_ports()
-                original_upstream_data = None
-                if len(connected) == 1:
-                    upstream_out = connected[0]
-                    upstream_node = upstream_out.node()
-                    original_upstream_data = upstream_node.get_output_value(upstream_out.name())
-                else:
-                    original_upstream_data = [
-                        upstream.node().get_output_value(upstream.name()) for upstream in connected
-                    ]
-                port_type = getattr(port_def, 'type', ArgumentType.TEXT)
-
-                # 根据端口类型添加不同的控件
-                if port_type == ArgumentType.CSV:
-                    # CSV类型：显示列选择控件
-                    self._add_column_selector_widget_to_layout(node, port_def.name, original_upstream_data,
-                                                               original_upstream_data, input_layout)
-                    # 显示当前选中的数据（用于执行）
-                    current_selected_data = self._get_current_input_value(node, port_def.name, original_upstream_data)
-                    self._add_text_edit_to_layout(
-                        current_selected_data, port_type=port_type, port_name=port_def.name, layout=input_layout
-                    )
-                else:
-                    # 普通数据：直接显示上游数据或当前输入值
-                    if connected:
-                        display_data = original_upstream_data
+                    # 获取原始上游数据（用于列选择）
+                    connected = input_port.connected_ports()
+                    original_upstream_data = None
+                    if len(connected) == 1:
+                        upstream_out = connected[0]
+                        upstream_node = upstream_out.node()
+                        original_upstream_data = upstream_node.get_output_value(upstream_out.name())
                     else:
-                        display_data = node._input_values.get(port_def.name, "暂无数据")
-                    try:
-                        if not isinstance(display_data, str) or display_data != "暂无数据":
-                            display_data = port_type.serialize(display_data) if len(connected) <= 1 else \
-                                [port_type.serialize(data) for data in original_upstream_data]
+                        original_upstream_data = [
+                            upstream.node().get_output_value(upstream.name()) for upstream in connected
+                        ]
+                    port_type = getattr(port_def, 'type', ArgumentType.TEXT)
+
+                    # 根据端口类型添加不同的控件
+                    if port_type == ArgumentType.CSV:
+                        # CSV类型：显示列选择控件
+                        self._add_column_selector_widget_to_layout(node, port_def.name, original_upstream_data,
+                                                                   original_upstream_data, input_layout)
+                        # 显示当前选中的数据（用于执行）
+                        current_selected_data = self._get_current_input_value(node, port_def.name, original_upstream_data)
                         self._add_text_edit_to_layout(
-                            display_data, port_type=port_type, port_name=port_def.name, layout=input_layout
+                            current_selected_data, port_type=port_type, port_name=port_def.name, layout=input_layout
                         )
+                    else:
+                        # 普通数据：直接显示上游数据或当前输入值
+                        if connected:
+                            display_data = original_upstream_data
+                        else:
+                            display_data = node._input_values.get(port_def.name, "暂无数据")
+                        try:
+                            if not isinstance(display_data, str) or display_data != "暂无数据":
+                                display_data = port_type.serialize(display_data) if len(connected) <= 1 else \
+                                    [port_type.serialize(data) for data in original_upstream_data]
+                            self._add_text_edit_to_layout(
+                                display_data, port_type=port_type, port_name=port_def.name, layout=input_layout
+                            )
+                        except:
+                            import traceback
+                            traceback.print_exc()
+                            logger.error(f"无法解析输入数据：{display_data}")
+                            display_data = "暂无数据"
+
+            else:
+                input_layout.addWidget(BodyLabel("  无输入端口"))
+
+            input_layout.addStretch(1)
+
+            # 添加输出端口页面
+            output_widget = QWidget()
+            output_layout = QVBoxLayout(output_widget)
+            output_layout.setContentsMargins(0, 0, 0, 0)
+            output_layout.setSpacing(8)
+
+            # 输出端口内容
+            output_layout.addWidget(BodyLabel("📤 输出端口:"))
+            output_ports = node.component_class.outputs
+            if output_ports:
+                result = node._output_values
+                for port_def in output_ports:
+                    port_name = port_def.name
+                    port_label = port_def.label
+                    output_layout.addWidget(BodyLabel(f"  • {port_label} ({port_name})"))
+
+                    display_data = result.get(port_name) if result and port_name in result else "暂无数据"
+                    port_type = getattr(port_def, 'type', ArgumentType.TEXT)
+
+                    # 根据端口类型添加不同的控件
+                    if port_type == ArgumentType.UPLOAD:
+                        self._add_upload_widget_to_layout(node, port_def.name, output_layout)
+                    try:
+                        if isinstance(display_data, str) and display_data != "暂无数据":
+                            display_data = port_type.serialize(display_data)
                     except:
                         import traceback
                         traceback.print_exc()
-                        logger.error(f"无法解析输入数据：{display_data}")
+                        logger.error(f"无法解析输出数据：{display_data}")
                         display_data = "暂无数据"
 
-        else:
-            input_layout.addWidget(BodyLabel("  无输入端口"))
+                    self._add_text_edit_to_layout(display_data, port_name=port_def.name, layout=output_layout)
+            else:
+                output_layout.addWidget(BodyLabel("  无输出端口"))
 
-        input_layout.addStretch(1)
+            output_layout.addStretch(1)
 
-        # 添加输出端口页面
-        output_widget = QWidget()
-        output_layout = QVBoxLayout(output_widget)
-        output_layout.setContentsMargins(0, 0, 0, 0)
-        output_layout.setSpacing(8)
+            # 添加页面到堆叠窗口
+            self.stacked_widget.addWidget(input_widget)
+            self.stacked_widget.addWidget(output_widget)
 
-        # 输出端口内容
-        output_layout.addWidget(BodyLabel("📤 输出端口:"))
-        output_ports = node.component_class.outputs
-        if output_ports:
-            result = node._output_values
-            for port_def in output_ports:
-                port_name = port_def.name
-                port_label = port_def.label
-                output_layout.addWidget(BodyLabel(f"  • {port_label} ({port_name})"))
+            # 连接导航栏信号
+            self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
 
-                display_data = result.get(port_name) if result and port_name in result else "暂无数据"
-                port_type = getattr(port_def, 'type', ArgumentType.TEXT)
+            # 添加导航栏和堆叠窗口到主布局
+            self.vbox.addWidget(self.segmented_widget)
+            self.vbox.addWidget(self.stacked_widget)
 
-                # 根据端口类型添加不同的控件
-                if port_type == ArgumentType.UPLOAD:
-                    self._add_upload_widget_to_layout(node, port_def.name, output_layout)
-                try:
-                    if isinstance(display_data, str) and display_data != "暂无数据":
-                        display_data = port_type.serialize(display_data)
-                except:
-                    import traceback
-                    traceback.print_exc()
-                    logger.error(f"无法解析输出数据：{display_data}")
-                    display_data = "暂无数据"
-
-                self._add_text_edit_to_layout(display_data, port_name=port_def.name, layout=output_layout)
-        else:
-            output_layout.addWidget(BodyLabel("  无输出端口"))
-
-        output_layout.addStretch(1)
-
-        # 添加页面到堆叠窗口
-        self.stacked_widget.addWidget(input_widget)
-        self.stacked_widget.addWidget(output_widget)
-
-        # 连接导航栏信号
-        self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
-
-        # 添加导航栏和堆叠窗口到主布局
-        self.vbox.addWidget(self.segmented_widget)
-        self.vbox.addWidget(self.stacked_widget)
-
-        # 默认显示输入端口
-        self.segmented_widget.setCurrentItem('input')
+            # 默认显示输入端口
+            self.segmented_widget.setCurrentItem('input')
 
     def _add_seperator(self):
         # 添加分隔线
@@ -473,3 +473,112 @@ class PropertyPanel(CardWidget):
             port_name = output_port.name()
             ports_info.append((port_name, port_name))
         return ports_info
+
+    def _update_control_flow_properties(self, node):
+        """更新控制流节点（循环/分支）的属性面板"""
+        # 1. 节点标题
+        title = BodyLabel(f"🔁 {node.NODE_NAME}")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+        self.vbox.addWidget(title)
+
+        # 2. 控制流类型
+        flow_type = getattr(node, 'TYPE', 'unknown')
+        type_label = BodyLabel(f"类型: {'循环' if flow_type == 'loop' else '迭代'}")
+        self.vbox.addWidget(type_label)
+
+        # 3. 迭代进度（如果正在运行）
+        current = node.model.get_property('current_index')
+        if flow_type == "iterate":
+            total = node.model.get_property("loop_nums")
+        elif flow_type == "loop":
+            input_data = []
+            for input_port in node.input_ports():
+                connected = input_port.connected_ports()
+                if connected:
+                    if len(connected) == 1:
+                        upstream = connected[0]
+                        value = upstream.node()._output_values.get(upstream.name())
+                        input_data = value
+                    else:
+                        input_data.extend(
+                            [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
+                        )
+            if not isinstance(input_data, (list, tuple, dict)):
+                input_data = [input_data]
+            total = len(input_data)
+            node.model.set_property("loop_nums", total)
+
+        progress_label = BodyLabel(f"进度: {current}/{total}")
+        progress_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
+        # 进度条
+        progress_bar = ProgressBar(self, useAni=False)
+        progress_bar.setRange(0, 100)
+        progress_bar.setValue(int(current / max(1, total) * 100))
+        self.vbox.addWidget(progress_label)
+        self.vbox.addWidget(progress_bar)
+        if flow_type == "iterate":
+            self._add_seperator()
+            self._add_loop_config_section(node)
+        self._add_seperator()
+        # 5. 内部节点列表
+        self._add_internal_nodes_section(node)
+
+    def _add_loop_config_section(self, node):
+        """添加循环配置区域"""
+        config_card = CardWidget(self)
+        config_layout = QVBoxLayout(config_card)
+        config_layout.setContentsMargins(10, 10, 10, 10)
+
+        title = BodyLabel("循环配置")
+        config_layout.addWidget(title)
+
+        # 最大迭代次数
+        from qfluentwidgets import SpinBox
+        max_iter_spin = SpinBox(self)
+        max_iter_spin.setRange(1, node.model.get_property("max_iterations"))
+        current_max = node.model.get_property("loop_nums")
+        max_iter_spin.setValue(current_max)
+
+        def on_max_iter_changed(value):
+            node.model.set_property('loop_nums', value)
+            self.update_properties(node)
+
+        max_iter_spin.valueChanged.connect(on_max_iter_changed)
+
+        config_layout.addWidget(BodyLabel("最大迭代次数:"))
+        config_layout.addWidget(max_iter_spin)
+
+        self.vbox.addWidget(config_card)
+
+    def _add_internal_nodes_section(self, node):
+        """添加内部节点列表"""
+        nodes_card = CardWidget(self)
+        nodes_layout = QVBoxLayout(nodes_card)
+        nodes_layout.setContentsMargins(10, 10, 10, 10)
+
+        title = BodyLabel("内部节点")
+        nodes_layout.addWidget(title)
+
+        # 获取内部节点
+        _, _, internal_nodes = node.get_nodes()
+        if not internal_nodes:
+            nodes_layout.addWidget(BodyLabel("暂无内部节点"))
+        else:
+            # 创建列表
+            nodes_list = ListWidget(self)
+            for n in internal_nodes:
+                status = self.main_window.get_node_status(n)
+                status_text = {
+                    "running": "🟡 运行中",
+                    "success": "🟢 成功",
+                    "failed": "🔴 失败",
+                    "unrun": "⚪ 未运行",
+                    "pending": "🔵 待运行"
+                }.get(status, status)
+                item_text = f"{n.name()} - {status_text}"
+                item = QListWidgetItem(item_text)
+                nodes_list.addItem(item)
+
+            nodes_layout.addWidget(nodes_list)
+
+        self.vbox.addWidget(nodes_card)

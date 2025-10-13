@@ -118,12 +118,24 @@ class CanvasPage(QWidget):
             parent=self
         )
         scheduler.node_status_changed.connect(self.set_node_status_by_id)
+        scheduler.property_changed.connect(self.update_node_property)
         return scheduler
 
     def set_node_status_by_id(self, node_id, status):
         node = self._get_node_by_id(node_id)
         if node:
             self.set_node_status(node, status)
+
+    def update_node_property(self, node_id):
+        selected_nodes = self.graph.selected_nodes()
+        backdrop = None
+        for node in selected_nodes:
+            if isinstance(node, ControlFlowBackdrop):
+                backdrop = node
+                break
+        node = self._get_node_by_id(node_id)
+        if selected_nodes and node == backdrop:
+            self.property_panel.update_properties(node)
 
     def _connect_scheduler_signals(self):
         """连接调度器信号到 UI 回调"""
@@ -224,7 +236,6 @@ class CanvasPage(QWidget):
         current_data = self.env_combo.currentData()
         if hasattr(self.parent, 'package_manager') and self.parent.package_manager and current_data:
             try:
-                logger.info(f"获取环境 {current_data} 的Python路径: {str(self.parent.package_manager.mgr.get_python_exe(current_data))}")
                 return str(self.parent.package_manager.mgr.get_python_exe(current_data))
             except Exception as e:
                 self.create_failed_info("错误", f"获取环境 {current_data} 的Python路径失败: {str(e)}")
@@ -406,7 +417,7 @@ class CanvasPage(QWidget):
 
         # 可选配置
         if key == "ControlFlowIterateNode":
-            backdrop_node.model.add_property("iterate_nums", 3)
+            backdrop_node.model.set_property("loop_nums", 3)
 
     def close_current_canvas(self):
         self.canvas_deleted.emit()
@@ -936,10 +947,12 @@ class CanvasPage(QWidget):
         self._scheduler = None
         self.create_success_info("完成", "工作流执行完成!")
         if self.file_path:
-            self.save_full_workflow(self.file_path)
+            self.save_full_workflow(self.file_path, show_info=False)
 
     def _on_workflow_error(self, msg=""):
         self._scheduler = None
+        self.run_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
         self.create_failed_info("错误", f"工作流执行失败! {msg}")
 
     def on_node_started_simple(self, node_id):
@@ -996,14 +1009,19 @@ class CanvasPage(QWidget):
     def on_selection_changed(self):
         selected_nodes = self.graph.selected_nodes()
         if selected_nodes:
-            self.on_node_selected(selected_nodes[0])
+            for node in selected_nodes:
+                if isinstance(node, ControlFlowBackdrop):
+                    self.on_node_selected(node)
+                    return
+            if selected_nodes[0].__identifier__ == "dynamic":
+                self.on_node_selected(selected_nodes[0])
         else:
             self.property_panel.update_properties(None)
 
     def on_node_selected(self, node):
         self.property_panel.update_properties(node)
 
-    def save_full_workflow(self, file_path):
+    def save_full_workflow(self, file_path, show_info=True):
         graph_data = self.graph.serialize_session()
         runtime = {
             "environment": self.env_combo.currentData(),
@@ -1033,7 +1051,8 @@ class CanvasPage(QWidget):
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(full_data, f, indent=2, ensure_ascii=False)
         self._generate_canvas_thumbnail_async(file_path)
-        self.create_success_info("保存成功", "工作流保存成功！")
+        if show_info:
+            self.create_success_info("保存成功", "工作流保存成功！")
 
     def _generate_selected_nodes_thumbnail(self, export_path: pathlib.Path):
         """为选中的节点生成缩略图并保存到 export_path 下（如 preview.png）"""
@@ -1111,10 +1130,10 @@ class CanvasPage(QWidget):
                     stable_key = f"{full_path}||{node_name}"
                     node_status = node_status_data.get(stable_key)
                     if node_status:
-                        node._input_values = deserialize_from_json(node_status.get("input_values", {}))
-                        node._output_values = deserialize_from_json(node_status.get("output_values", {}))
+                        node._input_values = deserialize_from_json(node_status.get("node_inputs", {}))
+                        node._output_values = deserialize_from_json(node_status.get("node_outputs", {}))
                         node.column_select = node_status.get("column_select", {})
-                        status_str = node_status.get("status", "unrun")
+                        status_str = node_status.get("node_states", "unrun")
                         self.set_node_status(
                             node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
                         )

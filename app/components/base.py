@@ -102,25 +102,28 @@ class ArgumentType(str, Enum):
     def serialize(self, display_data):
         if display_data is None or len(display_data) == 0:
             return display_data
-        if self.is_file() and len(display_data) > 0:
-            # FILE类型：显示文件路径选择
-            display_data = {
-                "file_name": os.path.basename(display_data),
-                "file_type": self.value,
-                "file_path": display_data
-            }
-        elif self == ArgumentType.JSON and isinstance(display_data, str):
-            display_data = json.loads(display_data)
-        elif self.is_number():
-            display_data = float(display_data)
-        elif self.is_bool():
-            display_data = bool(display_data)
-        elif self.is_array() and isinstance(display_data, str):
-            display_data = np.array(eval(display_data))
-        elif self.is_array() and isinstance(display_data, list):
-            display_data = np.array(display_data)
-        elif self.is_image():
-            display_data = Image.open(display_data)
+        try:
+            if self.is_file() and len(display_data) > 0:
+                # FILE类型：显示文件路径选择
+                display_data = {
+                    "file_name": os.path.basename(display_data),
+                    "file_type": self.value,
+                    "file_path": display_data
+                }
+            elif self == ArgumentType.JSON and isinstance(display_data, str):
+                display_data = json.loads(display_data)
+            elif self.is_number():
+                display_data = float(display_data)
+            elif self.is_bool():
+                display_data = bool(display_data)
+            elif self.is_array() and isinstance(display_data, str):
+                display_data = np.array(eval(display_data))
+            elif self.is_array() and isinstance(display_data, list):
+                display_data = np.array(display_data)
+            elif self.is_image():
+                display_data = Image.open(display_data)
+        except:
+            logger.error(f"{self.value}序列化错误：{display_data}")
 
         return display_data
 

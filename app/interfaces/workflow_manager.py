@@ -284,7 +284,6 @@ class WorkflowCanvasGalleryPage(QWidget):
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
-            canvas_page.save_full_workflow(file_path)
             canvas_interface = self.parent_window.addSubInterface(
                 canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
             canvas_interface.clicked.connect(
