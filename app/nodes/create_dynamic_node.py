@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import QFileDialog
 from loguru import logger
 
 from app.components.base import ArgumentType, PropertyType, ConnectionType
+from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import draw_square_port
@@ -74,14 +75,14 @@ def _install_requirements(python_executable, requirements_str):
 def create_node_class(component_class, full_path, file_path, parent_window=None):
     """返回一个高性能、支持独立环境执行的动态节点类"""
 
-    class DynamicNode(BaseNode):
+    class DynamicNode(BaseNode, BasicNodeWithGlobalProperty):
         __identifier__ = 'dynamic'
         NODE_NAME = component_class.name
         FULL_PATH = full_path
         FILE_PATH = file_path
 
-        def __init__(self):
-            super().__init__()
+        def __init__(self, qgraphics_item=None):
+            super().__init__(qgraphics_item)
             self.component_class = component_class
             self._node_logs = ""
             self._output_values = {}
@@ -244,8 +245,9 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             if python_executable is None:
                 raise Exception("未指定Python执行环境。")
 
-            # === 收集参数（一次性遍历）===
+            # === 收集参数 ===
             params = {}
+            # === 组件参数 ===
             properties = comp_obj.get_properties()
             for prop_name, prop_def in properties.items():
                 prop_type = prop_def.get("type", PropertyType.TEXT)
@@ -255,6 +257,10 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     params[prop_name] = widget.get_value() if widget else (default or [])
                 else:
                     params[prop_name] = self.get_property(prop_name) if self.has_property(prop_name) else default
+            # === 全局变量 ===
+            properties =  self.model.get_property("global_variable")
+            logger.info(properties)
+            params.update({"global_variable": properties})
 
             # === 收集输入 ===
             inputs = {}

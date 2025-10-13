@@ -1021,6 +1021,7 @@ class CanvasPage(QWidget):
 
     def save_full_workflow(self, file_path, show_info=True):
         graph_data = self.graph.serialize_session()
+        # 解析图节点数据类
         runtime = {
             "environment": self.env_combo.currentData(),
             "environment_exe": self.get_current_python_exe(),
@@ -1046,6 +1047,7 @@ class CanvasPage(QWidget):
             "graph": graph_data,
             "runtime": runtime
         }
+        print(full_data)
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(full_data, f, indent=2, ensure_ascii=False)
         self._generate_canvas_thumbnail_async(file_path)

@@ -14,6 +14,8 @@ from PIL import Image
 from loguru import logger
 from pydantic import BaseModel, Field, create_model
 
+from app.nodes.global_variables import GlobalVariableContext
+
 COMPONENT_IMPORT_CODE = """# -*- coding: utf-8 -*-
 import importlib.util
 import pathlib
@@ -209,7 +211,7 @@ class BaseComponent(ABC):
     @classmethod
     def get_params_model(cls) -> Type[BaseModel]:
         """动态创建参数模型（支持 CHOICE / DYNAMICFORM）"""
-        fields: Dict[str, tuple] = {}
+        fields: Dict[str, tuple] = {"global_variable": (GlobalVariableContext, Field(default={}))}
 
         for prop_name, prop_def in cls.properties.items():
             if prop_def.type == PropertyType.INT:

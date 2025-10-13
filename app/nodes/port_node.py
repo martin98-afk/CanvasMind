@@ -14,8 +14,10 @@ from NodeGraphQt.qgraphics.port import PortItem
 from NodeGraphQt.constants import PortTypeEnum, Z_VAL_NODE
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from app.nodes.base_node import BasicNodeWithGlobalProperty
 
-class CustomPortInputNode(PortInputNode):
+
+class CustomPortInputNode(PortInputNode, BasicNodeWithGlobalProperty):
     __identifier__ = 'control_flow'
     category = "控制流"
     NODE_NAME = '输入端口'
@@ -34,7 +36,7 @@ class CustomPortInputNode(PortInputNode):
         return self._output_values.get(name)
 
 
-class CustomPortOutputNode(PortOutputNode):
+class CustomPortOutputNode(PortOutputNode, BasicNodeWithGlobalProperty):
     __identifier__ = 'control_flow'
     category = "控制流"
     NODE_NAME = '输出端口'

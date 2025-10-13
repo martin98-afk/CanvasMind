@@ -94,10 +94,13 @@ class NodeListExecutor(QRunnable):
             # 短暂延迟确保 UI 更新
             time.sleep(0.3)
             if not self._is_cancelled:
-                self.signals.error.emit("画布已取消执行！")
+                self.signals.finished.emit("画布执行完毕")
 
         except Exception as e:
             if not self._is_cancelled:
                 logger.error("执行器异常:")
                 logger.error(traceback.format_exc())
                 self.signals.error.emit(str(e))
+            else:
+                logger.info("执行被用户取消")
+                self.signals.error.emit("执行被用户取消")

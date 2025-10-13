@@ -13,10 +13,12 @@ from NodeGraphQt.qgraphics.port import PortItem
 from PyQt5 import QtCore, QtGui, QtWidgets
 from Qt import QtCore, QtGui, QtWidgets
 
+from app.nodes.base_node import BasicNodeWithGlobalProperty
+from app.nodes.status_node import StatusNode
 from app.utils.utils import get_port_node, draw_square_port
 
 
-class ControlFlowBackdrop(BackdropNode):
+class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty):
     """
     支持控制流的增强型 Backdrop
     - 可配置为 Loop / iterate
@@ -28,7 +30,7 @@ class ControlFlowBackdrop(BackdropNode):
     FULL_PATH = f"{category}/{NODE_NAME}"
 
     def __init__(self):
-        super(ControlFlowBackdrop, self).__init__(ControlFlowBackdropNodeItem)
+        BackdropNode.__init__(self, ControlFlowBackdropNodeItem)
         self._inputs = []
         self._outputs = []
         self._output_values = {}
