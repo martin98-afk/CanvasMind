@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 from dataclasses import dataclass
 
-from NodeGraphQt import BaseNode
-from Qt import Qt
+from app.nodes.base_node import BasicNodeWithGlobalProperty
 
 
 @dataclass
@@ -18,10 +17,10 @@ class NodeStatus:
 # ----------------------------
 # 自定义节点类（支持状态显示）- 淡色版本
 # ----------------------------
-class StatusNode(BaseNode):
+class StatusNode(BasicNodeWithGlobalProperty):
     """支持状态显示的基节点类 - 使用淡色背景确保白色文字清晰"""
-    def __init__(self):
-        super().__init__()
+    def __init__(self, qgraphics_item=None):
+        super().__init__(qgraphics_item)
         self._status = NodeStatus.NODE_STATUS_UNRUN
         self._original_color = self.color()  # 保存原始颜色
         self._update_status_color()

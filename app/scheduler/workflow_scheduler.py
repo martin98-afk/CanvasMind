@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
 from collections import deque, defaultdict
 from typing import List, Dict, Any, Optional, Callable
 
+from NodeGraphQt import BackdropNode
 from PyQt5.QtCore import QObject, pyqtSignal
 from loguru import logger
 
+from app.nodes.global_variables import GlobalVariableContext, ExecutionEnvironment, CustomVariable
 from app.nodes.status_node import NodeStatus
 from app.scheduler.node_list_executor import NodeListExecutor
 from app.utils.utils import get_port_node
@@ -34,6 +37,16 @@ class WorkflowScheduler(QObject):
         super().__init__(parent)
         self.parent = parent
         self.graph = graph
+        self.global_variables = GlobalVariableContext(
+            env=ExecutionEnvironment(
+                canvas_id=graph.id if hasattr(graph, 'id') else "default",
+                session_id="sess_123",  # 可从外部传入
+                run_id=str(int(datetime.utcnow().timestamp()))
+            ),
+            custom={
+                "wo": CustomVariable(value="caolege1bi", description="示例变量")
+            }
+        )
         self.component_map = component_map
         self.get_node_status = get_node_status
         self.get_python_exe = get_python_exe
@@ -175,16 +188,20 @@ class WorkflowScheduler(QObject):
             return None  # 存在环
         return execution_order
 
+    def register_global_variable(self, nodes):
+        for node in nodes:
+            node.model.set_property("global_variable", self.global_variables.to_dict())
+
     def _execute_nodes(self, nodes: List):
         """启动异步执行器（支持循环控制流）"""
         try:
             # Step 1: 重置状态
             for node in nodes:
                 self.set_node_status(node, NodeStatus.NODE_STATUS_PENDING)
-                if node.type_ == "control_flow.ControlFlowBackdrop":
+                if isinstance(node, BackdropNode):
                     for internal in node.nodes():
                         self.set_node_status(internal, NodeStatus.NODE_STATUS_PENDING)
-
+            self.register_global_variable(nodes)
             # Step 2: 启动执行器
             self._executor = NodeListExecutor(
                 main_window=None,
@@ -335,5 +352,5 @@ class WorkflowScheduler(QObject):
         self.error.emit(msg or "执行过程中发生未知错误")
         # 节点报错把后续节点置为未运行
         for node in nodes:
-            if node.status == NodeStatus.NODE_STATUS_PENDING:
+            if getattr(node, "status", None) == NodeStatus.NODE_STATUS_PENDING:
                 self.set_node_status(node, NodeStatus.NODE_STATUS_UNRUN)
