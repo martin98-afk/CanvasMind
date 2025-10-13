@@ -118,12 +118,24 @@ class CanvasPage(QWidget):
             parent=self
         )
         scheduler.node_status_changed.connect(self.set_node_status_by_id)
+        scheduler.property_changed.connect(self.update_node_property)
         return scheduler
 
     def set_node_status_by_id(self, node_id, status):
         node = self._get_node_by_id(node_id)
         if node:
             self.set_node_status(node, status)
+
+    def update_node_property(self, node_id):
+        selected_nodes = self.graph.selected_nodes()
+        backdrop = None
+        for node in selected_nodes:
+            if isinstance(node, ControlFlowBackdrop):
+                backdrop = node
+                break
+        node = self._get_node_by_id(node_id)
+        if selected_nodes and node == backdrop:
+            self.property_panel.update_properties(node)
 
     def _connect_scheduler_signals(self):
         """连接调度器信号到 UI 回调"""
@@ -224,7 +236,6 @@ class CanvasPage(QWidget):
         current_data = self.env_combo.currentData()
         if hasattr(self.parent, 'package_manager') and self.parent.package_manager and current_data:
             try:
-                logger.info(f"获取环境 {current_data} 的Python路径: {str(self.parent.package_manager.mgr.get_python_exe(current_data))}")
                 return str(self.parent.package_manager.mgr.get_python_exe(current_data))
             except Exception as e:
                 self.create_failed_info("错误", f"获取环境 {current_data} 的Python路径失败: {str(e)}")
@@ -360,10 +371,6 @@ class CanvasPage(QWidget):
     def create_backdrop_node(self, key):
         selected_nodes = self.graph.selected_nodes()
 
-        if not selected_nodes:
-            # 可选：提示用户或直接返回
-            return
-
         # 检查是否已有输入/输出端口节点
         input_port_node = None
         output_port_node = None
@@ -375,28 +382,34 @@ class CanvasPage(QWidget):
                 output_port_node = node
 
         # 获取当前选中节点的边界（用于定位新端口或计算 backdrop）
-        min_x = min(n.x_pos() for n in selected_nodes)
-        max_x = max(n.x_pos() + n.view.width for n in selected_nodes)
-        min_y = min(n.y_pos() for n in selected_nodes)
-        max_y = max(n.y_pos() + n.view.height for n in selected_nodes)
+        if selected_nodes:
+            min_x = min(n.x_pos() for n in selected_nodes)
+            max_x = max(n.x_pos() + n.view.width for n in selected_nodes)
+            min_y = min(n.y_pos() for n in selected_nodes)
+            max_y = max(n.y_pos() + n.view.height for n in selected_nodes)
 
-        # 如果没有输入端口，创建一个并放到最左边
-        if input_port_node is None:
+            # 如果没有输入端口，创建一个并放到最左边
+            if input_port_node is None:
+                input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
+                input_width = input_port_node.view.width
+                input_x = min_x - input_width - 50
+                center_y = (min_y + max_y) / 2 - input_port_node.view.height / 2
+                input_port_node.set_pos(input_x, center_y)
+                selected_nodes.append(input_port_node)  # 加入列表用于 wrap
+
+            # 如果没有输出端口，创建一个并放到最右边
+            if output_port_node is None:
+                output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
+                output_width = output_port_node.view.width
+                output_x = max_x + 50
+                center_y = (min_y + max_y) / 2 - output_port_node.view.height / 2
+                output_port_node.set_pos(output_x, center_y)
+                selected_nodes.append(output_port_node)  # 加入列表用于 wrap
+        else:
             input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
-            input_width = input_port_node.view.width
-            input_x = min_x - input_width - 50
-            center_y = (min_y + max_y) / 2 - input_port_node.view.height / 2
-            input_port_node.set_pos(input_x, center_y)
-            selected_nodes.append(input_port_node)  # 加入列表用于 wrap
-
-        # 如果没有输出端口，创建一个并放到最右边
-        if output_port_node is None:
             output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-            output_width = output_port_node.view.width
-            output_x = max_x + 50
-            center_y = (min_y + max_y) / 2 - output_port_node.view.height / 2
-            output_port_node.set_pos(output_x, center_y)
-            selected_nodes.append(output_port_node)  # 加入列表用于 wrap
+            output_port_node.set_x_pos(output_port_node.x_pos() + 600)
+            selected_nodes = [input_port_node, output_port_node]
 
         # 创建 backdrop 并包裹所有节点（包括已有的或新创建的）
         backdrop_node = self.graph.create_node(f"control_flow.{key}")
@@ -404,7 +417,7 @@ class CanvasPage(QWidget):
 
         # 可选配置
         if key == "ControlFlowIterateNode":
-            backdrop_node.set_iterate_config({"iterate_nums": 3})
+            backdrop_node.model.set_property("loop_nums", 3)
 
     def close_current_canvas(self):
         self.canvas_deleted.emit()
@@ -480,13 +493,7 @@ class CanvasPage(QWidget):
     def export_selected_nodes_as_project(self):
         """导出选中节点为独立项目（支持交互式定义输入/输出接口）"""
         try:
-            selected_nodes = self.graph.selected_nodes()
-            if not selected_nodes:
-                self.create_warning_info("导出失败", "请先选中要导出的节点！")
-                return
-
-            # 过滤掉 Backdrop 节点
-            nodes_to_export = [node for node in selected_nodes if not isinstance(node, BackdropNode)]
+            nodes_to_export = self.graph.selected_nodes()
             if not nodes_to_export:
                 self.create_warning_info("导出失败", "选中的节点无效（只有分组节点）！")
                 return
@@ -495,6 +502,8 @@ class CanvasPage(QWidget):
             for node in nodes_to_export:
                 node_name = node.name()
                 comp_cls = self.component_map.get(node.FULL_PATH)
+                if comp_cls is None:
+                    continue
 
                 # 组件参数（超参数）
                 editable_params = node.model.custom_properties
@@ -812,7 +821,9 @@ class CanvasPage(QWidget):
                         "FILE_PATH": component_path_map.get(self.file_map.get(node.FULL_PATH, ""), ""),
                         "params": exported_params,
                         "input_values": serialize_for_json(current_inputs)
-                    }
+                    } | {
+                        "internal_nodes": [node.id for node in node.nodes()]
+                    } if isinstance(node, ControlFlowBackdrop) else {}
                 }
                 new_nodes_data[node.id] = node_data
 
@@ -934,10 +945,12 @@ class CanvasPage(QWidget):
         self._scheduler = None
         self.create_success_info("完成", "工作流执行完成!")
         if self.file_path:
-            self.save_full_workflow(self.file_path)
+            self.save_full_workflow(self.file_path, show_info=False)
 
     def _on_workflow_error(self, msg=""):
         self._scheduler = None
+        self.run_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
         self.create_failed_info("错误", f"工作流执行失败! {msg}")
 
     def on_node_started_simple(self, node_id):
@@ -994,14 +1007,19 @@ class CanvasPage(QWidget):
     def on_selection_changed(self):
         selected_nodes = self.graph.selected_nodes()
         if selected_nodes:
-            self.on_node_selected(selected_nodes[0])
+            for node in selected_nodes:
+                if isinstance(node, ControlFlowBackdrop):
+                    self.on_node_selected(node)
+                    return
+            if selected_nodes[0].__identifier__ == "dynamic":
+                self.on_node_selected(selected_nodes[0])
         else:
             self.property_panel.update_properties(None)
 
     def on_node_selected(self, node):
         self.property_panel.update_properties(node)
 
-    def save_full_workflow(self, file_path):
+    def save_full_workflow(self, file_path, show_info=True):
         graph_data = self.graph.serialize_session()
         runtime = {
             "environment": self.env_combo.currentData(),
@@ -1031,7 +1049,8 @@ class CanvasPage(QWidget):
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(full_data, f, indent=2, ensure_ascii=False)
         self._generate_canvas_thumbnail_async(file_path)
-        self.create_success_info("保存成功", "工作流保存成功！")
+        if show_info:
+            self.create_success_info("保存成功", "工作流保存成功！")
 
     def _generate_selected_nodes_thumbnail(self, export_path: pathlib.Path):
         """为选中的节点生成缩略图并保存到 export_path 下（如 preview.png）"""
@@ -1109,10 +1128,10 @@ class CanvasPage(QWidget):
                     stable_key = f"{full_path}||{node_name}"
                     node_status = node_status_data.get(stable_key)
                     if node_status:
-                        node._input_values = deserialize_from_json(node_status.get("input_values", {}))
-                        node._output_values = deserialize_from_json(node_status.get("output_values", {}))
+                        node._input_values = deserialize_from_json(node_status.get("node_inputs", {}))
+                        node._output_values = deserialize_from_json(node_status.get("node_outputs", {}))
                         node.column_select = node_status.get("column_select", {})
-                        status_str = node_status.get("status", "unrun")
+                        status_str = node_status.get("node_states", "unrun")
                         self.set_node_status(
                             node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
                         )

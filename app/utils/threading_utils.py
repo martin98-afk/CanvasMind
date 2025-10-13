@@ -2,195 +2,14 @@
 import asyncio
 import json
 import os
-import time
-import traceback
-from collections import defaultdict
 from pathlib import Path
-from typing import List, Optional, Dict, Any, Callable
 from urllib.request import urlopen
 
 import aiohttp
 import requests
-from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot, QThread, QRectF, Qt
+from PyQt5.QtCore import QObject, pyqtSignal, QThread, QRectF, Qt
 from PyQt5.QtGui import QPainter, QImage
 from loguru import logger
-
-from app.nodes.create_backdrop_node import ControlFlowBackdrop
-
-
-class WorkerSignals(QObject):
-    finished = pyqtSignal(object)
-    error = pyqtSignal(str)
-    progress = pyqtSignal(object)  # 保持兼容，可发送任意对象
-    # 新增信号用于批量执行
-    node_started = pyqtSignal(str)
-    node_finished = pyqtSignal(str)  # (node_id, result)
-    node_error = pyqtSignal(str)        # (node_id, error_message)
-
-
-class Worker(QRunnable):
-    def __init__(self, fn, *args, **kwargs):
-        super().__init__()
-        self.signals = WorkerSignals()
-        if fn is None:
-            self.signals.error.emit("输入函数为空！")
-            return
-
-        self.args = args
-        self.policy = kwargs.pop("policy", "extend")
-        self.return_type = kwargs.pop("return_type", "Dict")
-        self.kwargs = kwargs
-        self._is_cancelled = False
-        # ✅ 新增：是否启用进度回调模式
-        self.use_progress_callback = kwargs.pop("use_progress_callback", False)
-
-        try:
-            if isinstance(fn, list):
-                self.fn = [ft.call for ft in fn]
-            elif "batch" in kwargs and kwargs["batch"]:
-                self.fn = fn.call_batch
-            else:
-                self.fn = fn
-        except:
-            self.fn = fn
-
-    def cancel(self):
-        """外部调用以取消任务"""
-        self._is_cancelled = True
-
-    @pyqtSlot()
-    def run(self):
-        if self._is_cancelled:
-            return
-        try:
-            if isinstance(self.fn, list):
-                # ========== 旧逻辑：执行多个函数 ==========
-                if self.return_type == "Dict":
-                    result = defaultdict(list)
-                    for fetcher in self.fn:
-                        if fetcher is None:
-                            continue
-                        r = fetcher(*self.args, **self.kwargs)
-                        if r and self.policy == "extend":
-                            for t, pts in r.items():
-                                result[t].extend(pts)
-                        elif r and self.policy == "update":
-                            for t, pts in r.items():
-                                result[t] = pts
-                        self.signals.progress.emit(r)  # 发射每个函数的结果
-                elif self.return_type == "List":
-                    result = [fetcher(*self.args, **self.kwargs) for fetcher in self.fn]
-                self.signals.finished.emit(result)
-
-            else:
-                # ========== 新逻辑：执行单个函数，支持进度回调 ==========
-                if self.use_progress_callback:
-                    # 注入进度回调函数
-                    def progress_callback(*args, **kwargs):
-                        # 支持传入单个值或元组
-                        if len(args) == 1:
-                            self.signals.progress.emit(args[0])
-                        else:
-                            self.signals.progress.emit(args)  # 打包成元组
-
-                    # 把回调函数传入 kwargs
-                    self.kwargs['progress_callback'] = progress_callback
-
-                # 执行函数
-                result = self.fn(*self.args, **self.kwargs)
-                self.signals.finished.emit(result)
-
-        except Exception as e:
-            err_msg = traceback.format_exc()
-            self.signals.error.emit(err_msg)
-
-
-# ----------------------------
-# 节点列表执行器（用于批量异步执行）
-# ----------------------------
-class NodeListExecutor(QRunnable):
-    """
-    异步执行节点列表的执行器
-    不依赖 CanvasPage，仅通过信号通信
-    """
-
-    def __init__(
-        self,
-        main_window,  # 保留兼容性（但 execute_sync 不再需要它）
-        nodes: List,
-        python_exe: Optional[str] = None,
-        scheduler: Optional[Any] = None,
-    ):
-        super().__init__()
-        self.signals = WorkerSignals()
-        self.main_window = main_window  # 可用于日志等，但不用于核心逻辑
-        self.nodes = nodes
-        self.python_exe = python_exe
-        self._is_cancelled = False
-        # ✅ 关键：由调度器注入 component_map
-        self.component_map = {}
-        self.scheduler = scheduler
-
-    def cancel(self):
-        """请求取消执行"""
-        self._is_cancelled = True
-
-    def _check_cancel(self) -> bool:
-        """检查是否被取消"""
-        return self._is_cancelled
-
-    def run(self):
-        """在工作线程中执行节点列表"""
-        try:
-            for node in self.nodes:
-                if self._is_cancelled:
-                    logger.info("执行被用户取消")
-                    return
-
-                # 发出节点开始信号
-                self.signals.node_started.emit(node.id)
-
-                try:
-                    if getattr(node, "execute_sync", None) is not None:
-                        # 获取组件类
-                        comp_cls = self.component_map.get(node.FULL_PATH)
-                        if comp_cls is None:
-                            raise ValueError(f"未找到组件类: {node.FULL_PATH}")
-                        # 执行节点（同步）
-                        node.execute_sync(
-                            comp_cls,
-                            python_executable=self.python_exe,
-                            check_cancel=self._check_cancel
-                        )
-                    elif isinstance(node, ControlFlowBackdrop):
-                        print("测试")
-                        self.scheduler._execute_backdrop_sync(node)
-                    else:
-                        pass
-
-                    if self._is_cancelled:
-                        return
-
-                    # 发出节点完成信号
-                    self.signals.node_finished.emit(node.id)
-
-                except Exception as e:
-                    logger.error(f"节点 {node.name()} 执行失败: {e}")
-                    logger.error(traceback.format_exc())
-                    self.signals.node_error.emit(node.id)
-                    # 出错后停止后续执行（符合你当前逻辑）
-                    return
-
-            # 短暂延迟确保 UI 更新
-            time.sleep(0.3)
-            if not self._is_cancelled:
-                self.signals.finished.emit(None)
-
-        except Exception as e:
-            if not self._is_cancelled:
-                logger.error("执行器异常:")
-                logger.error(traceback.format_exc())
-                self.signals.error.emit(str(e))
 
 
 class ThumbnailGenerator(QThread):
@@ -259,7 +78,6 @@ class WorkflowLoader(QThread):
 
             graph_data = full_data.get("graph", {})
             runtime_data = full_data.get("runtime", {})
-
             # 准备节点状态数据
             node_status_data = {}
             nodes_data = graph_data.get("nodes", {})
@@ -284,12 +102,9 @@ class WorkflowLoader(QThread):
                     if full_path:
                         node_name = node_data.get("name", "Unknown")
                         stable_key = f"{full_path}||{node_name}"
-                        status_str = runtime_data.get("node_states", {}).get(stable_key, "unrun")
                         node_status_data[stable_key] = {
-                            "status": status_str,
-                            "input_values": runtime_data.get("node_inputs", {}).get(stable_key, {}),
-                            "output_values": runtime_data.get("node_outputs", {}).get(stable_key, {}),
-                            "column_select": runtime_data.get("column_select", {}).get(stable_key, {}),
+                            key: value.get(stable_key)
+                            for key, value in runtime_data.items() if key not in ("environment", "environment_exe", "node_id2stable_key")
                         }
 
             self.progress.emit("节点处理完成，准备加载...")
