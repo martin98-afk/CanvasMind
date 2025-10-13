@@ -112,7 +112,8 @@ async def run_workflow(input: InputModel):
 
         outputs = execute_workflow(
             str(PROJECT_DIR / "model.workflow.json"),
-            external_inputs=external_inputs
+            external_inputs=external_inputs,
+            python_executable=args.python
         )
         logger.info(f"工作流执行成功，结果：{outputs}")
         return {"result": outputs}
@@ -130,6 +131,7 @@ def get_spec():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8000, help="服务端口")
+    parser.add_argument("--python", type=str, default=None, help="画布运行python环境")
     args = parser.parse_args()
 
     import uvicorn

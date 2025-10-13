@@ -493,13 +493,7 @@ class CanvasPage(QWidget):
     def export_selected_nodes_as_project(self):
         """导出选中节点为独立项目（支持交互式定义输入/输出接口）"""
         try:
-            selected_nodes = self.graph.selected_nodes()
-            if not selected_nodes:
-                self.create_warning_info("导出失败", "请先选中要导出的节点！")
-                return
-
-            # 过滤掉 Backdrop 节点
-            nodes_to_export = [node for node in selected_nodes if not isinstance(node, BackdropNode)]
+            nodes_to_export = self.graph.selected_nodes()
             if not nodes_to_export:
                 self.create_warning_info("导出失败", "选中的节点无效（只有分组节点）！")
                 return
@@ -508,6 +502,8 @@ class CanvasPage(QWidget):
             for node in nodes_to_export:
                 node_name = node.name()
                 comp_cls = self.component_map.get(node.FULL_PATH)
+                if comp_cls is None:
+                    continue
 
                 # 组件参数（超参数）
                 editable_params = node.model.custom_properties
@@ -825,7 +821,9 @@ class CanvasPage(QWidget):
                         "FILE_PATH": component_path_map.get(self.file_map.get(node.FULL_PATH, ""), ""),
                         "params": exported_params,
                         "input_values": serialize_for_json(current_inputs)
-                    }
+                    } | {
+                        "internal_nodes": [node.id for node in node.nodes()]
+                    } if isinstance(node, ControlFlowBackdrop) else {}
                 }
                 new_nodes_data[node.id] = node_data
 
