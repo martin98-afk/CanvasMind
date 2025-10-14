@@ -138,7 +138,7 @@ class GlobalVariableContext(BaseModel):
         }
 
     def deserialize(self, data):
-        history_env = data.get("env")
+        history_env = data.get("env", {})
         self.env.metadata = self.env.metadata | history_env.get("metadata", {})
         self.env.user_id = history_env.get("user_id")
         self.env.canvas_id = history_env.get("canvas_id")
