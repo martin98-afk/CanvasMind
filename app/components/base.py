@@ -210,6 +210,7 @@ class ConnectionType(str, Enum):
 class PropertyType(str, Enum):
     """属性类型"""
     TEXT = "文本"
+    MULTILINE = "多行文本"
     LONGTEXT = "长文本"
     INT = "整数"
     FLOAT = "浮点数"
@@ -421,7 +422,7 @@ class BaseComponent(ABC):
     @classmethod
     def get_params_model(cls) -> Type[BaseModel]:
         """动态创建参数模型（支持 CHOICE / DYNAMICFORM）"""
-        fields: Dict[str, tuple] = {"global_variable": (Dict, Field(default={}))}
+        fields: Dict[str, tuple] = {}
 
         for prop_name, prop_def in cls.properties.items():
             if prop_def.type == PropertyType.INT:

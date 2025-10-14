@@ -245,3 +245,27 @@ def draw_square_port(painter, rect, info):
     painter.drawRect(rect)
 
     painter.restore()
+
+
+def _evaluate_value_recursively(value, expr_engine):
+    """
+    递归处理任意结构的值，对字符串执行表达式求值。
+    如果求值失败，保持原始字符串不变。
+    """
+    if isinstance(value, str):
+        if expr_engine.is_template_expression(value):
+            try:
+                result = expr_engine.evaluate_template(value)
+                # 如果结果是错误信息（如 [ExprError: ...]），保留原字符串
+                if isinstance(result, str) and result.startswith("[Expr"):
+                    return value  # 👈 关键：失败时返回原字符串
+                return result
+            except Exception:
+                return value  # 👈 任何异常都返回原字符串
+        return value
+    elif isinstance(value, list):
+        return [_evaluate_value_recursively(item, expr_engine) for item in value]
+    elif isinstance(value, dict):
+        return {k: _evaluate_value_recursively(v, expr_engine) for k, v in value.items()}
+    else:
+        return value

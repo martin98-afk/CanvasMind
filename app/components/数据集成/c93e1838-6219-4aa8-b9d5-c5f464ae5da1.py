@@ -26,10 +26,10 @@ class Component(BaseComponent):
     ]
     properties = {
         "input": PropertyDefinition(
-            type=PropertyType.TEXT,
+            type=PropertyType.MULTILINE,
             default="文本内容",
-            label="输入文本"
-        )
+            label="输入文本",
+        ),
     }
 
     def run(self, params, inputs=None):

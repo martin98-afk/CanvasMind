@@ -1021,6 +1021,7 @@ class PropertyEditorWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.parent = parent
         self._dynamic_form_schemas = {}  # 新增：存储每个动态表单的 schema
         layout = QVBoxLayout(self)
         # 属性表格
@@ -1094,13 +1095,11 @@ class PropertyEditorWidget(QWidget):
             btn = PushButton("编辑文本")
             btn.clicked.connect(lambda _, r=row: self._edit_long_text(r))
             self.table.setCellWidget(row, 4, btn)
-        else:
-            # 原来的选项输入框
-            options_item = QTableWidgetItem("")
-            if getattr(prop_def, 'type', PropertyType.TEXT) == PropertyType.CHOICE:
-                choices = getattr(prop_def, 'choices', [])
-                options_item.setText(",".join(choices))
-            self.table.setItem(row, 4, options_item)
+        elif getattr(prop_def, 'type', PropertyType.TEXT) == PropertyType.CHOICE:
+            choices = getattr(prop_def, 'choices', [])
+            options_item.setText(",".join(choices))
+
+        self.table.setItem(row, 4, options_item)
 
     def _on_type_changed(self, row):
         type_widget = self.table.cellWidget(row, 2)
@@ -1214,19 +1213,19 @@ class PropertyEditorWidget(QWidget):
                 new_schema = dialog.get_schema()
                 self._dynamic_form_schemas[prop_name] = new_schema
                 self.properties_changed.emit()
-                InfoBar.success("成功", f"已保存表单结构: {prop_name}", parent=self, duration=1500)
+                InfoBar.success("成功", f"已保存表单结构: {prop_name}", parent=self.parent, duration=1500)
 
         except Exception as e:
             import traceback
             traceback.print_exc()
-            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self, duration=3000)
+            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
 
     def _edit_long_text(self, row):
         """编辑长文本"""
         try:
             name_item = self.table.item(row, 0)
             if not name_item or not name_item.text().strip():
-                InfoBar.warning("警告", "请先填写属性名", parent=self, duration=2000)
+                InfoBar.warning("警告", "请先填写属性名", parent=self.parent, duration=2000)
                 return
 
             default_item = self.table.item(row, 3)
@@ -1238,12 +1237,12 @@ class PropertyEditorWidget(QWidget):
                 if default_item:
                     default_item.setText(new_text)
                 self.properties_changed.emit()
-                InfoBar.success("成功", "长文本已更新", parent=self, duration=1500)
+                InfoBar.success("成功", "长文本已更新", parent=self.parent, duration=1500)
 
         except Exception as e:
             import traceback
             traceback.print_exc()
-            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self, duration=3000)
+            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
 
     def set_properties(self, properties):
         """设置属性数据（支持 DYNAMICFORM）"""

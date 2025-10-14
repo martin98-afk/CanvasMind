@@ -97,6 +97,9 @@ class GlobalVarComboBoxWidget(QtWidgets.QWidget):
     def get_value(self):
         return self._value
 
+    def currentText(self):
+        return self.combobox.currentText()
+
     def set_value(self, value):
         """设置值（支持动态补充选项）"""
         self._value = value or ""

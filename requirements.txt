@@ -14,5 +14,5 @@ packaging~=25.0
 PyYAML~=6.0.2
 openpyxl~=3.1.5
 tenacity~=9.1.2
-
+asteval
 # Optional extras are split to requirements-ml.txt and requirements-server.txt

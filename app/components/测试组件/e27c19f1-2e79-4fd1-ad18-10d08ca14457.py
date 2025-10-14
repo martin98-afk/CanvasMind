@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -43,10 +44,9 @@ class Component(BaseComponent):
                     choices=["/", "not"]
                 ),
                 "变量": PropertyDefinition(
-                    type=PropertyType.CHOICE,
+                    type=PropertyType.VARIABLE,
                     default="var1",
                     label="选择变量",
-                    choices=["var1", "var2", "var3"]
                 ),
                 "操作符": PropertyDefinition(
                     type=PropertyType.CHOICE,
@@ -98,15 +98,8 @@ class Component(BaseComponent):
 
                 var_val = var_values.get(var_name)
                 if var_val is None:
-                    raise ValueError(f"变量 {var_name} 未连接或为空")
-
-                try:
-                    if const_str is not None:
-                        const_val = float(const_str)
-                    else:
-                        continue
-                except ValueError:
-                    raise ValueError(f"常量 '{const_str}' 无法转换为数字")
+                    var_val = self.global_variable.get(var_name)
+                const_val = const_str
                 self.logger.info(const_val)
                 self.logger.info(var_val)
                 
