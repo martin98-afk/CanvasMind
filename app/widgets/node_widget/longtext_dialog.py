@@ -62,6 +62,10 @@ class LongTextWidget(QtWidgets.QWidget):
         self._text = text or ""
         self.summary_label.setText(self._get_summary())
 
+    def setText(self, text):
+        self._text = text or ""
+        self.summary_label.setText(self._get_summary())
+
     def currentText(self):
         return self._text
 

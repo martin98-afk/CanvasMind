@@ -93,6 +93,19 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             self.log_capture = NodeLogHandler(self.id, self._log_message, use_file_logging=True)
 
             # === 动态生成属性 ===
+            self._generate_parms_widget()
+
+            # === 端口 ===
+            for port_name, label, connection in component_class.get_inputs():
+                if connection == ConnectionType.SINGLE:
+                    self.add_input(port_name)
+                else:
+                    self.add_input(port_name, True, painter_func=draw_square_port)
+            for port_name, label in component_class.get_outputs():
+                self.add_output(port_name)
+
+        def _generate_parms_widget(self):
+            """生成节点属性配置控件"""
             for i, (prop_name, prop_def) in enumerate(component_class.get_properties().items()):
                 prop_type = prop_def.get("type", PropertyType.TEXT)
                 default = prop_def.get("default", "")
@@ -180,15 +193,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         ), tab='Properties'
                     )
 
-            # === 端口 ===
-            for port_name, label, connection in component_class.get_inputs():
-                if connection == ConnectionType.SINGLE:
-                    self.add_input(port_name)
-                else:
-                    self.add_input(port_name, True, painter_func=draw_square_port)
-            for port_name, label in component_class.get_outputs():
-                self.add_output(port_name)
-
         def _select_file(self, prop_name):
             current_path = self.get_property(prop_name)
             directory = os.path.dirname(current_path) if current_path else ""
@@ -271,8 +275,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 else:
                     params[prop_name] = self.get_property(prop_name) if self.has_property(prop_name) else default
             # === 全局变量 ===
-            properties =  self.model.get_property("global_variable")
-            params.update({"global_variable": properties})
+            global_variable =  self.model.get_property("global_variable")
 
             # === 收集输入 ===
             inputs = {}
@@ -304,7 +307,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
                 # 保存参数
                 with open(params_path, 'wb') as f:
-                    pickle.dump((params, inputs), f)
+                    pickle.dump((params, inputs, global_variable), f)
 
                 # 生成执行脚本
                 script_content = _EXECUTION_SCRIPT_TEMPLATE.format(

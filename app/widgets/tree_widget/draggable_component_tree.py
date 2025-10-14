@@ -42,7 +42,7 @@ class DraggableTreeWidget(TreeWidget):
 
                 comp_item = QTreeWidgetItem([name])
                 # 存储完整路径用于拖拽和预览
-                comp_item.setData(0, Qt.UserRole + 1, display_path)
+                comp_item.setData(0, Qt.UserRole + 1, full_path)
                 cat_item.addChild(comp_item)
                 self._all_items.append(comp_item)
             except Exception as e:
@@ -61,7 +61,7 @@ class DraggableTreeWidget(TreeWidget):
     def startDrag(self, supportedActions):
         """开始拖拽操作，带预览"""
         item = self.currentItem()
-        if item and item.parent():  # 确保是叶子节点（组件）
+        if item and item.parent():  #确保是叶子节点（组件）
             full_path = item.data(0, Qt.UserRole + 1)
             if not full_path:
                 return

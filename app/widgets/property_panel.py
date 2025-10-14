@@ -98,7 +98,7 @@ class PropertyPanel(CardWidget):
             # 1. 节点标题
             title = BodyLabel(f"📌 {node.name()}")
             title.setWordWrap(True)
-            title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+            title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
             self.vbox.addWidget(title)
 
             # 2. 节点描述
@@ -106,7 +106,7 @@ class PropertyPanel(CardWidget):
             if description and description.strip():
                 desc_label = BodyLabel(f"📝 {description}")
                 desc_label.setWordWrap(True)
-                desc_label.setStyleSheet("color: #888888; font-size: 12px;")
+                desc_label.setStyleSheet("color: #888888; font-size: 18px;")
                 self.vbox.addWidget(desc_label)
 
             self._add_seperator()
@@ -127,7 +127,6 @@ class PropertyPanel(CardWidget):
             input_layout.setSpacing(8)
 
             # 输入端口内容
-            input_layout.addWidget(BodyLabel("📥 输入端口:"))
             input_ports_info = self.get_node_input_ports_info(node)
 
             if input_ports_info:
@@ -189,7 +188,6 @@ class PropertyPanel(CardWidget):
             output_layout.setSpacing(8)
 
             # 输出端口内容
-            output_layout.addWidget(BodyLabel("📤 输出端口:"))
             output_ports = node.component_class.outputs
             if output_ports:
                 result = node._output_values
@@ -508,7 +506,7 @@ class PropertyPanel(CardWidget):
         """更新控制流节点（循环/分支）的属性面板"""
         # 1. 节点标题
         title = BodyLabel(f"🔁 {node.NODE_NAME}")
-        title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.vbox.addWidget(title)
 
         # 2. 控制流类型
@@ -648,7 +646,7 @@ class PropertyPanel(CardWidget):
         self._clear_layout()  # 先清空
 
         title = BodyLabel("🌍 全局变量")
-        title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.vbox.addWidget(title)
 
         # 分段控件

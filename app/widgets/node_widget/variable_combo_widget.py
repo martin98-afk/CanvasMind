@@ -70,7 +70,7 @@ class GlobalVarComboBoxWidget(QtWidgets.QWidget):
 
         # 3. 节点输出变量
         for key in sorted(global_vars.node_vars.keys()):
-            all_vars.append(f"node.{key}")
+            all_vars.append(f"node_vars.{key}")
 
         # 添加到下拉框
         if all_vars:

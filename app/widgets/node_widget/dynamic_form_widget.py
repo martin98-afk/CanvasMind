@@ -26,6 +26,7 @@ class FormFieldWidget(QtWidgets.QWidget):
         for key, defn in schema.items():
             if defn["type"] == PropertyType.LONGTEXT.name:
                 widget = LongTextWidget(parent)
+                widget.summary_label.setFixedWidth(150)
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
                 layout.addWidget(widget)
@@ -59,6 +60,8 @@ class FormFieldWidget(QtWidgets.QWidget):
                     widget.setText(str(v))
                 elif hasattr(widget, 'setCurrentText'):
                     widget.setCurrentText(str(v))
+                elif hasattr(widget, 'setData'):
+                    widget.setData(str(v))
 
 
 class DynamicFormWidget(QtWidgets.QWidget):
