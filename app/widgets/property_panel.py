@@ -13,6 +13,7 @@ from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, Smooth
 
 from app.components.base import ArgumentType
 from app.nodes.create_backdrop_node import ControlFlowBackdrop
+from app.utils.utils import serialize_for_json
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
 
@@ -631,7 +632,9 @@ class PropertyPanel(CardWidget):
         var_name = f"{safe_node_name}__{port_name}"
 
         # 写入全局变量（到独立的 node_vars 字段）
-        self.main_window.global_variables.set_output(node_id=safe_node_name, output_name=port_name, output_value=value)
+        self.main_window.global_variables.set_output(
+            node_id=safe_node_name, output_name=port_name, output_value=serialize_for_json(value)
+        )
         self.main_window.global_variables_changed.emit()
         InfoBar.success(
             title="成功",
