@@ -4,12 +4,12 @@ import os
 
 import pandas as pd
 from NodeGraphQt import BaseNode
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
     QStackedWidget, QHBoxLayout
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
-    ProgressBar, FluentIcon, InfoBar, InfoBarPosition, ToolButton
+    ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton
 
 from app.components.base import ArgumentType
 from app.nodes.create_backdrop_node import ControlFlowBackdrop
@@ -551,7 +551,7 @@ class PropertyPanel(CardWidget):
         self._add_seperator()
         # 5. 内部节点列表
         self._add_internal_nodes_section(node)
-        self.vbox.addStretch(1)
+        self.vbox.addStretch()
 
     def _add_loop_config_section(self, node):
         """添加循环配置区域"""
@@ -605,7 +605,7 @@ class PropertyPanel(CardWidget):
                     "unrun": "⚪ 未运行",
                     "pending": "🔵 待运行"
                 }.get(status, status)
-                item_text = f"{n.name()} - {status_text}"
+                item_text = f"{status_text} - {n.name()}"
                 item = QListWidgetItem(item_text)
                 nodes_list.addItem(item)
 
@@ -632,6 +632,7 @@ class PropertyPanel(CardWidget):
 
         # 写入全局变量（到独立的 node_vars 字段）
         self.main_window.global_variables.set_output(node_id=safe_node_name, output_name=port_name, output_value=value)
+        self.main_window.global_variables_changed.emit()
         InfoBar.success(
             title="成功",
             content=f"已添加全局变量：{var_name}",
@@ -695,7 +696,7 @@ class PropertyPanel(CardWidget):
         # 更新 property
         key_edit.setProperty("env_key", new_key)
         value_edit.setProperty("env_key", new_key)
-        
+        self.main_window.global_variables_changed.emit()
         InfoBar.success("已保存", f"环境变量 {new_key}", parent=self.main_window, duration=1500)
 
     def _refresh_custom_vars_page(self):
@@ -766,7 +767,8 @@ class PropertyPanel(CardWidget):
         value_label.setStyleSheet("color: #888888;")
 
         # 删除按钮
-        del_btn = ToolButton(FluentIcon.CLOSE, self)
+        del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
+        del_btn.setIconSize(QSize(8, 8))
         del_btn.clicked.connect(lambda _, n=name: self._delete_custom_variable(n, 'custom'))
 
         layout.addWidget(name_label)
@@ -785,11 +787,12 @@ class PropertyPanel(CardWidget):
 
         # 标题
         title_layout = QHBoxLayout()
-        title = BodyLabel(f"📤 {name}")
+        title = BodyLabel(name)
         title_layout.addWidget(title)
         title_layout.addStretch()
         # 删除按钮
-        del_btn = ToolButton(FluentIcon.CLOSE, self)
+        del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
+        del_btn.setIconSize(QSize(8, 8))
         del_btn.clicked.connect(lambda _, n=name: self._delete_custom_variable(n, 'node_vars'))
         title_layout.addWidget(del_btn)
         layout.addLayout(title_layout)
@@ -815,7 +818,7 @@ class PropertyPanel(CardWidget):
                     del global_vars.node_vars[var_name]
 
             self._refresh_custom_vars_page()
-            
+            self.main_window.global_variables_changed.emit()
             InfoBar.success("已删除", f"变量 '{var_name}' 已移除", parent=self.main_window, duration=1500)
         except Exception as e:
             
@@ -903,7 +906,7 @@ class PropertyPanel(CardWidget):
             if global_vars:
                 global_vars.set(name, value)
                 self._refresh_custom_vars_page()
-                
+                self.main_window.global_variables_changed.emit()
                 InfoBar.success("已添加", f"自定义变量 {name}", parent=self.main_window)
 
     def _create_env_page(self):
@@ -953,26 +956,29 @@ class PropertyPanel(CardWidget):
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
+        # 名称
+        name_label = BodyLabel(f"{key} : ")
 
-        from qfluentwidgets import LineEdit
-        # Key 输入框（只读，因为改名=删除+新增）
-        key_label = BodyLabel(key)
-        key_label.setFixedWidth(90)
+        # 值预览（简化）
+        try:
+            if isinstance(value, (dict, list)):
+                preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..."
+            else:
+                preview = str(value)[:40]
+        except:
+            preview = "<无法预览>"
 
-        # Value 输入框
-        value_edit = LineEdit(self)
-        value_edit.setText(str(value) if value is not None else "")
-        value_edit.setProperty("env_key", key)
-        value_edit.textChanged.connect(
-            lambda _, k=key, v=value_edit: self._save_env_value(k, v.text())
-        )
+        value_label = BodyLabel(preview)
+        value_label.setStyleSheet("color: #888888;")
 
         # 删除按钮
-        del_btn = ToolButton(FluentIcon.CLOSE, self)
+        del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
+        del_btn.setIconSize(QSize(8, 8))
         del_btn.clicked.connect(lambda _, k=key: self._delete_env_variable(k))
 
-        layout.addWidget(key_label)
-        layout.addWidget(value_edit)
+        layout.addWidget(name_label)
+        layout.addWidget(value_label)
+        layout.addStretch()
         layout.addWidget(del_btn)
         return card
 
@@ -997,15 +1003,8 @@ class PropertyPanel(CardWidget):
             if global_vars:
                 global_vars.env.set_env_var(name, value)
                 self._refresh_env_page()
-                
+                self.main_window.global_variables_changed.emit()
                 InfoBar.success("已添加", f"环境变量 {name}", parent=self.main_window)
-
-    def _save_env_value(self, key: str, value: str):
-        global_vars = getattr(self.main_window, 'global_variables', None)
-        if not global_vars:
-            return
-        final_value = value if value != "" else None
-        global_vars.env.set_env_var(key, final_value)
 
     def _delete_env_variable(self, key: str):
         global_vars = getattr(self.main_window, 'global_variables', None)
@@ -1013,5 +1012,5 @@ class PropertyPanel(CardWidget):
             return
         global_vars.env.delete_env_var(key)
         self._refresh_env_page()
-        
+        self.main_window.global_variables_changed.emit()
         InfoBar.success("已删除", f"环境变量 {key}", parent=self.main_window, duration=1500)

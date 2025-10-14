@@ -23,6 +23,7 @@ from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 from app.widgets.node_widget.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.node_widget.range_widget import RangeWidgetWrapper
 from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
+from app.widgets.node_widget.variable_combo_widget import GlobalVarComboBoxWidgetWrapper
 from app.widgets.tree_widget.component_log_message_box import LogMessageBox
 
 
@@ -156,6 +157,18 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         z_value=len(component_class.get_properties()) - i
                     )
                     self.add_custom_widget(widget, tab='Properties')
+                elif prop_type == PropertyType.VARIABLE: # 新增类型
+                    self.add_custom_widget(
+                        GlobalVarComboBoxWidgetWrapper(
+                            parent=self.view,
+                            name=prop_name,
+                            label=label,
+                            main_window=parent_window,  # 传入 main_window 引用
+                            z_value=len(component_class.get_properties()) - i
+                        ),
+                        tab="properties"
+                    )
+                    self.set_property(prop_name, default)
                 else:
                     self.add_custom_widget(
                         TextWidgetWrapper(

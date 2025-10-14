@@ -40,6 +40,7 @@ from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 class CanvasPage(QWidget):
     canvas_deleted = pyqtSignal()
     canvas_saved = pyqtSignal(Path)
+    global_variables_changed = pyqtSignal()
     PIPELINE_STYLE = {
         "折线": PipeLayoutEnum.ANGLE.value,
         "曲线": PipeLayoutEnum.CURVED.value,
