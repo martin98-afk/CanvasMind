@@ -39,7 +39,8 @@ class Component(BaseComponent):
     def run(self, params, inputs = None):
         import re
         self.logger.info(inputs)
-        template = params.tempalte
+        self.logger.info(params)
+        template = params.template
         variables = inputs.get("variables", {}) if inputs else {}
         variables = [variables] if not isinstance(variables, list) else variables
         for variable in variables:

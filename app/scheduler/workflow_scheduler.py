@@ -182,7 +182,7 @@ class WorkflowScheduler(QObject):
 
     def register_global_variable(self, nodes):
         for node in nodes:
-            node.model.set_property("global_variable", self.global_variables.to_dict())
+            node.model.set_property("global_variable", self.global_variables.serialize())
 
     def _execute_nodes(self, nodes: List):
         """启动异步执行器（支持循环控制流）"""

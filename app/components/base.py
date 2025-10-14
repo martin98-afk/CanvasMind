@@ -16,7 +16,6 @@ from PIL import Image
 from loguru import logger
 from pydantic import create_model
 
-
 DEFAULT_PYTHON_ENV_VARS = {
     "PYTHONPATH": ".",
     "PYTHONUNBUFFERED": "1",
@@ -28,7 +27,6 @@ DEFAULT_PYTHON_ENV_VARS = {
     "MKL_NUM_THREADS": "1",
     "CUDA_VISIBLE_DEVICES": "0",
 }
-
 
 COMPONENT_IMPORT_CODE = """# -*- coding: utf-8 -*-
 import importlib.util
@@ -107,17 +105,10 @@ class GlobalVariableContext(BaseModel):
             self.env.metadata.update(DEFAULT_PYTHON_ENV_VARS)
 
     class Config:
-        # 允许任意类型（因为 value 可能是 list/dict 等）
         arbitrary_types_allowed = True
 
-    def get(self, key: str, default=None) -> Any:
-        """兼容旧 dict 用法：global_vars.get('key')"""
-        if key in self.custom:
-            return self.custom[key].value
-        return default
-
     def set(self, key: str, value: Any) -> None:
-        """设置自定义变量（忽略只读检查，由业务层控制）"""
+        """设置自定义变量"""
         if key not in self.custom:
             self.custom[key] = CustomVariable(value=value)
         else:
@@ -138,7 +129,7 @@ class GlobalVariableContext(BaseModel):
         }
 
     def deserialize(self, data):
-        history_env = data.get("env")
+        history_env = data.get("env", {})
         self.env.metadata = self.env.metadata | history_env.get("metadata", {})
         self.env.user_id = history_env.get("user_id")
         self.env.canvas_id = history_env.get("canvas_id")
@@ -146,6 +137,68 @@ class GlobalVariableContext(BaseModel):
         self.env.run_id = history_env.get("run_id")
         self.custom = {k: CustomVariable(**v) for k, v in data.get("custom", {}).items()}
         self.node_vars = data.get("node_vars", {})
+
+    def get(self, key: str, default=None) -> Any:
+        if not isinstance(key, str):
+            return default
+
+        try:
+            return self[key]  # 复用 __getitem__ 的全部逻辑
+        except KeyError:
+            return default
+
+    def __getitem__(self, path: str) -> Any:
+        if not isinstance(path, str):
+            raise KeyError("Path must be a string")
+
+        if "." not in path:
+            # 扁平回退（兼容旧用法）
+            if path in self.custom:
+                return self.custom[path].value
+            env_all = self.env.get_all_env_vars()
+            if path in env_all:
+                return env_all[path]
+            if path in self.node_vars:
+                return self.node_vars[path]
+            raise KeyError(f"Key '{path}' not found")
+
+        parts = path.split(".", 1)  # 只拆第一层：如 "env.TZ" → ["env", "TZ"]
+        root, subpath = parts[0], parts[1]
+
+        if root == "env":
+            # 先查预定义字段
+            if subpath in {"user_id", "canvas_id", "session_id", "run_id"}:
+                val = getattr(self.env, subpath, None)
+                if val is not None:
+                    return val
+            # 再查 metadata
+            if subpath in self.env.metadata:
+                return self.env.metadata[subpath]
+            # 都没有则报错
+            raise KeyError(f"env has no variable '{subpath}'")
+
+        elif root == "custom":
+            if subpath in self.custom:
+                return self.custom[subpath].value
+            else:
+                raise KeyError(f"Custom variable '{subpath}' not found")
+
+        elif root == "node_vars":
+            if subpath in self.node_vars:
+                return self.node_vars[subpath]
+            else:
+                raise KeyError(f"Node variable '{subpath}' not found")
+
+        else:
+            # 不是标准前缀，尝试扁平查找（如直接 "TZ"）
+            env_all = self.env.get_all_env_vars()
+            if path in self.custom:
+                return self.custom[path].value
+            if path in env_all:
+                return env_all[path]
+            if path in self.node_vars:
+                return self.node_vars[path]
+            raise KeyError(f"Key '{path}' not found")
 
 
 class ConnectionType(str, Enum):
@@ -254,8 +307,8 @@ class PortDefinition(BaseModel):
     connection: ConnectionType = ConnectionType.SINGLE
 
 
-class InputModelMixin:
-    """为输入模型添加 .get() 方法，兼容字典用法"""
+class ModelMixin:
+    """为输入模型添加 .get() 和 [] 访问方法，兼容字典用法"""
 
     def get(self, key: str, default=None):
         """
@@ -268,8 +321,20 @@ class InputModelMixin:
             return value if value is not None else default
         return default
 
-    # 可选：支持 in 操作（如 "image" in inputs）
+    def __getitem__(self, key: str):
+        """
+        支持 item["key"] 语法
+        - 如果字段存在且不为 None，返回值
+        - 如果字段不存在或值为 None，抛出 KeyError（与 dict 行为一致）
+        """
+        if hasattr(self, key):
+            value = getattr(self, key)
+            if value is not None:
+                return value
+        raise KeyError(key)
+
     def __contains__(self, key: str) -> bool:
+        """支持 "key" in item 语法"""
         return hasattr(self, key) and getattr(self, key) is not None
 
 
@@ -292,6 +357,7 @@ class BaseComponent(ABC):
     outputs: List[PortDefinition] = []
     properties: Dict[str, PropertyDefinition] = {}
     logger = logger
+    global_variable: GlobalVariableContext = GlobalVariableContext()
 
     @abstractmethod
     def run(self, params: BaseModel, inputs: BaseModel = None) -> Dict[str, Any]:
@@ -338,7 +404,7 @@ class BaseComponent(ABC):
 
         # 创建模型，并混入 InputModelMixin
         model_name = f"{cls.__name__}Input"
-        base_classes = (InputModelMixin, BaseModel)
+        base_classes = (ModelMixin, BaseModel)
         return create_model(model_name, __base__=base_classes, **fields)
 
     @classmethod
@@ -347,7 +413,10 @@ class BaseComponent(ABC):
         fields = {}
         for port in cls.outputs:
             fields[port.name] = (Any, ...)  # 所有输出端口都是必需的
-        return create_model(f"{cls.__name__}Output", **fields)
+            # 创建模型，并混入 InputModelMixin
+            model_name = f"{cls.__name__}Output"
+            base_classes = (ModelMixin, BaseModel)
+            return create_model(model_name, __base__=base_classes, **fields)
 
     @classmethod
     def get_params_model(cls) -> Type[BaseModel]:
@@ -391,7 +460,9 @@ class BaseComponent(ABC):
             # 使用 Field 确保默认值正确
             fields[prop_name] = (field_type, Field(default=default_val))
 
-        return create_model(f"{cls.__name__}Params", **fields)
+        model_name = f"{cls.__name__}Params"
+        base_classes = (ModelMixin, BaseModel)
+        return create_model(model_name, __base__=base_classes, **fields)
 
     # ---------------- 输入数据读取 ----------------
     def read_input_data(self, input_name: str, input_value: Any, input_type: ArgumentType) -> Any:
@@ -441,7 +512,7 @@ class BaseComponent(ABC):
     def _read_json_data(self, data: Union[str, dict, Path]) -> Union[dict, list]:
         """读取JSON数据"""
         if len(data) == 0:
-            return {}
+            return data
         if isinstance(data, dict):
             return data
         elif isinstance(data, list):
@@ -625,10 +696,16 @@ class BaseComponent(ABC):
             return tmp.name
 
     # ---------------- 执行包装器 ----------------
-    def execute(self, params: Dict[str, Any], inputs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def execute(
+            self,
+            params: Dict[str, Any],
+            inputs: Optional[Dict[str, Any]] = None,
+            global_vars: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         """执行组件，包含错误处理和数据类型转换"""
         try:
             # 验证参数
+            self.global_variable.deserialize(global_vars)
             params_model = self.get_params_model()
             validated_params = params_model(**params)
             input_model_cls = self.get_input_model()
@@ -723,4 +800,6 @@ def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition'
         default_val = _parse_default_value(field_def.default, ft)
         fields[field_name] = (ft, default_val)
 
-    return create_model(f"{name}Item", **fields)
+    model_name = f"{name}Item"
+    base_classes = (ModelMixin, BaseModel)
+    return create_model(model_name, __base__=base_classes, **fields)

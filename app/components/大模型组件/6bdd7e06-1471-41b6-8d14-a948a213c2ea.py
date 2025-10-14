@@ -12,6 +12,7 @@ PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
@@ -50,6 +51,11 @@ class Component(BaseComponent):
         if not raw_text:
             return {
                 "cleaned_text": "",
+                "think_text": ""
+            }
+        if not re.search("<think>", raw_text):
+            return {
+                "cleaned_text": raw_text,
                 "think_text": ""
             }
 

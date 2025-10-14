@@ -59,7 +59,7 @@ class CanvasPage(QWidget):
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
         self.parent = parent
 
-        # 初始化状态存储
+        # 初始化状态存储数据分析/因子分析
         self.node_status = {}  # {node_id: status}
         self.node_type_map = {}
         self._registered_nodes = []
@@ -358,14 +358,21 @@ class CanvasPage(QWidget):
         node_layout = QVBoxLayout(self.nodes_container)
         node_layout.setSpacing(5)
         node_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 迭代节点按钮
         self.iterate_node = ToolButton(FluentIcon.SYNC, self)
         self.iterate_node.setToolTip("创建迭代")
         self.iterate_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowIterateNode"))
         node_layout.addWidget(self.iterate_node)
+        # 循环节点按钮
         self.loop_node = ToolButton(get_icon("无限"), self)
         self.loop_node.setToolTip("创建循环")
         self.loop_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowLoopNode"))
         node_layout.addWidget(self.loop_node)
+        # 分支节点按钮
+        self.branch_node = ToolButton(get_icon("条件分支"), self)
+        self.branch_node.setToolTip("创建分支")
+        node_layout.addWidget(self.branch_node)
         self.nodes_container.setLayout(node_layout)
         self.nodes_container.show()
 

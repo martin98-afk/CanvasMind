@@ -35,15 +35,12 @@ try:
     comp_class = getattr(module, "{class_name}")
 
     with open(r"{params_path}", 'rb') as f:
-        params, inputs = pickle.load(f)
+        params, inputs, global_variables = pickle.load(f)
 
     comp_instance = comp_class()
     comp_instance.logger = FileLogHandler(r"{log_file_path}", "{node_id}")
 
-    if inputs:
-        output = comp_instance.execute(params, inputs)
-    else:
-        output = comp_instance.execute(params)
+    output = comp_instance.execute(params, inputs, global_variables)
 
     comp_instance.logger.success("节点执行完成")
     with open(r"{result_path}", 'wb') as f:
