@@ -12,11 +12,12 @@ from NodeGraphQt import BaseNode
 from PyQt5.QtWidgets import QFileDialog
 from loguru import logger
 
-from app.components.base import ArgumentType, PropertyType, ConnectionType
+from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
+from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.node_logger import NodeLogHandler
-from app.utils.utils import draw_square_port
+from app.utils.utils import draw_square_port, _evaluate_value_recursively
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
@@ -278,22 +279,51 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             # === 全局变量 ===
             global_variable =  self.model.get_property("global_variable")
 
-            # === 收集输入 ===
-            inputs = {}
-            for input_port in self.input_ports():
-                port_name = input_port.name()
-                connected = input_port.connected_ports()
-                if connected:
-                    if len(connected) == 1:
-                        upstream = connected[0]
-                        value = upstream.node()._output_values.get(upstream.name())
-                        inputs[port_name] = value
-                    else:
-                        inputs[port_name] = [
-                            upstream.node()._output_values.get(upstream.name()) for upstream in connected
-                        ]
-                    if port_name in self.column_select:
-                        inputs[f"{port_name}_column_select"] = self.column_select.get(port_name)
+            # === 【关键】创建表达式引擎并求值 ===
+            if global_variable is not None:
+                gv = GlobalVariableContext()
+                gv.deserialize(global_variable)
+                expr_engine = ExpressionEngine(global_vars_context=gv)
+
+                # 递归求值 params
+                params = {k: _evaluate_value_recursively(v, expr_engine) for k, v in params.items()}
+
+                # 收集输入（稍后处理）
+                inputs_raw = {}
+                for input_port in self.input_ports():
+                    port_name = input_port.name()
+                    connected = input_port.connected_ports()
+                    if connected:
+                        if len(connected) == 1:
+                            upstream = connected[0]
+                            value = upstream.node()._output_values.get(upstream.name())
+                            inputs_raw[port_name] = value
+                        else:
+                            inputs_raw[port_name] = [
+                                upstream.node()._output_values.get(upstream.name()) for upstream in connected
+                            ]
+                        if port_name in self.column_select:
+                            inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
+
+                # 处理 inputs
+                inputs = {k: _evaluate_value_recursively(v, expr_engine) for k, v in inputs_raw.items()}
+            else:
+                # 无全局变量时，按原逻辑收集 inputs
+                inputs = {}
+                for input_port in self.input_ports():
+                    port_name = input_port.name()
+                    connected = input_port.connected_ports()
+                    if connected:
+                        if len(connected) == 1:
+                            upstream = connected[0]
+                            value = upstream.node()._output_values.get(upstream.name())
+                            inputs[port_name] = value
+                        else:
+                            inputs[port_name] = [
+                                upstream.node()._output_values.get(upstream.name()) for upstream in connected
+                            ]
+                        if port_name in self.column_select:
+                            inputs[f"{port_name}_column_select"] = self.column_select.get(port_name)
 
             # === 获取 requirements ===
             requirements_str = getattr(comp_obj, 'requirements', '').strip()

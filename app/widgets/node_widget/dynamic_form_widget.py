@@ -69,6 +69,8 @@ class FormFieldWidget(QtWidgets.QWidget):
                     widget.setCurrentText(str(v))
                 elif hasattr(widget, 'setData'):
                     widget.setData(str(v))
+                elif hasattr(widget, 'set_value'):
+                    widget.set_value(str(v))
 
 
 class DynamicFormWidget(QtWidgets.QWidget):

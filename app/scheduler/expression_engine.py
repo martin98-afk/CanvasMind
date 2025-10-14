@@ -44,7 +44,7 @@ class ExpressionEngine:
 
         # 节点输出变量 -> node_xxx
         for k, v in ctx.node_vars.items():
-            flat[f"node_{k}"] = v
+            flat[f"node_vars_{k}"] = v
 
         return flat
 
@@ -101,7 +101,7 @@ class ExpressionEngine:
         """
         判断是否为模板表达式（包含 {{...}}）
         """
-        return isinstance(value, str) and '{{' in value and '}}' in value
+        return isinstance(value, str) and re.search(r'\$[^$]*\$', value) is not None
 
     def evaluate_template(self, template: str) -> str:
         """
@@ -115,11 +115,12 @@ class ExpressionEngine:
             expr = match.group(1).strip()
             if not expr:
                 return ""
-            result = self.evaluate(expr)
+            safe_expr = re.sub(r'\b(env|custom|node_vars)\.([a-zA-Z_][a-zA-Z0-9_]*)', r'\1_\2', expr)
+            result = self.evaluate(safe_expr)
             return str(result) if result is not None else ""
 
-        # 替换所有 {{ ... }} 表达式
-        return re.sub(r'\{\{\s*(.*?)\s*\}\}', replace_match, template)
+        # 替换所有 $ ... $ 表达式
+        return re.sub(r'\$([^$]*)\$', replace_match, template)
 
     def get_available_variables(self) -> Dict[str, Any]:
         """获取所有可用变量（用于 UI 提示）"""

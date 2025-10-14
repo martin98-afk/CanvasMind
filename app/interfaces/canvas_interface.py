@@ -12,7 +12,7 @@ from NodeGraphQt.constants import PipeLayoutEnum
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QApplication
 from loguru import logger
 from qfluentwidgets import (
     ToolButton, InfoBar,
@@ -182,6 +182,7 @@ class CanvasPage(QWidget):
             self._scheduler = None
 
     def _canvas_key_press_event(self, event):
+        super(type(self.graph.viewer()), self.graph.viewer()).keyPressEvent(event)
         if event.modifiers() == QtCore.Qt.ControlModifier:
             if event.key() == QtCore.Qt.Key_C:
                 self._copy_selected_nodes()
@@ -189,7 +190,6 @@ class CanvasPage(QWidget):
             elif event.key() == QtCore.Qt.Key_V:
                 self._paste_nodes()
                 return
-        super(type(self.graph.viewer()), self.graph.viewer()).keyPressEvent(event)
 
     def eventFilter(self, obj, event):
         if obj is self.canvas_widget and event.type() == event.Resize:
