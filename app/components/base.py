@@ -210,6 +210,7 @@ class ConnectionType(str, Enum):
 class PropertyType(str, Enum):
     """属性类型"""
     TEXT = "文本"
+    MULTILINE = "多行文本"
     LONGTEXT = "长文本"
     INT = "整数"
     FLOAT = "浮点数"

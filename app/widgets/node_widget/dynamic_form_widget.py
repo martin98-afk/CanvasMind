@@ -8,6 +8,7 @@ from qfluentwidgets import LineEdit, PushButton, FluentIcon, ToolButton
 from app.components.base import PropertyType
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.node_widget.longtext_dialog import LongTextWidget
+from app.widgets.node_widget.variable_combo_widget import GlobalVarComboBoxWidget
 
 
 class FormFieldWidget(QtWidgets.QWidget):
@@ -36,6 +37,12 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.currentIndexChanged.connect(self.changed)
                 self.fields[key] = widget
                 layout.addWidget(widget)
+            elif defn["type"] == PropertyType.VARIABLE.name:  # 修复条件判断
+                widget = GlobalVarComboBoxWidget(parent)  # 使用自定义ComboBox
+                widget.valueChanged.connect(self.changed)
+                self.fields[key] = widget
+                layout.addWidget(widget)
+
             else:
                 widget = LineEdit()
                 widget.setFixedWidth(150)

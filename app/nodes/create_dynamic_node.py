@@ -188,6 +188,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                             parent=self.view,
                             name=prop_name,
                             label=label,
+                            type=prop_type,
                             default=str(default),
                             window=parent_window
                         ), tab='Properties'

@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x15a68b5d990": {
+      "0x25e9f6c63e0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话",
@@ -73,7 +73,7 @@
           ]
         }
       },
-      "0x15a4d2c58a0": {
+      "0x25e9f5cdf00": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件意图",
@@ -101,8 +101,8 @@
         "width": 303.0,
         "height": 84.80000000000001,
         "pos": [
-          -2186.6897671231886,
-          1538.2556664779954
+          -2188.57038571253,
+          1543.8975222460185
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -122,7 +122,7 @@
           "input_text": "我的需求是开发一个大模型智能问题分类组件"
         }
       },
-      "0x15a6915cd90": {
+      "0x25e8b6f58d0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装",
@@ -150,8 +150,8 @@
         "width": 337.0,
         "height": 84.80000000000001,
         "pos": [
-          -1657.414133516464,
-          1540.4696945483504
+          -1659.2947521058052,
+          1546.1115503163737
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -171,7 +171,7 @@
           "prop_0": "intention"
         }
       },
-      "0x15a4c531a80": {
+      "0x25e9f6ef4f0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "提示词模板 3",
@@ -220,7 +220,7 @@
           "template": "##  任务\n根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码\n\n## 组件输入输出参数定义代码（不需要在生成代码里包含）\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"        # 不需要读取,传进来的数据就是dataframe数据\n    JSON = \"json\"   # 不需要读取，传进来的数据已经解析好\n    EXCEL = \"excel\"   # 不需要读取,传进来的数据就是dataframe数据\n    FILE = \"文件\"    # 文本文件\n    UPLOAD = \"上传\"   # \n    SKLEARNMODEL = \"sklearn模型\"    # 模型类型不需要保存到本地，直接返回后后端代码会自动进行存储\n    TORCHMODEL = \"torch模型\"    # 模型类型不需要保存到本地，直接返回后后端代码会自动进行存储\n    IMAGE = \"图片\"   # 传进来的数据格式为PIL.Image\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n\n## 组件属性参数定义代码\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    DYNAMICFORM = \"动态表单\"   # 可以动态添加属性数据格式为：列表[ 字典{} ]\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n## 组件样例代码（仅供参考）\nclass Component(BaseComponent):\n    name = \"提示词模板\"\n    category = \"大模型组件\"\n    description = \"\"\n    requirements = \"numpy,pandas\"\n\n    inputs = [\n        PortDefinition(name=\"variables\", label=\"变量字典\", type=ArgumentType.JSON),\n    ]\n    outputs = [\n        PortDefinition(name=\"prompt\", label=\"生成的提示词\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"template\": PropertyDefinition(\n            type=PropertyType.LONGTEXT,\n            default=\"\"\"你好，{{name}}！今天是{{day}}。\"\"\",\n            label=\"提示词模板\",\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        import re\n        import numpy\n        import pandas\n        self.logger.info(inputs)\n        template = params.get(\"template\", \"\")\n        variables = inputs.get(\"variables\", {}) if inputs else {}\n\n        if isinstance(variables, str):\n            import json\n            try:\n                variables = json.loads(variables)\n            except:\n                variables = {}\n\n        # 替换 {{key}} 为变量值\n        def replace_match(match):\n            key = match.group(1)\n            return str(variables.get(key, match.group(0)))\n\n        prompt = re.sub(r\"\\{\\{(\\w+)\\}\\}\", replace_match, template)\n        self.logger.info(prompt)    # 组件内日志输出使用类中定义的self.logger，使用方法与loguru.logger使用方法一致。\n        \n        return {\"prompt\": prompt}\n\n## 组件开发需求\n{{intention}}\n\n## 组件输入参数\n{{input}}\n\n## 组件输出参数\n{{output}}\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，但是组件定义的输入输出参数必须要在当前参数定义范围之内，不能输出新的参数类型。同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码\n"
         }
       },
-      "0x15a4d2c6b30": {
+      "0x25e9f6ec040": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件输入",
@@ -248,8 +248,8 @@
         "width": 303.0,
         "height": 84.80000000000001,
         "pos": [
-          -2186.3294309731614,
-          1703.3662226190318
+          -2188.2100495625027,
+          1709.0080783870553
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -269,7 +269,7 @@
           "input_text": "输入是用户的问题文本，组件参数是所有问题分类"
         }
       },
-      "0x15a68d40850": {
+      "0x25e9f7eeda0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 1",
@@ -297,8 +297,8 @@
         "width": 337.0,
         "height": 84.80000000000001,
         "pos": [
-          -1685.5683197675417,
-          1702.7078296656764
+          -1687.4489383568828,
+          1708.3496854337
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -318,7 +318,7 @@
           "prop_0": "input"
         }
       },
-      "0x15a4afa92d0": {
+      "0x25e8a452260": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 3",
@@ -346,8 +346,8 @@
         "width": 337.0,
         "height": 84.80000000000001,
         "pos": [
-          -1650.0577512331129,
-          1884.7859879001708
+          -1651.938369822454,
+          1890.4278436681943
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -367,7 +367,7 @@
           "prop_0": "output"
         }
       },
-      "0x15a6901acb0": {
+      "0x25e8a42cf10": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件输出",
@@ -395,8 +395,8 @@
         "width": 303.0,
         "height": 84.80000000000001,
         "pos": [
-          -2167.2633820555793,
-          1882.1850401508473
+          -2169.14400064492,
+          1887.8268959188708
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -416,7 +416,7 @@
           "input_text": "输出是问题分类结果"
         }
       },
-      "0x15a69019d80": {
+      "0x25e9f89fd60": {
         "type_": "dynamic.StatusDynamicNode_数据存储_组件保存",
         "icon": null,
         "name": "组件保存",
@@ -445,7 +445,7 @@
         "height": 60,
         "pos": [
           947.1487304459199,
-          1885.5024171272573
+          1888.5409078504013
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -464,7 +464,7 @@
           }
         }
       },
-      "0x15a4ca0b5b0": {
+      "0x25e8a3719c0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
         "icon": null,
         "name": "大模型输出解析",
@@ -489,11 +489,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 292.0,
+        "width": 293.0,
         "height": 122.60000000000001,
         "pos": [
-          576.7745802044889,
-          1885.0254042598824
+          573.7360894813451,
+          1888.063894983026
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -514,7 +514,7 @@
           "type": "python"
         }
       },
-      "0x15a68fc5630": {
+      "0x25e9f89c0d0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程",
@@ -539,7 +539,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 455.0,
+        "width": 454.0,
         "height": 86.9,
         "pos": [
           -7.780470444673426,
@@ -564,7 +564,7 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x15a68aaa380": {
+      "0x25e9f7ed360": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_构建多轮对话",
         "icon": null,
         "name": "构建多轮对话",
@@ -624,7 +624,7 @@
           ]
         }
       },
-      "0x15a68a7ceb0": {
+      "0x25e9f693ee0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_获取全局变量",
         "icon": null,
         "name": "获取全局变量",
@@ -649,7 +649,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 372.0,
+        "width": 374.0,
         "height": 94.25,
         "pos": [
           -1546.154550343867,
@@ -695,10 +695,10 @@
               "大模型对话 response": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据用户输入的问题文本，使用大模型进行智能问题分类\"\n    requirements = \"numpy,pandas\"\n\n    inputs = [\n        PortDefinition(name=\"question\", label=\"用户问题文本\", type=ArgumentType.TEXT),\n    ]\n    outputs = [\n        PortDefinition(name=\"classification\", label=\"问题分类结果\", type=ArgumentArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"category_list\": PropertyDefinition(\n            type=PropertyType.LONGTEXT,\n            default=\"['技术问题', '业务咨询', '产品反馈', '功能请求', '其他']\",\n            label=\"分类列表\",\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        import re\n        import numpy\n        import pandas\n        self.logger.info(inputs)\n        question = inputs.get(\"question\", \"\") if inputs else \"\"\n        category_list = params.get(\"category_list\", \"['技术问题', '业务咨询', '产品反馈', '功能请求', '其他']\")\n        \n        # 将分类列表转换为Python列表\n        try:\n            category_list = eval(category_list)\n        except:\n            category_list = [\"技术问题\", \"业务咨询\", \"产品反馈\", \"功能请求\", \"其他\"]\n        \n        # 简单的分类逻辑（实际应使用大模型进行分类）\n        if any(keyword in question for keyword in [\"如何\", \"什么\", \"哪里\", \"当\", \"为什么\", \"怎样\"]):\n            classification = \"技术问题\"\n        elif any(keyword in question for keyword in [\"咨询\", \"了解\", \"信息\", \"帮助\"]):\n            classification = \"业务咨询\"\n        elif any(keyword in question for keyword in [\"反馈\", \"问题\", \"建议\"]):\n            classification = \"产品反馈\"\n        elif any(keyword in question for keyword in [\"请求\", \"需要\", \"想要\"]):\n            classification = \"功能请求\"\n        else:\n            classification = \"其他\"\n        \n        self.logger.info(f\"问题分类结果: {classification}\")\n        \n        return {\"classification\": classification}"
             }
           },
-          "prop1": "node_vars.大模型对话 response"
+          "prop1": ""
         }
       },
-      "0x15a68a7c970": {
+      "0x25e9f871c30": {
         "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
         "icon": null,
         "name": "添加字符串",
@@ -721,9 +721,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 401.0,
+        "width": 384.0,
         "height": 94.25,
         "pos": [
           -1208.408892334515,
@@ -772,7 +772,7 @@
           "prop1": "custom.model_name"
         }
       },
-      "0x15a68aa81f0": {
+      "0x25e9f8c61a0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入",
@@ -797,11 +797,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 303.0,
-        "height": 84.80000000000001,
+        "width": 361.0,
+        "height": 248.60000000000002,
         "pos": [
-          -1890.9644946161093,
-          2766.5385899840508
+          -1894.8267101812714,
+          2700.880925376301
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -846,7 +846,7 @@
           "input": "文本内容"
         }
       },
-      "0x15a68c6bee0": {
+      "0x25e8ba33d90": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -869,7 +869,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 153.0,
         "height": 60,
@@ -884,7 +884,7 @@
           "global_variable": {}
         }
       },
-      "0x15a6915ea70": {
+      "0x25e8ba33970": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -907,7 +907,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 153.0,
         "height": 60,
@@ -922,7 +922,7 @@
           "global_variable": {}
         }
       },
-      "0x15a68d8f100": {
+      "0x25e8ba331f0": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": null,
         "name": "迭代控制流区域",
@@ -945,7 +945,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 868.0,
         "height": 174.25,
@@ -998,146 +998,299 @@
           "loop_nums": 4,
           "max_iterations": 1000
         }
+      },
+      "0x25e9f9249d0": {
+        "type_": "dynamic.StatusDynamicNode_测试组件_逻辑判断",
+        "icon": null,
+        "name": "逻辑判断",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 743.0,
+        "height": 211.85,
+        "pos": [
+          -1088.2166924006153,
+          3092.377528718363
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:20000",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
+          "conditions": [
+            {
+              "取反": "/",
+              "变量": "无",
+              "操作符": "!=",
+              "常量": "qwen3-30b-a3b"
+            }
+          ],
+          "组合方式": "and",
+          "整体取反": true
+        }
+      },
+      "0x25e9f927070": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+        "icon": null,
+        "name": "文本输入 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 373.0,
+        "height": 248.60000000000002,
+        "pos": [
+          -2244.9446280488064,
+          2285.370464287332
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:20000",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
+          "input": "文本内容dfewfewfweff"
+        }
       }
     },
     "connections": [
       {
         "in": [
-          "0x15a68b5d990",
+          "0x25e9f6c63e0",
           "user_input"
         ],
         "out": [
-          "0x15a4c531a80",
+          "0x25e9f6ef4f0",
           "prompt"
         ]
       },
       {
         "in": [
-          "0x15a68b5d990",
+          "0x25e9f6c63e0",
           "history"
         ],
         "out": [
-          "0x15a68aaa380",
+          "0x25e9f7ed360",
           "output1"
         ]
       },
       {
         "out": [
-          "0x15a68b5d990",
+          "0x25e9f6c63e0",
           "response"
         ],
         "in": [
-          "0x15a68fc5630",
+          "0x25e9f89c0d0",
           "raw_text"
         ]
       },
       {
         "out": [
-          "0x15a4d2c58a0",
+          "0x25e9f5cdf00",
           "output"
         ],
         "in": [
-          "0x15a6915cd90",
+          "0x25e8b6f58d0",
           "input1"
         ]
       },
       {
         "out": [
-          "0x15a6915cd90",
+          "0x25e8b6f58d0",
           "output1"
         ],
         "in": [
-          "0x15a4c531a80",
+          "0x25e9f6ef4f0",
           "variables"
         ]
       },
       {
         "in": [
-          "0x15a4c531a80",
+          "0x25e9f6ef4f0",
           "variables"
         ],
         "out": [
-          "0x15a68d40850",
+          "0x25e9f7eeda0",
           "output1"
         ]
       },
       {
         "in": [
-          "0x15a4c531a80",
+          "0x25e9f6ef4f0",
           "variables"
         ],
         "out": [
-          "0x15a4afa92d0",
+          "0x25e8a452260",
           "output1"
         ]
       },
       {
         "out": [
-          "0x15a4d2c6b30",
+          "0x25e9f6ec040",
           "output"
         ],
         "in": [
-          "0x15a68d40850",
+          "0x25e9f7eeda0",
           "input1"
         ]
       },
       {
         "in": [
-          "0x15a4afa92d0",
+          "0x25e8a452260",
           "input1"
         ],
         "out": [
-          "0x15a6901acb0",
+          "0x25e8a42cf10",
           "output"
         ]
       },
       {
         "in": [
-          "0x15a69019d80",
+          "0x25e9f89fd60",
           "text"
         ],
         "out": [
-          "0x15a4ca0b5b0",
+          "0x25e8a3719c0",
           "parsed_json"
         ]
       },
       {
         "in": [
-          "0x15a4ca0b5b0",
+          "0x25e8a3719c0",
           "llm_output"
         ],
         "out": [
-          "0x15a68fc5630",
+          "0x25e9f89c0d0",
           "cleaned_text"
         ]
       },
       {
         "in": [
-          "0x15a68a7c970",
+          "0x25e9f871c30",
           "input1"
         ],
         "out": [
-          "0x15a68c6bee0",
+          "0x25e8ba33d90",
           "output"
         ]
       },
       {
         "out": [
-          "0x15a68a7c970",
+          "0x25e9f871c30",
           "output1"
         ],
         "in": [
-          "0x15a6915ea70",
+          "0x25e8ba33970",
           "input"
         ]
       },
       {
         "out": [
-          "0x15a68aa81f0",
+          "0x25e9f8c61a0",
           "text"
         ],
         "in": [
-          "0x15a68d8f100",
+          "0x25e8ba331f0",
           "inputs"
         ]
       }
@@ -1147,23 +1300,25 @@
     "environment": "3.11",
     "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.11\\python.exe",
     "node_id2stable_key": {
-      "0x15a68b5d990": "大模型组件/大模型对话||大模型对话",
-      "0x15a4d2c58a0": "数据集成/长文本输入||组件意图",
-      "0x15a6915cd90": "大模型组件/JSON文本包装||JSON文本包装",
-      "0x15a4c531a80": "大模型组件/提示词模板||提示词模板 3",
-      "0x15a4d2c6b30": "数据集成/长文本输入||组件输入",
-      "0x15a68d40850": "大模型组件/JSON文本包装||JSON文本包装 1",
-      "0x15a4afa92d0": "大模型组件/JSON文本包装||JSON文本包装 3",
-      "0x15a6901acb0": "数据集成/长文本输入||组件输出",
-      "0x15a69019d80": "数据存储/组件保存||组件保存",
-      "0x15a4ca0b5b0": "大模型组件/大模型输出解析||大模型输出解析",
-      "0x15a68fc5630": "大模型组件/移除思考过程||移除思考过程",
-      "0x15a68aaa380": "大模型组件/构建多轮对话||构建多轮对话",
-      "0x15a68a7ceb0": "数据集成/获取全局变量||获取全局变量",
-      "0x15a68a7c970": "测试组件/添加字符串||添加字符串",
-      "0x15a68aa81f0": "数据集成/文本输入||文本输入",
-      "0x15a68c6bee0": "控制流/输入端口||输入端口",
-      "0x15a6915ea70": "控制流/输出端口||输出端口"
+      "0x25e9f6c63e0": "大模型组件/大模型对话||大模型对话",
+      "0x25e9f5cdf00": "数据集成/长文本输入||组件意图",
+      "0x25e8b6f58d0": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x25e9f6ef4f0": "大模型组件/提示词模板||提示词模板 3",
+      "0x25e9f6ec040": "数据集成/长文本输入||组件输入",
+      "0x25e9f7eeda0": "大模型组件/JSON文本包装||JSON文本包装 1",
+      "0x25e8a452260": "大模型组件/JSON文本包装||JSON文本包装 3",
+      "0x25e8a42cf10": "数据集成/长文本输入||组件输出",
+      "0x25e9f89fd60": "数据存储/组件保存||组件保存",
+      "0x25e8a3719c0": "大模型组件/大模型输出解析||大模型输出解析",
+      "0x25e9f89c0d0": "大模型组件/移除思考过程||移除思考过程",
+      "0x25e9f7ed360": "大模型组件/构建多轮对话||构建多轮对话",
+      "0x25e9f693ee0": "数据集成/获取全局变量||获取全局变量",
+      "0x25e9f871c30": "测试组件/添加字符串||添加字符串",
+      "0x25e9f8c61a0": "数据集成/文本输入||文本输入",
+      "0x25e8ba33d90": "控制流/输入端口||输入端口",
+      "0x25e8ba33970": "控制流/输出端口||输出端口",
+      "0x25e9f9249d0": "测试组件/逻辑判断||逻辑判断",
+      "0x25e9f927070": "数据集成/文本输入||文本输入 1"
     },
     "node_states": {
       "大模型组件/大模型对话||大模型对话": "success",
@@ -1181,8 +1336,10 @@
       "数据集成/获取全局变量||获取全局变量": "success",
       "测试组件/添加字符串||添加字符串": "success",
       "数据集成/文本输入||文本输入": "success",
-      "控制流/输入端口||输入端口": "pending",
-      "控制流/输出端口||输出端口": "pending"
+      "控制流/输入端口||输入端口": "unrun",
+      "控制流/输出端口||输出端口": "unrun",
+      "测试组件/逻辑判断||逻辑判断": "success",
+      "数据集成/文本输入||文本输入 1": "success"
     },
     "node_inputs": {
       "大模型组件/大模型对话||大模型对话": {},
@@ -1201,7 +1358,9 @@
       "测试组件/添加字符串||添加字符串": {},
       "数据集成/文本输入||文本输入": {},
       "控制流/输入端口||输入端口": {},
-      "控制流/输出端口||输出端口": {}
+      "控制流/输出端口||输出端口": {},
+      "测试组件/逻辑判断||逻辑判断": {},
+      "数据集成/文本输入||文本输入 1": {}
     },
     "node_outputs": {
       "大模型组件/大模型对话||大模型对话": {
@@ -1321,10 +1480,14 @@
       "数据集成/文本输入||文本输入": {
         "text": "文本内容"
       },
-      "控制流/输入端口||输入端口": {
-        "output": "文本内容qwen3-30b-a3bqwen3-30b-a3bqwen3-30b-a3b"
+      "控制流/输入端口||输入端口": {},
+      "控制流/输出端口||输出端口": {},
+      "测试组件/逻辑判断||逻辑判断": {
+        "output": true
       },
-      "控制流/输出端口||输出端口": {}
+      "数据集成/文本输入||文本输入 1": {
+        "text": "文本内容dfewfewfweff"
+      }
     },
     "column_select": {
       "大模型组件/大模型对话||大模型对话": {},
@@ -1343,7 +1506,9 @@
       "测试组件/添加字符串||添加字符串": {},
       "数据集成/文本输入||文本输入": {},
       "控制流/输入端口||输入端口": {},
-      "控制流/输出端口||输出端口": {}
+      "控制流/输出端口||输出端口": {},
+      "测试组件/逻辑判断||逻辑判断": {},
+      "数据集成/文本输入||文本输入 1": {}
     }
   },
   "global_variable": {
@@ -1378,8 +1543,6 @@
         "read_only": false
       }
     },
-    "node_vars": {
-      "大模型对话 response": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据用户输入的问题文本，使用大模型进行智能问题分类\"\n    requirements = \"numpy,pandas\"\n\n    inputs = [\n        PortDefinition(name=\"question\", label=\"用户问题文本\", type=ArgumentType.TEXT),\n    ]\n    outputs = [\n        PortDefinition(name=\"classification\", label=\"问题分类结果\", type=ArgumentArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"category_list\": PropertyDefinition(\n            type=PropertyType.LONGTEXT,\n            default=\"['技术问题', '业务咨询', '产品反馈', '功能请求', '其他']\",\n            label=\"分类列表\",\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        import re\n        import numpy\n        import pandas\n        self.logger.info(inputs)\n        question = inputs.get(\"question\", \"\") if inputs else \"\"\n        category_list = params.get(\"category_list\", \"['技术问题', '业务咨询', '产品反馈', '功能请求', '其他']\")\n        \n        # 将分类列表转换为Python列表\n        try:\n            category_list = eval(category_list)\n        except:\n            category_list = [\"技术问题\", \"业务咨询\", \"产品反馈\", \"功能请求\", \"其他\"]\n        \n        # 简单的分类逻辑（实际应使用大模型进行分类）\n        if any(keyword in question for keyword in [\"如何\", \"什么\", \"哪里\", \"当\", \"为什么\", \"怎样\"]):\n            classification = \"技术问题\"\n        elif any(keyword in question for keyword in [\"咨询\", \"了解\", \"信息\", \"帮助\"]):\n            classification = \"业务咨询\"\n        elif any(keyword in question for keyword in [\"反馈\", \"问题\", \"建议\"]):\n            classification = \"产品反馈\"\n        elif any(keyword in question for keyword in [\"请求\", \"需要\", \"想要\"]):\n            classification = \"功能请求\"\n        else:\n            classification = \"其他\"\n        \n        self.logger.info(f\"问题分类结果: {classification}\")\n        \n        return {\"classification\": classification}"
-    }
+    "node_vars": {}
   }
 }
