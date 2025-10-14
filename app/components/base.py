@@ -130,6 +130,23 @@ class GlobalVariableContext(BaseModel):
         """兼容旧逻辑：返回扁平字典（仅 custom 变量）"""
         return {k: v.value for k, v in self.custom.items()} | self.env.get_all_env_vars() | self.node_vars
 
+    def serialize(self):
+        return {
+            "env": self.env.dict(),
+            "custom": {k: v.dict() for k, v in self.custom.items()},
+            "node_vars": self.node_vars
+        }
+
+    def deserialize(self, data):
+        history_env = data.get("env")
+        self.env.metadata = self.env.metadata | history_env.get("metadata", {})
+        self.env.user_id = history_env.get("user_id")
+        self.env.canvas_id = history_env.get("canvas_id")
+        self.env.session_id = history_env.get("session_id")
+        self.env.run_id = history_env.get("run_id")
+        self.custom = {k: CustomVariable(**v) for k, v in data.get("custom", {}).items()}
+        self.node_vars = data.get("node_vars", {})
+
 
 class ConnectionType(str, Enum):
     """连接类型"""
@@ -146,6 +163,7 @@ class PropertyType(str, Enum):
     RANGE = "范围"
     BOOL = "复选框"
     CHOICE = "下拉框"
+    VARIABLE = "全局变量"
     DYNAMICFORM = "动态表单"
 
 

@@ -39,9 +39,10 @@ class CustomComboBox(QComboBox):
                font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
            }
            QComboBox QAbstractItemView::item {
-               min-height: 32px;           /* ⬅️ 增大行高，更宽松 */
-               padding: 6px 12px;          /* ⬅️ 增加内边距 */
-           }
+                min-height: 36px;      /* 从 32px → 36px */
+                padding: 8px 16px;     /* 从 6px 12px → 8px 16px */
+                border-bottom: 1px solid #444444; /* 添加分隔线更清晰 */
+            }
            QComboBox QAbstractItemView::item:selected {
                background-color: #0078d4;
            }

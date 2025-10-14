@@ -40,6 +40,7 @@ from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 class CanvasPage(QWidget):
     canvas_deleted = pyqtSignal()
     canvas_saved = pyqtSignal(Path)
+    global_variables_changed = pyqtSignal()
     PIPELINE_STYLE = {
         "折线": PipeLayoutEnum.ANGLE.value,
         "曲线": PipeLayoutEnum.CURVED.value,
@@ -70,13 +71,7 @@ class CanvasPage(QWidget):
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
         self.canvas_widget.keyPressEvent = self._canvas_key_press_event
-        self.global_variables = GlobalVariableContext(
-            env=ExecutionEnvironment(
-                canvas_id=self.graph.id if hasattr(self.graph, 'id') else "default",
-                session_id="sess_123",  # 可从外部传入
-                run_id=str(int(datetime.utcnow().timestamp()))
-            )
-        )
+        self.global_variables = GlobalVariableContext()
         # 组件面板
         self.register_components()
         self.nav_panel = DraggableTreePanel(self)
@@ -1051,7 +1046,8 @@ class CanvasPage(QWidget):
         full_data = {
             "version": "1.0",
             "graph": graph_data,
-            "runtime": runtime
+            "runtime": runtime,
+            "global_variable": self.global_variables.serialize()
         }
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(full_data, f, indent=2, ensure_ascii=False)
@@ -1117,10 +1113,16 @@ class CanvasPage(QWidget):
         self.workflow_loader.finished.connect(self._on_workflow_loaded)
         self.workflow_loader.start()
 
-    def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data):
+    def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data, global_variable):
         try:
+            # 解析图数据
             self.graph.deserialize_session(graph_data)
             self._setup_pipeline_style()
+            # 解析全局变量
+            self.global_variables.deserialize(global_variable)
+            self.global_variables_changed.emit()
+            self.property_panel.update_properties(None)
+            # 解析运行时数据
             env = runtime_data.get("environment")
             if env:
                 for i in range(self.env_combo.count()):

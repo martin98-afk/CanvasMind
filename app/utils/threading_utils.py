@@ -60,7 +60,7 @@ class ThumbnailGenerator(QThread):
 
 class WorkflowLoader(QThread):
     """异步加载工作流的线程类"""
-    finished = pyqtSignal(dict, dict, dict)  # graph_data, runtime_data, node_status_data
+    finished = pyqtSignal(dict, dict, dict, dict)  # graph_data, runtime_data, node_status_data
     progress = pyqtSignal(str)  # 添加进度信号
 
     def __init__(self, file_path, graph, node_type_map):
@@ -78,6 +78,7 @@ class WorkflowLoader(QThread):
 
             graph_data = full_data.get("graph", {})
             runtime_data = full_data.get("runtime", {})
+            global_variable = full_data.get("global_variable", {})
             # 准备节点状态数据
             node_status_data = {}
             nodes_data = graph_data.get("nodes", {})
@@ -108,7 +109,7 @@ class WorkflowLoader(QThread):
                         }
 
             self.progress.emit("节点处理完成，准备加载...")
-            self.finished.emit(graph_data, runtime_data, node_status_data)
+            self.finished.emit(graph_data, runtime_data, node_status_data, global_variable)
         except Exception as e:
             logger.error(f"工作流加载失败: {str(e)}")
             self.finished.emit({}, {}, {})
