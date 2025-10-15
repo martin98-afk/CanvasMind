@@ -6,7 +6,7 @@ from typing import List, Optional, Any
 from PyQt5.QtCore import QObject, QRunnable, pyqtSignal
 from loguru import logger
 
-from app.nodes.create_backdrop_node import ControlFlowBackdrop
+from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.status_node import NodeStatus
 
 

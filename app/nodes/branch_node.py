@@ -13,7 +13,8 @@ from PyQt5 import QtCore
 
 from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.base_node import BasicNodeWithGlobalProperty
-from app.nodes.create_dynamic_node import CustomNodeItem
+from app.nodes.execute_node import CustomNodeItem
+from app.nodes.status_node import StatusNode
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import get_icon, resource_path
@@ -22,9 +23,11 @@ from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 
 
 def create_branch_node(parent_window):
-    class ConditionalBranchNode(BaseNode, BasicNodeWithGlobalProperty):
+    class ConditionalBranchNode(BaseNode, StatusNode, BasicNodeWithGlobalProperty):
+        category: str = "控制流"
         __identifier__ = 'control_flow'
         NODE_NAME = '条件分支'
+        FULL_PATH = f"{category}/{NODE_NAME}"
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)

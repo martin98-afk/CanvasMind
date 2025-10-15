@@ -6,7 +6,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from NodeGraphQt import NodeGraph, BackdropNode
+from NodeGraphQt import NodeGraph, BackdropNode, BaseNode
 from NodeGraphQt.constants import PipeLayoutEnum
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
@@ -21,8 +21,8 @@ from qfluentwidgets import (
 
 from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.branch_node import create_branch_node
-from app.nodes.create_backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
-from app.nodes.create_dynamic_node import create_node_class
+from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
+from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
@@ -1132,8 +1132,11 @@ class CanvasPage(QWidget):
                 if isinstance(node, ControlFlowBackdrop):
                     self.property_panel.update_properties(node)
                     return
-            if selected_nodes[0].__identifier__ == "dynamic":
+
+            if isinstance(selected_nodes[0], BaseNode):
                 self.property_panel.update_properties(selected_nodes[0])
+            else:
+                self.property_panel.update_properties(None)
         else:
             self.property_panel.update_properties(None)
 
