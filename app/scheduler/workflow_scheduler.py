@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from datetime import datetime
 from collections import deque, defaultdict
 from typing import List, Dict, Any, Optional, Callable
 
@@ -7,7 +6,7 @@ from NodeGraphQt import BackdropNode
 from PyQt5.QtCore import QObject, pyqtSignal
 from loguru import logger
 
-from app.components.base import GlobalVariableContext, ExecutionEnvironment, CustomVariable
+from app.components.base import GlobalVariableContext
 from app.nodes.status_node import NodeStatus
 from app.scheduler.node_list_executor import NodeListExecutor
 from app.utils.utils import get_port_node
@@ -15,8 +14,10 @@ from app.utils.utils import get_port_node
 
 class WorkflowScheduler(QObject):
     """
-    工作流调度器：统一处理全图执行、执行到节点、从节点开始执行等逻辑
-    完全解耦 UI，仅依赖 graph、component_map 和状态回调
+    工作流调度器：支持条件分支控制流（通过 disabled 状态）
+    - 执行前自动解锁所有节点
+    - 条件分支节点可动态禁用下游
+    - 调度器自动跳过 disabled 节点及其下游
     """
     node_started = pyqtSignal(str)      # node_id
     node_finished = pyqtSignal(str)
@@ -45,13 +46,13 @@ class WorkflowScheduler(QObject):
         self._executor = None
 
     def set_node_status(self, node, status):
-        # 如果在工作线程中调用，通过信号转发
         self.node_status_changed.emit(node.id, status)
 
     def get_executable_nodes(self):
+        """获取所有顶层可执行节点（排除循环内部节点）"""
         all_nodes = self.graph.all_nodes()
 
-        # Step 1: 找出所有顶层循环 Backdrop
+        # 找出顶层循环 Backdrop
         loop_backdrops = [
             n for n in all_nodes
             if (n.type_ == "control_flow.ControlFlowBackdrop"
@@ -59,18 +60,17 @@ class WorkflowScheduler(QObject):
                 and not hasattr(n, 'parent'))
         ]
 
-        # Step 2: 收集所有循环体内部节点
         loop_internal_nodes = set()
         for backdrop in loop_backdrops:
             internal = backdrop.nodes()
             loop_internal_nodes.update(internal)
 
-        # Step 3: 过滤出应参与全局执行的节点
         executable_nodes = []
         for node in all_nodes:
-            # 排除循环体内部节点
             if node in loop_internal_nodes:
                 continue
+            if isinstance(node, BackdropNode):
+                continue  # Backdrop 本身不执行，由调度器特殊处理
             executable_nodes.append(node)
 
         return executable_nodes
@@ -90,6 +90,7 @@ class WorkflowScheduler(QObject):
         self._execute_nodes(execution_order)
 
     def run(self, node):
+        """强制执行单个节点（即使 disabled）"""
         self._execute_nodes([node])
 
     def run_to(self, target_node):
@@ -104,7 +105,6 @@ class WorkflowScheduler(QObject):
     def run_from(self, start_node):
         """从起始节点开始执行（含所有下游）"""
         nodes = self._get_descendants_and_self(start_node)
-        # 下游子图也需拓扑排序（虽然通常无环，但保险起见）
         execution_order = self._topological_sort(nodes)
         if execution_order is None:
             self.error.emit("检测到循环依赖，无法执行")
@@ -112,7 +112,6 @@ class WorkflowScheduler(QObject):
         self._execute_nodes(execution_order)
 
     def _get_ancestors_and_self(self, node):
-        """获取 node 及其所有上游节点（DFS）"""
         visited = set()
         result = []
 
@@ -123,14 +122,14 @@ class WorkflowScheduler(QObject):
             for input_port in n.input_ports():
                 for out_port in input_port.connected_ports():
                     upstream = get_port_node(out_port)
-                    dfs(upstream)
+                    if upstream:
+                        dfs(upstream)
             result.append(n)
 
         dfs(node)
         return result
 
     def _get_descendants_and_self(self, node):
-        """获取 node 及其所有下游节点（DFS）"""
         visited = set()
         result = []
 
@@ -142,30 +141,29 @@ class WorkflowScheduler(QObject):
             for output_port in n.output_ports():
                 for in_port in output_port.connected_ports():
                     downstream = get_port_node(in_port)
-                    dfs(downstream)
+                    if downstream:
+                        dfs(downstream)
 
         dfs(node)
         return result
 
     def _topological_sort(self, nodes: List) -> Optional[List]:
-        """对节点列表进行拓扑排序，检测循环依赖"""
+        """对 active 节点（非 disabled）进行拓扑排序"""
         if not nodes:
             return []
 
-        # 构建子图依赖
+        node_set = set(nodes)
         in_degree = {node: 0 for node in nodes}
         graph_deps = defaultdict(list)
 
-        node_set = set(nodes)
         for node in nodes:
             for input_port in node.input_ports():
                 for upstream_out in input_port.connected_ports():
                     upstream = get_port_node(upstream_out)
-                    if upstream in node_set:
+                    if upstream and upstream in node_set:
                         graph_deps[upstream].append(node)
                         in_degree[node] += 1
 
-        # Kahn 算法
         queue = deque([n for n in nodes if in_degree[n] == 0])
         execution_order = []
         while queue:
@@ -185,19 +183,24 @@ class WorkflowScheduler(QObject):
             node.model.set_property("global_variable", self.global_variables.serialize())
 
     def _execute_nodes(self, nodes: List):
-        """启动异步执行器（支持循环控制流）"""
+        """启动执行：先解锁所有节点，再执行 active 节点"""
         try:
-            # Step 1: 重置状态
-            for node in nodes:
+            # ✅ 执行前解锁所有节点
+            all_nodes = [n for n in self.graph.all_nodes() if not isinstance(n, BackdropNode)]
+            for node in all_nodes:
+                node.set_disabled(False)
                 self.set_node_status(node, NodeStatus.NODE_STATUS_PENDING)
-                if isinstance(node, BackdropNode):
-                    for internal in node.nodes():
-                        self.set_node_status(internal, NodeStatus.NODE_STATUS_PENDING)
-            self.register_global_variable(nodes)
-            # Step 2: 启动执行器
+
+            # ✅ 仍然做拓扑排序（保证依赖顺序），但接受其中包含后续会被禁用的节点
+            execution_order = self._topological_sort(nodes)
+            if execution_order is None:
+                self.error.emit("检测到循环依赖")
+                return
+
+            # 启动执行器
             self._executor = NodeListExecutor(
                 main_window=None,
-                nodes=nodes,
+                nodes=execution_order,  # 传入拓扑序
                 python_exe=self.get_python_exe(),
                 scheduler=self
             )

@@ -4,30 +4,31 @@
 @contact: mading@luculent.net
 @file: branch_node.py
 @time: 2025/10/15 15:38
-@desc: 
+@desc:
 """
 import re
 
 from NodeGraphQt import BaseNode
+from PyQt5 import QtCore
 
-from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext
+from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.create_dynamic_node import CustomNodeItem
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.node_logger import NodeLogHandler
-from app.utils.utils import _evaluate_value_recursively
+from app.utils.utils import get_icon
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 
 
 def create_branch_node(parent_window):
-
     class ConditionalBranchNode(BaseNode, BasicNodeWithGlobalProperty):
         __identifier__ = 'control_flow'
         NODE_NAME = '条件分支'
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
+            self.set_icon("./icons/条件分支.png")
             self.model.port_deletion_allowed = True
             self._node_logs = ""
             self._output_values = {}
@@ -38,12 +39,22 @@ def create_branch_node(parent_window):
             # === 固定输入端口 ===
             self.add_input('input')
 
-            # === 初始化属性（使用你的 DynamicFormWidget）===
+            # === 初始化属性控件（但不立即同步端口）===
             self._init_properties()
 
+            # === 关键：延迟绑定监听器 + 延迟首次同步 ===
+            QtCore.QTimer.singleShot(500, self._delayed_setup)
+
+        def _delayed_setup(self):
+            """延迟设置监听器和首次端口同步，确保属性已从序列化数据恢复"""
+            # 绑定变化监听
+            self.widget.get_custom_widget().valueChanged.connect(self._sync_output_ports)
+            self.get_widget("enable_else").get_custom_widget().valueChanged.connect(self._sync_output_ports)
+            # 首次同步端口（此时 get_property 已是保存的值）
+            self._sync_output_ports()
+
         def _init_properties(self):
-            """初始化条件列表和 else 开关"""
-            # 条件表单 schema
+            """初始化条件列表和 else 开关（只创建 widget，不绑定逻辑）"""
             condition_schema = {
                 "expr": {
                     "type": PropertyType.LONGTEXT.value,
@@ -64,75 +75,77 @@ def create_branch_node(parent_window):
                     "label": field_def.get("label", field_name),
                     "choices": field_def.get("choices", [])
                 }
-            # 使用你的 DynamicFormWidgetWrapper
+
             self.widget = DynamicFormWidgetWrapper(
                 parent=self.view,
                 name="conditions",
                 label="分支条件",
                 schema=processed_schema,
-                window=parent_window,  # 如果不需要主窗口，可为 None
+                window=parent_window,
                 z_value=100
             )
-            self.widget.get_custom_widget().valueChanged.connect(self._sync_output_ports)
             self.add_custom_widget(self.widget, tab='Properties')
 
-            # else 开关
             checkbox_widget = CheckBoxWidgetWrapper(
-                    parent=self.view,
-                    name="enable_else",
-                    text="启用默认分支（else）",
-                    state=True
-                )
-            checkbox_widget.get_custom_widget().valueChanged.connect(self._sync_output_ports)
-            self.add_custom_widget(
-                checkbox_widget,
-                tab="properties"
+                parent=self.view,
+                name="enable_else",
+                text="启用默认分支（else）",
+                state=True
             )
-
-            # 设置默认值
-            self.set_property("conditions", [{"expr": "True", "name": "branch1"}])
-            self.set_property("enable_else", True)
+            self.add_custom_widget(checkbox_widget, tab="properties")
 
         def _sanitize_port_name(self, name: str) -> str:
-            """将分支名称转为合法端口名"""
             if not name:
                 name = "branch"
-            # 只保留字母、数字、下划线
             name = re.sub(r"[^a-zA-Z0-9_]", "_", str(name))
-            if name[0].isdigit():
+            if name and name[0].isdigit():
                 name = "b_" + name
             return name
 
         def _sync_output_ports(self):
-            """根据条件列表和 else 开关同步输出端口"""
-            # 清除所有输出端口
-            try:
-                for port in list(self.output_ports()):
-                    self.delete_output(port.name())
-            except:
-                pass
-
-            # 添加条件分支端口
+            """智能同步输出端口：保留有连线的端口，只清理无用且无连线的端口"""
             conditions = self.get_property("conditions") or []
+            enable_else = self.get_property("enable_else")
+
+            # 1. 计算期望的端口名集合
+            expected_names = set()
             used_names = set()
             for cond in conditions:
-                raw_name = cond.get("name", "branch").strip()
+                raw_name = cond.get("name", "branch").strip() or "branch"
                 port_name = self._sanitize_port_name(raw_name)
-                # 避免重复端口名（简单处理）
                 counter = 1
                 orig = port_name
                 while port_name in used_names:
                     port_name = f"{orig}_{counter}"
                     counter += 1
                 used_names.add(port_name)
-                self.add_output(port_name)
+                expected_names.add(port_name)
 
-            # 添加 else 端口
-            try:
-                if self.get_property("enable_else"):
-                    self.add_output("else")
-            except:
-                pass
+            if enable_else:
+                expected_names.add("else")
+
+            # 2. 获取当前所有输出端口
+            current_ports = {port.name(): port for port in self.output_ports()}
+
+            # 3. 决定哪些端口要删除：不在 expected 中 且 没有连线
+            ports_to_delete = []
+            for name, port in current_ports.items():
+                if name not in expected_names:
+                    # 检查是否有连线
+                    if not port.connected_ports():
+                        ports_to_delete.append(name)
+                    else:
+                        # 有连线，即使条件已删，也保留（避免断连）
+                        pass
+
+            # 4. 删除无用且无连线的端口
+            for name in ports_to_delete:
+                self.delete_output(name)
+
+            # 5. 添加缺失的端口（expected 中有，但当前没有）
+            for name in expected_names:
+                if name not in current_ports:
+                    self.add_output(name)
 
         def _log_message(self, node_id, message):
             if isinstance(message, str) and message.strip():
@@ -173,7 +186,6 @@ def create_branch_node(parent_window):
             # === 【关键】创建表达式引擎并求值 ===
             gv = GlobalVariableContext()
             gv.deserialize(global_variable)
-
             # === 收集 inputs_raw ===
             inputs_raw = {}
             for input_port in self.input_ports():
@@ -218,34 +230,53 @@ def create_branch_node(parent_window):
             conditions = self.get_property("conditions") or []
             enable_else = self.get_property("enable_else")
 
-            output = {}
+            # 记录哪个分支被激活
+            activated_branch = None
 
             for cond in conditions:
                 expr = cond.get("expr", "").strip()
                 if not expr:
                     continue
-
                 try:
-                    # 使用 ExpressionEngine 安全求值
-                    result = expr_engine.evaluate_template(expr, local_vars=input_vars)
+                    if expr_engine.is_pure_expression_block(expr):
+                        result = expr_engine.evaluate_expression_block(expr, local_vars=input_vars)
+                    else:
+                        # 非纯表达式（如混合模板），视为字符串，转为 bool
+                        evaluated_str = expr_engine.evaluate_template(expr, local_vars=input_vars)
+                        result = bool(evaluated_str and evaluated_str.strip() and "[ExprError:" not in evaluated_str)
                     if result:
                         branch_name = self._sanitize_port_name(cond.get("name", "branch"))
-                        output[branch_name] = inputs
-                        print(branch_name)
-                        break  # 互斥：只触发第一个满足的
+                        activated_branch = branch_name
+                        break
                 except Exception as e:
                     self._log_message(self.id, f"条件表达式错误 [{expr}]: {e}\n")
                     continue
 
-            else:
-                # 所有条件都不满足
-                if enable_else:
-                    output["else"] = inputs
+            if activated_branch is None and enable_else:
+                activated_branch = "else"
 
-            # === 设置输出值（供下游读取）===
-            self._output_values = output
+            # === 关键：控制下游节点的 disabled 状态 ===
+            graph = self.graph  # 获取当前图实例
+            if graph is None:
+                return {}
 
-            # === 返回结果（符合 execute_sync 约定）===
-            return output
+            # 遍历所有输出端口
+            for port in self.output_ports():
+                port_name = port.name()
+                is_active = (port_name == activated_branch)
+
+                # 获取所有连接到该端口的下游节点
+                connected_ports = port.connected_ports()
+                for downstream_port in connected_ports:
+                    downstream_node = downstream_port.node()
+                    if downstream_node is None:
+                        continue
+
+                    # 设置 disabled 状态
+                    downstream_node.set_disabled(not is_active)
+
+            # 返回空 dict 或只包含激活分支的数据（可选）
+            # 注意：如果下游节点被禁用，它们的 execute_sync 不会被调用
+            return {activated_branch: inputs}
 
     return ConditionalBranchNode

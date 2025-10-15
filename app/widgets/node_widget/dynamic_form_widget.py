@@ -179,6 +179,7 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
     def __init__(self, parent=None, name="", label="", schema=None, window=None, z_value=1):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
+        self.name = name
         self.set_name(name)
         self.set_label(label)
         widget = DynamicFormWidget(schema or {}, parent=window)
@@ -191,8 +192,11 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
         widget.valueChanged.connect(self.on_value_changed)
 
     def _update_node(self):
+        self.node.hide_widget(self.name)
         if self.node and self.node.view:
             QtCore.QTimer.singleShot(100, lambda: self.node.view.draw_node())
+        self.node.update_model()
+        self.node.show_widget(self.name)
 
     def get_value(self):
         return self.get_custom_widget().get_data()

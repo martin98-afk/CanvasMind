@@ -97,24 +97,74 @@ class ExpressionEngine:
         except Exception as e:
             return f"[ExprError: {str(e)}]"
 
+    def is_pure_expression_block(self, value: str) -> bool:
+        """
+        判断是否为纯表达式块：整个字符串就是一个 $...$，无其他内容
+        示例:
+            "$input.age > 18$" → True
+            "路径: $file$"      → False
+            "$a$ and $b$"       → False（多个表达式）
+        """
+        if not isinstance(value, str):
+            return False
+        # 必须以 $ 开头，以 $ 结尾，且只有一对 $
+        stripped = value.strip()
+        if not (stripped.startswith('$') and stripped.endswith('$')):
+            return False
+        # 检查中间是否还有 $
+        inner = stripped[1:-1]
+        return '$' not in inner
+
     def is_template_expression(self, value: str) -> bool:
+        """判断是否包含任何 $...$ 表达式"""
+        return isinstance(value, str) and '$' in value and re.search(r'\$[^$]*\$', value) is not None
+
+    def evaluate_expression_block(self, expr_block: str, local_vars: Optional[Dict[str, Any]] = None) -> Any:
         """
-        判断是否为模板表达式（包含 {{...}}）
+        评估纯表达式块（如 "$input.age > 18$"），返回原始 Python 值（bool/int/str 等）
+        :param expr_block: 完整的表达式块字符串，如 "$input.age > 18$"
+        :param local_vars: 局部变量
+        :return: 表达式计算结果（原始类型）
         """
-        return isinstance(value, str) and re.search(r'\$[^$]*\$', value) is not None
+        if not self.is_pure_expression_block(expr_block):
+            raise ValueError("Not a pure expression block")
+
+        # 提取内部表达式
+        inner_expr = expr_block.strip()[1:-1].strip()
+
+        # 展平点语法（如 input.age → input_age）
+        safe_expr = re.sub(r'\b(env|custom|node_vars|input)\.([a-zA-Z_][a-zA-Z0-9_]*)', r'\1_\2', inner_expr)
+
+        # 合并符号表
+        temp_symtable = dict(self.interp.symtable)
+        if local_vars:
+            temp_symtable.update(local_vars)
+
+        try:
+            interp_temp = Interpreter(max_time=2.0)
+            interp_temp.symtable.update(temp_symtable)
+            result = interp_temp.eval(safe_expr)
+            if hasattr(result, 'item'):
+                result = result.item()
+            return result
+        except Exception as e:
+            # 在条件判断中，错误表达式应视为 False
+            return f"[ExprError: {str(e)}]"
 
     def evaluate_template(self, template: str, local_vars: Optional[Dict[str, Any]] = None) -> str:
         """
-        处理模板字符串，支持临时局部变量（如 inputs）
-        :param template: 模板字符串，如 "路径: $input.file_path$"
-        :param local_vars: 临时变量字典，如 {"input_file_path": "/data.csv"}
-        :return: 替换后的字符串
+        仅处理混合模板（非纯表达式块），返回字符串
         """
         if not self.is_template_expression(template):
             return template
 
-        # 创建临时符号表（局部变量优先）
-        temp_symtable = dict(self.interp.symtable)  # 复制全局符号表
+        # 如果是纯表达式块，应使用 evaluate_expression_block，这里 fallback 为字符串
+        if self.is_pure_expression_block(template):
+            result = self.evaluate_expression_block(template, local_vars)
+            return str(result) if result is not None else ""
+
+        # 否则处理混合模板
+        temp_symtable = dict(self.interp.symtable)
         if local_vars:
             temp_symtable.update(local_vars)
 
@@ -122,13 +172,8 @@ class ExpressionEngine:
             expr = match.group(1).strip()
             if not expr:
                 return ""
-            # 将 expr 中的 input.xxx 转为 input_xxx（可选，也可直接允许点语法）
-            # 但 asteval 不支持点语法（如 input.file），所以必须展平
-            # 所以我们要求用户写 input_file_path，而不是 input.file_path
-            # 或者在这里自动转换：把 input.xxx -> input_xxx
             safe_expr = re.sub(r'\b(env|custom|node_vars|input)\.([a-zA-Z_][a-zA-Z0-9_]*)', r'\1_\2', expr)
             try:
-                # 使用临时符号表求值
                 interp_temp = Interpreter(max_time=2.0)
                 interp_temp.symtable.update(temp_symtable)
                 result = interp_temp.eval(safe_expr)

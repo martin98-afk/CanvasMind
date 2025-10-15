@@ -447,7 +447,7 @@ class CanvasPage(QWidget):
         if selected_nodes:
             node_x = selected_nodes[0].x_pos()
             node_y = selected_nodes[0].y_pos()
-            node.set_pos(node_x + 50, node_y - node.view.height / 2)
+            node.set_pos(node_x + 200, node_y)
 
     def create_backdrop_node(self, key):
         selected_nodes = self.graph.selected_nodes()
@@ -1052,6 +1052,8 @@ class CanvasPage(QWidget):
         self._scheduler = None
 
     def _on_workflow_finished(self):
+        self.run_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
         self._scheduler = None
         self.create_success_info("完成", "工作流执行完成!")
         if self.file_path:
