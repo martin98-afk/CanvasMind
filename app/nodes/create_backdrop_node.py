@@ -24,6 +24,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
     - 可配置为 Loop / iterate
     - 动态添加输入/输出端口
     """
+    TYPE: str
     category = "控制流"
     __identifier__ = 'control_flow'
     NODE_NAME = '控制流区域'
@@ -41,6 +42,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         self.model.add_property("current_index", 0)
         self.model.add_property("loop_nums", 5)
         self.model.add_property("max_iterations", 1000)
+
 
     @property
     def control_flow_type(self):

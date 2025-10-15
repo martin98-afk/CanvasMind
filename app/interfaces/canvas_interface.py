@@ -478,13 +478,13 @@ class CanvasPage(QWidget):
                     unconnected_outputs.append((node, output_port))
 
         # Step 3: 创建 InputPortNode（如果没有）
-        if not input_port_node and unconnected_inputs:
+        if not input_port_node:
             input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
             # 放到左侧
             if other_nodes:
                 min_x = min(n.x_pos() for n in other_nodes)
                 center_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
-                input_port_node.set_pos(min_x - 150, center_y - input_port_node.view.height / 2)
+                input_port_node.set_pos(min_x - 300, center_y - input_port_node.view.height / 2)
             else:
                 input_port_node.set_pos(-200, 0)
 
@@ -494,22 +494,22 @@ class CanvasPage(QWidget):
             if other_nodes:
                 max_x = max(n.x_pos() + n.view.width for n in other_nodes)
                 center_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
-                output_port_node.set_pos(max_x + 50, center_y - output_port_node.view.height / 2)
+                output_port_node.set_pos(max_x + 150, center_y - output_port_node.view.height / 2)
             else:
                 output_port_node.set_pos(200, 0)
 
         # Step 5: 自动连线
-        if input_port_node and unconnected_inputs:
-            # InputPortNode 应该只有一个输出端口（假设叫 "out"）
-            input_out_port = input_port_node.output_ports()[0]  # 或根据实际命名
-            for node, input_port in unconnected_inputs:
-                input_port_node.set_output(0, input_port)
-
-        if output_port_node and unconnected_outputs:
-            # OutputPortNode 应该只有一个输入端口（假设叫 "in"）
-            output_in_port = output_port_node.input_ports()[0]
-            for _, output_port in unconnected_outputs:
-                output_port_node.set_input(0, output_port)
+        # if input_port_node and unconnected_inputs:
+        #     # InputPortNode 应该只有一个输出端口（假设叫 "out"）
+        #     input_out_port = input_port_node.output_ports()[0]  # 或根据实际命名
+        #     for node, input_port in unconnected_inputs:
+        #         input_port_node.set_output(0, input_port)
+        #
+        # if output_port_node and unconnected_outputs:
+        #     # OutputPortNode 应该只有一个输入端口（假设叫 "in"）
+        #     output_in_port = output_port_node.input_ports()[0]
+        #     for _, output_port in unconnected_outputs:
+        #         output_port_node.set_input(0, output_port)
 
         # Step 6: 构建最终要 wrap 的节点列表
         nodes_to_wrap = other_nodes.copy()
@@ -1294,8 +1294,6 @@ class CanvasPage(QWidget):
         graph_menu.add_command('撤销', self._undo, 'Ctrl+Z')
         graph_menu.add_command('重做', self._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
         graph_menu.add_command('自动布局', self._auto_layout_selected, 'Ctrl+L')
-        graph_menu.add_separator()
-        graph_menu.add_command('创建 Backdrop', lambda: self.create_backdrop("新分组"))
         edit_menu = graph_menu.add_menu('编辑')
         edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
         edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')

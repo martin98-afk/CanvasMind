@@ -16,7 +16,7 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.create_dynamic_node import CustomNodeItem
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.node_logger import NodeLogHandler
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, resource_path
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 
@@ -28,7 +28,7 @@ def create_branch_node(parent_window):
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
-            self.set_icon("./icons/条件分支.png")
+            self.set_icon(resource_path("./icons/条件分支.png"))
             self.model.port_deletion_allowed = True
             self._node_logs = ""
             self._output_values = {}
