@@ -46,7 +46,7 @@ def create_branch_node(parent_window):
             # 条件表单 schema
             condition_schema = {
                 "expr": {
-                    "type": PropertyType.TEXT.value,
+                    "type": PropertyType.LONGTEXT.value,
                     "default": "",
                     "label": "expression",
                 },
@@ -65,7 +65,7 @@ def create_branch_node(parent_window):
                     "choices": field_def.get("choices", [])
                 }
             # 使用你的 DynamicFormWidgetWrapper
-            widget = DynamicFormWidgetWrapper(
+            self.widget = DynamicFormWidgetWrapper(
                 parent=self.view,
                 name="conditions",
                 label="conditions",
@@ -73,8 +73,8 @@ def create_branch_node(parent_window):
                 window=parent_window,  # 如果不需要主窗口，可为 None
                 z_value=100
             )
-            widget.property_updated.connect(self._sync_output_ports)
-            self.add_custom_widget(widget, tab='Properties')
+            self.widget.get_custom_widget().valueChanged.connect(self._sync_output_ports)
+            self.add_custom_widget(self.widget, tab='Properties')
 
             # else 开关
             checkbox_widget = CheckBoxWidgetWrapper(
@@ -92,7 +92,6 @@ def create_branch_node(parent_window):
             # 设置默认值
             self.set_property("conditions", [{"expr": "True", "name": "branch1"}])
             self.set_property("enable_else", True)
-            self._sync_output_ports()
 
         def _sanitize_port_name(self, name: str) -> str:
             """将分支名称转为合法端口名"""
@@ -115,7 +114,6 @@ def create_branch_node(parent_window):
 
             # 添加条件分支端口
             conditions = self.get_property("conditions") or []
-            print(conditions)
             used_names = set()
             for cond in conditions:
                 raw_name = cond.get("name", "branch").strip()
@@ -130,8 +128,11 @@ def create_branch_node(parent_window):
                 self.add_output(port_name)
 
             # 添加 else 端口
-            if self.get_property("enable_else"):
-                self.add_output("else")
+            try:
+                if self.get_property("enable_else"):
+                    self.add_output("else")
+            except:
+                pass
 
         def _log_message(self, node_id, message):
             if isinstance(message, str) and message.strip():
@@ -161,7 +162,7 @@ def create_branch_node(parent_window):
             self._output_values = output
 
         # ✅ 关键：实现 execute_sync，但走条件路由逻辑
-        def execute_sync(self, comp_obj=None, python_executable=None, check_cancel=None):
+        def execute_sync(self, **kwargs):
             """
             条件分支节点的 execute_sync 不执行外部脚本，
             而是在当前进程内完成条件判断和数据路由。

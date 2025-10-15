@@ -6,20 +6,19 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from NodeGraphQt import NodeGraph, BackdropNode, NodeObject, BaseNode, GroupNode
-from NodeGraphQt.base.commands import NodesRemovedCmd
+from NodeGraphQt import NodeGraph, BackdropNode
 from NodeGraphQt.constants import PipeLayoutEnum
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QApplication
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from loguru import logger
 from qfluentwidgets import (
     ToolButton, InfoBar,
     InfoBarPosition, FluentIcon, ComboBox, LineEdit
 )
 
-from app.components.base import PropertyType, GlobalVariableContext, ExecutionEnvironment
+from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.branch_node import create_branch_node
 from app.nodes.create_backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
 from app.nodes.create_dynamic_node import create_node_class
@@ -404,13 +403,19 @@ class CanvasPage(QWidget):
         # 分支节点按钮
         self.branch_node = ToolButton(get_icon("条件分支"), self)
         self.branch_node.setToolTip("创建分支")
-        self.branch_node.clicked.connect(self.create_branch_node)
+        self.branch_node.clicked.connect(lambda: self.create_next_node("control_flow.ControlFlowBranchNode"))
         node_layout.addWidget(self.branch_node)
         self.nodes_container.setLayout(node_layout)
         self.nodes_container.show()
 
-    def create_branch_node(self):
-        self.graph.create_node("control_flow.ControlFlowBranchNode")
+    def create_next_node(self, key):
+        """按钮节点通用创建方法"""
+        selected_nodes = self.graph.selected_nodes()
+        node = self.graph.create_node(key)
+        if selected_nodes:
+            node_x = selected_nodes[0].x_pos()
+            node_y = selected_nodes[0].y_pos()
+            node.set_pos(node_x + 50, node_y - node.view.height / 2)
 
     def create_backdrop_node(self, key):
         selected_nodes = self.graph.selected_nodes()

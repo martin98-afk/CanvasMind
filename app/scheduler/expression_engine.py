@@ -103,23 +103,41 @@ class ExpressionEngine:
         """
         return isinstance(value, str) and re.search(r'\$[^$]*\$', value) is not None
 
-    def evaluate_template(self, template: str) -> str:
+    def evaluate_template(self, template: str, local_vars: Optional[Dict[str, Any]] = None) -> str:
         """
-        处理模板字符串，替换 {{ expression }} 为实际值
-        例如: "Hello {{ env_user_id }}!" → "Hello alice!"
+        处理模板字符串，支持临时局部变量（如 inputs）
+        :param template: 模板字符串，如 "路径: $input.file_path$"
+        :param local_vars: 临时变量字典，如 {"input_file_path": "/data.csv"}
+        :return: 替换后的字符串
         """
         if not self.is_template_expression(template):
             return template
+
+        # 创建临时符号表（局部变量优先）
+        temp_symtable = dict(self.interp.symtable)  # 复制全局符号表
+        if local_vars:
+            temp_symtable.update(local_vars)
 
         def replace_match(match):
             expr = match.group(1).strip()
             if not expr:
                 return ""
-            safe_expr = re.sub(r'\b(env|custom|node_vars)\.([a-zA-Z_][a-zA-Z0-9_]*)', r'\1_\2', expr)
-            result = self.evaluate(safe_expr)
-            return str(result) if result is not None else ""
+            # 将 expr 中的 input.xxx 转为 input_xxx（可选，也可直接允许点语法）
+            # 但 asteval 不支持点语法（如 input.file），所以必须展平
+            # 所以我们要求用户写 input_file_path，而不是 input.file_path
+            # 或者在这里自动转换：把 input.xxx -> input_xxx
+            safe_expr = re.sub(r'\b(env|custom|node_vars|input)\.([a-zA-Z_][a-zA-Z0-9_]*)', r'\1_\2', expr)
+            try:
+                # 使用临时符号表求值
+                interp_temp = Interpreter(max_time=2.0)
+                interp_temp.symtable.update(temp_symtable)
+                result = interp_temp.eval(safe_expr)
+                if hasattr(result, 'item'):
+                    result = result.item()
+                return str(result) if result is not None else ""
+            except Exception as e:
+                return f"[ExprError: {str(e)}]"
 
-        # 替换所有 $ ... $ 表达式
         return re.sub(r'\$([^$]*)\$', replace_match, template)
 
     def get_available_variables(self) -> Dict[str, Any]:

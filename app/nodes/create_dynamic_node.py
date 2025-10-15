@@ -297,12 +297,8 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             if global_variable is not None:
                 gv = GlobalVariableContext()
                 gv.deserialize(global_variable)
-                expr_engine = ExpressionEngine(global_vars_context=gv)
 
-                # 递归求值 params
-                params = {k: _evaluate_value_recursively(v, expr_engine) for k, v in params.items()}
-
-                # 收集输入（稍后处理）
+                # === 收集 inputs_raw ===
                 inputs_raw = {}
                 for input_port in self.input_ports():
                     port_name = input_port.name()
@@ -319,8 +315,29 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         if port_name in self.column_select:
                             inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
 
-                # 处理 inputs
-                inputs = {k: _evaluate_value_recursively(v, expr_engine) for k, v in inputs_raw.items()}
+                # === 构建 input_xxx 变量 ===
+                input_vars = {}
+                for k, v in inputs_raw.items():
+                    # 将 input.port_name 转为 input_port_name（避免点号）
+                    safe_key = f"input_{k}"
+                    input_vars[safe_key] = v
+
+                # === 创建表达式引擎（带全局变量）===
+                expr_engine = ExpressionEngine(global_vars_context=gv)
+
+                # === 递归求值 params，传入 input_vars ===
+                def _evaluate_with_inputs(value, engine, input_vars_dict):
+                    if isinstance(value, str):
+                        return engine.evaluate_template(value, local_vars=input_vars_dict)
+                    elif isinstance(value, list):
+                        return [_evaluate_with_inputs(v, engine, input_vars_dict) for v in value]
+                    elif isinstance(value, dict):
+                        return {k: _evaluate_with_inputs(v, engine, input_vars_dict) for k, v in value.items()}
+                    else:
+                        return value
+
+                params = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in params.items()}
+                inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
             else:
                 # 无全局变量时，按原逻辑收集 inputs
                 inputs = {}
