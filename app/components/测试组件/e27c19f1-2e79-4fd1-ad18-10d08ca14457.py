@@ -75,6 +75,7 @@ class Component(BaseComponent):
     }
 
     def run(self, params, inputs = None):
+        self.logger.info(params)
         # 获取输入变量值
         var_values = {
             "var1": inputs.get("var1"),

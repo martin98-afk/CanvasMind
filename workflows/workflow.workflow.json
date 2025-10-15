@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x29f19d11960": {
+      "0x2511652cf70": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -34,7 +34,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 160,
         "height": 60,
@@ -47,16 +47,31 @@
         "subgraph_session": {},
         "custom": {
           "global_variable": {
-            "wo": "caolege1bi",
-            "user_id": null,
-            "canvas_id": "default",
-            "session_id": "sess_123",
-            "run_id": "1760335989",
-            "metadata": {}
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {},
+            "node_vars": {
+              "文档上传 file": "D:/work/WorkFlowGUI/dist/iris.csv"
+            }
           }
         }
       },
-      "0x29f1bcd1ed0": {
+      "0x25116511630": {
         "type_": "dynamic.StatusDynamicNode_数据集成_CSV_读取器",
         "icon": null,
         "name": "CSV 读取器",
@@ -92,16 +107,31 @@
         "subgraph_session": {},
         "custom": {
           "global_variable": {
-            "wo": "caolege1bi",
-            "user_id": null,
-            "canvas_id": "default",
-            "session_id": "sess_123",
-            "run_id": "1760335989",
-            "metadata": {}
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {},
+            "node_vars": {
+              "文档上传 file": "D:/work/WorkFlowGUI/dist/iris.csv"
+            }
           }
         }
       },
-      "0x29f225ab940": {
+      "0x25116512fe0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传 1",
@@ -139,7 +169,7 @@
           "global_variable": {}
         }
       },
-      "0x29f2e4061a0": {
+      "0x251165f75b0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_输入array",
         "icon": null,
         "name": "输入array",
@@ -175,17 +205,32 @@
         "subgraph_session": {},
         "custom": {
           "global_variable": {
-            "wo": "caolege1bi",
-            "user_id": null,
-            "canvas_id": "default",
-            "session_id": "sess_123",
-            "run_id": "1760335989",
-            "metadata": {}
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {},
+            "node_vars": {
+              "文档上传 file": "D:/work/WorkFlowGUI/dist/iris.csv"
+            }
           },
           "param1": "1,2,3,4"
         }
       },
-      "0x29f2e36fa00": {
+      "0x251167ca980": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(csv)",
         "icon": null,
         "name": "逻辑回归推理(csv)",
@@ -223,7 +268,7 @@
           "global_variable": {}
         }
       },
-      "0x29f19d949a0": {
+      "0x251167c9c60": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy)",
@@ -261,7 +306,7 @@
           "global_variable": {}
         }
       },
-      "0x29f2e4c69e0": {
+      "0x2511666ba00": {
         "type_": "dynamic.StatusDynamicNode_数据转换_文件转图片",
         "icon": null,
         "name": "文件转图片",
@@ -299,7 +344,7 @@
           "global_variable": {}
         }
       },
-      "0x29f1bdc9630": {
+      "0x25116668c70": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_MinMax归一化",
         "icon": null,
         "name": "MinMax归一化",
@@ -335,16 +380,31 @@
         "subgraph_session": {},
         "custom": {
           "global_variable": {
-            "wo": "caolege1bi",
-            "user_id": null,
-            "canvas_id": "default",
-            "session_id": "sess_123",
-            "run_id": "1760335989",
-            "metadata": {}
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {},
+            "node_vars": {
+              "文档上传 file": "D:/work/WorkFlowGUI/dist/iris.csv"
+            }
           }
         }
       },
-      "0x29f2e4f5b40": {
+      "0x25116bde740": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_归一化推理(npy)",
         "icon": null,
         "name": "归一化推理(npy)",
@@ -380,16 +440,31 @@
         "subgraph_session": {},
         "custom": {
           "global_variable": {
-            "wo": "caolege1bi",
-            "user_id": null,
-            "canvas_id": "default",
-            "session_id": "sess_123",
-            "run_id": "1760335989",
-            "metadata": {}
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {},
+            "node_vars": {
+              "文档上传 file": "D:/work/WorkFlowGUI/dist/iris.csv"
+            }
           }
         }
       },
-      "0x29f2e543640": {
+      "0x25116bdfd30": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy) 1",
@@ -425,16 +500,31 @@
         "subgraph_session": {},
         "custom": {
           "global_variable": {
-            "wo": "caolege1bi",
-            "user_id": null,
-            "canvas_id": "default",
-            "session_id": "sess_123",
-            "run_id": "1760335989",
-            "metadata": {}
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {},
+            "node_vars": {
+              "文档上传 file": "D:/work/WorkFlowGUI/dist/iris.csv"
+            }
           }
         }
       },
-      "0x29f2e27f160": {
+      "0x25116718430": {
         "type_": "dynamic.StatusDynamicNode_模型训练_图像分类测试",
         "icon": null,
         "name": "图像分类测试",
@@ -474,7 +564,7 @@
           "device": "cpu"
         }
       },
-      "0x29f1a3cc370": {
+      "0x25179c500a0": {
         "type_": "dynamic.StatusDynamicNode_数据转换_csv转npy",
         "icon": null,
         "name": "csv转npy",
@@ -512,7 +602,7 @@
           "global_variable": {}
         }
       },
-      "0x29f19f6ee60": {
+      "0x25179c51900": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练",
@@ -548,18 +638,33 @@
         "subgraph_session": {},
         "custom": {
           "global_variable": {
-            "wo": "caolege1bi",
-            "user_id": null,
-            "canvas_id": "default",
-            "session_id": "sess_123",
-            "run_id": "1760335989",
-            "metadata": {}
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {},
+            "node_vars": {
+              "文档上传 file": "D:/work/WorkFlowGUI/dist/iris.csv"
+            }
           },
           "solver": "liblinear",
           "max_iter": "100"
         }
       },
-      "0x29f1ba88130": {
+      "0x25179f00be0": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_图像4通道转3通道",
         "icon": null,
         "name": "图像4通道转3通道",
@@ -597,7 +702,7 @@
           "global_variable": {}
         }
       },
-      "0x29f2e27ec50": {
+      "0x25179f02350": {
         "type_": "dynamic.StatusDynamicNode_模型训练_图像分类测试",
         "icon": null,
         "name": "图像分类测试 1",
@@ -637,7 +742,7 @@
           "device": "cpu"
         }
       },
-      "0x29f2e36fd60": {
+      "0x25179e55f90": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传 3",
@@ -679,131 +784,131 @@
     "connections": [
       {
         "out": [
-          "0x29f19d11960",
+          "0x2511652cf70",
           "file"
         ],
         "in": [
-          "0x29f1bcd1ed0",
+          "0x25116511630",
           "csv"
         ]
       },
       {
         "out": [
-          "0x29f1bcd1ed0",
+          "0x25116511630",
           "csv"
         ],
         "in": [
-          "0x29f19f6ee60",
+          "0x25179c51900",
           "feature"
         ]
       },
       {
         "out": [
-          "0x29f1bcd1ed0",
+          "0x25116511630",
           "csv"
         ],
         "in": [
-          "0x29f19f6ee60",
+          "0x25179c51900",
           "target"
         ]
       },
       {
         "out": [
-          "0x29f1bcd1ed0",
+          "0x25116511630",
           "csv"
         ],
         "in": [
-          "0x29f2e36fa00",
+          "0x251167ca980",
           "feature"
         ]
       },
       {
         "out": [
-          "0x29f1bcd1ed0",
+          "0x25116511630",
           "csv"
         ],
         "in": [
-          "0x29f1a3cc370",
+          "0x25179c500a0",
           "input"
         ]
       },
       {
         "out": [
-          "0x29f1bcd1ed0",
+          "0x25116511630",
           "csv"
         ],
         "in": [
-          "0x29f1bdc9630",
+          "0x25116668c70",
           "input"
         ]
       },
       {
         "out": [
-          "0x29f2e4061a0",
+          "0x251165f75b0",
           "output"
         ],
         "in": [
-          "0x29f2e4f5b40",
+          "0x25116bde740",
           "input"
         ]
       },
       {
         "in": [
-          "0x29f2e36fa00",
+          "0x251167ca980",
           "model"
         ],
         "out": [
-          "0x29f19f6ee60",
+          "0x25179c51900",
           "model"
         ]
       },
       {
         "in": [
-          "0x29f19d949a0",
+          "0x251167c9c60",
           "feature"
         ],
         "out": [
-          "0x29f1a3cc370",
+          "0x25179c500a0",
           "output"
         ]
       },
       {
         "in": [
-          "0x29f19d949a0",
+          "0x251167c9c60",
           "model"
         ],
         "out": [
-          "0x29f19f6ee60",
+          "0x25179c51900",
           "model"
         ]
       },
       {
         "out": [
-          "0x29f1bdc9630",
+          "0x25116668c70",
           "scaler"
         ],
         "in": [
-          "0x29f2e4f5b40",
+          "0x25116bde740",
           "scaler"
         ]
       },
       {
         "out": [
-          "0x29f2e4f5b40",
+          "0x25116bde740",
           "output"
         ],
         "in": [
-          "0x29f2e543640",
+          "0x25116bdfd30",
           "feature"
         ]
       },
       {
         "in": [
-          "0x29f2e543640",
+          "0x25116bdfd30",
           "model"
         ],
         "out": [
-          "0x29f19f6ee60",
+          "0x25179c51900",
           "model"
         ]
       }
@@ -813,22 +918,22 @@
     "environment": "3.11",
     "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.11\\python.exe",
     "node_id2stable_key": {
-      "0x29f19d11960": "数据集成/文档上传||文档上传",
-      "0x29f1bcd1ed0": "数据集成/CSV 读取器||CSV 读取器",
-      "0x29f225ab940": "数据集成/文档上传||文档上传 1",
-      "0x29f2e4061a0": "数据集成/输入array||输入array",
-      "0x29f2e36fa00": "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)",
-      "0x29f19d949a0": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
-      "0x29f2e4c69e0": "数据转换/文件转图片||文件转图片",
-      "0x29f1bdc9630": "数据预处理/MinMax归一化||MinMax归一化",
-      "0x29f2e4f5b40": "数据预处理/归一化推理(npy)||归一化推理(npy)",
-      "0x29f2e543640": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
-      "0x29f2e27f160": "模型训练/图像分类测试||图像分类测试",
-      "0x29f1a3cc370": "数据转换/csv转npy||csv转npy",
-      "0x29f19f6ee60": "模型训练/逻辑回归训练||逻辑回归训练",
-      "0x29f1ba88130": "数据预处理/图像4通道转3通道||图像4通道转3通道",
-      "0x29f2e27ec50": "模型训练/图像分类测试||图像分类测试 1",
-      "0x29f2e36fd60": "数据集成/文档上传||文档上传 3"
+      "0x2511652cf70": "数据集成/文档上传||文档上传",
+      "0x25116511630": "数据集成/CSV 读取器||CSV 读取器",
+      "0x25116512fe0": "数据集成/文档上传||文档上传 1",
+      "0x251165f75b0": "数据集成/输入array||输入array",
+      "0x251167ca980": "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)",
+      "0x251167c9c60": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
+      "0x2511666ba00": "数据转换/文件转图片||文件转图片",
+      "0x25116668c70": "数据预处理/MinMax归一化||MinMax归一化",
+      "0x25116bde740": "数据预处理/归一化推理(npy)||归一化推理(npy)",
+      "0x25116bdfd30": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
+      "0x25116718430": "模型训练/图像分类测试||图像分类测试",
+      "0x25179c500a0": "数据转换/csv转npy||csv转npy",
+      "0x25179c51900": "模型训练/逻辑回归训练||逻辑回归训练",
+      "0x25179f00be0": "数据预处理/图像4通道转3通道||图像4通道转3通道",
+      "0x25179f02350": "模型训练/图像分类测试||图像分类测试 1",
+      "0x25179e55f90": "数据集成/文档上传||文档上传 3"
     },
     "node_states": {
       "数据集成/文档上传||文档上传": "success",
@@ -868,7 +973,7 @@
     },
     "node_outputs": {
       "数据集成/文档上传||文档上传": {
-        "file": "D:/work/WorkFlowGUI/dist/iris.csv"
+        "file": "D:/work/WorkFlowGUI/iris.csv"
       },
       "数据集成/CSV 读取器||CSV 读取器": {
         "csv": {
@@ -3468,7 +3573,7 @@
             149
           ]
         },
-        "scaler": "C:\\Users\\black\\AppData\\Local\\Temp\\tmp2f6sb3f1.pkl"
+        "scaler": "C:\\Users\\mading\\AppData\\Local\\Temp\\tmptf60e38c.pkl"
       },
       "数据预处理/归一化推理(npy)||归一化推理(npy)": {
         "output": [
@@ -4400,7 +4505,7 @@
         "value": [
           0
         ],
-        "model": "C:\\Users\\black\\AppData\\Local\\Temp\\tmpo7comq4y.pkl"
+        "model": "C:\\Users\\mading\\AppData\\Local\\Temp\\tmpfna6tmei.pkl"
       },
       "数据预处理/图像4通道转3通道||图像4通道转3通道": {},
       "模型训练/图像分类测试||图像分类测试 1": {},
@@ -4454,6 +4559,29 @@
       "数据预处理/图像4通道转3通道||图像4通道转3通道": {},
       "模型训练/图像分类测试||图像分类测试 1": {},
       "数据集成/文档上传||文档上传 3": {}
+    }
+  },
+  "global_variable": {
+    "env": {
+      "user_id": null,
+      "canvas_id": null,
+      "session_id": null,
+      "run_id": null,
+      "metadata": {
+        "PYTHONPATH": ".",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONWARNINGS": "ignore",
+        "TZ": "Asia/Shanghai",
+        "LANG": "en_US.UTF-8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "0"
+      }
+    },
+    "custom": {},
+    "node_vars": {
+      "文档上传 file": "D:/work/WorkFlowGUI/dist/iris.csv"
     }
   }
 }

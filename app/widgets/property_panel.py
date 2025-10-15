@@ -50,15 +50,18 @@ class PropertyPanel(CardWidget):
         # 添加导航栏和堆叠窗口
         self.segmented_widget = None
         self.stacked_widget = None
+        # 缓存全局变量面板的当前 tab
+        self._current_global_tab = 'custom'
 
-    def _clear_layout(self):
+    def _clear_layout(self, keep_global_segment=False):
         """
         清理布局中的所有控件
+        :param keep_global_segment: 是否保留全局变量面板的当前 tab（用于局部刷新）
         """
-        # 清理旧的控件引用
-        self._column_list_widgets.clear()
-        self._text_edit_widgets.clear()
-        # 清理布局中的所有控件
+        if not keep_global_segment:
+            self._column_list_widgets.clear()
+            self._text_edit_widgets.clear()
+
         while self.vbox.count():
             child = self.vbox.takeAt(0)
             if child.widget():
@@ -73,25 +76,42 @@ class PropertyPanel(CardWidget):
                 except (TypeError, RuntimeError):
                     pass
                 widget.deleteLater()
-        if hasattr(self, 'global_segmented'):
-            self.global_segmented.deleteLater()
-            del self.global_segmented
-        if hasattr(self, 'global_stacked'):
-            self.global_stacked.deleteLater()
-            del self.global_stacked
+
+        # 清理全局变量相关控件（除非保留）
+        if not keep_global_segment:
+            if hasattr(self, 'global_segmented'):
+                self.global_segmented.deleteLater()
+                del self.global_segmented
+            if hasattr(self, 'global_stacked'):
+                self.global_stacked.deleteLater()
+                del self.global_stacked
 
     def update_properties(self, node):
+        # === 优化 1：如果是同一个普通节点，只更新数据，不重建 UI ===
+        if (node is not None and
+            node is self.current_node and
+            not isinstance(node, ControlFlowBackdrop) and
+            self.segmented_widget is not None):
+            return
+
+        # === 优化 2：记录当前选中的 segment（普通节点）===
+        current_segment = None
+        if self.segmented_widget:
+            current_segment = self.segmented_widget.currentRouteKey()
+        # === 优化 3：记录全局变量面板的当前 tab ===
+        if hasattr(self, 'global_segmented'):
+            self._current_global_tab = self.global_segmented.currentRouteKey()
+
         self._clear_layout()
 
         self.current_node = node
         if not node:
-            self._show_global_variables_panel()  # 👈 关键：显示全局变量面板
+            self._show_global_variables_panel()
             return
 
         elif isinstance(node, ControlFlowBackdrop):
             self._update_control_flow_properties(node)
         elif isinstance(node, BaseNode):
-            # 确保节点有 _input_values 属性
             if not hasattr(node, '_input_values'):
                 node._input_values = {}
 
@@ -113,28 +133,23 @@ class PropertyPanel(CardWidget):
 
             # 创建导航栏和堆叠窗口
             self.segmented_widget = SegmentedWidget()
-
-            # 添加导航项 - 使用正确的参数
             self.segmented_widget.addItem('input', '输入端口')
             self.segmented_widget.addItem('output', '输出端口')
 
             self.stacked_widget = QStackedWidget()
 
-            # 添加输入端口页面
+            # === 输入端口页面 ===
             input_widget = QWidget()
             input_layout = QVBoxLayout(input_widget)
             input_layout.setContentsMargins(0, 0, 0, 0)
             input_layout.setSpacing(8)
 
-            # 输入端口内容
             input_ports_info = self.get_node_input_ports_info(node)
-
             if input_ports_info:
                 for input_port, port_def in zip(node.input_ports(), node.component_class.inputs):
                     port_display = f"{port_def.label} ({port_def.name}): {port_def.type.value}"
                     input_layout.addWidget(BodyLabel(f"  • {port_display}"))
 
-                    # 获取原始上游数据（用于列选择）
                     connected = input_port.connected_ports()
                     original_upstream_data = None
                     if len(connected) == 1:
@@ -147,18 +162,14 @@ class PropertyPanel(CardWidget):
                         ]
                     port_type = getattr(port_def, 'type', ArgumentType.TEXT)
 
-                    # 根据端口类型添加不同的控件
                     if port_type == ArgumentType.CSV:
-                        # CSV类型：显示列选择控件
                         self._add_column_selector_widget_to_layout(node, port_def.name, original_upstream_data,
                                                                    original_upstream_data, input_layout)
-                        # 显示当前选中的数据（用于执行）
                         current_selected_data = self._get_current_input_value(node, port_def.name, original_upstream_data)
                         self._add_text_edit_to_layout(
                             current_selected_data, port_type=port_type, port_name=port_def.name, layout=input_layout
                         )
                     else:
-                        # 普通数据：直接显示上游数据或当前输入值
                         if connected:
                             display_data = original_upstream_data
                         else:
@@ -170,24 +181,19 @@ class PropertyPanel(CardWidget):
                             self._add_text_edit_to_layout(
                                 display_data, port_type=port_type, port_name=port_def.name, layout=input_layout
                             )
-                        except:
-                            import traceback
-                            traceback.print_exc()
+                        except Exception:
                             logger.error(f"无法解析输入数据：{display_data}")
                             display_data = "暂无数据"
-
             else:
                 input_layout.addWidget(BodyLabel("  无输入端口"))
-
             input_layout.addStretch(1)
 
-            # 添加输出端口页面
+            # === 输出端口页面 ===
             output_widget = QWidget()
             output_layout = QVBoxLayout(output_widget)
             output_layout.setContentsMargins(0, 0, 0, 0)
             output_layout.setSpacing(8)
 
-            # 输出端口内容
             output_ports = node.component_class.outputs
             if output_ports:
                 result = node._output_values
@@ -199,15 +205,12 @@ class PropertyPanel(CardWidget):
                     display_data = result.get(port_name) if result and port_name in result else "暂无数据"
                     port_type = getattr(port_def, 'type', ArgumentType.TEXT)
 
-                    # 根据端口类型添加不同的控件
                     if port_type == ArgumentType.UPLOAD:
                         self._add_upload_widget_to_layout(node, port_def.name, output_layout)
                     try:
                         if isinstance(display_data, str) and display_data != "暂无数据":
                             display_data = port_type.serialize(display_data)
-                    except:
-                        import traceback
-                        traceback.print_exc()
+                    except Exception:
                         logger.error(f"无法解析输出数据：{display_data}")
                         display_data = "暂无数据"
 
@@ -215,22 +218,57 @@ class PropertyPanel(CardWidget):
                         display_data, port_name=port_def.name, layout=output_layout, node=node, is_output=True)
             else:
                 output_layout.addWidget(BodyLabel("  无输出端口"))
-
             output_layout.addStretch(1)
 
-            # 添加页面到堆叠窗口
             self.stacked_widget.addWidget(input_widget)
             self.stacked_widget.addWidget(output_widget)
 
-            # 连接导航栏信号
             self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
-
-            # 添加导航栏和堆叠窗口到主布局
             self.vbox.addWidget(self.segmented_widget)
             self.vbox.addWidget(self.stacked_widget)
 
-            # 默认显示输入端口
-            self.segmented_widget.setCurrentItem('input')
+            # 恢复之前选中的 segment
+            if current_segment in ['input', 'output']:
+                self.segmented_widget.setCurrentItem(current_segment)
+            else:
+                self.segmented_widget.setCurrentItem('input')
+
+    def _update_node_data_only(self, node):
+        """仅更新节点数据内容，不重建 UI"""
+        # 更新输入端口数据
+        for port_def in node.component_class.inputs:
+            port_name = port_def.name
+            input_port = next((p for p in node.input_ports() if p.name() == port_name), None)
+            connected = input_port and input_port.connected_ports()
+            original_data = None
+            if connected:
+                upstream = input_port.connected_ports()[0]
+                original_data = upstream.node().get_output_value(upstream.name())
+
+            # 更新列选择预览（CSV 类型）
+            if port_def.type == ArgumentType.CSV and original_data is not None:
+                selected_columns = node.column_select.get(port_name, [])
+                try:
+                    preview_data = original_data[selected_columns] if selected_columns else original_data
+                except Exception as e:
+                    preview_data = f"列选择错误: {str(e)}"
+                self._update_text_edit_for_port(port_name, preview_data)
+
+            # 更新主输入数据显示
+            current_value = self._get_current_input_value(node, port_name, original_data)
+            self._update_text_edit_for_port(port_name, current_value)
+
+        # 更新输出端口数据
+        for port_def in node.component_class.outputs:
+            port_name = port_def.name
+            display_data = node._output_values.get(port_name, "暂无数据")
+            port_type = getattr(port_def, 'type', ArgumentType.TEXT)
+            try:
+                if isinstance(display_data, str) and display_data != "暂无数据":
+                    display_data = port_type.serialize(display_data)
+            except Exception:
+                display_data = "暂无数据"
+            self._update_text_edit_for_port(port_name, display_data)
 
     def _add_seperator(self):
         # 添加分隔线
@@ -265,7 +303,6 @@ class PropertyPanel(CardWidget):
             return original_data
 
     def _add_column_selector_widget_to_layout(self, node, port_name, data, original_data, layout):
-        """优化：使用 CardWidget 分组 + 全选/清空按钮 + 更清晰的视觉层次"""
         if not isinstance(data, pd.DataFrame) or data.empty:
             return
 
@@ -273,18 +310,16 @@ class PropertyPanel(CardWidget):
         if not columns:
             return
 
-        # === 创建列选择卡片 ===
         column_card = CardWidget(self)
-        column_card.setFixedHeight(220)  # 留出按钮空间
+        # ✅ 不再固定高度，只设最大高度
+        column_card.setMaximumHeight(280)  # 包含标题、列表、按钮
         card_layout = QVBoxLayout(column_card)
         card_layout.setContentsMargins(4, 4, 4, 4)
         card_layout.setSpacing(8)
 
-        # 标题
         title_label = BodyLabel("列选择:")
         card_layout.addWidget(title_label)
 
-        # 列表
         list_widget = ListWidget(self)
         list_widget.setSelectionMode(ListWidget.NoSelection)
         list_widget.setFixedHeight(140)
@@ -298,7 +333,6 @@ class PropertyPanel(CardWidget):
         # 恢复选中状态
         selected_columns = node.column_select.get(port_name, [])
         if not selected_columns and columns:
-            # 默认全选（更符合用户预期）
             selected_columns = columns.copy()
             node.column_select[port_name] = selected_columns
 
@@ -330,7 +364,6 @@ class PropertyPanel(CardWidget):
                 if list_widget.item(i).checkState() == Qt.Checked
             ]
             node.column_select[port_name] = current_selected
-            # 更新下方数据预览
             self._update_text_edit_for_port(port_name, data[current_selected])
 
         select_all_btn.clicked.connect(select_all)
@@ -362,33 +395,40 @@ class PropertyPanel(CardWidget):
     def _add_text_edit_to_layout(self, text, port_type=None, port_name=None, layout=None, node=None, is_output=False):
         """添加文本编辑控件到指定布局"""
         info_card = CardWidget(self)
+        # ✅ 移除 setFixedHeight，改用最大高度限制
+        info_card.setMaximumHeight(300)  # 最多显示 300px 高
+        # info_card.setMinimumHeight(60)  # 可选：最小高度（通常不需要）
+
         card_layout = QVBoxLayout(info_card)
         card_layout.setContentsMargins(4, 4, 4, 4)
-        # 标题文本
+
+        # 标题
         title_layout = QHBoxLayout()
         title_layout.setContentsMargins(0, 0, 0, 0)
         title_text = "数据信息:"
         title_label = BodyLabel(title_text)
         title_layout.addWidget(title_label)
 
-        # ✅【关键】如果是输出端口，添加“添加到全局变量”按钮（靠右）
         if is_output and node is not None:
-            add_global_btn = PushButton(text="全局变量", icon=FluentIcon.ADD ,parent=self)
+            add_global_btn = PushButton(text="全局变量", icon=FluentIcon.ADD, parent=self)
             add_global_btn.clicked.connect(
                 lambda _, n=node, p=port_name: self._add_output_to_global_variable(n, p)
             )
-            title_layout.addStretch()  # 推按钮到右边
+            title_layout.addStretch()
             title_layout.addWidget(add_global_btn)
 
         card_layout.addLayout(title_layout)
 
         tree_widget = VariableTreeWidget(text, port_type, parent=self.main_window)
         card_layout.addWidget(tree_widget)
+
         if layout is None:
             layout = self.vbox
         layout.addWidget(info_card)
+
         if port_name is not None:
             self._text_edit_widgets[port_name] = tree_widget
+
         return tree_widget
 
     def _add_text_edit(self, text, port_name=None):
@@ -643,33 +683,31 @@ class PropertyPanel(CardWidget):
 
     def _show_global_variables_panel(self):
         """显示全局变量面板（未选中节点时）"""
-        self._clear_layout()  # 先清空
+        self._clear_layout(keep_global_segment=True)  # 保留 tab 状态
 
         title = BodyLabel("🌍 全局变量")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.vbox.addWidget(title)
 
-        # 分段控件
         self.global_segmented = SegmentedWidget(self)
         self.global_segmented.addItem('env', '环境变量')
         self.global_segmented.addItem('custom', '自定义变量')
 
         self.global_stacked = QStackedWidget(self)
-
-        # 环境变量页（可增删）
         env_page = self._create_env_page()
-        self.global_stacked.addWidget(env_page)
-
-        # 自定义变量页（上：字典列表，下：卡片）
         custom_page = self._create_custom_vars_page()
+        self.global_stacked.addWidget(env_page)
         self.global_stacked.addWidget(custom_page)
 
         self.global_segmented.currentItemChanged.connect(self._on_global_tab_changed)
-
         self.vbox.addWidget(self.global_segmented)
         self.vbox.addWidget(self.global_stacked)
 
-        self.global_segmented.setCurrentItem('custom')  # 默认显示自定义
+        # 恢复之前选中的全局变量 tab
+        if self._current_global_tab in ['env', 'custom']:
+            self.global_segmented.setCurrentItem(self._current_global_tab)
+        else:
+            self.global_segmented.setCurrentItem('custom')
 
     def _save_env_row(self, key_edit, value_edit):
         old_key = key_edit.property("env_key")
@@ -779,25 +817,21 @@ class PropertyPanel(CardWidget):
         return card
 
     def _create_variable_card(self, name: str, value):
-        """节点输出变量：完整预览卡片"""
         card = CardWidget(self)
         card.setMaximumWidth(260)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
 
-        # 标题
         title_layout = QHBoxLayout()
         title = BodyLabel(name)
         title_layout.addWidget(title)
         title_layout.addStretch()
-        # 删除按钮
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
         del_btn.setIconSize(QSize(8, 8))
         del_btn.clicked.connect(lambda _, n=name: self._delete_custom_variable(n, 'node_vars'))
         title_layout.addWidget(del_btn)
         layout.addLayout(title_layout)
-        # 预览
         tree = VariableTreeWidget(value, parent=self.main_window)
         tree.setMinimumHeight(80)
         tree.setMaximumHeight(120)

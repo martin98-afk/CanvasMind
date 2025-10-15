@@ -9,7 +9,7 @@ class TextWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(str)
 
     def __init__(self, parent=None, type=None, default_text=""):
-        super().__init__()
+        super().__init__(parent)
         self.parent = parent
         self._text = default_text
         if type.value == "多行文本":

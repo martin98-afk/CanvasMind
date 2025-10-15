@@ -4,11 +4,12 @@ import os
 import pickle
 import platform
 import subprocess
-import sys
 import tempfile
 import time
 
+from Qt import QtCore
 from NodeGraphQt import BaseNode
+from NodeGraphQt.qgraphics.node_base import NodeItem
 from PyQt5.QtWidgets import QFileDialog
 from loguru import logger
 
@@ -74,6 +75,19 @@ def _install_requirements(python_executable, requirements_str):
             logger.error(f"❌ 安装 {pkg} 异常: {e}")
 
 
+class CustomNodeItem(NodeItem):
+    def mousePressEvent(self, event):
+        # 如果是右键，先选中自己（关键！）
+        if event.button() == QtCore.Qt.RightButton:
+            # 清除其他选择，只选中当前节点
+            scene = self.scene()
+            if scene:
+                scene.clearSelection()
+                self.setSelected(True)
+        # 其他逻辑交给父类（包括左键、菜单弹出等）
+        super().mousePressEvent(event)
+
+
 def create_node_class(component_class, full_path, file_path, parent_window=None):
     """返回一个高性能、支持独立环境执行的动态节点类"""
 
@@ -84,7 +98,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
         FILE_PATH = file_path
 
         def __init__(self, qgraphics_item=None):
-            super().__init__(qgraphics_item)
+            super().__init__(CustomNodeItem)
             self.component_class = component_class
             self._node_logs = ""
             self._output_values = {}

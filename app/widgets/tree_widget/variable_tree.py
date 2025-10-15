@@ -4,7 +4,7 @@ import shutil
 
 import numpy as np
 import pandas as pd
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPixmap, QIcon, QImage
 from PyQt5.QtWidgets import QTreeWidgetItem, QAction, QDialog, QLabel, QVBoxLayout, QScrollArea, QFileDialog, \
     QApplication, QTableWidget, QTableWidgetItem
@@ -669,3 +669,11 @@ class VariableTreeWidget(TreeWidget):
             }
         """)
         return table
+
+    def sizeHint(self):
+        # 估算内容高度
+        total_height = self.header().height() if self.header().isVisible() else 0
+        for i in range(self.topLevelItemCount()):
+            total_height += self.visualItemRect(self.topLevelItem(i)).height()
+        total_height = min(total_height, 300)  # 上限
+        return QSize(200, max(60, total_height))

@@ -44,8 +44,6 @@ class Component(BaseComponent):
 
     def run(self, params, inputs = None):
         import os
-        import tempfile
-        from typing import Any, Dict, Optional
         from pathlib import Path    
 
         file_path = inputs.file_path if inputs else None
