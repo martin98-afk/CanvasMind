@@ -29,7 +29,7 @@ class FormFieldWidget(QtWidgets.QWidget):
             field_type = defn["type"]
             if field_type == PropertyType.LONGTEXT.name:
                 # ✅ 关键：parent=self，不是 parent
-                widget = LongTextWidget(parent=self)
+                widget = LongTextWidget(parent=home)
                 widget.summary_label.setFixedWidth(150)
                 widget.summary_label.setText(defn.get("default", ""))
                 widget.summary_label.setPlaceholderText(defn.get("label", ""))
@@ -45,7 +45,7 @@ class FormFieldWidget(QtWidgets.QWidget):
                 layout.addWidget(widget)
 
             elif field_type == PropertyType.VARIABLE.name:
-                widget = GlobalVarComboBoxWidget(main_window=self.home, parent=self)  # ✅ parent=self
+                widget = GlobalVarComboBoxWidget(main_window=home, parent=self)  # ✅ parent=self
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
                 layout.addWidget(widget)
@@ -202,10 +202,6 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
 
     def _delayed_set_value(self, value):
         # 确保节点已加入 scene
-        if not (self.node and self.node.view and self.node.view.scene()):
-            QtCore.QTimer.singleShot(50, lambda: self._delayed_set_value(value))
-            return
-
         widget = self.get_custom_widget()
         if widget:
             widget.set_data(value)

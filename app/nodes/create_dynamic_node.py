@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import inspect
 import os
 import pickle
 import platform
@@ -7,10 +6,10 @@ import subprocess
 import tempfile
 import time
 
-from Qt import QtCore
 from NodeGraphQt import BaseNode
 from NodeGraphQt.qgraphics.node_base import NodeItem
 from PyQt5.QtWidgets import QFileDialog
+from Qt import QtCore
 from loguru import logger
 
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext
@@ -18,7 +17,7 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.node_logger import NodeLogHandler
-from app.utils.utils import draw_square_port, _evaluate_value_recursively
+from app.utils.utils import draw_square_port
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper

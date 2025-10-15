@@ -10,7 +10,7 @@ import re
 
 from NodeGraphQt import BaseNode
 
-from app.components.base import PropertyType
+from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.create_dynamic_node import CustomNodeItem
 from app.scheduler.expression_engine import ExpressionEngine
@@ -48,12 +48,12 @@ def create_branch_node(parent_window):
                 "expr": {
                     "type": PropertyType.LONGTEXT.value,
                     "default": "",
-                    "label": "expression",
+                    "label": "表达式公式，用 $$ 包裹",
                 },
                 "name": {
                     "type": PropertyType.TEXT.value,
-                    "default": "branch",
-                    "label": "branch_name",
+                    "default": "",
+                    "label": "分支名称",
                 },
             }
             processed_schema = {}
@@ -68,8 +68,8 @@ def create_branch_node(parent_window):
             self.widget = DynamicFormWidgetWrapper(
                 parent=self.view,
                 name="conditions",
-                label="conditions",
-                schema=condition_schema,
+                label="分支条件",
+                schema=processed_schema,
                 window=parent_window,  # 如果不需要主窗口，可为 None
                 z_value=100
             )
@@ -162,13 +162,20 @@ def create_branch_node(parent_window):
             self._output_values = output
 
         # ✅ 关键：实现 execute_sync，但走条件路由逻辑
-        def execute_sync(self, **kwargs):
+        def execute_sync(self, *args, **kwargs):
             """
             条件分支节点的 execute_sync 不执行外部脚本，
             而是在当前进程内完成条件判断和数据路由。
             """
-            # === 收集输入数据 ===
-            inputs = {}
+            # === 全局变量 ===
+            global_variable = self.model.get_property("global_variable")
+
+            # === 【关键】创建表达式引擎并求值 ===
+            gv = GlobalVariableContext()
+            gv.deserialize(global_variable)
+
+            # === 收集 inputs_raw ===
+            inputs_raw = {}
             for input_port in self.input_ports():
                 port_name = input_port.name()
                 connected = input_port.connected_ports()
@@ -176,23 +183,36 @@ def create_branch_node(parent_window):
                     if len(connected) == 1:
                         upstream = connected[0]
                         value = upstream.node()._output_values.get(upstream.name())
-                        inputs[port_name] = value
+                        inputs_raw[port_name] = value
                     else:
-                        inputs[port_name] = [
+                        inputs_raw[port_name] = [
                             upstream.node()._output_values.get(upstream.name()) for upstream in connected
                         ]
+                    if port_name in self.column_select:
+                        inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
 
-            input_data = inputs.get("input", {})
+            # === 构建 input_xxx 变量 ===
+            input_vars = {}
+            for k, v in inputs_raw.items():
+                # 将 input.port_name 转为 input_port_name（避免点号）
+                safe_key = f"input_{k}"
+                input_vars[safe_key] = v
 
-            # === 获取全局变量上下文（用于表达式求值）===
-            global_variable = self.model.get_property("global_variable")
-            if global_variable is not None:
-                from app.components.base import GlobalVariableContext
-                gv = GlobalVariableContext()
-                gv.deserialize(global_variable)
-                expr_engine = ExpressionEngine(global_vars_context=gv)
-                # 递归求值 input_data（如果需要）
-                input_data = _evaluate_value_recursively(input_data, expr_engine)
+            # === 创建表达式引擎（带全局变量）===
+            expr_engine = ExpressionEngine(global_vars_context=gv)
+
+            # === 递归求值 params，传入 input_vars ===
+            def _evaluate_with_inputs(value, engine, input_vars_dict):
+                if isinstance(value, str):
+                    return engine.evaluate_template(value, local_vars=input_vars_dict)
+                elif isinstance(value, list):
+                    return [_evaluate_with_inputs(v, engine, input_vars_dict) for v in value]
+                elif isinstance(value, dict):
+                    return {k: _evaluate_with_inputs(v, engine, input_vars_dict) for k, v in value.items()}
+                else:
+                    return value
+
+            inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
 
             # === 条件判断（互斥模式）===
             conditions = self.get_property("conditions") or []
@@ -207,12 +227,11 @@ def create_branch_node(parent_window):
 
                 try:
                     # 使用 ExpressionEngine 安全求值
-                    result = expr_engine.evaluate(expr, input_data) if global_variable else eval(expr,
-                                                                                                 {"__builtins__": {}},
-                                                                                                 input_data)
+                    result = expr_engine.evaluate_template(expr, local_vars=input_vars)
                     if result:
                         branch_name = self._sanitize_port_name(cond.get("name", "branch"))
-                        output[branch_name] = input_data
+                        output[branch_name] = inputs
+                        print(branch_name)
                         break  # 互斥：只触发第一个满足的
                 except Exception as e:
                     self._log_message(self.id, f"条件表达式错误 [{expr}]: {e}\n")
@@ -221,7 +240,7 @@ def create_branch_node(parent_window):
             else:
                 # 所有条件都不满足
                 if enable_else:
-                    output["else"] = input_data
+                    output["else"] = inputs
 
             # === 设置输出值（供下游读取）===
             self._output_values = output

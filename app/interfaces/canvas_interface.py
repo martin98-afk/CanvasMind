@@ -8,7 +8,8 @@ from pathlib import Path
 
 from NodeGraphQt import NodeGraph, BackdropNode
 from NodeGraphQt.constants import PipeLayoutEnum
-from PyQt5 import QtCore
+from NodeGraphQt.widgets.viewer import NodeViewer
+from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
@@ -181,7 +182,10 @@ class CanvasPage(QWidget):
             self._scheduler = None
 
     def _canvas_key_press_event(self, event):
-        super(type(self.graph.viewer()), self.graph.viewer()).keyPressEvent(event)
+        self.canvas_widget.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
+        self.canvas_widget.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
+        self.canvas_widget.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
+
         if event.modifiers() == QtCore.Qt.ControlModifier:
             if event.key() == QtCore.Qt.Key_C:
                 self._copy_selected_nodes()
@@ -189,6 +193,34 @@ class CanvasPage(QWidget):
             elif event.key() == QtCore.Qt.Key_V:
                 self._paste_nodes()
                 return
+
+        if event.modifiers() == (QtCore.Qt.AltModifier | QtCore.Qt.ShiftModifier):
+            self.canvas_widget.ALT_state = True
+            self.canvas_widget.SHIFT_state = True
+
+        if self.canvas_widget._LIVE_PIPE.isVisible():
+            super(NodeViewer, self.canvas_widget).keyPressEvent(event)
+            return
+
+        # show cursor text
+        overlay_text = None
+        self.canvas_widget._cursor_text.setVisible(False)
+        if not self.canvas_widget.ALT_state:
+            if self.canvas_widget.SHIFT_state:
+                overlay_text = '\n    SHIFT:\n    Toggle/Extend Selection'
+            elif self.canvas_widget.CTRL_state:
+                overlay_text = '\n    CTRL:\n    Deselect Nodes'
+        elif self.canvas_widget.ALT_state and self.canvas_widget.SHIFT_state:
+            if self.canvas_widget.pipe_slicing:
+                overlay_text = '\n    ALT + SHIFT:\n    连线删除模式'
+        if overlay_text:
+            self.canvas_widget._cursor_text.setPlainText(overlay_text)
+            self.canvas_widget._cursor_text.setFont(QtGui.QFont('Arial', 10))
+            self.canvas_widget._cursor_text.setDefaultTextColor(Qt.white)
+            self.canvas_widget._cursor_text.setPos(self.canvas_widget.mapToScene(self.canvas_widget._previous_pos))
+            self.canvas_widget._cursor_text.setVisible(True)
+
+        super(NodeViewer, self.canvas_widget).keyPressEvent(event)
 
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
@@ -1070,6 +1102,8 @@ class CanvasPage(QWidget):
         node = self._get_node_by_id(node_id)
         if node:
             self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
+        if node.selected():
+            self.property_panel.update_properties(node)
 
     def _get_node_by_id(self, node_id):
         for node in self.graph.all_nodes():

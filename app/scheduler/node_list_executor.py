@@ -64,9 +64,7 @@ class NodeListExecutor(QRunnable):
                 try:
                     if getattr(node, "execute_sync", None) is not None:
                         # 获取组件类
-                        comp_cls = self.component_map.get(node.FULL_PATH)
-                        if comp_cls is None:
-                            raise ValueError(f"未找到组件类: {node.FULL_PATH}")
+                        comp_cls = self.component_map.get(getattr(node, "FULL_PATH", None))
                         # 执行节点（同步）
                         node.execute_sync(
                             comp_cls,
