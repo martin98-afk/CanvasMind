@@ -174,19 +174,15 @@ def create_branch_node(parent_window):
         def on_run_complete(self, output):
             self._output_values = output
 
-        # ✅ 关键：实现 execute_sync，但走条件路由逻辑
         def execute_sync(self, *args, **kwargs):
             """
-            条件分支节点的 execute_sync 不执行外部脚本，
-            而是在当前进程内完成条件判断和数据路由。
+            条件分支节点的 execute_sync：判断激活分支，并递归禁用未激活分支的整个子图。
             """
-            # === 全局变量 ===
+            # === [前面的输入收集、表达式求值逻辑保持不变] ===
             global_variable = self.model.get_property("global_variable")
-
-            # === 【关键】创建表达式引擎并求值 ===
             gv = GlobalVariableContext()
             gv.deserialize(global_variable)
-            # === 收集 inputs_raw ===
+
             inputs_raw = {}
             for input_port in self.input_ports():
                 port_name = input_port.name()
@@ -203,17 +199,13 @@ def create_branch_node(parent_window):
                     if port_name in self.column_select:
                         inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
 
-            # === 构建 input_xxx 变量 ===
             input_vars = {}
             for k, v in inputs_raw.items():
-                # 将 input.port_name 转为 input_port_name（避免点号）
                 safe_key = f"input_{k}"
                 input_vars[safe_key] = v
 
-            # === 创建表达式引擎（带全局变量）===
             expr_engine = ExpressionEngine(global_vars_context=gv)
 
-            # === 递归求值 params，传入 input_vars ===
             def _evaluate_with_inputs(value, engine, input_vars_dict):
                 if isinstance(value, str):
                     return engine.evaluate_template(value, local_vars=input_vars_dict)
@@ -226,11 +218,9 @@ def create_branch_node(parent_window):
 
             inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
 
-            # === 条件判断（互斥模式）===
+            # === 条件判断 ===
             conditions = self.get_property("conditions") or []
             enable_else = self.get_property("enable_else")
-
-            # 记录哪个分支被激活
             activated_branch = None
 
             for cond in conditions:
@@ -241,7 +231,6 @@ def create_branch_node(parent_window):
                     if expr_engine.is_pure_expression_block(expr):
                         result = expr_engine.evaluate_expression_block(expr, local_vars=input_vars)
                     else:
-                        # 非纯表达式（如混合模板），视为字符串，转为 bool
                         evaluated_str = expr_engine.evaluate_template(expr, local_vars=input_vars)
                         result = bool(evaluated_str and evaluated_str.strip() and "[ExprError:" not in evaluated_str)
                     if result:
@@ -255,28 +244,38 @@ def create_branch_node(parent_window):
             if activated_branch is None and enable_else:
                 activated_branch = "else"
 
-            # === 关键：控制下游节点的 disabled 状态 ===
-            graph = self.graph  # 获取当前图实例
+            # === 关键：递归禁用未激活分支的整个子图 ===
+            graph = self.graph
             if graph is None:
                 return {}
+
+            visited = set()  # 防止循环依赖
+
+            def _disable_subgraph(start_node, disable):
+                """递归禁用 start_node 及其所有下游节点"""
+                if start_node.id in visited:
+                    return
+                visited.add(start_node.id)
+                start_node.set_disabled(disable)
+                # 继续禁用所有下游
+                for output_port in start_node.output_ports():
+                    for in_port in output_port.connected_ports():
+                        downstream = in_port.node()
+                        if downstream:
+                            _disable_subgraph(downstream, disable)
 
             # 遍历所有输出端口
             for port in self.output_ports():
                 port_name = port.name()
                 is_active = (port_name == activated_branch)
 
-                # 获取所有连接到该端口的下游节点
-                connected_ports = port.connected_ports()
-                for downstream_port in connected_ports:
+                for downstream_port in port.connected_ports():
                     downstream_node = downstream_port.node()
-                    if downstream_node is None:
-                        continue
+                    if downstream_node:
+                        _disable_subgraph(downstream_node, not is_active)
 
-                    # 设置 disabled 状态
-                    downstream_node.set_disabled(not is_active)
-
-            # 返回空 dict 或只包含激活分支的数据（可选）
-            # 注意：如果下游节点被禁用，它们的 execute_sync 不会被调用
-            return {activated_branch: inputs}
+            # 设置输出值（可选）
+            if activated_branch:
+                self.set_output_value(activated_branch, inputs)
 
     return ConditionalBranchNode

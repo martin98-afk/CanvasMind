@@ -185,14 +185,11 @@ class WorkflowScheduler(QObject):
     def _execute_nodes(self, nodes: List):
         """启动执行：先解锁所有节点，再执行 active 节点"""
         try:
-            # ✅ 执行前解锁所有节点
-            all_nodes = [n for n in self.graph.all_nodes() if not isinstance(n, BackdropNode)]
-            for node in all_nodes:
-                node.set_disabled(False)
-                self.set_node_status(node, NodeStatus.NODE_STATUS_PENDING)
-
             # ✅ 仍然做拓扑排序（保证依赖顺序），但接受其中包含后续会被禁用的节点
             execution_order = self._topological_sort(nodes)
+            for node in execution_order:
+                node.set_disabled(False)
+                self.set_node_status(node, NodeStatus.NODE_STATUS_PENDING)
             if execution_order is None:
                 self.error.emit("检测到循环依赖")
                 return
