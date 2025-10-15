@@ -23,9 +23,9 @@ class Component(BaseComponent):
     
     # 固定三个变量输入（可扩展）
     inputs = [
-        PortDefinition(name="var1", label="变量1", type=ArgumentType.FLOAT),
-        PortDefinition(name="var2", label="变量2", type=ArgumentType.FLOAT),
-        PortDefinition(name="var3", label="变量3", type=ArgumentType.FLOAT),
+        PortDefinition(name="var1", label="变量1", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="var2", label="变量2", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="var3", label="变量3", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]
     
     outputs = [
@@ -44,7 +44,7 @@ class Component(BaseComponent):
                     choices=["/", "not"]
                 ),
                 "变量": PropertyDefinition(
-                    type=PropertyType.VARIABLE,
+                    type=PropertyType.TEXT,
                     default="var1",
                     label="选择变量",
                 ),
@@ -75,13 +75,6 @@ class Component(BaseComponent):
     }
 
     def run(self, params, inputs = None):
-        # 获取输入变量值
-        var_values = {
-            "var1": inputs.get("var1"),
-            "var2": inputs.get("var2"),
-            "var3": inputs.get("var3"),
-        }
-        self.logger.info(var_values)
         self.logger.info(params)
         # 检查是否有未连接但被使用的变量
         conditions = params.get("conditions", [])
@@ -91,14 +84,10 @@ class Component(BaseComponent):
         else:
             results = []
             for cond in conditions:
-                var_name = cond.get("变量", "var1")
+                var_val = cond.get("变量", "var1")
                 op = cond.get("操作符", "==")
                 const_str = str(cond.get("常量", "0")).strip()
                 negate = cond.get("取反", "")
-
-                var_val = var_values.get(var_name)
-                if var_val is None:
-                    var_val = self.global_variable.get(var_name)
                 const_val = const_str
                 self.logger.info(const_val)
                 self.logger.info(var_val)

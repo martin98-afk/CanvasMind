@@ -17,7 +17,7 @@ class GlobalVarComboBoxWidget(QtWidgets.QWidget):
     """全局变量选择下拉框（动态加载）"""
     valueChanged = QtCore.Signal(str)
 
-    def __init__(self, main_window=None):
+    def __init__(self, main_window=None, parent=None):
         super().__init__()
         self.main_window = main_window
         self._value = ""
@@ -124,7 +124,7 @@ class GlobalVarComboBoxWidgetWrapper(NodeBaseWidget):
         self.set_label(label)
 
         # 创建自定义控件
-        widget = GlobalVarComboBoxWidget(main_window=main_window)
+        widget = GlobalVarComboBoxWidget(main_window=main_window, parent=parent)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
 

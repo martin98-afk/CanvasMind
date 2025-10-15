@@ -7,7 +7,7 @@ class CheckBoxWidget(QtWidgets.QWidget):
     """节点内显示：复选框"""
     valueChanged = QtCore.Signal(bool)
 
-    def __init__(self, text="", state=False):
+    def __init__(self, text="", state=False, parent=None):
         super().__init__()
         self._value = state if isinstance(state, bool) else state in ("true", 1, "True", "1")
         self.checkbox = CheckBox(text)
@@ -40,7 +40,7 @@ class CheckBoxWidgetWrapper(NodeBaseWidget):
         super().__init__(parent)
         self.set_name(name)
         self.set_label(label)
-        widget = CheckBoxWidget(text=text, state=state)
+        widget = CheckBoxWidget(text=text, state=state, parent=parent)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
 

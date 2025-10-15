@@ -1,18 +1,7 @@
 # -*- coding: utf-8 -*-
-from NodeGraphQt import BackdropNode, Port
-from NodeGraphQt.constants import ITEM_CACHE_MODE
-from NodeGraphQt.errors import PortError
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 from NodeGraphQt.qgraphics.node_port_in import PortInputNodeItem
 from NodeGraphQt.qgraphics.node_port_out import PortOutputNodeItem
-from NodeGraphQt.qgraphics.port import CustomPortItem
-from Qt import QtCore, QtGui, QtWidgets
-from collections import OrderedDict
-from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
-from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
-from NodeGraphQt.qgraphics.port import PortItem
-from NodeGraphQt.constants import PortTypeEnum, Z_VAL_NODE
-from PyQt5 import QtCore, QtGui, QtWidgets
 
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 
@@ -45,5 +34,5 @@ class CustomPortOutputNode(PortOutputNode, BasicNodeWithGlobalProperty):
     def __init__(self, qgraphics_item=None, parent_port=None):
         super(CustomPortOutputNode, self).__init__(qgraphics_item or PortOutputNodeItem)
         self._parent_port = parent_port
-        self.add_input()
+        self.add_input(multi_input=True)
         self._input_values = {}

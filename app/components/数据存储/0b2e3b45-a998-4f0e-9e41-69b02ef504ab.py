@@ -44,7 +44,8 @@ BaseComponent = base_module.BaseComponent
 PortDefinition = base_module.PortDefinition
 PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
-ArgumentType = base_module.ArgumentType\n\n\n"""
+ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType\n\n\n"""
 
     def run(self, params, inputs=None):
         import os

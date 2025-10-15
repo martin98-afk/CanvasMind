@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-import inspect
 import os
 import pickle
 import platform
 import subprocess
-import sys
 import tempfile
 import time
 
 from NodeGraphQt import BaseNode
+from NodeGraphQt.qgraphics.node_base import NodeItem
 from PyQt5.QtWidgets import QFileDialog
+from Qt import QtCore
 from loguru import logger
 
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext
@@ -17,7 +17,7 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.node_logger import NodeLogHandler
-from app.utils.utils import draw_square_port, _evaluate_value_recursively
+from app.utils.utils import draw_square_port
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
@@ -74,6 +74,19 @@ def _install_requirements(python_executable, requirements_str):
             logger.error(f"❌ 安装 {pkg} 异常: {e}")
 
 
+class CustomNodeItem(NodeItem):
+    def mousePressEvent(self, event):
+        # 如果是右键，先选中自己（关键！）
+        if event.button() == QtCore.Qt.RightButton:
+            # 清除其他选择，只选中当前节点
+            scene = self.scene()
+            if scene:
+                scene.clearSelection()
+                self.setSelected(True)
+        # 其他逻辑交给父类（包括左键、菜单弹出等）
+        super().mousePressEvent(event)
+
+
 def create_node_class(component_class, full_path, file_path, parent_window=None):
     """返回一个高性能、支持独立环境执行的动态节点类"""
 
@@ -84,7 +97,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
         FILE_PATH = file_path
 
         def __init__(self, qgraphics_item=None):
-            super().__init__(qgraphics_item)
+            super().__init__(CustomNodeItem)
             self.component_class = component_class
             self._node_logs = ""
             self._output_values = {}
@@ -283,12 +296,8 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             if global_variable is not None:
                 gv = GlobalVariableContext()
                 gv.deserialize(global_variable)
-                expr_engine = ExpressionEngine(global_vars_context=gv)
 
-                # 递归求值 params
-                params = {k: _evaluate_value_recursively(v, expr_engine) for k, v in params.items()}
-
-                # 收集输入（稍后处理）
+                # === 收集 inputs_raw ===
                 inputs_raw = {}
                 for input_port in self.input_ports():
                     port_name = input_port.name()
@@ -305,8 +314,29 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         if port_name in self.column_select:
                             inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
 
-                # 处理 inputs
-                inputs = {k: _evaluate_value_recursively(v, expr_engine) for k, v in inputs_raw.items()}
+                # === 构建 input_xxx 变量 ===
+                input_vars = {}
+                for k, v in inputs_raw.items():
+                    # 将 input.port_name 转为 input_port_name（避免点号）
+                    safe_key = f"input_{k}"
+                    input_vars[safe_key] = v
+
+                # === 创建表达式引擎（带全局变量）===
+                expr_engine = ExpressionEngine(global_vars_context=gv)
+
+                # === 递归求值 params，传入 input_vars ===
+                def _evaluate_with_inputs(value, engine, input_vars_dict):
+                    if isinstance(value, str):
+                        return engine.evaluate_template(value, local_vars=input_vars_dict)
+                    elif isinstance(value, list):
+                        return [_evaluate_with_inputs(v, engine, input_vars_dict) for v in value]
+                    elif isinstance(value, dict):
+                        return {k: _evaluate_with_inputs(v, engine, input_vars_dict) for k, v in value.items()}
+                    else:
+                        return value
+
+                params = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in params.items()}
+                inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
             else:
                 # 无全局变量时，按原逻辑收集 inputs
                 inputs = {}

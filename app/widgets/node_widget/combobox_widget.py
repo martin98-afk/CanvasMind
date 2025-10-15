@@ -9,7 +9,7 @@ class ComboBoxWidget(QtWidgets.QWidget):
     """节点内选择框（在 QGraphicsProxyWidget 中可靠弹出）"""
     valueChanged = QtCore.Signal(str)
 
-    def __init__(self, items=[]):
+    def __init__(self, items=[], parent=None):
         super().__init__()
         self.items = list(items) if items else []
         self._value = self.items[0] if self.items else ""
@@ -46,7 +46,7 @@ class ComboBoxWidgetWrapper(NodeBaseWidget):
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
         self.set_label(label)
-        widget = ComboBoxWidget(items=items)
+        widget = ComboBoxWidget(items=items, parent=parent)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
 

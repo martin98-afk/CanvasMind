@@ -24,13 +24,14 @@ class LongTextWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(str)
 
     def __init__(self, parent=None, default_text=""):
-        super().__init__()
+        super().__init__(parent)
         self.parent = parent
         self._text = default_text
 
         self.summary_label = LineEdit()
         self.summary_label.setMaximumWidth(300)
         self.summary_label.setText(self._get_summary())
+        self.summary_label.setReadOnly(True)
 
         self.edit_btn = ToolButton(FluentIcon.EDIT)
         self.edit_btn.clicked.connect(self._open_editor)
@@ -41,8 +42,6 @@ class LongTextWidget(QtWidgets.QWidget):
         layout.addWidget(self.edit_btn)
 
     def _get_summary(self):
-        if not self._text:
-            return "<空>"
         text = self._text.replace('\n', ' ').replace('\r', ' ')
         return (text[:30] + "...") if len(text) > 30 else text
 

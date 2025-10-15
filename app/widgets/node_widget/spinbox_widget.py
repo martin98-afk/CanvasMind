@@ -11,7 +11,7 @@ class SpinBoxWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(object)
 
     def __init__(self, parent=None, default=0, type="float"):
-        super().__init__()
+        super().__init__(parent)
         self.parent = parent
         self._value = default
         self.spinbox = SpinBox() if type == "int" else DoubleSpinBox()
