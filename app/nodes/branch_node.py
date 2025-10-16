@@ -13,18 +13,21 @@ from PyQt5 import QtCore
 
 from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.base_node import BasicNodeWithGlobalProperty
-from app.nodes.create_dynamic_node import CustomNodeItem
+from app.nodes.status_node import StatusNode
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.node_logger import NodeLogHandler
-from app.utils.utils import get_icon, resource_path
+from app.utils.utils import resource_path
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
+from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 
 
 def create_branch_node(parent_window):
-    class ConditionalBranchNode(BaseNode, BasicNodeWithGlobalProperty):
+    class ConditionalBranchNode(BaseNode, StatusNode, BasicNodeWithGlobalProperty):
+        category: str = "控制流"
         __identifier__ = 'control_flow'
         NODE_NAME = '条件分支'
+        FULL_PATH = f"{category}/{NODE_NAME}"
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
@@ -45,13 +48,24 @@ def create_branch_node(parent_window):
             # === 关键：延迟绑定监听器 + 延迟首次同步 ===
             QtCore.QTimer.singleShot(500, self._delayed_setup)
 
+            self._sync_timer = None
+
+        # 替换 _delayed_setup 中的 connect
         def _delayed_setup(self):
-            """延迟设置监听器和首次端口同步，确保属性已从序列化数据恢复"""
-            # 绑定变化监听
-            self.widget.get_custom_widget().valueChanged.connect(self._sync_output_ports)
-            self.get_widget("enable_else").get_custom_widget().valueChanged.connect(self._sync_output_ports)
-            # 首次同步端口（此时 get_property 已是保存的值）
+            widget = self.widget.get_custom_widget()
+            widget.valueChanged.connect(self._on_conditions_changed)
+            else_widget = self.get_widget("enable_else").get_custom_widget()
+            else_widget.valueChanged.connect(self._on_conditions_changed)
             self._sync_output_ports()
+
+        def _on_conditions_changed(self):
+            if self._sync_timer:
+                self._sync_timer.stop()
+                self._sync_timer.deleteLater()
+            self._sync_timer = QtCore.QTimer()
+            self._sync_timer.setSingleShot(True)
+            self._sync_timer.timeout.connect(self._sync_output_ports)
+            self._sync_timer.start(400)
 
         def _init_properties(self):
             """初始化条件列表和 else 开关（只创建 widget，不绑定逻辑）"""
@@ -75,6 +89,13 @@ def create_branch_node(parent_window):
                     "label": field_def.get("label", field_name),
                     "choices": field_def.get("choices", [])
                 }
+            checkbox_widget = CheckBoxWidgetWrapper(
+                parent=self.view,
+                name="enable_else",
+                text="启用默认分支（else）",
+                state=True
+            )
+            self.add_custom_widget(checkbox_widget, tab="properties")
 
             self.widget = DynamicFormWidgetWrapper(
                 parent=self.view,
@@ -85,14 +106,6 @@ def create_branch_node(parent_window):
                 z_value=100
             )
             self.add_custom_widget(self.widget, tab='Properties')
-
-            checkbox_widget = CheckBoxWidgetWrapper(
-                parent=self.view,
-                name="enable_else",
-                text="启用默认分支（else）",
-                state=True
-            )
-            self.add_custom_widget(checkbox_widget, tab="properties")
 
         def _sanitize_port_name(self, name: str) -> str:
             if not name:

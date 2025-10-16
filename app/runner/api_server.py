@@ -37,7 +37,17 @@ def get_pydantic_type(format_str: str, schema_def: Optional[Dict] = None):
         return bool
     elif format_str == "JSON":
         return dict
-    elif format_str == "ARRAY":
+    elif format_str == "ARRAY[TEXT]":
+        return List[str]
+    elif format_str == "ARRAY[INT]":
+        return List[int]
+    elif format_str == "ARRAY[FLOAT]":
+        return List[float]
+    elif format_str == "ARRAY[JSON]":
+        return List[dict]
+    elif format_str == "ARRAY[BOOL]":
+        return List[bool]
+    elif format_str.startswith("ARRAY"):
         return List[Any]
     elif format_str in ["FILE", "EXCEL", "SKLEARNMODEL", "TORCHMODEL", "UPLOAD", "IMAGE"]:
         return UploadFile  # 文件类型用 UploadFile

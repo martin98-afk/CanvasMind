@@ -13,6 +13,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from scan_components import scan_components
 from runner.component_executor import run_component_in_subprocess
+from ..components.base import GlobalVariableContext
+from .expression_engine import ExpressionEngine
 
 
 def build_execution_graph(nodes, graph_data):
@@ -96,9 +98,10 @@ def build_node_inputs(node, graph_data, internal_outputs):
 
 
 def execute_loop_node(loop_node, all_nodes, graph_data, input_data, runtime_data, type="loop"):
-    """执行一个循环控制流节点"""
-    if input_data:
+    # 修复点：仅当 input_data 为空时，才使用预制参数
+    if not input_data:
         input_data = loop_node["input_values"].get("inputs", [])
+
     if not isinstance(input_data, (list, tuple)) and type == "loop":
         input_data = [input_data]
 
@@ -193,6 +196,54 @@ def execute_loop_node(loop_node, all_nodes, graph_data, input_data, runtime_data
     return {"outputs": results}
 
 
+def execute_branch_node(branch_node, all_nodes, graph_data, input_data, runtime_data):
+    from your_module.expression_engine import ExpressionEngine
+    from your_module.global_variable import GlobalVariableContext
+
+    # 1. 反序列化全局变量
+    gv_data = branch_node.get("global_variable", {})
+    global_ctx = GlobalVariableContext()
+    global_ctx.deserialize(gv_data)
+    expr_engine = ExpressionEngine(global_vars_context=global_ctx)
+
+    # 2. 准备局部变量
+    local_vars = {"input": input_data[0] if isinstance(input_data, (list, tuple)) and input_data else input_data}
+
+    # 3. 初始化所有输出端口为 None
+    # 假设你知道该节点有哪些输出端口（可从 project_spec 或节点定义获取）
+    # 但更简单的方式：只输出命中的那个端口
+    output_dict = {}
+
+    # 4. 评估条件
+    selected_port = None
+    for cond in branch_node.get("branch_conditions", []):
+        expr = cond.get("expr", "").strip()
+        port_name = cond.get("branch_name")  # 这就是输出端口名！
+        if not expr or not port_name:
+            continue
+
+        try:
+            if expr_engine.is_pure_expression_block(expr):
+                result = expr_engine.evaluate_expression_block(expr, local_vars)
+                if result:  # 真值判断
+                    selected_port = port_name
+                    break
+        except Exception as e:
+            logger.warning(f"表达式评估失败 {expr}: {e}")
+            continue
+
+    # 5. 处理 else（如果启用）
+    if selected_port is None and branch_node.get("enable_else", False):
+        selected_port = "else"  # 假设有一个叫 "else" 的输出端口
+
+    # 6. 如果有选中端口，透传输入数据
+    if selected_port is not None:
+        # 透传 input_data（保持原始结构）
+        output_dict[selected_port] = input_data[0] if isinstance(input_data, (list, tuple)) and input_data else input_data
+
+    return output_dict  # 例如: {"branch_true": 42} 或 {"else": [1,2,3]}
+
+
 def execute_workflow(file_path, external_inputs=None, python_executable=None):
     """
     执行工作流（支持 project_spec.json 定义的接口）
@@ -238,6 +289,7 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
 
         is_loop_node = (node_data.get("type_") == "control_flow.ControlFlowLoopNode")
         is_iterate_node = (node_data.get("type_") == "control_flow.ControlFlowIterateNode")
+        is_branch_node = (node_data.get("type_") == "control_flow.ControlFlowBranchNode")
         # 直接使用 workflow 中的 params 和 input_values
         params = node_data["custom"].get("params", {})
         input_values = node_data["custom"].get("input_values", {})
@@ -251,7 +303,11 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
             "input_values": input_values,
             "is_loop_node": is_loop_node,  # ← 标记
             "is_iterate_node": is_iterate_node,
-            "internal_nodes": node_data["custom"].get("internal_nodes", [])
+            "internal_nodes": node_data["custom"].get("internal_nodes", []),
+            "is_branch_node": is_branch_node,
+            "branch_conditions": node_data["custom"]["params"].get("conditions", []),
+            "enable_else": node_data["custom"]["params"].get("enable_else", False),
+            "global_variable": node_data["custom"]["params"].get("global_variable", {}),
         }
 
     # 5. ✅ 关键：用 external_inputs 覆盖 spec 指定的输入
@@ -314,10 +370,18 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
             output = execute_loop_node(
                 node, nodes, graph_data, [item for item in node_inputs.values()][0], runtime_data, type="iterate")
             node_outputs[node_id] = output
+        elif node["is_branch_node"]:
+            # 提取输入值（假设只有一个输入端口）
+            input_val = None
+            if node_inputs:
+                input_val = next(iter(node_inputs.values()))
+            output = execute_branch_node(node, nodes, graph_data, input_val, runtime_data)
+            node_outputs[node_id] = output
         else:
             # 执行
             try:
                 logger.info(f"执行节点: {node['name']}")
+                logger.info(f"输入: {node_inputs}")
                 output = run_component_in_subprocess(
                     comp_class=node["class"],
                     file_path=node["file_path"],

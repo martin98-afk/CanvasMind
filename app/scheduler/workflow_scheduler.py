@@ -190,10 +190,15 @@ class WorkflowScheduler(QObject):
             for node in execution_order:
                 node.set_disabled(False)
                 self.set_node_status(node, NodeStatus.NODE_STATUS_PENDING)
+                if isinstance(node, BackdropNode):
+                    for n in node.nodes():
+                        n.set_disabled(False)
+                        self.set_node_status(n, NodeStatus.NODE_STATUS_PENDING)
+
             if execution_order is None:
                 self.error.emit("检测到循环依赖")
                 return
-
+            self.register_global_variable(execution_order)
             # 启动执行器
             self._executor = NodeListExecutor(
                 main_window=None,

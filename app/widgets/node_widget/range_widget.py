@@ -18,6 +18,7 @@ class RangeWidget(QtWidgets.QWidget):
 
         # 滑块（QSlider 只支持整数，所以用缩放）
         self.slider = Slider(QtCore.Qt.Horizontal)
+        self.slider.setFixedWidth(200)
         self.slider.setMinimum(0)
         self.slider.setMaximum(int((max_val - min_val) / step))
         self.slider.setSingleStep(1)

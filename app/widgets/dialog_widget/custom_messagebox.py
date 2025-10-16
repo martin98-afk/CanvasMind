@@ -32,16 +32,25 @@ class CustomInputDialog(MessageBoxBase):
 class CustomTwoInputDialog(MessageBoxBase):
     """自定义输入对话框"""
 
-    def __init__(self, title1: str, placeholder1: str = "", title2: str="", placeholder2: str = "", parent=None):
+    def __init__(
+            self,
+            title1: str="", placeholder1: str = "", text1=None,
+            title2: str="", placeholder2: str = "", text2=None,
+            parent=None
+    ):
         super().__init__(parent)
         self.titleLabel = SubtitleLabel(title1)
         self.lineEdit = LineEdit()
-
+        if text1:
+            self.lineEdit.setText(text1)
         self.lineEdit.setPlaceholderText(placeholder1)
         self.lineEdit.setClearButtonEnabled(True)
 
         self.titleLabel2 = SubtitleLabel(title2)
+
         self.lineEdit2 = LineEdit()
+        if text2:
+            self.lineEdit2.setText(text2)
 
         self.lineEdit2.setPlaceholderText(placeholder2)
         self.lineEdit2.setClearButtonEnabled(True)

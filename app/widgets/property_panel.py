@@ -6,13 +6,13 @@ import pandas as pd
 from NodeGraphQt import BaseNode
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
-    QStackedWidget, QHBoxLayout
+    QStackedWidget, QHBoxLayout, QApplication
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
-    ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton
+    ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action
 
 from app.components.base import ArgumentType
-from app.nodes.create_backdrop_node import ControlFlowBackdrop
+from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.utils.utils import serialize_for_json
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
@@ -86,6 +86,32 @@ class PropertyPanel(CardWidget):
                 self.global_stacked.deleteLater()
                 del self.global_stacked
 
+    def get_port_info(self, node, is_input=True):
+        """
+        获取端口信息列表，兼容原生节点和 component_class 节点
+        返回: [(port_name, port_label, port_type), ...]
+        """
+        ports = node.input_ports() if is_input else node.output_ports()
+        if hasattr(node, 'component_class'):
+            comp_ports = getattr(node.component_class, 'inputs' if is_input else 'outputs', [])
+            port_dict = {p.name(): p for p in ports}
+            result = []
+            for comp_def in comp_ports:
+                port_name = comp_def.name
+                if port_name in port_dict:
+                    result.append((port_name, comp_def.label, comp_def.type))
+                else:
+                    # component_class 定义了但图中无此端口（罕见）
+                    result.append((port_name, port_name, ArgumentType.TEXT))
+            # 补充 component_class 未覆盖的端口（如动态添加）
+            for port in ports:
+                if port.name() not in [r[0] for r in result]:
+                    result.append((port.name(), port.name(), ArgumentType.TEXT))
+            return result
+        else:
+            # 纯原生节点：只有端口名，类型默认 TEXT
+            return [(p.name(), p.name(), ArgumentType.TEXT) for p in ports]
+
     def update_properties(self, node):
         # === 判断是否为同一个普通节点（非 Backdrop）===
         is_same_node = (
@@ -100,12 +126,10 @@ class PropertyPanel(CardWidget):
             return
 
         # === 不同节点：重建 UI ===
-        # 保存当前 segment（普通节点）
         current_segment = None
         if self.segmented_widget:
             current_segment = self.segmented_widget.currentRouteKey()
 
-        # 保存全局变量 tab
         if hasattr(self, 'global_segmented'):
             self._current_global_tab = self.global_segmented.currentRouteKey()
 
@@ -122,9 +146,11 @@ class PropertyPanel(CardWidget):
             self._build_node_ui(node, current_segment)
 
     def _build_node_ui(self, node, current_segment=None):
+        # 确保节点有必要的属性
         if not hasattr(node, '_input_values'):
             node._input_values = {}
-
+        if not hasattr(node, 'column_select'):
+            node.column_select = {}
         # 1. 节点标题
         title = BodyLabel(f"📌 {node.name()}")
         title.setWordWrap(True)
@@ -136,7 +162,7 @@ class PropertyPanel(CardWidget):
         if description and description.strip():
             desc_label = BodyLabel(f"📝 {description}")
             desc_label.setWordWrap(True)
-            desc_label.setStyleSheet("color: #888888; font-size: 18px;")
+            desc_label.setStyleSheet("color: #888888; font-size: 16px;")
             self.vbox.addWidget(desc_label)
 
         self._add_seperator()
@@ -153,9 +179,7 @@ class PropertyPanel(CardWidget):
         input_layout = QVBoxLayout(input_widget)
         input_layout.setContentsMargins(0, 0, 0, 0)
         input_layout.setSpacing(8)
-
         self._populate_input_ports(node, input_layout)
-
         input_layout.addStretch(1)
         self.stacked_widget.addWidget(input_widget)
 
@@ -164,9 +188,7 @@ class PropertyPanel(CardWidget):
         output_layout = QVBoxLayout(output_widget)
         output_layout.setContentsMargins(0, 0, 0, 0)
         output_layout.setSpacing(8)
-
         self._populate_output_ports(node, output_layout)
-
         output_layout.addStretch(1)
         self.stacked_widget.addWidget(output_widget)
 
@@ -174,7 +196,6 @@ class PropertyPanel(CardWidget):
         self.vbox.addWidget(self.segmented_widget)
         self.vbox.addWidget(self.stacked_widget)
 
-        # 恢复 segment
         if current_segment in ['input', 'output']:
             self.segmented_widget.setCurrentItem(current_segment)
         else:
@@ -182,134 +203,109 @@ class PropertyPanel(CardWidget):
 
     def _update_existing_node_data(self, node):
         """仅更新当前节点的数据内容，不重建 UI"""
-        # 更新输入端口数据
-        input_ports_info = self.get_node_input_ports_info(node)
-        for input_port, port_def in zip(node.input_ports(), getattr(node.component_class, 'inputs', [])):
-            port_name = port_def.name
-            connected = input_port.connected_ports()
-            original_upstream_data = None
+        # 更新输入端口
+        for port_name, _, port_type in self.get_port_info(node, is_input=True):
+            input_port = node.get_input(port_name)
+            connected = input_port.connected_ports() if input_port else []
             if len(connected) == 1:
-                upstream_out = connected[0]
-                upstream_node = upstream_out.node()
-                original_upstream_data = upstream_node.get_output_value(upstream_out.name())
+                upstream = connected[0]
+                original_data = upstream.node().get_output_value(upstream.name())
             elif connected:
-                original_upstream_data = [
-                    upstream.node().get_output_value(upstream.name()) for upstream in connected
-                ]
+                original_data = [up.node().get_output_value(up.name()) for up in connected]
             else:
-                original_upstream_data = node._input_values.get(port_def.name, "暂无数据")
+                original_data = node._input_values.get(port_name, "暂无数据")
 
-            # 更新列选择器（如果存在）
+            # 更新列选择器
             if port_name in self._column_list_widgets:
                 list_widget = self._column_list_widgets[port_name]
-                if isinstance(original_upstream_data, pd.DataFrame) and not original_upstream_data.empty:
-                    current_columns = list(original_upstream_data.columns)
+                if isinstance(original_data, pd.DataFrame) and not original_data.empty:
+                    current_columns = list(original_data.columns)
                     existing_items = [list_widget.item(i).text() for i in range(list_widget.count())]
                     if set(current_columns) != set(existing_items):
-                        # 列结构变化，需重建（fallback）
+                        # 列结构变化，需重建 UI
                         self.update_properties(node)
                         return
-
-                    # 更新选中状态
                     selected_columns = node.column_select.get(port_name, [])
                     for i in range(list_widget.count()):
                         item = list_widget.item(i)
                         item.setCheckState(Qt.Checked if item.text() in selected_columns else Qt.Unchecked)
 
-            # 更新文本显示
-            current_selected_data = self._get_current_input_value(node, port_name, original_upstream_data)
+            current_selected_data = self._get_current_input_value(node, port_name, original_data)
             self._update_text_edit_for_port(port_name, current_selected_data)
 
-        # 更新输出端口数据
-        output_ports = getattr(node.component_class, 'outputs', [])
-        for port_def in output_ports:
-            port_name = port_def.name
-            display_data = node._output_values.get(port_name, "暂无数据")
-            port_type = getattr(port_def, 'type', ArgumentType.TEXT)
-            try:
-                if isinstance(display_data, str) and display_data != "暂无数据":
-                    display_data = port_type.serialize(display_data)
-            except Exception:
-                logger.error(f"无法解析输出数据：{display_data}")
+        # 更新输出端口
+        for port_name, _, port_type in self.get_port_info(node, is_input=False):
+            display_data = node.get_output_value(port_name)
+            if display_data is None:
                 display_data = "暂无数据"
-
             self._update_text_edit_for_port(port_name, display_data)
 
     def _populate_input_ports(self, node, layout):
-        inputs = getattr(node.component_class, 'inputs', [])
-        if not inputs:
+        port_infos = self.get_port_info(node, is_input=True)
+        if not port_infos:
             layout.addWidget(BodyLabel("  无输入端口"))
             return
 
-        for input_port, port_def in zip(node.input_ports(), inputs):
-            port_display = f"{port_def.label} ({port_def.name}): {port_def.type.value}"
-            layout.addWidget(BodyLabel(f"  • {port_display}"))
+        for port_name, port_label, port_type in port_infos:
+            layout.addWidget(BodyLabel(f"  • {port_label} ({port_name}): {port_type.value}"))
 
-            connected = input_port.connected_ports()
-            original_upstream_data = None
+            input_port = node.get_input(port_name)
+            connected = input_port.connected_ports() if input_port else []
             if len(connected) == 1:
-                upstream_out = connected[0]
-                upstream_node = upstream_out.node()
-                original_upstream_data = upstream_node.get_output_value(upstream_out.name())
+                upstream = connected[0]
+                original_data = upstream.node().get_output_value(upstream.name())
             elif connected:
-                original_upstream_data = [
-                    upstream.node().get_output_value(upstream.name()) for upstream in connected
-                ]
+                original_data = [up.node().get_output_value(up.name()) for up in connected]
             else:
-                original_upstream_data = node._input_values.get(port_def.name, "暂无数据")
+                original_data = node._input_values.get(port_name, "暂无数据")
 
-            port_type = getattr(port_def, 'type', ArgumentType.TEXT)
-
-            if port_type == ArgumentType.CSV:
-                self._add_column_selector_widget_to_layout(node, port_def.name, original_upstream_data,
-                                                           original_upstream_data, layout)
-                current_selected_data = self._get_current_input_value(node, port_def.name, original_upstream_data)
-                self._add_text_edit_to_layout(
-                    current_selected_data, port_type=port_type, port_name=port_def.name, layout=layout
-                )
+            # === 关键：不要 serialize！直接使用原始数据 ===
+            if port_type == ArgumentType.CSV and isinstance(original_data, pd.DataFrame) and not original_data.empty:
+                self._add_column_selector_widget_to_layout(node, port_name, original_data, original_data, layout)
+                current_selected_data = self._get_current_input_value(node, port_name, original_data)
             else:
-                display_data = original_upstream_data
-                try:
-                    if not isinstance(display_data, str) or display_data != "暂无数据":
-                        display_data = port_type.serialize(display_data) if len(connected) <= 1 else \
-                            [port_type.serialize(data) for data in original_upstream_data]
-                    self._add_text_edit_to_layout(
-                        display_data, port_type=port_type, port_name=port_def.name, layout=layout
-                    )
-                except Exception:
-                    logger.error(f"无法解析输入数据：{display_data}")
-                    display_data = "暂无数据"
-                    self._add_text_edit_to_layout(display_data, port_type=port_type, port_name=port_def.name, layout=layout)
+                current_selected_data = original_data  # ← 原始数据！
+
+            # 直接传给 VariableTreeWidget
+            self._add_text_edit_to_layout(
+                current_selected_data,
+                port_type=port_type,
+                port_name=port_name,
+                layout=layout
+            )
 
     def _populate_output_ports(self, node, layout):
-        outputs = getattr(node.component_class, 'outputs', [])
-        if not outputs:
+        port_infos = self.get_port_info(node, is_input=False)
+        if not port_infos:
             layout.addWidget(BodyLabel("  无输出端口"))
             return
 
-        for port_def in outputs:
-            port_name = port_def.name
-            port_label = port_def.label
-            layout.addWidget(BodyLabel(f"  • {port_label} ({port_name}): {port_def.type.value}"))
+        for port_name, port_label, port_type in port_infos:
+            layout.addWidget(BodyLabel(f"  • {port_label} ({port_name}): {port_type.value}"))
 
-            display_data = node._output_values.get(port_name, "暂无数据")
-            port_type = getattr(port_def, 'type', ArgumentType.TEXT)
+            # 获取原始数据（不要 serialize！）
+            display_data = node._output_values.get(port_name)
+            if display_data is None:
+                try:
+                    display_data = node.model.get_property(port_name)
+                except KeyError:
+                    display_data = "暂无数据"
 
+            # 特殊控件（如上传）
             if port_type == ArgumentType.UPLOAD:
                 self._add_upload_widget_to_layout(node, port_name, layout)
 
-            try:
-                if isinstance(display_data, str) and display_data != "暂无数据":
-                    display_data = port_type.serialize(display_data)
-            except Exception:
-                logger.error(f"无法解析输出数据：{display_data}")
-                display_data = "暂无数据"
-
+            # ✅ 直接传原始数据 + port_type 给 VariableTreeWidget
             self._add_text_edit_to_layout(
-                display_data, port_name=port_def.name, layout=layout, node=node, is_output=True)
+                display_data,
+                port_type=port_type,
+                port_name=port_name,
+                layout=layout,
+                node=node,
+                is_output=True
+            )
 
     def _add_seperator(self):
-        # 添加分隔线
         separator = QFrame()
         separator.setFrameShape(QFrame.HLine)
         separator.setFrameShadow(QFrame.Sunken)
@@ -317,16 +313,13 @@ class PropertyPanel(CardWidget):
         self.vbox.addWidget(separator)
 
     def _on_segmented_changed(self, item_key):
-        """导航栏切换事件"""
         if item_key == 'input':
             self.stacked_widget.setCurrentIndex(0)
         elif item_key == 'output':
             self.stacked_widget.setCurrentIndex(1)
 
     def _get_current_input_value(self, node, port_name, original_data):
-        """获取当前端口的输入值（考虑列选择）"""
-        selected_columns = node._input_values.get(f"{port_name}_selected_columns", [])
-
+        selected_columns = node.column_select.get(port_name, [])
         if selected_columns and isinstance(original_data, pd.DataFrame):
             try:
                 if len(selected_columns) == 1:
@@ -410,20 +403,6 @@ class PropertyPanel(CardWidget):
         layout.addWidget(column_card)
         self._column_list_widgets[port_name] = list_widget
 
-    def _update_input_value_for_port(self, node, port_name, original_data, selected_columns):
-        if selected_columns and isinstance(original_data, pd.DataFrame):
-            try:
-                if len(selected_columns) == 1:
-                    selected_data = original_data[selected_columns[0]]
-                else:
-                    selected_data = original_data[selected_columns]
-            except Exception as e:
-                selected_data = f"列选择错误: {str(e)}"
-        else:
-            selected_data = original_data if selected_columns else "未选择列"
-
-        node._input_values[port_name] = selected_data
-
     def _add_text_edit_to_layout(self, text, port_type=None, port_name=None, layout=None, node=None, is_output=False):
         info_card = CardWidget(self)
         info_card.setMaximumHeight(300)
@@ -458,37 +437,12 @@ class PropertyPanel(CardWidget):
 
         return tree_widget
 
-    def _add_text_edit(self, text, port_name=None):
-        return self._add_text_edit_to_layout(text, port_name)
-
     def _update_text_edit_for_port(self, port_name, new_value):
         if port_name not in self._text_edit_widgets:
             return
-
         widget = self._text_edit_widgets[port_name]
         if isinstance(widget, VariableTreeWidget):
             widget.set_data(new_value)
-        else:
-            self._fallback_update_text_edit(widget, new_value)
-
-    def _fallback_update_text_edit(self, edit, new_value):
-        if new_value is None:
-            display_text = "None"
-        elif isinstance(new_value, str):
-            display_text = new_value
-        elif hasattr(new_value, '__dict__') and not isinstance(new_value, (list, tuple, dict)):
-            try:
-                display_text = f"[{new_value.__class__.__name__}] {str(new_value)}"
-            except:
-                display_text = str(new_value)
-        elif isinstance(new_value, (list, tuple, dict)):
-            try:
-                display_text = json.dumps(new_value, indent=2, ensure_ascii=False, default=str)
-            except:
-                display_text = str(new_value)
-        else:
-            display_text = str(new_value)
-        edit.setPlainText(display_text)
 
     def _add_upload_widget_to_layout(self, node, port_name, layout):
         upload_widget = QWidget()
@@ -511,53 +465,19 @@ class PropertyPanel(CardWidget):
         )
         if file_path:
             node._output_values[port_name] = file_path
-
         self.update_properties(node)
-
-    def _add_file_widget_to_layout(self, node, port_name, layout):
-        select_file_button = PushButton("📁 选择文件", self)
-        select_file_button.clicked.connect(lambda _, p=port_name, n=node: self._select_output_file(p, n))
-        layout.addWidget(select_file_button)
-
-    def _select_output_file(self, port_name, node):
-        file_path, _ = QFileDialog.getOpenFileName(self, "选择文件", "", "All Files (*)")
-        if file_path:
-            self._update_output_file(node, port_name, file_path)
-
-    def _update_output_file(self, node, port_name, file_path):
-        node._output_values[port_name] = file_path
-        if port_name in self._text_edit_widgets:
-            self._text_edit_widgets[port_name].set_data(file_path)
-
-    def _add_separator(self):
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        separator.setStyleSheet("color: #444444;")
-        self.vbox.addWidget(separator)
 
     def get_node_description(self, node):
         if hasattr(node, 'component_class'):
             return getattr(node.component_class, 'description', '')
-        return ''
+        try:
+            return node.model.get_property('description')
+        except KeyError:
+            return ''
 
-    def get_node_input_ports_info(self, node):
-        if hasattr(node, 'component_class'):
-            return node.component_class.get_inputs()
-        ports_info = []
-        for input_port in node.input_ports():
-            port_name = input_port.name()
-            ports_info.append((port_name, port_name))
-        return ports_info
-
-    def get_node_output_ports_info(self, node):
-        if hasattr(node, 'component_class'):
-            return node.component_class.get_outputs()
-        ports_info = []
-        for output_port in node.output_ports():
-            port_name = output_port.name()
-            ports_info.append((port_name, port_name))
-        return ports_info
+    # ========================
+    # ControlFlowBackdrop 相关（保持不变）
+    # ========================
 
     def _update_control_flow_properties(self, node):
         title = BodyLabel(f"🔁 {node.NODE_NAME}")
@@ -683,6 +603,10 @@ class PropertyPanel(CardWidget):
             position=InfoBarPosition.TOP_RIGHT
         )
 
+    # ========================
+    # 全局变量面板（保持不变）
+    # ========================
+
     def _show_global_variables_panel(self):
         self._clear_layout(keep_global_segment=True)
 
@@ -776,7 +700,7 @@ class PropertyPanel(CardWidget):
 
     def _create_dict_row(self, name: str, value):
         card = CardWidget(self)
-        card.setMaximumWidth(260)
+        card.setMaximumWidth(250)
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
@@ -802,11 +726,24 @@ class PropertyPanel(CardWidget):
         layout.addWidget(value_label)
         layout.addStretch()
         layout.addWidget(del_btn)
+
+        # === 右键菜单：复制为 $custom.name$ ===
+        def show_context_menu(pos):
+            menu = RoundMenu(parent=self)
+            menu.addAction(
+                Action("复制为表达式", triggered=lambda: self._copy_as_expression("custom", name))
+            )
+            menu.addAction(Action("编辑变量", triggered=lambda: self._edit_custom_variable(name, value)))
+            menu.exec_(card.mapToGlobal(pos))
+
+        card.setContextMenuPolicy(Qt.CustomContextMenu)
+        card.customContextMenuRequested.connect(show_context_menu)
+
         return card
 
     def _create_variable_card(self, name: str, value):
         card = CardWidget(self)
-        card.setMaximumWidth(260)
+        card.setMaximumWidth(250)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
@@ -820,10 +757,23 @@ class PropertyPanel(CardWidget):
         del_btn.clicked.connect(lambda _, n=name: self._delete_custom_variable(n, 'node_vars'))
         title_layout.addWidget(del_btn)
         layout.addLayout(title_layout)
+
         tree = VariableTreeWidget(value, parent=self.main_window)
         tree.setMinimumHeight(80)
         tree.setMaximumHeight(120)
         layout.addWidget(tree)
+
+        # === 右键菜单：复制为 $node.name$ ===
+        def show_context_menu(pos):
+            menu = RoundMenu(parent=self)
+            menu.addAction(
+                Action("复制为表达式", triggered=lambda: self._copy_as_expression("node_vars", name))
+            )
+            if menu.actions():
+                menu.exec_(card.mapToGlobal(pos))
+
+        card.setContextMenuPolicy(Qt.CustomContextMenu)
+        card.customContextMenuRequested.connect(show_context_menu)
 
         return card
 
@@ -960,7 +910,7 @@ class PropertyPanel(CardWidget):
 
     def _create_env_var_row(self, key: str, value):
         card = CardWidget(self)
-        card.setMaximumWidth(260)
+        card.setMaximumWidth(250)
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
@@ -985,6 +935,19 @@ class PropertyPanel(CardWidget):
         layout.addWidget(value_label)
         layout.addStretch()
         layout.addWidget(del_btn)
+
+        # === 添加右键菜单 ===
+        def show_context_menu(pos):
+            menu = RoundMenu(parent=self)
+            menu.addAction(
+                Action("复制为表达式", triggered=lambda: self._copy_as_expression("env", key))
+            )
+            menu.addAction(Action("编辑变量", triggered=lambda: self._edit_env_variable(key, value)))
+            menu.exec_(card.mapToGlobal(pos))
+
+        card.setContextMenuPolicy(Qt.CustomContextMenu)
+        card.customContextMenuRequested.connect(show_context_menu)
+
         return card
 
     def _add_new_env_variable(self):
@@ -1017,3 +980,89 @@ class PropertyPanel(CardWidget):
         self._refresh_env_page()
         self.main_window.global_variables_changed.emit()
         InfoBar.success("已删除", f"环境变量 {key}", parent=self.main_window, duration=1500)
+
+    def _copy_as_expression(self, prefix: str, var_name: str):
+        """将变量名复制为 $prefix.var_name$ 格式"""
+        expr = f"${prefix}.{var_name}$"
+        clipboard = QApplication.clipboard()
+        clipboard.setText(expr)
+        InfoBar.success(
+            title="已复制",
+            content=f"表达式已复制：{expr}",
+            parent=self.main_window,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=1500
+        )
+
+    def _edit_custom_variable(self, var_name: str, current_value):
+        """编辑自定义变量"""
+        dialog = CustomTwoInputDialog(
+            title1="变量名",
+            title2="变量值",
+            placeholder1="变量名（如 threshold）",
+            placeholder2="变量值（如 0.5）",
+            text1=var_name,
+            text2=str(current_value),
+            parent=self.main_window
+        )
+
+        if dialog.exec():
+            new_name, new_value_str = dialog.get_text()
+            if not new_name:
+                InfoBar.warning("无效名称", "变量名不能为空", parent=self.main_window)
+                return
+
+            # 类型推断（与新增逻辑一致）
+            try:
+                if new_value_str.lower() in ('true', 'false'):
+                    new_value = new_value_str.lower() == 'true'
+                elif '.' in new_value_str:
+                    new_value = float(new_value_str)
+                else:
+                    new_value = int(new_value_str)
+            except ValueError:
+                new_value = new_value_str
+
+            global_vars = getattr(self.main_window, 'global_variables', None)
+            if not global_vars:
+                return
+
+            # 如果名字变了，先删除旧的
+            if new_name != var_name and var_name in global_vars.custom:
+                del global_vars.custom[var_name]
+
+            global_vars.set(new_name, new_value)
+            self._refresh_custom_vars_page()
+            self.main_window.global_variables_changed.emit()
+            InfoBar.success("已更新", f"变量 {new_name}", parent=self.main_window)
+
+    def _edit_env_variable(self, key: str, current_value):
+        """编辑环境变量"""
+        dialog = CustomTwoInputDialog(
+            title1="环境变量名",
+            title2="环境变量值",
+            placeholder1="变量名（如 API_KEY）",
+            placeholder2="变量值",
+            text1=key,
+            text2=str(current_value) if current_value is not None else "",
+            parent=self.main_window
+        )
+
+        if dialog.exec():
+            new_key, new_value = dialog.get_text()
+            if not new_key:
+                InfoBar.warning("无效名称", "变量名不能为空", parent=self.main_window)
+                return
+
+            global_vars = getattr(self.main_window, 'global_variables', None)
+            if not global_vars:
+                return
+
+            # 删除旧 key（如果改名）
+            if new_key != key:
+                global_vars.env.delete_env_var(key)
+
+            global_vars.env.set_env_var(new_key, new_value)
+            self._refresh_env_page()
+            self.main_window.global_variables_changed.emit()
+            InfoBar.success("已更新", f"环境变量 {new_key}", parent=self.main_window)

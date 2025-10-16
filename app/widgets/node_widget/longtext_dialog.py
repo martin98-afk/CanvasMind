@@ -29,7 +29,7 @@ class LongTextWidget(QtWidgets.QWidget):
         self._text = default_text
 
         self.summary_label = LineEdit()
-        self.summary_label.setMaximumWidth(300)
+        self.summary_label.setFixedWidth(300)
         self.summary_label.setText(self._get_summary())
         self.summary_label.setReadOnly(True)
 

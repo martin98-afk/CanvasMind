@@ -34,7 +34,7 @@ class Component(BaseComponent):
     properties = {
         "model": PropertyDefinition(
             type=PropertyType.TEXT,
-            default="qwen3-30b-a3b",
+            default="$custom.model_name$",
             label="模型名称",
         ),
         "api_key": PropertyDefinition(
@@ -44,7 +44,7 @@ class Component(BaseComponent):
         ),
         "base_url": PropertyDefinition(
             type=PropertyType.TEXT,
-            default="http://168.168.10.110:20000",
+            default="$custom.url$",
             label="API 基础地址（本地模型必填）",
         ),
         "system_prompt": PropertyDefinition(
@@ -56,9 +56,9 @@ class Component(BaseComponent):
             type=PropertyType.RANGE,
             default="0.7",
             label="温度（随机性）",
-            min=0.0,
-            max=2.0,
-            step=0.1,
+            min=0,
+            max=100,
+            step=1,
         ),
         "max_tokens": PropertyDefinition(
             type=PropertyType.INT,

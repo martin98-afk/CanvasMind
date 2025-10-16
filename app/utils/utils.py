@@ -110,6 +110,12 @@ def get_icon(icon_name):
     for name in os.listdir(resource_path(relative_path)):
         if name.endswith(".png"):
             icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
+        elif name.endswith(".svg"):
+            icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
+        elif name.endswith(".ico"):
+            icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
+        elif name.endswith(".jpg"):
+            icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
 
     return QIcon(icons.get(icon_name, "icons/icon_unknown.png"))
 
