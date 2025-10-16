@@ -1028,10 +1028,12 @@ class CanvasPage(QWidget):
                         "FILE_PATH": component_path_map.get(self.file_map.get(node.FULL_PATH, ""), ""),
                         "params": exported_params,
                         "input_values": serialize_for_json(current_inputs)
-                    } | {
-                        "internal_nodes": [node.id for node in node.nodes()]
-                    } if isinstance(node, ControlFlowBackdrop) else {}
+                    }
                 }
+                if isinstance(node, ControlFlowBackdrop):
+                    node_data["custom"] = node_data["custom"] | {
+                        "internal_nodes": [node.id for node in node.nodes()]
+                    }
                 new_nodes_data[node.id] = node_data
 
             # 构建连接
@@ -1052,6 +1054,7 @@ class CanvasPage(QWidget):
                 "node_states": {},
                 "node_outputs": {},
                 "column_select": {},
+                "global_variable": self.global_variables.serialize()
             }
             for node in nodes_to_export:
                 full_path = getattr(node, 'FULL_PATH', 'unknown')
@@ -1073,7 +1076,7 @@ class CanvasPage(QWidget):
                 "graph": graph_data,
                 "runtime": runtime_data
             }
-
+            print(project_data)
             (export_path / "model.workflow.json").write_text(
                 json.dumps(project_data, indent=2, ensure_ascii=False), encoding='utf-8'
             )
