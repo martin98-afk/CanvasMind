@@ -45,10 +45,10 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType\n\n\n"""
 
 
-class VariableScope(str, Enum):
-    GLOBAL = "global"
-    CANVAS = "canvas"
-    SESSION = "session"
+# class VariableScope(str, Enum):
+#     GLOBAL = "global"
+#     CANVAS = "canvas"
+#     SESSION = "session"
 
 
 class ExecutionEnvironment(BaseModel):
@@ -89,7 +89,7 @@ class ExecutionEnvironment(BaseModel):
 class CustomVariable(BaseModel):
     value: Any = None
     description: Optional[str] = None
-    scope: VariableScope = VariableScope.GLOBAL
+    # scope: VariableScope = VariableScope.GLOBAL
     read_only: bool = False
 
 

@@ -7,9 +7,7 @@ import tempfile
 import time
 
 from NodeGraphQt import BaseNode
-from NodeGraphQt.qgraphics.node_base import NodeItem
 from PyQt5.QtWidgets import QFileDialog
-from Qt import QtCore
 from loguru import logger
 
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext
@@ -477,7 +475,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 elif os.path.exists(error_path):
                     with open(error_path, 'rb') as f:
                         error_info = pickle.load(f)
-                    error_msg = f"❌ 节点执行失败: {error_info['error']}"
+                    error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
                     self._log_message(self.id, error_msg)
                     raise Exception(error_info['error'])
 
