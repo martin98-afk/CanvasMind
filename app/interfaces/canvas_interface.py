@@ -19,7 +19,7 @@ from qfluentwidgets import (
     InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action
 )
 
-from app.components.base import PropertyType, GlobalVariableContext
+from app.components.base import PropertyType, GlobalVariableContext, ConnectionType
 from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
 from app.nodes.branch_node import create_branch_node
 from app.nodes.execute_node import create_node_class
@@ -750,13 +750,24 @@ class CanvasPage(QWidget):
                             if inp.name == port_name:
                                 port_type = inp.type.name
                                 break
-
+                    if port.multi_connection():
+                        port_type = f"ARRAY[{port_type}]"
                     connected = port.connected_ports()
                     current_val = None
-                    if connected:
+                    if connected and len(connected) == 1:
                         upstream_out = connected[0]
                         upstream_node = upstream_out.node()
-                        current_val = upstream_node._output_values.get(upstream_out.name(), None)
+                        value = upstream_node._output_values.get(upstream_out.name())
+                        if value is not None:
+                            current_val = value
+                        else:
+                            current_val = None
+                    elif len(connected) > 1:
+                        current_val = [
+                            upstream_out.node()._output_values.get(upstream_out.name())
+                            if upstream_out.node()._output_values.get(upstream_out.name()) is not None else None
+                            for upstream_out in connected
+                        ]
                     else:
                         current_val = getattr(node, '_input_values', {}).get(port_name, None)
 
@@ -1018,7 +1029,6 @@ class CanvasPage(QWidget):
                     else:
                         current_val = getattr(node, '_input_values', {}).get(port_name, None)
                         current_inputs[port_name] = _process_value_for_export(current_val, inputs_dir, export_path)
-
                 node_data = {
                     "name": node.name(),
                     "type_": node.type_,

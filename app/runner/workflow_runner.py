@@ -96,9 +96,10 @@ def build_node_inputs(node, graph_data, internal_outputs):
 
 
 def execute_loop_node(loop_node, all_nodes, graph_data, input_data, runtime_data, type="loop"):
-    """执行一个循环控制流节点"""
-    if input_data:
+    # 修复点：仅当 input_data 为空时，才使用预制参数
+    if not input_data:
         input_data = loop_node["input_values"].get("inputs", [])
+
     if not isinstance(input_data, (list, tuple)) and type == "loop":
         input_data = [input_data]
 
@@ -318,6 +319,7 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
             # 执行
             try:
                 logger.info(f"执行节点: {node['name']}")
+                logger.info(f"输入: {node_inputs}")
                 output = run_component_in_subprocess(
                     comp_class=node["class"],
                     file_path=node["file_path"],
