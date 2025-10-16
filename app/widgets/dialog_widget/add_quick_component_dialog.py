@@ -53,7 +53,16 @@ class AddQuickComponentDialog(MessageBoxBase):
         right_frame = QFrame()
         right_layout = QVBoxLayout(right_frame)
         right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.addWidget(BodyLabel("选择图标"))
+
+        # Upload Button
+        upload_layout = QHBoxLayout()
+        upload_layout.addWidget(BodyLabel("选择图标"))
+        upload_layout.addStretch()
+        self.upload_btn = PushButton("上传图标", self)
+        self.upload_btn.setIcon(FluentIcon.UP)
+        self.upload_btn.clicked.connect(self._upload_icon)
+        upload_layout.addWidget(self.upload_btn)
+        right_layout.addLayout(upload_layout)
 
         # Scroll Area for icons
         scroll_area = ScrollArea()
@@ -74,15 +83,6 @@ class AddQuickComponentDialog(MessageBoxBase):
 
         # 存储所有图标按钮（用于取消选中）
         self.icon_buttons = []
-
-        # Upload Button
-        upload_layout = QHBoxLayout()
-        self.upload_btn = PushButton("上传图标", self)
-        self.upload_btn.setIcon(FluentIcon.UP)
-        self.upload_btn.clicked.connect(self._upload_icon)
-        upload_layout.addWidget(self.upload_btn)
-        upload_layout.addStretch()
-        right_layout.addLayout(upload_layout)
 
         # 初始化图标
         self.load_and_display_icons()
