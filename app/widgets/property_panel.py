@@ -6,10 +6,10 @@ import pandas as pd
 from NodeGraphQt import BaseNode
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
-    QStackedWidget, QHBoxLayout
+    QStackedWidget, QHBoxLayout, QApplication
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
-    ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton
+    ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action
 
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
@@ -700,7 +700,7 @@ class PropertyPanel(CardWidget):
 
     def _create_dict_row(self, name: str, value):
         card = CardWidget(self)
-        card.setMaximumWidth(260)
+        card.setMaximumWidth(250)
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
@@ -726,11 +726,24 @@ class PropertyPanel(CardWidget):
         layout.addWidget(value_label)
         layout.addStretch()
         layout.addWidget(del_btn)
+
+        # === 右键菜单：复制为 $custom.name$ ===
+        def show_context_menu(pos):
+            menu = RoundMenu(parent=self)
+            menu.addAction(
+                Action("复制为表达式", triggered=lambda: self._copy_as_expression("custom", name))
+            )
+            menu.addAction(Action("编辑变量", triggered=lambda: self._edit_custom_variable(name, value)))
+            menu.exec_(card.mapToGlobal(pos))
+
+        card.setContextMenuPolicy(Qt.CustomContextMenu)
+        card.customContextMenuRequested.connect(show_context_menu)
+
         return card
 
     def _create_variable_card(self, name: str, value):
         card = CardWidget(self)
-        card.setMaximumWidth(260)
+        card.setMaximumWidth(250)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
@@ -744,10 +757,23 @@ class PropertyPanel(CardWidget):
         del_btn.clicked.connect(lambda _, n=name: self._delete_custom_variable(n, 'node_vars'))
         title_layout.addWidget(del_btn)
         layout.addLayout(title_layout)
+
         tree = VariableTreeWidget(value, parent=self.main_window)
         tree.setMinimumHeight(80)
         tree.setMaximumHeight(120)
         layout.addWidget(tree)
+
+        # === 右键菜单：复制为 $node.name$ ===
+        def show_context_menu(pos):
+            menu = RoundMenu(parent=self)
+            menu.addAction(
+                Action("复制为表达式", triggered=lambda: self._copy_as_expression("node_vars", name))
+            )
+            if menu.actions():
+                menu.exec_(card.mapToGlobal(pos))
+
+        card.setContextMenuPolicy(Qt.CustomContextMenu)
+        card.customContextMenuRequested.connect(show_context_menu)
 
         return card
 
@@ -884,7 +910,7 @@ class PropertyPanel(CardWidget):
 
     def _create_env_var_row(self, key: str, value):
         card = CardWidget(self)
-        card.setMaximumWidth(260)
+        card.setMaximumWidth(250)
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
@@ -909,6 +935,19 @@ class PropertyPanel(CardWidget):
         layout.addWidget(value_label)
         layout.addStretch()
         layout.addWidget(del_btn)
+
+        # === 添加右键菜单 ===
+        def show_context_menu(pos):
+            menu = RoundMenu(parent=self)
+            menu.addAction(
+                Action("复制为表达式", triggered=lambda: self._copy_as_expression("env", key))
+            )
+            menu.addAction(Action("编辑变量", triggered=lambda: self._edit_env_variable(key, value)))
+            menu.exec_(card.mapToGlobal(pos))
+
+        card.setContextMenuPolicy(Qt.CustomContextMenu)
+        card.customContextMenuRequested.connect(show_context_menu)
+
         return card
 
     def _add_new_env_variable(self):
@@ -941,3 +980,89 @@ class PropertyPanel(CardWidget):
         self._refresh_env_page()
         self.main_window.global_variables_changed.emit()
         InfoBar.success("已删除", f"环境变量 {key}", parent=self.main_window, duration=1500)
+
+    def _copy_as_expression(self, prefix: str, var_name: str):
+        """将变量名复制为 $prefix.var_name$ 格式"""
+        expr = f"${prefix}.{var_name}$"
+        clipboard = QApplication.clipboard()
+        clipboard.setText(expr)
+        InfoBar.success(
+            title="已复制",
+            content=f"表达式已复制：{expr}",
+            parent=self.main_window,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=1500
+        )
+
+    def _edit_custom_variable(self, var_name: str, current_value):
+        """编辑自定义变量"""
+        dialog = CustomTwoInputDialog(
+            title1="变量名",
+            title2="变量值",
+            placeholder1="变量名（如 threshold）",
+            placeholder2="变量值（如 0.5）",
+            text1=var_name,
+            text2=str(current_value),
+            parent=self.main_window
+        )
+
+        if dialog.exec():
+            new_name, new_value_str = dialog.get_text()
+            if not new_name:
+                InfoBar.warning("无效名称", "变量名不能为空", parent=self.main_window)
+                return
+
+            # 类型推断（与新增逻辑一致）
+            try:
+                if new_value_str.lower() in ('true', 'false'):
+                    new_value = new_value_str.lower() == 'true'
+                elif '.' in new_value_str:
+                    new_value = float(new_value_str)
+                else:
+                    new_value = int(new_value_str)
+            except ValueError:
+                new_value = new_value_str
+
+            global_vars = getattr(self.main_window, 'global_variables', None)
+            if not global_vars:
+                return
+
+            # 如果名字变了，先删除旧的
+            if new_name != var_name and var_name in global_vars.custom:
+                del global_vars.custom[var_name]
+
+            global_vars.set(new_name, new_value)
+            self._refresh_custom_vars_page()
+            self.main_window.global_variables_changed.emit()
+            InfoBar.success("已更新", f"变量 {new_name}", parent=self.main_window)
+
+    def _edit_env_variable(self, key: str, current_value):
+        """编辑环境变量"""
+        dialog = CustomTwoInputDialog(
+            title1="环境变量名",
+            title2="环境变量值",
+            placeholder1="变量名（如 API_KEY）",
+            placeholder2="变量值",
+            text1=key,
+            text2=str(current_value) if current_value is not None else "",
+            parent=self.main_window
+        )
+
+        if dialog.exec():
+            new_key, new_value = dialog.get_text()
+            if not new_key:
+                InfoBar.warning("无效名称", "变量名不能为空", parent=self.main_window)
+                return
+
+            global_vars = getattr(self.main_window, 'global_variables', None)
+            if not global_vars:
+                return
+
+            # 删除旧 key（如果改名）
+            if new_key != key:
+                global_vars.env.delete_env_var(key)
+
+            global_vars.env.set_env_var(new_key, new_value)
+            self._refresh_env_page()
+            self.main_window.global_variables_changed.emit()
+            InfoBar.success("已更新", f"环境变量 {new_key}", parent=self.main_window)

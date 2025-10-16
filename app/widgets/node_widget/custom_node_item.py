@@ -119,4 +119,4 @@ class CustomNodeItem(NodeItem):
                 widget.widget().setTitleAlign('center')
 
             widget.setPos(x, y)
-            y += widget_height + 10  # 使用真实高度
+            y += widget_height + 8  # 使用真实高度

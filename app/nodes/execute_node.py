@@ -86,6 +86,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
+            self._view.set_proxy_mode(True)
             self.component_class = component_class
             if hasattr(component_class, "icon"):
                 self.set_icon(component_class.icon)

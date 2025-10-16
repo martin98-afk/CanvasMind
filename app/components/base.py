@@ -115,7 +115,7 @@ class GlobalVariableContext(BaseModel):
             self.custom[key].value = value
 
     def set_output(self, node_id: str, output_name: str, output_value: Any):
-        self.node_vars[f"{node_id} {output_name}"] = output_value
+        self.node_vars[f"{node_id}_{output_name}"] = output_value
 
     def to_dict(self) -> Dict[str, Any]:
         """兼容旧逻辑：返回扁平字典（仅 custom 变量）"""
@@ -706,7 +706,8 @@ class BaseComponent(ABC):
         """执行组件，包含错误处理和数据类型转换"""
         try:
             # 验证参数
-            self.global_variable.deserialize(global_vars)
+            if global_vars is not None:
+                self.global_variable.deserialize(global_vars)
             params_model = self.get_params_model()
             validated_params = params_model(**params)
             input_model_cls = self.get_input_model()

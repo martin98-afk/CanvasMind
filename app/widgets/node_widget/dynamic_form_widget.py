@@ -194,6 +194,7 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
     def __init__(self, parent=None, name="", label="", schema=None, window=None, z_value=1):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
+        self.window = window
         self.name = name
         self.set_name(name)
         self.set_label(label)
@@ -204,7 +205,10 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
 
     def _update_node(self):
         if self.node and self.node.view:
+            # 先触发布局更新
             self.node.view.draw_node()
+            # 再强制重绘整个节点区域（关键！）
+            self.node.view.update()
 
     def get_value(self):
         return self.get_custom_widget().get_data()

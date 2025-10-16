@@ -133,7 +133,7 @@ class ExpressionEngine:
         inner_expr = expr_block.strip()[1:-1].strip()
 
         # 展平点语法（如 input.age → input_age）
-        safe_expr = re.sub(r'\b(env|custom|node_vars|input)\.([a-zA-Z_][a-zA-Z0-9_]*)', r'\1_\2', inner_expr)
+        safe_expr = re.sub(r'\b(env|custom|node_vars|input)\.(.*)', r'\1_\2', inner_expr)
 
         # 合并符号表
         temp_symtable = dict(self.interp.symtable)

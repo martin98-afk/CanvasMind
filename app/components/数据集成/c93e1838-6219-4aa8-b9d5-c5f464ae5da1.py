@@ -33,4 +33,5 @@ class Component(BaseComponent):
     }
 
     def run(self, params, inputs=None):
+        self.logger.info(self.global_variable)
         return {"text": params.input}

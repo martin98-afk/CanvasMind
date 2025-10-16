@@ -538,15 +538,22 @@ class CanvasPage(QWidget):
             node_x = selected_nodes[0].x_pos()
             node_y = selected_nodes[0].y_pos()
             node.set_pos(node_x + selected_nodes[0].view.width + 100, node_y)
+        else:
+            # 获取当前视图中心的世界坐标
+            viewer = self.graph.viewer()
+            # 获取视口中心（widget 坐标）
+            viewport_center = viewer.viewport().rect().center()
+            # 转换为场景坐标（scene coordinates）
+            scene_center = viewer.mapToScene(viewport_center)
+            node.set_pos(scene_center.x(), scene_center.y())
 
     def create_backdrop_node(self, key):
         selected_nodes = self.graph.selected_nodes()
-
-        # Step 1: 找出已有的 Input/Output Port 节点
         input_port_node = None
         output_port_node = None
         other_nodes = []
 
+        # Step 1: 分离已有的 Input/Output Port 和其他节点
         for node in selected_nodes:
             if node.type_ == "control_flow.ControlFlowInputPort":
                 input_port_node = node
@@ -555,68 +562,66 @@ class CanvasPage(QWidget):
             else:
                 other_nodes.append(node)
 
-        # Step 2: 收集所有未连接的输入/输出端口（来自 other_nodes）
-        unconnected_inputs = []  # [(node, input_port), ...]
-        unconnected_outputs = []  # [(node, output_port), ...]
+        # Step 2: 获取参考位置（用于无选中节点时）
+        viewer = self.graph.viewer()
+        viewport_center = viewer.viewport().rect().center()
+        scene_center = viewer.mapToScene(viewport_center)
+        center_x, center_y = scene_center.x(), scene_center.y()
 
-        for node in other_nodes:
-            for input_port in node.input_ports():
-                if not input_port.connected_ports():
-                    unconnected_inputs.append((node, input_port))
-            for output_port in node.output_ports():
-                if not output_port.connected_ports():
-                    unconnected_outputs.append((node, output_port))
-
-        # Step 3: 创建 InputPortNode（如果没有）
-        if not input_port_node:
+        # Step 3: 如果没有选中任何节点，创建一个默认的“空”结构
+        if not selected_nodes:
+            # 创建 Input 和 Output Port，围绕视图中心布局
             input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
-            # 放到左侧
-            if other_nodes:
-                min_x = min(n.x_pos() for n in other_nodes)
-                center_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
-                input_port_node.set_pos(min_x - 300, center_y - input_port_node.view.height / 2)
-            else:
-                input_port_node.set_pos(-200, 0)
-
-        # Step 4: 创建 OutputPortNode（如果没有）
-        if not output_port_node and unconnected_outputs:
             output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-            if other_nodes:
-                max_x = max(n.x_pos() + n.view.width for n in other_nodes)
-                center_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
-                output_port_node.set_pos(max_x + 150, center_y - output_port_node.view.height / 2)
-            else:
-                output_port_node.set_pos(200, 0)
 
-        # Step 5: 自动连线
-        # if input_port_node and unconnected_inputs:
-        #     # InputPortNode 应该只有一个输出端口（假设叫 "out"）
-        #     input_out_port = input_port_node.output_ports()[0]  # 或根据实际命名
-        #     for node, input_port in unconnected_inputs:
-        #         input_port_node.set_output(0, input_port)
-        #
-        # if output_port_node and unconnected_outputs:
-        #     # OutputPortNode 应该只有一个输入端口（假设叫 "in"）
-        #     output_in_port = output_port_node.input_ports()[0]
-        #     for _, output_port in unconnected_outputs:
-        #         output_port_node.set_input(0, output_port)
+            input_port_node.set_pos(center_x - 250, center_y - input_port_node.view.height / 2)
+            output_port_node.set_pos(center_x + 250, center_y - output_port_node.view.height / 2)
 
-        # Step 6: 构建最终要 wrap 的节点列表
-        nodes_to_wrap = other_nodes.copy()
-        if input_port_node:
-            nodes_to_wrap.append(input_port_node)
-        if output_port_node:
-            nodes_to_wrap.append(output_port_node)
+            nodes_to_wrap = [input_port_node, output_port_node]
+        else:
+            # Step 4: 有选中节点时，按原逻辑处理
+            unconnected_inputs = []
+            unconnected_outputs = []
 
+            for node in other_nodes:
+                for input_port in node.input_ports():
+                    if not input_port.connected_ports():
+                        unconnected_inputs.append((node, input_port))
+                for output_port in node.output_ports():
+                    if not output_port.connected_ports():
+                        unconnected_outputs.append((node, output_port))
+
+            # 创建缺失的 Input Port
+            if not input_port_node:
+                input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
+                if other_nodes:
+                    min_x = min(n.x_pos() for n in other_nodes)
+                    avg_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
+                    input_port_node.set_pos(min_x - 300, avg_y - input_port_node.view.height / 2)
+                else:
+                    input_port_node.set_pos(center_x - 250, center_y - input_port_node.view.height / 2)
+
+            # 创建缺失的 Output Port
+            if not output_port_node:
+                output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
+                if other_nodes:
+                    max_x = max(n.x_pos() + n.view.width for n in other_nodes)
+                    avg_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
+                    output_port_node.set_pos(max_x + 150, avg_y - output_port_node.view.height / 2)
+                else:
+                    output_port_node.set_pos(center_x + 250, center_y - output_port_node.view.height / 2)
+
+            nodes_to_wrap = other_nodes + [input_port_node, output_port_node]
+
+        # Step 5: 创建 Backdrop 并包裹
         if not nodes_to_wrap:
             self.create_warning_info("创建失败", "没有可包裹的节点！")
             return
 
-        # Step 7: 创建 backdrop 并包裹
         backdrop_node = self.graph.create_node(f"control_flow.{key}")
         backdrop_node.wrap_nodes(nodes_to_wrap)
 
-        # Step 8: 可选配置
+        # Step 6: 特定配置
         if key == "ControlFlowIterateNode":
             backdrop_node.model.set_property("loop_nums", 3)
 
@@ -709,8 +714,9 @@ class CanvasPage(QWidget):
                 # 组件参数（超参数）
                 editable_params = node.model.custom_properties
                 for param_name, param_value in editable_params.items():
+                    if param_name not in comp_cls.properties:
+                        continue
                     prop_def = comp_cls.properties.get(param_name)
-
                     candidate_inputs.append({
                         "type": "组件超参数",
                         "node_id": node.id,
