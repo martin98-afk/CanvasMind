@@ -89,6 +89,13 @@ def create_branch_node(parent_window):
                     "label": field_def.get("label", field_name),
                     "choices": field_def.get("choices", [])
                 }
+            checkbox_widget = CheckBoxWidgetWrapper(
+                parent=self.view,
+                name="enable_else",
+                text="启用默认分支（else）",
+                state=True
+            )
+            self.add_custom_widget(checkbox_widget, tab="properties")
 
             self.widget = DynamicFormWidgetWrapper(
                 parent=self.view,
@@ -99,14 +106,6 @@ def create_branch_node(parent_window):
                 z_value=100
             )
             self.add_custom_widget(self.widget, tab='Properties')
-
-            checkbox_widget = CheckBoxWidgetWrapper(
-                parent=self.view,
-                name="enable_else",
-                text="启用默认分支（else）",
-                state=True
-            )
-            self.add_custom_widget(checkbox_widget, tab="properties")
 
         def _sanitize_port_name(self, name: str) -> str:
             if not name:
