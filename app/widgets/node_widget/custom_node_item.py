@@ -62,13 +62,13 @@ class CustomNodeItem(NodeItem):
                 w_height = w_size.height()
                 if w_width > widget_width:
                     widget_width = w_width
-                widget_height += w_height
+                widget_height += w_height + 10
             else:
                 w_width = widget.boundingRect().width()
                 w_height = widget.boundingRect().height()
                 if w_width > widget_width:
                     widget_width = w_width
-                widget_height += w_height
+                widget_height += w_height + 10
 
         side_padding = 0.0
         if all([widget_width, p_input_text_width, p_output_text_width]):
@@ -82,9 +82,6 @@ class CustomNodeItem(NodeItem):
         if widget_width:
             # add additional width for node widget.
             width += widget_width
-        if widget_height:
-            # add bottom margin for node widget.
-            height += 4.0
         height *= 1.05
 
         return width, height
@@ -122,4 +119,4 @@ class CustomNodeItem(NodeItem):
                 widget.widget().setTitleAlign('center')
 
             widget.setPos(x, y)
-            y += widget_height  # 使用真实高度
+            y += widget_height + 10  # 使用真实高度

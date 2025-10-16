@@ -87,6 +87,8 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
             self.component_class = component_class
+            if hasattr(component_class, "icon"):
+                self.set_icon(component_class.icon)
             self._node_logs = ""
             self._output_values = {}
             self._input_values = {}
