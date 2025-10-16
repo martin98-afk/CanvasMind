@@ -91,7 +91,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
         self.schema = schema
         self.field_widgets = []
         self._batch_mode = False  # ← 新增：批量模式标志
-
+        self.field_width = 0
         self.btn_add = PushButton(text="Add", icon=FluentIcon.ADD, parent=self)
         self.container = QtWidgets.QVBoxLayout()
         self.container.setSpacing(4)
@@ -123,24 +123,37 @@ class DynamicFormWidget(QtWidgets.QWidget):
         self.valueChanged.emit(self.get_data())
 
     def remove_field(self, field):
-        if field in self.field_widgets:
-            self.field_widgets.remove(field)
-            self.container.removeWidget(field)
-            field.setParent(None)
-            field.deleteLater()
-            if not self._batch_mode:
-                self._emit_changes()
-            else:
-                # 批量模式下只更新 geometry，不 emit
-                self.updateGeometry()
+        if field not in self.field_widgets:
+            return
+
+        self.field_widgets.remove(field)
+        self.container.removeWidget(field)
+        field.setParent(None)
+        field.deleteLater()
+
+        # ✅ 关键：如果是最后一个字段被删除，重建 container
+        if not self.field_widgets:
+            # 1. 清空旧 container
+            while self.container.count():
+                child = self.container.takeAt(0)
+                if child.widget():
+                    child.widget().deleteLater()
+            # 2. （可选）重新设置 spacing/margins
+            self.container.setSpacing(4)
+
+        if not self._batch_mode:
+            self._emit_changes()
+        else:
+            self.updateGeometry()
 
     def sizeHint(self):
         # 计算最大宽度（Add 按钮 vs 所有 field 的宽度）
         max_width = self.btn_add.sizeHint().width()
         for field in self.field_widgets:
-            field_width = field.sizeHint().width()
-            if field_width > max_width:
-                max_width = field_width
+            self.field_width = field.sizeHint().width()
+            break
+
+        max_width = max(max_width, self.field_width)
 
         # 高度计算不变
         h = self.btn_add.sizeHint().height()

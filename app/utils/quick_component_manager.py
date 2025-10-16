@@ -1,6 +1,8 @@
 # app/utils/quick_components.py
 from PyQt5.QtCore import QObject, pyqtSignal
 from pathlib import Path
+
+from app.utils.utils import resource_path
 from app.widgets.dialog_widget.add_quick_component_dialog import AddQuickComponentDialog
 from app.utils.config import Settings  # ← 你的 Settings 是 QConfig
 
@@ -12,7 +14,7 @@ class QuickComponentManager(QObject):
         super().__init__(parent_widget)
         self.parent = parent_widget
         self.component_map = component_map
-        self.ICONS_DIR = Path("icons")
+        self.ICONS_DIR = Path(resource_path("icons"))
         self.config = Settings.get_instance()  # 单例
 
     def get_quick_components(self):
