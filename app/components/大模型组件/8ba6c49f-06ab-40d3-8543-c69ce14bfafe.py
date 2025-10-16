@@ -56,7 +56,8 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         # 获取历史对话（如果有的话）
-        history = inputs.get("history") if inputs else None
+        self.logger.info(params.prop1[0].role)
+        history = inputs.history if inputs else None
         if history is None:
             history = []
 

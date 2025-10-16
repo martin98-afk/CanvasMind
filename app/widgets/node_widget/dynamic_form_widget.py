@@ -55,7 +55,7 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.setFixedWidth(150)
                 widget.setText(defn.get("default", ""))
                 widget.setPlaceholderText(defn.get("label", ""))
-                widget.textChanged.connect(self.changed)
+                widget.textEdited.connect(self.changed)
                 self.fields[key] = widget
                 layout.addWidget(widget)
 
@@ -102,7 +102,6 @@ class DynamicFormWidget(QtWidgets.QWidget):
         layout.addLayout(self.container)
         layout.addStretch(1)
         self.btn_add.clicked.connect(self.add_field)
-        self.setStyleSheet("background: rgba(255, 0, 0, 30); border: 1px solid red;")
 
     def add_field(self, data=None):
         field = FormFieldWidget(self.schema, home=self.parent, parent=self)
@@ -136,19 +135,26 @@ class DynamicFormWidget(QtWidgets.QWidget):
                 self.updateGeometry()
 
     def sizeHint(self):
+        # 计算最大宽度（Add 按钮 vs 所有 field 的宽度）
+        max_width = self.btn_add.sizeHint().width()
+        for field in self.field_widgets:
+            field_width = field.sizeHint().width()
+            if field_width > max_width:
+                max_width = field_width
+
+        # 高度计算不变
         h = self.btn_add.sizeHint().height()
         for field in self.field_widgets:
             h += field.sizeHint().height()
-        h += self.container.spacing() * len(self.field_widgets)
-        return QtCore.QSize(300, h)
+        if self.field_widgets:
+            h += self.container.spacing() * (len(self.field_widgets) - 1)
+
+        return QtCore.QSize(max_width, h)
 
     def get_data(self):
         return [f.get_data() for f in self.field_widgets]
 
     def set_data(self, data_list):
-        # 🔒 防闪现：隐藏整个容器
-        self.setAttribute(QtCore.Qt.WA_DontShowOnScreen, True)
-
         self._batch_mode = True
 
         for f in self.field_widgets[:]:
@@ -170,10 +176,6 @@ class DynamicFormWidget(QtWidgets.QWidget):
         self.updateGeometry()
         self._emit_changes()
 
-        # 🔓 初始化完成，允许显示
-        self.setAttribute(QtCore.Qt.WA_DontShowOnScreen, False)
-        self.show()
-
 
 class DynamicFormWidgetWrapper(NodeBaseWidget):
     def __init__(self, parent=None, name="", label="", schema=None, window=None, z_value=1):
@@ -183,20 +185,13 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
         self.set_name(name)
         self.set_label(label)
         widget = DynamicFormWidget(schema or {}, parent=window)
-        widget.setSizePolicy(
-            QtWidgets.QSizePolicy.Preferred,
-            QtWidgets.QSizePolicy.Maximum  # ← 不允许拉伸超过 sizeHint
-        )
         self.set_custom_widget(widget)
         widget.sizeHintChanged.connect(self._update_node)
         widget.valueChanged.connect(self.on_value_changed)
 
     def _update_node(self):
-        self.node.hide_widget(self.name)
         if self.node and self.node.view:
-            QtCore.QTimer.singleShot(100, lambda: self.node.view.draw_node())
-        self.node.update_model()
-        self.node.show_widget(self.name)
+            self.node.view.draw_node()
 
     def get_value(self):
         return self.get_custom_widget().get_data()

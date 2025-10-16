@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x18f8cef0310": {
+      "0x1ef9d03c7c0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话",
@@ -100,7 +100,7 @@
           ]
         }
       },
-      "0x18ff4d3e2c0": {
+      "0x1ef9ff3be50": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件意图",
@@ -175,10 +175,10 @@
             },
             "node_vars": {}
           },
-          "input_text": "我的需求是开发一个大模型智能问题分类组件"
+          "input_text": "我的需求是开发一个大模型智能问题分类组件,根据全局变量中的model_name、url使用open_ai的工具包调用本地大模型"
         }
       },
-      "0x18ff6be2e60": {
+      "0x1ef9d167a30": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装",
@@ -256,7 +256,7 @@
           "prop_0": "intention"
         }
       },
-      "0x18ff6b917b0": {
+      "0x1efa02a5bd0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "提示词模板 3",
@@ -331,10 +331,10 @@
             },
             "node_vars": {}
           },
-          "template": "## 组件开发需求\n{{intention}}\n\n## 组件输入参数\n{{input}}\n\n## 组件输出参数\n{{output}}\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，但是组件定义的输入输出参数必须要在当前参数定义范围之内，不能输出新的参数类型。同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码\n$input.variables$"
+          "template": "## 组件开发需求\n{{intention}}\n\n## 组件输入参数\n{{input}}\n\n## 组件属性参数\n{{params}}\n\n## 组件输出参数\n{{output}}\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，但是组件定义的输入输出参数必须要在当前参数定义范围之内，不能输出新的参数类型。同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码"
         }
       },
-      "0x18f8cb34eb0": {
+      "0x1efa02a7ee0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件输入",
@@ -409,10 +409,10 @@
             },
             "node_vars": {}
           },
-          "input_text": "输入是用户的问题文本，组件参数是所有问题分类"
+          "input_text": "输入是用户的问题文本"
         }
       },
-      "0x18f8cb366e0": {
+      "0x1ef9d092170": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 1",
@@ -490,7 +490,7 @@
           "prop_0": "input"
         }
       },
-      "0x18ff518e4d0": {
+      "0x1efa00aaa10": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 3",
@@ -518,8 +518,8 @@
         "width": 337.0,
         "height": 84.80000000000001,
         "pos": [
-          -1651.938369822454,
-          1890.4278436681943
+          -1667.8822547582986,
+          1855.5505953710338
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -568,7 +568,7 @@
           "prop_0": "output"
         }
       },
-      "0x18ff672e800": {
+      "0x1efa00ab610": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件输出",
@@ -596,8 +596,8 @@
         "width": 303.0,
         "height": 84.80000000000001,
         "pos": [
-          -2169.14400064492,
-          1887.8268959188708
+          -2185.087885580765,
+          1852.9496476217103
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -646,7 +646,7 @@
           "input_text": "输出是问题分类结果"
         }
       },
-      "0x18ff672fd30": {
+      "0x1effb9ae2f0": {
         "type_": "dynamic.StatusDynamicNode_数据存储_组件保存",
         "icon": null,
         "name": "组件保存",
@@ -723,7 +723,7 @@
           }
         }
       },
-      "0x18ff6ab71f0": {
+      "0x1efa00521d0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
         "icon": null,
         "name": "大模型输出解析",
@@ -748,7 +748,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 293.0,
+        "width": 292.0,
         "height": 122.60000000000001,
         "pos": [
           573.7360894813451,
@@ -802,7 +802,7 @@
           "type": "python"
         }
       },
-      "0x18f8ce947f0": {
+      "0x1efa0051e70": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程",
@@ -827,7 +827,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 454.0,
+        "width": 455.0,
         "height": 86.9,
         "pos": [
           -7.780470444673426,
@@ -881,7 +881,7 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x18f8ce96ce0": {
+      "0x1efa024e680": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_构建多轮对话",
         "icon": null,
         "name": "构建多轮对话",
@@ -906,11 +906,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 160,
-        "height": 60,
+        "width": 499.0,
+        "height": 472.25,
         "pos": [
           -1667.3915274262924,
-          2147.2856638726194
+          2158.593924881406
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -967,7 +967,7 @@
             },
             {
               "role": "user",
-              "content": "下面是组件输入、输出、属性端口定义代码：\n## 组件输入输出参数定义代码（不需要在生成代码里包含）\nclass ConnectionType(str, Enum):\n    \"\"\"连接类型\"\"\"\n    SINGLE = \"单输入\"\n    MULTIPLE = \"多输入\"\n\n\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    MULTILINE = \"多行文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    VARIABLE = \"全局变量\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\n    # 验证是否是文件类型\n    def is_file(self):\n        return self in [ArgumentType.FILE, ArgumentType.EXCEL, ArgumentType.SKLEARNMODEL,\n                        ArgumentType.TORCHMODEL, ArgumentType.UPLOAD]\n\n    def is_number(self):\n        return self in [ArgumentType.INT, ArgumentType.FLOAT]\n\n    def is_array(self):\n        return self in [ArgumentType.ARRAY]\n\n    def is_bool(self):\n        return self == ArgumentType.BOOL\n\n    def is_image(self):\n        return self == ArgumentType.IMAGE\n\n    def serialize(self, display_data):\n        if display_data is None or len(display_data) == 0:\n            return display_data\n        try:\n            if self.is_file() and len(display_data) > 0:\n                # FILE类型：显示文件路径选择\n                display_data = {\n                    \"file_name\": os.path.basename(display_data),\n                    \"file_type\": self.value,\n                    \"file_path\": display_data\n                }\n            elif self == ArgumentType.JSON and isinstance(display_data, str):\n                display_data = json.loads(display_data)\n            elif self.is_number():\n                display_data = float(display_data)\n            elif self.is_bool():\n                display_data = bool(display_data)\n            elif self.is_array() and isinstance(display_data, str):\n                display_data = np.array(eval(display_data))\n            elif self.is_array() and isinstance(display_data, list):\n                display_data = np.array(display_data)\n            elif self.is_image():\n                display_data = Image.open(display_data)\n        except:\n            logger.error(f\"{self.value}序列化错误：{display_data}\")\n\n        return display_data\n\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n    connection: ConnectionType = ConnectionType.SINGLE"
+              "content": "下面是组件输入、输出、属性端口定义代码，在组件中调用这些参数通过  参数类型.参数名 即可，所有参数均使用pydantic做了解析，全局变量使用 self.global_variable.变量名 直接在run里面就可以进行调用，不需要定义到property里：\n## 组件输入输出参数定义代码（不需要在生成代码里包含）\nclass ConnectionType(str, Enum):\n    \"\"\"连接类型\"\"\"\n    SINGLE = \"单输入\"\n    MULTIPLE = \"多输入\"\n\n\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    MULTILINE = \"多行文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    VARIABLE = \"全局变量\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n    connection: ConnectionType = ConnectionType.SINGLE"
             },
             {
               "role": "assistant",
@@ -975,7 +975,7 @@
             },
             {
               "role": "user",
-              "content": "以下是组件的样例代码，仅供参考，所有的工具包导入均写在函数内：\nclass Component(BaseComponent):\n    name = \"构建多轮对话\"\n    category = \"大模型组件\"\n    description = \"用于构建符合大模型输入格式的多轮对话消息列表，支持追加新消息。\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的对话列表。\"\n\n    inputs = [\n        PortDefinition(name=\"history\", label=\"输入1\", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.JSON),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"新增消息\",\n            schema={\n                \"role\": {\n                    \"type\": PropertyType.CHOICE.value,\n                    \"default\": \"user\",\n                    \"label\": \"角色\",\n                    \"choices\": [\"system\", \"user\", \"assistant\"]\n                },\n                \"content\": {\n                    \"type\": PropertyType.LONGTEXT.value,\n                    \"default\": \"\",\n                    \"label\": \"内容\",\n                },\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 获取历史对话（如果有的话）\n        history = inputs.get(\"history\") if inputs else None\n        if history is None:\n            history = []\n\n        # 验证 history 是否为 list\n        if not isinstance(history, list):\n            history = []\n        self.logger.info(params.prop1)\n\n        # 获取用户配置的新消息\n        messages = history + [\n            {\n                \"role\": message.role,\n                \"content\": message.content\n            } for message in params.prop1\n        ]\n\n        # 返回符合大模型输入格式的对话列表\n        return {\n            \"output1\": messages  # 注意：必须与 outputs 中的 name 一致\n        }\n"
+              "content": "以下是组件的样例代码，仅供参考，所有的工具包导入均写在函数内：\nclass Component(BaseComponent):\n    name = \"构建多轮对话\"\n    category = \"大模型组件\"\n    description = \"用于构建符合大模型输入格式的多轮对话消息列表，支持追加新消息。\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的对话列表。\"\n\n    inputs = [\n        PortDefinition(name=\"history\", label=\"输入1\", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.JSON),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"新增消息\",\n            schema={\n                \"role\": {\n                    \"type\": PropertyType.CHOICE.value,\n                    \"default\": \"user\",\n                    \"label\": \"角色\",\n                    \"choices\": [\"system\", \"user\", \"assistant\"]\n                },\n                \"content\": {\n                    \"type\": PropertyType.LONGTEXT.value,\n                    \"default\": \"\",\n                    \"label\": \"内容\",\n                },\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 获取历史对话（如果有的话）\n        history = inputs.get(\"history\") if inputs else None\n        if history is None:\n            history = []\n        # 组件内直接使用全局变量\n        model_name = self.global_variable.model_name\n\n        # 验证 history 是否为 list\n        if not isinstance(history, list):\n            history = []\n        self.logger.info(params.prop1)\n\n        # 获取用户配置的新消息\n        messages = history + [\n            {\n                \"role\": message.role,\n                \"content\": message.content\n            } for message in params.prop1\n        ]\n\n        # 返回符合大模型输入格式的对话列表\n        return {\n            \"output1\": messages  # 注意：必须与 outputs 中的 name 一致\n        }\n"
             },
             {
               "role": "assistant",
@@ -984,7 +984,7 @@
           ]
         }
       },
-      "0x18f8cd40c10": {
+      "0x1efa024f490": {
         "type_": "dynamic.StatusDynamicNode_数据集成_获取全局变量",
         "icon": null,
         "name": "获取全局变量",
@@ -1009,7 +1009,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 374.0,
+        "width": 372.0,
         "height": 94.25,
         "pos": [
           -771.6711397300485,
@@ -1058,7 +1058,7 @@
           "prop1": ""
         }
       },
-      "0x18f8cd41480": {
+      "0x1efffc117e0": {
         "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
         "icon": null,
         "name": "添加字符串",
@@ -1083,7 +1083,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 384.0,
+        "width": 382.0,
         "height": 94.25,
         "pos": [
           -1208.4088923345153,
@@ -1136,7 +1136,7 @@
           "prop1": "custom.model_name"
         }
       },
-      "0x18f8cd401c0": {
+      "0x1ef9ffdadd0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入",
@@ -1214,7 +1214,7 @@
           "input": "文本内容"
         }
       },
-      "0x18f8ce166e0": {
+      "0x1ef9ffda1a0": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -1252,7 +1252,7 @@
           "global_variable": {}
         }
       },
-      "0x18f8ce16680": {
+      "0x1ef9ffd9ff0": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -1290,7 +1290,7 @@
           "global_variable": {}
         }
       },
-      "0x18f8ce168f0": {
+      "0x1ef9ffd9ed0": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": null,
         "name": "迭代控制流区域",
@@ -1371,7 +1371,7 @@
           "max_iterations": 1000
         }
       },
-      "0x18f8ce16aa0": {
+      "0x1ef9ffd9cc0": {
         "type_": "dynamic.StatusDynamicNode_测试组件_逻辑判断",
         "icon": null,
         "name": "逻辑判断",
@@ -1464,7 +1464,7 @@
           "整体取反": false
         }
       },
-      "0x18f8cf73a90": {
+      "0x1ef9ffd8580": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 1",
@@ -1542,7 +1542,7 @@
           "input": "$ len(custom.model_name) > 1$"
         }
       },
-      "0x18f8cf71630": {
+      "0x1ef9d2b7130": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 2",
@@ -1620,7 +1620,7 @@
           "input": "测试1的伟大伟大·"
         }
       },
-      "0x18f8ccb9b10": {
+      "0x1ef9cfb1e10": {
         "type_": "dynamic.StatusDynamicNode_测试组件_逻辑判断",
         "icon": null,
         "name": "逻辑判断 1",
@@ -1668,7 +1668,7 @@
           "整体取反": false
         }
       },
-      "0x18f8cf9de40": {
+      "0x1ef9e993dc0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 3",
@@ -1746,7 +1746,7 @@
           "input": "文本内容"
         }
       },
-      "0x18f8cf9e6b0": {
+      "0x1ef9d523820": {
         "type_": "dynamic.StatusDynamicNode_测试组件_逻辑判断",
         "icon": null,
         "name": "逻辑判断 2",
@@ -1833,7 +1833,7 @@
           "整体取反": false
         }
       },
-      "0x18f8cf9c6a0": {
+      "0x1ef9d520e80": {
         "type_": "dynamic.StatusDynamicNode_测试组件_逻辑判断",
         "icon": null,
         "name": "逻辑判断 3",
@@ -1856,7 +1856,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 648.0,
         "height": 211.85,
@@ -1920,7 +1920,7 @@
           "整体取反": false
         }
       },
-      "0x18f8ccef070": {
+      "0x1ef9ea87d60": {
         "type_": "dynamic.StatusDynamicNode_测试组件_逻辑判断",
         "icon": null,
         "name": "逻辑判断 4",
@@ -2007,14 +2007,14 @@
           "整体取反": false
         }
       },
-      "0x18ff4b647f0": {
+      "0x1ef9ea0dff0": {
         "type_": "control_flow.ControlFlowBranchNode",
-        "icon": null,
+        "icon": "D:\\work\\WorkFlowGUI\\./icons/条件分支.png",
         "name": "条件分支",
         "color": [
-          13,
-          18,
-          23,
+          25,
+          70,
+          45,
           255
         ],
         "border_color": [
@@ -2032,11 +2032,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 489.0,
-        "height": 191.9,
+        "width": 509.0,
+        "height": 153.05,
         "pos": [
-          -78.7694909127195,
-          4454.480931532621
+          -97.59663234010583,
+          4453.458706473639
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -2050,21 +2050,61 @@
         ],
         "output_ports": [
           {
-            "name": "branch1",
-            "multi_connection": true,
-            "display_name": true
-          },
-          {
-            "name": "branch",
-            "multi_connection": true,
-            "display_name": true
-          },
-          {
             "name": "else",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "bra",
             "multi_connection": true,
             "display_name": true
           }
         ],
+        "custom": {
+          "global_variable": {},
+          "conditions": [
+            {
+              "expr": "$input.input$",
+              "name": "bra"
+            }
+          ],
+          "enable_else": true
+        }
+      },
+      "0x1ef9cef91e0": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
+        "icon": null,
+        "name": "JSON文本包装 2",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 337.0,
+        "height": 84.80000000000001,
+        "pos": [
+          -1669.8002100537326,
+          2004.5514178105504
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
         "custom": {
           "global_variable": {
             "env": {
@@ -2106,208 +2146,964 @@
             },
             "node_vars": {}
           },
-          "conditions": [
-            {
-              "expr": "True",
-              "name": "branch1"
+          "prop_0": "output"
+        }
+      },
+      "0x1efa017eaa0": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
+        "icon": null,
+        "name": "组件输出 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 315.0,
+        "height": 84.80000000000001,
+        "pos": [
+          -2185.3341526793247,
+          2001.950470061227
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
             },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:20000",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "fets": {
+                "value": "rfew",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
+          "input_text": "组件参数是所有问题分类"
+        }
+      },
+      "0x1ef9a829ed0": {
+        "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
+        "icon": null,
+        "name": "添加字符串 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 382.0,
+        "height": 94.25,
+        "pos": [
+          -261.9747133702287,
+          2730.9450336220243
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {},
+          "prop1": "env.PYTHONPATH"
+        }
+      },
+      "0x1ef99c460b0": {
+        "type_": "dynamic.StatusDynamicNode_数据存储_组件保存",
+        "icon": null,
+        "name": "组件保存 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 160,
+        "height": 60,
+        "pos": [
+          2375.608454591062,
+          2185.7569614096255
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:20000",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "fets": {
+                "value": "rfew",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          }
+        }
+      },
+      "0x1ef9a4f6aa0": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
+        "icon": null,
+        "name": "移除思考过程 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 455.0,
+        "height": 86.9,
+        "pos": [
+          1420.6792537004687,
+          2185.6094432841664
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:20000",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "fets": {
+                "value": "rfew",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
+          "remove_empty_lines": true,
+          "keep_inner_if_no_outer": true
+        }
+      },
+      "0x1ef99bb7310": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
+        "icon": null,
+        "name": "大模型输出解析 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 292.0,
+        "height": 122.60000000000001,
+        "pos": [
+          2002.195813626487,
+          2185.27994854225
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:20000",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "fets": {
+                "value": "rfew",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
+          "strict": true,
+          "type": "python"
+        }
+      },
+      "0x1ef99ff1b40": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
+        "icon": null,
+        "name": "大模型对话 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 525.0,
+        "height": 452.3,
+        "pos": [
+          743.3727061387776,
+          2187.1979728167553
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:20000",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "fets": {
+                "value": "rfew",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
+          "model": "qwen3-30b-a3b",
+          "api_key": "",
+          "base_url": "http://168.168.10.110:20000",
+          "system_prompt": "你是一个代码编辑专家，能够根据用户的需求生成专业的python代码，除了python代码不要输出任何其他文字。",
+          "temperature": 0.3,
+          "max_tokens": "20000",
+          "model_params": [
             {
-              "expr": "",
-              "name": "branch"
+              "key": "chat_template_kwargs",
+              "value": "{\"enable_thinking\": false}"
             }
-          ],
-          "enable_else": true
+          ]
+        }
+      },
+      "0x1ef99fce290": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
+        "icon": null,
+        "name": "长文本输入",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 315.0,
+        "height": 84.80000000000001,
+        "pos": [
+          269.59578274024113,
+          2337.8836558236426
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:20000",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              },
+              "fets": {
+                "value": "rfew",
+                "description": null,
+                "scope": "global",
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
+          "input_text": "有全局变量了就不需要在property上配置模型名称了呀，只需要用range类型控制下温度，还有你问题分类的配置呢，用动态表单动态创建问题分类，继续优化"
+        }
+      },
+      "0x1ef99d71930": {
+        "type_": "control_flow.ControlFlowInputPort",
+        "icon": null,
+        "name": "输入端口 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          60.76370969227912,
+          2134.6130982908753
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {}
+        }
+      },
+      "0x1ef9d4c3370": {
+        "type_": "control_flow.ControlFlowOutputPort",
+        "icon": null,
+        "name": "输出端口 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          1357.8381437389485,
+          2359.4529220964964
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {}
+        }
+      },
+      "0x1ef9a697100": {
+        "type_": "control_flow.ControlFlowIterateNode",
+        "icon": null,
+        "name": "迭代控制流区域 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 2869.844744898783,
+        "height": 640.2768074151745,
+        "pos": [
+          20.76370969227912,
+          2039.221165401581
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {},
+          "backdrop_text": "",
+          "current_index": 4,
+          "loop_nums": 4,
+          "max_iterations": 1000
+        }
+      },
+      "0x1ef9a279b10": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+        "icon": null,
+        "name": "文本输入 4",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 373.0,
+        "height": 248.60000000000002,
+        "pos": [
+          432.6547702344277,
+          2960.0752070928297
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {},
+          "input": "$custom.test$"
         }
       }
     },
     "connections": [
       {
         "in": [
-          "0x18f8cef0310",
+          "0x1ef9d03c7c0",
           "user_input"
         ],
         "out": [
-          "0x18ff6b917b0",
+          "0x1efa02a5bd0",
           "prompt"
         ]
       },
       {
         "in": [
-          "0x18f8cef0310",
+          "0x1ef9d03c7c0",
           "history"
         ],
         "out": [
-          "0x18f8ce96ce0",
+          "0x1efa024e680",
           "output1"
         ]
       },
       {
         "out": [
-          "0x18f8cef0310",
+          "0x1ef9d03c7c0",
           "response"
         ],
         "in": [
-          "0x18f8ce947f0",
+          "0x1efa0051e70",
           "raw_text"
         ]
       },
       {
         "out": [
-          "0x18ff4d3e2c0",
+          "0x1ef9d03c7c0",
+          "history"
+        ],
+        "in": [
+          "0x1ef9a697100",
+          "inputs"
+        ]
+      },
+      {
+        "out": [
+          "0x1ef9ff3be50",
           "output"
         ],
         "in": [
-          "0x18ff6be2e60",
+          "0x1ef9d167a30",
           "input1"
         ]
       },
       {
         "out": [
-          "0x18ff6be2e60",
+          "0x1ef9d167a30",
           "output1"
         ],
         "in": [
-          "0x18ff6b917b0",
+          "0x1efa02a5bd0",
           "variables"
         ]
       },
       {
         "in": [
-          "0x18ff6b917b0",
+          "0x1efa02a5bd0",
           "variables"
         ],
         "out": [
-          "0x18f8cb366e0",
+          "0x1ef9d092170",
           "output1"
         ]
       },
       {
         "in": [
-          "0x18ff6b917b0",
+          "0x1efa02a5bd0",
           "variables"
         ],
         "out": [
-          "0x18ff518e4d0",
+          "0x1efa00aaa10",
+          "output1"
+        ]
+      },
+      {
+        "in": [
+          "0x1efa02a5bd0",
+          "variables"
+        ],
+        "out": [
+          "0x1ef9cef91e0",
           "output1"
         ]
       },
       {
         "out": [
-          "0x18f8cb34eb0",
+          "0x1efa02a7ee0",
           "output"
         ],
         "in": [
-          "0x18f8cb366e0",
+          "0x1ef9d092170",
           "input1"
         ]
       },
       {
         "in": [
-          "0x18ff518e4d0",
+          "0x1efa00aaa10",
           "input1"
         ],
         "out": [
-          "0x18ff672e800",
+          "0x1efa00ab610",
           "output"
         ]
       },
       {
         "in": [
-          "0x18ff672fd30",
+          "0x1effb9ae2f0",
           "text"
         ],
         "out": [
-          "0x18ff6ab71f0",
+          "0x1efa00521d0",
           "parsed_json"
         ]
       },
       {
         "in": [
-          "0x18ff6ab71f0",
+          "0x1efa00521d0",
           "llm_output"
         ],
         "out": [
-          "0x18f8ce947f0",
+          "0x1efa0051e70",
           "cleaned_text"
         ]
       },
       {
         "in": [
-          "0x18f8cd41480",
+          "0x1efffc117e0",
           "input1"
         ],
         "out": [
-          "0x18f8ce166e0",
+          "0x1ef9ffda1a0",
           "output"
         ]
       },
       {
         "out": [
-          "0x18f8cd41480",
+          "0x1efffc117e0",
           "output1"
         ],
         "in": [
-          "0x18f8ce16680",
+          "0x1ef9ffd9ff0",
           "input"
         ]
       },
       {
         "out": [
-          "0x18f8cd401c0",
+          "0x1ef9ffdadd0",
           "text"
         ],
         "in": [
-          "0x18f8ce168f0",
+          "0x1ef9ffd9ed0",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x18f8ccb9b10",
+          "0x1ef9cfb1e10",
           "var1"
         ],
         "out": [
-          "0x18f8cf9de40",
+          "0x1ef9e993dc0",
           "text"
         ]
       },
       {
         "out": [
-          "0x18f8cf9de40",
-          "text"
-        ],
-        "in": [
-          "0x18f8cf9e6b0",
-          "var1"
-        ]
-      },
-      {
-        "out": [
-          "0x18f8cf9de40",
+          "0x1ef9e993dc0",
           "text"
         ],
         "in": [
-          "0x18f8cf9c6a0",
+          "0x1ef9d523820",
           "var1"
         ]
       },
       {
         "out": [
-          "0x18f8cf9de40",
+          "0x1ef9e993dc0",
           "text"
         ],
         "in": [
-          "0x18f8ccef070",
+          "0x1ef9d520e80",
           "var1"
         ]
       },
       {
         "out": [
-          "0x18f8ccef070",
+          "0x1ef9e993dc0",
+          "text"
+        ],
+        "in": [
+          "0x1ef9ea87d60",
+          "var1"
+        ]
+      },
+      {
+        "out": [
+          "0x1ef9ea87d60",
           "output"
         ],
         "in": [
-          "0x18ff4b647f0",
+          "0x1ef9ea0dff0",
+          "input"
+        ]
+      },
+      {
+        "in": [
+          "0x1ef9cef91e0",
+          "input1"
+        ],
+        "out": [
+          "0x1efa017eaa0",
+          "output"
+        ]
+      },
+      {
+        "in": [
+          "0x1ef99c460b0",
+          "text"
+        ],
+        "out": [
+          "0x1ef99bb7310",
+          "parsed_json"
+        ]
+      },
+      {
+        "in": [
+          "0x1ef9a4f6aa0",
+          "raw_text"
+        ],
+        "out": [
+          "0x1ef99ff1b40",
+          "response"
+        ]
+      },
+      {
+        "out": [
+          "0x1ef9a4f6aa0",
+          "cleaned_text"
+        ],
+        "in": [
+          "0x1ef99bb7310",
+          "llm_output"
+        ]
+      },
+      {
+        "in": [
+          "0x1ef99ff1b40",
+          "user_input"
+        ],
+        "out": [
+          "0x1ef99fce290",
+          "output"
+        ]
+      },
+      {
+        "in": [
+          "0x1ef99ff1b40",
+          "history"
+        ],
+        "out": [
+          "0x1ef99d71930",
+          "output"
+        ]
+      },
+      {
+        "out": [
+          "0x1ef99ff1b40",
+          "history"
+        ],
+        "in": [
+          "0x1ef9d4c3370",
           "input"
         ]
       }
@@ -2317,32 +3113,43 @@
     "environment": "3.11",
     "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.11\\python.exe",
     "node_id2stable_key": {
-      "0x18f8cef0310": "大模型组件/大模型对话||大模型对话",
-      "0x18ff4d3e2c0": "数据集成/长文本输入||组件意图",
-      "0x18ff6be2e60": "大模型组件/JSON文本包装||JSON文本包装",
-      "0x18ff6b917b0": "大模型组件/提示词模板||提示词模板 3",
-      "0x18f8cb34eb0": "数据集成/长文本输入||组件输入",
-      "0x18f8cb366e0": "大模型组件/JSON文本包装||JSON文本包装 1",
-      "0x18ff518e4d0": "大模型组件/JSON文本包装||JSON文本包装 3",
-      "0x18ff672e800": "数据集成/长文本输入||组件输出",
-      "0x18ff672fd30": "数据存储/组件保存||组件保存",
-      "0x18ff6ab71f0": "大模型组件/大模型输出解析||大模型输出解析",
-      "0x18f8ce947f0": "大模型组件/移除思考过程||移除思考过程",
-      "0x18f8ce96ce0": "大模型组件/构建多轮对话||构建多轮对话",
-      "0x18f8cd40c10": "数据集成/获取全局变量||获取全局变量",
-      "0x18f8cd41480": "测试组件/添加字符串||添加字符串",
-      "0x18f8cd401c0": "数据集成/文本输入||文本输入",
-      "0x18f8ce166e0": "控制流/输入端口||输入端口",
-      "0x18f8ce16680": "控制流/输出端口||输出端口",
-      "0x18f8ce16aa0": "测试组件/逻辑判断||逻辑判断",
-      "0x18f8cf73a90": "数据集成/文本输入||文本输入 1",
-      "0x18f8cf71630": "数据集成/文本输入||文本输入 2",
-      "0x18f8ccb9b10": "测试组件/逻辑判断||逻辑判断 1",
-      "0x18f8cf9de40": "数据集成/文本输入||文本输入 3",
-      "0x18f8cf9e6b0": "测试组件/逻辑判断||逻辑判断 2",
-      "0x18f8cf9c6a0": "测试组件/逻辑判断||逻辑判断 3",
-      "0x18f8ccef070": "测试组件/逻辑判断||逻辑判断 4",
-      "0x18ff4b647f0": "unknown||条件分支"
+      "0x1ef9d03c7c0": "大模型组件/大模型对话||大模型对话",
+      "0x1ef9ff3be50": "数据集成/长文本输入||组件意图",
+      "0x1ef9d167a30": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x1efa02a5bd0": "大模型组件/提示词模板||提示词模板 3",
+      "0x1efa02a7ee0": "数据集成/长文本输入||组件输入",
+      "0x1ef9d092170": "大模型组件/JSON文本包装||JSON文本包装 1",
+      "0x1efa00aaa10": "大模型组件/JSON文本包装||JSON文本包装 3",
+      "0x1efa00ab610": "数据集成/长文本输入||组件输出",
+      "0x1effb9ae2f0": "数据存储/组件保存||组件保存",
+      "0x1efa00521d0": "大模型组件/大模型输出解析||大模型输出解析",
+      "0x1efa0051e70": "大模型组件/移除思考过程||移除思考过程",
+      "0x1efa024e680": "大模型组件/构建多轮对话||构建多轮对话",
+      "0x1efa024f490": "数据集成/获取全局变量||获取全局变量",
+      "0x1efffc117e0": "测试组件/添加字符串||添加字符串",
+      "0x1ef9ffdadd0": "数据集成/文本输入||文本输入",
+      "0x1ef9ffda1a0": "控制流/输入端口||输入端口",
+      "0x1ef9ffd9ff0": "控制流/输出端口||输出端口",
+      "0x1ef9ffd9cc0": "测试组件/逻辑判断||逻辑判断",
+      "0x1ef9ffd8580": "数据集成/文本输入||文本输入 1",
+      "0x1ef9d2b7130": "数据集成/文本输入||文本输入 2",
+      "0x1ef9cfb1e10": "测试组件/逻辑判断||逻辑判断 1",
+      "0x1ef9e993dc0": "数据集成/文本输入||文本输入 3",
+      "0x1ef9d523820": "测试组件/逻辑判断||逻辑判断 2",
+      "0x1ef9d520e80": "测试组件/逻辑判断||逻辑判断 3",
+      "0x1ef9ea87d60": "测试组件/逻辑判断||逻辑判断 4",
+      "0x1ef9ea0dff0": "控制流/条件分支||条件分支",
+      "0x1ef9cef91e0": "大模型组件/JSON文本包装||JSON文本包装 2",
+      "0x1efa017eaa0": "数据集成/长文本输入||组件输出 1",
+      "0x1ef9a829ed0": "测试组件/添加字符串||添加字符串 1",
+      "0x1ef99c460b0": "数据存储/组件保存||组件保存 1",
+      "0x1ef9a4f6aa0": "大模型组件/移除思考过程||移除思考过程 1",
+      "0x1ef99bb7310": "大模型组件/大模型输出解析||大模型输出解析 1",
+      "0x1ef99ff1b40": "大模型组件/大模型对话||大模型对话 1",
+      "0x1ef99fce290": "数据集成/长文本输入||长文本输入",
+      "0x1ef99d71930": "控制流/输入端口||输入端口 1",
+      "0x1ef9d4c3370": "控制流/输出端口||输出端口 1",
+      "0x1ef9a279b10": "数据集成/文本输入||文本输入 4"
     },
     "node_states": {
       "大模型组件/大模型对话||大模型对话": "success",
@@ -2370,7 +3177,18 @@
       "测试组件/逻辑判断||逻辑判断 2": "failed",
       "测试组件/逻辑判断||逻辑判断 3": "success",
       "测试组件/逻辑判断||逻辑判断 4": "success",
-      "unknown||条件分支": "unrun"
+      "控制流/条件分支||条件分支": "unrun",
+      "大模型组件/JSON文本包装||JSON文本包装 2": "success",
+      "数据集成/长文本输入||组件输出 1": "success",
+      "测试组件/添加字符串||添加字符串 1": "unrun",
+      "数据存储/组件保存||组件保存 1": "success",
+      "大模型组件/移除思考过程||移除思考过程 1": "success",
+      "大模型组件/大模型输出解析||大模型输出解析 1": "success",
+      "大模型组件/大模型对话||大模型对话 1": "success",
+      "数据集成/长文本输入||长文本输入": "success",
+      "控制流/输入端口||输入端口 1": "unrun",
+      "控制流/输出端口||输出端口 1": "unrun",
+      "数据集成/文本输入||文本输入 4": "success"
     },
     "node_inputs": {
       "大模型组件/大模型对话||大模型对话": {},
@@ -2398,20 +3216,31 @@
       "测试组件/逻辑判断||逻辑判断 2": {},
       "测试组件/逻辑判断||逻辑判断 3": {},
       "测试组件/逻辑判断||逻辑判断 4": {},
-      "unknown||条件分支": {}
+      "控制流/条件分支||条件分支": {},
+      "大模型组件/JSON文本包装||JSON文本包装 2": {},
+      "数据集成/长文本输入||组件输出 1": {},
+      "测试组件/添加字符串||添加字符串 1": {},
+      "数据存储/组件保存||组件保存 1": {},
+      "大模型组件/移除思考过程||移除思考过程 1": {},
+      "大模型组件/大模型输出解析||大模型输出解析 1": {},
+      "大模型组件/大模型对话||大模型对话 1": {},
+      "数据集成/长文本输入||长文本输入": {},
+      "控制流/输入端口||输入端口 1": {},
+      "控制流/输出端口||输出端口 1": {},
+      "数据集成/文本输入||文本输入 4": {}
     },
     "node_outputs": {
       "大模型组件/大模型对话||大模型对话": {
-        "response": "class Component(BaseComponent):\n    name = \"大模型问题分类\"\n    category = \"大模型组件\"\n    description = \"用于对用户问题进行分类，根据预定义的分类标签进行判断\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的分类结果。\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.CHOICE),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.CHOICE.value,\n            label=\"分类标签\",\n            choices=[\"技术问题\", \"业务咨询\", \"系统错误\", \"功能请求\", \"其他\"],\n            default=\"其他\",\n            description=\"选择问题分类标签\"\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入第三方工具包\n        from sklearn.feature_extraction.text import TfidfVectorizer\n        from sklearn.naive_bayes import MultinomialNB\n        \n        # 获取用户输入的问题\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 定义训练数据（示例数据，实际应用中应使用真实数据）\n        X_train = [\n            \"如何安装Python？\",\n            \"我的电脑无法启动。\",\n            \"请帮我创建一个新账户。\",\n            \"这个功能怎么使用？\",\n            \"系统提示错误代码500。\",\n            \"我想添加一个新功能。\",\n            \"如何更新软件？\",\n            \"无法连接到服务器。\",\n            \"请解释一下这个算法。\",\n            \"我的订单状态是什么？\"\n        ]\n        y_train = [\n            \"技术问题\", \"系统错误\", \"业务咨询\", \"功能请求\", \"系统错误\", \n            \"功能请求\", \"技术问题\", \"系统错误\", \"技术问题\", \"业务咨询\"\n        ]\n        \n        # 特征提取\n        vectorizer = TfidfVectorizer()\n        X_train_tfidf = vectorizer.fit_transform(X_train)\n        \n        # 训练分类器\n        clf = MultinomialNB()\n        clf.fit(X_train_tfidf, y_train)\n        \n        # 预处理用户输入\n        user_input_tfidf = vectorizer.transform([user_input])\n        \n        # 进行预测\n        prediction = clf.predict(user_input_tfidf)[0]\n        \n        # 返回分类结果\n        return {\n            \"output1\": prediction  # 注意：必须与 outputs 中的 name 一致\n        }",
+        "response": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"model\": {\n                    \"type\": PropertyType.TEXT.value,\n                    \"default\": \"chatglm3\",\n                    \"label\": \"模型名称\"\n                },\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        prompt = f\"请对以下问题进行分类：\\n{user_input}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }",
         "raw_output": {
-          "id": "chatcmpl-35979a6cdd184fe59c08385b9ad4e68f",
+          "id": "chatcmpl-28fe50e1dcbd41aaa402de96d29c03fc",
           "choices": [
             {
               "finish_reason": "stop",
               "index": 0,
               "logprobs": null,
               "message": {
-                "content": "class Component(BaseComponent):\n    name = \"大模型问题分类\"\n    category = \"大模型组件\"\n    description = \"用于对用户问题进行分类，根据预定义的分类标签进行判断\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的分类结果。\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.CHOICE),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.CHOICE.value,\n            label=\"分类标签\",\n            choices=[\"技术问题\", \"业务咨询\", \"系统错误\", \"功能请求\", \"其他\"],\n            default=\"其他\",\n            description=\"选择问题分类标签\"\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入第三方工具包\n        from sklearn.feature_extraction.text import TfidfVectorizer\n        from sklearn.naive_bayes import MultinomialNB\n        \n        # 获取用户输入的问题\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 定义训练数据（示例数据，实际应用中应使用真实数据）\n        X_train = [\n            \"如何安装Python？\",\n            \"我的电脑无法启动。\",\n            \"请帮我创建一个新账户。\",\n            \"这个功能怎么使用？\",\n            \"系统提示错误代码500。\",\n            \"我想添加一个新功能。\",\n            \"如何更新软件？\",\n            \"无法连接到服务器。\",\n            \"请解释一下这个算法。\",\n            \"我的订单状态是什么？\"\n        ]\n        y_train = [\n            \"技术问题\", \"系统错误\", \"业务咨询\", \"功能请求\", \"系统错误\", \n            \"功能请求\", \"技术问题\", \"系统错误\", \"技术问题\", \"业务咨询\"\n        ]\n        \n        # 特征提取\n        vectorizer = TfidfVectorizer()\n        X_train_tfidf = vectorizer.fit_transform(X_train)\n        \n        # 训练分类器\n        clf = MultinomialNB()\n        clf.fit(X_train_tfidf, y_train)\n        \n        # 预处理用户输入\n        user_input_tfidf = vectorizer.transform([user_input])\n        \n        # 进行预测\n        prediction = clf.predict(user_input_tfidf)[0]\n        \n        # 返回分类结果\n        return {\n            \"output1\": prediction  # 注意：必须与 outputs 中的 name 一致\n        }",
+                "content": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"model\": {\n                    \"type\": PropertyType.TEXT.value,\n                    \"default\": \"chatglm3\",\n                    \"label\": \"模型名称\"\n                },\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        prompt = f\"请对以下问题进行分类：\\n{user_input}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }",
                 "refusal": null,
                 "role": "assistant",
                 "annotations": null,
@@ -2424,15 +3253,15 @@
               "token_ids": null
             }
           ],
-          "created": 1760522802,
+          "created": 1760577210,
           "model": "qwen3-30b-a3b",
           "object": "chat.completion",
           "service_tier": null,
           "system_fingerprint": null,
           "usage": {
-            "completion_tokens": 585,
-            "prompt_tokens": 1508,
-            "total_tokens": 2093,
+            "completion_tokens": 578,
+            "prompt_tokens": 1265,
+            "total_tokens": 1843,
             "completion_tokens_details": null,
             "prompt_tokens_details": null
           },
@@ -2451,7 +3280,7 @@
           },
           {
             "role": "user",
-            "content": "下面是组件输入、输出、属性端口定义代码：\n## 组件输入输出参数定义代码（不需要在生成代码里包含）\nclass ConnectionType(str, Enum):\n    \"\"\"连接类型\"\"\"\n    SINGLE = \"单输入\"\n    MULTIPLE = \"多输入\"\n\n\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    MULTILINE = \"多行文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    VARIABLE = \"全局变量\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\n    # 验证是否是文件类型\n    def is_file(self):\n        return self in [ArgumentType.FILE, ArgumentType.EXCEL, ArgumentType.SKLEARNMODEL,\n                        ArgumentType.TORCHMODEL, ArgumentType.UPLOAD]\n\n    def is_number(self):\n        return self in [ArgumentType.INT, ArgumentType.FLOAT]\n\n    def is_array(self):\n        return self in [ArgumentType.ARRAY]\n\n    def is_bool(self):\n        return self == ArgumentType.BOOL\n\n    def is_image(self):\n        return self == ArgumentType.IMAGE\n\n    def serialize(self, display_data):\n        if display_data is None or len(display_data) == 0:\n            return display_data\n        try:\n            if self.is_file() and len(display_data) > 0:\n                # FILE类型：显示文件路径选择\n                display_data = {\n                    \"file_name\": os.path.basename(display_data),\n                    \"file_type\": self.value,\n                    \"file_path\": display_data\n                }\n            elif self == ArgumentType.JSON and isinstance(display_data, str):\n                display_data = json.loads(display_data)\n            elif self.is_number():\n                display_data = float(display_data)\n            elif self.is_bool():\n                display_data = bool(display_data)\n            elif self.is_array() and isinstance(display_data, str):\n                display_data = np.array(eval(display_data))\n            elif self.is_array() and isinstance(display_data, list):\n                display_data = np.array(display_data)\n            elif self.is_image():\n                display_data = Image.open(display_data)\n        except:\n            logger.error(f\"{self.value}序列化错误：{display_data}\")\n\n        return display_data\n\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n    connection: ConnectionType = ConnectionType.SINGLE"
+            "content": "下面是组件输入、输出、属性端口定义代码，在组件中调用这些参数通过  参数类型.参数名 即可，所有参数均使用pydantic做了解析，全局变量使用 self.global_variable.变量名 直接在run里面就可以进行调用，不需要定义到property里：\n## 组件输入输出参数定义代码（不需要在生成代码里包含）\nclass ConnectionType(str, Enum):\n    \"\"\"连接类型\"\"\"\n    SINGLE = \"单输入\"\n    MULTIPLE = \"多输入\"\n\n\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    MULTILINE = \"多行文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    VARIABLE = \"全局变量\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n    connection: ConnectionType = ConnectionType.SINGLE"
           },
           {
             "role": "assistant",
@@ -2459,7 +3288,7 @@
           },
           {
             "role": "user",
-            "content": "以下是组件的样例代码，仅供参考，所有的工具包导入均写在函数内：\nclass Component(BaseComponent):\n    name = \"构建多轮对话\"\n    category = \"大模型组件\"\n    description = \"用于构建符合大模型输入格式的多轮对话消息列表，支持追加新消息。\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的对话列表。\"\n\n    inputs = [\n        PortDefinition(name=\"history\", label=\"输入1\", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.JSON),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"新增消息\",\n            schema={\n                \"role\": {\n                    \"type\": PropertyType.CHOICE.value,\n                    \"default\": \"user\",\n                    \"label\": \"角色\",\n                    \"choices\": [\"system\", \"user\", \"assistant\"]\n                },\n                \"content\": {\n                    \"type\": PropertyType.LONGTEXT.value,\n                    \"default\": \"\",\n                    \"label\": \"内容\",\n                },\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 获取历史对话（如果有的话）\n        history = inputs.get(\"history\") if inputs else None\n        if history is None:\n            history = []\n\n        # 验证 history 是否为 list\n        if not isinstance(history, list):\n            history = []\n        self.logger.info(params.prop1)\n\n        # 获取用户配置的新消息\n        messages = history + [\n            {\n                \"role\": message.role,\n                \"content\": message.content\n            } for message in params.prop1\n        ]\n\n        # 返回符合大模型输入格式的对话列表\n        return {\n            \"output1\": messages  # 注意：必须与 outputs 中的 name 一致\n        }\n"
+            "content": "以下是组件的样例代码，仅供参考，所有的工具包导入均写在函数内：\nclass Component(BaseComponent):\n    name = \"构建多轮对话\"\n    category = \"大模型组件\"\n    description = \"用于构建符合大模型输入格式的多轮对话消息列表，支持追加新消息。\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的对话列表。\"\n\n    inputs = [\n        PortDefinition(name=\"history\", label=\"输入1\", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.JSON),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"新增消息\",\n            schema={\n                \"role\": {\n                    \"type\": PropertyType.CHOICE.value,\n                    \"default\": \"user\",\n                    \"label\": \"角色\",\n                    \"choices\": [\"system\", \"user\", \"assistant\"]\n                },\n                \"content\": {\n                    \"type\": PropertyType.LONGTEXT.value,\n                    \"default\": \"\",\n                    \"label\": \"内容\",\n                },\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 获取历史对话（如果有的话）\n        history = inputs.get(\"history\") if inputs else None\n        if history is None:\n            history = []\n        # 组件内直接使用全局变量\n        model_name = self.global_variable.model_name\n\n        # 验证 history 是否为 list\n        if not isinstance(history, list):\n            history = []\n        self.logger.info(params.prop1)\n\n        # 获取用户配置的新消息\n        messages = history + [\n            {\n                \"role\": message.role,\n                \"content\": message.content\n            } for message in params.prop1\n        ]\n\n        # 返回符合大模型输入格式的对话列表\n        return {\n            \"output1\": messages  # 注意：必须与 outputs 中的 name 一致\n        }\n"
           },
           {
             "role": "assistant",
@@ -2467,31 +3296,31 @@
           },
           {
             "role": "user",
-            "content": "## 组件开发需求\n我的需求是开发一个大模型智能问题分类组件\n\n## 组件输入参数\n输入是用户的问题文本，组件参数是所有问题分类\n\n## 组件输出参数\n输出是问题分类结果\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，但是组件定义的输入输出参数必须要在当前参数定义范围之内，不能输出新的参数类型。同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码"
+            "content": "## 组件开发需求\n我的需求是开发一个大模型智能问题分类组件,根据全局变量中的model_name、url使用open_ai的工具包调用本地大模型\n\n## 组件输入参数\n输入是用户的问题文本\n\n## 组件属性参数\n{{params}}\n\n## 组件输出参数\n输出是问题分类结果\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，但是组件定义的输入输出参数必须要在当前参数定义范围之内，不能输出新的参数类型。同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码"
           },
           {
             "role": "assistant",
-            "content": "class Component(BaseComponent):\n    name = \"大模型问题分类\"\n    category = \"大模型组件\"\n    description = \"用于对用户问题进行分类，根据预定义的分类标签进行判断\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的分类结果。\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.CHOICE),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.CHOICE.value,\n            label=\"分类标签\",\n            choices=[\"技术问题\", \"业务咨询\", \"系统错误\", \"功能请求\", \"其他\"],\n            default=\"其他\",\n            description=\"选择问题分类标签\"\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入第三方工具包\n        from sklearn.feature_extraction.text import TfidfVectorizer\n        from sklearn.naive_bayes import MultinomialNB\n        \n        # 获取用户输入的问题\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 定义训练数据（示例数据，实际应用中应使用真实数据）\n        X_train = [\n            \"如何安装Python？\",\n            \"我的电脑无法启动。\",\n            \"请帮我创建一个新账户。\",\n            \"这个功能怎么使用？\",\n            \"系统提示错误代码500。\",\n            \"我想添加一个新功能。\",\n            \"如何更新软件？\",\n            \"无法连接到服务器。\",\n            \"请解释一下这个算法。\",\n            \"我的订单状态是什么？\"\n        ]\n        y_train = [\n            \"技术问题\", \"系统错误\", \"业务咨询\", \"功能请求\", \"系统错误\", \n            \"功能请求\", \"技术问题\", \"系统错误\", \"技术问题\", \"业务咨询\"\n        ]\n        \n        # 特征提取\n        vectorizer = TfidfVectorizer()\n        X_train_tfidf = vectorizer.fit_transform(X_train)\n        \n        # 训练分类器\n        clf = MultinomialNB()\n        clf.fit(X_train_tfidf, y_train)\n        \n        # 预处理用户输入\n        user_input_tfidf = vectorizer.transform([user_input])\n        \n        # 进行预测\n        prediction = clf.predict(user_input_tfidf)[0]\n        \n        # 返回分类结果\n        return {\n            \"output1\": prediction  # 注意：必须与 outputs 中的 name 一致\n        }"
+            "content": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"model\": {\n                    \"type\": PropertyType.TEXT.value,\n                    \"default\": \"chatglm3\",\n                    \"label\": \"模型名称\"\n                },\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        prompt = f\"请对以下问题进行分类：\\n{user_input}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }"
           }
         ]
       },
       "数据集成/长文本输入||组件意图": {
-        "output": "我的需求是开发一个大模型智能问题分类组件"
+        "output": "我的需求是开发一个大模型智能问题分类组件,根据全局变量中的model_name、url使用open_ai的工具包调用本地大模型"
       },
       "大模型组件/JSON文本包装||JSON文本包装": {
         "output1": {
-          "intention": "我的需求是开发一个大模型智能问题分类组件"
+          "intention": "我的需求是开发一个大模型智能问题分类组件,根据全局变量中的model_name、url使用open_ai的工具包调用本地大模型"
         }
       },
       "大模型组件/提示词模板||提示词模板 3": {
-        "prompt": "## 组件开发需求\n我的需求是开发一个大模型智能问题分类组件\n\n## 组件输入参数\n输入是用户的问题文本，组件参数是所有问题分类\n\n## 组件输出参数\n输出是问题分类结果\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，但是组件定义的输入输出参数必须要在当前参数定义范围之内，不能输出新的参数类型。同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码\n[{'intention': '我的需求是开发一个大模型智能问题分类组件'}, {'input': '输入是用户的问题文本，组件参数是所有问题分类'}, {'output': '输出是问题分类结果'}]"
+        "prompt": "## 组件开发需求\n我的需求是开发一个大模型智能问题分类组件,根据全局变量中的model_name、url使用open_ai的工具包调用本地大模型\n\n## 组件输入参数\n输入是用户的问题文本\n\n## 组件属性参数\n{{params}}\n\n## 组件输出参数\n输出是问题分类结果\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，但是组件定义的输入输出参数必须要在当前参数定义范围之内，不能输出新的参数类型。同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码"
       },
       "数据集成/长文本输入||组件输入": {
-        "output": "输入是用户的问题文本，组件参数是所有问题分类"
+        "output": "输入是用户的问题文本"
       },
       "大模型组件/JSON文本包装||JSON文本包装 1": {
         "output1": {
-          "input": "输入是用户的问题文本，组件参数是所有问题分类"
+          "input": "输入是用户的问题文本"
         }
       },
       "大模型组件/JSON文本包装||JSON文本包装 3": {
@@ -2503,14 +3332,14 @@
         "output": "输出是问题分类结果"
       },
       "数据存储/组件保存||组件保存": {
-        "file_path": "D:\\work\\WorkFlowGUI\\app\\components\\generated\\generated_a6a150e6-4453-4695-802b-fe36d5285254.py"
+        "file_path": "D:\\work\\WorkFlowGUI\\app\\components\\generated\\generated_e4fdc680-9b8f-45e0-89cc-4b945e57b018.py"
       },
       "大模型组件/大模型输出解析||大模型输出解析": {
-        "parsed_json": "class Component(BaseComponent):\n    name = \"大模型问题分类\"\n    category = \"大模型组件\"\n    description = \"用于对用户问题进行分类，根据预定义的分类标签进行判断\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的分类结果。\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.CHOICE),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.CHOICE.value,\n            label=\"分类标签\",\n            choices=[\"技术问题\", \"业务咨询\", \"系统错误\", \"功能请求\", \"其他\"],\n            default=\"其他\",\n            description=\"选择问题分类标签\"\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入第三方工具包\n        from sklearn.feature_extraction.text import TfidfVectorizer\n        from sklearn.naive_bayes import MultinomialNB\n        \n        # 获取用户输入的问题\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 定义训练数据（示例数据，实际应用中应使用真实数据）\n        X_train = [\n            \"如何安装Python？\",\n            \"我的电脑无法启动。\",\n            \"请帮我创建一个新账户。\",\n            \"这个功能怎么使用？\",\n            \"系统提示错误代码500。\",\n            \"我想添加一个新功能。\",\n            \"如何更新软件？\",\n            \"无法连接到服务器。\",\n            \"请解释一下这个算法。\",\n            \"我的订单状态是什么？\"\n        ]\n        y_train = [\n            \"技术问题\", \"系统错误\", \"业务咨询\", \"功能请求\", \"系统错误\", \n            \"功能请求\", \"技术问题\", \"系统错误\", \"技术问题\", \"业务咨询\"\n        ]\n        \n        # 特征提取\n        vectorizer = TfidfVectorizer()\n        X_train_tfidf = vectorizer.fit_transform(X_train)\n        \n        # 训练分类器\n        clf = MultinomialNB()\n        clf.fit(X_train_tfidf, y_train)\n        \n        # 预处理用户输入\n        user_input_tfidf = vectorizer.transform([user_input])\n        \n        # 进行预测\n        prediction = clf.predict(user_input_tfidf)[0]\n        \n        # 返回分类结果\n        return {\n            \"output1\": prediction  # 注意：必须与 outputs 中的 name 一致\n        }",
+        "parsed_json": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"model\": {\n                    \"type\": PropertyType.TEXT.value,\n                    \"default\": \"chatglm3\",\n                    \"label\": \"模型名称\"\n                },\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        prompt = f\"请对以下问题进行分类：\\n{user_input}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }",
         "is_valid": true
       },
       "大模型组件/移除思考过程||移除思考过程": {
-        "cleaned_text": "class Component(BaseComponent):\n    name = \"大模型问题分类\"\n    category = \"大模型组件\"\n    description = \"用于对用户问题进行分类，根据预定义的分类标签进行判断\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的分类结果。\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.CHOICE),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.CHOICE.value,\n            label=\"分类标签\",\n            choices=[\"技术问题\", \"业务咨询\", \"系统错误\", \"功能请求\", \"其他\"],\n            default=\"其他\",\n            description=\"选择问题分类标签\"\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入第三方工具包\n        from sklearn.feature_extraction.text import TfidfVectorizer\n        from sklearn.naive_bayes import MultinomialNB\n        \n        # 获取用户输入的问题\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 定义训练数据（示例数据，实际应用中应使用真实数据）\n        X_train = [\n            \"如何安装Python？\",\n            \"我的电脑无法启动。\",\n            \"请帮我创建一个新账户。\",\n            \"这个功能怎么使用？\",\n            \"系统提示错误代码500。\",\n            \"我想添加一个新功能。\",\n            \"如何更新软件？\",\n            \"无法连接到服务器。\",\n            \"请解释一下这个算法。\",\n            \"我的订单状态是什么？\"\n        ]\n        y_train = [\n            \"技术问题\", \"系统错误\", \"业务咨询\", \"功能请求\", \"系统错误\", \n            \"功能请求\", \"技术问题\", \"系统错误\", \"技术问题\", \"业务咨询\"\n        ]\n        \n        # 特征提取\n        vectorizer = TfidfVectorizer()\n        X_train_tfidf = vectorizer.fit_transform(X_train)\n        \n        # 训练分类器\n        clf = MultinomialNB()\n        clf.fit(X_train_tfidf, y_train)\n        \n        # 预处理用户输入\n        user_input_tfidf = vectorizer.transform([user_input])\n        \n        # 进行预测\n        prediction = clf.predict(user_input_tfidf)[0]\n        \n        # 返回分类结果\n        return {\n            \"output1\": prediction  # 注意：必须与 outputs 中的 name 一致\n        }",
+        "cleaned_text": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"model\": {\n                    \"type\": PropertyType.TEXT.value,\n                    \"default\": \"chatglm3\",\n                    \"label\": \"模型名称\"\n                },\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        prompt = f\"请对以下问题进行分类：\\n{user_input}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }",
         "think_text": ""
       },
       "大模型组件/构建多轮对话||构建多轮对话": {
@@ -2525,7 +3354,7 @@
           },
           {
             "role": "user",
-            "content": "下面是组件输入、输出、属性端口定义代码：\n## 组件输入输出参数定义代码（不需要在生成代码里包含）\nclass ConnectionType(str, Enum):\n    \"\"\"连接类型\"\"\"\n    SINGLE = \"单输入\"\n    MULTIPLE = \"多输入\"\n\n\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    MULTILINE = \"多行文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    VARIABLE = \"全局变量\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\n    # 验证是否是文件类型\n    def is_file(self):\n        return self in [ArgumentType.FILE, ArgumentType.EXCEL, ArgumentType.SKLEARNMODEL,\n                        ArgumentType.TORCHMODEL, ArgumentType.UPLOAD]\n\n    def is_number(self):\n        return self in [ArgumentType.INT, ArgumentType.FLOAT]\n\n    def is_array(self):\n        return self in [ArgumentType.ARRAY]\n\n    def is_bool(self):\n        return self == ArgumentType.BOOL\n\n    def is_image(self):\n        return self == ArgumentType.IMAGE\n\n    def serialize(self, display_data):\n        if display_data is None or len(display_data) == 0:\n            return display_data\n        try:\n            if self.is_file() and len(display_data) > 0:\n                # FILE类型：显示文件路径选择\n                display_data = {\n                    \"file_name\": os.path.basename(display_data),\n                    \"file_type\": self.value,\n                    \"file_path\": display_data\n                }\n            elif self == ArgumentType.JSON and isinstance(display_data, str):\n                display_data = json.loads(display_data)\n            elif self.is_number():\n                display_data = float(display_data)\n            elif self.is_bool():\n                display_data = bool(display_data)\n            elif self.is_array() and isinstance(display_data, str):\n                display_data = np.array(eval(display_data))\n            elif self.is_array() and isinstance(display_data, list):\n                display_data = np.array(display_data)\n            elif self.is_image():\n                display_data = Image.open(display_data)\n        except:\n            logger.error(f\"{self.value}序列化错误：{display_data}\")\n\n        return display_data\n\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n    connection: ConnectionType = ConnectionType.SINGLE"
+            "content": "下面是组件输入、输出、属性端口定义代码，在组件中调用这些参数通过  参数类型.参数名 即可，所有参数均使用pydantic做了解析，全局变量使用 self.global_variable.变量名 直接在run里面就可以进行调用，不需要定义到property里：\n## 组件输入输出参数定义代码（不需要在生成代码里包含）\nclass ConnectionType(str, Enum):\n    \"\"\"连接类型\"\"\"\n    SINGLE = \"单输入\"\n    MULTIPLE = \"多输入\"\n\n\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    MULTILINE = \"多行文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    VARIABLE = \"全局变量\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n    connection: ConnectionType = ConnectionType.SINGLE"
           },
           {
             "role": "assistant",
@@ -2533,7 +3362,7 @@
           },
           {
             "role": "user",
-            "content": "以下是组件的样例代码，仅供参考，所有的工具包导入均写在函数内：\nclass Component(BaseComponent):\n    name = \"构建多轮对话\"\n    category = \"大模型组件\"\n    description = \"用于构建符合大模型输入格式的多轮对话消息列表，支持追加新消息。\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的对话列表。\"\n\n    inputs = [\n        PortDefinition(name=\"history\", label=\"输入1\", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.JSON),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"新增消息\",\n            schema={\n                \"role\": {\n                    \"type\": PropertyType.CHOICE.value,\n                    \"default\": \"user\",\n                    \"label\": \"角色\",\n                    \"choices\": [\"system\", \"user\", \"assistant\"]\n                },\n                \"content\": {\n                    \"type\": PropertyType.LONGTEXT.value,\n                    \"default\": \"\",\n                    \"label\": \"内容\",\n                },\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 获取历史对话（如果有的话）\n        history = inputs.get(\"history\") if inputs else None\n        if history is None:\n            history = []\n\n        # 验证 history 是否为 list\n        if not isinstance(history, list):\n            history = []\n        self.logger.info(params.prop1)\n\n        # 获取用户配置的新消息\n        messages = history + [\n            {\n                \"role\": message.role,\n                \"content\": message.content\n            } for message in params.prop1\n        ]\n\n        # 返回符合大模型输入格式的对话列表\n        return {\n            \"output1\": messages  # 注意：必须与 outputs 中的 name 一致\n        }\n"
+            "content": "以下是组件的样例代码，仅供参考，所有的工具包导入均写在函数内：\nclass Component(BaseComponent):\n    name = \"构建多轮对话\"\n    category = \"大模型组件\"\n    description = \"用于构建符合大模型输入格式的多轮对话消息列表，支持追加新消息。\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的对话列表。\"\n\n    inputs = [\n        PortDefinition(name=\"history\", label=\"输入1\", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.JSON),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"新增消息\",\n            schema={\n                \"role\": {\n                    \"type\": PropertyType.CHOICE.value,\n                    \"default\": \"user\",\n                    \"label\": \"角色\",\n                    \"choices\": [\"system\", \"user\", \"assistant\"]\n                },\n                \"content\": {\n                    \"type\": PropertyType.LONGTEXT.value,\n                    \"default\": \"\",\n                    \"label\": \"内容\",\n                },\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 获取历史对话（如果有的话）\n        history = inputs.get(\"history\") if inputs else None\n        if history is None:\n            history = []\n        # 组件内直接使用全局变量\n        model_name = self.global_variable.model_name\n\n        # 验证 history 是否为 list\n        if not isinstance(history, list):\n            history = []\n        self.logger.info(params.prop1)\n\n        # 获取用户配置的新消息\n        messages = history + [\n            {\n                \"role\": message.role,\n                \"content\": message.content\n            } for message in params.prop1\n        ]\n\n        # 返回符合大模型输入格式的对话列表\n        return {\n            \"output1\": messages  # 注意：必须与 outputs 中的 name 一致\n        }\n"
           },
           {
             "role": "assistant",
@@ -2570,7 +3399,200 @@
       "测试组件/逻辑判断||逻辑判断 4": {
         "output": true
       },
-      "unknown||条件分支": {}
+      "控制流/条件分支||条件分支": {},
+      "大模型组件/JSON文本包装||JSON文本包装 2": {
+        "output1": {
+          "output": "组件参数是所有问题分类"
+        }
+      },
+      "数据集成/长文本输入||组件输出 1": {
+        "output": "组件参数是所有问题分类"
+      },
+      "测试组件/添加字符串||添加字符串 1": {},
+      "数据存储/组件保存||组件保存 1": {
+        "file_path": "D:\\work\\WorkFlowGUI\\app\\components\\generated\\generated_beace99d-73df-4b59-871d-5dd31e720f53.py"
+      },
+      "大模型组件/移除思考过程||移除思考过程 1": {
+        "cleaned_text": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                },\n                \"classification_rules\": {\n                    \"type\": PropertyType.DYNAMICFORM.value,\n                    \"label\": \"分类规则\",\n                    \"schema\": {\n                        \"rule1\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则1\",\n                            \"label\": \"规则1\"\n                        },\n                        \"rule2\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则2\",\n                            \"label\": \"规则2\"\n                        },\n                        \"rule3\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则3\",\n                            \"label\": \"规则3\"\n                        }\n                    }\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        rules = \"\\n\".join([f\"{key}: {value}\" for key, value in params.params.classification_rules.items()])\n        prompt = f\"请根据以下分类规则对以下问题进行分类：\\n{user_input}\\n\\n分类规则：\\n{rules}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }",
+        "think_text": ""
+      },
+      "大模型组件/大模型输出解析||大模型输出解析 1": {
+        "parsed_json": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                },\n                \"classification_rules\": {\n                    \"type\": PropertyType.DYNAMICFORM.value,\n                    \"label\": \"分类规则\",\n                    \"schema\": {\n                        \"rule1\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则1\",\n                            \"label\": \"规则1\"\n                        },\n                        \"rule2\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则2\",\n                            \"label\": \"规则2\"\n                        },\n                        \"rule3\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则3\",\n                            \"label\": \"规则3\"\n                        }\n                    }\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        rules = \"\\n\".join([f\"{key}: {value}\" for key, value in params.params.classification_rules.items()])\n        prompt = f\"请根据以下分类规则对以下问题进行分类：\\n{user_input}\\n\\n分类规则：\\n{rules}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }",
+        "is_valid": true
+      },
+      "大模型组件/大模型对话||大模型对话 1": {
+        "response": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                },\n                \"classification_rules\": {\n                    \"type\": PropertyType.DYNAMICFORM.value,\n                    \"label\": \"分类规则\",\n                    \"schema\": {\n                        \"rule1\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则1\",\n                            \"label\": \"规则1\"\n                        },\n                        \"rule2\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则2\",\n                            \"label\": \"规则2\"\n                        },\n                        \"rule3\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则3\",\n                            \"label\": \"规则3\"\n                        }\n                    }\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        rules = \"\\n\".join([f\"{key}: {value}\" for key, value in params.params.classification_rules.items()])\n        prompt = f\"请根据以下分类规则对以下问题进行分类：\\n{user_input}\\n\\n分类规则：\\n{rules}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }",
+        "raw_output": {
+          "id": "chatcmpl-68387ef405ef43179a2f83dfa71af935",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "logprobs": null,
+              "message": {
+                "content": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                },\n                \"classification_rules\": {\n                    \"type\": PropertyType.DYNAMICFORM.value,\n                    \"label\": \"分类规则\",\n                    \"schema\": {\n                        \"rule1\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则1\",\n                            \"label\": \"规则1\"\n                        },\n                        \"rule2\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则2\",\n                            \"label\": \"规则2\"\n                        },\n                        \"rule3\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则3\",\n                            \"label\": \"规则3\"\n                        }\n                    }\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        rules = \"\\n\".join([f\"{key}: {value}\" for key, value in params.params.classification_rules.items()])\n        prompt = f\"请根据以下分类规则对以下问题进行分类：\\n{user_input}\\n\\n分类规则：\\n{rules}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }",
+                "refusal": null,
+                "role": "assistant",
+                "annotations": null,
+                "audio": null,
+                "function_call": null,
+                "tool_calls": [],
+                "reasoning_content": null
+              },
+              "stop_reason": null,
+              "token_ids": null
+            }
+          ],
+          "created": 1760577911,
+          "model": "qwen3-30b-a3b",
+          "object": "chat.completion",
+          "service_tier": null,
+          "system_fingerprint": null,
+          "usage": {
+            "completion_tokens": 719,
+            "prompt_tokens": 4029,
+            "total_tokens": 4748,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "kv_transfer_params": null
+        },
+        "history": [
+          {
+            "role": "user",
+            "content": "##  任务\n根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码"
+          },
+          {
+            "role": "assistant",
+            "content": "好的，我会输出完整可运行的python代码"
+          },
+          {
+            "role": "user",
+            "content": "下面是组件输入、输出、属性端口定义代码，在组件中调用这些参数通过  参数类型.参数名 即可，所有参数均使用pydantic做了解析，全局变量使用 self.global_variable.变量名 直接在run里面就可以进行调用，不需要定义到property里：\n## 组件输入输出参数定义代码（不需要在生成代码里包含）\nclass ConnectionType(str, Enum):\n    \"\"\"连接类型\"\"\"\n    SINGLE = \"单输入\"\n    MULTIPLE = \"多输入\"\n\n\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    MULTILINE = \"多行文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    VARIABLE = \"全局变量\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n    connection: ConnectionType = ConnectionType.SINGLE"
+          },
+          {
+            "role": "assistant",
+            "content": "好的，我已经了解了组件节点构成，我不会在生成的代码里包含该代码定义。"
+          },
+          {
+            "role": "user",
+            "content": "以下是组件的样例代码，仅供参考，所有的工具包导入均写在函数内：\nclass Component(BaseComponent):\n    name = \"构建多轮对话\"\n    category = \"大模型组件\"\n    description = \"用于构建符合大模型输入格式的多轮对话消息列表，支持追加新消息。\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的对话列表。\"\n\n    inputs = [\n        PortDefinition(name=\"history\", label=\"输入1\", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.JSON),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"新增消息\",\n            schema={\n                \"role\": {\n                    \"type\": PropertyType.CHOICE.value,\n                    \"default\": \"user\",\n                    \"label\": \"角色\",\n                    \"choices\": [\"system\", \"user\", \"assistant\"]\n                },\n                \"content\": {\n                    \"type\": PropertyType.LONGTEXT.value,\n                    \"default\": \"\",\n                    \"label\": \"内容\",\n                },\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 获取历史对话（如果有的话）\n        history = inputs.get(\"history\") if inputs else None\n        if history is None:\n            history = []\n        # 组件内直接使用全局变量\n        model_name = self.global_variable.model_name\n\n        # 验证 history 是否为 list\n        if not isinstance(history, list):\n            history = []\n        self.logger.info(params.prop1)\n\n        # 获取用户配置的新消息\n        messages = history + [\n            {\n                \"role\": message.role,\n                \"content\": message.content\n            } for message in params.prop1\n        ]\n\n        # 返回符合大模型输入格式的对话列表\n        return {\n            \"output1\": messages  # 注意：必须与 outputs 中的 name 一致\n        }\n"
+          },
+          {
+            "role": "assistant",
+            "content": "好的，我已经了解了组件代码结构。"
+          },
+          {
+            "role": "user",
+            "content": "## 组件开发需求\n我的需求是开发一个大模型智能问题分类组件,根据全局变量中的model_name、url使用open_ai的工具包调用本地大模型\n\n## 组件输入参数\n输入是用户的问题文本\n\n## 组件属性参数\n{{params}}\n\n## 组件输出参数\n输出是问题分类结果\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，但是组件定义的输入输出参数必须要在当前参数定义范围之内，不能输出新的参数类型。同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码"
+          },
+          {
+            "role": "assistant",
+            "content": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"model\": {\n                    \"type\": PropertyType.TEXT.value,\n                    \"default\": \"chatglm3\",\n                    \"label\": \"模型名称\"\n                },\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        prompt = f\"请对以下问题进行分类：\\n{user_input}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }"
+          },
+          {
+            "role": "user",
+            "content": "有全局变量了就不需要在property上配置模型名称了呀，只需要用range类型控制下温度，还有你问题分类的配置呢，用动态表单动态创建问题分类，继续优化"
+          },
+          {
+            "role": "assistant",
+            "content": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        prompt = f\"请对以下问题进行分类：\\n{user_input}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }"
+          },
+          {
+            "role": "user",
+            "content": "有全局变量了就不需要在property上配置模型名称了呀，只需要用range类型控制下温度，还有你问题分类的配置呢，用动态表单动态创建问题分类，继续优化"
+          },
+          {
+            "role": "assistant",
+            "content": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                },\n                \"classification_rules\": {\n                    \"type\": PropertyType.DYNAMICFORM.value,\n                    \"label\": \"分类规则\",\n                    \"schema\": {\n                        \"rule1\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则1\",\n                            \"label\": \"规则1\"\n                        },\n                        \"rule2\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则2\",\n                            \"label\": \"规则2\"\n                        },\n                        \"rule3\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则3\",\n                            \"label\": \"规则3\"\n                        }\n                    }\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        prompt = f\"请根据以下分类规则对以下问题进行分类：\\n{user_input}\\n\\n分类规则：\\n{params.params.classification_rules.rule1}\\n{params.params.classification_rules.rule2}\\n{params.params.classification_rules.rule3}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }"
+          },
+          {
+            "role": "user",
+            "content": "有全局变量了就不需要在property上配置模型名称了呀，只需要用range类型控制下温度，还有你问题分类的配置呢，用动态表单动态创建问题分类，继续优化"
+          },
+          {
+            "role": "assistant",
+            "content": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                },\n                \"classification_rules\": {\n                    \"type\": PropertyType.DYNAMICFORM.value,\n                    \"label\": \"分类规则\",\n                    \"schema\": {\n                        \"rule1\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则1\",\n                            \"label\": \"规则1\"\n                        },\n                        \"rule2\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则2\",\n                            \"label\": \"规则2\"\n                        },\n                        \"rule3\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则3\",\n                            \"label\": \"规则3\"\n                        }\n                    }\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        rules = \"\\n\".join([f\"{key}: {value}\" for key, value in params.params.classification_rules.items()])\n        prompt = f\"请根据以下分类规则对以下问题进行分类：\\n{user_input}\\n\\n分类规则：\\n{rules}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }"
+          },
+          {
+            "role": "user",
+            "content": "有全局变量了就不需要在property上配置模型名称了呀，只需要用range类型控制下温度，还有你问题分类的配置呢，用动态表单动态创建问题分类，继续优化"
+          },
+          {
+            "role": "assistant",
+            "content": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                },\n                \"classification_rules\": {\n                    \"type\": PropertyType.DYNAMICFORM.value,\n                    \"label\": \"分类规则\",\n                    \"schema\": {\n                        \"rule1\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则1\",\n                            \"label\": \"规则1\"\n                        },\n                        \"rule2\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则2\",\n                            \"label\": \"规则2\"\n                        },\n                        \"rule3\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则3\",\n                            \"label\": \"规则3\"\n                        }\n                    }\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        rules = \"\\n\".join([f\"{key}: {value}\" for key, value in params.params.classification_rules.items()])\n        prompt = f\"请根据以下分类规则对以下问题进行分类：\\n{user_input}\\n\\n分类规则：\\n{rules}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }"
+          }
+        ]
+      },
+      "数据集成/长文本输入||长文本输入": {
+        "output": "有全局变量了就不需要在property上配置模型名称了呀，只需要用range类型控制下温度，还有你问题分类的配置呢，用动态表单动态创建问题分类，继续优化"
+      },
+      "控制流/输入端口||输入端口 1": {
+        "output": [
+          {
+            "role": "user",
+            "content": "##  任务\n根据我的组件输入、输出、节点参数定义以及我的样例代码、需求等信息自动生成完整的python组件代码"
+          },
+          {
+            "role": "assistant",
+            "content": "好的，我会输出完整可运行的python代码"
+          },
+          {
+            "role": "user",
+            "content": "下面是组件输入、输出、属性端口定义代码，在组件中调用这些参数通过  参数类型.参数名 即可，所有参数均使用pydantic做了解析，全局变量使用 self.global_variable.变量名 直接在run里面就可以进行调用，不需要定义到property里：\n## 组件输入输出参数定义代码（不需要在生成代码里包含）\nclass ConnectionType(str, Enum):\n    \"\"\"连接类型\"\"\"\n    SINGLE = \"单输入\"\n    MULTIPLE = \"多输入\"\n\n\nclass PropertyType(str, Enum):\n    \"\"\"属性类型\"\"\"\n    TEXT = \"文本\"\n    MULTILINE = \"多行文本\"\n    LONGTEXT = \"长文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    RANGE = \"范围\"\n    BOOL = \"复选框\"\n    CHOICE = \"下拉框\"\n    VARIABLE = \"全局变量\"\n    DYNAMICFORM = \"动态表单\"\n\n\nclass PropertyDefinition(BaseModel):\n    \"\"\"属性定义\"\"\"\n    type: PropertyType = PropertyType.TEXT\n    default: Any = \"\"\n    label: str = \"\"\n    choices: List[str] = Field(default_factory=list)\n    filter: str = \"All Files (*)\"  # 用于文件类型过滤\n    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义\n    min: float = Field(default=0.0, description=\"最小值\")\n    max: float = Field(default=100.0, description=\"最大值\")\n    step: float = Field(default=1.0, description=\"步长\")\n\n    class Config:\n        # 允许递归引用\n        arbitrary_types_allowed = True\n\n\nclass ArgumentType(str, Enum):\n    \"\"\"参数类型\"\"\"\n    TEXT = \"文本\"\n    INT = \"整数\"\n    FLOAT = \"浮点数\"\n    BOOL = \"布尔值\"\n    ARRAY = \"列表\"\n    CSV = \"csv\"\n    JSON = \"json\"\n    EXCEL = \"excel\"\n    FILE = \"文件\"\n    UPLOAD = \"上传\"\n    SKLEARNMODEL = \"sklearn模型\"\n    TORCHMODEL = \"torch模型\"\n    IMAGE = \"图片\"\n\n\nclass PortDefinition(BaseModel):\n    \"\"\"端口定义\"\"\"\n    name: str\n    label: str\n    type: ArgumentType = ArgumentType.TEXT\n    connection: ConnectionType = ConnectionType.SINGLE"
+          },
+          {
+            "role": "assistant",
+            "content": "好的，我已经了解了组件节点构成，我不会在生成的代码里包含该代码定义。"
+          },
+          {
+            "role": "user",
+            "content": "以下是组件的样例代码，仅供参考，所有的工具包导入均写在函数内：\nclass Component(BaseComponent):\n    name = \"构建多轮对话\"\n    category = \"大模型组件\"\n    description = \"用于构建符合大模型输入格式的多轮对话消息列表，支持追加新消息。\"\n    requirements = \"无特殊依赖，输出为标准 JSON 格式的对话列表。\"\n\n    inputs = [\n        PortDefinition(name=\"history\", label=\"输入1\", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.JSON),\n    ]\n\n    properties = {\n        \"prop1\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"新增消息\",\n            schema={\n                \"role\": {\n                    \"type\": PropertyType.CHOICE.value,\n                    \"default\": \"user\",\n                    \"label\": \"角色\",\n                    \"choices\": [\"system\", \"user\", \"assistant\"]\n                },\n                \"content\": {\n                    \"type\": PropertyType.LONGTEXT.value,\n                    \"default\": \"\",\n                    \"label\": \"内容\",\n                },\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 获取历史对话（如果有的话）\n        history = inputs.get(\"history\") if inputs else None\n        if history is None:\n            history = []\n        # 组件内直接使用全局变量\n        model_name = self.global_variable.model_name\n\n        # 验证 history 是否为 list\n        if not isinstance(history, list):\n            history = []\n        self.logger.info(params.prop1)\n\n        # 获取用户配置的新消息\n        messages = history + [\n            {\n                \"role\": message.role,\n                \"content\": message.content\n            } for message in params.prop1\n        ]\n\n        # 返回符合大模型输入格式的对话列表\n        return {\n            \"output1\": messages  # 注意：必须与 outputs 中的 name 一致\n        }\n"
+          },
+          {
+            "role": "assistant",
+            "content": "好的，我已经了解了组件代码结构。"
+          },
+          {
+            "role": "user",
+            "content": "## 组件开发需求\n我的需求是开发一个大模型智能问题分类组件,根据全局变量中的model_name、url使用open_ai的工具包调用本地大模型\n\n## 组件输入参数\n输入是用户的问题文本\n\n## 组件属性参数\n{{params}}\n\n## 组件输出参数\n输出是问题分类结果\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，但是组件定义的输入输出参数必须要在当前参数定义范围之内，不能输出新的参数类型。同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码"
+          },
+          {
+            "role": "assistant",
+            "content": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"model\": {\n                    \"type\": PropertyType.TEXT.value,\n                    \"default\": \"chatglm3\",\n                    \"label\": \"模型名称\"\n                },\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        prompt = f\"请对以下问题进行分类：\\n{user_input}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }"
+          },
+          {
+            "role": "user",
+            "content": "有全局变量了就不需要在property上配置模型名称了呀，只需要用range类型控制下温度，还有你问题分类的配置呢，用动态表单动态创建问题分类，继续优化"
+          },
+          {
+            "role": "assistant",
+            "content": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        prompt = f\"请对以下问题进行分类：\\n{user_input}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }"
+          },
+          {
+            "role": "user",
+            "content": "有全局变量了就不需要在property上配置模型名称了呀，只需要用range类型控制下温度，还有你问题分类的配置呢，用动态表单动态创建问题分类，继续优化"
+          },
+          {
+            "role": "assistant",
+            "content": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                },\n                \"classification_rules\": {\n                    \"type\": PropertyType.DYNAMICFORM.value,\n                    \"label\": \"分类规则\",\n                    \"schema\": {\n                        \"rule1\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则1\",\n                            \"label\": \"规则1\"\n                        },\n                        \"rule2\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则2\",\n                            \"label\": \"规则2\"\n                        },\n                        \"rule3\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则3\",\n                            \"label\": \"规则3\"\n                        }\n                    }\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        prompt = f\"请根据以下分类规则对以下问题进行分类：\\n{user_input}\\n\\n分类规则：\\n{params.params.classification_rules.rule1}\\n{params.params.classification_rules.rule2}\\n{params.params.classification_rules.rule3}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }"
+          },
+          {
+            "role": "user",
+            "content": "有全局变量了就不需要在property上配置模型名称了呀，只需要用range类型控制下温度，还有你问题分类的配置呢，用动态表单动态创建问题分类，继续优化"
+          },
+          {
+            "role": "assistant",
+            "content": "class Component(BaseComponent):\n    name = \"大模型智能问题分类\"\n    category = \"大模型组件\"\n    description = \"根据全局变量中的model_name和url使用open_ai工具包调用本地大模型进行问题分类\"\n    requirements = \"需要open_ai工具包和本地大模型服务\"\n\n    inputs = [\n        PortDefinition(name=\"input1\", label=\"输入1\", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出1\", type=ArgumentType.TEXT),\n    ]\n\n    properties = {\n        \"params\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"分类参数\",\n            schema={\n                \"temperature\": {\n                    \"type\": PropertyType.RANGE.value,\n                    \"default\": 0.7,\n                    \"label\": \"温度\",\n                    \"min\": 0.0,\n                    \"max\": 1.0,\n                    \"step\": 0.1\n                },\n                \"max_tokens\": {\n                    \"type\": PropertyType.INT.value,\n                    \"default\": 512,\n                    \"label\": \"最大生成长度\",\n                    \"min\": 1,\n                    \"max\": 2048\n                },\n                \"classification_rules\": {\n                    \"type\": PropertyType.DYNAMICFORM.value,\n                    \"label\": \"分类规则\",\n                    \"schema\": {\n                        \"rule1\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则1\",\n                            \"label\": \"规则1\"\n                        },\n                        \"rule2\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则2\",\n                            \"label\": \"规则2\"\n                        },\n                        \"rule3\": {\n                            \"type\": PropertyType.TEXT.value,\n                            \"default\": \"规则3\",\n                            \"label\": \"规则3\"\n                        }\n                    }\n                }\n            }\n        ),\n    }\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入open_ai工具包\n        import openai\n        \n        # 获取用户输入的问题文本\n        user_input = inputs.get(\"input1\") if inputs else \"\"\n        \n        # 获取全局变量中的model_name和url\n        model_name = self.global_variable.model_name\n        api_url = self.global_variable.url\n        \n        # 配置open_ai的API密钥和URL\n        openai.api_key = \"YOUR_API_KEY\"\n        openai.api_base = api_url\n        \n        # 构建提示词\n        rules = \"\\n\".join([f\"{key}: {value}\" for key, value in params.params.classification_rules.items()])\n        prompt = f\"请根据以下分类规则对以下问题进行分类：\\n{user_input}\\n\\n分类规则：\\n{rules}\"\n        \n        # 调用大模型进行分类\n        response = openai.ChatCompletion.create(\n            model=model_name,\n            messages=[{\"role\": \"user\", \"content\": prompt}],\n            temperature=params.params.temperature,\n            max_tokens=params.params.max_tokens\n        )\n        \n        # 获取分类结果\n        classification_result = response.choices[0].message.content\n        \n        # 返回分类结果\n        return {\n            \"output1\": classification_result\n        }"
+          }
+        ]
+      },
+      "控制流/输出端口||输出端口 1": {},
+      "数据集成/文本输入||文本输入 4": {
+        "text": ""
+      }
     },
     "column_select": {
       "大模型组件/大模型对话||大模型对话": {},
@@ -2598,7 +3620,18 @@
       "测试组件/逻辑判断||逻辑判断 2": {},
       "测试组件/逻辑判断||逻辑判断 3": {},
       "测试组件/逻辑判断||逻辑判断 4": {},
-      "unknown||条件分支": {}
+      "控制流/条件分支||条件分支": {},
+      "大模型组件/JSON文本包装||JSON文本包装 2": {},
+      "数据集成/长文本输入||组件输出 1": {},
+      "测试组件/添加字符串||添加字符串 1": {},
+      "数据存储/组件保存||组件保存 1": {},
+      "大模型组件/移除思考过程||移除思考过程 1": {},
+      "大模型组件/大模型输出解析||大模型输出解析 1": {},
+      "大模型组件/大模型对话||大模型对话 1": {},
+      "数据集成/长文本输入||长文本输入": {},
+      "控制流/输入端口||输入端口 1": {},
+      "控制流/输出端口||输出端口 1": {},
+      "数据集成/文本输入||文本输入 4": {}
     }
   },
   "global_variable": {
@@ -2634,6 +3667,12 @@
       },
       "fets": {
         "value": "rfew",
+        "description": null,
+        "scope": "global",
+        "read_only": false
+      },
+      "test": {
+        "value": 1,
         "description": null,
         "scope": "global",
         "read_only": false

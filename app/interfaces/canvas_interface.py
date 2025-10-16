@@ -189,10 +189,8 @@ class CanvasPage(QWidget):
         if event.modifiers() == QtCore.Qt.ControlModifier:
             if event.key() == QtCore.Qt.Key_C:
                 self._copy_selected_nodes()
-                return
             elif event.key() == QtCore.Qt.Key_V:
                 self._paste_nodes()
-                return
 
         if event.modifiers() == (QtCore.Qt.AltModifier | QtCore.Qt.ShiftModifier):
             self.canvas_widget.ALT_state = True

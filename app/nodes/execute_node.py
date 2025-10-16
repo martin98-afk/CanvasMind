@@ -20,6 +20,7 @@ from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import draw_square_port
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
+from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 from app.widgets.node_widget.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.node_widget.range_widget import RangeWidgetWrapper
@@ -72,19 +73,6 @@ def _install_requirements(python_executable, requirements_str):
             logger.error(f"❌ 安装 {pkg} 失败: {e.stderr}")
         except Exception as e:
             logger.error(f"❌ 安装 {pkg} 异常: {e}")
-
-
-class CustomNodeItem(NodeItem):
-    def mousePressEvent(self, event):
-        # 如果是右键，先选中自己（关键！）
-        if event.button() == QtCore.Qt.RightButton:
-            # 清除其他选择，只选中当前节点
-            scene = self.scene()
-            if scene:
-                scene.clearSelection()
-                self.setSelected(True)
-        # 其他逻辑交给父类（包括左键、菜单弹出等）
-        super().mousePressEvent(event)
 
 
 def create_node_class(component_class, full_path, file_path, parent_window=None):
