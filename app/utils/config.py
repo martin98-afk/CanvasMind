@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from qfluentwidgets import ConfigSerializer, ConfigItem, QConfig, OptionsValidator, BoolValidator, FolderListValidator, \
-    RangeValidator, OptionsConfigItem
+    RangeValidator, OptionsConfigItem, ConfigValidator
 from enum import Enum
 
 from app.utils.utils import resource_path
@@ -12,6 +12,24 @@ class PatchPlatform(Enum):
     GITHUB = "github"
     GITEE = "gitee"
     GITCODE = "gitcode"
+
+
+class ListDictValidator(ConfigValidator):
+
+    def correct(self, value):
+        if isinstance(value, list):
+            return value
+        return []
+
+
+class QuickComponentsSerializer(ConfigSerializer):
+    def serialize(self, value):
+        return value  # list[dict] 是 JSON-safe
+
+    def deserialize(self, value):
+        if isinstance(value, list):
+            return value
+        return []
 
 
 class Settings(QConfig):
@@ -24,7 +42,24 @@ class Settings(QConfig):
 
     @classmethod
     def get_instance(cls):
-        return cls()
+        """获取配置实例（单例模式）"""
+        if cls._instance is None:
+            cls._instance = cls()
+            CONFIG_FILE = str(Path.cwd() / "app.config")
+            try:
+                cls._instance.load(CONFIG_FILE)
+            except:
+                # 首次运行，保存默认配置
+                cls._instance.save(CONFIG_FILE)
+                print(f"✅ 已创建默认配置文件: {CONFIG_FILE}")
+        return cls._instance
+
+    @classmethod
+    def save_config(cls):
+        """保存配置"""
+        if cls._instance:
+            CONFIG_FILE = str(Path.cwd() / "app.config")
+            cls._instance.save(CONFIG_FILE)
 
     # 通用设置
     auto_check_update = ConfigItem("General", "AutoCheckUpdate", True, BoolValidator())
@@ -67,3 +102,10 @@ class Settings(QConfig):
                                           OptionsValidator(["水平", "垂直"]))
     canvas_default_zoom = OptionsConfigItem("Canvas", "DefaultZoom", "100%",
                                      OptionsValidator(["50%", "75%", "100%", "125%", "150%"]))
+    # 快捷组件
+    quick_components = ConfigItem(
+        "Canvas",
+        "QuickComponents",
+        [],  # 默认值
+        serializer=QuickComponentsSerializer()
+    )
