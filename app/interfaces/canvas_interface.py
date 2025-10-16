@@ -11,23 +11,24 @@ from NodeGraphQt.constants import PipeLayoutEnum
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
-from PyQt5.QtGui import QImage, QPainter, QIcon
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QScrollArea
+from PyQt5.QtGui import QImage, QPainter
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QMenu
 from loguru import logger
 from qfluentwidgets import (
     ToolButton, InfoBar,
-    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, ScrollArea
+    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action
 )
 
 from app.components.base import PropertyType, GlobalVariableContext
-from app.nodes.branch_node import create_branch_node
 from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
+from app.nodes.branch_node import create_branch_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
 from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导入
 from app.utils.config import Settings
+from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
@@ -35,7 +36,6 @@ from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialo
 from app.widgets.dialog_widget.output_selection_dialog import OutputSelectionDialog
 from app.widgets.minimap_widget import MinimapWidget
 from app.widgets.property_panel import PropertyPanel
-from app.utils.quick_component_manager import QuickComponentManager
 from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 
 
@@ -429,7 +429,7 @@ class CanvasPage(QWidget):
         self.node_layout.setContentsMargins(0, 0, 0, 0)
 
         # === 固定控制流按钮 ===
-        self.iterate_node = ToolButton(FluentIcon.SYNC, self)
+        self.iterate_node = ToolButton(get_icon("Sync"), self)
         self.iterate_node.setToolTip("创建迭代")
         self.iterate_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowIterateNode"))
         self.node_layout.addWidget(self.iterate_node)
@@ -517,10 +517,11 @@ class CanvasPage(QWidget):
         QtCore.QTimer.singleShot(0, self._update_nodes_container_position)
 
     def _show_quick_button_menu(self, button, full_path, pos):
-        menu = RoundMenu()
-        menu.addAction(
-            Action(text="从快捷栏移除"), trigggered=lambda: self.quick_manager.remove_component(full_path)
-        )
+        menu = QMenu(self)
+        remove_action = menu.addAction("从快捷栏移除")
+        action = menu.exec_(button.mapToGlobal(pos))
+        if action == remove_action:
+            self.quick_manager.remove_component(full_path)
 
     def create_next_node(self, key, icon_path=None):
         """按钮节点通用创建方法"""
