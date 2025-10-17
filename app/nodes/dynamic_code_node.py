@@ -109,6 +109,11 @@ def create_dynamic_code_node(parent_window=None):
                     "type": PropertyType.TEXT.value,
                     "default": "",
                     "label": "输入端口名称",
+                },"type": {
+                    "type": PropertyType.CHOICE.value,
+                    "default": PropertyType.TEXT.value,
+                    "label": "输入端口类型",
+                    "choices": [item.value for item in ArgumentType]
                 },
                 "var": {
                     "type": PropertyType.VARIABLE.value,
@@ -139,7 +144,12 @@ def create_dynamic_code_node(parent_window=None):
                     "type": PropertyType.TEXT.value,
                     "default": "",
                     "label": "输出端口名称",
-                }
+                }, "type": {
+                    "type": PropertyType.CHOICE.value,
+                    "default": PropertyType.TEXT.value,
+                    "label": "输入端口类型",
+                    "choices": [item.value for item in ArgumentType]
+                },
             }
             processed_schema = {}
             for field_name, field_def in output_schema.items():
@@ -300,19 +310,19 @@ def create_dynamic_code_node(parent_window=None):
             # === 1. 收集参数 ===
             user_code = self.get_property("code") or ""
             requirements = self.get_property("requirements") or ""
-
+            type_dict = {item.value: item.name for item in ArgumentType}
             # 输入端口（全部视为 TEXT + SINGLE）
             input_defs = []
-            for port in self.input_ports():
+            for port, port_def in zip(self.input_ports(), self.get_property("input_ports")):
                 name = port.name()
                 input_defs.append(
-                    f'        PortDefinition(name="{name}", label="{name}", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),')
+                    f'        PortDefinition(name="{name}", label="{name}", type=ArgumentType.{type_dict[port_def["type"]]}, connection=ConnectionType.SINGLE),')
 
             # 输出端口
             output_defs = []
-            for port in self.output_ports():
+            for port, port_def in zip(self.output_ports(), self.get_property("output_ports")):
                 name = port.name()
-                output_defs.append(f'        PortDefinition(name="{name}", label="{name}", type=ArgumentType.TEXT),')
+                output_defs.append(f'        PortDefinition(name="{name}", label="{name}", type=ArgumentType.{type_dict[port_def["type"]]}),')
 
             # === 3. 拼接临时组件代码 ===
             from app.components.base import COMPONENT_IMPORT_CODE
