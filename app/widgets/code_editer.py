@@ -10,7 +10,7 @@ import re
 import subprocess
 import sys
 import tempfile
-from qfluentwidgets import PlainTextEdit
+from qfluentwidgets import PlainTextEdit, TextEdit
 
 try:
     import jedi  # type: ignore
@@ -87,7 +87,7 @@ class CodeBlockData(QTextBlockUserData):
 
 
 # ---------------- 代码编辑器 ----------------
-class CodeEditor(QPlainTextEdit):
+class CodeEditor(PlainTextEdit):
     """带行号、当前行高亮、括号匹配、代码折叠的代码编辑器"""
 
     def __init__(self, parent=None):
