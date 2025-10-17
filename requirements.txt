@@ -1,6 +1,5 @@
 NodeGraphQt~=0.6.42
 PyQt5~=5.15.11
-qfluentwidgets~=1.7.3
 loguru~=0.7.3
 numpy~=2.2.5
 requests~=2.32.4
@@ -8,6 +7,7 @@ pandas~=2.2.3
 pydantic~=2.11.9
 psutil~=7.1.0
 pillow~=11.2.1
+PyQt-Fluent-Widgets
 Jinja2~=3.1.6
 colorama~=0.4.6
 packaging~=25.0
@@ -15,4 +15,6 @@ PyYAML~=6.0.2
 openpyxl~=3.1.5
 tenacity~=9.1.2
 asteval
+QScintilla
+aiohttp
 # Optional extras are split to requirements-ml.txt and requirements-server.txt

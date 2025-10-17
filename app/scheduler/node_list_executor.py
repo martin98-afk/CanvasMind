@@ -76,7 +76,10 @@ class NodeListExecutor(QRunnable):
                         )
                     elif isinstance(node, ControlFlowBackdrop):
                         if self.scheduler:
-                            self.scheduler._execute_backdrop_sync(node)
+                            self.scheduler._execute_backdrop_sync(
+                                node,
+                                check_cancel=self._check_cancel
+                            )
                     else:
                         pass
 

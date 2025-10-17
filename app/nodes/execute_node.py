@@ -24,7 +24,7 @@ from app.widgets.node_widget.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.node_widget.range_widget import RangeWidgetWrapper
 from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 from app.widgets.node_widget.variable_combo_widget import GlobalVarComboBoxWidgetWrapper
-from app.widgets.tree_widget.component_log_message_box import LogMessageBox
+from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
 
 
 def _is_import_error(proc_or_result, error_file_path):
@@ -84,7 +84,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
-            self._view.set_proxy_mode(True)
             self.component_class = component_class
             if hasattr(component_class, "icon"):
                 self.set_icon(component_class.icon)
@@ -258,7 +257,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
         def on_run_complete(self, output):
             self._output_values = output
 
-        def execute_sync(self, comp_obj, python_executable=None, check_cancel=None):
+        def execute_sync(self, comp_obj, python_executable=None, check_cancel=None, max_retries=1, retry_delay=1):
             """
             在独立Python环境中执行组件
             :param check_cancel: 可选回调函数，返回 True 表示应取消执行
@@ -372,7 +371,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 with open(temp_script_path, 'w', encoding='utf-8') as f:
                     f.write(script_content)
 
-                max_retries = 1
                 retry_count = 0
 
                 while retry_count <= max_retries:

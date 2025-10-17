@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1a659f6aa40": {
+      "0x1eef762cb20": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -39,14 +39,48 @@
         "width": 160,
         "height": 60,
         "pos": [
-          -1576.7350246352803,
-          127.04874647497736
+          -1572.306912160293,
+          127.04874647497738
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
-        "subgraph_session": {}
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:2000",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          }
+        }
       },
-      "0x1a659f68ac0": {
+      "0x1eef76624a0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传 1",
@@ -79,9 +113,43 @@
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
-        "subgraph_session": {}
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:2000",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          }
+        }
       },
-      "0x1a658dddcf0": {
+      "0x1eef76625f0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传 2",
@@ -114,9 +182,43 @@
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
-        "subgraph_session": {}
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:2000",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          }
+        }
       },
-      "0x1a659eb7fd0": {
+      "0x1eee309b0d0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传 3",
@@ -149,9 +251,43 @@
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
-        "subgraph_session": {}
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:2000",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          }
+        }
       },
-      "0x1a659e91a50": {
+      "0x1ee854fbdc0": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -179,14 +315,48 @@
         "width": 153.0,
         "height": 60,
         "pos": [
-          -721.6240860972177,
+          -723.7276804689382,
           317.28972474419174
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
-        "subgraph_session": {}
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:2000",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          }
+        }
       },
-      "0x1a659e915a0": {
+      "0x1ee854fa0b0": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -214,14 +384,48 @@
         "width": 153.0,
         "height": 60,
         "pos": [
-          2941.1678684291005,
+          2939.06427405738,
           125.50453759483833
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
-        "subgraph_session": {}
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:2000",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          }
+        }
       },
-      "0x1a656c2f190": {
+      "0x1ee854fbb80": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_文档内容提取",
         "icon": null,
         "name": "文档内容提取",
@@ -246,21 +450,53 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 361.0,
-        "height": 113.15,
+        "width": 160,
+        "height": 72.2,
         "pos": [
-          -405.1612423808542,
+          -407.26483675257487,
           289.9900488751458
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:2000",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
           "extract_images": false,
           "page_range": ""
         }
       },
-      "0x1a656c09960": {
+      "0x1ee8552b520": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装",
@@ -285,20 +521,52 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 337.0,
-        "height": 84.80000000000001,
+        "width": 160,
+        "height": 60,
         "pos": [
-          222.36605621364606,
+          220.26246184192541,
           292.36789946149804
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:2000",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
           "prop_0": "text"
         }
       },
-      "0x1a659eb70a0": {
+      "0x1ee87872a40": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "提示词模板",
@@ -323,23 +591,55 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 361.0,
-        "height": 84.80000000000001,
+        "width": 507.0,
+        "height": 91.10000000000001,
         "pos": [
-          1200.7454950345864,
+          1198.6419006628662,
           295.52236557648905
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:2000",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
           "template": "总结该文档内容{{text}}"
         }
       },
-      "0x1a658db6230": {
-        "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
+      "0x1ee856d5cc0": {
+        "type_": "control_flow.ControlFlowIterateNode",
         "icon": null,
-        "name": "大模型对话",
+        "name": "迭代控制流区域",
         "color": [
           25,
           70,
@@ -361,72 +661,138 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 373.0,
-        "height": 411.35,
+        "width": 3895.7919545263185,
+        "height": 749.8359825688128,
         "pos": [
-          2114.0137312731267,
-          309.34052016365115
+          -763.7276804689382,
+          85.50453759483833
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
-          "model": "qwen/qwen3-30b-a3b",
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:2000",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
+          "backdrop_text": "",
+          "current_index": 0,
+          "loop_nums": 4,
+          "max_iterations": 1000
+        }
+      },
+      "0x1ee85661450": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
+        "icon": "D:\\work\\WorkFlowGUI\\icons\\logo3.png",
+        "name": "大模型对话",
+        "color": [
+          80,
+          30,
+          30,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 519.0,
+        "height": 480.65000000000003,
+        "pos": [
+          1925.4080445575544,
+          295.18344398096
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:2000",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
+          "model": "$custom.model_name$",
           "api_key": "",
-          "base_url": "http://127.0.0.1:1234/v1",
+          "base_url": "$custom.url$",
           "system_prompt": "你是一个乐于助人的AI助手。",
-          "temperature": 0.7,
+          "temperature": 1.0,
           "max_tokens": "1000",
           "model_params": []
         }
       },
-      "0x1a659ff9b40": {
-        "type_": "control_flow.ControlFlowLoopNode",
-        "icon": null,
-        "name": "循环控制流区域",
-        "color": [
-          5,
-          129,
-          138,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 3923.7919545263185,
-        "height": 703.1859825688128,
-        "pos": [
-          -775.6240860972177,
-          71.50453759483833
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "backdrop_text": "",
-          "iterate_nums": 5
-        }
-      },
-      "0x1a659ec71f0": {
+      "0x1ee856d7cd0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 1",
         "color": [
-          13,
-          18,
-          23,
+          25,
+          70,
+          45,
           255
         ],
         "border_color": [
@@ -444,16 +810,48 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 337.0,
-        "height": 84.80000000000001,
+        "width": 160,
+        "height": 60,
         "pos": [
-          3508.322543164232,
-          132.18169707369162
+          3281.0011858361327,
+          92.42256861510228
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "model_name": {
+                "value": "qwen3-30b-a3b",
+                "description": null,
+                "read_only": false
+              },
+              "url": {
+                "value": "http://168.168.10.110:2000",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {}
+          },
           "prop_0": "text"
         }
       }
@@ -461,101 +859,101 @@
     "connections": [
       {
         "out": [
-          "0x1a659f6aa40",
+          "0x1eef762cb20",
           "file"
         ],
         "in": [
-          "0x1a659ff9b40",
+          "0x1ee856d5cc0",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1a659f68ac0",
+          "0x1eef76624a0",
           "file"
         ],
         "in": [
-          "0x1a659ff9b40",
+          "0x1ee856d5cc0",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1a658dddcf0",
+          "0x1eef76625f0",
           "file"
         ],
         "in": [
-          "0x1a659ff9b40",
+          "0x1ee856d5cc0",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1a659eb7fd0",
+          "0x1eee309b0d0",
           "file"
         ],
         "in": [
-          "0x1a659ff9b40",
+          "0x1ee856d5cc0",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1a659e91a50",
+          "0x1ee854fbdc0",
           "output"
         ],
         "in": [
-          "0x1a656c2f190",
+          "0x1ee854fbb80",
           "file_path"
         ]
       },
       {
         "in": [
-          "0x1a659e915a0",
+          "0x1ee854fa0b0",
           "input"
         ],
         "out": [
-          "0x1a658db6230",
+          "0x1ee85661450",
           "response"
         ]
       },
       {
         "out": [
-          "0x1a656c2f190",
+          "0x1ee854fbb80",
           "text"
         ],
         "in": [
-          "0x1a656c09960",
+          "0x1ee8552b520",
           "input1"
         ]
       },
       {
         "out": [
-          "0x1a656c09960",
+          "0x1ee8552b520",
           "output1"
         ],
         "in": [
-          "0x1a659eb70a0",
+          "0x1ee87872a40",
           "variables"
         ]
       },
       {
         "out": [
-          "0x1a659eb70a0",
+          "0x1ee87872a40",
           "prompt"
         ],
         "in": [
-          "0x1a658db6230",
+          "0x1ee85661450",
           "user_input"
         ]
       },
       {
         "out": [
-          "0x1a659ff9b40",
+          "0x1ee856d5cc0",
           "outputs"
         ],
         "in": [
-          "0x1a659ec71f0",
+          "0x1ee856d7cd0",
           "input1"
         ]
       }
@@ -565,30 +963,30 @@
     "environment": "3.11",
     "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.11\\python.exe",
     "node_id2stable_key": {
-      "0x1a659f6aa40": "数据集成/文档上传||文档上传",
-      "0x1a659f68ac0": "数据集成/文档上传||文档上传 1",
-      "0x1a658dddcf0": "数据集成/文档上传||文档上传 2",
-      "0x1a659eb7fd0": "数据集成/文档上传||文档上传 3",
-      "0x1a659e91a50": "控制流/输入端口||输入端口",
-      "0x1a659e915a0": "控制流/输出端口||输出端口",
-      "0x1a656c2f190": "大模型组件/文档内容提取||文档内容提取",
-      "0x1a656c09960": "大模型组件/JSON文本包装||JSON文本包装",
-      "0x1a659eb70a0": "大模型组件/提示词模板||提示词模板",
-      "0x1a658db6230": "大模型组件/大模型对话||大模型对话",
-      "0x1a659ec71f0": "大模型组件/JSON文本包装||JSON文本包装 1"
+      "0x1eef762cb20": "数据集成/文档上传||文档上传",
+      "0x1eef76624a0": "数据集成/文档上传||文档上传 1",
+      "0x1eef76625f0": "数据集成/文档上传||文档上传 2",
+      "0x1eee309b0d0": "数据集成/文档上传||文档上传 3",
+      "0x1ee854fbdc0": "控制流/输入端口||输入端口",
+      "0x1ee854fa0b0": "控制流/输出端口||输出端口",
+      "0x1ee854fbb80": "大模型组件/文档内容提取||文档内容提取",
+      "0x1ee8552b520": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x1ee87872a40": "大模型组件/提示词模板||提示词模板",
+      "0x1ee85661450": "大模型组件/大模型对话||大模型对话",
+      "0x1ee856d7cd0": "大模型组件/JSON文本包装||JSON文本包装 1"
     },
     "node_states": {
       "数据集成/文档上传||文档上传": "success",
       "数据集成/文档上传||文档上传 1": "success",
       "数据集成/文档上传||文档上传 2": "success",
       "数据集成/文档上传||文档上传 3": "success",
-      "控制流/输入端口||输入端口": "unrun",
-      "控制流/输出端口||输出端口": "unrun",
+      "控制流/输入端口||输入端口": "pending",
+      "控制流/输出端口||输出端口": "pending",
       "大模型组件/文档内容提取||文档内容提取": "success",
       "大模型组件/JSON文本包装||JSON文本包装": "success",
       "大模型组件/提示词模板||提示词模板": "success",
-      "大模型组件/大模型对话||大模型对话": "success",
-      "大模型组件/JSON文本包装||JSON文本包装 1": "unrun"
+      "大模型组件/大模型对话||大模型对话": "failed",
+      "大模型组件/JSON文本包装||JSON文本包装 1": "success"
     },
     "node_inputs": {
       "数据集成/文档上传||文档上传": {},
@@ -605,79 +1003,46 @@
     },
     "node_outputs": {
       "数据集成/文档上传||文档上传": {
-        "file": "D:/work/WorkFlowGUI/【工时评估】主泵监测诊断系统研发工时评估.xlsx"
+        "file": "D:/work/WorkFlowGUI/4号除尘风机能耗优化模型-V1.csv"
       },
       "数据集成/文档上传||文档上传 1": {
-        "file": "D:/work/WorkFlowGUI/README.md"
+        "file": "D:/work/WorkFlowGUI/iris.csv"
       },
       "数据集成/文档上传||文档上传 2": {
-        "file": "D:/work/WorkFlowGUI/requirements.txt"
+        "file": "D:/work/WorkFlowGUI/README.md"
       },
       "数据集成/文档上传||文档上传 3": {
-        "file": "D:/work/专利/一种基于时空图卷积神经网络的工业系统设备故障传播分析方法/基于图结构自学习的时空图自编码网络的工业设备故障预警分析方法.doc"
+        "file": "D:/work/WorkFlowGUI/pre_imports.py"
       },
-      "控制流/输入端口||输入端口": {},
+      "控制流/输入端口||输入端口": {
+        "output": "D:/work/WorkFlowGUI/4号除尘风机能耗优化模型-V1.csv"
+      },
       "控制流/输出端口||输出端口": {},
       "大模型组件/文档内容提取||文档内容提取": {
-        "text": "错误：文档路径无效或文件不存在",
+        "text": {
+          "doc": "timestamp,db101.MS_BF4_CH_CH3_Pipe_P_AI,db101.MS_BF4_CH_CH3_From_DX_AI_0,db101.MS_BF4_CH_CH3_411146Spare_AI,db101.MS_BF4_CD_DUST_DIF_PRESS_IN,db101.MS_BF4_CL1_ChargeOil_P,db101.MS_BF4_CH_CH_1FanOpenScale,db101.MS_BF4_CH_CH3_DedusterV_CLS_DI,db101.MS_BF4_CH_CH3_4RunnerV_CLS_DI,db101.MS_BF4_CH_CH3_3RunnerV_CLS_DI,db101.MS_BF4_CH_CH3_2RunnerV_CLS_DI,db101.MS_BF4_CH_CH3_1RunnerV_CLS_DI,db101.MS_BF4_CH_CH3_4SkimDedustVPower_CLS_DI,db101.MS_BF4_CH_CH3_3SkimDedustVPower_CLS_DI,db101.MS_BF4_CH_CH3_2SkimDedustVPower_CLS_DI,db101.MS_BF4_CH_CH3_1SkimDedustVPower_CLS_DI,db101.MS_BF4_CH_CH3_4SideDedustV2_CLS_DI,db101.MS_BF4_CH_CH3_4SideDedustV1_CLS_DI,db101.MS_BF4_CH_CH3_3SideDedustV2_CLS_DI,db101.MS_BF4_CH_CH3_3SideDedustV1_CLS_DI,db101.MS_BF4_CH_CH3_2SideDedustV2_CLS_DI,db101.MS_BF4_CH_CH3_2SideDedustV1_CLS_DI,db101.MS_BF4_CH_CH3_1SideDedustV2_CLS_DI,db101.MS_BF4_CH_CH3_1SideDedustV1_CLS_DI,db101.MS_BF4_CH_CH3_4TopDedustV_CLS_DI,db101.MS_BF4_CH_CH3_3TopDedustV_CLS_DI,db101.MS_BF4_CH_CH3_2TopDedustV_CLS_DI,db101.MS_BF4_CH_CH3_1TopDedustV_CLS_DI,db101.MS_BF4_CH_CH3_4MainDedustV_CLS_DI,db101.MS_BF4_CH_CH3_3MainDedustV_CLS_DI,db101.MS_BF4_CH_CH3_2MainDedustV_CLS_DI,db101.MS_BF4_CH_CH3_1MainDedustV_CLS_DI\n2023-10-18 14:50:36,2.162132978439331,674.9249877929688,71.6378402709961,2450.468994140625,0.1301250010728836,95.48757934570312,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:50:56,2.172437906265259,675.0819702148438,71.3434066772461,2572.968994140625,0.12956249713897705,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:51:16,2.1817619800567627,674.7091064453125,73.47119903564453,2659.375,0.12937499582767487,95.50328063964844,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:51:36,2.1880440711975098,674.9249877929688,69.88691711425781,2628.125,0.12925000488758087,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:51:56,2.185197114944458,674.6895141601562,69.64745330810547,2584.843994140625,0.12999999523162842,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:52:16,2.190300941467285,674.7680053710938,70.09892272949219,2658.43798828125,0.12943750619888306,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:52:36,2.1930489540100098,675.4943237304688,77.18110656738281,2649.218994140625,0.12962499260902405,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:52:56,2.1910860538482666,674.8660888671875,75.22212219238281,2605.0,0.1289999932050705,95.481689453125,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:53:16,2.193932056427002,674.4539184570312,73.65178680419922,2366.875,0.12987500429153442,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:53:36,2.211009979248047,675.1212768554688,75.0062026977539,2556.875,0.12918749451637268,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:53:56,2.2177820205688477,674.6110229492188,74.73139190673828,2654.06201171875,0.12937499582767487,95.5072021484375,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:54:16,2.2318170070648193,674.78759765625,77.6796875,2670.31201171875,0.12968750298023224,95.5072021484375,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:54:36,2.2361350059509277,674.5128173828125,76.82386016845703,2681.56201171875,0.12956249713897705,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:54:56,2.2433979511260986,674.5521240234375,76.29386901855469,2682.81201171875,0.12912499904632568,95.49935913085938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:55:16,2.245163917541504,674.7091064453125,74.61361694335938,2660.93798828125,0.12956249713897705,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:55:36,2.2470290660858154,674.7091064453125,76.16824340820312,2678.281005859375,0.1303125023841858,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:55:56,2.2521328926086426,674.1790771484375,74.20532989501953,2685.31298828125,0.1290625035762787,95.49935913085938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:56:16,2.2510530948638916,674.9642944335938,74.25244140625,2269.06201171875,0.12981249392032623,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:56:36,2.264596939086914,674.5128173828125,73.77349090576172,2342.343994140625,0.12962499260902405,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:56:56,2.282557964324951,674.7091064453125,77.86419677734375,2338.906005859375,0.12931250035762787,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:57:16,2.288151979446411,674.78759765625,74.90412902832031,2322.5,0.12925000488758087,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:57:36,2.302088975906372,674.3557739257812,74.38984680175781,2361.718994140625,0.12950000166893005,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:57:56,2.30179500579834,674.8073120117188,78.48841094970703,2290.93798828125,0.12974999845027924,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:58:16,2.3086650371551514,674.6502075195312,77.47161865234375,2367.031005859375,0.12943750619888306,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:58:36,2.3126890659332275,674.6895141601562,75.64611053466797,2307.5,0.12918749451637268,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:58:56,2.315829038619995,675.2390747070312,74.60970306396484,2352.968994140625,0.1290625035762787,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:59:16,2.3073890209198,674.532470703125,75.61470794677734,2286.25,0.1301874965429306,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:59:36,2.3048369884490967,674.7091064453125,73.65178680419922,2317.81201171875,0.12962499260902405,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 14:59:56,2.3018929958343506,674.5521240234375,76.61186218261719,2307.18798828125,0.12962499260902405,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 15:00:16,2.3018929958343506,674.630615234375,74.04045104980469,2297.18798828125,0.1301874965429306,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 15:00:36,2.2952189445495605,674.434326171875,71.09214782714844,2321.25,0.12987500429153442,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 15:00:56,2.2997329235076904,674.4735107421875,73.64787292480469,2300.156005859375,0.12981249392032623,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 15:01:16,2.296592950820923,674.7680053710938,74.84916687011719,2268.125,0.12918749451637268,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 15:01:36,2.3037569522857666,674.336181640625,73.01580810546875,2297.031005859375,0.12925000488758087,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 15:01:56,2.3064069747924805,674.7484130859375,73.15321350097656,2282.656005859375,0.12987500429153442,95.49346923828125,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 15:02:16,2.305622100830078,675.219482421875,75.5989990234375,2282.81201171875,0.12962499260902405,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 15:02:36,2.2997329235076904,674.8464965820312,72.09716033935547,2351.25,0.1300625056028366,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\n2023-10-18 1"
+        },
         "metadata": {
-          "error": "File not found"
+          "file_path": "D:/work/WorkFlowGUI/4号除尘风机能耗优化模型-V1.csv",
+          "format": ".csv",
+          "pages": 0,
+          "warning": "不支持的格式，尝试以文本读取"
         }
       },
       "大模型组件/JSON文本包装||JSON文本包装": {
         "output1": {
-          "text": "错误：文档路径无效或文件不存在"
+          "text": "{'doc': 'timestamp,db101.MS_BF4_CH_CH3_Pipe_P_AI,db101.MS_BF4_CH_CH3_From_DX_AI_0,db101.MS_BF4_CH_CH3_411146Spare_AI,db101.MS_BF4_CD_DUST_DIF_PRESS_IN,db101.MS_BF4_CL1_ChargeOil_P,db101.MS_BF4_CH_CH_1FanOpenScale,db101.MS_BF4_CH_CH3_DedusterV_CLS_DI,db101.MS_BF4_CH_CH3_4RunnerV_CLS_DI,db101.MS_BF4_CH_CH3_3RunnerV_CLS_DI,db101.MS_BF4_CH_CH3_2RunnerV_CLS_DI,db101.MS_BF4_CH_CH3_1RunnerV_CLS_DI,db101.MS_BF4_CH_CH3_4SkimDedustVPower_CLS_DI,db101.MS_BF4_CH_CH3_3SkimDedustVPower_CLS_DI,db101.MS_BF4_CH_CH3_2SkimDedustVPower_CLS_DI,db101.MS_BF4_CH_CH3_1SkimDedustVPower_CLS_DI,db101.MS_BF4_CH_CH3_4SideDedustV2_CLS_DI,db101.MS_BF4_CH_CH3_4SideDedustV1_CLS_DI,db101.MS_BF4_CH_CH3_3SideDedustV2_CLS_DI,db101.MS_BF4_CH_CH3_3SideDedustV1_CLS_DI,db101.MS_BF4_CH_CH3_2SideDedustV2_CLS_DI,db101.MS_BF4_CH_CH3_2SideDedustV1_CLS_DI,db101.MS_BF4_CH_CH3_1SideDedustV2_CLS_DI,db101.MS_BF4_CH_CH3_1SideDedustV1_CLS_DI,db101.MS_BF4_CH_CH3_4TopDedustV_CLS_DI,db101.MS_BF4_CH_CH3_3TopDedustV_CLS_DI,db101.MS_BF4_CH_CH3_2TopDedustV_CLS_DI,db101.MS_BF4_CH_CH3_1TopDedustV_CLS_DI,db101.MS_BF4_CH_CH3_4MainDedustV_CLS_DI,db101.MS_BF4_CH_CH3_3MainDedustV_CLS_DI,db101.MS_BF4_CH_CH3_2MainDedustV_CLS_DI,db101.MS_BF4_CH_CH3_1MainDedustV_CLS_DI\\n2023-10-18 14:50:36,2.162132978439331,674.9249877929688,71.6378402709961,2450.468994140625,0.1301250010728836,95.48757934570312,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:50:56,2.172437906265259,675.0819702148438,71.3434066772461,2572.968994140625,0.12956249713897705,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:51:16,2.1817619800567627,674.7091064453125,73.47119903564453,2659.375,0.12937499582767487,95.50328063964844,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:51:36,2.1880440711975098,674.9249877929688,69.88691711425781,2628.125,0.12925000488758087,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:51:56,2.185197114944458,674.6895141601562,69.64745330810547,2584.843994140625,0.12999999523162842,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:52:16,2.190300941467285,674.7680053710938,70.09892272949219,2658.43798828125,0.12943750619888306,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:52:36,2.1930489540100098,675.4943237304688,77.18110656738281,2649.218994140625,0.12962499260902405,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:52:56,2.1910860538482666,674.8660888671875,75.22212219238281,2605.0,0.1289999932050705,95.481689453125,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:53:16,2.193932056427002,674.4539184570312,73.65178680419922,2366.875,0.12987500429153442,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:53:36,2.211009979248047,675.1212768554688,75.0062026977539,2556.875,0.12918749451637268,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:53:56,2.2177820205688477,674.6110229492188,74.73139190673828,2654.06201171875,0.12937499582767487,95.5072021484375,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:54:16,2.2318170070648193,674.78759765625,77.6796875,2670.31201171875,0.12968750298023224,95.5072021484375,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:54:36,2.2361350059509277,674.5128173828125,76.82386016845703,2681.56201171875,0.12956249713897705,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:54:56,2.2433979511260986,674.5521240234375,76.29386901855469,2682.81201171875,0.12912499904632568,95.49935913085938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:55:16,2.245163917541504,674.7091064453125,74.61361694335938,2660.93798828125,0.12956249713897705,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:55:36,2.2470290660858154,674.7091064453125,76.16824340820312,2678.281005859375,0.1303125023841858,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:55:56,2.2521328926086426,674.1790771484375,74.20532989501953,2685.31298828125,0.1290625035762787,95.49935913085938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:56:16,2.2510530948638916,674.9642944335938,74.25244140625,2269.06201171875,0.12981249392032623,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:56:36,2.264596939086914,674.5128173828125,73.77349090576172,2342.343994140625,0.12962499260902405,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:56:56,2.282557964324951,674.7091064453125,77.86419677734375,2338.906005859375,0.12931250035762787,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:57:16,2.288151979446411,674.78759765625,74.90412902832031,2322.5,0.12925000488758087,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:57:36,2.302088975906372,674.3557739257812,74.38984680175781,2361.718994140625,0.12950000166893005,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:57:56,2.30179500579834,674.8073120117188,78.48841094970703,2290.93798828125,0.12974999845027924,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:58:16,2.3086650371551514,674.6502075195312,77.47161865234375,2367.031005859375,0.12943750619888306,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:58:36,2.3126890659332275,674.6895141601562,75.64611053466797,2307.5,0.12918749451637268,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:58:56,2.315829038619995,675.2390747070312,74.60970306396484,2352.968994140625,0.1290625035762787,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:59:16,2.3073890209198,674.532470703125,75.61470794677734,2286.25,0.1301874965429306,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:59:36,2.3048369884490967,674.7091064453125,73.65178680419922,2317.81201171875,0.12962499260902405,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:59:56,2.3018929958343506,674.5521240234375,76.61186218261719,2307.18798828125,0.12962499260902405,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:00:16,2.3018929958343506,674.630615234375,74.04045104980469,2297.18798828125,0.1301874965429306,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:00:36,2.2952189445495605,674.434326171875,71.09214782714844,2321.25,0.12987500429153442,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:00:56,2.2997329235076904,674.4735107421875,73.64787292480469,2300.156005859375,0.12981249392032623,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:01:16,2.296592950820923,674.7680053710938,74.84916687011719,2268.125,0.12918749451637268,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:01:36,2.3037569522857666,674.336181640625,73.01580810546875,2297.031005859375,0.12925000488758087,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:01:56,2.3064069747924805,674.7484130859375,73.15321350097656,2282.656005859375,0.12987500429153442,95.49346923828125,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:02:16,2.305622100830078,675.219482421875,75.5989990234375,2282.81201171875,0.12962499260902405,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:02:36,2.2997329235076904,674.8464965820312,72.09716033935547,2351.25,0.1300625056028366,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 1'}"
         }
       },
       "大模型组件/提示词模板||提示词模板": {
-        "prompt": "总结该文档内容错误：文档路径无效或文件不存在"
+        "prompt": "总结该文档内容{'doc': 'timestamp,db101.MS_BF4_CH_CH3_Pipe_P_AI,db101.MS_BF4_CH_CH3_From_DX_AI_0,db101.MS_BF4_CH_CH3_411146Spare_AI,db101.MS_BF4_CD_DUST_DIF_PRESS_IN,db101.MS_BF4_CL1_ChargeOil_P,db101.MS_BF4_CH_CH_1FanOpenScale,db101.MS_BF4_CH_CH3_DedusterV_CLS_DI,db101.MS_BF4_CH_CH3_4RunnerV_CLS_DI,db101.MS_BF4_CH_CH3_3RunnerV_CLS_DI,db101.MS_BF4_CH_CH3_2RunnerV_CLS_DI,db101.MS_BF4_CH_CH3_1RunnerV_CLS_DI,db101.MS_BF4_CH_CH3_4SkimDedustVPower_CLS_DI,db101.MS_BF4_CH_CH3_3SkimDedustVPower_CLS_DI,db101.MS_BF4_CH_CH3_2SkimDedustVPower_CLS_DI,db101.MS_BF4_CH_CH3_1SkimDedustVPower_CLS_DI,db101.MS_BF4_CH_CH3_4SideDedustV2_CLS_DI,db101.MS_BF4_CH_CH3_4SideDedustV1_CLS_DI,db101.MS_BF4_CH_CH3_3SideDedustV2_CLS_DI,db101.MS_BF4_CH_CH3_3SideDedustV1_CLS_DI,db101.MS_BF4_CH_CH3_2SideDedustV2_CLS_DI,db101.MS_BF4_CH_CH3_2SideDedustV1_CLS_DI,db101.MS_BF4_CH_CH3_1SideDedustV2_CLS_DI,db101.MS_BF4_CH_CH3_1SideDedustV1_CLS_DI,db101.MS_BF4_CH_CH3_4TopDedustV_CLS_DI,db101.MS_BF4_CH_CH3_3TopDedustV_CLS_DI,db101.MS_BF4_CH_CH3_2TopDedustV_CLS_DI,db101.MS_BF4_CH_CH3_1TopDedustV_CLS_DI,db101.MS_BF4_CH_CH3_4MainDedustV_CLS_DI,db101.MS_BF4_CH_CH3_3MainDedustV_CLS_DI,db101.MS_BF4_CH_CH3_2MainDedustV_CLS_DI,db101.MS_BF4_CH_CH3_1MainDedustV_CLS_DI\\n2023-10-18 14:50:36,2.162132978439331,674.9249877929688,71.6378402709961,2450.468994140625,0.1301250010728836,95.48757934570312,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:50:56,2.172437906265259,675.0819702148438,71.3434066772461,2572.968994140625,0.12956249713897705,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:51:16,2.1817619800567627,674.7091064453125,73.47119903564453,2659.375,0.12937499582767487,95.50328063964844,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:51:36,2.1880440711975098,674.9249877929688,69.88691711425781,2628.125,0.12925000488758087,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:51:56,2.185197114944458,674.6895141601562,69.64745330810547,2584.843994140625,0.12999999523162842,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:52:16,2.190300941467285,674.7680053710938,70.09892272949219,2658.43798828125,0.12943750619888306,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:52:36,2.1930489540100098,675.4943237304688,77.18110656738281,2649.218994140625,0.12962499260902405,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:52:56,2.1910860538482666,674.8660888671875,75.22212219238281,2605.0,0.1289999932050705,95.481689453125,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:53:16,2.193932056427002,674.4539184570312,73.65178680419922,2366.875,0.12987500429153442,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:53:36,2.211009979248047,675.1212768554688,75.0062026977539,2556.875,0.12918749451637268,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:53:56,2.2177820205688477,674.6110229492188,74.73139190673828,2654.06201171875,0.12937499582767487,95.5072021484375,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:54:16,2.2318170070648193,674.78759765625,77.6796875,2670.31201171875,0.12968750298023224,95.5072021484375,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:54:36,2.2361350059509277,674.5128173828125,76.82386016845703,2681.56201171875,0.12956249713897705,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:54:56,2.2433979511260986,674.5521240234375,76.29386901855469,2682.81201171875,0.12912499904632568,95.49935913085938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:55:16,2.245163917541504,674.7091064453125,74.61361694335938,2660.93798828125,0.12956249713897705,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:55:36,2.2470290660858154,674.7091064453125,76.16824340820312,2678.281005859375,0.1303125023841858,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:55:56,2.2521328926086426,674.1790771484375,74.20532989501953,2685.31298828125,0.1290625035762787,95.49935913085938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:56:16,2.2510530948638916,674.9642944335938,74.25244140625,2269.06201171875,0.12981249392032623,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:56:36,2.264596939086914,674.5128173828125,73.77349090576172,2342.343994140625,0.12962499260902405,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:56:56,2.282557964324951,674.7091064453125,77.86419677734375,2338.906005859375,0.12931250035762787,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:57:16,2.288151979446411,674.78759765625,74.90412902832031,2322.5,0.12925000488758087,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:57:36,2.302088975906372,674.3557739257812,74.38984680175781,2361.718994140625,0.12950000166893005,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:57:56,2.30179500579834,674.8073120117188,78.48841094970703,2290.93798828125,0.12974999845027924,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:58:16,2.3086650371551514,674.6502075195312,77.47161865234375,2367.031005859375,0.12943750619888306,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:58:36,2.3126890659332275,674.6895141601562,75.64611053466797,2307.5,0.12918749451637268,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:58:56,2.315829038619995,675.2390747070312,74.60970306396484,2352.968994140625,0.1290625035762787,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:59:16,2.3073890209198,674.532470703125,75.61470794677734,2286.25,0.1301874965429306,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:59:36,2.3048369884490967,674.7091064453125,73.65178680419922,2317.81201171875,0.12962499260902405,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 14:59:56,2.3018929958343506,674.5521240234375,76.61186218261719,2307.18798828125,0.12962499260902405,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:00:16,2.3018929958343506,674.630615234375,74.04045104980469,2297.18798828125,0.1301874965429306,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:00:36,2.2952189445495605,674.434326171875,71.09214782714844,2321.25,0.12987500429153442,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:00:56,2.2997329235076904,674.4735107421875,73.64787292480469,2300.156005859375,0.12981249392032623,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:01:16,2.296592950820923,674.7680053710938,74.84916687011719,2268.125,0.12918749451637268,95.50131225585938,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:01:36,2.3037569522857666,674.336181640625,73.01580810546875,2297.031005859375,0.12925000488758087,95.48954010009766,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:01:56,2.3064069747924805,674.7484130859375,73.15321350097656,2282.656005859375,0.12987500429153442,95.49346923828125,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:02:16,2.305622100830078,675.219482421875,75.5989990234375,2282.81201171875,0.12962499260902405,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 15:02:36,2.2997329235076904,674.8464965820312,72.09716033935547,2351.25,0.1300625056028366,95.49542999267578,0.0,0.0,-1.0,0.0,-1.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,-1.0,-1.0,0.0,0.0,0.0,0.0,-1.0,-1.0,0.0,0.0,0.0,-1.0,0.0,0.0\\n2023-10-18 1'}"
       },
-      "大模型组件/大模型对话||大模型对话": {
-        "response": "<think>\n好的，用户说“总结该文档内容错误：文档路径无效或文件不存在”。首先，我需要理解用户的问题到底是什么。看起来他们可能尝试访问一个文档，但遇到了路径无效或者文件不存在的错误。这时候，用户希望得到帮助来解决这个问题。\n\n接下来，我要考虑用户可能的身份和使用场景。可能是普通用户在处理文件时遇到问题，或者是开发者在编程中引用了错误的路径。也有可能是学生或工作人员需要查找某个特定文档却找不到。不同的身份可能需要不同的解决方案，但通常这类问题都是基础的路径检查。\n\n然后，我需要分析用户的深层需求。表面上看，用户需要解决文档路径无效的问题，但实际上他们可能更关心如何正确访问文件，或者为什么会出现这样的错误。也许他们不太清楚如何正确设置路径，或者对操作系统中的文件结构不熟悉。\n\n接下来要思考可能的原因和解决方法。常见的原因包括路径拼写错误、文件被移动或重命名、权限问题、相对路径与绝对路径的混淆等。需要逐一列出这些可能性，并给出对应的解决方案。例如，检查路径是否正确，使用绝对路径代替相对路径，确认文件是否存在，检查权限设置等。\n\n同时，还要考虑用户可能的操作系统差异，比如Windows和Linux/macOS在路径表示上有不同（反斜杠vs正斜杠），可能需要提醒用户注意这一点。另外，如果文档是通过网络链接或云存储访问的，还可能存在连接问题或链接失效的情况。\n\n还需要判断用户是否有足够的技术背景来理解这些解决方案。如果用户不太熟悉命令行工具，可能需要用图形界面操作来解释如何检查文件路径。或者，如果他们是在编写代码，可能需要指导他们如何调试路径变量。\n\n另外，要确保提供的步骤清晰、有条理，并且覆盖常见的错误原因。比如，首先确认文件是否存在，然后检查路径是否正确，接着验证权限，再考虑相对和绝对路径的问题，最后提到其他潜在因素如网络或存储问题。\n\n还要注意用户可能没有提供足够的上下文信息，所以需要询问他们是否有更多细节可以补充，或者根据现有信息给出最通用的解决方案。同时，避免使用过于技术化的术语，保持解释的易懂性。\n\n最后，总结时要确保覆盖所有可能的原因和解决方法，并且结构清晰，让用户能够一步步排查问题。如果有必要，还可以建议用户尝试不同的方法或工具来验证路径是否正确，比如使用文件管理器查看路径，或者在代码中打印当前工作目录等。\n</think>\n\n根据您提到的“文档路径无效或文件不存在”的错误信息，以下是可能的原因及解决思路：\n\n---\n\n### **常见原因与排查步骤**\n1. **路径拼写错误**  \n   - 检查路径中的大小写、空格、特殊字符是否正确（例如：`C:\\User\\file.txt` vs `C:\\user\\file.txt`）。\n   - 确保路径中没有多余的符号或缺失的斜杠（如 `C:/User/file.txt` 与 `C:\\User\\file.txt` 的区别）。\n\n2. **文件实际不存在**  \n   - 手动在资源管理器/终端中定位目标路径，确认文件是否被移动、重命名或删除。\n   - 检查文件扩展名（如 `.docx` 被误写为 `.txt`）。\n\n3. **相对路径与绝对路径问题**  \n   - 如果使用的是相对路径（例如 `./data/file.txt`），确保当前工作目录正确。\n   - 尝试用绝对路径（如 `C:\\Users\\YourName\\data\\file.txt`）代替相对路径。\n\n4. **权限不足**  \n   - 检查是否拥有访问目标文件夹或文件的权限（例如：只读属性、用户权限限制）。\n\n5. **网络/云存储问题**  \n   - 如果文档在云端（如 Google Drive、OneDrive），检查网络连接或同步状态。\n   - 确认链接是否有效且未过期。\n\n6. **程序配置错误**  \n   - 检查代码或软件中引用的路径是否与实际文件位置匹配。\n   - 查看日志或调试信息，确认程序加载路径时的具体行为。\n\n---\n\n### **解决方法**\n1. **手动验证路径**  \n   - 在资源管理器/终端中直接输入路径，查看是否能定位到文件。\n\n2. **使用命令行工具**  \n   - Windows：`dir \"路径\"` 或 `cd /d \"路径\"`。\n   - macOS/Linux：`ls \"路径\"` 或 `pwd`（检查当前目录）。\n\n3. **代码调试（如适用）**  \n   - 打印程序中使用的路径变量，确认是否正确。\n   - 添加错误处理逻辑，捕获文件不存在",
-        "raw_output": {
-          "id": "chatcmpl-bk27u0z0zte3jvar2pn27j",
-          "choices": [
-            {
-              "finish_reason": "length",
-              "index": 0,
-              "logprobs": null,
-              "message": {
-                "content": "<think>\n好的，用户说“总结该文档内容错误：文档路径无效或文件不存在”。首先，我需要理解用户的问题到底是什么。看起来他们可能尝试访问一个文档，但遇到了路径无效或者文件不存在的错误。这时候，用户希望得到帮助来解决这个问题。\n\n接下来，我要考虑用户可能的身份和使用场景。可能是普通用户在处理文件时遇到问题，或者是开发者在编程中引用了错误的路径。也有可能是学生或工作人员需要查找某个特定文档却找不到。不同的身份可能需要不同的解决方案，但通常这类问题都是基础的路径检查。\n\n然后，我需要分析用户的深层需求。表面上看，用户需要解决文档路径无效的问题，但实际上他们可能更关心如何正确访问文件，或者为什么会出现这样的错误。也许他们不太清楚如何正确设置路径，或者对操作系统中的文件结构不熟悉。\n\n接下来要思考可能的原因和解决方法。常见的原因包括路径拼写错误、文件被移动或重命名、权限问题、相对路径与绝对路径的混淆等。需要逐一列出这些可能性，并给出对应的解决方案。例如，检查路径是否正确，使用绝对路径代替相对路径，确认文件是否存在，检查权限设置等。\n\n同时，还要考虑用户可能的操作系统差异，比如Windows和Linux/macOS在路径表示上有不同（反斜杠vs正斜杠），可能需要提醒用户注意这一点。另外，如果文档是通过网络链接或云存储访问的，还可能存在连接问题或链接失效的情况。\n\n还需要判断用户是否有足够的技术背景来理解这些解决方案。如果用户不太熟悉命令行工具，可能需要用图形界面操作来解释如何检查文件路径。或者，如果他们是在编写代码，可能需要指导他们如何调试路径变量。\n\n另外，要确保提供的步骤清晰、有条理，并且覆盖常见的错误原因。比如，首先确认文件是否存在，然后检查路径是否正确，接着验证权限，再考虑相对和绝对路径的问题，最后提到其他潜在因素如网络或存储问题。\n\n还要注意用户可能没有提供足够的上下文信息，所以需要询问他们是否有更多细节可以补充，或者根据现有信息给出最通用的解决方案。同时，避免使用过于技术化的术语，保持解释的易懂性。\n\n最后，总结时要确保覆盖所有可能的原因和解决方法，并且结构清晰，让用户能够一步步排查问题。如果有必要，还可以建议用户尝试不同的方法或工具来验证路径是否正确，比如使用文件管理器查看路径，或者在代码中打印当前工作目录等。\n</think>\n\n根据您提到的“文档路径无效或文件不存在”的错误信息，以下是可能的原因及解决思路：\n\n---\n\n### **常见原因与排查步骤**\n1. **路径拼写错误**  \n   - 检查路径中的大小写、空格、特殊字符是否正确（例如：`C:\\User\\file.txt` vs `C:\\user\\file.txt`）。\n   - 确保路径中没有多余的符号或缺失的斜杠（如 `C:/User/file.txt` 与 `C:\\User\\file.txt` 的区别）。\n\n2. **文件实际不存在**  \n   - 手动在资源管理器/终端中定位目标路径，确认文件是否被移动、重命名或删除。\n   - 检查文件扩展名（如 `.docx` 被误写为 `.txt`）。\n\n3. **相对路径与绝对路径问题**  \n   - 如果使用的是相对路径（例如 `./data/file.txt`），确保当前工作目录正确。\n   - 尝试用绝对路径（如 `C:\\Users\\YourName\\data\\file.txt`）代替相对路径。\n\n4. **权限不足**  \n   - 检查是否拥有访问目标文件夹或文件的权限（例如：只读属性、用户权限限制）。\n\n5. **网络/云存储问题**  \n   - 如果文档在云端（如 Google Drive、OneDrive），检查网络连接或同步状态。\n   - 确认链接是否有效且未过期。\n\n6. **程序配置错误**  \n   - 检查代码或软件中引用的路径是否与实际文件位置匹配。\n   - 查看日志或调试信息，确认程序加载路径时的具体行为。\n\n---\n\n### **解决方法**\n1. **手动验证路径**  \n   - 在资源管理器/终端中直接输入路径，查看是否能定位到文件。\n\n2. **使用命令行工具**  \n   - Windows：`dir \"路径\"` 或 `cd /d \"路径\"`。\n   - macOS/Linux：`ls \"路径\"` 或 `pwd`（检查当前目录）。\n\n3. **代码调试（如适用）**  \n   - 打印程序中使用的路径变量，确认是否正确。\n   - 添加错误处理逻辑，捕获文件不存在",
-                "refusal": null,
-                "role": "assistant",
-                "annotations": null,
-                "audio": null,
-                "function_call": null,
-                "tool_calls": []
-              }
-            }
-          ],
-          "created": 1760277198,
-          "model": "qwen/qwen3-30b-a3b",
-          "object": "chat.completion",
-          "service_tier": null,
-          "system_fingerprint": "qwen/qwen3-30b-a3b",
-          "usage": {
-            "completion_tokens": 983,
-            "prompt_tokens": 34,
-            "total_tokens": 1017,
-            "completion_tokens_details": null,
-            "prompt_tokens_details": null
-          },
-          "stats": {}
-        },
-        "history": [
-          {
-            "role": "user",
-            "content": "总结该文档内容错误：文档路径无效或文件不存在"
-          },
-          {
-            "role": "assistant",
-            "content": "<think>\n好的，用户说“总结该文档内容错误：文档路径无效或文件不存在”。首先，我需要理解用户的问题到底是什么。看起来他们可能尝试访问一个文档，但遇到了路径无效或者文件不存在的错误。这时候，用户希望得到帮助来解决这个问题。\n\n接下来，我要考虑用户可能的身份和使用场景。可能是普通用户在处理文件时遇到问题，或者是开发者在编程中引用了错误的路径。也有可能是学生或工作人员需要查找某个特定文档却找不到。不同的身份可能需要不同的解决方案，但通常这类问题都是基础的路径检查。\n\n然后，我需要分析用户的深层需求。表面上看，用户需要解决文档路径无效的问题，但实际上他们可能更关心如何正确访问文件，或者为什么会出现这样的错误。也许他们不太清楚如何正确设置路径，或者对操作系统中的文件结构不熟悉。\n\n接下来要思考可能的原因和解决方法。常见的原因包括路径拼写错误、文件被移动或重命名、权限问题、相对路径与绝对路径的混淆等。需要逐一列出这些可能性，并给出对应的解决方案。例如，检查路径是否正确，使用绝对路径代替相对路径，确认文件是否存在，检查权限设置等。\n\n同时，还要考虑用户可能的操作系统差异，比如Windows和Linux/macOS在路径表示上有不同（反斜杠vs正斜杠），可能需要提醒用户注意这一点。另外，如果文档是通过网络链接或云存储访问的，还可能存在连接问题或链接失效的情况。\n\n还需要判断用户是否有足够的技术背景来理解这些解决方案。如果用户不太熟悉命令行工具，可能需要用图形界面操作来解释如何检查文件路径。或者，如果他们是在编写代码，可能需要指导他们如何调试路径变量。\n\n另外，要确保提供的步骤清晰、有条理，并且覆盖常见的错误原因。比如，首先确认文件是否存在，然后检查路径是否正确，接着验证权限，再考虑相对和绝对路径的问题，最后提到其他潜在因素如网络或存储问题。\n\n还要注意用户可能没有提供足够的上下文信息，所以需要询问他们是否有更多细节可以补充，或者根据现有信息给出最通用的解决方案。同时，避免使用过于技术化的术语，保持解释的易懂性。\n\n最后，总结时要确保覆盖所有可能的原因和解决方法，并且结构清晰，让用户能够一步步排查问题。如果有必要，还可以建议用户尝试不同的方法或工具来验证路径是否正确，比如使用文件管理器查看路径，或者在代码中打印当前工作目录等。\n</think>\n\n根据您提到的“文档路径无效或文件不存在”的错误信息，以下是可能的原因及解决思路：\n\n---\n\n### **常见原因与排查步骤**\n1. **路径拼写错误**  \n   - 检查路径中的大小写、空格、特殊字符是否正确（例如：`C:\\User\\file.txt` vs `C:\\user\\file.txt`）。\n   - 确保路径中没有多余的符号或缺失的斜杠（如 `C:/User/file.txt` 与 `C:\\User\\file.txt` 的区别）。\n\n2. **文件实际不存在**  \n   - 手动在资源管理器/终端中定位目标路径，确认文件是否被移动、重命名或删除。\n   - 检查文件扩展名（如 `.docx` 被误写为 `.txt`）。\n\n3. **相对路径与绝对路径问题**  \n   - 如果使用的是相对路径（例如 `./data/file.txt`），确保当前工作目录正确。\n   - 尝试用绝对路径（如 `C:\\Users\\YourName\\data\\file.txt`）代替相对路径。\n\n4. **权限不足**  \n   - 检查是否拥有访问目标文件夹或文件的权限（例如：只读属性、用户权限限制）。\n\n5. **网络/云存储问题**  \n   - 如果文档在云端（如 Google Drive、OneDrive），检查网络连接或同步状态。\n   - 确认链接是否有效且未过期。\n\n6. **程序配置错误**  \n   - 检查代码或软件中引用的路径是否与实际文件位置匹配。\n   - 查看日志或调试信息，确认程序加载路径时的具体行为。\n\n---\n\n### **解决方法**\n1. **手动验证路径**  \n   - 在资源管理器/终端中直接输入路径，查看是否能定位到文件。\n\n2. **使用命令行工具**  \n   - Windows：`dir \"路径\"` 或 `cd /d \"路径\"`。\n   - macOS/Linux：`ls \"路径\"` 或 `pwd`（检查当前目录）。\n\n3. **代码调试（如适用）**  \n   - 打印程序中使用的路径变量，确认是否正确。\n   - 添加错误处理逻辑，捕获文件不存在"
-          }
-        ]
-      },
-      "大模型组件/JSON文本包装||JSON文本包装 1": {}
+      "大模型组件/大模型对话||大模型对话": {},
+      "大模型组件/JSON文本包装||JSON文本包装 1": {
+        "output1": {
+          "text": ""
+        }
+      }
     },
     "column_select": {
       "数据集成/文档上传||文档上传": {},
@@ -692,5 +1057,37 @@
       "大模型组件/大模型对话||大模型对话": {},
       "大模型组件/JSON文本包装||JSON文本包装 1": {}
     }
+  },
+  "global_variable": {
+    "env": {
+      "user_id": null,
+      "canvas_id": null,
+      "session_id": null,
+      "run_id": null,
+      "metadata": {
+        "PYTHONPATH": ".",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONWARNINGS": "ignore",
+        "TZ": "Asia/Shanghai",
+        "LANG": "en_US.UTF-8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "0"
+      }
+    },
+    "custom": {
+      "model_name": {
+        "value": "qwen3-30b-a3b",
+        "description": null,
+        "read_only": false
+      },
+      "url": {
+        "value": "http://168.168.10.110:2000",
+        "description": null,
+        "read_only": false
+      }
+    },
+    "node_vars": {}
   }
 }

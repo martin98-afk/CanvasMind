@@ -3,6 +3,10 @@ from Qt import QtCore
 
 
 class CustomNodeItem(NodeItem):
+    _align = None
+
+    def set_align(self, align):
+        self._align = align
 
     def mousePressEvent(self, event):
         # 如果是右键，先选中自己（关键！）
@@ -108,15 +112,25 @@ class CustomNodeItem(NodeItem):
                 widget_width = br.width()
                 widget_height = br.height()
 
-            if not inputs:
+            if self._align == 'left':
                 x = rect.left() + 10
                 widget.widget().setTitleAlign('left')
-            elif not outputs:
+            elif self._align == 'right':
                 x = rect.right() - widget_width - 10
                 widget.widget().setTitleAlign('right')
-            else:
+            elif self._align == 'center':
                 x = rect.center().x() - (widget_width / 2)
                 widget.widget().setTitleAlign('center')
+            else:
+                if not inputs:
+                    x = rect.left() + 10
+                    widget.widget().setTitleAlign('left')
+                elif not outputs:
+                    x = rect.right() - widget_width - 10
+                    widget.widget().setTitleAlign('right')
+                else:
+                    x = rect.center().x() - (widget_width / 2)
+                    widget.widget().setTitleAlign('center')
 
             widget.setPos(x, y)
             y += widget_height + 8  # 使用真实高度

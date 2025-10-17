@@ -12,7 +12,7 @@ from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
 from app.interfaces.workflow_manager import WorkflowCanvasGalleryPage
 from app.utils.utils import get_icon
-from app.widgets.logger_dialog import QTextEditLogger
+from app.widgets.dialog_widget.logger_dialog import QTextEditLogger
 
 
 class LowCodeWindow(FluentWindow):

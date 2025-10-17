@@ -1,11 +1,3 @@
-"""
-@author: mading
-@license: (C) Copyright: LUCULENT Corporation Limited.
-@contact: mading@luculent.net
-@file: branch_node.py
-@time: 2025/10/15 15:38
-@desc:
-"""
 import re
 
 from NodeGraphQt import BaseNode
@@ -89,13 +81,6 @@ def create_branch_node(parent_window):
                     "label": field_def.get("label", field_name),
                     "choices": field_def.get("choices", [])
                 }
-            checkbox_widget = CheckBoxWidgetWrapper(
-                parent=self.view,
-                name="enable_else",
-                text="启用默认分支（else）",
-                state=True
-            )
-            self.add_custom_widget(checkbox_widget, tab="properties")
 
             self.widget = DynamicFormWidgetWrapper(
                 parent=self.view,
@@ -107,6 +92,14 @@ def create_branch_node(parent_window):
             )
             self.add_custom_widget(self.widget, tab='Properties')
 
+            checkbox_widget = CheckBoxWidgetWrapper(
+                parent=self.view,
+                name="enable_else",
+                text="启用默认分支（else）",
+                state=True
+            )
+            self.add_custom_widget(checkbox_widget, tab="properties")
+
         def _sanitize_port_name(self, name: str) -> str:
             if not name:
                 name = "branch"
@@ -116,49 +109,56 @@ def create_branch_node(parent_window):
             return name
 
         def _sync_output_ports(self):
-            """智能同步输出端口：保留有连线的端口，只清理无用且无连线的端口"""
+            """同步输出端口：严格按表单顺序重建，仅当端口名未变时恢复连线"""
             conditions = self.get_property("conditions") or []
             enable_else = self.get_property("enable_else")
 
-            # 1. 计算期望的端口名集合
-            expected_names = set()
+            # 1. 生成期望端口名列表（按顺序，自动去重）
+            expected_names = []
             used_names = set()
             for cond in conditions:
                 raw_name = cond.get("name", "branch").strip() or "branch"
                 port_name = self._sanitize_port_name(raw_name)
+                base = port_name
                 counter = 1
-                orig = port_name
                 while port_name in used_names:
-                    port_name = f"{orig}_{counter}"
+                    port_name = f"{base}_{counter}"
                     counter += 1
                 used_names.add(port_name)
-                expected_names.add(port_name)
+                expected_names.append(port_name)
 
             if enable_else:
-                expected_names.add("else")
+                expected_names.append("else")
 
-            # 2. 获取当前所有输出端口
-            current_ports = {port.name(): port for port in self.output_ports()}
+            # 2. 记录当前所有端口的连线状态：{port_name: [connected_port_objects]}
+            current_connections = {}
+            for port in self.output_ports():
+                connected = port.connected_ports()
+                if connected:
+                    current_connections[port.name()] = list(connected)  # 保存下游端口引用
 
-            # 3. 决定哪些端口要删除：不在 expected 中 且 没有连线
-            ports_to_delete = []
-            for name, port in current_ports.items():
-                if name not in expected_names:
-                    # 检查是否有连线
-                    if not port.connected_ports():
-                        ports_to_delete.append(name)
-                    else:
-                        # 有连线，即使条件已删，也保留（避免断连）
-                        pass
+            # 3. 安全删除所有现有输出端口
+            for port in list(self.output_ports()):
+                port.clear_connections(push_undo=False, emit_signal=False)
+                self.delete_output(port.name())
 
-            # 4. 删除无用且无连线的端口
-            for name in ports_to_delete:
-                self.delete_output(name)
-
-            # 5. 添加缺失的端口（expected 中有，但当前没有）
+            # 4. 按 expected_names 顺序重建端口
             for name in expected_names:
-                if name not in current_ports:
-                    self.add_output(name)
+                self.add_output(name)
+
+            # 5. 恢复连线：仅当“旧端口名 == 新端口名”且新端口存在
+            new_ports = {p.name(): p for p in self.output_ports()}
+            for old_name, connected_list in current_connections.items():
+                if old_name in new_ports:
+                    new_port = new_ports[old_name]
+                    for downstream_port in connected_list:
+                        # 检查下游是否还存在（防 dangling reference）
+                        try:
+                            if downstream_port.node() and downstream_port.node().graph:
+                                new_port.connect_to(downstream_port, push_undo=False, emit_signal=False)
+                        except Exception as e:
+                            # 忽略已失效的连接
+                            continue
 
         def _log_message(self, node_id, message):
             if isinstance(message, str) and message.strip():
@@ -170,7 +170,7 @@ def create_branch_node(parent_window):
             return self._node_logs if self._node_logs else "无日志可用。"
 
         def show_logs(self):
-            from app.widgets.tree_widget.component_log_message_box import LogMessageBox
+            from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
             log_content = self.get_logs()
             w = LogMessageBox(log_content, None)
             w.exec()

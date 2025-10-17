@@ -69,8 +69,6 @@ class WorkflowScheduler(QObject):
         for node in all_nodes:
             if node in loop_internal_nodes:
                 continue
-            if isinstance(node, BackdropNode):
-                continue  # Backdrop 本身不执行，由调度器特殊处理
             executable_nodes.append(node)
 
         return executable_nodes
@@ -221,7 +219,7 @@ class WorkflowScheduler(QObject):
             logger.error(traceback.format_exc())
             self.error.emit(f"启动执行器失败: {str(e)}")
 
-    def _execute_backdrop_sync(self, backdrop):
+    def _execute_backdrop_sync(self, backdrop, check_cancel):
         """同步执行循环型 Backdrop（在主线程中调用）"""
         try:
             # 获取上游结果
@@ -254,19 +252,21 @@ class WorkflowScheduler(QObject):
             backdrop.model.set_property("current_index", 0)
             self.property_changed.emit(backdrop.id)
             # 4. 循环执行逻辑
-            if backdrop.TYPE == "loop":
+            if backdrop.TYPE == "iterate":
                 results = []
                 for index, data in enumerate(input_data):
                     input_proxy.set_output_value(data)
                     # 执行内部节点（同步）
                     for node in execute_nodes:
                         comp_cls = self.component_map.get(node.FULL_PATH)
-                        if not comp_cls:
-                            raise ValueError(f"未找到组件类: {node.FULL_PATH}")
+                        if check_cancel():
+                            return
                         self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
                         self.property_changed.emit(backdrop.id)
                         try:
-                            node.execute_sync(comp_cls, python_executable=self.get_python_exe())
+                            node.execute_sync(
+                                comp_cls, python_executable=self.get_python_exe(), check_cancel=check_cancel
+                            )
                             self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
                         except Exception as e:
                             self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
@@ -290,19 +290,21 @@ class WorkflowScheduler(QObject):
                     self.property_changed.emit(backdrop.id)
                     results.extend(inputs)
             # 5. 迭代执行逻辑
-            elif backdrop.TYPE == "iterate":
+            elif backdrop.TYPE == "loop":
                 results = None
                 for index in range(backdrop.model.get_property("loop_nums")):   # 暂时只支持迭代指定次数
                     input_proxy.set_output_value(input_data)
                     # 执行内部节点（同步）
                     for node in execute_nodes:
                         comp_cls = self.component_map.get(node.FULL_PATH)
-                        if not comp_cls:
-                            raise ValueError(f"未找到组件类: {node.FULL_PATH}")
+                        if check_cancel():
+                            return
                         self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
                         self.property_changed.emit(backdrop.id)
                         try:
-                            node.execute_sync(comp_cls, python_executable=self.get_python_exe())
+                            node.execute_sync(
+                                comp_cls, python_executable=self.get_python_exe(), check_cancel=check_cancel
+                            )
                             self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
                             self.property_changed.emit(backdrop.id)
                         except Exception as e:
@@ -327,7 +329,6 @@ class WorkflowScheduler(QObject):
                     self.property_changed.emit(backdrop.id)
 
                 results = outputs
-
             # 6. 设置 Backdrop 的输出
             backdrop.set_output_value(results)
             self.set_node_status(backdrop, NodeStatus.NODE_STATUS_SUCCESS)

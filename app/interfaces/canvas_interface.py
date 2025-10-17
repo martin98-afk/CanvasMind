@@ -10,18 +10,19 @@ from NodeGraphQt import NodeGraph, BackdropNode, BaseNode
 from NodeGraphQt.constants import PipeLayoutEnum
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, QRectF, pyqtSignal
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QMenu
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from loguru import logger
 from qfluentwidgets import (
-    ToolButton, InfoBar,
-    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action
+    InfoBar,
+    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton
 )
 
-from app.components.base import PropertyType, GlobalVariableContext, ConnectionType
+from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
 from app.nodes.branch_node import create_branch_node
+from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
@@ -99,8 +100,8 @@ class CanvasPage(QWidget):
         )
         self.quick_manager.quick_components_changed.connect(self._refresh_quick_buttons)
         # 创建悬浮按钮和环境选择
-        self.create_floating_buttons()
         self.create_environment_selector()
+        self.create_floating_buttons()
         self.create_floating_nodes()
 
         # 启用画布拖拽
@@ -152,8 +153,8 @@ class CanvasPage(QWidget):
         self._scheduler.node_error.connect(self.on_node_error_simple)
         self._scheduler.finished.connect(self._on_workflow_finished)
         self._scheduler.error.connect(self._on_workflow_error)
-        self.run_btn.setEnabled(False)
-        self.stop_btn.setEnabled(True)
+        self.run_btn.hide()
+        self.stop_btn.show()
 
     def run_workflow(self):
         """执行整个工作流"""
@@ -184,8 +185,8 @@ class CanvasPage(QWidget):
         if self._scheduler:
             self._scheduler.cancel()
             self.create_info("已停止", "正在终止任务...")
-            self.run_btn.setEnabled(True)
-            self.stop_btn.setEnabled(False)
+            self.run_btn.show()
+            self.stop_btn.hide()
             self._scheduler = None
 
     def _canvas_key_press_event(self, event):
@@ -229,21 +230,53 @@ class CanvasPage(QWidget):
 
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
-            self.button_container.move(self.graph.viewer().width() - 50, self.graph.viewer().height() // 2 - 100)
             self._update_nodes_container_position()
-            self.env_selector_container.move(self.graph.viewer().width() - 200, 10)
+            self.env_selector_container.move(10, 10)
+            self.buttons_container.move(self.graph.viewer().width() - 170, 10)
             self._position_name_container()
-            # self._position_minimap()
         return super().eventFilter(obj, event)
+
+    def create_floating_buttons(self):
+        self.buttons_container = QWidget(self.graph.viewer())
+        self.buttons_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.buttons_container.move(self.graph.viewer().width() - 170, 10)
+        env_layout = QHBoxLayout(self.buttons_container)
+        env_layout.setSpacing(5)
+        env_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.run_btn = TransparentToolButton(FluentIcon.PLAY, self)
+        self.run_btn.setToolTip("运行工作流")
+        self.run_btn.clicked.connect(self.run_workflow)
+        env_layout.addWidget(self.run_btn)
+        self.stop_btn = TransparentToolButton(FluentIcon.PAUSE, self)
+        self.stop_btn.setToolTip("停止运行")
+        self.stop_btn.clicked.connect(self.stop_workflow)
+        self.stop_btn.hide()
+        env_layout.addWidget(self.stop_btn)
+        self.export_btn = TransparentToolButton(FluentIcon.SAVE, self)
+        self.export_btn.setToolTip("导出工作流")
+        self.export_btn.clicked.connect(self._save_via_dialog)
+        env_layout.addWidget(self.export_btn)
+        self.export_model_btn = TransparentToolButton(FluentIcon.SHARE, self)
+        self.export_model_btn.setToolTip("导出选中节点为独立模型")
+        self.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
+        env_layout.addWidget(self.export_model_btn)
+        self.close_btn = TransparentToolButton(FluentIcon.CLOSE, self)
+        self.close_btn.setToolTip("关闭当前画布")
+        self.close_btn.clicked.connect(self.close_current_canvas)
+        env_layout.addWidget(self.close_btn)
+        env_layout.addStretch()
+        self.buttons_container.setLayout(env_layout)
+        self.buttons_container.show()
 
     def create_environment_selector(self):
         self.env_selector_container = QWidget(self.graph.viewer())
         self.env_selector_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.env_selector_container.move(self.graph.viewer().width() - 200, 10)
+        self.env_selector_container.move(10, 10)
         env_layout = QHBoxLayout(self.env_selector_container)
         env_layout.setSpacing(5)
         env_layout.setContentsMargins(0, 0, 0, 0)
-        env_label = ToolButton(self)
+        env_label = TransparentToolButton(self)
         env_label.setText("环境:")
         env_label.setFixedSize(50, 30)
         self.env_combo = ComboBox(self.env_selector_container)
@@ -299,14 +332,26 @@ class CanvasPage(QWidget):
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_separator()
                 nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-
+        # 迭代节点
+        code_node = create_dynamic_code_node(self)
+        code_node.__name__ = "DYNAMIC_CODE"
+        self.graph.register_node(code_node)
+        nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
+                               node_type=f"dynamic.{code_node.__name__}")
+        nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
+                               node_type=f"dynamic.{code_node.__name__}")
+        nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
+                               node_type=f"dynamic.{code_node.__name__}")
+        nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
+                               node_type=f"dynamic.{code_node.__name__}")
+        nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
+                               node_type=f"dynamic.{code_node.__name__}")
         # 迭代节点
         iterate_node = ControlFlowIterateNode
         iterate_node.__name__ = "ControlFlowIterateNode"
@@ -317,7 +362,6 @@ class CanvasPage(QWidget):
                                node_type=f"control_flow.{iterate_node.__name__}")
         nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                node_type=f"control_flow.{iterate_node.__name__}")
-        nodes_menu.add_separator()
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{iterate_node.__name__}")
 
@@ -331,7 +375,6 @@ class CanvasPage(QWidget):
                                node_type=f"control_flow.{loop_node.__name__}")
         nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                node_type=f"control_flow.{loop_node.__name__}")
-        nodes_menu.add_separator()
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{loop_node.__name__}")
 
@@ -355,7 +398,6 @@ class CanvasPage(QWidget):
                                node_type=f"control_flow.{branch_node.__name__}")
         nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                node_type=f"control_flow.{branch_node.__name__}")
-        nodes_menu.add_separator()
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{branch_node.__name__}")
 
@@ -384,65 +426,39 @@ class CanvasPage(QWidget):
         y = cw.height() - self.minimap.height() - margin
         self.minimap.move(x, y)
 
-    def create_floating_buttons(self):
-        self.button_container = QWidget(self.graph.viewer())
-        self.button_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.button_container.move(self.graph.viewer().width() - 50, self.graph.viewer().height() // 2 - 100)
-        button_layout = QVBoxLayout(self.button_container)
-        button_layout.setSpacing(5)
-        button_layout.setContentsMargins(0, 0, 0, 0)
-        self.run_btn = ToolButton(FluentIcon.PLAY, self)
-        self.run_btn.setToolTip("运行工作流")
-        self.run_btn.clicked.connect(self.run_workflow)
-        button_layout.addWidget(self.run_btn)
-        self.stop_btn = ToolButton(FluentIcon.PAUSE, self)
-        self.stop_btn.setToolTip("停止运行")
-        self.stop_btn.clicked.connect(self.stop_workflow)
-        self.stop_btn.setEnabled(False)
-        button_layout.addWidget(self.stop_btn)
-        self.export_btn = ToolButton(FluentIcon.SAVE, self)
-        self.export_btn.setToolTip("导出工作流")
-        self.export_btn.clicked.connect(self._save_via_dialog)
-        button_layout.addWidget(self.export_btn)
-        self.import_btn = ToolButton(FluentIcon.FOLDER, self)
-        self.import_btn.setToolTip("导入工作流")
-        self.import_btn.clicked.connect(self._open_via_dialog)
-        button_layout.addWidget(self.import_btn)
-        self.export_model_btn = ToolButton(FluentIcon.SHARE, self)
-        self.export_model_btn.setToolTip("导出选中节点为独立模型")
-        self.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
-        button_layout.addWidget(self.export_model_btn)
-        self.close_btn = ToolButton(FluentIcon.CLOSE, self)
-        self.close_btn.setToolTip("关闭当前画布")
-        self.close_btn.clicked.connect(self.close_current_canvas)
-        button_layout.addWidget(self.close_btn)
-        self.button_container.setLayout(button_layout)
-        self.button_container.show()
-
     def create_floating_nodes(self):
         self.nodes_container = QWidget(self.canvas_widget)
         self.nodes_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         self._update_nodes_container_position()
 
         self.node_layout = QVBoxLayout(self.nodes_container)
-        self.node_layout.setSpacing(5)
+        self.node_layout.setSpacing(3)
         self.node_layout.setContentsMargins(0, 0, 0, 0)
 
         # === 固定控制流按钮 ===
-        self.iterate_node = ToolButton(get_icon("Sync"), self)
+        self.iterate_node = TransparentToolButton(FluentIcon.SYNC, self)
+        self.iterate_node.setIconSize(QSize(20, 20))
         self.iterate_node.setToolTip("创建迭代")
         self.iterate_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowIterateNode"))
         self.node_layout.addWidget(self.iterate_node)
 
-        self.loop_node = ToolButton(get_icon("无限"), self)
+        self.loop_node = TransparentToolButton(get_icon("无限"), self)
+        self.loop_node.setIconSize(QSize(20, 20))
         self.loop_node.setToolTip("创建循环")
         self.loop_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowLoopNode"))
         self.node_layout.addWidget(self.loop_node)
 
-        self.branch_node = ToolButton(get_icon("条件分支"), self)
+        self.branch_node = TransparentToolButton(get_icon("条件分支"), self)
+        self.branch_node.setIconSize(QSize(20, 20))
         self.branch_node.setToolTip("创建分支")
         self.branch_node.clicked.connect(lambda: self.create_next_node("control_flow.ControlFlowBranchNode"))
         self.node_layout.addWidget(self.branch_node)
+
+        self.code_node = TransparentToolButton(get_icon("代码执行"), self)
+        self.code_node.setIconSize(QSize(20, 20))
+        self.code_node.setToolTip("创建代码编辑")
+        self.code_node.clicked.connect(lambda: self.create_next_node("dynamic.DYNAMIC_CODE"))
+        self.node_layout.addWidget(self.code_node)
 
         # === 分隔线 ===
         from PyQt5.QtWidgets import QFrame
@@ -452,7 +468,8 @@ class CanvasPage(QWidget):
         self.node_layout.addWidget(self.separator)
 
         # === “+”按钮（始终在最后）===
-        self.add_quick_btn = ToolButton(FluentIcon.ADD, self)
+        self.add_quick_btn = TransparentToolButton(FluentIcon.ADD, self)
+        self.add_quick_btn.setIconSize(QSize(20, 20))
         self.add_quick_btn.setToolTip("添加快捷组件")
         self.add_quick_btn.clicked.connect(self.quick_manager.open_add_dialog)
         self.node_layout.addWidget(self.add_quick_btn)
@@ -472,7 +489,7 @@ class CanvasPage(QWidget):
         height = self.nodes_container.height()
         # 垂直居中（可调）
         y = max(50, (self.canvas_widget.height() - height) // 2)
-        self.nodes_container.move(10, y)
+        self.nodes_container.move(0, y)
 
     def _refresh_quick_buttons(self):
         # 找到分隔线和“+”按钮的位置
@@ -499,10 +516,11 @@ class CanvasPage(QWidget):
             else:
                 icon = FluentIcon.APPLICATION
 
-            btn = ToolButton(icon, self)
+            btn = TransparentToolButton(icon, self)
+            btn.setIconSize(QSize(20, 20))
             btn.setToolTip(f"创建 {comp_name}")
             btn.setProperty("full_path", full_path)
-            btn.clicked.connect(lambda _, fp=full_path: self.create_next_node(fp, icon_path))
+            btn.clicked.connect(lambda _, ip=icon_path, fp=full_path: self.create_next_node(fp, ip))
 
             # 右键菜单：删除
             btn.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -517,11 +535,11 @@ class CanvasPage(QWidget):
         QtCore.QTimer.singleShot(0, self._update_nodes_container_position)
 
     def _show_quick_button_menu(self, button, full_path, pos):
-        menu = QMenu(self)
-        remove_action = menu.addAction("从快捷栏移除")
-        action = menu.exec_(button.mapToGlobal(pos))
-        if action == remove_action:
-            self.quick_manager.remove_component(full_path)
+        menu = RoundMenu()
+        menu.addAction(
+            Action("从快捷栏移除", triggered=lambda: self.quick_manager.remove_component(full_path))
+        )
+        menu.exec_(button.mapToGlobal(pos))
 
     def create_next_node(self, key, icon_path=None):
         """按钮节点通用创建方法"""
@@ -1156,13 +1174,13 @@ class CanvasPage(QWidget):
             node._output_values = {}
             self.create_failed_info('错误', f'节点 "{node.name()}" 执行失败！')
             self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
-        self.run_btn.setEnabled(True)
-        self.stop_btn.setEnabled(False)
+        self.run_btn.show()
+        self.stop_btn.hide()
         self._scheduler = None
 
     def _on_workflow_finished(self):
-        self.run_btn.setEnabled(True)
-        self.stop_btn.setEnabled(False)
+        self.run_btn.show()
+        self.stop_btn.hide()
         self._scheduler = None
         self.create_success_info("完成", "工作流执行完成!")
         if self.file_path:
@@ -1170,8 +1188,8 @@ class CanvasPage(QWidget):
 
     def _on_workflow_error(self, msg=""):
         self._scheduler = None
-        self.run_btn.setEnabled(True)
-        self.stop_btn.setEnabled(False)
+        self.run_btn.show()
+        self.stop_btn.hide()
         self.create_failed_info("错误", f"工作流执行失败! {msg}")
 
     def on_node_started_simple(self, node_id):
@@ -1370,6 +1388,7 @@ class CanvasPage(QWidget):
                         node._output_values = deserialize_from_json(node_status.get("node_outputs", {}))
                         node.column_select = node_status.get("column_select", {})
                         status_str = node_status.get("node_states", "unrun")
+                        status_str = "unrun" if status_str is None else status_str
                         self.set_node_status(
                             node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
                         )
@@ -1380,8 +1399,6 @@ class CanvasPage(QWidget):
             import traceback
             logger.error(f"❌ 加载失败: {traceback.format_exc()}")
             self.create_failed_info("加载失败", f"工作流加载失败: {str(e)}")
-        finally:
-            self.import_btn.setEnabled(True)
 
     def _delayed_fit_view(self):
         QtCore.QTimer.singleShot(100, lambda: self.graph._viewer.zoom_to_nodes(self.graph._viewer.all_nodes()))
@@ -1409,7 +1426,17 @@ class CanvasPage(QWidget):
         edit_menu = graph_menu.add_menu('编辑')
         edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
         edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
-        edit_menu.add_command('删除选中', lambda graph: graph.delete_nodes(graph.selected_nodes()), 'Del')
+        edit_menu.add_command('删除选中', lambda graph: self.delete_selected_nodes(graph), 'Del')
+
+    def delete_selected_nodes(self, graph):
+        # 清除选中节点的输入输出端口连接线
+        for node in graph.selected_nodes():
+            if isinstance(node, BackdropNode):
+                for port in node.input_ports():
+                    port.clear_connections(push_undo=True, emit_signal=True)
+                for port in node.output_ports():
+                    port.clear_connections(push_undo=True, emit_signal=True)
+        graph.delete_nodes(graph.selected_nodes())
 
     def _undo(self):
         try:

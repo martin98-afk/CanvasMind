@@ -35,6 +35,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         self._inputs = []
         self._outputs = []
         self._output_values = {}
+        self._input_values = {}
         # === 初始化默认端口默认多输入/多输出端口 ===
         self.add_input("inputs", multi_input=True, display_name=True)
         self.add_output("outputs", display_name=True)
@@ -258,6 +259,38 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
 
     def get_output_value(self, name):
         return self._output_values.get(name)
+
+    def get_input(self, port):
+        """
+        Get input port by the name or index.
+
+        Args:
+            port (str or int): port name or index.
+
+        Returns:
+            NodeGraphQt.Port: node port.
+        """
+        if type(port) is int:
+            if port < len(self._inputs):
+                return self._inputs[port]
+        elif type(port) is str:
+            return self.inputs().get(port, None)
+
+    def get_output(self, port):
+        """
+        Get output port by the name or index.
+
+        Args:
+            port (str or int): port name or index.
+
+        Returns:
+            NodeGraphQt.Port: node port.
+        """
+        if type(port) is int:
+            if port < len(self._outputs):
+                return self._outputs[port]
+        elif type(port) is str:
+            return self.outputs().get(port, None)
 
 
 class ControlFlowLoopNode(ControlFlowBackdrop):

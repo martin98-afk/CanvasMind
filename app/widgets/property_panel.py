@@ -141,7 +141,7 @@ class PropertyPanel(CardWidget):
             return
 
         elif isinstance(node, ControlFlowBackdrop):
-            self._update_control_flow_properties(node)
+            self._update_control_flow_properties(node, current_segment)
         elif isinstance(node, BaseNode):
             self._build_node_ui(node, current_segment)
 
@@ -478,8 +478,7 @@ class PropertyPanel(CardWidget):
     # ========================
     # ControlFlowBackdrop 相关（保持不变）
     # ========================
-
-    def _update_control_flow_properties(self, node):
+    def _update_control_flow_properties(self, node, current_segment=None):
         title = BodyLabel(f"🔁 {node.NODE_NAME}")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.vbox.addWidget(title)
@@ -489,9 +488,9 @@ class PropertyPanel(CardWidget):
         self.vbox.addWidget(type_label)
 
         current = node.model.get_property('current_index')
-        if flow_type == "iterate":
+        if flow_type == "loop":
             total = node.model.get_property("loop_nums")
-        elif flow_type == "loop":
+        elif flow_type == "iterate":
             input_data = []
             for input_port in node.input_ports():
                 connected = input_port.connected_ports()
@@ -516,12 +515,45 @@ class PropertyPanel(CardWidget):
         progress_bar.setValue(int(current / max(1, total) * 100))
         self.vbox.addWidget(progress_label)
         self.vbox.addWidget(progress_bar)
-        if flow_type == "iterate":
+        if flow_type == "loop":
             self._add_seperator()
             self._add_loop_config_section(node)
         self._add_seperator()
         self._add_internal_nodes_section(node)
         self.vbox.addStretch()
+
+        # 创建导航栏和堆叠窗口
+        self.segmented_widget = SegmentedWidget()
+        self.segmented_widget.addItem('input', '输入端口')
+        self.segmented_widget.addItem('output', '输出端口')
+        self.stacked_widget = QStackedWidget()
+
+        # === 输入端口页面 ===
+        input_widget = QWidget()
+        input_layout = QVBoxLayout(input_widget)
+        input_layout.setContentsMargins(0, 0, 0, 0)
+        input_layout.setSpacing(8)
+        self._populate_input_ports(node, input_layout)
+        input_layout.addStretch(1)
+        self.stacked_widget.addWidget(input_widget)
+
+        # === 输出端口页面 ===
+        output_widget = QWidget()
+        output_layout = QVBoxLayout(output_widget)
+        output_layout.setContentsMargins(0, 0, 0, 0)
+        output_layout.setSpacing(8)
+        self._populate_output_ports(node, output_layout)
+        output_layout.addStretch(1)
+        self.stacked_widget.addWidget(output_widget)
+
+        self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
+        self.vbox.addWidget(self.segmented_widget)
+        self.vbox.addWidget(self.stacked_widget)
+        self.vbox.addStretch(1)
+        if current_segment in ['input', 'output']:
+            self.segmented_widget.setCurrentItem(current_segment)
+        else:
+            self.segmented_widget.setCurrentItem('input')
 
     def _add_loop_config_section(self, node):
         config_card = CardWidget(self)
@@ -543,7 +575,7 @@ class PropertyPanel(CardWidget):
 
         max_iter_spin.valueChanged.connect(on_max_iter_changed)
 
-        config_layout.addWidget(BodyLabel("最大迭代次数:"))
+        config_layout.addWidget(BodyLabel("循环次数:"))
         config_layout.addWidget(max_iter_spin)
 
         self.vbox.addWidget(config_card)
@@ -1061,8 +1093,11 @@ class PropertyPanel(CardWidget):
             # 删除旧 key（如果改名）
             if new_key != key:
                 global_vars.env.delete_env_var(key)
-
-            global_vars.env.set_env_var(new_key, new_value)
+            try:
+                global_vars.env.set_env_var(new_key, new_value)
+            except Exception as e:
+                InfoBar.error("设置环境变量失败", f"错误信息：{e.__str__()}", parent=self.main_window)
+                return
             self._refresh_env_page()
             self.main_window.global_variables_changed.emit()
             InfoBar.success("已更新", f"环境变量 {new_key}", parent=self.main_window)

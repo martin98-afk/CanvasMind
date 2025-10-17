@@ -90,7 +90,7 @@ class Component(BaseComponent):
         self.logger.info(params)
         # 获取输入
         user_input = inputs.user_input.strip() if inputs else ""
-        history = inputs.history if inputs else []
+        history = inputs.history if inputs.history else []
 
         if isinstance(history, str):
             try:
