@@ -69,8 +69,6 @@ class WorkflowScheduler(QObject):
         for node in all_nodes:
             if node in loop_internal_nodes:
                 continue
-            if isinstance(node, BackdropNode):
-                continue  # Backdrop 本身不执行，由调度器特殊处理
             executable_nodes.append(node)
 
         return executable_nodes
@@ -331,7 +329,6 @@ class WorkflowScheduler(QObject):
                     self.property_changed.emit(backdrop.id)
 
                 results = outputs
-
             # 6. 设置 Backdrop 的输出
             backdrop.set_output_value(results)
             self.set_node_status(backdrop, NodeStatus.NODE_STATUS_SUCCESS)

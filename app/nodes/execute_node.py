@@ -24,7 +24,7 @@ from app.widgets.node_widget.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.node_widget.range_widget import RangeWidgetWrapper
 from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 from app.widgets.node_widget.variable_combo_widget import GlobalVarComboBoxWidgetWrapper
-from app.widgets.tree_widget.component_log_message_box import LogMessageBox
+from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
 
 
 def _is_import_error(proc_or_result, error_file_path):
@@ -84,7 +84,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
-            self._view.set_proxy_mode(True)
             self.component_class = component_class
             if hasattr(component_class, "icon"):
                 self.set_icon(component_class.icon)

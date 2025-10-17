@@ -170,7 +170,7 @@ def create_branch_node(parent_window):
             return self._node_logs if self._node_logs else "无日志可用。"
 
         def show_logs(self):
-            from app.widgets.tree_widget.component_log_message_box import LogMessageBox
+            from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
             log_content = self.get_logs()
             w = LogMessageBox(log_content, None)
             w.exec()

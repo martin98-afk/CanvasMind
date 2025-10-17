@@ -8,10 +8,10 @@ from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy, QWidget, QLabel, QListWidgetItem
 )
-from qfluentwidgets import InfoBar, InfoBarPosition
+from qfluentwidgets import InfoBar, InfoBarPosition, TransparentPushButton
 from qfluentwidgets import (
-    MessageBoxBase, SubtitleLabel, ListWidget, PushButton,
-    FluentIcon, BodyLabel, SearchLineEdit, ToggleToolButton, ScrollArea, FlowLayout
+    MessageBoxBase, SubtitleLabel, ListWidget, FluentIcon, BodyLabel, SearchLineEdit, ToggleToolButton, ScrollArea,
+    FlowLayout
 )
 
 
@@ -60,7 +60,7 @@ class AddQuickComponentDialog(MessageBoxBase):
         upload_layout = QHBoxLayout()
         upload_layout.addWidget(BodyLabel("选择图标"))
         upload_layout.addStretch()
-        self.upload_btn = PushButton("上传图标", self)
+        self.upload_btn = TransparentPushButton("上传图标", self)
         self.upload_btn.setIcon(FluentIcon.UP)
         self.upload_btn.clicked.connect(self._upload_icon)
         upload_layout.addWidget(self.upload_btn)
