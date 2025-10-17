@@ -1,22 +1,24 @@
+import os
+import shutil
+import uuid
+from pathlib import Path
+
 from PyQt5.QtCore import Qt, QSize, QEasingCurve
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy, QGridLayout,
-    QWidget, QLabel, QScrollArea, QListWidgetItem
+    QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy, QWidget, QLabel, QListWidgetItem
 )
+from qfluentwidgets import InfoBar, InfoBarPosition
 from qfluentwidgets import (
     MessageBoxBase, SubtitleLabel, ListWidget, PushButton,
     FluentIcon, BodyLabel, SearchLineEdit, ToggleToolButton, ScrollArea, FlowLayout
 )
-from pathlib import Path
-import shutil
-import uuid
-import os
 
 
 class AddQuickComponentDialog(MessageBoxBase):
     def __init__(self, parent, component_map, icons_dir: Path):
         super().__init__(parent)
+        self.home = parent
         self.component_map = component_map
         self.icons_dir = icons_dir
         self.icons_dir.mkdir(exist_ok=True)
@@ -185,14 +187,16 @@ class AddQuickComponentDialog(MessageBoxBase):
             shutil.copy2(file_path, dst)
             self.load_and_display_icons()
         except Exception as e:
-            from qfluentwidgets import InfoBar, InfoBarPosition
             InfoBar.error("错误", f"上传失败: {e}", parent=self.parent(), position=InfoBarPosition.TOP_RIGHT)
 
     def validate(self):
         comp_item = self.comp_list.currentItem()
         if not comp_item:
-            from qfluentwidgets import InfoBar, InfoBarPosition
             InfoBar.warning("提示", "请选择一个组件", parent=self.parent(), position=InfoBarPosition.TOP_RIGHT)
+            return False
+        if comp_item.data(Qt.UserRole) in [
+            item["full_path"] for item in self.home.config.get(self.home.config.quick_components)]:
+            InfoBar.warning("提示", "已存在同名组件", parent=self.parent(), position=InfoBarPosition.TOP_RIGHT)
             return False
 
         self.selected_full_path = comp_item.data(Qt.UserRole)

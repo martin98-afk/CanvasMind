@@ -478,7 +478,6 @@ class PropertyPanel(CardWidget):
     # ========================
     # ControlFlowBackdrop 相关（保持不变）
     # ========================
-
     def _update_control_flow_properties(self, node):
         title = BodyLabel(f"🔁 {node.NODE_NAME}")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
@@ -489,9 +488,9 @@ class PropertyPanel(CardWidget):
         self.vbox.addWidget(type_label)
 
         current = node.model.get_property('current_index')
-        if flow_type == "iterate":
+        if flow_type == "loop":
             total = node.model.get_property("loop_nums")
-        elif flow_type == "loop":
+        elif flow_type == "iterate":
             input_data = []
             for input_port in node.input_ports():
                 connected = input_port.connected_ports()
@@ -516,7 +515,7 @@ class PropertyPanel(CardWidget):
         progress_bar.setValue(int(current / max(1, total) * 100))
         self.vbox.addWidget(progress_label)
         self.vbox.addWidget(progress_bar)
-        if flow_type == "iterate":
+        if flow_type == "loop":
             self._add_seperator()
             self._add_loop_config_section(node)
         self._add_seperator()

@@ -3,7 +3,9 @@ import json
 import os
 import pickle
 import re
+import uuid
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from pathlib import Path
 from typing import List, Tuple, Type, Union
 from typing import Any, Dict, Optional
@@ -15,6 +17,24 @@ import pandas as pd
 from PIL import Image
 from loguru import logger
 from pydantic import create_model
+
+
+ENV_RULES = {
+    "user_id": {"type": str, "readonly": True},
+    "canvas_id": {"type": str, "readonly": True},
+    "session_id": {"type": str, "readonly": True},
+    "run_id": {"type": str, "readonly": True},
+    "TZ": {"type": str, "pattern": r"^[A-Za-z_+-/]+$", "default": "Asia/Shanghai"},
+    "LANG": {"type": str, "pattern": r"^[a-z]{2}_[A-Z]{2}\.UTF-8$", "default": "en_US.UTF-8"},
+    "OMP_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
+    "MKL_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
+    "CUDA_VISIBLE_DEVICES": {"type": str, "pattern": r"^[\d,\s]*$", "default": "0"},
+    "PYTHONPATH": {"type": str, "default": "."},
+    "PYTHONUNBUFFERED": {"type": str, "allowed": {"1"}, "default": "1"},
+    "PYTHONIOENCODING": {"type": str, "default": "utf-8"},
+    "PYTHONWARNINGS": {"type": str, "default": "ignore"},
+}
+
 
 DEFAULT_PYTHON_ENV_VARS = {
     "PYTHONPATH": ".",
@@ -45,26 +65,62 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType\n\n\n"""
 
 
-# class VariableScope(str, Enum):
-#     GLOBAL = "global"
-#     CANVAS = "canvas"
-#     SESSION = "session"
+@contextmanager
+def temporary_env(env_dict: Dict[str, str]):
+    old_env = {}
+    try:
+        for k, v in env_dict.items():
+            old_env[k] = os.environ.get(k)
+            os.environ[k] = str(v)
+        yield
+    finally:
+        for k in env_dict:
+            if old_env[k] is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = old_env[k]
+
+
+def validate_env_value(key: str, value: Any) -> str:
+    """根据 ENV_RULES 校验并转换值为字符串"""
+    if value is None:
+        return ""
+
+    # 强制转为字符串（OS env 本质是 str）
+    if not isinstance(value, str):
+        value = str(value)
+
+    rule = ENV_RULES.get(key)
+    if not rule:
+        # 未知变量：允许，但只接受简单字符串（无换行、无 shell 元字符）
+        if not re.match(r"^[a-zA-Z0-9._/-]*$", value):
+            raise ValueError(f"Unsafe custom env var '{key}': contains special characters")
+        return value
+
+    # 检查 readonly
+    if rule.get("readonly"):
+        raise PermissionError(f"Environment variable '{key}' is read-only")
+
+    # 检查 allowed values
+    if "allowed" in rule and value not in rule["allowed"]:
+        raise ValueError(f"Invalid value for '{key}': {value}, allowed: {rule['allowed']}")
+
+    # 检查正则 pattern
+    if "pattern" in rule and not re.fullmatch(rule["pattern"], value):
+        raise ValueError(f"Value for '{key}' does not match pattern: {rule['pattern']}")
+
+    return value
 
 
 class ExecutionEnvironment(BaseModel):
-    # 预定义字段（保留类型提示）
     user_id: Optional[str] = None
     canvas_id: Optional[str] = None
     session_id: Optional[str] = None
     run_id: Optional[str] = None
+    metadata: Dict[str, str] = Field(default_factory=dict)  # 注意：现在只存 str
 
-    # 所有动态环境变量存储在这里
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-
-    def get_all_env_vars(self) -> Dict[str, Any]:
-        """获取所有环境变量（预定义 + 动态）"""
+    def get_all_env_vars(self) -> Dict[str, str]:
         result = self.metadata.copy()
-        # 添加预定义字段（非 None 值）
         for field in ["user_id", "canvas_id", "session_id", "run_id"]:
             val = getattr(self, field)
             if val is not None:
@@ -72,24 +128,29 @@ class ExecutionEnvironment(BaseModel):
         return result
 
     def set_env_var(self, key: str, value: Any):
-        """设置环境变量"""
+        # 所有 env 变量最终都是字符串
+        safe_value = validate_env_value(key, value)
+
         if key in ["user_id", "canvas_id", "session_id", "run_id"]:
-            setattr(self, key, value)
+            # 这些字段本身有 readonly 保护（通过 validate_env_value）
+            setattr(self, key, safe_value or None)
         else:
-            self.metadata[key] = value
+            self.metadata[key] = safe_value
 
     def delete_env_var(self, key: str):
-        """删除环境变量"""
         if key in ["user_id", "canvas_id", "session_id", "run_id"]:
             setattr(self, key, None)
         else:
             self.metadata.pop(key, None)
 
+    class Config:
+        # 允许 setattr 触发校验（但我们自己在 set_env_var 中做了）
+        validate_assignment = True
+
 
 class CustomVariable(BaseModel):
     value: Any = None
     description: Optional[str] = None
-    # scope: VariableScope = VariableScope.GLOBAL
     read_only: bool = False
 
 
@@ -732,7 +793,13 @@ class BaseComponent(ABC):
 
             validated_inputs = input_model_cls(**validated_inputs)
             # 执行组件逻辑
-            result = self.run(validated_params, validated_inputs)
+            safe_env = {
+                k: str(v) for k, v in self.global_variable.env.get_all_env_vars().items()
+                if v is not None
+            }
+
+            with temporary_env(safe_env):
+                result = self.run(validated_params, validated_inputs)
 
             # 验证输出
             if not self.validate_outputs(result):

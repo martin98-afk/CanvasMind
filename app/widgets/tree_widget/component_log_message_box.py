@@ -26,7 +26,7 @@ class LogMessageBox(MessageBoxBase):
         # 使用支持富文本的TextEdit
         self.logTextEdit = TextEdit(self)
         self.logTextEdit.setReadOnly(True)
-        self.logTextEdit.setLineWrapMode(TextEdit.NoWrap)  # 禁用自动换行
+        # self.logTextEdit.setLineWrapMode(TextEdit.NoWrap)  # 禁用自动换行
         self.logTextEdit.setStyleSheet("""
             TextEdit {
                 background-color: #1e1e1e;
@@ -41,10 +41,10 @@ class LogMessageBox(MessageBoxBase):
 
         # 设置最小高度（屏幕高度的70%）
         if parent and hasattr(parent, 'window_height'):
-            min_height = int(0.6 * parent.window_height)
+            min_height = int(0.7 * parent.window_height)
         else:
             try:
-                min_height = int(0.6 * self.screen().availableGeometry().height())
+                min_height = int(0.7 * self.screen().availableGeometry().height())
             except:
                 min_height = 500  # 默认高度
 
