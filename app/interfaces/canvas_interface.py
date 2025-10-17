@@ -320,7 +320,6 @@ class CanvasPage(QWidget):
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_separator()
                 nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
@@ -328,7 +327,7 @@ class CanvasPage(QWidget):
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
         # 迭代节点
-        code_node = create_dynamic_code_node()
+        code_node = create_dynamic_code_node(self)
         code_node.__name__ = "DYNAMIC_CODE"
         self.graph.register_node(code_node)
         nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
@@ -337,7 +336,8 @@ class CanvasPage(QWidget):
                                node_type=f"dynamic.{code_node.__name__}")
         nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                node_type=f"dynamic.{code_node.__name__}")
-        nodes_menu.add_separator()
+        nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
+                               node_type=f"dynamic.{code_node.__name__}")
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"dynamic.{code_node.__name__}")
         # 迭代节点
@@ -350,7 +350,6 @@ class CanvasPage(QWidget):
                                node_type=f"control_flow.{iterate_node.__name__}")
         nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                node_type=f"control_flow.{iterate_node.__name__}")
-        nodes_menu.add_separator()
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{iterate_node.__name__}")
 
@@ -364,7 +363,6 @@ class CanvasPage(QWidget):
                                node_type=f"control_flow.{loop_node.__name__}")
         nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                node_type=f"control_flow.{loop_node.__name__}")
-        nodes_menu.add_separator()
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{loop_node.__name__}")
 
@@ -388,7 +386,6 @@ class CanvasPage(QWidget):
                                node_type=f"control_flow.{branch_node.__name__}")
         nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                node_type=f"control_flow.{branch_node.__name__}")
-        nodes_menu.add_separator()
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{branch_node.__name__}")
 
@@ -1379,6 +1376,7 @@ class CanvasPage(QWidget):
                         node._output_values = deserialize_from_json(node_status.get("node_outputs", {}))
                         node.column_select = node_status.get("column_select", {})
                         status_str = node_status.get("node_states", "unrun")
+                        status_str = "unrun" if status_str is None else status_str
                         self.set_node_status(
                             node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
                         )
