@@ -13,6 +13,8 @@ import subprocess
 import sys
 import tempfile
 
+from qfluentwidgets import PlainTextEdit
+
 try:
     import jedi  # type: ignore
 except Exception:
@@ -54,6 +56,11 @@ class LineNumberArea(QWidget):
     def __init__(self, editor):
         super().__init__(editor)
         self.codeEditor = editor
+        self.setStyleSheet("""
+            QWidget {
+                background-color: transparent;
+            }
+        """)
 
     def sizeHint(self):
         return QSize(self.codeEditor.line_number_area_width(), 0)
@@ -85,13 +92,12 @@ class CodeBlockData(QTextBlockUserData):
 
 
 # ---------------- 代码编辑器 ----------------
-class CodeEditor(QPlainTextEdit):
+class CodeEditor(PlainTextEdit):
     """带行号、当前行高亮、括号匹配、代码折叠的代码编辑器"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.lineNumberArea = LineNumberArea(self)
-        self.set_dark_theme()
         self.setMouseTracking(True)
 
         # 行号区宽度调整
@@ -171,22 +177,6 @@ class CodeEditor(QPlainTextEdit):
         # ========== 4. 其他按键交给 eventFilter 处理（包括 Tab、Backspace、符号等）==========
         super().keyPressEvent(event)
 
-    def set_dark_theme(self):
-        palette = self.palette()
-        palette.setColor(QPalette.Base, QColor("#1e1e1e"))
-        palette.setColor(QPalette.Text, QColor("#dcdcdc"))
-        palette.setColor(QPalette.Highlight, QColor("#264f78"))
-        palette.setColor(QPalette.HighlightedText, QColor("#ffffff"))
-        self.setPalette(palette)
-
-        self.setStyleSheet("""
-            QPlainTextEdit {
-                background-color: #1e1e1e;
-                color: #dcdcdc;
-                font-family: Consolas, "Courier New", monospace;
-            }
-        """)
-
     def line_number_area_width(self):
         digits = len(str(max(1, self.blockCount())))
         space = 3 + self.fontMetrics().horizontalAdvance('9') * digits
@@ -198,7 +188,7 @@ class CodeEditor(QPlainTextEdit):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         cr = self.contentsRect()
-        self.lineNumberArea.setGeometry(QRect(cr.left(), cr.top(),
+        self.lineNumberArea.setGeometry(QRect(cr.left()-10, cr.top(),
                                               self.line_number_area_width(), cr.height()))
 
     def update_line_number_area(self, rect, dy):
@@ -439,7 +429,7 @@ class CodeEditorWidget(QWidget):
 
         # status line: line:col
         self.status_label = QLabel("Ln 1, Col 1", self)
-        self.status_label.setStyleSheet("color:#9aa0a6; padding:3px 6px; background:#202124;")
+        self.status_label.setStyleSheet("color:#9aa0a6; padding:3px 6px; background:transparent;")
         layout.addWidget(self.status_label)
         self.code_editor.cursorPositionChanged.connect(self._update_status_label)
 

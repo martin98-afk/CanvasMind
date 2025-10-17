@@ -10,6 +10,7 @@ class CodeEditorWidgetWrapper(NodeBaseWidget):
         self.set_name(name)
         self.set_label(label)
         self._editor = CodeEditorWidget(parent=window)
+        self._editor.setMinimumSize(900, 500)  # 足够大的编辑区域
         self._editor.set_code(default)
         self._editor.code_changed.connect(self._on_code_changed)
         self.set_custom_widget(self._editor)
@@ -22,7 +23,3 @@ class CodeEditorWidgetWrapper(NodeBaseWidget):
 
     def set_value(self, value):
         self._editor.set_code(value or "")
-
-    # ✅ 关键：告诉 NodeGraphQt 这个控件需要更大空间
-    def sizeHint(self):
-        return QSize(600, 400)  # 宽 600，高 400
