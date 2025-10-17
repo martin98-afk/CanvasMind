@@ -101,6 +101,7 @@ class CanvasPage(QWidget):
         self.quick_manager.quick_components_changed.connect(self._refresh_quick_buttons)
         # 创建悬浮按钮和环境选择
         self.create_environment_selector()
+        self.create_floating_buttons()
         self.create_floating_nodes()
 
         # 启用画布拖拽
@@ -230,29 +231,18 @@ class CanvasPage(QWidget):
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
             self._update_nodes_container_position()
-            self.env_selector_container.move(self.graph.viewer().width() - 370, 10)
+            self.env_selector_container.move(10, 10)
+            self.buttons_container.move(self.graph.viewer().width() - 170, 10)
             self._position_name_container()
-            # self._position_minimap()
         return super().eventFilter(obj, event)
 
-    def create_environment_selector(self):
-        self.env_selector_container = QWidget(self.graph.viewer())
-        self.env_selector_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.env_selector_container.move(self.graph.viewer().width() - 370, 10)
-        env_layout = QHBoxLayout(self.env_selector_container)
+    def create_floating_buttons(self):
+        self.buttons_container = QWidget(self.graph.viewer())
+        self.buttons_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.buttons_container.move(self.graph.viewer().width() - 170, 10)
+        env_layout = QHBoxLayout(self.buttons_container)
         env_layout.setSpacing(5)
         env_layout.setContentsMargins(0, 0, 0, 0)
-        env_label = TransparentToolButton(self)
-        env_label.setText("环境:")
-        env_label.setFixedSize(50, 30)
-        self.env_combo = ComboBox(self.env_selector_container)
-        self.env_combo.setFixedWidth(140)
-        self.load_env_combos()
-        self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
-        if hasattr(self.parent, 'package_manager'):
-            self.parent.package_manager.env_changed.connect(self.load_env_combos)
-        env_layout.addWidget(env_label)
-        env_layout.addWidget(self.env_combo)
 
         self.run_btn = TransparentToolButton(FluentIcon.PLAY, self)
         self.run_btn.setToolTip("运行工作流")
@@ -275,6 +265,28 @@ class CanvasPage(QWidget):
         self.close_btn.setToolTip("关闭当前画布")
         self.close_btn.clicked.connect(self.close_current_canvas)
         env_layout.addWidget(self.close_btn)
+        env_layout.addStretch()
+        self.buttons_container.setLayout(env_layout)
+        self.buttons_container.show()
+
+    def create_environment_selector(self):
+        self.env_selector_container = QWidget(self.graph.viewer())
+        self.env_selector_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.env_selector_container.move(10, 10)
+        env_layout = QHBoxLayout(self.env_selector_container)
+        env_layout.setSpacing(5)
+        env_layout.setContentsMargins(0, 0, 0, 0)
+        env_label = TransparentToolButton(self)
+        env_label.setText("环境:")
+        env_label.setFixedSize(50, 30)
+        self.env_combo = ComboBox(self.env_selector_container)
+        self.env_combo.setFixedWidth(140)
+        self.load_env_combos()
+        self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
+        if hasattr(self.parent, 'package_manager'):
+            self.parent.package_manager.env_changed.connect(self.load_env_combos)
+        env_layout.addWidget(env_label)
+        env_layout.addWidget(self.env_combo)
         env_layout.addStretch()
         self.env_selector_container.setLayout(env_layout)
         self.env_selector_container.show()

@@ -87,7 +87,7 @@ class CodeBlockData(QTextBlockUserData):
 
 
 # ---------------- 代码编辑器 ----------------
-class CodeEditor(PlainTextEdit):
+class CodeEditor(QPlainTextEdit):
     """带行号、当前行高亮、括号匹配、代码折叠的代码编辑器"""
 
     def __init__(self, parent=None):
