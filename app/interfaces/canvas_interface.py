@@ -12,16 +12,17 @@ from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QMenu
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from loguru import logger
 from qfluentwidgets import (
-    ToolButton, InfoBar,
+    InfoBar,
     InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton
 )
 
-from app.components.base import PropertyType, GlobalVariableContext, ConnectionType
+from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
 from app.nodes.branch_node import create_branch_node
+from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
@@ -326,7 +327,19 @@ class CanvasPage(QWidget):
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-
+        # 迭代节点
+        code_node = create_dynamic_code_node(self)
+        code_node.__name__ = "DYNAMIC_CODE"
+        self.graph.register_node(code_node)
+        nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
+                               node_type=f"dynamic.{code_node.__name__}")
+        nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
+                               node_type=f"dynamic.{code_node.__name__}")
+        nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
+                               node_type=f"dynamic.{code_node.__name__}")
+        nodes_menu.add_separator()
+        nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
+                               node_type=f"dynamic.{code_node.__name__}")
         # 迭代节点
         iterate_node = ControlFlowIterateNode
         iterate_node.__name__ = "ControlFlowIterateNode"
@@ -432,6 +445,12 @@ class CanvasPage(QWidget):
         self.branch_node.clicked.connect(lambda: self.create_next_node("control_flow.ControlFlowBranchNode"))
         self.node_layout.addWidget(self.branch_node)
 
+        self.code_node = TransparentToolButton(get_icon("代码执行"), self)
+        self.code_node.setIconSize(QSize(20, 20))
+        self.code_node.setToolTip("创建代码编辑")
+        self.code_node.clicked.connect(lambda: self.create_next_node("dynamic.DYNAMIC_CODE"))
+        self.node_layout.addWidget(self.code_node)
+
         # === 分隔线 ===
         from PyQt5.QtWidgets import QFrame
         self.separator = QFrame()
@@ -492,7 +511,7 @@ class CanvasPage(QWidget):
             btn.setIconSize(QSize(20, 20))
             btn.setToolTip(f"创建 {comp_name}")
             btn.setProperty("full_path", full_path)
-            btn.clicked.connect(lambda _, fp=full_path: self.create_next_node(fp, icon_path))
+            btn.clicked.connect(lambda _, ip=icon_path, fp=full_path: self.create_next_node(fp, ip))
 
             # 右键菜单：删除
             btn.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -1397,7 +1416,17 @@ class CanvasPage(QWidget):
         edit_menu = graph_menu.add_menu('编辑')
         edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
         edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
-        edit_menu.add_command('删除选中', lambda graph: graph.delete_nodes(graph.selected_nodes()), 'Del')
+        edit_menu.add_command('删除选中', lambda graph: self.delete_selected_nodes(graph), 'Del')
+
+    def delete_selected_nodes(self, graph):
+        # 清除选中节点的输入输出端口连接线
+        for node in graph.selected_nodes():
+            if isinstance(node, BackdropNode):
+                for port in node.input_ports():
+                    port.clear_connections(push_undo=True, emit_signal=True)
+                for port in node.output_ports():
+                    port.clear_connections(push_undo=True, emit_signal=True)
+        graph.delete_nodes(graph.selected_nodes())
 
     def _undo(self):
         try:
