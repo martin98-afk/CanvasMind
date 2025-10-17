@@ -332,34 +332,6 @@ class ArgumentType(str, Enum):
     def is_image(self):
         return self == ArgumentType.IMAGE
 
-    def serialize(self, display_data):
-        if display_data is None or len(display_data) == 0:
-            return display_data
-        try:
-            if self.is_file() and len(display_data) > 0:
-                # FILE类型：显示文件路径选择
-                display_data = {
-                    "file_name": os.path.basename(display_data),
-                    "file_type": self.value,
-                    "file_path": display_data
-                }
-            elif self == ArgumentType.JSON and isinstance(display_data, str):
-                display_data = json.loads(display_data)
-            elif self.is_number():
-                display_data = float(display_data)
-            elif self.is_bool():
-                display_data = bool(display_data)
-            elif self.is_array() and isinstance(display_data, str):
-                display_data = np.array(eval(display_data))
-            elif self.is_array() and isinstance(display_data, list):
-                display_data = np.array(display_data)
-            elif self.is_image():
-                display_data = Image.open(display_data)
-        except:
-            logger.error(f"{self.value}序列化错误：{display_data}")
-
-        return display_data
-
 
 class PortDefinition(BaseModel):
     """端口定义"""
@@ -528,16 +500,33 @@ class BaseComponent(ABC):
 
     # ---------------- 输入数据读取 ----------------
     def read_input_data(self, input_name: str, input_value: Any, input_type: ArgumentType) -> Any:
-        """根据输入类型读取数据"""
+        """根据输入类型读取数据，增强鲁棒性"""
+        # 统一空值处理
+        if input_value is None or (isinstance(input_value, str) and input_value.strip() == ""):
+            if input_type.is_file():
+                raise ComponentError(f"输入 {input_name} 为空或路径无效", "INPUT_EMPTY_ERROR")
+            elif input_type.is_number():
+                return 0 if input_type == ArgumentType.INT else 0.0
+            elif input_type.is_bool():
+                return False
+            elif input_type.is_array():
+                return np.array([])
+            else:
+                return ""
+
         try:
             if input_type == ArgumentType.TEXT:
-                return str(input_value) if input_value is not None else ""
+                return str(input_value)
             elif input_type == ArgumentType.INT:
-                return int(input_value) if input_value is not None else 0
+                return int(float(input_value))  # 兼容 "1.0" 字符串
             elif input_type == ArgumentType.FLOAT:
-                return float(input_value) if input_value is not None else 0.0
-            elif input_type == ArgumentType.ARRAY and isinstance(input_value, (list, tuple)):
-                return np.array(input_value) if input_value is not None else 0.0
+                return float(input_value)
+            elif input_type == ArgumentType.BOOL:
+                if isinstance(input_value, str):
+                    return input_value.lower() in ("true", "1", "yes", "on")
+                return bool(input_value)
+            elif input_type == ArgumentType.ARRAY:
+                return self._read_array_data(input_name, input_value)
             elif input_type == ArgumentType.CSV:
                 return self._read_csv_data(input_value)
             elif input_type == ArgumentType.JSON:
@@ -555,7 +544,35 @@ class BaseComponent(ABC):
             else:
                 return input_value
         except Exception as e:
-            raise ComponentError(f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR")
+            self.logger.error(f"读取输入 '{input_name}'（类型: {input_type}）失败: {e}")
+            raise ComponentError(f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR") from e
+
+    def _read_array_data(self, input_name: str, data: Any) -> Union[list, np.ndarray]:
+        """安全解析数组输入，优先返回 np.ndarray，失败则回退到 list"""
+        if isinstance(data, np.ndarray):
+            return data
+        if isinstance(data, (list, tuple)):
+            try:
+                # 使用 dtype=object 提高兼容性（允许混合类型）
+                return np.array(data, dtype=object)
+            except Exception as e:
+                self.logger.debug(f"输入 {input_name} 无法转为 np.ndarray，回退到 list: {e}")
+                return list(data)
+        if isinstance(data, str):
+            try:
+                import ast
+                parsed = ast.literal_eval(data)
+                if isinstance(parsed, (list, tuple)):
+                    try:
+                        return np.array(parsed, dtype=object)
+                    except Exception as e:
+                        self.logger.debug(f"字符串解析后无法转为 ndarray，回退到 list: {e}")
+                        return list(parsed)
+                else:
+                    return [parsed]  # 单个值也视为数组
+            except (ValueError, SyntaxError):
+                return [data]  # 无法解析的字符串作为单元素
+        return [data]  # 兜底：包装为单元素列表
 
     def _read_csv_data(self, data: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
         """读取CSV数据"""
@@ -571,27 +588,33 @@ class BaseComponent(ABC):
         else:
             raise ComponentError(f"无法读取CSV数据: {type(data)}")
 
-    def _read_json_data(self, data: Union[str, dict, Path]) -> Union[dict, list]:
-        """读取JSON数据"""
-        if len(data) == 0:
+    def _read_json_data(self, data: Union[str, dict, list, Path]) -> Union[dict, list]:
+        if data is None or (isinstance(data, str) and not data.strip()):
+            return {}
+
+        if isinstance(data, (dict, list)):
             return data
-        if isinstance(data, dict):
-            return data
-        elif isinstance(data, list):
-            return data
-        elif isinstance(data, str):
-            if os.path.exists(data):
-                with open(data, 'r', encoding='utf-8') as f:
+        elif isinstance(data, (str, Path)):
+            path = Path(data)
+            if path.is_file():
+                with open(path, 'r', encoding='utf-8') as f:
                     return json.load(f)
             else:
-                self.logger.info(data)
-                # 如果是JSON字符串
-                return json.loads(re.sub(r"'", '"', data))
-        elif isinstance(data, Path):
-            with open(data, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                # 尝试标准 JSON
+                try:
+                    return json.loads(data)
+                except json.JSONDecodeError:
+                    # 尝试修复单引号（仅当明显是 dict/list 字符串时）
+                    if data.strip().startswith(("{", "[")) and data.strip().endswith(("}", "]")):
+                        try:
+                            fixed = data.replace("'", '"')
+                            return json.loads(fixed)
+                        except Exception:
+                            pass
+                    self.logger.warning(f"JSON 输入无法解析: {data[:100]}...")
+                    raise ComponentError(f"无效 JSON 数据: {type(data)}", "JSON_PARSE_ERROR")
         else:
-            raise ComponentError(f"无法读取JSON数据: {type(data)}")
+            raise ComponentError(f"不支持的 JSON 输入类型: {type(data)}", "JSON_TYPE_ERROR")
 
     def _read_excel_data(self, data: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
         """读取Excel数据"""
@@ -633,22 +656,25 @@ class BaseComponent(ABC):
             raise ComponentError(f"无法读取图像数据: {data}")
 
     def _read_file_data(self, data: Union[str, Path]) -> str:
-        """读取文件数据"""
-        if isinstance(data, (str, Path)) and os.path.exists(data):
+        file_path = Path(data)
+        if not file_path.exists():
+            raise ComponentError(f"文件不存在: {file_path}", "FILE_NOT_FOUND")
+
+        try:
+            return file_path.read_text(encoding='utf-8')
+        except UnicodeDecodeError:
             try:
-                with open(data, 'r', encoding='utf-8') as f:
-                    return f.read()
-            except UnicodeDecodeError as e:
-                try:
-                    with open(data, 'r', encoding='gbk') as f:
-                        return f.read()
-                except UnicodeDecodeError as e:
-                    with open(data, 'rb') as f:
-                        return f.read().decode('utf-8', 'ignore')
-            except Exception as e:
-                raise e
-        else:
-            raise ComponentError(f"无法读取文件数据: {data}")
+                return file_path.read_text(encoding='gbk')
+            except UnicodeDecodeError:
+                return file_path.read_bytes().decode('utf-8', errors='ignore')
+
+    def _process_multiple_inputs(self, input_name: str, input_values: List[Any], input_type: ArgumentType) -> List[Any]:
+        if not isinstance(input_values, (list, tuple)):
+            input_values = [input_values]
+        return [
+            self.read_input_data(input_name, val, input_type)
+            for val in input_values
+        ]
 
     # ---------------- 输出数据存储 ----------------
     def store_output_data(self, output_name: str, output_value: Any, output_type: ArgumentType) -> Any:
@@ -777,17 +803,15 @@ class BaseComponent(ABC):
             if inputs:
                 for port in self.inputs:
                     if port.name in inputs:
-                        if (port.connection == ConnectionType.SINGLE or
-                                (port.connection == ConnectionType.MULTIPLE and not isinstance(inputs[port.name],
-                                                                                               list))):
-                            validated_inputs[port.name] = self.read_input_data(
+                        if port.connection == ConnectionType.MULTIPLE:
+                            validated_inputs[port.name] = self._process_multiple_inputs(
                                 port.name, inputs[port.name], port.type
                             )
                         else:
-                            validated_inputs[port.name] = [
-                                self.read_input_data(port.name, input_data, port.type)
-                                for input_data in inputs[port.name]
-                            ]
+                            validated_inputs[port.name] = self.read_input_data(
+                                port.name, inputs[port.name], port.type
+                            )
+
                     if f"{port.name}_column_select" in inputs:
                         validated_inputs[port.name] = validated_inputs[port.name][inputs[f"{port.name}_column_select"]]
 

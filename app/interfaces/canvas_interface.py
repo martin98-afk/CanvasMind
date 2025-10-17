@@ -231,7 +231,6 @@ class CanvasPage(QWidget):
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
             self._update_nodes_container_position()
-            self.env_selector_container.move(10, 10)
             self.buttons_container.move(self.graph.viewer().width() - 170, 10)
             self._position_name_container()
         return super().eventFilter(obj, event)
@@ -272,7 +271,7 @@ class CanvasPage(QWidget):
     def create_environment_selector(self):
         self.env_selector_container = QWidget(self.graph.viewer())
         self.env_selector_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.env_selector_container.move(10, 10)
+        self.env_selector_container.move(0, 10)
         env_layout = QHBoxLayout(self.env_selector_container)
         env_layout.setSpacing(5)
         env_layout.setContentsMargins(0, 0, 0, 0)
