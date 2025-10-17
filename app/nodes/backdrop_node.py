@@ -35,6 +35,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         self._inputs = []
         self._outputs = []
         self._output_values = {}
+        self._input_values = {}
         # === 初始化默认端口默认多输入/多输出端口 ===
         self.add_input("inputs", multi_input=True, display_name=True)
         self.add_output("outputs", display_name=True)

@@ -7,8 +7,27 @@ from app.components.base import PropertyType
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import resource_path
+from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
+
+
+DEFAULT_CODE_TEMPLATE = '''def run(self, params, inputs=None):
+    """
+    params: 节点属性（来自UI）
+    inputs: 上游输入（key=输入端口名）
+    return: 输出数据（key=输出端口名）
+    """
+    # 在这里编写你的组件逻辑
+    input_data = inputs.get("input_data") if inputs else None
+    param1 = params.get("param1", "default_value")
+    # 处理逻辑
+    result = f"处理结果: {input_data} + {param1}"
+    return {
+        "output_data": result
+    }
+'''
+
 
 
 def create_dynamic_code_node(parent_window=None):
@@ -17,7 +36,7 @@ def create_dynamic_code_node(parent_window=None):
         __identifier__ = 'dynamic'
         NODE_NAME = "代码编辑"
         FULL_PATH = f"代码执行/{NODE_NAME}"
-        FILE_PATH = "DYNAMIC_CODE_PLACEHOLDER"  # 不需要真实文件路径
+        FILE_PATH = "DYNAMIC_CODE"  # 不需要真实文件路径
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
@@ -100,6 +119,15 @@ def create_dynamic_code_node(parent_window=None):
                 z_value=100
             )
             self.add_custom_widget(self.output_widget, tab='Properties')
+
+            code_widget = CodeEditorWidgetWrapper(
+                parent=self.view,
+                name="code",
+                label="执行代码",
+                default=DEFAULT_CODE_TEMPLATE.strip(),
+                window=parent_window
+            )
+            self.add_custom_widget(code_widget, tab='Properties')
 
         def _sanitize_port_name(self, name: str) -> str:
             if not name:
@@ -215,6 +243,9 @@ def create_dynamic_code_node(parent_window=None):
 
         # === 关键：重写 execute_sync，使用动态代码模板 ===
         def execute_sync(self, comp_obj, python_executable=None, check_cancel=None):
-            pass
+            params = {
+                "code": self.get_property("code"),
+                "requirements": self.get_property("requirements") or "",
+            }
 
     return DynamicCodeNode

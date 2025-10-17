@@ -328,7 +328,7 @@ class CanvasPage(QWidget):
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
         # 迭代节点
-        code_node = create_dynamic_code_node(self)
+        code_node = create_dynamic_code_node()
         code_node.__name__ = "DYNAMIC_CODE"
         self.graph.register_node(code_node)
         nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),

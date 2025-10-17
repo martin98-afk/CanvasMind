@@ -2,7 +2,6 @@
 from NodeGraphQt import NodeBaseWidget
 from Qt import QtWidgets, QtCore
 from qfluentwidgets import LineEdit, TextEdit
-from qfluentwidgets.components.widgets.line_edit import CompleterMenu
 
 
 class TextWidget(QtWidgets.QWidget):
