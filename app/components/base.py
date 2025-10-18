@@ -65,6 +65,33 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType\n\n\n"""
 
 
+# ==================== 工具函数 ====================
+
+def _get_node_temp_dir(node_id: Optional[str]) -> Path:
+    """获取节点专属临时目录"""
+    if not node_id:
+        # 无 node_id 时回退到系统临时目录（兼容旧逻辑）
+        import tempfile
+        return Path(tempfile.mkdtemp())
+
+    base_dir = Path("temp_runs") / "nodes" / node_id
+    base_dir.mkdir(parents=True, exist_ok=True)
+    return base_dir
+
+
+def _get_torch():
+    """懒加载 torch"""
+    global _TORCH_AVAILABLE, _TORCH_MODULE
+    if not hasattr(_get_torch, "_cache"):
+        _get_torch._cache = None
+        try:
+            import torch
+            _get_torch._cache = torch
+        except ImportError:
+            _get_torch._cache = None
+    return _get_torch._cache
+
+
 @contextmanager
 def temporary_env(env_dict: Dict[str, str]):
     old_env = {}
@@ -111,6 +138,8 @@ def validate_env_value(key: str, value: Any) -> str:
 
     return value
 
+
+# ==================== 执行环境 ====================
 
 class ExecutionEnvironment(BaseModel):
     user_id: Optional[str] = None
@@ -638,10 +667,7 @@ class BaseComponent(ABC):
 
     def _read_torch_model(self, data: Union[str, Path]) -> Any:
         """读取torch模型"""
-        try:
-            import torch
-        except:
-            pass
+        torch = _get_torch()
         if isinstance(data, (str, Path)) and os.path.exists(data):
             return torch.jit.load(data)
         else:
@@ -677,8 +703,8 @@ class BaseComponent(ABC):
         ]
 
     # ---------------- 输出数据存储 ----------------
-    def store_output_data(self, output_name: str, output_value: Any, output_type: ArgumentType) -> Any:
-        """根据输出类型存储数据"""
+    def store_output_data(self, output_name: str, output_value: Any, output_type: ArgumentType, node_id: str = None) -> Any:
+        """根据输出类型存储数据，支持按 node_id 持久化"""
         try:
             if output_type == ArgumentType.TEXT:
                 return str(output_value) if output_value is not None else ""
@@ -686,119 +712,105 @@ class BaseComponent(ABC):
                 return int(output_value) if output_value is not None else 0
             elif output_type == ArgumentType.FLOAT:
                 return float(output_value) if output_value is not None else 0.0
-            elif output_type == ArgumentType.ARRAY and isinstance(output_value, np.ndarray):
-                return output_value.tolist() if output_value is not None else np.zeros(0)
+            elif output_type == ArgumentType.ARRAY:
+                if isinstance(output_value, np.ndarray):
+                    return output_value.tolist()
+                return output_value
             elif output_type == ArgumentType.CSV:
                 return self._store_csv_data(output_value)
             elif output_type == ArgumentType.JSON:
                 return self._store_json_data(output_value)
             elif output_type == ArgumentType.EXCEL:
-                return self._store_excel_data(output_value)
+                return self._store_excel_data(output_value, node_id)
             elif output_type == ArgumentType.SKLEARNMODEL:
-                return self._store_sklearn_model(output_value)
+                return self._store_sklearn_model(output_value, node_id)
             elif output_type == ArgumentType.TORCHMODEL:
-                return self._store_torch_model(output_value)
+                return self._store_torch_model(output_value, node_id)
             elif output_type == ArgumentType.IMAGE:
-                return self._store_image_data(output_value)
+                return self._store_image_data(output_value, node_id)
             elif output_type == ArgumentType.FILE:
-                return self._store_file_data(output_value)
+                return self._store_file_data(output_value, node_id)
             else:
                 return output_value
         except Exception as e:
             raise ComponentError(f"存储输出 {output_name} 失败: {str(e)}", "OUTPUT_STORE_ERROR")
 
-    def _store_csv_data(self, data: pd.DataFrame) -> str:
-        """存储CSV数据"""
+    def _store_csv_data(self, data: Any) -> str:
+        """存储CSV数据（返回字符串）"""
         if isinstance(data, pd.DataFrame):
-            return data
-        elif isinstance(data, (str, Path)):
-            if os.path.exists(data):
-                return pd.read_csv(data)
-            else:
-                # 如果是CSV字符串
-                import io
-                return pd.read_csv(io.StringIO(data))
+            import io
+            output = io.StringIO()
+            data.to_csv(output, index=False)
+            return output.getvalue()
         else:
-            raise ComponentError(f"无法存储CSV数据: {type(data)}")
+            raise ComponentError(f"CSV 输出必须是 pandas.DataFrame，得到: {type(data)}", "OUTPUT_TYPE_ERROR")
 
     def _store_json_data(self, data: Union[dict, list]) -> str:
-        """存储JSON数据"""
+        """存储JSON数据（直接返回）"""
         return data
 
-    def _store_excel_data(self, data: pd.DataFrame) -> str:
-        """存储Excel数据"""
-        import io
-        if isinstance(data, pd.DataFrame):
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                data.to_excel(writer, index=False)
-            return output.getvalue()
-        elif isinstance(data, (str, Path)):
-            if os.path.exists(data):
-                return pd.read_excel(data)
-            else:
-                return pd.read_excel(io.StringIO(data))
-        else:
-            raise ComponentError(f"无法存储Excel数据: {type(data)}")
+    def _store_excel_data(self, data: pd.DataFrame, node_id: str = None) -> str:
+        """存储Excel数据到节点专属目录"""
+        if not isinstance(data, pd.DataFrame):
+            raise ComponentError(f"Excel 输出必须是 DataFrame，得到: {type(data)}")
+        temp_dir = _get_node_temp_dir(node_id)
+        excel_path = temp_dir / f"output_{uuid.uuid4().hex}.xlsx"
+        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+            data.to_excel(writer, index=False)
+        return str(excel_path)
 
-    def _store_sklearn_model(self, model: Any) -> str:
-        """存储sklearn模型"""
-        import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pkl') as tmp:
-            with open(tmp.name, 'wb') as f:
-                pickle.dump(model, f)
-            return tmp.name
+    def _store_sklearn_model(self, model: Any, node_id: str = None) -> str:
+        """存储sklearn模型到节点专属目录"""
+        temp_dir = _get_node_temp_dir(node_id)
+        model_path = temp_dir / f"model_{uuid.uuid4().hex}.pkl"
+        with open(model_path, 'wb') as f:
+            pickle.dump(model, f)
+        return str(model_path)
 
-    def _store_torch_model(self, model: Any) -> str:
-        """存储torch模型"""
-        try:
-            import torch
-        except:
-            pass
-        import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pth') as tmp:
-            # 使用torch.jit.script进行模型序列化
-            scripted_model = torch.jit.script(model)
-            scripted_model.save(tmp.name)
-            return tmp.name
+    def _store_torch_model(self, model: Any, node_id: str = None) -> str:
+        """存储torch模型到节点专属目录"""
+        torch = _get_torch()
+        if torch is None:
+            raise ComponentError("torch 未安装", "MISSING_DEPENDENCY")
+        temp_dir = _get_node_temp_dir(node_id)
+        model_path = temp_dir / f"model_{uuid.uuid4().hex}.pth"
+        scripted_model = torch.jit.script(model)
+        scripted_model.save(str(model_path))
+        return str(model_path)
 
-    def _store_image_data(self, image: Any) -> str:
-        """存储图像数据"""
-        # 如果是ndarray图像
+    def _store_image_data(self, image: Any, node_id: str = None) -> str:
+        """存储图像数据到节点专属目录"""
         if isinstance(image, np.ndarray):
             image = Image.fromarray(image)
-        elif isinstance(image, Image.Image):
-            pass
-        else:
+        elif not isinstance(image, Image.Image):
             raise ComponentError(f"无法存储图像数据: {type(image)}")
-        import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
-            image.save(tmp.name, 'PNG')
-            return tmp.name
+        temp_dir = _get_node_temp_dir(node_id)
+        image_path = temp_dir / f"image_{uuid.uuid4().hex}.png"
+        image.save(image_path, 'PNG')
+        return str(image_path)
 
-    def _store_file_data(self, data: str) -> str:
-        """存储文件数据"""
-        import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, mode='w', encoding='utf-8', suffix='.txt') as tmp:
-            tmp.write(str(data))
-            return tmp.name
+    def _store_file_data(self, data: str, node_id: str = None) -> str:
+        """存储文件数据到节点专属目录"""
+        temp_dir = _get_node_temp_dir(node_id)
+        file_path = temp_dir / f"file_{uuid.uuid4().hex}.txt"
+        file_path.write_text(str(data), encoding='utf-8')
+        return str(file_path)
 
     # ---------------- 执行包装器 ----------------
     def execute(
             self,
             params: Dict[str, Any],
             inputs: Optional[Dict[str, Any]] = None,
-            global_vars: Dict[str, Any] = None
+            global_vars: Dict[str, Any] = None,
+            node_id: str = None
     ) -> Dict[str, Any]:
         """执行组件，包含错误处理和数据类型转换"""
         try:
-            # 验证参数
             if global_vars is not None:
                 self.global_variable.deserialize(global_vars)
             params_model = self.get_params_model()
             validated_params = params_model(**params)
             input_model_cls = self.get_input_model()
-            # 验证并读取输入数据
             validated_inputs = {}
             if inputs:
                 for port in self.inputs:
@@ -811,12 +823,10 @@ class BaseComponent(ABC):
                             validated_inputs[port.name] = self.read_input_data(
                                 port.name, inputs[port.name], port.type
                             )
-
                     if f"{port.name}_column_select" in inputs:
                         validated_inputs[port.name] = validated_inputs[port.name][inputs[f"{port.name}_column_select"]]
 
             validated_inputs = input_model_cls(**validated_inputs)
-            # 执行组件逻辑
             safe_env = {
                 k: str(v) for k, v in self.global_variable.env.get_all_env_vars().items()
                 if v is not None
@@ -825,17 +835,16 @@ class BaseComponent(ABC):
             with temporary_env(safe_env):
                 result = self.run(validated_params, validated_inputs)
 
-            # 验证输出
             if not self.validate_outputs(result):
                 missing_outputs = [port.name for port in self.outputs if port.name not in result]
                 raise ComponentError(f"组件输出缺少必需的端口: {missing_outputs}", "OUTPUT_VALIDATION_ERROR")
 
-            # 存储输出数据
+            # ✅ 关键：传递 node_id 给 store_output_data
             stored_result = {}
             for port in self.outputs:
                 if port.name in result:
                     stored_result[port.name] = self.store_output_data(
-                        port.name, result[port.name], port.type
+                        port.name, result[port.name], port.type, node_id=node_id
                     )
 
             return stored_result
@@ -846,7 +855,6 @@ class BaseComponent(ABC):
 
         except Exception as e:
             import traceback
-            # 捕获其他错误并包装为组件错误
             error_msg = f"组件执行失败: {traceback.format_exc()}"
             raise ComponentError(error_msg, "EXECUTION_ERROR")
 

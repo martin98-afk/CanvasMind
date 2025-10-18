@@ -90,7 +90,7 @@ if __name__ == "__main__":
         comp_instance.logger = node_logger  # 注入带 node_id 的 logger
 
         node_logger.info("开始执行组件")
-        output = comp_instance.execute(params, inputs, global_variables)
+        output = comp_instance.execute(params, inputs, global_variables, NODE_ID)
 
         # 4. 保存结果
         with open(RESULT_PATH, 'wb') as f:

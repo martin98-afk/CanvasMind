@@ -392,7 +392,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     result_path=result_path,
                     error_path=error_path,
                     log_file_path=log_file_path,
-                    node_id=self.id
+                    node_id=self._persistent_id
                 )
                 with open(temp_script_path, 'w', encoding='utf-8') as f:
                     f.write(script_content)
