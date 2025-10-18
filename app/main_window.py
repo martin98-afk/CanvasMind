@@ -47,7 +47,12 @@ class LowCodeWindow(FluentWindow):
         # 添加主界面页面
         workflow_interface = self.addSubInterface(self.workflow_manager, get_icon("工作流"), '画布管理')
         workflow_interface.clicked.connect(self.workflow_manager._schedule_refresh)
-        self.addSubInterface(self.develop_page, get_icon("组件"), '组件管理')
+        devp_interface = self.addSubInterface(self.develop_page, get_icon("组件"), '组件管理')
+        devp_interface.clicked.connect(
+            lambda: self.develop_page.code_editor.code_editor.set_jedi_environment(
+                self.package_manager.get_current_python_exe()
+            )
+        )
         project_interface = self.addSubInterface(self.project_manager, get_icon("项目"), '项目管理')
         project_interface.clicked.connect(self.project_manager.load_projects)
         package_interface = self.addSubInterface(self.package_manager, get_icon("工具包"), '环境管理')

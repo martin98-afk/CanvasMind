@@ -97,9 +97,6 @@ class NodeLogHandler:
             try:
                 with open(self.log_file_path, 'r', encoding='utf-8') as f:
                     lines = f.readlines()
-
-                print(lines)
-                print(self.log_file_path)
                 # 返回最近 5000 行
                 return ''.join(lines[-5000:])
             except Exception:

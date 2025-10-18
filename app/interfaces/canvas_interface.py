@@ -44,6 +44,7 @@ class CanvasPage(QWidget):
     canvas_deleted = pyqtSignal()
     canvas_saved = pyqtSignal(Path)
     global_variables_changed = pyqtSignal()
+    env_changed = pyqtSignal(str)
     PIPELINE_STYLE = {
         "折线": PipeLayoutEnum.ANGLE.value,
         "曲线": PipeLayoutEnum.CURVED.value,
@@ -299,6 +300,9 @@ class CanvasPage(QWidget):
 
     def on_environment_changed(self):
         current_text = self.env_combo.currentText()
+        self.env_changed.emit(
+            str(self.parent.package_manager.mgr.get_python_exe(self.env_combo.currentData()))
+        )
         self.create_info("环境切换", f"当前运行环境: {current_text}")
 
     def get_current_python_exe(self):
