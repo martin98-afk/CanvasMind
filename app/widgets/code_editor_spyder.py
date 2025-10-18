@@ -3,7 +3,7 @@ import os
 import sys
 
 import jedi
-from PyQt5.QtCore import Qt, QTimer, QPoint
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QTextCursor, QColor
 from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle
 from spyder.plugins.editor.widgets.codeeditor import CodeEditor
@@ -12,7 +12,17 @@ jedi.settings.use_subprocess = False
 
 
 class CompletionItemDelegate(QStyledItemDelegate):
+    """Delegate for custom painting of completion items."""
+
     def paint(self, painter, option, index):
+        """
+        Paint the completion item with custom colors.
+
+        Args:
+            painter: QPainter object
+            option: QStyleOptionViewItem object
+            index: QModelIndex object
+        """
         if option.state & QStyle.State_Selected:
             painter.fillRect(option.rect, QColor("#2A3B4D"))
             painter.setPen(QColor("#FFFFFF"))
@@ -23,8 +33,17 @@ class CompletionItemDelegate(QStyledItemDelegate):
 
 
 class JediCodeEditor(CodeEditor):
+    """Enhanced CodeEditor with Jedi-powered Python completions."""
 
     def __init__(self, parent=None, python_exe_path=None, popup_offset=10):
+        """
+        Initialize the JediCodeEditor.
+
+        Args:
+            parent: Parent widget
+            python_exe_path: Path to Python executable for Jedi environment
+            popup_offset: Offset for completion popup positioning
+        """
         super().__init__()
         self.popup_offset = popup_offset
         self.parent_widget = parent
@@ -68,9 +87,11 @@ class JediCodeEditor(CodeEditor):
             edge_line=True,
             auto_unindent=True,
             close_quotes=True,
+            indent_guides=True,
+            folding=True,
             intelligent_backspace=True,
-            automatic_completions=False,
-            completions_hint=False,
+            automatic_completions=True,
+            completions_hint=True,
             highlight_current_line=True,
         )
 
@@ -85,10 +106,21 @@ class JediCodeEditor(CodeEditor):
         self._auto_complete_timer.setSingleShot(True)
         self._auto_complete_timer.timeout.connect(self._trigger_auto_completion)
 
+        # 智能补全触发延迟
+        self._smart_complete_timer = QTimer()
+        self._smart_complete_timer.setSingleShot(True)
+        self._smart_complete_timer.timeout.connect(self._request_completions)
+
         # 注意：不再连接 textChanged！改为在 keyPressEvent 中智能触发
         # self.textChanged.connect(self._on_text_changed)  # 移除！
 
     def wheelEvent(self, event):
+        """
+        Handle mouse wheel events for zooming font size.
+
+        Args:
+            event: QWheelEvent object
+        """
         if event.modifiers() == Qt.ControlModifier:
             delta = event.angleDelta().y()
             if delta > 0:
@@ -100,20 +132,29 @@ class JediCodeEditor(CodeEditor):
             super().wheelEvent(event)
 
     def _increase_font_size(self):
+        """Increase the font size up to a maximum."""
         if self._current_font_size < 30:
             self._current_font_size += 1
             self._apply_font()
 
     def _decrease_font_size(self):
+        """Decrease the font size down to a minimum."""
         if self._current_font_size > 8:
             self._current_font_size -= 1
             self._apply_font()
 
     def _apply_font(self):
+        """Apply the current font settings to the editor."""
         font = QFont(self._font_family, self._current_font_size)
         self.set_font(font)
 
     def set_jedi_environment(self, python_exe_path):
+        """
+        Set the Jedi environment for the specified Python executable.
+
+        Args:
+            python_exe_path: Path to Python executable
+        """
         if python_exe_path:
             python_dir = os.path.dirname(os.path.abspath(python_exe_path))
             site_packages = os.path.join(python_dir, "Lib", "site-packages")
@@ -127,14 +168,27 @@ class JediCodeEditor(CodeEditor):
             self._target_site_packages = None
 
     def add_custom_completions(self, words):
+        """
+        Add custom completion words to the editor.
+
+        Args:
+            words: String or list of strings to add as completions
+        """
         if isinstance(words, str):
             words = [words]
         self.custom_completions.update(words)
 
     def keyPressEvent(self, event):
+        """
+        Handle key press events for custom behaviors.
+
+        Args:
+            event: QKeyEvent object
+        """
         modifiers = event.modifiers()
         key = event.key()
 
+        # Handle Shift+Enter for parent widget
         if modifiers == Qt.ShiftModifier and key in (Qt.Key_Return, Qt.Key_Enter):
             cursor = self.textCursor()
             if self.parent_widget and hasattr(self.parent_widget, '_handle_shift_enter'):
@@ -142,45 +196,94 @@ class JediCodeEditor(CodeEditor):
             event.accept()
             return
 
+        # Handle completion popup navigation
         if self.popup.isVisible():
             if key == Qt.Key_Escape:
                 self.popup.hide()
+                event.accept()
                 return
-            elif key in (Qt.Key_Return, Qt.Key_Tab):
+            elif key == Qt.Key_Tab:
                 self._apply_selected_completion()
+                event.accept()
                 return
             elif key == Qt.Key_Up:
                 current = self.popup.currentRow()
                 self.popup.setCurrentRow(max(0, current - 1))
+                event.accept()
                 return
             elif key == Qt.Key_Down:
                 current = self.popup.currentRow()
                 self.popup.setCurrentRow(min(self.popup.count() - 1, current + 1))
+                event.accept()
                 return
 
+        # Hide popup when typing characters that should close it
+        if event.text() in '()[]{}.,;:!? ' and self.popup.isVisible():
+            self.popup.hide()
+
+        # Handle Enter/Return for PEP8-compliant indentation in lists/dicts
+        if key in (Qt.Key_Return, Qt.Key_Enter):
+            cursor = self.textCursor()
+            block = cursor.block()
+            text = block.text()
+            cursor_pos = cursor.positionInBlock()
+
+            # Check if we're inside brackets/parentheses
+            line_before_cursor = text[:cursor_pos]
+            line_after_cursor = text[cursor_pos:]
+
+            # Count open/close brackets
+            open_count = line_before_cursor.count('[') + line_before_cursor.count('(') + line_before_cursor.count('{')
+            close_count = line_before_cursor.count(']') + line_before_cursor.count(')') + line_before_cursor.count('}')
+
+            # If we have more opening than closing brackets, add proper indentation
+            if open_count > close_count:
+                # Get current indentation
+                leading_spaces = len(text) - len(text.lstrip())
+                new_indent = ' ' * (leading_spaces + 4)
+
+                # Insert newline with proper indentation
+                cursor.insertText('\n' + new_indent)
+
+                # If the line after cursor ends with closing brackets, add another newline
+                if line_after_cursor.strip().startswith(']') or line_after_cursor.strip().startswith(
+                        ')') or line_after_cursor.strip().startswith('}'):
+                    cursor.insertText('\n' + ' ' * leading_spaces)
+                    # Move cursor back to the indented line
+                    cursor.movePosition(QTextCursor.PreviousBlock)
+                    cursor.movePosition(QTextCursor.EndOfBlock)
+                    self.setTextCursor(cursor)
+
+                event.accept()
+                return
+
+        # Process the key press normally
         super().keyPressEvent(event)
 
         text = event.text()
         should_trigger = False
 
-        # 仅在以下情况触发补全：
-        # 1. 输入 '.'
-        # 2. 输入字母/数字/下划线，且光标前是标识符（可能继续输入）
+        # Only trigger completion for specific conditions:
+        # 1. Inputting '.'
+        # 2. Inputting alphanumeric characters or underscore that continue an identifier
         if text == '.':
             should_trigger = True
         elif text.isalnum() or text == '_':
-            # 检查是否处于标识符中间（避免在字符串/注释中触发）
+            # Check if we're continuing an identifier (avoid triggering in strings/comments)
             prefix = self._get_completion_prefix()
-            if len(prefix) >= 1:  # 至少已有1个字符，说明在继续输入变量名
+            if len(prefix) >= 2:  # At least 3 characters, indicating identifier continuation
                 should_trigger = True
 
         if should_trigger:
-            self._auto_complete_timer.start(100)  # 延迟稍长，减少误触
+            # Use a shorter delay for more responsive completion
+            self._smart_complete_timer.start(50)
 
     def _trigger_auto_completion(self):
+        """Trigger the auto-completion process."""
         self._request_completions()
 
     def _request_completions(self):
+        """Request completions from Jedi and display them in the popup."""
         if self._completing:
             return
 
@@ -202,7 +305,9 @@ class JediCodeEditor(CodeEditor):
             seen = set()
             for comp in jedi_comps:
                 name = comp.name
-                if name.startswith('_') or name in seen:
+                # Skip private attributes (starting with underscore) and duplicates
+                # Also skip very short names (less than 3 characters)
+                if name.startswith('_') or name in seen or len(name) < 2:
                     continue
                 seen.add(name)
                 completions.append((name, comp))
@@ -219,36 +324,43 @@ class JediCodeEditor(CodeEditor):
 
         current_prefix = self._get_completion_prefix()
         for word in self.custom_completions:
-            if word.lower().startswith(current_prefix.lower()) and word not in seen:
+            if word.lower().startswith(current_prefix.lower()) and word not in seen and len(word) >= 2:
                 completions.append((word, None))
                 seen.add(word)
 
-        # 关键：如果 Jedi 没返回任何结果，说明当前上下文不可补全（如字符串内）
+        # Key: If Jedi returns no results, it means the context is not completable (e.g., inside strings)
         if not completions:
             self.popup.hide()
             return
 
+        # Sort completions by usage frequency and then alphabetically
         def sort_key(item):
             name, _ = item
             return (-self.completion_usage.get(name, 0), name.lower())
+
         completions.sort(key=sort_key)
         completions = completions[:self.max_completions]
 
+        # Populate the completion popup
         self.popup.clear()
         for name, _ in completions:
             item = QListWidgetItem(name)
             self.popup.addItem(item)
 
-        self._show_popup()
-        self.popup.setCurrentRow(0)
+        if self.popup.count() > 0:
+            self._show_popup()
+            self.popup.setCurrentRow(0)
+        else:
+            self.popup.hide()
 
     def _show_popup(self):
-        # 精准定位：使用 viewport 坐标系
+        """Show the completion popup at the correct position."""
+        # Precise positioning: use viewport coordinate system
         rect = self.cursorRect()
         point = rect.bottomLeft()
         point.setY(point.y() + self.popup_offset)
 
-        # 转换为全局坐标
+        # Convert to global coordinates
         global_point = self.viewport().mapToGlobal(point)
 
         self.popup.move(global_point)
@@ -259,6 +371,12 @@ class JediCodeEditor(CodeEditor):
         self.popup.setFocus()
 
     def _get_completion_prefix(self):
+        """
+        Get the prefix for the current completion.
+
+        Returns:
+            str: The prefix string before the cursor
+        """
         cursor = self.textCursor()
         pos = cursor.position()
         text = self.toPlainText()
@@ -273,6 +391,7 @@ class JediCodeEditor(CodeEditor):
         return text[start:pos]
 
     def _apply_selected_completion(self):
+        """Apply the selected completion to the editor."""
         if not self.popup.currentItem() or self._completing:
             self.popup.hide()
             return
@@ -293,10 +412,20 @@ class JediCodeEditor(CodeEditor):
             self.popup.hide()
 
     def _on_completion_selected(self, item):
+        """
+        Handle completion selection event.
+
+        Args:
+            item: Selected QListWidgetItem
+        """
         self._apply_selected_completion()
 
     def focusOutEvent(self, event):
+        """
+        Handle focus out event to hide the popup.
+
+        Args:
+            event: QFocusEvent object
+        """
         self.popup.hide()
         super().focusOutEvent(event)
-
-    # 移除 _on_text_changed 方法，避免递归和频繁触发

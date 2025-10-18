@@ -27,6 +27,8 @@ from ..widgets.dialog_widget.component_log_message_box import LogMessageBox
 # 在 app/components 下创建 .temp 目录（隐藏目录）
 TEMP_COMPONENTS_DIR = Path(__file__).parent.parent / "components" / ".temp"
 TEMP_COMPONENTS_DIR.mkdir(exist_ok=True)
+PERSISTENT_TEMP_ROOT = Path("temp_runs").resolve()
+PERSISTENT_TEMP_ROOT.mkdir(exist_ok=True, parents=True)
 
 
 _TEMP_COMPONENT_TEMPLATE = '''# -*- coding: utf-8 -*-
@@ -83,8 +85,6 @@ def create_dynamic_code_node(parent_window=None):
             self._node_logs = ""
             self._output_values = {}
             self._input_values = {}
-            self.log_capture = NodeLogHandler(self.id, self._log_message, use_file_logging=True)
-
             # 允许动态删除端口
             self.model.port_deletion_allowed = True
 
@@ -93,6 +93,12 @@ def create_dynamic_code_node(parent_window=None):
 
             # 延迟绑定端口同步（避免初始化时 widget 未就绪）
             QtCore.QTimer.singleShot(300, self._setup_port_sync)
+
+        def init_logger(self):
+            if not self.has_property("persistent_id"):
+                self.create_property("persistent_id", str(uuid.uuid4()))
+            self._persistent_id = self.get_property("persistent_id")
+            self.log_capture = NodeLogHandler(self._persistent_id, self._log_message, use_file_logging=True)
 
         def _setup_port_sync(self):
             widget = self.input_widget.get_custom_widget()
@@ -304,6 +310,7 @@ def create_dynamic_code_node(parent_window=None):
 
         # === 关键：重写 execute_sync，使用动态代码模板 ===
         def execute_sync(self, comp_obj, python_executable=None, check_cancel=None):
+            self.init_logger()
             if python_executable is None:
                 raise Exception("未指定Python执行环境。")
 
@@ -380,133 +387,135 @@ def create_dynamic_code_node(parent_window=None):
             # === 5. 写入临时文件并执行（复用你现有的子进程逻辑）===
             temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
             temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                params_path = os.path.join(tmp_dir, "params.pkl")
-                result_path = os.path.join(tmp_dir, "result.pkl")
-                error_path = os.path.join(tmp_dir, "error.pkl")
-                log_file_path = self.log_capture.get_log_file_path()
+            run_id = f"run_{self._persistent_id}_{int(time.time())}"
+            run_dir = PERSISTENT_TEMP_ROOT / run_id
+            run_dir.mkdir(exist_ok=True)
+            temp_script_path = run_dir / "exec_script.py"
+            params_path = run_dir / "params.pkl"
+            result_path = run_dir / "result.pkl"
+            error_path = run_dir / "error.pkl"
+            log_file_path = self.log_capture.get_log_file_path()
 
-                # 保存组件代码
-                with open(temp_component_path, 'w', encoding='utf-8') as f:
-                    f.write(temp_component_code)
+            # 保存组件代码
+            with open(temp_component_path, 'w', encoding='utf-8') as f:
+                f.write(temp_component_code)
 
-                # 保存执行参数
-                with open(params_path, 'wb') as f:
-                    pickle.dump((params, inputs, global_variable), f)
+            # 保存执行参数
+            with open(params_path, 'wb') as f:
+                pickle.dump((params, inputs, global_variable), f)
 
-                # 使用通用执行模板
-                script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
-                    class_name="DynamicComponent",
-                    file_path=temp_component_path,
-                    params_path=params_path.replace("\\", "\\\\"),
-                    result_path=result_path.replace("\\", "\\\\"),
-                    error_path=error_path.replace("\\", "\\\\"),
-                    log_file_path=log_file_path.replace("\\", "\\\\"),
-                    node_id=self.id
-                )
-                temp_script_path = os.path.join(tmp_dir, "exec_script.py")
-                with open(temp_script_path, 'w', encoding='utf-8') as f:
-                    f.write(script_content)
+            # 使用通用执行模板
+            script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
+                class_name="DynamicComponent",
+                file_path=temp_component_path,
+                params_path=params_path,
+                result_path=result_path,
+                error_path=error_path,
+                log_file_path=log_file_path,
+                node_id=self._persistent_id
+            )
+            with open(temp_script_path, 'w', encoding='utf-8') as f:
+                f.write(script_content)
 
-                # 检查是否已取消
+            # 检查是否已取消
+            if check_cancel and check_cancel():
+                raise Exception("执行已被用户取消")
+
+            # 启动子进程（非阻塞）
+            kwargs = {}
+            if platform.system() == "Windows":
+                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+
+            proc = subprocess.Popen(
+                [python_executable, temp_script_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                encoding='utf-8',
+                **kwargs
+            )
+
+            # 轮询 + 超时 + 取消检查
+            start_time = time.time()
+            timeout = 300  # 5分钟
+            cancelled = False
+            last_log_pos = 0
+
+            while proc.poll() is None:
+                # 检查取消
                 if check_cancel and check_cancel():
-                    raise Exception("执行已被用户取消")
-
-                # 启动子进程（非阻塞）
-                kwargs = {}
-                if platform.system() == "Windows":
-                    kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-
-                proc = subprocess.Popen(
-                    [python_executable, temp_script_path],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    encoding='utf-8',
-                    **kwargs
-                )
-
-                # 轮询 + 超时 + 取消检查
-                start_time = time.time()
-                timeout = 300  # 5分钟
-                cancelled = False
-                last_log_pos = 0
-
-                while proc.poll() is None:
-                    # 检查取消
-                    if check_cancel and check_cancel():
-                        proc.terminate()
-                        try:
-                            proc.wait(timeout=5)
-                        except subprocess.TimeoutExpired:
-                            proc.kill()
-                        cancelled = True
-                        break
-
-                    # 检查超时
-                    if time.time() - start_time > timeout:
-                        proc.terminate()
-                        try:
-                            proc.wait(timeout=5)
-                        except subprocess.TimeoutExpired:
-                            proc.kill()
-
-                        self._log_message(self.id, "❌ 节点执行超时（5分钟）")
-                        raise Exception("❌ 节点执行超时（5分钟）")
-
-                    # 增量读取日志，实时输出
+                    proc.terminate()
                     try:
-                        if os.path.exists(log_file_path):
-                            with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                                lf.seek(last_log_pos)
-                                new_content = lf.read()
-                                if new_content:
-                                    self._log_message(self.id, new_content)
-                                    last_log_pos = lf.tell()
-                    except Exception:
-                        pass
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                    cancelled = True
+                    break
 
-                    time.sleep(0.1)  # 避免 CPU 占用过高
+                # 检查超时
+                if time.time() - start_time > timeout:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
 
-                if cancelled:
-                    self._log_message(self.id, "执行已被用户取消")
-                    raise Exception("执行已被用户取消")
+                    self._log_message(self._persistent_id, "❌ 节点执行超时（5分钟）")
+                    raise Exception("❌ 节点执行超时（5分钟）")
 
-                # 读取剩余日志（无论成功失败）
+                # 增量读取日志，实时输出
                 try:
                     if os.path.exists(log_file_path):
                         with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
                             lf.seek(last_log_pos)
-                            tail_content = lf.read()
-                            if tail_content:
-                                self._log_message(self.id, tail_content)
+                            new_content = lf.read()
+                            if new_content:
+                                self._log_message(self._persistent_id, new_content)
+                                last_log_pos = lf.tell()
                 except Exception:
                     pass
-                # 清除零时组件
-                try:
-                    if temp_component_path.exists():
-                        temp_component_path.unlink()
-                except Exception:
-                    pass
-                # === 处理最终结果 ===
-                if os.path.exists(result_path):
-                    with open(result_path, 'rb') as f:
-                        output = pickle.load(f)
-                    for port in self.output_ports():
-                        if port.name() in output:
-                            self.set_output_value(port.name(), output[port.name()])
-                    return output
 
-                elif os.path.exists(error_path):
-                    with open(error_path, 'rb') as f:
-                        error_info = pickle.load(f)
-                    error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
-                    self._log_message(self.id, error_msg)
-                    raise Exception(error_info['error'])
+                time.sleep(0.1)  # 避免 CPU 占用过高
 
-                else:
-                    # 未生成结果或错误文件，视为未知异常
-                    error_msg = "❌ 节点执行异常: 未知错误"
-                    self._log_message(self.id, error_msg)
-                    raise Exception("未知错误")
+            if cancelled:
+                self._log_message(self._persistent_id, "执行已被用户取消")
+                raise Exception("执行已被用户取消")
+
+            # 读取剩余日志（无论成功失败）
+            try:
+                if os.path.exists(log_file_path):
+                    with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                        lf.seek(last_log_pos)
+                        tail_content = lf.read()
+                        if tail_content:
+                            self._log_message(self._persistent_id, tail_content)
+            except Exception:
+                pass
+            # 清除零时组件
+            try:
+                if temp_component_path.exists():
+                    temp_component_path.unlink()
+            except Exception:
+                pass
+            # === 处理最终结果 ===
+            if os.path.exists(result_path):
+                with open(result_path, 'rb') as f:
+                    output = pickle.load(f)
+                for port in self.output_ports():
+                    if port.name() in output:
+                        self.set_output_value(port.name(), output[port.name()])
+                return output
+
+            elif os.path.exists(error_path):
+                with open(error_path, 'rb') as f:
+                    error_info = pickle.load(f)
+                error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
+                self._log_message(self._persistent_id, error_msg)
+                raise Exception(error_info['error'])
+
+            else:
+                # 未生成结果或错误文件，视为未知异常
+                error_msg = "❌ 节点执行异常: 未知错误"
+                self._log_message(self._persistent_id, error_msg)
+                raise Exception("未知错误")
 
     return DynamicCodeNode
