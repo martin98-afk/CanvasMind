@@ -63,7 +63,30 @@ class CodeEditorWidget(QWidget):
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.code_editor.add_custom_completions(['logger', 'self', 'global_variable'])
+        self.code_editor.add_custom_completions(
+            [
+                'logger', 'global_variable', 'Exception',  # 内置常量
+                'True', 'False', 'None',
+
+                # 内置异常
+                'Exception', 'ValueError', 'TypeError', 'RuntimeError',
+                'KeyError', 'IndexError', 'AttributeError', 'ImportError',
+                'OSError', 'FileNotFoundError', 'PermissionError',
+
+                # 常用内置函数（作为变量名也可能出现）
+                'len', 'str', 'int', 'float', 'list', 'dict', 'tuple', 'set',
+                'print', 'input', 'open', 'range', 'enumerate', 'zip', 'map', 'filter', 'range', 'abs', 'sum', 'min',
+                'max', 'sorted', 'reversed', 'map', 'filter', 'zip', 'enumerate', 'all', 'any', 'len', 'range', 'dir',
+                'type', 'isinstance', 'issubclass', 'hasattr', 'getattr', 'setattr', 'delattr', 'vars',
+                'locals', 'eval', 'exec',  'repr', 'complex', 'round', 'strip', 'split', 'join', 'replace', 'lower',
+
+                # 常见日志/调试变量
+                'logger', 'log', 'debug', 'info', 'warning', 'error',
+
+                # 常见 self 属性（提示用户可能想输入的）
+                'self', 'cls',
+            ]
+        )
         self.replace_text_preserving_view(DEFAULT_CODE_TEMPLATE)
         self.find_panel = self._create_find_replace_panel()
         self.find_panel.setVisible(False)

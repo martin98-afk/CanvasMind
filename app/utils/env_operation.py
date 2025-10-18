@@ -3,6 +3,7 @@ import json
 import platform
 import re
 import shutil
+import traceback
 from pathlib import Path
 from PyQt5.QtCore import QObject, pyqtSignal, QProcess, QTimer, QUrl
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
@@ -29,7 +30,7 @@ class EnvironmentManager(QObject):
     }
 
     # 默认要安装的包列表
-    DEFAULT_PACKAGES = ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn"]
+    DEFAULT_PACKAGES = ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi"]
 
     def __init__(self):
         super().__init__()
@@ -327,7 +328,7 @@ class EnvironmentManager(QObject):
 
             QTimer.singleShot(1000, lambda: self._install_default_packages(env_name, python_exe))
         except Exception as e:
-            self.install_finished.emit()
+            print(traceback.format_exc())
 
     def _install_default_packages(self, env_name, python_exe):
         if self._current_log_callback:
@@ -420,6 +421,8 @@ class EnvironmentManager(QObject):
         return list(self.meta.keys())
 
     def get_python_exe(self, env_name: str) -> Path:
+        if env_name is None:
+            return None
         env_path = self.miniconda_path / "envs" / env_name
         python_exe = env_path / "python.exe"
         if python_exe.exists():
