@@ -13,7 +13,7 @@ class CustomComboBox(QComboBox):
                border-radius: 5px;
                padding: 6px 25px 6px 10px; /* 稍微增加上下padding */
                color: white;
-               min-height: 28px;
+               min-height: 20px;
                font-size: 14px;            /* 主框字体大小 */
                font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
            }

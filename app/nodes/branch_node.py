@@ -69,7 +69,7 @@ def create_branch_node(parent_window):
                 },
                 "name": {
                     "type": PropertyType.TEXT.value,
-                    "default": "",
+                    "default": "branch",
                     "label": "分支名称",
                 },
             }
@@ -79,7 +79,8 @@ def create_branch_node(parent_window):
                 processed_schema[field_name] = {
                     "type": field_type_enum.name,
                     "label": field_def.get("label", field_name),
-                    "choices": field_def.get("choices", [])
+                    "choices": field_def.get("choices", []),
+                    "default": field_def.get("default", "")
                 }
 
             self.widget = DynamicFormWidgetWrapper(
@@ -109,14 +110,16 @@ def create_branch_node(parent_window):
             return name
 
         def _sync_output_ports(self):
-            """同步输出端口：严格按表单顺序重建，仅当端口名未变时恢复连线"""
+            """同步输出端口：严格按表单顺序重建，仅当端口名未变时恢复连线，同时同步名称回表单"""
             conditions = self.get_property("conditions") or []
             enable_else = self.get_property("enable_else")
 
-            # 1. 生成期望端口名列表（按顺序，自动去重）
+            # 1. 生成期望端口名列表（按顺序，自动去重），同时记录映射关系
             expected_names = []
             used_names = set()
-            for cond in conditions:
+            name_mapping = {}  # {原始索引: 最终端口名}
+
+            for i, cond in enumerate(conditions):
                 raw_name = cond.get("name", "branch").strip() or "branch"
                 port_name = self._sanitize_port_name(raw_name)
                 base = port_name
@@ -126,6 +129,7 @@ def create_branch_node(parent_window):
                     counter += 1
                 used_names.add(port_name)
                 expected_names.append(port_name)
+                name_mapping[i] = port_name
 
             if enable_else:
                 expected_names.append("else")
@@ -146,7 +150,7 @@ def create_branch_node(parent_window):
             for name in expected_names:
                 self.add_output(name)
 
-            # 5. 恢复连线：仅当“旧端口名 == 新端口名”且新端口存在
+            # 5. 恢复连线：仅当"旧端口名 == 新端口名"且新端口存在
             new_ports = {p.name(): p for p in self.output_ports()}
             for old_name, connected_list in current_connections.items():
                 if old_name in new_ports:
@@ -159,6 +163,47 @@ def create_branch_node(parent_window):
                         except Exception as e:
                             # 忽略已失效的连接
                             continue
+
+            # 6. 将生成的端口名称同步回表单（仅在名称发生变化时）
+            self._sync_names_to_form(conditions, name_mapping)
+
+        def _sync_names_to_form(self, conditions, name_mapping):
+            """将生成的端口名称同步回表单"""
+            updated_conditions = []
+            name_changed = False
+
+            for i, cond in enumerate(conditions):
+                original_name = cond.get("name", "branch").strip() or "branch"
+                generated_name = name_mapping.get(i, "branch")
+
+                # 检查是否需要更新名称
+                # 如果原始名称不符合规范（如包含特殊字符、以数字开头等）或与生成的名称不同，则更新
+                sanitized_original = self._sanitize_port_name(original_name)
+                needs_update = sanitized_original != generated_name
+
+                if needs_update:
+                    new_cond = cond.copy()
+                    new_cond["name"] = generated_name
+                    updated_conditions.append(new_cond)
+                    name_changed = True
+                else:
+                    updated_conditions.append(cond)
+
+            # 如果有名称变化，更新表单值（避免无限循环）
+            if name_changed and updated_conditions != conditions:
+                # 临时断开信号连接以避免循环触发
+                widget = self.widget.get_custom_widget()
+                try:
+                    widget.valueChanged.disconnect(self._on_conditions_changed)
+                except TypeError:
+                    # 信号可能未连接，忽略
+                    pass
+
+                # 更新表单值
+                self.set_property("conditions", updated_conditions)
+
+                # 重新连接信号
+                widget.valueChanged.connect(self._on_conditions_changed)
 
         def _log_message(self, node_id, message):
             if isinstance(message, str) and message.strip():
