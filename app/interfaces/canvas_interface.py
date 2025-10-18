@@ -351,6 +351,15 @@ class CanvasPage(QWidget):
                                node_type=f"dynamic.{code_node.__name__}")
         nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                node_type=f"dynamic.{code_node.__name__}")
+        nodes_menu.add_command(
+            '居中界面',
+            lambda graph, node: (
+                self.graph.clear_selection(),
+                node.set_selected(),
+                self.graph.fit_to_selection()
+            ),
+            node_type=f"dynamic.{code_node.__name__}"
+        )
         nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
                                node_type=f"dynamic.{code_node.__name__}")
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),

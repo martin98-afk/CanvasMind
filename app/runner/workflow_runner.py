@@ -13,8 +13,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from scan_components import scan_components
 from runner.component_executor import run_component_in_subprocess
-from ..components.base import GlobalVariableContext
-from .expression_engine import ExpressionEngine
+from components.base import GlobalVariableContext
+from runner.expression_engine import ExpressionEngine
 
 
 def build_execution_graph(nodes, graph_data):

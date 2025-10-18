@@ -49,9 +49,8 @@ class CodeEditorWidget(QWidget):
     code_changed = pyqtSignal()
     parsed_component = pyqtSignal(dict)
 
-    def __init__(self, parent=None, python_exe=None, popup_offset=2):
-        super().__init__(parent)
-        self.home = parent
+    def __init__(self, parent=None, python_exe=None, popup_offset=4):
+        super().__init__()
         self.code_editor = JediCodeEditor(self, python_exe_path=python_exe, popup_offset=popup_offset)
         self.code_editor.textChanged.connect(self.code_changed)
         self._setup_auto_sync()
@@ -63,7 +62,30 @@ class CodeEditorWidget(QWidget):
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.code_editor.add_custom_completions(['logger', 'self', 'global_variable'])
+        self.code_editor.add_custom_completions(
+            [
+                'global_variable', 'Exception',  # 内置常量
+                'True', 'False', 'None',
+
+                # 内置异常
+                'Exception', 'ValueError', 'TypeError', 'RuntimeError',
+                'KeyError', 'IndexError', 'AttributeError', 'ImportError',
+                'OSError', 'FileNotFoundError', 'PermissionError',
+
+                # 常用内置函数（作为变量名也可能出现）
+                'float', 'list', 'dict', 'tuple',
+                'print', 'input', 'open', 'range', 'enumerate',
+                'sorted', 'reversed','filter', 'enumerate',
+                'type', 'isinstance', 'issubclass', 'hasattr', 'getattr', 'setattr', 'delattr', 'vars',
+                'locals', 'eval', 'exec',  'repr', 'complex', 'round', 'strip', 'split', 'join', 'replace', 'lower',
+
+                # 常见日志/调试变量
+                'logger', 'debug', 'info', 'warning', 'error',
+
+                # 常见 self 属性（提示用户可能想输入的）
+                'self',
+            ]
+        )
         self.replace_text_preserving_view(DEFAULT_CODE_TEMPLATE)
         self.find_panel = self._create_find_replace_panel()
         self.find_panel.setVisible(False)
@@ -163,6 +185,35 @@ class CodeEditorWidget(QWidget):
         start, end = m.start(), m.end()
         self._set_selection(start, end)
         self._update_hits_count(pat, doc_text)
+
+    def _pattern(self):
+        text = self.find_input.text()
+        if not text:
+            return None
+        flags = 0 if self.chk_case.isChecked() else re.IGNORECASE
+        try:
+            if self.chk_regex.isChecked():
+                return re.compile(text, flags)
+            return re.compile(re.escape(text), flags)
+        except re.error:
+            return None
+
+    def _replace_all_text(self, new_text):
+        scrollbar = self.code_editor.verticalScrollBar()
+        scroll_pos = scrollbar.value()
+        tc = self.code_editor.textCursor()
+        sel_start = tc.selectionStart()
+        sel_end = tc.selectionEnd()
+        tc.beginEditBlock()
+        tc.select(QTextCursor.Document)
+        tc.insertText(new_text)
+        tc.endEditBlock()
+        self.code_editor.setTextCursor(tc)
+        if sel_start != sel_end:
+            tc.setPosition(max(0, min(sel_start, len(new_text))))
+            tc.setPosition(max(0, min(sel_end, len(new_text))), QTextCursor.KeepAnchor)
+            self.code_editor.setTextCursor(tc)
+        scrollbar.setValue(scroll_pos)
 
     def _highlight_all_matches(self, pat, text):
         try:
