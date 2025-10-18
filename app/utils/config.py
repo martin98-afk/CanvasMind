@@ -61,6 +61,8 @@ class Settings(QConfig):
             CONFIG_FILE = str(Path.cwd() / "app.config")
             cls._instance.save(CONFIG_FILE)
 
+    current_version = ConfigItem("General", "CurrentVersion", "0.1.1-alpha")
+
     # 通用设置
     auto_check_update = ConfigItem("General", "AutoCheckUpdate", True, BoolValidator())
 
@@ -68,7 +70,7 @@ class Settings(QConfig):
     patch_platform = ConfigItem("Patch", "Platform", "github", OptionsValidator([p.value for p in PatchPlatform]))
 
     # GitHub 配置
-    github_repo = ConfigItem("Patch", "GitHub/Repo", "yourname/yourrepo")
+    github_repo = ConfigItem("Patch", "GitHub/Repo", "martin98-afk/CanvasMind")
     github_token = ConfigItem("Patch", "GitHub/Token", "")
 
     # Gitee 配置

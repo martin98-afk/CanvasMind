@@ -21,9 +21,10 @@ class UpdateChecker(QWidget):
         super().__init__(parent)
         self.parent = parent
         cfg = Settings.get_instance()
-        self.platform = cfg.patch_platform
-        self.repo = cfg.github_repo
-        self.token = cfg.github_token
+        self.platform = cfg.patch_platform.value
+        self.repo = cfg.github_repo.value
+        self.token = cfg.github_token.value
+        self.current_version = cfg.current_version.value
         self.progress_dialog = None
         self.download_thread = None
         self.update_zip_path = None  # 新增：记录 ZIP 路径
@@ -185,6 +186,7 @@ exit
         """异步请求完成回调"""
         if latest_release:
             latest_version = latest_release.get("tag_name")
+            print(f"当前版本：{self.current_version}，最新版本：{latest_version}")
             if (
                 latest_version
                 and self._compare_versions(latest_version, self.current_version) > 0

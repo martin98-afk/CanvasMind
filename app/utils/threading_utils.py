@@ -211,6 +211,7 @@ class AsyncUpdateChecker(QThread):
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(url, timeout=10) as resp:
                 if resp.status == 200:
+                    print("GitHub API 响应:", await resp.json())
                     return await resp.json()
                 else:
                     self.error.emit(f"GitHub API 请求失败：{resp.status}")
