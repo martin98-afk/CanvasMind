@@ -30,7 +30,7 @@ class EnvironmentManager(QObject):
     }
 
     # 默认要安装的包列表
-    DEFAULT_PACKAGES = ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi"]
+    DEFAULT_PACKAGES = ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi", "asteval"]
 
     def __init__(self):
         super().__init__()

@@ -1,56 +1,60 @@
 # -*- coding: utf-8 -*-
-import json
 import os
-import subprocess
 import sys
 
 import jedi
-from PyQt5.QtCore import Qt, QStringListModel, QTimer
-from PyQt5.QtGui import QFont, QTextCursor
-from PyQt5.QtWidgets import QCompleter
+from PyQt5.QtCore import Qt, QTimer, QPoint
+from PyQt5.QtGui import QFont, QTextCursor, QColor
+from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle
 from spyder.plugins.editor.widgets.codeeditor import CodeEditor
 
-jedi.settings.use_subprocess = False  # 禁用子进程模式
+jedi.settings.use_subprocess = False
+
+
+class CompletionItemDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        if option.state & QStyle.State_Selected:
+            painter.fillRect(option.rect, QColor("#2A3B4D"))
+            painter.setPen(QColor("#FFFFFF"))
+        else:
+            painter.fillRect(option.rect, QColor("#19232D"))
+            painter.setPen(QColor("#FFFFFF"))
+        painter.drawText(option.rect, Qt.AlignLeft | Qt.AlignVCenter, index.data())
 
 
 class JediCodeEditor(CodeEditor):
 
-    def __init__(self, parent=None, python_exe_path=None, popup_offset=2):
+    def __init__(self, parent=None, python_exe_path=None, popup_offset=10):
         super().__init__()
         self.popup_offset = popup_offset
         self.parent_widget = parent
-        self._jedi_environment = None  # 缓存 Jedi 环境，避免重复创建
+        self._jedi_environment = None
         self.custom_completions = set()
+        self.completion_usage = {}
+        self.max_completions = 80
+        self._completing = False
         self.set_jedi_environment(str(python_exe_path))
-        # --- 初始化 QCompleter ---
-        self.completer_model = QStringListModel()
-        self.completer = QCompleter(self.completer_model, self)
-        self.completer.setCaseSensitivity(Qt.CaseInsensitive)
-        self.completer.setFilterMode(Qt.MatchStartsWith)  # 改为前缀匹配，提升性能
-        self.completer.setWidget(self)
-        self.completer.activated.connect(self.insert_completion)
-        self.completer.setCompletionMode(QCompleter.PopupCompletion)
 
-        # 配置弹窗样式
-        popup = self.completer.popup()
-        popup.setUniformItemSizes(True)
-        popup.setStyleSheet("""
-            QListView {
+        # --- 自定义补全弹窗 ---
+        self.popup = QListWidget()
+        self.popup.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
+        self.popup.setFocusPolicy(Qt.NoFocus)
+        self.popup.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.popup.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.popup.setStyleSheet("""
+            QListWidget {
                 background-color: #19232D;
                 color: #FFFFFF;
                 border: 1px solid #32414B;
                 outline: 0;
                 padding: 4px;
             }
-            QListView::item {
-                padding: 6px 12px;
-                border-radius: 2px;
-            }
-            QListView::item:selected {
-                background-color: #2A3B4D;
-                color: #FFFFFF;
-            }
         """)
+        self.popup.setItemDelegate(CompletionItemDelegate())
+        self.popup.itemClicked.connect(self._on_completion_selected)
+        self.popup.setUniformItemSizes(True)
+        self.popup.setMaximumWidth(600)
+        self.popup.hide()
 
         # --- 设置编辑器 ---
         self._font_family = 'Consolas'
@@ -70,17 +74,19 @@ class JediCodeEditor(CodeEditor):
             highlight_current_line=True,
         )
 
-        # --- 快捷键：手动触发补全 ---
+        # --- 快捷键 ---
         from PyQt5.QtGui import QKeySequence
         from PyQt5.QtWidgets import QShortcut
         self.shortcut = QShortcut(QKeySequence("Ctrl+Space"), self)
-        self.shortcut.activated.connect(self.request_completions)
+        self.shortcut.activated.connect(self._request_completions)
 
-        # 自动补全延迟（避免频繁触发）
+        # 自动补全延迟
         self._auto_complete_timer = QTimer()
         self._auto_complete_timer.setSingleShot(True)
         self._auto_complete_timer.timeout.connect(self._trigger_auto_completion)
-        self.textChanged.connect(self._on_text_changed)
+
+        # 注意：不再连接 textChanged！改为在 keyPressEvent 中智能触发
+        # self.textChanged.connect(self._on_text_changed)  # 移除！
 
     def wheelEvent(self, event):
         if event.modifiers() == Qt.ControlModifier:
@@ -108,13 +114,9 @@ class JediCodeEditor(CodeEditor):
         self.set_font(font)
 
     def set_jedi_environment(self, python_exe_path):
-        """不再创建 Jedi Environment，而是记录目标环境的 site-packages 路径"""
         if python_exe_path:
-            # 推导 site-packages 路径
             python_dir = os.path.dirname(os.path.abspath(python_exe_path))
-            # Windows Conda 环境的 site-packages 通常在 Lib/site-packages
             site_packages = os.path.join(python_dir, "Lib", "site-packages")
-
             if os.path.isdir(site_packages):
                 self._target_site_packages = site_packages
                 print(f"[Jedi] Target site-packages: {site_packages}")
@@ -125,7 +127,6 @@ class JediCodeEditor(CodeEditor):
             self._target_site_packages = None
 
     def add_custom_completions(self, words):
-        """添加自定义补全项（如 API、关键字等）"""
         if isinstance(words, str):
             words = [words]
         self.custom_completions.update(words)
@@ -134,155 +135,130 @@ class JediCodeEditor(CodeEditor):
         modifiers = event.modifiers()
         key = event.key()
 
-        # 处理 Shift+Enter
         if modifiers == Qt.ShiftModifier and key in (Qt.Key_Return, Qt.Key_Enter):
             cursor = self.textCursor()
             if self.parent_widget and hasattr(self.parent_widget, '_handle_shift_enter'):
                 self.parent_widget._handle_shift_enter(cursor)
+            event.accept()
+            return
 
-        # 补全弹窗逻辑
-        if self.completer.popup().isVisible():
-            if key in (Qt.Key_Return, Qt.Key_Tab, Qt.Key_Escape):
-                self.completer.popup().hide()
-                event.ignore()
+        if self.popup.isVisible():
+            if key == Qt.Key_Escape:
+                self.popup.hide()
                 return
-            elif key in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown):
-                super().keyPressEvent(event)
+            elif key in (Qt.Key_Return, Qt.Key_Tab):
+                self._apply_selected_completion()
+                return
+            elif key == Qt.Key_Up:
+                current = self.popup.currentRow()
+                self.popup.setCurrentRow(max(0, current - 1))
+                return
+            elif key == Qt.Key_Down:
+                current = self.popup.currentRow()
+                self.popup.setCurrentRow(min(self.popup.count() - 1, current + 1))
                 return
 
         super().keyPressEvent(event)
 
-        # 自动补全
-        if event.text() == '.':
-            self.request_completions()
-        elif event.text().isalnum() or event.text() == '_':
-            self._auto_complete_timer.start(50)
+        text = event.text()
+        should_trigger = False
+
+        # 仅在以下情况触发补全：
+        # 1. 输入 '.'
+        # 2. 输入字母/数字/下划线，且光标前是标识符（可能继续输入）
+        if text == '.':
+            should_trigger = True
+        elif text.isalnum() or text == '_':
+            # 检查是否处于标识符中间（避免在字符串/注释中触发）
+            prefix = self._get_completion_prefix()
+            if len(prefix) >= 1:  # 至少已有1个字符，说明在继续输入变量名
+                should_trigger = True
+
+        if should_trigger:
+            self._auto_complete_timer.start(100)  # 延迟稍长，减少误触
 
     def _trigger_auto_completion(self):
-        """延迟触发自动补全"""
-        prefix = self.get_word_under_cursor()
-        if len(prefix) >= 2:  # 至少 2 个字符才触发
-            self.request_completions()
+        self._request_completions()
 
-    def request_completions(self):
+    def _request_completions(self):
+        if self._completing:
+            return
+
         cursor = self.textCursor()
         text = self.toPlainText()
         line = cursor.blockNumber() + 1
         column = cursor.columnNumber()
-        # 临时加入目标环境的包路径
+
         added = False
         if hasattr(self, '_target_site_packages') and self._target_site_packages:
             if self._target_site_packages not in sys.path:
                 sys.path.insert(0, self._target_site_packages)
                 added = True
-        # === Jedi 补全 ===
-        jedi_names = set()
-        try:
-            if self._jedi_environment is not None:
-                script = jedi.Script(code=text, path='<inline>', environment=self._jedi_environment)
-            else:
-                script = jedi.Script(code=text, path='<inline>')
 
+        completions = []
+        try:
+            script = jedi.Script(code=text, path='<inline>', environment=self._jedi_environment)
             jedi_comps = script.complete(line=line, column=column)
-            count = 0
-            max_completions = 80
+            seen = set()
             for comp in jedi_comps:
                 name = comp.name
-                if name.startswith('_') or count >= max_completions:
+                if name.startswith('_') or name in seen:
                     continue
-                jedi_names.add(name)
-                count += 1
+                seen.add(name)
+                completions.append((name, comp))
+                if len(completions) >= self.max_completions * 2:
+                    break
         except Exception as e:
             print("[Jedi] Error during completion:", e)
         finally:
-            # 清理：避免污染后续分析
             if added:
                 try:
                     sys.path.remove(self._target_site_packages)
                 except ValueError:
-                    pass  # 可能已被其他操作移除
+                    pass
 
-        # === 自定义补全：使用正确的前缀 ===
-        current_prefix = self.get_completion_prefix()
-        custom_filtered = set()
-        if current_prefix:
-            custom_filtered = {w for w in self.custom_completions if w.lower().startswith(current_prefix.lower())}
+        current_prefix = self._get_completion_prefix()
+        for word in self.custom_completions:
+            if word.lower().startswith(current_prefix.lower()) and word not in seen:
+                completions.append((word, None))
+                seen.add(word)
 
-        all_completions = jedi_names | custom_filtered
-        completion_list = sorted(all_completions, key=lambda x: x.lower())
-
-        # === 关键：只要 Jedi 或自定义有结果，就显示！不要因为 prefix 为空而隐藏 ===
-        if not completion_list:
-            self.completer.popup().hide()
+        # 关键：如果 Jedi 没返回任何结果，说明当前上下文不可补全（如字符串内）
+        if not completions:
+            self.popup.hide()
             return
 
-        self.completer_model.setStringList(completion_list)
-        self.show_completer()
+        def sort_key(item):
+            name, _ = item
+            return (-self.completion_usage.get(name, 0), name.lower())
+        completions.sort(key=sort_key)
+        completions = completions[:self.max_completions]
 
-    def show_completer(self):
+        self.popup.clear()
+        for name, _ in completions:
+            item = QListWidgetItem(name)
+            self.popup.addItem(item)
+
+        self._show_popup()
+        self.popup.setCurrentRow(0)
+
+    def _show_popup(self):
+        # 精准定位：使用 viewport 坐标系
         rect = self.cursorRect()
-        content_offset = self.contentOffset()
-        widget_pos = rect.bottomLeft() - content_offset
-        widget_point = widget_pos.toPoint()
-        widget_point.setY(widget_point.y() + self.popup_offset)
-        global_point = self.mapToGlobal(widget_point)
+        point = rect.bottomLeft()
+        point.setY(point.y() + self.popup_offset)
 
-        popup = self.completer.popup()
-        popup.move(global_point)
-        popup.setMaximumWidth(600)
+        # 转换为全局坐标
+        global_point = self.viewport().mapToGlobal(point)
 
-        item_count = min(len(self.completer_model.stringList()), 10)
-        item_height = popup.sizeHintForRow(0)
-        if item_height <= 0:
-            item_height = 24
-        popup.setFixedHeight(item_count * item_height + 10)
+        self.popup.move(global_point)
+        item_height = self.popup.sizeHintForRow(0) if self.popup.count() > 0 else 24
+        height = min(item_height * min(self.popup.count(), 10) + 10, 400)
+        self.popup.setFixedHeight(height)
+        self.popup.show()
+        self.popup.setFocus()
 
-        popup.show()
-
-        # 关键：设置当前前缀用于过滤
-        prefix = self.get_completion_prefix()
-        self.completer.setCompletionPrefix(prefix)
-
-        if self.completer_model.rowCount() > 0:
-            idx = self.completer_model.index(0, 0)
-            popup.setCurrentIndex(idx)
-
-    def get_word_under_cursor(self):
-        """获取光标左侧的单词（用于补全前缀）"""
-        cursor = self.textCursor()
-        cursor.select(QTextCursor.WordUnderCursor)
-        word = cursor.selectedText()
-        if not word:
-            cursor.movePosition(QTextCursor.StartOfWord, QTextCursor.KeepAnchor)
-            word = cursor.selectedText()
-        return word
-
-    def insert_completion(self, completion):
-        cursor = self.textCursor()
-        prefix = self.get_completion_prefix()
-        if prefix:
-            # 删除前缀
-            cursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, len(prefix))
-        cursor.insertText(completion)
-        self.setTextCursor(cursor)
-        self.completer.popup().hide()
-
-    def focusOutEvent(self, event):
-        self.completer.popup().hide()
-        super().focusOutEvent(event)
-
-    def _on_text_changed(self):
-        if not self.completer.popup().isVisible():
-            return
-
-        current_prefix = self.get_completion_prefix()
-        original_prefix = self.completer.completionPrefix()
-
-        if not current_prefix.lower().startswith(original_prefix.lower()):
-            self.completer.popup().hide()
-
-    def get_completion_prefix(self):
-        """获取光标前的连续标识符字符（仅字母、数字、下划线）"""
+    def _get_completion_prefix(self):
         cursor = self.textCursor()
         pos = cursor.position()
         text = self.toPlainText()
@@ -295,3 +271,32 @@ class JediCodeEditor(CodeEditor):
             else:
                 break
         return text[start:pos]
+
+    def _apply_selected_completion(self):
+        if not self.popup.currentItem() or self._completing:
+            self.popup.hide()
+            return
+
+        self._completing = True
+        try:
+            completion = self.popup.currentItem().text()
+            self.completion_usage[completion] = self.completion_usage.get(completion, 0) + 1
+
+            cursor = self.textCursor()
+            prefix = self._get_completion_prefix()
+            if prefix:
+                cursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, len(prefix))
+            cursor.insertText(completion)
+            self.setTextCursor(cursor)
+        finally:
+            self._completing = False
+            self.popup.hide()
+
+    def _on_completion_selected(self, item):
+        self._apply_selected_completion()
+
+    def focusOutEvent(self, event):
+        self.popup.hide()
+        super().focusOutEvent(event)
+
+    # 移除 _on_text_changed 方法，避免递归和频繁触发
