@@ -135,7 +135,7 @@ def create_dynamic_code_node(parent_window=None):
                 label="输入端口定义",
                 schema=processed_schema,
                 window=parent_window,
-                z_value=100
+                z_value=2
             )
             self.add_custom_widget(self.input_widget, tab='Properties')
 
@@ -165,7 +165,7 @@ def create_dynamic_code_node(parent_window=None):
                 label="输出端口定义",
                 schema=processed_schema,
                 window=parent_window,
-                z_value=100
+                z_value=1
             )
             self.add_custom_widget(self.output_widget, tab='Properties')
 
