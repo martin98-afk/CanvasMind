@@ -19,12 +19,6 @@
 
 ---
 
-## 📷 组件开发示意图
-
-<img src="images/组件开发示意图.gif" width="800">
-
----
-
 ## 📷 工作流管理界面示意图
 
 <img src="images/工作流管理示意图.gif" width="800">
@@ -70,6 +64,12 @@
 ## 📦 子图导出示意图
 
 <img src="images/项目导出示意图.gif" width="800">  
+
+---
+
+## 📷 组件开发示意图
+
+<img src="images/组件开发示意图.gif" width="800">
 
 ---
 
