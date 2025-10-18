@@ -126,7 +126,6 @@ class ExpressionEngine:
         :param local_vars: 局部变量
         :return: 表达式计算结果（原始类型）
         """
-        print(expr_block)
         if not self.is_pure_expression_block(expr_block):
             raise ValueError("Not a pure expression block")
 
@@ -135,7 +134,6 @@ class ExpressionEngine:
 
         # 展平点语法（如 input.age → input_age）
         safe_expr = re.sub(r'\b(env|custom|node_vars|input)\.(.*?)', r'\1_\2', inner_expr)
-        print(safe_expr)
         # 合并符号表
         temp_symtable = dict(self.interp.symtable)
         if local_vars:

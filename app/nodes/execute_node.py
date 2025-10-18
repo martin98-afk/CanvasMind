@@ -5,6 +5,8 @@ import platform
 import subprocess
 import tempfile
 import time
+import uuid
+from pathlib import Path
 
 from NodeGraphQt import BaseNode
 from PyQt5.QtWidgets import QFileDialog
@@ -25,6 +27,10 @@ from app.widgets.node_widget.range_widget import RangeWidgetWrapper
 from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 from app.widgets.node_widget.variable_combo_widget import GlobalVarComboBoxWidgetWrapper
 from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
+
+
+PERSISTENT_TEMP_ROOT = Path("temp_runs").resolve()
+PERSISTENT_TEMP_ROOT.mkdir(exist_ok=True, parents=True)
 
 
 def _is_import_error(proc_or_result, error_file_path):
@@ -91,9 +97,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             self._output_values = {}
             self._input_values = {}
             self.column_select = {}
-            # 初始化日志处理器（复用）
-            self.log_capture = NodeLogHandler(self.id, self._log_message, use_file_logging=True)
-
             # === 动态生成属性 ===
             self._generate_parms_widget()
 
@@ -105,6 +108,12 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     self.add_input(port_name, True, painter_func=draw_square_port)
             for port_name, label in component_class.get_outputs():
                 self.add_output(port_name)
+
+        def init_logger(self):
+            if not self.has_property("persistent_id"):
+                self.create_property("persistent_id", str(uuid.uuid4()))
+            self._persistent_id = self.get_property("persistent_id")
+            self.log_capture = NodeLogHandler(self._persistent_id, self._log_message, use_file_logging=True)
 
         def _generate_parms_widget(self):
             """生成节点属性配置控件"""
@@ -232,13 +241,24 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             super().set_property(name, value, push_undo)
 
         def _log_message(self, node_id, message):
+            """可选：仍保留内存日志用于实时滚动显示（如控制台面板）"""
+            # 如果你有实时日志面板，可以保留；否则可删除整个方法
+            if not hasattr(self, '_realtime_logs'):
+                self._realtime_logs = ""
             if isinstance(message, str) and message.strip():
                 if not message.endswith('\n'):
                     message += '\n'
-                self._node_logs += message
+                self._realtime_logs += message
 
         def get_logs(self):
-            return self._node_logs if self._node_logs else "无日志可用。"
+            """从持久化日志文件读取内容（最多5000行）"""
+            if not hasattr(self, "log_capture"):
+                self.init_logger()
+            try:
+                return self.log_capture.read_log_file()
+            except Exception as e:
+                logger.warning(f"读取日志失败: {e}")
+                return "日志读取失败。"
 
         def show_logs(self):
             log_content = self.get_logs()
@@ -262,6 +282,8 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             在独立Python环境中执行组件
             :param check_cancel: 可选回调函数，返回 True 表示应取消执行
             """
+            if not hasattr(self, "log_capture"):
+                self.init_logger()
             if python_executable is None:
                 raise Exception("未指定Python执行环境。")
 
@@ -346,17 +368,21 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             # === 获取 requirements ===
             requirements_str = getattr(comp_obj, 'requirements', '').strip()
 
-            # === 使用临时目录自动清理 ===
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                temp_script_path = os.path.join(tmp_dir, "exec_script.py")
-                params_path = temp_script_path + ".params"
-                result_path = temp_script_path + ".result"
-                error_path = temp_script_path + ".error"
-                log_file_path = self.log_capture.get_log_file_path()
+            # ✅ 关键修改：使用持久化运行目录，而非临时目录
+            run_id = f"run_{self._persistent_id}_{int(time.time())}"
+            run_dir = PERSISTENT_TEMP_ROOT / run_id
+            run_dir.mkdir(exist_ok=True)
 
-                # 保存参数
-                with open(params_path, 'wb') as f:
-                    pickle.dump((params, inputs, global_variable), f)
+            temp_script_path = run_dir / "exec_script.py"
+            params_path = run_dir / "params.pkl"
+            result_path = run_dir / "result.pkl"
+            error_path = run_dir / "error.pkl"
+            # ✅ 复用 NodeLogHandler 的持久化日志路径
+            log_file_path = self.log_capture.get_log_file_path()
+
+            # 保存参数
+            with open(params_path, 'wb') as f:
+                pickle.dump((params, inputs, global_variable), f)
 
                 # 生成执行脚本
                 script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
