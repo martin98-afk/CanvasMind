@@ -9,9 +9,9 @@ class CodeEditorWidgetWrapper(NodeBaseWidget):
         super().__init__(parent)
         self.set_name(name)
         self.set_label(label)
-        self._editor = CodeEditorWidget(parent=parent, python_exe=window.get_current_python_exe())
+        self._editor = CodeEditorWidget(parent=window, python_exe=window.get_current_python_exe())
         window.env_changed.connect(self._editor.code_editor.set_jedi_environment)
-        self._editor.setMinimumSize(600, 500)  # 足够大的编辑区域
+        self._editor.setMinimumSize(700, 500)  # 足够大的编辑区域
         self._editor.set_code(default)
         self._editor.code_changed.connect(self._on_code_changed)
         self.set_custom_widget(self._editor)

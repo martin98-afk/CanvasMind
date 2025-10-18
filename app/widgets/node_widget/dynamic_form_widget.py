@@ -230,11 +230,9 @@ class DynamicFormWidget(QtWidgets.QWidget):
         max_width = max(max_width, self.field_width)
 
         # 高度计算
-        h = self.btn_add.sizeHint().height() + 10  # 按钮高度 + 间距
+        h = self.btn_add.sizeHint().height() + 6  # 按钮高度 + 间距
         for field in self.field_widgets:
-            h += field.sizeHint().height() + 6  # 每个字段的高度 + 间距
-        if self.field_widgets:
-            h += 10  # 底部留一些空间
+            h += field.sizeHint().height() + 4  # 每个字段的高度 + 间距
 
         return QtCore.QSize(max_width, h)
 

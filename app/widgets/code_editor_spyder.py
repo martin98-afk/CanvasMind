@@ -3,10 +3,13 @@ import os
 import sys
 
 import jedi
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont, QTextCursor, QColor
-from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle
+from PyQt5.QtCore import Qt, QTimer, QPoint
+from PyQt5.QtGui import QFont, QTextCursor, QColor, QIcon
+from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle, QPushButton, QDialog, QVBoxLayout
+from qfluentwidgets import TransparentToolButton, MessageBoxBase, TextEdit
 from spyder.plugins.editor.widgets.codeeditor import CodeEditor
+
+from app.utils.utils import get_icon
 
 jedi.settings.use_subprocess = False
 
@@ -32,10 +35,33 @@ class CompletionItemDelegate(QStyledItemDelegate):
         painter.drawText(option.rect, Qt.AlignLeft | Qt.AlignVCenter, index.data())
 
 
+class FullscreenCodeDialog(MessageBoxBase):
+    """Fullscreen code dialog using FluentUI MessageBoxBase."""
+
+    def __init__(self, initial_code="", parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("代码编辑器")
+
+        # 创建代码编辑器
+        self.code_editor = JediCodeEditor(parent=parent)
+        self.code_editor.setPlainText(initial_code)
+        self.code_editor.setMinimumSize(800, 600)  # 设置最小尺寸
+
+        # 将编辑器添加到布局中
+        self.viewLayout.addWidget(self.code_editor)
+
+        # 设置按钮
+        self.yesButton.setText('确定')
+        self.cancelButton.hide()
+
+    def get_code(self):
+        return self.code_editor.toPlainText()
+
+
 class JediCodeEditor(CodeEditor):
     """Enhanced CodeEditor with Jedi-powered Python completions."""
 
-    def __init__(self, parent=None, python_exe_path=None, popup_offset=10):
+    def __init__(self, parent=None, python_exe_path=None, popup_offset=2):
         """
         Initialize the JediCodeEditor.
 
@@ -111,8 +137,47 @@ class JediCodeEditor(CodeEditor):
         self._smart_complete_timer.setSingleShot(True)
         self._smart_complete_timer.timeout.connect(self._request_completions)
 
-        # 注意：不再连接 textChanged！改为在 keyPressEvent 中智能触发
-        # self.textChanged.connect(self._on_text_changed)  # 移除！
+        # --- 添加放大按钮 ---
+        self._create_fullscreen_button()
+
+    def _create_fullscreen_button(self):
+        """Create the fullscreen button in the top-right corner."""
+        self.fullscreen_button = TransparentToolButton(get_icon("缩放"), parent=self)
+        self.fullscreen_button.setFixedSize(28, 28)
+        self.fullscreen_button.setToolTip("放大编辑器")
+        self.fullscreen_button.clicked.connect(self._open_fullscreen_editor)
+
+        # 初始位置
+        self._update_button_position()
+
+    def resizeEvent(self, event):
+        """Override resize event to update button position."""
+        super().resizeEvent(event)
+        self._update_button_position()
+
+    def _update_button_position(self):
+        """Update the button position to the top-right corner."""
+        button_width = self.fullscreen_button.width()
+        button_height = self.fullscreen_button.height()
+
+        # 计算按钮位置（右上角，距离边缘8px）
+        x = self.width() - button_width - 30
+        y = 6
+
+        self.fullscreen_button.move(x, y)
+
+    def _open_fullscreen_editor(self):
+        """Open the code in a fullscreen dialog."""
+        current_code = self.toPlainText()
+
+        # 创建对话框
+        dialog = FullscreenCodeDialog(initial_code=current_code, parent=self.parent_widget)
+
+        # 显示对话框
+        if dialog.exec_() == 1:  # 1 表示点击了确定按钮
+            # 更新当前编辑器的内容
+            new_code = dialog.get_code()
+            self.setPlainText(new_code)
 
     def wheelEvent(self, event):
         """

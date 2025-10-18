@@ -206,7 +206,7 @@ class ComponentDeveloperWidget(QWidget):
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
         # 代码编辑器
-        self.code_editor = CodeEditorWidget(self.home, self.home.package_manager.get_current_python_exe())
+        self.code_editor = CodeEditorWidget(self, self.home.package_manager.get_current_python_exe())
         right_layout.addWidget(BodyLabel("组件代码:"))
         right_layout.addWidget(self.code_editor, stretch=1)
         # 保存按钮

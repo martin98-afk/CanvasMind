@@ -72,12 +72,12 @@ class Component(BaseComponent):
                 "key": PropertyDefinition(
                     type=PropertyType.TEXT,
                     default="",
-                    label="属性1",
+                    label="key",
                 ),
                 "value": PropertyDefinition(
                     type=PropertyType.TEXT,
                     default="",
-                    label="属性2",
+                    label="value",
                 ),
             }
         ),
