@@ -72,6 +72,7 @@ class ComponentDeveloperWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.home = parent
         self.setObjectName("ComponentDeveloperWidget")
         self._current_component_file = None
         self._setup_ui()
@@ -205,7 +206,7 @@ class ComponentDeveloperWidget(QWidget):
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
         # 代码编辑器
-        self.code_editor = CodeEditorWidget()
+        self.code_editor = CodeEditorWidget(self.home, self.home.package_manager.get_current_python_exe())
         right_layout.addWidget(BodyLabel("组件代码:"))
         right_layout.addWidget(self.code_editor, stretch=1)
         # 保存按钮
@@ -774,7 +775,6 @@ class ComponentDeveloperWidget(QWidget):
             self.requirements_edit.setPlainText(updated_text)
             code_cursor.setPosition(pos + len(updated_text) - len(current_text))
             self.code_editor.code_editor.setTextCursor(code_cursor)
-            self.code_editor.code_editor.update_extra_selections()
             self._updating_requirements_from_analysis = False
 
     def _parse_requirements_lines(self, text):

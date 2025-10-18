@@ -49,8 +49,11 @@ class CodeEditorWidget(QWidget):
     code_changed = pyqtSignal()
     parsed_component = pyqtSignal(dict)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, python_exe=None, popup_offset=2):
         super().__init__(parent)
+        self.home = parent
+        self.code_editor = JediCodeEditor(self, python_exe_path=python_exe, popup_offset=popup_offset)
+        self.code_editor.textChanged.connect(self.code_changed)
         self._setup_auto_sync()
         self._setup_ui()
         self._setup_syntax_highlighting()
@@ -60,9 +63,7 @@ class CodeEditorWidget(QWidget):
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.code_editor = JediCodeEditor(self)
         self.code_editor.add_custom_completions(['logger', 'self', 'global_variable'])
-        self.code_editor.installEventFilter(self)
         self.replace_text_preserving_view(DEFAULT_CODE_TEMPLATE)
         self.find_panel = self._create_find_replace_panel()
         self.find_panel.setVisible(False)
@@ -132,30 +133,6 @@ class CodeEditorWidget(QWidget):
             QPushButton:hover { background:#3a3b3e; }
         """)
         return panel
-
-    def eventFilter(self, obj, event):
-        if obj == self.code_editor and event.type() == event.KeyPress:
-            key = event.key()
-            text = event.text()
-            cursor = self.code_editor.textCursor()
-            doc = self.code_editor.document()
-            if self._handle_skip_closer(cursor, text, doc):
-                return True
-            if self._handle_auto_pairs(cursor, text, doc):
-                return True
-            if key == Qt.Key_Backspace and self._handle_backspace(cursor, doc):
-                return True
-            if key == Qt.Key_Tab:
-                if cursor.selection().isEmpty():
-                    cursor.insertText("    ")
-                else:
-                    self._indent_selection()
-                return True
-            elif key == Qt.Key_Backtab:
-                self._unindent_selection()
-                return True
-            return super().eventFilter(obj, event)
-        return super().eventFilter(obj, event)
 
     # ===== Find/Replace =====
     def _toggle_find_panel(self, focus_replace=False):
@@ -278,117 +255,6 @@ class CodeEditorWidget(QWidget):
         indent = ' ' * leading_spaces
         cursor.insertText('\n' + indent)
         self.code_editor.setTextCursor(cursor)
-
-    def _get_indent_from_brackets(self, line_text, cursor_pos):
-        open_brackets = ['(', '[', '{']
-        close_brackets = [')', ']', '}']
-        indent_level = 0
-        in_string = False
-        string_char = None
-        escaped = False
-        for i, char in enumerate(line_text):
-            if i >= cursor_pos:
-                break
-            if char == '\\' and not escaped:
-                escaped = True
-                continue
-            if not escaped and char in ['"', "'"]:
-                if not in_string:
-                    in_string = True
-                    string_char = char
-                elif char == string_char:
-                    in_string = False
-                    string_char = None
-            elif not in_string:
-                if char in open_brackets:
-                    indent_level += 1
-                elif char in close_brackets:
-                    indent_level = max(0, indent_level - 1)
-            escaped = False
-        return indent_level
-
-    def _is_empty_bracket_pair(self, line_text, cursor_pos):
-        open_brackets = ['(', '[', '{']
-        close_brackets = [')', ']', '}']
-        if cursor_pos > 0 and cursor_pos < len(line_text):
-            prev_char = line_text[cursor_pos - 1]
-            next_char = line_text[cursor_pos]
-            if (prev_char in open_brackets and next_char in close_brackets and
-                    open_brackets.index(prev_char) == close_brackets.index(next_char)):
-                return True
-        return False
-
-    def _handle_newline(self, cursor):
-        current_line = cursor.block().text()
-        current_pos = cursor.positionInBlock()
-        if self._is_empty_bracket_pair(current_line, current_pos):
-            base_indent = len(current_line) - len(current_line.lstrip(' '))
-            inner_indent = ' ' * (base_indent + 4)
-            outer_indent = ' ' * base_indent
-            right_char = current_line[current_pos]
-            cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor)
-            cursor.removeSelectedText()
-            cursor.insertText('\n' + inner_indent + '\n' + outer_indent + right_char)
-            cursor.movePosition(QTextCursor.Up)
-            cursor.movePosition(QTextCursor.EndOfLine)
-            self.code_editor.setTextCursor(cursor)
-        else:
-            bracket_indent = self._calculate_bracket_indent(current_line, current_pos)
-            leading_spaces = len(current_line) - len(current_line.lstrip(' '))
-            indent = ' ' * leading_spaces
-            if current_line.rstrip().endswith(':'):
-                indent += '    '
-            final_indent = max(bracket_indent, indent, key=len)
-            cursor.insertText('\n' + final_indent)
-
-    def _calculate_bracket_indent(self, current_line, cursor_pos):
-        indent_level = self._get_indent_from_brackets(current_line, cursor_pos)
-        base_indent = len(current_line) - len(current_line.lstrip(' '))
-        bracket_indent = base_indent + (indent_level * 4)
-        return ' ' * bracket_indent
-
-    def _handle_auto_pairs(self, cursor, text, doc):
-        pairs = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'"}
-        pos = cursor.position()
-        if text in pairs:
-            if cursor.hasSelection():
-                cursor.insertText(text + cursor.selectedText() + pairs[text])
-            elif not doc.characterAt(pos) == text:
-                cursor.insertText(text + pairs[text])
-                cursor.movePosition(QTextCursor.Left)
-                self.code_editor.setTextCursor(cursor)
-            return True
-        return False
-
-    def _handle_skip_closer(self, cursor, text, doc):
-        if text in [')', ']', '}', '"', "'"]:
-            pos = cursor.position()
-            if pos < doc.characterCount() and doc.characterAt(pos) == text:
-                if text in ('"', "'"):
-                    if pos > 0:
-                        cursor.movePosition(QTextCursor.Right)
-                        self.code_editor.setTextCursor(cursor)
-                        return True
-                    else:
-                        return False
-                else:
-                    cursor.movePosition(QTextCursor.Right)
-                    self.code_editor.setTextCursor(cursor)
-                    return True
-        return False
-
-    def _handle_backspace(self, cursor, doc):
-        pos = cursor.position()
-        if pos > 0 and pos < doc.characterCount():
-            prev_char = doc.characterAt(pos - 1)
-            next_char = doc.characterAt(pos)
-            pairs = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'"}
-            if prev_char in pairs and next_char == pairs[prev_char]:
-                cursor.setPosition(pos - 1)
-                cursor.setPosition(pos + 1, QTextCursor.KeepAnchor)
-                cursor.removeSelectedText()
-                return True
-        return False
 
     def _toggle_comment(self):
         cursor = self.code_editor.textCursor()
