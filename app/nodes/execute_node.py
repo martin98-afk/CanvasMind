@@ -170,7 +170,8 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         processed_schema[field_name] = {
                             "type": field_type_enum.name,
                             "label": field_def.get("label", field_name),
-                            "choices": field_def.get("choices", [])
+                            "choices": field_def.get("choices", []),
+                            "default": field_def.get("default", "")
                         }
                     widget = DynamicFormWidgetWrapper(
                         parent=self.view,

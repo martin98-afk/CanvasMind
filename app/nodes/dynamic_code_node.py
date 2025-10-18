@@ -113,7 +113,7 @@ def create_dynamic_code_node(parent_window=None):
             input_schema = {
                 "name": {
                     "type": PropertyType.TEXT.value,
-                    "default": "",
+                    "default": "input",
                     "label": "输入端口名称",
                 },"type": {
                     "type": PropertyType.CHOICE.value,
@@ -124,7 +124,7 @@ def create_dynamic_code_node(parent_window=None):
                 "var": {
                     "type": PropertyType.VARIABLE.value,
                     "default": "",
-                    "label": "变量选择",
+                    "label": "默认变量选择",
                 }
             }
             processed_schema = {}
@@ -133,7 +133,8 @@ def create_dynamic_code_node(parent_window=None):
                 processed_schema[field_name] = {
                     "type": field_type_enum.name,
                     "label": field_def.get("label", field_name),
-                    "choices": field_def.get("choices", [])
+                    "choices": field_def.get("choices", []),
+                    "default": field_def.get("default", "")
                 }
             self.input_widget = DynamicFormWidgetWrapper(
                 parent=self.view,
@@ -148,7 +149,7 @@ def create_dynamic_code_node(parent_window=None):
             output_schema = {
                 "name": {
                     "type": PropertyType.TEXT.value,
-                    "default": "",
+                    "default": "output",
                     "label": "输出端口名称",
                 }, "type": {
                     "type": PropertyType.CHOICE.value,
@@ -163,7 +164,8 @@ def create_dynamic_code_node(parent_window=None):
                 processed_schema[field_name] = {
                     "type": field_type_enum.name,
                     "label": field_def.get("label", field_name),
-                    "choices": field_def.get("choices", [])
+                    "choices": field_def.get("choices", []),
+                    "default": field_def.get("default", "")
                 }
             self.output_widget = DynamicFormWidgetWrapper(
                 parent=self.view,
