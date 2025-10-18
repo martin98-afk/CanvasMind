@@ -54,7 +54,8 @@ class JediCodeEditor(CodeEditor):
             font=font,
             show_blanks=False,
             edge_line=True,
-            tab_mode=True,
+            auto_unindent=True,
+            close_quotes=True,
             intelligent_backspace=True,
             automatic_completions=False,
             completions_hint=False,
@@ -116,28 +117,31 @@ class JediCodeEditor(CodeEditor):
 
     def keyPressEvent(self, event):
         modifiers = event.modifiers()
-        if modifiers == Qt.ShiftModifier and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+        key = event.key()
+
+        # 处理 Shift+Enter
+        if modifiers == Qt.ShiftModifier and key in (Qt.Key_Return, Qt.Key_Enter):
             cursor = self.textCursor()
             if self.parent_widget and hasattr(self.parent_widget, '_handle_shift_enter'):
                 self.parent_widget._handle_shift_enter(cursor)
-            return
 
+        # 补全弹窗逻辑
         if self.completer.popup().isVisible():
-            if event.key() in (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Tab, Qt.Key_Escape):
+            if key in (Qt.Key_Return, Qt.Key_Tab, Qt.Key_Escape):
                 self.completer.popup().hide()
                 event.ignore()
                 return
-            elif event.key() in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown):
+            elif key in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown):
                 super().keyPressEvent(event)
                 return
 
         super().keyPressEvent(event)
 
-        # 自动触发补全逻辑
+        # 自动补全
         if event.text() == '.':
             self.request_completions()
         elif event.text().isalnum() or event.text() == '_':
-            self._auto_complete_timer.start(50)  # 延迟 250ms
+            self._auto_complete_timer.start(50)
 
     def _trigger_auto_completion(self):
         """延迟触发自动补全"""

@@ -56,7 +56,7 @@ class CodeEditorWidget(QWidget):
         self.code_editor.textChanged.connect(self.code_changed)
         self._setup_auto_sync()
         self._setup_ui()
-        self._setup_syntax_highlighting()
+        # self._setup_syntax_highlighting()
         self._setup_shortcuts()
         self._suspend_sync_depth = 0
 
@@ -73,9 +73,6 @@ class CodeEditorWidget(QWidget):
         self.status_label.setStyleSheet("color:#9aa0a6; padding:3px 6px; background:transparent;")
         layout.addWidget(self.status_label)
         self.code_editor.cursorPositionChanged.connect(self._update_status_label)
-
-    def _setup_syntax_highlighting(self):
-        self.highlighter = PythonSyntaxHighlighter(self.code_editor.document())
 
     def _setup_auto_sync(self):
         self._sync_timer = QTimer()
@@ -142,18 +139,6 @@ class CodeEditorWidget(QWidget):
             if sel and '\n' not in sel:
                 self.find_input.setText(sel)
             (self.replace_input if focus_replace else self.find_input).setFocus()
-
-    def _pattern(self):
-        text = self.find_input.text()
-        if not text:
-            return None
-        flags = 0 if self.chk_case.isChecked() else re.IGNORECASE
-        try:
-            if self.chk_regex.isChecked():
-                return re.compile(text, flags)
-            return re.compile(re.escape(text), flags)
-        except re.error:
-            return None
 
     def _find_next(self, backward=False):
         pat = self._pattern()
@@ -303,34 +288,6 @@ class CodeEditorWidget(QWidget):
         line = cursor.selectedText().replace('\u2029', '')
         cursor.movePosition(QTextCursor.EndOfLine)
         cursor.insertText('\n' + line)
-
-    def _indent_selection(self):
-        cursor = self.code_editor.textCursor()
-        start, end = cursor.selectionStart(), cursor.selectionEnd()
-        cursor.setPosition(start)
-        cursor.movePosition(QTextCursor.StartOfLine)
-        cursor.setPosition(end, QTextCursor.KeepAnchor)
-        cursor.movePosition(QTextCursor.EndOfLine, QTextCursor.KeepAnchor)
-        text = cursor.selectedText()
-        indented = '\n'.join('    ' + line if line else line for line in text.split('\u2029'))
-        cursor.insertText(indented)
-
-    def _unindent_selection(self):
-        cursor = self.code_editor.textCursor()
-        start, end = cursor.selectionStart(), cursor.selectionEnd()
-        cursor.setPosition(start)
-        cursor.movePosition(QTextCursor.StartOfLine)
-        cursor.setPosition(end, QTextCursor.KeepAnchor)
-        cursor.movePosition(QTextCursor.EndOfLine, QTextCursor.KeepAnchor)
-        lines = []
-        for line in cursor.selectedText().split('\u2029'):
-            if line.startswith('    '):
-                lines.append(line[4:])
-            elif line.startswith('\t'):
-                lines.append(line[1:])
-            else:
-                lines.append(line)
-        cursor.insertText('\n'.join(lines))
 
     def _on_text_changed(self):
         self.code_changed.emit()
