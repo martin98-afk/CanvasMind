@@ -106,13 +106,13 @@ class WorkflowLoader(QThread):
                         node_status_data[stable_key] = {
                             key: value.get(stable_key)
                             for key, value in runtime_data.items() if key not in ("environment", "environment_exe", "node_id2stable_key")
-                        }
+                        }| {"custom_property": node_data.get("custom", {})}
 
             self.progress.emit("节点处理完成，准备加载...")
             self.finished.emit(graph_data, runtime_data, node_status_data, global_variable)
         except Exception as e:
             logger.error(f"工作流加载失败: {str(e)}")
-            self.finished.emit({}, {}, {})
+            self.finished.emit({}, {}, {}, {})
 
 
 class PythonDownloadWorker(QThread):

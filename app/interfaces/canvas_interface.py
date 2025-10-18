@@ -1386,6 +1386,11 @@ class CanvasPage(QWidget):
                         node._input_values = deserialize_from_json(node_status.get("node_inputs", {}))
                         node._output_values = deserialize_from_json(node_status.get("node_outputs", {}))
                         node.column_select = node_status.get("column_select", {})
+                        for key, value in node_status.get("custom_property").items():
+                            if not node.has_property(key):
+                                node.create_property(key, value)
+                            else:
+                                node.set_property(key, value)
                         status_str = node_status.get("node_states", "unrun")
                         status_str = "unrun" if status_str is None else status_str
                         self.set_node_status(

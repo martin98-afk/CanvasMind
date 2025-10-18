@@ -1,113 +1,115 @@
 # -*- coding: utf-8 -*-
 import os
-import tempfile
-
+from pathlib import Path
 from loguru import logger
+
+# 全局配置
+LOG_ROOT = Path("logs") / "nodes"
+LOG_ROOT.mkdir(parents=True, exist_ok=True)
+MAX_LOG_LINES = 5000
 
 
 class NodeLogHandler:
-    """Loguru 节点日志处理器 - 支持文件日志"""
+    """Loguru 节点日志处理器 - 持久化日志，最多保留 5000 行"""
 
     def __init__(self, node_id: str, log_callback, use_file_logging=False):
         self.node_id = node_id
         self.log_callback = log_callback
+        self.use_file_logging = use_file_logging
         self.handler_id = None
         self.file_handler_id = None
-        self.use_file_logging = use_file_logging
-        self.log_file_path = None
 
-        # 如果使用文件日志，则创建临时日志文件
-        if self.use_file_logging:
-            self.log_file_path = os.path.join(tempfile.mkdtemp(), f"node_{node_id}.log")
+        # 持久化日志路径
+        safe_node_id = "".join(c if c.isalnum() or c in "._-" else "_" for c in str(node_id))
+        self.log_file_path = LOG_ROOT / f"node_{safe_node_id}.log"
 
-        self.logger = logger.bind(node_id=self.node_id)  # 提前 bind
+        self.logger = logger.bind(node_id=self.node_id)
         self.add_handler()
 
     def _log_sink(self, message):
-        """Loguru 日志接收器"""
+        """UI 回调日志接收器"""
         record = message.record
         if record["extra"].get("node_id") != self.node_id:
-            return  # 忽略其他节点的日志
+            return
         timestamp = record["time"].strftime("%Y-%m-%d %H:%M:%S")
-        function = record["function"]
-        line = record["line"]
-        level = record["level"].name
-        msg = record["message"]
-
-        formatted_msg = f"[{timestamp}] {function}-{line} {level}: {msg}"
+        formatted_msg = f"[{timestamp}] {record['function']}-{record['line']} {record['level'].name}: {record['message']}"
         self.log_callback(self.node_id, formatted_msg)
 
     def _file_sink(self, message):
-        """文件日志接收器"""
+        """持久化文件日志接收器（带行数限制）"""
         record = message.record
         if record["extra"].get("node_id") != self.node_id:
-            return  # 忽略其他节点的日志
+            return
+
         timestamp = record["time"].strftime("%Y-%m-%d %H:%M:%S")
-        function = record["function"]
-        line = record["line"]
-        level = record["level"].name
-        msg = record["message"]
+        formatted_msg = f"[{timestamp}] {record['function']}-{record['line']} {record['level'].name}: {record['message']}\n"
 
-        formatted_msg = f"[{timestamp}] {function}-{line} {level}: {msg}\n"
+        try:
+            # 1. 读取现有日志（最多 MAX_LOG_LINES - 1 行）
+            existing_lines = []
+            if self.log_file_path.exists():
+                with open(self.log_file_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    # 保留最后 (MAX_LOG_LINES - 1) 行
+                    existing_lines = lines[-(MAX_LOG_LINES - 1):]
 
-        # 将日志写入文件
-        if self.log_file_path:
-            with open(self.log_file_path, 'a', encoding='utf-8') as f:
-                f.write(formatted_msg)
+            # 2. 添加新日志
+            all_lines = existing_lines + [formatted_msg]
+
+            # 3. 写回（最多 MAX_LOG_LINES 行）
+            with open(self.log_file_path, 'w', encoding='utf-8') as f:
+                f.writelines(all_lines[-MAX_LOG_LINES:])
+
+        except Exception as e:
+            # 避免日志写入失败导致组件崩溃
+            print(f"⚠️ 日志写入失败 ({self.log_file_path}): {e}")
 
     def get_logger(self):
-        """获取节点专用的 logger"""
         return self.logger
 
     def add_handler(self):
-        """添加日志处理器"""
-        # 添加控制台处理器
         self.handler_id = logger.add(
             self._log_sink,
             level="INFO",
             enqueue=True,
-            filter=lambda record: "node_id" in record["extra"]
+            filter=lambda r: r["extra"].get("node_id") == self.node_id
         )
 
-        # 如果使用文件日志，添加文件处理器
         if self.use_file_logging:
             self.file_handler_id = logger.add(
                 self._file_sink,
                 level="INFO",
                 enqueue=True,
-                filter=lambda record: "node_id" in record["extra"]
+                filter=lambda r: r["extra"].get("node_id") == self.node_id
             )
 
     def remove_handler(self):
-        """移除日志处理器"""
         if self.handler_id is not None:
             logger.remove(self.handler_id)
         if self.file_handler_id is not None:
             logger.remove(self.file_handler_id)
 
     def get_log_file_path(self):
-        """获取日志文件路径"""
-        return self.log_file_path
+        return str(self.log_file_path)
 
     def read_log_file(self):
-        """读取日志文件内容"""
-        if self.log_file_path and os.path.exists(self.log_file_path):
-            with open(self.log_file_path, 'r', encoding='utf-8') as f:
-                return f.read()
+        if self.log_file_path.exists():
+            try:
+                with open(self.log_file_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+
+                print(lines)
+                print(self.log_file_path)
+                # 返回最近 5000 行
+                return ''.join(lines[-5000:])
+            except Exception:
+                return ""
         return ""
 
     def cleanup(self):
-        """清理日志文件"""
-        if self.log_file_path and os.path.exists(self.log_file_path):
-            try:
-                os.remove(self.log_file_path)
-                # 尝试删除临时目录（如果为空）
-                temp_dir = os.path.dirname(self.log_file_path)
-                if os.path.exists(temp_dir):
-                    try:
-                        os.rmdir(temp_dir)
-                    except OSError:
-                        pass  # 目录不为空，跳过删除
-            except Exception:
-                pass  # 忽略删除失败
+        """清理日志文件（谨慎使用）"""
+        try:
+            self.log_file_path.unlink(missing_ok=True)
+        except Exception:
+            pass
         self.remove_handler()
