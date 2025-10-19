@@ -6,16 +6,16 @@ import pandas as pd
 from NodeGraphQt import BaseNode
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
-    QStackedWidget, QHBoxLayout, QApplication
+    QStackedWidget, QHBoxLayout, QApplication, QDialog
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
-    ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action
+    ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton
 
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
-from app.utils.utils import serialize_for_json
+from app.utils.utils import serialize_for_json, get_icon
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
-from app.widgets.tree_widget.variable_tree import VariableTreeWidget
+from app.widgets.tree_widget.variable_tree import VariableTreeWidget, VariableExplorerWidget, FullscreenVariableDialog
 
 
 class PropertyPanel(CardWidget):
@@ -284,7 +284,7 @@ class PropertyPanel(CardWidget):
             layout.addWidget(BodyLabel(f"  • {port_label} ({port_name}): {port_type.value}"))
 
             # 获取原始数据（不要 serialize！）
-            display_data = node._output_values.get(port_name)
+            display_data = getattr(node, "_output_values", {}).get(port_name)
             if display_data is None:
                 try:
                     display_data = node.model.get_property(port_name)
@@ -415,13 +415,20 @@ class PropertyPanel(CardWidget):
         title_label = BodyLabel(title_text)
         title_layout.addWidget(title_label)
 
+        title_layout.addStretch()
         if is_output and node is not None:
-            add_global_btn = PushButton(text="全局变量", icon=FluentIcon.ADD, parent=self)
+            add_global_btn = TransparentPushButton(text="全局变量", icon=FluentIcon.ADD, parent=self)
             add_global_btn.clicked.connect(
                 lambda _, n=node, p=port_name: self._add_output_to_global_variable(n, p)
             )
-            title_layout.addStretch()
+
             title_layout.addWidget(add_global_btn)
+        browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
+        browse_btn.clicked.connect(
+            lambda _, t=text: self._open_in_explorer(t, port_name)
+        )
+        title_layout.addWidget(browse_btn)
+
 
         card_layout.addLayout(title_layout)
 
@@ -436,6 +443,16 @@ class PropertyPanel(CardWidget):
             self._text_edit_widgets[port_name] = tree_widget
 
         return tree_widget
+
+    def _open_in_explorer(self, data, title="变量浏览器"):# 假设你把 VariableExplorerWidget 放在 variable_explorer.py
+
+        if isinstance(data, dict):
+            data_dict = data
+        else:
+            data_dict = {title: data}
+
+        dialog = FullscreenVariableDialog(data_dict, self.main_window)
+        dialog.exec_()
 
     def _update_text_edit_for_port(self, port_name, new_value):
         if port_name not in self._text_edit_widgets:
@@ -482,11 +499,7 @@ class PropertyPanel(CardWidget):
         title = BodyLabel(f"🔁 {node.NODE_NAME}")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.vbox.addWidget(title)
-
         flow_type = getattr(node, 'TYPE', 'unknown')
-        type_label = BodyLabel(f"类型: {'循环' if flow_type == 'loop' else '迭代'}")
-        self.vbox.addWidget(type_label)
-
         current = node.model.get_property('current_index')
         if flow_type == "loop":
             total = node.model.get_property("loop_nums")

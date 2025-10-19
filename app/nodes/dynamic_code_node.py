@@ -357,7 +357,7 @@ def create_dynamic_code_node(parent_window=None):
             gv.deserialize(global_variable)
 
             inputs_raw = {}
-            for input_port in self.input_ports():
+            for i, input_port in enumerate(self.input_ports()):
                 port_name = input_port.name()
                 connected = input_port.connected_ports()
                 if connected:
@@ -369,6 +369,9 @@ def create_dynamic_code_node(parent_window=None):
                         inputs_raw[port_name] = [
                             upstream.node()._output_values.get(upstream.name()) for upstream in connected
                         ]
+                # 如果没有连接则使用选择的默认变量
+                else:
+                    inputs_raw[port_name] = gv.get(self.get_property("input_ports")[i]["var"])
 
             input_vars = {f"input_{k}": v for k, v in inputs_raw.items()}
             expr_engine = ExpressionEngine(global_vars_context=gv)

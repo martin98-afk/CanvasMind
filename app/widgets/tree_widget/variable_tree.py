@@ -4,17 +4,38 @@ import shutil
 
 import numpy as np
 import pandas as pd
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QIcon, QImage
-from PyQt5.QtWidgets import QTreeWidgetItem, QAction, QDialog, QLabel, QVBoxLayout, QScrollArea, QFileDialog, \
-    QApplication, QTableWidget, QTableWidgetItem
-from qfluentwidgets import TreeWidget, RoundMenu, MessageBoxBase, TextEdit, SegmentedWidget
+from PyQt5.QtWidgets import (
+    QTreeWidgetItem, QAction, QDialog, QLabel, QVBoxLayout, QScrollArea,
+    QApplication, QTableWidget, QTableWidgetItem, QWidget, QHeaderView, QFileDialog
+)
+from qfluentwidgets import TreeWidget, RoundMenu, MessageBoxBase, TextEdit, SegmentedWidget, TableWidget, ImageLabel
+from qtpy import QtCore
 
 from app.components.base import ArgumentType
 
 
+class FullscreenVariableDialog(MessageBoxBase):
+    """Fullscreen code dialog using FluentUI MessageBoxBase."""
+
+    def __init__(self, data_dict, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("代码编辑器")
+
+        # 创建代码编辑器
+        self.variable_explorer = VariableExplorerWidget(data_dict, parent=parent)
+        self.variable_explorer.setMinimumSize(400, 400)  # 设置最小尺寸
+
+        # 将编辑器添加到布局中
+        self.viewLayout.addWidget(self.variable_explorer)
+
+        # 设置按钮
+        self.cancelButton.hide()
+
+
 class VariableTreeWidget(TreeWidget):
-    """PyCharm 风格变量展示树 —— 所有预览功能内置，无需外部信号"""
+    """用于展示单个变量的详细树状结构"""
 
     def __init__(self, data=None, port_type=None, max_depth=5, parent=None):
         super().__init__(parent)
@@ -53,11 +74,9 @@ class VariableTreeWidget(TreeWidget):
                 self.expandItem(top_item)
 
     def _format_value(self, obj, arg_type=None):
-        """返回用于显示的字符串，仅当 arg_type 是 ArgumentType 枚举时才优先使用"""
         if obj is None:
             return "None"
 
-        # 🔒 安全检查：仅当 arg_type 是 ArgumentType 枚举实例时才使用其语义类型
         if arg_type is not None and isinstance(arg_type, ArgumentType):
             if arg_type.is_image():
                 if isinstance(obj, str) and os.path.isfile(obj):
@@ -124,7 +143,6 @@ class VariableTreeWidget(TreeWidget):
                 else:
                     return f"'{str(obj)}'"
 
-        # 回退到原始类型判断（兼容非 ArgumentType 输入）
         if isinstance(obj, bool):
             return str(obj).lower()
         elif isinstance(obj, str):
@@ -201,14 +219,12 @@ class VariableTreeWidget(TreeWidget):
         item = QTreeWidgetItem(parent_item, [display_text])
         item.setData(0, Qt.UserRole, obj)
 
-        # 图像缩略图：考虑 arg_type 且是图像类型
         if (self._is_image_file(obj) or self._is_pil_image(obj) or
             (arg_type is not None and isinstance(arg_type, ArgumentType) and arg_type.is_image())):
             pixmap = self._get_thumbnail_pixmap(obj)
             if pixmap:
                 item.setIcon(0, QIcon(pixmap))
 
-        # ========== 展开逻辑：基于实际对象类型（不变） ==========
         if isinstance(obj, dict):
             for k, v in obj.items():
                 self._build_tree(v, item, str(k), max_depth, current_depth + 1)
@@ -356,7 +372,6 @@ class VariableTreeWidget(TreeWidget):
             menu.addAction(save_action)
 
         elif isinstance(obj, pd.DataFrame):
-            # ✅ 直接内部预览完整 DataFrame
             action = QAction("🔍 预览完整数据表", self)
             action.triggered.connect(lambda: self._preview_dataframe_full(obj))
             menu.addAction(action)
@@ -372,15 +387,16 @@ class VariableTreeWidget(TreeWidget):
 
         menu.exec_(event.globalPos())
 
-    # =============== 完整 DataFrame 预览（核心）===============
     def _preview_dataframe_full(self, df: pd.DataFrame):
-        """预览完整的 pandas DataFrame"""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("完整数据表预览")
-        dialog.resize(1000, 700)
+        dialog = MessageBoxBase(parent=self.parent_widget)
+        dialog.yesButton.hide()
+        dialog.cancelButton.setText("关闭")
 
-        layout = QVBoxLayout(dialog)
-        table = self._create_styled_table()  # ✅ 使用带样式的表格
+        table = self._create_styled_table()
+        table.setMinimumSize(800, 600)
+        table.verticalHeader().hide()
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
         table.setRowCount(df.shape[0])
         table.setColumnCount(df.shape[1])
         table.setHorizontalHeaderLabels(df.columns.astype(str).tolist())
@@ -394,10 +410,9 @@ class VariableTreeWidget(TreeWidget):
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 table.setItem(i, j, item)
 
-        layout.addWidget(table)
+        dialog.viewLayout.addWidget(table)
         dialog.exec_()
 
-    # =============== CSV 完整预览 ===============
     def _preview_csv_full(self, filepath):
         try:
             df = pd.read_csv(filepath)
@@ -414,10 +429,9 @@ class VariableTreeWidget(TreeWidget):
                 parent=self
             )
 
-    # =============== Excel 完整预览 ===============
     def _preview_excel_full(self, filepath):
         try:
-            df = pd.read_excel(filepath, sheet_name=0)  # 默认第一个 sheet
+            df = pd.read_excel(filepath, sheet_name=0)
             self._preview_dataframe_full(df)
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition
@@ -431,7 +445,6 @@ class VariableTreeWidget(TreeWidget):
                 parent=self
             )
 
-    # =============== 其他预览方法 ===============
     def _preview_text(self, text):
         w = MessageBoxBase(parent=self.parent_widget)
         w.yesButton.hide()
@@ -443,10 +456,65 @@ class VariableTreeWidget(TreeWidget):
         w.viewLayout.addWidget(text_edit)
         w.exec_()
 
+    def _preview_image(self, image_data):
+        pixmap = None
+
+        if isinstance(image_data, str) and os.path.isfile(image_data):
+            pixmap = QPixmap(image_data)
+        elif self._is_pil_image(image_data):
+            try:
+                from PIL import Image
+                if image_data.mode not in ('RGB', 'RGBA'):
+                    if image_data.mode == 'P':
+                        image_data = image_data.convert('RGBA')
+                    else:
+                        image_data = image_data.convert('RGB')
+                width, height = image_data.size
+                data = image_data.tobytes('raw', image_data.mode)
+                if image_data.mode == 'RGBA':
+                    qimage = QImage(data, width, height, QImage.Format_RGBA8888)
+                else:
+                    qimage = QImage(data, width, height, QImage.Format_RGB8888)
+                pixmap = QPixmap.fromImage(qimage)
+            except Exception as e:
+                print(f"转换PIL图像失败: {e}")
+                pixmap = None
+        else:
+            pixmap = None
+
+        if pixmap is None or pixmap.isNull():
+            return
+
+        # === 智能缩放逻辑 ===
+        max_width = 700
+        max_height = 700
+        original_width = pixmap.width()
+        original_height = pixmap.height()
+
+        # 仅当图像太大时才缩放
+        if original_width > max_width or original_height > max_height:
+            scaled_pixmap = pixmap.scaled(
+                max_width,
+                max_height,
+                aspectRatioMode=QtCore.Qt.KeepAspectRatio,
+                transformMode=QtCore.Qt.SmoothTransformation
+            )
+        else:
+            scaled_pixmap = pixmap  # 小图保持原尺寸
+
+        # === 显示对话框 ===
+        w = MessageBoxBase(parent=self.parent_widget)
+        w.yesButton.hide()
+        w.cancelButton.setText("关闭")
+        image_view = ImageLabel()
+        image_view.setImage(scaled_pixmap)  # 使用缩放后的 pixmap
+        w.viewLayout.addWidget(image_view)
+        w.exec_()
+
     def _preview_csv(self, filepath, nrows=1000):
         try:
             df = pd.read_csv(filepath, nrows=nrows)
-            self._preview_dataframe_full(df)  # ✅ 直接复用完整预览逻辑！
+            self._preview_dataframe_full(df)
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition
             InfoBar.error(
@@ -472,7 +540,7 @@ class VariableTreeWidget(TreeWidget):
             layout = QVBoxLayout(dialog)
 
             seg_widget = SegmentedWidget()
-            table = self._create_styled_table()  # ✅ 使用带样式的表格
+            table = self._create_styled_table()
 
             def load_sheet(name):
                 try:
@@ -509,7 +577,6 @@ class VariableTreeWidget(TreeWidget):
             )
 
     def _fill_native_table(self, table: QTableWidget, df: pd.DataFrame):
-        """用原生 QTableWidgetItem 填充 QTableWidget，并确保文字可见"""
         table.clear()
         if df.empty:
             table.setRowCount(1)
@@ -532,56 +599,7 @@ class VariableTreeWidget(TreeWidget):
                 text = "NaN" if pd.isna(val) else str(val)
                 item = QTableWidgetItem(text)
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                item.setForeground(Qt.black)  # ✅ 强制黑色文字
-                table.setItem(i, j, item)
-
-
-    def _preview_image(self, image_data):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("图像预览")
-        layout = QVBoxLayout(dialog)
-        scroll_area = QScrollArea(dialog)
-        label = QLabel()
-        label.setAlignment(Qt.AlignCenter)
-
-        if isinstance(image_data, str) and os.path.isfile(image_data):
-            pixmap = QPixmap(image_data)
-        elif self._is_pil_image(image_data):
-            try:
-                from PIL import Image
-                if image_data.mode not in ('RGB', 'RGBA'):
-                    if image_data.mode == 'P':
-                        image_data = image_data.convert('RGBA')
-                    else:
-                        image_data = image_data.convert('RGB')
-                width, height = image_data.size
-                data = image_data.tobytes('raw', image_data.mode)
-                if image_data.mode == 'RGBA':
-                    qimage = QImage(data, width, height, QImage.Format_RGBA8888)
-                else:
-                    qimage = QImage(data, width, height, QImage.Format_RGB888)
-                pixmap = QPixmap.fromImage(qimage)
-            except Exception as e:
-                print(f"转换PIL图像失败: {e}")
-                pixmap = None
-        else:
-            pixmap = None
-
-        if pixmap and not pixmap.isNull():
-            screen_size = dialog.screen().size()
-            max_width = min(pixmap.width(), int(screen_size.width() * 0.8))
-            max_height = min(pixmap.height(), int(screen_size.height() * 0.8))
-            dialog.resize(max_width, max_height)
-            scroll_area.setMinimumSize(max_width, max_height)
-            label.setPixmap(pixmap)
-        else:
-            label.setText("无法加载图像")
-            dialog.resize(400, 300)
-
-        scroll_area.setWidget(label)
-        scroll_area.setWidgetResizable(True)
-        layout.addWidget(scroll_area)
-        dialog.exec_()
+                item.setForeground(Qt.black)
 
     def _copy_value(self, text):
         clipboard = QApplication.clipboard()
@@ -633,47 +651,267 @@ class VariableTreeWidget(TreeWidget):
             )
 
     def _create_styled_table(self):
-        """创建一个在任何主题下都清晰可见的 QTableWidget"""
-        table = QTableWidget()
+        table = TableWidget()
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setSelectionBehavior(QTableWidget.SelectItems)
         table.setSelectionMode(QTableWidget.ContiguousSelection)
-        table.setAlternatingRowColors(True)  # 启用交替行
+        table.setAlternatingRowColors(True)
 
-        # === 关键：用 QSS 强制样式（无视系统主题）===
-        table.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                alternate-background-color: #f5f5f5;  /* 浅灰交替行 */
-                color: black;
-                gridline-color: #d0d0d0;
-                font-family: "Consolas", "Courier New", monospace;
-                font-size: 12px;
-                border: 1px solid #ccc;
-            }
-            QTableWidget::item {
-                padding: 4px;
-                border-right: 1px solid #eee;
-                border-bottom: 1px solid #eee;
-            }
-            QTableWidget::item:selected {
-                background-color: #cce5ff;
-                color: black;
-            }
-            QHeaderView::section {
-                background-color: #f0f0f0;
-                color: black;
-                padding: 4px;
-                border: 1px solid #ccc;
-                font-weight: bold;
-            }
-        """)
         return table
 
-    def sizeHint(self):
-        # 估算内容高度
-        total_height = self.header().height() if self.header().isVisible() else 0
-        for i in range(self.topLevelItemCount()):
-            total_height += self.visualItemRect(self.topLevelItem(i)).height()
-        total_height = min(total_height, 300)  # 上限
-        return QSize(200, max(60, total_height))
+
+class VariableExplorerWidget(QWidget):
+    def __init__(self, data_dict=None, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+
+        self.table = TableWidget(self)
+
+        # 启用边框并设置圆角
+        self.table.setBorderVisible(True)
+        self.table.setBorderRadius(8)
+
+        self.table.setWordWrap(False)
+        self.table.setColumnCount(4)
+
+        # 设置水平表头并隐藏垂直表头
+        self.table.setHorizontalHeaderLabels(["Name", "Type", "Size", "Value"])
+        self.table.verticalHeader().hide()
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
+
+        self.layout.addWidget(self.table)
+
+        self._var_items = {}
+
+        if data_dict is not None:
+            self.set_variables(data_dict)
+
+    def set_variables(self, data_dict):
+        self.table.setRowCount(0)
+        self._var_items = {}
+        for name, value in data_dict.items():
+            self._add_variable_row(name, value, None)
+
+    def _add_variable_row(self, name, value, arg_type=None):
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+
+        name_item = QTableWidgetItem(name)
+        name_item.setData(Qt.UserRole, (value, arg_type))
+        self.table.setItem(row, 0, name_item)
+        self.table.setItem(row, 1, QTableWidgetItem(self._get_type_string(value)))
+        self.table.setItem(row, 2, QTableWidgetItem(self._get_size_string(value)))
+        self.table.setItem(row, 3, QTableWidgetItem(self._format_value(value, arg_type)))
+
+    def _get_type_string(self, obj):
+        if obj is None:
+            return "NoneType"
+        elif isinstance(obj, pd.DataFrame):
+            return "DataFrame"
+        elif isinstance(obj, pd.Series):
+            return "Series"
+        elif isinstance(obj, np.ndarray):
+            return f"ndarray ({obj.dtype})"
+        elif isinstance(obj, str):
+            return "str"
+        elif isinstance(obj, bool):
+            return "bool"
+        elif isinstance(obj, int):
+            return "int"
+        elif isinstance(obj, float):
+            return "float"
+        elif self._is_pil_image(obj):
+            return "PIL.Image"
+        elif isinstance(obj, dict):
+            return "dict"
+        elif isinstance(obj, list):
+            return "list"
+        elif isinstance(obj, tuple):
+            return "tuple"
+        elif isinstance(obj, set):
+            return "set"
+        else:
+            return type(obj).__name__
+
+    def _get_size_string(self, obj):
+        try:
+            if isinstance(obj, (pd.DataFrame, pd.Series)):
+                return str(obj.shape)
+            elif isinstance(obj, np.ndarray):
+                return str(obj.shape).replace(" ", "")
+            elif isinstance(obj, (str, list, tuple, dict, set)):
+                return str(len(obj))
+            elif hasattr(obj, '__len__'):
+                return str(len(obj))
+            else:
+                return "-"
+        except:
+            return "?"
+
+    def _is_pil_image(self, obj):
+        try:
+            from PIL import Image
+            return isinstance(obj, Image.Image)
+        except ImportError:
+            return False
+
+    def _format_value(self, obj, arg_type=None):
+        if obj is None:
+            return "None"
+
+        if arg_type is not None and isinstance(arg_type, ArgumentType):
+            if arg_type.is_image():
+                if isinstance(obj, str) and os.path.isfile(obj):
+                    return f"{{Image}} '{os.path.basename(obj)}'"
+                elif self._is_pil_image(obj):
+                    return f"{{PIL.Image}} size={obj.size}"
+                else:
+                    return "{Image} <invalid>"
+
+            elif arg_type == ArgumentType.CSV:
+                if isinstance(obj, str) and os.path.isfile(obj):
+                    return f"{{CSV}} '{os.path.basename(obj)}'"
+                elif isinstance(obj, pd.DataFrame):
+                    return f"{{CSV/DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
+
+            elif arg_type == ArgumentType.EXCEL:
+                if isinstance(obj, str) and os.path.isfile(obj):
+                    return f"{{Excel}} '{os.path.basename(obj)}'"
+                elif isinstance(obj, pd.DataFrame):
+                    return f"{{Excel/DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
+
+            elif arg_type == ArgumentType.JSON:
+                if isinstance(obj, (dict, list)):
+                    length = len(obj) if hasattr(obj, '__len__') else '?'
+                    return f"{{JSON}} (len={length})"
+
+            elif arg_type == ArgumentType.FILE:
+                if isinstance(obj, str) and os.path.isfile(obj):
+                    return f"{{File}} '{os.path.basename(obj)}'"
+                else:
+                    return f"{{File}} {str(obj)}"
+
+            elif arg_type in (ArgumentType.SKLEARNMODEL, ArgumentType.TORCHMODEL):
+                return f"{{Model: {arg_type.value}}}"
+
+            elif arg_type.is_array():
+                if isinstance(obj, np.ndarray):
+                    shape_str = str(obj.shape).replace(" ", "")
+                    return f"{{Array/ndarray: {shape_str}}}"
+                elif isinstance(obj, (list, tuple)):
+                    return f"{{Array/list: {len(obj)}}}"
+                else:
+                    return f"{{Array}} {str(obj)}"
+
+            elif arg_type.is_bool():
+                return str(bool(obj)).lower()
+
+            elif arg_type.is_number():
+                try:
+                    val = float(obj)
+                    if arg_type == ArgumentType.INT:
+                        return str(int(val))
+                    else:
+                        return str(val)
+                except (TypeError, ValueError):
+                    return f"{{Number}} {str(obj)}"
+
+            elif arg_type == ArgumentType.TEXT:
+                if isinstance(obj, str):
+                    if len(obj) <= 50:
+                        return f"'{obj}'"
+                    else:
+                        return f"'{obj[:200]}...' (右键预览)"
+                else:
+                    return f"'{str(obj)}'"
+
+        if isinstance(obj, bool):
+            return str(obj).lower()
+        elif isinstance(obj, str):
+            if len(obj) <= 50:
+                return f"'{obj}'"
+            else:
+                if os.path.isfile(obj):
+                    ext = os.path.splitext(obj)[1].lower()
+                    if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif'}:
+                        return f"🖼️ '{os.path.basename(obj)}'"
+                    elif ext in {'.csv', '.xlsx', '.xls'}:
+                        return f"📊 '{os.path.basename(obj)}'"
+                    elif ext in {'.txt', '.log', '.md', '.py', '.json'}:
+                        return f"📄 '{os.path.basename(obj)}'"
+                    else:
+                        return f"📁 '{os.path.basename(obj)}'"
+                else:
+                    return f"'{obj[:200]}...' (右键预览)"
+        elif isinstance(obj, (int, float)):
+            return str(obj)
+        elif isinstance(obj, np.number):
+            return str(obj)
+        elif isinstance(obj, np.ndarray):
+            shape_str = str(obj.shape).replace(" ", "")
+            total = obj.size
+            if total <= 20 and obj.ndim <= 2:
+                try:
+                    s = np.array2string(obj, separator=' ', threshold=20, edgeitems=3)
+                    if s.startswith('array(') and s.endswith(')'):
+                        s = s[6:-1]
+                    return f"{{ndarray: {shape_str}}} [{s}]"
+                except:
+                    return f"{{ndarray: {shape_str}}}"
+            else:
+                return f"{{ndarray: {shape_str}}} <dtype={obj.dtype}> ..."
+        elif isinstance(obj, pd.DataFrame):
+            return f"{{DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
+        elif isinstance(obj, pd.Series):
+            return f"{{Series: ({len(obj)})}}"
+        elif isinstance(obj, dict):
+            return f"{{dict: {len(obj)}}}"
+        elif isinstance(obj, list):
+            return f"{{list: {len(obj)}}}"
+        elif isinstance(obj, tuple):
+            return f"{{tuple: {len(obj)}}}"
+        elif isinstance(obj, set):
+            return f"{{set: {len(obj)}}}"
+        elif self._is_image_file(obj):
+            return f"{{Image}} '{os.path.basename(str(obj))}'"
+        elif self._is_pil_image(obj):
+            return f"{{PIL.Image}} size={obj.size}"
+        elif hasattr(obj, '__class__'):
+            cls = obj.__class__
+            mod = cls.__module__
+            name = cls.__name__
+            if mod == 'builtins':
+                return f"{{{name}}}"
+            else:
+                return f"{{{mod}.{name}}}"
+        else:
+            return str(obj)
+
+
+# ============ 示例使用 ============
+if __name__ == "__main__":
+    import sys
+    app = QApplication(sys.argv)
+
+    # 模拟变量字典
+    sample_data = {
+        "x": 42,
+        "name": "Hello, Variable Explorer!",
+        "arr": np.array([[1, 2], [3, 4]]),
+        "df": pd.DataFrame({"A": [1, 2, 3], "B": ["x", "y", "z"]}),
+        "config": {"lr": 0.01, "epochs": 100},
+        "items": [1, 2, 3, 4, 5],
+        "none_val": None,
+        "large_text": "This is a very long string..." * 20,
+    }
+
+    explorer = VariableExplorerWidget(sample_data)
+    explorer.resize(800, 600)
+    explorer.show()
+
+    sys.exit(app.exec_())

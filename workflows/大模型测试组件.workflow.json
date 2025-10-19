@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x216b198b520": {
+      "0x2cee2b83490": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_知识库查询",
         "icon": null,
         "name": "知识库查询",
@@ -36,8 +36,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 388.0,
-        "height": 143.4,
+        "width": 363.0,
+        "height": 156.20000000000002,
         "pos": [
           -204.34115340155054,
           297.90789206436585
@@ -46,11 +46,13 @@
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "315a4610-43e8-4dc7-9b64-e423d3720d49",
           "top_k": "3",
           "knowledge_base_id": "default_kb"
         }
       },
-      "0x2169640e710": {
+      "0x2cee007c700": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入",
@@ -75,20 +77,22 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 315.0,
-        "height": 88.80000000000001,
+        "width": 405.0,
+        "height": 258.05,
         "pos": [
-          -613.3863891986165,
-          333.62659129216536
+          -812.7095571128557,
+          208.12681890171837
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "133b42a1-3577-4363-b483-3ca39445db70",
           "input": "文本内容"
         }
       },
-      "0x2169640c9d0": {
+      "0x2cee007d1e0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -121,9 +125,13 @@
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
-        "subgraph_session": {}
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {},
+          "persistent_id": "7c600e69-5c5e-4cce-9f34-1e93607df777"
+        }
       },
-      "0x216b18e6c80": {
+      "0x2cee007d5d0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_模板参数输入",
         "icon": null,
         "name": "模板参数输入",
@@ -148,16 +156,18 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 497.0,
-        "height": 167.55,
+        "width": 545.0,
+        "height": 216.05,
         "pos": [
-          -820.7218094887891,
-          659.7355116732064
+          -1084.6404484863465,
+          637.5884930160688
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "46580958-6fa9-4b9c-a6b1-e9be911812e1",
           "variable": [
             {
               "name": "name",
@@ -170,7 +180,7 @@
           ]
         }
       },
-      "0x216b1add4b0": {
+      "0x2cee007d2a0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "提示词模板",
@@ -195,8 +205,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 388.0,
-        "height": 88.80000000000001,
+        "width": 507.0,
+        "height": 91.10000000000001,
         "pos": [
           -150.16307401863872,
           771.9360851569719
@@ -205,10 +215,12 @@
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "f9b97b6e-58a8-4abe-abeb-0a633c7d4fc3",
           "template": "你好，{{name}}！今天是{{day}}。"
         }
       },
-      "0x216b1b54190": {
+      "0x2cee007fd30": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话",
@@ -233,26 +245,28 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 403.0,
-        "height": 415.35,
+        "width": 519.0,
+        "height": 484.85,
         "pos": [
-          450.5702541588545,
-          883.7969285669906
+          623.8974147203724,
+          745.6199619274516
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "ecd7762c-a2d4-4310-83d7-0bb4bb9ba637",
           "model": "qwen/qwen3-30b-a3b",
           "api_key": "",
           "base_url": "http://127.0.0.1:1234/v1",
           "system_prompt": "你是一个乐于助人的AI助手。",
-          "temperature": 0.7,
+          "temperature": 0.1,
           "max_tokens": "1000",
           "model_params": []
         }
       },
-      "0x216b18d64a0": {
+      "0x2cee007f280": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "提示词模板 1",
@@ -275,10 +289,10 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 388.0,
-        "height": 88.80000000000001,
+        "width": 507.0,
+        "height": 91.10000000000001,
         "pos": [
           -172.5124865610265,
           882.4864037571477
@@ -287,10 +301,12 @@
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "83057c14-da2c-4f28-b676-ae919ef10adb",
           "template": "你好，{{name}}！今天是{{day}}。我是{{text}}"
         }
       },
-      "0x216b18d7400": {
+      "0x2cee007f400": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "长文本输入",
@@ -315,8 +331,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 330.0,
-        "height": 88.80000000000001,
+        "width": 461.0,
+        "height": 91.10000000000001,
         "pos": [
           -510.30535695891706,
           1077.8898866377128
@@ -325,10 +341,12 @@
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "674ad75b-5fe8-48bf-b364-3dbeef4acae7",
           "input_text": "[]"
         }
       },
-      "0x216b17596c0": {
+      "0x2ceac6a2170": {
         "type_": "dynamic.StatusDynamicNode_数据转换_文本转json",
         "icon": null,
         "name": "文本转json",
@@ -361,9 +379,13 @@
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
-        "subgraph_session": {}
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {},
+          "persistent_id": "1de847f2-9f4e-4e45-9f2a-5bda4853a81f"
+        }
       },
-      "0x216b16df160": {
+      "0x2ceac6a2140": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传 1",
@@ -396,9 +418,13 @@
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
-        "subgraph_session": {}
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {},
+          "persistent_id": "3a321e1b-28d4-4d0e-b963-cedfddec9753"
+        }
       },
-      "0x21696460ac0": {
+      "0x2ceac6a0fd0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_文档内容提取",
         "icon": null,
         "name": "文档内容提取",
@@ -423,8 +449,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 388.0,
-        "height": 117.15,
+        "width": 363.0,
+        "height": 129.95,
         "pos": [
           -190.90406874190336,
           1299.3793065981165
@@ -433,11 +459,13 @@
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "45ed7aac-c506-4ffa-b1ff-a431bd4e4323",
           "extract_images": false,
           "page_range": ""
         }
       },
-      "0x216b19e8ca0": {
+      "0x2ceac6a1960": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "提示词模板 2",
@@ -462,8 +490,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 388.0,
-        "height": 88.80000000000001,
+        "width": 507.0,
+        "height": 91.10000000000001,
         "pos": [
           304.8306904104586,
           1334.929023768037
@@ -472,10 +500,12 @@
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "845977ea-776b-46fb-83d0-ef76b2698fda",
           "template": "总结该文档内容：{{doc}}\n输出结果用json格式包装"
         }
       },
-      "0x216b1be5ba0": {
+      "0x2ceac6a06a0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话 1",
@@ -500,8 +530,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 403.0,
-        "height": 415.35,
+        "width": 519.0,
+        "height": 484.85,
         "pos": [
           858.1225390106479,
           1323.5294458420585
@@ -510,6 +540,8 @@
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "c751e304-c2a9-4ddc-9e0c-6d9a9040b6df",
           "model": "qwen/qwen3-30b-a3b",
           "api_key": "",
           "base_url": "http://127.0.0.1:1234/v1",
@@ -519,7 +551,7 @@
           "model_params": []
         }
       },
-      "0x216b19f1ed0": {
+      "0x2cee03ef1f0": {
         "type_": "dynamic.StatusDynamicNode_测试组件_逻辑判断",
         "icon": null,
         "name": "逻辑判断",
@@ -544,8 +576,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 603.0,
-        "height": 215.85,
+        "width": 714.0,
+        "height": 246.5,
         "pos": [
           -571.6991300985425,
           1545.2089928187486
@@ -554,6 +586,8 @@
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "3a18b4bb-5174-4db9-a339-3339ccbf3db8",
           "conditions": [
             {
               "取反": "/",
@@ -566,7 +600,7 @@
           "整体取反": false
         }
       },
-      "0x216b060ae60": {
+      "0x2cee03ee980": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 1",
@@ -591,8 +625,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 330.0,
-        "height": 88.80000000000001,
+        "width": 417.0,
+        "height": 258.05,
         "pos": [
           -1107.0902854401666,
           909.617720481036
@@ -601,10 +635,12 @@
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "a35dc51b-386b-4b2d-ab47-4984f2af2246",
           "input": "文本内容"
         }
       },
-      "0x216b17d80d0": {
+      "0x2cee03ee0b0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装",
@@ -629,8 +665,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 358.0,
-        "height": 88.80000000000001,
+        "width": 339.0,
+        "height": 91.10000000000001,
         "pos": [
           -649.9490720702101,
           908.0628183947438
@@ -639,6 +675,8 @@
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
+          "global_variable": {},
+          "persistent_id": "b4c45b3c-c0ad-41ca-8649-8aa069851d40",
           "prop_0": "text"
         }
       }
@@ -646,111 +684,111 @@
     "connections": [
       {
         "in": [
-          "0x216b198b520",
+          "0x2cee2b83490",
           "query"
         ],
         "out": [
-          "0x2169640e710",
+          "0x2cee007c700",
           "text"
         ]
       },
       {
         "out": [
-          "0x216b18e6c80",
+          "0x2cee007d5d0",
           "output"
         ],
         "in": [
-          "0x216b1add4b0",
+          "0x2cee007d2a0",
           "variables"
         ]
       },
       {
         "out": [
-          "0x216b18e6c80",
+          "0x2cee007d5d0",
           "output"
         ],
         "in": [
-          "0x216b18d64a0",
+          "0x2cee007f280",
           "variables"
         ]
       },
       {
         "in": [
-          "0x216b1b54190",
+          "0x2cee007fd30",
           "user_input"
         ],
         "out": [
-          "0x216b18d64a0",
+          "0x2cee007f280",
           "prompt"
         ]
       },
       {
         "in": [
-          "0x216b1b54190",
+          "0x2cee007fd30",
           "history"
         ],
         "out": [
-          "0x216b17596c0",
+          "0x2ceac6a2170",
           "output"
         ]
       },
       {
         "in": [
-          "0x216b18d64a0",
+          "0x2cee007f280",
           "variables"
         ],
         "out": [
-          "0x216b17d80d0",
+          "0x2cee03ee0b0",
           "output1"
         ]
       },
       {
         "out": [
-          "0x216b18d7400",
+          "0x2cee007f400",
           "output"
         ],
         "in": [
-          "0x216b17596c0",
+          "0x2ceac6a2170",
           "input"
         ]
       },
       {
         "out": [
-          "0x216b16df160",
+          "0x2ceac6a2140",
           "file"
         ],
         "in": [
-          "0x21696460ac0",
+          "0x2ceac6a0fd0",
           "file_path"
         ]
       },
       {
         "out": [
-          "0x21696460ac0",
+          "0x2ceac6a0fd0",
           "text"
         ],
         "in": [
-          "0x216b19e8ca0",
+          "0x2ceac6a1960",
           "variables"
         ]
       },
       {
         "out": [
-          "0x216b19e8ca0",
+          "0x2ceac6a1960",
           "prompt"
         ],
         "in": [
-          "0x216b1be5ba0",
+          "0x2ceac6a06a0",
           "user_input"
         ]
       },
       {
         "out": [
-          "0x216b060ae60",
+          "0x2cee03ee980",
           "text"
         ],
         "in": [
-          "0x216b17d80d0",
+          "0x2cee03ee0b0",
           "input1"
         ]
       }
@@ -758,24 +796,24 @@
   },
   "runtime": {
     "environment": "3.11",
-    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.11\\python.exe",
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe",
     "node_id2stable_key": {
-      "0x216b198b520": "大模型组件/知识库查询||知识库查询",
-      "0x2169640e710": "数据集成/文本输入||文本输入",
-      "0x2169640c9d0": "数据集成/文档上传||文档上传",
-      "0x216b18e6c80": "大模型组件/模板参数输入||模板参数输入",
-      "0x216b1add4b0": "大模型组件/提示词模板||提示词模板",
-      "0x216b1b54190": "大模型组件/大模型对话||大模型对话",
-      "0x216b18d64a0": "大模型组件/提示词模板||提示词模板 1",
-      "0x216b18d7400": "数据集成/长文本输入||长文本输入",
-      "0x216b17596c0": "数据转换/文本转json||文本转json",
-      "0x216b16df160": "数据集成/文档上传||文档上传 1",
-      "0x21696460ac0": "大模型组件/文档内容提取||文档内容提取",
-      "0x216b19e8ca0": "大模型组件/提示词模板||提示词模板 2",
-      "0x216b1be5ba0": "大模型组件/大模型对话||大模型对话 1",
-      "0x216b19f1ed0": "测试组件/逻辑判断||逻辑判断",
-      "0x216b060ae60": "数据集成/文本输入||文本输入 1",
-      "0x216b17d80d0": "大模型组件/JSON文本包装||JSON文本包装"
+      "0x2cee2b83490": "大模型组件/知识库查询||知识库查询",
+      "0x2cee007c700": "数据集成/文本输入||文本输入",
+      "0x2cee007d1e0": "数据集成/文档上传||文档上传",
+      "0x2cee007d5d0": "大模型组件/模板参数输入||模板参数输入",
+      "0x2cee007d2a0": "大模型组件/提示词模板||提示词模板",
+      "0x2cee007fd30": "大模型组件/大模型对话||大模型对话",
+      "0x2cee007f280": "大模型组件/提示词模板||提示词模板 1",
+      "0x2cee007f400": "数据集成/长文本输入||长文本输入",
+      "0x2ceac6a2170": "数据转换/文本转json||文本转json",
+      "0x2ceac6a2140": "数据集成/文档上传||文档上传 1",
+      "0x2ceac6a0fd0": "大模型组件/文档内容提取||文档内容提取",
+      "0x2ceac6a1960": "大模型组件/提示词模板||提示词模板 2",
+      "0x2ceac6a06a0": "大模型组件/大模型对话||大模型对话 1",
+      "0x2cee03ef1f0": "测试组件/逻辑判断||逻辑判断",
+      "0x2cee03ee980": "数据集成/文本输入||文本输入 1",
+      "0x2cee03ee0b0": "大模型组件/JSON文本包装||JSON文本包装"
     },
     "node_states": {
       "大模型组件/知识库查询||知识库查询": "success",
@@ -885,5 +923,26 @@
       "数据集成/文本输入||文本输入 1": {},
       "大模型组件/JSON文本包装||JSON文本包装": {}
     }
+  },
+  "global_variable": {
+    "env": {
+      "user_id": null,
+      "canvas_id": null,
+      "session_id": null,
+      "run_id": null,
+      "metadata": {
+        "PYTHONPATH": ".",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONWARNINGS": "ignore",
+        "TZ": "Asia/Shanghai",
+        "LANG": "en_US.UTF-8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "0"
+      }
+    },
+    "custom": {},
+    "node_vars": {}
   }
 }

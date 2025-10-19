@@ -5,8 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Set, Optional
 
-from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QFileDialog
+from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal, QMutex, QMutexLocker
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QFileDialog, QFrame
 from qfluentwidgets import (
     FlowLayout, InfoBar, FluentIcon, CardWidget, BodyLabel, SmoothScrollArea, ScrollArea
 )
@@ -24,8 +24,20 @@ class WorkflowFileInfoScanner(QThread):
     def __init__(self, workflow_dir: Path):
         super().__init__()
         self.workflow_dir = workflow_dir
+        self._mutex = QMutex()
+        self._should_stop = False
+
+    def stop(self):
+        with QMutexLocker(self._mutex):
+            self._should_stop = True
 
     def run(self):
+        should_stop = False
+        with QMutexLocker(self._mutex):
+            should_stop = self._should_stop
+        if should_stop:
+            return
+
         workflow_files = []
         file_info_map = {}
 
@@ -34,6 +46,10 @@ class WorkflowFileInfoScanner(QThread):
             workflow_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
             for wf_path in workflow_files:
+                with QMutexLocker(self._mutex):
+                    if self._should_stop:
+                        return
+
                 try:
                     stat = wf_path.stat()
                     file_info_map[str(wf_path)] = {
@@ -44,6 +60,10 @@ class WorkflowFileInfoScanner(QThread):
                     }
                 except Exception:
                     pass
+
+        with QMutexLocker(self._mutex):
+            if self._should_stop:
+                return
 
         self.scan_finished.emit(workflow_files, file_info_map)
 
@@ -63,6 +83,10 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._file_info_map: Dict[str, dict] = {}  # 文件信息缓存
         self._fixed_cards: List[CardWidget] = []  # 固定卡片（新建/导入）
 
+        # 性能优化相关
+        self._refresh_pending = False
+        self._current_scroll_position = 0
+
         self._setup_ui()
         QTimer.singleShot(50, self.load_workflows)
 
@@ -78,12 +102,16 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.scroll_area = SmoothScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setStyleSheet("border: none; background-color: transparent;")
+        # 性能优化：设置滚动策略
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.scroll_widget = QWidget()
         self.scroll_widget.setStyleSheet("background-color: transparent;")
+
         # 关键：禁用动画以提升批量操作性能
-        self.flow_layout = FlowLayout(self.scroll_widget, needAni=True)
-        self.flow_layout.setAnimation(250, QEasingCurve.OutQuad)
+        self.flow_layout = FlowLayout(self.scroll_widget, needAni=False)  # 禁用动画
         self.flow_layout.setContentsMargins(30, 30, 30, 30)
         self.flow_layout.setVerticalSpacing(20)
         self.flow_layout.setHorizontalSpacing(30)
@@ -105,12 +133,28 @@ class WorkflowCanvasGalleryPage(QWidget):
         if not hasattr(self, '_refresh_timer'):
             self._refresh_timer = QTimer(self)
             self._refresh_timer.setSingleShot(True)
-            self._refresh_timer.timeout.connect(self.load_workflows)
-        self._refresh_timer.start(100)  # 100ms 防抖
+            self._refresh_timer.timeout.connect(self._load_workflows_safe)
+        self._refresh_timer.start(150)  # 增加到150ms防抖，减少频繁刷新
+
+    def _load_workflows_safe(self):
+        """安全的加载工作流，避免重复加载"""
+        if not self._refresh_pending:
+            self._refresh_pending = True
+            self.load_workflows()
+            self._refresh_pending = False
 
     def load_workflows(self):
         if self._is_loading:
+            # 如果正在加载，取消之前的扫描并重新开始
+            if hasattr(self, '_scanner') and hasattr(self, '_thread'):
+                try:
+                    self._scanner.stop()
+                    self._thread.quit()
+                    self._thread.wait(100)  # 等待最多100ms
+                except:
+                    pass
             return
+
         self._is_loading = True
 
         # 启动后台扫描
@@ -178,21 +222,17 @@ class WorkflowCanvasGalleryPage(QWidget):
 
     def _on_detailed_scan_finished(self, workflow_files: List[Path], file_info_map: dict):
         self._is_loading = False
+
+        # 检查是否有新的扫描任务在等待，如果有则取消当前处理
+        if hasattr(self, '_refresh_timer') and self._refresh_timer.isActive():
+            return
+
         self._file_info_map = file_info_map
 
         current_files = set(workflow_files)
-        old_files = self._known_files
+        old_files = self._known_files.copy()  # 使用副本避免在迭代时修改
 
-        # 1. 处理新增文件
-        new_files = current_files - old_files
-        for wf_path in new_files:
-            try:
-                card = WorkflowCard(wf_path, self, file_info_map.get(str(wf_path)))
-                self._card_map[wf_path] = card
-            except Exception:
-                continue
-
-        # 2. 处理删除文件
+        # 1. 处理删除文件（先删除）
         deleted_files = old_files - current_files
         for wf_path in deleted_files:
             card = self._card_map.pop(wf_path, None)
@@ -200,18 +240,35 @@ class WorkflowCanvasGalleryPage(QWidget):
                 self.flow_layout.removeWidget(card)
                 card.deleteLater()
 
+        # 2. 处理新增文件
+        new_files = current_files - old_files
+        cards_to_add = []
+        for wf_path in new_files:
+            try:
+                card = WorkflowCard(wf_path, self, file_info_map.get(str(wf_path)))
+                self._card_map[wf_path] = card
+                cards_to_add.append((wf_path, card))
+            except Exception:
+                continue
+
         # 3. 更新已知文件集合
         self._known_files = current_files
 
-        # 4. 重建布局（复用现有卡片）
-        self._rebuild_layout()
+        # 4. 批量重建布局（优化性能）
+        self._batch_rebuild_layout(cards_to_add)
 
-    def _rebuild_layout(self):
-        """重建布局，复用缓存的卡片"""
-        # === 关键：必须完全清空布局项 ===
+    def _batch_rebuild_layout(self, new_cards: List[tuple]):
+        """批量重建布局，减少布局更新次数"""
+        # 保存当前滚动位置
+        self._current_scroll_position = self.scroll_area.verticalScrollBar().value()
+
+        # === 批量操作：先清空再重建 ===
+        # 先隐藏滚动区域以避免中间状态的布局更新
+        self.scroll_area.setVisible(False)
+
+        # 清空现有布局（但不删除卡片）
         while self.flow_layout.count():
             item = self.flow_layout.takeAt(0)
-            # 注意：这里不要 deleteLater()，因为卡片被缓存复用
 
         # 添加固定卡片
         if not self._fixed_cards:
@@ -232,8 +289,15 @@ class WorkflowCanvasGalleryPage(QWidget):
             if card:
                 self.flow_layout.addWidget(card)
 
-        # === 关键：强制刷新布局 ===
-        self.flow_layout.update()  # 确保调用
+        # 恢复可见性并更新布局
+        self.scroll_area.setVisible(True)
+
+        # 强制更新布局
+        self.flow_layout.update()
+        self.scroll_widget.adjustSize()
+
+        # 恢复滚动位置
+        QTimer.singleShot(0, lambda: self.scroll_area.verticalScrollBar().setValue(self._current_scroll_position))
 
     def open_canvas(self, file_path: Path):
         if file_path not in self.opened_workflows:
@@ -297,7 +361,7 @@ class WorkflowCanvasGalleryPage(QWidget):
             self.opened_workflows[file_path] = canvas_page
 
         self.parent_window.switchTo(self.opened_workflows[file_path])
-        self._schedule_refresh()  # 替换为防抖刷新
+        self._schedule_refresh()
 
     def import_canvas(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -330,7 +394,7 @@ class WorkflowCanvasGalleryPage(QWidget):
                 shutil.copy2(src_png, dest_png)
 
             InfoBar.success("导入成功", f"已导入 {dest_path.stem}", parent=self)
-            self._schedule_refresh()  # 替换为防抖刷新
+            self._schedule_refresh()
 
         except Exception as e:
             InfoBar.error("导入失败", str(e), parent=self)
@@ -360,7 +424,7 @@ class WorkflowCanvasGalleryPage(QWidget):
             if src_png.exists():
                 shutil.copy2(src_png, dest_png)
             InfoBar.success("复制成功", f"已创建 {new_name}", parent=self)
-            self._schedule_refresh()  # 替换为防抖刷新
+            self._schedule_refresh()
         except Exception as e:
             InfoBar.error("复制失败", str(e), parent=self)
 
@@ -381,7 +445,7 @@ class WorkflowCanvasGalleryPage(QWidget):
             if file_path in self.opened_workflows:
                 self.parent_window.removeInterface(self.opened_workflows[file_path])
                 del self.opened_workflows[file_path]
-            self._schedule_refresh()  # 替换为防抖刷新
+            self._schedule_refresh()
         except Exception as e:
             InfoBar.error("删除失败", str(e), parent=self)
 
@@ -390,3 +454,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         card = self._card_map.get(workflow_path)
         if card and hasattr(card, 'refresh_preview'):
             card.refresh_preview()
+
+    def resizeEvent(self, event):
+        """优化窗口大小改变时的性能"""
+        super().resizeEvent(event)
+        # 在大小改变后延迟更新布局
+        QTimer.singleShot(50, lambda: self.flow_layout.update() if hasattr(self, 'flow_layout') else None)

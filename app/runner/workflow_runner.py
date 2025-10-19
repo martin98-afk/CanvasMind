@@ -1,12 +1,14 @@
 import json
 import sys
 import warnings
+
 warnings.filterwarnings("ignore")
 
 from collections import defaultdict, deque
 from pathlib import Path
 from loguru import logger
 from threading import Lock
+import copy
 
 # 确保能导入你的组件
 sys.path.append(str(Path(__file__).parent.parent))
@@ -166,7 +168,8 @@ def execute_loop_node(loop_node, all_nodes, graph_data, input_data, runtime_data
             internal_outputs = {input_proxy["node_id"]: input_proxy_outputs}
 
             # 构建内部拓扑图
-            internal_order = build_internal_graph(execute_nodes, graph_data)
+            # 优化：缓存内部拓扑图，避免重复计算
+            # internal_order = build_internal_graph(execute_nodes, graph_data)  # 这里注释掉，因为已经在外面计算了
 
             # 执行内部节点
             for nid in internal_order:
@@ -196,29 +199,24 @@ def execute_loop_node(loop_node, all_nodes, graph_data, input_data, runtime_data
     return {"outputs": results}
 
 
-def execute_branch_node(branch_node, all_nodes, graph_data, input_data, runtime_data):
-    from your_module.expression_engine import ExpressionEngine
-    from your_module.global_variable import GlobalVariableContext
-
+def execute_branch_node(branch_node, input_data, global_variable):
     # 1. 反序列化全局变量
-    gv_data = branch_node.get("global_variable", {})
     global_ctx = GlobalVariableContext()
-    global_ctx.deserialize(gv_data)
+    global_ctx.deserialize(global_variable)
+    # print(global_variable)  # 移除调试打印
     expr_engine = ExpressionEngine(global_vars_context=global_ctx)
 
     # 2. 准备局部变量
     local_vars = {"input": input_data[0] if isinstance(input_data, (list, tuple)) and input_data else input_data}
 
     # 3. 初始化所有输出端口为 None
-    # 假设你知道该节点有哪些输出端口（可从 project_spec 或节点定义获取）
-    # 但更简单的方式：只输出命中的那个端口
     output_dict = {}
 
     # 4. 评估条件
     selected_port = None
-    for cond in branch_node.get("branch_conditions", []):
+    for cond in branch_node.get("conditions", []):
         expr = cond.get("expr", "").strip()
-        port_name = cond.get("branch_name")  # 这就是输出端口名！
+        port_name = cond.get("name")  # 这就是输出端口名！
         if not expr or not port_name:
             continue
 
@@ -239,9 +237,40 @@ def execute_branch_node(branch_node, all_nodes, graph_data, input_data, runtime_
     # 6. 如果有选中端口，透传输入数据
     if selected_port is not None:
         # 透传 input_data（保持原始结构）
-        output_dict[selected_port] = input_data[0] if isinstance(input_data, (list, tuple)) and input_data else input_data
+        output_dict[selected_port] = input_data[0] if isinstance(input_data,
+                                                                 (list, tuple)) and input_data else input_data
 
-    return output_dict  # 例如: {"branch_true": 42} 或 {"else": [1,2,3]}
+    return selected_port, output_dict  # 例如: {"branch_true": 42} 或 {"else": [1,2,3]}
+
+
+def get_downstream_nodes(start_node_id, connections, all_node_ids, downstream_cache=None):
+    """获取从指定节点开始的所有下游节点（包括间接连接的）"""
+    if downstream_cache is not None and start_node_id in downstream_cache:
+        return downstream_cache[start_node_id]
+
+    downstream = set()
+    visited = set()
+    queue = deque([start_node_id])
+
+    while queue:
+        current = queue.popleft()
+        if current in visited:
+            continue
+        visited.add(current)
+
+        # 找到所有从此节点输出的连接
+        for conn in connections:
+            if conn["out"][0] == current and conn["in"][0] in all_node_ids:
+                target_node = conn["in"][0]
+                if target_node not in visited:
+                    downstream.add(target_node)
+                    queue.append(target_node)
+
+    # 缓存结果
+    if downstream_cache is not None:
+        downstream_cache[start_node_id] = downstream
+
+    return downstream
 
 
 def execute_workflow(file_path, external_inputs=None, python_executable=None):
@@ -260,6 +289,7 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
         full_data = json.load(f)
     graph_data = full_data["graph"]
     runtime_data = full_data.get("runtime", {})
+    global_variable = runtime_data.get("global_variable", {})
 
     # 2. 加载 project_spec（如果有）
     spec_path = project_dir / "project_spec.json"
@@ -305,7 +335,7 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
             "is_iterate_node": is_iterate_node,
             "internal_nodes": node_data["custom"].get("internal_nodes", []),
             "is_branch_node": is_branch_node,
-            "branch_conditions": node_data["custom"]["params"].get("conditions", []),
+            "conditions": node_data["custom"]["params"].get("conditions", []),
             "enable_else": node_data["custom"]["params"].get("enable_else", False),
             "global_variable": node_data["custom"]["params"].get("global_variable", {}),
         }
@@ -325,9 +355,22 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
     # 6. 构建执行顺序
     execution_order, loop_nodes, internal_nodes = build_execution_graph(nodes, graph_data)
     outputs_lock = Lock()
-    # 7. 执行节点
+
+    # 7. 执行节点 - 跟踪已激活的分支
+    active_branch_outputs = {}  # 记录分支节点的激活端口
+    skip_nodes = set()  # 记录需要跳过的节点
+
+    # 性能优化：缓存下游节点信息
+    downstream_cache = {}
+
     for node_id in execution_order:
         node = nodes[node_id]
+
+        # 检查当前节点是否应该被跳过
+        if node_id in skip_nodes:
+            logger.info(f"跳过节点: {node['name']} (因为连接到未激活的分支)")
+            continue
+
         # 构建输入字典（支持多输入端口聚合）
         node_inputs = {}
 
@@ -344,15 +387,40 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
 
         # 聚合来自上游的输入（支持多连接）
         input_port_values = defaultdict(list)
+        upstream_branch_nodes = []  # 记录上游分支节点信息，用于优化判断
+
         for conn in graph_data["connections"]:
             if conn["in"][0] == node_id:
                 out_nid, out_port = conn["out"]
                 in_port = conn["in"][1]
+
+                # 检查上游节点是否是分支节点且当前端口未被激活
+                if out_nid in active_branch_outputs:
+                    # 这个上游节点是分支节点，检查其输出端口是否被激活
+                    active_port = active_branch_outputs[out_nid]
+                    if out_port != active_port:
+                        # 该端口未被激活，跳过当前节点
+                        logger.info(f"节点 {node['name']} 连接到未激活的分支端口 {out_port}，跳过执行")
+                        # 获取所有从这个连接的目标节点开始的下游节点，并加入跳过列表
+                        downstream_nodes = get_downstream_nodes(
+                            node_id, graph_data["connections"], set(nodes.keys()), downstream_cache)
+                        skip_nodes.update(downstream_nodes)
+                        skip_nodes.add(node_id)
+                        upstream_branch_nodes = []  # 清空，因为已经决定跳过
+                        break  # 跳出连接循环，跳过整个节点
+                    else:
+                        # 这个分支端口是激活的，记录用于后续处理
+                        upstream_branch_nodes.append((out_nid, out_port))
+
                 with outputs_lock:
                     if out_nid in node_outputs:
                         val = node_outputs[out_nid].get(out_port)
                         if val is not None:
                             input_port_values[in_port].append(val)
+
+        # 如果当前节点被标记为跳过，继续下一个节点
+        if node_id in skip_nodes:
+            continue
 
         # 合并：如果一个端口有多个输入，用列表；否则用单个值
         for port, vals in input_port_values.items():
@@ -375,10 +443,23 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
             input_val = None
             if node_inputs:
                 input_val = next(iter(node_inputs.values()))
-            output = execute_branch_node(node, nodes, graph_data, input_val, runtime_data)
+            selected_port, output = execute_branch_node(node, input_val, global_variable)
+            # print(selected_port)  # 移除调试打印
             node_outputs[node_id] = output
+
+            # 记录激活的分支端口
+            if selected_port is not None:
+                active_branch_outputs[node_id] = selected_port
+                logger.info(f"分支节点 {node['name']} 激活端口: {selected_port}")
+            else:
+                logger.info(f"分支节点 {node['name']} 没有激活任何端口")
+
+                # 没有激活任何端口，跳过所有下游节点
+                downstream_nodes = get_downstream_nodes(
+                    node_id, graph_data["connections"], set(nodes.keys()), downstream_cache)
+                skip_nodes.update(downstream_nodes)
         else:
-            # 执行
+            # 执行普通节点
             try:
                 logger.info(f"执行节点: {node['name']}")
                 logger.info(f"输入: {node_inputs}")
