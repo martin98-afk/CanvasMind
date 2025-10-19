@@ -6,8 +6,7 @@ import pandas as pd
 from NodeGraphQt import BaseNode
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
-    QStackedWidget, QHBoxLayout, QApplication, QDialog
-from loguru import logger
+    QStackedWidget, QHBoxLayout, QApplication
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
     ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton
 
@@ -15,7 +14,7 @@ from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.utils.utils import serialize_for_json, get_icon
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
-from app.widgets.tree_widget.variable_tree import VariableTreeWidget, VariableExplorerWidget, FullscreenVariableDialog
+from app.widgets.tree_widget.variable_tree import VariableTreeWidget, FullscreenVariableDialog
 
 
 class PropertyPanel(CardWidget):

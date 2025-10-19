@@ -9,6 +9,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import List, Tuple, Type, Union
 from typing import Any, Dict, Optional
+
+from pandas import DataFrame
 from pydantic import BaseModel, Field
 from enum import Enum
 
@@ -735,29 +737,36 @@ class BaseComponent(ABC):
         except Exception as e:
             raise ComponentError(f"存储输出 {output_name} 失败: {str(e)}", "OUTPUT_STORE_ERROR")
 
-    def _store_csv_data(self, data: Any) -> str:
-        """存储CSV数据（返回字符串）"""
+    def _store_csv_data(self, data: pd.DataFrame) -> Union[DataFrame, str, Path]:
+        """存储CSV数据"""
         if isinstance(data, pd.DataFrame):
-            import io
-            output = io.StringIO()
-            data.to_csv(output, index=False)
-            return output.getvalue()
+            return data
+        elif isinstance(data, (str, Path)):
+            if os.path.exists(data):
+                return pd.read_csv(data)
+            else:
+                # 如果是CSV字符串
+                import io
+                return pd.read_csv(io.StringIO(data))
         else:
-            raise ComponentError(f"CSV 输出必须是 pandas.DataFrame，得到: {type(data)}", "OUTPUT_TYPE_ERROR")
+            raise ComponentError(f"无法存储CSV数据: {type(data)}")
 
     def _store_json_data(self, data: Union[dict, list]) -> str:
         """存储JSON数据（直接返回）"""
         return data
 
-    def _store_excel_data(self, data: pd.DataFrame, node_id: str = None) -> str:
-        """存储Excel数据到节点专属目录"""
-        if not isinstance(data, pd.DataFrame):
-            raise ComponentError(f"Excel 输出必须是 DataFrame，得到: {type(data)}")
-        temp_dir = _get_node_temp_dir(node_id)
-        excel_path = temp_dir / f"output_{uuid.uuid4().hex}.xlsx"
-        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-            data.to_excel(writer, index=False)
-        return str(excel_path)
+    def _store_excel_data(self, data: pd.DataFrame) -> Union[DataFrame, str, Path]:
+        """存储Excel数据"""
+        import io
+        if isinstance(data, pd.DataFrame):
+            return data
+        elif isinstance(data, (str, Path)):
+            if os.path.exists(data):
+                return pd.read_excel(data)
+            else:
+                return pd.read_excel(io.StringIO(data))
+        else:
+            raise ComponentError(f"无法存储Excel数据: {type(data)}")
 
     def _store_sklearn_model(self, model: Any, node_id: str = None) -> str:
         """存储sklearn模型到节点专属目录"""
