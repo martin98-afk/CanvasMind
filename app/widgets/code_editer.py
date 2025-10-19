@@ -51,7 +51,7 @@ class CodeEditorWidget(QWidget):
 
     def __init__(self, parent=None, python_exe=None, popup_offset=0):
         super().__init__()
-        self.code_editor = JediCodeEditor(parent, python_exe_path=python_exe, popup_offset=popup_offset)
+        self.code_editor = JediCodeEditor(parent, self, python_exe_path=python_exe, popup_offset=popup_offset)
         self.code_editor.textChanged.connect(self.code_changed)
         self._setup_auto_sync()
         self._setup_ui()

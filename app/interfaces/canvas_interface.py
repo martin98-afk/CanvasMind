@@ -351,19 +351,11 @@ class CanvasPage(QWidget):
                                node_type=f"dynamic.{code_node.__name__}")
         nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                node_type=f"dynamic.{code_node.__name__}")
-        nodes_menu.add_command(
-            '居中界面',
-            lambda graph, node: (
-                self.graph.clear_selection(),
-                node.set_selected(),
-                self.graph.fit_to_selection()
-            ),
-            node_type=f"dynamic.{code_node.__name__}"
-        )
         nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
                                node_type=f"dynamic.{code_node.__name__}")
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"dynamic.{code_node.__name__}")
+        self.node_type_map[code_node.FULL_PATH] = f"dynamic.{code_node.__name__}"
         # 迭代节点
         iterate_node = ControlFlowIterateNode
         iterate_node.__name__ = "ControlFlowIterateNode"
@@ -376,6 +368,7 @@ class CanvasPage(QWidget):
                                node_type=f"control_flow.{iterate_node.__name__}")
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{iterate_node.__name__}")
+        self.node_type_map[iterate_node.FULL_PATH] = f"control_flow.{iterate_node.__name__}"
 
         # 循环节点
         loop_node = ControlFlowLoopNode
@@ -389,6 +382,7 @@ class CanvasPage(QWidget):
                                node_type=f"control_flow.{loop_node.__name__}")
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{loop_node.__name__}")
+        self.node_type_map[loop_node.FULL_PATH] = f"control_flow.{loop_node.__name__}"
 
         # 输入端口节点
         input_port_node = CustomPortInputNode
@@ -412,6 +406,7 @@ class CanvasPage(QWidget):
                                node_type=f"control_flow.{branch_node.__name__}")
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{branch_node.__name__}")
+        self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
 
     def create_minimap(self):
         self.minimap = MinimapWidget(self)
@@ -1116,7 +1111,6 @@ class CanvasPage(QWidget):
                 "graph": graph_data,
                 "runtime": runtime_data
             }
-            print(project_data)
             (export_path / "model.workflow.json").write_text(
                 json.dumps(project_data, indent=2, ensure_ascii=False), encoding='utf-8'
             )
@@ -1292,8 +1286,6 @@ class CanvasPage(QWidget):
             "column_select": {},
         }
         for node in self.graph.all_nodes():
-            if isinstance(node, BackdropNode):
-                continue
             full_path = getattr(node, 'FULL_PATH', 'unknown')
             node_name = node.name()
             stable_key = f"{full_path}||{node_name}"
@@ -1390,25 +1382,24 @@ class CanvasPage(QWidget):
                         break
             all_nodes = self.graph.all_nodes()
             for node in all_nodes:
-                if node and not isinstance(node, BackdropNode):
-                    full_path = getattr(node, 'FULL_PATH', 'unknown')
-                    node_name = node.name()
-                    stable_key = f"{full_path}||{node_name}"
-                    node_status = node_status_data.get(stable_key)
-                    if node_status:
-                        node._input_values = deserialize_from_json(node_status.get("node_inputs", {}))
-                        node._output_values = deserialize_from_json(node_status.get("node_outputs", {}))
-                        node.column_select = node_status.get("column_select", {})
-                        for key, value in node_status.get("custom_property").items():
-                            if not node.has_property(key):
-                                node.create_property(key, value)
-                            else:
-                                node.set_property(key, value)
-                        status_str = node_status.get("node_states", "unrun")
-                        status_str = "unrun" if status_str is None else status_str
-                        self.set_node_status(
-                            node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
-                        )
+                full_path = getattr(node, 'FULL_PATH', 'unknown')
+                node_name = node.name()
+                stable_key = f"{full_path}||{node_name}"
+                node_status = node_status_data.get(stable_key)
+                if node_status:
+                    node._input_values = deserialize_from_json(node_status.get("node_inputs", {}))
+                    node._output_values = deserialize_from_json(node_status.get("node_outputs", {}))
+                    node.column_select = node_status.get("column_select", {})
+                    for key, value in node_status.get("custom_property").items():
+                        if not node.has_property(key):
+                            node.create_property(key, value)
+                        else:
+                            node.set_property(key, value)
+                    status_str = node_status.get("node_states", "unrun")
+                    status_str = "unrun" if status_str is None else status_str
+                    self.set_node_status(
+                        node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
+                    )
             self.create_name_label()
             self._delayed_fit_view()
             self.create_success_info("加载成功", "工作流加载成功！")

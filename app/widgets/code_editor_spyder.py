@@ -3,7 +3,7 @@ import os
 import sys
 
 import jedi
-from PyQt5.QtCore import Qt, QTimer, QPoint
+from PyQt5.QtCore import Qt, QTimer, QPoint, QSize
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QIcon
 from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle, QPushButton, QDialog, QVBoxLayout
 from qfluentwidgets import TransparentToolButton, MessageBoxBase, TextEdit
@@ -38,21 +38,21 @@ class CompletionItemDelegate(QStyledItemDelegate):
 class FullscreenCodeDialog(MessageBoxBase):
     """Fullscreen code dialog using FluentUI MessageBoxBase."""
 
-    def __init__(self, initial_code="", parent=None):
+    def __init__(self, initial_code="", parent=None, code_parent=None):
         super().__init__(parent)
         self.setWindowTitle("代码编辑器")
 
         # 创建代码编辑器
-        self.code_editor = JediCodeEditor(parent=parent)
+        self.code_editor = JediCodeEditor(parent=code_parent, dialog=self)
         self.code_editor.setPlainText(initial_code)
-        self.code_editor.setMinimumSize(800, 600)  # 设置最小尺寸
+        self.code_editor.setMinimumSize(1000, 600)  # 设置最小尺寸
 
         # 将编辑器添加到布局中
         self.viewLayout.addWidget(self.code_editor)
 
         # 设置按钮
-        self.yesButton.setText('确定')
-        self.cancelButton.hide()
+        self.buttonGroup.hide()
+        # self.cancelButton.hide()
 
     def get_code(self):
         return self.code_editor.toPlainText()
@@ -61,7 +61,7 @@ class FullscreenCodeDialog(MessageBoxBase):
 class JediCodeEditor(CodeEditor):
     """Enhanced CodeEditor with Jedi-powered Python completions."""
 
-    def __init__(self, parent=None, python_exe_path=None, popup_offset=2):
+    def __init__(self, parent=None, code_parent=None, python_exe_path=None, popup_offset=2, dialog=None):
         """
         Initialize the JediCodeEditor.
 
@@ -73,11 +73,13 @@ class JediCodeEditor(CodeEditor):
         super().__init__()
         self.popup_offset = popup_offset
         self.parent_widget = parent
+        self.parent = code_parent
         self._jedi_environment = None
         self.custom_completions = set()
         self.completion_usage = {}
         self.max_completions = 80
         self._completing = False
+        self.dialog = dialog
         self.set_jedi_environment(str(python_exe_path))
 
         # --- 自定义补全弹窗 ---
@@ -138,14 +140,18 @@ class JediCodeEditor(CodeEditor):
         self._smart_complete_timer.timeout.connect(self._request_completions)
 
         # --- 添加放大按钮 ---
-        self._create_fullscreen_button()
+        self._create_fullscreen_button("放大" if dialog is None else "缩小")
 
-    def _create_fullscreen_button(self):
+    def _create_fullscreen_button(self, type="放大"):
         """Create the fullscreen button in the top-right corner."""
-        self.fullscreen_button = TransparentToolButton(get_icon("缩放"), parent=self)
+        self.fullscreen_button = TransparentToolButton(get_icon(type), parent=self)
+        self.fullscreen_button.setIconSize(QSize(28, 28))
         self.fullscreen_button.setFixedSize(28, 28)
         self.fullscreen_button.setToolTip("放大编辑器")
-        self.fullscreen_button.clicked.connect(self._open_fullscreen_editor)
+        if type == "放大":
+            self.fullscreen_button.clicked.connect(self._open_fullscreen_editor)
+        else:
+            self.fullscreen_button.clicked.connect(self.dialog.accept)
 
         # 初始位置
         self._update_button_position()
@@ -171,7 +177,7 @@ class JediCodeEditor(CodeEditor):
         current_code = self.toPlainText()
 
         # 创建对话框
-        dialog = FullscreenCodeDialog(initial_code=current_code, parent=self.parent_widget)
+        dialog = FullscreenCodeDialog(initial_code=current_code, parent=self.parent_widget, code_parent=self.parent)
 
         # 显示对话框
         if dialog.exec_() == 1:  # 1 表示点击了确定按钮
@@ -256,8 +262,8 @@ class JediCodeEditor(CodeEditor):
         # Handle Shift+Enter for parent widget
         if modifiers == Qt.ShiftModifier and key in (Qt.Key_Return, Qt.Key_Enter):
             cursor = self.textCursor()
-            if self.parent_widget and hasattr(self.parent_widget, '_handle_shift_enter'):
-                self.parent_widget._handle_shift_enter(cursor)
+            if self.parent and hasattr(self.parent, '_handle_shift_enter'):
+                self.parent._handle_shift_enter(cursor)
             event.accept()
             return
 
