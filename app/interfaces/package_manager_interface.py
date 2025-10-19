@@ -4,11 +4,10 @@ import json
 import platform
 import re
 import subprocess
-
 from PyQt5.QtCore import QThread, pyqtSignal, QProcess, Qt, QTimer
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem, QSplitter, QHeaderView, QSizePolicy
+    QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem, QSplitter, QHeaderView, QSizePolicy, QFileDialog, QCheckBox
 )
 from qfluentwidgets import (
     ComboBox, PrimaryPushButton, LineEdit, TableWidget,
@@ -107,16 +106,24 @@ class EnvManagerUI(QWidget):
         topLayout.addWidget(self.deleteEnvBtn)
 
         # ---------- 第二行操作 ----------
+        # --- 修改：使用两个联动的下拉框 ---
+        self.sourceCombo = ComboBox(self)
+        self.sourceCombo.addItems(["在线", "本地"])
+        self.sourceCombo.currentIndexChanged.connect(self._update_action_combo) # 连接信号
+
         self.actionCombo = ComboBox(self)
-        self.actionCombo.addItems(["安装", "强制重装", "更新", "卸载"])
 
         self.packageEdit = LineEdit(self)
-        self.packageEdit.setPlaceholderText("输入包名，例如 numpy 或 numpy==1.24.0")
+        self.packageEdit.setPlaceholderText("输入包名或本地文件路径...")
 
         self.execBtn = PrimaryPushButton("执行", self, icon=FluentIcon.PLAY)
         self.execBtn.clicked.connect(self.run_pip_command)
 
+        self._update_action_combo()  # 初始化 actionCombo 的内容
+        # ------------------------------
+
         actionLayout = QHBoxLayout()
+        actionLayout.addWidget(self.sourceCombo)
         actionLayout.addWidget(self.actionCombo)
         actionLayout.addWidget(self.packageEdit, stretch=1)
         actionLayout.addWidget(self.execBtn)
@@ -141,7 +148,7 @@ class EnvManagerUI(QWidget):
 
         packageLayout = QVBoxLayout()
         packageLayout.addLayout(topLayout)
-        packageLayout.addLayout(actionLayout)
+        packageLayout.addLayout(actionLayout) # 包含了 sourceCombo, actionCombo, packageEdit, execBtn
         packageLayout.addWidget(self.searchEdit)  # 搜索框在列表上方
         packageLayout.addWidget(self.packageTable, stretch=1)  # 列表填满剩余区域
 
@@ -168,6 +175,19 @@ class EnvManagerUI(QWidget):
             self.on_env_changed()
         else:
             self.logEdit.append("⚠️ 没有检测到任何环境，请点击\"新建环境\"创建。")
+
+    def _update_action_combo(self):
+        """根据 sourceCombo 的选择更新 actionCombo 的内容"""
+        current_source = self.sourceCombo.currentText()
+        self.actionCombo.clear()
+        if current_source == "在线":
+            self.actionCombo.addItems(["安装", "强制重装", "更新", "卸载"])
+            # 清空 packageEdit 提示，因为它用于输入包名
+            self.packageEdit.setPlaceholderText("输入包名，例如 numpy 或 numpy==1.24.0")
+        elif current_source == "本地":
+            self.actionCombo.addItems(["离线", "联网"]) # 可根据需要调整选项
+            # 清空 packageEdit 提示，因为它将用于显示本地文件路径（或用户手动输入）
+            self.packageEdit.setPlaceholderText("选择本地包文件或输入路径...")
 
     def get_current_python_exe(self):
         """获取当前环境 Python 的路径"""
@@ -268,7 +288,7 @@ class EnvManagerUI(QWidget):
         self._repopulate_table(filtered)
 
     def run_pip_command(self):
-        """通过顶部操作区执行通用的安装/更新/卸载（针对 packageEdit 中的包名）"""
+        """根据 sourceCombo 和 actionCombo 执行对应的 pip 命令"""
         if not self.current_env:
             InfoBar.error("错误", "请选择环境", parent=self)
             return
@@ -283,25 +303,71 @@ class EnvManagerUI(QWidget):
             InfoBar.error("错误", "pip 安装失败", parent=self)
             return
 
+        source = self.sourceCombo.currentText()
         action = self.actionCombo.currentText()
-        package = self.packageEdit.text().strip()
-        if not package:
-            InfoBar.error("错误", "请输入包名", parent=self)
-            return
+        package_input = self.packageEdit.text().strip()
 
-        if action == "安装":
-            cmd = ["-m", "pip", "install", package]
-        elif action == "强制重装":
-            cmd = ["-m", "pip", "install", "--force-reinstall", package]
-        elif action == "更新":
-            cmd = ["-m", "pip", "install", "-U", package]
-        elif action == "卸载":
-            cmd = ["-m", "pip", "uninstall", "-y", package]
+        if source == "在线":
+            # --- 在线安装逻辑 ---
+            if not package_input:
+                InfoBar.error("错误", "请输入包名", parent=self)
+                return
+
+            if action == "安装":
+                cmd = ["-m", "pip", "install", package_input]
+            elif action == "强制重装":
+                cmd = ["-m", "pip", "install", "--force-reinstall", package_input]
+            elif action == "更新":
+                cmd = ["-m", "pip", "install", "-U", package_input]
+            elif action == "卸载":
+                cmd = ["-m", "pip", "uninstall", "-y", package_input]
+            else:
+                return # 不应该发生
+
+        elif source == "本地":
+            # --- 本地安装逻辑 ---
+            # 如果 packageEdit 为空，弹出文件选择对话框
+            file_paths = []
+            if not package_input:
+                file_paths, _ = QFileDialog.getOpenFileNames(
+                    self,
+                    "选择本地 WHL 包",
+                    "", # 初始目录，可以设置为特定路径
+                    "Python Wheels (*.whl);;All Files (*)"
+                )
+                if not file_paths:
+                    # 用户取消了选择
+                    return
+            else:
+                # 如果 packageEdit 有内容，尝试解析为路径
+                # 这里可以扩展逻辑，例如支持多个路径（用分隔符分隔）
+                # 简单起见，假设它是一个路径
+                file_paths = [package_input]
+
+            if file_paths:
+                # 验证文件后缀
+                valid_whl_paths = [path for path in file_paths if path.lower().endswith('.whl')]
+                invalid_paths = [path for path in file_paths if not path.lower().endswith('.whl')]
+
+                if invalid_paths:
+                    InfoBar.warning("警告", f"跳过非 .whl 文件: {', '.join(invalid_paths)}", parent=self)
+
+                if not valid_whl_paths:
+                    InfoBar.error("错误", "没有选择有效的 .whl 文件", parent=self)
+                    return
+
+                # 构建 pip install 命令
+                cmd = ["-m", "pip", "install"]
+                if "no-index" in action.lower(): # 检查 action 是否包含 "no-index"
+                    cmd.append("--no-index")
+                cmd.extend(valid_whl_paths)
+
         else:
-            return
+            return # 不应该发生
 
         # 启动 QProcess 执行并实时输出
         self._start_process(python_exe, cmd)
+
 
     def on_update_package_clicked(self, package_name):
         """行内更新按钮处理"""
@@ -364,9 +430,11 @@ class EnvManagerUI(QWidget):
         if self.process and self.process.state() != QProcess.NotRunning:
             try:
                 self.process.kill()
-            except Exception:
-                pass
+                self.process.waitForFinished(3000) # 等待最多3秒让进程结束
+            except Exception as e:
+                print(f"终止进程时出错: {e}") # 可选：记录错误
 
+        # 确保旧进程引用被清理
         self.process = QProcess(self)
         self.process.setProcessChannelMode(QProcess.MergedChannels)
         # 连接实时输出

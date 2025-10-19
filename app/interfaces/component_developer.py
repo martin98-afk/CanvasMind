@@ -1065,15 +1065,6 @@ class PropertyEditorWidget(QWidget):
         # 默认值
         default_item = QTableWidgetItem(str(getattr(prop_def, 'default', '')))
         self.table.setItem(row, 3, default_item)
-        # 选项（用于 choice 类型）
-        options_item = QTableWidgetItem("")
-        if getattr(prop_def, 'type', PropertyType.TEXT) == PropertyType.CHOICE:
-            choices = getattr(prop_def, 'choices', [])
-            options_item.setText(",".join(choices))
-            options_item.setFlags(options_item.flags() | Qt.ItemIsEditable)
-        else:
-            options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
-
         # 替换原来的“选项”列：改为“操作”列
         action_widget = QWidget()
         action_layout = QHBoxLayout(action_widget)
@@ -1085,11 +1076,14 @@ class PropertyEditorWidget(QWidget):
             action_layout.addWidget(edit_btn)
             self.table.setCellWidget(row, 4, action_widget)
         elif getattr(prop_def, 'type', PropertyType.TEXT) == PropertyType.RANGE:
+            print(prop_def)
             # 显示范围配置：min, max, step
             min_val = prop_def.get("min", 0) if isinstance(prop_def, dict) else getattr(prop_def, 'min', 0)
             max_val = prop_def.get("max", 100) if isinstance(prop_def, dict) else getattr(prop_def, 'max', 100)
             step_val = prop_def.get("step", 1) if isinstance(prop_def, dict) else getattr(prop_def, 'step', 1)
             options_text = f"min={min_val}, max={max_val}, step={step_val}"
+            print(getattr(prop_def, 'max', 100))
+            print(options_text)
             self.table.setItem(row, 4, QTableWidgetItem(options_text))
         elif getattr(prop_def, 'type', PropertyType.TEXT) == PropertyType.LONGTEXT:
             btn = PushButton("编辑文本")
@@ -1097,9 +1091,14 @@ class PropertyEditorWidget(QWidget):
             self.table.setCellWidget(row, 4, btn)
         elif getattr(prop_def, 'type', PropertyType.TEXT) == PropertyType.CHOICE:
             choices = getattr(prop_def, 'choices', [])
+            options_item = QTableWidgetItem("")
             options_item.setText(",".join(choices))
-
-        self.table.setItem(row, 4, options_item)
+            options_item.setFlags(options_item.flags() | Qt.ItemIsEditable)
+            self.table.setItem(row, 4, options_item)
+        else:
+            options_item = QTableWidgetItem("")
+            options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
+            self.table.setItem(row, 4, options_item)
 
     def _on_type_changed(self, row):
         type_widget = self.table.cellWidget(row, 2)
@@ -1127,7 +1126,9 @@ class PropertyEditorWidget(QWidget):
             btn.clicked.connect(lambda _, r=row: self._edit_dynamic_form(r))
             self.table.setCellWidget(row, 4, btn)
         else:
-            self.table.setItem(row, 4, QTableWidgetItem("-"))
+            options_item = QTableWidgetItem("")
+            options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
+            self.table.setItem(row, 4, options_item)
 
         self.properties_changed.emit()
 

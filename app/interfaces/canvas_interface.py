@@ -5,12 +5,11 @@ import pathlib
 import shutil
 from datetime import datetime
 from pathlib import Path
-
 from NodeGraphQt import NodeGraph, BackdropNode, BaseNode
 from NodeGraphQt.constants import PipeLayoutEnum
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
 from loguru import logger
@@ -18,7 +17,6 @@ from qfluentwidgets import (
     InfoBar,
     InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton
 )
-
 from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
 from app.nodes.branch_node import create_branch_node
@@ -39,12 +37,12 @@ from app.widgets.minimap_widget import MinimapWidget
 from app.widgets.property_panel import PropertyPanel
 from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 
-
 class CanvasPage(QWidget):
     canvas_deleted = pyqtSignal()
     canvas_saved = pyqtSignal(Path)
     global_variables_changed = pyqtSignal()
     env_changed = pyqtSignal(str)
+
     PIPELINE_STYLE = {
         "折线": PipeLayoutEnum.ANGLE.value,
         "曲线": PipeLayoutEnum.CURVED.value,
@@ -70,6 +68,12 @@ class CanvasPage(QWidget):
         self._clipboard_data = None
         self._scheduler = None  # ← 新增：调度器引用
         self._selection_update_pending = False
+
+        # --- 新增：性能优化相关 ---
+        self._node_id_cache = {} # 缓存：node_id -> node_object
+        self._node_id_cache_valid = False # 标记缓存是否有效
+        # ---
+
         # 初始化 NodeGraph
         self.graph = NodeGraph()
         self._setup_pipeline_style()
@@ -82,7 +86,6 @@ class CanvasPage(QWidget):
         self.nav_view = self.nav_panel.tree
         # 属性面板
         self.property_panel = PropertyPanel(self)
-
         # 布局
         main_layout = QVBoxLayout(self)
         canvas_layout = QHBoxLayout()
@@ -90,7 +93,6 @@ class CanvasPage(QWidget):
         canvas_layout.addWidget(self.canvas_widget, 1)
         canvas_layout.addWidget(self.property_panel, 0, Qt.AlignRight)
         main_layout.addLayout(canvas_layout)
-
         # 信号连接
         scene = self.graph.viewer().scene()
         scene.selectionChanged.connect(self.on_selection_changed)
@@ -104,13 +106,11 @@ class CanvasPage(QWidget):
         self.create_environment_selector()
         self.create_floating_buttons()
         self.create_floating_nodes()
-
         # 启用画布拖拽
         self.canvas_widget.setAcceptDrops(True)
         self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
         self.canvas_widget.dropEvent = self.canvas_drop_event
         self.canvas_widget.installEventFilter(self)
-
         # 右键菜单
         self._setup_context_menus()
 
@@ -127,12 +127,13 @@ class CanvasPage(QWidget):
             global_variables=self.global_variables,
             parent=self
         )
+        # 优化：直接连接到 set_node_status_by_id
         scheduler.node_status_changed.connect(self.set_node_status_by_id)
         scheduler.property_changed.connect(self.update_node_property)
         return scheduler
 
     def set_node_status_by_id(self, node_id, status):
-        node = self._get_node_by_id(node_id)
+        node = self._get_node_by_id_cached(node_id)
         if node:
             self.set_node_status(node, status)
 
@@ -143,12 +144,13 @@ class CanvasPage(QWidget):
             if isinstance(node, ControlFlowBackdrop):
                 backdrop = node
                 break
-        node = self._get_node_by_id(node_id)
+        node = self._get_node_by_id_cached(node_id)
         if selected_nodes and node == backdrop:
             self.property_panel.update_properties(node)
 
     def _connect_scheduler_signals(self):
         """连接调度器信号到 UI 回调"""
+        # 优化：直接连接到具体处理方法，避免不必要的中间信号
         self._scheduler.node_started.connect(self.on_node_started_simple)
         self._scheduler.node_finished.connect(self.on_node_finished_simple)
         self._scheduler.node_error.connect(self.on_node_error_simple)
@@ -194,21 +196,17 @@ class CanvasPage(QWidget):
         self.canvas_widget.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
         self.canvas_widget.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
         self.canvas_widget.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
-
         if event.modifiers() == QtCore.Qt.ControlModifier:
             if event.key() == QtCore.Qt.Key_C:
                 self._copy_selected_nodes()
             elif event.key() == QtCore.Qt.Key_V:
                 self._paste_nodes()
-
         if event.modifiers() == (QtCore.Qt.AltModifier | QtCore.Qt.ShiftModifier):
             self.canvas_widget.ALT_state = True
             self.canvas_widget.SHIFT_state = True
-
         if self.canvas_widget._LIVE_PIPE.isVisible():
             super(NodeViewer, self.canvas_widget).keyPressEvent(event)
             return
-
         # show cursor text
         overlay_text = None
         self.canvas_widget._cursor_text.setVisible(False)
@@ -226,7 +224,6 @@ class CanvasPage(QWidget):
             self.canvas_widget._cursor_text.setDefaultTextColor(Qt.white)
             self.canvas_widget._cursor_text.setPos(self.canvas_widget.mapToScene(self.canvas_widget._previous_pos))
             self.canvas_widget._cursor_text.setVisible(True)
-
         super(NodeViewer, self.canvas_widget).keyPressEvent(event)
 
     def eventFilter(self, obj, event):
@@ -243,7 +240,6 @@ class CanvasPage(QWidget):
         env_layout = QHBoxLayout(self.buttons_container)
         env_layout.setSpacing(5)
         env_layout.setContentsMargins(0, 0, 0, 0)
-
         self.run_btn = TransparentToolButton(FluentIcon.PLAY, self)
         self.run_btn.setToolTip("运行工作流")
         self.run_btn.clicked.connect(self.run_workflow)
@@ -369,7 +365,6 @@ class CanvasPage(QWidget):
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{iterate_node.__name__}")
         self.node_type_map[iterate_node.FULL_PATH] = f"control_flow.{iterate_node.__name__}"
-
         # 循环节点
         loop_node = ControlFlowLoopNode
         loop_node.__name__ = "ControlFlowLoopNode"
@@ -383,17 +378,14 @@ class CanvasPage(QWidget):
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{loop_node.__name__}")
         self.node_type_map[loop_node.FULL_PATH] = f"control_flow.{loop_node.__name__}"
-
         # 输入端口节点
         input_port_node = CustomPortInputNode
         input_port_node.__name__ = "ControlFlowInputPort"
         self.graph.register_node(input_port_node)
-
         # 输出端口节点
         output_port_node = CustomPortOutputNode
         output_port_node.__name__ = "ControlFlowOutputPort"
         self.graph.register_node(output_port_node)
-
         # 注册分支节点
         branch_node = create_branch_node(self)
         branch_node.__name__ = "ControlFlowBranchNode"
@@ -437,53 +429,44 @@ class CanvasPage(QWidget):
         self.nodes_container = QWidget(self.canvas_widget)
         self.nodes_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         self._update_nodes_container_position()
-
         self.node_layout = QVBoxLayout(self.nodes_container)
         self.node_layout.setSpacing(3)
         self.node_layout.setContentsMargins(0, 0, 0, 0)
-
         # === 固定控制流按钮 ===
         self.iterate_node = TransparentToolButton(FluentIcon.SYNC, self)
         self.iterate_node.setIconSize(QSize(20, 20))
         self.iterate_node.setToolTip("创建迭代")
         self.iterate_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowIterateNode"))
         self.node_layout.addWidget(self.iterate_node)
-
         self.loop_node = TransparentToolButton(get_icon("无限"), self)
         self.loop_node.setIconSize(QSize(20, 20))
         self.loop_node.setToolTip("创建循环")
         self.loop_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowLoopNode"))
         self.node_layout.addWidget(self.loop_node)
-
         self.branch_node = TransparentToolButton(get_icon("条件分支"), self)
         self.branch_node.setIconSize(QSize(20, 20))
         self.branch_node.setToolTip("创建分支")
         self.branch_node.clicked.connect(lambda: self.create_next_node("control_flow.ControlFlowBranchNode"))
         self.node_layout.addWidget(self.branch_node)
-
         self.code_node = TransparentToolButton(get_icon("代码执行"), self)
         self.code_node.setIconSize(QSize(20, 20))
         self.code_node.setToolTip("创建代码编辑")
         self.code_node.clicked.connect(lambda: self.create_next_node("dynamic.DYNAMIC_CODE"))
         self.node_layout.addWidget(self.code_node)
-
         # === 分隔线 ===
         from PyQt5.QtWidgets import QFrame
         self.separator = QFrame()
         self.separator.setFrameShape(QFrame.HLine)
         self.separator.setStyleSheet("color: #555;")
         self.node_layout.addWidget(self.separator)
-
         # === “+”按钮（始终在最后）===
         self.add_quick_btn = TransparentToolButton(FluentIcon.ADD, self)
         self.add_quick_btn.setIconSize(QSize(20, 20))
         self.add_quick_btn.setToolTip("添加快捷组件")
         self.add_quick_btn.clicked.connect(self.quick_manager.open_add_dialog)
         self.node_layout.addWidget(self.add_quick_btn)
-
         self.nodes_container.setLayout(self.node_layout)
         self.nodes_container.show()
-
         # 初次加载快捷组件
         self._refresh_quick_buttons()
 
@@ -502,17 +485,14 @@ class CanvasPage(QWidget):
         # 找到分隔线和“+”按钮的位置
         sep_index = self.node_layout.indexOf(self.separator)
         add_btn_index = self.node_layout.indexOf(self.add_quick_btn)
-
         if sep_index == -1 or add_btn_index == -1:
             return
-
         # 清除所有动态按钮（位于分隔线之后、“+”之前）
         while sep_index + 1 < add_btn_index:
             item = self.node_layout.takeAt(sep_index + 1)
             if item.widget():
                 item.widget().deleteLater()
             add_btn_index = self.node_layout.indexOf(self.add_quick_btn)  # 更新索引
-
         # 重新添加快捷按钮
         for qc in self.quick_manager.get_quick_components():
             full_path = qc["full_path"]
@@ -522,23 +502,19 @@ class CanvasPage(QWidget):
                 icon = QtGui.QIcon(icon_path)
             else:
                 icon = FluentIcon.APPLICATION
-
             btn = TransparentToolButton(icon, self)
             btn.setIconSize(QSize(20, 20))
             btn.setToolTip(f"创建 {comp_name}")
             btn.setProperty("full_path", full_path)
             btn.clicked.connect(lambda _, ip=icon_path, fp=full_path: self.create_next_node(fp, ip))
-
             # 右键菜单：删除
             btn.setContextMenuPolicy(Qt.CustomContextMenu)
             btn.customContextMenuRequested.connect(
                 lambda pos, b=btn, fp=full_path: self._show_quick_button_menu(b, fp, pos)
             )
-
             # 插入到分隔线之后（即当前最后一个动态位置）
             self.node_layout.insertWidget(sep_index + 1, btn)
             sep_index = self.node_layout.indexOf(self.separator)  # 更新
-
         QtCore.QTimer.singleShot(0, self._update_nodes_container_position)
 
     def _show_quick_button_menu(self, button, full_path, pos):
@@ -558,7 +534,6 @@ class CanvasPage(QWidget):
             node = self.graph.create_node(node_type)
         if icon_path:
             node.set_icon(icon_path)
-
         if selected_nodes:
             node_x = selected_nodes[0].x_pos()
             node_y = selected_nodes[0].y_pos()
@@ -577,7 +552,6 @@ class CanvasPage(QWidget):
         input_port_node = None
         output_port_node = None
         other_nodes = []
-
         # Step 1: 分离已有的 Input/Output Port 和其他节点
         for node in selected_nodes:
             if node.type_ == "control_flow.ControlFlowInputPort":
@@ -586,28 +560,23 @@ class CanvasPage(QWidget):
                 output_port_node = node
             else:
                 other_nodes.append(node)
-
         # Step 2: 获取参考位置（用于无选中节点时）
         viewer = self.graph.viewer()
         viewport_center = viewer.viewport().rect().center()
         scene_center = viewer.mapToScene(viewport_center)
         center_x, center_y = scene_center.x(), scene_center.y()
-
-        # Step 3: 如果没有选中任何节点，创建一个默认的“空”结构
+        # Step 3: 如果没有选中任何节点，创建一个默认的"空"结构
         if not selected_nodes:
             # 创建 Input 和 Output Port，围绕视图中心布局
             input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
             output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-
             input_port_node.set_pos(center_x - 250, center_y - input_port_node.view.height / 2)
             output_port_node.set_pos(center_x + 250, center_y - output_port_node.view.height / 2)
-
             nodes_to_wrap = [input_port_node, output_port_node]
         else:
             # Step 4: 有选中节点时，按原逻辑处理
             unconnected_inputs = []
             unconnected_outputs = []
-
             for node in other_nodes:
                 for input_port in node.input_ports():
                     if not input_port.connected_ports():
@@ -615,7 +584,6 @@ class CanvasPage(QWidget):
                 for output_port in node.output_ports():
                     if not output_port.connected_ports():
                         unconnected_outputs.append((node, output_port))
-
             # 创建缺失的 Input Port
             if not input_port_node:
                 input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
@@ -625,7 +593,6 @@ class CanvasPage(QWidget):
                     input_port_node.set_pos(min_x - 300, avg_y - input_port_node.view.height / 2)
                 else:
                     input_port_node.set_pos(center_x - 250, center_y - input_port_node.view.height / 2)
-
             # 创建缺失的 Output Port
             if not output_port_node:
                 output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
@@ -635,17 +602,13 @@ class CanvasPage(QWidget):
                     output_port_node.set_pos(max_x + 150, avg_y - output_port_node.view.height / 2)
                 else:
                     output_port_node.set_pos(center_x + 250, center_y - output_port_node.view.height / 2)
-
             nodes_to_wrap = other_nodes + [input_port_node, output_port_node]
-
         # Step 5: 创建 Backdrop 并包裹
         if not nodes_to_wrap:
             self.create_warning_info("创建失败", "没有可包裹的节点！")
             return
-
         backdrop_node = self.graph.create_node(f"control_flow.{key}")
         backdrop_node.wrap_nodes(nodes_to_wrap)
-
         # Step 6: 特定配置
         if key == "ControlFlowIterateNode":
             backdrop_node.model.set_property("loop_nums", 3)
@@ -735,7 +698,6 @@ class CanvasPage(QWidget):
                 comp_cls = self.component_map.get(node.FULL_PATH)
                 if comp_cls is None:
                     continue
-
                 # 组件参数（超参数）
                 editable_params = node.model.custom_properties
                 for param_name, param_value in editable_params.items():
@@ -764,7 +726,6 @@ class CanvasPage(QWidget):
                             }
                             for key, value in prop_def.schema.items()
                         }
-
                 # 输入端口
                 for port in node.input_ports():
                     port_name = port.name()
@@ -795,7 +756,6 @@ class CanvasPage(QWidget):
                         ]
                     else:
                         current_val = getattr(node, '_input_values', {}).get(port_name, None)
-
                     candidate_inputs.append({
                         "type": "组件输入",
                         "node_id": node.id,
@@ -805,7 +765,6 @@ class CanvasPage(QWidget):
                         "display_name": f"{port_name} → {node_name}",
                         "format": port_type  # ← ArgumentType 的 name，如 "JSON"
                     })
-
             # === 收集所有候选输出项 ===
             candidate_outputs = []
             for node in nodes_to_export:
@@ -819,7 +778,6 @@ class CanvasPage(QWidget):
                             if out.name == out_name:
                                 out_format = out.type.name
                                 break
-
                     candidate_outputs.append({
                         "node_id": node.id,
                         "node_name": node_name,
@@ -828,7 +786,6 @@ class CanvasPage(QWidget):
                         "display_name": f"{node_name} → {out_name}",
                         "format": out_format  # ← 新增
                     })
-
             # === 弹出选择对话框 ===
             if candidate_inputs:
                 input_dialog = InputSelectionDialog(candidate_inputs, self)
@@ -837,7 +794,6 @@ class CanvasPage(QWidget):
                 selected_input_items = input_dialog.get_selected_items()
             else:
                 selected_input_items = []
-
             if candidate_outputs:
                 output_dialog = OutputSelectionDialog(candidate_outputs, self)
                 if not output_dialog.exec():
@@ -845,14 +801,11 @@ class CanvasPage(QWidget):
                 selected_output_items = output_dialog.get_selected_items()
             else:
                 selected_output_items = []
-
             # === 构建 project_spec.json ===
             project_spec = {"version": "1.0", "graph_name": self.workflow_name, "inputs": {}, "outputs": {}}
-
             for item in selected_input_items:
                 key = item.get("custom_key", f"input_{len(project_spec['inputs'])}")
                 project_spec["inputs"][key] = item
-
             for item in selected_output_items:
                 key = item.get("custom_key", f"output_{len(project_spec['outputs'])}")
                 project_spec["outputs"][key] = {
@@ -860,12 +813,10 @@ class CanvasPage(QWidget):
                     "output_name": item["output_name"],
                     "format": item["format"]  # ← 新增
                 }
-
             # === 收集组件和依赖 ===
             used_components = set()
             for node in nodes_to_export:
                 used_components.add(node.FULL_PATH)
-
             requirements = set()
             for full_path in used_components:
                 comp_cls = self.component_map.get(full_path)
@@ -876,12 +827,10 @@ class CanvasPage(QWidget):
                             pkg = pkg.strip()
                             if pkg:
                                 requirements.add(pkg)
-
             # === 构建详细 README（关键增强）===
             project_name_placeholder = self.workflow_name
             original_canvas = getattr(self, 'workflow_name', '未知画布')
             export_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
             # 输入描述
             input_desc = []
             if selected_input_items:
@@ -895,7 +844,6 @@ class CanvasPage(QWidget):
                     input_desc.append(desc)
             else:
                 input_desc = ["- 无外部输入"]
-
             # 输出描述
             output_desc = []
             if selected_output_items:
@@ -906,7 +854,6 @@ class CanvasPage(QWidget):
                     output_desc.append(desc)
             else:
                 output_desc = ["- 无外部输出"]
-
             # 组件列表
             component_names = []
             for full_path in used_components:
@@ -914,7 +861,6 @@ class CanvasPage(QWidget):
                 component_names.append(f"- `{name}`")
             if not component_names:
                 component_names = ["- 无组件"]
-
             # 连接数估算
             original_connections = self.graph.serialize_session()["connections"]
             node_ids_set = {node.id for node in nodes_to_export}
@@ -922,42 +868,28 @@ class CanvasPage(QWidget):
                 1 for conn in original_connections
                 if conn["out"][0] in node_ids_set and conn["in"][0] in node_ids_set
             )
-
             # 详细 README 内容
             detailed_readme = f"""# {project_name_placeholder}
-    
 > 从 **{original_canvas}** 导出的子项目 · {export_time}
-
 ---
-
 ## 📌 项目概览
-
 - **来源画布**: `{original_canvas}`
 - **导出时间**: `{export_time}`
 - **节点数量**: {len(nodes_to_export)}
 - **内部连接**: {conn_count}
 - **组件数量**: {len(component_names)}
-
 ## 🧩 输入接口
-
 {chr(10).join(input_desc)}
-
 ## 📤 输出接口
-
 {chr(10).join(output_desc)}
-
 ## 🧱 包含组件
-
 {chr(10).join(component_names)}
-
 ## ▶️ 使用方法
-
 1. 安装依赖: `pip install -r requirements.txt`
 2. 准备输入: 创建 `inputs.json`，如 `{{"input_0": "hello"}}`
 3. 直接运行: `python run.py --input inputs.json`
 4. 创建微服务: `python api_server.py --port 8888`
 """
-
             # === 弹出新对话框 ===
             export_dialog = ProjectExportDialog(
                 project_name=project_name_placeholder,
@@ -965,24 +897,19 @@ class CanvasPage(QWidget):
                 readme=detailed_readme,
                 parent=self
             )
-
             if not export_dialog.exec():
                 return
-
             project_name = export_dialog.get_project_name()
             if not project_name:
                 self.create_warning_info("导出失败", "项目名不能为空！")
                 return
-
             export_path = pathlib.Path("./projects") / project_name
             export_path.mkdir(parents=True, exist_ok=True)
-
             # 创建目录
             components_dir = export_path / "components"
             inputs_dir = export_path / "inputs"
             components_dir.mkdir(parents=True, exist_ok=True)
             inputs_dir.mkdir(parents=True, exist_ok=True)
-
             # 复制组件代码（略，保持你原有逻辑）
             component_path_map = {}
             for full_path in used_components:
@@ -1002,7 +929,6 @@ class CanvasPage(QWidget):
                         shutil.copy2(src_path, dst_path)
                         rel_to_project = ("components" / src_rel_path).as_posix()
                         component_path_map[str(src_path)] = rel_to_project
-
             # 构建节点数据（略，保持你原有逻辑）
             def _process_value_for_export(value, inputs_dir: Path, export_path: Path):
                 if isinstance(value, str):
@@ -1022,7 +948,6 @@ class CanvasPage(QWidget):
                 elif isinstance(value, list):
                     return [_process_value_for_export(v, inputs_dir, export_path) for v in value]
                 return value
-
             new_nodes_data = {}
             for node in nodes_to_export:
                 editable_params = node.model.custom_properties
@@ -1030,7 +955,6 @@ class CanvasPage(QWidget):
                     param_name: _process_value_for_export(param_value, inputs_dir, export_path)
                     for param_name, param_value in editable_params.items()
                 }
-
                 current_inputs = {}
                 for port in node.input_ports():
                     port_name = port.name()
@@ -1070,7 +994,6 @@ class CanvasPage(QWidget):
                         "internal_nodes": [node.id for node in node.nodes()]
                     }
                 new_nodes_data[node.id] = node_data
-
             # 构建连接
             original_connections = self.graph.serialize_session()["connections"]
             new_connections = []
@@ -1080,7 +1003,6 @@ class CanvasPage(QWidget):
                 in_id, in_port = conn["in"]
                 if out_id in node_ids_set and in_id in node_ids_set:
                     new_connections.append({"out": [out_id, out_port], "in": [in_id, in_port]})
-
             # runtime_data
             runtime_data = {
                 "environment": self.env_combo.currentData(),
@@ -1099,7 +1021,6 @@ class CanvasPage(QWidget):
                 runtime_data["node_states"][stable_key] = self.node_status.get(node.id, "unrun")
                 runtime_data["node_outputs"][stable_key] = serialize_for_json(getattr(node, '_output_values', {}))
                 runtime_data["column_select"][stable_key] = getattr(node, 'column_select', {})
-
             # 保存文件
             graph_data = {
                 "nodes": new_nodes_data,
@@ -1117,31 +1038,24 @@ class CanvasPage(QWidget):
             (export_path / "project_spec.json").write_text(
                 json.dumps(project_spec, indent=2, ensure_ascii=False), encoding='utf-8'
             )
-
             # 保存 requirements 和 README（使用用户编辑后的内容）
             (export_path / "requirements.txt").write_text(export_dialog.get_requirements(), encoding='utf-8')
-
             # 复制 runner 等（略）
             current_dir = Path(__file__).parent
             runner_src = current_dir / ".." / "runner"
             if runner_src.exists():
                 shutil.copytree(str(runner_src), str(export_path / "runner"), dirs_exist_ok=True)
-
             base_src = current_dir.parent / "components" / "base.py"
             if base_src.exists():
                 shutil.copy(str(base_src), str(components_dir / "base.py"))
-
             for file in ["run.py", "scan_components.py", "api_server.py"]:
                 src = export_path / "runner" / file
                 if src.exists():
                     shutil.move(str(src), str(export_path / file))
-
             # ✅ 保存用户编辑后的 README
             (export_path / "README.md").write_text(export_dialog.get_readme_content(), encoding='utf-8')
             self._generate_selected_nodes_thumbnail(export_path)
-
             self.create_success_info("导出成功", f"模型项目已导出到:\n{export_path}")
-
         except Exception as e:
             import traceback
             logger.error(traceback.format_exc())
@@ -1170,15 +1084,18 @@ class CanvasPage(QWidget):
         self.node_status[node.id] = status
         if hasattr(node, 'status'):
             node.status = status
+        # 优化：只高亮目标节点相关的连接线
         self._highlight_node_connections(node, status)
+        # 优化：只在选中的节点是当前节点时才更新属性面板
         if self.property_panel.current_node and self.property_panel.current_node.id == node.id:
             self.property_panel.update_properties(self.property_panel.current_node)
 
     def on_node_error_simple(self, node_id):
-        node = self._get_node_by_id(node_id)
+        node = self._get_node_by_id_cached(node_id)
         if node:
             node._output_values = {}
             self.create_failed_info('错误', f'节点 "{node.name()}" 执行失败！')
+            # 直接调用 set_node_status，恢复即时更新
             self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
         self.run_btn.show()
         self.stop_btn.hide()
@@ -1199,56 +1116,86 @@ class CanvasPage(QWidget):
         self.create_failed_info("错误", f"工作流执行失败! {msg}")
 
     def on_node_started_simple(self, node_id):
-        node = self._get_node_by_id(node_id)
+        node = self._get_node_by_id_cached(node_id)
         if node:
+            # 直接调用 set_node_status，恢复即时更新
             self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
 
     def _highlight_node_connections(self, node, status):
+        """优化的连接线高亮方法"""
         viewer = self.graph.viewer()
-        pipes = viewer.all_pipes()
         from NodeGraphQt.constants import PipeEnum
         default_color = PipeEnum.COLOR.value
         default_width = 2
         default_style = PipeEnum.DRAW_TYPE_DEFAULT.value
-        for pipe in pipes:
-            if pipe.output_port.node.id == node.id or pipe.input_port.node.id == node.id:
-                pipe.set_pipe_styling(color=default_color, width=default_width, style=default_style)
+
+        # 1. 重置与当前节点相关的所有连接线
+        for input_port in node.input_ports():
+            for out_port in input_port.connected_ports():
+                pipe = self._find_pipe_by_ports(out_port, input_port, viewer.all_pipes())
+                if pipe:
+                    pipe.set_pipe_styling(color=default_color, width=default_width, style=default_style)
+        for output_port in node.output_ports():
+            for in_port in output_port.connected_ports():
+                pipe = self._find_pipe_by_ports(output_port, in_port, viewer.all_pipes())
+                if pipe:
+                    pipe.set_pipe_styling(color=default_color, width=default_width, style=default_style)
+
+        # 2. 如果状态是运行中，则高亮
         if status == NodeStatus.NODE_STATUS_RUNNING:
-            input_color = (64, 158, 255, 255)
-            output_color = (50, 205, 50, 255)
+            input_color = (64, 158, 255, 255) # 蓝色
+            output_color = (50, 205, 50, 255) # 绿色
             for input_port in node.input_ports():
                 for out_port in input_port.connected_ports():
-                    pipe = self._find_pipe_by_ports(out_port, input_port, pipes)
+                    pipe = self._find_pipe_by_ports(out_port, input_port, viewer.all_pipes())
                     if pipe:
                         pipe.set_pipe_styling(color=input_color, width=default_width, style=default_style)
             for output_port in node.output_ports():
                 for in_port in output_port.connected_ports():
-                    pipe = self._find_pipe_by_ports(output_port, in_port, pipes)
+                    pipe = self._find_pipe_by_ports(output_port, in_port, viewer.all_pipes())
                     if pipe:
                         pipe.set_pipe_styling(color=output_color, width=default_width, style=default_style)
 
     def _find_pipe_by_ports(self, out_port, in_port, pipes):
+        """根据输入输出端口查找对应的连接线"""
         for pipe in pipes:
             if pipe.output_port == out_port.view and pipe.input_port == in_port.view:
                 return pipe
         return None
 
     def on_node_finished_simple(self, node_id):
-        node = self._get_node_by_id(node_id)
+        node = self._get_node_by_id_cached(node_id)
         if node:
+            # 直接调用 set_node_status，恢复即时更新
             self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
-        if node.selected():
+        # 优化：只在节点被选中时更新属性面板
+        if node and node.selected():
             self.property_panel.update_properties(node)
 
     def _get_node_by_id(self, node_id):
+        """原始方法，保留用于兼容性"""
         for node in self.graph.all_nodes():
             if node.id == node_id:
                 return node
         return None
 
+    def _get_node_by_id_cached(self, node_id):
+        """使用缓存的节点查找"""
+        if not self._node_id_cache_valid:
+            self._node_id_cache = {node.id: node for node in self.graph.all_nodes()}
+            self._node_id_cache_valid = True
+        return self._node_id_cache.get(node_id)
+
+    def _invalidate_node_cache(self):
+        """当节点被创建或删除时，标记缓存无效"""
+        self._node_id_cache_valid = False
+        self._node_id_cache.clear() # 可选，清空以节省内存
+
     def delete_node(self, node):
         if node and node.id in self.node_status:
             del self.node_status[node.id]
+        # 删除节点后，使缓存无效
+        self._invalidate_node_cache()
         self.graph.delete_node(node)
 
     def on_selection_changed(self):
@@ -1265,7 +1212,6 @@ class CanvasPage(QWidget):
                 if isinstance(node, ControlFlowBackdrop):
                     self.property_panel.update_properties(node)
                     return
-
             if isinstance(selected_nodes[0], BaseNode):
                 self.property_panel.update_properties(selected_nodes[0])
             else:
@@ -1312,34 +1258,27 @@ class CanvasPage(QWidget):
             selected_nodes = self.graph.selected_nodes()
             if not selected_nodes:
                 return  # 无选中节点，不生成
-
             # 获取选中节点的包围盒
             scene = self.graph.viewer().scene()
             rect = QRectF()
             for node in selected_nodes:
                 item_rect = node.view.sceneBoundingRect()
                 rect = rect.united(item_rect)
-
             if rect.isEmpty():
                 return
-
             # 扩展边距
             rect.adjust(-25, -25, 25, 25)
-
             # 创建图像
             image = QImage(rect.size().toSize(), QImage.Format_ARGB32)
             image.fill(Qt.white)
-
             painter = QPainter(image)
             # 渲染选中区域
             scene.render(painter, target=QRectF(image.rect()), source=rect)
             painter.end()
-
             # 保存为 preview.png
             preview_path = export_path / "preview.png"
             image.save(str(preview_path), "PNG")
             logger.info(f"✅ 子图预览图已保存: {preview_path}")
-
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -1367,7 +1306,6 @@ class CanvasPage(QWidget):
         try:
             # 解析图数据
             self.graph.deserialize_session(graph_data)
-
             self._setup_pipeline_style()
             # 解析全局变量
             self.global_variables.deserialize(global_variable)
@@ -1397,9 +1335,12 @@ class CanvasPage(QWidget):
                             node.set_property(key, value)
                     status_str = node_status.get("node_states", "unrun")
                     status_str = "unrun" if status_str is None else status_str
+                    # 使用 set_node_status 来加载状态，会更新UI
                     self.set_node_status(
                         node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
                     )
+            # 加载完成后，使节点缓存无效（下次访问时重建）
+            self._invalidate_node_cache()
             self.create_name_label()
             self._delayed_fit_view()
             self.create_success_info("加载成功", "工作流加载成功！")
@@ -1445,6 +1386,8 @@ class CanvasPage(QWidget):
                 for port in node.output_ports():
                     port.clear_connections(push_undo=True, emit_signal=True)
         graph.delete_nodes(graph.selected_nodes())
+        # 删除节点后，使缓存无效
+        self._invalidate_node_cache()
 
     def _undo(self):
         try:
@@ -1501,6 +1444,8 @@ class CanvasPage(QWidget):
                 new_y = y - min_y + avg_y + offset[1]
                 node.set_pos(new_x, new_y)
             self.create_info("粘贴成功", f"已粘贴 {len(pasted_nodes)} 个节点")
+        # 粘贴节点后，使缓存无效
+        self._invalidate_node_cache()
 
     def create_success_info(self, title, content):
         InfoBar.success(

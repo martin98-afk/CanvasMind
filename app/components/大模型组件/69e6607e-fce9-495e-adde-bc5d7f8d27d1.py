@@ -57,8 +57,8 @@ class Component(BaseComponent):
             default="0.7",
             label="温度（随机性）",
             min=0,
-            max=100,
-            step=1,
+            max=1,
+            step=0.1
         ),
         "max_tokens": PropertyDefinition(
             type=PropertyType.INT,

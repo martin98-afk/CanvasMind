@@ -100,6 +100,13 @@ def create_branch_node(parent_window):
                 state=True
             )
             self.add_custom_widget(checkbox_widget, tab="properties")
+            execute_all_widget = CheckBoxWidgetWrapper(
+                parent=self.view,
+                name="execute_all_matches",
+                text="执行所有满足条件的分支",
+                state=False  # 默认关闭：只执行第一条
+            )
+            self.add_custom_widget(execute_all_widget, tab="properties")
 
         def _sanitize_port_name(self, name: str) -> str:
             if not name:
@@ -279,7 +286,9 @@ def create_branch_node(parent_window):
             # === 条件判断 ===
             conditions = self.get_property("conditions") or []
             enable_else = self.get_property("enable_else")
-            activated_branch = None
+            execute_all = self.get_property("execute_all_matches")  # 👈 新增
+
+            activated_branches = []  # 改为列表，支持多分支
 
             for cond in conditions:
                 expr = cond.get("expr", "").strip()
@@ -291,16 +300,19 @@ def create_branch_node(parent_window):
                     else:
                         evaluated_str = expr_engine.evaluate_template(expr, local_vars=input_vars)
                         result = bool(evaluated_str and evaluated_str.strip() and "[ExprError:" not in evaluated_str)
+
                     if result:
                         branch_name = self._sanitize_port_name(cond.get("name", "branch"))
-                        activated_branch = branch_name
-                        break
+                        activated_branches.append(branch_name)
+                        # 如果只执行第一条，遇到第一个就 break
+                        if not execute_all:
+                            break
                 except Exception as e:
                     self._log_message(self.id, f"条件表达式错误 [{expr}]: {e}\n")
                     continue
 
-            if activated_branch is None and enable_else:
-                activated_branch = "else"
+            if not activated_branches and enable_else:
+                activated_branches = ["else"]
 
             # === 关键：递归禁用未激活分支的整个子图 ===
             graph = self.graph
@@ -325,15 +337,15 @@ def create_branch_node(parent_window):
             # 遍历所有输出端口
             for port in self.output_ports():
                 port_name = port.name()
-                is_active = (port_name == activated_branch)
+                is_active = (port_name in activated_branches)  # 👈 改为判断是否在列表中
 
                 for downstream_port in port.connected_ports():
                     downstream_node = downstream_port.node()
                     if downstream_node:
                         _disable_subgraph(downstream_node, not is_active)
 
-            # 设置输出值（可选）
-            if activated_branch:
-                self.set_output_value(activated_branch, inputs)
+            self.clear_output_value()  # 先清空
+            for branch in activated_branches:
+                self.set_output_value(branch, inputs)
 
     return ConditionalBranchNode
