@@ -275,7 +275,6 @@ class CompletionWorker(QObject):
                         # 检查左边是否是目标变量名 (name)
                         # 例如，查找 "name = ..."
                         if left_part == name or left_part.endswith('.' + name):  # 支持 self.name = ...
-                            # print(f"Debug: Found assignment for '{name}': {line_text}") # 调试用
                             # 简单的类型推断
                             if right_part.startswith('"') or right_part.startswith("'"):
                                 return 'variable_str'
@@ -324,7 +323,6 @@ class CompletionWorker(QObject):
             if site_packages_path and site_packages_path not in sys.path:
                 sys.path.insert(0, site_packages_path)
                 added_to_path = True
-                print(f"[Jedi] Added {site_packages_path} to sys.path temporarily.")
 
             # 创建 Script 对象
             script = jedi.Script(code=code, path='<inline>')
@@ -350,7 +348,6 @@ class CompletionWorker(QObject):
                     precise_type = self._guess_type_from_code(code, line, column, name)
                     if precise_type:
                         refined_type_name = precise_type
-                        print(f"Debug: Guessed type for '{name}' as '{refined_type_name}' from code.")
 
                 completions.append((name, refined_type_name, description))
 
@@ -360,10 +357,8 @@ class CompletionWorker(QObject):
             # --- 修改：在获取结果后立即恢复 sys.path ---
             if added_to_path:
                 sys.path[:] = original_path  # 恢复原始路径
-                print(f"[Jedi] Restored original sys.path.")
 
             elapsed = time.time() - start_time
-            print(f"[Jedi] Completion took {elapsed:.3f}s for {len(completions)} items")
 
             self.completion_ready.emit(completions)
         except Exception as e:
@@ -967,11 +962,11 @@ class JediCodeEditor(CodeEditor):
         """显示补全弹窗，确保位置跟随光标，并动态调整宽度和位置"""
         # 获取光标矩形（相对于编辑器控件本身）
         cursor_rect = self.cursorRect()
-        print(f"Debug: cursor_rect = {cursor_rect}")  # 调试用，可以删除
+        # print(f"Debug: cursor_rect = {cursor_rect}")  # 调试用，可以删除
 
         # 获取编辑器控件本身相对于屏幕的左上角坐标
         editor_global_pos = self.mapToGlobal(QtCore.QPoint(0, 0))
-        print(f"Debug: editor_global_pos = {editor_global_pos}")  # 调试用，可以删除
+        # print(f"Debug: editor_global_pos = {editor_global_pos}")  # 调试用，可以删除
 
         # --- 微调补全框位置 ---
         # 使用 cursor_rect.topLeft() 获取基准点

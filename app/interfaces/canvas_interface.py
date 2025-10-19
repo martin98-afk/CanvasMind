@@ -76,6 +76,7 @@ class CanvasPage(QWidget):
 
         # 初始化 NodeGraph
         self.graph = NodeGraph()
+        self.graph.node_created.connect(self.on_node_created)
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
         self.canvas_widget.keyPressEvent = self._canvas_key_press_event
@@ -1180,6 +1181,9 @@ class CanvasPage(QWidget):
             if node.id == node_id:
                 return node
         return None
+
+    def on_node_created(self, node):
+        self._node_id_cache = self._node_id_cache | {node.id: node}
 
     def _get_node_by_id_cached(self, node_id):
         """使用缓存的节点查找"""
