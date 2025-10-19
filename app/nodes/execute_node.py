@@ -7,18 +7,21 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-
-from NodeGraphQt import BaseNode
+from NodeGraphQt import BaseNode, NodeBaseWidget
+from NodeGraphQt.constants import NodePropWidgetEnum
+from NodeGraphQt.errors import NodeWidgetError
 from PyQt5.QtWidgets import QFileDialog
 from loguru import logger
-
+# 导入代码编辑器组件
+from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
+from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
+# --- 其他原有导入 ---
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.node_logger import NodeLogHandler
-from app.utils.utils import draw_square_port
-from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
+from app.utils.utils import draw_square_port, resource_path  # 假设 resource_path 也在 utils
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
@@ -27,7 +30,6 @@ from app.widgets.node_widget.range_widget import RangeWidgetWrapper
 from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 from app.widgets.node_widget.variable_combo_widget import GlobalVarComboBoxWidgetWrapper
 from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
-
 
 PERSISTENT_TEMP_ROOT = Path("temp_runs").resolve()
 PERSISTENT_TEMP_ROOT.mkdir(exist_ok=True, parents=True)
@@ -53,11 +55,9 @@ def _install_requirements(python_executable, requirements_str):
     if not requirements_str.strip():
         logger.warning("组件 requirements 为空，跳过安装。")
         return
-
     packages = [pkg.strip() for pkg in requirements_str.split(',') if pkg.strip()]
     if not packages:
         return
-
     logger.info(f"检测到 ImportError，开始安装依赖: {packages}")
     for pkg in packages:
         try:
@@ -86,10 +86,11 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
         __identifier__ = 'dynamic'
         NODE_NAME = component_class.name
         FULL_PATH = full_path
-        FILE_PATH = file_path
+        FILE_PATH = file_path  # 现在 FILE_PATH 是真实的组件文件路径
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
+            self.model.add_property("debug_code", {})
             self.component_class = component_class
             if hasattr(component_class, "icon"):
                 self.set_icon(component_class.icon)
@@ -97,9 +98,15 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             self._output_values = {}
             self._input_values = {}
             self.column_select = {}
+
+            # --- 调试模式新增 ---
+            self._debug_enabled = False
+            self._debug_widget = None
+            self._debug_code_content = ""
+            # --- /调试模式新增 ---
+
             # === 动态生成属性 ===
             self._generate_parms_widget()
-
             # === 端口 ===
             for port_name, label, connection in component_class.get_inputs():
                 if connection == ConnectionType.SINGLE:
@@ -115,13 +122,108 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             self._persistent_id = self.get_property("persistent_id")
             self.log_capture = NodeLogHandler(self._persistent_id, self._log_message, use_file_logging=True)
 
+        def _toggle_debug_mode(self):
+            """调试模式开关回调"""
+            if not self._debug_enabled:
+                self._debug_enabled = True
+                self._enable_debug_mode()
+            else:
+                self._debug_enabled = False
+                self._disable_debug_mode()
+
+        def _enable_debug_mode(self):
+            """启用调试模式，添加代码编辑器"""
+            if self._debug_widget is not None:
+                # 已经存在，直接返回或刷新内容
+                self._refresh_debug_code_content()
+                return
+
+            try:
+                # 读取当前组件文件的代码
+                with open(self.FILE_PATH, 'r', encoding='utf-8') as f:
+                    initial_code = f.read()
+            except FileNotFoundError:
+                logger.warning(f"组件文件 {self.FILE_PATH} 未找到，无法加载调试代码。")
+                initial_code = f"# 文件未找到: {self.FILE_PATH}\n"
+            except Exception as e:
+                logger.error(f"读取组件文件 {self.FILE_PATH} 失败: {e}")
+                initial_code = f"# 读取文件失败: {e}\n"
+
+            self._debug_code_content = initial_code
+
+            # 创建代码编辑器控件
+            self._debug_widget = CodeEditorWidgetWrapper(
+                parent=self.view,
+                name="debug_code",
+                label="调试代码编辑器",
+                default=self._debug_code_content,
+                window=parent_window,
+                width=600, height=400
+            )
+            # 连接信号，实现编辑时保存
+            self._debug_widget.valueChanged.connect(self._save_debug_code)
+
+            # 添加到节点属性面板
+            self._add_custom_widget(self._debug_widget, tab='Debug')
+
+            logger.info(f"节点 {self.NODE_NAME} ({self.id}) 启用调试模式。")
+
+        def _disable_debug_mode(self):
+            """禁用调试模式，移除代码编辑器"""
+            if self._debug_widget is not None:
+                # 断开信号连接（可选，但推荐）
+                try:
+                    self._debug_widget.valueChanged.disconnect(self._save_debug_code)
+                except TypeError:
+                    pass  # 可能未连接
+                # 从节点移除控件
+                self.remove_property("debug_code")
+                self.view.remove_widget(self._debug_widget)
+                #: redraw node to address calls outside the "__init__" func.
+                self.view.draw_node()
+                # Note: 直接从 UI 移除控件可能比较复杂，取决于框架实现。
+                # 通常将控件放在一个特定的 'Debug' 标签页，禁用时可以隐藏标签页或清空其内容。
+                # 这里我们移除属性，控件应随之消失或被隐藏。
+                self._debug_widget = None
+                logger.info(f"节点 {self.NODE_NAME} ({self.id}) 禁用调试模式。")
+
+        def _refresh_debug_code_content(self):
+            """刷新调试代码编辑器中的内容"""
+            if self._debug_widget:
+                try:
+                    with open(self.FILE_PATH, 'r', encoding='utf-8') as f:
+                        current_code = f.read()
+                    self._debug_code_content = current_code
+                    # 更新控件内容（如果控件支持）
+                    # self._debug_widget.set_value(current_code) # 如果有此方法
+                    # 或者，如果 valueChanged 信号只在用户交互时触发，可以手动更新内部值
+                    # 这取决于 CodeEditorWidgetWrapper 的具体实现
+                    # 此处假设控件内部会处理内容更新或需要用户手动刷新
+                    logger.info(f"刷新了节点 {self.NODE_NAME} 的调试代码编辑器内容。")
+                except Exception as e:
+                    logger.error(f"刷新节点 {self.NODE_NAME} 调试代码内容失败: {e}")
+
+        def _save_debug_code(self, code_text):
+            """保存调试编辑器中的代码到本地文件"""
+            if code_text != self._debug_code_content:
+                try:
+                    # 将编辑器中的内容写入原始文件
+                    with open(self.FILE_PATH, 'w', encoding='utf-8') as f:
+                        f.write(code_text)
+                    self._debug_code_content = code_text
+                    logger.info(f"已将调试代码保存到 {self.FILE_PATH}")
+                except Exception as e:
+                    logger.error(f"保存调试代码到 {self.FILE_PATH} 失败: {e}")
+                    # 可以考虑弹窗提示用户保存失败
+                    # QMessageBox.warning(self.view, "保存失败", f"无法保存代码到 {self.FILE_PATH}: {e}")
+
         def _generate_parms_widget(self):
             """生成节点属性配置控件"""
+            # 生成其他组件属性控件
             for i, (prop_name, prop_def) in enumerate(component_class.get_properties().items()):
                 prop_type = prop_def.get("type", PropertyType.TEXT)
                 default = prop_def.get("default", "")
                 label = prop_def.get("label", prop_name)
-
                 if prop_type == PropertyType.BOOL:
                     self.add_custom_widget(
                         CheckBoxWidgetWrapper(parent=self.view, name=prop_name, text=label, state=default),
@@ -182,7 +284,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         z_value=len(component_class.get_properties()) - i
                     )
                     self.add_custom_widget(widget, tab='Properties')
-                elif prop_type == PropertyType.VARIABLE: # 新增类型
+                elif prop_type == PropertyType.VARIABLE:  # 新增类型
                     self.add_custom_widget(
                         GlobalVarComboBoxWidgetWrapper(
                             parent=self.view,
@@ -235,11 +337,47 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             if path:
                 self.set_property(prop_name, path)
 
+        def _add_custom_widget(self, widget, widget_type=None, tab=None):
+            """
+            Add a custom node widget into the node.
+
+            see example :ref:`Embedding Custom Widgets`.
+
+            Note:
+                The ``value_changed`` signal from the added node widget is wired
+                up to the :meth:`NodeObject.set_property` function.
+
+            Args:
+                widget (NodeBaseWidget): node widget class object.
+                widget_type: widget flag to display in the
+                    :class:`NodeGraphQt.PropertiesBinWidget`
+                    (default: :attr:`NodeGraphQt.constants.NodePropWidgetEnum.HIDDEN`).
+                tab (str): name of the widget tab to display in.
+            """
+            if not isinstance(widget, NodeBaseWidget):
+                raise NodeWidgetError(
+                    '\'widget\' must be an instance of a NodeBaseWidget')
+
+            # widget_type = widget_type or NodePropWidgetEnum.HIDDEN.value
+            self.set_property(widget.get_name(), widget.get_value())
+            widget.value_changed.connect(lambda k, v: self.set_property(k, v))
+            widget._node = self
+            self.view.add_widget(widget)
+            #: redraw node to address calls outside the "__init__" func.
+            self.view.draw_node()
+
+            #: HACK: calling the .parent() function here on the widget as it seems
+            #        to address a seg fault issue when exiting the application.
+            widget.parent()
+
         def set_property(self, name, value, push_undo=True):
             if name.endswith('_file_filter'):
                 self.model.properties[name] = value
                 return
             super().set_property(name, value, push_undo)
+
+        def remove_property(self, name):
+            self.model._custom_prop[name] = None
 
         def _log_message(self, node_id, message):
             """可选：仍保留内存日志用于实时滚动显示（如控制台面板）"""
@@ -300,14 +438,13 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     params[prop_name] = widget.get_value() if widget else (default or [])
                 else:
                     params[prop_name] = self.get_property(prop_name) if self.has_property(prop_name) else default
-            # === 全局变量 ===
-            global_variable =  self.model.get_property("global_variable")
 
+            # === 全局变量 ===
+            global_variable = self.model.get_property("global_variable")
             # === 【关键】创建表达式引擎并求值 ===
             if global_variable is not None:
                 gv = GlobalVariableContext()
                 gv.deserialize(global_variable)
-
                 # === 收集 inputs_raw ===
                 inputs_raw = {}
                 for input_port in self.input_ports():
@@ -373,11 +510,11 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             run_id = f"run_{self._persistent_id}_{int(time.time())}"
             run_dir = PERSISTENT_TEMP_ROOT / run_id
             run_dir.mkdir(exist_ok=True)
-
             temp_script_path = run_dir / "exec_script.py"
             params_path = run_dir / "params.pkl"
             result_path = run_dir / "result.pkl"
             error_path = run_dir / "error.pkl"
+
             # ✅ 复用 NodeLogHandler 的持久化日志路径
             log_file_path = self.log_capture.get_log_file_path()
 
@@ -386,9 +523,10 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 pickle.dump((params, inputs, global_variable), f)
 
             # 生成执行脚本
+            # 注意：这里仍然使用原始的 FILE_PATH，执行的是保存后的代码
             script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
                 class_name=comp_obj.__name__,
-                file_path=self.FILE_PATH,
+                file_path=self.FILE_PATH,  # 使用原始文件路径
                 params_path=params_path,
                 result_path=result_path,
                 error_path=error_path,
@@ -399,7 +537,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 f.write(script_content)
 
             retry_count = 0
-
             while retry_count <= max_retries:
                 # 检查是否已取消
                 if check_cancel and check_cancel():
@@ -409,7 +546,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 kwargs = {}
                 if platform.system() == "Windows":
                     kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-
                 proc = subprocess.Popen(
                     [python_executable, temp_script_path],
                     stdout=subprocess.DEVNULL,
@@ -423,7 +559,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 timeout = 300  # 5分钟
                 cancelled = False
                 last_log_pos = 0
-
                 while proc.poll() is None:
                     # 检查取消
                     if check_cancel and check_cancel():
@@ -434,7 +569,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                             proc.kill()
                         cancelled = True
                         break
-
                     # 检查超时
                     if time.time() - start_time > timeout:
                         proc.terminate()
@@ -442,7 +576,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                             proc.wait(timeout=5)
                         except subprocess.TimeoutExpired:
                             proc.kill()
-
                         self._log_message(self._persistent_id, "❌ 节点执行超时（5分钟）")
                         raise Exception("❌ 节点执行超时（5分钟）")
 
@@ -457,7 +590,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                                     last_log_pos = lf.tell()
                     except Exception:
                         pass
-
                     time.sleep(0.1)  # 避免 CPU 占用过高
 
                 if cancelled:
@@ -496,7 +628,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     if port.type != ArgumentType.UPLOAD:
                         self.set_output_value(port.name, output.get(port.name))
                 return output
-
             elif os.path.exists(error_path):
                 with open(error_path, 'rb') as f:
                     error_info = pickle.load(f)
@@ -504,7 +635,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 print(error_msg)
                 self._log_message(self._persistent_id, error_msg)
                 raise Exception(error_info['error'])
-
             else:
                 # 未生成结果或错误文件，视为未知异常
                 error_msg = "❌ 节点执行异常: 未知错误"

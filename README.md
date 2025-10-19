@@ -35,6 +35,10 @@
 
 <img src="images/模型运行效果.gif" width="800">
 
+## 节点调试模式效果
+
+<img src="images/组件调试模式示意图.gif" width="800">
+
 ## 复杂组件控件示意图
 
 <img src="images/复杂组件控件示意图.png" width="800">
