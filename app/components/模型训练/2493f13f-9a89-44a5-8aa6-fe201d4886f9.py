@@ -44,17 +44,29 @@ class Component(BaseComponent):
 
     def run(self, params, inputs=None):
         """
-        params: 节点属性（来自UI）
-        inputs: 上游输入（key=输入端口名）
-        return: 输出数据（key=输出端口名）
+        测试模式
+        
+
+        Parameters
+        ----------
+        params : TYPE
+            DESCRIPTION.
+        inputs : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Raises
+        ------
+        e
+            DESCRIPTION.
+
+        Returns
+        -------
+        dict
+            DESCRIPTION.
+
         """
         try:
-            self.logger.info(inputs)
-            self.logger.info(params)
             from sklearn.linear_model import LogisticRegression
-            import matplotlib
-            import numpy as np
-
             # 读取数据
             feature = inputs.feature
             target = inputs.target

@@ -193,6 +193,7 @@ class CanvasPage(QWidget):
             self._scheduler = None
 
     def _canvas_key_press_event(self, event):
+        super(NodeViewer, self.canvas_widget).keyPressEvent(event)
         self.canvas_widget.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
         self.canvas_widget.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
         self.canvas_widget.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
@@ -224,7 +225,6 @@ class CanvasPage(QWidget):
             self.canvas_widget._cursor_text.setDefaultTextColor(Qt.white)
             self.canvas_widget._cursor_text.setPos(self.canvas_widget.mapToScene(self.canvas_widget._previous_pos))
             self.canvas_widget._cursor_text.setVisible(True)
-        super(NodeViewer, self.canvas_widget).keyPressEvent(event)
 
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
@@ -330,6 +330,8 @@ class CanvasPage(QWidget):
                 nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('调试模式', lambda graph, node: node._toggle_debug_mode(),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")

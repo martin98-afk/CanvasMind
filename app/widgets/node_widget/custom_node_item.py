@@ -5,6 +5,11 @@ from Qt import QtCore
 class CustomNodeItem(NodeItem):
     _align = None
 
+    def remove_widget(self, widget):
+        widget = self._widgets.pop(widget.get_name(), None)
+        widget.setParent(None)
+        widget.deleteLater()
+
     def set_align(self, align):
         self._align = align
 
