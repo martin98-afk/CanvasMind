@@ -62,30 +62,6 @@ class CodeEditorWidget(QWidget):
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.code_editor.add_custom_completions(
-            [
-                'global_variable', 'Exception',  # 内置常量
-                'True', 'False', 'None',
-
-                # 内置异常
-                'Exception', 'ValueError', 'TypeError', 'RuntimeError',
-                'KeyError', 'IndexError', 'AttributeError', 'ImportError',
-                'OSError', 'FileNotFoundError', 'PermissionError',
-
-                # 常用内置函数（作为变量名也可能出现）
-                'float', 'list', 'dict', 'tuple',
-                'print', 'input', 'open', 'range', 'enumerate',
-                'sorted', 'reversed','filter', 'enumerate',
-                'type', 'isinstance', 'issubclass', 'hasattr', 'getattr', 'setattr', 'delattr', 'vars',
-                'locals', 'eval', 'exec',  'repr', 'complex', 'round', 'strip', 'split', 'join', 'replace', 'lower',
-
-                # 常见日志/调试变量
-                'logger', 'debug', 'info', 'warning', 'error',
-
-                # 常见 self 属性（提示用户可能想输入的）
-                'self',
-            ]
-        )
         self.replace_text_preserving_view(DEFAULT_CODE_TEMPLATE)
         self.find_panel = self._create_find_replace_panel()
         self.find_panel.setVisible(False)
