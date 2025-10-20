@@ -3,7 +3,7 @@
 </p>
  
 <h1 align="center">
-  低代码可视化编程平台
+  可视化编程流程算法开发工具
 </h1>
 
 <div align="center">
