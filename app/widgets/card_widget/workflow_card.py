@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QWidget, QLabel
-from qfluentwidgets import CardWidget, BodyLabel, FluentIcon, ToolButton, ImageLabel
+from qfluentwidgets import CardWidget, BodyLabel, FluentIcon, TransparentToolButton, ImageLabel
 
 
 class WorkflowCard(CardWidget):
@@ -141,17 +141,17 @@ class WorkflowCard(CardWidget):
         layout.addLayout(meta_grid)
 
         # 按钮区域（仅保留编辑、复制、删除）
-        copy_btn = ToolButton(FluentIcon.COPY, self)
+        copy_btn = TransparentToolButton(FluentIcon.COPY, self)
         copy_btn.setToolTip("复制画布")
         copy_btn.clicked.connect(self._on_copy_clicked)
         copy_btn.setFixedSize(28, 28)
 
-        edit_btn = ToolButton(FluentIcon.EDIT, self)
+        edit_btn = TransparentToolButton(FluentIcon.EDIT, self)
         edit_btn.setToolTip("重命名")
         edit_btn.clicked.connect(self._on_edit_clicked)
         edit_btn.setFixedSize(28, 28)
 
-        delete_btn = ToolButton(FluentIcon.DELETE, self)
+        delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
         delete_btn.setToolTip("删除画布")
         delete_btn.clicked.connect(self._on_delete_clicked)
         delete_btn.setFixedSize(28, 28)
@@ -225,45 +225,8 @@ class WorkflowCard(CardWidget):
 
     def _on_edit_clicked(self):
         """编辑画布名称"""
-        from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
-        dialog = CustomInputDialog("重命名画布", "请输入新名称", self.workflow_name, self)
-        if dialog.exec():
-            new_name = dialog.get_text().strip()
-            if not new_name:
-                from qfluentwidgets import InfoBar
-                InfoBar.warning("名称无效", "画布名称不能为空", parent=self)
-                return
-
-            # 构造新路径
-            new_path = self.file_path.parent / f"{new_name}.workflow.json"
-            if new_path.exists() and new_path != self.file_path:
-                from qfluentwidgets import InfoBar
-                InfoBar.error("重命名失败", "该名称已存在", parent=self)
-                return
-
-            try:
-                # 重命名 .json 文件
-                self.file_path.rename(new_path)
-                # 重命名 .png 预览图（如果存在）
-                old_png = self._get_preview_path()
-                new_png = new_path.parent / f"{new_name}.png"
-                if old_png.exists():
-                    old_png.rename(new_png)
-
-                # 更新内部状态
-                self.file_path = new_path
-                self.workflow_name = new_name
-                self.name_label.setText(new_name)
-
-                # 通知父页面刷新（可选）
-                if hasattr(self.home, '_schedule_refresh'):
-                    self.home._schedule_refresh()
-
-                from qfluentwidgets import InfoBar
-                InfoBar.success("重命名成功", f"已重命名为 {new_name}", parent=self)
-            except Exception as e:
-                from qfluentwidgets import InfoBar
-                InfoBar.error("重命名失败", str(e), parent=self)
+        if hasattr(self.home, 'edit_workflow'):
+            self.home.edit_workflow(self.file_path)
 
     def closeEvent(self, event):
         if self._image_thread and self._image_thread.isRunning():
