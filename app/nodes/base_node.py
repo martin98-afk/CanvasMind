@@ -1,6 +1,7 @@
 import uuid
 
 from NodeGraphQt import NodeObject
+from qtpy import QtCore
 
 
 class BasicNodeWithGlobalProperty(NodeObject):

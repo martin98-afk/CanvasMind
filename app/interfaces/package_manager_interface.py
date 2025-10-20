@@ -358,7 +358,7 @@ class EnvManagerUI(QWidget):
 
                 # 构建 pip install 命令
                 cmd = ["-m", "pip", "install"]
-                if "no-index" in action.lower(): # 检查 action 是否包含 "no-index"
+                if "离线" in action.lower(): # 检查 action 是否包含 "no-index"
                     cmd.append("--no-index")
                 cmd.extend(valid_whl_paths)
 

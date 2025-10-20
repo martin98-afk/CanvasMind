@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import List, Dict, Set, Optional
 
 from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal, QMutex, QMutexLocker
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QFileDialog, QFrame
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QFileDialog, QFrame, QHBoxLayout
 from qfluentwidgets import (
-    FlowLayout, InfoBar, FluentIcon, CardWidget, BodyLabel, SmoothScrollArea, ScrollArea
+    FlowLayout, InfoBar, FluentIcon, CardWidget, BodyLabel, SmoothScrollArea,
+    PipsPager, PipsScrollButtonDisplayMode
 )
 
 from app.interfaces.canvas_interface import CanvasPage
@@ -76,16 +77,19 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.workflow_dir = self._get_workflow_dir()
         self.opened_workflows = {}
         self._is_loading = False
+        self.page_size = 12  # 初始值，会被动态覆盖
+        self.fixed_card_count = 2  # 新建 + 导入
+        self.current_page = 0
+        self.total_pages = 1
+        self.all_workflow_paths: List[Path] = []
 
         # === 缓存机制 ===
-        self._card_map: Dict[Path, WorkflowCard] = {}  # 文件路径 -> 卡片
-        self._known_files: Set[Path] = set()  # 当前已知文件集合
-        self._file_info_map: Dict[str, dict] = {}  # 文件信息缓存
-        self._fixed_cards: List[CardWidget] = []  # 固定卡片（新建/导入）
+        self._card_map: Dict[Path, WorkflowCard] = {}
+        self._known_files: Set[Path] = set()
+        self._file_info_map: Dict[str, dict] = {}
+        self._fixed_cards: List[CardWidget] = []
 
-        # 性能优化相关
         self._refresh_pending = False
-        self._current_scroll_position = 0
 
         self._setup_ui()
         QTimer.singleShot(50, self.load_workflows)
@@ -96,13 +100,14 @@ class WorkflowCanvasGalleryPage(QWidget):
         return wf_dir
 
     def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(20)
 
+        # 左侧：卡片区域
         self.scroll_area = SmoothScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setStyleSheet("border: none; background-color: transparent;")
-        # 性能优化：设置滚动策略
         self.scroll_area.setFrameShape(QFrame.NoFrame)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -110,34 +115,60 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.scroll_widget = QWidget()
         self.scroll_widget.setStyleSheet("background-color: transparent;")
 
-        # 关键：禁用动画以提升批量操作性能
-        self.flow_layout = FlowLayout(self.scroll_widget, needAni=False)  # 禁用动画
+        self.flow_layout = FlowLayout(self.scroll_widget, needAni=True)
+        self.flow_layout.setAnimation(250, QEasingCurve.OutQuad)
         self.flow_layout.setContentsMargins(30, 30, 30, 30)
         self.flow_layout.setVerticalSpacing(20)
         self.flow_layout.setHorizontalSpacing(30)
 
         self.scroll_area.setWidget(self.scroll_widget)
-        layout.addWidget(self.scroll_area)
 
-    def _open_workflow_dir(self):
-        try:
-            if os.name == 'nt':
-                os.startfile(self.workflow_dir)
-            else:
-                subprocess.call(['xdg-open', self.workflow_dir])
-        except Exception:
-            pass
+        # 右侧：竖向分页器
+        self.pips_pager = PipsPager(Qt.Vertical)
+        self.pips_pager.setPageNumber(1)
+        self.pips_pager.currentIndexChanged.connect(self._on_page_changed)
+        self.pips_pager.setNextButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
+        self.pips_pager.setPreviousButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
+        self.pips_pager.setFixedWidth(10)
+
+        main_layout.addWidget(self.scroll_area, 1)
+        main_layout.addWidget(self.pips_pager, 0)
+
+    def _calculate_cards_per_page(self) -> int:
+        """动态计算每页卡片数（3 行）"""
+        if not self.scroll_area or self.scroll_area.viewport().width() <= 0:
+            return 12
+
+        # 获取卡片宽度（优先工作流卡片，其次固定卡片）
+        card_width = 320  # 默认值
+        if self._card_map:
+            sample_card = next(iter(self._card_map.values()))
+            if sample_card.width() > 50:  # 合理最小值
+                card_width = sample_card.width()
+        elif self._fixed_cards and self._fixed_cards[0].width() > 50:
+            card_width = self._fixed_cards[0].width()
+
+        # 计算可用宽度
+        margins = self.flow_layout.contentsMargins()
+        spacing = self.flow_layout.horizontalSpacing()
+        available_width = self.scroll_area.viewport().width() - margins.left() - margins.right()
+
+        if available_width <= card_width:
+            cards_per_row = 1
+        else:
+            # 公式: n * card_width + (n - 1) * spacing <= available_width
+            cards_per_row = max(1, int((available_width + spacing) / (card_width + spacing)))
+
+        return cards_per_row * 3  # 3 行
 
     def _schedule_refresh(self):
-        """防抖刷新，避免频繁触发"""
         if not hasattr(self, '_refresh_timer'):
             self._refresh_timer = QTimer(self)
             self._refresh_timer.setSingleShot(True)
             self._refresh_timer.timeout.connect(self._load_workflows_safe)
-        self._refresh_timer.start(150)  # 增加到150ms防抖，减少频繁刷新
+        self._refresh_timer.start(150)
 
     def _load_workflows_safe(self):
-        """安全的加载工作流，避免重复加载"""
         if not self._refresh_pending:
             self._refresh_pending = True
             self.load_workflows()
@@ -145,19 +176,16 @@ class WorkflowCanvasGalleryPage(QWidget):
 
     def load_workflows(self):
         if self._is_loading:
-            # 如果正在加载，取消之前的扫描并重新开始
             if hasattr(self, '_scanner') and hasattr(self, '_thread'):
                 try:
                     self._scanner.stop()
                     self._thread.quit()
-                    self._thread.wait(100)  # 等待最多100ms
+                    self._thread.wait(100)
                 except:
                     pass
             return
 
         self._is_loading = True
-
-        # 启动后台扫描
         self._scanner = WorkflowFileInfoScanner(self.workflow_dir)
         self._thread = QThread()
         self._scanner.moveToThread(self._thread)
@@ -168,136 +196,151 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._thread.finished.connect(self._thread.deleteLater)
         self._thread.start()
 
-    def _create_new_card(self):
-        new_card = CardWidget()
-        new_card.setFixedSize(320, 300)
-        new_card.setBorderRadius(12)
-        layout = QVBoxLayout(new_card)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        icon = FluentIcon.ADD.icon()
-        plus_label = QLabel()
-        plus_label.setPixmap(icon.pixmap(64, 64))
-        plus_label.setAlignment(Qt.AlignCenter)
-
-        text_label = BodyLabel("新建画布")
-        text_label.setAlignment(Qt.AlignCenter)
-
-        layout.addStretch()
-        layout.addWidget(plus_label)
-        layout.addSpacing(40)
-        layout.addWidget(text_label)
-        layout.addStretch()
-
-        new_card.mousePressEvent = lambda e: self.new_canvas()
-        new_card.setCursor(Qt.PointingHandCursor)
-        return new_card
-
-    def _create_import_card(self):
-        import_card = CardWidget()
-        import_card.setFixedSize(320, 300)
-        import_card.setBorderRadius(12)
-        layout = QVBoxLayout(import_card)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        icon = FluentIcon.FOLDER_ADD.icon()
-        icon_label = QLabel()
-        icon_label.setPixmap(icon.pixmap(64, 64))
-        icon_label.setAlignment(Qt.AlignCenter)
-
-        text_label = BodyLabel("导入画布")
-        text_label.setAlignment(Qt.AlignCenter)
-
-        layout.addStretch()
-        layout.addWidget(icon_label)
-        layout.addSpacing(40)
-        layout.addWidget(text_label)
-        layout.addStretch()
-
-        import_card.mousePressEvent = lambda e: self.import_canvas()
-        import_card.setCursor(Qt.PointingHandCursor)
-        return import_card
-
     def _on_detailed_scan_finished(self, workflow_files: List[Path], file_info_map: dict):
         self._is_loading = False
-
-        # 检查是否有新的扫描任务在等待，如果有则取消当前处理
         if hasattr(self, '_refresh_timer') and self._refresh_timer.isActive():
             return
 
         self._file_info_map = file_info_map
+        self._known_files = set(workflow_files)
 
-        current_files = set(workflow_files)
-        old_files = self._known_files.copy()  # 使用副本避免在迭代时修改
-
-        # 1. 处理删除文件（先删除）
-        deleted_files = old_files - current_files
-        for wf_path in deleted_files:
-            card = self._card_map.pop(wf_path, None)
-            if card:
-                self.flow_layout.removeWidget(card)
-                card.deleteLater()
-
-        # 2. 处理新增文件
-        new_files = current_files - old_files
-        cards_to_add = []
-        for wf_path in new_files:
-            try:
-                card = WorkflowCard(wf_path, self, file_info_map.get(str(wf_path)))
-                self._card_map[wf_path] = card
-                cards_to_add.append((wf_path, card))
-            except Exception:
-                continue
-
-        # 3. 更新已知文件集合
-        self._known_files = current_files
-
-        # 4. 批量重建布局（优化性能）
-        self._batch_rebuild_layout(cards_to_add)
-
-    def _batch_rebuild_layout(self, new_cards: List[tuple]):
-        """批量重建布局，减少布局更新次数"""
-        # 保存当前滚动位置
-        self._current_scroll_position = self.scroll_area.verticalScrollBar().value()
-
-        # === 批量操作：先清空再重建 ===
-        # 先隐藏滚动区域以避免中间状态的布局更新
-        self.scroll_area.setVisible(False)
-
-        # 清空现有布局（但不删除卡片）
-        while self.flow_layout.count():
-            item = self.flow_layout.takeAt(0)
-
-        # 添加固定卡片
-        if not self._fixed_cards:
-            self._fixed_cards = [self._create_new_card(), self._create_import_card()]
-        for card in self._fixed_cards:
-            self.flow_layout.addWidget(card)
-
-        # 添加工作流卡片（按时间排序）
+        # 按修改时间倒序：最新在最前
         file_with_mtime = []
-        for wf_path in self._known_files:
-            info = self._file_info_map.get(str(wf_path))
+        for wf_path in workflow_files:
+            info = file_info_map.get(str(wf_path))
             mtime_ts = info.get('mtime_ts', 0) if info else 0
             file_with_mtime.append((wf_path, mtime_ts))
         file_with_mtime.sort(key=lambda x: x[1], reverse=True)
+        self.all_workflow_paths = [wf for wf, _ in file_with_mtime]
 
-        for wf_path, _ in file_with_mtime:
-            card = self._card_map.get(wf_path)
-            if card:
+        # 创建缺失的卡片
+        for wf_path in self.all_workflow_paths:
+            if wf_path not in self._card_map:
+                try:
+                    card = WorkflowCard(wf_path, self, self._file_info_map.get(str(wf_path)))
+                    card.hide()
+                    self._card_map[wf_path] = card
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
+
+        # 创建固定卡片（仅一次）
+        if not self._fixed_cards:
+            self._fixed_cards = [
+                WorkflowCard(parent=self, type="create"),
+                WorkflowCard(parent=self, type="import")
+            ]
+            for card in self._fixed_cards:
+                card.hide()
+
+        self._ensure_all_cards_in_layout()
+
+        # ✅ 动态计算每页卡片数（3 行）
+        self.page_size = self._calculate_cards_per_page()
+
+        # 重新计算分页（考虑固定卡片只在第一页）
+        total_workflow = len(self.all_workflow_paths)
+        if total_workflow == 0:
+            self.total_pages = 1
+        else:
+            first_page_workflow_slots = max(0, self.page_size - self.fixed_card_count)
+            if first_page_workflow_slots <= 0:
+                self.total_pages = 1
+            else:
+                remaining = total_workflow - first_page_workflow_slots
+                if remaining <= 0:
+                    self.total_pages = 1
+                else:
+                    self.total_pages = 1 + ((remaining + self.page_size - 1) // self.page_size)
+
+        self.pips_pager.setPageNumber(self.total_pages)
+        target_page = min(self.current_page, self.total_pages - 1)
+        self._show_page(target_page)
+
+    def _ensure_all_cards_in_layout(self):
+        """确保所有卡片都在 flow_layout 中"""
+        for card in self._fixed_cards:
+            if card.parent() != self.scroll_widget:
+                self.flow_layout.addWidget(card)
+        for card in self._card_map.values():
+            if card.parent() != self.scroll_widget:
                 self.flow_layout.addWidget(card)
 
-        # 恢复可见性并更新布局
-        self.scroll_area.setVisible(True)
+    def _show_page(self, page_index: int):
+        self.current_page = page_index
 
-        # 强制更新布局
-        self.flow_layout.update()
+        # 隐藏所有
+        for card in self._fixed_cards:
+            card.hide()
+        for card in self._card_map.values():
+            card.hide()
+
+        # 清空布局
+        while self.flow_layout.count():
+            self.flow_layout.takeAt(0)
+
+        if page_index == 0:
+            for card in self._fixed_cards:
+                self.flow_layout.addWidget(card)
+                card.show()
+
+            workflow_slots = self.page_size - self.fixed_card_count
+            workflow_to_show = self.all_workflow_paths[:workflow_slots]
+            for wf_path in workflow_to_show:
+                card = self._card_map.get(wf_path)
+                if card is not None:
+                    self.flow_layout.addWidget(card)
+                    card.show()
+        else:
+            first_page_count = max(0, self.page_size - self.fixed_card_count)
+            start = first_page_count + (page_index - 1) * self.page_size
+            end = start + self.page_size
+            workflow_to_show = self.all_workflow_paths[start:end]
+            for wf_path in workflow_to_show:
+                card = self._card_map.get(wf_path)
+                if card is not None:
+                    self.flow_layout.addWidget(card)
+                    card.show()
+
         self.scroll_widget.adjustSize()
 
-        # 恢复滚动位置
-        QTimer.singleShot(0, lambda: self.scroll_area.verticalScrollBar().setValue(self._current_scroll_position))
+    def _on_page_changed(self, index: int):
+        self._show_page(index)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # 延迟触发，确保布局已更新
+        QTimer.singleShot(100, self._on_resize)
+
+    def _on_resize(self):
+        """窗口大小变化时重新计算分页"""
+        if self._is_loading:
+            return
+
+        new_page_size = self._calculate_cards_per_page()
+        if new_page_size != self.page_size:
+            self.page_size = new_page_size
+
+            # 重新计算总页数
+            total_workflow = len(self.all_workflow_paths)
+            if total_workflow == 0:
+                self.total_pages = 1
+            else:
+                first_page_workflow_slots = max(0, self.page_size - self.fixed_card_count)
+                if first_page_workflow_slots <= 0:
+                    self.total_pages = 1
+                else:
+                    remaining = total_workflow - first_page_workflow_slots
+                    if remaining <= 0:
+                        self.total_pages = 1
+                    else:
+                        self.total_pages = 1 + ((remaining + self.page_size - 1) // self.page_size)
+
+            self.pips_pager.setPageNumber(self.total_pages)
+            target_page = min(self.current_page, self.total_pages - 1)
+            self._show_page(target_page)
+
+    # ================== 业务逻辑 ==================
 
     def open_canvas(self, file_path: Path):
         if file_path not in self.opened_workflows:
@@ -450,13 +493,6 @@ class WorkflowCanvasGalleryPage(QWidget):
             InfoBar.error("删除失败", str(e), parent=self)
 
     def _on_canvas_saved(self, workflow_path: Path):
-        """当画布保存完成时，刷新对应卡片的预览图"""
         card = self._card_map.get(workflow_path)
         if card and hasattr(card, 'refresh_preview'):
             card.refresh_preview()
-
-    def resizeEvent(self, event):
-        """优化窗口大小改变时的性能"""
-        super().resizeEvent(event)
-        # 在大小改变后延迟更新布局
-        QTimer.singleShot(50, lambda: self.flow_layout.update() if hasattr(self, 'flow_layout') else None)
