@@ -148,7 +148,8 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.scroll_widget.setStyleSheet("background-color: transparent;")
 
         # 关键：禁用动画以提升批量操作性能
-        self.flow_layout = FlowLayout(self.scroll_widget, needAni=False)  # 禁用动画
+        self.flow_layout = FlowLayout(self.scroll_widget, needAni=True)  # 禁用动画
+        self.flow_layout.setAnimation(250, QEasingCurve.OutQuad)
         self.flow_layout.setContentsMargins(30, 30, 30, 30)
         self.flow_layout.setVerticalSpacing(20)
         self.flow_layout.setHorizontalSpacing(30)

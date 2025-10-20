@@ -20,6 +20,7 @@ class CustomNodeItem(NodeItem):
             scene = self.scene()
             if scene:
                 scene.clearSelection()
+                event.accept()
                 self.setSelected(True)
         # 其他逻辑交给父类（包括左键、菜单弹出等）
         super().mousePressEvent(event)

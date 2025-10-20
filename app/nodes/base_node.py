@@ -1,9 +1,11 @@
 import uuid
-
 from NodeGraphQt import NodeObject
 
 
 class BasicNodeWithGlobalProperty(NodeObject):
+    """
+    所有业务节点的基类
+    """
 
     def __init__(self, qgraphics_item=None):
         super().__init__(qgraphics_item)

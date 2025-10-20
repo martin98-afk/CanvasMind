@@ -1,19 +1,12 @@
 # -*- coding: utf-8 -*-
 import ast
-import keyword
-import builtins
-from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QRect, QSize, QPoint
-from PyQt5.QtGui import QFont, QTextCursor, QTextOption, QColor, QPainter, QTextFormat, QPalette, QTextCharFormat, \
-    QTextBlockUserData
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPlainTextEdit, QTextEdit, QShortcut, QToolTip, QHBoxLayout, \
-    QLineEdit, QPushButton, QCheckBox, QLabel, QInputDialog
-import os
 import re
-import subprocess
-import sys
-import tempfile
-from qfluentwidgets import PlainTextEdit, TextEdit
-from app.utils.python_syntax_highlighter import PythonSyntaxHighlighter
+
+from PyQt5.QtCore import pyqtSignal, QTimer, Qt
+from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QShortcut, QHBoxLayout, \
+    QLineEdit, QPushButton, QCheckBox, QLabel, QInputDialog
+
 from app.widgets.code_editor_spyder import JediCodeEditor
 
 DEFAULT_CODE_TEMPLATE = '''class Component(BaseComponent):

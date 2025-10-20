@@ -689,7 +689,7 @@ class ComponentDeveloperWidget(QWidget):
         self._analysis_timer.stop()
 
     def _analyze_code_for_requirements(self):
-        code = self.code_editor.code_editor.toPlainText()
+        code = self.code_editor.get_code()
         if not code.strip():
             return
 
