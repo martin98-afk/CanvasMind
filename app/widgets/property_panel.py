@@ -274,6 +274,8 @@ class PropertyPanel(CardWidget):
             )
 
     def _populate_output_ports(self, node, layout):
+        if node is None:
+            return
         port_infos = self.get_port_info(node, is_input=False)
         if not port_infos:
             layout.addWidget(BodyLabel("  无输出端口"))

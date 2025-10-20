@@ -106,8 +106,8 @@ class WorkflowCanvasGalleryPage(QWidget):
         # === 顶部：排序 + 搜索 ===
         top_bar = QHBoxLayout()
         top_bar.setSpacing(16)
-
-        sort_label = CaptionLabel("排序字段：", self)
+        # 增加空白区域，让标签不至于太靠左
+        sort_label = CaptionLabel("            排序字段：", self)
         self.sort_field_combo = ComboBox(self)
         self.sort_field_combo.addItems(["修改时间", "创建时间", "画布名称"])
         self.sort_field_combo.setCurrentIndex(0)
