@@ -36,7 +36,6 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         self._output_values = {}
         self._input_values = {}
         self._contained_nodes = set()  # 显式记录当前归属的节点 ID
-
         # === 初始化默认端口 ===
         self.add_input("inputs", multi_input=True, display_name=True)
         self.add_output("outputs", display_name=True)
@@ -95,8 +94,10 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         return nodes
 
     # ──────────────── 自动调整与清理 ────────────────
+
     def auto_resize_to_fit_intersecting_nodes(self, padding=40, min_width=150, min_height=100):
         """根据所有与 backdrop 相交的节点，自动调整大小并管理归属"""
+        self.graph.begin_undo('"{}" auto resize'.format(self.name()))
         if not self.graph:
             return
 
@@ -142,6 +143,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
 
         # Step 7: 更新记录
         self._contained_nodes = {n.id for n in current_intersecting}
+        self.graph.end_undo()
 
     def _remove_node_and_cleanup(self, node):
         """从 backdrop 中移除节点，并断开其与内部 proxy 端口的连接"""

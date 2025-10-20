@@ -87,6 +87,7 @@ class Component(BaseComponent):
         import os
         import json
         from openai import OpenAI
+        
         self.logger.info(params)
         # 获取输入
         user_input = inputs.user_input.strip() if inputs else ""
@@ -105,8 +106,10 @@ class Component(BaseComponent):
         system_prompt = params.system_prompt
         temperature = float(params.temperature)
         max_tokens = int(params.max_tokens)    
+        self.name
         self.logger.info(model)
         self.logger.info(system_prompt)
+        
         if not user_input:
             return {"response": "", "raw_output": {}}    
 
