@@ -15,7 +15,6 @@ PyYAML~=6.0.2
 openpyxl~=3.1.5
 tenacity~=9.1.2
 asteval
-QScintilla
 aiohttp
 jedi
 pyinstaller

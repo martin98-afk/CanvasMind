@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtGui import QIcon
+from qfluentwidgets import FluentIcon
 
 # ANSI 颜色代码映射
 ANSI_COLOR_MAP = {
@@ -107,18 +108,20 @@ def get_port_node(port):
 def get_icon(icon_name):
     icons = {}
     relative_path = "icons"
-    for name in os.listdir(resource_path(relative_path)):
-        if name.endswith(".png"):
-            icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
-        elif name.endswith(".svg"):
-            icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
-        elif name.endswith(".ico"):
-            icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
-        elif name.endswith(".jpg"):
-            icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
+    try:
+        for name in os.listdir(resource_path(relative_path)):
+            if name.endswith(".png"):
+                icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
+            elif name.endswith(".svg"):
+                icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
+            elif name.endswith(".ico"):
+                icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
+            elif name.endswith(".jpg"):
+                icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
 
-    return QIcon(icons.get(icon_name, "icons/icon_unknown.png"))
-
+        return QIcon(icons.get(icon_name, "icons/icon_unknown.png"))
+    except:
+        return FluentIcon.APPLICATION
 
 def serialize_for_json(obj):
     """递归将对象转换为 JSON 可序列化格式"""

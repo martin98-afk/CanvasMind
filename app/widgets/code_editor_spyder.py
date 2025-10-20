@@ -5,7 +5,6 @@ import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor, Future
 from typing import List, Tuple, Optional
-
 import jedi
 from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal, QObject, QRect
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter
@@ -14,7 +13,6 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication
 from qfluentwidgets import TransparentToolButton, MessageBoxBase
 from qtpy import QtCore
 from spyder.plugins.editor.widgets.codeeditor import CodeEditor
-
 from app.utils.utils import get_icon  # 确保路径正确
 
 # 禁用jedi子进程，避免在GUI应用中出现子进程问题
@@ -29,7 +27,6 @@ completion_pool = ThreadPoolExecutor(max_workers=5, thread_name_prefix="JediComp
 
 class CompletionItemDelegate(QStyledItemDelegate):
     """自定义补全项绘制器，解决重叠、颜色和间距问题"""
-
     def __init__(self, parent=None):
         super().__init__(parent)
         # 定义类型颜色，模仿PyCharm风格
@@ -54,7 +51,6 @@ class CompletionItemDelegate(QStyledItemDelegate):
             'variable_tuple': QColor("#E0E0E0"),
             'variable_set': QColor("#E0E0E0"),
         }
-
         # 定义类型字符（单个字母，简洁明了）
         self.type_chars = {
             'function': 'Ƒ',
@@ -76,7 +72,6 @@ class CompletionItemDelegate(QStyledItemDelegate):
             'variable_tuple': '𝒱',
             'variable_set': '𝒱',
         }
-
         # --- 新增：描述截断参数 ---
         self.max_description_length = 60  # 可以根据需要调整
         self.truncation_suffix = "..."  # 截断后缀
@@ -119,6 +114,7 @@ class CompletionItemDelegate(QStyledItemDelegate):
 
         # 类型字符区域
         char_rect = QRect(rect.left(), rect.top(), char_width, rect.height())
+
         # 名称区域（从字符右边开始）
         name_start_x = rect.left() + char_width + char_spacing
         name_rect = QRect(
@@ -162,6 +158,7 @@ class CompletionItemDelegate(QStyledItemDelegate):
             # 描述文本宽度
             fm = painter.fontMetrics()
             desc_width = fm.width(description)
+
             # 描述区域矩形
             desc_rect = QRect(
                 name_rect.right() - desc_width - 5,  # 右侧留5px间距
@@ -191,7 +188,6 @@ class CompletionItemDelegate(QStyledItemDelegate):
                 Qt.AlignLeft | Qt.AlignVCenter,
                 name
             )
-
             # 恢复原字体
             painter.setFont(option.font)
         else:
@@ -214,6 +210,8 @@ class CompletionWorker(QObject):
     """异步补全工作线程"""
     completion_ready = pyqtSignal(list)  # 发送补全结果
     error_occurred = pyqtSignal(str)  # 发送错误信息
+    # 新增信号：用于发送延迟补全请求的结果
+    delayed_completion_ready = pyqtSignal(list)
 
     def __init__(self):
         super().__init__()
@@ -228,18 +226,15 @@ class CompletionWorker(QObject):
         if not (0 <= line - 1 < len(lines)):
             return ""
         line_text = lines[line - 1]
-
         # 从光标位置向左找到标识符的开始
         start = column - 1  # column 是1-based, 转为0-based
         while start >= 0 and (line_text[start].isalnum() or line_text[start] == '_'):
             start -= 1
         start += 1  # 回到标识符的第一个字符
-
         # 从光标位置向右找到标识符的结束
         end = column - 1
         while end < len(line_text) and (line_text[end].isalnum() or line_text[end] == '_'):
             end += 1
-
         if start < end:
             return line_text[start:end]
         return ""
@@ -271,10 +266,10 @@ class CompletionWorker(QObject):
                     if len(parts) == 2:
                         left_part = parts[0].strip()
                         right_part = parts[1].strip()
-
                         # 检查左边是否是目标变量名 (name)
                         # 例如，查找 "name = ..."
                         if left_part == name or left_part.endswith('.' + name):  # 支持 self.name = ...
+                            # print(f"Debug: Found assignment for '{name}': {line_text}") # 调试用
                             # 简单的类型推断
                             if right_part.startswith('"') or right_part.startswith("'"):
                                 return 'variable_str'
@@ -302,7 +297,6 @@ class CompletionWorker(QObject):
                 search_line -= 1
                 if search_line < line - 10:  # 限制向上搜索的范围，避免太远
                     break
-
         except Exception as e:
             print(f"[Jedi] Error during type guess from code for '{name}': {e}")
             pass
@@ -313,23 +307,20 @@ class CompletionWorker(QObject):
         """请求补全"""
         if not self.running:
             return
-
         try:
             start_time = time.time()
-
             # --- 修改：在创建 Script 对象前临时修改 sys.path ---
             added_to_path = False
             original_path = list(sys.path)  # 保存原始路径
             if site_packages_path and site_packages_path not in sys.path:
                 sys.path.insert(0, site_packages_path)
                 added_to_path = True
+                print(f"[Jedi] Added {site_packages_path} to sys.path temporarily.")
 
             # 创建 Script 对象
             script = jedi.Script(code=code, path='<inline>')
-
             # 获取补全结果
             jedi_comps = script.complete(line=line, column=column)
-
             completions = []
             seen = set()
             for comp in jedi_comps:
@@ -337,28 +328,28 @@ class CompletionWorker(QObject):
                 if name.startswith('_') or name in seen:
                     continue
                 seen.add(name)
-
                 # 提取原始类型和描述
                 original_type_name = getattr(comp, 'type', 'unknown')
                 description = getattr(comp, 'description', '')
-
                 # --- 新增：尝试从代码中推断类型 ---
                 refined_type_name = original_type_name
-                if original_type_name in ['instance', 'unknown']:
+                # print(original_type_name)
+                if original_type_name in ['instance', 'statement', 'unknown']:
                     precise_type = self._guess_type_from_code(code, line, column, name)
                     if precise_type:
                         refined_type_name = precise_type
+                        print(f"Debug: Guessed type for '{name}' as '{refined_type_name}' from code.")
 
                 completions.append((name, refined_type_name, description))
-
                 if len(completions) >= 100:
                     break
-
             # --- 修改：在获取结果后立即恢复 sys.path ---
             if added_to_path:
                 sys.path[:] = original_path  # 恢复原始路径
+                print(f"[Jedi] Restored original sys.path.")
 
             elapsed = time.time() - start_time
+            print(f"[Jedi] Completion took {elapsed:.3f}s for {len(completions)} items")
 
             self.completion_ready.emit(completions)
         except Exception as e:
@@ -369,10 +360,49 @@ class CompletionWorker(QObject):
             print(f"[Jedi] Error during completion: {e}")
             self.error_occurred.emit(str(e))
 
+    def request_delayed_completion(self, code: str, line: int, column: int, site_packages_path: Optional[str] = None):
+        """处理延迟的补全请求 (对应原来的 _on_completions_ready_callback)"""
+        try:
+            # --- 修改：在创建 Script 对象前临时修改 sys.path ---
+            added_to_path = False
+            original_path = list(sys.path)  # 保存原始路径
+            if site_packages_path and site_packages_path not in sys.path:
+                sys.path.insert(0, site_packages_path)
+                added_to_path = True
+                print(f"[Jedi] Added {site_packages_path} to sys.path temporarily (delayed).")
+            # 创建 Script 对象
+            script = jedi.Script(code=code, path='<inline>')
+            # 获取补全结果
+            jedi_comps = script.complete(line=line, column=column)
+            completions = []
+            seen = set()
+            for comp in jedi_comps:
+                name = comp.name
+                if name.startswith('_') or name in seen:
+                    continue
+                seen.add(name)
+                type_name = getattr(comp, 'type', 'unknown')
+                description = getattr(comp, 'description', '')
+                completions.append((name, type_name, description))
+                if len(completions) >= 100:
+                    break
+            # --- 修改：在获取结果后立即恢复 sys.path ---
+            if added_to_path:
+                sys.path[:] = original_path  # 恢复原始路径
+            # 发射信号到 GUI 线程
+            self.delayed_completion_ready.emit(completions)
+        except Exception as e:
+            # 确保在出错时也恢复路径
+            if added_to_path:
+                sys.path[:] = original_path
+                print(f"[Jedi] Restored original sys.path after error in delayed request.")
+            import traceback
+            print(f"[Jedi] Error in delayed completion task: {traceback.format_exc()}")
+            self.error_occurred.emit(f"Delayed completion error: {e}")
+
 
 class JediCodeEditor(CodeEditor):
     """增强的代码编辑器，支持Jedi补全"""
-
     def __init__(self, parent=None, code_parent=None, python_exe_path=None, popup_offset=2, dialog=None):
         super().__init__()
         self.popup_offset = popup_offset
@@ -383,22 +413,18 @@ class JediCodeEditor(CodeEditor):
         self.add_custom_completions([
             'global_variable', 'Exception',  # 内置常量
             'True', 'False', 'None',
-
             # 内置异常
             'Exception', 'ValueError', 'TypeError', 'RuntimeError',
             'KeyError', 'IndexError', 'AttributeError', 'ImportError',
             'OSError', 'FileNotFoundError', 'PermissionError',
-
             # 常用内置函数（作为变量名也可能出现）
             'float', 'list', 'dict', 'tuple',
             'print', 'input', 'open', 'range', 'enumerate',
             'sorted', 'reversed', 'filter', 'enumerate',
             'type', 'isinstance', 'issubclass', 'hasattr', 'getattr', 'setattr', 'delattr', 'vars',
             'locals', 'eval', 'exec', 'repr', 'complex', 'round', 'strip', 'split', 'join', 'replace', 'lower',
-
             # 常见日志/调试变量
             'logger', 'debug', 'info', 'warning', 'error',
-
             # 常见 self 属性（提示用户可能想输入的）
             'self', '__init__', '__name__', '__main__', '__file__', '__package__', '__doc__', '__version__',
         ])
@@ -498,6 +524,8 @@ class JediCodeEditor(CodeEditor):
         # --- 连接补全工作线程信号 ---
         self.completion_worker.completion_ready.connect(self._on_completions_ready)
         self.completion_worker.error_occurred.connect(self._on_completion_error)
+        # 连接新增的延迟补全信号
+        self.completion_worker.delayed_completion_ready.connect(self._on_delayed_completions_ready)
 
         # --- 定义类型字符字典 ---
         self.type_chars = {
@@ -531,7 +559,6 @@ class JediCodeEditor(CodeEditor):
             self.fullscreen_button.clicked.connect(self._open_fullscreen_editor)
         else:
             self.fullscreen_button.clicked.connect(self.dialog.accept)
-
         self._update_button_position()
 
     def resizeEvent(self, event):
@@ -615,7 +642,6 @@ class JediCodeEditor(CodeEditor):
         """处理按键事件"""
         modifiers = event.modifiers()
         key = event.key()
-
         # 处理Shift+Enter (修正：调用自身的方法)
         if modifiers == Qt.ShiftModifier and key in (Qt.Key_Return, Qt.Key_Enter):
             cursor = self.textCursor()
@@ -664,13 +690,10 @@ class JediCodeEditor(CodeEditor):
             block = cursor.block()
             text = block.text()
             cursor_pos = cursor.positionInBlock()
-
             line_before_cursor = text[:cursor_pos]
             line_after_cursor = text[cursor_pos:]
-
             open_count = line_before_cursor.count('[') + line_before_cursor.count('(') + line_before_cursor.count('{')
             close_count = line_before_cursor.count(']') + line_before_cursor.count(')') + line_before_cursor.count('}')
-
             if open_count > close_count:
                 leading_spaces = len(text) - len(text.lstrip())
                 new_indent = ' ' * (leading_spaces + 4)
@@ -698,7 +721,6 @@ class JediCodeEditor(CodeEditor):
         # 根据输入内容决定是否触发补全
         text = event.text()
         should_trigger = False
-
         # 增加更多触发条件，模仿PyCharm
         if text == '.':
             should_trigger = True
@@ -734,20 +756,16 @@ class JediCodeEditor(CodeEditor):
         cursor = self.textCursor()
         pos = cursor.position()
         text = self.toPlainText()
-
         # 如果光标在开头，可能不需要补全
         if pos <= 0:
             return False
-
         # 检查光标前一个字符是否是字母、数字或下划线（即还在标识符内）
         prev_char = text[pos - 1] if pos > 0 else ''
         if prev_char.isalnum() or prev_char == '_':
             return True
-
         # 如果光标在点号前，也需要补全
         if pos > 0 and text[pos - 1] == '.':
             return True
-
         return False
 
     def _on_input_delay_timeout(self):
@@ -762,7 +780,6 @@ class JediCodeEditor(CodeEditor):
         """请求补全"""
         if self._completing:
             return
-
         if self.completion_future and not self.completion_future.done():
             cursor = self.textCursor()
             text = self.toPlainText()
@@ -771,7 +788,6 @@ class JediCodeEditor(CodeEditor):
             # 传递 _target_site_packages
             self.pending_completion_request = (text, line, column, self._target_site_packages)
             return
-
         cursor = self.textCursor()
         text = self.toPlainText()
         line = cursor.blockNumber() + 1
@@ -787,35 +803,16 @@ class JediCodeEditor(CodeEditor):
         if self.pending_completion_request:
             text, line, column, env = self.pending_completion_request
             self.pending_completion_request = None
-            self._on_completions_ready_callback(text, line, column, env)
+            # 调用 CompletionWorker 的新方法处理延迟请求
+            self.completion_worker.request_delayed_completion(text, line, column, self._target_site_packages)
             return
-
         current_prefix = self._get_completion_prefix()
         self._filter_and_show_completions(completions, current_prefix)
 
-    def _on_completions_ready_callback(self, text, line, column, env):
-        """处理等待的补全请求"""
-        try:
-            script = jedi.Script(code=text, path='<inline>', environment=env)
-            jedi_comps = script.complete(line=line, column=column)
-
-            completions = []
-            seen = set()
-            for comp in jedi_comps:
-                name = comp.name
-                if name.startswith('_') or name in seen:
-                    continue
-                seen.add(name)
-                type_name = getattr(comp, 'type', 'unknown')
-                description = getattr(comp, 'description', '')
-                completions.append((name, type_name, description))
-                if len(completions) >= 100:
-                    break
-
-            current_prefix = self._get_completion_prefix_from_text(text, line, column)
-            self._filter_and_show_completions(completions, current_prefix)
-        except Exception as e:
-            print(f"[Jedi] Error in delayed completion: {e}")
+    def _on_delayed_completions_ready(self, completions: List[Tuple[str, str, str]]):
+        """处理延迟补全请求的结果"""
+        current_prefix = self._get_completion_prefix()
+        self._filter_and_show_completions(completions, current_prefix)
 
     def _get_completion_prefix_from_text(self, text: str, line: int, column: int):
         """从指定文本位置获取补全前缀"""
@@ -848,22 +845,17 @@ class JediCodeEditor(CodeEditor):
         # --- 优化排序算法 ---
         def sort_key(item):
             name, type_name, description = item
-
             # 1. 完全匹配权重 (最高)
             is_exact_match = -1 if name.lower() == current_prefix.lower() else 0
-
             # 2. 前缀匹配权重 (次高)
             starts_with_prefix = -1 if name.lower().startswith(current_prefix.lower()) else 0
-
             # 3. 使用频率权重
             usage_count = self.completion_usage.get(name, 0)
-
             # 4. 上下文感知权重 (新增)
             context_score = 0
             cursor = self.textCursor()
             text = self.toPlainText()
             pos = cursor.position()
-
             # 检查是否在 'self.' 后
             if pos >= 5:  # 确保有足够字符
                 before_cursor = text[max(0, pos - 5):pos].lower()
@@ -871,7 +863,6 @@ class JediCodeEditor(CodeEditor):
                     # 在 'self.' 后，优先显示属性和方法
                     if type_name in ['property', 'method', 'instance']:
                         context_score += 1000
-
             # 检查是否在 'import ' 后
             if pos >= 7:
                 before_cursor = text[max(0, pos - 7):pos].lower()
@@ -879,14 +870,12 @@ class JediCodeEditor(CodeEditor):
                     # 在 'import ' 后，优先显示模块
                     if type_name == 'module':
                         context_score += 1000
-
             # 检查是否在参数类型注解中 (def func(param: ...)
             # 这个逻辑比较复杂，这里只做简单示例
             if ': ' in text[max(0, pos - 50):pos] and 'def ' in text[max(0, pos - 100):pos]:
                 # 可能是类型注解，优先显示类名
                 if type_name == 'class':
                     context_score += 800
-
             # 5. 类型权重 (新增)
             type_priority = {
                 'keyword': 900,  # 关键字优先级高
@@ -910,12 +899,10 @@ class JediCodeEditor(CodeEditor):
                 'unknown': 100,  # 未知
             }
             type_score = type_priority.get(type_name, 0)
-
             # 6. 名称长度权重 (较短的名称可能更常用，但低于前缀匹配)
             # torch (4) vs torchvision (11), torch 会获得 -4 分，torchvision -11 分
             # 在完全匹配和前缀匹配之后考虑
             length_score = len(name)
-
             # 综合评分
             # 顺序：完全匹配 > 前缀匹配 > 上下文/类型 > 使用频率 > 长度 > 字母顺序
             return (
@@ -962,23 +949,21 @@ class JediCodeEditor(CodeEditor):
         """显示补全弹窗，确保位置跟随光标，并动态调整宽度和位置"""
         # 获取光标矩形（相对于编辑器控件本身）
         cursor_rect = self.cursorRect()
-        # print(f"Debug: cursor_rect = {cursor_rect}")  # 调试用，可以删除
+        print(f"Debug: cursor_rect = {cursor_rect}")  # 调试用，可以删除
 
         # 获取编辑器控件本身相对于屏幕的左上角坐标
         editor_global_pos = self.mapToGlobal(QtCore.QPoint(0, 0))
-        # print(f"Debug: editor_global_pos = {editor_global_pos}")  # 调试用，可以删除
+        print(f"Debug: editor_global_pos = {editor_global_pos}")  # 调试用，可以删除
 
         # --- 微调补全框位置 ---
         # 使用 cursor_rect.topLeft() 获取基准点
         base_point = cursor_rect.topLeft()
-
         # 计算光标在屏幕上的绝对位置
         # 通常 cursor_rect.bottom() 是光标底部的位置，我们需要这个位置
         screen_cursor_pos = QtCore.QPoint(
             editor_global_pos.x() + base_point.x(),
             editor_global_pos.y() + cursor_rect.bottom()
         )
-
         # 可选：添加一个微小的垂直偏移以微调位置
         # 这个值可能需要根据字体和行高进行调整
         vertical_offset = 0  # 例如，-2, -1, 0, 1, 2
@@ -1005,7 +990,6 @@ class JediCodeEditor(CodeEditor):
                 name = item.text()
                 type_name = ""
                 truncated_description = ""
-
             # 计算该项所需宽度 (使用截断后的描述)
             fm = self.popup.fontMetrics()
             char_width = fm.width(self.type_chars.get(type_name, '?')) + 20
@@ -1024,17 +1008,14 @@ class JediCodeEditor(CodeEditor):
         # 调整弹窗位置，确保不超出屏幕边界
         x = screen_cursor_pos.x()
         y = screen_cursor_pos.y()
-
         # 检查右边是否超出屏幕
         if x + popup_width > screen_width:
             x = screen_width - popup_width - 10
-
         # 检查底部是否超出屏幕
         screen_height = self.screen().geometry().height()
         item_height = self.popup.sizeHintForRow(0) if self.popup.count() > 0 else 40
         visible_items = min(self.popup.count(), 15)
         popup_height = item_height * visible_items + 10
-
         # if y + popup_height > screen_height:
         #     # 如果底部超出，尝试向上显示
         #     # 使用 cursor_rect 的 top 来计算上方位置
@@ -1051,7 +1032,6 @@ class JediCodeEditor(CodeEditor):
         cursor = self.textCursor()
         pos = cursor.position()
         text = self.toPlainText()
-
         start = pos
         while start > 0:
             ch = text[start - 1]
@@ -1067,7 +1047,6 @@ class JediCodeEditor(CodeEditor):
             self.popup.hide()
             self._popup_timeout_timer.stop()  # 停止超时计时器
             return
-
         self._completing = True
         try:
             item = self.popup.currentItem()
@@ -1076,7 +1055,6 @@ class JediCodeEditor(CodeEditor):
                 completion, _, _ = completion_data
             else:
                 completion = item.text()
-
             self.completion_usage[completion] = self.completion_usage.get(completion, 0) + 1
             if len(self.completion_usage) > 500:
                 oldest = next(iter(self.completion_usage))
@@ -1111,15 +1089,12 @@ class JediCodeEditor(CodeEditor):
 
 class FullscreenCodeDialog(MessageBoxBase):
     """全屏代码对话框"""
-
     def __init__(self, initial_code="", parent=None, code_parent=None):
         super().__init__(parent)
         self.setWindowTitle("代码编辑器")
-
         self.code_editor = JediCodeEditor(parent=parent, code_parent=code_parent, dialog=self)
         self.code_editor.setPlainText(initial_code)
         self.code_editor.setMinimumSize(1000, 600)
-
         self.viewLayout.addWidget(self.code_editor)
         self.buttonGroup.hide()
 
@@ -1129,15 +1104,12 @@ class FullscreenCodeDialog(MessageBoxBase):
 
 class MainWindow(QMainWindow):
     """主窗口"""
-
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Jedi Code Editor with Smart Completion")
         self.resize(800, 600)
-
         self.editor = JediCodeEditor()
-        self.editor.set_text("import os\nos.\n\nx = 'hello'\nx.")
-
+        self.editor.set_text("import os\nos.\nx = 'hello'\nx.")
         central = QWidget()
         layout = QVBoxLayout(central)
         layout.addWidget(self.editor)
