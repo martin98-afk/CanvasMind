@@ -609,11 +609,20 @@ class WorkflowCanvasGalleryPage(QWidget):
                 preview_path.unlink()
 
             InfoBar.success("删除成功", f"画布 '{file_path.stem}' 已删除", parent=self)
+
             if file_path in self.opened_workflows:
                 self.parent_window.removeInterface(self.opened_workflows[file_path])
                 del self.opened_workflows[file_path]
 
+            # ✅ 关键：从布局中移除并销毁旧卡片
             if file_path in self._card_map:
+                old_card = self._card_map[file_path]
+                # 从布局中移除
+                self.flow_layout.removeWidget(old_card)
+                # 隐藏并安排销毁
+                old_card.hide()
+                old_card.deleteLater()
+                # 从缓存中删除
                 del self._card_map[file_path]
 
             self._schedule_refresh()
