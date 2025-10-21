@@ -500,10 +500,18 @@ class PropertyPanel(CardWidget):
         title = BodyLabel(f"🔁 {node.NODE_NAME}")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.vbox.addWidget(title)
+
         flow_type = getattr(node, 'TYPE', 'unknown')
         current = node.model.get_property('current_index')
+
         if flow_type == "loop":
-            total = node.model.get_property("loop_nums")
+            # 根据循环模式获取总次数
+            loop_mode = node.model.get_property("loop_mode")
+            if loop_mode == 'count':
+                total = node.model.get_property("loop_nums")
+            else:
+                # 对于条件循环，显示最大迭代次数作为参考
+                total = node.model.get_property("max_iterations")
         elif flow_type == "iterate":
             input_data = []
             for input_port in node.input_ports():
@@ -520,18 +528,22 @@ class PropertyPanel(CardWidget):
             if not isinstance(input_data, (list, tuple, dict)):
                 input_data = [input_data]
             total = len(input_data)
-            node.model.set_property("loop_nums", total)
+            node.model.set_property("loop_nums", total)  # 也设置这个属性，供其他地方使用
+        else:
+            total = 0
 
         progress_label = BodyLabel(f"进度: {current}/{total}")
         progress_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
         progress_bar = ProgressBar(self, useAni=False)
         progress_bar.setRange(0, 100)
-        progress_bar.setValue(int(current / max(1, total) * 100))
+        progress_bar.setValue(int(current / max(1, total) * 100) if total > 0 else 0)
         self.vbox.addWidget(progress_label)
         self.vbox.addWidget(progress_bar)
+
         if flow_type == "loop":
             self._add_seperator()
-            self._add_loop_config_section(node)
+            self._add_loop_config_section(node)  # 使用修改后的方法
+
         self._add_seperator()
         self._add_internal_nodes_section(node)
         self.vbox.addStretch()
@@ -564,6 +576,7 @@ class PropertyPanel(CardWidget):
         self.vbox.addWidget(self.segmented_widget)
         self.vbox.addWidget(self.stacked_widget)
         self.vbox.addStretch(1)
+
         if current_segment in ['input', 'output']:
             self.segmented_widget.setCurrentItem(current_segment)
         else:
@@ -574,23 +587,79 @@ class PropertyPanel(CardWidget):
         config_layout = QVBoxLayout(config_card)
         config_layout.setContentsMargins(10, 10, 10, 10)
 
-        title = BodyLabel("循环配置")
-        config_layout.addWidget(title)
+        from qfluentwidgets import ComboBox, SpinBox, LineEdit
 
-        from qfluentwidgets import SpinBox
-        max_iter_spin = SpinBox(self)
-        max_iter_spin.setRange(1, node.model.get_property("max_iterations"))
-        current_max = node.model.get_property("loop_nums")
-        max_iter_spin.setValue(current_max)
+        # 循环模式选择
+        mode_combo = ComboBox(self)
+        mode_combo.addItems(['固定次数', '条件循环', 'While循环'])
+        mode_combo.setCurrentText({
+                                      'count': '固定次数',
+                                      'condition': '条件循环',
+                                      'while': 'While循环'
+                                  }.get(node.model.get_property("loop_mode"), '固定次数'))
 
-        def on_max_iter_changed(value):
-            node.model.set_property('loop_nums', value)
+        def on_mode_changed(text):
+            mode_map = {'固定次数': 'count', '条件循环': 'condition', 'While循环': 'while'}
+            node.model.set_property("loop_mode", mode_map.get(text, "count"))
+            # 更新界面以显示/隐藏相关控件
             self.update_properties(node)
 
-        max_iter_spin.valueChanged.connect(on_max_iter_changed)
+        mode_combo.currentTextChanged.connect(on_mode_changed)
+        config_layout.addWidget(BodyLabel("循环模式:"))
+        config_layout.addWidget(mode_combo)
 
-        config_layout.addWidget(BodyLabel("循环次数:"))
-        config_layout.addWidget(max_iter_spin)
+        # 当前循环模式
+        current_mode = node.model.get_property("loop_mode")
+
+        # 根据模式显示不同的配置项
+        if current_mode == 'count':
+            # 固定次数循环配置
+            max_iter_spin = SpinBox(self)
+            max_iter_spin.setRange(1, 10000)  # 你可以根据需要调整范围
+            current_max = node.model.get_property("loop_nums")
+            max_iter_spin.setValue(current_max)
+
+            def on_max_iter_changed(value):
+                node.model.set_property('loop_nums', value)
+                # 更新界面显示的总次数
+                if hasattr(node, 'TYPE') and node.TYPE == "iterate":
+                    # 对于迭代循环，这里可能需要特殊处理
+                    pass
+                # 注意：这里不调用 update_properties，因为这会导致无限递归
+                # 我们只更新进度显示部分
+                # 可以通过其他方式通知UI更新，或者在执行时再更新
+
+            max_iter_spin.valueChanged.connect(on_max_iter_changed)
+            config_layout.addWidget(BodyLabel("循环次数:"))
+            config_layout.addWidget(max_iter_spin)
+
+        else:
+            # 条件循环或While循环配置
+            condition_edit = LineEdit(self)
+            condition_edit.setPlaceholderText("请输入条件表达式")
+            condition_edit.setFixedWidth(220)
+            current_condition = node.model.get_property("loop_condition")
+            condition_edit.setText(current_condition)
+
+            def on_condition_changed(text):
+                node.model.set_property('loop_condition', text)
+
+            condition_edit.textChanged.connect(on_condition_changed)
+            config_layout.addWidget(BodyLabel("条件表达式:"))
+            config_layout.addWidget(condition_edit)
+
+            # 最大迭代次数（所有模式都适用，防止无限循环）
+            max_iter_spin = SpinBox(self)
+            max_iter_spin.setRange(1, 10000)
+            current_max_iter = node.model.get_property("max_iterations")
+            max_iter_spin.setValue(current_max_iter)
+
+            def on_max_iterations_changed(value):
+                node.model.set_property('max_iterations', value)
+
+            max_iter_spin.valueChanged.connect(on_max_iterations_changed)
+            config_layout.addWidget(BodyLabel("最大迭代次数:"))
+            config_layout.addWidget(max_iter_spin)
 
         self.vbox.addWidget(config_card)
 

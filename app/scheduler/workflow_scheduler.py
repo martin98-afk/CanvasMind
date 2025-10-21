@@ -8,6 +8,7 @@ from loguru import logger
 
 from app.components.base import GlobalVariableContext
 from app.nodes.status_node import NodeStatus
+from app.scheduler.expression_engine import ExpressionEngine
 from app.scheduler.node_list_executor import NodeListExecutor
 from app.utils.utils import get_port_node
 
@@ -220,7 +221,7 @@ class WorkflowScheduler(QObject):
             self.error.emit(f"启动执行器失败: {str(e)}")
 
     def _execute_backdrop_sync(self, backdrop, check_cancel):
-        """同步执行循环型 Backdrop（在主线程中调用）"""
+        """同步执行循环型 Backdrop（支持条件循环）"""
         try:
             # 获取上游结果
             input_data = []
@@ -235,106 +236,221 @@ class WorkflowScheduler(QObject):
                         input_data.extend(
                             [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
                         )
-            # 1. 获取输入数据（来自 backdrop 的 inputs 端口）
-            if not isinstance(input_data, (list, tuple, dict)) and backdrop.TYPE == "loop":
-                input_data = [input_data]
-            # 2. 查找输入/输出代理节点
+
+            # 获取输入/输出代理节点
             input_proxy, output_proxy, execute_nodes = backdrop.get_nodes()
             if input_proxy is None or output_proxy is None:
                 raise ValueError(f"循环体 {backdrop.name()} 缺少输入/输出代理节点")
 
-            # 3. 拓扑排序内部节点
-            if execute_nodes is None:
-                raise ValueError(f"循环体 {backdrop.name()} 内部存在依赖环")
             # 注册全局变量
             self.register_global_variable(execute_nodes)
 
             backdrop.model.set_property("current_index", 0)
             self.property_changed.emit(backdrop.id)
-            # 4. 循环执行逻辑
+
+            # 根据循环模式执行
             if backdrop.TYPE == "iterate":
-                results = []
-                for index, data in enumerate(input_data):
-                    input_proxy.set_output_value(data)
-                    # 执行内部节点（同步）
-                    for node in execute_nodes:
-                        comp_cls = self.component_map.get(node.FULL_PATH)
-                        if check_cancel():
-                            return
-                        self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
-                        self.property_changed.emit(backdrop.id)
-                        try:
-                            node.execute_sync(
-                                comp_cls, python_executable=self.get_python_exe(), check_cancel=check_cancel
-                            )
-                            self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
-                        except Exception as e:
-                            self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
-                            self.property_changed.emit(backdrop.id)
-                            raise e
-                    # 收集输出
-                    inputs = []
-                    for input_port in output_proxy.input_ports():
-                        connected = input_port.connected_ports()
-
-                        if connected:
-                            if len(connected) == 1:
-                                upstream = connected[0]
-                                value = upstream.node()._output_values.get(upstream.name())
-                                inputs.append(value)
-                            else:
-                                inputs.extend(
-                                    [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
-                                )
-                    backdrop.model.set_property("current_index", index+1)
-                    self.property_changed.emit(backdrop.id)
-                    results.extend(inputs)
-            # 5. 迭代执行逻辑
+                results = self._execute_iterate_loop(backdrop, input_data, input_proxy, output_proxy, execute_nodes,
+                                                     check_cancel)
             elif backdrop.TYPE == "loop":
-                results = None
-                for index in range(backdrop.model.get_property("loop_nums")):   # 暂时只支持迭代指定次数
-                    input_proxy.set_output_value(input_data)
-                    # 执行内部节点（同步）
-                    for node in execute_nodes:
-                        comp_cls = self.component_map.get(node.FULL_PATH)
-                        if check_cancel():
-                            return
-                        self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
-                        self.property_changed.emit(backdrop.id)
-                        try:
-                            node.execute_sync(
-                                comp_cls, python_executable=self.get_python_exe(), check_cancel=check_cancel
-                            )
-                            self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
-                            self.property_changed.emit(backdrop.id)
-                        except Exception as e:
-                            self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
-                            raise e
-                    # 收集输出
-                    outputs = []
-                    for input_port in output_proxy.input_ports():
-                        connected = input_port.connected_ports()
+                results = self._execute_condition_loop(backdrop, input_data, input_proxy, output_proxy, execute_nodes,
+                                                       check_cancel)
 
-                        if connected:
-                            if len(connected) == 1:
-                                upstream = connected[0]
-                                value = upstream.node()._output_values.get(upstream.name())
-                                outputs = value
-                            else:
-                                outputs.extend(
-                                    [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
-                                )
-                    input_data = outputs
-                    backdrop.model.set_property("current_index", index+1)
-                    self.property_changed.emit(backdrop.id)
-
-                results = outputs
-            # 6. 设置 Backdrop 的输出
+            # 设置 Backdrop 的输出
             backdrop.set_output_value(results)
             self.set_node_status(backdrop, NodeStatus.NODE_STATUS_SUCCESS)
-        except:
+
+        except Exception as e:
             import traceback
+            logger.error(f"执行循环 {backdrop.name()} 失败: {str(e)}")
             logger.error(traceback.format_exc())
+            self.set_node_status(backdrop, NodeStatus.NODE_STATUS_FAILED)
+            raise
+
+    def _execute_iterate_loop(self, backdrop, input_data, input_proxy, output_proxy, execute_nodes, check_cancel):
+        """执行迭代循环（遍历列表）"""
+        if not isinstance(input_data, (list, tuple)):
+            input_data = [input_data]
+
+        results = []
+        for index, data in enumerate(input_data):
+            if check_cancel():
+                return results
+
+            input_proxy.set_output_value(data)
+
+            # 执行内部节点
+            self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
+
+            # 收集输出
+            outputs = self._collect_outputs(output_proxy)
+            backdrop.model.set_property("current_index", index + 1)
+            self.property_changed.emit(backdrop.id)
+            results.extend(outputs if isinstance(outputs, list) else [outputs])
+
+        return results
+
+    def _execute_condition_loop(self, backdrop, input_data, input_proxy, output_proxy, execute_nodes, check_cancel):
+        """执行条件循环"""
+        # 从 backdrop 属性获取循环配置
+        loop_mode = backdrop.model.get_property("loop_mode")
+
+        if loop_mode == 'count':
+            return self._execute_count_loop(backdrop, input_data, input_proxy, output_proxy, execute_nodes,
+                                            check_cancel)
+        elif loop_mode == 'condition':
+            return self._execute_condition_based_loop(backdrop, input_data, input_proxy, output_proxy, execute_nodes,
+                                                      check_cancel)
+        elif loop_mode == 'while':
+            return self._execute_while_loop(backdrop, input_data, input_proxy, output_proxy, execute_nodes,
+                                            check_cancel)
+        else:
+            raise ValueError(f"不支持的循环模式: {loop_mode}")
+
+    def _execute_count_loop(self, backdrop, input_data, input_proxy, output_proxy, execute_nodes, check_cancel):
+        """执行固定次数循环"""
+        loop_nums = backdrop.model.get_property("loop_nums")
+        outputs = None
+
+        for index in range(loop_nums):
+            if check_cancel():
+                break
+
+            input_proxy.set_output_value(input_data)
+            self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
+
+            outputs = self._collect_outputs(output_proxy)
+            input_data = outputs
+            backdrop.model.set_property("current_index", index + 1)
+            self.property_changed.emit(backdrop.id)
+
+            if index < loop_nums - 1:  # 不是最后一次迭代
+                input_data = outputs
+
+        return outputs
+
+    def _execute_condition_based_loop(self, backdrop, input_data, input_proxy, output_proxy, execute_nodes,
+                                      check_cancel):
+        """执行条件循环（基于条件表达式）"""
+        max_iterations = backdrop.model.get_property("max_iterations")
+        condition_expr = backdrop.model.get_property("loop_condition")
+        outputs = None
+
+        for index in range(max_iterations):
+            if check_cancel():
+                break
+
+            input_proxy.set_output_value(input_data)
+            self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
+
+            outputs = self._collect_outputs(output_proxy)
+
+            # 使用你的表达式引擎评估退出条件
+            should_continue = self._evaluate_condition_with_engine(condition_expr, outputs, backdrop)
+            if not should_continue:
+                break
+
+            input_data = outputs
+            backdrop.model.set_property("current_index", index + 1)
+            self.property_changed.emit(backdrop.id)
+
+        return outputs
+
+    def _execute_while_loop(self, backdrop, input_data, input_proxy, output_proxy, execute_nodes, check_cancel):
+        """执行while循环"""
+        max_iterations = backdrop.model.get_property("max_iterations")
+        condition_expr = backdrop.model.get_property("loop_condition")
+        outputs = None
+
+        for index in range(max_iterations):
+            if check_cancel():
+                break
+
+            # 首先检查while条件（使用当前输入数据）
+            should_continue = self._evaluate_condition_with_engine(condition_expr, input_data, backdrop)
+            if not should_continue:
+                break
+
+            input_proxy.set_output_value(input_data)
+            self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
+
+            outputs = self._collect_outputs(output_proxy)
+            input_data = outputs
+            backdrop.model.set_property("current_index", index + 1)
+            self.property_changed.emit(backdrop.id)
+
+        return outputs
+
+    def _execute_internal_nodes(self, backdrop, execute_nodes, check_cancel):
+        """执行循环体内部节点"""
+        for node in execute_nodes:
+            comp_cls = self.component_map.get(node.FULL_PATH)
+            if check_cancel():
+                return
+
+            self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
+            self.property_changed.emit(backdrop.id)
+
+            try:
+                node.execute_sync(
+                    comp_cls, python_executable=self.get_python_exe(), check_cancel=check_cancel
+                )
+                self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
+                self.property_changed.emit(backdrop.id)
+            except Exception as e:
+                self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
+                self.property_changed.emit(backdrop.id)
+                raise e
+
+    def _collect_outputs(self, output_proxy):
+        """收集输出数据"""
+        outputs = []
+        for input_port in output_proxy.input_ports():
+            connected = input_port.connected_ports()
+            if connected:
+                if len(connected) == 1:
+                    upstream = connected[0]
+                    value = upstream.node()._output_values.get(upstream.name())
+                    outputs = value
+                else:
+                    outputs.extend(
+                        [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
+                    )
+
+        return outputs if len(outputs) > 1 else (outputs[0] if outputs else None)
+
+    def _evaluate_condition_with_engine(self, condition_expr, data, backdrop):
+        """使用表达式引擎评估条件表达式"""
+        if not condition_expr:
+            return False
+
+        try:
+            engine = ExpressionEngine(self.global_variables)
+
+            # 准备局部变量，将当前循环的数据作为 'data' 变量
+            local_vars = {
+                'data': data,
+                'result': data,  # 兼容别名
+                'current_index': backdrop.model.get_property("current_index"),
+            }
+
+            # 如果表达式是纯表达式块格式（$...$），使用纯表达式评估
+            if condition_expr.startswith('$') and condition_expr.endswith('$') and condition_expr.count('$') == 2:
+                result = engine.evaluate_expression_block(condition_expr, local_vars)
+            else:
+                # 否则使用模板评估（支持混合内容）
+                result = engine.evaluate(condition_expr)
+
+            # 将结果转换为布尔值
+            if isinstance(result, str) and result.startswith('[ExprError:'):
+                logger.warning(f"条件表达式评估失败: {condition_expr}, 错误: {result}")
+                return False  # 表达式错误时停止循环
+
+            return bool(result)
+
+        except Exception as e:
+            logger.warning(f"条件表达式评估异常: {condition_expr}, 错误: {e}")
+            return False  # 异常时停止循环以防止无限循环
 
     def cancel(self):
         """取消当前执行"""

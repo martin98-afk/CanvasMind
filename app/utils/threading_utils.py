@@ -214,6 +214,7 @@ class AsyncUpdateChecker(QThread):
                     print("GitHub API 响应:", await resp.json())
                     return await resp.json()
                 else:
+                    print("GitHub API 响应:", await resp.json())
                     self.error.emit(f"GitHub API 请求失败：{resp.status}")
                     return None
 
