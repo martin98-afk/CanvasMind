@@ -3,6 +3,7 @@ import json
 import os
 import pathlib
 import shutil
+import traceback
 from datetime import datetime
 from pathlib import Path
 from NodeGraphQt import NodeGraph, BackdropNode, BaseNode
@@ -11,7 +12,7 @@ from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication
 from loguru import logger
 from qfluentwidgets import (
     InfoBar,
@@ -20,6 +21,7 @@ from qfluentwidgets import (
 from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
 from app.nodes.branch_node import create_branch_node
+from app.nodes.custom_nodegraph import CustomNodeGraph
 from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
@@ -75,7 +77,7 @@ class CanvasPage(QWidget):
         # ---
 
         # 初始化 NodeGraph
-        self.graph = NodeGraph()
+        self.graph = CustomNodeGraph()
         self.graph.node_created.connect(self.on_node_created)
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
@@ -1183,14 +1185,24 @@ class CanvasPage(QWidget):
         return None
 
     def on_node_created(self, node):
-        self._node_id_cache = self._node_id_cache | {node.id: node}
+        self._node_id_cache[node.id] = node
 
-    def _get_node_by_id_cached(self, node_id):
-        """使用缓存的节点查找"""
-        if not self._node_id_cache_valid:
-            self._node_id_cache = {node.id: node for node in self.graph.all_nodes()}
-            self._node_id_cache_valid = True
-        return self._node_id_cache.get(node_id)
+    def delete_node(self, node):
+        if node.id in self.node_status:
+            del self.node_status[node.id]
+        if node.id in self._node_id_cache:
+            del self._node_id_cache[node.id]  # 精确删除，不全清
+        self.graph.delete_node(node)
+
+    def _on_port_connected(self, in_port, out_port):
+        key = (out_port.node().id, out_port.name(), in_port.node().id, in_port.name())
+        pipe = self._find_pipe_by_ports(out_port, in_port, self.graph.viewer().all_pipes())
+        if pipe:
+            self._pipe_map[key] = pipe
+
+    def _on_port_disconnected(self, in_port, out_port):
+        key = (out_port.node().id, out_port.name(), in_port.node().id, in_port.name())
+        self._pipe_map.pop(key, None)
 
     def _invalidate_node_cache(self):
         """当节点被创建或删除时，标记缓存无效"""
@@ -1310,50 +1322,97 @@ class CanvasPage(QWidget):
 
     def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data, global_variable):
         try:
-            # 解析图数据
-            self.graph.deserialize_session(graph_data)
-            self._setup_pipeline_style()
-            # 解析全局变量
-            self.global_variables.deserialize(global_variable)
-            self.global_variables_changed.emit()
-            self.property_panel.update_properties(None)
-            # 解析运行时数据
-            env = runtime_data.get("environment")
-            if env:
-                for i in range(self.env_combo.count()):
-                    if self.env_combo.itemData(i) == env:
-                        self.env_combo.setCurrentIndex(i)
-                        break
-            all_nodes = self.graph.all_nodes()
-            for node in all_nodes:
-                full_path = getattr(node, 'FULL_PATH', 'unknown')
-                node_name = node.name()
-                stable_key = f"{full_path}||{node_name}"
-                node_status = node_status_data.get(stable_key)
-                if node_status:
-                    node._input_values = deserialize_from_json(node_status.get("node_inputs", {}))
-                    node._output_values = deserialize_from_json(node_status.get("node_outputs", {}))
-                    node.column_select = node_status.get("column_select", {})
-                    for key, value in node_status.get("custom_property").items():
-                        if not node.has_property(key):
-                            node.create_property(key, value)
-                        else:
-                            node.set_property(key, value)
-                    status_str = node_status.get("node_states", "unrun")
-                    status_str = "unrun" if status_str is None else status_str
-                    # 使用 set_node_status 来加载状态，会更新UI
-                    self.set_node_status(
-                        node, getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
-                    )
-            # 加载完成后，使节点缓存无效（下次访问时重建）
-            self._invalidate_node_cache()
-            self.create_name_label()
-            self._delayed_fit_view()
-            self.create_success_info("加载成功", "工作流加载成功！")
+            # === 1. 准备数据 ===
+            nodes_data = graph_data.get("nodes", {})
+            total_nodes = len(nodes_data)
+            if total_nodes == 0:
+                self.graph.deserialize_session(graph_data)
+                self._finish_loading(runtime_data, node_status_data, global_variable)
+                return
+
+            # === 2. 创建进度对话框 ===
+            progress = QProgressDialog("正在加载节点...", "取消", 0, total_nodes, self)
+            progress.setWindowModality(Qt.WindowModal)
+            progress.setWindowTitle("加载中")
+            progress.setCancelButton(None)  # 禁用取消，避免状态不一致
+            progress.setAutoClose(True)
+            progress.setMinimumDuration(0)
+            progress.setValue(0)
+
+            # === 3. Monkey patch add_node ===
+            original_add_node = self.graph.add_node
+            count = [0]  # 使用 list 保持引用
+
+            def patched_add_node(node, pos=None, inherite_graph_style=True):
+                result = original_add_node(node, pos, inherite_graph_style)
+                count[0] += 1
+                progress.setValue(count[0])
+                QApplication.processEvents()  # 刷新 UI
+                return result
+
+            self.graph.add_node = patched_add_node
+
+            # === 4. 执行反序列化（使用 NodeGraphQt 原生逻辑）===
+            try:
+                self.graph.deserialize_session(graph_data)
+            finally:
+                # 恢复原始方法
+                self.graph.add_node = original_add_node
+                progress.close()
+
+            # === 5. 完成后续加载 ===
+            self._finish_loading(runtime_data, node_status_data, global_variable)
+
         except Exception as e:
-            import traceback
             logger.error(f"❌ 加载失败: {traceback.format_exc()}")
             self.create_failed_info("加载失败", f"工作流加载失败: {str(e)}")
+
+    def _finish_loading(self, runtime_data, node_status_data, global_variable):
+        """加载完成后恢复状态"""
+        self._setup_pipeline_style()
+
+        # 全局变量
+        self.global_variables.deserialize(global_variable)
+        self.global_variables_changed.emit()
+        self.property_panel.update_properties(None)
+
+        # 环境
+        env = runtime_data.get("environment")
+        if env:
+            for i in range(self.env_combo.count()):
+                if self.env_combo.itemData(i) == env:
+                    self.env_combo.setCurrentIndex(i)
+                    break
+
+        # 节点状态（批量，无 UI 更新）
+        all_nodes = self.graph.all_nodes()
+        for node in all_nodes:
+            full_path = getattr(node, 'FULL_PATH', 'unknown')
+            stable_key = f"{full_path}||{node.name()}"
+            node_status = node_status_data.get(stable_key)
+            if node_status:
+                node._input_values = deserialize_from_json(node_status.get("node_inputs", {}))
+                node._output_values = deserialize_from_json(node_status.get("node_outputs", {}))
+                node.column_select = node_status.get("column_select", {})
+                custom_props = node_status.get("custom_property", {})
+                for key, value in custom_props.items():
+                    if not node.has_property(key):
+                        node.create_property(key, value)
+                    else:
+                        node.set_property(key, value)
+                status_str = node_status.get("node_states", "unrun") or "unrun"
+                status_enum = getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
+                self.node_status[node.id] = status_enum
+                if hasattr(node, 'status'):
+                    node.status = status_enum
+
+        # 缓存 & UI
+        self._node_id_cache = {node.id: node for node in self.graph.all_nodes()}
+        self._node_id_cache_valid = True
+
+        QTimer.singleShot(0, self.create_name_label)
+        QTimer.singleShot(100, self._delayed_fit_view)
+        self.create_success_info("加载成功", "工作流加载成功！")
 
     def _delayed_fit_view(self):
         QtCore.QTimer.singleShot(100, lambda: self.graph._viewer.zoom_to_nodes(self.graph._viewer.all_nodes()))

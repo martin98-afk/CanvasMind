@@ -359,7 +359,80 @@ model_xxxxxxxx/
 
 ## Feature Status
 
-(Identical checklist as Chinese version, omitted for brevity — you may copy the same table here if needed)
+## Feature Implementation Status
+
+- [x] Component Management  
+- [x] Component Development  
+- [ ] Supported Component Types  
+  - [x] Basic Components  
+  - [x] Multi-Input Components  
+  - [x] Backdrop Node Integration  
+  - [x] Input/Output Node Integration  
+  - [ ] Circle Node Integration  
+- [x] Automatic Dependency Management (`requirements`)  
+- [x] Prebuilt Logic Control Components  
+  - [x] Logical Judgment  
+  - [x] Conditional Branching  
+  - [x] Loop  
+  - [x] Iteration  
+- [x] Component Debugging  
+- [x] Component Parameters  
+  - [x] CSV Parameters  
+    - [x] CSV Parameter Info Preview  
+    - [x] CSV Column Selection  
+    - [x] CSV Data Preview  
+    - [ ] CSV Data Analysis  
+  - [x] EXCEL Parameters  
+  - [x] SKLEARN Parameters  
+  - [x] Torch Parameters  
+  - [x] NUMPY Parameters  
+  - [x] IMAGE Parameters  
+  - [x] JSON Parameters  
+  - [x] TEXT Parameters  
+    - [x] Text Data Preview  
+  - [x] FILE Parameters  
+- [x] Input Port Validation  
+- [x] Component Execution  
+  - [x] Real-Time Node Status Color Updates  
+  - [x] Real-Time Connection Status Updates  
+- [x] Component Logging  
+  - [x] Real-Time Log Reading & Saving  
+  - [ ] Persistent Log Storage  
+- [x] Output Node Preview  
+- [x] Output Variable Download  
+- [x] Component Grouping  
+- [x] Component Preview  
+  - [x] Node Drag-and-Drop Preview  
+- [x] Model Management  
+  - [x] Canvas Preview Image  
+- [x] Model Execution  
+  - [x] Runtime Environment Switching  
+  - [x] Three Execution Modes  
+  - [x] Global Variable System  
+- [x] Canvas Export  
+  - [x] Workflow Canvas Saving  
+  - [x] Model Output Result Saving  
+  - [x] Canvas Preview Image Saving  
+- [x] Canvas Import  
+  - [x] Workflow Canvas Loading  
+  - [x] Model Output Result Loading  
+- [x] Model Export  
+  - [x] Export Standalone Model Project  
+  - [x] Project Preview Image Saving  
+  - [x] Automatic Dependency Detection  
+  - [x] Exported Project Runnability Validation  
+  - [x] Auto-Wrapped API Endpoint  
+  - [ ] Auto-Generated API Documentation  
+  - [x] API Input/Output Node Definition  
+- [ ] Exported Project Editing  
+- [x] Runtime Environment Control  
+  - [x] Package Install / Force Reinstall / Update / Uninstall  
+  - [x] Component Package Synchronization  
+  - [x] Multi-Environment Management  
+  - [x] Environment Switching  
+  - [x] Tool Package List Information  
+  - [x] Real-Time Installation Logs  
+- [x] Tool Configuration
 
 ---
 
