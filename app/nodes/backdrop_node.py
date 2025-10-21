@@ -437,7 +437,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         return
 
     def set_output_value(self, value):
-        self._output_values[self._outputs[0].name()] = value
+        self._output_values = {self._outputs[0].name(): value}
 
     def get_output_value(self, name):
         return self._output_values.get(name)
