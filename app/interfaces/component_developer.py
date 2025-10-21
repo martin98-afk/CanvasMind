@@ -1375,12 +1375,12 @@ class RangeConfigDialog(MessageBoxBase):
         # 表单布局
         form_layout = QFormLayout()
 
-        self.min_spin = SpinBox()
+        self.min_spin = DoubleSpinBox()
         self.min_spin.setRange(-999999, 999999)
         self.min_spin.setValue(min_val)
         form_layout.addRow("最小值:", self.min_spin)
 
-        self.max_spin = SpinBox()
+        self.max_spin = DoubleSpinBox()
         self.max_spin.setRange(-999999, 999999)
         self.max_spin.setValue(max_val)
         form_layout.addRow("最大值:", self.max_spin)
@@ -1402,11 +1402,11 @@ class RangeConfigDialog(MessageBoxBase):
 
 
 class ChoiceConfigDialog(MessageBoxBase):
-    """下拉框选项配置对话框"""
+    """下拉框选项配置对话框（优化版：内联输入，不弹新窗）"""
 
     def __init__(self, choices=None, parent=None):
         super().__init__(parent)
-        self.widget.setMinimumSize(500, 300)
+        self.widget.setMinimumSize(500, 350)  # 稍微增加高度以容纳输入框
         self.choices = choices or []
 
         # 标题
@@ -1418,32 +1418,39 @@ class ChoiceConfigDialog(MessageBoxBase):
         self.list_widget.addItems(self.choices)
         self.viewLayout.addWidget(self.list_widget)
 
-        # 按钮布局
-        button_layout = QHBoxLayout()
+        # 输入框 + 按钮布局
+        input_layout = QHBoxLayout()
 
-        self.add_btn = PushButton("添加选项")
+        self.input_line = LineEdit()
+        self.input_line.setPlaceholderText("输入新选项后点击“添加”")
+        self.input_line.returnPressed.connect(self._add_choice)  # 回车也可添加
+        input_layout.addWidget(self.input_line)
+
+        self.add_btn = PushButton("添加")
         self.add_btn.clicked.connect(self._add_choice)
-        button_layout.addWidget(self.add_btn)
+        input_layout.addWidget(self.add_btn)
 
+        self.viewLayout.addLayout(input_layout)
+
+        # 删除按钮（可单独一行或与添加同行，这里单独放更清晰）
         self.remove_btn = PushButton("删除选中")
         self.remove_btn.clicked.connect(self._remove_choice)
-        button_layout.addWidget(self.remove_btn)
-
-        self.viewLayout.addLayout(button_layout)
+        self.viewLayout.addWidget(self.remove_btn)
 
     def _add_choice(self):
-        text, ok = QInputDialog.getText(self, "添加选项", "输入选项值:")
-        if ok and text.strip():
-            self.list_widget.addItem(text.strip())
+        text = self.input_line.text().strip()
+        if text:
+            self.list_widget.addItem(text)
+            self.input_line.clear()
+            self.input_line.setFocus()  # 保持焦点，方便连续输入
 
     def _remove_choice(self):
-        current_item = self.list_widget.currentItem()
-        if current_item:
-            self.list_widget.takeItem(self.list_widget.row(current_item))
+        current_row = self.list_widget.currentRow()
+        if current_row >= 0:
+            self.list_widget.takeItem(current_row)
 
     def get_choices(self):
-        choices = []
-        for i in range(self.list_widget.count()):
-            item = self.list_widget.item(i)
-            choices.append(item.text())
-        return choices
+        return [
+            self.list_widget.item(i).text()
+            for i in range(self.list_widget.count())
+        ]
