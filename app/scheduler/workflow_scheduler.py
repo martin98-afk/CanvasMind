@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from collections import deque, defaultdict
 from typing import List, Dict, Any, Optional, Callable
+import re
+from asteval import Interpreter
 
 from NodeGraphQt import BackdropNode
 from PyQt5.QtCore import QObject, pyqtSignal
@@ -20,7 +22,7 @@ class WorkflowScheduler(QObject):
     - 条件分支节点可动态禁用下游
     - 调度器自动跳过 disabled 节点及其下游
     """
-    node_started = pyqtSignal(str)      # node_id
+    node_started = pyqtSignal(str)  # node_id
     node_finished = pyqtSignal(str)
     node_error = pyqtSignal(str)
     finished = pyqtSignal()
@@ -29,13 +31,13 @@ class WorkflowScheduler(QObject):
     property_changed = pyqtSignal(str)
 
     def __init__(
-        self,
-        graph,
-        component_map: Dict[str, Any],
-        get_node_status: Callable,
-        get_python_exe: Callable[[], Optional[str]],
-        global_variables: GlobalVariableContext,
-        parent=None
+            self,
+            graph,
+            component_map: Dict[str, Any],
+            get_node_status: Callable,
+            get_python_exe: Callable[[], Optional[str]],
+            global_variables: GlobalVariableContext,
+            parent=None
     ):
         super().__init__(parent)
         self.parent = parent
@@ -56,9 +58,7 @@ class WorkflowScheduler(QObject):
         # 找出顶层循环 Backdrop
         loop_backdrops = [
             n for n in all_nodes
-            if (n.type_ == "control_flow.ControlFlowBackdrop"
-                and n.control_flow_type == "loop"
-                and not hasattr(n, 'parent'))
+            if isinstance(n, BackdropNode)
         ]
 
         loop_internal_nodes = set()
@@ -279,8 +279,8 @@ class WorkflowScheduler(QObject):
 
             input_proxy.set_output_value(data)
 
-            # 执行内部节点
-            self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
+            # 执行内部节点（也收集输出，虽然不用于条件判断）
+            internal_outputs = self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
 
             # 收集输出
             outputs = self._collect_outputs(output_proxy)
@@ -317,7 +317,8 @@ class WorkflowScheduler(QObject):
                 break
 
             input_proxy.set_output_value(input_data)
-            self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
+            # 执行内部节点（也收集输出，虽然不用于条件判断）
+            internal_outputs = self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
 
             outputs = self._collect_outputs(output_proxy)
             input_data = outputs
@@ -341,12 +342,13 @@ class WorkflowScheduler(QObject):
                 break
 
             input_proxy.set_output_value(input_data)
-            self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
+            # 执行内部节点并收集输出
+            internal_outputs = self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
 
             outputs = self._collect_outputs(output_proxy)
 
-            # 使用你的表达式引擎评估退出条件
-            should_continue = self._evaluate_condition_with_engine(condition_expr, outputs, backdrop)
+            # 使用你的表达式引擎评估退出条件，注入内部节点输出
+            should_continue = self._evaluate_condition_with_engine(condition_expr, outputs, backdrop, internal_outputs)
             if not should_continue:
                 break
 
@@ -366,13 +368,21 @@ class WorkflowScheduler(QObject):
             if check_cancel():
                 break
 
-            # 首先检查while条件（使用当前输入数据）
-            should_continue = self._evaluate_condition_with_engine(condition_expr, input_data, backdrop)
-            if not should_continue:
-                break
-
+            # 首先检查while条件（使用当前输入数据和内部节点输出）
+            # 在首次迭代时，内部节点尚未执行，所以 internal_outputs 为空
+            # 这里我们先执行内部节点，再检查条件，符合大多数while循环的语义
             input_proxy.set_output_value(input_data)
-            self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
+
+            # 执行内部节点并收集输出
+            internal_outputs = self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
+
+            # 检查while条件（使用内部节点输出作为数据源）
+            should_continue = self._evaluate_condition_with_engine(condition_expr, input_data, backdrop,
+                                                                   internal_outputs)
+            if not should_continue:
+                # 如果条件不满足，收集当前输出并退出
+                outputs = self._collect_outputs(output_proxy)
+                break
 
             outputs = self._collect_outputs(output_proxy)
             input_data = outputs
@@ -382,11 +392,13 @@ class WorkflowScheduler(QObject):
         return outputs
 
     def _execute_internal_nodes(self, backdrop, execute_nodes, check_cancel):
-        """执行循环体内部节点"""
+        """执行循环体内部节点，并收集输出结果"""
+        internal_outputs = {}  # 收集内部节点的输出
+
         for node in execute_nodes:
             comp_cls = self.component_map.get(node.FULL_PATH)
             if check_cancel():
-                return
+                return internal_outputs  # 提前返回收集到的结果
 
             self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
             self.property_changed.emit(backdrop.id)
@@ -397,10 +409,23 @@ class WorkflowScheduler(QObject):
                 )
                 self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
                 self.property_changed.emit(backdrop.id)
+
+                # 收集该节点的输出
+                if hasattr(node, '_output_values'):
+                    # 使用节点名称作为前缀，避免冲突
+                    # node_name = re.sub(r'\s+|-', '_', node.name())
+                    node_prefix = f"node_vars_{node.name()}"
+                    for output_name, output_value in node._output_values.items():
+                        # 使用 "节点名_输出端口名" 作为变量名
+                        var_name = f"{node_prefix}_{output_name}"
+                        internal_outputs[var_name] = output_value
+
             except Exception as e:
                 self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
                 self.property_changed.emit(backdrop.id)
                 raise e
+        print(internal_outputs)
+        return internal_outputs
 
     def _collect_outputs(self, output_proxy):
         """收集输出数据"""
@@ -419,28 +444,33 @@ class WorkflowScheduler(QObject):
 
         return outputs if len(outputs) > 1 else (outputs[0] if outputs else None)
 
-    def _evaluate_condition_with_engine(self, condition_expr, data, backdrop):
-        """使用表达式引擎评估条件表达式"""
+    def _evaluate_condition_with_engine(self, condition_expr, current_data, backdrop, internal_outputs=None):
+        """使用表达式引擎评估条件表达式，并注入循环相关变量和内部节点输出"""
         if not condition_expr:
             return False
 
         try:
             engine = ExpressionEngine(self.global_variables)
 
-            # 准备局部变量，将当前循环的数据作为 'data' 变量
-            local_vars = {
-                'data': data,
-                'result': data,  # 兼容别名
-                'current_index': backdrop.model.get_property("current_index"),
+            # 准备临时变量，这些变量将在表达式评估时可用
+            temp_vars = {
+                'data': current_data,  # 当前循环的数据
+                'result': current_data,  # 同上（兼容别名）
+                'current_index': backdrop.model.get_property("current_index"),  # 当前迭代索引
+                'current_iteration': backdrop.model.get_property("current_index"),  # 当前迭代次数（从0开始）
+                'iteration_count': backdrop.model.get_property("current_index") + 1,  # 当前迭代次数（从1开始）
+                'loop_mode': backdrop.model.get_property("loop_mode"),  # 当前循环模式
+                'max_iterations': backdrop.model.get_property("max_iterations"),  # 最大迭代次数
             }
 
-            # 如果表达式是纯表达式块格式（$...$），使用纯表达式评估
-            if condition_expr.startswith('$') and condition_expr.endswith('$') and condition_expr.count('$') == 2:
-                result = engine.evaluate_expression_block(condition_expr, local_vars)
-            else:
-                # 否则使用模板评估（支持混合内容）
-                result = engine.evaluate(condition_expr)
+            # 添加内部节点的输出作为临时变量
+            if internal_outputs:
+                temp_vars.update(internal_outputs)
 
+            result = engine.evaluate_expression_block(condition_expr, temp_vars)
+            print(condition_expr)
+            print(internal_outputs)
+            print(result)
             # 将结果转换为布尔值
             if isinstance(result, str) and result.startswith('[ExprError:'):
                 logger.warning(f"条件表达式评估失败: {condition_expr}, 错误: {result}")
