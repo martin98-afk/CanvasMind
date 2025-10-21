@@ -441,6 +441,8 @@ class WorkflowScheduler(QObject):
                     outputs.extend(
                         [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
                     )
+        if not isinstance(outputs, list):
+            return outputs
 
         return outputs if len(outputs) > 1 else (outputs[0] if outputs else None)
 
