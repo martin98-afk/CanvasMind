@@ -1,27 +1,3 @@
-<div align="center">
-  <img width="50%" align="center" src="images/logo2.png" alt="logo">
-</div>
-
-<div align="center">
-  <details open>
-    <summary>🇨🇳 中文 / 🇬🇧 English</summary>
-    <p>Click the language link below to jump to the corresponding section.</p>
-    <p>点击下方语言链接跳转到对应版本。</p>
-  </details>
-</div>
-
-<div align="center">
-
-[🇨🇳 中文版](#可视化编程流程算法开发工具) | [🇬🇧 English Version](#visual-programming-workflow-development-tool)
-
-</div>
-
----
-
-## 可视化编程流程算法开发工具
-
-（以下为你的完整中文内容，保持不变）
-
 <p align="center">
   <img width="50%" align="center" src="images/logo2.png" alt="logo">
 </p>
