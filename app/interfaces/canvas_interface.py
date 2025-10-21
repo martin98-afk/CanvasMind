@@ -7,7 +7,7 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from NodeGraphQt import NodeGraph, BackdropNode, BaseNode
-from NodeGraphQt.constants import PipeLayoutEnum
+from NodeGraphQt.constants import PipeLayoutEnum, PipeEnum
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer
@@ -1177,8 +1177,10 @@ class CanvasPage(QWidget):
         if node and node.selected():
             self.property_panel.update_properties(node)
 
-    def _get_node_by_id(self, node_id):
+    def _get_node_by_id_cached(self, node_id):
         """原始方法，保留用于兼容性"""
+        if node_id in self._node_id_cache:
+            return self._node_id_cache[node_id]
         for node in self.graph.all_nodes():
             if node.id == node_id:
                 return node
@@ -1193,16 +1195,6 @@ class CanvasPage(QWidget):
         if node.id in self._node_id_cache:
             del self._node_id_cache[node.id]  # 精确删除，不全清
         self.graph.delete_node(node)
-
-    def _on_port_connected(self, in_port, out_port):
-        key = (out_port.node().id, out_port.name(), in_port.node().id, in_port.name())
-        pipe = self._find_pipe_by_ports(out_port, in_port, self.graph.viewer().all_pipes())
-        if pipe:
-            self._pipe_map[key] = pipe
-
-    def _on_port_disconnected(self, in_port, out_port):
-        key = (out_port.node().id, out_port.name(), in_port.node().id, in_port.name())
-        self._pipe_map.pop(key, None)
 
     def _invalidate_node_cache(self):
         """当节点被创建或删除时，标记缓存无效"""
@@ -1411,7 +1403,7 @@ class CanvasPage(QWidget):
         self._node_id_cache_valid = True
 
         QTimer.singleShot(0, self.create_name_label)
-        QTimer.singleShot(100, self._delayed_fit_view)
+        QTimer.singleShot(300, self._delayed_fit_view)
         self.create_success_info("加载成功", "工作流加载成功！")
 
     def _delayed_fit_view(self):

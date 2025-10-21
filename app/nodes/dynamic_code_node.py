@@ -92,7 +92,7 @@ def create_dynamic_code_node(parent_window=None):
             self._init_properties()
 
             # 延迟绑定端口同步（避免初始化时 widget 未就绪）
-            QtCore.QTimer.singleShot(300, self._setup_port_sync)
+            QtCore.QTimer.singleShot(0, self._setup_port_sync)
 
         def init_logger(self):
             if not self.has_property("persistent_id"):
