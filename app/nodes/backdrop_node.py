@@ -8,20 +8,46 @@ from NodeGraphQt.errors import PortError
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.port import CustomPortItem, PortItem
+from PyQt5.QtWidgets import QUndoCommand
 from qtpy import QtCore, QtGui, QtWidgets
 
-from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import StatusNode
 from app.utils.utils import get_port_node, draw_square_port
 
 
-class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty):
+# ──────────────── Undo/Redo Command ────────────────
+
+class ResizeBackdropCommand(QUndoCommand):
+    """支持撤销/重做的 backdrop 尺寸调整命令"""
+    def __init__(self, backdrop, old_pos, old_size, new_pos, new_size, description="Resize Backdrop"):
+        super().__init__(description)
+        self.backdrop = backdrop
+        self.old_pos = old_pos
+        self.old_size = old_size
+        self.new_pos = new_pos
+        self.new_size = new_size
+
+    def undo(self):
+        self.backdrop.view.setPos(*self.old_pos)
+        self.backdrop.view.width = self.old_size[0]
+        self.backdrop.view.height = self.old_size[1]
+        self.backdrop.view.update()
+
+    def redo(self):
+        self.backdrop.view.setPos(*self.new_pos)
+        self.backdrop.view.width = self.new_size[0]
+        self.backdrop.view.height = self.new_size[1]
+        self.backdrop.view.update()
+
+
+# ──────────────── Backdrop Node ────────────────
+
+class ControlFlowBackdrop(BackdropNode, StatusNode):
     """
     支持控制流的增强型 Backdrop
-    - 可配置为 Loop / iterate
-    - 动态添加输入/输出端口
-    - 自动根据相交节点调整大小
-    - 节点完全脱离时自动移除并断连
+    - 智能包含：需显著重叠 + 延迟确认
+    - 自动移除完全脱离的节点
+    - 支持 Undo/Redo
     """
     TYPE: str
     category = "控制流"
@@ -35,8 +61,13 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         self._outputs = []
         self._output_values = {}
         self._input_values = {}
-        self._contained_nodes = set()  # 显式记录当前归属的节点 ID
-        # === 初始化默认端口 ===
+        self._contained_nodes = set()      # 已确认包含的节点 ID
+        self._pending_nodes = {}           # {node_id: QTimer} —— 待确认的节点
+        self._overlap_threshold = 0.4      # 40% 重叠才视为“进入”
+        self._confirm_delay_ms = 300       # 延迟 300ms 确认
+        self._remove_threshold = 0.1       # <10% 视为“脱离”
+
+        # === 初始化端口 ===
         self.add_input("inputs", multi_input=True, display_name=True)
         self.add_output("outputs", display_name=True)
 
@@ -45,11 +76,11 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         self.model.add_property("loop_nums", 5)
         self.model.add_property("max_iterations", 1000)
 
-        # 延迟初始化自动管理（确保 graph 已绑定）
+        # 延迟初始化自动管理
         QtCore.QTimer.singleShot(0, self._setup_auto_management)
 
     def _setup_auto_management(self):
-        """监听场景变化以自动管理节点归属"""
+        """监听场景变化"""
         if not self.graph:
             return
 
@@ -59,33 +90,187 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
                 scene.changed.connect(self._on_scene_changed)
                 self._scene_connected = True
             except (TypeError, RuntimeError):
-                pass  # 已连接或对象已销毁
+                pass
 
-        # 初始调整
-        self.auto_resize_to_fit_intersecting_nodes()
+        # 初始调整（无延迟）
+        self._perform_auto_resize_with_undo()
 
     def _on_scene_changed(self, region=None):
-        """场景变化时防抖触发自动调整"""
-        if not hasattr(self, '_resize_timer'):
-            self._resize_timer = QtCore.QTimer()
-            self._resize_timer.setSingleShot(True)
-            self._resize_timer.timeout.connect(self.auto_resize_to_fit_intersecting_nodes)
-        self._resize_timer.start(80)
+        """场景变化时动态管理节点归属"""
+        if not self.graph:
+            return
 
-    # ──────────────── 节点归属与几何计算 ────────────────
+        # 清理已销毁节点的 pending timer
+        for nid in list(self._pending_nodes.keys()):
+            if self.graph.get_node_by_id(nid) is None:
+                timer = self._pending_nodes.pop(nid)
+                timer.stop()
+
+        # 检查所有节点
+        for node in self.graph.all_nodes():
+            if node is self:
+                continue
+
+            is_significantly_inside = self._is_node_significantly_inside(node, self._overlap_threshold)
+
+            if is_significantly_inside:
+                # 启动或刷新确认 timer
+                if node.id not in self._pending_nodes:
+                    timer = QtCore.QTimer()
+                    timer.setSingleShot(True)
+                    # 使用默认参数捕获当前 node.id
+                    timer.timeout.connect(lambda nid=node.id: self._confirm_node_inclusion(nid))
+                    self._pending_nodes[node.id] = timer
+                self._pending_nodes[node.id].start(self._confirm_delay_ms)
+            else:
+                # 取消 pending
+                if node.id in self._pending_nodes:
+                    self._pending_nodes[node.id].stop()
+                    del self._pending_nodes[node.id]
+
+        # 检查是否需要移除已脱离的节点
+        self._check_for_removals()
+
+    def _is_node_significantly_inside(self, node, node_threshold=0.3, backdrop_threshold=0.2):
+        # 排除内部端口节点（它们永远属于 backdrop，无需判断）
+        if node.type_ in ("control_flow.CustomPortInputNode", "control_flow.CustomPortOutputNode"):
+            return False  # 不参与自动包含逻辑
+
+        backdrop_rect = self._get_backdrop_scene_rect()
+        node_rect = self._get_node_scene_rect(node)
+
+        node_center = node_rect.center()
+        if backdrop_rect.contains(node_center):
+            return True
+
+        intersect = backdrop_rect.intersected(node_rect)
+        if intersect.isEmpty():
+            return False
+
+        overlap_area = intersect.width() * intersect.height()
+        node_area = node_rect.width() * node_rect.height()
+        backdrop_area = backdrop_rect.width() * backdrop_rect.height()
+
+        if node_area > 1e-6 and (overlap_area / node_area) >= node_threshold:
+            return True
+        if backdrop_area > 1e-6 and (overlap_area / backdrop_area) >= backdrop_threshold:
+            return True
+
+        return False
+
+    def _confirm_node_inclusion(self, node_id):
+        """延迟确认：节点确实要加入"""
+        if node_id in self._pending_nodes:
+            del self._pending_nodes[node_id]
+
+        node = self.graph.get_node_by_id(node_id)
+        if not node:
+            return
+
+        # 再次检查是否仍显著在内
+        if self._is_node_significantly_inside(node, self._overlap_threshold):
+            self._perform_auto_resize_with_undo()
+
+    def _check_for_removals(self):
+        """检查并移除已脱离的节点"""
+        current_contained = set()
+        for node in self._get_currently_contained_nodes():
+            # 如果节点已基本脱离，且不在 pending 中，则移除
+            if (not self._is_node_significantly_inside(node, self._remove_threshold)
+                and node.id not in self._pending_nodes):
+                self._remove_node_and_cleanup(node)
+            else:
+                current_contained.add(node)
+
+        self._contained_nodes = {n.id for n in current_contained}
+
+    def _perform_auto_resize_with_undo(self, padding=40, min_width=150, min_height=100):
+        """执行带 undo 支持的自动 resize"""
+        if not self.graph:
+            return
+
+        # 收集所有应包含的节点：已确认 + pending 中的
+        nodes_to_include = set()
+        for node in self.graph.all_nodes():
+            if node is self:
+                continue
+            if node.type_ in ("control_flow.CustomPortInputNode", "control_flow.CustomPortOutputNode"):
+                continue
+            if (node.id in self._contained_nodes or
+                node.id in self._pending_nodes or
+                self._is_node_significantly_inside(node, self._overlap_threshold)):
+                nodes_to_include.add(node)
+
+        # 计算新尺寸
+        if not nodes_to_include:
+            new_width, new_height = min_width, min_height
+            new_pos = (self.view.scenePos().x(), self.view.scenePos().y())
+        else:
+            min_x = min(n.view.scenePos().x() for n in nodes_to_include)
+            min_y = min(n.view.scenePos().y() for n in nodes_to_include)
+            max_x = max(n.view.scenePos().x() + n.view.width for n in nodes_to_include)
+            max_y = max(n.view.scenePos().y() + n.view.height for n in nodes_to_include)
+
+            new_width = max(max_x - min_x + 2 * padding, min_width)
+            new_height = max(max_y - min_y + 2 * padding, min_height)
+            new_pos = (min_x - padding, min_y - padding)
+
+        # 保存旧状态
+        old_pos = (self.view.scenePos().x(), self.view.scenePos().y())
+        old_size = (self.view.width, self.view.height)
+
+        # 仅当有显著变化时才 push undo
+        pos_changed = abs(old_pos[0] - new_pos[0]) > 1 or abs(old_pos[1] - new_pos[1]) > 1
+        size_changed = abs(old_size[0] - new_width) > 1 or abs(old_size[1] - new_height) > 1
+
+        if pos_changed or size_changed:
+            command = ResizeBackdropCommand(
+                self, old_pos, old_size, new_pos, (new_width, new_height)
+            )
+            self.graph.undo_stack().push(command)
+
+        # 更新记录（无论是否变化）
+        self._contained_nodes = {n.id for n in nodes_to_include}
+
+        self._layout_internal_port_nodes()
+
+    def _layout_internal_port_nodes(self):
+        input_proxy, output_proxy, _ = self.get_nodes()
+        if not input_proxy and not output_proxy:
+            return
+
+        # 获取 backdrop 的场景坐标
+        backdrop_x = self.view.scenePos().x()
+        backdrop_y = self.view.scenePos().y()
+        backdrop_w = self.view.width
+        backdrop_h = self.view.height
+
+        padding = 40
+
+        if input_proxy:
+            # 左上角内侧：x = backdrop_x + padding, y = backdrop_y + padding
+            new_x = backdrop_x + padding
+            new_y = backdrop_y + padding
+            input_proxy.view.setPos(new_x, new_y)
+
+        if output_proxy:
+            # 右上角内侧：x = backdrop_x + backdrop_w - node_w - padding
+            node_w = output_proxy.view.width
+            new_x = backdrop_x + backdrop_w - node_w - padding
+            new_y = backdrop_y + padding
+            output_proxy.view.setPos(new_x, new_y)
+
+    # ──────────────── 几何辅助方法 ────────────────
 
     def _get_backdrop_scene_rect(self):
-        """获取 backdrop 在场景中的 QRectF"""
         pos = self.view.scenePos()
         return QtCore.QRectF(pos.x(), pos.y(), self.view.width, self.view.height)
 
     def _get_node_scene_rect(self, node):
-        """获取普通节点在场景中的 QRectF"""
         pos = node.view.scenePos()
         return QtCore.QRectF(pos.x(), pos.y(), node.view.width, node.view.height)
 
     def _get_currently_contained_nodes(self):
-        """返回当前显式记录的有效节点对象列表"""
         nodes = []
         for nid in self._contained_nodes:
             node = self.graph.get_node_by_id(nid)
@@ -93,107 +278,39 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
                 nodes.append(node)
         return nodes
 
-    # ──────────────── 自动调整与清理 ────────────────
-
-    def auto_resize_to_fit_intersecting_nodes(self, padding=40, min_width=150, min_height=100):
-        """根据所有与 backdrop 相交的节点，自动调整大小并管理归属"""
-        self.graph.begin_undo('"{}" auto resize'.format(self.name()))
-        if not self.graph:
-            return
-
-        # Step 1: 获取当前所有与 backdrop 相交的节点
-        backdrop_rect = self._get_backdrop_scene_rect()
-        current_intersecting = set()
-        for node in self.graph.all_nodes():
-            if node is self:
-                continue
-            node_rect = self._get_node_scene_rect(node)
-            if backdrop_rect.intersects(node_rect):
-                current_intersecting.add(node)
-
-        # Step 2: 获取旧的节点集合
-        old_nodes = set(self._get_currently_contained_nodes())
-
-        # Step 3: 移除已脱离的节点
-        for node in (old_nodes - current_intersecting):
-            self._remove_node_and_cleanup(node)
-
-        # Step 4: 处理无节点情况
-        if not current_intersecting:
-            self.view.width = min_width
-            self.view.height = min_height
-            self._contained_nodes.clear()
-            return
-
-        # Step 5: 计算新包围盒
-        min_x = min(n.view.scenePos().x() for n in current_intersecting)
-        min_y = min(n.view.scenePos().y() for n in current_intersecting)
-        max_x = max(n.view.scenePos().x() + n.view.width for n in current_intersecting)
-        max_y = max(n.view.scenePos().y() + n.view.height for n in current_intersecting)
-
-        new_width = max(max_x - min_x + 2 * padding, min_width)
-        new_height = max(max_y - min_y + 2 * padding, min_height)
-        new_pos_x = min_x - padding
-        new_pos_y = min_y - padding
-
-        # Step 6: 更新 backdrop
-        self.view.setPos(new_pos_x, new_pos_y)
-        self.view.width = new_width
-        self.view.height = new_height
-
-        # Step 7: 更新记录
-        self._contained_nodes = {n.id for n in current_intersecting}
-        self.graph.end_undo()
+    # ──────────────── 节点移除与清理 ────────────────
 
     def _remove_node_and_cleanup(self, node):
-        """从 backdrop 中移除节点，并断开其与内部 proxy 端口的连接"""
         if node.id not in self._contained_nodes:
             return
 
         self._contained_nodes.discard(node.id)
 
-        # 获取内部 proxy 节点
         input_proxy, output_proxy, _ = self.get_nodes()
 
-        # 断开与 input_proxy 的连接（node 作为 input_proxy 的下游）
+        # 断开与 input_proxy 的连接
         if input_proxy:
             for out_port in input_proxy.output_ports():
                 for conn in list(out_port.connected_ports()):
                     if conn.node() == node:
                         out_port.disconnect_from(conn)
 
-        # 断开与 output_proxy 的连接（node 作为 output_proxy 的上游）
+        # 断开与 output_proxy 的连接
         if output_proxy:
             for in_port in output_proxy.input_ports():
                 for conn in list(in_port.connected_ports()):
                     if conn.node() == node:
                         in_port.disconnect_from(conn)
 
-    # ──────────────── 覆盖 nodes() 以支持相交判断 ────────────────
+    # ──────────────── 覆盖 nodes() 以返回当前包含的节点 ────────────────
 
     def nodes(self):
-        """
-        返回所有与当前 Backdrop 区域 **相交** 的节点（而非完全包含）
-        """
-        if not self.graph:
-            return []
-
-        backdrop_rect = self._get_backdrop_scene_rect()
-        intersecting_nodes = []
-
-        for node in self.graph.all_nodes():
-            if node is self:
-                continue
-            node_rect = self._get_node_scene_rect(node)
-            if backdrop_rect.intersects(node_rect):
-                intersecting_nodes.append(node)
-
-        return intersecting_nodes
+        """返回当前已确认包含的节点（用于内部逻辑）"""
+        return self._get_currently_contained_nodes()
 
     # ──────────────── 以下为原有业务逻辑（保持不变）────────────────
 
     def get_nodes(self):
-        """获取控制流区域内输入、输出端口以及经过拓扑排序后的执行节点"""
         execute_nodes = []
         input_proxy, output_proxy = None, None
         for node in self.nodes():
@@ -206,7 +323,6 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         return input_proxy, output_proxy, self._topological_sort(execute_nodes)
 
     def _topological_sort(self, nodes: List) -> Optional[List]:
-        """对节点列表进行拓扑排序，检测循环依赖"""
         if not nodes:
             return []
 
@@ -233,7 +349,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
                     queue.append(neighbor)
 
         if len(execution_order) != len(nodes):
-            return None  # 存在环
+            return None
         return execution_order
 
     # ──────────────── 端口管理（保持不变）────────────────

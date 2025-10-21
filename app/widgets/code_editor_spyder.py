@@ -5,6 +5,7 @@ import time
 import re
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor, Future
+from pathlib import Path
 from typing import List, Tuple, Optional, Dict, Any
 import jedi
 from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal, QObject, QRect, QEvent
@@ -335,6 +336,45 @@ class CompletionWorker(QObject):
             pass
         return None
 
+    def _get_self_attributes(self, script: jedi.Script, line: int, column: int) -> List[Tuple[str, str, str, str]]:
+        """通过 Jedi 推断 self 所在类，并获取其所有属性（含继承）"""
+        try:
+            # 获取 self 的定义
+            definitions = script.infer(line=line, column=column - len("self"))
+            if not definitions:
+                return []
+            cls_def = None
+            for d in definitions:
+                if d.type == 'class':
+                    cls_def = d
+                    break
+            if not cls_def:
+                return []
+
+            completions = []
+            seen = set()
+            # 获取类的所有成员（包括继承）
+            for name in cls_def.get_signatures():  # 注意：可能需遍历 .names 或 .defined_names
+                pass  # Jedi 0.18+ 推荐用 .names
+
+            # 更可靠方式：使用 cls_def.names（Jedi >=0.18）
+            for name_obj in cls_def.names():
+                if name_obj.name.startswith('_'):
+                    continue
+                if name_obj.name in seen:
+                    continue
+                seen.add(name_obj.name)
+                comp_type = name_obj.type
+                desc = name_obj.description or ''
+                detail = ''
+                if hasattr(name_obj, 'params'):
+                    detail = str(name_obj.params)
+                completions.append((name_obj.name, comp_type, desc, detail))
+            return completions
+        except Exception as e:
+            print(f"[Jedi] Failed to get self attributes: {e}")
+            return []
+
     def _parse_jedi_completion(self, comp) -> Tuple[str, str, str, str]:
         """解析 jedi 的 completion 对象，提取类型、描述、详情和更精确的类型信息"""
         name = comp.name
@@ -412,14 +452,16 @@ class CompletionWorker(QObject):
                 sys.path.insert(0, site_packages_path)
                 added_to_path = True
                 print(f"[Jedi] Added {site_packages_path} to sys.path temporarily.")
-            with open(r"D:\work\CanvasMind\app\components\base.py", "r", encoding="utf-8") as f:
-                base_code = f.read()
             # 创建 Script 对象
-            script = jedi.Script(code=code + base_code, path='<inline>')
-
+            script = jedi.Script(code=code + JediCodeEditor._BASE_CODE_CACHE, path='<inline>')
             # 获取补全结果
             jedi_comps = script.complete(line=line, column=column)
             completions = []
+            before_cursor = code.split('\n')[line - 1][:column]
+            if re.search(r'\bself\.$', before_cursor.strip()):
+                # 使用 Jedi 推断 self 所属类的属性
+                self_comps = self._get_self_attributes(script, line, column)
+                completions.extend(self_comps)
             seen = set()
             for comp in jedi_comps:
                 name = comp.name
@@ -505,8 +547,17 @@ class CompletionWorker(QObject):
 
 class JediCodeEditor(CodeEditor):
     """增强的代码编辑器，支持Jedi补全"""
+    _BASE_CODE_CACHE = None
+
     def __init__(self, parent=None, code_parent=None, python_exe_path=None, popup_offset=2, dialog=None):
         super().__init__()
+        if JediCodeEditor._BASE_CODE_CACHE is None:
+            try:
+                with open(Path("app/components/base.py"), "r", encoding="utf-8") as f:
+                    JediCodeEditor._BASE_CODE_CACHE = f.read()
+            except Exception as e:
+                print(f"[Jedi] Failed to load base.py: {e}")
+                JediCodeEditor._BASE_CODE_CACHE = ""
         self.popup_offset = popup_offset
         self.parent_widget = parent
         self.parent = code_parent
@@ -1354,12 +1405,17 @@ class JediCodeEditor(CodeEditor):
 
             # 计算该项所需宽度 (使用截断后的描述和详情)
             fm = self.popup.fontMetrics()
-            char_width = fm.width(self.type_chars.get(type_name, '?')) + 20
-            name_width = fm.width(name) + 20
-            # --- 使用截断后的描述和详情宽度 ---
-            desc_width = fm.width(truncated_description) + 20 if truncated_description else 0
-            detail_width = fm.width(truncated_detail) + 20 if truncated_detail else 0
-            total_width = char_width + name_width + desc_width + detail_width + 40
+            # 替换 fm.width(text) → fm.boundingRect(0, 0, 10000, 100, 0, text).width()
+            def text_width(s):
+                if not s:
+                    return 0
+                return fm.boundingRect(0, 0, 10000, 100, 0, s).width()
+
+            char_width = text_width(self.type_chars.get(type_name, '?')) + 20
+            name_width = text_width(name) + 20
+            desc_width = text_width(truncated_description) + 20
+            detail_width = text_width(truncated_detail) + 20
+            total_width = char_width + name_width + max(desc_width, detail_width) + 60  # 留间距
             max_width = max(max_width, total_width)
 
         # 设置弹窗宽度（限制在屏幕范围内）

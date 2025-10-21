@@ -573,8 +573,8 @@ class CanvasPage(QWidget):
             # 创建 Input 和 Output Port，围绕视图中心布局
             input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
             output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-            input_port_node.set_pos(center_x - 250, center_y - input_port_node.view.height / 2)
-            output_port_node.set_pos(center_x + 250, center_y - output_port_node.view.height / 2)
+            input_port_node.set_pos(center_x - 350, center_y - input_port_node.view.height / 2)
+            output_port_node.set_pos(center_x + 350, center_y - output_port_node.view.height / 2)
             nodes_to_wrap = [input_port_node, output_port_node]
         else:
             # Step 4: 有选中节点时，按原逻辑处理
