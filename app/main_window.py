@@ -20,7 +20,7 @@ class LowCodeWindow(FluentWindow):
         super().__init__()
         setTheme(Theme.DARK)
         self.setWindowIcon(get_icon("logo3"))
-        self.setWindowTitle("AI Lowcode Canvas")
+        self.setWindowTitle("Canvas Mind")
         # 初始化日志查看器
         self.setup_log_viwer()
         # 自动最大化窗口
