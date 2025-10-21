@@ -338,22 +338,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 self.set_property(prop_name, path)
 
         def _add_custom_widget(self, widget, widget_type=None, tab=None):
-            """
-            Add a custom node widget into the node.
-
-            see example :ref:`Embedding Custom Widgets`.
-
-            Note:
-                The ``value_changed`` signal from the added node widget is wired
-                up to the :meth:`NodeObject.set_property` function.
-
-            Args:
-                widget (NodeBaseWidget): node widget class object.
-                widget_type: widget flag to display in the
-                    :class:`NodeGraphQt.PropertiesBinWidget`
-                    (default: :attr:`NodeGraphQt.constants.NodePropWidgetEnum.HIDDEN`).
-                tab (str): name of the widget tab to display in.
-            """
             if not isinstance(widget, NodeBaseWidget):
                 raise NodeWidgetError(
                     '\'widget\' must be an instance of a NodeBaseWidget')
@@ -365,9 +349,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             self.view.add_widget(widget)
             #: redraw node to address calls outside the "__init__" func.
             self.view.draw_node()
-
-            #: HACK: calling the .parent() function here on the widget as it seems
-            #        to address a seg fault issue when exiting the application.
             widget.parent()
 
         def set_property(self, name, value, push_undo=True):

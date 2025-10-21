@@ -13,7 +13,7 @@ class CodeEditorWidgetWrapper(NodeBaseWidget):
         self.set_label(label)
         self._editor = CodeEditorWidget(parent=window, python_exe=window.get_current_python_exe())
         self._editor.code_changed.connect(
-            lambda: self.valueChanged.emit(self._editor.code_editor.toPlainText())
+            lambda: self.valueChanged.emit(self._editor.get_code())
         )
         window.env_changed.connect(self._editor.code_editor.set_jedi_environment)
         self._editor.setMinimumSize(width, height)  # 足够大的编辑区域

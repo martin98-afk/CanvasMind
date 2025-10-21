@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import json
+import subprocess
 from datetime import datetime
 
 from PyQt5.QtCore import Qt
@@ -13,13 +14,11 @@ from qfluentwidgets import (
     ImageLabel
 )
 
-
 from app.utils.service_manager import SERVICE_MANAGER
 from app.widgets.dialog_widget.service_request_dialog import ServiceRequestDialog
 
 
 class ClickableLabel(BodyLabel):
-    """可点击的标签，用于复制文本"""
     def __init__(self, text="", parent=None):
         super().__init__(text)
         self.parent = parent
@@ -36,13 +35,7 @@ class ClickableLabel(BodyLabel):
     def copy_to_clipboard(self):
         clipboard = QGuiApplication.clipboard()
         clipboard.setText(self.text())
-        # 可选：向上冒泡通知父窗口显示提示
-        InfoBar.success(
-            title="已复制",
-            content="服务地址已复制到剪贴板",
-            parent=self.parent,
-            duration=1500
-        )
+        InfoBar.success("已复制", "服务地址已复制到剪贴板", parent=self.parent, duration=1500)
 
 
 class ProjectCard(CardWidget):
@@ -50,10 +43,13 @@ class ProjectCard(CardWidget):
         super().__init__(parent)
         self.project_path = project_path
         self.project_name = os.path.basename(project_path)
+        self.home = parent  # 用于回调
         self._setup_ui()
+        # ✅ 点击卡片任意位置 = 打开文件夹
+        self.setCursor(Qt.PointingHandCursor)
 
     def _setup_ui(self):
-        # 更现代的高度和圆角
+        # 保留固定尺寸（项目卡片通常更大）
         self.setFixedSize(400, 330)
         self.setBorderRadius(12)
 
@@ -66,11 +62,12 @@ class ProjectCard(CardWidget):
             QLabel.projectMetaVal { color: #333; }
         """)
 
+        # 预览图
         preview_path = os.path.join(self.project_path, "preview.png")
         if os.path.exists(preview_path):
             self.image_label = ImageLabel(preview_path, self)
             self.image_label.setFixedSize(250, 150)
-            self.image_label.setBorderRadius(8, 8, 8, 8)  # ✅ 修复：四个角都设为8
+            self.image_label.setBorderRadius(8, 8, 8, 8)
         else:
             self.image_label = BodyLabel("无预览图")
             self.image_label.setFixedSize(250, 150)
@@ -84,7 +81,7 @@ class ProjectCard(CardWidget):
             """)
         main_layout.addWidget(self.image_label, 0, Qt.AlignCenter)
 
-        # === 项目名称 ===
+        # 项目名称
         self.name_label = BodyLabel(self.project_name)
         self.name_label.setFont(QFont("Microsoft YaHei", 14, QFont.DemiBold))
         self.name_label.setAlignment(Qt.AlignCenter)
@@ -92,50 +89,43 @@ class ProjectCard(CardWidget):
         self.name_label.setObjectName("ProjectCardTitle")
         main_layout.addWidget(self.name_label)
 
-        # === 元信息区域（网格，更清晰）===
+        # 元信息
         self.meta_grid = QGridLayout()
         self.meta_grid.setSpacing(6)
-        self.meta_grid.setAlignment(Qt.AlignLeft)
         self._populate_meta_grid()
         main_layout.addLayout(self.meta_grid)
 
-        # === 服务状态（动态，初始隐藏）===
+        # 服务状态
         self.status_label = ClickableLabel(parent=self)
         self.status_label.setFont(QFont("Microsoft YaHei", 10))
         self.status_label.setVisible(False)
         main_layout.addWidget(self.status_label)
 
-        main_layout.addStretch()  # 推动按钮到底部
+        main_layout.addStretch()
 
-        # === 按钮区域 ===
+        # === 按钮区域（移除“打开文件夹”按钮）===
         btn_layout = QHBoxLayout()
-        btn_layout.setContentsMargins(0, 0, 0, 0)
         btn_layout.setSpacing(10)
 
-        # 主操作按钮
+        # 主按钮
         self.run_btn = PrimaryPushButton("运行", self, FluentIcon.PLAY)
         self.service_btn = PrimaryPushButton("上线", self, FluentIcon.LINK)
         self.request_btn = PrimaryPushButton("请求", self, FluentIcon.SEND)
         self.request_btn.setEnabled(False)
 
-        # 工具按钮
+        # 工具按钮（移除 open_folder_btn）
         self.view_log_btn = ToolButton(FluentIcon.VIEW, self)
-        self.open_folder_btn = ToolButton(FluentIcon.FOLDER, self)
         self.delete_btn = ToolButton(FluentIcon.DELETE, self)
 
         self.view_log_btn.setToolTip("查看日志")
-        self.open_folder_btn.setToolTip("打开文件夹")
         self.delete_btn.setToolTip("删除项目")
 
-        # 设置按钮样式：紧凑、统一高度
         for btn in [self.run_btn, self.service_btn, self.request_btn]:
             btn.setFixedHeight(28)
             btn.setFont(QFont("Microsoft YaHei", 9))
-
-        for btn in [self.view_log_btn, self.open_folder_btn, self.delete_btn]:
+        for btn in [self.view_log_btn, self.delete_btn]:
             btn.setFixedSize(28, 28)
 
-        # 布局
         left_box = QHBoxLayout()
         left_box.addWidget(self.run_btn)
         left_box.addWidget(self.service_btn)
@@ -144,8 +134,7 @@ class ProjectCard(CardWidget):
         right_box = QHBoxLayout()
         right_box.setSpacing(8)
         right_box.addWidget(self.view_log_btn)
-        right_box.addWidget(self.open_folder_btn)
-        right_box.addWidget(self.delete_btn)
+        right_box.addWidget(self.delete_btn)  # ✅ 不再有 open_folder_btn
 
         btn_layout.addLayout(left_box)
         btn_layout.addStretch()
@@ -188,7 +177,6 @@ class ProjectCard(CardWidget):
             self.meta_grid.addWidget(v, r, 1)
 
         row = 0
-        # 来自画布
         spec_file = os.path.join(self.project_path, "project_spec.json")
         if os.path.exists(spec_file):
             try:
@@ -200,7 +188,6 @@ class ProjectCard(CardWidget):
             except Exception:
                 pass
 
-        # 创建时间
         try:
             stat = os.stat(self.project_path)
             create_time = datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d")
@@ -208,7 +195,6 @@ class ProjectCard(CardWidget):
         except Exception:
             pass
 
-        # 依赖（最多3个）
         req_file = os.path.join(self.project_path, "requirements.txt")
         if os.path.exists(req_file):
             try:
@@ -229,7 +215,7 @@ class ProjectCard(CardWidget):
             self.request_btn.setEnabled(True)
             url = SERVICE_MANAGER.get_url(self.project_path)
             if url:
-                self.status_label.setText(url)  # 直接设文本
+                self.status_label.setText(url)
                 self.status_label.setVisible(True)
             else:
                 self.status_label.setVisible(False)
@@ -241,11 +227,11 @@ class ProjectCard(CardWidget):
 
     def _open_request_dialog(self):
         if not SERVICE_MANAGER.is_running(self.project_path):
-            InfoBar.warning("服务未运行", "请先点击'上线'启动服务", parent=self.parent())
+            InfoBar.warning("服务未运行", "请先点击'上线'启动服务", parent=self.home)
             return
         url = SERVICE_MANAGER.get_url(self.project_path)
         if url:
-            dialog = ServiceRequestDialog(self.project_path, url, self.parent())
+            dialog = ServiceRequestDialog(self.project_path, url, self.home)
             dialog.exec()
 
     def update_status(self, is_running=False):
@@ -257,3 +243,20 @@ class ProjectCard(CardWidget):
             self.run_btn.setText("运行")
             self.run_btn.setIcon(FluentIcon.PLAY)
             self.run_btn.setEnabled(True)
+
+    # ✅ 点击卡片任意位置 = 打开项目文件夹
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._open_project_folder()
+        super().mousePressEvent(event)
+
+    def _open_project_folder(self):
+        try:
+            if os.name == 'nt':
+                os.startfile(self.project_path)
+            else:
+                subprocess.call(['xdg-open', self.project_path])
+        except Exception as e:
+            if self.home:
+                from qfluentwidgets import InfoBar
+                InfoBar.error("打开失败", str(e), parent=self.home)

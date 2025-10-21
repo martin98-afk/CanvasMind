@@ -3,26 +3,51 @@ from collections import OrderedDict, defaultdict, deque
 from typing import Optional, List
 
 from NodeGraphQt import BackdropNode, Port
-from NodeGraphQt.constants import ITEM_CACHE_MODE
-from NodeGraphQt.constants import PortTypeEnum, Z_VAL_NODE
+from NodeGraphQt.constants import ITEM_CACHE_MODE, PortTypeEnum, Z_VAL_NODE
 from NodeGraphQt.errors import PortError
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
-from NodeGraphQt.qgraphics.port import CustomPortItem
-from NodeGraphQt.qgraphics.port import PortItem
-from PyQt5 import QtCore, QtGui, QtWidgets
-from Qt import QtCore, QtGui, QtWidgets
+from NodeGraphQt.qgraphics.port import CustomPortItem, PortItem
+from PyQt5.QtWidgets import QUndoCommand
+from qtpy import QtCore, QtGui, QtWidgets
 
-from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import StatusNode
 from app.utils.utils import get_port_node, draw_square_port
 
 
-class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty):
+# ──────────────── Undo/Redo Command ────────────────
+
+class ResizeBackdropCommand(QUndoCommand):
+    """支持撤销/重做的 backdrop 尺寸调整命令"""
+    def __init__(self, backdrop, old_pos, old_size, new_pos, new_size, description="Resize Backdrop"):
+        super().__init__(description)
+        self.backdrop = backdrop
+        self.old_pos = old_pos
+        self.old_size = old_size
+        self.new_pos = new_pos
+        self.new_size = new_size
+
+    def undo(self):
+        self.backdrop.view.setPos(*self.old_pos)
+        self.backdrop.view.width = self.old_size[0]
+        self.backdrop.view.height = self.old_size[1]
+        self.backdrop.view.update()
+
+    def redo(self):
+        self.backdrop.view.setPos(*self.new_pos)
+        self.backdrop.view.width = self.new_size[0]
+        self.backdrop.view.height = self.new_size[1]
+        self.backdrop.view.update()
+
+
+# ──────────────── Backdrop Node ────────────────
+
+class ControlFlowBackdrop(BackdropNode, StatusNode):
     """
     支持控制流的增强型 Backdrop
-    - 可配置为 Loop / iterate
-    - 动态添加输入/输出端口
+    - 智能包含：需显著重叠 + 延迟确认
+    - 自动移除完全脱离的节点
+    - 支持 Undo/Redo
     """
     TYPE: str
     category = "控制流"
@@ -36,27 +61,256 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         self._outputs = []
         self._output_values = {}
         self._input_values = {}
-        # === 初始化默认端口默认多输入/多输出端口 ===
+        self._contained_nodes = set()      # 已确认包含的节点 ID
+        self._pending_nodes = {}           # {node_id: QTimer} —— 待确认的节点
+        self._overlap_threshold = 0.4      # 40% 重叠才视为“进入”
+        self._confirm_delay_ms = 300       # 延迟 300ms 确认
+        self._remove_threshold = 0.1       # <10% 视为“脱离”
+
+        # === 初始化端口 ===
         self.add_input("inputs", multi_input=True, display_name=True)
         self.add_output("outputs", display_name=True)
-        # === 添加默认多输入/多输出端口 ===
+
+        # === 添加属性 ===
         self.model.add_property("current_index", 0)
         self.model.add_property("loop_nums", 5)
         self.model.add_property("max_iterations", 1000)
 
+        # 延迟初始化自动管理
+        QtCore.QTimer.singleShot(0, self._setup_auto_management)
 
-    @property
-    def control_flow_type(self):
-        return self._control_flow_type
+    def _setup_auto_management(self):
+        """监听场景变化"""
+        if not self.graph:
+            return
 
-    def get_loop_config(self):
-        return self._loop_config
+        scene = self.graph.scene()
+        if scene and not hasattr(self, '_scene_connected'):
+            try:
+                scene.changed.connect(self._on_scene_changed)
+                self._scene_connected = True
+            except (TypeError, RuntimeError):
+                pass
 
-    def get_branch_config(self):
-        return self._branch_config
+        # 初始调整（无延迟）
+        self._perform_auto_resize_with_undo()
+
+    def _on_scene_changed(self, region=None):
+        """场景变化时动态管理节点归属"""
+        if not self.graph:
+            return
+
+        # 清理已销毁节点的 pending timer
+        for nid in list(self._pending_nodes.keys()):
+            if self.graph.get_node_by_id(nid) is None:
+                timer = self._pending_nodes.pop(nid)
+                timer.stop()
+
+        # 检查所有节点
+        for node in self.graph.all_nodes():
+            if node is self:
+                continue
+
+            is_significantly_inside = self._is_node_significantly_inside(node, self._overlap_threshold)
+
+            if is_significantly_inside:
+                # 启动或刷新确认 timer
+                if node.id not in self._pending_nodes:
+                    timer = QtCore.QTimer()
+                    timer.setSingleShot(True)
+                    # 使用默认参数捕获当前 node.id
+                    timer.timeout.connect(lambda nid=node.id: self._confirm_node_inclusion(nid))
+                    self._pending_nodes[node.id] = timer
+                self._pending_nodes[node.id].start(self._confirm_delay_ms)
+            else:
+                # 取消 pending
+                if node.id in self._pending_nodes:
+                    self._pending_nodes[node.id].stop()
+                    del self._pending_nodes[node.id]
+
+        # 检查是否需要移除已脱离的节点
+        self._check_for_removals()
+
+    def _is_node_significantly_inside(self, node, node_threshold=0.3, backdrop_threshold=0.2):
+        # 排除内部端口节点（它们永远属于 backdrop，无需判断）
+        if node.type_ in ("control_flow.CustomPortInputNode", "control_flow.CustomPortOutputNode"):
+            return False  # 不参与自动包含逻辑
+
+        backdrop_rect = self._get_backdrop_scene_rect()
+        node_rect = self._get_node_scene_rect(node)
+
+        node_center = node_rect.center()
+        if backdrop_rect.contains(node_center):
+            return True
+
+        intersect = backdrop_rect.intersected(node_rect)
+        if intersect.isEmpty():
+            return False
+
+        overlap_area = intersect.width() * intersect.height()
+        node_area = node_rect.width() * node_rect.height()
+        backdrop_area = backdrop_rect.width() * backdrop_rect.height()
+
+        if node_area > 1e-6 and (overlap_area / node_area) >= node_threshold:
+            return True
+        if backdrop_area > 1e-6 and (overlap_area / backdrop_area) >= backdrop_threshold:
+            return True
+
+        return False
+
+    def _confirm_node_inclusion(self, node_id):
+        """延迟确认：节点确实要加入"""
+        if node_id in self._pending_nodes:
+            del self._pending_nodes[node_id]
+
+        node = self.graph.get_node_by_id(node_id)
+        if not node:
+            return
+
+        # 再次检查是否仍显著在内
+        if self._is_node_significantly_inside(node, self._overlap_threshold):
+            self._perform_auto_resize_with_undo()
+
+    def _check_for_removals(self):
+        """检查并移除已脱离的节点"""
+        current_contained = set()
+        for node in self._get_currently_contained_nodes():
+            # 如果节点已基本脱离，且不在 pending 中，则移除
+            if (not self._is_node_significantly_inside(node, self._remove_threshold)
+                and node.id not in self._pending_nodes):
+                self._remove_node_and_cleanup(node)
+            else:
+                current_contained.add(node)
+
+        self._contained_nodes = {n.id for n in current_contained}
+
+    def _perform_auto_resize_with_undo(self, padding=40, min_width=150, min_height=100):
+        """执行带 undo 支持的自动 resize"""
+        if not self.graph:
+            return
+
+        # 收集所有应包含的节点：已确认 + pending 中的
+        nodes_to_include = set()
+        for node in self.graph.all_nodes():
+            if node is self:
+                continue
+            if node.type_ in ("control_flow.CustomPortInputNode", "control_flow.CustomPortOutputNode"):
+                continue
+            if (node.id in self._contained_nodes or
+                node.id in self._pending_nodes or
+                self._is_node_significantly_inside(node, self._overlap_threshold)):
+                nodes_to_include.add(node)
+
+        # 计算新尺寸
+        if not nodes_to_include:
+            new_width, new_height = min_width, min_height
+            new_pos = (self.view.scenePos().x(), self.view.scenePos().y())
+        else:
+            min_x = min(n.view.scenePos().x() for n in nodes_to_include)
+            min_y = min(n.view.scenePos().y() for n in nodes_to_include)
+            max_x = max(n.view.scenePos().x() + n.view.width for n in nodes_to_include)
+            max_y = max(n.view.scenePos().y() + n.view.height for n in nodes_to_include)
+
+            new_width = max(max_x - min_x + 2 * padding, min_width)
+            new_height = max(max_y - min_y + 2 * padding, min_height)
+            new_pos = (min_x - padding, min_y - padding)
+
+        # 保存旧状态
+        old_pos = (self.view.scenePos().x(), self.view.scenePos().y())
+        old_size = (self.view.width, self.view.height)
+
+        # 仅当有显著变化时才 push undo
+        pos_changed = abs(old_pos[0] - new_pos[0]) > 1 or abs(old_pos[1] - new_pos[1]) > 1
+        size_changed = abs(old_size[0] - new_width) > 1 or abs(old_size[1] - new_height) > 1
+
+        if pos_changed or size_changed:
+            command = ResizeBackdropCommand(
+                self, old_pos, old_size, new_pos, (new_width, new_height)
+            )
+            self.graph.undo_stack().push(command)
+
+        # 更新记录（无论是否变化）
+        self._contained_nodes = {n.id for n in nodes_to_include}
+
+        self._layout_internal_port_nodes()
+
+    def _layout_internal_port_nodes(self):
+        input_proxy, output_proxy, _ = self.get_nodes()
+        if not input_proxy and not output_proxy:
+            return
+
+        # 获取 backdrop 的场景坐标
+        backdrop_x = self.view.scenePos().x()
+        backdrop_y = self.view.scenePos().y()
+        backdrop_w = self.view.width
+        backdrop_h = self.view.height
+
+        padding = 40
+
+        if input_proxy:
+            # 左上角内侧：x = backdrop_x + padding, y = backdrop_y + padding
+            new_x = backdrop_x + padding
+            new_y = backdrop_y + padding
+            input_proxy.view.setPos(new_x, new_y)
+
+        if output_proxy:
+            # 右上角内侧：x = backdrop_x + backdrop_w - node_w - padding
+            node_w = output_proxy.view.width
+            new_x = backdrop_x + backdrop_w - node_w - padding
+            new_y = backdrop_y + padding
+            output_proxy.view.setPos(new_x, new_y)
+
+    # ──────────────── 几何辅助方法 ────────────────
+
+    def _get_backdrop_scene_rect(self):
+        pos = self.view.scenePos()
+        return QtCore.QRectF(pos.x(), pos.y(), self.view.width, self.view.height)
+
+    def _get_node_scene_rect(self, node):
+        pos = node.view.scenePos()
+        return QtCore.QRectF(pos.x(), pos.y(), node.view.width, node.view.height)
+
+    def _get_currently_contained_nodes(self):
+        nodes = []
+        for nid in self._contained_nodes:
+            node = self.graph.get_node_by_id(nid)
+            if node is not None:
+                nodes.append(node)
+        return nodes
+
+    # ──────────────── 节点移除与清理 ────────────────
+
+    def _remove_node_and_cleanup(self, node):
+        if node.id not in self._contained_nodes:
+            return
+
+        self._contained_nodes.discard(node.id)
+
+        input_proxy, output_proxy, _ = self.get_nodes()
+
+        # 断开与 input_proxy 的连接
+        if input_proxy:
+            for out_port in input_proxy.output_ports():
+                for conn in list(out_port.connected_ports()):
+                    if conn.node() == node:
+                        out_port.disconnect_from(conn)
+
+        # 断开与 output_proxy 的连接
+        if output_proxy:
+            for in_port in output_proxy.input_ports():
+                for conn in list(in_port.connected_ports()):
+                    if conn.node() == node:
+                        in_port.disconnect_from(conn)
+
+    # ──────────────── 覆盖 nodes() 以返回当前包含的节点 ────────────────
+
+    def nodes(self):
+        """返回当前已确认包含的节点（用于内部逻辑）"""
+        return self._get_currently_contained_nodes()
+
+    # ──────────────── 以下为原有业务逻辑（保持不变）────────────────
 
     def get_nodes(self):
-        """获取控制流区域内输入、输出端口以及经过拓扑排序后的执行节点"""
         execute_nodes = []
         input_proxy, output_proxy = None, None
         for node in self.nodes():
@@ -69,11 +323,9 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         return input_proxy, output_proxy, self._topological_sort(execute_nodes)
 
     def _topological_sort(self, nodes: List) -> Optional[List]:
-        """对节点列表进行拓扑排序，检测循环依赖"""
         if not nodes:
             return []
 
-        # 构建子图依赖
         in_degree = {node: 0 for node in nodes}
         graph_deps = defaultdict(list)
 
@@ -86,7 +338,6 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
                         graph_deps[upstream].append(node)
                         in_degree[node] += 1
 
-        # Kahn 算法
         queue = deque([n for n in nodes if in_degree[n] == 0])
         execution_order = []
         while queue:
@@ -98,12 +349,13 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
                     queue.append(neighbor)
 
         if len(execution_order) != len(nodes):
-            return None  # 存在环
+            return None
         return execution_order
+
+    # ──────────────── 端口管理（保持不变）────────────────
 
     def add_input(self, name='input', multi_input=False, display_name=True, color=None, locked=False,
                   painter_func=None):
-        """手动实现 add_input（模仿 BaseNode）"""
         if name in self.inputs().keys():
             raise ValueError(f'输入端口 "{name}" 已存在')
         view = self.view.add_input(name, multi_input, display_name, locked, painter_func=draw_square_port)
@@ -122,7 +374,6 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
 
     def add_output(self, name='output', multi_output=True, display_name=True, color=None, locked=False,
                    painter_func=None):
-        """手动实现 add_output（模仿 BaseNode）"""
         if name in self.outputs().keys():
             raise ValueError(f'输出端口 "{name}" 已存在')
         view = self.view.add_output(name, multi_output, display_name, locked)
@@ -140,33 +391,15 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         return port
 
     def connected_output_nodes(self):
-        """
-        Returns all nodes connected from the output ports.
-
-        Returns:
-            dict: {<output_port>: <node_list>}
-        """
         nodes = OrderedDict()
         for p in self.output_ports():
             nodes[p] = [cp.node() for cp in p.connected_ports()]
         return nodes
 
     def input_ports(self):
-        """
-        Return all input ports.
-
-        Returns:
-            list[NodeGraphQt.Port]: node input ports.
-        """
         return self._inputs
 
     def output_ports(self):
-        """
-        Return all output ports.
-
-        Returns:
-            list[NodeGraphQt.Port]: node output ports.
-        """
         return self._outputs
 
     def inputs(self):
@@ -176,20 +409,9 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         return {p.name(): p for p in self._outputs}
 
     def accepted_port_types(self, port):
-        """
-        Returns a dictionary of connection constrains of the port types
-        that allow for a pipe connection to this node.
-
-        Args:
-            port (NodeGraphQt.Port): port object.
-
-        Returns:
-            dict: {<node_type>: {<port_type>: [<port_name>]}}
-        """
         ports = self._inputs + self._outputs
         if port not in ports:
             raise PortError('Node does not contain port "{}"'.format(port))
-
         accepted_types = self.graph.model.port_accept_connection_types(
             node_type=self.type_,
             port_type=port.type_(),
@@ -198,20 +420,9 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         return accepted_types
 
     def rejected_port_types(self, port):
-        """
-        Returns a dictionary of connection constrains of the port types
-        that are NOT allowed for a pipe connection to this node.
-
-        Args:
-            port (NodeGraphQt.Port): port object.
-
-        Returns:
-            dict: {<node_type>: {<port_type>: [<port_name>]}}
-        """
         ports = self._inputs + self._outputs
         if port not in ports:
             raise PortError('Node does not contain port "{}"'.format(port))
-
         rejected_types = self.graph.model.port_reject_connection_types(
             node_type=self.type_,
             port_type=port.type_(),
@@ -220,38 +431,9 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         return rejected_types
 
     def on_input_connected(self, in_port, out_port):
-        """
-        Callback triggered when a new pipe connection is made.
-
-        *The default of this function does nothing re-implement if you require
-        logic to run for this event.*
-
-        Note:
-            to work with undo & redo for this method re-implement
-            :meth:`BaseNode.on_input_disconnected` with the reverse logic.
-
-        Args:
-            in_port (NodeGraphQt.Port): source input port from this node.
-            out_port (NodeGraphQt.Port): output port that connected to this node.
-        """
         return
 
     def on_input_disconnected(self, in_port, out_port):
-        """
-        Callback triggered when a pipe connection has been disconnected
-        from a INPUT port.
-
-        *The default of this function does nothing re-implement if you require
-        logic to run for this event.*
-
-        Note:
-            to work with undo & redo for this method re-implement
-            :meth:`BaseNode.on_input_connected` with the reverse logic.
-
-        Args:
-            in_port (NodeGraphQt.Port): source input port from this node.
-            out_port (NodeGraphQt.Port): output port that was disconnected.
-        """
         return
 
     def set_output_value(self, value):
@@ -261,35 +443,17 @@ class ControlFlowBackdrop(BackdropNode, StatusNode, BasicNodeWithGlobalProperty)
         return self._output_values.get(name)
 
     def get_input(self, port):
-        """
-        Get input port by the name or index.
-
-        Args:
-            port (str or int): port name or index.
-
-        Returns:
-            NodeGraphQt.Port: node port.
-        """
-        if type(port) is int:
+        if isinstance(port, int):
             if port < len(self._inputs):
                 return self._inputs[port]
-        elif type(port) is str:
+        elif isinstance(port, str):
             return self.inputs().get(port, None)
 
     def get_output(self, port):
-        """
-        Get output port by the name or index.
-
-        Args:
-            port (str or int): port name or index.
-
-        Returns:
-            NodeGraphQt.Port: node port.
-        """
-        if type(port) is int:
+        if isinstance(port, int):
             if port < len(self._outputs):
                 return self._outputs[port]
-        elif type(port) is str:
+        elif isinstance(port, str):
             return self.outputs().get(port, None)
 
 
@@ -307,24 +471,16 @@ class ControlFlowIterateNode(ControlFlowBackdrop):
     FULL_PATH = f"{category}/{NODE_NAME}"
 
 
+# ──────────────── 图形项（保持不变）────────────────
+
 class ControlFlowBackdropNodeItem(BackdropNodeItem):
-    """
-    支持端口绘制的 Backdrop 节点图形项
-    - 保留 Backdrop 的视觉样式（标题栏、半透明背景）
-    - 添加输入/输出端口支持（复用 NodeItem 的端口逻辑）
-    """
-
-    def __init__(self, name='循环控制器', text='', parent=None):
+    def __init__(self, name='控制流区域', text='', parent=None):
         super().__init__(name=name, text=text, parent=parent)
-        self.setZValue(Z_VAL_NODE)  # 确保层级正确
+        self.setZValue(Z_VAL_NODE)
+        self._input_items = OrderedDict()
+        self._output_items = OrderedDict()
 
-        # === 端口管理（照抄 NodeItem）===
-        self._input_items = OrderedDict()   # {PortItem: QGraphicsTextItem}
-        self._output_items = OrderedDict()  # {PortItem: QGraphicsTextItem}
-
-    # === 端口添加逻辑（照抄 NodeItem._add_port）===
     def _add_port(self, port):
-        """添加端口图形项"""
         text = QtWidgets.QGraphicsTextItem(port.name, self)
         text.setFont(QtGui.QFont("Arial", 8))
         text.setVisible(port.display_name)
@@ -335,7 +491,6 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
             self._output_items[port] = text
         return port
 
-    # === 公共接口（照抄 NodeItem）===
     def add_input(self, name='input', multi_port=False, display_name=True, locked=False, painter_func=None):
         if painter_func:
             port = CustomPortItem(self, painter_func)
@@ -368,14 +523,11 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
     def outputs(self):
         return list(self._output_items.keys())
 
-    # === 端口对齐（照抄 NodeItem._align_ports_horizontal）===
     def align_ports(self, v_offset=0.0):
-        """水平布局端口（Backdrop 固定为水平）"""
         width = self._width
-        txt_offset = 4  # PortEnum.CLICK_FALLOFF.value - 2
+        txt_offset = 4
         spacing = 1
 
-        # 输入端口（左侧）
         inputs = [p for p in self.inputs if p.isVisible()]
         if inputs:
             port_width = inputs[0].boundingRect().width()
@@ -385,13 +537,11 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
             for port in inputs:
                 port.setPos(port_x, port_y)
                 port_y += port_height + spacing
-            # 输入文本
             for port, text in self._input_items.items():
                 if port.isVisible():
                     txt_x = port.boundingRect().width() / 2 - txt_offset
                     text.setPos(txt_x, port.y() - 1.5)
 
-        # 输出端口（右侧）
         outputs = [p for p in self.outputs if p.isVisible()]
         if outputs:
             port_width = outputs[0].boundingRect().width()
@@ -401,31 +551,22 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
             for port in outputs:
                 port.setPos(port_x, port_y)
                 port_y += port_height + spacing
-            # 输出文本
             for port, text in self._output_items.items():
                 if port.isVisible():
                     txt_width = text.boundingRect().width() - txt_offset
                     txt_x = port.x() - txt_width
                     text.setPos(txt_x, port.y() - 1.5)
 
-    # === 重写 paint 以支持端口 ===
     def paint(self, painter, option, widget):
-        """先绘制 Backdrop 背景，端口由父类机制自动绘制"""
         super().paint(painter, option, widget)
 
-    # === 重写 draw_node 以对齐端口 ===
     def draw_node(self):
-        """在 Backdrop 尺寸确定后对齐端口"""
-        # 等待 backdrop 尺寸稳定（延迟对齐）
         QtCore.QTimer.singleShot(50, self._align_ports_later)
 
     def _align_ports_later(self):
-        """延迟对齐端口（确保尺寸已计算）"""
-        # 估算标题栏高度（Backdrop 固定为 26px）
         title_height = 26.0
         self.align_ports(v_offset=title_height + 5.0)
 
-    # === 重写 set_width/set_height 以触发端口对齐 ===
     @AbstractNodeItem.width.setter
     def width(self, width=0.0):
         AbstractNodeItem.width.fset(self, width)

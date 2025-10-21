@@ -76,6 +76,7 @@ class CanvasPage(QWidget):
 
         # 初始化 NodeGraph
         self.graph = NodeGraph()
+        self.graph.node_created.connect(self.on_node_created)
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
         self.canvas_widget.keyPressEvent = self._canvas_key_press_event
@@ -572,8 +573,8 @@ class CanvasPage(QWidget):
             # 创建 Input 和 Output Port，围绕视图中心布局
             input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
             output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-            input_port_node.set_pos(center_x - 250, center_y - input_port_node.view.height / 2)
-            output_port_node.set_pos(center_x + 250, center_y - output_port_node.view.height / 2)
+            input_port_node.set_pos(center_x - 350, center_y - input_port_node.view.height / 2)
+            output_port_node.set_pos(center_x + 350, center_y - output_port_node.view.height / 2)
             nodes_to_wrap = [input_port_node, output_port_node]
         else:
             # Step 4: 有选中节点时，按原逻辑处理
@@ -1180,6 +1181,9 @@ class CanvasPage(QWidget):
             if node.id == node_id:
                 return node
         return None
+
+    def on_node_created(self, node):
+        self._node_id_cache = self._node_id_cache | {node.id: node}
 
     def _get_node_by_id_cached(self, node_id):
         """使用缓存的节点查找"""

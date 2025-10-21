@@ -193,7 +193,7 @@ class EnvironmentManager(QObject):
         """使用QProcess创建环境"""
         # 提取主要版本号
         major_version = ".".join(version.split(".")[:2])
-        if major_version not in ["3.9", "3.10", "3.11"]:
+        if major_version not in ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]:
             major_version = "3.11"
 
         if env_name is None:

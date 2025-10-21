@@ -33,8 +33,6 @@ class Component(BaseComponent):
     }
 
     def run(self, params, inputs=None):
-        self.outputs
-        self.pro
         self.logger.info(self.global_variable)
         self.logger.info(params
             
