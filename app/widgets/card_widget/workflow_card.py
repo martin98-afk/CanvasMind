@@ -86,12 +86,19 @@ class WorkflowCard(CardWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
-
         self.setStyleSheet("""
-            QWidget#WorkflowCardTitle { font-size: 14px; font-weight: 600; }
-            QLabel.workflowMetaKey { color: #666; }
-            QLabel.workflowMetaVal { color: #333; }
-        """)
+                   QWidget#WorkflowCardTitle { font-size: 14px; font-weight: 600; }
+                   QLabel.workflowMetaKey { color: #666; }
+                   QLabel.workflowMetaVal { color: #333; }
+               """)
+
+        # 标题（可点击区域的一部分）
+        self.name_label = BodyLabel(self.workflow_name)
+        self.name_label.setFont(QFont("Microsoft YaHei", 18, QFont.Bold))
+        self.name_label.setAlignment(Qt.AlignCenter)
+        self.name_label.setWordWrap(True)
+        self.name_label.setObjectName("WorkflowCardTitle")
+        layout.addWidget(self.name_label)
 
         # 预览图
         self.image_label = ImageLabel(self)
@@ -105,17 +112,11 @@ class WorkflowCard(CardWidget):
         else:
             self._create_placeholder()
 
-        # 标题（可点击区域的一部分）
-        self.name_label = BodyLabel(self.workflow_name)
-        self.name_label.setFont(QFont("Microsoft YaHei", 13, QFont.Bold))
-        self.name_label.setAlignment(Qt.AlignCenter)
-        self.name_label.setWordWrap(True)
-        self.name_label.setObjectName("WorkflowCardTitle")
-        layout.addWidget(self.name_label)
-
+        # 信息栏
+        bottom_layout = QHBoxLayout()
         # 元数据
         meta_grid = QGridLayout()
-        meta_grid.setVerticalSpacing(4)
+        meta_grid.setVerticalSpacing(8)
         meta_grid.setHorizontalSpacing(8)
 
         if self._file_info:
@@ -138,7 +139,7 @@ class WorkflowCard(CardWidget):
         meta_grid.addWidget(v1, 0, 1)
         meta_grid.addWidget(k2, 1, 0)
         meta_grid.addWidget(v2, 1, 1)
-        layout.addLayout(meta_grid)
+        bottom_layout.addLayout(meta_grid)
 
         # 按钮区域（仅保留编辑、复制、删除）
         copy_btn = TransparentToolButton(FluentIcon.COPY, self)
@@ -161,7 +162,8 @@ class WorkflowCard(CardWidget):
         btn_layout.addWidget(edit_btn)
         btn_layout.addWidget(copy_btn)
         btn_layout.addWidget(delete_btn)
-        layout.addLayout(btn_layout)
+        bottom_layout.addLayout(btn_layout)
+        layout.addLayout(bottom_layout)
 
     def _load_and_scale_preview(self, preview_path: Path):
         """加载并缩放预览图到统一尺寸（300x180）"""
@@ -172,7 +174,7 @@ class WorkflowCard(CardWidget):
                 return
 
             # 保持宽高比，居中裁剪（或用 Qt.KeepAspectRatio）
-            scaled_pixmap = pixmap.scaled(300, 180, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+            scaled_pixmap = pixmap.scaled(330, 220, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 
             # 如果你想强制填满（可能变形），用：
             # scaled_pixmap = pixmap.scaled(target_width, target_height, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
