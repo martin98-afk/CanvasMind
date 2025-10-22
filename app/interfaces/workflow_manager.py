@@ -556,7 +556,7 @@ class WorkflowCanvasGalleryPage(QWidget):
                 # 从缓存中删除
                 del self._card_map[src_path]
 
-            InfoBar.success("复制成功", f"已创建 {new_name}", parent=self)
+            InfoBar.success("重命名成功", f"已创建 {new_name}", parent=self)
             self._schedule_refresh()
         except Exception as e:
             InfoBar.error("复制失败", str(e), parent=self)

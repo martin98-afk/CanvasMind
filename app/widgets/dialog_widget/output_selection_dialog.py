@@ -10,9 +10,11 @@ from qfluentwidgets import (
 
 
 class OutputSelectionDialog(MessageBoxBase):
-    def __init__(self, candidate_items, parent=None):
+    def __init__(self, candidate_items, parent=None, current_selected_items=None):
         super().__init__(parent)
         self.candidate_items = candidate_items
+        # current_selected_items: Dict where key is custom_key, value is item detail from project_spec
+        self.current_selected_items = current_selected_items or {}
         self.item_widgets = []  # (checkbox, line_edit, item)
 
         title_label = SubtitleLabel('选择项目输出结果', self)
@@ -62,16 +64,36 @@ class OutputSelectionDialog(MessageBoxBase):
 
                     from qfluentwidgets import CheckBox
                     cb = CheckBox()
-                    cb.setChecked(False)
+
+                    # --- Pre-populate Check State and Custom Key ---
+                    is_selected = False
+                    custom_key = ""
+                    # Find if this candidate item matches any in current_selected_items
+                    for spec_key, spec_details in self.current_selected_items.items():
+                        if (spec_details.get('node_id') == item.get('node_id') and
+                            spec_details.get('output_name') == item.get('output_name')):
+                            is_selected = True
+                            custom_key = spec_details.get('custom_key', spec_key)
+                            break
+
+                    cb.setChecked(is_selected)
 
                     name_label = QLabel(item["display_name"])
                     name_label.setStyleSheet("font-size: 14px;")
 
                     key_edit = LineEdit()
                     key_edit.setFixedWidth(120)
-                    default_key = item.get("output_name")
-                    key_edit.setText(default_key)
+                    # Set the pre-filled custom key, or default to output_name
+                    if custom_key:
+                        key_edit.setText(custom_key)
+                    else:
+                        default_key = item.get("output_name")
+                        key_edit.setText(default_key)
                     key_edit.setPlaceholderText("输出key")
+
+                    # Enable/disable key_edit based on checkbox
+                    key_edit.setEnabled(is_selected)
+                    cb.stateChanged.connect(lambda state, w=key_edit: w.setEnabled(state == Qt.Checked))
 
                     row_layout.addWidget(cb)
                     row_layout.addWidget(name_label)
@@ -96,8 +118,9 @@ class OutputSelectionDialog(MessageBoxBase):
         self.cancelButton.setText('取消')
 
     def _set_all_checked(self, checked):
-        for cb, _, _ in self.item_widgets:
+        for cb, key_edit, _ in self.item_widgets:
             cb.setChecked(checked)
+            key_edit.setEnabled(checked)
 
     def get_selected_items(self):
         selected = []

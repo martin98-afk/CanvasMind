@@ -66,11 +66,11 @@ class ProjectCard(CardWidget):
         preview_path = os.path.join(self.project_path, "preview.png")
         if os.path.exists(preview_path):
             self.image_label = ImageLabel(preview_path, self)
-            self.image_label.setFixedSize(250, 150)
+            self.image_label.setFixedSize(300, 150)
             self.image_label.setBorderRadius(8, 8, 8, 8)
         else:
             self.image_label = BodyLabel("无预览图")
-            self.image_label.setFixedSize(250, 150)
+            self.image_label.setFixedSize(300, 150)
             self.image_label.setAlignment(Qt.AlignCenter)
             self.image_label.setStyleSheet("""
                 color: #999;
@@ -114,6 +114,7 @@ class ProjectCard(CardWidget):
         self.request_btn.setEnabled(False)
 
         # 工具按钮（移除 open_folder_btn）
+        self.edit_btn = ToolButton(FluentIcon.EDIT, self)
         self.view_log_btn = ToolButton(FluentIcon.VIEW, self)
         self.delete_btn = ToolButton(FluentIcon.DELETE, self)
 
@@ -123,7 +124,7 @@ class ProjectCard(CardWidget):
         for btn in [self.run_btn, self.service_btn, self.request_btn]:
             btn.setFixedHeight(28)
             btn.setFont(QFont("Microsoft YaHei", 9))
-        for btn in [self.view_log_btn, self.delete_btn]:
+        for btn in [self.edit_btn, self.view_log_btn, self.delete_btn]:
             btn.setFixedSize(28, 28)
 
         left_box = QHBoxLayout()
@@ -133,6 +134,7 @@ class ProjectCard(CardWidget):
 
         right_box = QHBoxLayout()
         right_box.setSpacing(8)
+        right_box.addWidget(self.edit_btn)
         right_box.addWidget(self.view_log_btn)
         right_box.addWidget(self.delete_btn)  # ✅ 不再有 open_folder_btn
 
