@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "构建多轮对话"
     category = "大模型组件"
     description = "用于构建符合大模型输入格式的多轮对话消息列表，支持追加新消息。"
-    requirements = "无特殊依赖，输出为标准 JSON 格式的对话列表。"
+    requirements = ""
 
     inputs = [
         PortDefinition(name="history", label="输入1", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),

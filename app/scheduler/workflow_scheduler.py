@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from collections import deque, defaultdict
 from typing import List, Dict, Any, Optional, Callable
-import re
-from asteval import Interpreter
 
 from NodeGraphQt import BackdropNode
 from PyQt5.QtCore import QObject, pyqtSignal
@@ -424,7 +422,6 @@ class WorkflowScheduler(QObject):
                 self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
                 self.property_changed.emit(backdrop.id)
                 raise e
-        print(internal_outputs)
         return internal_outputs
 
     def _collect_outputs(self, output_proxy):
@@ -470,9 +467,6 @@ class WorkflowScheduler(QObject):
                 temp_vars.update(internal_outputs)
 
             result = engine.evaluate_expression_block(condition_expr, temp_vars)
-            print(condition_expr)
-            print(internal_outputs)
-            print(result)
             # 将结果转换为布尔值
             if isinstance(result, str) and result.startswith('[ExprError:'):
                 logger.warning(f"条件表达式评估失败: {condition_expr}, 错误: {result}")

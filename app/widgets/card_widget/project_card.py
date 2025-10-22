@@ -66,7 +66,7 @@ class ProjectCard(CardWidget):
         preview_path = os.path.join(self.project_path, "preview.png")
         if os.path.exists(preview_path):
             self.image_label = ImageLabel(preview_path, self)
-            self.image_label.setFixedSize(300, 150)
+            self.image_label.setFixedSize(340, 150)
             self.image_label.setBorderRadius(8, 8, 8, 8)
         else:
             self.image_label = BodyLabel("无预览图")
