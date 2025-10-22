@@ -29,7 +29,6 @@ def create_branch_node(parent_window):
             self._output_values = {}
             self._input_values = {}
             self.column_select = {}
-            self.log_capture = NodeLogHandler(self.id, self._log_message, use_file_logging=True)
 
             # === 固定输入端口 ===
             self.add_input('input')
@@ -212,37 +211,11 @@ def create_branch_node(parent_window):
                 # 重新连接信号
                 widget.valueChanged.connect(self._on_conditions_changed)
 
-        def _log_message(self, node_id, message):
-            if isinstance(message, str) and message.strip():
-                if not message.endswith('\n'):
-                    message += '\n'
-                self._node_logs += message
-
-        def get_logs(self):
-            return self._node_logs if self._node_logs else "无日志可用。"
-
-        def show_logs(self):
-            from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
-            log_content = self.get_logs()
-            w = LogMessageBox(log_content, None)
-            w.exec()
-
-        def set_output_value(self, port_name, value):
-            self._output_values[port_name] = value
-
-        def clear_output_value(self):
-            self._output_values = {}
-
-        def get_output_value(self, port_name):
-            return self._output_values.get(port_name)
-
-        def on_run_complete(self, output):
-            self._output_values = output
-
         def execute_sync(self, *args, **kwargs):
             """
             条件分支节点的 execute_sync：判断激活分支，并递归禁用未激活分支的整个子图。
             """
+            self.init_logger()
             # === [前面的输入收集、表达式求值逻辑保持不变] ===
             global_variable = self.model.get_property("global_variable")
             gv = GlobalVariableContext()
@@ -308,7 +281,7 @@ def create_branch_node(parent_window):
                         if not execute_all:
                             break
                 except Exception as e:
-                    self._log_message(self.id, f"条件表达式错误 [{expr}]: {e}\n")
+                    self._log_message(self.persistent_id, f"条件表达式错误 [{expr}]: {e}\n")
                     continue
 
             if not activated_branches and enable_else:

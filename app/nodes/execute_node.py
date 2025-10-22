@@ -90,15 +90,12 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
+            self.parent_window = parent_window
             self.model.add_property("debug_code", {})
             self.component_class = component_class
             if hasattr(component_class, "icon"):
                 self.set_icon(component_class.icon)
-            self._node_logs = ""
-            self._output_values = {}
-            self._input_values = {}
-            self.column_select = {}
-
+            
             # --- 调试模式新增 ---
             self._debug_enabled = False
             self._debug_widget = None
@@ -115,12 +112,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     self.add_input(port_name, True, painter_func=draw_square_port)
             for port_name, label in component_class.get_outputs():
                 self.add_output(port_name)
-
-        def init_logger(self):
-            if not self.has_property("persistent_id"):
-                self.create_property("persistent_id", str(uuid.uuid4()))
-            self._persistent_id = self.get_property("persistent_id")
-            self.log_capture = NodeLogHandler(self._persistent_id, self._log_message, use_file_logging=True)
 
         def _toggle_debug_mode(self):
             """调试模式开关回调"""
@@ -360,43 +351,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
         def remove_property(self, name):
             self.model._custom_prop[name] = None
 
-        def _log_message(self, node_id, message):
-            """可选：仍保留内存日志用于实时滚动显示（如控制台面板）"""
-            # 如果你有实时日志面板，可以保留；否则可删除整个方法
-            if not hasattr(self, '_realtime_logs'):
-                self._realtime_logs = ""
-            if isinstance(message, str) and message.strip():
-                if not message.endswith('\n'):
-                    message += '\n'
-                self._realtime_logs += message
-
-        def get_logs(self):
-            """从持久化日志文件读取内容（最多5000行）"""
-            if not hasattr(self, "log_capture"):
-                self.init_logger()
-            try:
-                return self.log_capture.read_log_file()
-            except Exception as e:
-                logger.warning(f"读取日志失败: {e}")
-                return "日志读取失败。"
-
-        def show_logs(self):
-            log_content = self.get_logs()
-            w = LogMessageBox(log_content, parent_window)
-            w.exec()
-
-        def set_output_value(self, port_name, value):
-            self._output_values[port_name] = value
-
-        def clear_output_value(self):
-            self._output_values = {}
-
-        def get_output_value(self, port_name):
-            return self._output_values.get(port_name)
-
-        def on_run_complete(self, output):
-            self._output_values = output
-
         def execute_sync(self, comp_obj, python_executable=None, check_cancel=None, max_retries=1, retry_delay=1):
             """
             在独立Python环境中执行组件
@@ -421,7 +375,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     params[prop_name] = self.get_property(prop_name) if self.has_property(prop_name) else default
 
             # === 全局变量 ===
-            global_variable = self.model.get_property("global_variable")
+            global_variable = self.global_variable
             # === 【关键】创建表达式引擎并求值 ===
             if global_variable is not None:
                 gv = GlobalVariableContext()
@@ -488,7 +442,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             requirements_str = getattr(comp_obj, 'requirements', '').strip()
 
             # ✅ 关键修改：使用持久化运行目录，而非临时目录
-            run_id = f"run_{self._persistent_id}_{int(time.time())}"
+            run_id = f"run_{self.persistent_id}_{int(time.time())}"
             run_dir = PERSISTENT_TEMP_ROOT / run_id
             run_dir.mkdir(exist_ok=True)
             temp_script_path = run_dir / "exec_script.py"
@@ -512,7 +466,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 result_path=result_path,
                 error_path=error_path,
                 log_file_path=log_file_path,
-                node_id=self._persistent_id
+                node_id=self.persistent_id
             )
             with open(temp_script_path, 'w', encoding='utf-8') as f:
                 f.write(script_content)
@@ -557,7 +511,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                             proc.wait(timeout=5)
                         except subprocess.TimeoutExpired:
                             proc.kill()
-                        self._log_message(self._persistent_id, "❌ 节点执行超时（5分钟）")
+                        self._log_message(self.persistent_id, "❌ 节点执行超时（5分钟）")
                         raise Exception("❌ 节点执行超时（5分钟）")
 
                     # 增量读取日志，实时输出
@@ -567,14 +521,14 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                                 lf.seek(last_log_pos)
                                 new_content = lf.read()
                                 if new_content:
-                                    self._log_message(self._persistent_id, new_content)
+                                    self._log_message(self.persistent_id, new_content)
                                     last_log_pos = lf.tell()
                     except Exception:
                         pass
                     time.sleep(0.1)  # 避免 CPU 占用过高
 
                 if cancelled:
-                    self._log_message(self._persistent_id, "执行已被用户取消")
+                    self._log_message(self.persistent_id, "执行已被用户取消")
                     raise Exception("执行已被用户取消")
 
                 # 读取剩余日志（无论成功失败）
@@ -584,7 +538,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                             lf.seek(last_log_pos)
                             tail_content = lf.read()
                             if tail_content:
-                                self._log_message(self._persistent_id, tail_content)
+                                self._log_message(self.persistent_id, tail_content)
                 except Exception:
                     pass
 
@@ -614,12 +568,12 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     error_info = pickle.load(f)
                 error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
                 print(error_msg)
-                self._log_message(self._persistent_id, error_msg)
+                self._log_message(self.persistent_id, error_msg)
                 raise Exception(error_info['error'])
             else:
                 # 未生成结果或错误文件，视为未知异常
                 error_msg = "❌ 节点执行异常: 未知错误"
-                self._log_message(self._persistent_id, error_msg)
+                self._log_message(self.persistent_id, error_msg)
                 raise Exception("未知错误")
 
     return DynamicNode

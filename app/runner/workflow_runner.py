@@ -199,13 +199,7 @@ def execute_loop_node(loop_node, all_nodes, graph_data, input_data, runtime_data
     return {"outputs": results}
 
 
-def execute_branch_node(branch_node, input_data, global_variable):
-    # 1. 反序列化全局变量
-    global_ctx = GlobalVariableContext()
-    global_ctx.deserialize(global_variable)
-    # print(global_variable)  # 移除调试打印
-    expr_engine = ExpressionEngine(global_vars_context=global_ctx)
-
+def execute_branch_node(branch_node, input_data, expr_engine):
     # 2. 准备局部变量
     local_vars = {"input": input_data[0] if isinstance(input_data, (list, tuple)) and input_data else input_data}
 
@@ -273,6 +267,30 @@ def get_downstream_nodes(start_node_id, connections, all_node_ids, downstream_ca
     return downstream
 
 
+def evaludate_model_inputs(engine, inputs, params):
+    # === 构建 input_xxx 变量 ===
+    input_vars = {}
+    for k, v in inputs.items():
+        # 将 input.port_name 转为 input_port_name（避免点号）
+        safe_key = f"input_{k}"
+        input_vars[safe_key] = v
+
+    # === 递归求值 params，传入 input_vars ===
+    def _evaluate_with_inputs(value, engine, input_vars_dict):
+        if isinstance(value, str):
+            return engine.evaluate_template(value, local_vars=input_vars_dict)
+        elif isinstance(value, list):
+            return [_evaluate_with_inputs(v, engine, input_vars_dict) for v in value]
+        elif isinstance(value, dict):
+            return {k: _evaluate_with_inputs(v, engine, input_vars_dict) for k, v in value.items()}
+        else:
+            return value
+
+    params = {k: _evaluate_with_inputs(v, engine, input_vars) for k, v in params.items()}
+    inputs = {k: _evaluate_with_inputs(v, engine, input_vars) for k, v in inputs.items()}
+    return inputs, params
+
+
 def execute_workflow(file_path, external_inputs=None, python_executable=None):
     """
     执行工作流（支持 project_spec.json 定义的接口）
@@ -290,6 +308,11 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
     graph_data = full_data["graph"]
     runtime_data = full_data.get("runtime", {})
     global_variable = runtime_data.get("global_variable", {})
+    # 1. 反序列化全局变量
+    global_ctx = GlobalVariableContext()
+    global_ctx.deserialize(global_variable)
+    # print(global_variable)  # 移除调试打印
+    expr_engine = ExpressionEngine(global_vars_context=global_ctx)
 
     # 2. 加载 project_spec（如果有）
     spec_path = project_dir / "project_spec.json"
@@ -443,8 +466,7 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
             input_val = None
             if node_inputs:
                 input_val = next(iter(node_inputs.values()))
-            selected_port, output = execute_branch_node(node, input_val, global_variable)
-            # print(selected_port)  # 移除调试打印
+            selected_port, output = execute_branch_node(node, input_val, expr_engine)
             node_outputs[node_id] = output
 
             # 记录激活的分支端口
@@ -459,6 +481,7 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
                     node_id, graph_data["connections"], set(nodes.keys()), downstream_cache)
                 skip_nodes.update(downstream_nodes)
         else:
+            node_inputs, node_params = evaludate_model_inputs(expr_engine, node_inputs, node["params"])
             # 执行普通节点
             try:
                 logger.info(f"执行节点: {node['name']}")
@@ -468,6 +491,7 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
                     file_path=node["file_path"],
                     params=node["params"],
                     inputs=node_inputs,
+                    global_variable=global_variable,
                     python_executable=python_executable or runtime_data.get("environment_exe")
                 )
                 node_outputs[node_id] = output or {}

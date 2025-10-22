@@ -1035,7 +1035,9 @@ class CanvasPage(QWidget):
             project_data = {
                 "version": "1.0",
                 "graph": graph_data,
-                "runtime": runtime_data
+                "runtime": runtime_data,
+                "candidate_inputs": candidate_inputs,
+                "candidate_outputs": candidate_outputs
             }
             (export_path / "model.workflow.json").write_text(
                 json.dumps(project_data, indent=2, ensure_ascii=False), encoding='utf-8'

@@ -7,7 +7,7 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Set, Optional
+from typing import List, Dict, Set
 
 from PyQt5.QtCore import QThread, pyqtSignal, QEasingCurve, Qt, QTimer
 from PyQt5.QtGui import QFont
@@ -17,12 +17,14 @@ from qfluentwidgets import (
     InfoBar,
     MessageBox, StateToolTip, FlowLayout, CardWidget, BodyLabel, SmoothScrollArea,
     PipsPager, PipsScrollButtonDisplayMode, ComboBox, CaptionLabel, SearchLineEdit,
-    TransparentToggleToolButton, FluentIcon
+    TransparentToggleToolButton
 )
 
 from app.utils.service_manager import SERVICE_MANAGER
 from app.utils.utils import ansi_to_html, get_icon
 from app.widgets.card_widget.project_card import ProjectCard
+from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
+from app.widgets.dialog_widget.output_selection_dialog import OutputSelectionDialog
 
 
 class ProjectRunnerThread(QThread):
@@ -241,9 +243,9 @@ class ExportedProjectsPage(QWidget):
                 try:
                     card = ProjectCard(proj_path, self)
                     card.run_btn.clicked.connect(lambda _, p=proj_path: self._run_project(p))
+                    card.edit_btn.clicked.connect(lambda _, p=proj_path: self._edit_project(p))
                     card.service_btn.clicked.connect(lambda _, p=proj_path: self._toggle_service(p))
                     card.view_log_btn.clicked.connect(lambda _, p=proj_path: self._view_project_log(p))
-                    # card.open_folder_btn.clicked.connect(lambda _, p=proj_path: self._open_project_folder(p))
                     card.delete_btn.clicked.connect(lambda _, p=proj_path: self._delete_project(p))
                     card.hide()
                     self._card_map[proj_path] = card
@@ -508,6 +510,100 @@ class ExportedProjectsPage(QWidget):
         card = self._card_map.get(project_path)
         if card:
             card.update_status(is_running)
+
+    def _edit_project(self, project_path: str):
+        """
+        Edits the project's input and output specifications by reusing the selection dialogs
+        and pre-filling them with current values from project_spec.json.
+        Uses candidate_inputs and candidate_outputs from model.workflow.json.
+        """
+        workflow_path = os.path.join(project_path, "model.workflow.json")
+        spec_path = os.path.join(project_path, "project_spec.json")
+
+        if not os.path.exists(workflow_path):
+            self.create_error_info("编辑失败", f"项目 '{os.path.basename(project_path)}' 缺少 model.workflow.json 文件。")
+            return
+        if not os.path.exists(spec_path):
+            self.create_error_info("编辑失败", f"项目 '{os.path.basename(project_path)}' 缺少 project_spec.json 文件。")
+            return
+
+        try:
+            with open(workflow_path, 'r', encoding='utf-8') as f:
+                workflow_data = json.load(f)
+        except Exception as e:
+            self.create_error_info("加载失败", f"无法读取 model.workflow.json: {e}")
+            return
+
+        try:
+            with open(spec_path, 'r', encoding='utf-8') as f:
+                project_spec = json.load(f)
+        except Exception as e:
+            self.create_error_info("加载失败", f"无法读取 project_spec.json: {e}")
+            return
+
+        # Get candidates from workflow
+        candidate_inputs = workflow_data.get("candidate_inputs", [])
+        candidate_outputs = workflow_data.get("candidate_outputs", [])
+
+        # Get current selections from the spec
+        current_inputs = project_spec.get('inputs', {})
+        current_outputs = project_spec.get('outputs', {})
+
+        # --- Edit Inputs ---
+        input_dialog = InputSelectionDialog(candidate_inputs, current_selected_items=current_inputs, parent=self)
+        if input_dialog.exec():
+            new_selected_inputs = input_dialog.get_selected_items()
+            # Rebuild the inputs dict with new custom_keys
+            updated_inputs = {}
+            for item in new_selected_inputs:
+                 key = item.get("custom_key", f"input_{len(updated_inputs)}")
+                 updated_inputs[key] = item
+            project_spec['inputs'] = updated_inputs
+        else:
+            # User cancelled input editing, do nothing and return
+            print("Input editing cancelled by user.")
+            return
+
+        # --- Edit Outputs ---
+        # Assuming OutputSelectionDialog has similar modifications as InputSelectionDialog
+        output_dialog = OutputSelectionDialog(candidate_outputs, current_selected_items=current_outputs, parent=self)
+        if output_dialog.exec():
+            new_selected_outputs = output_dialog.get_selected_items()
+            # Rebuild the outputs dict with new custom_keys
+            updated_outputs = {}
+            for item in new_selected_outputs:
+                 # Ensure 'format' is preserved or added if missing from dialog result
+                 # The original spec had 'format' in outputs
+                 if 'format' not in item:
+                     # Try to get format from the original candidate if available
+                     original_candidate = next((c for c in candidate_outputs if
+                                               c['node_id'] == item['node_id'] and
+                                               c['output_name'] == item['output_name']), None)
+                     if original_candidate:
+                         item['format'] = original_candidate.get('format', 'TEXT') # Fallback to TEXT
+                 key = item.get("custom_key", f"output_{len(updated_outputs)}")
+                 # Output spec typically stores node_id, output_name, format (and custom_key)
+                 # Ensure these are present in the item returned by the dialog
+                 updated_outputs[key] = {
+                     "node_id": item["node_id"],
+                     "output_name": item["output_name"],
+                     "format": item["format"],
+                     "custom_key": item["custom_key"], # Should be present from dialog
+                     "node_name": item.get("node_name") # Optional, for reference
+                 }
+            project_spec['outputs'] = updated_outputs
+        else:
+            # User cancelled output editing, do nothing and return
+            print("Output editing cancelled by user.")
+            return
+
+        # --- Save Updated Spec ---
+        try:
+            with open(spec_path, 'w', encoding='utf-8') as f:
+                json.dump(project_spec, f, indent=2, ensure_ascii=False)
+            self.create_success_info("编辑成功", f"项目 '{os.path.basename(project_path)}' 的接口已更新。")
+        except Exception as e:
+            self.create_error_info("保存失败", f"无法保存 project_spec.json: {e}")
 
     def _view_project_log(self, project_path):
         all_logs = []

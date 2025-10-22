@@ -57,7 +57,6 @@ class LowCodeWindow(FluentWindow):
         project_interface.clicked.connect(self.project_manager.load_projects)
         package_interface = self.addSubInterface(self.package_manager, get_icon("工具包"), '环境管理')
         package_interface.clicked.connect(self.package_manager.on_env_changed)
-        # 更新按钮
         self.updater = UpdateChecker(self)
         self.updater.check_update()
         self.navigationInterface.addItem(

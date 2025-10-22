@@ -143,19 +143,19 @@ class WorkflowCard(CardWidget):
 
         # 按钮区域（仅保留编辑、复制、删除）
         copy_btn = TransparentToolButton(FluentIcon.COPY, self)
+        copy_btn.setIconSize(QSize(20, 20))
         copy_btn.setToolTip("复制画布")
         copy_btn.clicked.connect(self._on_copy_clicked)
-        copy_btn.setFixedSize(28, 28)
 
         edit_btn = TransparentToolButton(FluentIcon.EDIT, self)
+        edit_btn.setIconSize(QSize(20, 20))
         edit_btn.setToolTip("重命名")
         edit_btn.clicked.connect(self._on_edit_clicked)
-        edit_btn.setFixedSize(28, 28)
 
         delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
+        delete_btn.setIconSize(QSize(20, 20))
         delete_btn.setToolTip("删除画布")
         delete_btn.clicked.connect(self._on_delete_clicked)
-        delete_btn.setFixedSize(28, 28)
 
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()

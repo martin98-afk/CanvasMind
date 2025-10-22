@@ -3,7 +3,6 @@ import pickle
 import platform
 import re
 import subprocess
-import tempfile
 import time
 import uuid
 from pathlib import Path
@@ -11,18 +10,15 @@ from pathlib import Path
 from NodeGraphQt import BaseNode
 from PyQt5 import QtCore
 
-from .node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.components.base import PropertyType, GlobalVariableContext, ArgumentType
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.scheduler.expression_engine import ExpressionEngine
-from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import resource_path
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
+from .node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from .status_node import StatusNode
-from ..widgets.dialog_widget.component_log_message_box import LogMessageBox
-
 
 # 在 app/components 下创建 .temp 目录（隐藏目录）
 TEMP_COMPONENTS_DIR = Path(__file__).parent.parent / "components" / ".temp"
@@ -80,11 +76,9 @@ def create_dynamic_code_node(parent_window=None):
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
+            self.parent_window = parent_window
             self._view.set_align("center")
             self.set_icon(resource_path("icons/代码执行.svg"))  # 可选
-            self._node_logs = ""
-            self._output_values = {}
-            self._input_values = {}
             # 允许动态删除端口
             self.model.port_deletion_allowed = True
 
@@ -93,12 +87,6 @@ def create_dynamic_code_node(parent_window=None):
 
             # 延迟绑定端口同步（避免初始化时 widget 未就绪）
             QtCore.QTimer.singleShot(0, self._setup_port_sync)
-
-        def init_logger(self):
-            if not self.has_property("persistent_id"):
-                self.create_property("persistent_id", str(uuid.uuid4()))
-            self._persistent_id = self.get_property("persistent_id")
-            self.log_capture = NodeLogHandler(self._persistent_id, self._log_message, use_file_logging=True)
 
         def _setup_port_sync(self):
             widget = self.input_widget.get_custom_widget()
@@ -286,30 +274,6 @@ def create_dynamic_code_node(parent_window=None):
                         except Exception:
                             continue
 
-        # === 保留你原有的日志、执行、输出方法 ===
-        def _log_message(self, node_id, message):
-            if isinstance(message, str) and message.strip():
-                if not message.endswith('\n'):
-                    message += '\n'
-                self._node_logs += message
-
-        def show_logs(self):
-            log_content = self.get_logs()
-            w = LogMessageBox(log_content, parent_window)
-            w.exec()
-
-        def get_logs(self):
-            return self._node_logs or "无日志可用。"
-
-        def set_output_value(self, port, val):
-            self._output_values[port] = val
-
-        def get_output_value(self, port):
-            return self._output_values.get(port)
-
-        def on_run_complete(self, output):
-            self._output_values = output
-
         # === 关键：重写 execute_sync，使用动态代码模板 ===
         def execute_sync(self, comp_obj, python_executable=None, check_cancel=None):
             self.init_logger()
@@ -352,7 +316,7 @@ def create_dynamic_code_node(parent_window=None):
                 user_run_code=indented_user_code.strip()
             )
             # === 4. 收集 inputs / params / global_variable（与普通组件一致）===
-            global_variable = self.model.get_property("global_variable")
+            global_variable = self.model.global_variable
             gv = GlobalVariableContext()
             gv.deserialize(global_variable)
 
@@ -392,7 +356,7 @@ def create_dynamic_code_node(parent_window=None):
             # === 5. 写入临时文件并执行（复用你现有的子进程逻辑）===
             temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
             temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
-            run_id = f"run_{self._persistent_id}_{int(time.time())}"
+            run_id = f"run_{self.persistent_id}_{int(time.time())}"
             run_dir = PERSISTENT_TEMP_ROOT / run_id
             run_dir.mkdir(exist_ok=True)
             temp_script_path = run_dir / "exec_script.py"
@@ -417,7 +381,7 @@ def create_dynamic_code_node(parent_window=None):
                 result_path=result_path,
                 error_path=error_path,
                 log_file_path=log_file_path,
-                node_id=self._persistent_id
+                node_id=self.persistent_id
             )
             with open(temp_script_path, 'w', encoding='utf-8') as f:
                 f.write(script_content)
@@ -464,7 +428,7 @@ def create_dynamic_code_node(parent_window=None):
                     except subprocess.TimeoutExpired:
                         proc.kill()
 
-                    self._log_message(self._persistent_id, "❌ 节点执行超时（5分钟）")
+                    self._log_message(self.persistent_id, "❌ 节点执行超时（5分钟）")
                     raise Exception("❌ 节点执行超时（5分钟）")
 
                 # 增量读取日志，实时输出
@@ -474,7 +438,7 @@ def create_dynamic_code_node(parent_window=None):
                             lf.seek(last_log_pos)
                             new_content = lf.read()
                             if new_content:
-                                self._log_message(self._persistent_id, new_content)
+                                self._log_message(self.persistent_id, new_content)
                                 last_log_pos = lf.tell()
                 except Exception:
                     pass
@@ -482,7 +446,7 @@ def create_dynamic_code_node(parent_window=None):
                 time.sleep(0.1)  # 避免 CPU 占用过高
 
             if cancelled:
-                self._log_message(self._persistent_id, "执行已被用户取消")
+                self._log_message(self.persistent_id, "执行已被用户取消")
                 raise Exception("执行已被用户取消")
 
             # 读取剩余日志（无论成功失败）
@@ -492,7 +456,7 @@ def create_dynamic_code_node(parent_window=None):
                         lf.seek(last_log_pos)
                         tail_content = lf.read()
                         if tail_content:
-                            self._log_message(self._persistent_id, tail_content)
+                            self._log_message(self.persistent_id, tail_content)
             except Exception:
                 pass
             # 清除零时组件
@@ -514,13 +478,13 @@ def create_dynamic_code_node(parent_window=None):
                 with open(error_path, 'rb') as f:
                     error_info = pickle.load(f)
                 error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
-                self._log_message(self._persistent_id, error_msg)
+                self._log_message(self.persistent_id, error_msg)
                 raise Exception(error_info['error'])
 
             else:
                 # 未生成结果或错误文件，视为未知异常
                 error_msg = "❌ 节点执行异常: 未知错误"
-                self._log_message(self._persistent_id, error_msg)
+                self._log_message(self.persistent_id, error_msg)
                 raise Exception("未知错误")
 
     return DynamicCodeNode

@@ -56,14 +56,19 @@ class Component(BaseComponent):
             type=PropertyType.RANGE,
             default="0.7",
             label="温度（随机性）",
-            min=0,
-            max=1,
-            step=0.1
+            min=0.0,
+            max=1.0,
+            step=0.1,
         ),
         "max_tokens": PropertyDefinition(
             type=PropertyType.INT,
             default=1000,
             label="最大生成长度",
+        ),
+        "visual": PropertyDefinition(
+            type=PropertyType.BOOL,
+            default=False,
+            label="启用视觉识别",
         ),
         "model_params": PropertyDefinition(
             type=PropertyType.DYNAMICFORM,
@@ -81,6 +86,7 @@ class Component(BaseComponent):
                 ),
             }
         ),
+        
     }
 
     def run(self, params, inputs):

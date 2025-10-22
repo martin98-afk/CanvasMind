@@ -3,6 +3,7 @@ from collections import OrderedDict, defaultdict, deque
 from typing import Optional, List
 
 from NodeGraphQt import BackdropNode, Port
+from NodeGraphQt.base.commands import NodeVisibleCmd
 from NodeGraphQt.constants import ITEM_CACHE_MODE, PortTypeEnum, Z_VAL_NODE
 from NodeGraphQt.errors import PortError
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
@@ -303,6 +304,44 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
                 for conn in list(in_port.connected_ports()):
                     if conn.node() == node:
                         in_port.disconnect_from(conn)
+
+    def set_property(self, name, value, push_undo=True):
+        """
+        Set the value on the node custom property.
+
+        Args:
+            name (str): name of the property.
+            value (object): property data (python built in types).
+            push_undo (bool): register the command to the undo stack. (default: True)
+        """
+        # prevent signals from causing a infinite loop.
+        if self.get_property(name) == value:
+            return
+
+        if name == 'visible':
+            if self.graph:
+                undo_cmd = NodeVisibleCmd(self, value)
+                if push_undo:
+                    self.graph.undo_stack().push(undo_cmd)
+                else:
+                    undo_cmd.redo()
+                return
+        elif name == 'disabled':
+            # redraw the connected pipes in the scene.
+            ports = self.view.inputs + self.view.outputs
+            for port in ports:
+                for pipe in port.connected_pipes:
+                    pipe.update()
+        super(BackdropNode, self).set_property(name, value, push_undo)
+
+    def set_disabled(self, mode=False):
+        """
+        Set the node state to either disabled or enabled.
+
+        Args:
+            mode(bool): True to disable node.
+        """
+        self.set_property('disabled', mode)
 
     # ──────────────── 覆盖 nodes() 以返回当前包含的节点 ────────────────
 
