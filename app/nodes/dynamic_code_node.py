@@ -3,7 +3,6 @@ import pickle
 import platform
 import re
 import subprocess
-import tempfile
 import time
 import uuid
 from pathlib import Path
@@ -11,18 +10,15 @@ from pathlib import Path
 from NodeGraphQt import BaseNode
 from PyQt5 import QtCore
 
-from .node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.components.base import PropertyType, GlobalVariableContext, ArgumentType
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.scheduler.expression_engine import ExpressionEngine
-from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import resource_path
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
+from .node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from .status_node import StatusNode
-from ..widgets.dialog_widget.component_log_message_box import LogMessageBox
-
 
 # 在 app/components 下创建 .temp 目录（隐藏目录）
 TEMP_COMPONENTS_DIR = Path(__file__).parent.parent / "components" / ".temp"

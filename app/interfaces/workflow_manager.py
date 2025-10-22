@@ -1,16 +1,14 @@
 import os
 import shutil
-import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Set, Optional
+from typing import List, Dict, Set
 
 from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal, QMutex, QMutexLocker, QSize
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QFileDialog, QFrame, QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QFrame, QHBoxLayout
 from qfluentwidgets import (
-    FlowLayout, InfoBar, FluentIcon, CardWidget, BodyLabel, SmoothScrollArea,
-    PipsPager, PipsScrollButtonDisplayMode, ComboBox, CaptionLabel, SearchLineEdit, TransparentToggleToolButton,
-    TransparentToolButton
+    FlowLayout, InfoBar, CardWidget, SmoothScrollArea,
+    PipsPager, PipsScrollButtonDisplayMode, ComboBox, CaptionLabel, SearchLineEdit, TransparentToggleToolButton
 )
 
 from app.interfaces.canvas_interface import CanvasPage
