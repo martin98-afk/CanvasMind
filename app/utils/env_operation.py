@@ -27,6 +27,9 @@ class EnvironmentManager(QObject):
         "3.9": "https://repo.anaconda.com/miniconda/Miniconda3-py39_23.11.0-2-Windows-x86_64.exe",
         "3.10": "https://repo.anaconda.com/miniconda/Miniconda3-py310_23.11.0-2-Windows-x86_64.exe",
         "3.11": "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-Windows-x86_64.exe",
+        "3.12": "https://repo.anaconda.com/miniconda/Miniconda3-py312_23.11.0-2-Windows-x86_64.exe",
+        "3.13": "https://repo.anaconda.com/miniconda/Miniconda3-py313_23.11.0-2-Windows-x86_64.exe",
+        "3.14": "https://repo.anaconda.com/miniconda/Miniconda3-py314_23.11.0-2-Windows-x86_64.exe",
     }
 
     # 默认要安装的包列表
