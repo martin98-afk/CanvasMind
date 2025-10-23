@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 from collections import deque, defaultdict
 from typing import List, Dict, Any, Optional, Callable
 
@@ -378,8 +379,6 @@ class WorkflowScheduler(QObject):
             should_continue = self._evaluate_condition_with_engine(condition_expr, input_data, backdrop,
                                                                    internal_outputs)
             if not should_continue:
-                # 如果条件不满足，收集当前输出并退出
-                outputs = self._collect_outputs(output_proxy)
                 break
 
             outputs = self._collect_outputs(output_proxy)
@@ -392,7 +391,8 @@ class WorkflowScheduler(QObject):
     def _execute_internal_nodes(self, backdrop, execute_nodes, check_cancel):
         """执行循环体内部节点，并收集输出结果"""
         internal_outputs = {}  # 收集内部节点的输出
-
+        for node in execute_nodes:
+            self.set_node_status(node, NodeStatus.NODE_STATUS_PENDING)
         for node in execute_nodes:
             comp_cls = self.component_map.get(node.FULL_PATH)
             if check_cancel():
@@ -411,8 +411,8 @@ class WorkflowScheduler(QObject):
                 # 收集该节点的输出
                 if hasattr(node, '_output_values'):
                     # 使用节点名称作为前缀，避免冲突
-                    # node_name = re.sub(r'\s+|-', '_', node.name())
-                    node_prefix = f"node_vars_{node.name()}"
+                    node_name = re.sub(r'\s+', '_', node.name())
+                    node_prefix = f"node_vars_{node_name}"
                     for output_name, output_value in node._output_values.items():
                         # 使用 "节点名_输出端口名" 作为变量名
                         var_name = f"{node_prefix}_{output_name}"
@@ -465,7 +465,6 @@ class WorkflowScheduler(QObject):
             # 添加内部节点的输出作为临时变量
             if internal_outputs:
                 temp_vars.update(internal_outputs)
-
             result = engine.evaluate_expression_block(condition_expr, temp_vars)
             # 将结果转换为布尔值
             if isinstance(result, str) and result.startswith('[ExprError:'):
