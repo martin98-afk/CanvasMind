@@ -15,6 +15,7 @@ from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 
 
 def create_branch_node(parent_window):
+
     class ConditionalBranchNode(BaseNode, StatusNode, BasicNodeWithGlobalProperty):
         category: str = "控制流"
         __identifier__ = 'control_flow'

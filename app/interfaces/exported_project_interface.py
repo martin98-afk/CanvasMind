@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Set
 
-from PyQt5.QtCore import QThread, pyqtSignal, QEasingCurve, Qt, QTimer
+from PyQt5.QtCore import QThread, pyqtSignal, QEasingCurve, Qt, QTimer, QSize
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QDialog, QTextEdit, QLabel, QFileDialog, QHBoxLayout, QFrame
 from qfluentwidgets import (
@@ -117,6 +117,7 @@ class ExportedProjectsPage(QWidget):
         self.sort_field_combo.currentIndexChanged.connect(self._on_sort_changed)
 
         self.sort_order_button = TransparentToggleToolButton(self)
+        self.sort_order_button.setIconSize(QSize(20, 20))
         self.sort_order_button.setIcon(get_icon("降序"))
         self.sort_order_button.setChecked(False)
         self.sort_order_button.setToolTip("当前：降序（点击切换为升序）")
