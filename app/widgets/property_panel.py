@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+import re
 
 import pandas as pd
 from NodeGraphQt import BaseNode
@@ -270,7 +271,8 @@ class PropertyPanel(CardWidget):
                 current_selected_data,
                 port_type=port_type,
                 port_name=port_name,
-                layout=layout
+                layout=layout,
+                node=node
             )
 
     def _populate_output_ports(self, node, layout):
@@ -439,6 +441,17 @@ class PropertyPanel(CardWidget):
         if layout is None:
             layout = self.vbox
         layout.addWidget(info_card)
+
+        # === 右键菜单：复制为 node_vars.nodename_portname$ ===
+        def show_context_menu(pos):
+            menu = RoundMenu(parent=self)
+            menu.addAction(
+                Action("复制为表达式", triggered=lambda: self._copy_as_expression("node_vars", f"{node.name()}_{port_name}"))
+            )
+            menu.exec_(info_card.mapToGlobal(pos))
+        if is_output:
+            info_card.setContextMenuPolicy(Qt.CustomContextMenu)
+            info_card.customContextMenuRequested.connect(show_context_menu)
 
         if port_name is not None:
             self._text_edit_widgets[port_name] = tree_widget
@@ -704,8 +717,8 @@ class PropertyPanel(CardWidget):
             )
             return
 
-        safe_node_name = "".join(c if c.isalnum() or c in " _-" else "_" for c in node.name())
-        var_name = f"{safe_node_name}__{port_name}"
+        safe_node_name = re.sub(r'\s+', '_', node.name())
+        var_name = f"{safe_node_name}_{port_name}"
 
         self.main_window.global_variables.set_output(
             node_id=safe_node_name, output_name=port_name, output_value=serialize_for_json(value)
@@ -1098,6 +1111,7 @@ class PropertyPanel(CardWidget):
 
     def _copy_as_expression(self, prefix: str, var_name: str):
         """将变量名复制为 $prefix.var_name$ 格式"""
+        var_name = re.sub(r'\s+', '_', var_name)
         expr = f"${prefix}.{var_name}$"
         clipboard = QApplication.clipboard()
         clipboard.setText(expr)

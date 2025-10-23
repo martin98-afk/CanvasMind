@@ -22,7 +22,7 @@ class Component(BaseComponent):
     requirements = ""
 
     inputs = [
-        PortDefinition(name="history", label="输入1", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),
+        PortDefinition(name="history", label="输入1", type=ArgumentType.JSON, connection=ConnectionType.MULTIPLE),
     ]
 
     outputs = [

@@ -6,8 +6,8 @@ import shutil
 import traceback
 from datetime import datetime
 from pathlib import Path
-from NodeGraphQt import NodeGraph, BackdropNode, BaseNode
-from NodeGraphQt.constants import PipeLayoutEnum, PipeEnum
+from NodeGraphQt import BackdropNode, BaseNode
+from NodeGraphQt.constants import PipeLayoutEnum
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer
@@ -21,7 +21,7 @@ from qfluentwidgets import (
 from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
 from app.nodes.branch_node import create_branch_node
-from app.nodes.custom_nodegraph import CustomNodeGraph
+from app.widgets.custom_nodegraph import CustomNodeGraph
 from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode

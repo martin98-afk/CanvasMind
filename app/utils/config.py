@@ -61,7 +61,7 @@ class Settings(QConfig):
             CONFIG_FILE = str(Path.cwd() / "app.config")
             cls._instance.save(CONFIG_FILE)
 
-    current_version = ConfigItem("General", "CurrentVersion", "v0.1.2")
+    current_version = ConfigItem("General", "CurrentVersion", "v0.1.3")
 
     # 通用设置
     auto_check_update = ConfigItem("General", "AutoCheckUpdate", True, BoolValidator())

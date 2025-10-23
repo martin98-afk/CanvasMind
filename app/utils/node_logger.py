@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-import os
-from pathlib import Path
 from loguru import logger
+import threading
+from pathlib import Path
 
-# 全局配置
-LOG_ROOT = Path("logs") / "nodes"
-LOG_ROOT.mkdir(parents=True, exist_ok=True)
+# 假设这些常量已定义
+LOG_ROOT = Path("logs") / "nodes"  # 示例路径
 MAX_LOG_LINES = 5000
 
 
@@ -18,6 +17,8 @@ class NodeLogHandler:
         self.use_file_logging = use_file_logging
         self.handler_id = None
         self.file_handler_id = None
+        self.log_window = None  # 新增：存储 LogMessageBox 实例
+        self._lock = threading.Lock()  # 新增：线程锁，保护 log_window 的读写
 
         # 持久化日志路径
         safe_node_id = "".join(c if c.isalnum() or c in "._-" else "_" for c in str(node_id))
@@ -26,6 +27,17 @@ class NodeLogHandler:
         self.logger = logger.bind(node_id=self.node_id)
         self.add_handler()
 
+    def set_log_window(self, log_window):
+        """设置日志窗口实例，用于实时推送日志"""
+        with self._lock:  # 确保线程安全
+            self.log_window = log_window
+
+    def remove_log_window(self, log_window):
+        """移除日志窗口实例"""
+        with self._lock:  # 确保线程安全
+            if self.log_window == log_window:
+                self.log_window = None
+
     def _log_sink(self, message):
         """UI 回调日志接收器"""
         record = message.record
@@ -33,7 +45,20 @@ class NodeLogHandler:
             return
         timestamp = record["time"].strftime("%Y-%m-%d %H:%M:%S")
         formatted_msg = f"[{timestamp}] {record['function']}-{record['line']} {record['level'].name}: {record['message']}"
+
+        # 调用原有的 UI 回调
         self.log_callback(self.node_id, formatted_msg)
+
+        # --- 新增：推送到实时日志窗口 ---
+        with self._lock:  # 确保线程安全
+            if self.log_window:
+                try:
+                    # 直接调用 LogMessageBox 的 add_log_entry 方法
+                    self.log_window.add_log_entry(formatted_msg)
+                except Exception as e:
+                    # 防止日志窗口异常影响主流程
+                    print(f"Error sending log to window: {e}")
+        # ---
 
     def _file_sink(self, message):
         """持久化文件日志接收器（带行数限制）"""
@@ -71,7 +96,7 @@ class NodeLogHandler:
         self.handler_id = logger.add(
             self._log_sink,
             level="INFO",
-            enqueue=True,
+            enqueue=True,  # 启用队列，实现异步日志处理
             filter=lambda r: r["extra"].get("node_id") == self.node_id
         )
 
