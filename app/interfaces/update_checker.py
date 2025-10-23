@@ -149,10 +149,6 @@ class UpdateChecker(QWidget):
                     # 如果有多个子目录或没有子目录，则当前 source_dir 可能就是目标
                     break
 
-            print(f"[DEBUG] Update script: App dir: {app_dir}")
-            print(f"[DEBUG] Update script: Temp extract dir: {temp_extract_dir}")
-            print(f"[DEBUG] Update script: Source dir (to copy from): {source_dir}")
-
             # 3. 生成更新脚本（覆盖文件 + 重启）
             # Windows Batch Script
             bat_content = f'''@echo off
@@ -196,8 +192,6 @@ exit
             with open(script_path, "w", encoding="gbk") as f:
                 f.write(bat_content)
 
-            # 4. 执行更新脚本
-            print(f"[DEBUG] Executing update script: {script_path}")
             subprocess.Popen([script_path], shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE) # 创建新控制台窗口便于查看日志
             self.create_successbar("更新已启动", "程序即将自动重启以应用更新！")
             time.sleep(2)
@@ -207,7 +201,6 @@ exit
         except Exception as e:
             import traceback
             error_msg = f"更新失败：{str(e)}\n{traceback.format_exc()}"
-            print(error_msg) # 也打印到控制台
             self.create_errorbar("更新失败", str(e))
             # 清理临时文件
             for path in [temp_extract_dir]:
@@ -264,7 +257,6 @@ exit
         if latest_release:
             latest_version = latest_release.get("tag_name")
             print(f"当前版本：{self.current_version}，最新版本：{latest_version}")
-            print(self._compare_versions(latest_version, self.current_version))
             if (
                 latest_version
                 and self._compare_versions(latest_version, self.current_version) > 0
