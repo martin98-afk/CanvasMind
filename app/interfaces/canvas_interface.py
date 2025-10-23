@@ -135,7 +135,19 @@ class CanvasPage(QWidget):
         # 优化：直接连接到 set_node_status_by_id
         scheduler.node_status_changed.connect(self.set_node_status_by_id)
         scheduler.property_changed.connect(self.update_node_property)
+        scheduler.node_variable_updated.connect(self.update_node_variable)
         return scheduler
+
+    def update_node_variable(self, name, value, policy):
+        print(f"变量 {name} 更新为 {value}, {policy}")
+        if policy == "更新":
+            self.global_variables.node_vars[name].value = value
+        elif policy == "追加":
+            try:
+                self.global_variables.node_vars[name].value += value
+            except:
+                logger.info(f"无法追加变量 {name} 的值")
+                self.global_variables.node_vars[name].value = value
 
     def set_node_status_by_id(self, node_id, status):
         node = self._get_node_by_id_cached(node_id)

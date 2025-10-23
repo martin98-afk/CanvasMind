@@ -28,6 +28,7 @@ class WorkflowScheduler(QObject):
     error = pyqtSignal(str)
     node_status_changed = pyqtSignal(str, str)  # node_id, status
     property_changed = pyqtSignal(str)
+    node_variable_updated = pyqtSignal(str, object, str)
 
     def __init__(
             self,

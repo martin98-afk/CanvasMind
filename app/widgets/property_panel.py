@@ -9,7 +9,8 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
     QStackedWidget, QHBoxLayout, QApplication
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
-    ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton
+    ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
+    ComboBox
 
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
@@ -115,9 +116,9 @@ class PropertyPanel(CardWidget):
     def update_properties(self, node):
         # === 判断是否为同一个普通节点（非 Backdrop）===
         is_same_node = (
-            node is not None
-            and node is self.current_node
-            and not isinstance(node, ControlFlowBackdrop)
+                node is not None
+                and node is self.current_node
+                and not isinstance(node, ControlFlowBackdrop)
         )
 
         if is_same_node:
@@ -432,7 +433,6 @@ class PropertyPanel(CardWidget):
         )
         title_layout.addWidget(browse_btn)
 
-
         card_layout.addLayout(title_layout)
 
         tree_widget = VariableTreeWidget(text, port_type, parent=self.main_window)
@@ -446,9 +446,11 @@ class PropertyPanel(CardWidget):
         def show_context_menu(pos):
             menu = RoundMenu(parent=self)
             menu.addAction(
-                Action("复制为表达式", triggered=lambda: self._copy_as_expression("node_vars", f"{node.name()}_{port_name}"))
+                Action("复制为表达式",
+                       triggered=lambda: self._copy_as_expression("node_vars", f"{node.name()}_{port_name}"))
             )
             menu.exec_(info_card.mapToGlobal(pos))
+
         if is_output:
             info_card.setContextMenuPolicy(Qt.CustomContextMenu)
             info_card.customContextMenuRequested.connect(show_context_menu)
@@ -458,7 +460,7 @@ class PropertyPanel(CardWidget):
 
         return tree_widget
 
-    def _open_in_explorer(self, data, title="变量浏览器"):# 假设你把 VariableExplorerWidget 放在 variable_explorer.py
+    def _open_in_explorer(self, data, title="变量浏览器"):  # 假设你把 VariableExplorerWidget 放在 variable_explorer.py
 
         if isinstance(data, dict):
             data_dict = data
@@ -815,10 +817,11 @@ class PropertyPanel(CardWidget):
             self.custom_vars_layout.addWidget(BodyLabel("custom 未定义"))
 
         if hasattr(global_vars, 'node_vars'):
-            node_vars = global_vars.node_vars
-            if node_vars:
-                for name, value in node_vars.items():
-                    card = self._create_variable_card(name, value)
+            node_vars_dict = global_vars.node_vars  # 现在是一个 Dict[str, NodeVariable]
+            if node_vars_dict:
+                for name, node_var_obj in node_vars_dict.items():
+                    # 传递 NodeVariable 对象本身给 _create_variable_card
+                    card = self._create_variable_card(name, node_var_obj)
                     self.node_vars_layout.addWidget(card)
                     self.node_vars_layout.addStretch()
             else:
@@ -869,31 +872,54 @@ class PropertyPanel(CardWidget):
 
         return card
 
-    def _create_variable_card(self, name: str, value):
+    def _create_variable_card(self, name: str, node_var_obj):
+        """
+        创建节点变量卡片，包含变量名、值预览和更新策略选择。
+        现在接收 NodeVariable 对象。
+        """
         card = CardWidget(self)
         card.setMaximumWidth(250)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
 
+        # 标题行：变量名 + 更新策略下拉框 + 删除按钮
         title_layout = QHBoxLayout()
         title = BodyLabel(name)
         title_layout.addWidget(title)
+
+        # 更新策略下拉框
+        strategy_combo = ComboBox(self)
+        strategy_combo.addItems(['固定', '更新', '追加'])  # UI显示的文本
+        # 设置当前选中项，根据传入的 NodeVariable 对象的 update_policy
+        strategy_combo.setCurrentText(node_var_obj.update_policy)
+        # 存储原始 name 以便更新策略时使用
+        strategy_combo.setProperty('node_var_name', name)
+        strategy_combo.currentTextChanged.connect(self._on_node_var_strategy_changed)
+
+        title_layout.addWidget(strategy_combo)
         title_layout.addStretch()
+
+        # 删除按钮
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
         del_btn.setIconSize(QSize(8, 8))
+        # 将变量名传递给删除函数
         del_btn.clicked.connect(lambda _, n=name: self._delete_custom_variable(n, 'node_vars'))
+
         title_layout.addWidget(del_btn)
         layout.addLayout(title_layout)
 
-        tree = VariableTreeWidget(value, parent=self.main_window)
+        # 值预览区域
+        # 从 NodeVariable 对象中获取 value
+        tree = VariableTreeWidget(node_var_obj.value, parent=self.main_window)
         tree.setMinimumHeight(80)
         tree.setMaximumHeight(120)
         layout.addWidget(tree)
 
-        # === 右键菜单：复制为 $node.name$ ===
+        # === 右键菜单：复制为 $node_vars.name$ ===
         def show_context_menu(pos):
             menu = RoundMenu(parent=self)
+            # 复制表达式的动作
             menu.addAction(
                 Action("复制为表达式", triggered=lambda: self._copy_as_expression("node_vars", name))
             )
@@ -903,7 +929,35 @@ class PropertyPanel(CardWidget):
         card.setContextMenuPolicy(Qt.CustomContextMenu)
         card.customContextMenuRequested.connect(show_context_menu)
 
+        # 将控件引用存储到 card 对象上，方便后续查找或更新
+        card.strategy_combo = strategy_combo
+        card.tree_widget = tree
+        card.node_var_name = name  # 保存变量名，方便后续更新值时使用
+
         return card
+
+    def _on_node_var_strategy_changed(self, text: str):
+        """当节点变量的更新策略下拉框值改变时触发"""
+        combo = self.sender()
+        if not combo or not isinstance(combo, ComboBox):
+            return
+
+        var_name = combo.property('node_var_name')
+        if not var_name:
+            return
+
+        # 通知 main_window.global_variables 更新 NodeVariable 对象的策略
+        global_vars = getattr(self.main_window, 'global_variables', None)
+        if global_vars and hasattr(global_vars, 'node_vars'):
+            try:
+                # 检查变量是否存在
+                if var_name in global_vars.node_vars:
+                    # 直接修改 NodeVariable 对象的 update_policy 属性
+                    global_vars.node_vars[var_name].update_policy = text
+                    # 发出信号，通知其他可能依赖此变量的部分
+                    self.main_window.global_variables_changed.emit()
+            except AttributeError as e:
+                print(f"Error updating strategy for '{var_name}': {e}")
 
     def _delete_custom_variable(self, var_name: str, var_type: str):
         global_vars = getattr(self.main_window, 'global_variables', None)
