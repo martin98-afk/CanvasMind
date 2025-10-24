@@ -44,7 +44,7 @@ class ExpressionEngine:
 
         # 节点输出变量 -> node_xxx
         for k, v in ctx.node_vars.items():
-            flat[f"node_vars_{k}"] = v
+            flat[f"node_vars_{k}"] = v.value
 
         return flat
 

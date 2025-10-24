@@ -928,6 +928,7 @@ class PortEditorWidget(QWidget):
         else:
             self.table.setColumnCount(3)
             self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型"])
+        self.table.verticalHeader().hide()
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.itemChanged.connect(lambda item: self.ports_changed.emit())
 
@@ -1030,6 +1031,7 @@ class PropertyEditorWidget(QWidget):
         self.table = TableWidget()
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "选项"])
+        self.table.verticalHeader().hide()
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.itemChanged.connect(lambda item: self.properties_changed.emit())
 

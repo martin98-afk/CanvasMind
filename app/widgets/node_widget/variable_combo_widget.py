@@ -38,7 +38,48 @@ class GlobalVarComboBoxWidget(QtWidgets.QWidget):
 
         # 监听全局变量变化（需要 main_window 有 global_vars_changed 信号）
         if self.main_window and hasattr(self.main_window, 'global_variables_changed'):
-            self.main_window.global_variables_changed.connect(self._refresh_options)
+            self.main_window.global_variables_changed.connect(self.on_variable_changed)
+
+    def on_variable_changed(self, type, value, operation):
+        """
+        处理全局变量变化事件，只对下拉框进行增量更新
+
+        Args:
+            type: 变量类型 ('env', 'custom', 'node_vars')
+            value: 变量值或变量名
+            operation: 操作类型 ('add', 'delete', 'update')
+        """
+        full_var_name = f"{type}.{value}"
+
+        if operation == 'add':
+            # 检查是否已存在该选项
+            existing_index = self.combobox.findText(full_var_name)
+            if existing_index == -1:
+                # 按字母顺序插入
+                self._insert_sorted(full_var_name)
+
+        elif operation == 'delete':
+            # 删除对应的选项
+            index = self.combobox.findText(full_var_name)
+            if index >= 0:
+                # 如果被删除的是当前选中的值，需要重置
+                if self.combobox.itemData(index) == self._value:
+                    self._value = ""
+                    # 选择"无"选项
+                    self.combobox.setCurrentIndex(0)
+
+                self.combobox.removeItem(index)
+
+    def _insert_sorted(self, text):
+        """将文本按字母顺序插入到下拉框中（跳过第一个"无"选项）"""
+        # 从索引1开始查找插入位置（跳过"无"选项）
+        insert_pos = 1
+        for i in range(1, self.combobox.count()):
+            if self.combobox.itemText(i) > text:
+                break
+            insert_pos = i + 1
+
+        self.combobox.insertItem(insert_pos, text, text)
 
     def _refresh_options(self):
         """动态加载所有全局变量"""

@@ -25,7 +25,6 @@ class CustomNodeItem(NodeItem):
         # 其他逻辑交给父类（包括左键、菜单弹出等）
         super().mousePressEvent(event)
 
-
     def _calc_size_horizontal(self):
         # width, height from node name text.
         text_w = self._text_item.boundingRect().width()

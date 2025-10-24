@@ -115,7 +115,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         # ✅ 升序/降序切换按钮
         self.sort_order_button = TransparentToggleToolButton(self)
         self.sort_order_button.setIcon(get_icon("降序"))  # 默认降序
-        self.sort_order_button.setIconSize(QSize(24, 24))
+        self.sort_order_button.setIconSize(QSize(20, 20))
         self.sort_order_button.setChecked(False)  # False = 降序
         self.sort_order_button.setToolTip("点击切换排序方向")
         self.sort_order_button.clicked.connect(self._on_sort_order_changed)

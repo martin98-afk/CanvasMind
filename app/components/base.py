@@ -28,9 +28,15 @@ ENV_RULES = {
     "run_id": {"type": str, "readonly": True},
     "TZ": {"type": str, "pattern": r"^[A-Za-z_+-/]+$", "default": "Asia/Shanghai"},
     "LANG": {"type": str, "pattern": r"^[a-z]{2}_[A-Z]{2}\.UTF-8$", "default": "en_US.UTF-8"},
+    "LC_ALL": {"type": str, "pattern": r"^[a-z]{2}_[A-Z]{2}\.UTF-8$", "default": "en_US.UTF-8"},
+
     "OMP_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
     "MKL_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
-    "CUDA_VISIBLE_DEVICES": {"type": str, "pattern": r"^[\d,\s]*$", "default": "0"},
+    "OPENBLAS_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
+    "NUMEXPR_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
+
+    "CUDA_VISIBLE_DEVICES": {"type": str, "pattern": r"^(\d+)(,\s*\d+)*$|^$", "default": "0"},
+
     "PYTHONPATH": {"type": str, "default": "."},
     "PYTHONUNBUFFERED": {"type": str, "allowed": {"1"}, "default": "1"},
     "PYTHONIOENCODING": {"type": str, "default": "utf-8"},
@@ -39,15 +45,7 @@ ENV_RULES = {
 
 
 DEFAULT_PYTHON_ENV_VARS = {
-    "PYTHONPATH": ".",
-    "PYTHONUNBUFFERED": "1",
-    "PYTHONIOENCODING": "utf-8",
-    "PYTHONWARNINGS": "ignore",
-    "TZ": "Asia/Shanghai",
-    "LANG": "en_US.UTF-8",
-    "OMP_NUM_THREADS": "1",
-    "MKL_NUM_THREADS": "1",
-    "CUDA_VISIBLE_DEVICES": "0",
+    k: v["default"] for k, v in ENV_RULES.items() if "default" in v
 }
 
 COMPONENT_IMPORT_CODE = """# -*- coding: utf-8 -*-
@@ -185,10 +183,15 @@ class CustomVariable(BaseModel):
     read_only: bool = False
 
 
+class NodeVariable(BaseModel):
+    value: Any = None
+    update_policy: Optional[str] = "固定"
+
+
 class GlobalVariableContext(BaseModel):
     env: ExecutionEnvironment = Field(default_factory=ExecutionEnvironment)
     custom: Dict[str, CustomVariable] = Field(default_factory=dict)
-    node_vars: Dict[str, Any] = Field(default_factory=dict)
+    node_vars: Dict[str, NodeVariable] = Field(default_factory=dict)
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -206,18 +209,20 @@ class GlobalVariableContext(BaseModel):
         else:
             self.custom[key].value = value
 
-    def set_output(self, node_id: str, output_name: str, output_value: Any):
-        self.node_vars[f"{node_id}_{output_name}"] = output_value
+    def set_output(self, node_id: str, output_name: str, output_value: Any, policy: str="固定"):
+        self.node_vars[f"{node_id}_{output_name}"] = NodeVariable(
+            value=output_value, update_policy=policy
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """兼容旧逻辑：返回扁平字典（仅 custom 变量）"""
-        return {k: v.value for k, v in self.custom.items()} | self.env.get_all_env_vars() | self.node_vars
+        return {k: v.value for k, v in self.custom.items()} | self.env.get_all_env_vars() | {k: v.value for k, v in self.node_vars.items()}
 
     def serialize(self):
         return {
             "env": self.env.dict(),
             "custom": {k: v.dict() for k, v in self.custom.items()},
-            "node_vars": self.node_vars
+            "node_vars": {k: v.dict() for k, v in self.node_vars.items()}
         }
 
     def deserialize(self, data):
@@ -228,7 +233,10 @@ class GlobalVariableContext(BaseModel):
         self.env.session_id = history_env.get("session_id")
         self.env.run_id = history_env.get("run_id")
         self.custom = {k: CustomVariable(**v) for k, v in data.get("custom", {}).items()}
-        self.node_vars = data.get("node_vars", {})
+        self.node_vars = {
+            k: NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
+            for k, v in data.get("node_vars", {}).items()
+        }
 
     def get(self, key: str, default=None) -> Any:
         if not isinstance(key, str):
@@ -251,7 +259,7 @@ class GlobalVariableContext(BaseModel):
             if path in env_all:
                 return env_all[path]
             if path in self.node_vars:
-                return self.node_vars[path]
+                return self.node_vars[path].value
             raise KeyError(f"Key '{path}' not found")
 
         parts = path.split(".", 1)  # 只拆第一层：如 "env.TZ" → ["env", "TZ"]
@@ -277,7 +285,7 @@ class GlobalVariableContext(BaseModel):
 
         elif root == "node_vars":
             if subpath in self.node_vars:
-                return self.node_vars[subpath]
+                return self.node_vars[subpath].value
             else:
                 raise KeyError(f"Node variable '{subpath}' not found")
 
@@ -289,7 +297,7 @@ class GlobalVariableContext(BaseModel):
             if path in env_all:
                 return env_all[path]
             if path in self.node_vars:
-                return self.node_vars[path]
+                return self.node_vars[path].value
             raise KeyError(f"Key '{path}' not found")
 
 

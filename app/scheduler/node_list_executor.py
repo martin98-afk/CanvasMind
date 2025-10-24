@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 import time
 import traceback
 from typing import List, Optional, Any
@@ -17,7 +18,6 @@ class WorkerSignals(QObject):
     node_started = pyqtSignal(str)
     node_finished = pyqtSignal(str)
     node_error = pyqtSignal(str)
-
 
 class NodeListExecutor(QRunnable):
     """
@@ -69,11 +69,21 @@ class NodeListExecutor(QRunnable):
                 try:
                     if getattr(node, "execute_sync", None) is not None:
                         comp_cls = self.component_map.get(getattr(node, "FULL_PATH", None))
-                        node.execute_sync(
+                        results = node.execute_sync(
                             comp_cls,
                             python_executable=self.python_exe,
                             check_cancel=self._check_cancel
                         )
+                        if results is not None:
+                            # 如果结果不为 None， 且其中有含自动更新或者自动累计的变量，则发送变量更新信号
+                            for port_name, result in results.items():
+                                node_name = re.sub(r"\s+", "_", node.name())
+                                if f"{node_name}_{port_name}" in self.scheduler.global_variables.node_vars and \
+                                    self.scheduler.global_variables.node_vars[f"{node_name}_{port_name}"].update_policy!="固定":
+                                    self.scheduler.node_variable_updated.emit(
+                                        f"{node_name}_{port_name}", result,
+                                        self.scheduler.global_variables.node_vars[f"{node_name}_{port_name}"].update_policy
+                                    )
                     elif isinstance(node, ControlFlowBackdrop):
                         if self.scheduler:
                             self.scheduler._execute_backdrop_sync(

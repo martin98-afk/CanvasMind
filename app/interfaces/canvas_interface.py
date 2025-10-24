@@ -16,7 +16,8 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QPro
 from loguru import logger
 from qfluentwidgets import (
     InfoBar,
-    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton
+    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton, FlyoutViewBase,
+    PushButton, Flyout
 )
 from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
@@ -39,10 +40,11 @@ from app.widgets.minimap_widget import MinimapWidget
 from app.widgets.property_panel import PropertyPanel
 from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 
+
 class CanvasPage(QWidget):
     canvas_deleted = pyqtSignal()
     canvas_saved = pyqtSignal(Path)
-    global_variables_changed = pyqtSignal()
+    global_variables_changed = pyqtSignal(str, str, str)
     env_changed = pyqtSignal(str)
 
     PIPELINE_STYLE = {
@@ -67,13 +69,14 @@ class CanvasPage(QWidget):
         self.node_status = {}  # {node_id: status}
         self.node_type_map = {}
         self._registered_nodes = []
+        self._node_flyout = None
         self._clipboard_data = None
         self._scheduler = None  # ← 新增：调度器引用
         self._selection_update_pending = False
 
         # --- 新增：性能优化相关 ---
-        self._node_id_cache = {} # 缓存：node_id -> node_object
-        self._node_id_cache_valid = False # 标记缓存是否有效
+        self._node_id_cache = {}  # 缓存：node_id -> node_object
+        self._node_id_cache_valid = False  # 标记缓存是否有效
         # ---
 
         # 初始化 NodeGraph
@@ -133,7 +136,65 @@ class CanvasPage(QWidget):
         # 优化：直接连接到 set_node_status_by_id
         scheduler.node_status_changed.connect(self.set_node_status_by_id)
         scheduler.property_changed.connect(self.update_node_property)
+        scheduler.node_variable_updated.connect(self.update_node_variable)
         return scheduler
+
+    def update_node_variable(self, name, value, policy):
+        node_var_obj = self.global_variables.node_vars.get(name)
+        if policy == "更新":
+            node_var_obj.value = value
+        elif policy == "追加":
+            current_value = node_var_obj.value
+            # 尝试进行追加操作
+            try:
+                # --- 处理字符串 ---
+                if isinstance(current_value, str):
+                    if isinstance(value, str):
+                        node_var_obj.value = current_value + value
+                        logger.debug(f"变量 '{name}' (str) 已追加: '{value}'")
+                    else:
+                        # 如果当前是字符串，但新值不是，将新值转为字符串后追加
+                        node_var_obj.value = current_value + str(value)
+                        logger.debug(f"变量 '{name}' (str) 已追加转换后的值: {value}")
+                # --- 处理列表 ---
+                elif isinstance(current_value, list):
+                    if isinstance(value, list):
+                        node_var_obj.value = current_value + value
+                        logger.debug(f"变量 '{name}' (list) 已追加列表: {value}")
+                    else:
+                        # 如果当前是列表，但新值不是列表，将新值作为一个元素追加
+                        node_var_obj.value = current_value + [value]
+                        logger.debug(f"变量 '{name}' (list) 已追加单个元素: {value}")
+                # --- 处理字典 ---
+                elif isinstance(current_value, dict):
+                    if isinstance(value, dict):
+                        # 合并字典，新值会覆盖同名键的旧值
+                        node_var_obj.value = {**current_value, **value}
+                        logger.debug(f"变量 '{name}' (dict) 已合并字典: {value}")
+                    else:
+                        logger.warning(f"无法将非字典值 {value} (type: {type(value)}) 追加到字典变量 '{name}'。")
+                # --- 处理数字 (int, float) ---
+                elif isinstance(current_value, (int, float)):
+                    if isinstance(value, (int, float)):
+                        node_var_obj.value = [current_value, value]
+                        logger.debug(f"变量 '{name}' (number) 已累加: {value}")
+                    else:
+                        logger.warning(
+                            f"无法将非数字值 {value} (type: {type(value)}) 与数字变量 '{name}' (type: {type(current_value)}) 相加。")
+                # --- 其他类型 ---
+                else:
+                    # 对于其他类型，尝试直接相加，如果失败则覆盖
+                    node_var_obj.value = current_value + value
+                    logger.debug(f"变量 '{name}' (type: {type(current_value)}) 已尝试追加: {value}")
+            except TypeError as e:
+                # 如果相加操作不支持（例如 list + int），则记录警告并覆盖
+                logger.warning(f"追加变量 '{name}' 失败: {e}. 将覆盖旧值。")
+                node_var_obj.value = value
+            except Exception as e:
+                # 捕获其他任何可能的异常，记录警告并覆盖
+                logger.error(f"追加变量 '{name}' 时发生未知错误: {e}. 将覆盖旧值。")
+                node_var_obj.value = value
+        QtCore.QTimer.singleShot(0, self.property_panel._refresh_custom_vars_page)
 
     def set_node_status_by_id(self, node_id, status):
         node = self._get_node_by_id_cached(node_id)
@@ -149,7 +210,7 @@ class CanvasPage(QWidget):
                 break
         node = self._get_node_by_id_cached(node_id)
         if selected_nodes and node == backdrop:
-            self.property_panel.update_properties(node)
+            QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
 
     def _connect_scheduler_signals(self):
         """连接调度器信号到 UI 回调"""
@@ -934,6 +995,7 @@ class CanvasPage(QWidget):
                         shutil.copy2(src_path, dst_path)
                         rel_to_project = ("components" / src_rel_path).as_posix()
                         component_path_map[str(src_path)] = rel_to_project
+
             # 构建节点数据（略，保持你原有逻辑）
             def _process_value_for_export(value, inputs_dir: Path, export_path: Path):
                 if isinstance(value, str):
@@ -953,6 +1015,7 @@ class CanvasPage(QWidget):
                 elif isinstance(value, list):
                     return [_process_value_for_export(v, inputs_dir, export_path) for v in value]
                 return value
+
             new_nodes_data = {}
             for node in nodes_to_export:
                 editable_params = node.model.custom_properties
@@ -1150,8 +1213,8 @@ class CanvasPage(QWidget):
 
         # 2. 如果状态是运行中，则高亮
         if status == NodeStatus.NODE_STATUS_RUNNING:
-            input_color = (64, 158, 255, 255) # 蓝色
-            output_color = (50, 205, 50, 255) # 绿色
+            input_color = (64, 158, 255, 255)  # 蓝色
+            output_color = (50, 205, 50, 255)  # 绿色
             for input_port in node.input_ports():
                 for out_port in input_port.connected_ports():
                     pipe = self._find_pipe_by_ports(out_port, input_port, viewer.all_pipes())
@@ -1177,7 +1240,7 @@ class CanvasPage(QWidget):
             self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
         # 优化：只在节点被选中时更新属性面板
         if node and node.selected():
-            self.property_panel.update_properties(node)
+            QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
 
     def _get_node_by_id_cached(self, node_id):
         """原始方法，保留用于兼容性"""
@@ -1201,7 +1264,7 @@ class CanvasPage(QWidget):
     def _invalidate_node_cache(self):
         """当节点被创建或删除时，标记缓存无效"""
         self._node_id_cache_valid = False
-        self._node_id_cache.clear() # 可选，清空以节省内存
+        self._node_id_cache.clear()  # 可选，清空以节省内存
 
     def delete_node(self, node):
         if node and node.id in self.node_status:
@@ -1219,17 +1282,86 @@ class CanvasPage(QWidget):
     def _do_selection_update(self):
         self._selection_update_pending = False
         selected_nodes = self.graph.selected_nodes()
+
+        # # ===== 新增：Flyout 显示逻辑 =====
+        # if selected_nodes and len(selected_nodes) == 1:
+        #     node = selected_nodes[0]
+        #     self._show_node_flyout(node)
+        # else:
+        #     self._hide_node_flyout()
+
+        # 原有属性面板逻辑
         if selected_nodes:
             for node in selected_nodes:
                 if isinstance(node, ControlFlowBackdrop):
-                    self.property_panel.update_properties(node)
+                    QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
                     return
             if isinstance(selected_nodes[0], BaseNode):
-                self.property_panel.update_properties(selected_nodes[0])
+                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(selected_nodes[0]))
             else:
-                self.property_panel.update_properties(None)
+                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
         else:
-            self.property_panel.update_properties(None)
+            QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
+
+    def _show_node_flyout(self, node):
+        self._hide_node_flyout()
+
+        view_pos = self._get_node_top_right_global_pos(node)
+        if not view_pos:
+            return
+
+        # ✅ 创建普通 QWidget 作为内容容器
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(8)
+        content_widget.setFixedWidth(120)
+
+        config_btn = PushButton('⚙️ 配置', content_widget)
+        run_btn = PushButton('▶️ 运行', content_widget)
+        delete_btn = PushButton('🗑️ 删除', content_widget)
+
+        config_btn.clicked.connect(lambda: self.edit_node(node))
+        run_btn.clicked.connect(lambda: self.run_node(node))
+        delete_btn.clicked.connect(lambda: self.delete_node(node))
+
+        layout.addWidget(config_btn)
+        layout.addWidget(run_btn)
+        layout.addWidget(delete_btn)
+
+        # ✅ 直接传 content_widget 给 Flyout.make()
+        self._node_flyout = Flyout.make(
+            content_widget,
+            target=self.canvas_widget,  # 或 self
+            parent=self.canvas_widget
+        )
+        # 手动定位
+        flyout_pos = view_pos - QtCore.QPoint(0, self._node_flyout.height())
+        self._node_flyout.move(flyout_pos)
+        self._node_flyout.show()
+
+    def _hide_node_flyout(self):
+        if self._node_flyout:
+            try:
+                self._node_flyout.close()
+            except RuntimeError:
+                pass  # 已被销毁，忽略
+            self._node_flyout = None
+
+    def _get_node_top_right_global_pos(self, node):
+        """获取节点右上角的全局屏幕坐标"""
+        try:
+            node_item = node.view
+            scene_rect = node_item.boundingRect()
+            scene_pos = node_item.scenePos()
+            top_right_scene = scene_pos + QtCore.QPointF(scene_rect.width(), 0)
+            # 转为 view 坐标
+            view_pos = self.canvas_widget.mapFromScene(top_right_scene)
+            # 转为全局坐标
+            global_pos = self.canvas_widget.viewport().mapToGlobal(view_pos)
+            return global_pos
+        except Exception:
+            return None
 
     def save_full_workflow(self, file_path, show_info=True):
         graph_data = self.graph.serialize_session()
@@ -1316,12 +1448,14 @@ class CanvasPage(QWidget):
 
     def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data, global_variable):
         try:
+            self.global_variables.deserialize(global_variable)
+            self.property_panel.update_properties(None)
             # === 1. 准备数据 ===
             nodes_data = graph_data.get("nodes", {})
             total_nodes = len(nodes_data)
             if total_nodes == 0:
                 self.graph.deserialize_session(graph_data)
-                self._finish_loading(runtime_data, node_status_data, global_variable)
+                self._finish_loading(runtime_data, node_status_data)
                 return
 
             # === 2. 创建进度对话框 ===
@@ -1355,20 +1489,15 @@ class CanvasPage(QWidget):
                 progress.close()
 
             # === 5. 完成后续加载 ===
-            self._finish_loading(runtime_data, node_status_data, global_variable)
+            self._finish_loading(runtime_data, node_status_data)
 
         except Exception as e:
             logger.error(f"❌ 加载失败: {traceback.format_exc()}")
             self.create_failed_info("加载失败", f"工作流加载失败: {str(e)}")
 
-    def _finish_loading(self, runtime_data, node_status_data, global_variable):
+    def _finish_loading(self, runtime_data, node_status_data):
         """加载完成后恢复状态"""
         self._setup_pipeline_style()
-
-        # 全局变量
-        self.global_variables.deserialize(global_variable)
-        self.global_variables_changed.emit()
-        self.property_panel.update_properties(None)
 
         # 环境
         env = runtime_data.get("environment")
