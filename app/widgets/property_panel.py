@@ -23,35 +23,45 @@ class PropertyPanel(CardWidget):
         self.main_window = main_window
         self.setFixedWidth(280)
 
-        # === 全局变量面板缓存 ===
-        self._global_title = None
-        self.global_segmented = None
-        self.global_stacked = None
-        self.env_page = None
-        self.custom_page = None
+        # === 全局变量缓存 ===
+        self._custom_var_cards = {}
+        self._node_var_cards = {}
+        self._env_var_cards = {}
         self._global_panel_built = False
 
-        # === 增量更新缓存 ===
-        self._custom_var_cards = {}      # {name: card_widget}
-        self._node_var_cards = {}        # {name: card_widget}
-        self._env_var_cards = {}         # {key: card_widget}
+        # === 顶层堆叠：两个独立的 ScrollArea ===
+        self.main_stacked = QStackedWidget(self)
 
-        # Scroll area setup
-        self.scroll_area = SmoothScrollArea(self)
-        self.scroll_area.viewport().setStyleSheet("background-color: transparent;")
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # --- 节点面板（带独立 ScrollArea）---
+        node_scroll = SmoothScrollArea(self)
+        node_scroll.viewport().setStyleSheet("background-color: transparent;")
+        node_scroll.setWidgetResizable(True)
+        node_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        self.content_widget = QWidget()
-        self.content_widget.setStyleSheet("background: transparent;")
-        self.vbox = QVBoxLayout(self.content_widget)
-        self.vbox.setContentsMargins(20, 20, 20, 20)
-        self.vbox.setSpacing(8)
-        self.scroll_area.setWidget(self.content_widget)
+        self.node_container = QWidget()
+        self.node_vbox = QVBoxLayout(self.node_container)
+        self.node_vbox.setContentsMargins(10, 10, 10, 10)
+        self.node_vbox.setSpacing(8)
+        node_scroll.setWidget(self.node_container)
+        self.main_stacked.addWidget(node_scroll)  # index 0
 
+        # --- 全局变量面板（带独立 ScrollArea）---
+        global_scroll = SmoothScrollArea(self)
+        global_scroll.viewport().setStyleSheet("background-color: transparent;")
+        global_scroll.setWidgetResizable(True)
+        global_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        self.global_container = QWidget()
+        self.global_vbox = QVBoxLayout(self.global_container)
+        self.global_vbox.setContentsMargins(10, 10, 10, 10)
+        self.global_vbox.setSpacing(8)
+        global_scroll.setWidget(self.global_container)
+        self.main_stacked.addWidget(global_scroll)  # index 1
+
+        # --- 主布局 ---
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(self.scroll_area)
+        main_layout.addWidget(self.main_stacked)
 
         self.current_node = None
         self._column_list_widgets = {}
@@ -60,23 +70,63 @@ class PropertyPanel(CardWidget):
         self.stacked_widget = None
         self._current_global_tab = 'custom'
 
+        self.main_window.global_variables_changed.connect(self._on_global_variables_changed)
+
+    # ========================
+    # 全局变量信号响应（增量更新）
+    # ========================
+    def _on_global_variables_changed(self, var_type: str, var_name: str, action: str):
+        if not self._global_panel_built:
+            return
+        if var_type == "node_vars":
+            if action == "add" or action == "update":
+                if var_name not in self._node_var_cards:
+                    global_vars = self.main_window.global_variables
+                    if hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
+                        card = self._create_variable_card(var_name, global_vars.node_vars[var_name])
+                        self.node_vars_layout.addWidget(card)
+                        self._node_var_cards[var_name] = card
+            elif action == "delete":
+                if var_name in self._node_var_cards:
+                    card = self._node_var_cards.pop(var_name)
+                    card.deleteLater()
+        elif var_type == "custom":
+            if action == "add" or action == "update":
+                if var_name not in self._custom_var_cards:
+                    global_vars = self.main_window.global_variables
+                    if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
+                        card = self._create_dict_row(var_name, global_vars.custom[var_name].value)
+                        self.custom_vars_layout.addWidget(card)
+                        self._custom_var_cards[var_name] = card
+            elif action == "delete":
+                if var_name in self._custom_var_cards:
+                    card = self._custom_var_cards.pop(var_name)
+                    card.deleteLater()
+        elif var_type == "env":
+            if action == "add" or action == "update":
+                if var_name not in self._env_var_cards:
+                    global_vars = self.main_window.global_variables
+                    if hasattr(global_vars, 'env'):
+                        value = getattr(global_vars.env, var_name, None)
+                        if value is not None:
+                            card = self._create_env_var_row(var_name, value)
+                            self.env_vars_layout.addWidget(card)
+                            self._env_var_cards[var_name] = card
+            elif action == "delete":
+                if var_name in self._env_var_cards:
+                    card = self._env_var_cards.pop(var_name)
+                    card.deleteLater()
+
+    # ========================
+    # 节点面板相关
+    # ========================
     def _clear_node_layout(self):
-        """仅清理节点相关控件，保留全局变量面板"""
         self._column_list_widgets.clear()
         self._text_edit_widgets.clear()
-
-        to_remove = []
-        for i in range(self.vbox.count()):
-            widget = self.vbox.itemAt(i).widget()
-            if widget and widget not in [
-                self._global_title,
-                self.global_segmented,
-                self.global_stacked
-            ]:
-                to_remove.append(widget)
-
-        for w in to_remove:
-            w.deleteLater()
+        while self.node_vbox.count():
+            child = self.node_vbox.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
 
     def get_port_info(self, node, is_input=True):
         ports = node.input_ports() if is_input else node.output_ports()
@@ -110,26 +160,21 @@ class PropertyPanel(CardWidget):
         current_segment = None
         if self.segmented_widget:
             current_segment = self.segmented_widget.currentRouteKey()
-        if self.global_segmented:
+        if hasattr(self, 'global_segmented'):
             self._current_global_tab = self.global_segmented.currentRouteKey()
 
-        # 隐藏全局变量面板（如果存在）
-        if self._global_panel_built:
-            self._global_title.hide()
-            self.global_segmented.hide()
-            self.global_stacked.hide()
-
-        # 清理节点部分
-        self._clear_node_layout()
         self.current_node = node
-
         if not node:
-            self._show_global_variables_panel()  # 只显示，不重建
-            return
-        elif isinstance(node, ControlFlowBackdrop):
-            self._update_control_flow_properties(node, current_segment)
-        elif isinstance(node, BaseNode):
-            self._build_node_ui(node, current_segment)
+            self._show_global_variables_panel()
+            self.main_stacked.setCurrentIndex(1)
+        else:
+            # 清理并构建节点面板
+            self._clear_node_layout()
+            if isinstance(node, ControlFlowBackdrop):
+                self._update_control_flow_properties(node, current_segment)
+            elif isinstance(node, BaseNode):
+                self._build_node_ui(node, current_segment)
+            self.main_stacked.setCurrentIndex(0)
 
     def _build_node_ui(self, node, current_segment=None):
         if not hasattr(node, '_input_values'):
@@ -140,15 +185,15 @@ class PropertyPanel(CardWidget):
         title = BodyLabel(f"📌 {node.name()}")
         title.setWordWrap(True)
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
-        self.vbox.addWidget(title)
+        self.node_vbox.addWidget(title)
 
         description = self.get_node_description(node)
         if description and description.strip():
             desc_label = BodyLabel(f"📝 {description}")
             desc_label.setWordWrap(True)
             desc_label.setStyleSheet("color: #888888; font-size: 16px;")
-            self.vbox.addWidget(desc_label)
-        self._add_seperator()
+            self.node_vbox.addWidget(desc_label)
+        self._add_seperator(self.node_vbox)
 
         self.segmented_widget = SegmentedWidget()
         self.segmented_widget.addItem('input', '输入端口')
@@ -172,8 +217,8 @@ class PropertyPanel(CardWidget):
         self.stacked_widget.addWidget(output_widget)
 
         self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
-        self.vbox.addWidget(self.segmented_widget)
-        self.vbox.addWidget(self.stacked_widget)
+        self.node_vbox.addWidget(self.segmented_widget)
+        self.node_vbox.addWidget(self.stacked_widget)
 
         if current_segment in ['input', 'output']:
             self.segmented_widget.setCurrentItem(current_segment)
@@ -272,12 +317,12 @@ class PropertyPanel(CardWidget):
                 is_output=True
             )
 
-    def _add_seperator(self):
+    def _add_seperator(self, layout):
         separator = QFrame()
         separator.setFrameShape(QFrame.HLine)
         separator.setFrameShadow(QFrame.Sunken)
         separator.setStyleSheet("color: #444444;")
-        self.vbox.addWidget(separator)
+        layout.addWidget(separator)
 
     def _on_segmented_changed(self, item_key):
         if item_key == 'input':
@@ -381,7 +426,7 @@ class PropertyPanel(CardWidget):
         tree_widget = VariableTreeWidget(text, port_type, parent=self.main_window)
         card_layout.addWidget(tree_widget)
         if layout is None:
-            layout = self.vbox
+            layout = self.node_vbox
         layout.addWidget(info_card)
 
         def show_context_menu(pos):
@@ -442,12 +487,12 @@ class PropertyPanel(CardWidget):
             return ''
 
     # ========================
-    # ControlFlowBackdrop 相关（保持不变）
+    # ControlFlowBackdrop 相关
     # ========================
     def _update_control_flow_properties(self, node, current_segment=None):
         title = BodyLabel(f"🔁 {node.NODE_NAME}")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
-        self.vbox.addWidget(title)
+        self.node_vbox.addWidget(title)
         flow_type = getattr(node, 'TYPE', 'unknown')
         current = node.model.get_property('current_index')
         if flow_type == "loop":
@@ -480,14 +525,14 @@ class PropertyPanel(CardWidget):
         progress_bar = ProgressBar(self, useAni=False)
         progress_bar.setRange(0, 100)
         progress_bar.setValue(int(current / max(1, total) * 100) if total > 0 else 0)
-        self.vbox.addWidget(progress_label)
-        self.vbox.addWidget(progress_bar)
+        self.node_vbox.addWidget(progress_label)
+        self.node_vbox.addWidget(progress_bar)
         if flow_type == "loop":
-            self._add_seperator()
+            self._add_seperator(self.node_vbox)
             self._add_loop_config_section(node)
-        self._add_seperator()
+        self._add_seperator(self.node_vbox)
         self._add_internal_nodes_section(node)
-        self.vbox.addStretch()
+        self.node_vbox.addStretch()
 
         self.segmented_widget = SegmentedWidget()
         self.segmented_widget.addItem('input', '输入端口')
@@ -511,9 +556,9 @@ class PropertyPanel(CardWidget):
         self.stacked_widget.addWidget(output_widget)
 
         self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
-        self.vbox.addWidget(self.segmented_widget)
-        self.vbox.addWidget(self.stacked_widget)
-        self.vbox.addStretch(1)
+        self.node_vbox.addWidget(self.segmented_widget)
+        self.node_vbox.addWidget(self.stacked_widget)
+        self.node_vbox.addStretch(1)
 
         if current_segment in ['input', 'output']:
             self.segmented_widget.setCurrentItem(current_segment)
@@ -553,7 +598,6 @@ class PropertyPanel(CardWidget):
         else:
             condition_edit = LineEdit(self)
             condition_edit.setPlaceholderText("请输入条件表达式")
-            condition_edit.setFixedWidth(220)
             current_condition = node.model.get_property("loop_condition")
             condition_edit.setText(current_condition)
             def on_condition_changed(text):
@@ -570,7 +614,7 @@ class PropertyPanel(CardWidget):
             max_iter_spin.valueChanged.connect(on_max_iterations_changed)
             config_layout.addWidget(BodyLabel("最大迭代次数:"))
             config_layout.addWidget(max_iter_spin)
-        self.vbox.addWidget(config_card)
+        self.node_vbox.addWidget(config_card)
 
     def _add_internal_nodes_section(self, node):
         nodes_card = CardWidget(self)
@@ -596,7 +640,7 @@ class PropertyPanel(CardWidget):
                 item = QListWidgetItem(item_text)
                 nodes_list.addItem(item)
             nodes_layout.addWidget(nodes_list)
-        self.vbox.addWidget(nodes_card)
+        self.node_vbox.addWidget(nodes_card)
 
     def _add_output_to_global_variable(self, node, port_name: str):
         value = node._output_values.get(port_name)
@@ -614,8 +658,6 @@ class PropertyPanel(CardWidget):
             node_id=safe_node_name, output_name=port_name, output_value=serialize_for_json(value)
         )
         self.main_window.global_variables_changed.emit("node_vars", var_name, "add")
-        if hasattr(self, '_global_panel_built') and self._global_panel_built:
-            self._refresh_custom_vars_page()
         InfoBar.success(
             title="成功",
             content=f"已添加全局变量：{var_name}",
@@ -624,75 +666,93 @@ class PropertyPanel(CardWidget):
         )
 
     # ========================
-    # 全局变量面板（优化版：只构建一次）
+    # 全局变量面板（只构建一次）
     # ========================
     def _show_global_variables_panel(self):
-        if not self._global_panel_built:
-            self._global_title = BodyLabel("🌍 全局变量")
-            self._global_title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
-            self.vbox.addWidget(self._global_title)
-
-            self.global_segmented = SegmentedWidget(self)
-            self.global_segmented.addItem('env', '环境变量')
-            self.global_segmented.addItem('custom', '自定义变量')
-
-            self.global_stacked = QStackedWidget(self)
-            self.env_page = self._create_env_page()
-            self.custom_page = self._create_custom_vars_page()
-            self.global_stacked.addWidget(self.env_page)
-            self.global_stacked.addWidget(self.custom_page)
-
-            self.global_segmented.currentItemChanged.connect(self._on_global_tab_changed)
-            self.vbox.addWidget(self.global_segmented)
-            self.vbox.addWidget(self.global_stacked)
-
-            self._global_panel_built = True
-
-        # 显示
-        self._global_title.show()
-        self.global_segmented.show()
-        self.global_stacked.show()
-
-        if self._current_global_tab in ['env', 'custom']:
-            self.global_segmented.setCurrentItem(self._current_global_tab)
-        else:
-            self.global_segmented.setCurrentItem('custom')
-
-    def _save_env_row(self, key_edit, value_edit):
-        old_key = key_edit.property("env_key")
-        new_key = key_edit.text().strip()
-        new_value = value_edit.text().strip() or None
-        if not new_key:
-            InfoBar.warning("无效键", "键不能为空", parent=self.main_window)
+        if self._global_panel_built:
             return
-        global_vars = getattr(self.main_window, 'global_variables', None)
-        if not global_vars:
-            return
-        env_dict = global_vars.env.model_dump()
-        if old_key and old_key != new_key and old_key in env_dict:
-            delattr(global_vars.env, old_key)
-            self.main_window.global_variables_changed.emit("env", old_key, "delete")
-        setattr(global_vars.env, new_key, new_value)
-        key_edit.setProperty("env_key", new_key)
-        value_edit.setProperty("env_key", new_key)
-        self.main_window.global_variables_changed.emit("env", new_key, "add")
-        InfoBar.success("已保存", f"环境变量 {new_key}", parent=self.main_window, duration=1500)
 
+        title = BodyLabel("🌍 全局变量")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        self.global_vbox.addWidget(title)
+
+        self.global_segmented = SegmentedWidget(self)
+        self.global_segmented.addItem('env', '环境变量')
+        self.global_segmented.addItem('custom', '自定义变量')
+
+        self.global_stacked = QStackedWidget(self)
+        self.env_page = self._create_env_page()
+        self.custom_page = self._create_custom_vars_page()
+        self.global_stacked.addWidget(self.env_page)
+        self.global_stacked.addWidget(self.custom_page)
+        self.global_stacked.setCurrentIndex(1)
+
+        self.global_segmented.currentItemChanged.connect(self._on_global_tab_changed)
+        self.global_vbox.addWidget(self.global_segmented)
+        self.global_vbox.addWidget(self.global_stacked)
+
+        self._global_panel_built = True
+
+    def _on_global_tab_changed(self, key):
+        index = 0 if key == 'env' else 1
+        self.global_stacked.setCurrentIndex(index)
+
+    def _create_custom_vars_page(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        custom_title = BodyLabel("📝 自定义变量 (custom)")
+        layout.addWidget(custom_title)
+        add_custom_btn = TransparentPushButton(text="新增自定义变量", parent=self, icon=FluentIcon.ADD)
+        add_custom_btn.clicked.connect(self._add_new_custom_variable)
+        layout.addWidget(add_custom_btn)
+        self.custom_vars_container = QWidget()
+        self.custom_vars_layout = QVBoxLayout(self.custom_vars_container)
+        self.custom_vars_layout.setContentsMargins(0, 0, 0, 0)
+        self.custom_vars_layout.setSpacing(6)
+        layout.addWidget(self.custom_vars_container)
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        separator.setStyleSheet("color: #444444;")
+        layout.addWidget(separator)
+        node_title = BodyLabel("📤 节点输出变量 (node_vars)")
+        layout.addWidget(node_title)
+        self.node_vars_container = QWidget()
+        self.node_vars_layout = QVBoxLayout(self.node_vars_container)
+        self.node_vars_layout.setContentsMargins(0, 0, 0, 0)
+        self.node_vars_layout.setSpacing(8)
+        layout.addWidget(self.node_vars_container)
+        layout.addStretch()
+        self._refresh_custom_vars_page()
+        return widget
+
+    def _create_env_page(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        add_env_btn = TransparentPushButton(text="新增环境变量", parent=self, icon=FluentIcon.ADD)
+        add_env_btn.clicked.connect(self._add_new_env_variable)
+        layout.addWidget(add_env_btn)
+        self.env_vars_container = QWidget()
+        self.env_vars_layout = QVBoxLayout(self.env_vars_container)
+        self.env_vars_layout.setContentsMargins(0, 0, 0, 0)
+        self.env_vars_layout.setSpacing(6)
+        layout.addWidget(self.env_vars_container)
+        self._refresh_env_page()
+        layout.addStretch()
+        return widget
+
+    # ========================
+    # 全局变量 UI 构建（增量更新）
+    # ========================
     def _refresh_custom_vars_page(self):
-        # === 增量更新 custom ===
+        # custom
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars:
-            for card in list(self._custom_var_cards.values()):
-                card.deleteLater()
-            self._custom_var_cards.clear()
-            for card in list(self._node_var_cards.values()):
-                card.deleteLater()
-            self._node_var_cards.clear()
-            self.custom_vars_layout.addWidget(BodyLabel("全局变量未初始化"))
-            self.node_vars_layout.addWidget(BodyLabel("全局变量未初始化"))
             return
-
-        # custom
         current_custom = set(global_vars.custom.keys()) if hasattr(global_vars, 'custom') else set()
         existing_custom = set(self._custom_var_cards.keys())
         for name in current_custom - existing_custom:
@@ -744,6 +804,34 @@ class PropertyPanel(CardWidget):
         if not current_node_vars and self.node_vars_layout.count() == 0:
             self.node_vars_layout.addWidget(BodyLabel("暂无节点输出变量"))
 
+    def _refresh_env_page(self):
+        global_vars = getattr(self.main_window, 'global_variables', None)
+        if not global_vars or not hasattr(global_vars, 'env'):
+            return
+        all_env_vars = global_vars.env.get_all_env_vars()
+        current_env = {k: v for k, v in all_env_vars.items() if k != 'start_time'}
+        existing_env = set(self._env_var_cards.keys())
+        for key in current_env.keys() - existing_env:
+            card = self._create_env_var_row(key, current_env[key])
+            self.env_vars_layout.addWidget(card)
+            self._env_var_cards[key] = card
+        for key in existing_env - current_env.keys():
+            card = self._env_var_cards.pop(key)
+            card.deleteLater()
+        for key in current_env.keys() & existing_env:
+            card = self._env_var_cards[key]
+            value = current_env[key]
+            if card.layout().count() >= 2:
+                value_label = card.layout().itemAt(1).widget()
+                if isinstance(value_label, BodyLabel):
+                    try:
+                        preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value, (dict, list)) else str(value)[:40]
+                    except:
+                        preview = "<无法预览>"
+                    value_label.setText(preview)
+        if not current_env and self.env_vars_layout.count() == 0:
+            self.env_vars_layout.addWidget(BodyLabel("暂无环境变量"))
+
     def _create_dict_row(self, name: str, value):
         card = CardWidget(self)
         card.setMaximumWidth(250)
@@ -766,17 +854,12 @@ class PropertyPanel(CardWidget):
         layout.addWidget(del_btn)
 
         def show_context_menu(pos):
-            # ✅ 动态获取当前值
             current_val = self.main_window.global_variables.custom.get(name)
-            if current_val is not None:
-                current_val = current_val.value
-            else:
-                current_val = "<已删除>"
+            current_val = current_val.value if current_val is not None else "<已删除>"
             menu = RoundMenu(parent=self)
             menu.addAction(Action("复制为表达式", triggered=lambda: self._copy_as_expression("custom", name)))
             menu.addAction(Action("编辑变量", triggered=lambda: self._edit_custom_variable(name, current_val)))
             menu.exec_(card.mapToGlobal(pos))
-
         card.setContextMenuPolicy(Qt.CustomContextMenu)
         card.customContextMenuRequested.connect(show_context_menu)
         return card
@@ -818,17 +901,40 @@ class PropertyPanel(CardWidget):
         card.node_var_name = name
         return card
 
-    def _on_node_var_strategy_changed(self, text: str):
-        combo = self.sender()
-        if not combo or not isinstance(combo, ComboBox):
-            return
-        var_name = combo.property('node_var_name')
-        if not var_name:
-            return
-        global_vars = getattr(self.main_window, 'global_variables', None)
-        if global_vars and hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
-            global_vars.node_vars[var_name].update_policy = text
+    def _create_env_var_row(self, key: str, value):
+        card = CardWidget(self)
+        card.setMaximumWidth(250)
+        layout = QHBoxLayout(card)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setSpacing(4)
+        name_label = BodyLabel(f"{key} : ")
+        try:
+            preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value, (dict, list)) else str(value)[:40]
+        except:
+            preview = "<无法预览>"
+        value_label = BodyLabel(preview)
+        value_label.setStyleSheet("color: #888888;")
+        del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
+        del_btn.setIconSize(QSize(8, 8))
+        del_btn.clicked.connect(lambda _, k=key: self._delete_env_variable(k))
+        layout.addWidget(name_label)
+        layout.addWidget(value_label)
+        layout.addStretch()
+        layout.addWidget(del_btn)
 
+        def show_context_menu(pos):
+            current_val = getattr(self.main_window.global_variables.env, key, None)
+            menu = RoundMenu(parent=self)
+            menu.addAction(Action("复制为表达式", triggered=lambda: self._copy_as_expression("env", key)))
+            menu.addAction(Action("编辑变量", triggered=lambda: self._edit_env_variable(key, current_val)))
+            menu.exec_(card.mapToGlobal(pos))
+        card.setContextMenuPolicy(Qt.CustomContextMenu)
+        card.customContextMenuRequested.connect(show_context_menu)
+        return card
+
+    # ========================
+    # 全局变量操作
+    # ========================
     def _delete_custom_variable(self, var_name: str, var_type: str):
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars:
@@ -844,40 +950,16 @@ class PropertyPanel(CardWidget):
         except Exception as e:
             InfoBar.error("删除失败", str(e), parent=self.main_window)
 
-    def _on_global_tab_changed(self, key):
-        index = 0 if key == 'env' else 1
-        self.global_stacked.setCurrentIndex(index)
-
-    def _create_custom_vars_page(self):
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-        custom_title = BodyLabel("📝 自定义变量 (custom)")
-        layout.addWidget(custom_title)
-        add_custom_btn = PushButton(text="新增自定义变量", parent=self, icon=FluentIcon.ADD)
-        add_custom_btn.clicked.connect(self._add_new_custom_variable)
-        layout.addWidget(add_custom_btn)
-        self.custom_vars_container = QWidget()
-        self.custom_vars_layout = QVBoxLayout(self.custom_vars_container)
-        self.custom_vars_layout.setContentsMargins(0, 0, 0, 0)
-        self.custom_vars_layout.setSpacing(6)
-        layout.addWidget(self.custom_vars_container)
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        separator.setStyleSheet("color: #444444;")
-        layout.addWidget(separator)
-        node_title = BodyLabel("📤 节点输出变量 (node_vars)")
-        layout.addWidget(node_title)
-        self.node_vars_container = QWidget()
-        self.node_vars_layout = QVBoxLayout(self.node_vars_container)
-        self.node_vars_layout.setContentsMargins(0, 0, 0, 0)
-        self.node_vars_layout.setSpacing(8)
-        layout.addWidget(self.node_vars_container)
-        layout.addStretch()
-        self._refresh_custom_vars_page()
-        return widget
+    def _on_node_var_strategy_changed(self, text: str):
+        combo = self.sender()
+        if not combo or not isinstance(combo, ComboBox):
+            return
+        var_name = combo.property('node_var_name')
+        if not var_name:
+            return
+        global_vars = getattr(self.main_window, 'global_variables', None)
+        if global_vars and hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
+            global_vars.node_vars[var_name].update_policy = text
 
     def _add_new_custom_variable(self):
         dialog = CustomTwoInputDialog(
@@ -907,91 +989,6 @@ class PropertyPanel(CardWidget):
                 self._refresh_custom_vars_page()
                 self.main_window.global_variables_changed.emit("custom", name, "add")
                 InfoBar.success("已添加", f"自定义变量 {name}", parent=self.main_window)
-
-    def _create_env_page(self):
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-        add_env_btn = PushButton(text="新增环境变量", parent=self, icon=FluentIcon.ADD)
-        add_env_btn.clicked.connect(self._add_new_env_variable)
-        layout.addWidget(add_env_btn)
-        self.env_vars_container = QWidget()
-        self.env_vars_layout = QVBoxLayout(self.env_vars_container)
-        self.env_vars_layout.setContentsMargins(0, 0, 0, 0)
-        self.env_vars_layout.setSpacing(6)
-        layout.addWidget(self.env_vars_container)
-        self._refresh_env_page()
-        layout.addStretch()
-        return widget
-
-    def _refresh_env_page(self):
-        global_vars = getattr(self.main_window, 'global_variables', None)
-        if not global_vars or not hasattr(global_vars, 'env'):
-            for card in list(self._env_var_cards.values()):
-                card.deleteLater()
-            self._env_var_cards.clear()
-            self.env_vars_layout.addWidget(BodyLabel("环境变量未初始化"))
-            return
-
-        all_env_vars = global_vars.env.get_all_env_vars()
-        current_env = {k: v for k, v in all_env_vars.items() if k != 'start_time'}
-        existing_env = set(self._env_var_cards.keys())
-
-        for key in current_env.keys() - existing_env:
-            card = self._create_env_var_row(key, current_env[key])
-            self.env_vars_layout.addWidget(card)
-            self._env_var_cards[key] = card
-        for key in existing_env - current_env.keys():
-            card = self._env_var_cards.pop(key)
-            card.deleteLater()
-        for key in current_env.keys() & existing_env:
-            card = self._env_var_cards[key]
-            value = current_env[key]
-            if card.layout().count() >= 2:
-                value_label = card.layout().itemAt(1).widget()
-                if isinstance(value_label, BodyLabel):
-                    try:
-                        preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value, (dict, list)) else str(value)[:40]
-                    except:
-                        preview = "<无法预览>"
-                    value_label.setText(preview)
-
-        if not current_env and self.env_vars_layout.count() == 0:
-            self.env_vars_layout.addWidget(BodyLabel("暂无环境变量"))
-
-    def _create_env_var_row(self, key: str, value):
-        card = CardWidget(self)
-        card.setMaximumWidth(250)
-        layout = QHBoxLayout(card)
-        layout.setContentsMargins(8, 6, 8, 6)
-        layout.setSpacing(4)
-        name_label = BodyLabel(f"{key} : ")
-        try:
-            preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value, (dict, list)) else str(value)[:40]
-        except:
-            preview = "<无法预览>"
-        value_label = BodyLabel(preview)
-        value_label.setStyleSheet("color: #888888;")
-        del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
-        del_btn.setIconSize(QSize(8, 8))
-        del_btn.clicked.connect(lambda _, k=key: self._delete_env_variable(k))
-        layout.addWidget(name_label)
-        layout.addWidget(value_label)
-        layout.addStretch()
-        layout.addWidget(del_btn)
-
-        def show_context_menu(pos):
-            # ✅ 动态获取当前值
-            current_val = self.main_window.global_variables.env.metadata.get(key)
-            menu = RoundMenu(parent=self)
-            menu.addAction(Action("复制为表达式", triggered=lambda: self._copy_as_expression("env", key)))
-            menu.addAction(Action("编辑变量", triggered=lambda: self._edit_env_variable(key, current_val)))
-            menu.exec_(card.mapToGlobal(pos))
-
-        card.setContextMenuPolicy(Qt.CustomContextMenu)
-        card.customContextMenuRequested.connect(show_context_menu)
-        return card
 
     def _add_new_env_variable(self):
         dialog = CustomTwoInputDialog(
