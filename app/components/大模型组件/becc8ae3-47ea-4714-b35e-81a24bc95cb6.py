@@ -37,7 +37,6 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         import json
-        from app.runner.workflow_runner import execute_workflow
         runner_path = pathlib.Path(__file__).parent.parent.parent/ "runner" / "workflow_runner.py"
         spec = importlib.util.spec_from_file_location("base", str(runner_path))
         runner_module = importlib.util.module_from_spec(spec)
