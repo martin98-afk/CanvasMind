@@ -137,7 +137,6 @@ class LogMessageBox(MessageBoxBase):
         """检查并添加单行日志，避免重复"""
         # 检查当前行是否已经在缓存中
         if line.strip() in self.dedupe_cache:
-            print(f"[DEBUG] LogMessageBox: Duplicate line skipped: {line[:30]}...")  # 调试信息
             return  # 如果是重复的，直接返回，不添加
 
         # 如果不是重复的，添加到文档和缓存
@@ -174,7 +173,6 @@ class LogMessageBox(MessageBoxBase):
             if self.log_queue:
                 entries_to_process = self.log_queue[:]
                 self.log_queue.clear()  # 清空队列
-                print(f"[DEBUG] LogMessageBox: Processing {len(entries_to_process)} entries from queue.")  # 调试信息
 
         if not entries_to_process:
             return  # 队列为空，无需处理
@@ -186,12 +184,8 @@ class LogMessageBox(MessageBoxBase):
         lines = combined_log.split('\n')
         for line in lines:
             # 可能需要过滤掉纯空行，取决于您的具体需求
-            # if line.strip() == "":
-            #     continue
             self._deduplicate_and_add(line)
 
-        print(
-            f"[DEBUG] LogMessageBox: Processed and potentially added {len(lines)} lines (after deduplication).")  # 调试信息
         # 滚动到底部
         self.scroll_to_bottom()
 

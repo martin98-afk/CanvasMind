@@ -316,7 +316,7 @@ def create_dynamic_code_node(parent_window=None):
                 user_run_code=indented_user_code.strip()
             )
             # === 4. 收集 inputs / params / global_variable（与普通组件一致）===
-            global_variable = self.model.global_variable
+            global_variable = self.global_variable
             gv = GlobalVariableContext()
             gv.deserialize(global_variable)
 

@@ -8,6 +8,7 @@ import uuid
 from pathlib import Path
 
 from loguru import logger
+from wcwidth import wcswidth
 
 
 def run_component_in_subprocess(
@@ -18,7 +19,8 @@ def run_component_in_subprocess(
         global_variable: dict = None,
         python_executable: str = None,
         log_file_path: str = None,
-        timeout: int = 300
+        timeout: int = 300,
+        logger: logger = logger
 ):
     """
     在独立子进程中执行组件（无 GUI 依赖）
@@ -51,11 +53,12 @@ def run_component_in_subprocess(
     # 创建临时脚本
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
         temp_script_path = f.name
+        log_file_path = log_file_path or f"{temp_script_path}.log"
         script_content = _generate_execution_script(
             comp_class=comp_class,
             file_path=file_path,
             temp_script_path=temp_script_path,
-            log_file_path=log_file_path or f"{temp_script_path}.log"
+            log_file_path=log_file_path
         )
         f.write(script_content)
 
@@ -72,7 +75,46 @@ def run_component_in_subprocess(
         if needs_install and requirements_str.strip():
             _install_requirements(python_executable, requirements_str)
             # 重新执行
-            result = _run_subprocess(python_executable, temp_script_path, timeout)
+            result = _run_subprocess(python_executable, temp_script_path, timeout, logger)
+        # 打印节点日志
+        if os.path.exists(log_file_path):
+            with open(log_file_path, 'r', encoding='utf-8') as f:
+                inner_lines = f.read().splitlines()
+
+            node_name = comp_class.name
+            title = f"节点 {node_name} 日志"
+
+            # 计算每行的显示宽度（含中文）
+            content_widths = [wcswidth(line) for line in inner_lines]
+            title_width = wcswidth(title)
+            max_content_width = max(content_widths + [title_width, 0])
+
+            # 总宽度 = 内容最大宽 + 左右空格(2) + 两边 | (2) → 共 +4
+            total_width = max_content_width + 4
+            total_width = max(total_width, 60)  # 最小宽度保障
+
+            raw_logger = logger.opt(raw=True)
+
+            # 顶部边框（纯等号，宽度 = total_width）
+            raw_logger.info("=" * total_width + "\n")
+
+            # 标题行：左对齐，右侧补齐空格到 total_width - 2（因为有 "| " 和 " |"）
+            title_padded = f"| {title}"
+            title_display = wcswidth(title_padded)
+            needed_spaces = total_width - 2 - title_display  # -2 是末尾的 " |"
+            title_line = title_padded + " " * needed_spaces + "|\n"
+            raw_logger.info(title_line)
+
+            # 内容行
+            for line in inner_lines:
+                line_padded = f"| {line}"
+                line_display = wcswidth(line_padded)
+                needed_spaces = total_width - 2 - line_display
+                content_line = line_padded + " " * needed_spaces + "|\n"
+                raw_logger.info(content_line)
+
+            # 底部边框
+            raw_logger.info("=" * total_width + "\n")
 
         # 处理结果
         if os.path.exists(f"{temp_script_path}.result"):
@@ -81,8 +123,10 @@ def run_component_in_subprocess(
         elif os.path.exists(f"{temp_script_path}.error"):
             with open(f"{temp_script_path}.error", 'rb') as f:
                 error_info = pickle.load(f)
+                logger.error(f"组件执行失败: {error_info['error']}\n{error_info['traceback']}")
             raise RuntimeError(f"组件执行失败: {error_info['error']}\n{error_info['traceback']}")
         else:
+            logger.error(f"执行异常: {result.stderr}")
             raise RuntimeError(f"执行异常: {result.stderr}")
 
     finally:
@@ -143,7 +187,9 @@ if __name__ == "__main__":
     RESULT_PATH = r"{temp_script_path}.result"
     ERROR_PATH = r"{temp_script_path}.error"
     NODE_ID = "{str(uuid.uuid4())}"
-
+    file_path = Path(FILE_PATH)
+    original_cwd = os.getcwd()
+    os.chdir(file_path.parent.parent.parent)  # 切到组件所在目录
     # 可选：路径安全检查（根据你的部署环境决定是否启用）
     # _validate_execution_paths(FILE_PATH, PARAMS_PATH, LOG_FILE_PATH, RESULT_PATH, ERROR_PATH)
 
