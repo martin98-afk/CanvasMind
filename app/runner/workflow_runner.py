@@ -302,7 +302,7 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None, **
     global logger
     logger = kwargs.get("logger", loguru.logger)
     workflow_path = Path(file_path)
-    project_dir = workflow_path.parent
+    project_dir = workflow_path.parent.absolute()
     # 1. 加载工作流
     with open(workflow_path, 'r', encoding='utf-8') as f:
         full_data = json.load(f)

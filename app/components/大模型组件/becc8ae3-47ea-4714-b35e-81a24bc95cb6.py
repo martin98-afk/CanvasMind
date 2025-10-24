@@ -38,7 +38,13 @@ class Component(BaseComponent):
         """
         import json
         from app.runner.workflow_runner import execute_workflow
+        runner_path = pathlib.Path(__file__).parent.parent.parent/ "runner" / "workflow_runner.py"
+        spec = importlib.util.spec_from_file_location("base", str(runner_path))
+        runner_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner_module)
 
+        # 导入所需项目
+        execute_workflow = runner_module.execute_workflow
         try:
             # 获取输入参数
             project_name = inputs.project_name

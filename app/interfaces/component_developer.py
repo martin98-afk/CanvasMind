@@ -20,6 +20,7 @@ from qfluentwidgets import (
 
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition, ConnectionType
 from app.scan_components import scan_components
+from app.utils.utils import extract_class_source_from_file
 from app.widgets.code_editer import CodeEditorWidget, DEFAULT_CODE_TEMPLATE
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
@@ -294,9 +295,8 @@ class ComponentDeveloperWidget(QWidget):
             self.property_editor.set_properties(properties)
             # 加载代码
             try:
-                source_code = inspect.getsource(component)
-                # 记录原始文件路径
-                source_file = inspect.getfile(component)
+                source_file = getattr(component, '_source_file', None)
+                source_code = extract_class_source_from_file(source_file, component.__name__)
                 self._current_component_file = Path(source_file)
                 self.code_editor.set_code(source_code)
             except:
