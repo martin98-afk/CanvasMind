@@ -558,6 +558,7 @@ class JediCodeEditor(CodeEditor):
             except Exception as e:
                 print(f"[Jedi] Failed to load base.py: {e}")
                 JediCodeEditor._BASE_CODE_CACHE = ""
+        self.python_exe_path = python_exe_path
         self.popup_offset = popup_offset
         self.parent_widget = parent
         self.parent = code_parent
@@ -744,7 +745,7 @@ class JediCodeEditor(CodeEditor):
     def _open_fullscreen_editor(self):
         """打开全屏编辑器"""
         current_code = self.toPlainText()
-        dialog = FullscreenCodeDialog(initial_code=current_code, parent=self.parent_widget, code_parent=self.parent)
+        dialog = FullscreenCodeDialog(initial_code=current_code, parent=self.parent_widget, code_parent=self.parent, python_exe_path=self.python_exe_path)
         if dialog.exec_() == 1:
             new_code = dialog.get_code()
             self.setPlainText(new_code)
@@ -1522,10 +1523,12 @@ class JediCodeEditor(CodeEditor):
 
 class FullscreenCodeDialog(MessageBoxBase):
     """全屏代码对话框"""
-    def __init__(self, initial_code="", parent=None, code_parent=None):
+    def __init__(self, initial_code="", parent=None, code_parent=None, python_exe_path=None):
         super().__init__(parent)
         self.setWindowTitle("代码编辑器")
-        self.code_editor = JediCodeEditor(parent=parent, code_parent=code_parent, dialog=self)
+        self.code_editor = JediCodeEditor(
+            parent=parent, code_parent=code_parent, python_exe_path=python_exe_path, dialog=self
+        )
         self.code_editor.setPlainText(initial_code)
         self.code_editor.setMinimumSize(1000, 600)
         self.viewLayout.addWidget(self.code_editor)

@@ -45,7 +45,7 @@ class Settings(QConfig):
         """获取配置实例（单例模式）"""
         if cls._instance is None:
             cls._instance = cls()
-            CONFIG_FILE = str(Path.cwd() / "app.config")
+            CONFIG_FILE = "app.config"
             try:
                 cls._instance.load(CONFIG_FILE)
             except:
@@ -58,7 +58,7 @@ class Settings(QConfig):
     def save_config(cls):
         """保存配置"""
         if cls._instance:
-            CONFIG_FILE = str(Path.cwd() / "app.config")
+            CONFIG_FILE = "app.config"
             cls._instance.save(CONFIG_FILE)
 
     current_version = ConfigItem("General", "CurrentVersion", "v0.1.3")
