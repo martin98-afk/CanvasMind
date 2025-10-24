@@ -15,7 +15,7 @@ class CustomComboBox(QComboBox):
                color: white;
                min-height: 18px;
                font-size: 14px;            /* 主框字体大小 */
-               font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+               font-family: "Microsoft YaHei", "Segoe UI", sa   ns-serif;
            }
            QComboBox:hover {
                border: 1px solid #0078d4;

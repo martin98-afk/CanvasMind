@@ -40,6 +40,7 @@ from app.widgets.minimap_widget import MinimapWidget
 from app.widgets.property_panel import PropertyPanel
 from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 
+
 class CanvasPage(QWidget):
     canvas_deleted = pyqtSignal()
     canvas_saved = pyqtSignal(Path)
@@ -74,8 +75,8 @@ class CanvasPage(QWidget):
         self._selection_update_pending = False
 
         # --- 新增：性能优化相关 ---
-        self._node_id_cache = {} # 缓存：node_id -> node_object
-        self._node_id_cache_valid = False # 标记缓存是否有效
+        self._node_id_cache = {}  # 缓存：node_id -> node_object
+        self._node_id_cache_valid = False  # 标记缓存是否有效
         # ---
 
         # 初始化 NodeGraph
@@ -178,7 +179,8 @@ class CanvasPage(QWidget):
                         node_var_obj.value = [current_value, value]
                         logger.debug(f"变量 '{name}' (number) 已累加: {value}")
                     else:
-                        logger.warning(f"无法将非数字值 {value} (type: {type(value)}) 与数字变量 '{name}' (type: {type(current_value)}) 相加。")
+                        logger.warning(
+                            f"无法将非数字值 {value} (type: {type(value)}) 与数字变量 '{name}' (type: {type(current_value)}) 相加。")
                 # --- 其他类型 ---
                 else:
                     # 对于其他类型，尝试直接相加，如果失败则覆盖
@@ -192,6 +194,7 @@ class CanvasPage(QWidget):
                 # 捕获其他任何可能的异常，记录警告并覆盖
                 logger.error(f"追加变量 '{name}' 时发生未知错误: {e}. 将覆盖旧值。")
                 node_var_obj.value = value
+        QtCore.QTimer.singleShot(0, self.property_panel._refresh_custom_vars_page)
 
     def set_node_status_by_id(self, node_id, status):
         node = self._get_node_by_id_cached(node_id)
@@ -207,7 +210,7 @@ class CanvasPage(QWidget):
                 break
         node = self._get_node_by_id_cached(node_id)
         if selected_nodes and node == backdrop:
-            self.property_panel.update_properties(node)
+            QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
 
     def _connect_scheduler_signals(self):
         """连接调度器信号到 UI 回调"""
@@ -992,6 +995,7 @@ class CanvasPage(QWidget):
                         shutil.copy2(src_path, dst_path)
                         rel_to_project = ("components" / src_rel_path).as_posix()
                         component_path_map[str(src_path)] = rel_to_project
+
             # 构建节点数据（略，保持你原有逻辑）
             def _process_value_for_export(value, inputs_dir: Path, export_path: Path):
                 if isinstance(value, str):
@@ -1011,6 +1015,7 @@ class CanvasPage(QWidget):
                 elif isinstance(value, list):
                     return [_process_value_for_export(v, inputs_dir, export_path) for v in value]
                 return value
+
             new_nodes_data = {}
             for node in nodes_to_export:
                 editable_params = node.model.custom_properties
@@ -1208,8 +1213,8 @@ class CanvasPage(QWidget):
 
         # 2. 如果状态是运行中，则高亮
         if status == NodeStatus.NODE_STATUS_RUNNING:
-            input_color = (64, 158, 255, 255) # 蓝色
-            output_color = (50, 205, 50, 255) # 绿色
+            input_color = (64, 158, 255, 255)  # 蓝色
+            output_color = (50, 205, 50, 255)  # 绿色
             for input_port in node.input_ports():
                 for out_port in input_port.connected_ports():
                     pipe = self._find_pipe_by_ports(out_port, input_port, viewer.all_pipes())
@@ -1235,7 +1240,7 @@ class CanvasPage(QWidget):
             self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
         # 优化：只在节点被选中时更新属性面板
         if node and node.selected():
-            self.property_panel.update_properties(node)
+            QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
 
     def _get_node_by_id_cached(self, node_id):
         """原始方法，保留用于兼容性"""
@@ -1259,7 +1264,7 @@ class CanvasPage(QWidget):
     def _invalidate_node_cache(self):
         """当节点被创建或删除时，标记缓存无效"""
         self._node_id_cache_valid = False
-        self._node_id_cache.clear() # 可选，清空以节省内存
+        self._node_id_cache.clear()  # 可选，清空以节省内存
 
     def delete_node(self, node):
         if node and node.id in self.node_status:
@@ -1289,14 +1294,14 @@ class CanvasPage(QWidget):
         if selected_nodes:
             for node in selected_nodes:
                 if isinstance(node, ControlFlowBackdrop):
-                    self.property_panel.update_properties(node)
+                    QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
                     return
             if isinstance(selected_nodes[0], BaseNode):
-                self.property_panel.update_properties(selected_nodes[0])
+                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(selected_nodes[0]))
             else:
-                self.property_panel.update_properties(None)
+                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
         else:
-            self.property_panel.update_properties(None)
+            QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
 
     def _show_node_flyout(self, node):
         self._hide_node_flyout()

@@ -28,9 +28,15 @@ ENV_RULES = {
     "run_id": {"type": str, "readonly": True},
     "TZ": {"type": str, "pattern": r"^[A-Za-z_+-/]+$", "default": "Asia/Shanghai"},
     "LANG": {"type": str, "pattern": r"^[a-z]{2}_[A-Z]{2}\.UTF-8$", "default": "en_US.UTF-8"},
+    "LC_ALL": {"type": str, "pattern": r"^[a-z]{2}_[A-Z]{2}\.UTF-8$", "default": "en_US.UTF-8"},
+
     "OMP_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
     "MKL_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
-    "CUDA_VISIBLE_DEVICES": {"type": str, "pattern": r"^[\d,\s]*$", "default": "0"},
+    "OPENBLAS_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
+    "NUMEXPR_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
+
+    "CUDA_VISIBLE_DEVICES": {"type": str, "pattern": r"^(\d+)(,\s*\d+)*$|^$", "default": "0"},
+
     "PYTHONPATH": {"type": str, "default": "."},
     "PYTHONUNBUFFERED": {"type": str, "allowed": {"1"}, "default": "1"},
     "PYTHONIOENCODING": {"type": str, "default": "utf-8"},
@@ -39,15 +45,7 @@ ENV_RULES = {
 
 
 DEFAULT_PYTHON_ENV_VARS = {
-    "PYTHONPATH": ".",
-    "PYTHONUNBUFFERED": "1",
-    "PYTHONIOENCODING": "utf-8",
-    "PYTHONWARNINGS": "ignore",
-    "TZ": "Asia/Shanghai",
-    "LANG": "en_US.UTF-8",
-    "OMP_NUM_THREADS": "1",
-    "MKL_NUM_THREADS": "1",
-    "CUDA_VISIBLE_DEVICES": "0",
+    k: v["default"] for k, v in ENV_RULES.items() if "default" in v
 }
 
 COMPONENT_IMPORT_CODE = """# -*- coding: utf-8 -*-
