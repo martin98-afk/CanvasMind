@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, Q
     QStackedWidget, QHBoxLayout, QApplication
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
     ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
-    ComboBox
+    ComboBox, TransparentDropDownToolButton
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.utils.utils import serialize_for_json, get_icon
@@ -678,12 +678,16 @@ class PropertyPanel(CardWidget):
 
         self.global_segmented = SegmentedWidget(self)
         self.global_segmented.addItem('env', '环境变量')
+        self.global_segmented.addItem('node', '节点变量')
         self.global_segmented.addItem('custom', '自定义变量')
+        self.global_segmented.setCurrentItem('node')
 
         self.global_stacked = QStackedWidget(self)
         self.env_page = self._create_env_page()
+        self.node_page = self._create_node_vars_page()
         self.custom_page = self._create_custom_vars_page()
         self.global_stacked.addWidget(self.env_page)
+        self.global_stacked.addWidget(self.node_page)
         self.global_stacked.addWidget(self.custom_page)
         self.global_stacked.setCurrentIndex(1)
 
@@ -694,7 +698,12 @@ class PropertyPanel(CardWidget):
         self._global_panel_built = True
 
     def _on_global_tab_changed(self, key):
-        index = 0 if key == 'env' else 1
+        if key == 'env':
+            index = 0
+        elif key == 'node':
+            index = 1
+        else:
+            index = 2
         self.global_stacked.setCurrentIndex(index)
 
     def _create_custom_vars_page(self):
@@ -702,8 +711,8 @@ class PropertyPanel(CardWidget):
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
-        custom_title = BodyLabel("📝 自定义变量 (custom)")
-        layout.addWidget(custom_title)
+        title = TransparentPushButton(text="自定义变量 (custom)", icon=get_icon("自定义变量"), parent=self)
+        layout.addWidget(title)
         add_custom_btn = TransparentPushButton(text="新增自定义变量", parent=self, icon=FluentIcon.ADD)
         add_custom_btn.clicked.connect(self._add_new_custom_variable)
         layout.addWidget(add_custom_btn)
@@ -712,20 +721,23 @@ class PropertyPanel(CardWidget):
         self.custom_vars_layout.setContentsMargins(0, 0, 0, 0)
         self.custom_vars_layout.setSpacing(6)
         layout.addWidget(self.custom_vars_container)
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        separator.setStyleSheet("color: #444444;")
-        layout.addWidget(separator)
-        node_title = BodyLabel("📤 节点输出变量 (node_vars)")
-        layout.addWidget(node_title)
+
+        layout.addStretch()
+        self._refresh_custom_vars_page()
+        return widget
+
+    def _create_node_vars_page(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        title = TransparentPushButton(text="节点输出变量 (node_vars)", icon=get_icon("节点变量"), parent=self)
+        layout.addWidget(title)
         self.node_vars_container = QWidget()
         self.node_vars_layout = QVBoxLayout(self.node_vars_container)
         self.node_vars_layout.setContentsMargins(0, 0, 0, 0)
         self.node_vars_layout.setSpacing(8)
         layout.addWidget(self.node_vars_container)
-        layout.addStretch()
-        self._refresh_custom_vars_page()
+        self._refresh_node_vars_page()
         return widget
 
     def _create_env_page(self):
@@ -733,6 +745,8 @@ class PropertyPanel(CardWidget):
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
+        title = TransparentPushButton(text="环境变量 (env)", icon=get_icon("环境变量"), parent=self)
+        layout.addWidget(title)
         add_env_btn = TransparentPushButton(text="新增环境变量", parent=self, icon=FluentIcon.ADD)
         add_env_btn.clicked.connect(self._add_new_env_variable)
         layout.addWidget(add_env_btn)
@@ -778,6 +792,10 @@ class PropertyPanel(CardWidget):
         if not current_custom and self.custom_vars_layout.count() == 0:
             self.custom_vars_layout.addWidget(BodyLabel("暂无自定义变量"))
 
+    def _refresh_node_vars_page(self):
+        global_vars = getattr(self.main_window, 'global_variables', None)
+        if not global_vars:
+            return
         # node_vars
         current_node_vars = set(global_vars.node_vars.keys()) if hasattr(global_vars, 'node_vars') else set()
         existing_node_vars = set(self._node_var_cards.keys())
@@ -794,7 +812,7 @@ class PropertyPanel(CardWidget):
             card = self._node_var_cards[name]
             if hasattr(card, 'strategy_combo'):
                 combo = card.strategy_combo
-                if combo.currentText() != node_var_obj.update_policy:
+                if combo.property("policy") != node_var_obj.update_policy:
                     combo.blockSignals(True)
                     combo.setCurrentText(node_var_obj.update_policy)
                     combo.blockSignals(False)
@@ -873,11 +891,23 @@ class PropertyPanel(CardWidget):
         title_layout = QHBoxLayout()
         title = BodyLabel(name)
         title_layout.addWidget(title)
-        strategy_combo = ComboBox(self)
-        strategy_combo.addItems(['固定', '更新', '追加'])
-        strategy_combo.setCurrentText(node_var_obj.update_policy)
-        strategy_combo.setProperty('node_var_name', name)
-        strategy_combo.currentTextChanged.connect(self._on_node_var_strategy_changed)
+        strategy_combo = TransparentDropDownToolButton(icon=get_icon(node_var_obj.update_policy), parent=self)
+        strategy_combo.setProperty("policy", node_var_obj.update_policy)
+        strategy_combo.setProperty("node_var_name", name)
+        menu = RoundMenu(parent=strategy_combo)
+        menu.addAction(
+            Action(get_icon("固定"), '固定',
+                   triggered=lambda checked=False, btn=strategy_combo: self._on_node_var_strategy_changed("固定", btn))
+        )
+        menu.addAction(
+            Action(get_icon("更新"), '更新',
+                   triggered=lambda checked=False, btn=strategy_combo: self._on_node_var_strategy_changed("更新", btn))
+        )
+        menu.addAction(
+            Action(get_icon("追加"), '追加',
+                   triggered=lambda checked=False, btn=strategy_combo: self._on_node_var_strategy_changed("追加", btn))
+        )
+        strategy_combo.setMenu(menu)
         title_layout.addStretch()
         title_layout.addWidget(strategy_combo)
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
@@ -950,13 +980,12 @@ class PropertyPanel(CardWidget):
         except Exception as e:
             InfoBar.error("删除失败", str(e), parent=self.main_window)
 
-    def _on_node_var_strategy_changed(self, text: str):
-        combo = self.sender()
-        if not combo or not isinstance(combo, ComboBox):
-            return
-        var_name = combo.property('node_var_name')
+    def _on_node_var_strategy_changed(self, text: str, button: TransparentDropDownToolButton):
+        button.setIcon(get_icon(text))
+        var_name = button.property('node_var_name')
         if not var_name:
             return
+        button.setProperty("policy", text)
         global_vars = getattr(self.main_window, 'global_variables', None)
         if global_vars and hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
             global_vars.node_vars[var_name].update_policy = text
