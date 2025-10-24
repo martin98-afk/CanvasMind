@@ -194,7 +194,7 @@ class CanvasPage(QWidget):
                 # 捕获其他任何可能的异常，记录警告并覆盖
                 logger.error(f"追加变量 '{name}' 时发生未知错误: {e}. 将覆盖旧值。")
                 node_var_obj.value = value
-        QtCore.QTimer.singleShot(0, self.property_panel._refresh_custom_vars_page)
+        QtCore.QTimer.singleShot(0, self.property_panel._refresh_node_vars_page)
 
     def set_node_status_by_id(self, node_id, status):
         node = self._get_node_by_id_cached(node_id)
@@ -499,7 +499,7 @@ class CanvasPage(QWidget):
         self.node_layout.setSpacing(3)
         self.node_layout.setContentsMargins(0, 0, 0, 0)
         # === 固定控制流按钮 ===
-        self.iterate_node = TransparentToolButton(FluentIcon.SYNC, self)
+        self.iterate_node = TransparentToolButton(get_icon("更新"), self)
         self.iterate_node.setIconSize(QSize(20, 20))
         self.iterate_node.setToolTip("创建迭代")
         self.iterate_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowIterateNode"))
@@ -624,6 +624,9 @@ class CanvasPage(QWidget):
                 input_port_node = node
             elif node.type_ == "control_flow.ControlFlowOutputPort":
                 output_port_node = node
+            elif isinstance(node, ControlFlowBackdrop):
+                self.create_failed_info("当前版本无法进行循环迭代嵌套操作！", content="")
+                return
             else:
                 other_nodes.append(node)
         # Step 2: 获取参考位置（用于无选中节点时）

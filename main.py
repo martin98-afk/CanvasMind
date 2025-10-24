@@ -36,7 +36,8 @@ if __name__ == '__main__':
         print("✅ 低代码平台启动成功！")
     except Exception as e:
         import traceback
-
+        with open("error.log", "w") as f:
+            f.write(traceback.format_exc())
         print(f"❌ 启动失败: {e}")
         print(traceback.format_exc())
         sys.exit(1)

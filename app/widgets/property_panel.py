@@ -737,6 +737,7 @@ class PropertyPanel(CardWidget):
         self.node_vars_layout.setContentsMargins(0, 0, 0, 0)
         self.node_vars_layout.setSpacing(8)
         layout.addWidget(self.node_vars_container)
+        layout.addStretch(1)
         self._refresh_node_vars_page()
         return widget
 
@@ -789,9 +790,6 @@ class PropertyPanel(CardWidget):
                         preview = "<无法预览>"
                     value_label.setText(preview)
 
-        if not current_custom and self.custom_vars_layout.count() == 0:
-            self.custom_vars_layout.addWidget(BodyLabel("暂无自定义变量"))
-
     def _refresh_node_vars_page(self):
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars:
@@ -818,9 +816,6 @@ class PropertyPanel(CardWidget):
                     combo.blockSignals(False)
             if hasattr(card, 'tree_widget'):
                 card.tree_widget.set_data(node_var_obj.value)
-
-        if not current_node_vars and self.node_vars_layout.count() == 0:
-            self.node_vars_layout.addWidget(BodyLabel("暂无节点输出变量"))
 
     def _refresh_env_page(self):
         global_vars = getattr(self.main_window, 'global_variables', None)
