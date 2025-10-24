@@ -17,7 +17,7 @@ from loguru import logger
 from qfluentwidgets import (
     InfoBar,
     InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton, FlyoutViewBase,
-    PushButton, Flyout
+    PushButton, Flyout, VBoxLayout
 )
 from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
@@ -93,7 +93,7 @@ class CanvasPage(QWidget):
         # 属性面板
         self.property_panel = PropertyPanel(self)
         # 布局
-        main_layout = QVBoxLayout(self)
+        main_layout = VBoxLayout(self)
         canvas_layout = QHBoxLayout()
         canvas_layout.addWidget(self.nav_panel)
         canvas_layout.addWidget(self.canvas_widget, 1)
@@ -148,16 +148,7 @@ class CanvasPage(QWidget):
             # 尝试进行追加操作
             try:
                 # --- 处理字符串 ---
-                if isinstance(current_value, str):
-                    if isinstance(value, str):
-                        node_var_obj.value = current_value + value
-                        logger.debug(f"变量 '{name}' (str) 已追加: '{value}'")
-                    else:
-                        # 如果当前是字符串，但新值不是，将新值转为字符串后追加
-                        node_var_obj.value = current_value + str(value)
-                        logger.debug(f"变量 '{name}' (str) 已追加转换后的值: {value}")
-                # --- 处理列表 ---
-                elif isinstance(current_value, list):
+                if isinstance(current_value, list):
                     if isinstance(value, list):
                         node_var_obj.value = current_value + value
                         logger.debug(f"变量 '{name}' (list) 已追加列表: {value}")
@@ -173,18 +164,10 @@ class CanvasPage(QWidget):
                         logger.debug(f"变量 '{name}' (dict) 已合并字典: {value}")
                     else:
                         logger.warning(f"无法将非字典值 {value} (type: {type(value)}) 追加到字典变量 '{name}'。")
-                # --- 处理数字 (int, float) ---
-                elif isinstance(current_value, (int, float)):
-                    if isinstance(value, (int, float)):
-                        node_var_obj.value = [current_value, value]
-                        logger.debug(f"变量 '{name}' (number) 已累加: {value}")
-                    else:
-                        logger.warning(
-                            f"无法将非数字值 {value} (type: {type(value)}) 与数字变量 '{name}' (type: {type(current_value)}) 相加。")
                 # --- 其他类型 ---
                 else:
                     # 对于其他类型，尝试直接相加，如果失败则覆盖
-                    node_var_obj.value = current_value + value
+                    node_var_obj.value = [current_value, value]
                     logger.debug(f"变量 '{name}' (type: {type(current_value)}) 已尝试追加: {value}")
             except TypeError as e:
                 # 如果相加操作不支持（例如 list + int），则记录警告并覆盖

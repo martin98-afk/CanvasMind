@@ -93,6 +93,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             self.parent_window = parent_window
             self.model.add_property("debug_code", {})
             self.component_class = component_class
+            self.component_class.path = full_path
             if hasattr(component_class, "icon"):
                 self.set_icon(component_class.icon)
             
@@ -569,7 +570,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
                 print(error_msg)
                 self._log_message(self.persistent_id, error_msg)
-                raise Exception(error_info['error'])
+                raise Exception(error_info['traceback'])
             else:
                 # 未生成结果或错误文件，视为未知异常
                 error_msg = "❌ 节点执行异常: 未知错误"

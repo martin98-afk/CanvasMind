@@ -25,7 +25,6 @@ if __name__ == '__main__':
     os.environ['PYTHONIOENCODING'] = 'utf-8'
     # 启用 DPI 缩放
     enable_dpi_scale()
-
     # 创建应用
     app = QApplication(sys.argv)
 

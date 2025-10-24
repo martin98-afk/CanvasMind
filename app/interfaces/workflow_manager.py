@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Set
 
-from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal, QMutex, QMutexLocker, QSize
+from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal, QMutex, QMutexLocker, QSize, QEvent
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QFrame, QHBoxLayout
 from qfluentwidgets import (
     FlowLayout, InfoBar, CardWidget, SmoothScrollArea,
@@ -104,7 +104,6 @@ class WorkflowCanvasGalleryPage(QWidget):
         # === 顶部：排序 + 搜索 ===
         top_bar = QHBoxLayout()
         top_bar.setSpacing(16)
-        # 增加空白区域，让标签不至于太靠左
         sort_label = CaptionLabel("            排序字段：", self)
         self.sort_field_combo = ComboBox(self)
         self.sort_field_combo.addItems(["修改时间", "创建时间", "画布名称"])
@@ -112,7 +111,6 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.sort_field_combo.setFixedWidth(100)
         self.sort_field_combo.currentIndexChanged.connect(self._on_sort_changed)
 
-        # ✅ 升序/降序切换按钮
         self.sort_order_button = TransparentToggleToolButton(self)
         self.sort_order_button.setIcon(get_icon("降序"))  # 默认降序
         self.sort_order_button.setIconSize(QSize(20, 20))
@@ -142,11 +140,14 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
+        # --- 新增：为 ScrollArea 的 viewport 安装事件过滤器 ---
+        self.scroll_area.viewport().installEventFilter(self)
+        # ----------------------------------------------------
+
         self.scroll_widget = QWidget()
         self.scroll_widget.setStyleSheet("background-color: transparent;")
 
-        # 关键：禁用动画以提升批量操作性能
-        self.flow_layout = FlowLayout(self.scroll_widget, needAni=True)  # 禁用动画
+        self.flow_layout = FlowLayout(self.scroll_widget, needAni=True)
         self.flow_layout.setAnimation(250, QEasingCurve.OutQuad)
         self.flow_layout.setContentsMargins(30, 30, 30, 30)
         self.flow_layout.setVerticalSpacing(20)
@@ -166,6 +167,40 @@ class WorkflowCanvasGalleryPage(QWidget):
 
         main_layout.addLayout(top_bar)
         main_layout.addLayout(content_layout)
+
+    def eventFilter(self, obj, event):
+        if obj == self.scroll_area.viewport() and event.type() == QEvent.Wheel:
+            scrollbar = self.scroll_area.verticalScrollBar()
+            current_value = scrollbar.value()
+            max_value = scrollbar.maximum()
+            min_value = scrollbar.minimum()
+
+            # 检查是否滚动到底部且向下滚动
+            if current_value >= max_value - 5 and event.angleDelta().y() < 0:
+                if self.current_page < self.total_pages - 1:
+                    new_page_index = self.current_page + 1
+                    self.pips_pager.setCurrentIndex(new_page_index) # 触发 _on_page_changed
+                    # --- 优化：切换页面后，将滚动条置顶 ---
+                    # 注意：必须等待新页面内容加载并布局完成后，再设置滚动条位置。
+                    # 使用 QTimer.singleShot(0, ...) 将设置滚动条的操作推迟到事件循环的下一次迭代。
+                    # 这通常足以等待布局完成。
+                    QTimer.singleShot(5, lambda: scrollbar.setValue(min_value))
+                    # -----------------------------------
+                    return True
+
+            # 检查是否滚动到顶部且向上滚动
+            elif current_value <= min_value + 5 and event.angleDelta().y() > 0:
+                if self.current_page > 0:
+                    new_page_index = self.current_page - 1
+                    self.pips_pager.setCurrentIndex(new_page_index) # 触发 _on_page_changed
+                    # --- 优化：切换页面后，将滚动条置底 ---
+                    # 同样，使用 QTimer.singleShot(0, ...) 延迟设置。
+                    QTimer.singleShot(5, lambda: scrollbar.setValue(max_value))
+                    # -----------------------------------
+                    return True
+
+        # 将事件传递给父类处理
+        return super().eventFilter(obj, event)
 
     def _on_sort_order_changed(self):
         """切换排序方向时更新图标并刷新"""

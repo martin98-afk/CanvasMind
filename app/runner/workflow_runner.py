@@ -1,12 +1,12 @@
 import json
 import sys
 import warnings
+import loguru
 
 warnings.filterwarnings("ignore")
 
 from collections import defaultdict, deque
 from pathlib import Path
-from loguru import logger
 from threading import Lock
 import copy
 
@@ -291,7 +291,7 @@ def evaludate_model_inputs(engine, inputs, params):
     return inputs, params
 
 
-def execute_workflow(file_path, external_inputs=None, python_executable=None):
+def execute_workflow(file_path, external_inputs=None, python_executable=None, **kwargs):
     """
     执行工作流（支持 project_spec.json 定义的接口）
 
@@ -299,9 +299,10 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
     :param external_inputs: {"input_0": "hello", "input_1": 5}
     :return: {"output_0": ..., "output_1": ...}
     """
+    global logger
+    logger = kwargs.get("logger", loguru.logger)
     workflow_path = Path(file_path)
-    project_dir = workflow_path.parent
-
+    project_dir = workflow_path.parent.absolute()
     # 1. 加载工作流
     with open(workflow_path, 'r', encoding='utf-8') as f:
         full_data = json.load(f)
@@ -322,8 +323,7 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
             project_spec = json.load(f)
 
     # 3. 扫描组件
-    component_map, file_map = scan_components()
-
+    component_map, file_map = scan_components(components_dir=project_dir / "components", logger=logger)
     # 4. 构建节点执行数据（使用原始 node.id）
     nodes = {}  # key: node.id
     node_outputs = {}
@@ -492,7 +492,8 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None):
                     params=node["params"],
                     inputs=node_inputs,
                     global_variable=global_variable,
-                    python_executable=python_executable or runtime_data.get("environment_exe")
+                    python_executable=python_executable or runtime_data.get("environment_exe"),
+                    logger=logger
                 )
                 node_outputs[node_id] = output or {}
             except Exception as e:
