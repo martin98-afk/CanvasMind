@@ -43,7 +43,7 @@ from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 class CanvasPage(QWidget):
     canvas_deleted = pyqtSignal()
     canvas_saved = pyqtSignal(Path)
-    global_variables_changed = pyqtSignal()
+    global_variables_changed = pyqtSignal(str, str, str)
     env_changed = pyqtSignal(str)
 
     PIPELINE_STYLE = {
@@ -1443,12 +1443,14 @@ class CanvasPage(QWidget):
 
     def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data, global_variable):
         try:
+            self.global_variables.deserialize(global_variable)
+            self.property_panel.update_properties(None)
             # === 1. 准备数据 ===
             nodes_data = graph_data.get("nodes", {})
             total_nodes = len(nodes_data)
             if total_nodes == 0:
                 self.graph.deserialize_session(graph_data)
-                self._finish_loading(runtime_data, node_status_data, global_variable)
+                self._finish_loading(runtime_data, node_status_data)
                 return
 
             # === 2. 创建进度对话框 ===
@@ -1482,20 +1484,15 @@ class CanvasPage(QWidget):
                 progress.close()
 
             # === 5. 完成后续加载 ===
-            self._finish_loading(runtime_data, node_status_data, global_variable)
+            self._finish_loading(runtime_data, node_status_data)
 
         except Exception as e:
             logger.error(f"❌ 加载失败: {traceback.format_exc()}")
             self.create_failed_info("加载失败", f"工作流加载失败: {str(e)}")
 
-    def _finish_loading(self, runtime_data, node_status_data, global_variable):
+    def _finish_loading(self, runtime_data, node_status_data):
         """加载完成后恢复状态"""
         self._setup_pipeline_style()
-
-        # 全局变量
-        self.global_variables.deserialize(global_variable)
-        self.global_variables_changed.emit()
-        self.property_panel.update_properties(None)
 
         # 环境
         env = runtime_data.get("environment")

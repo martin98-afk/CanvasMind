@@ -24,7 +24,9 @@ class PropertyPanel(CardWidget):
         super().__init__(parent)
         self.main_window = main_window
         self.setFixedWidth(280)
-
+        self._custom_var_cards = {}  # {name: card_widget}
+        self._node_var_cards = {}  # {name: card_widget}
+        self._env_var_cards = {}  # {key: card_widget}
         # 使用 qfluentwidgets 的 SmoothScrollArea
         self.scroll_area = SmoothScrollArea(self)
         self.scroll_area.viewport().setStyleSheet("background-color: transparent;")
@@ -725,7 +727,7 @@ class PropertyPanel(CardWidget):
         self.main_window.global_variables.set_output(
             node_id=safe_node_name, output_name=port_name, output_value=serialize_for_json(value)
         )
-        self.main_window.global_variables_changed.emit()
+        self.main_window.global_variables_changed.emit("node_vars", var_name, "add")
         InfoBar.success(
             title="成功",
             content=f"已添加全局变量：{var_name}",
@@ -780,12 +782,13 @@ class PropertyPanel(CardWidget):
 
         if old_key and old_key != new_key and old_key in env_dict:
             delattr(global_vars.env, old_key)
+            self.main_window.global_variables_changed.emit("env", old_key, "delete")
 
         setattr(global_vars.env, new_key, new_value)
 
         key_edit.setProperty("env_key", new_key)
         value_edit.setProperty("env_key", new_key)
-        self.main_window.global_variables_changed.emit()
+        self.main_window.global_variables_changed.emit("env", new_key, "add")
         InfoBar.success("已保存", f"环境变量 {new_key}", parent=self.main_window, duration=1500)
 
     def _refresh_custom_vars_page(self):
@@ -897,8 +900,8 @@ class PropertyPanel(CardWidget):
         strategy_combo.setProperty('node_var_name', name)
         strategy_combo.currentTextChanged.connect(self._on_node_var_strategy_changed)
 
-        title_layout.addWidget(strategy_combo)
         title_layout.addStretch()
+        title_layout.addWidget(strategy_combo)
 
         # 删除按钮
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
@@ -954,8 +957,6 @@ class PropertyPanel(CardWidget):
                 if var_name in global_vars.node_vars:
                     # 直接修改 NodeVariable 对象的 update_policy 属性
                     global_vars.node_vars[var_name].update_policy = text
-                    # 发出信号，通知其他可能依赖此变量的部分
-                    self.main_window.global_variables_changed.emit()
             except AttributeError as e:
                 print(f"Error updating strategy for '{var_name}': {e}")
 
@@ -973,7 +974,7 @@ class PropertyPanel(CardWidget):
                     del global_vars.node_vars[var_name]
 
             self._refresh_custom_vars_page()
-            self.main_window.global_variables_changed.emit()
+            self.main_window.global_variables_changed.emit(var_type, var_name, "delete")
             InfoBar.success("已删除", f"变量 '{var_name}' 已移除", parent=self.main_window, duration=1500)
         except Exception as e:
             InfoBar.error("删除失败", str(e), parent=self.main_window)
@@ -1049,7 +1050,7 @@ class PropertyPanel(CardWidget):
             if global_vars:
                 global_vars.set(name, value)
                 self._refresh_custom_vars_page()
-                self.main_window.global_variables_changed.emit()
+                self.main_window.global_variables_changed.emit("custom", name, "add")
                 InfoBar.success("已添加", f"自定义变量 {name}", parent=self.main_window)
 
     def _create_env_page(self):
@@ -1151,7 +1152,7 @@ class PropertyPanel(CardWidget):
             if global_vars:
                 global_vars.env.set_env_var(name, value)
                 self._refresh_env_page()
-                self.main_window.global_variables_changed.emit()
+                self.main_window.global_variables_changed.emit("env", name, "add")
                 InfoBar.success("已添加", f"环境变量 {name}", parent=self.main_window)
 
     def _delete_env_variable(self, key: str):
@@ -1160,7 +1161,7 @@ class PropertyPanel(CardWidget):
             return
         global_vars.env.delete_env_var(key)
         self._refresh_env_page()
-        self.main_window.global_variables_changed.emit()
+        self.main_window.global_variables_changed.emit("env", key, "delete")
         InfoBar.success("已删除", f"环境变量 {key}", parent=self.main_window, duration=1500)
 
     def _copy_as_expression(self, prefix: str, var_name: str):
@@ -1194,7 +1195,8 @@ class PropertyPanel(CardWidget):
             if not new_name:
                 InfoBar.warning("无效名称", "变量名不能为空", parent=self.main_window)
                 return
-
+            if new_name == var_name and new_value_str == str(current_value):
+                return
             # 类型推断（与新增逻辑一致）
             try:
                 if new_value_str.lower() in ('true', 'false'):
@@ -1213,10 +1215,11 @@ class PropertyPanel(CardWidget):
             # 如果名字变了，先删除旧的
             if new_name != var_name and var_name in global_vars.custom:
                 del global_vars.custom[var_name]
+                self.main_window.global_variables_changed.emit("custom", var_name, "delete")
+                self.main_window.global_variables_changed.emit("custom", new_name, "add")
 
             global_vars.set(new_name, new_value)
             self._refresh_custom_vars_page()
-            self.main_window.global_variables_changed.emit()
             InfoBar.success("已更新", f"变量 {new_name}", parent=self.main_window)
 
     def _edit_env_variable(self, key: str, current_value):
@@ -1236,7 +1239,8 @@ class PropertyPanel(CardWidget):
             if not new_key:
                 InfoBar.warning("无效名称", "变量名不能为空", parent=self.main_window)
                 return
-
+            if new_key == key and new_value == current_value:
+                return
             global_vars = getattr(self.main_window, 'global_variables', None)
             if not global_vars:
                 return
@@ -1244,11 +1248,13 @@ class PropertyPanel(CardWidget):
             # 删除旧 key（如果改名）
             if new_key != key:
                 global_vars.env.delete_env_var(key)
+                self.main_window.global_variables_changed.emit("custom", key, "delete")
+                self.main_window.global_variables_changed.emit("custom", new_key, "add")
             try:
                 global_vars.env.set_env_var(new_key, new_value)
             except Exception as e:
                 InfoBar.error("设置环境变量失败", f"错误信息：{e.__str__()}", parent=self.main_window)
                 return
             self._refresh_env_page()
-            self.main_window.global_variables_changed.emit()
+
             InfoBar.success("已更新", f"环境变量 {new_key}", parent=self.main_window)

@@ -187,7 +187,7 @@ class CustomVariable(BaseModel):
 
 class NodeVariable(BaseModel):
     value: Any = None
-    update_policy: str = None
+    update_policy: Optional[str] = "固定"
 
 
 class GlobalVariableContext(BaseModel):
