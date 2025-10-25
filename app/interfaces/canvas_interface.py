@@ -73,7 +73,6 @@ class CanvasPage(QWidget):
         self._clipboard_data = None
         self._scheduler = None  # ← 新增：调度器引用
         self._selection_update_pending = False
-
         # --- 新增：性能优化相关 ---
         self._node_id_cache = {}  # 缓存：node_id -> node_object
         self._node_id_cache_valid = False  # 标记缓存是否有效
@@ -100,8 +99,7 @@ class CanvasPage(QWidget):
         canvas_layout.addWidget(self.property_panel, 0, Qt.AlignRight)
         main_layout.addLayout(canvas_layout)
         # 信号连接
-        scene = self.graph.viewer().scene()
-        scene.selectionChanged.connect(self.on_selection_changed)
+        self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
         # 快捷组件工具管理
         self.quick_manager = QuickComponentManager(
             parent_widget=self,
@@ -1126,6 +1124,7 @@ class CanvasPage(QWidget):
                 scene_pos = self.canvas_widget.mapToScene(pos)
                 node = self.graph.create_node(node_type)
                 node.set_pos(scene_pos.x(), scene_pos.y())
+                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
                 self.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
                 if hasattr(node, 'status'):
                     node.status = NodeStatus.NODE_STATUS_UNRUN
@@ -1240,13 +1239,6 @@ class CanvasPage(QWidget):
     def on_node_created(self, node):
         self._node_id_cache[node.id] = node
 
-    def delete_node(self, node):
-        if node.id in self.node_status:
-            del self.node_status[node.id]
-        if node.id in self._node_id_cache:
-            del self._node_id_cache[node.id]  # 精确删除，不全清
-        self.graph.delete_node(node)
-
     def _invalidate_node_cache(self):
         """当节点被创建或删除时，标记缓存无效"""
         self._node_id_cache_valid = False
@@ -1259,7 +1251,10 @@ class CanvasPage(QWidget):
         self._invalidate_node_cache()
         self.graph.delete_node(node)
 
-    def on_selection_changed(self):
+    def on_selection_changed(self, node_ids, prev_ids):
+        if len(node_ids) == 0 and len(self.graph.selected_nodes()) > 0:
+            # nodegraphqt bug在选中点时用中键拖拽画布会触发选中点变化信号
+            return
         if self._selection_update_pending:
             return
         self._selection_update_pending = True
@@ -1268,14 +1263,6 @@ class CanvasPage(QWidget):
     def _do_selection_update(self):
         self._selection_update_pending = False
         selected_nodes = self.graph.selected_nodes()
-
-        # # ===== 新增：Flyout 显示逻辑 =====
-        # if selected_nodes and len(selected_nodes) == 1:
-        #     node = selected_nodes[0]
-        #     self._show_node_flyout(node)
-        # else:
-        #     self._hide_node_flyout()
-
         # 原有属性面板逻辑
         if selected_nodes:
             for node in selected_nodes:

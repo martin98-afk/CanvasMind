@@ -607,6 +607,7 @@ class VariableTreeWidget(TreeWidget):
     def _preview_excel(self, filepath):
         """
         优化：使用 SegmentedWidget 预览 Excel 文件的所有工作表
+        使用 MessageBoxBase 作为主窗口
         """
         try:
             # 使用 pd.ExcelFile 获取所有 sheet 名称
@@ -615,15 +616,15 @@ class VariableTreeWidget(TreeWidget):
             if not sheet_names:
                 raise ValueError("Excel 文件无有效工作表")
 
-            dialog = QDialog(self)
-            dialog.setWindowTitle(f"Excel 预览 - {os.path.basename(filepath)}")
-            dialog.resize(900, 600)
-            layout = QVBoxLayout(dialog)
+            # 使用 MessageBoxBase
+            dialog = MessageBoxBase(parent=self.parent_widget)
+            dialog.yesButton.hide()
+            dialog.cancelButton.setText("关闭")
 
             # 创建 SegmentedWidget 用于切换工作表
             seg_widget = SegmentedWidget()
             table = self._create_styled_table()
-
+            table.setMinimumSize(800, 600)
             def load_sheet(name):
                 """加载指定工作表到表格"""
                 try:
@@ -649,8 +650,10 @@ class VariableTreeWidget(TreeWidget):
             # 默认加载第一个工作表
             load_sheet(sheet_names[0])
 
-            layout.addWidget(seg_widget)
-            layout.addWidget(table)
+            # 将 SegmentedWidget 和 Table 添加到 MessageBoxBase 的布局中
+            dialog.viewLayout.addWidget(seg_widget)
+            dialog.viewLayout.addWidget(table)
+
             dialog.exec_()
 
         except Exception as e:
@@ -811,7 +814,6 @@ class VariableTreeWidget(TreeWidget):
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setSelectionBehavior(QTableWidget.SelectItems)
         table.setSelectionMode(QTableWidget.ContiguousSelection)
-        table.setAlternatingRowColors(True)
 
         return table
 
