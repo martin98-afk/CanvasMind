@@ -1608,6 +1608,10 @@ class CanvasPage(QWidget):
         graph_menu.add_command('撤销', self._undo, 'Ctrl+Z')
         graph_menu.add_command('重做', self._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
         graph_menu.add_command('自动布局', self._auto_layout_selected, 'Ctrl+L')
+        edit_menu = graph_menu.add_menu('编辑')
+        edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
+        edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
+        edit_menu.add_command('删除选中', lambda graph: self.delete_selected_nodes(graph), 'Del')
 
     def delete_selected_nodes(self, graph):
         # 清除选中节点的输入输出端口连接线
@@ -1639,7 +1643,7 @@ class CanvasPage(QWidget):
         except Exception as e:
             logger.warning(f"重做失败: {e}")
 
-    def _auto_layout_selected(self, node=None):
+    def _auto_layout_selected(self, graph, node=None):
         selected = self.graph.selected_nodes()
         if selected:
             self.graph.auto_layout_nodes(nodes=selected, start_nodes=[node] if node else None)
