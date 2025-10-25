@@ -242,9 +242,6 @@ class WorkflowScheduler(QObject):
             if input_proxy is None or output_proxy is None:
                 raise ValueError(f"循环体 {backdrop.name()} 缺少输入/输出代理节点")
 
-            # 注册全局变量
-            self.register_global_variable(execute_nodes)
-
             backdrop.model.set_property("current_index", 0)
             self.property_changed.emit(backdrop.id)
 
@@ -391,6 +388,8 @@ class WorkflowScheduler(QObject):
 
     def _execute_internal_nodes(self, backdrop, execute_nodes, check_cancel):
         """执行循环体内部节点，并收集输出结果"""
+        # 注册全局变量
+        self.register_global_variable(execute_nodes)
         internal_outputs = {}  # 收集内部节点的输出
         for node in execute_nodes:
             self.set_node_status(node, NodeStatus.NODE_STATUS_PENDING)
@@ -398,7 +397,11 @@ class WorkflowScheduler(QObject):
             comp_cls = self.component_map.get(node.FULL_PATH)
             if check_cancel():
                 return internal_outputs  # 提前返回收集到的结果
-
+            if node.get_property("disabled"):
+                # 跳过禁用节点，标记为 skipped（不影响下游）
+                self.set_node_status(node, NodeStatus.NODE_STATUS_UNRUN)
+                # 不发出 started/finished 信号（或可选发出 skipped 信号）
+                continue
             self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
             self.property_changed.emit(backdrop.id)
 

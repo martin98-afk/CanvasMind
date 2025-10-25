@@ -56,7 +56,7 @@ class NodeListExecutor(QRunnable):
                     return
 
                 # ✅ 关键：检查节点是否被禁用
-                if getattr(node, 'disabled', lambda: False)():
+                if node.get_property("disabled"):
                     # 跳过禁用节点，标记为 skipped（不影响下游）
                     if self.scheduler:
                         self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_UNRUN)
