@@ -1054,9 +1054,11 @@ class CanvasPage(QWidget):
 
             # 构建节点数据（略，保持你原有逻辑）
             def _process_value_for_export(value, inputs_dir: Path, export_path: Path):
+                logger.info(value)
                 if isinstance(value, str):
                     file_path = Path(value)
                     if file_path.is_file():
+                        logger.info(file_path)
                         try:
                             filename = file_path.name
                             dst_path = inputs_dir / filename
@@ -1324,9 +1326,6 @@ class CanvasPage(QWidget):
         self.graph.delete_node(node)
 
     def on_selection_changed(self, node_ids, prev_ids):
-        if len(node_ids) == 0 and len(self.graph.selected_nodes()) > 0:
-            # nodegraphqt bug在选中点时用中键拖拽画布会触发选中点变化信号
-            return
         if self._selection_update_pending:
             return
         self._selection_update_pending = True

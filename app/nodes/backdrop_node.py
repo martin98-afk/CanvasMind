@@ -231,7 +231,10 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
                 self, old_pos, old_size, new_pos, (new_width, new_height)
             )
             self.graph.undo_stack().push(command)
-
+        # 记录高宽信息
+        self.set_property("width", new_width)
+        self.set_property("height", new_height)
+        self.set_property("pos", new_pos)
         # 更新记录（无论是否变化）
         self._contained_nodes = {n.id for n in nodes_to_include}
 

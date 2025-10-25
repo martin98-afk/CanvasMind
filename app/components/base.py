@@ -854,7 +854,7 @@ class BaseComponent(ABC):
 
             if not self.validate_outputs(result):
                 missing_outputs = [port.name for port in self.outputs if port.name not in result]
-                raise ComponentError(f"组件输出缺少必需的端口: {missing_outputs}", "OUTPUT_VALIDATION_ERROR")
+                logger.warning(f"组件输出缺少必需的端口: {missing_outputs}", "OUTPUT_VALIDATION_ERROR")
 
             # ✅ 关键：传递 node_id 给 store_output_data
             stored_result = {}

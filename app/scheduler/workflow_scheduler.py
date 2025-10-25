@@ -403,9 +403,20 @@ class WorkflowScheduler(QObject):
             self.property_changed.emit(backdrop.id)
 
             try:
-                node.execute_sync(
+                results = node.execute_sync(
                     comp_cls, python_executable=self.get_python_exe(), check_cancel=check_cancel
                 )
+                if results is not None:
+                    # 如果结果不为 None， 且其中有含自动更新或者自动累计的变量，则发送变量更新信号
+                    for port_name, result in results.items():
+                        node_name = re.sub(r"\s+", "_", node.name())
+                        if f"{node_name}_{port_name}" in self.global_variables.node_vars and \
+                                self.global_variables.node_vars[
+                                    f"{node_name}_{port_name}"].update_policy != "固定":
+                            self.node_variable_updated.emit(
+                                f"{node_name}_{port_name}", result,
+                                self.global_variables.node_vars[f"{node_name}_{port_name}"].update_policy
+                            )
                 self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
                 self.property_changed.emit(backdrop.id)
 
