@@ -144,6 +144,12 @@ class PropertyPanel(CardWidget):
                 if port.name() not in [r[0] for r in result]:
                     result.append((port.name(), port.name(), ArgumentType.TEXT))
             return result
+        elif node.has_property(f"{'input' if is_input else 'output'}_ports"):
+            ports = node.input_ports() if is_input else node.output_ports()
+            port_defs = node.get_property(f"{'input' if is_input else 'output'}_ports")
+            type_dict = {item.value: item for item in ArgumentType}
+
+            return [(p.name(), p.name(), type_dict[pd["type"]]) for p, pd in zip(ports, port_defs)]
         else:
             return [(p.name(), p.name(), ArgumentType.TEXT) for p in ports]
 
