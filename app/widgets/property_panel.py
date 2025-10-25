@@ -204,25 +204,26 @@ class PropertyPanel(CardWidget):
         self._add_seperator(self.node_vbox)
 
         self.segmented_widget = SegmentedWidget()
-        self.segmented_widget.addItem('input', '输入端口')
-        self.segmented_widget.addItem('output', '输出端口')
         self.stacked_widget = QStackedWidget()
-
         input_widget = QWidget()
         input_layout = QVBoxLayout(input_widget)
         input_layout.setContentsMargins(0, 0, 0, 0)
         input_layout.setSpacing(8)
-        self._populate_input_ports(node, input_layout)
-        input_layout.addStretch(1)
-        self.stacked_widget.addWidget(input_widget)
-
         output_widget = QWidget()
         output_layout = QVBoxLayout(output_widget)
         output_layout.setContentsMargins(0, 0, 0, 0)
         output_layout.setSpacing(8)
-        self._populate_output_ports(node, output_layout)
-        output_layout.addStretch(1)
-        self.stacked_widget.addWidget(output_widget)
+
+        if len(node.input_ports()) > 0:
+            self.segmented_widget.addItem('input', '输入端口')
+            self._populate_input_ports(node, input_layout)
+            input_layout.addStretch(1)
+            self.stacked_widget.addWidget(input_widget)
+        if len(node.output_ports()) > 0:
+            self.segmented_widget.addItem('output', '输出端口')
+            self._populate_output_ports(node, output_layout)
+            output_layout.addStretch(1)
+            self.stacked_widget.addWidget(output_widget)
 
         self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
         self.node_vbox.addWidget(self.segmented_widget)

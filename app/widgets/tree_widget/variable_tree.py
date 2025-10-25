@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import os
 import shutil
 
@@ -39,7 +40,6 @@ class VariableTreeWidget(TreeWidget):
                 border: none;
             }
         """)
-
         self._original_data = None
         self._arg_type = None
         if data is not None:
@@ -81,9 +81,21 @@ class VariableTreeWidget(TreeWidget):
                     return f"{{Excel/DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
 
             elif arg_type == ArgumentType.JSON:
-                if isinstance(obj, (dict, list)):
+                # --- 增强 JSON 类型处理 ---
+                if isinstance(obj, (dict, list, tuple, set)):
                     length = len(obj) if hasattr(obj, '__len__') else '?'
-                    return f"{{JSON}} (len={length})"
+                    type_name = type(obj).__name__
+                    return f"{{JSON/{type_name}: (len={length})}}"
+                elif isinstance(obj, (str, bytes)):
+                    try:
+                        obj = json.loads(obj)
+                        return f"{{JSON}} {obj}"
+                    except json.JSONDecodeError:
+                        return f"{{JSON}} {self._format_value(obj)}"
+                else:
+                    # 对于非容器的 JSON 兼容类型，也进行格式化
+                    return f"{{JSON}} {self._format_value(obj)}"
+                # --- 结束增强 ---
 
             elif arg_type == ArgumentType.FILE:
                 if isinstance(obj, str) and os.path.isfile(obj):
@@ -207,19 +219,31 @@ class VariableTreeWidget(TreeWidget):
             if pixmap:
                 item.setIcon(0, QIcon(pixmap))
 
+        # --- 增强的递归逻辑 ---
+        self._build_recursive_content(obj, item, max_depth, current_depth)
+
+    def _build_recursive_content(self, obj, parent_item, max_depth, current_depth):
+        """
+        专门用于递归构建子项内容的函数，可以被 _build_tree 和 _build_nested_tree 复用
+        """
+        current_depth += 1
+        if current_depth > max_depth:
+            return
+
         if isinstance(obj, dict):
             for k, v in obj.items():
-                self._build_tree(v, item, str(k), max_depth, current_depth + 1)
+                self._build_tree(v, parent_item, str(k), max_depth, current_depth)
 
         elif isinstance(obj, (list, tuple)):
             for i, v in enumerate(obj):
-                self._build_tree(v, item, str(i), max_depth, current_depth + 1)
+                self._build_tree(v, parent_item, str(i), max_depth, current_depth)
 
         elif isinstance(obj, set):
             for i, v in enumerate(obj):
-                self._build_tree(v, item, f"[{i}]", max_depth, current_depth + 1)
+                self._build_tree(v, parent_item, f"[{i}]", max_depth, current_depth)
 
         elif isinstance(obj, np.ndarray):
+            # 对于 ndarray，展示属性和可展开的内容
             attrs = {
                 'shape': obj.shape,
                 'dtype': str(obj.dtype),
@@ -227,37 +251,43 @@ class VariableTreeWidget(TreeWidget):
                 'ndim': obj.ndim,
             }
             for attr_name, attr_val in attrs.items():
-                self._build_tree(attr_val, item, attr_name, max_depth, current_depth + 1)
+                # 为属性创建子节点，但不继续递归展开属性值（如 shape 元组）
+                attr_item = QTreeWidgetItem(parent_item, [f"{attr_name}", self._format_value(attr_val)])
+                # 如果属性值本身是容器，可以考虑展开，但要严格控制深度
+                self._build_recursive_content(attr_val, attr_item, max_depth, current_depth)
 
+            # 如果数组元素较少，展开内容
             if obj.size <= 20:
                 if obj.ndim == 1:
                     for i in range(obj.shape[0]):
-                        self._build_tree(obj[i], item, f"[{i}]", max_depth, current_depth + 1)
+                        self._build_tree(obj[i], parent_item, f"[{i}]", max_depth, current_depth)
                 elif obj.ndim == 2:
                     for i in range(obj.shape[0]):
-                        row_item = QTreeWidgetItem(item, [f"[{i}]"])
+                        row_item = QTreeWidgetItem(parent_item, [f"[{i}]"])
                         for j in range(obj.shape[1]):
-                            self._build_tree(obj[i, j], row_item, str(j), max_depth, current_depth + 1)
+                            self._build_tree(obj[i, j], row_item, str(j), max_depth, current_depth)
 
         elif isinstance(obj, pd.DataFrame):
+            # 对于 DataFrame，展开列
             for col in obj.columns:
-                self._build_tree(obj[col], item, str(col), max_depth, current_depth + 1)
+                self._build_tree(obj[col], parent_item, str(col), max_depth, current_depth)
 
         elif isinstance(obj, pd.Series):
-            for idx in obj.index[:20]:
-                self._build_tree(obj[idx], item, str(idx), max_depth, current_depth + 1)
+            # 对于 Series，展开索引
+            for idx in obj.index[:20]: # 限制展开数量
+                self._build_tree(obj[idx], parent_item, str(idx), max_depth, current_depth)
 
         elif hasattr(obj, '__dict__') and obj.__dict__:
             for attr_name, attr_value in obj.__dict__.items():
                 if not attr_name.startswith('_'):
-                    self._build_tree(attr_value, item, attr_name, max_depth, current_depth + 1)
+                    self._build_tree(attr_value, parent_item, attr_name, max_depth, current_depth)
 
         elif hasattr(obj, '__slots__'):
             for slot in getattr(obj, '__slots__', []):
                 if hasattr(obj, slot):
                     attr_value = getattr(obj, slot)
                     if not slot.startswith('_'):
-                        self._build_tree(attr_value, item, slot, max_depth, current_depth + 1)
+                        self._build_tree(attr_value, parent_item, slot, max_depth, current_depth)
 
     def _is_image_file(self, obj):
         if isinstance(obj, str) and os.path.isfile(obj):
@@ -321,7 +351,7 @@ class VariableTreeWidget(TreeWidget):
                 self._preview_csv_full(filepath)
 
             elif ext in {'.xlsx', '.xls'}:
-                self._preview_excel(filepath)
+                self._preview_excel(filepath) # 调用优化后的方法
 
             elif ext in {'.txt', '.log', '.md', '.py', '.json', '.xml', '.yaml', '.yml', '.ini'}:
                 self._preview_text_file(filepath)
@@ -372,13 +402,14 @@ class VariableTreeWidget(TreeWidget):
                 menu.addAction(preview_full)
 
             elif ext in {'.xlsx', '.xls'}:
-                preview_limited = QAction("📊 预览（默认工作表）", self)
+                # 移除旧的预览动作，使用新的优化后方法
+                preview_limited = QAction("📊 预览所有工作表", self)
                 preview_limited.triggered.connect(lambda: self._preview_excel(filepath))
                 menu.addAction(preview_limited)
 
-                preview_full = QAction("🔍 预览完整数据", self)
-                preview_full.triggered.connect(lambda: self._preview_excel_full(filepath))
-                menu.addAction(preview_full)
+                # preview_full = QAction("🔍 预览完整数据", self)
+                # preview_full.triggered.connect(lambda: self._preview_excel_full(filepath))
+                # menu.addAction(preview_full)
 
             elif ext in {'.txt', '.log', '.md', '.py', '.json', '.xml', '.yaml', '.yml', '.ini'}:
                 action = QAction("🔍 预览文本内容", self)
@@ -448,6 +479,7 @@ class VariableTreeWidget(TreeWidget):
     def _build_nested_tree(self, obj, parent_item, key, is_root=False, max_depth=10, current_depth=0):
         """
         递归构建嵌套结构的树
+        与 _build_tree 逻辑类似，但使用两列显示
         """
         if current_depth > max_depth:
             item = QTreeWidgetItem(parent_item, ["<max recursion depth>", ""])
@@ -460,21 +492,31 @@ class VariableTreeWidget(TreeWidget):
         item = QTreeWidgetItem(parent_item, [display_key, display_value])
         item.setData(0, Qt.UserRole, obj)
 
-        # 如果是容器类型，递归展开其内容
+        # 使用复用的递归逻辑
+        self._build_recursive_content_nested(obj, item, max_depth, current_depth)
+
+    def _build_recursive_content_nested(self, obj, parent_item, max_depth, current_depth):
+        """
+        专门用于递归构建预览窗口中子项内容的函数，对应两列的 TreeWidget
+        """
+        current_depth += 1
+        if current_depth > max_depth:
+            return
+
         if isinstance(obj, dict):
             for k, v in obj.items():
-                self._build_nested_tree(v, item, str(k), max_depth=max_depth, current_depth=current_depth + 1)
+                self._build_nested_tree(v, parent_item, str(k), max_depth=max_depth, current_depth=current_depth)
 
         elif isinstance(obj, (list, tuple)):
             for i, v in enumerate(obj):
-                self._build_nested_tree(v, item, str(i), max_depth=max_depth, current_depth=current_depth + 1)
+                self._build_nested_tree(v, parent_item, str(i), max_depth=max_depth, current_depth=current_depth)
 
         elif isinstance(obj, set):
             for i, v in enumerate(obj):
-                self._build_nested_tree(v, item, f"[{i}]", max_depth=max_depth, current_depth=current_depth + 1)
+                self._build_nested_tree(v, parent_item, f"[{i}]", max_depth=max_depth, current_depth=current_depth)
 
         elif isinstance(obj, np.ndarray):
-            # 对于 ndarray，只展示其属性，不递归展开内容（避免爆炸）
+            # 对于 ndarray，展示属性和可展开的内容
             attrs = {
                 'shape': obj.shape,
                 'dtype': str(obj.dtype),
@@ -482,29 +524,43 @@ class VariableTreeWidget(TreeWidget):
                 'ndim': obj.ndim,
             }
             for attr_name, attr_val in attrs.items():
-                self._build_nested_tree(attr_val, item, attr_name, max_depth=max_depth, current_depth=current_depth + 1)
+                # 为属性创建子节点，但不继续递归展开属性值（如 shape 元组）
+                attr_item = QTreeWidgetItem(parent_item, [f"{attr_name}", self._format_value(attr_val)])
+                # 如果属性值本身是容器，可以考虑展开，但要严格控制深度
+                self._build_recursive_content_nested(attr_val, attr_item, max_depth, current_depth)
+
+            # 如果数组元素较少，展开内容
+            if obj.size <= 20:
+                if obj.ndim == 1:
+                    for i in range(obj.shape[0]):
+                        self._build_nested_tree(obj[i], parent_item, f"[{i}]", max_depth, current_depth)
+                elif obj.ndim == 2:
+                    for i in range(obj.shape[0]):
+                        row_item = QTreeWidgetItem(parent_item, [f"[{i}]", ""])
+                        for j in range(obj.shape[1]):
+                            self._build_nested_tree(obj[i, j], row_item, str(j), max_depth, current_depth)
 
         elif isinstance(obj, pd.DataFrame):
-            # 对于 DataFrame，只展示其形状，不递归展开内容
-            item.setText(1, f"{{DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}")
+            # 对于 DataFrame，展开列
+            for col in obj.columns:
+                self._build_nested_tree(obj[col], parent_item, str(col), max_depth, current_depth)
 
         elif isinstance(obj, pd.Series):
-            # 对于 Series，只展示其长度，不递归展开内容
-            item.setText(1, f"{{Series: ({len(obj)})}}")
+            # 对于 Series，展开索引
+            for idx in obj.index[:20]: # 限制展开数量
+                self._build_nested_tree(obj[idx], parent_item, str(idx), max_depth, current_depth)
 
         elif hasattr(obj, '__dict__') and obj.__dict__:
             for attr_name, attr_value in obj.__dict__.items():
                 if not attr_name.startswith('_'):
-                    self._build_nested_tree(attr_value, item, attr_name, max_depth=max_depth,
-                                            current_depth=current_depth + 1)
+                    self._build_nested_tree(attr_value, parent_item, attr_name, max_depth, current_depth)
 
         elif hasattr(obj, '__slots__'):
             for slot in getattr(obj, '__slots__', []):
                 if hasattr(obj, slot):
                     attr_value = getattr(obj, slot)
                     if not slot.startswith('_'):
-                        self._build_nested_tree(attr_value, item, slot, max_depth=max_depth,
-                                                current_depth=current_depth + 1)
+                        self._build_nested_tree(attr_value, parent_item, slot, max_depth, current_depth)
 
     def _preview_dataframe_full(self, df: pd.DataFrame):
         dialog = MessageBoxBase(parent=self.parent_widget)
@@ -548,14 +604,59 @@ class VariableTreeWidget(TreeWidget):
                 parent=self
             )
 
-    def _preview_excel_full(self, filepath):
+    def _preview_excel(self, filepath):
+        """
+        优化：使用 SegmentedWidget 预览 Excel 文件的所有工作表
+        """
         try:
-            df = pd.read_excel(filepath, sheet_name=0)
-            self._preview_dataframe_full(df)
+            # 使用 pd.ExcelFile 获取所有 sheet 名称
+            xls = pd.ExcelFile(filepath)
+            sheet_names = xls.sheet_names
+            if not sheet_names:
+                raise ValueError("Excel 文件无有效工作表")
+
+            dialog = QDialog(self)
+            dialog.setWindowTitle(f"Excel 预览 - {os.path.basename(filepath)}")
+            dialog.resize(900, 600)
+            layout = QVBoxLayout(dialog)
+
+            # 创建 SegmentedWidget 用于切换工作表
+            seg_widget = SegmentedWidget()
+            table = self._create_styled_table()
+
+            def load_sheet(name):
+                """加载指定工作表到表格"""
+                try:
+                    # 从 ExcelFile 对象读取指定 sheet，避免重复打开文件
+                    df = pd.read_excel(xls, sheet_name=name, nrows=1000) # 限制行数
+                    self._fill_native_table(table, df)
+                except Exception as e:
+                    table.clear()
+                    table.setRowCount(1)
+                    table.setColumnCount(1)
+                    item = QTableWidgetItem(f"加载失败: {e}")
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    item.setForeground(Qt.black)
+                    table.setItem(0, 0, item)
+
+            # 添加所有工作表到 SegmentedWidget
+            for name in sheet_names:
+                seg_widget.addItem(name, text=name) # 使用 sheet_name 作为 key 和 text
+
+            # 连接切换事件
+            seg_widget.currentItemChanged.connect(load_sheet)
+
+            # 默认加载第一个工作表
+            load_sheet(sheet_names[0])
+
+            layout.addWidget(seg_widget)
+            layout.addWidget(table)
+            dialog.exec_()
+
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition
             InfoBar.error(
-                title="Excel 完整加载失败",
+                title="Excel 加载失败",
                 content=str(e),
                 orient=Qt.Horizontal,
                 isClosable=True,
@@ -630,71 +731,6 @@ class VariableTreeWidget(TreeWidget):
         w.viewLayout.addWidget(image_view)
         w.exec_()
 
-    def _preview_csv(self, filepath, nrows=1000):
-        try:
-            df = pd.read_csv(filepath, nrows=nrows)
-            self._preview_dataframe_full(df)
-        except Exception as e:
-            from qfluentwidgets import InfoBar, InfoBarPosition
-            InfoBar.error(
-                title="CSV 加载失败",
-                content=str(e),
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP_RIGHT,
-                duration=3000,
-                parent=self
-            )
-
-    def _preview_excel(self, filepath):
-        try:
-            xls = pd.ExcelFile(filepath)
-            sheet_names = xls.sheet_names
-            if not sheet_names:
-                raise ValueError("Excel 文件无有效工作表")
-
-            dialog = QDialog(self)
-            dialog.setWindowTitle(f"Excel 预览 - {os.path.basename(filepath)}")
-            dialog.resize(900, 600)
-            layout = QVBoxLayout(dialog)
-
-            seg_widget = SegmentedWidget()
-            table = self._create_styled_table()
-
-            def load_sheet(name):
-                try:
-                    df = pd.read_excel(filepath, sheet_name=name, nrows=1000)
-                    self._fill_native_table(table, df)
-                except Exception as e:
-                    table.clear()
-                    table.setRowCount(1)
-                    table.setColumnCount(1)
-                    item = QTableWidgetItem(f"加载失败: {e}")
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                    item.setForeground(Qt.black)
-                    table.setItem(0, 0, item)
-
-            for name in sheet_names:
-                seg_widget.addItem(name, name)
-            seg_widget.currentItemChanged.connect(load_sheet)
-            load_sheet(sheet_names[0])
-
-            layout.addWidget(seg_widget)
-            layout.addWidget(table)
-            dialog.exec_()
-
-        except Exception as e:
-            from qfluentwidgets import InfoBar, InfoBarPosition
-            InfoBar.error(
-                title="Excel 加载失败",
-                content=str(e),
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP_RIGHT,
-                duration=3000,
-                parent=self
-            )
-
     def _fill_native_table(self, table: QTableWidget, df: pd.DataFrame):
         table.clear()
         if df.empty:
@@ -719,6 +755,7 @@ class VariableTreeWidget(TreeWidget):
                 item = QTableWidgetItem(text)
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 item.setForeground(Qt.black)
+                table.setItem(i, j, item)
 
     def _copy_value(self, text):
         clipboard = QApplication.clipboard()
@@ -781,4 +818,26 @@ class VariableTreeWidget(TreeWidget):
 
 # ============ 示例使用 ============
 if __name__ == "__main__":
-    pass
+    # 示例：嵌套数据结构
+    sample_data = {
+        "name": "Alice",
+        "age": 30,
+        "scores": [95, 88, 100],
+        "profile": {
+            "hobbies": ["reading", "cycling"],
+            "address": {
+                "city": "Beijing",
+                "details": {
+                    "street": "Zhongguancun",
+                    "number": 100
+                }
+            }
+        },
+        "metadata": np.array([1.0, 2.0, 3.0]),
+        "df": pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
+    }
+
+    app = QApplication([])
+    tree = VariableTreeWidget(data=sample_data)
+    tree.show()
+    app.exec_()
