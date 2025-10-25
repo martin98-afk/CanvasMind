@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import os
 import shutil
 
@@ -14,24 +15,6 @@ from qfluentwidgets import TreeWidget, RoundMenu, MessageBoxBase, TextEdit, Segm
 from qtpy import QtCore
 
 from app.components.base import ArgumentType
-
-
-class FullscreenVariableDialog(MessageBoxBase):
-    """Fullscreen code dialog using FluentUI MessageBoxBase."""
-
-    def __init__(self, data_dict, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("代码编辑器")
-
-        # 创建代码编辑器
-        self.variable_explorer = VariableExplorerWidget(data_dict, parent=parent)
-        self.variable_explorer.setMinimumSize(400, 400)  # 设置最小尺寸
-
-        # 将编辑器添加到布局中
-        self.viewLayout.addWidget(self.variable_explorer)
-
-        # 设置按钮
-        self.cancelButton.hide()
 
 
 class VariableTreeWidget(TreeWidget):
@@ -57,7 +40,6 @@ class VariableTreeWidget(TreeWidget):
                 border: none;
             }
         """)
-
         self._original_data = None
         self._arg_type = None
         if data is not None:
@@ -99,9 +81,21 @@ class VariableTreeWidget(TreeWidget):
                     return f"{{Excel/DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
 
             elif arg_type == ArgumentType.JSON:
-                if isinstance(obj, (dict, list)):
+                # --- 增强 JSON 类型处理 ---
+                if isinstance(obj, (dict, list, tuple, set)):
                     length = len(obj) if hasattr(obj, '__len__') else '?'
-                    return f"{{JSON}} (len={length})"
+                    type_name = type(obj).__name__
+                    return f"{{JSON/{type_name}: (len={length})}}"
+                elif isinstance(obj, (str, bytes)):
+                    try:
+                        obj = json.loads(obj)
+                        return f"{{JSON}} {obj}"
+                    except json.JSONDecodeError:
+                        return f"{{JSON}} {self._format_value(obj)}"
+                else:
+                    # 对于非容器的 JSON 兼容类型，也进行格式化
+                    return f"{{JSON}} {self._format_value(obj)}"
+                # --- 结束增强 ---
 
             elif arg_type == ArgumentType.FILE:
                 if isinstance(obj, str) and os.path.isfile(obj):
@@ -220,24 +214,36 @@ class VariableTreeWidget(TreeWidget):
         item.setData(0, Qt.UserRole, obj)
 
         if (self._is_image_file(obj) or self._is_pil_image(obj) or
-            (arg_type is not None and isinstance(arg_type, ArgumentType) and arg_type.is_image())):
+                (arg_type is not None and isinstance(arg_type, ArgumentType) and arg_type.is_image())):
             pixmap = self._get_thumbnail_pixmap(obj)
             if pixmap:
                 item.setIcon(0, QIcon(pixmap))
 
+        # --- 增强的递归逻辑 ---
+        self._build_recursive_content(obj, item, max_depth, current_depth)
+
+    def _build_recursive_content(self, obj, parent_item, max_depth, current_depth):
+        """
+        专门用于递归构建子项内容的函数，可以被 _build_tree 和 _build_nested_tree 复用
+        """
+        current_depth += 1
+        if current_depth > max_depth:
+            return
+
         if isinstance(obj, dict):
             for k, v in obj.items():
-                self._build_tree(v, item, str(k), max_depth, current_depth + 1)
+                self._build_tree(v, parent_item, str(k), max_depth, current_depth)
 
         elif isinstance(obj, (list, tuple)):
             for i, v in enumerate(obj):
-                self._build_tree(v, item, str(i), max_depth, current_depth + 1)
+                self._build_tree(v, parent_item, str(i), max_depth, current_depth)
 
         elif isinstance(obj, set):
             for i, v in enumerate(obj):
-                self._build_tree(v, item, f"[{i}]", max_depth, current_depth + 1)
+                self._build_tree(v, parent_item, f"[{i}]", max_depth, current_depth)
 
         elif isinstance(obj, np.ndarray):
+            # 对于 ndarray，展示属性和可展开的内容
             attrs = {
                 'shape': obj.shape,
                 'dtype': str(obj.dtype),
@@ -245,37 +251,43 @@ class VariableTreeWidget(TreeWidget):
                 'ndim': obj.ndim,
             }
             for attr_name, attr_val in attrs.items():
-                self._build_tree(attr_val, item, attr_name, max_depth, current_depth + 1)
+                # 为属性创建子节点，但不继续递归展开属性值（如 shape 元组）
+                attr_item = QTreeWidgetItem(parent_item, [f"{attr_name}", self._format_value(attr_val)])
+                # 如果属性值本身是容器，可以考虑展开，但要严格控制深度
+                self._build_recursive_content(attr_val, attr_item, max_depth, current_depth)
 
+            # 如果数组元素较少，展开内容
             if obj.size <= 20:
                 if obj.ndim == 1:
                     for i in range(obj.shape[0]):
-                        self._build_tree(obj[i], item, f"[{i}]", max_depth, current_depth + 1)
+                        self._build_tree(obj[i], parent_item, f"[{i}]", max_depth, current_depth)
                 elif obj.ndim == 2:
                     for i in range(obj.shape[0]):
-                        row_item = QTreeWidgetItem(item, [f"[{i}]"])
+                        row_item = QTreeWidgetItem(parent_item, [f"[{i}]"])
                         for j in range(obj.shape[1]):
-                            self._build_tree(obj[i, j], row_item, str(j), max_depth, current_depth + 1)
+                            self._build_tree(obj[i, j], row_item, str(j), max_depth, current_depth)
 
         elif isinstance(obj, pd.DataFrame):
+            # 对于 DataFrame，展开列
             for col in obj.columns:
-                self._build_tree(obj[col], item, str(col), max_depth, current_depth + 1)
+                self._build_tree(obj[col], parent_item, str(col), max_depth, current_depth)
 
         elif isinstance(obj, pd.Series):
-            for idx in obj.index[:20]:
-                self._build_tree(obj[idx], item, str(idx), max_depth, current_depth + 1)
+            # 对于 Series，展开索引
+            for idx in obj.index[:20]: # 限制展开数量
+                self._build_tree(obj[idx], parent_item, str(idx), max_depth, current_depth)
 
         elif hasattr(obj, '__dict__') and obj.__dict__:
             for attr_name, attr_value in obj.__dict__.items():
                 if not attr_name.startswith('_'):
-                    self._build_tree(attr_value, item, attr_name, max_depth, current_depth + 1)
+                    self._build_tree(attr_value, parent_item, attr_name, max_depth, current_depth)
 
         elif hasattr(obj, '__slots__'):
             for slot in getattr(obj, '__slots__', []):
                 if hasattr(obj, slot):
                     attr_value = getattr(obj, slot)
                     if not slot.startswith('_'):
-                        self._build_tree(attr_value, item, slot, max_depth, current_depth + 1)
+                        self._build_tree(attr_value, parent_item, slot, max_depth, current_depth)
 
     def _is_image_file(self, obj):
         if isinstance(obj, str) and os.path.isfile(obj):
@@ -323,6 +335,42 @@ class VariableTreeWidget(TreeWidget):
             return scaled_pixmap
         return None
 
+    def show_detail(self):
+        obj = self._original_data
+        if isinstance(obj, str) and not os.path.isfile(obj):
+            self._preview_text(obj)
+
+        elif isinstance(obj, str) and os.path.isfile(obj):
+            filepath = obj
+            ext = os.path.splitext(filepath.lower())[1]
+
+            if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff', '.webp'}:
+                self._preview_image(filepath)
+
+            elif ext == '.csv':
+                self._preview_csv_full(filepath)
+
+            elif ext in {'.xlsx', '.xls'}:
+                self._preview_excel(filepath) # 调用优化后的方法
+
+            elif ext in {'.txt', '.log', '.md', '.py', '.json', '.xml', '.yaml', '.yml', '.ini'}:
+                self._preview_text_file(filepath)
+
+        elif isinstance(obj, (list, tuple)):
+            self._preview_nested_structure(obj, "列表数据预览")
+
+        elif isinstance(obj, dict):
+            self._preview_nested_structure(obj, "字典数据预览")
+
+        elif isinstance(obj, set):
+            self._preview_nested_structure(obj, "元组数据预览")
+
+        elif isinstance(obj, pd.DataFrame):
+            self._preview_dataframe_full(obj)
+
+        elif self._is_pil_image(obj):
+            self._preview_image(obj)
+
     def contextMenuEvent(self, event):
         item = self.itemAt(event.pos())
         if not item:
@@ -354,13 +402,14 @@ class VariableTreeWidget(TreeWidget):
                 menu.addAction(preview_full)
 
             elif ext in {'.xlsx', '.xls'}:
-                preview_limited = QAction("📊 预览（默认工作表）", self)
+                # 移除旧的预览动作，使用新的优化后方法
+                preview_limited = QAction("📊 预览所有工作表", self)
                 preview_limited.triggered.connect(lambda: self._preview_excel(filepath))
                 menu.addAction(preview_limited)
 
-                preview_full = QAction("🔍 预览完整数据", self)
-                preview_full.triggered.connect(lambda: self._preview_excel_full(filepath))
-                menu.addAction(preview_full)
+                # preview_full = QAction("🔍 预览完整数据", self)
+                # preview_full.triggered.connect(lambda: self._preview_excel_full(filepath))
+                # menu.addAction(preview_full)
 
             elif ext in {'.txt', '.log', '.md', '.py', '.json', '.xml', '.yaml', '.yml', '.ini'}:
                 action = QAction("🔍 预览文本内容", self)
@@ -370,6 +419,21 @@ class VariableTreeWidget(TreeWidget):
             save_action = QAction("💾 另存为...", self)
             save_action.triggered.connect(lambda: self._save_file(filepath))
             menu.addAction(save_action)
+
+        elif isinstance(obj, (list, tuple)):
+            action = QAction("🔍 预览完整列表", self)
+            action.triggered.connect(lambda: self._preview_nested_structure(obj, "列表数据预览"))
+            menu.addAction(action)
+
+        elif isinstance(obj, dict):
+            action = QAction("🔍 预览完整字典", self)
+            action.triggered.connect(lambda: self._preview_nested_structure(obj, "字典数据预览"))
+            menu.addAction(action)
+
+        elif isinstance(obj, set):
+            action = QAction("🔍 预览完整集合", self)
+            action.triggered.connect(lambda: self._preview_nested_structure(obj, "元组数据预览"))
+            menu.addAction(action)
 
         elif isinstance(obj, pd.DataFrame):
             action = QAction("🔍 预览完整数据表", self)
@@ -387,13 +451,124 @@ class VariableTreeWidget(TreeWidget):
 
         menu.exec_(event.globalPos())
 
+    def _preview_nested_structure(self, data, title="嵌套结构预览"):
+        """
+        为嵌套容器（list, dict, tuple, set）创建一个树状预览窗口
+        """
+        dialog = MessageBoxBase(parent=self.parent_widget)
+        dialog.yesButton.hide()
+        dialog.cancelButton.setText("关闭")
+
+        # 创建一个 TreeWidget 用于展示嵌套结构
+        tree_widget = TreeWidget()
+        tree_widget.setHeaderLabels(["Key", "Value"])
+
+        tree_widget.setAlternatingRowColors(False)
+        tree_widget.setSortingEnabled(False)
+        tree_widget.setMinimumSize(800, 500)
+
+        # 构建树
+        self._build_nested_tree(data, tree_widget.invisibleRootItem(), "", is_root=True)
+
+        # 展开所有节点
+        tree_widget.expandAll()
+
+        dialog.viewLayout.addWidget(tree_widget)
+        dialog.exec_()
+
+    def _build_nested_tree(self, obj, parent_item, key, is_root=False, max_depth=10, current_depth=0):
+        """
+        递归构建嵌套结构的树
+        与 _build_tree 逻辑类似，但使用两列显示
+        """
+        if current_depth > max_depth:
+            item = QTreeWidgetItem(parent_item, ["<max recursion depth>", ""])
+            item.setForeground(0, Qt.gray)
+            return
+
+        display_key = key if not is_root else "root"
+        display_value = self._format_value(obj)
+
+        item = QTreeWidgetItem(parent_item, [display_key, display_value])
+        item.setData(0, Qt.UserRole, obj)
+
+        # 使用复用的递归逻辑
+        self._build_recursive_content_nested(obj, item, max_depth, current_depth)
+
+    def _build_recursive_content_nested(self, obj, parent_item, max_depth, current_depth):
+        """
+        专门用于递归构建预览窗口中子项内容的函数，对应两列的 TreeWidget
+        """
+        current_depth += 1
+        if current_depth > max_depth:
+            return
+
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                self._build_nested_tree(v, parent_item, str(k), max_depth=max_depth, current_depth=current_depth)
+
+        elif isinstance(obj, (list, tuple)):
+            for i, v in enumerate(obj):
+                self._build_nested_tree(v, parent_item, str(i), max_depth=max_depth, current_depth=current_depth)
+
+        elif isinstance(obj, set):
+            for i, v in enumerate(obj):
+                self._build_nested_tree(v, parent_item, f"[{i}]", max_depth=max_depth, current_depth=current_depth)
+
+        elif isinstance(obj, np.ndarray):
+            # 对于 ndarray，展示属性和可展开的内容
+            attrs = {
+                'shape': obj.shape,
+                'dtype': str(obj.dtype),
+                'size': obj.size,
+                'ndim': obj.ndim,
+            }
+            for attr_name, attr_val in attrs.items():
+                # 为属性创建子节点，但不继续递归展开属性值（如 shape 元组）
+                attr_item = QTreeWidgetItem(parent_item, [f"{attr_name}", self._format_value(attr_val)])
+                # 如果属性值本身是容器，可以考虑展开，但要严格控制深度
+                self._build_recursive_content_nested(attr_val, attr_item, max_depth, current_depth)
+
+            # 如果数组元素较少，展开内容
+            if obj.size <= 20:
+                if obj.ndim == 1:
+                    for i in range(obj.shape[0]):
+                        self._build_nested_tree(obj[i], parent_item, f"[{i}]", max_depth, current_depth)
+                elif obj.ndim == 2:
+                    for i in range(obj.shape[0]):
+                        row_item = QTreeWidgetItem(parent_item, [f"[{i}]", ""])
+                        for j in range(obj.shape[1]):
+                            self._build_nested_tree(obj[i, j], row_item, str(j), max_depth, current_depth)
+
+        elif isinstance(obj, pd.DataFrame):
+            # 对于 DataFrame，展开列
+            for col in obj.columns:
+                self._build_nested_tree(obj[col], parent_item, str(col), max_depth, current_depth)
+
+        elif isinstance(obj, pd.Series):
+            # 对于 Series，展开索引
+            for idx in obj.index[:20]: # 限制展开数量
+                self._build_nested_tree(obj[idx], parent_item, str(idx), max_depth, current_depth)
+
+        elif hasattr(obj, '__dict__') and obj.__dict__:
+            for attr_name, attr_value in obj.__dict__.items():
+                if not attr_name.startswith('_'):
+                    self._build_nested_tree(attr_value, parent_item, attr_name, max_depth, current_depth)
+
+        elif hasattr(obj, '__slots__'):
+            for slot in getattr(obj, '__slots__', []):
+                if hasattr(obj, slot):
+                    attr_value = getattr(obj, slot)
+                    if not slot.startswith('_'):
+                        self._build_nested_tree(attr_value, parent_item, slot, max_depth, current_depth)
+
     def _preview_dataframe_full(self, df: pd.DataFrame):
         dialog = MessageBoxBase(parent=self.parent_widget)
         dialog.yesButton.hide()
         dialog.cancelButton.setText("关闭")
 
         table = self._create_styled_table()
-        table.setMinimumSize(800, 600)
+        table.setMinimumSize(800, 500)
         table.verticalHeader().hide()
         header = table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
@@ -429,14 +604,62 @@ class VariableTreeWidget(TreeWidget):
                 parent=self
             )
 
-    def _preview_excel_full(self, filepath):
+    def _preview_excel(self, filepath):
+        """
+        优化：使用 SegmentedWidget 预览 Excel 文件的所有工作表
+        使用 MessageBoxBase 作为主窗口
+        """
         try:
-            df = pd.read_excel(filepath, sheet_name=0)
-            self._preview_dataframe_full(df)
+            # 使用 pd.ExcelFile 获取所有 sheet 名称
+            xls = pd.ExcelFile(filepath)
+            sheet_names = xls.sheet_names
+            if not sheet_names:
+                raise ValueError("Excel 文件无有效工作表")
+
+            # 使用 MessageBoxBase
+            dialog = MessageBoxBase(parent=self.parent_widget)
+            dialog.yesButton.hide()
+            dialog.cancelButton.setText("关闭")
+
+            # 创建 SegmentedWidget 用于切换工作表
+            seg_widget = SegmentedWidget()
+            table = self._create_styled_table()
+            table.setMinimumSize(800, 500)
+            def load_sheet(name):
+                """加载指定工作表到表格"""
+                try:
+                    # 从 ExcelFile 对象读取指定 sheet，避免重复打开文件
+                    df = pd.read_excel(xls, sheet_name=name, nrows=1000) # 限制行数
+                    self._fill_native_table(table, df)
+                except Exception as e:
+                    table.clear()
+                    table.setRowCount(1)
+                    table.setColumnCount(1)
+                    item = QTableWidgetItem(f"加载失败: {e}")
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    item.setForeground(Qt.black)
+                    table.setItem(0, 0, item)
+
+            # 添加所有工作表到 SegmentedWidget
+            for name in sheet_names:
+                seg_widget.addItem(name, text=name) # 使用 sheet_name 作为 key 和 text
+
+            # 连接切换事件
+            seg_widget.currentItemChanged.connect(load_sheet)
+
+            # 默认加载第一个工作表
+            load_sheet(sheet_names[0])
+
+            # 将 SegmentedWidget 和 Table 添加到 MessageBoxBase 的布局中
+            dialog.viewLayout.addWidget(seg_widget)
+            dialog.viewLayout.addWidget(table)
+
+            dialog.exec_()
+
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition
             InfoBar.error(
-                title="Excel 完整加载失败",
+                title="Excel 加载失败",
                 content=str(e),
                 orient=Qt.Horizontal,
                 isClosable=True,
@@ -511,71 +734,6 @@ class VariableTreeWidget(TreeWidget):
         w.viewLayout.addWidget(image_view)
         w.exec_()
 
-    def _preview_csv(self, filepath, nrows=1000):
-        try:
-            df = pd.read_csv(filepath, nrows=nrows)
-            self._preview_dataframe_full(df)
-        except Exception as e:
-            from qfluentwidgets import InfoBar, InfoBarPosition
-            InfoBar.error(
-                title="CSV 加载失败",
-                content=str(e),
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP_RIGHT,
-                duration=3000,
-                parent=self
-            )
-
-    def _preview_excel(self, filepath):
-        try:
-            xls = pd.ExcelFile(filepath)
-            sheet_names = xls.sheet_names
-            if not sheet_names:
-                raise ValueError("Excel 文件无有效工作表")
-
-            dialog = QDialog(self)
-            dialog.setWindowTitle(f"Excel 预览 - {os.path.basename(filepath)}")
-            dialog.resize(900, 600)
-            layout = QVBoxLayout(dialog)
-
-            seg_widget = SegmentedWidget()
-            table = self._create_styled_table()
-
-            def load_sheet(name):
-                try:
-                    df = pd.read_excel(filepath, sheet_name=name, nrows=1000)
-                    self._fill_native_table(table, df)
-                except Exception as e:
-                    table.clear()
-                    table.setRowCount(1)
-                    table.setColumnCount(1)
-                    item = QTableWidgetItem(f"加载失败: {e}")
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                    item.setForeground(Qt.black)
-                    table.setItem(0, 0, item)
-
-            for name in sheet_names:
-                seg_widget.addItem(name, name)
-            seg_widget.currentItemChanged.connect(load_sheet)
-            load_sheet(sheet_names[0])
-
-            layout.addWidget(seg_widget)
-            layout.addWidget(table)
-            dialog.exec_()
-
-        except Exception as e:
-            from qfluentwidgets import InfoBar, InfoBarPosition
-            InfoBar.error(
-                title="Excel 加载失败",
-                content=str(e),
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP_RIGHT,
-                duration=3000,
-                parent=self
-            )
-
     def _fill_native_table(self, table: QTableWidget, df: pd.DataFrame):
         table.clear()
         if df.empty:
@@ -600,6 +758,7 @@ class VariableTreeWidget(TreeWidget):
                 item = QTableWidgetItem(text)
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 item.setForeground(Qt.black)
+                table.setItem(i, j, item)
 
     def _copy_value(self, text):
         clipboard = QApplication.clipboard()
@@ -655,263 +814,32 @@ class VariableTreeWidget(TreeWidget):
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setSelectionBehavior(QTableWidget.SelectItems)
         table.setSelectionMode(QTableWidget.ContiguousSelection)
-        table.setAlternatingRowColors(True)
 
         return table
 
 
-class VariableExplorerWidget(QWidget):
-    def __init__(self, data_dict=None, parent=None):
-        super().__init__(parent)
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-
-        self.table = TableWidget(self)
-
-        # 启用边框并设置圆角
-        self.table.setBorderVisible(True)
-        self.table.setBorderRadius(8)
-
-        self.table.setWordWrap(False)
-        self.table.setColumnCount(4)
-
-        # 设置水平表头并隐藏垂直表头
-        self.table.setHorizontalHeaderLabels(["Name", "Type", "Size", "Value"])
-        self.table.verticalHeader().hide()
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.Stretch)
-
-        self.layout.addWidget(self.table)
-
-        self._var_items = {}
-
-        if data_dict is not None:
-            self.set_variables(data_dict)
-
-    def set_variables(self, data_dict):
-        self.table.setRowCount(0)
-        self._var_items = {}
-        for name, value in data_dict.items():
-            self._add_variable_row(name, value, None)
-
-    def _add_variable_row(self, name, value, arg_type=None):
-        row = self.table.rowCount()
-        self.table.insertRow(row)
-
-        name_item = QTableWidgetItem(name)
-        name_item.setData(Qt.UserRole, (value, arg_type))
-        self.table.setItem(row, 0, name_item)
-        self.table.setItem(row, 1, QTableWidgetItem(self._get_type_string(value)))
-        self.table.setItem(row, 2, QTableWidgetItem(self._get_size_string(value)))
-        self.table.setItem(row, 3, QTableWidgetItem(self._format_value(value, arg_type)))
-
-    def _get_type_string(self, obj):
-        if obj is None:
-            return "NoneType"
-        elif isinstance(obj, pd.DataFrame):
-            return "DataFrame"
-        elif isinstance(obj, pd.Series):
-            return "Series"
-        elif isinstance(obj, np.ndarray):
-            return f"ndarray ({obj.dtype})"
-        elif isinstance(obj, str):
-            return "str"
-        elif isinstance(obj, bool):
-            return "bool"
-        elif isinstance(obj, int):
-            return "int"
-        elif isinstance(obj, float):
-            return "float"
-        elif self._is_pil_image(obj):
-            return "PIL.Image"
-        elif isinstance(obj, dict):
-            return "dict"
-        elif isinstance(obj, list):
-            return "list"
-        elif isinstance(obj, tuple):
-            return "tuple"
-        elif isinstance(obj, set):
-            return "set"
-        else:
-            return type(obj).__name__
-
-    def _get_size_string(self, obj):
-        try:
-            if isinstance(obj, (pd.DataFrame, pd.Series)):
-                return str(obj.shape)
-            elif isinstance(obj, np.ndarray):
-                return str(obj.shape).replace(" ", "")
-            elif isinstance(obj, (str, list, tuple, dict, set)):
-                return str(len(obj))
-            elif hasattr(obj, '__len__'):
-                return str(len(obj))
-            else:
-                return "-"
-        except:
-            return "?"
-
-    def _is_pil_image(self, obj):
-        try:
-            from PIL import Image
-            return isinstance(obj, Image.Image)
-        except ImportError:
-            return False
-
-    def _format_value(self, obj, arg_type=None):
-        if obj is None:
-            return "None"
-
-        if arg_type is not None and isinstance(arg_type, ArgumentType):
-            if arg_type.is_image():
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"{{Image}} '{os.path.basename(obj)}'"
-                elif self._is_pil_image(obj):
-                    return f"{{PIL.Image}} size={obj.size}"
-                else:
-                    return "{Image} <invalid>"
-
-            elif arg_type == ArgumentType.CSV:
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"{{CSV}} '{os.path.basename(obj)}'"
-                elif isinstance(obj, pd.DataFrame):
-                    return f"{{CSV/DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
-
-            elif arg_type == ArgumentType.EXCEL:
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"{{Excel}} '{os.path.basename(obj)}'"
-                elif isinstance(obj, pd.DataFrame):
-                    return f"{{Excel/DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
-
-            elif arg_type == ArgumentType.JSON:
-                if isinstance(obj, (dict, list)):
-                    length = len(obj) if hasattr(obj, '__len__') else '?'
-                    return f"{{JSON}} (len={length})"
-
-            elif arg_type == ArgumentType.FILE:
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"{{File}} '{os.path.basename(obj)}'"
-                else:
-                    return f"{{File}} {str(obj)}"
-
-            elif arg_type in (ArgumentType.SKLEARNMODEL, ArgumentType.TORCHMODEL):
-                return f"{{Model: {arg_type.value}}}"
-
-            elif arg_type.is_array():
-                if isinstance(obj, np.ndarray):
-                    shape_str = str(obj.shape).replace(" ", "")
-                    return f"{{Array/ndarray: {shape_str}}}"
-                elif isinstance(obj, (list, tuple)):
-                    return f"{{Array/list: {len(obj)}}}"
-                else:
-                    return f"{{Array}} {str(obj)}"
-
-            elif arg_type.is_bool():
-                return str(bool(obj)).lower()
-
-            elif arg_type.is_number():
-                try:
-                    val = float(obj)
-                    if arg_type == ArgumentType.INT:
-                        return str(int(val))
-                    else:
-                        return str(val)
-                except (TypeError, ValueError):
-                    return f"{{Number}} {str(obj)}"
-
-            elif arg_type == ArgumentType.TEXT:
-                if isinstance(obj, str):
-                    if len(obj) <= 50:
-                        return f"'{obj}'"
-                    else:
-                        return f"'{obj[:200]}...' (右键预览)"
-                else:
-                    return f"'{str(obj)}'"
-
-        if isinstance(obj, bool):
-            return str(obj).lower()
-        elif isinstance(obj, str):
-            if len(obj) <= 50:
-                return f"'{obj}'"
-            else:
-                if os.path.isfile(obj):
-                    ext = os.path.splitext(obj)[1].lower()
-                    if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif'}:
-                        return f"🖼️ '{os.path.basename(obj)}'"
-                    elif ext in {'.csv', '.xlsx', '.xls'}:
-                        return f"📊 '{os.path.basename(obj)}'"
-                    elif ext in {'.txt', '.log', '.md', '.py', '.json'}:
-                        return f"📄 '{os.path.basename(obj)}'"
-                    else:
-                        return f"📁 '{os.path.basename(obj)}'"
-                else:
-                    return f"'{obj[:200]}...' (右键预览)"
-        elif isinstance(obj, (int, float)):
-            return str(obj)
-        elif isinstance(obj, np.number):
-            return str(obj)
-        elif isinstance(obj, np.ndarray):
-            shape_str = str(obj.shape).replace(" ", "")
-            total = obj.size
-            if total <= 20 and obj.ndim <= 2:
-                try:
-                    s = np.array2string(obj, separator=' ', threshold=20, edgeitems=3)
-                    if s.startswith('array(') and s.endswith(')'):
-                        s = s[6:-1]
-                    return f"{{ndarray: {shape_str}}} [{s}]"
-                except:
-                    return f"{{ndarray: {shape_str}}}"
-            else:
-                return f"{{ndarray: {shape_str}}} <dtype={obj.dtype}> ..."
-        elif isinstance(obj, pd.DataFrame):
-            return f"{{DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
-        elif isinstance(obj, pd.Series):
-            return f"{{Series: ({len(obj)})}}"
-        elif isinstance(obj, dict):
-            return f"{{dict: {len(obj)}}}"
-        elif isinstance(obj, list):
-            return f"{{list: {len(obj)}}}"
-        elif isinstance(obj, tuple):
-            return f"{{tuple: {len(obj)}}}"
-        elif isinstance(obj, set):
-            return f"{{set: {len(obj)}}}"
-        elif self._is_image_file(obj):
-            return f"{{Image}} '{os.path.basename(str(obj))}'"
-        elif self._is_pil_image(obj):
-            return f"{{PIL.Image}} size={obj.size}"
-        elif hasattr(obj, '__class__'):
-            cls = obj.__class__
-            mod = cls.__module__
-            name = cls.__name__
-            if mod == 'builtins':
-                return f"{{{name}}}"
-            else:
-                return f"{{{mod}.{name}}}"
-        else:
-            return str(obj)
-
-
 # ============ 示例使用 ============
 if __name__ == "__main__":
-    import sys
-    app = QApplication(sys.argv)
-
-    # 模拟变量字典
+    # 示例：嵌套数据结构
     sample_data = {
-        "x": 42,
-        "name": "Hello, Variable Explorer!",
-        "arr": np.array([[1, 2], [3, 4]]),
-        "df": pd.DataFrame({"A": [1, 2, 3], "B": ["x", "y", "z"]}),
-        "config": {"lr": 0.01, "epochs": 100},
-        "items": [1, 2, 3, 4, 5],
-        "none_val": None,
-        "large_text": "This is a very long string..." * 20,
+        "name": "Alice",
+        "age": 30,
+        "scores": [95, 88, 100],
+        "profile": {
+            "hobbies": ["reading", "cycling"],
+            "address": {
+                "city": "Beijing",
+                "details": {
+                    "street": "Zhongguancun",
+                    "number": 100
+                }
+            }
+        },
+        "metadata": np.array([1.0, 2.0, 3.0]),
+        "df": pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
     }
 
-    explorer = VariableExplorerWidget(sample_data)
-    explorer.resize(800, 600)
-    explorer.show()
-
-    sys.exit(app.exec_())
+    app = QApplication([])
+    tree = VariableTreeWidget(data=sample_data)
+    tree.show()
+    app.exec_()
