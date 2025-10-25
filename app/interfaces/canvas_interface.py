@@ -6,6 +6,7 @@ import shutil
 import traceback
 from datetime import datetime
 from pathlib import Path
+
 from NodeGraphQt import BackdropNode, BaseNode
 from NodeGraphQt.constants import PipeLayoutEnum
 from NodeGraphQt.widgets.viewer import NodeViewer
@@ -16,13 +17,13 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QPro
 from loguru import logger
 from qfluentwidgets import (
     InfoBar,
-    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton, FlyoutViewBase,
-    PushButton, Flyout, VBoxLayout
+    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton, PushButton, Flyout,
+    VBoxLayout
 )
+
 from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
 from app.nodes.branch_node import create_branch_node
-from app.widgets.custom_nodegraph import CustomNodeGraph
 from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
@@ -33,6 +34,7 @@ from app.utils.config import Settings
 from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon
+from app.widgets.custom_nodegraph import CustomNodeGraph
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
 from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
 from app.widgets.dialog_widget.output_selection_dialog import OutputSelectionDialog
@@ -242,11 +244,6 @@ class CanvasPage(QWidget):
         self.canvas_widget.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
         self.canvas_widget.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
         self.canvas_widget.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
-        if event.modifiers() == QtCore.Qt.ControlModifier:
-            if event.key() == QtCore.Qt.Key_C:
-                self._copy_selected_nodes()
-            elif event.key() == QtCore.Qt.Key_V:
-                self._paste_nodes()
         if event.modifiers() == (QtCore.Qt.AltModifier | QtCore.Qt.ShiftModifier):
             self.canvas_widget.ALT_state = True
             self.canvas_widget.SHIFT_state = True
@@ -270,6 +267,13 @@ class CanvasPage(QWidget):
             self.canvas_widget._cursor_text.setDefaultTextColor(Qt.white)
             self.canvas_widget._cursor_text.setPos(self.canvas_widget.mapToScene(self.canvas_widget._previous_pos))
             self.canvas_widget._cursor_text.setVisible(True)
+        if event.modifiers() == QtCore.Qt.ControlModifier:
+            if event.key() == QtCore.Qt.Key_C:
+                self._copy_selected_nodes()
+            elif event.key() == QtCore.Qt.Key_V:
+                self._paste_nodes()
+            elif event.key() == QtCore.Qt.Key_A:
+                self.graph.select_all()
 
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
@@ -1604,10 +1608,6 @@ class CanvasPage(QWidget):
         graph_menu.add_command('撤销', self._undo, 'Ctrl+Z')
         graph_menu.add_command('重做', self._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
         graph_menu.add_command('自动布局', self._auto_layout_selected, 'Ctrl+L')
-        edit_menu = graph_menu.add_menu('编辑')
-        edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
-        edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
-        edit_menu.add_command('删除选中', lambda graph: self.delete_selected_nodes(graph), 'Del')
 
     def delete_selected_nodes(self, graph):
         # 清除选中节点的输入输出端口连接线

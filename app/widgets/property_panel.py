@@ -162,11 +162,25 @@ class PropertyPanel(CardWidget):
         is_same_node = (
                 node is not None
                 and node is self.current_node
-                and not isinstance(node, ControlFlowBackdrop)
+                # 检查是否为 ControlFlowBackdrop 且是同一个实例
+                and isinstance(node, ControlFlowBackdrop)
         )
-        if is_same_node:
-            self._update_existing_node_data(node)
-            return
+        # is_backdrop_change: 检查是否是 ControlFlowBackdrop 的状态变化
+        is_backdrop_change = (
+                is_same_node
+                and isinstance(node, ControlFlowBackdrop)
+            # 可以根据需要添加其他判断条件，例如某个内部状态标记
+            # 这里暂时认为只要节点是Backdrop且是同一个实例，就尝试状态更新
+        )
+
+        if is_backdrop_change:
+            # 尝试更新现有Backdrop的状态
+            if self._update_existing_backdrop_data(node):
+                # 如果成功更新了Backdrop状态，则直接返回，不执行后续的全量更新
+                return
+            # 如果 _update_existing_backdrop_data 返回 False (例如缓存的UI组件不存在)，则继续全量更新
+
+        # 原有的全量更新逻辑
         current_segment = None
         if self.segmented_widget:
             current_segment = self.segmented_widget.currentRouteKey()
@@ -184,6 +198,85 @@ class PropertyPanel(CardWidget):
             elif isinstance(node, BaseNode):
                 self._build_node_ui(node, current_segment)
             self.main_stacked.setCurrentIndex(0)
+
+    def _update_existing_backdrop_data(self, node):
+        """
+        尝试更新现有 ControlFlowBackdrop 的状态。
+        如果成功更新（即找到了需要更新的UI组件），则返回 True。
+        如果无法更新（例如UI组件未缓存），则返回 False。
+        """
+        # 检查是否有缓存的UI组件用于更新
+        if not hasattr(self, '_backdrop_progress_label') or not hasattr(self, '_backdrop_progress_bar') or not hasattr(
+                self, '_backdrop_internal_nodes_list'):
+            # 如果没有缓存的组件，无法进行局部更新，返回 False
+            return False
+
+        # 更新进度信息
+        flow_type = getattr(node, 'TYPE', 'unknown')
+        current = node.model.get_property('current_index')
+        if flow_type == "loop":
+            loop_mode = node.model.get_property("loop_mode")
+            if loop_mode == 'count':
+                total = node.model.get_property("loop_nums")
+            else:
+                total = node.model.get_property("max_iterations")
+        elif flow_type == "iterate":
+            input_data = []
+            for input_port in node.input_ports():
+                connected = input_port.connected_ports()
+                if connected:
+                    if len(connected) == 1:
+                        upstream = connected[0]
+                        value = upstream.node()._output_values.get(upstream.name())
+                        input_data = value
+                    else:
+                        input_data.extend(
+                            [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
+                        )
+            if not isinstance(input_data, (list, tuple, dict)):
+                input_data = [input_data]
+            total = len(input_data)
+        else:
+            total = 0
+
+        # 更新标签文本
+        if self._backdrop_progress_label:
+            self._backdrop_progress_label.setText(f"进度: {current}/{total}")
+
+        # 更新进度条值
+        if self._backdrop_progress_bar:
+            progress_value = int(current / max(1, total) * 100) if total > 0 else 0
+            self._backdrop_progress_bar.setValue(progress_value)
+
+        # 更新内部节点列表
+        if self._backdrop_internal_nodes_list:
+            _, _, internal_nodes = node.get_nodes()
+            # 仅更新列表项的文本，不重建整个列表
+            list_widget = self._backdrop_internal_nodes_list
+            for i in range(list_widget.count()):
+                item = list_widget.item(i)
+                if i < len(internal_nodes):  # 防止索引越界
+                    n = internal_nodes[i]
+                    status = self.main_window.get_node_status(n)
+                    status_text = {
+                        "running": "🟡 运行中",
+                        "success": "🟢 成功",
+                        "failed": "🔴 失败",
+                        "unrun": "⚪ 未运行",
+                        "pending": "🔵 待运行"
+                    }.get(status, status)
+                    item.setText(f"{status_text} - {n.name()}")
+                else:
+
+                    item.setText("")  # 或者 item.setHidden(True)
+                    # 注意：移除项可能需要更复杂的逻辑，这里保持数量不变仅更新文本
+            # 如果节点数量增加了，需要添加新的项
+            if len(internal_nodes) > list_widget.count():
+                if list_widget.count() != len(internal_nodes):
+                    return False  # 长度不匹配，需要重新构建
+
+        # 成功更新了UI组件
+        return True
 
     def _build_node_ui(self, node, current_segment=None):
         if not hasattr(node, '_input_values'):
@@ -418,6 +511,7 @@ class PropertyPanel(CardWidget):
             )
             title_layout.addWidget(add_global_btn)
         browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
+        browse_btn.setFixedSize(QSize(26, 20))
         browse_btn.clicked.connect(tree_widget.show_detail)
         title_layout.addWidget(browse_btn)
         card_layout.addLayout(title_layout)
@@ -478,9 +572,19 @@ class PropertyPanel(CardWidget):
     # ControlFlowBackdrop 相关
     # ========================
     def _update_control_flow_properties(self, node, current_segment=None):
+        # --- 清理之前的Backdrop缓存 ---
+        # 在构建新UI前，清理旧的缓存引用（如果有的话）
+        if hasattr(self, '_backdrop_progress_label'):
+            delattr(self, '_backdrop_progress_label')
+        if hasattr(self, '_backdrop_progress_bar'):
+            delattr(self, '_backdrop_progress_bar')
+        if hasattr(self, '_backdrop_internal_nodes_list'):
+            delattr(self, '_backdrop_internal_nodes_list')
+
         title = BodyLabel(f"🔁 {node.NODE_NAME}")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.node_vbox.addWidget(title)
+
         flow_type = getattr(node, 'TYPE', 'unknown')
         current = node.model.get_property('current_index')
         if flow_type == "loop":
@@ -508,20 +612,26 @@ class PropertyPanel(CardWidget):
             node.model.set_property("loop_nums", total)
         else:
             total = 0
+
+        # --- 缓存进度标签和进度条 ---
         progress_label = BodyLabel(f"进度: {current}/{total}")
         progress_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
+        self.node_vbox.addWidget(progress_label)
+        self._backdrop_progress_label = progress_label # 缓存
+
         progress_bar = ProgressBar(self, useAni=False)
         progress_bar.setRange(0, 100)
         progress_bar.setValue(int(current / max(1, total) * 100) if total > 0 else 0)
-        self.node_vbox.addWidget(progress_label)
         self.node_vbox.addWidget(progress_bar)
+        self._backdrop_progress_bar = progress_bar # 缓存
+
         if flow_type == "loop":
-            self._add_seperator(self.node_vbox)
             self._add_loop_config_section(node)
-        self._add_seperator(self.node_vbox)
-        # 注意：这里传入了当前节点的引用
-        self._add_internal_nodes_section(node)
+
+        self._add_internal_nodes_section(node) # 这个方法会缓存内部节点列表
         self.node_vbox.addStretch()
+
+        # ... (输入输出端口的构建逻辑保持不变) ...
         self.segmented_widget = SegmentedWidget()
         self.segmented_widget.addItem('input', '输入端口')
         self.segmented_widget.addItem('output', '输出端口')
@@ -548,6 +658,71 @@ class PropertyPanel(CardWidget):
             self.segmented_widget.setCurrentItem(current_segment)
         else:
             self.segmented_widget.setCurrentItem('input')
+
+    def _add_internal_nodes_section(self, node):
+        # ... (卡片和布局的创建逻辑保持不变) ...
+        nodes_card = CardWidget(self)
+        initial_max_height = 200
+        nodes_card.setMaximumHeight(initial_max_height)
+        nodes_card.setMinimumHeight(initial_max_height)
+        node_id = node.id
+        self._internal_nodes_card_expanded[node_id] = False
+        nodes_layout = QVBoxLayout(nodes_card)
+        nodes_layout.setContentsMargins(10, 10, 10, 10)
+
+        title_btn_layout = QHBoxLayout()
+        title = BodyLabel("区域内部节点：")
+        title_btn_layout.addWidget(title)
+        title_btn_layout.addStretch()
+
+        expand_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
+        expand_btn.setFixedSize(QSize(26, 20))
+        def toggle_expand():
+            is_expanded = self._internal_nodes_card_expanded[node_id]
+            if is_expanded:
+                nodes_card.setMaximumHeight(initial_max_height)
+                nodes_card.setMinimumHeight(initial_max_height)
+                expand_btn.setIcon(get_icon("放大"))
+                self._internal_nodes_card_expanded[node_id] = False
+            else:
+                num_items = internal_nodes_list.count()
+                estimated_height_for_items = num_items * 35
+                padding_height = 10 + 10 + 10 + 10
+                title_height = 20
+                total_estimated_height = padding_height + title_height + estimated_height_for_items
+                nodes_card.setFixedHeight(total_estimated_height + 50)
+                expand_btn.setIcon(get_icon("缩小"))
+                self._internal_nodes_card_expanded[node_id] = True
+            self.node_vbox.invalidate()
+        expand_btn.clicked.connect(toggle_expand)
+        title_btn_layout.addWidget(expand_btn)
+        nodes_layout.addLayout(title_btn_layout)
+
+        # 生成内部节点列表数据
+        _, _, internal_nodes = node.get_nodes()
+        # 创建列表
+        internal_nodes_list = ListWidget(self)
+        if not internal_nodes:
+            internal_nodes_list.addItem(QListWidgetItem("暂无内部节点"))
+        else:
+            for n in internal_nodes:
+                status = self.main_window.get_node_status(n)
+                status_text = {
+                    "running": "🟡 运行中",
+                    "success": "🟢 成功",
+                    "failed": "🔴 失败",
+                    "unrun": "⚪ 未运行",
+                    "pending": "🔵 待运行"
+                }.get(status, status)
+                item_text = f"{status_text} - {n.name()}"
+                item = QListWidgetItem(item_text)
+                internal_nodes_list.addItem(item)
+
+        nodes_layout.addWidget(internal_nodes_list)
+        self.node_vbox.addWidget(nodes_card)
+
+        # --- 缓存内部节点列表 ---
+        self._backdrop_internal_nodes_list = internal_nodes_list
 
     def _add_loop_config_section(self, node):
         config_card = CardWidget(self)
@@ -599,90 +774,6 @@ class PropertyPanel(CardWidget):
             config_layout.addWidget(BodyLabel("最大迭代次数:"))
             config_layout.addWidget(max_iter_spin)
         self.node_vbox.addWidget(config_card)
-
-    def _add_internal_nodes_section(self, node):
-        nodes_card = CardWidget(self)
-        # 初始最大高度，限制卡片未展开时的高度
-        initial_max_height = 200
-        # 设置初始的最大高度和最小高度
-        nodes_card.setMaximumHeight(initial_max_height)
-        # 初始最小高度可以设得小一点，或者和初始最大高度一样
-        nodes_card.setMinimumHeight(initial_max_height)
-
-        # 用于存储此节点卡片的展开状态
-        node_id = node.id
-        self._internal_nodes_card_expanded[node_id] = False
-
-        nodes_layout = QVBoxLayout(nodes_card)
-        nodes_layout.setContentsMargins(10, 10, 10, 10)
-
-        # 标题和按钮布局
-        title_btn_layout = QHBoxLayout()
-        title = BodyLabel("内部节点")
-        title_btn_layout.addWidget(title)
-        title_btn_layout.addStretch()
-
-        # 放大/缩小按钮
-        expand_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
-
-        def toggle_expand():
-            is_expanded = self._internal_nodes_card_expanded[node_id]
-
-            if is_expanded:
-                # --- 收起 ---
-                # 重置最大高度为初始值
-                nodes_card.setMaximumHeight(initial_max_height)
-                # 重置最小高度为初始值，防止之前展开时设置的最大高度成为新的最小值
-                nodes_card.setMinimumHeight(initial_max_height)
-                expand_btn.setIcon(get_icon("放大"))
-                self._internal_nodes_card_expanded[node_id] = False
-            else:
-                # --- 展开 ---
-                # 计算展开所需的高度
-                num_items = internal_nodes_list.count()
-                estimated_height_for_items = num_items * 35  # 假设每个列表项约35px高
-                padding_height = 10 + 10 + 10 + 10  # 上下左右边距
-                title_height = 20  # 估算标题高度
-                total_estimated_height = padding_height + title_height + estimated_height_for_items
-
-                # 设置卡片一个足够大的最大高度，使其能展开显示所有内容
-                # 不要设置 setMinimumHeight，否则收起时会卡住
-                nodes_card.setFixedHeight(total_estimated_height + 50)  # 预留一些空间
-
-                expand_btn.setIcon(get_icon("缩小"))
-                self._internal_nodes_card_expanded[node_id] = True
-
-            # 强制父布局重新计算，使 SmoothScrollArea 能响应变化
-            self.node_vbox.invalidate()
-
-        expand_btn.clicked.connect(toggle_expand)
-        title_btn_layout.addWidget(expand_btn)
-        nodes_layout.addLayout(title_btn_layout)
-
-        # 生成内部节点列表数据
-        _, _, internal_nodes = node.get_nodes()
-
-        # 创建列表
-        internal_nodes_list = ListWidget(self)
-
-        if not internal_nodes:
-            internal_nodes_list.addItem(QListWidgetItem("暂无内部节点"))
-        else:
-            for n in internal_nodes:
-                status = self.main_window.get_node_status(n)
-                status_text = {
-                    "running": "🟡 运行中",
-                    "success": "🟢 成功",
-                    "failed": "🔴 失败",
-                    "unrun": "⚪ 未运行",
-                    "pending": "🔵 待运行"
-                }.get(status, status)
-                item_text = f"{status_text} - {n.name()}"
-                item = QListWidgetItem(item_text)
-                internal_nodes_list.addItem(item)
-
-        nodes_layout.addWidget(internal_nodes_list)
-        self.node_vbox.addWidget(nodes_card)
 
     def _add_output_to_global_variable(self, node, port_name: str):
         value = node._output_values.get(port_name)
