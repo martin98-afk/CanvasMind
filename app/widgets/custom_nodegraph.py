@@ -22,6 +22,7 @@ class CustomNodeGraph(NodeGraph):
         """
         self._viewer.scene().blockSignals(True)
         self._viewer.setUpdatesEnabled(False)
+
         # update node graph properties.
         try:
             # Recursive function to convert last lists to sets
@@ -56,9 +57,50 @@ class CustomNodeGraph(NodeGraph):
                     convert_last_list_to_set(attr_value)
                     self.model.reject_connection_types = attr_value
 
-            # build the nodes.
+            # 分离 backdrop 节点和其他节点
+            nodes_data = data.get('nodes', {})
+            non_backdrop_nodes_data = {}
+            backdrop_nodes_data = {}
+
+            for n_id, n_data in nodes_data.items():
+                # 判断是否为 backdrop 节点（通常 backdrop 节点类型包含 'backdrop' 或类似的标识）
+                node_type = n_data.get('type_', '')
+                if 'control_flow' in node_type.lower():
+                    backdrop_nodes_data[n_id] = n_data
+                else:
+                    non_backdrop_nodes_data[n_id] = n_data
+
+            # 先构建非 backdrop 节点
             nodes = {}
-            for n_id, n_data in data.get('nodes', {}).items():
+
+            # 处理非 backdrop 节点
+            for n_id, n_data in non_backdrop_nodes_data.items():
+                identifier = n_data['type_']
+                node = self._node_factory.create_node_instance(identifier)
+                if node:
+                    node.NODE_NAME = n_data.get('name', node.NODE_NAME)
+                    # set properties.
+                    for prop in node.model.properties.keys():
+                        if prop in n_data.keys():
+                            node.model.set_property(prop, n_data[prop])
+                    self.add_node(node, n_data.get('pos'), inherite_graph_style=adjust_graph_style)
+                    # set custom properties.
+                    for prop, val in n_data.get('custom', {}).items():
+                        node.model.set_property(prop, val)
+                        if isinstance(node, BaseNode):
+                            if prop in node.view.widgets:
+                                node.view.widgets[prop].set_value(val)
+
+                    nodes[n_id] = node
+
+                    if n_data.get('port_deletion_allowed', None):
+                        node.set_ports({
+                            'input_ports': n_data['input_ports'],
+                            'output_ports': n_data['output_ports']
+                        })
+
+            # 处理 backdrop 节点（放到最后）
+            for n_id, n_data in backdrop_nodes_data.items():
                 identifier = n_data['type_']
                 node = self._node_factory.create_node_instance(identifier)
                 if node:

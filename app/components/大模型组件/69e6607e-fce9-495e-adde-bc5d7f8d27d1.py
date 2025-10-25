@@ -93,10 +93,10 @@ class Component(BaseComponent):
         import os
         import json
         from openai import OpenAI
-        
+
         self.logger.info(params)
         # 获取输入
-        user_input = inputs.user_input.strip() if inputs else ""
+        user_input = inputs.user_input.strip()
         history = inputs.history if inputs.history else []
 
         if isinstance(history, str):
@@ -111,18 +111,45 @@ class Component(BaseComponent):
         base_url = params.base_url.strip()
         system_prompt = params.system_prompt
         temperature = float(params.temperature)
-        max_tokens = int(params.max_tokens)    
-        self.name
-        self.logger.info(model)
-        self.logger.info(system_prompt)
-        
-        if not user_input:
-            return {"response": "", "raw_output": {}}    
+        max_tokens = int(params.max_tokens)
+        enable_visual = params.visual  # 获取视觉识别开关
 
         # 构建消息
         messages = [{"role": "system", "content": system_prompt}]
         messages.extend(history)
-        messages.append({"role": "user", "content": user_input})
+
+        # 构建用户消息内容
+        user_content = []
+
+        # 如果启用了视觉识别且提供了图像
+        if enable_visual:
+            # 移除可能的data URI前缀
+            image_data = user_input
+            if image_data.startswith('data:image'):
+                # 提取base64部分
+                image_data = image_data.split(',')[1]
+
+            # 验证base64格式
+            if self._is_valid_base64(image_data):
+                user_content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image_data}"
+                    }
+                })
+            else:
+                self.logger.warning("提供的base64图像格式无效，将忽略图像输入")
+        else:
+            user_content.append({
+                "type": "text",
+                "text": user_input
+            })
+
+        # 将用户内容添加到消息中
+        messages.append({
+            "role": "user",
+            "content": user_content if user_content else user_input
+        })
 
         # 自动处理 API Key：本地模型通常不需要
         use_local = bool(base_url)
@@ -136,14 +163,19 @@ class Component(BaseComponent):
                 self.logger.error(error_msg)
                 return {
                     "response": error_msg,
-                    "raw_output": {"error": "Missing API Key or base_url"}
+                    "raw_output": {"error": "Missing API Key or base_url"},
+                    "history": history
                 }
             client = OpenAI(api_key=api_key)
 
         # 解析额外模型配置信息
-        extra_body={}
+        extra_body = {}
         for item in params.model_params:
-            extra_body[item["key"]] = json.loads(item["value"])
+            try:
+                extra_body[item["key"]] = json.loads(item["value"])
+            except json.JSONDecodeError:
+                # 如果无法解析为JSON，直接使用字符串值
+                extra_body[item["key"]] = item["value"]
 
         try:
             response = client.chat.completions.create(
@@ -157,12 +189,26 @@ class Component(BaseComponent):
 
             reply = response.choices[0].message.content.strip()
             raw_data = response.model_dump()
-            history.extend(
-                [
-                    {"role": "user", "content": user_input},
-                    {"role": "assistant", "content": reply}
-                ]
-            )
+
+            # 更新历史记录
+            history_message = {
+                "role": "user",
+                "content": user_input
+            }
+            if enable_visual:
+                # 如果有图像，创建包含图像的历史记录
+                history_message = {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+                    ]
+                }
+
+            history.extend([
+                history_message,
+                {"role": "assistant", "content": reply}
+            ])
+
             return {
                 "response": reply,
                 "raw_output": raw_data,
@@ -170,4 +216,21 @@ class Component(BaseComponent):
             }
 
         except Exception as e:
+            self.logger.error(f"调用大模型时发生错误: {str(e)}")
             raise e
+
+    def _is_valid_base64(self, s: str) -> bool:
+        """
+        验证字符串是否为有效的base64编码
+        """
+        import base64
+        try:
+            # 检查字符串长度是否为4的倍数
+            if len(s) % 4 != 0:
+                return False
+
+            # 尝试解码base64
+            base64.b64decode(s, validate=True)
+            return True
+        except Exception:
+            return False

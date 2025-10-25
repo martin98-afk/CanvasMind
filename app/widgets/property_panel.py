@@ -2,77 +2,79 @@
 import json
 import os
 import re
-
 import pandas as pd
 from NodeGraphQt import BaseNode
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
     QStackedWidget, QHBoxLayout, QApplication
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
     ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
     TransparentDropDownToolButton
-
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.utils.utils import serialize_for_json, get_icon
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
 
+# --- 添加一个自定义信号的类，用于在卡片大小改变时通知布局更新 ---
+class ExpandableCardWidget(CardWidget):
+    sizeChanged = pyqtSignal() # 自定义信号
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.sizeChanged.emit() # 当大小改变时发射信号
 
 class PropertyPanel(CardWidget):
     def __init__(self, main_window, parent=None):
         super().__init__(parent)
         self.main_window = main_window
         self.setFixedWidth(280)
-
         # === 全局变量缓存 ===
         self._custom_var_cards = {}
         self._node_var_cards = {}
         self._env_var_cards = {}
         self._global_panel_built = False
-
         # === 顶层堆叠：两个独立的 ScrollArea ===
         self.main_stacked = QStackedWidget(self)
-
         # --- 节点面板（带独立 ScrollArea）---
         node_scroll = SmoothScrollArea(self)
         node_scroll.viewport().setStyleSheet("background-color: transparent;")
         node_scroll.setWidgetResizable(True)
         node_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
         self.node_container = QWidget()
         self.node_vbox = QVBoxLayout(self.node_container)
         self.node_vbox.setContentsMargins(10, 10, 10, 10)
         self.node_vbox.setSpacing(8)
         node_scroll.setWidget(self.node_container)
         self.main_stacked.addWidget(node_scroll)  # index 0
-
         # --- 全局变量面板（带独立 ScrollArea）---
         global_scroll = SmoothScrollArea(self)
         global_scroll.viewport().setStyleSheet("background-color: transparent;")
         global_scroll.setWidgetResizable(True)
         global_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
         self.global_container = QWidget()
         self.global_vbox = QVBoxLayout(self.global_container)
         self.global_vbox.setContentsMargins(10, 10, 10, 10)
         self.global_vbox.setSpacing(8)
         global_scroll.setWidget(self.global_container)
         self.main_stacked.addWidget(global_scroll)  # index 1
-
         # --- 主布局 ---
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(self.main_stacked)
-
         self.current_node = None
         self._column_list_widgets = {}
         self._text_edit_widgets = {}
         self.segmented_widget = None
         self.stacked_widget = None
         self._current_global_tab = 'custom'
-
         self.main_window.global_variables_changed.connect(self._on_global_variables_changed)
+
+        # --- 用于存储内部节点卡片状态 ---
+        self._internal_nodes_card_expanded = {}
 
     # ========================
     # 全局变量信号响应（增量更新）
@@ -125,6 +127,8 @@ class PropertyPanel(CardWidget):
     def _clear_node_layout(self):
         self._column_list_widgets.clear()
         self._text_edit_widgets.clear()
+        # 清理内部节点卡片状态
+        self._internal_nodes_card_expanded.clear()
         while self.node_vbox.count():
             child = self.node_vbox.takeAt(0)
             if child.widget():
@@ -150,7 +154,6 @@ class PropertyPanel(CardWidget):
             ports = node.input_ports() if is_input else node.output_ports()
             port_defs = node.get_property(f"{'input' if is_input else 'output'}_ports")
             type_dict = {item.value: item for item in ArgumentType}
-
             return [(p.name(), p.name(), type_dict[pd["type"]]) for p, pd in zip(ports, port_defs)]
         else:
             return [(p.name(), p.name(), ArgumentType.TEXT) for p in ports]
@@ -159,18 +162,30 @@ class PropertyPanel(CardWidget):
         is_same_node = (
                 node is not None
                 and node is self.current_node
-                and not isinstance(node, ControlFlowBackdrop)
+                # 检查是否为 ControlFlowBackdrop 且是同一个实例
+                and isinstance(node, ControlFlowBackdrop)
         )
-        if is_same_node:
-            self._update_existing_node_data(node)
-            return
+        # is_backdrop_change: 检查是否是 ControlFlowBackdrop 的状态变化
+        is_backdrop_change = (
+                is_same_node
+                and isinstance(node, ControlFlowBackdrop)
+            # 可以根据需要添加其他判断条件，例如某个内部状态标记
+            # 这里暂时认为只要节点是Backdrop且是同一个实例，就尝试状态更新
+        )
 
+        if is_backdrop_change:
+            # 尝试更新现有Backdrop的状态
+            if self._update_existing_backdrop_data(node):
+                # 如果成功更新了Backdrop状态，则直接返回，不执行后续的全量更新
+                return
+            # 如果 _update_existing_backdrop_data 返回 False (例如缓存的UI组件不存在)，则继续全量更新
+
+        # 原有的全量更新逻辑
         current_segment = None
         if self.segmented_widget:
             current_segment = self.segmented_widget.currentRouteKey()
         if hasattr(self, 'global_segmented'):
             self._current_global_tab = self.global_segmented.currentRouteKey()
-
         self.current_node = node
         if not node:
             self._show_global_variables_panel()
@@ -184,17 +199,94 @@ class PropertyPanel(CardWidget):
                 self._build_node_ui(node, current_segment)
             self.main_stacked.setCurrentIndex(0)
 
+    def _update_existing_backdrop_data(self, node):
+        """
+        尝试更新现有 ControlFlowBackdrop 的状态。
+        如果成功更新（即找到了需要更新的UI组件），则返回 True。
+        如果无法更新（例如UI组件未缓存），则返回 False。
+        """
+        # 检查是否有缓存的UI组件用于更新
+        if not hasattr(self, '_backdrop_progress_label') or not hasattr(self, '_backdrop_progress_bar') or not hasattr(
+                self, '_backdrop_internal_nodes_list'):
+            # 如果没有缓存的组件，无法进行局部更新，返回 False
+            return False
+
+        # 更新进度信息
+        flow_type = getattr(node, 'TYPE', 'unknown')
+        current = node.model.get_property('current_index')
+        if flow_type == "loop":
+            loop_mode = node.model.get_property("loop_mode")
+            if loop_mode == 'count':
+                total = node.model.get_property("loop_nums")
+            else:
+                total = node.model.get_property("max_iterations")
+        elif flow_type == "iterate":
+            input_data = []
+            for input_port in node.input_ports():
+                connected = input_port.connected_ports()
+                if connected:
+                    if len(connected) == 1:
+                        upstream = connected[0]
+                        value = upstream.node()._output_values.get(upstream.name())
+                        input_data = value
+                    else:
+                        input_data.extend(
+                            [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
+                        )
+            if not isinstance(input_data, (list, tuple, dict)):
+                input_data = [input_data]
+            total = len(input_data)
+        else:
+            total = 0
+
+        # 更新标签文本
+        if self._backdrop_progress_label:
+            self._backdrop_progress_label.setText(f"进度: {current}/{total}")
+
+        # 更新进度条值
+        if self._backdrop_progress_bar:
+            progress_value = int(current / max(1, total) * 100) if total > 0 else 0
+            self._backdrop_progress_bar.setValue(progress_value)
+
+        # 更新内部节点列表
+        if self._backdrop_internal_nodes_list:
+            _, _, internal_nodes = node.get_nodes()
+            # 仅更新列表项的文本，不重建整个列表
+            list_widget = self._backdrop_internal_nodes_list
+            for i in range(list_widget.count()):
+                item = list_widget.item(i)
+                if i < len(internal_nodes):  # 防止索引越界
+                    n = internal_nodes[i]
+                    status = self.main_window.get_node_status(n)
+                    status_text = {
+                        "running": "🟡 运行中",
+                        "success": "🟢 成功",
+                        "failed": "🔴 失败",
+                        "unrun": "⚪ 未运行",
+                        "pending": "🔵 待运行"
+                    }.get(status, status)
+                    item.setText(f"{status_text} - {n.name()}")
+                else:
+
+                    item.setText("")  # 或者 item.setHidden(True)
+                    # 注意：移除项可能需要更复杂的逻辑，这里保持数量不变仅更新文本
+            # 如果节点数量增加了，需要添加新的项
+            if len(internal_nodes) > list_widget.count():
+                if list_widget.count() != len(internal_nodes):
+                    return False  # 长度不匹配，需要重新构建
+
+        # 成功更新了UI组件
+        return True
+
     def _build_node_ui(self, node, current_segment=None):
         if not hasattr(node, '_input_values'):
             node._input_values = {}
         if not hasattr(node, 'column_select'):
             node.column_select = {}
-
         title = BodyLabel(f"📌 {node.name()}")
         title.setWordWrap(True)
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.node_vbox.addWidget(title)
-
         description = self.get_node_description(node)
         if description and description.strip():
             desc_label = BodyLabel(f"📝 {description}")
@@ -202,7 +294,6 @@ class PropertyPanel(CardWidget):
             desc_label.setStyleSheet("color: #888888; font-size: 16px;")
             self.node_vbox.addWidget(desc_label)
         self._add_seperator(self.node_vbox)
-
         self.segmented_widget = SegmentedWidget()
         self.stacked_widget = QStackedWidget()
         input_widget = QWidget()
@@ -213,7 +304,6 @@ class PropertyPanel(CardWidget):
         output_layout = QVBoxLayout(output_widget)
         output_layout.setContentsMargins(0, 0, 0, 0)
         output_layout.setSpacing(8)
-
         if len(node.input_ports()) > 0:
             self.segmented_widget.addItem('input', '输入端口')
             self._populate_input_ports(node, input_layout)
@@ -224,11 +314,9 @@ class PropertyPanel(CardWidget):
             self._populate_output_ports(node, output_layout)
             output_layout.addStretch(1)
             self.stacked_widget.addWidget(output_widget)
-
         self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
         self.node_vbox.addWidget(self.segmented_widget)
         self.node_vbox.addWidget(self.stacked_widget)
-
         if current_segment in ['input', 'output']:
             self.segmented_widget.setCurrentItem(current_segment)
         else:
@@ -245,7 +333,6 @@ class PropertyPanel(CardWidget):
                 original_data = [up.node().get_output_value(up.name()) for up in connected]
             else:
                 original_data = node._input_values.get(port_name, "暂无数据")
-
             if port_name in self._column_list_widgets:
                 list_widget = self._column_list_widgets[port_name]
                 if isinstance(original_data, pd.DataFrame) and not original_data.empty:
@@ -260,7 +347,6 @@ class PropertyPanel(CardWidget):
                         item.setCheckState(Qt.Checked if item.text() in selected_columns else Qt.Unchecked)
             current_selected_data = self._get_current_input_value(node, port_name, original_data)
             self._update_text_edit_for_port(port_name, current_selected_data)
-
         for port_name, _, port_type in self.get_port_info(node, is_input=False):
             display_data = node.get_output_value(port_name)
             if display_data is None:
@@ -283,13 +369,11 @@ class PropertyPanel(CardWidget):
                 original_data = [up.node().get_output_value(up.name()) for up in connected]
             else:
                 original_data = node._input_values.get(port_name, "暂无数据")
-
             if port_type == ArgumentType.CSV and isinstance(original_data, pd.DataFrame) and not original_data.empty:
                 self._add_column_selector_widget_to_layout(node, port_name, original_data, original_data, layout)
                 current_selected_data = self._get_current_input_value(node, port_name, original_data)
             else:
                 current_selected_data = original_data
-
             self._add_text_edit_to_layout(
                 current_selected_data,
                 port_type=port_type,
@@ -313,10 +397,8 @@ class PropertyPanel(CardWidget):
                     display_data = node.model.get_property(port_name)
                 except KeyError:
                     display_data = "暂无数据"
-
             if port_type == ArgumentType.UPLOAD:
                 self._add_upload_widget_to_layout(node, port_name, layout)
-
             self._add_text_edit_to_layout(
                 display_data,
                 port_type=port_type,
@@ -400,6 +482,7 @@ class PropertyPanel(CardWidget):
             ]
             node.column_select[port_name] = current_selected
             self._update_text_edit_for_port(port_name, data[current_selected])
+
         select_all_btn.clicked.connect(select_all)
         clear_btn.clicked.connect(clear_all)
         list_widget.itemChanged.connect(_on_selection_changed)
@@ -428,15 +511,14 @@ class PropertyPanel(CardWidget):
             )
             title_layout.addWidget(add_global_btn)
         browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
+        browse_btn.setFixedSize(QSize(26, 20))
         browse_btn.clicked.connect(tree_widget.show_detail)
         title_layout.addWidget(browse_btn)
         card_layout.addLayout(title_layout)
-
         card_layout.addWidget(tree_widget)
         if layout is None:
             layout = self.node_vbox
         layout.addWidget(info_card)
-
         def show_context_menu(pos):
             menu = RoundMenu(parent=self)
             menu.addAction(
@@ -490,9 +572,19 @@ class PropertyPanel(CardWidget):
     # ControlFlowBackdrop 相关
     # ========================
     def _update_control_flow_properties(self, node, current_segment=None):
+        # --- 清理之前的Backdrop缓存 ---
+        # 在构建新UI前，清理旧的缓存引用（如果有的话）
+        if hasattr(self, '_backdrop_progress_label'):
+            delattr(self, '_backdrop_progress_label')
+        if hasattr(self, '_backdrop_progress_bar'):
+            delattr(self, '_backdrop_progress_bar')
+        if hasattr(self, '_backdrop_internal_nodes_list'):
+            delattr(self, '_backdrop_internal_nodes_list')
+
         title = BodyLabel(f"🔁 {node.NODE_NAME}")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.node_vbox.addWidget(title)
+
         flow_type = getattr(node, 'TYPE', 'unknown')
         current = node.model.get_property('current_index')
         if flow_type == "loop":
@@ -520,25 +612,30 @@ class PropertyPanel(CardWidget):
             node.model.set_property("loop_nums", total)
         else:
             total = 0
+
+        # --- 缓存进度标签和进度条 ---
         progress_label = BodyLabel(f"进度: {current}/{total}")
         progress_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
+        self.node_vbox.addWidget(progress_label)
+        self._backdrop_progress_label = progress_label # 缓存
+
         progress_bar = ProgressBar(self, useAni=False)
         progress_bar.setRange(0, 100)
         progress_bar.setValue(int(current / max(1, total) * 100) if total > 0 else 0)
-        self.node_vbox.addWidget(progress_label)
         self.node_vbox.addWidget(progress_bar)
+        self._backdrop_progress_bar = progress_bar # 缓存
+
         if flow_type == "loop":
-            self._add_seperator(self.node_vbox)
             self._add_loop_config_section(node)
-        self._add_seperator(self.node_vbox)
-        self._add_internal_nodes_section(node)
+
+        self._add_internal_nodes_section(node) # 这个方法会缓存内部节点列表
         self.node_vbox.addStretch()
 
+        # ... (输入输出端口的构建逻辑保持不变) ...
         self.segmented_widget = SegmentedWidget()
         self.segmented_widget.addItem('input', '输入端口')
         self.segmented_widget.addItem('output', '输出端口')
         self.stacked_widget = QStackedWidget()
-
         input_widget = QWidget()
         input_layout = QVBoxLayout(input_widget)
         input_layout.setContentsMargins(0, 0, 0, 0)
@@ -546,7 +643,6 @@ class PropertyPanel(CardWidget):
         self._populate_input_ports(node, input_layout)
         input_layout.addStretch(1)
         self.stacked_widget.addWidget(input_widget)
-
         output_widget = QWidget()
         output_layout = QVBoxLayout(output_widget)
         output_layout.setContentsMargins(0, 0, 0, 0)
@@ -554,16 +650,79 @@ class PropertyPanel(CardWidget):
         self._populate_output_ports(node, output_layout)
         output_layout.addStretch(1)
         self.stacked_widget.addWidget(output_widget)
-
         self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
         self.node_vbox.addWidget(self.segmented_widget)
         self.node_vbox.addWidget(self.stacked_widget)
         self.node_vbox.addStretch(1)
-
         if current_segment in ['input', 'output']:
             self.segmented_widget.setCurrentItem(current_segment)
         else:
             self.segmented_widget.setCurrentItem('input')
+
+    def _add_internal_nodes_section(self, node):
+        # ... (卡片和布局的创建逻辑保持不变) ...
+        nodes_card = CardWidget(self)
+        initial_max_height = 200
+        nodes_card.setMaximumHeight(initial_max_height)
+        nodes_card.setMinimumHeight(initial_max_height)
+        node_id = node.id
+        self._internal_nodes_card_expanded[node_id] = False
+        nodes_layout = QVBoxLayout(nodes_card)
+        nodes_layout.setContentsMargins(10, 10, 10, 10)
+
+        title_btn_layout = QHBoxLayout()
+        title = BodyLabel("区域内部节点：")
+        title_btn_layout.addWidget(title)
+        title_btn_layout.addStretch()
+
+        expand_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
+        expand_btn.setFixedSize(QSize(26, 20))
+        def toggle_expand():
+            is_expanded = self._internal_nodes_card_expanded[node_id]
+            if is_expanded:
+                nodes_card.setMaximumHeight(initial_max_height)
+                nodes_card.setMinimumHeight(initial_max_height)
+                expand_btn.setIcon(get_icon("放大"))
+                self._internal_nodes_card_expanded[node_id] = False
+            else:
+                num_items = internal_nodes_list.count()
+                estimated_height_for_items = num_items * 35
+                padding_height = 10 + 10 + 10 + 10
+                title_height = 20
+                total_estimated_height = padding_height + title_height + estimated_height_for_items
+                nodes_card.setFixedHeight(total_estimated_height + 50)
+                expand_btn.setIcon(get_icon("缩小"))
+                self._internal_nodes_card_expanded[node_id] = True
+            self.node_vbox.invalidate()
+        expand_btn.clicked.connect(toggle_expand)
+        title_btn_layout.addWidget(expand_btn)
+        nodes_layout.addLayout(title_btn_layout)
+
+        # 生成内部节点列表数据
+        _, _, internal_nodes = node.get_nodes()
+        # 创建列表
+        internal_nodes_list = ListWidget(self)
+        if not internal_nodes:
+            internal_nodes_list.addItem(QListWidgetItem("暂无内部节点"))
+        else:
+            for n in internal_nodes:
+                status = self.main_window.get_node_status(n)
+                status_text = {
+                    "running": "🟡 运行中",
+                    "success": "🟢 成功",
+                    "failed": "🔴 失败",
+                    "unrun": "⚪ 未运行",
+                    "pending": "🔵 待运行"
+                }.get(status, status)
+                item_text = f"{status_text} - {n.name()}"
+                item = QListWidgetItem(item_text)
+                internal_nodes_list.addItem(item)
+
+        nodes_layout.addWidget(internal_nodes_list)
+        self.node_vbox.addWidget(nodes_card)
+
+        # --- 缓存内部节点列表 ---
+        self._backdrop_internal_nodes_list = internal_nodes_list
 
     def _add_loop_config_section(self, node):
         config_card = CardWidget(self)
@@ -616,32 +775,6 @@ class PropertyPanel(CardWidget):
             config_layout.addWidget(max_iter_spin)
         self.node_vbox.addWidget(config_card)
 
-    def _add_internal_nodes_section(self, node):
-        nodes_card = CardWidget(self)
-        nodes_layout = QVBoxLayout(nodes_card)
-        nodes_layout.setContentsMargins(10, 10, 10, 10)
-        title = BodyLabel("内部节点")
-        nodes_layout.addWidget(title)
-        _, _, internal_nodes = node.get_nodes()
-        if not internal_nodes:
-            nodes_layout.addWidget(BodyLabel("暂无内部节点"))
-        else:
-            nodes_list = ListWidget(self)
-            for n in internal_nodes:
-                status = self.main_window.get_node_status(n)
-                status_text = {
-                    "running": "🟡 运行中",
-                    "success": "🟢 成功",
-                    "failed": "🔴 失败",
-                    "unrun": "⚪ 未运行",
-                    "pending": "🔵 待运行"
-                }.get(status, status)
-                item_text = f"{status_text} - {n.name()}"
-                item = QListWidgetItem(item_text)
-                nodes_list.addItem(item)
-            nodes_layout.addWidget(nodes_list)
-        self.node_vbox.addWidget(nodes_card)
-
     def _add_output_to_global_variable(self, node, port_name: str):
         value = node._output_values.get(port_name)
         if value is None:
@@ -651,7 +784,6 @@ class PropertyPanel(CardWidget):
                 parent=self,
                 position=InfoBarPosition.TOP_RIGHT
             )
-            return
         safe_node_name = re.sub(r'\s+', '_', node.name())
         var_name = f"{safe_node_name}_{port_name}"
         self.main_window.global_variables.set_output(
@@ -671,17 +803,14 @@ class PropertyPanel(CardWidget):
     def _show_global_variables_panel(self):
         if self._global_panel_built:
             return
-
         title = BodyLabel("🌍 全局变量")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.global_vbox.addWidget(title)
-
         self.global_segmented = SegmentedWidget(self)
         self.global_segmented.addItem('env', '环境变量')
         self.global_segmented.addItem('node', '节点变量')
         self.global_segmented.addItem('custom', '自定义变量')
         self.global_segmented.setCurrentItem('node')
-
         self.global_stacked = QStackedWidget(self)
         self.env_page = self._create_env_page()
         self.node_page = self._create_node_vars_page()
@@ -690,11 +819,9 @@ class PropertyPanel(CardWidget):
         self.global_stacked.addWidget(self.node_page)
         self.global_stacked.addWidget(self.custom_page)
         self.global_stacked.setCurrentIndex(1)
-
         self.global_segmented.currentItemChanged.connect(self._on_global_tab_changed)
         self.global_vbox.addWidget(self.global_segmented)
         self.global_vbox.addWidget(self.global_stacked)
-
         self._global_panel_built = True
 
     def _on_global_tab_changed(self, key):
@@ -721,7 +848,6 @@ class PropertyPanel(CardWidget):
         self.custom_vars_layout.setContentsMargins(0, 0, 0, 0)
         self.custom_vars_layout.setSpacing(6)
         layout.addWidget(self.custom_vars_container)
-
         layout.addStretch()
         self._refresh_custom_vars_page()
         return widget
@@ -866,7 +992,6 @@ class PropertyPanel(CardWidget):
         layout.addWidget(value_label)
         layout.addStretch()
         layout.addWidget(del_btn)
-
         def show_context_menu(pos):
             current_val = self.main_window.global_variables.custom.get(name)
             current_val = current_val.value if current_val is not None else "<已删除>"
@@ -916,7 +1041,6 @@ class PropertyPanel(CardWidget):
         tree.setMinimumHeight(80)
         tree.setMaximumHeight(120)
         layout.addWidget(tree)
-
         def show_context_menu(pos):
             menu = RoundMenu(parent=self)
             menu.addAction(Action("复制为表达式", triggered=lambda: self._copy_as_expression("node_vars", name)))
@@ -949,7 +1073,6 @@ class PropertyPanel(CardWidget):
         layout.addWidget(value_label)
         layout.addStretch()
         layout.addWidget(del_btn)
-
         def show_context_menu(pos):
             current_val = getattr(self.main_window.global_variables.env, key, None)
             menu = RoundMenu(parent=self)
