@@ -16,24 +16,6 @@ from qtpy import QtCore
 from app.components.base import ArgumentType
 
 
-class FullscreenVariableDialog(MessageBoxBase):
-    """Fullscreen code dialog using FluentUI MessageBoxBase."""
-
-    def __init__(self, data_dict, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("代码编辑器")
-
-        # 创建代码编辑器
-        self.variable_explorer = VariableExplorerWidget(data_dict, parent=parent)
-        self.variable_explorer.setMinimumSize(400, 400)  # 设置最小尺寸
-
-        # 将编辑器添加到布局中
-        self.viewLayout.addWidget(self.variable_explorer)
-
-        # 设置按钮
-        self.cancelButton.hide()
-
-
 class VariableTreeWidget(TreeWidget):
     """用于展示单个变量的详细树状结构"""
 
@@ -220,7 +202,7 @@ class VariableTreeWidget(TreeWidget):
         item.setData(0, Qt.UserRole, obj)
 
         if (self._is_image_file(obj) or self._is_pil_image(obj) or
-            (arg_type is not None and isinstance(arg_type, ArgumentType) and arg_type.is_image())):
+                (arg_type is not None and isinstance(arg_type, ArgumentType) and arg_type.is_image())):
             pixmap = self._get_thumbnail_pixmap(obj)
             if pixmap:
                 item.setIcon(0, QIcon(pixmap))
@@ -323,6 +305,42 @@ class VariableTreeWidget(TreeWidget):
             return scaled_pixmap
         return None
 
+    def show_detail(self):
+        obj = self._original_data
+        if isinstance(obj, str) and not os.path.isfile(obj):
+            self._preview_text(obj)
+
+        elif isinstance(obj, str) and os.path.isfile(obj):
+            filepath = obj
+            ext = os.path.splitext(filepath.lower())[1]
+
+            if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff', '.webp'}:
+                self._preview_image(filepath)
+
+            elif ext == '.csv':
+                self._preview_csv_full(filepath)
+
+            elif ext in {'.xlsx', '.xls'}:
+                self._preview_excel(filepath)
+
+            elif ext in {'.txt', '.log', '.md', '.py', '.json', '.xml', '.yaml', '.yml', '.ini'}:
+                self._preview_text_file(filepath)
+
+        elif isinstance(obj, (list, tuple)):
+            self._preview_nested_structure(obj, "列表数据预览")
+
+        elif isinstance(obj, dict):
+            self._preview_nested_structure(obj, "字典数据预览")
+
+        elif isinstance(obj, set):
+            self._preview_nested_structure(obj, "元组数据预览")
+
+        elif isinstance(obj, pd.DataFrame):
+            self._preview_dataframe_full(obj)
+
+        elif self._is_pil_image(obj):
+            self._preview_image(obj)
+
     def contextMenuEvent(self, event):
         item = self.itemAt(event.pos())
         if not item:
@@ -371,6 +389,21 @@ class VariableTreeWidget(TreeWidget):
             save_action.triggered.connect(lambda: self._save_file(filepath))
             menu.addAction(save_action)
 
+        elif isinstance(obj, (list, tuple)):
+            action = QAction("🔍 预览完整列表", self)
+            action.triggered.connect(lambda: self._preview_nested_structure(obj, "列表数据预览"))
+            menu.addAction(action)
+
+        elif isinstance(obj, dict):
+            action = QAction("🔍 预览完整字典", self)
+            action.triggered.connect(lambda: self._preview_nested_structure(obj, "字典数据预览"))
+            menu.addAction(action)
+
+        elif isinstance(obj, set):
+            action = QAction("🔍 预览完整集合", self)
+            action.triggered.connect(lambda: self._preview_nested_structure(obj, "元组数据预览"))
+            menu.addAction(action)
+
         elif isinstance(obj, pd.DataFrame):
             action = QAction("🔍 预览完整数据表", self)
             action.triggered.connect(lambda: self._preview_dataframe_full(obj))
@@ -386,6 +419,92 @@ class VariableTreeWidget(TreeWidget):
         menu.addAction(copy_action)
 
         menu.exec_(event.globalPos())
+
+    def _preview_nested_structure(self, data, title="嵌套结构预览"):
+        """
+        为嵌套容器（list, dict, tuple, set）创建一个树状预览窗口
+        """
+        dialog = MessageBoxBase(parent=self.parent_widget)
+        dialog.yesButton.hide()
+        dialog.cancelButton.setText("关闭")
+
+        # 创建一个 TreeWidget 用于展示嵌套结构
+        tree_widget = TreeWidget()
+        tree_widget.setHeaderLabels(["Key", "Value"])
+
+        tree_widget.setAlternatingRowColors(False)
+        tree_widget.setSortingEnabled(False)
+        tree_widget.setMinimumSize(800, 600)
+
+        # 构建树
+        self._build_nested_tree(data, tree_widget.invisibleRootItem(), "", is_root=True)
+
+        # 展开所有节点
+        tree_widget.expandAll()
+
+        dialog.viewLayout.addWidget(tree_widget)
+        dialog.exec_()
+
+    def _build_nested_tree(self, obj, parent_item, key, is_root=False, max_depth=10, current_depth=0):
+        """
+        递归构建嵌套结构的树
+        """
+        if current_depth > max_depth:
+            item = QTreeWidgetItem(parent_item, ["<max recursion depth>", ""])
+            item.setForeground(0, Qt.gray)
+            return
+
+        display_key = key if not is_root else "root"
+        display_value = self._format_value(obj)
+
+        item = QTreeWidgetItem(parent_item, [display_key, display_value])
+        item.setData(0, Qt.UserRole, obj)
+
+        # 如果是容器类型，递归展开其内容
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                self._build_nested_tree(v, item, str(k), max_depth=max_depth, current_depth=current_depth + 1)
+
+        elif isinstance(obj, (list, tuple)):
+            for i, v in enumerate(obj):
+                self._build_nested_tree(v, item, str(i), max_depth=max_depth, current_depth=current_depth + 1)
+
+        elif isinstance(obj, set):
+            for i, v in enumerate(obj):
+                self._build_nested_tree(v, item, f"[{i}]", max_depth=max_depth, current_depth=current_depth + 1)
+
+        elif isinstance(obj, np.ndarray):
+            # 对于 ndarray，只展示其属性，不递归展开内容（避免爆炸）
+            attrs = {
+                'shape': obj.shape,
+                'dtype': str(obj.dtype),
+                'size': obj.size,
+                'ndim': obj.ndim,
+            }
+            for attr_name, attr_val in attrs.items():
+                self._build_nested_tree(attr_val, item, attr_name, max_depth=max_depth, current_depth=current_depth + 1)
+
+        elif isinstance(obj, pd.DataFrame):
+            # 对于 DataFrame，只展示其形状，不递归展开内容
+            item.setText(1, f"{{DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}")
+
+        elif isinstance(obj, pd.Series):
+            # 对于 Series，只展示其长度，不递归展开内容
+            item.setText(1, f"{{Series: ({len(obj)})}}")
+
+        elif hasattr(obj, '__dict__') and obj.__dict__:
+            for attr_name, attr_value in obj.__dict__.items():
+                if not attr_name.startswith('_'):
+                    self._build_nested_tree(attr_value, item, attr_name, max_depth=max_depth,
+                                            current_depth=current_depth + 1)
+
+        elif hasattr(obj, '__slots__'):
+            for slot in getattr(obj, '__slots__', []):
+                if hasattr(obj, slot):
+                    attr_value = getattr(obj, slot)
+                    if not slot.startswith('_'):
+                        self._build_nested_tree(attr_value, item, slot, max_depth=max_depth,
+                                                current_depth=current_depth + 1)
 
     def _preview_dataframe_full(self, df: pd.DataFrame):
         dialog = MessageBoxBase(parent=self.parent_widget)
@@ -660,258 +779,6 @@ class VariableTreeWidget(TreeWidget):
         return table
 
 
-class VariableExplorerWidget(QWidget):
-    def __init__(self, data_dict=None, parent=None):
-        super().__init__(parent)
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-
-        self.table = TableWidget(self)
-
-        # 启用边框并设置圆角
-        self.table.setBorderVisible(True)
-        self.table.setBorderRadius(8)
-
-        self.table.setWordWrap(False)
-        self.table.setColumnCount(4)
-
-        # 设置水平表头并隐藏垂直表头
-        self.table.setHorizontalHeaderLabels(["Name", "Type", "Size", "Value"])
-        self.table.verticalHeader().hide()
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.Stretch)
-
-        self.layout.addWidget(self.table)
-
-        self._var_items = {}
-
-        if data_dict is not None:
-            self.set_variables(data_dict)
-
-    def set_variables(self, data_dict):
-        self.table.setRowCount(0)
-        self._var_items = {}
-        for name, value in data_dict.items():
-            self._add_variable_row(name, value, None)
-
-    def _add_variable_row(self, name, value, arg_type=None):
-        row = self.table.rowCount()
-        self.table.insertRow(row)
-
-        name_item = QTableWidgetItem(name)
-        name_item.setData(Qt.UserRole, (value, arg_type))
-        self.table.setItem(row, 0, name_item)
-        self.table.setItem(row, 1, QTableWidgetItem(self._get_type_string(value)))
-        self.table.setItem(row, 2, QTableWidgetItem(self._get_size_string(value)))
-        self.table.setItem(row, 3, QTableWidgetItem(self._format_value(value, arg_type)))
-
-    def _get_type_string(self, obj):
-        if obj is None:
-            return "NoneType"
-        elif isinstance(obj, pd.DataFrame):
-            return "DataFrame"
-        elif isinstance(obj, pd.Series):
-            return "Series"
-        elif isinstance(obj, np.ndarray):
-            return f"ndarray ({obj.dtype})"
-        elif isinstance(obj, str):
-            return "str"
-        elif isinstance(obj, bool):
-            return "bool"
-        elif isinstance(obj, int):
-            return "int"
-        elif isinstance(obj, float):
-            return "float"
-        elif self._is_pil_image(obj):
-            return "PIL.Image"
-        elif isinstance(obj, dict):
-            return "dict"
-        elif isinstance(obj, list):
-            return "list"
-        elif isinstance(obj, tuple):
-            return "tuple"
-        elif isinstance(obj, set):
-            return "set"
-        else:
-            return type(obj).__name__
-
-    def _get_size_string(self, obj):
-        try:
-            if isinstance(obj, (pd.DataFrame, pd.Series)):
-                return str(obj.shape)
-            elif isinstance(obj, np.ndarray):
-                return str(obj.shape).replace(" ", "")
-            elif isinstance(obj, (str, list, tuple, dict, set)):
-                return str(len(obj))
-            elif hasattr(obj, '__len__'):
-                return str(len(obj))
-            else:
-                return "-"
-        except:
-            return "?"
-
-    def _is_pil_image(self, obj):
-        try:
-            from PIL import Image
-            return isinstance(obj, Image.Image)
-        except ImportError:
-            return False
-
-    def _format_value(self, obj, arg_type=None):
-        if obj is None:
-            return "None"
-
-        if arg_type is not None and isinstance(arg_type, ArgumentType):
-            if arg_type.is_image():
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"{{Image}} '{os.path.basename(obj)}'"
-                elif self._is_pil_image(obj):
-                    return f"{{PIL.Image}} size={obj.size}"
-                else:
-                    return "{Image} <invalid>"
-
-            elif arg_type == ArgumentType.CSV:
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"{{CSV}} '{os.path.basename(obj)}'"
-                elif isinstance(obj, pd.DataFrame):
-                    return f"{{CSV/DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
-
-            elif arg_type == ArgumentType.EXCEL:
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"{{Excel}} '{os.path.basename(obj)}'"
-                elif isinstance(obj, pd.DataFrame):
-                    return f"{{Excel/DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
-
-            elif arg_type == ArgumentType.JSON:
-                if isinstance(obj, (dict, list)):
-                    length = len(obj) if hasattr(obj, '__len__') else '?'
-                    return f"{{JSON}} (len={length})"
-
-            elif arg_type == ArgumentType.FILE:
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"{{File}} '{os.path.basename(obj)}'"
-                else:
-                    return f"{{File}} {str(obj)}"
-
-            elif arg_type in (ArgumentType.SKLEARNMODEL, ArgumentType.TORCHMODEL):
-                return f"{{Model: {arg_type.value}}}"
-
-            elif arg_type.is_array():
-                if isinstance(obj, np.ndarray):
-                    shape_str = str(obj.shape).replace(" ", "")
-                    return f"{{Array/ndarray: {shape_str}}}"
-                elif isinstance(obj, (list, tuple)):
-                    return f"{{Array/list: {len(obj)}}}"
-                else:
-                    return f"{{Array}} {str(obj)}"
-
-            elif arg_type.is_bool():
-                return str(bool(obj)).lower()
-
-            elif arg_type.is_number():
-                try:
-                    val = float(obj)
-                    if arg_type == ArgumentType.INT:
-                        return str(int(val))
-                    else:
-                        return str(val)
-                except (TypeError, ValueError):
-                    return f"{{Number}} {str(obj)}"
-
-            elif arg_type == ArgumentType.TEXT:
-                if isinstance(obj, str):
-                    if len(obj) <= 50:
-                        return f"'{obj}'"
-                    else:
-                        return f"'{obj[:200]}...' (右键预览)"
-                else:
-                    return f"'{str(obj)}'"
-
-        if isinstance(obj, bool):
-            return str(obj).lower()
-        elif isinstance(obj, str):
-            if len(obj) <= 50:
-                return f"'{obj}'"
-            else:
-                if os.path.isfile(obj):
-                    ext = os.path.splitext(obj)[1].lower()
-                    if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif'}:
-                        return f"🖼️ '{os.path.basename(obj)}'"
-                    elif ext in {'.csv', '.xlsx', '.xls'}:
-                        return f"📊 '{os.path.basename(obj)}'"
-                    elif ext in {'.txt', '.log', '.md', '.py', '.json'}:
-                        return f"📄 '{os.path.basename(obj)}'"
-                    else:
-                        return f"📁 '{os.path.basename(obj)}'"
-                else:
-                    return f"'{obj[:200]}...' (右键预览)"
-        elif isinstance(obj, (int, float)):
-            return str(obj)
-        elif isinstance(obj, np.number):
-            return str(obj)
-        elif isinstance(obj, np.ndarray):
-            shape_str = str(obj.shape).replace(" ", "")
-            total = obj.size
-            if total <= 20 and obj.ndim <= 2:
-                try:
-                    s = np.array2string(obj, separator=' ', threshold=20, edgeitems=3)
-                    if s.startswith('array(') and s.endswith(')'):
-                        s = s[6:-1]
-                    return f"{{ndarray: {shape_str}}} [{s}]"
-                except:
-                    return f"{{ndarray: {shape_str}}}"
-            else:
-                return f"{{ndarray: {shape_str}}} <dtype={obj.dtype}> ..."
-        elif isinstance(obj, pd.DataFrame):
-            return f"{{DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
-        elif isinstance(obj, pd.Series):
-            return f"{{Series: ({len(obj)})}}"
-        elif isinstance(obj, dict):
-            return f"{{dict: {len(obj)}}}"
-        elif isinstance(obj, list):
-            return f"{{list: {len(obj)}}}"
-        elif isinstance(obj, tuple):
-            return f"{{tuple: {len(obj)}}}"
-        elif isinstance(obj, set):
-            return f"{{set: {len(obj)}}}"
-        elif self._is_image_file(obj):
-            return f"{{Image}} '{os.path.basename(str(obj))}'"
-        elif self._is_pil_image(obj):
-            return f"{{PIL.Image}} size={obj.size}"
-        elif hasattr(obj, '__class__'):
-            cls = obj.__class__
-            mod = cls.__module__
-            name = cls.__name__
-            if mod == 'builtins':
-                return f"{{{name}}}"
-            else:
-                return f"{{{mod}.{name}}}"
-        else:
-            return str(obj)
-
-
 # ============ 示例使用 ============
 if __name__ == "__main__":
-    import sys
-    app = QApplication(sys.argv)
-
-    # 模拟变量字典
-    sample_data = {
-        "x": 42,
-        "name": "Hello, Variable Explorer!",
-        "arr": np.array([[1, 2], [3, 4]]),
-        "df": pd.DataFrame({"A": [1, 2, 3], "B": ["x", "y", "z"]}),
-        "config": {"lr": 0.01, "epochs": 100},
-        "items": [1, 2, 3, 4, 5],
-        "none_val": None,
-        "large_text": "This is a very long string..." * 20,
-    }
-
-    explorer = VariableExplorerWidget(sample_data)
-    explorer.resize(800, 600)
-    explorer.show()
-
-    sys.exit(app.exec_())
+    pass

@@ -2,6 +2,7 @@
 import json
 import os
 import re
+
 import pandas as pd
 from NodeGraphQt import BaseNode
 from PyQt5.QtCore import Qt, QSize
@@ -9,12 +10,13 @@ from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, Q
     QStackedWidget, QHBoxLayout, QApplication
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
     ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
-    ComboBox, TransparentDropDownToolButton
+    TransparentDropDownToolButton
+
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.utils.utils import serialize_for_json, get_icon
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
-from app.widgets.tree_widget.variable_tree import VariableTreeWidget, FullscreenVariableDialog
+from app.widgets.tree_widget.variable_tree import VariableTreeWidget
 
 
 class PropertyPanel(CardWidget):
@@ -144,6 +146,12 @@ class PropertyPanel(CardWidget):
                 if port.name() not in [r[0] for r in result]:
                     result.append((port.name(), port.name(), ArgumentType.TEXT))
             return result
+        elif node.has_property(f"{'input' if is_input else 'output'}_ports"):
+            ports = node.input_ports() if is_input else node.output_ports()
+            port_defs = node.get_property(f"{'input' if is_input else 'output'}_ports")
+            type_dict = {item.value: item for item in ArgumentType}
+
+            return [(p.name(), p.name(), type_dict[pd["type"]]) for p, pd in zip(ports, port_defs)]
         else:
             return [(p.name(), p.name(), ArgumentType.TEXT) for p in ports]
 
@@ -401,6 +409,7 @@ class PropertyPanel(CardWidget):
         self._column_list_widgets[port_name] = list_widget
 
     def _add_text_edit_to_layout(self, text, port_type=None, port_name=None, layout=None, node=None, is_output=False):
+        tree_widget = VariableTreeWidget(text, port_type, parent=self.main_window)
         info_card = CardWidget(self)
         info_card.setMaximumHeight(300)
         card_layout = QVBoxLayout(info_card)
@@ -418,12 +427,10 @@ class PropertyPanel(CardWidget):
             )
             title_layout.addWidget(add_global_btn)
         browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
-        browse_btn.clicked.connect(
-            lambda _, t=text: self._open_in_explorer(t, port_name)
-        )
+        browse_btn.clicked.connect(tree_widget.show_detail)
         title_layout.addWidget(browse_btn)
         card_layout.addLayout(title_layout)
-        tree_widget = VariableTreeWidget(text, port_type, parent=self.main_window)
+
         card_layout.addWidget(tree_widget)
         if layout is None:
             layout = self.node_vbox
@@ -442,14 +449,6 @@ class PropertyPanel(CardWidget):
         if port_name is not None:
             self._text_edit_widgets[port_name] = tree_widget
         return tree_widget
-
-    def _open_in_explorer(self, data, title="变量浏览器"):
-        if isinstance(data, dict):
-            data_dict = data
-        else:
-            data_dict = {title: data}
-        dialog = FullscreenVariableDialog(data_dict, self.main_window)
-        dialog.exec_()
 
     def _update_text_edit_for_port(self, port_name, new_value):
         if port_name not in self._text_edit_widgets:

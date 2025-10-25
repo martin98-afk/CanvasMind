@@ -10,18 +10,9 @@ from components.base import BaseComponent
 
 def scan_components(components_dir: str = "app/components", logger=logger) -> Tuple[Dict[str, Type], Dict[str, Path]]:
     """
-    扫描指定目录下的所有 .py 文件，动态加载其中满足条件的组件类。
-
-    支持任意文件系统路径（绝对或相对），无需该目录是 Python 包或在 sys.path 中。
-
-    要求：
-      - 每个 .py 文件应能独立导入（无未满足的顶层导入错误）
-      - 组件类需满足：
-          - 是 BaseComponent 的子类（或至少不是 BaseComponent 本身）
-          - 具有非 None 的 'category' 属性
-
     Args:
         components_dir: 文件系统路径（如 './my_components' 或 '/opt/custom/components'）
+        logger: 日志记录方法
 
     Returns:
         (comp_map, file_map)
