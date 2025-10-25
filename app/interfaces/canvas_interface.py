@@ -10,7 +10,7 @@ from NodeGraphQt import BackdropNode, BaseNode
 from NodeGraphQt.constants import PipeLayoutEnum
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer, QPoint
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication
 from loguru import logger
@@ -479,43 +479,94 @@ class CanvasPage(QWidget):
         self.node_layout = QVBoxLayout(self.nodes_container)
         self.node_layout.setSpacing(3)
         self.node_layout.setContentsMargins(0, 0, 0, 0)
+
         # === 固定控制流按钮 ===
         self.iterate_node = TransparentToolButton(get_icon("更新"), self)
         self.iterate_node.setIconSize(QSize(20, 20))
         self.iterate_node.setToolTip("创建迭代")
         self.iterate_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowIterateNode"))
         self.node_layout.addWidget(self.iterate_node)
+
         self.loop_node = TransparentToolButton(get_icon("无限"), self)
         self.loop_node.setIconSize(QSize(20, 20))
         self.loop_node.setToolTip("创建循环")
         self.loop_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowLoopNode"))
         self.node_layout.addWidget(self.loop_node)
+
         self.branch_node = TransparentToolButton(get_icon("条件分支"), self)
         self.branch_node.setIconSize(QSize(20, 20))
         self.branch_node.setToolTip("创建分支")
         self.branch_node.clicked.connect(lambda: self.create_next_node("control_flow.ControlFlowBranchNode"))
         self.node_layout.addWidget(self.branch_node)
+
         self.code_node = TransparentToolButton(get_icon("代码执行"), self)
         self.code_node.setIconSize(QSize(20, 20))
         self.code_node.setToolTip("创建代码编辑")
         self.code_node.clicked.connect(lambda: self.create_next_node("dynamic.DYNAMIC_CODE"))
         self.node_layout.addWidget(self.code_node)
+
+        self.tool_node = TransparentToolButton(get_icon("工具"), self)
+        self.tool_node.setIconSize(QSize(20, 20))
+        self.tool_node.setToolTip("创建工具调用")
+        self.tool_node.clicked.connect(lambda: self.create_next_node("dynamic.StatusDynamicNode_大模型组件_工具调用"))
+        self.node_layout.addWidget(self.tool_node)
+
         # === 分隔线 ===
         from PyQt5.QtWidgets import QFrame
         self.separator = QFrame()
         self.separator.setFrameShape(QFrame.HLine)
         self.separator.setStyleSheet("color: #555;")
         self.node_layout.addWidget(self.separator)
-        # === “+”按钮（始终在最后）===
+
+        # === 可显示的快捷按钮容器 ===
+        self.visible_quick_container = QWidget(self.nodes_container) # 用于存放可见的快捷按钮
+        self.visible_quick_layout = QVBoxLayout(self.visible_quick_container)
+        self.visible_quick_layout.setSpacing(3)
+        self.visible_quick_layout.setContentsMargins(0, 0, 0, 0) # 调整边距
+        self.node_layout.addWidget(self.visible_quick_container)
+
+        # === "更多"按钮及其菜单 ===
+        self.more_quick_button = TransparentToolButton(FluentIcon.MORE, self) # 使用 FluentIcon.MORE 或自定义图标
+        self.more_quick_button.setIconSize(QSize(20, 20))
+        self.more_quick_button.setToolTip("更多快捷组件")
+        self.more_quick_menu = RoundMenu(parent=self) # 使用 qfluentwidgets 的菜单
+        self.more_quick_button.clicked.connect(self._show_more_quick_menu)
+
+        # 添加 "更多" 按钮到布局
+        self.node_layout.addWidget(self.more_quick_button)
+
+        # === 原来的 "+" 按钮（始终在最后）===
         self.add_quick_btn = TransparentToolButton(FluentIcon.ADD, self)
         self.add_quick_btn.setIconSize(QSize(20, 20))
         self.add_quick_btn.setToolTip("添加快捷组件")
         self.add_quick_btn.clicked.connect(self.quick_manager.open_add_dialog)
         self.node_layout.addWidget(self.add_quick_btn)
+
         self.nodes_container.setLayout(self.node_layout)
         self.nodes_container.show()
+
         # 初次加载快捷组件
         self._refresh_quick_buttons()
+
+    def _show_more_quick_menu(self):
+        """显示“更多”按钮的菜单"""
+        # Clear the menu first
+        self.more_quick_menu.clear()
+        # Add actions for hidden quick components
+        for full_path, icon_path in self._hidden_quick_components:
+            comp_name = os.path.basename(full_path).replace('.py', '')
+            if icon_path and os.path.exists(icon_path):
+                icon = QtGui.QIcon(icon_path)
+            else:
+                icon = FluentIcon.APPLICATION
+            action = Action(
+                icon, f"创建 {comp_name}",
+                triggered=lambda _, fp=full_path, ip=icon_path: self.create_next_node(fp, ip)
+            )
+            action.setProperty("full_path", full_path)
+            self.more_quick_menu.addAction(action)
+        # Show the menu
+        self.more_quick_menu.exec_(self.more_quick_button.mapToGlobal(QPoint(0, self.more_quick_button.height())))
 
     def _update_nodes_container_position(self):
         if not hasattr(self, 'nodes_container') or not self.canvas_widget:
@@ -529,39 +580,57 @@ class CanvasPage(QWidget):
         self.nodes_container.move(0, y)
 
     def _refresh_quick_buttons(self):
-        # 找到分隔线和“+”按钮的位置
-        sep_index = self.node_layout.indexOf(self.separator)
-        add_btn_index = self.node_layout.indexOf(self.add_quick_btn)
-        if sep_index == -1 or add_btn_index == -1:
-            return
-        # 清除所有动态按钮（位于分隔线之后、“+”之前）
-        while sep_index + 1 < add_btn_index:
-            item = self.node_layout.takeAt(sep_index + 1)
+        MAX_VISIBLE_QUICK_BUTTONS = 7
+
+        all_quick_components = self.quick_manager.get_quick_components()
+        num_quick = len(all_quick_components)
+
+        # --- 清理现有按钮 ---
+        # 清除可见容器中的按钮
+        while self.visible_quick_layout.count():
+            item = self.visible_quick_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-            add_btn_index = self.node_layout.indexOf(self.add_quick_btn)  # 更新索引
-        # 重新添加快捷按钮
-        for qc in self.quick_manager.get_quick_components():
+
+        # 清空菜单
+        self.more_quick_menu.clear()
+        # 重置隐藏列表
+        self._hidden_quick_components = []
+
+        # --- 重新分配按钮 ---
+        for i, qc in enumerate(all_quick_components):
             full_path = qc["full_path"]
             comp_name = os.path.basename(full_path).replace('.py', '')
             icon_path = qc.get("icon_path")
-            if icon_path and os.path.exists(icon_path):
-                icon = QtGui.QIcon(icon_path)
+
+            if i > MAX_VISIBLE_QUICK_BUTTONS:
+                self._hidden_quick_components.append((qc["full_path"], qc.get("icon_path")))
+                if i == MAX_VISIBLE_QUICK_BUTTONS:
+                    self.more_quick_button.show()
             else:
-                icon = FluentIcon.APPLICATION
-            btn = TransparentToolButton(icon, self)
-            btn.setIconSize(QSize(20, 20))
-            btn.setToolTip(f"创建 {comp_name}")
-            btn.setProperty("full_path", full_path)
-            btn.clicked.connect(lambda _, ip=icon_path, fp=full_path: self.create_next_node(fp, ip))
-            # 右键菜单：删除
-            btn.setContextMenuPolicy(Qt.CustomContextMenu)
-            btn.customContextMenuRequested.connect(
-                lambda pos, b=btn, fp=full_path: self._show_quick_button_menu(b, fp, pos)
-            )
-            # 插入到分隔线之后（即当前最后一个动态位置）
-            self.node_layout.insertWidget(sep_index + 1, btn)
-            sep_index = self.node_layout.indexOf(self.separator)  # 更新
+
+                if icon_path and os.path.exists(icon_path):
+                    icon = QtGui.QIcon(icon_path)
+                else:
+                    icon = FluentIcon.APPLICATION
+
+                btn = TransparentToolButton(icon, self)
+                btn.setIconSize(QSize(20, 20))
+                btn.setToolTip(f"创建 {comp_name}")
+                btn.setProperty("full_path", full_path)
+                btn.clicked.connect(lambda _, ip=icon_path, fp=full_path: self.create_next_node(fp, ip))
+
+                # 右键菜单：删除
+                btn.setContextMenuPolicy(Qt.CustomContextMenu)
+                btn.customContextMenuRequested.connect(
+                    lambda pos, b=btn, fp=full_path: self._show_quick_button_menu(b, fp, pos)
+                )
+                self.visible_quick_layout.addWidget(btn)
+
+        # 如果没有隐藏的组件，隐藏“更多”按钮
+        if not self._hidden_quick_components:
+            self.more_quick_button.hide()
+
         QtCore.QTimer.singleShot(0, self._update_nodes_container_position)
 
     def _show_quick_button_menu(self, button, full_path, pos):
@@ -579,6 +648,8 @@ class CanvasPage(QWidget):
         except:
             node_type = self.node_type_map.get(key)
             node = self.graph.create_node(node_type)
+
+        QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
         if icon_path:
             node.set_icon(icon_path)
         if selected_nodes:
@@ -659,6 +730,7 @@ class CanvasPage(QWidget):
             return
         backdrop_node = self.graph.create_node(f"control_flow.{key}")
         backdrop_node.wrap_nodes(nodes_to_wrap)
+        QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(backdrop_node))
         # Step 6: 特定配置
         if key == "ControlFlowIterateNode":
             backdrop_node.model.set_property("loop_nums", 3)

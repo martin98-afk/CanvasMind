@@ -465,7 +465,7 @@ class VariableTreeWidget(TreeWidget):
 
         tree_widget.setAlternatingRowColors(False)
         tree_widget.setSortingEnabled(False)
-        tree_widget.setMinimumSize(800, 600)
+        tree_widget.setMinimumSize(800, 500)
 
         # 构建树
         self._build_nested_tree(data, tree_widget.invisibleRootItem(), "", is_root=True)
@@ -568,7 +568,7 @@ class VariableTreeWidget(TreeWidget):
         dialog.cancelButton.setText("关闭")
 
         table = self._create_styled_table()
-        table.setMinimumSize(800, 600)
+        table.setMinimumSize(800, 500)
         table.verticalHeader().hide()
         header = table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
@@ -624,7 +624,7 @@ class VariableTreeWidget(TreeWidget):
             # 创建 SegmentedWidget 用于切换工作表
             seg_widget = SegmentedWidget()
             table = self._create_styled_table()
-            table.setMinimumSize(800, 600)
+            table.setMinimumSize(800, 500)
             def load_sheet(name):
                 """加载指定工作表到表格"""
                 try:
