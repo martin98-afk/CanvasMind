@@ -43,11 +43,12 @@ class LowCodeWindow(FluentWindow):
         self.splashScreen.setIconSize(QSize(400, 400))
         self.show()
         # 创建主界面页面
-        self.home_interface = HomeInterface(self)
+        self.workflow_manager = WorkflowCanvasGalleryPage(self)
+        self.home_interface = HomeInterface(self, self.workflow_manager)
         self.package_manager = EnvManagerUI(self)
         self.develop_page = ComponentDeveloperWidget(self)
         self.project_manager = ExportedProjectsPage(self)
-        self.workflow_manager = WorkflowCanvasGalleryPage(self)
+
         # 自动安装miniconda环境
         self.package_manager.mgr.install_miniconda()
         # 添加主界面页面

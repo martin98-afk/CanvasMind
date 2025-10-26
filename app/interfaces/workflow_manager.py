@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Set
 
-from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal, QMutex, QMutexLocker, QSize, QEvent
+from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal, QMutex, QMutexLocker, QSize, QEvent, QObject
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QFrame, QHBoxLayout
 from qfluentwidgets import (
     FlowLayout, InfoBar, CardWidget, SmoothScrollArea,
@@ -68,7 +68,9 @@ class WorkflowFileInfoScanner(QThread):
         self.scan_finished.emit(workflow_files, file_info_map)
 
 
-class WorkflowCanvasGalleryPage(QWidget):
+class WorkflowCanvasGalleryPage(QWidget, QObject):
+    scan_finished = pyqtSignal(list, dict)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("workflow_canvas_gallery_page")
@@ -89,7 +91,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._refresh_pending = False
 
         self._setup_ui()
-        QTimer.singleShot(50, self.load_workflows)
+        self.load_workflows()
 
     def _get_workflow_dir(self):
         wf_dirs = []
@@ -309,6 +311,7 @@ class WorkflowCanvasGalleryPage(QWidget):
 
         # 应用排序+过滤
         self._apply_sort_and_filter_and_refresh()
+        self.scan_finished.emit(workflow_files, file_info_map)
 
     def _ensure_all_cards_in_layout(self):
         for card in self._fixed_cards:
@@ -461,13 +464,13 @@ class WorkflowCanvasGalleryPage(QWidget):
 
         self.parent_window.switchTo(self.opened_workflows[file_path])
 
-    def new_canvas(self):
-        name_dialog = CustomInputDialog("新建画布", "请输入画布名称", parent=self)
+    def new_canvas(self, window=None):
+        name_dialog = CustomInputDialog("新建画布", "请输入画布名称", parent=window or self)
         if not name_dialog.exec():
             return
         base_name = name_dialog.get_text().strip()
         if not base_name:
-            InfoBar.warning("名称无效", "画布名称不能为空", parent=self)
+            InfoBar.warning("名称无效", "画布名称不能为空", parent=window or self)
             return
 
         file_path = Path("workflows") / f"{base_name}.workflow.json"
@@ -486,7 +489,7 @@ class WorkflowCanvasGalleryPage(QWidget):
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
             canvas_interface = self.parent_window.addSubInterface(
-                canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
+                canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=window or self)
             canvas_interface.clicked.connect(
                 lambda: (
                     canvas_page.register_components(),
