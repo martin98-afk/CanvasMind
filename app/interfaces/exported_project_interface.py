@@ -20,6 +20,7 @@ from qfluentwidgets import (
     TransparentToggleToolButton
 )
 
+from app.utils.config import Settings
 from app.utils.service_manager import SERVICE_MANAGER
 from app.utils.utils import ansi_to_html, get_icon
 from app.widgets.card_widget.project_card import ProjectCard
@@ -75,8 +76,8 @@ class ExportedProjectsPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("exported_projects_page")
+        self.config = Settings.get_instance()
         self.parent_window = parent
-        self.export_dir = self._get_default_export_dir()
         self.running_projects = {}
         self._is_loading = False
         self._filter_text = ""
@@ -96,8 +97,11 @@ class ExportedProjectsPage(QWidget):
         QTimer.singleShot(50, self.load_projects)
 
     def _get_default_export_dir(self):
-        default_dir = Path("projects")
-        default_dir.mkdir(parents=True, exist_ok=True)
+        default_dir = []
+        for path in self.config.project_paths.value:
+            path = Path(path)
+            path.mkdir(parents=True, exist_ok=True)
+            default_dir.append(path)
         return default_dir
 
     def _setup_ui(self):
@@ -161,7 +165,7 @@ class ExportedProjectsPage(QWidget):
         self.pips_pager.currentIndexChanged.connect(self._on_page_changed)
         self.pips_pager.setNextButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
         self.pips_pager.setPreviousButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
-        self.pips_pager.setFixedWidth(30)
+        self.pips_pager.setFixedWidth(10)
 
         content_layout.addWidget(self.scroll_area, 1)
         content_layout.addWidget(self.pips_pager, 0)
@@ -214,21 +218,22 @@ class ExportedProjectsPage(QWidget):
         QTimer.singleShot(10, self._scan_projects)
 
     def _scan_projects(self):
+        self.export_dir = self._get_default_export_dir()
         project_dirs = []
         project_info_map = {}
-
-        for item in os.listdir(self.export_dir):
-            item_path = self.export_dir / item
-            if item_path.is_dir() and (item_path / "model.workflow.json").exists():
-                project_dirs.append(str(item_path))
-                try:
-                    stat = item_path.stat()
-                    project_info_map[str(item_path)] = {
-                        'ctime_ts': stat.st_ctime,
-                        'ctime': datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M"),
-                    }
-                except Exception:
-                    project_info_map[str(item_path)] = {'ctime_ts': 0, 'ctime': '未知'}
+        for path in self.export_dir:
+            for item in os.listdir(path):
+                item_path = path / item
+                if item_path.is_dir() and (item_path / "model.workflow.json").exists():
+                    project_dirs.append(str(item_path))
+                    try:
+                        stat = item_path.stat()
+                        project_info_map[str(item_path)] = {
+                            'ctime_ts': stat.st_ctime,
+                            'ctime': datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M"),
+                        }
+                    except Exception:
+                        project_info_map[str(item_path)] = {'ctime_ts': 0, 'ctime': '未知'}
 
         self._on_scan_finished(project_dirs, project_info_map)
 
@@ -430,10 +435,10 @@ class ExportedProjectsPage(QWidget):
             return
 
         base_name = src_path.name or "imported_project"
-        dest_path = self.export_dir / base_name
+        dest_path = Path("./projects") / base_name
         counter = 1
         while dest_path.exists():
-            dest_path = self.export_dir / f"{base_name}_{counter}"
+            dest_path = Path("./projects") / f"{base_name}_{counter}"
             counter += 1
 
         try:

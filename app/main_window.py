@@ -11,6 +11,7 @@ from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
 from app.interfaces.workflow_manager import WorkflowCanvasGalleryPage
+from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.logger_dialog import QTextEditLogger
 
@@ -19,6 +20,7 @@ class LowCodeWindow(FluentWindow):
     def __init__(self):
         super().__init__()
         setTheme(Theme.DARK)
+        self.config = Settings.get_instance()
         self.setWindowIcon(get_icon("logo3"))
         self.setWindowTitle("Canvas Mind")
         # 初始化日志查看器
@@ -45,7 +47,7 @@ class LowCodeWindow(FluentWindow):
         self.project_manager = ExportedProjectsPage(self)
         self.workflow_manager = WorkflowCanvasGalleryPage(self)
         # 添加主界面页面
-        workflow_interface = self.addSubInterface(self.workflow_manager, get_icon("工作流"), '画布管理')
+        workflow_interface = self.addSubInterface(self.workflow_manager, get_icon("画布管理"), '画布管理')
         workflow_interface.clicked.connect(self.workflow_manager._schedule_refresh)
         devp_interface = self.addSubInterface(self.develop_page, get_icon("组件"), '组件管理')
         devp_interface.clicked.connect(
@@ -58,7 +60,8 @@ class LowCodeWindow(FluentWindow):
         package_interface = self.addSubInterface(self.package_manager, get_icon("工具包"), '环境管理')
         package_interface.clicked.connect(self.package_manager.on_env_changed)
         self.updater = UpdateChecker(self)
-        self.updater.check_update()
+        if self.config.auto_check_update.value:
+            self.updater.check_update()
         self.navigationInterface.addItem(
             routeKey='update',
             icon=FluentIcon.SYNC,

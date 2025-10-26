@@ -6,6 +6,7 @@ from qfluentwidgets import ConfigSerializer, ConfigItem, QConfig, OptionsValidat
 from enum import Enum
 
 from app.utils.utils import resource_path
+from app.widgets.card_widget.list_setting_card import ListValidator
 
 
 class PatchPlatform(Enum):
@@ -58,9 +59,8 @@ class Settings(QConfig):
     def save_config(cls):
         """保存配置"""
         if cls._instance:
-            CONFIG_FILE = resource_path("../app.config")
-            cls._instance.save(CONFIG_FILE)
-
+            cls._instance.save()
+    # 版本信息
     current_version = ConfigItem("General", "CurrentVersion", "v0.1.4")
 
     # 通用设置
@@ -94,7 +94,8 @@ class Settings(QConfig):
     )
 
     # ========== 新增：画布设置 ==========
-    canvas_show_grid = ConfigItem("Canvas", "ShowGrid", True, BoolValidator())
+    canvas_grid_mode = OptionsConfigItem("Canvas", "ShowGrid", "线网格",
+                                            OptionsValidator(["线网格", "点网格", "无网格"]))
     canvas_grid_size = ConfigItem("Canvas", "GridSize", 20, RangeValidator(10, 30))
     canvas_auto_save = ConfigItem("Canvas", "AutoSave", True, BoolValidator())
     canvas_auto_save_interval = ConfigItem("Canvas", "AutoSaveInterval", 60, RangeValidator(60, 120))
@@ -102,12 +103,29 @@ class Settings(QConfig):
                                             OptionsValidator(["直线", "曲线", "折线"]))
     canvas_direction = OptionsConfigItem("Canvas", "Direction", "水平",
                                           OptionsValidator(["水平", "垂直"]))
-    canvas_default_zoom = OptionsConfigItem("Canvas", "DefaultZoom", "100%",
-                                     OptionsValidator(["50%", "75%", "100%", "125%", "150%"]))
+
+    # ========== 新增：画布快捷组件 ==========
+
     # 快捷组件
     quick_components = ConfigItem(
         "Canvas",
         "QuickComponents",
         [],  # 默认值
         serializer=QuickComponentsSerializer()
+    )
+
+    # ========== 新增：运行环境管理配置 ==========
+    python_versions = ConfigItem(
+        "Package",
+        "PythonVersions", ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"],
+        ListValidator()
+    )
+    miniconda_version = ConfigItem("Package", "MinicondaVersion", "23.11.0")
+
+    # 默认要安装的包列表
+    default_packages = ConfigItem(
+        "Package",
+        "DefaultPackages",
+        ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi", "asteval", "wcwidth"],
+        ListValidator()
     )

@@ -135,17 +135,19 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         self._check_for_removals()
 
     def _is_node_significantly_inside(self, node, node_threshold=0.3, backdrop_threshold=0.2):
-        # 排除内部端口节点（它们永远属于 backdrop，无需判断）
+        # 排除内部端口节点
         if node.type_ in ("control_flow.CustomPortInputNode", "control_flow.CustomPortOutputNode"):
-            return False  # 不参与自动包含逻辑
+            return False
 
         backdrop_rect = self._get_backdrop_scene_rect()
         node_rect = self._get_node_scene_rect(node)
 
+        # 检查节点中心点
         node_center = node_rect.center()
         if backdrop_rect.contains(node_center):
             return True
 
+        # 检查交集面积
         intersect = backdrop_rect.intersected(node_rect)
         if intersect.isEmpty():
             return False
@@ -154,10 +156,21 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         node_area = node_rect.width() * node_rect.height()
         backdrop_area = backdrop_rect.width() * backdrop_rect.height()
 
-        if node_area > 1e-6 and (overlap_area / node_area) >= node_threshold:
-            return True
-        if backdrop_area > 1e-6 and (overlap_area / backdrop_area) >= backdrop_threshold:
-            return True
+        # 更严格的判断：需要同时满足多个条件
+        node_overlap_ratio = overlap_area / node_area if node_area > 1e-6 else 0
+        backdrop_overlap_ratio = overlap_area / backdrop_area if backdrop_area > 1e-6 else 0
+
+        # 如果节点大部分面积在backdrop内，或者backdrop大部分面积被节点覆盖
+        if node_overlap_ratio >= node_threshold or backdrop_overlap_ratio >= backdrop_threshold:
+            # 额外检查：节点是否在backdrop的合理范围内
+            backdrop_center = backdrop_rect.center()
+            node_center = node_rect.center()
+            distance = ((backdrop_center.x() - node_center.x()) ** 2 +
+                        (backdrop_center.y() - node_center.y()) ** 2) ** 0.5
+
+            max_distance = (backdrop_rect.width() + backdrop_rect.height()) / 2
+            if distance <= max_distance * 1.5:  # 节点中心在backdrop范围的1.5倍内
+                return True
 
         return False
 
@@ -231,10 +244,6 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
                 self, old_pos, old_size, new_pos, (new_width, new_height)
             )
             self.graph.undo_stack().push(command)
-        # 记录高宽信息
-        self.set_property("width", new_width)
-        self.set_property("height", new_height)
-        self.set_property("pos", new_pos)
         # 更新记录（无论是否变化）
         self._contained_nodes = {n.id for n in nodes_to_include}
 

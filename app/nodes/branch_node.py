@@ -15,7 +15,6 @@ from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 
 
 def create_branch_node(parent_window):
-
     class ConditionalBranchNode(BaseNode, StatusNode, BasicNodeWithGlobalProperty):
         category: str = "控制流"
         __identifier__ = 'control_flow'
@@ -212,9 +211,138 @@ def create_branch_node(parent_window):
                 # 重新连接信号
                 widget.valueChanged.connect(self._on_conditions_changed)
 
+        def _find_merge_point(self, start_nodes):
+            """
+            从多个起始节点开始，找到它们的合并点（第一个共同的下游节点）。
+            如果没有合并点，则返回None。
+            """
+            if not start_nodes:
+                return None
+            if len(start_nodes) == 1:
+                # 如果只有一个分支，需要继续遍历找到所有下游节点
+                # 但通常单一分支没有明确的合并点，除非有后续的汇聚逻辑
+                return None
+
+            # 为每个起始节点计算其下游节点集合
+            downstream_sets = []
+            for start_node in start_nodes:
+                visited = set()
+                downstream_nodes = set()
+
+                def traverse_downstream(node):
+                    if node.id in visited:
+                        return
+                    visited.add(node.id)
+                    downstream_nodes.add(node)
+                    for output_port in node.output_ports():
+                        for connected_port in output_port.connected_ports():
+                            downstream_node = connected_port.node()
+                            if downstream_node and downstream_node.id not in visited:
+                                traverse_downstream(downstream_node)
+
+                traverse_downstream(start_node)
+                downstream_sets.append(downstream_nodes)
+
+            # 找到所有下游集合的交集（合并点）
+            if not downstream_sets:
+                return None
+
+            merge_candidates = set.intersection(*downstream_sets) if len(downstream_sets) > 1 else downstream_sets[0]
+
+            # 找到最早的合并点（离分支节点最近的）
+            # 通过广度优先搜索来找到第一个共同节点
+            from collections import deque
+
+            queues = {i: deque([start_node]) for i, start_node in enumerate(start_nodes)}
+            visited_by_branch = {i: {start_node.id} for i, start_node in enumerate(start_nodes)}
+            all_visited = set(start_node.id for start_node in start_nodes)
+
+            while any(q for q in queues.values()):
+                for branch_idx, queue in queues.items():
+                    if queue:
+                        current_node = queue.popleft()
+                        # 检查是否是合并点
+                        if sum(1 for v in visited_by_branch.values() if current_node.id in v) > 1:
+                            # 找到合并点
+                            return current_node
+
+                        # 遍历下游节点
+                        for output_port in current_node.output_ports():
+                            for connected_port in output_port.connected_ports():
+                                downstream_node = connected_port.node()
+                                if downstream_node:
+                                    node_id = downstream_node.id
+                                    if node_id not in visited_by_branch[branch_idx]:
+                                        visited_by_branch[branch_idx].add(node_id)
+                                        all_visited.add(node_id)
+                                        queue.append(downstream_node)
+
+            return None
+
+        def _disable_parallel_paths_only(self, active_branch_nodes, inactive_branch_nodes):
+            """
+            只禁用并行路径，直到合并点。
+            - active_branch_nodes: 激活分支的起始节点列表
+            - inactive_branch_nodes: 未激活分支的起始节点列表
+            """
+            # 找到所有分支的合并点
+            all_branch_start_nodes = active_branch_nodes + inactive_branch_nodes
+            merge_point = self._find_merge_point(all_branch_start_nodes)
+
+            # 禁用未激活分支的路径，直到合并点（不包括合并点）
+            visited_inactive = set()
+            for start_node in inactive_branch_nodes:
+                self._disable_path_until_merge(start_node, merge_point, visited_inactive)
+
+            # 激活激活分支的路径，直到合并点（不包括合并点）
+            visited_active = set()
+            for start_node in active_branch_nodes:
+                self._enable_path_until_merge(start_node, merge_point, visited_active)
+
+        def _disable_path_until_merge(self, start_node, merge_point, visited_set):
+            """递归禁用路径直到合并点（不包括合并点本身）"""
+            if start_node.id in visited_set:
+                return
+            visited_set.add(start_node.id)
+
+            # 如果当前节点是合并点，则停止递归
+            if merge_point and start_node.id == merge_point.id:
+                return
+
+            # 禁用当前节点
+            start_node.set_disabled(True)
+            start_node._output_values = {}
+
+            # 递归处理下游节点
+            for output_port in start_node.output_ports():
+                for connected_port in output_port.connected_ports():
+                    downstream_node = connected_port.node()
+                    if downstream_node:
+                        self._disable_path_until_merge(downstream_node, merge_point, visited_set)
+
+        def _enable_path_until_merge(self, start_node, merge_point, visited_set):
+            """递归启用路径直到合并点（不包括合并点本身）"""
+            if start_node.id in visited_set:
+                return
+            visited_set.add(start_node.id)
+
+            # 如果当前节点是合并点，则停止递归
+            if merge_point and start_node.id == merge_point.id:
+                return
+
+            # 启用当前节点
+            start_node.set_disabled(False)
+
+            # 递归处理下游节点
+            for output_port in start_node.output_ports():
+                for connected_port in output_port.connected_ports():
+                    downstream_node = connected_port.node()
+                    if downstream_node:
+                        self._enable_path_until_merge(downstream_node, merge_point, visited_set)
+
         def execute_sync(self, *args, **kwargs):
             """
-            条件分支节点的 execute_sync：判断激活分支，并递归禁用未激活分支的整个子图。
+            条件分支节点的 execute_sync：判断激活分支，只禁用并行部分直到合并点。
             """
             self.init_logger()
             # === [前面的输入收集、表达式求值逻辑保持不变] ===
@@ -288,35 +416,30 @@ def create_branch_node(parent_window):
             if not activated_branches and enable_else:
                 activated_branches = ["else"]
 
-            # === 关键：递归禁用未激活分支的整个子图 ===
+            # === 优化：只禁用并行路径，直到合并点 ===
             graph = self.graph
             if graph is None:
                 return {}
 
-            visited = set()  # 防止循环依赖
+            # 获取所有输出端口的下游节点
+            active_downstream_nodes = []
+            inactive_downstream_nodes = []
 
-            def _disable_subgraph(start_node, disable):
-                """递归禁用 start_node 及其所有下游节点"""
-                if start_node.id in visited:
-                    return
-                visited.add(start_node.id)
-                start_node.set_disabled(disable)
-                # 继续禁用所有下游
-                for output_port in start_node.output_ports():
-                    for in_port in output_port.connected_ports():
-                        downstream = in_port.node()
-                        if downstream:
-                            _disable_subgraph(downstream, disable)
-
-            # 遍历所有输出端口
             for port in self.output_ports():
                 port_name = port.name()
-                is_active = (port_name in activated_branches)  # 👈 改为判断是否在列表中
+                is_active = (port_name in activated_branches)
 
                 for downstream_port in port.connected_ports():
                     downstream_node = downstream_port.node()
                     if downstream_node:
-                        _disable_subgraph(downstream_node, not is_active)
+                        if is_active:
+                            active_downstream_nodes.append(downstream_node)
+                        else:
+                            inactive_downstream_nodes.append(downstream_node)
+
+            # 只禁用并行部分，直到合并点
+            if active_downstream_nodes or inactive_downstream_nodes:
+                self._disable_parallel_paths_only(active_downstream_nodes, inactive_downstream_nodes)
 
             self.clear_output_value()  # 先清空
             for branch in activated_branches:

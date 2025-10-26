@@ -12,6 +12,7 @@ from qfluentwidgets import (
 )
 
 from app.interfaces.canvas_interface import CanvasPage
+from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.card_widget.workflow_card import WorkflowCard
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
@@ -20,7 +21,7 @@ from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
 class WorkflowFileInfoScanner(QThread):
     scan_finished = pyqtSignal(list, dict)
 
-    def __init__(self, workflow_dir: Path):
+    def __init__(self, workflow_dir: List[Path]):
         super().__init__()
         self.workflow_dir = workflow_dir
         self._mutex = QMutex()
@@ -39,26 +40,26 @@ class WorkflowFileInfoScanner(QThread):
 
         workflow_files = []
         file_info_map = {}
+        for path in self.workflow_dir:
+            if path.exists():
+                workflow_files.extend(list(path.glob("*.workflow.json")))
 
-        if self.workflow_dir.exists():
-            workflow_files = list(self.workflow_dir.glob("*.workflow.json"))
+        for wf_path in workflow_files:
+            with QMutexLocker(self._mutex):
+                if self._should_stop:
+                    return
 
-            for wf_path in workflow_files:
-                with QMutexLocker(self._mutex):
-                    if self._should_stop:
-                        return
-
-                try:
-                    stat = wf_path.stat()
-                    file_info_map[str(wf_path)] = {
-                        'ctime': datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M"),
-                        'mtime': datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M"),
-                        'size_kb': stat.st_size // 1024,
-                        'mtime_ts': stat.st_mtime,
-                        'ctime_ts': stat.st_ctime,
-                    }
-                except Exception:
-                    pass
+            try:
+                stat = wf_path.stat()
+                file_info_map[str(wf_path)] = {
+                    'ctime': datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M"),
+                    'mtime': datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M"),
+                    'size_kb': stat.st_size // 1024,
+                    'mtime_ts': stat.st_mtime,
+                    'ctime_ts': stat.st_ctime,
+                }
+            except Exception:
+                pass
 
         with QMutexLocker(self._mutex):
             if self._should_stop:
@@ -71,8 +72,8 @@ class WorkflowCanvasGalleryPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("workflow_canvas_gallery_page")
+        self.config = Settings.get_instance()
         self.parent_window = parent
-        self.workflow_dir = self._get_workflow_dir()
         self.opened_workflows = {}
         self._is_loading = False
         self._filter_text = ""
@@ -81,7 +82,6 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.current_page = 0
         self.total_pages = 1
         self.all_workflow_paths: List[Path] = []
-
         self._card_map: Dict[Path, WorkflowCard] = {}
         self._known_files: Set[Path] = set()
         self._file_info_map: Dict[str, dict] = {}
@@ -92,9 +92,13 @@ class WorkflowCanvasGalleryPage(QWidget):
         QTimer.singleShot(50, self.load_workflows)
 
     def _get_workflow_dir(self):
-        wf_dir = Path("workflows")
-        wf_dir.mkdir(parents=True, exist_ok=True)
-        return wf_dir
+        wf_dirs = []
+        for path in self.config.workflow_paths.value:
+            path = Path(path)
+            path.mkdir(parents=True, exist_ok=True)
+            wf_dirs.append(path)
+
+        return wf_dirs
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -251,6 +255,7 @@ class WorkflowCanvasGalleryPage(QWidget):
             self._refresh_pending = False
 
     def load_workflows(self):
+        self.workflow_dir = self._get_workflow_dir()
         if self._is_loading:
             if hasattr(self, '_scanner') and hasattr(self, '_thread'):
                 try:
@@ -465,10 +470,10 @@ class WorkflowCanvasGalleryPage(QWidget):
             InfoBar.warning("名称无效", "画布名称不能为空", parent=self)
             return
 
-        file_path = self.workflow_dir / f"{base_name}.workflow.json"
+        file_path = Path("workflows") / f"{base_name}.workflow.json"
         counter = 1
         while file_path.exists():
-            file_path = self.workflow_dir / f"{base_name}_{counter}.workflow.json"
+            file_path = Path("workflows") / f"{base_name}_{counter}.workflow.json"
             counter += 1
 
         if file_path not in self.opened_workflows:
@@ -511,10 +516,10 @@ class WorkflowCanvasGalleryPage(QWidget):
             return
 
         base_name = src_path.stem.split(".")[0]
-        dest_path = self.workflow_dir / f"{base_name}.workflow.json"
+        dest_path = Path("workflows") / f"{base_name}.workflow.json"
         counter = 1
         while dest_path.exists():
-            dest_path = self.workflow_dir / f"{base_name}_{counter}.workflow.json"
+            dest_path = Path("workflows") / f"{base_name}_{counter}.workflow.json"
             counter += 1
 
         try:
@@ -544,15 +549,15 @@ class WorkflowCanvasGalleryPage(QWidget):
             InfoBar.warning("名称无效", "画布名称不能为空", parent=self)
             return
 
-        dest_path = self.workflow_dir / f"{new_name}.workflow.json"
-        dest_png = self.workflow_dir / f"{new_name}.png"
-        src_png = self.workflow_dir / f"{src_path.stem.split('.')[0]}.png"
+        dest_path = Path("workflows") / f"{new_name}.workflow.json"
+        dest_png = Path("workflows") / f"{new_name}.png"
+        src_png = src_path.parent / f"{src_path.stem.split('.')[0]}.png"
         counter = 1
         base_name = new_name
         while dest_path.exists():
             new_name = f"{base_name}_{counter}"
-            dest_path = self.workflow_dir / f"{new_name}.workflow.json"
-            dest_png = self.workflow_dir / f"{new_name}.png"
+            dest_path = Path("workflows") / f"{new_name}.workflow.json"
+            dest_png = Path("workflows") / f"{new_name}.png"
             counter += 1
 
         try:
@@ -569,9 +574,8 @@ class WorkflowCanvasGalleryPage(QWidget):
 
             # 删除原文件
             src_path.unlink()
-            preview_path = self.workflow_dir / f"{src_path.stem.split('.')[0]}.png"
-            if preview_path.exists():
-                preview_path.unlink()
+            if src_png.exists():
+                src_png.unlink()
 
             # 关闭已打开的画布
             if src_path in self.opened_workflows:
@@ -603,15 +607,15 @@ class WorkflowCanvasGalleryPage(QWidget):
             InfoBar.warning("名称无效", "画布名称不能为空", parent=self)
             return
 
-        dest_path = self.workflow_dir / f"{new_name}.workflow.json"
-        dest_png = self.workflow_dir / f"{new_name}.png"
-        src_png = self.workflow_dir / f"{src_path.stem.split('.')[0]}.png"
+        dest_path = Path("workflows") / f"{new_name}.workflow.json"
+        dest_png = Path("workflows") / f"{new_name}.png"
+        src_png = src_path.parent / f"{src_path.stem.split('.')[0]}.png"
         counter = 1
         base_name = new_name
         while dest_path.exists():
             new_name = f"{base_name}_{counter}"
-            dest_path = self.workflow_dir / f"{new_name}.workflow.json"
-            dest_png = self.workflow_dir / f"{new_name}.png"
+            dest_path = Path("workflows") / f"{new_name}.workflow.json"
+            dest_png = Path("workflows") / f"{new_name}.png"
             counter += 1
 
         try:
@@ -637,8 +641,8 @@ class WorkflowCanvasGalleryPage(QWidget):
             return
 
         try:
+            preview_path = file_path.parent / f"{file_path.stem.split('.')[0]}.png"
             file_path.unlink()
-            preview_path = self.workflow_dir / f"{file_path.stem.split('.')[0]}.png"
             if preview_path.exists():
                 preview_path.unlink()
 

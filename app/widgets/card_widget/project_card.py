@@ -62,6 +62,14 @@ class ProjectCard(CardWidget):
             QLabel.projectMetaVal { color: #333; }
         """)
 
+        # 项目名称
+        self.name_label = BodyLabel(self.project_name)
+        self.name_label.setFont(QFont("Microsoft YaHei", 14, QFont.DemiBold))
+        self.name_label.setAlignment(Qt.AlignCenter)
+        self.name_label.setWordWrap(True)
+        self.name_label.setObjectName("ProjectCardTitle")
+        main_layout.addWidget(self.name_label)
+
         # 预览图
         preview_path = os.path.join(self.project_path, "preview.png")
         if os.path.exists(preview_path):
@@ -80,14 +88,6 @@ class ProjectCard(CardWidget):
                 font-size: 12px;
             """)
         main_layout.addWidget(self.image_label, 0, Qt.AlignCenter)
-
-        # 项目名称
-        self.name_label = BodyLabel(self.project_name)
-        self.name_label.setFont(QFont("Microsoft YaHei", 14, QFont.DemiBold))
-        self.name_label.setAlignment(Qt.AlignCenter)
-        self.name_label.setWordWrap(True)
-        self.name_label.setObjectName("ProjectCardTitle")
-        main_layout.addWidget(self.name_label)
 
         # 元信息
         self.meta_grid = QGridLayout()
