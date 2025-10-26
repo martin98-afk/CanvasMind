@@ -450,9 +450,11 @@ class WorkflowScheduler(QObject):
                     value = upstream.node()._output_values.get(upstream.name())
                     outputs = value
                 else:
-                    outputs.extend(
-                        [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
-                    )
+                    for upstream in connected:
+                        upstream_data = upstream.node()._output_values.get(upstream.name())
+                        if upstream_data is not None:
+                            outputs.append(upstream_data)
+
         if not isinstance(outputs, list):
             return outputs
 

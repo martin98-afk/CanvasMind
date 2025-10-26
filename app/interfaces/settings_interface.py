@@ -70,6 +70,8 @@ class SettingInterface(ScrollArea):
             directory="./",
             parent=self.workflowPathsGroup
         )
+        # 连接配置变化信号，自动保存
+        self.cfg.workflow_paths.valueChanged.connect(self.onConfigChanged)
 
         self.workflowPathsGroup.addSettingCard(self.workflowPathsCard)
         self.vBoxLayout.addWidget(self.workflowPathsGroup)
@@ -87,6 +89,8 @@ class SettingInterface(ScrollArea):
             directory="./",
             parent=self.projectPathsGroup
         )
+        # 连接配置变化信号，自动保存
+        self.cfg.project_paths.valueChanged.connect(self.onConfigChanged)
 
         self.projectPathsGroup.addSettingCard(self.projectPathsCard)
         self.vBoxLayout.addWidget(self.projectPathsGroup)
@@ -97,13 +101,16 @@ class SettingInterface(ScrollArea):
         """画布详细设置"""
         self.canvasGroup = SettingCardGroup(" 画布设置", self.view)
 
-        self.showGridCard = SwitchSettingCard(
+        self.showGridCard = OptionsSettingCard(
+            self.cfg.canvas_grid_mode,
             FIF.SAVE,
             "显示网格",
             "在画布上显示辅助网格",
-            configItem=self.cfg.canvas_show_grid,
+            texts=["线网格", "点网格", "无网格"],
             parent=self.canvasGroup
         )
+        # 连接配置变化信号，自动保存
+        self.cfg.canvas_grid_mode.valueChanged.connect(self.onConfigChanged)
 
         self.gridSizeCard = PushSettingCard(
             "修改",
@@ -121,6 +128,8 @@ class SettingInterface(ScrollArea):
             configItem=self.cfg.canvas_auto_save,
             parent=self.canvasGroup
         )
+        # 连接配置变化信号，自动保存
+        self.cfg.canvas_auto_save.valueChanged.connect(self.onConfigChanged)
 
         self.autoSaveIntervalCard = PushSettingCard(
             "修改",
@@ -131,14 +140,6 @@ class SettingInterface(ScrollArea):
         )
         self.autoSaveIntervalCard.clicked.connect(self.onAutoSaveIntervalClicked)
 
-        self.defaultZoomCard = OptionsSettingCard(
-            self.cfg.canvas_default_zoom,
-            FIF.ZOOM,
-            "默认缩放比例",
-            "新建画布时的初始缩放",
-            texts=["50%", "75%", "100%", "125%", "150%"],
-            parent=self.canvasGroup
-        )
         self.pipelayoutCard = OptionsSettingCard(
             self.cfg.canvas_pipelayout,
             FIF.ZOOM,
@@ -147,6 +148,9 @@ class SettingInterface(ScrollArea):
             texts=["直线", "曲线", "折线"],
             parent=self.canvasGroup
         )
+        # 连接配置变化信号，自动保存
+        self.cfg.canvas_pipelayout.valueChanged.connect(self.onConfigChanged)
+
         self.pipeDirectionCard = OptionsSettingCard(
             self.cfg.canvas_direction,
             FIF.ZOOM,
@@ -155,6 +159,8 @@ class SettingInterface(ScrollArea):
             texts=["水平", "垂直"],
             parent=self.canvasGroup
         )
+        # 连接配置变化信号，自动保存
+        self.cfg.canvas_direction.valueChanged.connect(self.onConfigChanged)
 
         self.canvasGroup.addSettingCard(self.showGridCard)
         self.canvasGroup.addSettingCard(self.gridSizeCard)
@@ -162,7 +168,6 @@ class SettingInterface(ScrollArea):
         self.canvasGroup.addSettingCard(self.autoSaveIntervalCard)
         self.canvasGroup.addSettingCard(self.pipelayoutCard)
         self.canvasGroup.addSettingCard(self.pipeDirectionCard)
-        self.canvasGroup.addSettingCard(self.defaultZoomCard)
 
         self.vBoxLayout.addWidget(self.canvasGroup)
 
@@ -177,6 +182,8 @@ class SettingInterface(ScrollArea):
             self.cfg.set(self.cfg.export_dir, folder)
             self.exportDirCard.setContent(folder)
             Path(folder).mkdir(parents=True, exist_ok=True)
+            # 自动保存
+            self.cfg.save_config()
             self.configChanged.emit()
             InfoBar.success("设置已保存", f"导出目录已更新为 {folder}", parent=self)
 
@@ -184,7 +191,12 @@ class SettingInterface(ScrollArea):
         self.showNumberEditDialog(
             "网格大小",
             self.cfg.canvas_grid_size.value,
-            lambda x: self.cfg.set(self.cfg.canvas_grid_size, x),
+            lambda x: (
+                self.cfg.set(self.cfg.canvas_grid_size, x),
+                # 自动保存
+                self.cfg.save_config(),
+                self.configChanged.emit()
+            ),
             min_val=5,
             max_val=100
         )
@@ -193,10 +205,21 @@ class SettingInterface(ScrollArea):
         self.showNumberEditDialog(
             "自动保存间隔",
             self.cfg.canvas_auto_save_interval.value,
-            lambda x: self.cfg.set(self.cfg.canvas_auto_save_interval, x),
+            lambda x: (
+                self.cfg.set(self.cfg.canvas_auto_save_interval, x),
+                # 自动保存
+                self.cfg.save_config(),
+                self.configChanged.emit()
+            ),
             min_val=10,
             max_val=600
         )
+
+    def onConfigChanged(self):
+        """当配置项通过 SettingCard 自动更改时触发"""
+        self.cfg.save_config()
+        # 可选：发出配置更改信号，通知其他组件
+        self.configChanged.emit()
 
     # ==================== 通用对话框 ====================
 

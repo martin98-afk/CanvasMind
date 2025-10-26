@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from NodeGraphQt import BackdropNode, BaseNode
-from NodeGraphQt.constants import PipeLayoutEnum
+from NodeGraphQt.constants import PipeLayoutEnum, ViewerEnum
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer, QPoint
@@ -54,6 +54,11 @@ class CanvasPage(QWidget):
         "曲线": PipeLayoutEnum.CURVED.value,
         "直线": PipeLayoutEnum.STRAIGHT.value,
     }
+    GRID_STYLE = {
+        "线网格": ViewerEnum.GRID_DISPLAY_LINES.value,
+        "点网格": ViewerEnum.GRID_DISPLAY_DOTS.value,
+        "无网格": ViewerEnum.GRID_DISPLAY_NONE.value,
+    }
     PIPELINE_DIRECTION = {
         "水平": 0,
         "垂直": 1
@@ -79,7 +84,17 @@ class CanvasPage(QWidget):
         self._node_id_cache = {}  # 缓存：node_id -> node_object
         self._node_id_cache_valid = False  # 标记缓存是否有效
         # ---
-
+        # --- 新增：自动保存相关 ---
+        self._auto_save_timer = QTimer(self)
+        self._auto_save_timer.timeout.connect(self._auto_save_triggered)
+        self._auto_save_enabled = self.config.canvas_auto_save.value  # 从 config 获取
+        self._auto_save_interval = self.config.canvas_auto_save_interval.value * 1000  # 转换为毫秒
+        if self._auto_save_enabled:
+            logger.info(f"Canvas AutoSave enabled, interval: {self._auto_save_interval / 1000} seconds.")
+            self._start_auto_save_timer()
+        else:
+            logger.info("Canvas AutoSave disabled by config.")
+        # ---
         # 初始化 NodeGraph
         self.graph = CustomNodeGraph()
         self.graph.node_created.connect(self.on_node_created)
@@ -740,6 +755,7 @@ class CanvasPage(QWidget):
             backdrop_node.model.set_property("loop_nums", 3)
 
     def close_current_canvas(self):
+        self._stop_auto_save_timer()
         self.canvas_deleted.emit()
         self.parent.switchTo(self.parent.workflow_manager)
         self.parent.removeInterface(self)
@@ -1411,6 +1427,27 @@ class CanvasPage(QWidget):
         except Exception:
             return None
 
+    def _start_auto_save_timer(self):
+        """启动自动保存定时器"""
+        if self._auto_save_enabled and self.file_path:  # 只有在启用且有文件路径时才启动
+            self._auto_save_timer.start(self._auto_save_interval)
+            logger.debug(f"AutoSave timer started for {self.file_path}, interval: {self._auto_save_interval / 1000}s")
+
+    def _stop_auto_save_timer(self):
+        """停止自动保存定时器"""
+        if self._auto_save_timer.isActive():
+            self._auto_save_timer.stop()
+            self.save_full_workflow(self.file_path)
+            logger.debug(f"AutoSave timer stopped for {self.file_path}")
+
+    def _auto_save_triggered(self):
+        """自动保存定时器触发的槽函数"""
+        if self.file_path:  # 确保有路径才保存
+            logger.info(f"AutoSave triggered for {self.file_path}")
+            self.save_full_workflow(self.file_path, show_info=False)  # 自动保存不显示信息条
+        else:
+            logger.warning("AutoSave triggered but no file path is set. Skipping auto-save.")
+
     def save_full_workflow(self, file_path, show_info=True):
         graph_data = self.graph.serialize_session()
         # 解析图节点数据类
@@ -1593,6 +1630,7 @@ class CanvasPage(QWidget):
         self.parent.develop_page._load_component(node.component_class)
 
     def _setup_pipeline_style(self):
+        self.graph.set_grid_mode(self.GRID_STYLE.get(self.config.canvas_grid_mode.value))
         self.graph.set_pipe_style(
             self.PIPELINE_STYLE.get(self.config.canvas_pipelayout.value)
         )
@@ -1726,3 +1764,8 @@ class CanvasPage(QWidget):
             duration=2000,
             parent=self
         )
+
+    def closeEvent(self, event):
+        """窗口关闭事件，停止自动保存定时器"""
+        self._stop_auto_save_timer()
+        super().closeEvent(event)

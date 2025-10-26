@@ -58,8 +58,7 @@ class Settings(QConfig):
     def save_config(cls):
         """保存配置"""
         if cls._instance:
-            CONFIG_FILE = resource_path("../app.config")
-            cls._instance.save(CONFIG_FILE)
+            cls._instance.save()
 
     current_version = ConfigItem("General", "CurrentVersion", "v0.1.4")
 
@@ -94,7 +93,8 @@ class Settings(QConfig):
     )
 
     # ========== 新增：画布设置 ==========
-    canvas_show_grid = ConfigItem("Canvas", "ShowGrid", True, BoolValidator())
+    canvas_grid_mode = OptionsConfigItem("Canvas", "ShowGrid", "线网格",
+                                            OptionsValidator(["线网格", "点网格", "无网格"]))
     canvas_grid_size = ConfigItem("Canvas", "GridSize", 20, RangeValidator(10, 30))
     canvas_auto_save = ConfigItem("Canvas", "AutoSave", True, BoolValidator())
     canvas_auto_save_interval = ConfigItem("Canvas", "AutoSaveInterval", 60, RangeValidator(60, 120))
@@ -102,8 +102,7 @@ class Settings(QConfig):
                                             OptionsValidator(["直线", "曲线", "折线"]))
     canvas_direction = OptionsConfigItem("Canvas", "Direction", "水平",
                                           OptionsValidator(["水平", "垂直"]))
-    canvas_default_zoom = OptionsConfigItem("Canvas", "DefaultZoom", "100%",
-                                     OptionsValidator(["50%", "75%", "100%", "125%", "150%"]))
+
     # 快捷组件
     quick_components = ConfigItem(
         "Canvas",
