@@ -49,8 +49,8 @@ class PackageListThread(QThread):
 class EnvManagerUI(QWidget):
     env_changed = pyqtSignal()
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.setObjectName("EnvManagerUI")
         self.resize(1000, 600)
         self.setStyleSheet("""

@@ -1,0 +1,1 @@
+pyinstaller --onedir --windowed --add-data "app;app" --add-data "icons;icons" --add-data "envs/Miniconda3-py311_23.11.0-2-Windows-x86_64.exe;envs" --add-data ".venv/Lib/site-packages/spyder;spyder" --add-data "resource;resource" -i icons/logo3.png main.py
