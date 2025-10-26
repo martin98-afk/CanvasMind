@@ -6,6 +6,7 @@ from qfluentwidgets import ConfigSerializer, ConfigItem, QConfig, OptionsValidat
 from enum import Enum
 
 from app.utils.utils import resource_path
+from app.widgets.card_widget.list_setting_card import ListValidator
 
 
 class PatchPlatform(Enum):
@@ -59,7 +60,7 @@ class Settings(QConfig):
         """保存配置"""
         if cls._instance:
             cls._instance.save()
-
+    # 版本信息
     current_version = ConfigItem("General", "CurrentVersion", "v0.1.4")
 
     # 通用设置
@@ -103,10 +104,28 @@ class Settings(QConfig):
     canvas_direction = OptionsConfigItem("Canvas", "Direction", "水平",
                                           OptionsValidator(["水平", "垂直"]))
 
+    # ========== 新增：画布快捷组件 ==========
+
     # 快捷组件
     quick_components = ConfigItem(
         "Canvas",
         "QuickComponents",
         [],  # 默认值
         serializer=QuickComponentsSerializer()
+    )
+
+    # ========== 新增：运行环境管理配置 ==========
+    python_versions = ConfigItem(
+        "Package",
+        "PythonVersions", ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"],
+        ListValidator()
+    )
+    miniconda_version = ConfigItem("Package", "MinicondaVersion", "23.11.0")
+
+    # 默认要安装的包列表
+    default_packages = ConfigItem(
+        "Package",
+        "DefaultPackages",
+        ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi", "asteval", "wcwidth"],
+        ListValidator()
     )

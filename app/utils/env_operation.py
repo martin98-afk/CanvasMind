@@ -9,6 +9,8 @@ from PyQt5.QtCore import QObject, pyqtSignal, QProcess, QTimer, QUrl
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from loguru import logger
 
+from app.utils.config import Settings
+
 
 class EnvironmentManager(QObject):
     """使用Miniconda管理Python环境"""
@@ -22,21 +24,10 @@ class EnvironmentManager(QObject):
     ENV_DIR = Path(__file__).parent.parent.parent / "envs"
     META_FILE = ENV_DIR / "environments.json"
 
-    # Miniconda安装包下载链接（已去除多余空格）
-    MINICONDA_URLS = {
-        "3.9": "https://repo.anaconda.com/miniconda/Miniconda3-py39_23.11.0-2-Windows-x86_64.exe",
-        "3.10": "https://repo.anaconda.com/miniconda/Miniconda3-py310_23.11.0-2-Windows-x86_64.exe",
-        "3.11": "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-Windows-x86_64.exe",
-        "3.12": "https://repo.anaconda.com/miniconda/Miniconda3-py312_23.11.0-2-Windows-x86_64.exe",
-        "3.13": "https://repo.anaconda.com/miniconda/Miniconda3-py313_23.11.0-2-Windows-x86_64.exe",
-        "3.14": "https://repo.anaconda.com/miniconda/Miniconda3-py314_23.11.0-2-Windows-x86_64.exe",
-    }
-
-    # 默认要安装的包列表
-    DEFAULT_PACKAGES = ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi", "asteval", "wcwidth"]
-
     def __init__(self):
         super().__init__()
+        self.config = Settings.get_instance()
+        self.refresh_env_config()
         self.ENV_DIR.mkdir(exist_ok=True)
         if not self.META_FILE.exists():
             self._save_meta({})
@@ -55,6 +46,16 @@ class EnvironmentManager(QObject):
         self._installer_path = None
         self._process = None
         self._pending_env_creation = None  # (version, env_name, log_callback)
+
+    def refresh_env_config(self):
+        # Miniconda安装包下载链接（已去除多余空格）
+        self.MINICONDA_URLS = {
+            py_version: f"https://repo.anaconda.com/miniconda/Miniconda3-py{py_version}_{self.config.miniconda_version.value}-2-Windows-x86_64.exe"
+            for py_version in self.config.python_versions.value
+        }
+
+        # 默认要安装的包列表
+        self.DEFAULT_PACKAGES = self.config.default_packages.value
 
     def _load_meta(self):
         try:

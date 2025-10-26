@@ -19,8 +19,8 @@ from app.widgets.dialog_widget.custom_messagebox import CustomComboDialog, Custo
 
 
 class PackageListThread(QThread):
-    packages_loaded = pyqtSignal(str)      # 成功时发送 stdout
-    error_occurred = pyqtSignal(Exception) # 失败时发送异常
+    packages_loaded = pyqtSignal(str)  # 成功时发送 stdout
+    error_occurred = pyqtSignal(Exception)  # 失败时发送异常
 
     def __init__(self, python_exe, parent=None):
         super().__init__(parent)
@@ -109,7 +109,7 @@ class EnvManagerUI(QWidget):
         # --- 修改：使用两个联动的下拉框 ---
         self.sourceCombo = ComboBox(self)
         self.sourceCombo.addItems(["在线", "本地"])
-        self.sourceCombo.currentIndexChanged.connect(self._update_action_combo) # 连接信号
+        self.sourceCombo.currentIndexChanged.connect(self._update_action_combo)  # 连接信号
 
         self.actionCombo = ComboBox(self)
 
@@ -148,7 +148,7 @@ class EnvManagerUI(QWidget):
 
         packageLayout = QVBoxLayout()
         packageLayout.addLayout(topLayout)
-        packageLayout.addLayout(actionLayout) # 包含了 sourceCombo, actionCombo, packageEdit, execBtn
+        packageLayout.addLayout(actionLayout)  # 包含了 sourceCombo, actionCombo, packageEdit, execBtn
         packageLayout.addWidget(self.searchEdit)  # 搜索框在列表上方
         packageLayout.addWidget(self.packageTable, stretch=1)  # 列表填满剩余区域
 
@@ -185,7 +185,7 @@ class EnvManagerUI(QWidget):
             # 清空 packageEdit 提示，因为它用于输入包名
             self.packageEdit.setPlaceholderText("输入包名，例如 numpy 或 numpy==1.24.0")
         elif current_source == "本地":
-            self.actionCombo.addItems(["离线", "联网"]) # 可根据需要调整选项
+            self.actionCombo.addItems(["离线", "联网"])  # 可根据需要调整选项
             # 清空 packageEdit 提示，因为它将用于显示本地文件路径（或用户手动输入）
             self.packageEdit.setPlaceholderText("选择本地包文件或输入路径...")
 
@@ -199,6 +199,8 @@ class EnvManagerUI(QWidget):
         self.envCombo.addItems(envs)
 
     def on_env_changed(self):
+        # Miniconda安装包下载链接（已去除多余空格）
+        self.mgr.refresh_env_config()
         # 取消所有正在运行的摘要获取线程
         self.current_env = self.envCombo.currentText()
         if self.current_env:
@@ -322,7 +324,7 @@ class EnvManagerUI(QWidget):
             elif action == "卸载":
                 cmd = ["-m", "pip", "uninstall", "-y", package_input]
             else:
-                return # 不应该发生
+                return  # 不应该发生
 
         elif source == "本地":
             # --- 本地安装逻辑 ---
@@ -332,7 +334,7 @@ class EnvManagerUI(QWidget):
                 file_paths, _ = QFileDialog.getOpenFileNames(
                     self,
                     "选择本地 WHL 包",
-                    "", # 初始目录，可以设置为特定路径
+                    "",  # 初始目录，可以设置为特定路径
                     "Python Wheels (*.whl);;All Files (*)"
                 )
                 if not file_paths:
@@ -358,16 +360,15 @@ class EnvManagerUI(QWidget):
 
                 # 构建 pip install 命令
                 cmd = ["-m", "pip", "install"]
-                if "离线" in action.lower(): # 检查 action 是否包含 "no-index"
+                if "离线" in action.lower():  # 检查 action 是否包含 "no-index"
                     cmd.append("--no-index")
                 cmd.extend(valid_whl_paths)
 
         else:
-            return # 不应该发生
+            return  # 不应该发生
 
         # 启动 QProcess 执行并实时输出
         self._start_process(python_exe, cmd)
-
 
     def on_update_package_clicked(self, package_name):
         """行内更新按钮处理"""
@@ -430,9 +431,9 @@ class EnvManagerUI(QWidget):
         if self.process and self.process.state() != QProcess.NotRunning:
             try:
                 self.process.kill()
-                self.process.waitForFinished(3000) # 等待最多3秒让进程结束
+                self.process.waitForFinished(3000)  # 等待最多3秒让进程结束
             except Exception as e:
-                print(f"终止进程时出错: {e}") # 可选：记录错误
+                print(f"终止进程时出错: {e}")  # 可选：记录错误
 
         # 确保旧进程引用被清理
         self.process = QProcess(self)
