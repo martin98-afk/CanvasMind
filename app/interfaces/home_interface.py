@@ -151,10 +151,18 @@ class HorizontalCardContainerWidget(ScrollArea):
             triggered=lambda: self._on_open_canvas_clicked(Path("workflows/循环、迭代样例模型.workflow.json"))
         )
         self.sampleModelCard.addSampleCard(
-            icon=get_icon("广义回归"),
+            icon=get_icon("逻辑回归A"),
             title=self.tr("机器学习算法样例模型"),
             content=self.tr("常见机器学习流程画布样例模型"),
             routeKey="machine_learning",
+            index=1,
+            triggered=lambda: self._on_open_canvas_clicked(Path("workflows/workflow.workflow.json"))
+        )
+        self.sampleModelCard.addSampleCard(
+            icon=get_icon("智能体"),
+            title=self.tr("react工具调用智能体"),
+            content=self.tr("使用导出的项目作为工具的大模型智能体样例模型"),
+            routeKey="react_agent",
             index=1,
             triggered=lambda: self._on_open_canvas_clicked(Path("workflows/workflow.workflow.json"))
         )
