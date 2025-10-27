@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
 
+import requests
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import QPainter, QPainterPath, QLinearGradient, QColor, QBrush, QPixmap
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
@@ -13,6 +14,13 @@ from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.card_widget.home_card import HomeCardView, HomeCard
 from app.widgets.card_widget.link_card import LinkCardView
 
+
+EXAMPLES = {
+    "自动组件生成": "https://raw.githubusercontent.com/martin98-afk/CanvasMind/refs/heads/master/workflows/%E8%87%AA%E5%8A%A8%E7%BB%84%E4%BB%B6%E7%94%9F%E6%88%90.workflow.json",
+    "循环、迭代样例模型": "https://raw.githubusercontent.com/martin98-afk/CanvasMind/refs/heads/master/workflows/%E5%BE%AA%E7%8E%AF%E3%80%81%E8%BF%AD%E4%BB%A3%E6%A0%B7%E4%BE%8B%E6%A8%A1%E5%9E%8B.workflow.json",
+    "机器学习算法样例模型": "https://raw.githubusercontent.com/martin98-afk/CanvasMind/refs/heads/master/workflows/workflow.workflow.json",
+    "react工具调用智能体": "https://raw.githubusercontent.com/martin98-afk/CanvasMind/refs/heads/master/workflows/react%E6%99%BA%E8%83%BD%E4%BD%93.workflow.json"
+}
 
 class BannerWidget(QWidget):
     """ Banner widget """
@@ -140,7 +148,7 @@ class HorizontalCardContainerWidget(ScrollArea):
             content=self.tr("使用智能体和大模型自动生成画布组件"),
             routeKey="component_generate",
             index=0,
-            triggered=lambda: self._on_open_canvas_clicked(Path("workflows/自动组件生成.workflow.json"))
+            triggered=lambda: self._on_open_canvas_clicked("自动组件生成")
         )
         self.sampleModelCard.addSampleCard(
             icon=get_icon("更新"),
@@ -148,7 +156,7 @@ class HorizontalCardContainerWidget(ScrollArea):
             content=self.tr("循环、迭代节点使用方法样例模型"),
             routeKey="loop_example",
             index=1,
-            triggered=lambda: self._on_open_canvas_clicked(Path("workflows/循环、迭代样例模型.workflow.json"))
+            triggered=lambda: self._on_open_canvas_clicked("循环、迭代样例模型")
         )
         self.sampleModelCard.addSampleCard(
             icon=get_icon("逻辑回归A"),
@@ -156,7 +164,7 @@ class HorizontalCardContainerWidget(ScrollArea):
             content=self.tr("常见机器学习流程画布样例模型"),
             routeKey="machine_learning",
             index=1,
-            triggered=lambda: self._on_open_canvas_clicked(Path("workflows/workflow.workflow.json"))
+            triggered=lambda: self._on_open_canvas_clicked("机器学习算法样例模型")
         )
         self.sampleModelCard.addSampleCard(
             icon=get_icon("智能体"),
@@ -164,7 +172,7 @@ class HorizontalCardContainerWidget(ScrollArea):
             content=self.tr("使用导出的项目作为工具的大模型智能体样例模型"),
             routeKey="react_agent",
             index=1,
-            triggered=lambda: self._on_open_canvas_clicked(Path("workflows/workflow.workflow.json"))
+            triggered=lambda: self._on_open_canvas_clicked("react工具调用智能体")
         )
 
         # --- 初始化环境卡片 ---
@@ -263,10 +271,19 @@ class HorizontalCardContainerWidget(ScrollArea):
         if hasattr(self.package_page, 'create_env'):
             self.package_page.create_env(self.parent_ref)
 
-    def _on_open_canvas_clicked(self, path: Path):
+    def _on_open_canvas_clicked(self, model_name: str):
         """处理打开画布事件"""
+        try:
+            output_path = f"./workflows/{model_name}.workflow.json"
+            response = requests.get(EXAMPLES.get(model_name))
+            response.raise_for_status()  # 如果响应状态码不是 200，将抛出 HTTPError
+            with open(output_path, 'wb') as f:
+                f.write(response.content)
+            print(f"✅ 文件已成功下载到 {output_path}")
+        except requests.exceptions.RequestException as e:
+            print(f"❌ 下载失败: {e}")
         if self.gallery_page and hasattr(self.gallery_page, 'open_canvas'):
-            self.gallery_page.open_canvas(path)
+            self.gallery_page.open_canvas(Path(output_path))
 
 
 class HomeInterface(ScrollArea):
