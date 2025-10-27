@@ -126,6 +126,6 @@ class Settings(QConfig):
     default_packages = ConfigItem(
         "Package",
         "DefaultPackages",
-        ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi", "asteval", "wcwidth"],
+        ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi", "asteval", "wcwidth", "pyarrow"],
         ListValidator()
     )

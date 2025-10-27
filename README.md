@@ -11,6 +11,11 @@
 A modern low-code visual programming platform built on **NodeGraphQt** and **qfluentwidgets**, supporting drag-and-drop component orchestration, asynchronous execution, file operations, loop control, and one-click export of workflows into standalone runnable projects—enabling seamless transition from development to deployment.
 
 ---
+## 📷 Welecome Interface Preview
+
+<img src="images/欢迎界面示意图.png" width="800">
+
+---
 
 ## 📷 Workflow Management UI Preview
 

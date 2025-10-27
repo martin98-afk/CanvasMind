@@ -37,14 +37,12 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         try:
-            self.logger.info(inputs)
             from sklearn.linear_model import LogisticRegression
             # 读取数据
             feature = inputs.feature
             if len(feature.shape) == 1:
                 feature = feature[None, :]
             model = inputs.model
-            self.logger.info(feature)
             # 训练模型
             result = model.predict(feature)
             # 预测示例（使用第一行数据）

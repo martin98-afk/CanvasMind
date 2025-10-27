@@ -1,14 +1,19 @@
+import base64
+import io
 import json
+import pickle
 import sys
 import warnings
 import loguru
+import numpy as np
+import pandas as pd
+from pyarrow import feather
 
 warnings.filterwarnings("ignore")
 
 from collections import defaultdict, deque
 from pathlib import Path
 from threading import Lock
-import copy
 
 # 确保能导入你的组件
 sys.path.append(str(Path(__file__).parent.parent))
@@ -17,6 +22,100 @@ from scan_components import scan_components
 from runner.component_executor import run_component_in_subprocess
 from components.base import GlobalVariableContext
 from runner.expression_engine import ExpressionEngine
+
+
+def deserialize_from_json(obj):
+    if isinstance(obj, dict):
+        if obj.get("__type__") == "DataFrame" and obj.get("format") == "feather_base64":
+            try:
+                # 解码 base64
+                binary_data = base64.b64decode(obj["data"])
+                buffer = io.BytesIO(binary_data)
+                # 读取 feather 格式
+                table = feather.read_table(buffer)
+                df = table.to_pandas()
+                return df
+            except Exception as e:
+                print(f"DataFrame Feather deserialization failed: {e}")
+                return obj
+        elif obj.get("__type__") == "DataFrame":
+            try:
+                df = pd.DataFrame(obj["data"], columns=obj["columns"])
+                df.index = obj["index"]
+                return df
+            except Exception:
+                return obj  # 降级
+        elif obj.get("__type__") == "Series":
+            # 如果 Series 是通过转为 DataFrame 序列化的
+            df_temp = deserialize_from_json({**obj, "__type__": "DataFrame", "format": "feather_base64"})
+            if isinstance(df_temp, pd.DataFrame) and len(df_temp.columns) == 1:
+                return df_temp.iloc[:, 0]
+            return obj
+        elif obj.get("__type__") == "LargeList":
+            format_type = obj.get("format", "pickle_binary")  # 默认为 pickle
+            original_type = obj.get("original_type", "list")
+            if format_type == "numpy_binary":
+                try:
+                    binary_data = base64.b64decode(obj["data"])
+                    buffer = io.BytesIO(binary_data)
+                    arr = np.load(buffer, allow_pickle=False)
+                    # 转回 Python 列表或元组
+                    result = arr.tolist()
+                    if original_type == "tuple":
+                        result = tuple(result)
+                    return result
+                except Exception as e:
+                    print(f"LargeList numpy deserialization failed: {e}")
+                    return obj
+            elif format_type == "pickle_binary":
+                try:
+                    binary_data = base64.b64decode(obj["data"])
+                    buffer = io.BytesIO(binary_data)
+                    result = pickle.load(buffer)
+                    # 确保返回原始类型
+                    if original_type == "tuple" and not isinstance(result, tuple):
+                        result = tuple(result)
+                    elif original_type == "list" and not isinstance(result, list):
+                        result = list(result)
+                    return result
+                except Exception as e:
+                    print(f"LargeList pickle deserialization failed: {e}")
+                    return obj
+            else:
+                print(f"Unknown LargeList format: {format_type}")
+                return obj
+        elif obj.get("__type__") == "ndarray":
+            format_type = obj.get("format", "list")  # 默认为旧格式
+            if format_type == "npy_base64":
+                try:
+                    # 解码 base64 数据
+                    binary_data = base64.b64decode(obj["data"])
+                    buffer = io.BytesIO(binary_data)
+                    # 从二进制数据加载 ndarray
+                    arr = np.load(buffer, allow_pickle=False)
+                    return arr
+                except Exception as e:
+                    print(f"ndarray binary deserialization failed: {e}")
+                    return obj
+            elif format_type == "list":
+                # 兼容旧的 list 格式
+                try:
+                    return np.array(obj["data"], dtype=obj["dtype"])
+                except Exception as e:
+                    print(f"ndarray list deserialization failed: {e}")
+                    return obj
+            else:
+                print(f"Unknown ndarray format: {format_type}")
+                return obj
+        elif "__type__" in obj and "__data__" in obj:
+            # 通用对象（通常不重建，只保留字典）
+            return obj["__data__"]
+        else:
+            return {k: deserialize_from_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [deserialize_from_json(v) for v in obj]
+    else:
+        return obj
 
 
 def build_execution_graph(nodes, graph_data):
@@ -305,7 +404,7 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None, **
     project_dir = workflow_path.parent.absolute()
     # 1. 加载工作流
     with open(workflow_path, 'r', encoding='utf-8') as f:
-        full_data = json.load(f)
+        full_data = deserialize_from_json(json.load(f))
     graph_data = full_data["graph"]
     runtime_data = full_data.get("runtime", {})
     global_variable = runtime_data.get("global_variable", {})

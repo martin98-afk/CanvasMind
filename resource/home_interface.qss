@@ -1,0 +1,38 @@
+SettingInterface,
+#view {
+    background-color: transparent;
+}
+
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+
+BannerWidget > #galleryLabel {
+    font: 42px 'Segoe UI SemiBold', 'Microsoft YaHei SemiBold';
+    background-color: transparent;
+    color: white;
+    padding-left: 28px;
+}
+
+HomeInterface QScrollArea#cardContainerArea { /* 如果你给 HorizontalCardContainerWidget 设置了 objectName */
+    background-color: transparent; /* 或者使用深色主题的背景色变量 */
+    border: none; /* 确保边框透明或与主题一致 */
+}
+
+/* 针对 HorizontalCardContainerWidget 内容 Widget 的背景 */
+HomeInterface QScrollArea#cardContainerArea QWidget#containerView { /* 如果你给 self.view 设置了 objectName */
+    background-color: transparent; /* 或者使用深色主题的背景色变量 */
+}
+
+/* 或者更通用地，如果无法设置 objectName */
+HomeInterface > ScrollArea { /* 假设 HorizontalCardContainerWidget 是 HomeInterface 的直接子控件 */
+    /* background-color: rgba(0, 0, 0, 0.05); /* 可选：一个非常浅的深色遮罩，如果完全透明看起来不对 */
+    background-color: transparent; /* 首选：透明，让父级主题生效 */
+    border: none;
+}
+
+/* 如果上述选择器不工作，或者你想更明确地针对内容 Widget */
+HomeInterface > ScrollArea QWidget { /* 这可能会影响所有子 QWidget，需要谨慎 */
+    background-color: transparent;
+}

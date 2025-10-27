@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
 import ast
+import base64
 import json
 import os
+import pickle
 import re
 import sys
-from pathlib import Path
-from typing import Any
-
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.feather as feather
+import io
+
+from pathlib import Path
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtGui import QIcon
 from loguru import logger
@@ -125,42 +129,108 @@ def get_icon(icon_name):
     except:
         return FluentIcon.APPLICATION
 
-def serialize_for_json(obj):
+
+def serialize_for_json(obj, large_list_threshold=1000):
     """递归将对象转换为 JSON 可序列化格式"""
     if isinstance(obj, dict):
         return {k: serialize_for_json(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple)):
-        return [serialize_for_json(v) for v in obj]
+        # 检查是否是大型列表
+        if len(obj) > large_list_threshold:
+            try:
+                # 尝试将列表转换为 numpy 数组，如果可能的话
+                # 这适用于数值型列表
+                try:
+                    arr = np.array(obj)
+                    if arr.ndim == 1:  # 确保是一维数组
+                        buffer = io.BytesIO()
+                        np.save(buffer, arr, allow_pickle=False)
+                        binary_data = buffer.getvalue()
+                        encoded_data = base64.b64encode(binary_data).decode('utf-8')
+
+                        return {
+                            "__type__": "LargeList",
+                            "data": encoded_data,
+                            "dtype": str(arr.dtype),
+                            "format": "numpy_binary",
+                            "original_type": "list" if isinstance(obj, list) else "tuple"
+                        }
+                except (ValueError, TypeError):
+                    # 如果无法转换为 numpy 数组（例如包含混合类型），则使用 pickle
+                    # pickle 通常比 tolist() 更高效，尤其是对于复杂对象
+                    buffer = io.BytesIO()
+                    pickle.dump(obj, buffer)
+                    binary_data = buffer.getvalue()
+                    encoded_data = base64.b64encode(binary_data).decode('utf-8')
+
+                    return {
+                        "__type__": "LargeList",
+                        "data": encoded_data,
+                        "format": "pickle_binary",
+                        "original_type": "list" if isinstance(obj, list) else "tuple"
+                    }
+            except Exception as e:
+                print(f"Large list/tuple serialization failed: {e}")
+                # 降级：如果优化失败，回退到原始行为
+                return [serialize_for_json(v, large_list_threshold) for v in obj]
+        else:
+            # 非大型列表，按常规方式处理
+            return [serialize_for_json(v, large_list_threshold) for v in obj]
     elif isinstance(obj, pd.DataFrame):
-        # 方案1: 转为 records（列表 of 字典）
         try:
+            # 使用 BytesIO 作为虚拟文件
+            buffer = io.BytesIO()
+            # 写入 feather 格式
+            table = pa.Table.from_pandas(obj)
+            feather.write_feather(table, buffer, compression='zstd')  # zstd 压缩率高
+            # 获取二进制数据并编码
+            buffer.seek(0)
+            binary_data = buffer.read()
+            encoded_data = base64.b64encode(binary_data).decode('utf-8')
+
             return {
                 "__type__": "DataFrame",
-                "data": obj.to_dict(orient='records'),
-                "columns": obj.columns.tolist(),
-                "index": obj.index.tolist()
+                "data": encoded_data,
+                "format": "feather_base64",
+                "shape": obj.shape  # 便于调试
             }
-        except Exception:
-            # 如果包含不支持的类型（如 object），降级为字符串
-            return f"<DataFrame {obj.shape}> (无法序列化)"
+        except Exception as e:
+            logger.error(f"DataFrame Feather serialization failed: {e}")
     elif isinstance(obj, pd.Series):
         try:
-            return {
-                "__type__": "Series",
-                "data": obj.to_list(),
-                "index": obj.index.tolist()
-            }
+            df_temp = obj.to_frame()
+            return serialize_for_json(df_temp)
         except Exception:
             return f"<Series {len(obj)}> (无法序列化)"
     elif isinstance(obj, np.ndarray):
         try:
+            # 将 ndarray 转换为二进制格式 (bytes)
+            buffer = io.BytesIO()
+            np.save(buffer, obj, allow_pickle=False)  # allow_pickle=False 更安全
+            binary_data = buffer.getvalue()
+            # 将二进制数据编码为 base64 字符串
+            encoded_data = base64.b64encode(binary_data).decode('utf-8')
+
             return {
                 "__type__": "ndarray",
-                "data": obj.tolist(),
-                "dtype": str(obj.dtype)
+                "data": encoded_data,  # 存储 base64 编码的二进制数据
+                "dtype": str(obj.dtype),
+                "shape": obj.shape,  # 存储形状信息，便于调试或验证
+                "format": "npy_base64"  # 标记格式
             }
-        except Exception:
-            return f"<ndarray {obj.shape} {obj.dtype}> (无法序列化)"
+        except Exception as e:
+            print(f"ndarray binary serialization failed: {e}")
+            # 降级：如果二进制方式失败，再尝试 tolist
+            try:
+                return {
+                    "__type__": "ndarray",
+                    "data": obj.tolist(),
+                    "dtype": str(obj.dtype),
+                    "format": "list"  # 标记为降级格式
+                }
+            except Exception as e2:
+                print(f"ndarray list serialization also failed: {e2}")
+                return f"<ndarray {obj.shape} {obj.dtype}> (无法序列化)"
     elif isinstance(obj, np.integer):
         return int(obj)
     elif isinstance(obj, np.floating):
@@ -193,17 +263,86 @@ def serialize_for_json(obj):
 
 def deserialize_from_json(obj):
     if isinstance(obj, dict):
-        if obj.get("__type__") == "DataFrame":
+        if obj.get("__type__") == "DataFrame" and obj.get("format") == "feather_base64":
+            try:
+                # 解码 base64
+                binary_data = base64.b64decode(obj["data"])
+                buffer = io.BytesIO(binary_data)
+                # 读取 feather 格式
+                table = feather.read_table(buffer)
+                df = table.to_pandas()
+                return df
+            except Exception as e:
+                print(f"DataFrame Feather deserialization failed: {e}")
+                return obj
+        elif obj.get("__type__") == "DataFrame":
             try:
                 df = pd.DataFrame(obj["data"], columns=obj["columns"])
                 df.index = obj["index"]
                 return df
             except Exception:
                 return obj  # 降级
+        elif obj.get("__type__") == "Series":
+            # 如果 Series 是通过转为 DataFrame 序列化的
+            df_temp = deserialize_from_json({**obj, "__type__": "DataFrame", "format": "feather_base64"})
+            if isinstance(df_temp, pd.DataFrame) and len(df_temp.columns) == 1:
+                return df_temp.iloc[:, 0]
+            return obj
+        elif obj.get("__type__") == "LargeList":
+            format_type = obj.get("format", "pickle_binary")  # 默认为 pickle
+            original_type = obj.get("original_type", "list")
+            if format_type == "numpy_binary":
+                try:
+                    binary_data = base64.b64decode(obj["data"])
+                    buffer = io.BytesIO(binary_data)
+                    arr = np.load(buffer, allow_pickle=False)
+                    # 转回 Python 列表或元组
+                    result = arr.tolist()
+                    if original_type == "tuple":
+                        result = tuple(result)
+                    return result
+                except Exception as e:
+                    print(f"LargeList numpy deserialization failed: {e}")
+                    return obj
+            elif format_type == "pickle_binary":
+                try:
+                    binary_data = base64.b64decode(obj["data"])
+                    buffer = io.BytesIO(binary_data)
+                    result = pickle.load(buffer)
+                    # 确保返回原始类型
+                    if original_type == "tuple" and not isinstance(result, tuple):
+                        result = tuple(result)
+                    elif original_type == "list" and not isinstance(result, list):
+                        result = list(result)
+                    return result
+                except Exception as e:
+                    print(f"LargeList pickle deserialization failed: {e}")
+                    return obj
+            else:
+                print(f"Unknown LargeList format: {format_type}")
+                return obj
         elif obj.get("__type__") == "ndarray":
-            try:
-                return np.array(obj["data"], dtype=obj["dtype"])
-            except Exception:
+            format_type = obj.get("format", "list")  # 默认为旧格式
+            if format_type == "npy_base64":
+                try:
+                    # 解码 base64 数据
+                    binary_data = base64.b64decode(obj["data"])
+                    buffer = io.BytesIO(binary_data)
+                    # 从二进制数据加载 ndarray
+                    arr = np.load(buffer, allow_pickle=False)
+                    return arr
+                except Exception as e:
+                    print(f"ndarray binary deserialization failed: {e}")
+                    return obj
+            elif format_type == "list":
+                # 兼容旧的 list 格式
+                try:
+                    return np.array(obj["data"], dtype=obj["dtype"])
+                except Exception as e:
+                    print(f"ndarray list deserialization failed: {e}")
+                    return obj
+            else:
+                print(f"Unknown ndarray format: {format_type}")
                 return obj
         elif "__type__" in obj and "__data__" in obj:
             # 通用对象（通常不重建，只保留字典）

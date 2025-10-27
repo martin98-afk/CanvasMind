@@ -1,0 +1,2925 @@
+{
+  "version": "1.0",
+  "graph": {
+    "graph": {
+      "layout_direction": 0,
+      "acyclic": true,
+      "pipe_collision": false,
+      "pipe_slicing": true,
+      "pipe_style": 2,
+      "accept_connection_types": "{}",
+      "reject_connection_types": "{}"
+    },
+    "nodes": {
+      "0x234d1a73af0": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+        "icon": null,
+        "name": "文本输入",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 405.0,
+        "height": 258.05,
+        "pos": [
+          -1279.2786098819088,
+          -678.9613264092363
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "a4f5b7a2-726a-43f8-823c-9ad4459e26d1",
+          "debug_code": {},
+          "input": "文本内容"
+        }
+      },
+      "0x234dbadc250": {
+        "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
+        "icon": null,
+        "name": "添加字符串",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 429.0,
+        "height": 94.25,
+        "pos": [
+          -537.5192442498958,
+          -219.56784148801376
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "2ddbb9ac-ad95-4531-9f4b-5eca1fd64a14",
+          "debug_code": {},
+          "prop1": "env.LANG"
+        }
+      },
+      "0x234dbadf9a0": {
+        "type_": "control_flow.ControlFlowInputPort",
+        "icon": null,
+        "name": "输入端口",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 153.0,
+        "height": 60,
+        "pos": [
+          -605.9008766826646,
+          -435.76069220358545
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {},
+          "persistent_id": "8bb4de28-26f0-4375-b71f-34f874b1bade"
+        }
+      },
+      "0x234dbade0e0": {
+        "type_": "control_flow.ControlFlowOutputPort",
+        "icon": null,
+        "name": "输出端口",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 153.0,
+        "height": 60,
+        "pos": [
+          -192.90087668266466,
+          -435.76069220358545
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {},
+          "persistent_id": "ebeb99b3-cd9c-48e6-8dc0-94b2d6160ee5"
+        }
+      },
+      "0x234dbaddcc0": {
+        "type_": "control_flow.ControlFlowIterateNode",
+        "icon": null,
+        "name": "迭代控制流区域",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 645.9999999999999,
+        "height": 390.44285071557175,
+        "pos": [
+          -645.9008766826646,
+          -475.76069220358545
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "5ffb722b-6a16-478b-b66a-7f5c12bb43a5",
+          "backdrop_text": "",
+          "current_index": 2,
+          "loop_nums": 2,
+          "max_iterations": 1000,
+          "loop_condition": "",
+          "loop_mode": "count"
+        }
+      },
+      "0x234dbaddba0": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
+        "icon": null,
+        "name": "JSON文本包装",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 339.0,
+        "height": 91.10000000000001,
+        "pos": [
+          177.22916495642323,
+          -247.87483343565458
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "f75fef39-bac1-4728-a283-559af9a9d642",
+          "debug_code": {},
+          "prop_0": "text"
+        }
+      },
+      "0x234dbade800": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+        "icon": null,
+        "name": "文本输入 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 417.0,
+        "height": 258.05,
+        "pos": [
+          -1264.3929556992132,
+          -37.66331644496953
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "af61c25e-f907-4798-badc-b02096a4ffa5",
+          "debug_code": {},
+          "input": "文本内容"
+        }
+      },
+      "0x234d5011660": {
+        "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
+        "icon": null,
+        "name": "添加字符串 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 429.0,
+        "height": 94.25,
+        "pos": [
+          -610.3038778890707,
+          326.91127597571864
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "6cb8599c-ec10-4a84-b87f-eab6e63c4240",
+          "debug_code": {},
+          "prop1": "env.LANG"
+        }
+      },
+      "0x234ddf39960": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
+        "icon": null,
+        "name": "JSON文本包装 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 339.0,
+        "height": 91.10000000000001,
+        "pos": [
+          968.5306760708793,
+          458.01247530836577
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "a96cf177-a323-4fc0-ae11-91f7d2d08bc3",
+          "debug_code": null,
+          "prop_0": "text"
+        }
+      },
+      "0x234ddf3a590": {
+        "type_": "control_flow.ControlFlowInputPort",
+        "icon": null,
+        "name": "输入端口 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          -628.1744783523097,
+          208.2270589535663
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {},
+          "persistent_id": "4fab0064-d378-4004-8f06-a2515796576c"
+        }
+      },
+      "0x234ddf3a8c0": {
+        "type_": "control_flow.ControlFlowOutputPort",
+        "icon": null,
+        "name": "输出端口 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          453.66222755568356,
+          208.2270589535663
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {},
+          "persistent_id": "c3a6fb75-a773-460f-8f8b-5bbef0441d72"
+        }
+      },
+      "0x234ddf3bbe0": {
+        "type_": "control_flow.ControlFlowLoopNode",
+        "icon": null,
+        "name": "循环控制流区域",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 1326.8367059079933,
+        "height": 299.9654166425519,
+        "pos": [
+          -668.1744783523097,
+          168.2270589535663
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "6b86cb12-c940-40c8-bd6f-3bfea61ecc93",
+          "backdrop_text": "",
+          "current_index": 1,
+          "loop_nums": 3,
+          "max_iterations": 1000,
+          "loop_condition": "$len(node_vars_添加字符串_2_output1)<50$",
+          "loop_mode": "while"
+        }
+      },
+      "0x234ddf3b9d0": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+        "icon": null,
+        "name": "文本输入 2",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 417.0,
+        "height": 258.05,
+        "pos": [
+          -1219.0225037028695,
+          255.70706242963917
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "795ff325-cf70-43f7-a3f0-d4cb416adf68",
+          "debug_code": {},
+          "input": "文本内容"
+        }
+      },
+      "0x234ddf3b460": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+        "icon": null,
+        "name": "文本输入 3",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 417.0,
+        "height": 258.05,
+        "pos": [
+          -1194.4205985099793,
+          592.4597225050138
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "6dc54266-e78d-449a-b8dc-e9e95e6473e8",
+          "debug_code": {},
+          "input": "文本内容"
+        }
+      },
+      "0x234ddf3a950": {
+        "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
+        "icon": null,
+        "name": "添加字符串 2",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 429.0,
+        "height": 94.25,
+        "pos": [
+          -182.38119683778848,
+          333.9424755961182
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "a38c4bbc-2370-4fdb-ac81-f07ab631f638",
+          "debug_code": {},
+          "prop1": "env.PYTHONWARNINGS"
+        }
+      },
+      "0x234ddf38c40": {
+        "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
+        "icon": null,
+        "name": "添加字符串 3",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 429.0,
+        "height": 94.25,
+        "pos": [
+          -75.23083022822499,
+          212.3233348812633
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "3efcd86a-0e6a-49f7-aca9-ce5d4be491e9",
+          "debug_code": {},
+          "prop1": "custom.test"
+        }
+      },
+      "0x234ddf39030": {
+        "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
+        "icon": null,
+        "name": "添加字符串 4",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 429.0,
+        "height": 94.25,
+        "pos": [
+          -797.3510336195384,
+          1274.5459249603348
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "63c9e462-4f4a-4870-b492-f12bd99f4aa9",
+          "debug_code": {},
+          "prop1": "env.PYTHONWARNINGS"
+        }
+      },
+      "0x234ddf39e10": {
+        "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
+        "icon": null,
+        "name": "添加字符串 5",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 429.0,
+        "height": 94.25,
+        "pos": [
+          -339.575972340455,
+          1267.6609064106608
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "1a9c39cc-bb48-44e4-95c4-7cb9a4d4d472",
+          "debug_code": {},
+          "prop1": "env.LANG"
+        }
+      },
+      "0x234ddf3a1a0": {
+        "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
+        "icon": null,
+        "name": "添加字符串 6",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 429.0,
+        "height": 94.25,
+        "pos": [
+          -573.817741615406,
+          1632.3823943305285
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "a89709ec-7524-49ce-a2f7-c5d2ad684ff9",
+          "debug_code": {},
+          "prop1": "env.TZ"
+        }
+      },
+      "0x234ddf3ac20": {
+        "type_": "control_flow.ControlFlowInputPort",
+        "icon": null,
+        "name": "输入端口 3",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          -1068.9411102231463,
+          1267.6609064106608
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {},
+          "persistent_id": "c6096dcb-514c-4446-9cec-89f117f7c7e6"
+        }
+      },
+      "0x234ddf380d0": {
+        "type_": "control_flow.ControlFlowOutputPort",
+        "icon": null,
+        "name": "输出端口 2",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          192.29317670433966,
+          1267.6609064106608
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {},
+          "persistent_id": "be406e6f-26b1-4750-b1c5-b221d781b810"
+        }
+      },
+      "0x234ddf38820": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+        "icon": null,
+        "name": "文本输入 4",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 417.0,
+        "height": 258.05,
+        "pos": [
+          -1671.1566342495885,
+          1238.5221756367512
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
+          "debug_code": {},
+          "input": "文本内容"
+        }
+      },
+      "0x234ddf39210": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
+        "icon": null,
+        "name": "JSON文本包装 2",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 339.0,
+        "height": 91.10000000000001,
+        "pos": [
+          667.3315832198018,
+          1297.9033758385128
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "17e65534-3b29-4905-93f3-eeb52813f142",
+          "debug_code": {},
+          "prop_0": "text"
+        }
+      },
+      "0x234ddf39750": {
+        "type_": "control_flow.ControlFlowIterateNode",
+        "icon": null,
+        "name": "迭代控制流区域 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 1506.234286927486,
+        "height": 538.9714879198677,
+        "pos": [
+          -1108.9411102231463,
+          1227.6609064106608
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "cf87e455-f640-4df2-b45b-5172480db998",
+          "backdrop_text": "",
+          "current_index": 1,
+          "loop_nums": 1,
+          "max_iterations": 1000,
+          "loop_condition": "",
+          "loop_mode": "count"
+        }
+      },
+      "0x234ddf3b100": {
+        "type_": "control_flow.ControlFlowBranchNode",
+        "icon": "D:\\work\\WorkFlowGUI\\./icons/条件分支.png",
+        "name": "条件分支",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 623.0,
+        "height": 544.7,
+        "pos": [
+          -48.264823970915245,
+          618.4487824199432
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "input",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "test_port",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "branch2",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "branch",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "branch_1",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "branch_2",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "branch_3",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "else",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "e3f9a56a-705f-4539-ac48-c551d2a646d9",
+          "conditions": [
+            {
+              "expr": "$input.input==0$",
+              "name": "test_port"
+            },
+            {
+              "expr": "$input.input==\"0\"$",
+              "name": "branch2"
+            },
+            {
+              "expr": "",
+              "name": ""
+            },
+            {
+              "expr": "",
+              "name": "branch_1"
+            },
+            {
+              "expr": "",
+              "name": "branch_2"
+            },
+            {
+              "expr": "",
+              "name": "branch_3"
+            }
+          ],
+          "enable_else": true,
+          "execute_all_matches": false
+        }
+      },
+      "0x234de06fb20": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_获取全局变量",
+        "icon": null,
+        "name": "获取全局变量",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 419.0,
+        "height": 94.25,
+        "pos": [
+          -597.2272870393706,
+          810.5227466962886
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "94a82d77-4e1d-4f05-9778-acd26f9e961b",
+          "debug_code": {},
+          "prop1": "env.CUDA_VISIBLE_DEVICES"
+        }
+      },
+      "0x234de06f8b0": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
+        "icon": null,
+        "name": "JSON文本包装 3",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 339.0,
+        "height": 91.10000000000001,
+        "pos": [
+          863.873326474451,
+          1017.4478688175989
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "b7a9b3fd-47e5-49d6-b917-cea2a5f030be",
+          "debug_code": {},
+          "prop_0": "text"
+        }
+      },
+      "0x234dbb67250": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
+        "icon": null,
+        "name": "JSON文本包装 4",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": true,
+        "selected": false,
+        "visible": true,
+        "width": 339.0,
+        "height": 91.10000000000001,
+        "pos": [
+          764.1915011289412,
+          1145.3452318173124
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "20bd0bf3-4030-40c8-8a10-eb8e105ba96b",
+          "debug_code": {},
+          "prop_0": "text"
+        }
+      },
+      "0x234dbb65780": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_构建多轮对话",
+        "icon": "D:\\work\\WorkFlowGUI\\icons\\多轮对话.svg",
+        "name": "构建多轮对话",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": true,
+        "selected": false,
+        "visible": true,
+        "width": 271.0,
+        "height": 95.3,
+        "pos": [
+          1534.2731828790068,
+          595.7309217186302
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "5a347e69-78ef-44bf-a5c4-cd1a68a0a006",
+          "debug_code": {},
+          "prop1": []
+        }
+      },
+      "0x234dbb670a0": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_文档内容提取",
+        "icon": "D:\\work\\WorkFlowGUI\\icons\\文档提取器.svg",
+        "name": "文档内容提取",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": true,
+        "selected": false,
+        "visible": true,
+        "width": 363.0,
+        "height": 129.95,
+        "pos": [
+          1203.1915011289411,
+          1145.3452318173124
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "a3a27da3-211f-4497-9ab3-2b8a6d30ae1b",
+          "debug_code": {},
+          "extract_images": false,
+          "page_range": ""
+        }
+      },
+      "0x234dbb67670": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_知识库查询",
+        "icon": null,
+        "name": "知识库查询",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 363.0,
+        "height": 156.20000000000002,
+        "pos": [
+          1514.5990509580683,
+          959.7629936105166
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "5b629dcd-53b3-4555-bfdf-f45c6988eaec",
+          "debug_code": {},
+          "top_k": "3",
+          "knowledge_base_id": "default_kb"
+        }
+      },
+      "0x234de14d4e0": {
+        "type_": "dynamic.DYNAMIC_CODE",
+        "icon": "D:\\work\\WorkFlowGUI\\icons/代码执行.svg",
+        "name": "代码编辑",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 951.0,
+        "height": 858.6500000000001,
+        "pos": [
+          1220.318461085341,
+          -559.9328897883591
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "input1",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "fefeffef",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "test",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output_0",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "09adf5da-fb37-49df-8ecc-5c4259280288",
+          "input_ports": [
+            {
+              "name": "input1",
+              "type": "文本",
+              "var": "node_vars.JSON文本包装 1_output1"
+            },
+            {
+              "name": "fefeffef",
+              "type": "文本",
+              "var": "无"
+            },
+            {
+              "name": "test",
+              "type": "文本",
+              "var": "无"
+            }
+          ],
+          "output_ports": [
+            {
+              "name": "",
+              "type": "文本"
+            }
+          ],
+          "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    # 在这里编写你的组件逻辑\n    input_data = inputs.get(\"input_data\") if inputs else None\n    param1 = params.get(\"param1\", \"default_value\")\n    # 处理逻辑\n    result = f\"处理结果: {input_data} + {param1}\"\n    return {\n        \"output_data\": result\n    }"
+        }
+      },
+      "0x234d4b13fd0": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+        "icon": null,
+        "name": "文本输入 5",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 417.0,
+        "height": 258.05,
+        "pos": [
+          -1285.5922651926996,
+          -375.5498775106774
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "a4f5b7a2-726a-43f8-823c-9ad4459e26d1",
+          "debug_code": {},
+          "input": "文本内容"
+        }
+      },
+      "0x234de06efb0": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
+        "icon": null,
+        "name": "JSON文本包装 5",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 339.0,
+        "height": 91.10000000000001,
+        "pos": [
+          783.5927315255392,
+          202.30939613932105
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore",
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": "0.,.12321",
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "JSON文本包装 1_output1": {
+                "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+              }
+            }
+          },
+          "persistent_id": "3de3a575-68e7-4997-bec1-02092bfdf83f",
+          "debug_code": {},
+          "prop_0": "text"
+        }
+      }
+    },
+    "connections": [
+      {
+        "out": [
+          "0x234d1a73af0",
+          "text"
+        ],
+        "in": [
+          "0x234dbaddcc0",
+          "inputs"
+        ]
+      },
+      {
+        "in": [
+          "0x234dbadc250",
+          "input1"
+        ],
+        "out": [
+          "0x234dbadf9a0",
+          "output"
+        ]
+      },
+      {
+        "out": [
+          "0x234dbadc250",
+          "output1"
+        ],
+        "in": [
+          "0x234dbade0e0",
+          "input"
+        ]
+      },
+      {
+        "in": [
+          "0x234dbaddcc0",
+          "inputs"
+        ],
+        "out": [
+          "0x234d4b13fd0",
+          "text"
+        ]
+      },
+      {
+        "out": [
+          "0x234dbaddcc0",
+          "outputs"
+        ],
+        "in": [
+          "0x234dbaddba0",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x234dbade800",
+          "text"
+        ],
+        "in": [
+          "0x234ddf3bbe0",
+          "inputs"
+        ]
+      },
+      {
+        "in": [
+          "0x234d5011660",
+          "input1"
+        ],
+        "out": [
+          "0x234ddf3a590",
+          "output"
+        ]
+      },
+      {
+        "out": [
+          "0x234d5011660",
+          "output1"
+        ],
+        "in": [
+          "0x234ddf3a950",
+          "input1"
+        ]
+      },
+      {
+        "in": [
+          "0x234ddf3a8c0",
+          "input"
+        ],
+        "out": [
+          "0x234ddf38c40",
+          "output1"
+        ]
+      },
+      {
+        "in": [
+          "0x234ddf3bbe0",
+          "inputs"
+        ],
+        "out": [
+          "0x234ddf3b9d0",
+          "text"
+        ]
+      },
+      {
+        "in": [
+          "0x234ddf3bbe0",
+          "inputs"
+        ],
+        "out": [
+          "0x234ddf3b460",
+          "text"
+        ]
+      },
+      {
+        "out": [
+          "0x234ddf3bbe0",
+          "outputs"
+        ],
+        "in": [
+          "0x234de06efb0",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x234ddf3a950",
+          "output1"
+        ],
+        "in": [
+          "0x234ddf38c40",
+          "input1"
+        ]
+      },
+      {
+        "in": [
+          "0x234ddf39030",
+          "input1"
+        ],
+        "out": [
+          "0x234ddf3ac20",
+          "output"
+        ]
+      },
+      {
+        "out": [
+          "0x234ddf39030",
+          "output1"
+        ],
+        "in": [
+          "0x234ddf39e10",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x234ddf39e10",
+          "output1"
+        ],
+        "in": [
+          "0x234ddf380d0",
+          "input"
+        ]
+      },
+      {
+        "in": [
+          "0x234ddf3a1a0",
+          "input1"
+        ],
+        "out": [
+          "0x234ddf3ac20",
+          "output"
+        ]
+      },
+      {
+        "out": [
+          "0x234ddf3a1a0",
+          "output1"
+        ],
+        "in": [
+          "0x234ddf380d0",
+          "input"
+        ]
+      },
+      {
+        "out": [
+          "0x234ddf38820",
+          "text"
+        ],
+        "in": [
+          "0x234ddf39750",
+          "inputs"
+        ]
+      },
+      {
+        "in": [
+          "0x234ddf39210",
+          "input1"
+        ],
+        "out": [
+          "0x234ddf39750",
+          "outputs"
+        ]
+      },
+      {
+        "in": [
+          "0x234ddf3b100",
+          "input"
+        ],
+        "out": [
+          "0x234de06fb20",
+          "output1"
+        ]
+      },
+      {
+        "out": [
+          "0x234ddf3b100",
+          "test_port"
+        ],
+        "in": [
+          "0x234de14d4e0",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x234ddf3b100",
+          "branch2"
+        ],
+        "in": [
+          "0x234de06f8b0",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x234ddf3b100",
+          "else"
+        ],
+        "in": [
+          "0x234dbb67250",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x234de06f8b0",
+          "output1"
+        ],
+        "in": [
+          "0x234dbb67670",
+          "query"
+        ]
+      },
+      {
+        "out": [
+          "0x234dbb67250",
+          "output1"
+        ],
+        "in": [
+          "0x234dbb670a0",
+          "file_path"
+        ]
+      }
+    ]
+  },
+  "runtime": {
+    "environment": "3.14",
+    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.14\\python.exe",
+    "node_id2stable_key": {
+      "0x234d1a73af0": "数据集成/文本输入||文本输入",
+      "0x234dbadc250": "测试组件/添加字符串||添加字符串",
+      "0x234dbadf9a0": "控制流/输入端口||输入端口",
+      "0x234dbade0e0": "控制流/输出端口||输出端口",
+      "0x234dbaddcc0": "控制流/迭代控制流区域||迭代控制流区域",
+      "0x234dbaddba0": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x234dbade800": "数据集成/文本输入||文本输入 1",
+      "0x234d5011660": "测试组件/添加字符串||添加字符串 1",
+      "0x234ddf39960": "大模型组件/JSON文本包装||JSON文本包装 1",
+      "0x234ddf3a590": "控制流/输入端口||输入端口 1",
+      "0x234ddf3a8c0": "控制流/输出端口||输出端口 1",
+      "0x234ddf3bbe0": "控制流/循环控制流区域||循环控制流区域",
+      "0x234ddf3b9d0": "数据集成/文本输入||文本输入 2",
+      "0x234ddf3b460": "数据集成/文本输入||文本输入 3",
+      "0x234ddf3a950": "测试组件/添加字符串||添加字符串 2",
+      "0x234ddf38c40": "测试组件/添加字符串||添加字符串 3",
+      "0x234ddf39030": "测试组件/添加字符串||添加字符串 4",
+      "0x234ddf39e10": "测试组件/添加字符串||添加字符串 5",
+      "0x234ddf3a1a0": "测试组件/添加字符串||添加字符串 6",
+      "0x234ddf3ac20": "控制流/输入端口||输入端口 3",
+      "0x234ddf380d0": "控制流/输出端口||输出端口 2",
+      "0x234ddf38820": "数据集成/文本输入||文本输入 4",
+      "0x234ddf39210": "大模型组件/JSON文本包装||JSON文本包装 2",
+      "0x234ddf39750": "控制流/迭代控制流区域||迭代控制流区域 1",
+      "0x234ddf3b100": "控制流/条件分支||条件分支",
+      "0x234de06fb20": "数据集成/获取全局变量||获取全局变量",
+      "0x234de06f8b0": "大模型组件/JSON文本包装||JSON文本包装 3",
+      "0x234dbb67250": "大模型组件/JSON文本包装||JSON文本包装 4",
+      "0x234dbb65780": "大模型组件/构建多轮对话||构建多轮对话",
+      "0x234dbb670a0": "大模型组件/文档内容提取||文档内容提取",
+      "0x234dbb67670": "大模型组件/知识库查询||知识库查询",
+      "0x234de14d4e0": "代码执行/代码编辑||代码编辑",
+      "0x234d4b13fd0": "数据集成/文本输入||文本输入 5",
+      "0x234de06efb0": "大模型组件/JSON文本包装||JSON文本包装 5"
+    },
+    "node_states": {
+      "数据集成/文本输入||文本输入": "success",
+      "测试组件/添加字符串||添加字符串": "success",
+      "控制流/输入端口||输入端口": "unrun",
+      "控制流/输出端口||输出端口": "unrun",
+      "控制流/迭代控制流区域||迭代控制流区域": "success",
+      "大模型组件/JSON文本包装||JSON文本包装": "success",
+      "数据集成/文本输入||文本输入 1": "success",
+      "测试组件/添加字符串||添加字符串 1": "success",
+      "大模型组件/JSON文本包装||JSON文本包装 1": "success",
+      "控制流/输入端口||输入端口 1": "pending",
+      "控制流/输出端口||输出端口 1": "pending",
+      "控制流/循环控制流区域||循环控制流区域": "success",
+      "数据集成/文本输入||文本输入 2": "success",
+      "数据集成/文本输入||文本输入 3": "success",
+      "测试组件/添加字符串||添加字符串 2": "success",
+      "测试组件/添加字符串||添加字符串 3": "success",
+      "测试组件/添加字符串||添加字符串 4": "success",
+      "测试组件/添加字符串||添加字符串 5": "success",
+      "测试组件/添加字符串||添加字符串 6": "success",
+      "控制流/输入端口||输入端口 3": "pending",
+      "控制流/输出端口||输出端口 2": "pending",
+      "数据集成/文本输入||文本输入 4": "success",
+      "大模型组件/JSON文本包装||JSON文本包装 2": "success",
+      "控制流/迭代控制流区域||迭代控制流区域 1": "success",
+      "控制流/条件分支||条件分支": "unrun",
+      "数据集成/获取全局变量||获取全局变量": "success",
+      "大模型组件/JSON文本包装||JSON文本包装 3": "success",
+      "大模型组件/JSON文本包装||JSON文本包装 4": "unrun",
+      "大模型组件/构建多轮对话||构建多轮对话": "unrun",
+      "大模型组件/文档内容提取||文档内容提取": "unrun",
+      "大模型组件/知识库查询||知识库查询": "success",
+      "代码执行/代码编辑||代码编辑": "unrun",
+      "数据集成/文本输入||文本输入 5": "success",
+      "大模型组件/JSON文本包装||JSON文本包装 5": "success"
+    },
+    "node_inputs": {
+      "数据集成/文本输入||文本输入": {},
+      "测试组件/添加字符串||添加字符串": {},
+      "控制流/输入端口||输入端口": {},
+      "控制流/输出端口||输出端口": {},
+      "控制流/迭代控制流区域||迭代控制流区域": null,
+      "大模型组件/JSON文本包装||JSON文本包装": {},
+      "数据集成/文本输入||文本输入 1": {},
+      "测试组件/添加字符串||添加字符串 1": {},
+      "大模型组件/JSON文本包装||JSON文本包装 1": {},
+      "控制流/输入端口||输入端口 1": {},
+      "控制流/输出端口||输出端口 1": {},
+      "控制流/循环控制流区域||循环控制流区域": null,
+      "数据集成/文本输入||文本输入 2": {},
+      "数据集成/文本输入||文本输入 3": {},
+      "测试组件/添加字符串||添加字符串 2": {},
+      "测试组件/添加字符串||添加字符串 3": {},
+      "测试组件/添加字符串||添加字符串 4": {},
+      "测试组件/添加字符串||添加字符串 5": {},
+      "测试组件/添加字符串||添加字符串 6": {},
+      "控制流/输入端口||输入端口 3": {},
+      "控制流/输出端口||输出端口 2": {},
+      "数据集成/文本输入||文本输入 4": {},
+      "大模型组件/JSON文本包装||JSON文本包装 2": {},
+      "控制流/迭代控制流区域||迭代控制流区域 1": null,
+      "控制流/条件分支||条件分支": {},
+      "数据集成/获取全局变量||获取全局变量": {},
+      "大模型组件/JSON文本包装||JSON文本包装 3": {},
+      "大模型组件/JSON文本包装||JSON文本包装 4": {},
+      "大模型组件/构建多轮对话||构建多轮对话": {},
+      "大模型组件/文档内容提取||文档内容提取": {},
+      "大模型组件/知识库查询||知识库查询": {},
+      "代码执行/代码编辑||代码编辑": {},
+      "数据集成/文本输入||文本输入 5": {},
+      "大模型组件/JSON文本包装||JSON文本包装 5": {}
+    },
+    "node_outputs": {
+      "数据集成/文本输入||文本输入": {
+        "text": "文本内容"
+      },
+      "测试组件/添加字符串||添加字符串": {
+        "output1": "文本内容en_US.UTF-8"
+      },
+      "控制流/输入端口||输入端口": {},
+      "控制流/输出端口||输出端口": {},
+      "控制流/迭代控制流区域||迭代控制流区域": {
+        "outputs": [
+          "文本内容en_US.UTF-8",
+          "文本内容en_US.UTF-8"
+        ]
+      },
+      "大模型组件/JSON文本包装||JSON文本包装": {
+        "output1": {
+          "text": "['文本内容en_US.UTF-8', '文本内容en_US.UTF-8']"
+        }
+      },
+      "数据集成/文本输入||文本输入 1": {
+        "text": "文本内容"
+      },
+      "测试组件/添加字符串||添加字符串 1": {
+        "output1": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8"
+      },
+      "大模型组件/JSON文本包装||JSON文本包装 1": {
+        "output1": {
+          "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+        }
+      },
+      "控制流/输入端口||输入端口 1": {
+        "output": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321"
+      },
+      "控制流/输出端口||输出端口 1": {},
+      "控制流/循环控制流区域||循环控制流区域": {
+        "outputs": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321"
+      },
+      "数据集成/文本输入||文本输入 2": {
+        "text": "文本内容"
+      },
+      "数据集成/文本输入||文本输入 3": {
+        "text": "文本内容"
+      },
+      "测试组件/添加字符串||添加字符串 2": {
+        "output1": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore"
+      },
+      "测试组件/添加字符串||添加字符串 3": {
+        "output1": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+      },
+      "测试组件/添加字符串||添加字符串 4": {
+        "output1": "文本内容ignore"
+      },
+      "测试组件/添加字符串||添加字符串 5": {
+        "output1": "文本内容ignoreen_US.UTF-8"
+      },
+      "测试组件/添加字符串||添加字符串 6": {
+        "output1": "文本内容Asia/Shanghai"
+      },
+      "控制流/输入端口||输入端口 3": {
+        "output": "文本内容"
+      },
+      "控制流/输出端口||输出端口 2": {},
+      "数据集成/文本输入||文本输入 4": {
+        "text": "文本内容"
+      },
+      "大模型组件/JSON文本包装||JSON文本包装 2": {
+        "output1": {
+          "text": "['文本内容ignoreen_US.UTF-8', '文本内容Asia/Shanghai']"
+        }
+      },
+      "控制流/迭代控制流区域||迭代控制流区域 1": {
+        "outputs": [
+          "文本内容ignoreen_US.UTF-8",
+          "文本内容Asia/Shanghai"
+        ]
+      },
+      "控制流/条件分支||条件分支": {},
+      "数据集成/获取全局变量||获取全局变量": {
+        "output1": "0"
+      },
+      "大模型组件/JSON文本包装||JSON文本包装 3": {
+        "output1": {
+          "text": "{'input': '0'}"
+        }
+      },
+      "大模型组件/JSON文本包装||JSON文本包装 4": {},
+      "大模型组件/构建多轮对话||构建多轮对话": {},
+      "大模型组件/文档内容提取||文档内容提取": {},
+      "大模型组件/知识库查询||知识库查询": {
+        "context": "Python 是一种高级编程语言。\n\n大模型可以生成文本、代码等。\n\n大模型可以生成文本、代码等。",
+        "documents": [
+          {
+            "content": "Python 是一种高级编程语言。",
+            "score": 0.95
+          },
+          {
+            "content": "大模型可以生成文本、代码等。",
+            "score": 0.89
+          },
+          {
+            "content": "大模型可以生成文本、代码等。",
+            "score": 0.89
+          }
+        ]
+      },
+      "代码执行/代码编辑||代码编辑": {},
+      "数据集成/文本输入||文本输入 5": {
+        "text": "文本内容"
+      },
+      "大模型组件/JSON文本包装||JSON文本包装 5": {
+        "output1": {
+          "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321"
+        }
+      }
+    },
+    "column_select": {
+      "数据集成/文本输入||文本输入": {},
+      "测试组件/添加字符串||添加字符串": {},
+      "控制流/输入端口||输入端口": {},
+      "控制流/输出端口||输出端口": {},
+      "控制流/迭代控制流区域||迭代控制流区域": null,
+      "大模型组件/JSON文本包装||JSON文本包装": {},
+      "数据集成/文本输入||文本输入 1": {},
+      "测试组件/添加字符串||添加字符串 1": {},
+      "大模型组件/JSON文本包装||JSON文本包装 1": {},
+      "控制流/输入端口||输入端口 1": {},
+      "控制流/输出端口||输出端口 1": {},
+      "控制流/循环控制流区域||循环控制流区域": null,
+      "数据集成/文本输入||文本输入 2": {},
+      "数据集成/文本输入||文本输入 3": {},
+      "测试组件/添加字符串||添加字符串 2": {},
+      "测试组件/添加字符串||添加字符串 3": {},
+      "测试组件/添加字符串||添加字符串 4": {},
+      "测试组件/添加字符串||添加字符串 5": {},
+      "测试组件/添加字符串||添加字符串 6": {},
+      "控制流/输入端口||输入端口 3": {},
+      "控制流/输出端口||输出端口 2": {},
+      "数据集成/文本输入||文本输入 4": {},
+      "大模型组件/JSON文本包装||JSON文本包装 2": {},
+      "控制流/迭代控制流区域||迭代控制流区域 1": null,
+      "控制流/条件分支||条件分支": {},
+      "数据集成/获取全局变量||获取全局变量": {},
+      "大模型组件/JSON文本包装||JSON文本包装 3": {},
+      "大模型组件/JSON文本包装||JSON文本包装 4": {},
+      "大模型组件/构建多轮对话||构建多轮对话": {},
+      "大模型组件/文档内容提取||文档内容提取": {},
+      "大模型组件/知识库查询||知识库查询": {},
+      "代码执行/代码编辑||代码编辑": {},
+      "数据集成/文本输入||文本输入 5": {},
+      "大模型组件/JSON文本包装||JSON文本包装 5": {}
+    }
+  },
+  "global_variable": {
+    "env": {
+      "user_id": null,
+      "canvas_id": null,
+      "session_id": null,
+      "run_id": null,
+      "metadata": {
+        "PYTHONPATH": ".",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONWARNINGS": "ignore",
+        "TZ": "Asia/Shanghai",
+        "LANG": "en_US.UTF-8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "0"
+      }
+    },
+    "custom": {
+      "test": {
+        "value": "0.,.12321",
+        "description": null,
+        "read_only": false
+      }
+    },
+    "node_vars": {
+      "JSON文本包装 1_output1": {
+        "text": "['文本内容', '文本内容', '文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+      }
+    }
+  }
+}

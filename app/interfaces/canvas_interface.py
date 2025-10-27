@@ -34,7 +34,7 @@ from app.utils.config import Settings
 from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon
-from app.widgets.custom_nodegraph import CustomNodeGraph
+from app.widgets.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
 from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
 from app.widgets.dialog_widget.output_selection_dialog import OutputSelectionDialog
@@ -96,7 +96,7 @@ class CanvasPage(QWidget):
             logger.info("Canvas AutoSave disabled by config.")
         # ---
         # 初始化 NodeGraph
-        self.graph = CustomNodeGraph()
+        self.graph = CustomNodeGraph(viewer=CustomNodeViewer())
         self.graph.node_created.connect(self.on_node_created)
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
@@ -944,7 +944,9 @@ class CanvasPage(QWidget):
             else:
                 selected_output_items = []
             # === 构建 project_spec.json ===
-            project_spec = {"version": "1.0", "graph_name": self.workflow_name, "inputs": {}, "outputs": {}}
+            project_spec = serialize_for_json(
+                {"version": "1.0", "graph_name": self.workflow_name, "inputs": {}, "outputs": {}}
+            )
             for item in selected_input_items:
                 key = item.get("custom_key", f"input_{len(project_spec['inputs'])}")
                 project_spec["inputs"][key] = item
@@ -1173,13 +1175,15 @@ class CanvasPage(QWidget):
                 "connections": new_connections,
                 "grid": self.graph.serialize_session().get("grid", None)
             }
-            project_data = {
-                "version": "1.0",
-                "graph": graph_data,
-                "runtime": runtime_data,
-                "candidate_inputs": candidate_inputs,
-                "candidate_outputs": candidate_outputs
-            }
+            project_data = serialize_for_json(
+                {
+                    "version": "1.0",
+                    "graph": graph_data,
+                    "runtime": runtime_data,
+                    "candidate_inputs": candidate_inputs,
+                    "candidate_outputs": candidate_outputs
+                }
+            )
             (export_path / "model.workflow.json").write_text(
                 json.dumps(project_data, indent=2, ensure_ascii=False), encoding='utf-8'
             )

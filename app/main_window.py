@@ -7,6 +7,7 @@ from qfluentwidgets import FluentWindow, Theme, setTheme, NavigationItemPosition
 
 from app.interfaces.component_developer import ComponentDeveloperWidget
 from app.interfaces.exported_project_interface import ExportedProjectsPage
+from app.interfaces.home_interface import HomeInterface
 from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
@@ -23,6 +24,7 @@ class LowCodeWindow(FluentWindow):
         self.config = Settings.get_instance()
         self.setWindowIcon(get_icon("logo3"))
         self.setWindowTitle("Canvas Mind")
+        self.navigationInterface.setAcrylicEnabled(True)
         # 初始化日志查看器
         self.setup_log_viwer()
         # 自动最大化窗口
@@ -41,12 +43,16 @@ class LowCodeWindow(FluentWindow):
         self.splashScreen.setIconSize(QSize(400, 400))
         self.show()
         # 创建主界面页面
-        self.package_manager = EnvManagerUI()
-        self.package_manager.mgr.install_miniconda()
+        self.workflow_manager = WorkflowCanvasGalleryPage(self)
+        self.package_manager = EnvManagerUI(self)
         self.develop_page = ComponentDeveloperWidget(self)
         self.project_manager = ExportedProjectsPage(self)
-        self.workflow_manager = WorkflowCanvasGalleryPage(self)
+        self.home_interface = HomeInterface(self)
+
+        # 自动安装miniconda环境
+        self.package_manager.mgr.install_miniconda()
         # 添加主界面页面
+        self.addSubInterface(self.home_interface, FluentIcon.HOME, '首页')
         workflow_interface = self.addSubInterface(self.workflow_manager, get_icon("画布管理"), '画布管理')
         workflow_interface.clicked.connect(self.workflow_manager._schedule_refresh)
         devp_interface = self.addSubInterface(self.develop_page, get_icon("组件"), '组件管理')
