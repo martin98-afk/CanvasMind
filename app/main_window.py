@@ -44,10 +44,10 @@ class LowCodeWindow(FluentWindow):
         self.show()
         # 创建主界面页面
         self.workflow_manager = WorkflowCanvasGalleryPage(self)
-        self.home_interface = HomeInterface(self, self.workflow_manager)
         self.package_manager = EnvManagerUI(self)
         self.develop_page = ComponentDeveloperWidget(self)
         self.project_manager = ExportedProjectsPage(self)
+        self.home_interface = HomeInterface(self)
 
         # 自动安装miniconda环境
         self.package_manager.mgr.install_miniconda()

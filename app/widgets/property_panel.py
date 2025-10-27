@@ -440,21 +440,73 @@ class PropertyPanel(CardWidget):
         columns = list(data.columns)
         if not columns:
             return
+
+        # --- 新增：列选择卡片 ---
         column_card = CardWidget(self)
-        column_card.setMaximumHeight(280)
+        initial_max_height = 200  # 初始显示的最大高度
+        column_card.setMaximumHeight(initial_max_height)
+        column_card.setMinimumHeight(initial_max_height)
+
+        # 用于存储该卡片的展开/收缩状态 (使用 port_name 作为唯一标识)
+        node_id = node.id
+        port_identifier = f"{node_id}_{port_name}"  # 组合 node_id 和 port_name 确保唯一性
+        if not hasattr(self, '_column_selector_card_expanded'):
+            self._column_selector_card_expanded = {}
+        self._column_selector_card_expanded[port_identifier] = False
+
         card_layout = QVBoxLayout(column_card)
         card_layout.setContentsMargins(4, 4, 4, 4)
         card_layout.setSpacing(8)
+
+        # --- 新增：标题和展开/收缩按钮布局 ---
+        title_btn_layout = QHBoxLayout()
         title_label = BodyLabel("列选择:")
-        card_layout.addWidget(title_label)
+        title_btn_layout.addWidget(title_label)
+        title_btn_layout.addStretch()
+
+        expand_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
+        expand_btn.setFixedSize(QSize(26, 20))
+
+        def toggle_expand():
+            is_expanded = self._column_selector_card_expanded[port_identifier]
+            if is_expanded:
+                # 收起
+                column_card.setMaximumHeight(initial_max_height)
+                column_card.setMinimumHeight(initial_max_height)
+                expand_btn.setIcon(get_icon("放大"))
+                self._column_selector_card_expanded[port_identifier] = False
+            else:
+                # 展开
+                # 计算展开所需的高度 (估算每个列表项大约 35 像素)
+                num_items = list_widget.count()
+                estimated_height_for_items = num_items * 40
+                # 估算布局填充和标题的高度
+                padding_height = card_layout.contentsMargins().top() + card_layout.contentsMargins().bottom()
+                # 标题和按钮布局的高度 (BodyLabel + Layout spacing)
+                title_height = title_label.sizeHint().height() + card_layout.spacing()
+                total_estimated_height = padding_height + title_height + estimated_height_for_items
+                # 如果需要完全展开，可以设置固定高度
+                column_card.setFixedHeight(total_estimated_height + 50)
+                expand_btn.setIcon(get_icon("缩小"))
+                self._column_selector_card_expanded[port_identifier] = True
+            # 调用布局无效化以触发更新
+            # 由于 column_card 在 self.node_vbox 中，需要更新父布局
+            self.node_vbox.invalidate()
+
+        expand_btn.clicked.connect(toggle_expand)
+        title_btn_layout.addWidget(expand_btn)
+        card_layout.addLayout(title_btn_layout)
+        # --- 结束新增 ---
+
         list_widget = ListWidget(self)
         list_widget.setSelectionMode(ListWidget.NoSelection)
-        list_widget.setFixedHeight(140)
+
         for col in columns:
             item = QListWidgetItem(col)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Unchecked)
             list_widget.addItem(item)
+
         selected_columns = node.column_select.get(port_name, [])
         if not selected_columns and columns:
             selected_columns = columns.copy()
@@ -462,18 +514,23 @@ class PropertyPanel(CardWidget):
         for i in range(list_widget.count()):
             item = list_widget.item(i)
             item.setCheckState(Qt.Checked if item.text() in selected_columns else Qt.Unchecked)
+
         card_layout.addWidget(list_widget)
+
         btn_layout = QHBoxLayout()
         select_all_btn = PushButton("全选", self)
         clear_btn = PushButton("清空", self)
+
         def select_all():
             for i in range(list_widget.count()):
                 list_widget.item(i).setCheckState(Qt.Checked)
             _on_selection_changed()
+
         def clear_all():
             for i in range(list_widget.count()):
                 list_widget.item(i).setCheckState(Qt.Unchecked)
             _on_selection_changed()
+
         def _on_selection_changed():
             current_selected = [
                 list_widget.item(i).text()
@@ -486,10 +543,14 @@ class PropertyPanel(CardWidget):
         select_all_btn.clicked.connect(select_all)
         clear_btn.clicked.connect(clear_all)
         list_widget.itemChanged.connect(_on_selection_changed)
+
         btn_layout.addWidget(select_all_btn)
         btn_layout.addWidget(clear_btn)
         card_layout.addLayout(btn_layout)
+
         layout.addWidget(column_card)
+
+        # 存储 list_widget 以便后续更新
         self._column_list_widgets[port_name] = list_widget
 
     def _add_text_edit_to_layout(self, text, port_type=None, port_name=None, layout=None, node=None, is_output=False):

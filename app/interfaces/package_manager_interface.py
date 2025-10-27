@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
 )
 from qfluentwidgets import (
     ComboBox, PrimaryPushButton, LineEdit, TableWidget,
-    FluentIcon, InfoBar, SearchLineEdit, TextEdit, PushButton, MessageBox, BodyLabel
+    FluentIcon, InfoBar, SearchLineEdit, TextEdit, PushButton, MessageBox, BodyLabel, StateToolTip
 )
 
 from app.utils.env_operation import EnvironmentManager
@@ -51,6 +51,7 @@ class EnvManagerUI(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.home = parent
         self.setObjectName("EnvManagerUI")
         self.resize(1000, 600)
         self.setStyleSheet("""
@@ -473,14 +474,14 @@ class EnvManagerUI(QWidget):
             # 添加一个小延迟，确保pip操作完全完成
             QTimer.singleShot(1000, lambda: self.load_packages(self.current_env))
 
-    def create_env(self):
+    def create_env(self, window=None):
         """新建环境：选择版本和环境名"""
         # 创建选择Python版本的对话框
         version_dialog = CustomComboDialog(
             "选择 Python 版本",
             list(self.mgr.MINICONDA_URLS.keys()),
             0,
-            self
+            window or self
         )
 
         if version_dialog.exec_():
@@ -491,7 +492,7 @@ class EnvManagerUI(QWidget):
                 f"输入环境名称（默认为 {version}）",
                 placeholder="请输入环境名称",
                 currenttext=version,
-                parent=self
+                parent=window or self
             )
 
             if env_name_dialog.exec_():
@@ -503,10 +504,14 @@ class EnvManagerUI(QWidget):
 
                 try:
                     self.mgr.download_and_install(version, env_name=env_name, log_callback=self.logEdit.append)
+                    state_tooltip = StateToolTip("正在安装环境", "请稍候...", window or self)
+                    state_tooltip.move(self.home.width() - state_tooltip.width() - 30, 20)
+                    state_tooltip.show()
                     self.mgr.install_finished.connect(
                         lambda: (
+                            state_tooltip.close(),
                             self.refresh_env_list(),
-                            InfoBar.success("成功", f"环境 {env_name} 已创建", parent=self),
+                            InfoBar.success("成功", f"环境 {env_name} 已创建", parent=window or self),
                             self.envCombo.setCurrentText(env_name),
                             self.env_changed.emit()
                         )
@@ -514,7 +519,7 @@ class EnvManagerUI(QWidget):
                 except Exception as e:
                     import traceback
                     print(traceback.format_exc())
-                    InfoBar.error("错误", str(e), parent=self)
+                    InfoBar.error("错误", str(e), parent=window or self)
 
     def clone_env(self):
         # 克隆环境

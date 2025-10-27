@@ -2,6 +2,147 @@ import json
 
 from NodeGraphQt import NodeGraph, BaseNode
 from NodeGraphQt.base.commands import PortConnectedCmd
+from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE
+from NodeGraphQt.qgraphics.pipe import LivePipeItem
+from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
+from NodeGraphQt.widgets.actions import BaseMenu
+from NodeGraphQt.widgets.scene import NodeScene
+from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
+from NodeGraphQt.widgets.viewer import NodeViewer
+from qtpy import QtGui, QtCore, QtWidgets
+
+
+class CustomNodeScene(NodeScene):
+
+    def _draw_dots(self, painter, rect, pen, grid_size):
+        """
+        draws the grid dots in the scene.
+
+        Args:
+            painter (QtGui.QPainter): painter object.
+            rect (QtCore.QRectF): rect object.
+            pen (QtGui.QPen): pen object.
+            grid_size (int): grid size.
+        """
+        zoom = self.viewer().get_zoom()
+        if zoom < 0:
+            grid_size = int(abs(zoom) / 0.3 + 1) * grid_size
+
+        left = int(rect.left())
+        right = int(rect.right())
+        top = int(rect.top())
+        bottom = int(rect.bottom())
+
+        first_left = left - (left % grid_size)
+        first_top = top - (top % grid_size)
+
+        pen.setWidth(grid_size // 10)
+        painter.setPen(pen)
+
+        [painter.drawPoint(int(x), int(y))
+         for x in range(first_left, right, grid_size)
+         for y in range(first_top, bottom, grid_size)]
+
+
+class CustomNodeViewer(NodeViewer):
+
+    def __init__(self, parent=None, undo_stack=None):
+        super(CustomNodeViewer, self).__init__(parent)
+        self.setScene(CustomNodeScene(self))
+        self.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.setViewportUpdateMode(QtWidgets.QGraphicsView.BoundingRectViewportUpdate)
+        self.setCacheMode(QtWidgets.QGraphicsView.CacheBackground)
+
+        self.setAcceptDrops(True)
+        self.resize(850, 800)
+
+        self._scene_range = QtCore.QRectF(
+            0, 0, self.size().width(), self.size().height())
+        self._update_scene()
+        self._last_size = self.size()
+
+        self._layout_direction = LayoutDirectionEnum.HORIZONTAL.value
+
+        self._pipe_layout = PipeLayoutEnum.CURVED.value
+        self._detached_port = None
+        self._start_port = None
+        self._origin_pos = None
+        self._previous_pos = QtCore.QPoint(int(self.width() / 2),
+                                           int(self.height() / 2))
+        self._prev_selection_nodes = []
+        self._prev_selection_pipes = []
+        self._node_positions = {}
+
+        self._rubber_band = QtWidgets.QRubberBand(
+            QtWidgets.QRubberBand.Rectangle, self
+        )
+        self._rubber_band.isActive = False
+
+        text_color = QtGui.QColor(*tuple(map(
+            lambda i, j: i - j, (255, 255, 255),
+            ViewerEnum.BACKGROUND_COLOR.value
+        )))
+        text_color.setAlpha(50)
+        self._cursor_text = QtWidgets.QGraphicsTextItem()
+        self._cursor_text.setFlag(
+            QtWidgets.QGraphicsTextItem.ItemIsSelectable, False
+        )
+        self._cursor_text.setDefaultTextColor(text_color)
+        self._cursor_text.setZValue(Z_VAL_PIPE - 1)
+        font = self._cursor_text.font()
+        font.setPointSize(7)
+        self._cursor_text.setFont(font)
+        self.scene().addItem(self._cursor_text)
+
+        self._LIVE_PIPE = LivePipeItem()
+        self._LIVE_PIPE.setVisible(False)
+        self.scene().addItem(self._LIVE_PIPE)
+
+        self._SLICER_PIPE = SlicerPipeItem()
+        self._SLICER_PIPE.setVisible(False)
+        self.scene().addItem(self._SLICER_PIPE)
+
+        self._search_widget = TabSearchMenuWidget()
+        self._search_widget.search_submitted.connect(self._on_search_submitted)
+
+        # workaround fix for shortcuts from the non-native menu.
+        # actions don't seem to trigger so we create a hidden menu bar.
+        self._ctx_menu_bar = QtWidgets.QMenuBar(self)
+        self._ctx_menu_bar.setNativeMenuBar(False)
+        # shortcuts don't work with "setVisibility(False)".
+        self._ctx_menu_bar.setMaximumSize(0, 0)
+
+        # context menus.
+        self._ctx_graph_menu = BaseMenu('NodeGraph', self)
+        self._ctx_node_menu = BaseMenu('Nodes', self)
+
+        if undo_stack:
+            self._undo_action = undo_stack.createUndoAction(self, '&Undo')
+            self._redo_action = undo_stack.createRedoAction(self, '&Redo')
+        else:
+            self._undo_action = None
+            self._redo_action = None
+
+        self._build_context_menus()
+
+        self.acyclic = True
+        self.pipe_collision = False
+        self.pipe_slicing = True
+
+        self.LMB_state = False
+        self.RMB_state = False
+        self.MMB_state = False
+        self.ALT_state = False
+        self.CTRL_state = False
+        self.SHIFT_state = False
+        self.COLLIDING_state = False
+
+        # connection constrains.
+        # TODO: maybe this should be a reference to the graph model instead?
+        self.accept_connection_types = None
+        self.reject_connection_types = None
 
 
 class CustomNodeGraph(NodeGraph):

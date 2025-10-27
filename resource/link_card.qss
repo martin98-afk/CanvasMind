@@ -5,7 +5,7 @@ LinkCard {
 }
 
 LinkCard:hover {
-    background-color: rgba(39, 39, 39, 0.93);
+    background-color: rgba(39, 39, 39, 0.5);
     border: 1px solid rgb(66, 66, 66);
 }
 

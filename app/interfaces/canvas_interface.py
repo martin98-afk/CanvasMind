@@ -34,7 +34,7 @@ from app.utils.config import Settings
 from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon
-from app.widgets.custom_nodegraph import CustomNodeGraph
+from app.widgets.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
 from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
 from app.widgets.dialog_widget.output_selection_dialog import OutputSelectionDialog
@@ -96,7 +96,7 @@ class CanvasPage(QWidget):
             logger.info("Canvas AutoSave disabled by config.")
         # ---
         # 初始化 NodeGraph
-        self.graph = CustomNodeGraph()
+        self.graph = CustomNodeGraph(viewer=CustomNodeViewer())
         self.graph.node_created.connect(self.on_node_created)
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()

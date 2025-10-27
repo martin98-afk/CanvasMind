@@ -562,7 +562,11 @@ class VariableTreeWidget(TreeWidget):
                     if not slot.startswith('_'):
                         self._build_nested_tree(attr_value, parent_item, slot, max_depth, current_depth)
 
-    def _preview_dataframe_full(self, df: pd.DataFrame):
+    def _preview_dataframe_full(self, df: pd.DataFrame, max_rows=1000):
+        # 限制数据框的行数
+        if df.shape[0] > max_rows:
+            df = df.head(max_rows)
+
         dialog = MessageBoxBase(parent=self.parent_widget)
         dialog.yesButton.hide()
         dialog.cancelButton.setText("关闭")
@@ -591,7 +595,8 @@ class VariableTreeWidget(TreeWidget):
     def _preview_csv_full(self, filepath):
         try:
             df = pd.read_csv(filepath)
-            self._preview_dataframe_full(df)
+            # 调用时传递最大行数限制
+            self._preview_dataframe_full(df, max_rows=1000)
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition
             InfoBar.error(

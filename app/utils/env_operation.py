@@ -17,7 +17,7 @@ class EnvironmentManager(QObject):
 
     # 信号
     log_signal = pyqtSignal(str)
-    install_finished = pyqtSignal()  # 传递结果或异常
+    install_finished = pyqtSignal(str)  # 传递结果或异常
     miniconda_install_finished = pyqtSignal(object)
     remove_finished = pyqtSignal(object)
 
@@ -212,7 +212,7 @@ class EnvironmentManager(QObject):
             env_path = python_exe.parent
             self.meta[env_name] = str(env_path)
             self._save_meta(self.meta)
-            self.install_finished.emit(env_path)
+            self.install_finished.emit(str(env_path))
             return
 
         if log_callback:
@@ -253,7 +253,7 @@ class EnvironmentManager(QObject):
             env_path = python_exe.parent
             self.meta[target_env] = str(env_path)
             self._save_meta(self.meta)
-            self.install_finished.emit(env_path)
+            self.install_finished.emit(str(env_path))
             return
 
         if log_callback:
@@ -343,7 +343,7 @@ class EnvironmentManager(QObject):
         if not remaining_packages:
             if self._current_log_callback:
                 self._current_log_callback("默认包安装完成 ✅")
-            self.install_finished.emit()
+            self.install_finished.emit("安装完成")
             return
 
         package = remaining_packages[0]
