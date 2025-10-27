@@ -22,6 +22,7 @@ class LowCodeWindow(FluentWindow):
         super().__init__()
         setTheme(Theme.DARK)
         self.config = Settings.get_instance()
+        self.config.save()
         self.setWindowIcon(get_icon("logo3"))
         self.setWindowTitle("Canvas Mind")
         self.navigationInterface.setAcrylicEnabled(True)

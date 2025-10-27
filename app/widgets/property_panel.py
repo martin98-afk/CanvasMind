@@ -368,7 +368,7 @@ class PropertyPanel(CardWidget):
             elif connected:
                 original_data = [up.node().get_output_value(up.name()) for up in connected]
             else:
-                original_data = node._input_values.get(port_name, "暂无数据")
+                return
             if port_type == ArgumentType.CSV and isinstance(original_data, pd.DataFrame) and not original_data.empty:
                 self._add_column_selector_widget_to_layout(node, port_name, original_data, original_data, layout)
                 current_selected_data = self._get_current_input_value(node, port_name, original_data)

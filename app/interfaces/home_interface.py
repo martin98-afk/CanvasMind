@@ -1,21 +1,17 @@
 # -*- coding: utf-8 -*-
-# coding:utf-8
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict
 
-from PyQt5.QtCore import Qt, QSize, QRectF
+from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import QPainter, QPainterPath, QLinearGradient, QColor, QBrush, QPixmap
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QFrame, QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
+from qfluentwidgets import ScrollArea, FluentIcon, isDarkTheme, FlowLayout
 
-from qfluentwidgets import ScrollArea, FluentIcon, isDarkTheme, Theme, qconfig, FlowLayout, StateToolTip
-
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, resource_path
 from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.card_widget.home_card import HomeCardView, HomeCard
 from app.widgets.card_widget.link_card import LinkCardView
-# from app.widgets.card_widget.workflow_card import WorkflowCard # 如果不需要可以注释掉
 
 
 class BannerWidget(QWidget):
@@ -27,7 +23,7 @@ class BannerWidget(QWidget):
 
         self.vBoxLayout = QVBoxLayout(self)
         self.galleryLabel = QLabel('Canvas Mind', self)
-        self.banner = QPixmap('./icons/banner.png')
+        self.banner = QPixmap(resource_path('./icons/banner.png'))
         self.linkCardView = LinkCardView(self)
 
         self.galleryLabel.setObjectName('galleryLabel')
@@ -155,10 +151,18 @@ class HorizontalCardContainerWidget(ScrollArea):
             triggered=lambda: self._on_open_canvas_clicked(Path("workflows/循环、迭代样例模型.workflow.json"))
         )
         self.sampleModelCard.addSampleCard(
-            icon=get_icon("广义回归"),
+            icon=get_icon("逻辑回归A"),
             title=self.tr("机器学习算法样例模型"),
             content=self.tr("常见机器学习流程画布样例模型"),
             routeKey="machine_learning",
+            index=1,
+            triggered=lambda: self._on_open_canvas_clicked(Path("workflows/workflow.workflow.json"))
+        )
+        self.sampleModelCard.addSampleCard(
+            icon=get_icon("智能体"),
+            title=self.tr("react工具调用智能体"),
+            content=self.tr("使用导出的项目作为工具的大模型智能体样例模型"),
+            routeKey="react_agent",
             index=1,
             triggered=lambda: self._on_open_canvas_clicked(Path("workflows/workflow.workflow.json"))
         )
