@@ -1,5 +1,7 @@
 # 新增 LSP 客户端管理器
 import subprocess
+import sys
+
 from pylspclient import LspClient, ReadPipe, WritePipe
 from PyQt5.QtCore import QThread, pyqtSignal
 
