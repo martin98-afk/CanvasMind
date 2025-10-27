@@ -723,8 +723,6 @@ class BaseComponent(ABC):
             elif output_type == ArgumentType.FLOAT:
                 return float(output_value) if output_value is not None else 0.0
             elif output_type == ArgumentType.ARRAY:
-                if isinstance(output_value, np.ndarray):
-                    return output_value.tolist()
                 return output_value
             elif output_type == ArgumentType.CSV:
                 return self._store_csv_data(output_value)

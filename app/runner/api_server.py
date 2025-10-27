@@ -20,7 +20,7 @@ if not SPEC_PATH.exists():
     raise RuntimeError("project_spec.json 未找到！")
 
 with open(SPEC_PATH, 'r', encoding='utf-8') as f:
-    project_spec = json.load(f)
+    project_spec = execute_workflow.deserialize_from_json(json.load(f))
 
 
 def get_pydantic_type(format_str: str, schema_def: Optional[Dict] = None):

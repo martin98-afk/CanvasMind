@@ -944,7 +944,9 @@ class CanvasPage(QWidget):
             else:
                 selected_output_items = []
             # === 构建 project_spec.json ===
-            project_spec = {"version": "1.0", "graph_name": self.workflow_name, "inputs": {}, "outputs": {}}
+            project_spec = serialize_for_json(
+                {"version": "1.0", "graph_name": self.workflow_name, "inputs": {}, "outputs": {}}
+            )
             for item in selected_input_items:
                 key = item.get("custom_key", f"input_{len(project_spec['inputs'])}")
                 project_spec["inputs"][key] = item
@@ -1173,13 +1175,15 @@ class CanvasPage(QWidget):
                 "connections": new_connections,
                 "grid": self.graph.serialize_session().get("grid", None)
             }
-            project_data = {
-                "version": "1.0",
-                "graph": graph_data,
-                "runtime": runtime_data,
-                "candidate_inputs": candidate_inputs,
-                "candidate_outputs": candidate_outputs
-            }
+            project_data = serialize_for_json(
+                {
+                    "version": "1.0",
+                    "graph": graph_data,
+                    "runtime": runtime_data,
+                    "candidate_inputs": candidate_inputs,
+                    "candidate_outputs": candidate_outputs
+                }
+            )
             (export_path / "model.workflow.json").write_text(
                 json.dumps(project_data, indent=2, ensure_ascii=False), encoding='utf-8'
             )

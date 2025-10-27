@@ -465,7 +465,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self.parent_window.switchTo(self.opened_workflows[file_path])
 
     def new_canvas(self, window=None):
-        print("触发新建画布")
         name_dialog = CustomInputDialog("新建画布", "请输入画布名称", parent=window or self)
         if not name_dialog.exec():
             return
