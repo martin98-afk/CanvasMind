@@ -3,6 +3,8 @@ from enum import Enum
 
 from qfluentwidgets import StyleSheetBase, Theme, qconfig
 
+from app.utils.utils import resource_path
+
 
 class StyleSheet(StyleSheetBase, Enum):
     """ Style sheet  """
@@ -13,4 +15,4 @@ class StyleSheet(StyleSheetBase, Enum):
 
     def path(self, theme=Theme.AUTO):
         theme = qconfig.theme if theme == Theme.AUTO else theme
-        return f"resource/{self.value}.qss"
+        return resource_path(f"resource/{self.value}.qss")

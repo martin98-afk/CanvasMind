@@ -50,7 +50,7 @@ class EnvironmentManager(QObject):
     def refresh_env_config(self):
         # Miniconda安装包下载链接（已去除多余空格）
         self.MINICONDA_URLS = {
-            py_version: f"https://repo.anaconda.com/miniconda/Miniconda3-py{py_version}_{self.config.miniconda_version.value}-2-Windows-x86_64.exe"
+            py_version: f"https://repo.anaconda.com/miniconda/Miniconda3-py{py_version.replace('.', '')}_{self.config.miniconda_version.value}-2-Windows-x86_64.exe"
             for py_version in self.config.python_versions.value
         }
 
@@ -196,10 +196,6 @@ class EnvironmentManager(QObject):
     def _create_env_with_qprocess(self, version, env_name=None, log_callback=None):
         """使用QProcess创建环境"""
         # 提取主要版本号
-        major_version = ".".join(version.split(".")[:2])
-        if major_version not in ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]:
-            major_version = "3.11"
-
         if env_name is None:
             env_name = version
 

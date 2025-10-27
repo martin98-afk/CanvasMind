@@ -1,21 +1,17 @@
 # -*- coding: utf-8 -*-
-# coding:utf-8
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict
 
-from PyQt5.QtCore import Qt, QSize, QRectF
+from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import QPainter, QPainterPath, QLinearGradient, QColor, QBrush, QPixmap
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QFrame, QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
+from qfluentwidgets import ScrollArea, FluentIcon, isDarkTheme, FlowLayout
 
-from qfluentwidgets import ScrollArea, FluentIcon, isDarkTheme, Theme, qconfig, FlowLayout, StateToolTip
-
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, resource_path
 from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.card_widget.home_card import HomeCardView, HomeCard
 from app.widgets.card_widget.link_card import LinkCardView
-# from app.widgets.card_widget.workflow_card import WorkflowCard # 如果不需要可以注释掉
 
 
 class BannerWidget(QWidget):
@@ -27,7 +23,7 @@ class BannerWidget(QWidget):
 
         self.vBoxLayout = QVBoxLayout(self)
         self.galleryLabel = QLabel('Canvas Mind', self)
-        self.banner = QPixmap('./icons/banner.png')
+        self.banner = QPixmap(resource_path('./icons/banner.png'))
         self.linkCardView = LinkCardView(self)
 
         self.galleryLabel.setObjectName('galleryLabel')
