@@ -15,6 +15,7 @@ from qfluentwidgets import (
 )
 
 from app.utils.env_operation import EnvironmentManager
+from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.dialog_widget.custom_messagebox import CustomComboDialog, CustomInputDialog
 
 
@@ -54,31 +55,7 @@ class EnvManagerUI(QWidget):
         self.home = parent
         self.setObjectName("EnvManagerUI")
         self.resize(1000, 600)
-        self.setStyleSheet("""
-                QSplitter {
-                    background-color: #2D2D2D;
-                    border: 1px solid #444444;
-                }
-
-                QSplitter::handle {
-                    background-color: #444444;
-                    border: 1px solid #555555;
-                }
-
-                QSplitter::handle:hover {
-                    background-color: #555555;
-                }
-
-                QSplitter::handle:horizontal {
-                    width: 4px;
-                    background-image: url(:/qss_icons/rc/toolbar_separator_vertical.png);
-                }
-
-                QSplitter::handle:vertical {
-                    height: 4px;
-                    background-image: url(:/qss_icons/rc/toolbar_separator_horizontal.png);
-                }
-            """)
+        StyleSheet.PACKAGE_MANAGER.apply(self)
 
         self.mgr = EnvironmentManager()
         self.process = None
