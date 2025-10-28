@@ -188,7 +188,12 @@ class HorizontalCardContainerWidget(ScrollArea):
     def _update_env_card(self):
         """根据当前环境列表状态更新环境卡片内容"""
         # 移除旧的“新建环境”卡片（如果存在）
-        self.envEditCard.flowLayout.removeAllWidgets()
+        for i in reversed(range(self.envEditCard.flowLayout.count())):
+            item = self.envEditCard.flowLayout.itemAt(i)
+            if item.widget():
+                widget_to_remove = item.widget()
+                self.envEditCard.flowLayout.removeWidget(widget_to_remove)
+                widget_to_remove.setParent(None)  # 从父控件中移除，使其被销毁
         # 根据当前环境数量创建新的卡片
         if self.package_page.envCombo.count() == 0:
             self.envAddCard = self.envEditCard.addSampleCard(
@@ -309,7 +314,7 @@ class HomeInterface(ScrollArea):
         self.setWidgetResizable(True)
 
         self.vBoxLayout.setContentsMargins(0, 0, 0, 0)
-        self.vBoxLayout.setSpacing(25)
+        self.vBoxLayout.setSpacing(0)
         self.vBoxLayout.addWidget(self.banner)
         self.vBoxLayout.setAlignment(Qt.AlignTop)
 

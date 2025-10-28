@@ -611,6 +611,10 @@ class VariableTreeWidget(TreeWidget):
         elif isinstance(obj, pd.DataFrame):
             self._preview_dataframe_full(obj)
 
+        elif isinstance(obj, pd.Series):
+            obj = obj.to_frame()
+            self._preview_dataframe_full(obj)
+
         elif self._is_pil_image(obj):
             self._preview_image(obj)
 
@@ -650,10 +654,6 @@ class VariableTreeWidget(TreeWidget):
                 preview_limited.triggered.connect(lambda: self._preview_excel(filepath))
                 menu.addAction(preview_limited)
 
-                # preview_full = QAction("🔍 预览完整数据", self)
-                # preview_full.triggered.connect(lambda: self._preview_excel_full(filepath))
-                # menu.addAction(preview_full)
-
             elif ext in {'.txt', '.log', '.md', '.py', '.json', '.xml', '.yaml', '.yml', '.ini'}:
                 action = QAction("🔍 预览文本内容", self)
                 action.triggered.connect(lambda: self._preview_text_file(filepath))
@@ -679,6 +679,12 @@ class VariableTreeWidget(TreeWidget):
             menu.addAction(action)
 
         elif isinstance(obj, pd.DataFrame):
+            action = QAction("🔍 预览完整数据表", self)
+            action.triggered.connect(lambda: self._preview_dataframe_full(obj))
+            menu.addAction(action)
+
+        elif isinstance(obj, pd.Series):
+            obj = obj.to_frame()
             action = QAction("🔍 预览完整数据表", self)
             action.triggered.connect(lambda: self._preview_dataframe_full(obj))
             menu.addAction(action)
