@@ -4,6 +4,7 @@ import os
 import pathlib
 import shutil
 import traceback
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -1717,6 +1718,8 @@ class CanvasPage(QWidget):
             min_x = min(n.pos()[0] for n in pasted_nodes)
             min_y = min(n.pos()[1] for n in pasted_nodes)
             for node in pasted_nodes:
+                # 重新生成每个节点的persistent_id用以区分节点
+                node.set_property("persistent_id", str(uuid.uuid4()))
                 x, y = node.pos()
                 new_x = x - min_x + avg_x + offset[0]
                 new_y = y - min_y + avg_y + offset[1]

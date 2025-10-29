@@ -148,7 +148,7 @@ class HorizontalCardContainerWidget(ScrollArea):
             content=self.tr("使用智能体和大模型自动生成画布组件"),
             routeKey="component_generate",
             index=0,
-            triggered=lambda: self._on_open_canvas_clicked("自动组件生成")
+            triggered=lambda: self._on_open_sample_canvas_clicked("自动组件生成")
         )
         self.sampleModelCard.addSampleCard(
             icon=get_icon("更新"),
@@ -156,7 +156,7 @@ class HorizontalCardContainerWidget(ScrollArea):
             content=self.tr("循环、迭代节点使用方法样例模型"),
             routeKey="loop_example",
             index=1,
-            triggered=lambda: self._on_open_canvas_clicked("循环、迭代样例模型")
+            triggered=lambda: self._on_open_sample_canvas_clicked("循环、迭代样例模型")
         )
         self.sampleModelCard.addSampleCard(
             icon=get_icon("逻辑回归A"),
@@ -164,7 +164,7 @@ class HorizontalCardContainerWidget(ScrollArea):
             content=self.tr("常见机器学习流程画布样例模型"),
             routeKey="machine_learning",
             index=1,
-            triggered=lambda: self._on_open_canvas_clicked("机器学习算法样例模型")
+            triggered=lambda: self._on_open_sample_canvas_clicked("机器学习算法样例模型")
         )
         self.sampleModelCard.addSampleCard(
             icon=get_icon("智能体"),
@@ -172,7 +172,7 @@ class HorizontalCardContainerWidget(ScrollArea):
             content=self.tr("使用导出的项目作为工具的大模型智能体样例模型"),
             routeKey="react_agent",
             index=1,
-            triggered=lambda: self._on_open_canvas_clicked("react工具调用智能体")
+            triggered=lambda: self._on_open_sample_canvas_clicked("react工具调用智能体")
         )
 
         # --- 初始化环境卡片 ---
@@ -277,6 +277,11 @@ class HorizontalCardContainerWidget(ScrollArea):
             self.package_page.create_env(self.parent_ref)
 
     def _on_open_canvas_clicked(self, model_name: str):
+        """处理打开画布事件"""
+        if self.gallery_page and hasattr(self.gallery_page, 'open_canvas'):
+            self.gallery_page.open_canvas(Path(model_name))
+
+    def _on_open_sample_canvas_clicked(self, model_name: str):
         """处理打开画布事件"""
         try:
             output_path = f"./workflows/{model_name}.workflow.json"
