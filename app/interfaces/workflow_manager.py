@@ -285,10 +285,13 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         if hasattr(self, '_refresh_timer') and self._refresh_timer.isActive():
             return
 
+        # 记录旧的文件信息，用于比较是否有变化
+        old_file_info_map = self._file_info_map.copy()
+
         self._file_info_map = file_info_map
         self._known_files = set(workflow_files)
 
-        # ✅ 关键：创建缺失的卡片！
+        # 创建缺失的卡片
         for wf_path in workflow_files:
             if wf_path not in self._card_map:
                 try:
@@ -298,6 +301,19 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 except Exception:
                     import traceback
                     traceback.print_exc()
+
+        # 更新现有卡片的信息（如果文件信息有变化）
+        for wf_path, card in self._card_map.items():
+            old_info = old_file_info_map.get(str(wf_path))
+            new_info = self._file_info_map.get(str(wf_path))
+
+            # 检查时间戳是否有变化（mtime_ts 或 ctime_ts）
+            if old_info and new_info:
+                if (old_info.get('mtime_ts') != new_info.get('mtime_ts') or
+                        old_info.get('ctime_ts') != new_info.get('ctime_ts')):
+                    card.update_file_info(new_info)
+            elif new_info:  # 如果是新添加的卡片
+                card.update_file_info(new_info)
 
         # 创建固定卡片（仅一次）
         if not self._fixed_cards:
@@ -672,6 +688,29 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             InfoBar.error("删除失败", str(e), parent=self)
 
     def _on_canvas_saved(self, workflow_path: Path):
+        # 立即更新文件信息，而不是等待下次扫描
+        try:
+            # 更新文件信息缓存
+            stat = workflow_path.stat()
+            file_info = {
+                'ctime': datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M"),
+                'mtime': datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M"),
+                'size_kb': stat.st_size // 1024,
+                'mtime_ts': stat.st_mtime,
+                'ctime_ts': stat.st_ctime,
+            }
+            self._file_info_map[str(workflow_path)] = file_info
+
+            # 更新对应卡片的时间信息
+            card = self._card_map.get(workflow_path)
+            if card:
+                card.update_file_info(file_info)
+
+        except Exception as e:
+            # 如果更新失败，记录错误但不影响其他功能
+            print(f"更新卡片信息失败: {e}")
+
+        # 刷新预览
         card = self._card_map.get(workflow_path)
         if card and hasattr(card, 'refresh_preview'):
             card.refresh_preview()

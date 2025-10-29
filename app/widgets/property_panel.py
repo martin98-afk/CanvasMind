@@ -18,6 +18,7 @@ from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.utils.utils import serialize_for_json, get_icon
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
+from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
 
 # --- 添加一个自定义信号的类，用于在卡片大小改变时通知布局更新 ---
@@ -162,19 +163,13 @@ class PropertyPanel(CardWidget):
         else:
             return [(p.name(), p.name(), ArgumentType.TEXT) for p in ports]
 
-    def update_properties(self, node):
-        is_same_node = (
+    def update_properties(self, node, node_changed=False):
+        is_backdrop_change = (
                 node is not None
                 and node is self.current_node
                 # 检查是否为 ControlFlowBackdrop 且是同一个实例
                 and isinstance(node, ControlFlowBackdrop)
-        )
-        # is_backdrop_change: 检查是否是 ControlFlowBackdrop 的状态变化
-        is_backdrop_change = (
-                is_same_node
-                and isinstance(node, ControlFlowBackdrop)
-            # 可以根据需要添加其他判断条件，例如某个内部状态标记
-            # 这里暂时认为只要节点是Backdrop且是同一个实例，就尝试状态更新
+                and not node_changed
         )
 
         if is_backdrop_change:
@@ -656,8 +651,8 @@ class PropertyPanel(CardWidget):
             InfoBar.error("上传失败", f"无法复制文件：{e}", parent=self)
             return
 
-        # ✅ 设置节点输出为新路径
-        node._output_values[port_name] = str(dst_path)
+        # ✅ 设置节点输出为新的相对路径
+        node._output_values[port_name] = str(dst_path.relative_to(Path.cwd()))
 
         # 刷新 UI
         self.update_properties(node)
@@ -832,52 +827,90 @@ class PropertyPanel(CardWidget):
         config_card = CardWidget(self)
         config_layout = QVBoxLayout(config_card)
         config_layout.setContentsMargins(10, 10, 10, 10)
+
         from qfluentwidgets import ComboBox, SpinBox, LineEdit
         mode_combo = ComboBox(self)
         mode_combo.addItems(['固定次数', '条件循环', 'While循环'])
         mode_combo.setCurrentText({
-                                      'count': '固定次数',
-                                      'condition': '条件循环',
-                                      'while': 'While循环'
-                                  }.get(node.model.get_property("loop_mode"), '固定次数'))
+            'count': '固定次数',
+            'condition': '条件循环',
+            'while': 'While循环'
+        }.get(node.model.get_property("loop_mode"), '固定次数'))
+
         def on_mode_changed(text):
             mode_map = {'固定次数': 'count', '条件循环': 'condition', 'While循环': 'while'}
             node.model.set_property("loop_mode", mode_map.get(text, "count"))
-            self.update_properties(node)
+            # ✅ 关键：触发完整刷新，确保控件正确重建
+            self.update_properties(node, node_changed=True)
+
         mode_combo.currentTextChanged.connect(on_mode_changed)
         config_layout.addWidget(BodyLabel("循环模式:"))
         config_layout.addWidget(mode_combo)
+
         current_mode = node.model.get_property("loop_mode")
         if current_mode == 'count':
             max_iter_spin = SpinBox(self)
             max_iter_spin.setRange(1, 10000)
             current_max = node.model.get_property("loop_nums")
             max_iter_spin.setValue(current_max)
+
             def on_max_iter_changed(value):
                 node.model.set_property('loop_nums', value)
+                self._update_existing_backdrop_data(node)
             max_iter_spin.valueChanged.connect(on_max_iter_changed)
+
             config_layout.addWidget(BodyLabel("循环次数:"))
             config_layout.addWidget(max_iter_spin)
         else:
+            # === 条件表达式输入行（带放大按钮）===
+            expr_layout = QHBoxLayout()
+            expr_label = BodyLabel("条件表达式:")
+            expr_layout.addWidget(expr_label)
+
             condition_edit = LineEdit(self)
             condition_edit.setPlaceholderText("请输入条件表达式")
             current_condition = node.model.get_property("loop_condition")
             condition_edit.setText(current_condition)
+
             def on_condition_changed(text):
                 node.model.set_property('loop_condition', text)
             condition_edit.textChanged.connect(on_condition_changed)
-            config_layout.addWidget(BodyLabel("条件表达式:"))
+            # ✅ 添加放大图标按钮
+            browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
+            browse_btn.setFixedSize(QSize(26, 20))
+            browse_btn.clicked.connect(
+                lambda _, edit=condition_edit: self._open_long_text_editor(edit)
+            )
+            expr_layout.addWidget(browse_btn)
+
+            config_layout.addLayout(expr_layout)
+
             config_layout.addWidget(condition_edit)
+
+            # 最大迭代次数
             max_iter_spin = SpinBox(self)
             max_iter_spin.setRange(1, 10000)
             current_max_iter = node.model.get_property("max_iterations")
             max_iter_spin.setValue(current_max_iter)
+
             def on_max_iterations_changed(value):
                 node.model.set_property('max_iterations', value)
+                self._update_existing_backdrop_data(node)
             max_iter_spin.valueChanged.connect(on_max_iterations_changed)
+
             config_layout.addWidget(BodyLabel("最大迭代次数:"))
             config_layout.addWidget(max_iter_spin)
+
         self.node_vbox.addWidget(config_card)
+
+    def _open_long_text_editor(self, line_edit):
+        # ✅ 根据你的实际路径导入 LongTextEditorDialog
+        dialog = LongTextEditorDialog(content=line_edit.text(), parent=self.window())
+        if dialog.exec():
+            new_text = dialog.text_edit.toPlainText().strip()
+            line_edit.setText(new_text)
+            # 手动触发 textChanged（因为 setText 不 emit）
+            line_edit.textChanged.emit(new_text)
 
     def _add_output_to_global_variable(self, node, port_name: str):
         value = node._output_values.get(port_name)

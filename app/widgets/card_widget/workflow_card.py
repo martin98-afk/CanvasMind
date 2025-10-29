@@ -102,7 +102,7 @@ class WorkflowCard(CardWidget):
 
         # 预览图
         self.image_label = ImageLabel(self)
-        self.image_label.setBorderRadius(8,8,8,8)
+        self.image_label.setBorderRadius(8, 8, 8, 8)
         self.image_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.image_label, 0, Qt.AlignCenter)
 
@@ -130,16 +130,25 @@ class WorkflowCard(CardWidget):
             except Exception:
                 create_time = change_time = "未知"
 
+        # 保存时间标签的引用，方便后续更新
         k1 = BodyLabel("创建")
         v1 = BodyLabel(create_time)
         k2 = BodyLabel("修改")
         v2 = BodyLabel(change_time)
+
+        # 设置对象名称，便于识别
+        v1.setObjectName("create_time_label")
+        v2.setObjectName("modify_time_label")
 
         meta_grid.addWidget(k1, 0, 0)
         meta_grid.addWidget(v1, 0, 1)
         meta_grid.addWidget(k2, 1, 0)
         meta_grid.addWidget(v2, 1, 1)
         bottom_layout.addLayout(meta_grid)
+
+        # 保存时间标签的引用
+        self.create_time_label = v1
+        self.modify_time_label = v2
 
         # 按钮区域（仅保留编辑、复制、删除）
         copy_btn = TransparentToolButton(FluentIcon.COPY, self)
@@ -244,3 +253,25 @@ class WorkflowCard(CardWidget):
                 ideal_width = max(280, min(450, (parent_width - 60) // 2))
                 return QSize(ideal_width, 340)
         return QSize(default_width, 340)
+
+    def update_file_info(self, file_info: Optional[Dict[str, Any]] = None):
+        """更新卡片上的文件信息"""
+        self._file_info = file_info
+
+        # 使用保存的标签引用直接更新文本
+        if file_info:
+            create_time = file_info.get('ctime', '未知')
+            change_time = file_info.get('mtime', '未知')
+        else:
+            try:
+                stat = self.file_path.stat()
+                create_time = datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M")
+                change_time = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
+            except Exception:
+                create_time = change_time = "未知"
+
+        # 直接更新时间标签
+        if hasattr(self, 'create_time_label') and self.create_time_label:
+            self.create_time_label.setText(create_time)
+        if hasattr(self, 'modify_time_label') and self.modify_time_label:
+            self.modify_time_label.setText(change_time)
