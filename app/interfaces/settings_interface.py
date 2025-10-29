@@ -184,15 +184,6 @@ class SettingInterface(ScrollArea):
         # 连接配置变化信号，自动保存
         self.cfg.canvas_grid_mode.valueChanged.connect(self.onConfigChanged)
 
-        self.gridSizeCard = PushSettingCard(
-            "修改",
-            get_icon("画布"),
-            "网格大小 (px)",
-            str(self.cfg.canvas_grid_size.value),
-            parent=self.canvasGroup
-        )
-        self.gridSizeCard.clicked.connect(self.onGridSizeClicked)
-
         self.autoSaveCard = SwitchSettingCard(
             get_icon("画布"),
             "自动保存",
@@ -235,7 +226,6 @@ class SettingInterface(ScrollArea):
         self.cfg.canvas_direction.valueChanged.connect(self.onConfigChanged)
 
         self.canvasGroup.addSettingCard(self.showGridCard)
-        self.canvasGroup.addSettingCard(self.gridSizeCard)
         self.canvasGroup.addSettingCard(self.autoSaveCard)
         self.canvasGroup.addSettingCard(self.autoSaveIntervalCard)
         self.canvasGroup.addSettingCard(self.pipelayoutCard)

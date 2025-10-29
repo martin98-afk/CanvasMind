@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QApplication, QProgressDialog
-from qfluentwidgets import InfoBar, InfoBarPosition, InfoBarIcon, PushButton, qconfig
+from qfluentwidgets import InfoBar, InfoBarPosition, InfoBarIcon, PushButton, qconfig, PrimaryPushButton
 
 from app.utils.config import Settings
 from app.utils.threading_utils import AsyncUpdateChecker, DownloadThread
@@ -51,9 +51,9 @@ class UpdateChecker(QWidget):
         )
 
         # 添加一个确认更新的按钮
-        update_button = PushButton("立即更新")
+        update_button = PrimaryPushButton("立即更新")
         update_button.clicked.connect(lambda: self._on_update_confirmed(latest_release, info_bar))
-        info_bar.addWidget(update_button)
+        info_bar.widgetLayout.addWidget(update_button, 0, Qt.AlignRight)
 
         info_bar.show()
 
@@ -74,8 +74,6 @@ class UpdateChecker(QWidget):
             # 兼容 GitCode（如有需要）
             if self.platform == "gitcode":
                 tag_name = latest_release["tag_name"]
-                # 注意：GitCode 的 attach_files 链接需根据实际 API 调整
-                # 此处假设你已上传 .zip 到 Release
                 pass
             self.create_errorbar("未找到 ZIP 格式的更新包，请联系开发者")
             return

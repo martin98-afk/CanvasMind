@@ -5,13 +5,12 @@ import sys
 import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from loguru import logger
 from pydantic import BaseModel, create_model
 
 sys.path.append(str(Path(__file__).parent))
-from runner.workflow_runner import execute_workflow
+from runner.workflow_runner import execute_workflow, deserialize_from_json
 
 PROJECT_DIR = Path(__file__).parent
 SPEC_PATH = PROJECT_DIR / "project_spec.json"
@@ -20,7 +19,7 @@ if not SPEC_PATH.exists():
     raise RuntimeError("project_spec.json 未找到！")
 
 with open(SPEC_PATH, 'r', encoding='utf-8') as f:
-    project_spec = execute_workflow.deserialize_from_json(json.load(f))
+    project_spec = deserialize_from_json(json.load(f))
 
 
 def get_pydantic_type(format_str: str, schema_def: Optional[Dict] = None):

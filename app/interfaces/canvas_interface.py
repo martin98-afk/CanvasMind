@@ -1075,9 +1075,8 @@ class CanvasPage(QWidget):
                         rel_to_project = ("components" / src_rel_path).as_posix()
                         component_path_map[str(src_path)] = rel_to_project
 
-            # 构建节点数据（略，保持你原有逻辑）
+            # 构建节点数据
             def _process_value_for_export(value, inputs_dir: Path, export_path: Path):
-                logger.info(value)
                 if isinstance(value, str):
                     file_path = Path(value)
                     if file_path.is_file():
@@ -1371,66 +1370,6 @@ class CanvasPage(QWidget):
                 QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
         else:
             QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
-
-    def _show_node_flyout(self, node):
-        self._hide_node_flyout()
-
-        view_pos = self._get_node_top_right_global_pos(node)
-        if not view_pos:
-            return
-
-        # ✅ 创建普通 QWidget 作为内容容器
-        content_widget = QWidget()
-        layout = QVBoxLayout(content_widget)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(8)
-        content_widget.setFixedWidth(120)
-
-        config_btn = PushButton('⚙️ 配置', content_widget)
-        run_btn = PushButton('▶️ 运行', content_widget)
-        delete_btn = PushButton('🗑️ 删除', content_widget)
-
-        config_btn.clicked.connect(lambda: self.edit_node(node))
-        run_btn.clicked.connect(lambda: self.run_node(node))
-        delete_btn.clicked.connect(lambda: self.delete_node(node))
-
-        layout.addWidget(config_btn)
-        layout.addWidget(run_btn)
-        layout.addWidget(delete_btn)
-
-        # ✅ 直接传 content_widget 给 Flyout.make()
-        self._node_flyout = Flyout.make(
-            content_widget,
-            target=self.canvas_widget,  # 或 self
-            parent=self.canvas_widget
-        )
-        # 手动定位
-        flyout_pos = view_pos - QtCore.QPoint(0, self._node_flyout.height())
-        self._node_flyout.move(flyout_pos)
-        self._node_flyout.show()
-
-    def _hide_node_flyout(self):
-        if self._node_flyout:
-            try:
-                self._node_flyout.close()
-            except RuntimeError:
-                pass  # 已被销毁，忽略
-            self._node_flyout = None
-
-    def _get_node_top_right_global_pos(self, node):
-        """获取节点右上角的全局屏幕坐标"""
-        try:
-            node_item = node.view
-            scene_rect = node_item.boundingRect()
-            scene_pos = node_item.scenePos()
-            top_right_scene = scene_pos + QtCore.QPointF(scene_rect.width(), 0)
-            # 转为 view 坐标
-            view_pos = self.canvas_widget.mapFromScene(top_right_scene)
-            # 转为全局坐标
-            global_pos = self.canvas_widget.viewport().mapToGlobal(view_pos)
-            return global_pos
-        except Exception:
-            return None
 
     def _start_auto_save_timer(self):
         """启动自动保存定时器"""
