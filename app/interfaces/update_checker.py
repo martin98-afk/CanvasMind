@@ -8,7 +8,7 @@ import tempfile
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QApplication, QProgressDialog
-from qfluentwidgets import InfoBar, InfoBarPosition, InfoBarIcon, PushButton
+from qfluentwidgets import InfoBar, InfoBarPosition, InfoBarIcon, PushButton, qconfig
 
 from app.utils.config import Settings
 from app.utils.threading_utils import AsyncUpdateChecker, DownloadThread
@@ -21,11 +21,11 @@ class UpdateChecker(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        cfg = Settings.get_instance()
-        self.platform = cfg.patch_platform.value
-        self.repo = cfg.github_repo.value
-        self.token = cfg.github_token.value
-        self.current_version = cfg.current_version.value
+        self.cfg = Settings.get_instance()
+        self.platform = self.cfg.patch_platform.value
+        self.repo = self.cfg.github_repo.value
+        self.token = self.cfg.github_token.value
+        self.current_version = self.cfg.current_version.value
         self.progress_dialog = None
         self.download_thread = None
         self.update_zip_path = None  # 记录 ZIP 路径
@@ -78,7 +78,7 @@ class UpdateChecker(QWidget):
                 pass
             self.create_errorbar("未找到 ZIP 格式的更新包，请联系开发者")
             return
-
+        qconfig.set(self.cfg.current_version, latest_release)
         self.update_zip_path = f"update_{latest_release['tag_name']}.zip"
 
         # 创建 QProgressDialog
@@ -120,7 +120,7 @@ class UpdateChecker(QWidget):
             self.download_thread = None
 
         app_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        # 使用临时目录，避免与现有文件冲突
+        exe_name = os.path.basename(sys.argv[0])  # e.g., "MyApp.exe" 或 "main.py"
         temp_extract_dir = tempfile.mkdtemp(prefix="cm_update_", dir=app_dir)
 
         try:
@@ -128,89 +128,83 @@ class UpdateChecker(QWidget):
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
                 zip_ref.extractall(temp_extract_dir)
 
-            # 2. 确定源目录（处理 ZIP 内嵌套文件夹的情况）
-            # 遍历解压后的目录，找到真正的应用根目录
-            # 假设根目录包含 main.py 或可执行文件同名的 .exe 文件
-            exe_name = os.path.basename(sys.argv[0])
+            # 2. 定位真实源目录（最多两层嵌套）
             source_dir = temp_extract_dir
-            # 寻找可能的两层目录
-            for _ in range(2): # 最多查找两层
+            for _ in range(2):
                 subdirs = [d for d in os.listdir(source_dir) if os.path.isdir(os.path.join(source_dir, d))]
                 if len(subdirs) == 1:
                     candidate = os.path.join(source_dir, subdirs[0])
-                    # 检查候选目录是否包含预期的根文件
-                    if exe_name in os.listdir(candidate) or 'main.py' in os.listdir(candidate):
-                         source_dir = candidate
-                         break
-                    else:
-                        # 如果第一层不是根目录，继续检查它内部
+                    files_in_candidate = os.listdir(candidate)
+                    if exe_name in files_in_candidate or 'main.py' in files_in_candidate:
                         source_dir = candidate
+                        break
+                    else:
+                        source_dir = candidate  # 继续深入
                 else:
-                    # 如果有多个子目录或没有子目录，则当前 source_dir 可能就是目标
-                    break
+                    break  # 多个或无子目录，当前即为根
 
-            # 3. 生成更新脚本（覆盖文件 + 重启）
-            # Windows Batch Script
+            # 3. 生成带进程等待和日志的更新脚本
+            log_file = os.path.join(app_dir, "update.log")
             bat_content = f'''@echo off
-echo Waiting for main process to exit...
-timeout /t 3 /nobreak >nul
-echo Starting update process...
-echo Source: "{source_dir}"
-echo Target: "{app_dir}"
+    chcp 65001 >nul
+    setlocal enabledelayedexpansion
 
-if not exist "{source_dir}" (
-    echo Error: Source directory does not exist: "{source_dir}"
-    pause
-    exit /b 1
-)
+    set "APP_EXE={exe_name}"
+    set "SOURCE_DIR={source_dir}"
+    set "TARGET_DIR={app_dir}"
+    set "ZIP_FILE={os.path.abspath(file_path)}"
+    set "TEMP_DIR={temp_extract_dir}"
+    set "LOG_FILE={log_file}"
 
-if not exist "{app_dir}" (
-    echo Error: Target directory does not exist: "{app_dir}"
-    pause
-    exit /b 1
-)
+    echo [%date% %time%] Update script started. >> "!LOG_FILE!"
+    echo [%date% %time%] Waiting for !APP_EXE! to exit... >> "!LOG_FILE!"
 
-echo Attempting to copy files...
-xcopy "{source_dir}" "{app_dir}" /E /Y /H /R /I
-if errorlevel 1 (
-    echo Error during xcopy. Check permissions and files.
-    pause
-    exit /b 1
-)
+    :wait_loop
+    tasklist /FI "IMAGENAME eq !APP_EXE!" 2>nul | find /I /N "!APP_EXE!" >nul
+    if not errorlevel 1 (
+        echo [%date% %time%] !APP_EXE! is still running, waiting... >> "!LOG_FILE!"
+        timeout /t 2 /nobreak >nul
+        goto wait_loop
+    )
 
-echo Copy completed. Cleaning up...
-rd /s /q "{temp_extract_dir}"
-del /f /q "{os.path.abspath(file_path)}"
-echo Cleanup done.
-echo Restarting application...
-start "" "{os.path.abspath(sys.argv[0])}"
-exit
-'''
+    echo [%date% %time%] Main process exited. Copying files... >> "!LOG_FILE!"
+
+    xcopy "!SOURCE_DIR!" "!TARGET_DIR!" /E /Y /H /R /I >nul 2>&1
+    if errorlevel 1 (
+        echo [%date% %time%] ERROR: xcopy failed. >> "!LOG_FILE!"
+        pause
+        exit /b 1
+    )
+
+    echo [%date% %time%] Copy succeeded. Cleaning up... >> "!LOG_FILE!"
+
+    rd /s /q "!TEMP_DIR!" >nul 2>&1
+    del /f /q "!ZIP_FILE!" >nul 2>&1
+
+    echo [%date% %time%] Cleanup done. Restarting application... >> "!LOG_FILE!"
+    start "" "!TARGET_DIR!\\!APP_EXE!"
+    exit /b 0
+    '''
 
             script_path = os.path.join(app_dir, "update.bat")
-            # 使用 gbk 编码确保中文路径兼容
             with open(script_path, "w", encoding="gbk") as f:
                 f.write(bat_content)
 
-            subprocess.Popen([script_path], shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE) # 创建新控制台窗口便于查看日志
+            # 启动更新脚本
+            subprocess.Popen([script_path], shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
             self.create_successbar("更新已启动", "程序即将自动重启以应用更新！")
-            time.sleep(2)
-            QApplication.quit() # 或者 sys.exit()，取决于你的应用结构
-            # os._exit(0) # 强制退出，不执行清理代码
+            QApplication.processEvents()  # 确保提示显示
+            time.sleep(1)
+            os._exit(0)  # ⚠️ 立即终止，释放所有文件句柄
 
         except Exception as e:
             import traceback
             error_msg = f"更新失败：{str(e)}\n{traceback.format_exc()}"
             self.create_errorbar("更新失败", str(e))
-            # 清理临时文件
-            for path in [temp_extract_dir]:
-                try:
-                    if os.path.isdir(path):
-                        shutil.rmtree(path, ignore_errors=True)
-                except:
-                    pass
-            # 删除下载的 ZIP 文件
+            # 清理
             try:
+                if os.path.isdir(temp_extract_dir):
+                    shutil.rmtree(temp_extract_dir, ignore_errors=True)
                 if os.path.isfile(file_path):
                     os.remove(file_path)
             except:
