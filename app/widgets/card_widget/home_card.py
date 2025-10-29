@@ -19,7 +19,7 @@ class HomeCard(CardWidget):
 
         self.iconWidget = IconWidget(icon, self)
         self.titleLabel = QLabel(title, self)
-        self.contentLabel = QLabel(TextWrap.wrap(content, 45, False)[0], self)
+        self.contentLabel = QLabel(TextWrap.wrap(content, 35, False)[0], self)
 
         self.hBoxLayout = QHBoxLayout(self)
         self.vBoxLayout = QVBoxLayout()

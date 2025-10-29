@@ -2,7 +2,11 @@
 import json
 import os
 import re
+import uuid
 import pandas as pd
+
+from loguru import logger
+from pathlib import Path
 from NodeGraphQt import BaseNode
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
@@ -617,9 +621,48 @@ class PropertyPanel(CardWidget):
         file_path, _ = QFileDialog.getOpenFileName(
             self, "上传文件", directory, "All Files (*)"
         )
-        if file_path:
-            node._output_values[port_name] = file_path
+        if not file_path:
+            return
+
+        src_path = Path(file_path)
+        if not src_path.exists():
+            InfoBar.error("文件不存在", f"所选文件 {file_path} 不存在", parent=self)
+            return
+
+        # ✅ 定义目标目录：项目根目录下的 uploads/
+        # 假设你的项目根目录可通过某种方式获取（例如 main_window.project_root）
+        # 如果没有 project_root，可使用当前工作目录或固定相对路径
+        if hasattr(self.main_window, 'project_root'):
+            upload_root = Path(self.main_window.project_root) / "uploads"
+        else:
+            # 回退：使用当前工作目录下的 uploads/
+            upload_root = Path.cwd() / "uploads"
+
+        upload_root.mkdir(exist_ok=True, parents=True)
+
+        # ✅ 生成唯一文件名（避免覆盖）
+        safe_name = re.sub(r'[^\w\.-]', '_', src_path.stem)
+        suffix = src_path.suffix
+        unique_name = f"{safe_name}_{node.persistent_id}{suffix}"
+        dst_path = upload_root / unique_name
+
+        # ✅ 复制文件
+        try:
+            import shutil
+            shutil.copy2(src_path, dst_path)
+            logger.info(f"已上传并复制文件: {src_path} -> {dst_path}")
+        except Exception as e:
+            logger.error(f"文件复制失败: {e}")
+            InfoBar.error("上传失败", f"无法复制文件：{e}", parent=self)
+            return
+
+        # ✅ 设置节点输出为新路径
+        node._output_values[port_name] = str(dst_path)
+
+        # 刷新 UI
         self.update_properties(node)
+
+        InfoBar.success("上传成功", f"文件已保存至：{dst_path.name}", parent=self, duration=2000)
 
     def get_node_description(self, node):
         if hasattr(node, 'component_class'):

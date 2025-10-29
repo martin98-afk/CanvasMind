@@ -15,6 +15,7 @@ from qfluentwidgets import (
 )
 
 from app.utils.env_operation import EnvironmentManager
+from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.dialog_widget.custom_messagebox import CustomComboDialog, CustomInputDialog
 
 
@@ -54,31 +55,7 @@ class EnvManagerUI(QWidget):
         self.home = parent
         self.setObjectName("EnvManagerUI")
         self.resize(1000, 600)
-        self.setStyleSheet("""
-                QSplitter {
-                    background-color: #2D2D2D;
-                    border: 1px solid #444444;
-                }
-
-                QSplitter::handle {
-                    background-color: #444444;
-                    border: 1px solid #555555;
-                }
-
-                QSplitter::handle:hover {
-                    background-color: #555555;
-                }
-
-                QSplitter::handle:horizontal {
-                    width: 4px;
-                    background-image: url(:/qss_icons/rc/toolbar_separator_vertical.png);
-                }
-
-                QSplitter::handle:vertical {
-                    height: 4px;
-                    background-image: url(:/qss_icons/rc/toolbar_separator_horizontal.png);
-                }
-            """)
+        StyleSheet.PACKAGE_MANAGER.apply(self)
 
         self.mgr = EnvironmentManager()
         self.process = None
@@ -408,9 +385,13 @@ class EnvManagerUI(QWidget):
         msg_box = MessageBox("确认删除", f"确定要删除环境 {env_name} 吗？此操作不可恢复！", self)
         if msg_box.exec_():
             try:
+                state_tooltip = StateToolTip("正在删除环境", "请稍候...", self)
+                state_tooltip.move(self.home.width() - state_tooltip.width() - 30, 20)
+                state_tooltip.show()
                 self.mgr.remove_env(env_name)
                 self.mgr.remove_finished.connect(
                     lambda: (
+                        state_tooltip.close(),
                         self.refresh_env_list(),
                         InfoBar.success("成功", f"环境 {env_name} 已删除", parent=self),
                         self.env_changed.emit()
@@ -549,8 +530,12 @@ class EnvManagerUI(QWidget):
 
                 try:
                     self.mgr.clone_env(source_env, target_env, log_callback=self.logEdit.append)
+                    state_tooltip = StateToolTip("正在克隆环境", "请稍候...", self)
+                    state_tooltip.move(self.home.width() - state_tooltip.width() - 30, 20)
+                    state_tooltip.show()
                     self.mgr.install_finished.connect(
                         lambda: (
+                            state_tooltip.close(),
                             self.refresh_env_list(),
                             InfoBar.success("成功", f"环境 {target_env} 已克隆", parent=self),
                             self.envCombo.setCurrentText(target_env),

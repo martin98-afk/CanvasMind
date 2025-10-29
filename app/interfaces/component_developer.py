@@ -21,6 +21,7 @@ from qfluentwidgets import (
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition, ConnectionType
 from app.scan_components import scan_components
 from app.utils.utils import extract_class_source_from_file
+from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.code_editer import CodeEditorWidget, DEFAULT_CODE_TEMPLATE
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
@@ -87,31 +88,7 @@ class ComponentDeveloperWidget(QWidget):
         self._updating_requirements_from_analysis = False
 
     def _setup_ui(self):
-        self.setStyleSheet("""
-                QSplitter {
-                    background-color: #2D2D2D;
-                    border: 1px solid #444444;
-                }
-
-                QSplitter::handle {
-                    background-color: #444444;
-                    border: 1px solid #555555;
-                }
-
-                QSplitter::handle:hover {
-                    background-color: #555555;
-                }
-
-                QSplitter::handle:horizontal {
-                    width: 4px;
-                    background-image: url(:/qss_icons/rc/toolbar_separator_vertical.png);
-                }
-
-                QSplitter::handle:vertical {
-                    height: 4px;
-                    background-image: url(:/qss_icons/rc/toolbar_separator_horizontal.png);
-                }
-            """)
+        StyleSheet.COMPONENT_DEVELOPER.apply(self)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         # 左侧：组件树和开发区域

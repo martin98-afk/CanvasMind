@@ -112,8 +112,8 @@ class ExportedProjectsPage(QWidget):
         # === 顶部：排序 + 方向 + 搜索 ===
         top_bar = QHBoxLayout()
         top_bar.setSpacing(16)
-
-        sort_label = CaptionLabel("            排序字段：", self)
+        top_bar.setContentsMargins(50, 0, 50, 0)
+        sort_label = CaptionLabel("排序字段：", self)
         self.sort_field_combo = ComboBox(self)
         self.sort_field_combo.addItems(["创建时间", "名称"])
         self.sort_field_combo.setCurrentIndex(0)
@@ -132,11 +132,11 @@ class ExportedProjectsPage(QWidget):
         self.search_line_edit.setFixedWidth(220)
         self.search_line_edit.textChanged.connect(self._on_search_changed)
 
+        top_bar.addWidget(self.search_line_edit)
+        top_bar.addStretch()
         top_bar.addWidget(sort_label)
         top_bar.addWidget(self.sort_field_combo)
         top_bar.addWidget(self.sort_order_button)
-        top_bar.addWidget(self.search_line_edit)
-        top_bar.addStretch()
 
         # === 主体：卡片 + 分页器 ===
         content_layout = QHBoxLayout()

@@ -12,6 +12,8 @@ class StyleSheet(StyleSheetBase, Enum):
     LINK_CARD = "link_card"
     SAMPLE_CARD = "sample_card"
     HOME_INTERFACE = "home_interface"
+    COMPONENT_DEVELOPER = "component_developer"
+    PACKAGE_MANAGER = "package_manager"
 
     def path(self, theme=Theme.AUTO):
         theme = qconfig.theme if theme == Theme.AUTO else theme

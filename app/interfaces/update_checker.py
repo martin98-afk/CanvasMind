@@ -5,10 +5,11 @@ import time
 import shutil
 import zipfile
 import tempfile
+from pathlib import Path
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QApplication, QProgressDialog
-from qfluentwidgets import InfoBar, InfoBarPosition, InfoBarIcon, PushButton
+from qfluentwidgets import InfoBar, InfoBarPosition, InfoBarIcon, PushButton, qconfig
 
 from app.utils.config import Settings
 from app.utils.threading_utils import AsyncUpdateChecker, DownloadThread
@@ -21,11 +22,11 @@ class UpdateChecker(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        cfg = Settings.get_instance()
-        self.platform = cfg.patch_platform.value
-        self.repo = cfg.github_repo.value
-        self.token = cfg.github_token.value
-        self.current_version = cfg.current_version.value
+        self.cfg = Settings.get_instance()
+        self.platform = self.cfg.patch_platform.value
+        self.repo = self.cfg.github_repo.value
+        self.token = self.cfg.github_token.value
+        self.current_version = self.cfg.current_version.value
         self.progress_dialog = None
         self.download_thread = None
         self.update_zip_path = None  # 记录 ZIP 路径
@@ -78,7 +79,8 @@ class UpdateChecker(QWidget):
                 pass
             self.create_errorbar("未找到 ZIP 格式的更新包，请联系开发者")
             return
-
+        qconfig.set(self.cfg.current_version, latest_release['tag_name'])
+        self.cfg.save()
         self.update_zip_path = f"update_{latest_release['tag_name']}.zip"
 
         # 创建 QProgressDialog
@@ -111,7 +113,7 @@ class UpdateChecker(QWidget):
             self.progress_dialog = None
 
     def _handle_download_finished(self, file_path):
-        """处理 ZIP 下载完成（--onedir 模式）"""
+        """处理 ZIP 下载完成（适配 PyInstaller --onedir，ZIP 内含 main/ 目录）"""
         if self.progress_dialog:
             self.progress_dialog.close()
             self.progress_dialog = None
@@ -119,101 +121,101 @@ class UpdateChecker(QWidget):
             self.download_thread.deleteLater()
             self.download_thread = None
 
-        app_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        # 使用临时目录，避免与现有文件冲突
-        temp_extract_dir = tempfile.mkdtemp(prefix="cm_update_", dir=app_dir)
+        app_dir = Path(sys.argv[0]).parent.resolve()
+        exe_name = Path(sys.argv[0]).name  # e.g., "main.exe"
+        temp_extract_dir = Path(tempfile.mkdtemp(prefix="cm_update_", dir=app_dir))
 
         try:
             # 1. 解压 ZIP
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
                 zip_ref.extractall(temp_extract_dir)
 
-            # 2. 确定源目录（处理 ZIP 内嵌套文件夹的情况）
-            # 遍历解压后的目录，找到真正的应用根目录
-            # 假设根目录包含 main.py 或可执行文件同名的 .exe 文件
-            exe_name = os.path.basename(sys.argv[0])
-            source_dir = temp_extract_dir
-            # 寻找可能的两层目录
-            for _ in range(2): # 最多查找两层
-                subdirs = [d for d in os.listdir(source_dir) if os.path.isdir(os.path.join(source_dir, d))]
-                if len(subdirs) == 1:
-                    candidate = os.path.join(source_dir, subdirs[0])
-                    # 检查候选目录是否包含预期的根文件
-                    if exe_name in os.listdir(candidate) or 'main.py' in os.listdir(candidate):
-                         source_dir = candidate
-                         break
-                    else:
-                        # 如果第一层不是根目录，继续检查它内部
-                        source_dir = candidate
-                else:
-                    # 如果有多个子目录或没有子目录，则当前 source_dir 可能就是目标
-                    break
+            # 2. 定位内容目录：ZIP 解压后应有一个子目录（如 "main"），其内含 main.exe 和 _internal
+            extracted_items = [p for p in temp_extract_dir.iterdir()]
+            content_dir = None
 
-            # 3. 生成更新脚本（覆盖文件 + 重启）
-            # Windows Batch Script
+            # 情况1: 直接是有效根（罕见，但兼容）
+            if (temp_extract_dir / exe_name).exists() and (temp_extract_dir / "_internal").is_dir():
+                content_dir = temp_extract_dir
+            # 情况2: 有一个子目录，且该子目录是有效根
+            elif len(extracted_items) == 1 and extracted_items[0].is_dir():
+                candidate = extracted_items[0]
+                if (candidate / exe_name).exists() and (candidate / "_internal").is_dir():
+                    content_dir = candidate
+
+            if content_dir is None:
+                raise RuntimeError(
+                    f"更新包结构无效：未找到包含 {exe_name} 和 _internal 的目录。"
+                    f" 解压内容: {[p.name for p in extracted_items]}"
+                )
+
+            # 3. 生成更新脚本（使用 pathlib 转 str 保证兼容）
+            log_file = app_dir / "update.log"
             bat_content = f'''@echo off
-echo Waiting for main process to exit...
-timeout /t 3 /nobreak >nul
-echo Starting update process...
-echo Source: "{source_dir}"
-echo Target: "{app_dir}"
+    chcp 65001 >nul
+    setlocal enabledelayedexpansion
 
-if not exist "{source_dir}" (
-    echo Error: Source directory does not exist: "{source_dir}"
-    pause
-    exit /b 1
-)
+    set "APP_EXE={exe_name}"
+    set "SOURCE_DIR={content_dir.resolve()}"
+    set "TARGET_DIR={app_dir.resolve()}"
+    set "ZIP_FILE={Path(file_path).resolve()}"
+    set "TEMP_DIR={temp_extract_dir.resolve()}"
+    set "LOG_FILE={log_file.resolve()}"
 
-if not exist "{app_dir}" (
-    echo Error: Target directory does not exist: "{app_dir}"
-    pause
-    exit /b 1
-)
+    echo [%date% %time%] Update script started. >> "!LOG_FILE!"
+    echo [%date% %time%] Source: !SOURCE_DIR! >> "!LOG_FILE!"
+    echo [%date% %time%] Target: !TARGET_DIR! >> "!LOG_FILE!"
+    echo [%date% %time%] Waiting for !APP_EXE! to exit... >> "!LOG_FILE!"
 
-echo Attempting to copy files...
-xcopy "{source_dir}" "{app_dir}" /E /Y /H /R /I
-if errorlevel 1 (
-    echo Error during xcopy. Check permissions and files.
-    pause
-    exit /b 1
-)
+    :wait_loop
+    tasklist /FI "IMAGENAME eq !APP_EXE!" 2>nul | find /I /N "!APP_EXE!" >nul
+    if not errorlevel 1 (
+        echo [%date% %time%] !APP_EXE! is still running, waiting... >> "!LOG_FILE!"
+        timeout /t 2 /nobreak >nul
+        goto wait_loop
+    )
 
-echo Copy completed. Cleaning up...
-rd /s /q "{temp_extract_dir}"
-del /f /q "{os.path.abspath(file_path)}"
-echo Cleanup done.
-echo Restarting application...
-start "" "{os.path.abspath(sys.argv[0])}"
-exit
-'''
+    echo [%date% %time%] Main process exited. Copying files... >> "!LOG_FILE!"
 
-            script_path = os.path.join(app_dir, "update.bat")
-            # 使用 gbk 编码确保中文路径兼容
-            with open(script_path, "w", encoding="gbk") as f:
-                f.write(bat_content)
+    xcopy "!SOURCE_DIR!" "!TARGET_DIR!" /E /Y /H /R /I >nul 2>&1
+    if errorlevel 1 (
+        echo [%date% %time%] ERROR: xcopy failed. >> "!LOG_FILE!"
+        echo [%date% %time%] Please check permissions and file locks. >> "!LOG_FILE!"
+        pause
+        exit /b 1
+    )
 
-            subprocess.Popen([script_path], shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE) # 创建新控制台窗口便于查看日志
+    echo [%date% %time%] Copy succeeded. Cleaning up... >> "!LOG_FILE!"
+
+    rd /s /q "!TEMP_DIR!" >nul 2>&1
+    del /f /q "!ZIP_FILE!" >nul 2>&1
+
+    echo [%date% %time%] Cleanup done. Restarting application... >> "!LOG_FILE!"
+    start "" "!TARGET_DIR!\\!APP_EXE!"
+    exit /b 0
+    '''
+
+            script_path = app_dir / "update.bat"
+            script_path.write_text(bat_content, encoding="gbk")
+
+            # 启动更新脚本
+            subprocess.Popen([str(script_path)], shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
             self.create_successbar("更新已启动", "程序即将自动重启以应用更新！")
-            time.sleep(2)
-            QApplication.quit() # 或者 sys.exit()，取决于你的应用结构
-            # os._exit(0) # 强制退出，不执行清理代码
+            QApplication.processEvents()
+            time.sleep(1)
+            os._exit(0)
 
         except Exception as e:
             import traceback
             error_msg = f"更新失败：{str(e)}\n{traceback.format_exc()}"
             self.create_errorbar("更新失败", str(e))
-            # 清理临时文件
-            for path in [temp_extract_dir]:
-                try:
-                    if os.path.isdir(path):
-                        shutil.rmtree(path, ignore_errors=True)
-                except:
-                    pass
-            # 删除下载的 ZIP 文件
+            # 清理
             try:
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-            except:
+                if temp_extract_dir.exists():
+                    shutil.rmtree(temp_extract_dir, ignore_errors=True)
+                if Path(file_path).exists():
+                    Path(file_path).unlink()
+            except Exception:
                 pass
 
     def _handle_download_error(self, error_msg):
