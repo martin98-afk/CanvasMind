@@ -5,6 +5,7 @@ import time
 import shutil
 import zipfile
 import tempfile
+from pathlib import Path
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QApplication, QProgressDialog
@@ -78,7 +79,8 @@ class UpdateChecker(QWidget):
                 pass
             self.create_errorbar("未找到 ZIP 格式的更新包，请联系开发者")
             return
-        qconfig.set(self.cfg.current_version, latest_release)
+        qconfig.set(self.cfg.current_version, latest_release['tag_name'])
+        self.cfg.save()
         self.update_zip_path = f"update_{latest_release['tag_name']}.zip"
 
         # 创建 QProgressDialog
@@ -111,7 +113,7 @@ class UpdateChecker(QWidget):
             self.progress_dialog = None
 
     def _handle_download_finished(self, file_path):
-        """处理 ZIP 下载完成（--onedir 模式）"""
+        """处理 ZIP 下载完成（适配 PyInstaller --onedir，ZIP 内含 main/ 目录）"""
         if self.progress_dialog:
             self.progress_dialog.close()
             self.progress_dialog = None
@@ -119,44 +121,50 @@ class UpdateChecker(QWidget):
             self.download_thread.deleteLater()
             self.download_thread = None
 
-        app_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        exe_name = os.path.basename(sys.argv[0])  # e.g., "MyApp.exe" 或 "main.py"
-        temp_extract_dir = tempfile.mkdtemp(prefix="cm_update_", dir=app_dir)
+        app_dir = Path(sys.argv[0]).parent.resolve()
+        exe_name = Path(sys.argv[0]).name  # e.g., "main.exe"
+        temp_extract_dir = Path(tempfile.mkdtemp(prefix="cm_update_", dir=app_dir))
 
         try:
             # 1. 解压 ZIP
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
                 zip_ref.extractall(temp_extract_dir)
 
-            # 2. 定位真实源目录（最多两层嵌套）
-            source_dir = temp_extract_dir
-            for _ in range(2):
-                subdirs = [d for d in os.listdir(source_dir) if os.path.isdir(os.path.join(source_dir, d))]
-                if len(subdirs) == 1:
-                    candidate = os.path.join(source_dir, subdirs[0])
-                    files_in_candidate = os.listdir(candidate)
-                    if exe_name in files_in_candidate or 'main.py' in files_in_candidate:
-                        source_dir = candidate
-                        break
-                    else:
-                        source_dir = candidate  # 继续深入
-                else:
-                    break  # 多个或无子目录，当前即为根
+            # 2. 定位内容目录：ZIP 解压后应有一个子目录（如 "main"），其内含 main.exe 和 _internal
+            extracted_items = [p for p in temp_extract_dir.iterdir()]
+            content_dir = None
 
-            # 3. 生成带进程等待和日志的更新脚本
-            log_file = os.path.join(app_dir, "update.log")
+            # 情况1: 直接是有效根（罕见，但兼容）
+            if (temp_extract_dir / exe_name).exists() and (temp_extract_dir / "_internal").is_dir():
+                content_dir = temp_extract_dir
+            # 情况2: 有一个子目录，且该子目录是有效根
+            elif len(extracted_items) == 1 and extracted_items[0].is_dir():
+                candidate = extracted_items[0]
+                if (candidate / exe_name).exists() and (candidate / "_internal").is_dir():
+                    content_dir = candidate
+
+            if content_dir is None:
+                raise RuntimeError(
+                    f"更新包结构无效：未找到包含 {exe_name} 和 _internal 的目录。"
+                    f" 解压内容: {[p.name for p in extracted_items]}"
+                )
+
+            # 3. 生成更新脚本（使用 pathlib 转 str 保证兼容）
+            log_file = app_dir / "update.log"
             bat_content = f'''@echo off
     chcp 65001 >nul
     setlocal enabledelayedexpansion
 
     set "APP_EXE={exe_name}"
-    set "SOURCE_DIR={source_dir}"
-    set "TARGET_DIR={app_dir}"
-    set "ZIP_FILE={os.path.abspath(file_path)}"
-    set "TEMP_DIR={temp_extract_dir}"
-    set "LOG_FILE={log_file}"
+    set "SOURCE_DIR={content_dir.resolve()}"
+    set "TARGET_DIR={app_dir.resolve()}"
+    set "ZIP_FILE={Path(file_path).resolve()}"
+    set "TEMP_DIR={temp_extract_dir.resolve()}"
+    set "LOG_FILE={log_file.resolve()}"
 
     echo [%date% %time%] Update script started. >> "!LOG_FILE!"
+    echo [%date% %time%] Source: !SOURCE_DIR! >> "!LOG_FILE!"
+    echo [%date% %time%] Target: !TARGET_DIR! >> "!LOG_FILE!"
     echo [%date% %time%] Waiting for !APP_EXE! to exit... >> "!LOG_FILE!"
 
     :wait_loop
@@ -172,6 +180,7 @@ class UpdateChecker(QWidget):
     xcopy "!SOURCE_DIR!" "!TARGET_DIR!" /E /Y /H /R /I >nul 2>&1
     if errorlevel 1 (
         echo [%date% %time%] ERROR: xcopy failed. >> "!LOG_FILE!"
+        echo [%date% %time%] Please check permissions and file locks. >> "!LOG_FILE!"
         pause
         exit /b 1
     )
@@ -186,16 +195,15 @@ class UpdateChecker(QWidget):
     exit /b 0
     '''
 
-            script_path = os.path.join(app_dir, "update.bat")
-            with open(script_path, "w", encoding="gbk") as f:
-                f.write(bat_content)
+            script_path = app_dir / "update.bat"
+            script_path.write_text(bat_content, encoding="gbk")
 
             # 启动更新脚本
-            subprocess.Popen([script_path], shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            subprocess.Popen([str(script_path)], shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
             self.create_successbar("更新已启动", "程序即将自动重启以应用更新！")
-            QApplication.processEvents()  # 确保提示显示
+            QApplication.processEvents()
             time.sleep(1)
-            os._exit(0)  # ⚠️ 立即终止，释放所有文件句柄
+            os._exit(0)
 
         except Exception as e:
             import traceback
@@ -203,11 +211,11 @@ class UpdateChecker(QWidget):
             self.create_errorbar("更新失败", str(e))
             # 清理
             try:
-                if os.path.isdir(temp_extract_dir):
+                if temp_extract_dir.exists():
                     shutil.rmtree(temp_extract_dir, ignore_errors=True)
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-            except:
+                if Path(file_path).exists():
+                    Path(file_path).unlink()
+            except Exception:
                 pass
 
     def _handle_download_error(self, error_msg):
