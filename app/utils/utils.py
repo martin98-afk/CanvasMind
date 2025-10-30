@@ -397,6 +397,46 @@ def draw_square_port(painter, rect, info):
     painter.restore()
 
 
+def draw_special_outputport(painter, rect, info):
+    """
+    Custom paint function for drawing a circular (ellipse) shaped port in purple.
+
+    Args:
+        painter (QtGui.QPainter): painter object.
+        rect (QtCore.QRectF): port rect used to describe parameters needed to draw.
+        info (dict): information describing the ports current state.
+            {
+                'port_type': 'in',
+                'color': (0, 0, 0),
+                'border_color': (255, 255, 255),
+                'multi_connection': False,
+                'connected': False,
+                'hovered': False,
+            }
+    """
+    painter.save()
+
+    # Define a base purple color (you can adjust as needed)
+    DEFAULT_PURPLE = (128, 0, 128)  # RGB for purple
+
+    # mouse over port color.
+    if info['hovered']:
+        color = QtGui.QColor(14, 45, 59)
+        border_color = QtGui.QColor(136, 255, 35, 255)
+    else:
+        color = QtGui.QColor(*DEFAULT_PURPLE)
+        border_color = QtGui.QColor(*info['border_color'])
+
+    pen = QtGui.QPen(border_color, 1.8)
+    pen.setJoinStyle(QtCore.Qt.MiterJoin)
+
+    painter.setPen(pen)
+    painter.setBrush(color)
+    painter.drawEllipse(rect)  # Draw circle/ellipse instead of rectangle
+
+    painter.restore()
+
+
 def _evaluate_value_recursively(value, expr_engine):
     """
     递归处理任意结构的值，对字符串执行表达式求值。

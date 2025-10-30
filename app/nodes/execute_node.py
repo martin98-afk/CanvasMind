@@ -2,6 +2,7 @@
 import os
 import pickle
 import platform
+import re
 import subprocess
 import tempfile
 import time
@@ -21,7 +22,7 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.node_logger import NodeLogHandler
-from app.utils.utils import draw_square_port, resource_path  # 假设 resource_path 也在 utils
+from app.utils.utils import draw_square_port, resource_path, draw_special_outputport  # 假设 resource_path 也在 utils
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
@@ -112,7 +113,11 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 else:
                     self.add_input(port_name, True, painter_func=draw_square_port)
             for port_name, label in component_class.get_outputs():
-                self.add_output(port_name)
+                name = re.sub(r'\s+', '_', self.name())
+                if f"{name}_{port_name}" in parent_window.global_variables.node_vars:
+                    self.add_output(port_name, True, painter_func=draw_special_outputport)
+                else:
+                    self.add_output(port_name)
 
         def _toggle_debug_mode(self):
             """调试模式开关回调"""
