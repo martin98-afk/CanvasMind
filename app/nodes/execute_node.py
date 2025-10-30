@@ -52,7 +52,7 @@ def _is_import_error(proc_or_result, error_file_path):
     return False
 
 
-def _install_requirements(python_executable, requirements_str):
+def _install_requirements(python_executable, requirements_str, logger=logger):
     """安装依赖包"""
     if not requirements_str.strip():
         logger.warning("组件 requirements 为空，跳过安装。")
@@ -591,7 +591,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
                 # 判断是否为 ImportError 且可重试
                 if retry_count == 0 and _is_import_error(proc, error_path):
-                    _install_requirements(python_executable, requirements_str)
+                    _install_requirements(python_executable, requirements_str, component_class.logger)
                     retry_count += 1
                     continue
                 else:

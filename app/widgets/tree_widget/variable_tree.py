@@ -8,8 +8,7 @@ import pandas as pd
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QPixmap, QIcon, QImage
 from PyQt5.QtWidgets import (
-    QTreeWidgetItem, QAction, QDialog, QLabel, QVBoxLayout, QScrollArea,
-    QApplication, QTableWidget, QTableWidgetItem, QWidget, QHeaderView, QFileDialog
+    QTreeWidgetItem, QAction, QApplication, QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog
 )
 from qfluentwidgets import TreeWidget, RoundMenu, MessageBoxBase, TextEdit, SegmentedWidget, TableWidget, ImageLabel
 from qtpy import QtCore
@@ -17,12 +16,13 @@ from qtpy import QtCore
 from app.components.base import ArgumentType
 
 
+# --- Worker Class (修改错误处理) ---
 class BuildTreeWorker(QThread):
     """
     后台线程工作类，用于构建树形结构数据
     """
     finished = pyqtSignal(object)  # 信号，传递构建好的根节点列表
-    error = pyqtSignal(str)        # 信号，传递错误信息
+    error = pyqtSignal(str)  # 信号，传递错误信息
 
     def __init__(self, data, arg_type, max_depth, parent=None):
         super().__init__(parent)
@@ -38,12 +38,14 @@ class BuildTreeWorker(QThread):
             self._build_items(self.data, "", self.max_depth, 0, self.arg_type, root_items)
             self.finished.emit(root_items)
         except Exception as e:
-            self.error.emit(str(e))
+            # 捕获异常并传递完整错误信息
+            import traceback
+            full_error_msg = f"{type(e).__name__}: {str(e)}\nTraceback:\n{traceback.format_exc()}"
+            self.error.emit(full_error_msg)
 
     def _format_value(self, obj, arg_type=None):
         if obj is None:
             return "None"
-
         if arg_type is not None and isinstance(arg_type, ArgumentType):
             if arg_type.is_image():
                 if isinstance(obj, str) and os.path.isfile(obj):
@@ -137,13 +139,17 @@ class BuildTreeWorker(QThread):
                         return f"📁 '{os.path.basename(obj)}'"
                 else:
                     return f"'{obj[:200]}...' (右键预览)"
+
         elif isinstance(obj, (int, float)):
             return str(obj)
+
         elif isinstance(obj, np.number):
             return str(obj)
+
         elif isinstance(obj, np.ndarray):
             shape_str = str(obj.shape).replace(" ", "")
             total = obj.size
+            # 调整格式化逻辑，不再仅限于20个元素
             if total <= 20 and obj.ndim <= 2:
                 try:
                     s = np.array2string(obj, separator=' ', threshold=20, edgeitems=3)
@@ -153,23 +159,33 @@ class BuildTreeWorker(QThread):
                 except:
                     return f"{{ndarray: {shape_str}}}"
             else:
+                # 即使元素多，也展示基本信息和省略号
                 return f"{{ndarray: {shape_str}}} <dtype={obj.dtype}> ..."
+
         elif isinstance(obj, pd.DataFrame):
             return f"{{DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
+
         elif isinstance(obj, pd.Series):
             return f"{{Series: ({len(obj)})}}"
+
         elif isinstance(obj, dict):
             return f"{{dict: {len(obj)}}}"
+
         elif isinstance(obj, list):
             return f"{{list: {len(obj)}}}"
+
         elif isinstance(obj, tuple):
             return f"{{tuple: {len(obj)}}}"
+
         elif isinstance(obj, set):
             return f"{{set: {len(obj)}}}"
+
         elif self._is_image_file(obj):
             return f"{{Image}} '{os.path.basename(str(obj))}'"
+
         elif self._is_pil_image(obj):
             return f"{{PIL.Image}} size={obj.size}"
+
         elif hasattr(obj, '__class__'):
             cls = obj.__class__
             mod = cls.__module__
@@ -219,7 +235,7 @@ class BuildTreeWorker(QThread):
             if isinstance(obj, str) and os.path.isfile(obj):
                 item_data["icon_path"] = obj
             elif self._is_pil_image(obj):
-                 item_data["icon_pil"] = True
+                item_data["icon_pil"] = True
 
         self._build_recursive_content_items(obj, max_depth, current_depth, arg_type, item_data["children"])
         parent_list.append(item_data)
@@ -232,15 +248,12 @@ class BuildTreeWorker(QThread):
         if isinstance(obj, dict):
             for k, v in obj.items():
                 self._build_items(v, str(k), max_depth, current_depth, arg_type, children_list)
-
         elif isinstance(obj, (list, tuple)):
             for i, v in enumerate(obj):
                 self._build_items(v, str(i), max_depth, current_depth, arg_type, children_list)
-
         elif isinstance(obj, set):
             for i, v in enumerate(obj):
                 self._build_items(v, f"[{i}]", max_depth, current_depth, arg_type, children_list)
-
         elif isinstance(obj, np.ndarray):
             attrs = {
                 'shape': obj.shape,
@@ -259,36 +272,101 @@ class BuildTreeWorker(QThread):
                 }
                 children_list.append(attr_item_data)
 
-            if obj.size <= 20:
-                if obj.ndim == 1:
-                    for i in range(obj.shape[0]):
-                        self._build_items(obj[i], f"[{i}]", max_depth, current_depth, arg_type, children_list)
-                elif obj.ndim == 2:
-                    for i in range(obj.shape[0]):
-                        row_children = []
-                        for j in range(obj.shape[1]):
-                            self._build_items(obj[i, j], str(j), max_depth, current_depth, arg_type, row_children)
-                        row_item_data = {
-                            "text": [f"[{i}]"],
-                            "data": obj[i],
-                            "children": row_children,
+            # --- 修改 ndarray 展开逻辑 ---
+            # 移除 obj.size <= 20 的限制，改为按维度长度限制
+            # 为每个维度设置最大展示数量
+            MAX_PER_DIM = 300
+
+            if obj.ndim == 1:
+                # 1D array: 限制展示数量，使用切片
+                slice_obj = slice(0, min(obj.shape[0], MAX_PER_DIM))
+                for i in range(slice_obj.start, min(slice_obj.stop, obj.shape[0])):
+                    self._build_items(obj[i], f"[{i}]", max_depth, current_depth, arg_type, children_list)
+                # 如果被截断，添加提示节点
+                if obj.shape[0] > MAX_PER_DIM:
+                    trunc_item_data = {
+                        "text": [f"... ({obj.shape[0] - MAX_PER_DIM} more items truncated ...)"],
+                        "data": None,  # 截断节点不关联实际数据
+                        "children": [],
+                        "icon": None
+                    }
+                    children_list.append(trunc_item_data)
+
+            elif obj.ndim == 2:
+                # 2D array: 限制行和列
+                max_rows = min(obj.shape[0], MAX_PER_DIM)
+                max_cols = min(obj.shape[1], MAX_PER_DIM)
+                for i in range(max_rows):
+                    row_children = []
+                    for j in range(max_cols):
+                        self._build_items(obj[i, j], str(j), max_depth, current_depth, arg_type, row_children)
+                    # 如果列被截断，添加提示
+                    if obj.shape[1] > MAX_PER_DIM:
+                        trunc_col_item_data = {
+                            "text": [f"... ({obj.shape[1] - MAX_PER_DIM} more items truncated ...)"],
+                            "data": None,
+                            "children": [],
                             "icon": None
                         }
-                        children_list.append(row_item_data)
+                        row_children.append(trunc_col_item_data)
+
+                    # 为行创建节点
+                    row_item_data = {
+                        "text": [f"[{i}]"],
+                        "data": obj[i],  # 行本身也是一个对象
+                        "children": row_children,
+                        "icon": None
+                    }
+                    children_list.append(row_item_data)
+
+                # 如果行被截断，添加提示
+                if obj.shape[0] > MAX_PER_DIM:
+                    trunc_row_item_data = {
+                        "text": [f"... ({obj.shape[0] - MAX_PER_DIM} more rows truncated ...)"],
+                        "data": None,
+                        "children": [],
+                        "icon": None
+                    }
+                    children_list.append(trunc_row_item_data)
+
+            elif obj.ndim > 2:
+                # 对于更高维度的数组，递归处理
+                # 限制第一个维度
+                max_first_dim = min(obj.shape[0], MAX_PER_DIM)
+                for i in range(max_first_dim):
+                    # 创建一个切片，代表当前维度的一个元素 (例如，一个2D矩阵)
+                    sub_obj = obj[i]
+                    sub_children = []
+                    # 递归处理这个子对象
+                    self._build_recursive_content_items(sub_obj, max_depth, current_depth, arg_type, sub_children)
+                    sub_item_data = {
+                        "text": [f"[{i}]"],
+                        "data": sub_obj,
+                        "children": sub_children,
+                        "icon": None
+                    }
+                    children_list.append(sub_item_data)
+
+                # 如果第一个维度被截断，添加提示
+                if obj.shape[0] > MAX_PER_DIM:
+                    trunc_high_dim_item_data = {
+                        "text": [f"... ({obj.shape[0] - MAX_PER_DIM} more items in first dimension truncated ...)"],
+                        "data": None,
+                        "children": [],
+                        "icon": None
+                    }
+                    children_list.append(trunc_high_dim_item_data)
 
         elif isinstance(obj, pd.DataFrame):
             for col in obj.columns:
                 self._build_items(obj[col], str(col), max_depth, current_depth, arg_type, children_list)
-
         elif isinstance(obj, pd.Series):
-            for idx in obj.index[:20]:
+            for idx in obj.index[:20]:  # 限制展开数量
                 self._build_items(obj[idx], str(idx), max_depth, current_depth, arg_type, children_list)
-
         elif hasattr(obj, '__dict__') and obj.__dict__:
             for attr_name, attr_value in obj.__dict__.items():
                 if not attr_name.startswith('_'):
                     self._build_items(attr_value, attr_name, max_depth, current_depth, arg_type, children_list)
-
         elif hasattr(obj, '__slots__'):
             for slot in getattr(obj, '__slots__', []):
                 if hasattr(obj, slot):
@@ -297,6 +375,7 @@ class BuildTreeWorker(QThread):
                         self._build_items(attr_value, slot, max_depth, current_depth, arg_type, children_list)
 
 
+# --- Main Widget Class (错误处理更新) ---
 class VariableTreeWidget(TreeWidget):
     """用于展示单个变量的详细树状结构"""
 
@@ -320,6 +399,7 @@ class VariableTreeWidget(TreeWidget):
                 border: none;
             }
         """)
+
         self._original_data = None
         self._arg_type = None
         self._current_worker = None  # 用于跟踪当前正在运行的worker线程
@@ -348,7 +428,6 @@ class VariableTreeWidget(TreeWidget):
         self.clear()
         for item_data in root_items_data:
             self._add_item_from_data(self.invisibleRootItem(), item_data)
-
         if self.topLevelItemCount() > 0:
             top_item = self.topLevelItem(0)
             if top_item.childCount() > 0:
@@ -356,23 +435,29 @@ class VariableTreeWidget(TreeWidget):
 
     def _on_build_error(self, error_message):
         """处理构建过程中的错误"""
-        print(f"构建树形结构时出错: {error_message}")
+        print(f"构建树形结构时出错: {error_message}")  # 打印完整错误信息
         # 可以选择在UI上显示错误信息
         from qfluentwidgets import InfoBar, InfoBarPosition
         InfoBar.error(
             title="数据结构解析失败",
-            content=error_message,
+            # content=error_message, # 可能太长，只显示关键部分
+            content=f"解析变量时出错: {type(self._original_data).__name__}",
             orient=Qt.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP_RIGHT,
-            duration=3000,
+            duration=5000,  # 延长显示时间
             parent=self
         )
+        # 也可以添加一个临时项来显示错误
+        error_item = QTreeWidgetItem(self.invisibleRootItem(), [f"Error: {type(self._original_data).__name__}"])
+        error_item.setForeground(0, Qt.red)
 
     def _add_item_from_data(self, parent_item, item_data):
         """根据数据字典创建TreeWidgetItem并添加到父项"""
         item = QTreeWidgetItem(parent_item, item_data["text"])
-        item.setData(0, Qt.UserRole, item_data["data"])
+        # 只有当数据不为 None 时才设置 UserRole 数据
+        if item_data["data"] is not None:
+            item.setData(0, Qt.UserRole, item_data["data"])
 
         # 设置图标（如果需要）
         if "icon_path" in item_data:
@@ -388,10 +473,11 @@ class VariableTreeWidget(TreeWidget):
         for child_data in item_data["children"]:
             self._add_item_from_data(item, child_data)
 
+    # --- 其他辅助方法 (_format_value, _is_image_file, etc.) 保持不变 ---
+    # ... (这里省略，但代码中需要保留) ...
     def _format_value(self, obj, arg_type=None):
         if obj is None:
             return "None"
-
         if arg_type is not None and isinstance(arg_type, ArgumentType):
             if arg_type.is_image():
                 if isinstance(obj, str) and os.path.isfile(obj):
@@ -488,10 +574,13 @@ class VariableTreeWidget(TreeWidget):
                         return f"📁 '{os.path.basename(obj)}'"
                 else:
                     return f"'{obj[:200]}...' (右键预览)"
+
         elif isinstance(obj, (int, float)):
             return str(obj)
+
         elif isinstance(obj, np.number):
             return str(obj)
+
         elif isinstance(obj, np.ndarray):
             shape_str = str(obj.shape).replace(" ", "")
             total = obj.size
@@ -505,22 +594,31 @@ class VariableTreeWidget(TreeWidget):
                     return f"{{ndarray: {shape_str}}}"
             else:
                 return f"{{ndarray: {shape_str}}} <dtype={obj.dtype}> ..."
+
         elif isinstance(obj, pd.DataFrame):
             return f"{{DataFrame: ({obj.shape[0]}, {obj.shape[1]})}}"
+
         elif isinstance(obj, pd.Series):
             return f"{{Series: ({len(obj)})}}"
+
         elif isinstance(obj, dict):
             return f"{{dict: {len(obj)}}}"
+
         elif isinstance(obj, list):
             return f"{{list: {len(obj)}}}"
+
         elif isinstance(obj, tuple):
             return f"{{tuple: {len(obj)}}}"
+
         elif isinstance(obj, set):
             return f"{{set: {len(obj)}}}"
+
         elif self._is_image_file(obj):
             return f"{{Image}} '{os.path.basename(str(obj))}'"
+
         elif self._is_pil_image(obj):
             return f"{{PIL.Image}} size={obj.size}"
+
         elif hasattr(obj, '__class__'):
             cls = obj.__class__
             mod = cls.__module__
@@ -578,46 +676,45 @@ class VariableTreeWidget(TreeWidget):
             return scaled_pixmap
         return None
 
+    # --- show_detail 方法保持不变 ---
     def show_detail(self):
         obj = self._original_data
         if isinstance(obj, str) and not os.path.isfile(obj):
             self._preview_text(obj)
-
         elif isinstance(obj, str) and os.path.isfile(obj):
             filepath = obj
             ext = os.path.splitext(filepath.lower())[1]
 
             if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff', '.webp'}:
                 self._preview_image(filepath)
-
             elif ext == '.csv':
                 self._preview_csv_full(filepath)
-
             elif ext in {'.xlsx', '.xls'}:
-                self._preview_excel(filepath) # 调用优化后的方法
-
+                self._preview_excel(filepath)  # 调用优化后的方法
             elif ext in {'.txt', '.log', '.md', '.py', '.json', '.xml', '.yaml', '.yml', '.ini'}:
                 self._preview_text_file(filepath)
-
         elif isinstance(obj, (list, tuple)):
-            self._preview_nested_structure(obj, "列表数据预览")
-
+            self._preview_nested_structure(obj, f"{'列表' if isinstance(obj, list) else '元组'}数据预览")
         elif isinstance(obj, dict):
             self._preview_nested_structure(obj, "字典数据预览")
-
         elif isinstance(obj, set):
-            self._preview_nested_structure(obj, "元组数据预览")
-
+            # 修正标题
+            self._preview_nested_structure(obj, "集合数据预览")
+        elif isinstance(obj, np.ndarray):  # 添加对 ndarray 的处理
+            # ndarray 通常结构清晰，直接使用 _preview_nested_structure 也合适
+            # 或者，也可以调用 _preview_dataframe_full 并将 ndarray 转为 DataFrame (但可能不直观)
+            # 这里使用 _preview_nested_structure 更通用
+            self._preview_nested_structure(obj, f"NumPy 数组 (shape: {obj.shape}, dtype: {obj.dtype}) 预览")
         elif isinstance(obj, pd.DataFrame):
             self._preview_dataframe_full(obj)
-
         elif isinstance(obj, pd.Series):
             obj = obj.to_frame()
             self._preview_dataframe_full(obj)
-
         elif self._is_pil_image(obj):
             self._preview_image(obj)
+        # 可以添加更多顶层类型处理，但以上已覆盖主要情况
 
+    # --- contextMenuEvent 方法保持不变 ---
     def contextMenuEvent(self, event):
         item = self.itemAt(event.pos())
         if not item:
@@ -642,18 +739,15 @@ class VariableTreeWidget(TreeWidget):
                 action = QAction("🖼️ 预览原图", self)
                 action.triggered.connect(lambda: self._preview_image(filepath))
                 menu.addAction(action)
-
             elif ext == '.csv':
                 preview_full = QAction("🔍 预览完整数据", self)
                 preview_full.triggered.connect(lambda: self._preview_csv_full(filepath))
                 menu.addAction(preview_full)
-
             elif ext in {'.xlsx', '.xls'}:
                 # 移除旧的预览动作，使用新的优化后方法
                 preview_limited = QAction("📊 预览所有工作表", self)
                 preview_limited.triggered.connect(lambda: self._preview_excel(filepath))
                 menu.addAction(preview_limited)
-
             elif ext in {'.txt', '.log', '.md', '.py', '.json', '.xml', '.yaml', '.yml', '.ini'}:
                 action = QAction("🔍 预览文本内容", self)
                 action.triggered.connect(lambda: self._preview_text_file(filepath))
@@ -665,7 +759,8 @@ class VariableTreeWidget(TreeWidget):
 
         elif isinstance(obj, (list, tuple)):
             action = QAction("🔍 预览完整列表", self)
-            action.triggered.connect(lambda: self._preview_nested_structure(obj, "列表数据预览"))
+            action.triggered.connect(
+                lambda: self._preview_nested_structure(obj, f"{'列表' if isinstance(obj, list) else '元组'}数据预览"))
             menu.addAction(action)
 
         elif isinstance(obj, dict):
@@ -674,8 +769,16 @@ class VariableTreeWidget(TreeWidget):
             menu.addAction(action)
 
         elif isinstance(obj, set):
+            # 修正标题
             action = QAction("🔍 预览完整集合", self)
-            action.triggered.connect(lambda: self._preview_nested_structure(obj, "元组数据预览"))
+            action.triggered.connect(lambda: self._preview_nested_structure(obj, "集合数据预览"))
+            menu.addAction(action)
+
+        elif isinstance(obj, np.ndarray):  # 添加对 ndarray 的右键菜单处理
+            action = QAction("🔍 预览数组内容", self)
+            # 使用更通用的预览方法，或者可以专门写一个 _preview_ndarray
+            action.triggered.connect(lambda: self._preview_nested_structure(obj,
+                                                                            f"NumPy 数组 (shape: {obj.shape}, dtype: {obj.dtype}) 预览"))
             menu.addAction(action)
 
         elif isinstance(obj, pd.DataFrame):
@@ -700,6 +803,8 @@ class VariableTreeWidget(TreeWidget):
 
         menu.exec_(event.globalPos())
 
+    # --- 其他方法 (_preview_nested_structure, _build_nested_tree, etc.) 保持不变 ---
+    # ... (这里省略，但代码中需要保留) ...
     def _preview_nested_structure(self, data, title="嵌套结构预览"):
         """
         为嵌套容器（list, dict, tuple, set）创建一个树状预览窗口
@@ -711,12 +816,12 @@ class VariableTreeWidget(TreeWidget):
         # 创建一个 TreeWidget 用于展示嵌套结构
         tree_widget = TreeWidget()
         tree_widget.setHeaderLabels(["Key", "Value"])
-
         tree_widget.setAlternatingRowColors(False)
         tree_widget.setSortingEnabled(False)
         tree_widget.setMinimumSize(800, 500)
         tree_widget.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Key列自适应内容
         tree_widget.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Value列拉伸填充剩余空间
+
         # 构建树
         self._build_nested_tree(data, tree_widget.invisibleRootItem(), "", is_root=True)
 
@@ -738,9 +843,10 @@ class VariableTreeWidget(TreeWidget):
 
         display_key = key if not is_root else "root"
         display_value = self._format_value(obj)
-
         item = QTreeWidgetItem(parent_item, [display_key, display_value])
-        item.setData(0, Qt.UserRole, obj)
+        # 只有当 obj 不为 None 时才设置数据
+        if obj is not None:
+            item.setData(0, Qt.UserRole, obj)
 
         # 使用复用的递归逻辑
         self._build_recursive_content_nested(obj, item, max_depth, current_depth)
@@ -779,16 +885,48 @@ class VariableTreeWidget(TreeWidget):
                 # 如果属性值本身是容器，可以考虑展开，但要严格控制深度
                 self._build_recursive_content_nested(attr_val, attr_item, max_depth, current_depth)
 
-            # 如果数组元素较少，展开内容
-            if obj.size <= 20:
-                if obj.ndim == 1:
-                    for i in range(obj.shape[0]):
-                        self._build_nested_tree(obj[i], parent_item, f"[{i}]", max_depth, current_depth)
-                elif obj.ndim == 2:
-                    for i in range(obj.shape[0]):
-                        row_item = QTreeWidgetItem(parent_item, [f"[{i}]", ""])
-                        for j in range(obj.shape[1]):
-                            self._build_nested_tree(obj[i, j], row_item, str(j), max_depth, current_depth)
+            # --- 修改 ndarray 展开逻辑 (预览窗口) ---
+            MAX_PER_DIM = 300
+            if obj.ndim == 1:
+                max_items = min(obj.shape[0], MAX_PER_DIM)
+                for i in range(max_items):
+                    self._build_nested_tree(obj[i], parent_item, f"[{i}]", max_depth, current_depth)
+                if obj.shape[0] > MAX_PER_DIM:
+                    trunc_item = QTreeWidgetItem(parent_item,
+                                                 [f"... ({obj.shape[0] - MAX_PER_DIM} more items truncated ...)", ""])
+                    trunc_item.setForeground(0, Qt.gray)
+
+            elif obj.ndim == 2:
+                max_rows = min(obj.shape[0], MAX_PER_DIM)
+                max_cols = min(obj.shape[1], MAX_PER_DIM)
+                for i in range(max_rows):
+                    row_item = QTreeWidgetItem(parent_item, [f"[{i}]", ""])
+                    for j in range(max_cols):
+                        self._build_nested_tree(obj[i, j], row_item, str(j), max_depth, current_depth)
+                    if obj.shape[1] > MAX_PER_DIM:
+                        trunc_col_item = QTreeWidgetItem(row_item,
+                                                         [f"... ({obj.shape[1] - MAX_PER_DIM} more items truncated ...)",
+                                                          ""])
+                        trunc_col_item.setForeground(0, Qt.gray)
+
+                if obj.shape[0] > MAX_PER_DIM:
+                    trunc_row_item = QTreeWidgetItem(parent_item,
+                                                     [f"... ({obj.shape[0] - MAX_PER_DIM} more rows truncated ...)",
+                                                      ""])
+                    trunc_row_item.setForeground(0, Qt.gray)
+
+            elif obj.ndim > 2:
+                max_first_dim = min(obj.shape[0], MAX_PER_DIM)
+                for i in range(max_first_dim):
+                    sub_obj = obj[i]
+                    sub_item = QTreeWidgetItem(parent_item, [f"[{i}]", f"ndarray{obj.shape[1:]}"])
+                    self._build_recursive_content_nested(sub_obj, sub_item, max_depth, current_depth)
+
+                if obj.shape[0] > MAX_PER_DIM:
+                    trunc_high_dim_item = QTreeWidgetItem(parent_item,
+                                                          [f"... ({obj.shape[0] - MAX_PER_DIM} more items in first dimension truncated ...)",
+                                                           ""])
+                    trunc_high_dim_item.setForeground(0, Qt.gray)
 
         elif isinstance(obj, pd.DataFrame):
             # 对于 DataFrame，展开列
@@ -797,7 +935,7 @@ class VariableTreeWidget(TreeWidget):
 
         elif isinstance(obj, pd.Series):
             # 对于 Series，展开索引
-            for idx in obj.index[:20]: # 限制展开数量
+            for idx in obj.index[:20]:  # 限制展开数量
                 self._build_nested_tree(obj[idx], parent_item, str(idx), max_depth, current_depth)
 
         elif hasattr(obj, '__dict__') and obj.__dict__:
@@ -880,11 +1018,12 @@ class VariableTreeWidget(TreeWidget):
             seg_widget = SegmentedWidget()
             table = self._create_styled_table()
             table.setMinimumSize(800, 500)
+
             def load_sheet(name):
                 """加载指定工作表到表格"""
                 try:
                     # 从 ExcelFile 对象读取指定 sheet，避免重复打开文件
-                    df = pd.read_excel(xls, sheet_name=name, nrows=1000) # 限制行数
+                    df = pd.read_excel(xls, sheet_name=name, nrows=1000)  # 限制行数
                     self._fill_native_table(table, df)
                 except Exception as e:
                     table.clear()
@@ -897,7 +1036,7 @@ class VariableTreeWidget(TreeWidget):
 
             # 添加所有工作表到 SegmentedWidget
             for name in sheet_names:
-                seg_widget.addItem(name, text=name) # 使用 sheet_name 作为 key 和 text
+                seg_widget.addItem(name, text=name)  # 使用 sheet_name 作为 key 和 text
 
             # 连接切换事件
             seg_widget.currentItemChanged.connect(load_sheet)
@@ -910,7 +1049,6 @@ class VariableTreeWidget(TreeWidget):
             dialog.viewLayout.addWidget(table)
 
             dialog.exec_()
-
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition
             InfoBar.error(
@@ -936,7 +1074,6 @@ class VariableTreeWidget(TreeWidget):
 
     def _preview_image(self, image_data):
         pixmap = None
-
         if isinstance(image_data, str) and os.path.isfile(image_data):
             pixmap = QPixmap(image_data)
         elif self._is_pil_image(image_data):
@@ -984,8 +1121,10 @@ class VariableTreeWidget(TreeWidget):
         w = MessageBoxBase(parent=self.parent_widget)
         w.yesButton.hide()
         w.cancelButton.setText("关闭")
+
         image_view = ImageLabel()
         image_view.setImage(scaled_pixmap)  # 使用缩放后的 pixmap
+
         w.viewLayout.addWidget(image_view)
         w.exec_()
 
@@ -1050,7 +1189,7 @@ class VariableTreeWidget(TreeWidget):
     def _preview_text_file(self, filepath):
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read(10000)
+                content = f.read(10000)  # 限制读取长度
             self._preview_text(content)
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition
@@ -1071,30 +1210,3 @@ class VariableTreeWidget(TreeWidget):
         table.setSelectionMode(QTableWidget.ContiguousSelection)
 
         return table
-
-
-# ============ 示例使用 ============
-if __name__ == "__main__":
-    # 示例：嵌套数据结构
-    sample_data = {
-        "name": "Alice",
-        "age": 30,
-        "scores": [95, 88, 100],
-        "profile": {
-            "hobbies": ["reading", "cycling"],
-            "address": {
-                "city": "Beijing",
-                "details": {
-                    "street": "Zhongguancun",
-                    "number": 100
-                }
-            }
-        },
-        "metadata": np.array([1.0, 2.0, 3.0]),
-        "df": pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
-    }
-
-    app = QApplication([])
-    tree = VariableTreeWidget(data=sample_data)
-    tree.show()
-    app.exec_()
