@@ -86,7 +86,7 @@ def create_dynamic_code_node(parent_window=None):
             self._init_properties()
 
             # 延迟绑定端口同步（避免初始化时 widget 未就绪）
-            QtCore.QTimer.singleShot(0, self._setup_port_sync)
+            QtCore.QTimer.singleShot(50, self._setup_port_sync)
 
         def _setup_port_sync(self):
             widget = self.input_widget.get_custom_widget()

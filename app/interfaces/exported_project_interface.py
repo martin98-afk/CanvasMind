@@ -112,7 +112,7 @@ class ExportedProjectsPage(QWidget):
         # === 顶部：排序 + 方向 + 搜索 ===
         top_bar = QHBoxLayout()
         top_bar.setSpacing(16)
-        top_bar.setContentsMargins(50, 0, 50, 0)
+        top_bar.setContentsMargins(50, 0, 70, 0)
         sort_label = CaptionLabel("排序字段：", self)
         self.sort_field_combo = ComboBox(self)
         self.sort_field_combo.addItems(["创建时间", "名称"])
