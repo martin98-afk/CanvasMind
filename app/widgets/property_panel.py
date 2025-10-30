@@ -369,7 +369,11 @@ class PropertyPanel(CardWidget):
             else:
                 return
             if port_type == ArgumentType.CSV and isinstance(original_data, pd.DataFrame) and not original_data.empty:
-                self._add_column_selector_widget_to_layout(node, port_name, original_data, original_data, layout)
+                self._add_column_selector_widget_to_layout(node, port_name, original_data, layout)
+                current_selected_data = self._get_current_input_value(node, port_name, original_data)
+            elif port_type == ArgumentType.CSV and isinstance(original_data, str) and Path(original_data).is_file():
+                sample_data = pd.read_csv(original_data, nrows=5)
+                self._add_column_selector_widget_to_layout(node, port_name, sample_data, layout)
                 current_selected_data = self._get_current_input_value(node, port_name, original_data)
             else:
                 current_selected_data = original_data
@@ -433,7 +437,7 @@ class PropertyPanel(CardWidget):
         else:
             return original_data
 
-    def _add_column_selector_widget_to_layout(self, node, port_name, data, original_data, layout):
+    def _add_column_selector_widget_to_layout(self, node, port_name, data, layout):
         if not isinstance(data, pd.DataFrame) or data.empty:
             return
         columns = list(data.columns)
@@ -1149,6 +1153,7 @@ class PropertyPanel(CardWidget):
         title_layout = QHBoxLayout()
         title = BodyLabel(name)
         title_layout.addWidget(title)
+        # 节点变量更新策略
         strategy_combo = TransparentDropDownToolButton(icon=get_icon(node_var_obj.update_policy), parent=self)
         strategy_combo.setProperty("policy", node_var_obj.update_policy)
         strategy_combo.setProperty("node_var_name", name)
@@ -1181,13 +1186,66 @@ class PropertyPanel(CardWidget):
         def show_context_menu(pos):
             menu = RoundMenu(parent=self)
             menu.addAction(Action("复制为表达式", triggered=lambda: self._copy_as_expression("node_vars", name)))
+            menu.addAction(Action("跳转到该节点", triggered=lambda: self._locate_node_by_variable_name(name)))
             menu.exec_(card.mapToGlobal(pos))
         card.setContextMenuPolicy(Qt.CustomContextMenu)
         card.customContextMenuRequested.connect(show_context_menu)
         card.strategy_combo = strategy_combo
+        # 节点变量双击自动跳转到对应节点
+        def on_card_double_clicked(event):
+            if event.button() == Qt.LeftButton:
+                self._locate_node_by_variable_name(name)
+
+        card.mouseDoubleClickEvent = on_card_double_clicked
+        card.setCursor(Qt.PointingHandCursor)  # 可选：改变鼠标指针提示可点击
+
         card.tree_widget = tree
         card.node_var_name = name
         return card
+
+    def _locate_node_by_variable_name(self, var_name: str):
+        """根据全局变量名定位到对应的节点"""
+        # var_name 格式为 "{safe_node_name}_{port_name}"
+        # 从 var_name 解析出 safe_node_name_candidate
+        parts = var_name.rsplit('_', 1) # 从右边分割一次
+        if len(parts) < 2:
+            logger.warning(f"无法从变量名 '{var_name}' 解析出节点名称")
+            return
+
+        safe_node_name_candidate = parts[0]
+
+        # 根据规则，将 safe_node_name_candidate 中的下划线替换回空格，得到原始名称候选
+        original_name_candidate = safe_node_name_candidate.replace('_', ' ')
+
+        # 尝试通过名称查找节点
+        node_graph = self.main_window.graph # 获取 NodeGraphQt 实例
+        if not node_graph:
+            logger.warning("无法获取节点图实例")
+            return
+
+        # 尝试1: 使用原始名称候选查找 (例如 "My Node_1" -> "My Node 1")
+        found_node = node_graph.get_node_by_name(original_name_candidate)
+        if not found_node:
+            # 尝试2: 使用安全名称候选查找 (例如 "My_Node_1" -> "My_Node_1")
+            # 这种情况可能发生在节点名称本身就包含下划线时
+            found_node = node_graph.get_node_by_name(safe_node_name_candidate)
+
+        if found_node:
+            # 选中节点
+            node_graph.clear_selection()
+            found_node.set_selected(True)
+            # 将节点居中到视图
+            node_graph.center_on([found_node])
+            logger.info(f"定位到节点: {found_node.name()}")
+        else:
+            logger.warning(f"未找到与变量名 '{var_name}' 对应的节点 "
+                           f"(尝试名称: '{original_name_candidate}', '{safe_node_name_candidate}')")
+            InfoBar.warning(
+                title="未找到节点",
+                content=f"无法定位到变量 '{var_name}' 对应的节点。",
+                parent=self.main_window,
+                position=InfoBarPosition.TOP_RIGHT
+            )
 
     def _create_env_var_row(self, key: str, value):
         card = CardWidget(self)

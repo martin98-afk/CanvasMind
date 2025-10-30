@@ -715,7 +715,8 @@ class VariableTreeWidget(TreeWidget):
         tree_widget.setAlternatingRowColors(False)
         tree_widget.setSortingEnabled(False)
         tree_widget.setMinimumSize(800, 500)
-
+        tree_widget.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Key列自适应内容
+        tree_widget.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Value列拉伸填充剩余空间
         # 构建树
         self._build_nested_tree(data, tree_widget.invisibleRootItem(), "", is_root=True)
 
