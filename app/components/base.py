@@ -617,9 +617,10 @@ class BaseComponent(ABC):
         """读取CSV数据"""
         if isinstance(data, pd.DataFrame):
             return data
-        elif isinstance(data, (str, Path)):
-            if os.path.exists(data):
-                return pd.read_csv(data)
+        elif isinstance(data, str):
+            data = Path(data)
+            if data.is_file():
+                return pd.read_csv(str(data))
             else:
                 # 如果是CSV字符串
                 import io

@@ -8,6 +8,7 @@ import pandas as pd
 from loguru import logger
 from pathlib import Path
 from NodeGraphQt import BaseNode
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
     QStackedWidget, QHBoxLayout, QApplication
@@ -369,7 +370,11 @@ class PropertyPanel(CardWidget):
             else:
                 return
             if port_type == ArgumentType.CSV and isinstance(original_data, pd.DataFrame) and not original_data.empty:
-                self._add_column_selector_widget_to_layout(node, port_name, original_data, original_data, layout)
+                self._add_column_selector_widget_to_layout(node, port_name, original_data, layout)
+                current_selected_data = self._get_current_input_value(node, port_name, original_data)
+            elif port_type == ArgumentType.CSV and isinstance(original_data, str) and Path(original_data).is_file():
+                sample_data = pd.read_csv(original_data, nrows=5)
+                self._add_column_selector_widget_to_layout(node, port_name, sample_data, layout)
                 current_selected_data = self._get_current_input_value(node, port_name, original_data)
             else:
                 current_selected_data = original_data
@@ -433,7 +438,7 @@ class PropertyPanel(CardWidget):
         else:
             return original_data
 
-    def _add_column_selector_widget_to_layout(self, node, port_name, data, original_data, layout):
+    def _add_column_selector_widget_to_layout(self, node, port_name, data, layout):
         if not isinstance(data, pd.DataFrame) or data.empty:
             return
         columns = list(data.columns)
@@ -621,7 +626,7 @@ class PropertyPanel(CardWidget):
 
         src_path = Path(file_path)
         if not src_path.exists():
-            InfoBar.error("文件不存在", f"所选文件 {file_path} 不存在", parent=self)
+            InfoBar.error("文件不存在", f"所选文件 {file_path} 不存在", parent=self.parent_window)
             return
 
         # ✅ 定义目标目录：项目根目录下的 uploads/
@@ -648,7 +653,7 @@ class PropertyPanel(CardWidget):
             logger.info(f"已上传并复制文件: {src_path} -> {dst_path}")
         except Exception as e:
             logger.error(f"文件复制失败: {e}")
-            InfoBar.error("上传失败", f"无法复制文件：{e}", parent=self)
+            InfoBar.error("上传失败", f"无法复制文件：{e}", parent=self.parent_window)
             return
 
         # ✅ 设置节点输出为新的相对路径
@@ -657,7 +662,7 @@ class PropertyPanel(CardWidget):
         # 刷新 UI
         self.update_properties(node)
 
-        InfoBar.success("上传成功", f"文件已保存至：{dst_path.name}", parent=self, duration=2000)
+        InfoBar.success("上传成功", f"文件已保存至：{dst_path.name}", parent=self.main_window, duration=2000)
 
     def get_node_description(self, node):
         if hasattr(node, 'component_class'):
@@ -918,7 +923,7 @@ class PropertyPanel(CardWidget):
             InfoBar.warning(
                 title="警告",
                 content=f"端口 {port_name} 当前无有效输出值",
-                parent=self,
+                parent=self.main_window,
                 position=InfoBarPosition.TOP_RIGHT
             )
         safe_node_name = re.sub(r'\s+', '_', node.name())
@@ -926,6 +931,8 @@ class PropertyPanel(CardWidget):
         self.main_window.global_variables.set_output(
             node_id=safe_node_name, output_name=port_name, output_value=serialize_for_json(value)
         )
+        if hasattr(node, "refresh_node_outports"):
+            QtCore.QTimer.singleShot(100, node.refresh_node_outports)
         self.main_window.global_variables_changed.emit("node_vars", var_name, "add")
         InfoBar.success(
             title="成功",
@@ -1149,6 +1156,7 @@ class PropertyPanel(CardWidget):
         title_layout = QHBoxLayout()
         title = BodyLabel(name)
         title_layout.addWidget(title)
+        # 节点变量更新策略
         strategy_combo = TransparentDropDownToolButton(icon=get_icon(node_var_obj.update_policy), parent=self)
         strategy_combo.setProperty("policy", node_var_obj.update_policy)
         strategy_combo.setProperty("node_var_name", name)
@@ -1181,13 +1189,63 @@ class PropertyPanel(CardWidget):
         def show_context_menu(pos):
             menu = RoundMenu(parent=self)
             menu.addAction(Action("复制为表达式", triggered=lambda: self._copy_as_expression("node_vars", name)))
+            menu.addAction(
+                Action(
+                    "跳转到该节点",
+                    triggered=lambda: self.main_window.center_to(self._locate_node_by_variable_name(name))
+                )
+            )
             menu.exec_(card.mapToGlobal(pos))
         card.setContextMenuPolicy(Qt.CustomContextMenu)
         card.customContextMenuRequested.connect(show_context_menu)
         card.strategy_combo = strategy_combo
+        # 节点变量双击自动跳转到对应节点
+        def on_card_double_clicked(event):
+            if event.button() == Qt.LeftButton:
+                self.main_window.center_to(self._locate_node_by_variable_name(name))
+
+        card.mouseDoubleClickEvent = on_card_double_clicked
+        card.setCursor(Qt.PointingHandCursor)  # 可选：改变鼠标指针提示可点击
+
         card.tree_widget = tree
         card.node_var_name = name
         return card
+
+    def _locate_node_by_variable_name(self, var_name: str):
+        """根据全局变量名定位到对应的节点"""
+        # 从 var_name 解析出 safe_node_name_candidate
+        # 从左边分割一两次获取到端口名
+        parts = var_name.split("_")
+        if len(parts) < 2:
+            logger.warning(f"无法从变量名 '{var_name}' 解析出节点名称")
+            return
+        elif len(parts) == 2:
+            safe_node_name_candidate = parts[0]
+        else:
+            safe_node_name_candidate = "_".join(parts[:2])
+
+        # 根据规则，将 safe_node_name_candidate 中的下划线替换回空格，得到原始名称候选
+        original_name_candidate = re.sub(r'_(?=\d+$)', " ", safe_node_name_candidate)
+
+        # 尝试通过名称查找节点
+        node_graph = self.main_window.graph # 获取 NodeGraphQt 实例
+        if not node_graph:
+            logger.warning("无法获取节点图实例")
+            return
+
+        # 尝试1: 使用原始名称候选查找 (例如 "My Node_1" -> "My Node 1")
+        found_node = node_graph.get_node_by_name(original_name_candidate)
+        if not found_node:
+            logger.warning(f"未找到与变量名 '{var_name}' 对应的节点 "
+                           f"(尝试名称: '{original_name_candidate}', '{safe_node_name_candidate}')")
+            InfoBar.warning(
+                title="未找到节点",
+                content=f"无法定位到变量 '{var_name}' 对应的节点。",
+                parent=self.main_window,
+                position=InfoBarPosition.TOP_RIGHT
+            )
+
+        return found_node
 
     def _create_env_var_row(self, key: str, value):
         card = CardWidget(self)
@@ -1232,6 +1290,10 @@ class PropertyPanel(CardWidget):
                 del global_vars.custom[var_name]
             elif var_type == 'node_vars' and hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
                 del global_vars.node_vars[var_name]
+                node = self._locate_node_by_variable_name(var_name)
+                if hasattr(node, "refresh_node_outports"):
+                    QtCore.QTimer.singleShot(0, node.refresh_node_outports)
+
             self._refresh_custom_vars_page()
             self.main_window.global_variables_changed.emit(var_type, var_name, "delete")
             InfoBar.success("已删除", f"变量 '{var_name}' 已移除", parent=self.main_window, duration=1500)

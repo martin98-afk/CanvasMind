@@ -48,9 +48,8 @@ class BasicNodeWithGlobalProperty(NodeObject):
                 try:
                     # 直接调用 LogMessageBox 的 add_log_entry 方法
                     self.log_capture.log_window.add_log_entry(message)
-                    print(f"[DEBUG] BasicNode: Sent message to log window: {message[:30]}...")  # 调试信息
                 except Exception as e:
-                    print(f"Error sending log to window from _log_message: {e}")
+                    logger.error(f"Error sending log to window from _log_message: {e}")
 
     def get_logs(self):
         """从持久化日志文件读取内容（最多5000行）"""

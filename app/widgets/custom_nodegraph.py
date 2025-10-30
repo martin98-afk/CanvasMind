@@ -140,7 +140,6 @@ class CustomNodeViewer(NodeViewer):
         self.COLLIDING_state = False
 
         # connection constrains.
-        # TODO: maybe this should be a reference to the graph model instead?
         self.accept_connection_types = None
         self.reject_connection_types = None
 

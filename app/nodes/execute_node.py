@@ -2,6 +2,7 @@
 import os
 import pickle
 import platform
+import re
 import subprocess
 import tempfile
 import time
@@ -10,6 +11,7 @@ from pathlib import Path
 from NodeGraphQt import BaseNode, NodeBaseWidget
 from NodeGraphQt.constants import NodePropWidgetEnum
 from NodeGraphQt.errors import NodeWidgetError
+from PyQt5 import QtCore
 from PyQt5.QtWidgets import QFileDialog
 from loguru import logger
 # 导入代码编辑器组件
@@ -21,7 +23,7 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.node_logger import NodeLogHandler
-from app.utils.utils import draw_square_port, resource_path  # 假设 resource_path 也在 utils
+from app.utils.utils import draw_square_port, resource_path, draw_special_outputport  # 假设 resource_path 也在 utils
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
@@ -50,7 +52,7 @@ def _is_import_error(proc_or_result, error_file_path):
     return False
 
 
-def _install_requirements(python_executable, requirements_str):
+def _install_requirements(python_executable, requirements_str, logger=logger):
     """安装依赖包"""
     if not requirements_str.strip():
         logger.warning("组件 requirements 为空，跳过安装。")
@@ -105,14 +107,54 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
             # === 动态生成属性 ===
             self._generate_parms_widget()
-            # === 端口 ===
             for port_name, label, connection in component_class.get_inputs():
                 if connection == ConnectionType.SINGLE:
                     self.add_input(port_name)
                 else:
                     self.add_input(port_name, True, painter_func=draw_square_port)
+            QtCore.QTimer.singleShot(50, self.build_outputs)
+
+        def build_outputs(self):
             for port_name, label in component_class.get_outputs():
-                self.add_output(port_name)
+                self.delete_output(port_name)
+                name = re.sub(r'\s+', '_', self.name())
+                if f"{name}_{port_name}" in parent_window.global_variables.node_vars:
+                    self.add_output(port_name, painter_func=draw_special_outputport)
+                else:
+                    self.add_output(port_name)
+
+        def refresh_node_outports(self):
+            self.set_port_deletion_allowed(True)
+            # 2. 记录当前所有输出端口的连线状态：{port_name: [connected_downstream_ports]}
+            expected_names = [port_name for port_name, _ in component_class.get_outputs()]
+            current_connections = {}
+            for port in self.output_ports():
+                connected = port.connected_ports()
+                if connected:
+                    current_connections[port.name()] = list(connected)
+                port.clear_connections(push_undo=False, emit_signal=False)
+            for port_name in expected_names:
+                self.delete_output(port_name)
+
+            # 4. 按 expected_names 顺序重建输出端口
+            for name in expected_names:
+                node_name = re.sub(r'\s+', '_', self.name())
+                if f"{node_name}_{name}" in parent_window.global_variables.node_vars:
+                    self.add_output(name, painter_func=draw_special_outputport)
+                else:
+                    self.add_output(name)
+
+            # 5. 恢复连线：仅当“旧端口名 == 新端口名”且新端口存在
+            new_ports = {p.name(): p for p in self.output_ports()}
+            for old_name, connected_list in current_connections.items():
+                if old_name in new_ports:
+                    new_port = new_ports[old_name]
+                    for downstream_port in connected_list:
+                        try:
+                            if downstream_port.node() and downstream_port.node().graph:
+                                new_port.connect_to(downstream_port, push_undo=False, emit_signal=False)
+                        except Exception:
+                            continue
 
         def _toggle_debug_mode(self):
             """调试模式开关回调"""
@@ -549,7 +591,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
                 # 判断是否为 ImportError 且可重试
                 if retry_count == 0 and _is_import_error(proc, error_path):
-                    _install_requirements(python_executable, requirements_str)
+                    _install_requirements(python_executable, requirements_str, component_class.logger)
                     retry_count += 1
                     continue
                 else:
