@@ -13,7 +13,7 @@ from PyQt5 import QtCore
 from app.components.base import PropertyType, GlobalVariableContext, ArgumentType
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.scheduler.expression_engine import ExpressionEngine
-from app.utils.utils import resource_path
+from app.utils.utils import resource_path, draw_special_outputport
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
@@ -260,7 +260,11 @@ def create_dynamic_code_node(parent_window=None):
 
             # 4. 按 expected_names 顺序重建输出端口
             for name in expected_names:
-                self.add_output(name)
+                node_name = re.sub(r'\s+', '_', self.name())
+                if f"{node_name}_{name}" in parent_window.global_variables.node_vars:
+                    self.add_output(name, painter_func=draw_special_outputport)
+                else:
+                    self.add_output(name)
 
             # 5. 恢复连线：仅当“旧端口名 == 新端口名”且新端口存在
             new_ports = {p.name(): p for p in self.output_ports()}

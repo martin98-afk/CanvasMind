@@ -806,6 +806,11 @@ class CanvasPage(QWidget):
             self._update_name_label_width(name_edit)
             QtCore.QTimer.singleShot(0, self._position_name_container)
 
+    def center_to(self, node):
+        self.graph.clear_selection()
+        node.set_selected(True)
+        self.graph.fit_to_selection()
+
     def _save_via_dialog(self):
         if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
             file_path = self.file_path

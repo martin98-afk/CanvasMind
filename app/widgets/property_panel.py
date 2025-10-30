@@ -8,6 +8,7 @@ import pandas as pd
 from loguru import logger
 from pathlib import Path
 from NodeGraphQt import BaseNode
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
     QStackedWidget, QHBoxLayout, QApplication
@@ -625,7 +626,7 @@ class PropertyPanel(CardWidget):
 
         src_path = Path(file_path)
         if not src_path.exists():
-            InfoBar.error("文件不存在", f"所选文件 {file_path} 不存在", parent=self)
+            InfoBar.error("文件不存在", f"所选文件 {file_path} 不存在", parent=self.parent_window)
             return
 
         # ✅ 定义目标目录：项目根目录下的 uploads/
@@ -652,7 +653,7 @@ class PropertyPanel(CardWidget):
             logger.info(f"已上传并复制文件: {src_path} -> {dst_path}")
         except Exception as e:
             logger.error(f"文件复制失败: {e}")
-            InfoBar.error("上传失败", f"无法复制文件：{e}", parent=self)
+            InfoBar.error("上传失败", f"无法复制文件：{e}", parent=self.parent_window)
             return
 
         # ✅ 设置节点输出为新的相对路径
@@ -661,7 +662,7 @@ class PropertyPanel(CardWidget):
         # 刷新 UI
         self.update_properties(node)
 
-        InfoBar.success("上传成功", f"文件已保存至：{dst_path.name}", parent=self, duration=2000)
+        InfoBar.success("上传成功", f"文件已保存至：{dst_path.name}", parent=self.parent_window, duration=2000)
 
     def get_node_description(self, node):
         if hasattr(node, 'component_class'):
@@ -922,7 +923,7 @@ class PropertyPanel(CardWidget):
             InfoBar.warning(
                 title="警告",
                 content=f"端口 {port_name} 当前无有效输出值",
-                parent=self,
+                parent=self.main_window,
                 position=InfoBarPosition.TOP_RIGHT
             )
         safe_node_name = re.sub(r'\s+', '_', node.name())
@@ -930,6 +931,8 @@ class PropertyPanel(CardWidget):
         self.main_window.global_variables.set_output(
             node_id=safe_node_name, output_name=port_name, output_value=serialize_for_json(value)
         )
+        if hasattr(node, "refresh_node_outports"):
+            QtCore.QTimer.singleShot(100, node.refresh_node_outports)
         self.main_window.global_variables_changed.emit("node_vars", var_name, "add")
         InfoBar.success(
             title="成功",
@@ -1186,7 +1189,12 @@ class PropertyPanel(CardWidget):
         def show_context_menu(pos):
             menu = RoundMenu(parent=self)
             menu.addAction(Action("复制为表达式", triggered=lambda: self._copy_as_expression("node_vars", name)))
-            menu.addAction(Action("跳转到该节点", triggered=lambda: self._locate_node_by_variable_name(name)))
+            menu.addAction(
+                Action(
+                    "跳转到该节点",
+                    triggered=lambda: self.main_window.center_to(self._locate_node_by_variable_name(name))
+                )
+            )
             menu.exec_(card.mapToGlobal(pos))
         card.setContextMenuPolicy(Qt.CustomContextMenu)
         card.customContextMenuRequested.connect(show_context_menu)
@@ -1194,7 +1202,7 @@ class PropertyPanel(CardWidget):
         # 节点变量双击自动跳转到对应节点
         def on_card_double_clicked(event):
             if event.button() == Qt.LeftButton:
-                self._locate_node_by_variable_name(name)
+                self.main_window.center_to(self._locate_node_by_variable_name(name))
 
         card.mouseDoubleClickEvent = on_card_double_clicked
         card.setCursor(Qt.PointingHandCursor)  # 可选：改变鼠标指针提示可点击
@@ -1205,7 +1213,6 @@ class PropertyPanel(CardWidget):
 
     def _locate_node_by_variable_name(self, var_name: str):
         """根据全局变量名定位到对应的节点"""
-        # var_name 格式为 "{safe_node_name}_{port_name}"
         # 从 var_name 解析出 safe_node_name_candidate
         parts = var_name.rsplit('_', 1) # 从右边分割一次
         if len(parts) < 2:
@@ -1215,7 +1222,7 @@ class PropertyPanel(CardWidget):
         safe_node_name_candidate = parts[0]
 
         # 根据规则，将 safe_node_name_candidate 中的下划线替换回空格，得到原始名称候选
-        original_name_candidate = safe_node_name_candidate.replace('_', ' ')
+        original_name_candidate = re.sub(r'_(?=\d+$)', " ", safe_node_name_candidate)
 
         # 尝试通过名称查找节点
         node_graph = self.main_window.graph # 获取 NodeGraphQt 实例
@@ -1226,18 +1233,6 @@ class PropertyPanel(CardWidget):
         # 尝试1: 使用原始名称候选查找 (例如 "My Node_1" -> "My Node 1")
         found_node = node_graph.get_node_by_name(original_name_candidate)
         if not found_node:
-            # 尝试2: 使用安全名称候选查找 (例如 "My_Node_1" -> "My_Node_1")
-            # 这种情况可能发生在节点名称本身就包含下划线时
-            found_node = node_graph.get_node_by_name(safe_node_name_candidate)
-
-        if found_node:
-            # 选中节点
-            node_graph.clear_selection()
-            found_node.set_selected(True)
-            # 将节点居中到视图
-            node_graph.center_on([found_node])
-            logger.info(f"定位到节点: {found_node.name()}")
-        else:
             logger.warning(f"未找到与变量名 '{var_name}' 对应的节点 "
                            f"(尝试名称: '{original_name_candidate}', '{safe_node_name_candidate}')")
             InfoBar.warning(
@@ -1246,6 +1241,8 @@ class PropertyPanel(CardWidget):
                 parent=self.main_window,
                 position=InfoBarPosition.TOP_RIGHT
             )
+
+        return found_node
 
     def _create_env_var_row(self, key: str, value):
         card = CardWidget(self)
@@ -1290,6 +1287,10 @@ class PropertyPanel(CardWidget):
                 del global_vars.custom[var_name]
             elif var_type == 'node_vars' and hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
                 del global_vars.node_vars[var_name]
+                node = self._locate_node_by_variable_name(var_name)
+                if hasattr(node, "refresh_node_outports"):
+                    QtCore.QTimer.singleShot(0, node.refresh_node_outports)
+
             self._refresh_custom_vars_page()
             self.main_window.global_variables_changed.emit(var_type, var_name, "delete")
             InfoBar.success("已删除", f"变量 '{var_name}' 已移除", parent=self.main_window, duration=1500)

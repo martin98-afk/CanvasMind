@@ -11,6 +11,7 @@ from pathlib import Path
 from NodeGraphQt import BaseNode, NodeBaseWidget
 from NodeGraphQt.constants import NodePropWidgetEnum
 from NodeGraphQt.errors import NodeWidgetError
+from PyQt5 import QtCore
 from PyQt5.QtWidgets import QFileDialog
 from loguru import logger
 # 导入代码编辑器组件
@@ -106,18 +107,53 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
             # === 动态生成属性 ===
             self._generate_parms_widget()
-            # === 端口 ===
             for port_name, label, connection in component_class.get_inputs():
                 if connection == ConnectionType.SINGLE:
                     self.add_input(port_name)
                 else:
                     self.add_input(port_name, True, painter_func=draw_square_port)
+            QtCore.QTimer.singleShot(0, self.refresh_outputs)
+
+        def refresh_outputs(self):
             for port_name, label in component_class.get_outputs():
                 name = re.sub(r'\s+', '_', self.name())
                 if f"{name}_{port_name}" in parent_window.global_variables.node_vars:
-                    self.add_output(port_name, True, painter_func=draw_special_outputport)
+                    self.add_output(port_name, painter_func=draw_special_outputport)
                 else:
                     self.add_output(port_name)
+
+        def refresh_node_outports(self):
+            self.set_port_deletion_allowed(True)
+            # 2. 记录当前所有输出端口的连线状态：{port_name: [connected_downstream_ports]}
+            expected_names = [port_name for port_name, _ in component_class.get_outputs()]
+            current_connections = {}
+            for port in self.output_ports():
+                connected = port.connected_ports()
+                if connected:
+                    current_connections[port.name()] = list(connected)
+                port.clear_connections(push_undo=False, emit_signal=False)
+            for port_name in expected_names:
+                self.delete_output(port_name)
+
+            # 4. 按 expected_names 顺序重建输出端口
+            for name in expected_names:
+                node_name = re.sub(r'\s+', '_', self.name())
+                if f"{node_name}_{name}" in parent_window.global_variables.node_vars:
+                    self.add_output(name, painter_func=draw_special_outputport)
+                else:
+                    self.add_output(name)
+
+            # 5. 恢复连线：仅当“旧端口名 == 新端口名”且新端口存在
+            new_ports = {p.name(): p for p in self.output_ports()}
+            for old_name, connected_list in current_connections.items():
+                if old_name in new_ports:
+                    new_port = new_ports[old_name]
+                    for downstream_port in connected_list:
+                        try:
+                            if downstream_port.node() and downstream_port.node().graph:
+                                new_port.connect_to(downstream_port, push_undo=False, emit_signal=False)
+                        except Exception:
+                            continue
 
         def _toggle_debug_mode(self):
             """调试模式开关回调"""
