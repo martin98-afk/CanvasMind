@@ -662,7 +662,7 @@ class PropertyPanel(CardWidget):
         # 刷新 UI
         self.update_properties(node)
 
-        InfoBar.success("上传成功", f"文件已保存至：{dst_path.name}", parent=self.parent_window, duration=2000)
+        InfoBar.success("上传成功", f"文件已保存至：{dst_path.name}", parent=self.main_window, duration=2000)
 
     def get_node_description(self, node):
         if hasattr(node, 'component_class'):
@@ -1214,12 +1214,15 @@ class PropertyPanel(CardWidget):
     def _locate_node_by_variable_name(self, var_name: str):
         """根据全局变量名定位到对应的节点"""
         # 从 var_name 解析出 safe_node_name_candidate
-        parts = var_name.rsplit('_', 1) # 从右边分割一次
+        # 从左边分割一两次获取到端口名
+        parts = var_name.split("_")
         if len(parts) < 2:
             logger.warning(f"无法从变量名 '{var_name}' 解析出节点名称")
             return
-
-        safe_node_name_candidate = parts[0]
+        elif len(parts) == 2:
+            safe_node_name_candidate = parts[0]
+        else:
+            safe_node_name_candidate = "_".join(parts[:2])
 
         # 根据规则，将 safe_node_name_candidate 中的下划线替换回空格，得到原始名称候选
         original_name_candidate = re.sub(r'_(?=\d+$)', " ", safe_node_name_candidate)
