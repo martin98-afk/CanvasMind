@@ -91,6 +91,7 @@ class NodeRecommendationEngine:
         for full_path, comp_cls in self.component_map.items():
             for port in comp_cls.inputs:
                 self._input_to_components[port.type].append(full_path)
+        self._input_to_components = self._input_to_components | {k: list(set(v)) for k, v in self._input_to_components.items()}
 
     def get_recommendations_sync(self, node_full_path: str):
         comp_cls = self.component_map.get(node_full_path)
