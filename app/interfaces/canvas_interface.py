@@ -101,6 +101,7 @@ class CanvasPage(QWidget):
         self.graph = CustomNodeGraph(viewer=CustomNodeViewer())
         self.graph.node_created.connect(self.on_node_created)
         self.graph.node_selected.connect(self.on_node_selected)
+        self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
         self.canvas_widget.keyPressEvent = self._canvas_key_press_event
@@ -1352,10 +1353,6 @@ class CanvasPage(QWidget):
         self._request_recommendations(node)
 
     def on_node_selected(self, node: BaseNode):
-        if self._selection_update_pending:
-            return
-        self._selection_update_pending = True
-        QtCore.QTimer.singleShot(50, self._do_selection_update)
         if not node:
             self.nav_view.clear_recommendations()
             return
@@ -1389,6 +1386,12 @@ class CanvasPage(QWidget):
         # 删除节点后，使缓存无效
         self._invalidate_node_cache()
         self.graph.delete_node(node)
+
+    def on_selection_changed(self, node_ids, prev_ids):
+        if self._selection_update_pending:
+            return
+        self._selection_update_pending = True
+        QtCore.QTimer.singleShot(50, self._do_selection_update)
 
     def _do_selection_update(self):
         self._selection_update_pending = False

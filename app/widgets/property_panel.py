@@ -311,16 +311,40 @@ class PropertyPanel(CardWidget):
         output_layout = QVBoxLayout(output_widget)
         output_layout.setContentsMargins(0, 0, 0, 0)
         output_layout.setSpacing(8)
-        if len(node.input_ports()) > 0:
+
+        # 添加输入输出端口信息
+        # 1. 判断按是否有输入输出端口
+        has_input_ports = False
+        has_output_ports = False
+
+        # 方法1：通过 component_class（如果存在）
+        if hasattr(node, 'component_class') and node.component_class:
+            comp_cls = node.component_class
+            has_input_ports = len(getattr(comp_cls, 'inputs', [])) > 0
+            has_output_ports = len(getattr(comp_cls, 'outputs', [])) > 0
+        # 方法2：通过 FULL_PATH + component_map（更通用）
+        elif hasattr(node, 'FULL_PATH') and hasattr(self.main_window, 'component_map'):
+            comp_cls = self.main_window.component_map.get(node.FULL_PATH)
+            if comp_cls:
+                has_input_ports = len(getattr(comp_cls, 'inputs', [])) > 0
+                has_output_ports = len(getattr(comp_cls, 'outputs', [])) > 0
+        # 方法3：兜底：用当前实例端口（适用于非动态节点）
+        else:
+            has_input_ports = len(node.input_ports()) > 0
+            has_output_ports = len(node.output_ports()) > 0
+        # 2. 如果有输入输出端口则进行构建
+        if has_input_ports:
             self.segmented_widget.addItem('input', '输入端口')
             self._populate_input_ports(node, input_layout)
             input_layout.addStretch(1)
             self.stacked_widget.addWidget(input_widget)
-        if len(node.output_ports()) > 0:
+
+        if has_output_ports:
             self.segmented_widget.addItem('output', '输出端口')
             self._populate_output_ports(node, output_layout)
             output_layout.addStretch(1)
             self.stacked_widget.addWidget(output_widget)
+
         self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
         self.node_vbox.addWidget(self.segmented_widget)
         self.node_vbox.addWidget(self.stacked_widget)
@@ -354,6 +378,8 @@ class PropertyPanel(CardWidget):
                         item.setCheckState(Qt.Checked if item.text() in selected_columns else Qt.Unchecked)
             current_selected_data = self._get_current_input_value(node, port_name, original_data)
             self._update_text_edit_for_port(port_name, current_selected_data)
+
+        print(self.get_port_info(node, is_input=False))
         for port_name, _, port_type in self.get_port_info(node, is_input=False):
             display_data = node.get_output_value(port_name)
             if display_data is None:
@@ -375,7 +401,7 @@ class PropertyPanel(CardWidget):
             elif connected:
                 original_data = [up.node().get_output_value(up.name()) for up in connected]
             else:
-                return
+                original_data = "暂无数据"
             if port_type == ArgumentType.CSV and isinstance(original_data, pd.DataFrame) and not original_data.empty:
                 self._add_column_selector_widget_to_layout(node, port_name, original_data, layout)
                 current_selected_data = self._get_current_input_value(node, port_name, original_data)
