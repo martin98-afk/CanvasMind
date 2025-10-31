@@ -18,35 +18,43 @@ class DraggableTreeWidget(TreeWidget):
         self.setDragDropMode(TreeWidget.DragOnly)
         self._all_items = []  # 用于搜索
         self.refresh_components()
-        self._recommendation_item = None  # 用于追踪推荐分类项
-
     def clear_recommendations(self):
-        """清除顶部的推荐项"""
-        if self._recommendation_item:
-            root = self.invisibleRootItem()
-            root.removeChild(self._recommendation_item)
-            self._recommendation_item = None
+        """清除所有推荐分类（支持多端口分组）"""
+        root = self.invisibleRootItem()
+        i = 0
+        while i < root.childCount():
+            item = root.child(i)
+            if item.text(0).startswith("🎯"):
+                root.removeChild(item)
+                # 不递增 i，因为移除后后续项会前移
+            else:
+                i += 1
 
-    def add_recommendations(self, recommended_components):
+    def add_recommendations(self, recommendations):
         """
-        在树顶部添加推荐组件
-        :param recommended_components: List of (name, full_path) tuples
+        recommendations: List[ (port_name, port_label, color_hex, [(name, full_path), ...]) ]
         """
+        recommendations = list(reversed(recommendations))
         self.clear_recommendations()
-        if not recommended_components:
+        if not recommendations:
             return
 
-        rec_item = QTreeWidgetItem(["🎯 推荐补全"])
-        rec_item.setFlags(rec_item.flags() & ~Qt.ItemIsSelectable)  # 不可选中分类
-        self.insertTopLevelItem(0, rec_item)  # 插入到最顶部
-        self._recommendation_item = rec_item
+        # 插入多个推荐分类（每个输出端口一个）
+        for port_name, port_label, color, rec_list in recommendations:
+            # 创建分类标题
+            title = f"🎯{port_label or port_name}推荐"
+            rec_item = QTreeWidgetItem([title])
+            rec_item.setFlags(rec_item.flags() & ~Qt.ItemIsSelectable)
+            self.insertTopLevelItem(0, rec_item)  # 插入到最顶部（注意顺序是反的）
 
-        for name, full_path in recommended_components:
-            comp_item = QTreeWidgetItem([name])
-            comp_item.setData(0, Qt.UserRole + 1, full_path)
-            rec_item.addChild(comp_item)
+            # 添加子项
+            for name, full_path in rec_list:
+                comp_item = QTreeWidgetItem([name])
+                comp_item.setData(0, Qt.UserRole + 1, full_path)
+                comp_item.setForeground(0, QColor(color))  # 颜色统一用端口色
+                rec_item.addChild(comp_item)
 
-        rec_item.setExpanded(True)
+            rec_item.setExpanded(True)
 
     def build_component_tree(self):
         self.clear()

@@ -101,6 +101,7 @@ class CanvasPage(QWidget):
         self.graph = CustomNodeGraph(viewer=CustomNodeViewer())
         self.graph.node_created.connect(self.on_node_created)
         self.graph.node_selected.connect(self.on_node_selected)
+        self.graph.port_connected.connect(self._on_port_connected)
         self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
@@ -119,16 +120,12 @@ class CanvasPage(QWidget):
         canvas_layout.addWidget(self.canvas_widget, 1)
         canvas_layout.addWidget(self.property_panel, 0, Qt.AlignRight)
         main_layout.addLayout(canvas_layout)
-        # 信号连接
-        # self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
         # 快捷组件工具管理
         self.quick_manager = QuickComponentManager(
             parent_widget=self,
             component_map=self.component_map
         )
         self.quick_manager.quick_components_changed.connect(self._refresh_quick_buttons)
-        # 画布节点推荐引擎
-        self.recommendation_engine = NodeRecommendationEngine(self.component_map)
         self.thread_pool = QThreadPool.globalInstance()
         # 创建悬浮按钮和环境选择
         self.create_environment_selector()
@@ -1348,6 +1345,15 @@ class CanvasPage(QWidget):
                 return node
         return None
 
+    def set_global_recommendation_system(self, stats_manager, engine):
+        """由 GalleryPage 注入全局推荐系统"""
+        self._global_stats_manager = stats_manager
+        self._global_recommendation_engine = engine
+        # 如果引擎未初始化，现在初始化（需要 component_map）
+        if engine is None and hasattr(self, 'component_map'):
+            self._global_recommendation_engine = NodeRecommendationEngine(self.component_map)
+            self._global_recommendation_engine._stats_manager = stats_manager
+
     def on_node_created(self, node):
         self._node_id_cache[node.id] = node
         self._request_recommendations(node)
@@ -1357,6 +1363,14 @@ class CanvasPage(QWidget):
             self.nav_view.clear_recommendations()
             return
         self._request_recommendations(node)
+
+    def _on_port_connected(self, input_port, output_port):
+        in_node = input_port.node()
+        out_node = output_port.node()
+        src_path = getattr(out_node, 'FULL_PATH', None)
+        dst_path = getattr(in_node, 'FULL_PATH', None)
+        if src_path and dst_path:
+            self._global_recommendation_engine._stats_manager.record_connection(src_path, dst_path)
 
     def _request_recommendations(self, node: BaseNode):
         full_path = getattr(node, 'FULL_PATH', None)
@@ -1369,7 +1383,7 @@ class CanvasPage(QWidget):
             # QThreadPool 不支持直接取消，但可忽略旧结果
             pass
 
-        task = RecommendationTask(self.recommendation_engine, full_path)
+        task = RecommendationTask(self._global_recommendation_engine, full_path)
         task.signals.finished.connect(self.nav_view.add_recommendations)
         task.signals.error.connect(lambda msg: print(f"推荐失败: {msg}"))
         self.thread_pool.start(task)
@@ -1407,6 +1421,7 @@ class CanvasPage(QWidget):
             else:
                 QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
         else:
+            self.nav_view.clear_recommendations()
             QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
 
     def _start_auto_save_timer(self):
