@@ -322,13 +322,7 @@ class PropertyPanel(CardWidget):
             comp_cls = node.component_class
             has_input_ports = len(getattr(comp_cls, 'inputs', [])) > 0
             has_output_ports = len(getattr(comp_cls, 'outputs', [])) > 0
-        # 方法2：通过 FULL_PATH + component_map（更通用）
-        elif hasattr(node, 'FULL_PATH') and hasattr(self.main_window, 'component_map'):
-            comp_cls = self.main_window.component_map.get(node.FULL_PATH)
-            if comp_cls:
-                has_input_ports = len(getattr(comp_cls, 'inputs', [])) > 0
-                has_output_ports = len(getattr(comp_cls, 'outputs', [])) > 0
-        # 方法3：兜底：用当前实例端口（适用于非动态节点）
+        # 方法2：兜底：用当前实例端口（适用于非动态节点）
         else:
             has_input_ports = len(node.input_ports()) > 0
             has_output_ports = len(node.output_ports()) > 0
@@ -379,7 +373,6 @@ class PropertyPanel(CardWidget):
             current_selected_data = self._get_current_input_value(node, port_name, original_data)
             self._update_text_edit_for_port(port_name, current_selected_data)
 
-        print(self.get_port_info(node, is_input=False))
         for port_name, _, port_type in self.get_port_info(node, is_input=False):
             display_data = node.get_output_value(port_name)
             if display_data is None:
@@ -665,8 +658,6 @@ class PropertyPanel(CardWidget):
             return
 
         # ✅ 定义目标目录：项目根目录下的 uploads/
-        # 假设你的项目根目录可通过某种方式获取（例如 main_window.project_root）
-        # 如果没有 project_root，可使用当前工作目录或固定相对路径
         if hasattr(self.main_window, 'project_root'):
             upload_root = Path(self.main_window.project_root) / "uploads"
         else:

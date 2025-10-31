@@ -1377,7 +1377,7 @@ class CanvasPage(QWidget):
 
         task = RecommendationTask(self.manager.recommendation_engine, full_path)
         task.signals.finished.connect(self.nav_view.add_recommendations)
-        task.signals.error.connect(lambda msg: print(f"推荐失败: {msg}"))
+        task.signals.error.connect(lambda msg: logger.error(f"推荐失败: {msg}"))
         self.thread_pool.start(task)
         self._current_recommendation_task = task
 

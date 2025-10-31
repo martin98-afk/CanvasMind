@@ -112,7 +112,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     self.add_input(port_name)
                 else:
                     self.add_input(port_name, True, painter_func=draw_square_port)
-            QtCore.QTimer.singleShot(40, self.build_outputs)
+            QtCore.QTimer.singleShot(0, self.build_outputs)
 
         def build_outputs(self):
             for port_name, label in component_class.get_outputs():
