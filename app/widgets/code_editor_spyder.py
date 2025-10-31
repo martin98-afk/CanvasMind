@@ -273,7 +273,6 @@ class CompletionWorker(QObject):
         """
         # 首先，尝试找到光标位置的标识符，确保它与 Jedi 返回的 name 匹配
         identifier_at_cursor = self._find_identifier_at_position(code, line, column)
-        # print(f"Debug: Jedi name: '{name}', Identifier at cursor: '{identifier_at_cursor}'") # 调试用
         if identifier_at_cursor != name:
             # 如果 Jedi 返回的 name 与光标位置的标识符不匹配（例如 'self.name' vs 'name'），
             # 我们仍然可以尝试查找 name (即 'name') 的定义
@@ -298,7 +297,6 @@ class CompletionWorker(QObject):
                     assignment_pattern = rf'(\b{re.escape(name)}\b|\.+\s*\.\s*\b{re.escape(name)}\b)\s*='
                     match = re.search(assignment_pattern, line_text)
                     if match:
-                        # print(f"Debug: Found assignment for '{name}': {line_text}") # 调试用
                         # 提取等号右边的部分
                         parts = line_text.split('=', 1)
                         if len(parts) == 2:
@@ -475,7 +473,6 @@ class CompletionWorker(QObject):
                     precise_type = self._guess_type_from_code(code, line, column, name)
                     if precise_type:
                         type_name = precise_type
-                        print(f"Debug: Guessed type for '{name}' as '{type_name}' from code.")
                 completions.append((name, type_name, description, detail))
                 if len(completions) >= 100:
                     break
@@ -1358,10 +1355,8 @@ class JediCodeEditor(CodeEditor):
         """显示补全弹窗，确保位置跟随光标，并动态调整宽度和位置"""
         # 获取光标矩形（相对于编辑器控件本身）
         cursor_rect = self.cursorRect()
-        print(f"Debug: cursor_rect = {cursor_rect}")  # 调试用，可以删除
         # 获取编辑器控件本身相对于屏幕的左上角坐标
         editor_global_pos = self.mapToGlobal(QtCore.QPoint(0, 0))
-        print(f"Debug: editor_global_pos = {editor_global_pos}")  # 调试用，可以删除
 
         # --- 微调补全框位置 ---
         # 使用 cursor_rect.topLeft() 获取基准点
