@@ -80,22 +80,19 @@ class RecommendationTask(QRunnable):
 
 
 class NodeRecommendationEngine:
-    def __init__(self, component_map: Dict[str, BaseComponent]):
-        self.component_map = component_map
+    def __init__(self):
         self._input_to_components: Dict[ArgumentType, List[str]] = defaultdict(list)
         self._recommendation_cache: Dict[str, List] = {}
-        self._stats_manager = None  # ← 将由 GalleryPage 注入
-        self._build_index()
+        self._stats_manager = RecommendationStatsManager()  # ← 将由 GalleryPage 注入
 
-    def _build_index(self):
+    def _build_index(self, component_map: Dict[str, BaseComponent]):
+        self._input_to_components.clear()
+        self.component_map = component_map
         for full_path, comp_cls in self.component_map.items():
             for port in comp_cls.inputs:
                 self._input_to_components[port.type].append(full_path)
 
     def get_recommendations_sync(self, node_full_path: str):
-        # if node_full_path in self._recommendation_cache:
-        #     return self._recommendation_cache[node_full_path]
-
         comp_cls = self.component_map.get(node_full_path)
         if not comp_cls:
             return []
@@ -132,7 +129,7 @@ class NodeRecommendationEngine:
             scored_list.sort(key=lambda x: (-x[0], x[1]))
 
             # 取 top 3~5
-            rec_list = [(name, fp) for _, name, fp in scored_list[:5]]
+            rec_list = [(name, fp) for _, name, fp in scored_list[:10]]
             if rec_list:
                 grouped_recommendations.append((
                     out_port.name,

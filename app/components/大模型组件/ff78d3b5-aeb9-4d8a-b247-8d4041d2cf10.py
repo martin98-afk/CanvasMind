@@ -21,10 +21,10 @@ class Component(BaseComponent):
     description = ""
     requirements = ""
     inputs = [
-        PortDefinition(name="input1", label="输入1", type=ArgumentType.TEXT),
+        PortDefinition(name="input1", label="输入1", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="output1", label="输出1", type=ArgumentType.JSON),
+        PortDefinition(name="output1", label="包装结果", type=ArgumentType.JSON),
     ]
     properties = {
         "prop_0": PropertyDefinition(

@@ -65,9 +65,10 @@ class CanvasPage(QWidget):
         "垂直": 1
     }
 
-    def __init__(self, parent=None, object_name: Path = None):
+    def __init__(self, parent=None, object_name: Path = None, manager=None):
         super().__init__()
         self.parent = parent
+        self.manager = manager
         self.file_path = object_name
         self.workflow_name = object_name.stem.split(".")[0] if object_name else "未命名工作流"
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
@@ -383,6 +384,9 @@ class CanvasPage(QWidget):
         self._registered_nodes.extend(list(self.graph.registered_nodes()))
         self.graph._node_factory.clear_registered_nodes()
         self.component_map, self.file_map = scan_components()
+        # 重建推荐索引
+        self.manager.recommendation_engine._recommendation_cache.clear()
+        self.manager.recommendation_engine._build_index(self.component_map)  # 重建索引
         # 普通节点
         nodes_menu = self.graph.get_context_menu('nodes')
         for full_path, comp_cls in self.component_map.items():
@@ -469,9 +473,6 @@ class CanvasPage(QWidget):
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{branch_node.__name__}")
         self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
-        if hasattr(self, 'recommendation_engine'):
-            self.recommendation_engine._recommendation_cache.clear()
-            self.recommendation_engine._build_index()  # 重建索引
 
     def create_minimap(self):
         self.minimap = MinimapWidget(self)
@@ -1345,15 +1346,6 @@ class CanvasPage(QWidget):
                 return node
         return None
 
-    def set_global_recommendation_system(self, stats_manager, engine):
-        """由 GalleryPage 注入全局推荐系统"""
-        self._global_stats_manager = stats_manager
-        self._global_recommendation_engine = engine
-        # 如果引擎未初始化，现在初始化（需要 component_map）
-        if engine is None and hasattr(self, 'component_map'):
-            self._global_recommendation_engine = NodeRecommendationEngine(self.component_map)
-            self._global_recommendation_engine._stats_manager = stats_manager
-
     def on_node_created(self, node):
         self._node_id_cache[node.id] = node
         self._request_recommendations(node)
@@ -1370,7 +1362,7 @@ class CanvasPage(QWidget):
         src_path = getattr(out_node, 'FULL_PATH', None)
         dst_path = getattr(in_node, 'FULL_PATH', None)
         if src_path and dst_path:
-            self._global_recommendation_engine._stats_manager.record_connection(src_path, dst_path)
+            self.manager.recommendation_engine._stats_manager.record_connection(src_path, dst_path)
 
     def _request_recommendations(self, node: BaseNode):
         full_path = getattr(node, 'FULL_PATH', None)
@@ -1383,7 +1375,7 @@ class CanvasPage(QWidget):
             # QThreadPool 不支持直接取消，但可忽略旧结果
             pass
 
-        task = RecommendationTask(self._global_recommendation_engine, full_path)
+        task = RecommendationTask(self.manager.recommendation_engine, full_path)
         task.signals.finished.connect(self.nav_view.add_recommendations)
         task.signals.error.connect(lambda msg: print(f"推荐失败: {msg}"))
         self.thread_pool.start(task)
