@@ -141,28 +141,35 @@ class PropertyPanel(CardWidget):
                 child.widget().deleteLater()
 
     def get_port_info(self, node, is_input=True):
-        ports = node.input_ports() if is_input else node.output_ports()
-        if hasattr(node, 'component_class'):
-            comp_ports = getattr(node.component_class, 'inputs' if is_input else 'outputs', [])
-            port_dict = {p.name(): p for p in ports}
-            result = []
-            for comp_def in comp_ports:
-                port_name = comp_def.name
-                if port_name in port_dict:
-                    result.append((port_name, comp_def.label, comp_def.type))
-                else:
-                    result.append((port_name, port_name, ArgumentType.TEXT))
-            for port in ports:
-                if port.name() not in [r[0] for r in result]:
-                    result.append((port.name(), port.name(), ArgumentType.TEXT))
-            return result
-        elif node.has_property(f"{'input' if is_input else 'output'}_ports"):
+        # === 优先通过 FULL_PATH 从 main_window.component_map 获取组件类 ===
+        full_path = getattr(node, 'FULL_PATH', None)
+        if full_path and hasattr(self.main_window, 'component_map'):
+            comp_cls = self.main_window.component_map.get(full_path)
+            if comp_cls:
+                comp_ports = getattr(comp_cls, 'inputs' if is_input else 'outputs', [])
+                port_dict = {p.name(): p for p in (node.input_ports() if is_input else node.output_ports())}
+                result = []
+                for comp_def in comp_ports:
+                    port_name = comp_def.name
+                    if port_name in port_dict:
+                        result.append((port_name, comp_def.label, comp_def.type))
+                    else:
+                        result.append((port_name, comp_def.label, comp_def.type))
+                # 补充动态端口（如有）
+                for port in (node.input_ports() if is_input else node.output_ports()):
+                    if port.name() not in [r[0] for r in result]:
+                        result.append((port.name(), port.name(), ArgumentType.TEXT))
+                return result
+
+        # === 旧逻辑（兼容非动态节点）===
+        if node.has_property(f"{'input' if is_input else 'output'}_ports"):
             ports = node.input_ports() if is_input else node.output_ports()
             port_defs = node.get_property(f"{'input' if is_input else 'output'}_ports")
             type_dict = {item.value: item for item in ArgumentType}
             return [(p.name(), p.name(), type_dict[pd["type"]]) for p, pd in zip(ports, port_defs)]
         else:
-            return [(p.name(), p.name(), ArgumentType.TEXT) for p in ports]
+            return [(p.name(), p.name(), ArgumentType.TEXT) for p in
+                    (node.input_ports() if is_input else node.output_ports())]
 
     def update_properties(self, node, node_changed=False):
         is_backdrop_change = (
@@ -393,9 +400,11 @@ class PropertyPanel(CardWidget):
             return
         for port_name, port_label, port_type in port_infos:
             layout.addWidget(BodyLabel(f"  • {port_label} ({port_name}): {port_type.value}"))
-            if getattr(node, "_output_values") is None:
-                continue
-            display_data = getattr(node, "_output_values", {}).get(port_name)
+            output_values = getattr(node, '_output_values', None)
+            if output_values is None:
+                # 初始化为空 dict，避免跳过渲染
+                output_values = {}
+            display_data = output_values.get(port_name)
             if display_data is None:
                 try:
                     display_data = node.model.get_property(port_name)

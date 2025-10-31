@@ -18,6 +18,35 @@ class DraggableTreeWidget(TreeWidget):
         self.setDragDropMode(TreeWidget.DragOnly)
         self._all_items = []  # 用于搜索
         self.refresh_components()
+        self._recommendation_item = None  # 用于追踪推荐分类项
+
+    def clear_recommendations(self):
+        """清除顶部的推荐项"""
+        if self._recommendation_item:
+            root = self.invisibleRootItem()
+            root.removeChild(self._recommendation_item)
+            self._recommendation_item = None
+
+    def add_recommendations(self, recommended_components):
+        """
+        在树顶部添加推荐组件
+        :param recommended_components: List of (name, full_path) tuples
+        """
+        self.clear_recommendations()
+        if not recommended_components:
+            return
+
+        rec_item = QTreeWidgetItem(["🎯 推荐补全"])
+        rec_item.setFlags(rec_item.flags() & ~Qt.ItemIsSelectable)  # 不可选中分类
+        self.insertTopLevelItem(0, rec_item)  # 插入到最顶部
+        self._recommendation_item = rec_item
+
+        for name, full_path in recommended_components:
+            comp_item = QTreeWidgetItem([name])
+            comp_item.setData(0, Qt.UserRole + 1, full_path)
+            rec_item.addChild(comp_item)
+
+        rec_item.setExpanded(True)
 
     def build_component_tree(self):
         self.clear()
@@ -29,8 +58,6 @@ class DraggableTreeWidget(TreeWidget):
                 name = getattr(comp_cls, 'name', comp_cls.__name__)
                 if not isinstance(name, str):
                     name = comp_cls.NODE_NAME
-
-                display_path = f"{category}/{name}"
 
                 if category not in categories:
                     cat_item = QTreeWidgetItem([category])

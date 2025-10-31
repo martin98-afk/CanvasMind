@@ -12,14 +12,13 @@ from NodeGraphQt import BackdropNode, BaseNode
 from NodeGraphQt.constants import PipeLayoutEnum, ViewerEnum
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer, QPoint
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer, QPoint, QThreadPool
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication
 from loguru import logger
 from qfluentwidgets import (
     InfoBar,
-    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton, PushButton, Flyout,
-    VBoxLayout
+    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton, VBoxLayout
 )
 
 from app.components.base import PropertyType, GlobalVariableContext
@@ -30,6 +29,7 @@ from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
+from app.scheduler.node_recommendation_engine import RecommendationTask, NodeRecommendationEngine
 from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导入
 from app.utils.config import Settings
 from app.utils.quick_component_manager import QuickComponentManager
@@ -81,6 +81,7 @@ class CanvasPage(QWidget):
         self._clipboard_data = None
         self._scheduler = None  # ← 新增：调度器引用
         self._selection_update_pending = False
+        self._current_recommendation_task = None  # 用于取消旧任务（可选）
         # --- 新增：性能优化相关 ---
         self._node_id_cache = {}  # 缓存：node_id -> node_object
         self._node_id_cache_valid = False  # 标记缓存是否有效
@@ -99,6 +100,7 @@ class CanvasPage(QWidget):
         # 初始化 NodeGraph
         self.graph = CustomNodeGraph(viewer=CustomNodeViewer())
         self.graph.node_created.connect(self.on_node_created)
+        self.graph.node_selected.connect(self.on_node_selected)
         self._setup_pipeline_style()
         self.canvas_widget = self.graph.viewer()
         self.canvas_widget.keyPressEvent = self._canvas_key_press_event
@@ -117,13 +119,16 @@ class CanvasPage(QWidget):
         canvas_layout.addWidget(self.property_panel, 0, Qt.AlignRight)
         main_layout.addLayout(canvas_layout)
         # 信号连接
-        self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
+        # self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
         # 快捷组件工具管理
         self.quick_manager = QuickComponentManager(
             parent_widget=self,
             component_map=self.component_map
         )
         self.quick_manager.quick_components_changed.connect(self._refresh_quick_buttons)
+        # 画布节点推荐引擎
+        self.recommendation_engine = NodeRecommendationEngine(self.component_map)
+        self.thread_pool = QThreadPool.globalInstance()
         # 创建悬浮按钮和环境选择
         self.create_environment_selector()
         self.create_floating_buttons()
@@ -466,6 +471,9 @@ class CanvasPage(QWidget):
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{branch_node.__name__}")
         self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
+        if hasattr(self, 'recommendation_engine'):
+            self.recommendation_engine._recommendation_cache.clear()
+            self.recommendation_engine._build_index()  # 重建索引
 
     def create_minimap(self):
         self.minimap = MinimapWidget(self)
@@ -1341,6 +1349,34 @@ class CanvasPage(QWidget):
 
     def on_node_created(self, node):
         self._node_id_cache[node.id] = node
+        self._request_recommendations(node)
+
+    def on_node_selected(self, node: BaseNode):
+        if self._selection_update_pending:
+            return
+        self._selection_update_pending = True
+        QtCore.QTimer.singleShot(50, self._do_selection_update)
+        if not node:
+            self.nav_view.clear_recommendations()
+            return
+        self._request_recommendations(node)
+
+    def _request_recommendations(self, node: BaseNode):
+        full_path = getattr(node, 'FULL_PATH', None)
+        if not full_path:
+            self.nav_view.clear_recommendations()
+            return
+
+        # 可选：取消上一个未完成的任务（避免堆积）
+        if self._current_recommendation_task:
+            # QThreadPool 不支持直接取消，但可忽略旧结果
+            pass
+
+        task = RecommendationTask(self.recommendation_engine, full_path)
+        task.signals.finished.connect(self.nav_view.add_recommendations)
+        task.signals.error.connect(lambda msg: print(f"推荐失败: {msg}"))
+        self.thread_pool.start(task)
+        self._current_recommendation_task = task
 
     def _invalidate_node_cache(self):
         """当节点被创建或删除时，标记缓存无效"""
@@ -1353,12 +1389,6 @@ class CanvasPage(QWidget):
         # 删除节点后，使缓存无效
         self._invalidate_node_cache()
         self.graph.delete_node(node)
-
-    def on_selection_changed(self, node_ids, prev_ids):
-        if self._selection_update_pending:
-            return
-        self._selection_update_pending = True
-        QtCore.QTimer.singleShot(50, self._do_selection_update)
 
     def _do_selection_update(self):
         self._selection_update_pending = False
