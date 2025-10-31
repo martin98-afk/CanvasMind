@@ -186,9 +186,7 @@ class EnvManagerUI(QWidget):
 
     def load_packages(self, env_name):
         """启动线程获取包列表"""
-        self.packageTable.setRowCount(0)
         self.logEdit.append(f"[信息] 正在加载环境 {env_name} 的包列表...")
-
         try:
             python_exe = str(self.mgr.get_python_exe(env_name))
         except Exception as e:
@@ -207,6 +205,7 @@ class EnvManagerUI(QWidget):
         self._pkg_thread.start()
 
     def on_load_packages(self, package_list):
+        self.packageTable.setRowCount(0)
         # 提取 JSON 部分（第一个 [ 到最后一个 ]）
         match = re.search(r"\[.*\]", package_list, re.S)
         if match:

@@ -265,35 +265,7 @@ class CustomNodeGraph(NodeGraph):
                             'output_ports': n_data['output_ports']
                         })
 
-            # build the connections.
-            for connection in data.get('connections', []):
-                nid, pname = connection.get('in', ('', ''))
-                in_node = nodes.get(nid) or self.get_node_by_id(nid)
-                if not in_node:
-                    continue
-                in_port = in_node.inputs().get(pname) if in_node else None
-
-                nid, pname = connection.get('out', ('', ''))
-                out_node = nodes.get(nid) or self.get_node_by_id(nid)
-                if not out_node:
-                    continue
-                out_port = out_node.outputs().get(pname) if out_node else None
-
-                if in_port and out_port:
-                    # only connect if input port is not connected yet or input port
-                    # can have multiple connections.
-                    # important when duplicating nodes.
-                    allow_connection = any([not in_port.model.connected_ports,
-                                            in_port.model.multi_connection])
-                    if allow_connection:
-                        self._undo_stack.push(
-                            PortConnectedCmd(in_port, out_port, emit_signal=False)
-                        )
-
-                    # Run on_input_connected to ensure connections are fully set up
-                    # after deserialization.
-                    in_node.on_input_connected(in_port, out_port)
-
+            QtCore.QTimer.singleShot(50, lambda: self.build_connections(data, nodes))
             node_objs = nodes.values()
             if relative_pos:
                 self._viewer.move_nodes([n.view for n in node_objs])
@@ -308,3 +280,34 @@ class CustomNodeGraph(NodeGraph):
             self._viewer.scene().update()
 
         return node_objs
+
+    def build_connections(self, data, nodes):
+
+        # build the connections.
+        for connection in data.get('connections', []):
+            nid, pname = connection.get('in', ('', ''))
+            in_node = nodes.get(nid) or self.get_node_by_id(nid)
+            if not in_node:
+                continue
+            in_port = in_node.inputs().get(pname) if in_node else None
+
+            nid, pname = connection.get('out', ('', ''))
+            out_node = nodes.get(nid) or self.get_node_by_id(nid)
+            if not out_node:
+                continue
+            out_port = out_node.outputs().get(pname) if out_node else None
+
+            if in_port and out_port:
+                # only connect if input port is not connected yet or input port
+                # can have multiple connections.
+                # important when duplicating nodes.
+                allow_connection = any([not in_port.model.connected_ports,
+                                        in_port.model.multi_connection])
+                if allow_connection:
+                    self._undo_stack.push(
+                        PortConnectedCmd(in_port, out_port, emit_signal=False)
+                    )
+
+                # Run on_input_connected to ensure connections are fully set up
+                # after deserialization.
+                in_node.on_input_connected(in_port, out_port)

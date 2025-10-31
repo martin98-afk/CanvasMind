@@ -12,6 +12,7 @@ from qfluentwidgets import (
 )
 
 from app.interfaces.canvas_interface import CanvasPage
+from app.scheduler.node_recommendation_engine import NodeRecommendationEngine
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.card_widget.workflow_card import WorkflowCard
@@ -89,6 +90,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self._file_info_map: Dict[str, dict] = {}
         self._fixed_cards: List[CardWidget] = []
         self._refresh_pending = False
+        # 全局统计节点连接情况
+        self.recommendation_engine = NodeRecommendationEngine()  # 稍后在 register_components 后初始化
 
         self._setup_ui()
         self.load_workflows()
@@ -101,6 +104,12 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             wf_dirs.append(path)
 
         return wf_dirs
+
+    def get_recommendations_for_node(self, node_full_path: str):
+        """供 CanvasPage 调用的全局推荐接口"""
+        if not self.recommendation_engine:
+            return []
+        return self.recommendation_engine.get_recommendations_sync(node_full_path)
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -458,8 +467,9 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
     def open_canvas(self, file_path: Path):
         if file_path not in self.opened_workflows:
-            canvas_page = CanvasPage(self.parent_window, object_name=file_path)
+            canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
             canvas_page.load_full_workflow(file_path)
+            # === 注入全局推荐系统 ===
             canvas_page.canvas_deleted.connect(
                 lambda: (
                     self.opened_workflows.pop(file_path, None),
@@ -497,7 +507,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             counter += 1
 
         if file_path not in self.opened_workflows:
-            canvas_page = CanvasPage(self.parent_window, object_name=file_path)
+            canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
             canvas_page.canvas_deleted.connect(
                 lambda: (
                     self.opened_workflows.pop(file_path, None),

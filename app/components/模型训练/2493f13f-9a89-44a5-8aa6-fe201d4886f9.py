@@ -21,12 +21,12 @@ class Component(BaseComponent):
     description = "组件开发生成组件"
     requirements = "numpy,scikit-learn,matplotlib"
     inputs = [
-        PortDefinition(name="feature", label="特征", type=ArgumentType.CSV),
-        PortDefinition(name="target", label="目标", type=ArgumentType.CSV),
+        PortDefinition(name="feature", label="特征", type=ArgumentType.CSV, connection=ConnectionType.SINGLE),
+        PortDefinition(name="target", label="目标", type=ArgumentType.CSV, connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="value", label="预测值", type=ArgumentType.ARRAY),
-        PortDefinition(name="model", label="端口3", type=ArgumentType.SKLEARNMODEL),
+        PortDefinition(name="model", label="模型", type=ArgumentType.SKLEARNMODEL),
     ]
     properties = {
         "solver": PropertyDefinition(
