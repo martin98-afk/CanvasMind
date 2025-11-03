@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QFormLayout, QWidget
-from qfluentwidgets import LineEdit, BodyLabel, MessageBoxBase
+from qfluentwidgets import LineEdit, BodyLabel, MessageBoxBase, TextEdit
 
 
 class NewComponentDialog(MessageBoxBase):
@@ -25,8 +25,9 @@ class NewComponentDialog(MessageBoxBase):
     def _setup_ui(self):
         # 使用 qfluentwidgets 的 LineEdit
         self.name_edit = LineEdit()
+        self.name_edit.setMinimumWidth(300)
         self.category_edit = LineEdit()
-        self.description_edit = LineEdit()
+        self.description_edit = TextEdit()
         if self._default_category:
             self.category_edit.setText(self._default_category)
         if self._default_name:
@@ -43,5 +44,5 @@ class NewComponentDialog(MessageBoxBase):
         return {
             "name": self.name_edit.text().strip(),
             "category": self.category_edit.text().strip(),
-            "description": self.description_edit.text().strip()
+            "description": self.description_edit.toPlainText().strip()
         }
