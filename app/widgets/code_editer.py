@@ -5,9 +5,11 @@ import re
 from PyQt5.QtCore import pyqtSignal, QTimer, Qt
 from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QShortcut, QHBoxLayout, \
-    QLineEdit, QPushButton, QCheckBox, QLabel, QInputDialog
+    QLineEdit, QPushButton, QCheckBox, QLabel, QInputDialog, QFrame, QToolButton
+from qfluentwidgets import TransparentToolButton # 导入 qfluentwidgets 的按钮
+from app.utils.utils import get_icon # 假设您有这个工具函数
 
-from app.widgets.code_editor_spyder import JediCodeEditor
+from app.widgets.code_editor_spyder import JediCodeEditor # 确保导入路径正确
 
 DEFAULT_CODE_TEMPLATE = '''class Component(BaseComponent):
     name = ""
@@ -43,27 +45,46 @@ class CodeEditorWidget(QWidget):
     parsed_component = pyqtSignal(dict)
 
     def __init__(self, parent=None, python_exe=None, popup_offset=0):
-        super().__init__()
-        self.code_editor = JediCodeEditor(parent, self, python_exe_path=python_exe, popup_offset=popup_offset)
-        self.code_editor.textChanged.connect(self.code_changed)
+        super().__init__(parent) # 确保父类初始化
+        self._suspend_sync_depth = 0 # 初始化，避免在_setup_ui前访问
+        self.original_parent = parent # 保存原始父对象，用于全屏后恢复
+        self.fullscreen_mode = False # 标记是否处于全屏模式
+        self._setup_ui(python_exe, popup_offset) # 将初始化UI的逻辑移到一个方法中
         self._setup_auto_sync()
-        self._setup_ui()
         # self._setup_syntax_highlighting()
         self._setup_shortcuts()
-        self._suspend_sync_depth = 0
 
-    def _setup_ui(self):
+    def _setup_ui(self, python_exe, popup_offset):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.replace_text_preserving_view(DEFAULT_CODE_TEMPLATE)
+
+        # 5. 创建主要的编辑器视图（包含查找替换面板和编辑器）
+        self.main_view = QWidget()
+        main_layout = QVBoxLayout(self.main_view)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 查找替换面板
         self.find_panel = self._create_find_replace_panel()
         self.find_panel.setVisible(False)
-        layout.addWidget(self.find_panel)
-        layout.addWidget(self.code_editor)
-        self.status_label = QLabel("Ln 1, Col 1", self)
+        main_layout.addWidget(self.find_panel)
+
+        # 代码编辑器
+        self.code_editor = JediCodeEditor(self, self, python_exe_path=python_exe, popup_offset=popup_offset)
+        self.code_editor.textChanged.connect(self.code_changed)
+        self.code_editor.fullscreen_button.clicked.connect(self._toggle_fullscreen)
+        main_layout.addWidget(self.code_editor)
+
+        # 状态栏
+        self.status_label = QLabel("Ln 1, Col 1", self.main_view)
         self.status_label.setStyleSheet("color:#9aa0a6; padding:3px 6px; background:transparent;")
-        layout.addWidget(self.status_label)
+        main_layout.addWidget(self.status_label)
         self.code_editor.cursorPositionChanged.connect(self._update_status_label)
+
+        # 6. 将主视图添加到主布局
+        layout.addWidget(self.main_view)
+
+        # 7. 设置初始代码
+        self.replace_text_preserving_view(DEFAULT_CODE_TEMPLATE)
 
     def _setup_auto_sync(self):
         self._sync_timer = QTimer()
@@ -115,7 +136,7 @@ class CodeEditorWidget(QWidget):
         panel.setStyleSheet("""
             QWidget { background: #202124; }
             QLineEdit { background:#2b2d30; color:#e8eaed; border:1px solid #3c4043; padding:3px 6px; }
-            QLabel { color:#9aa0a6; }
+            QLabel { color:#9aa06; }
             QCheckBox { color:#c0c4c9; }
             QPushButton { background:#303134; color:#e8eaed; border:1px solid #3c4043; padding:3px 6px; }
             QPushButton:hover { background:#3a3b3e; }
@@ -253,14 +274,6 @@ class CodeEditorWidget(QWidget):
             self.replace_text_preserving_view(new_text)
             self.lbl_hits.setText(f"{n} replaced")
 
-    def _handle_shift_enter(self, cursor):
-        cursor.movePosition(QTextCursor.EndOfLine)
-        current_line = cursor.block().text()
-        leading_spaces = len(current_line) - len(current_line.lstrip(' '))
-        indent = ' ' * leading_spaces
-        cursor.insertText('\n' + indent)
-        self.code_editor.setTextCursor(cursor)
-
     def _toggle_comment(self):
         cursor = self.code_editor.textCursor()
         doc = self.code_editor.document()
@@ -393,3 +406,63 @@ class CodeEditorWidget(QWidget):
             c.setPosition(max(0, min(cursor.position(), len(new_text))))
         self.code_editor.setTextCursor(c)
         scrollbar.setValue(scroll_pos)
+
+    # ===== 新增：全屏/缩小功能 =====
+    def _toggle_fullscreen(self):
+        """切换全屏模式"""
+        if not self.fullscreen_mode:
+            self._enter_fullscreen()
+        else:
+            self._exit_fullscreen()
+
+    def _enter_fullscreen(self):
+        """进入全屏模式"""
+        if self.fullscreen_mode:
+            return # 已经是全屏状态
+
+        # 1. 隐藏主界面中的非编辑器部分（可选）
+        self.status_label.setVisible(True)
+        self.find_panel.setVisible(True) # 如果全屏时不显示查找面板
+
+        # 2. 将编辑器设置为顶级窗口并全屏显示
+        # 需要先将编辑器从当前布局中移除
+        # 注意：这里直接操作 self.code_editor
+        self.code_editor.setParent(None) # 移除父对象
+        self.code_editor.showFullScreen() # 设置为全屏
+
+        # 3. 更新按钮图标和状态
+        self.code_editor.fullscreen_button.setIcon(get_icon("缩小")) # 假设 "缩小" 是图标名称
+        self.code_editor.fullscreen_button.setToolTip("缩小编辑器")
+        self.fullscreen_mode = True
+
+        # 4. 连接全屏窗口的关闭事件，以便能退出全屏
+        self.code_editor.installEventFilter(self)
+
+    def _exit_fullscreen(self):
+        """退出全屏模式"""
+        if not self.fullscreen_mode:
+            return # 不是全屏状态
+
+        # 1. 停止监听全屏事件
+        self.code_editor.removeEventFilter(self)
+
+        # 2. 退出全屏
+        self.code_editor.showNormal() # 恢复正常窗口状态
+
+        # 3. 将编辑器移回主界面布局
+        # 注意：这里需要将 self.code_editor 重新添加到 self.main_view 的布局中
+        # 重新设置父对象
+        self.code_editor.setParent(self.main_view)
+        # 重新布局（假设编辑器在 main_layout 的索引是 1，查找面板之后）
+        main_layout = self.main_view.layout()
+        if main_layout and self.code_editor not in [main_layout.itemAt(i).widget() for i in range(main_layout.count())]:
+             main_layout.insertWidget(1, self.code_editor) # 插入到查找面板之后，状态栏之前
+
+        # 4. 恢复主界面中的可见性
+        self.status_label.setVisible(True)
+        self.find_panel.setVisible(True) # 根据需要决定是否恢复显示
+
+        # 5. 更新按钮图标和状态
+        self.code_editor.fullscreen_button.setIcon(get_icon("放大")) # 假设 "放大" 是图标名称
+        self.code_editor.fullscreen_button.setToolTip("放大编辑器")
+        self.fullscreen_mode = False

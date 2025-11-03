@@ -720,10 +720,6 @@ class JediCodeEditor(CodeEditor):
         self.fullscreen_button.setIconSize(QSize(28, 28))
         self.fullscreen_button.setFixedSize(28, 28)
         self.fullscreen_button.setToolTip("放大编辑器")
-        if type == "放大":
-            self.fullscreen_button.clicked.connect(self._open_fullscreen_editor)
-        else:
-            self.fullscreen_button.clicked.connect(self.dialog.accept)
         self._update_button_position()
 
     def resizeEvent(self, event):
@@ -734,18 +730,9 @@ class JediCodeEditor(CodeEditor):
     def _update_button_position(self):
         """更新按钮位置到右上角"""
         button_width = self.fullscreen_button.width()
-        button_height = self.fullscreen_button.height()
         x = self.width() - button_width - 30
         y = 6
         self.fullscreen_button.move(x, y)
-
-    def _open_fullscreen_editor(self):
-        """打开全屏编辑器"""
-        current_code = self.toPlainText()
-        dialog = FullscreenCodeDialog(initial_code=current_code, parent=self.parent_widget, code_parent=self.parent, python_exe_path=self.python_exe_path)
-        if dialog.exec_() == 1:
-            new_code = dialog.get_code()
-            self.setPlainText(new_code)
 
     def wheelEvent(self, event):
         """处理鼠标滚轮事件以缩放字体"""
@@ -1516,21 +1503,6 @@ class JediCodeEditor(CodeEditor):
         if hasattr(self, 'completion_worker'):
             self.completion_worker.running = False
 
-class FullscreenCodeDialog(MessageBoxBase):
-    """全屏代码对话框"""
-    def __init__(self, initial_code="", parent=None, code_parent=None, python_exe_path=None):
-        super().__init__(parent)
-        self.setWindowTitle("代码编辑器")
-        self.code_editor = JediCodeEditor(
-            parent=parent, code_parent=code_parent, python_exe_path=python_exe_path, dialog=self
-        )
-        self.code_editor.setPlainText(initial_code)
-        self.code_editor.setMinimumSize(1000, 600)
-        self.viewLayout.addWidget(self.code_editor)
-        self.buttonGroup.hide()
-
-    def get_code(self):
-        return self.code_editor.toPlainText()
 
 class MainWindow(QMainWindow):
     """主窗口"""
