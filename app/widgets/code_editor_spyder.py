@@ -1,20 +1,24 @@
 # -*- coding: utf-8 -*-
 import os
+import re
 import sys
 import time
-import re
-from collections import OrderedDict
+import traceback
+
+import jedi
+
+from loguru import logger
 from concurrent.futures import ThreadPoolExecutor, Future
 from pathlib import Path
-from typing import List, Tuple, Optional, Dict, Any
-import jedi
+from typing import List, Tuple, Optional
 from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal, QObject, QRect, QEvent
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter, QCursor
 from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle, QVBoxLayout
 from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QToolTip
-from qfluentwidgets import TransparentToolButton, MessageBoxBase
+from qfluentwidgets import TransparentToolButton
 from qtpy import QtCore
 from spyder.plugins.editor.widgets.codeeditor import CodeEditor
+
 from app.utils.utils import get_icon  # 确保路径正确
 
 # 禁用jedi子进程，避免在GUI应用中出现子进程问题
@@ -330,7 +334,7 @@ class CompletionWorker(QObject):
                                 return 'variable'  # 通用变量类型
                 search_line -= 1
         except Exception as e:
-            print(f"[Jedi] Error during type guess from code for '{name}': {e}")
+            logger.error(f"[Jedi] Error during type guess from code for '{name}': {e}")
             pass
         return None
 
@@ -370,7 +374,7 @@ class CompletionWorker(QObject):
                 completions.append((name_obj.name, comp_type, desc, detail))
             return completions
         except Exception as e:
-            print(f"[Jedi] Failed to get self attributes: {e}")
+            logger.error(f"[Jedi] Failed to get self attributes: {e}")
             return []
 
     def _parse_jedi_completion(self, comp) -> Tuple[str, str, str, str]:
@@ -449,7 +453,6 @@ class CompletionWorker(QObject):
             if site_packages_path and site_packages_path not in sys.path:
                 sys.path.insert(0, site_packages_path)
                 added_to_path = True
-                print(f"[Jedi] Added {site_packages_path} to sys.path temporarily.")
             # 创建 Script 对象
             script = jedi.Script(code=code + JediCodeEditor._BASE_CODE_CACHE, path='<inline>')
             # 获取补全结果
@@ -480,17 +483,16 @@ class CompletionWorker(QObject):
             # --- 修改：在获取结果后立即恢复 sys.path (如果需要) ---
             if added_to_path and original_path is not None:
                 sys.path[:] = original_path  # 恢复原始路径
-                print(f"[Jedi] Restored original sys.path.")
 
             elapsed = time.time() - start_time
-            print(f"[Jedi] Completion took {elapsed:.3f}s for {len(completions)} items")
+            logger.info(f"[Jedi] Completion took {elapsed:.3f}s for {len(completions)} items")
             self.completion_ready.emit(completions)
         except Exception as e:
             # 确保在出错时也恢复路径
             if added_to_path and original_path is not None:
                 sys.path[:] = original_path
-                print(f"[Jedi] Restored original sys.path after error.")
-            print(f"[Jedi] Error during completion: {e}")
+                logger.error(f"[Jedi] Restored original sys.path after error.")
+            logger.error(f"[Jedi] Error during completion: {e}")
             self.error_occurred.emit(str(e))
 
     def request_delayed_completion(self, code: str, line: int, column: int, site_packages_path: Optional[str] = None):
@@ -502,7 +504,6 @@ class CompletionWorker(QObject):
             if site_packages_path and site_packages_path not in sys.path:
                 sys.path.insert(0, site_packages_path)
                 added_to_path = True
-                print(f"[Jedi] Added {site_packages_path} to sys.path temporarily (delayed).")
 
             # 创建 Script 对象
             script = jedi.Script(code=code, path='<inline>')
@@ -537,9 +538,8 @@ class CompletionWorker(QObject):
             # 确保在出错时也恢复路径
             if added_to_path and original_path is not None:
                 sys.path[:] = original_path
-                print(f"[Jedi] Restored original sys.path after error in delayed request.")
-            import traceback
-            print(f"[Jedi] Error in delayed completion task: {traceback.format_exc()}")
+                logger.error(f"[Jedi] Restored original sys.path after error in delayed request.")
+            logger.error(f"[Jedi] Error in delayed completion task: {traceback.format_exc()}")
             self.error_occurred.emit(f"Delayed completion error: {e}")
 
 class JediCodeEditor(CodeEditor):
@@ -553,7 +553,7 @@ class JediCodeEditor(CodeEditor):
                 with open(Path("app/components/base.py"), "r", encoding="utf-8") as f:
                     JediCodeEditor._BASE_CODE_CACHE = f.read()
             except Exception as e:
-                print(f"[Jedi] Failed to load base.py: {e}")
+                logger.info(f"[Jedi] Failed to load base.py: {e}")
                 JediCodeEditor._BASE_CODE_CACHE = ""
         self.python_exe_path = python_exe_path
         self.popup_offset = popup_offset
@@ -770,19 +770,19 @@ class JediCodeEditor(CodeEditor):
             site_packages = os.path.join(python_dir, "Lib", "site-packages")
             if os.path.isdir(site_packages):
                 self._target_site_packages = site_packages
-                print(f"[Jedi] Target site-packages: {site_packages}")
+                logger.info(f"[Jedi] Target site-packages: {site_packages}")
             else:
                 self._target_site_packages = None
-                print(f"[Jedi] Warning: site-packages not found at {site_packages}")
+                logger.info(f"[Jedi] Warning: site-packages not found at {site_packages}")
         else:
             # 如果没有提供exe路径，尝试使用当前Python环境的site-packages
             import site
             if site.getsitepackages():
                 self._target_site_packages = site.getsitepackages()[0]
-                print(f"[Jedi] Using current Python's site-packages: {self._target_site_packages}")
+                logger.info(f"[Jedi] Using current Python's site-packages: {self._target_site_packages}")
             else:
                 self._target_site_packages = None
-                print(f"[Jedi] Warning: Could not determine site-packages path")
+                logger.info(f"[Jedi] Warning: Could not determine site-packages path")
 
     def add_custom_completions(self, words):
         """添加自定义补全"""
@@ -794,7 +794,7 @@ class JediCodeEditor(CodeEditor):
         """定期衰减补全使用计数"""
         current_time = time.time()
         if current_time - self._last_decay_time > self.usage_decay_interval:
-            print(f"[Usage] Decaying usage counts.")
+            logger.info(f"[Usage] Decaying usage counts.")
             for name in list(self.completion_usage.keys()):
                 last_time, count = self.completion_usage[name]
                 # 计算时间衰减因子 (基于上次使用时间)
@@ -931,7 +931,7 @@ class JediCodeEditor(CodeEditor):
             global_mouse_pos = QCursor.pos()
             popup_rect = self.popup.geometry()
             if not popup_rect.contains(global_mouse_pos):
-                print(f"[Jedi] Clicked outside popup, hiding.")
+                logger.info(f"[Jedi] Clicked outside popup, hiding.")
                 self.popup.hide()
                 self._popup_timeout_timer.stop()
                 return True # 拦截事件
@@ -1302,7 +1302,7 @@ class JediCodeEditor(CodeEditor):
 
     def _on_completion_error(self, error_msg: str):
         """处理补全错误"""
-        print(f"[Jedi] Completion error: {error_msg}")
+        logger.info(f"[Jedi] Completion error: {error_msg}")
         self.popup.hide()
         self._popup_timeout_timer.stop()  # 停止超时计时器
 
@@ -1310,7 +1310,7 @@ class JediCodeEditor(CodeEditor):
         """补全框超时回调"""
         if self.popup.isVisible():
             self.popup.hide()
-            print("[Jedi] Popup closed due to timeout.")
+            logger.info("[Jedi] Popup closed due to timeout.")
 
     def _on_item_hovered(self, item):
         """当鼠标悬停在补全项上时显示docstring"""

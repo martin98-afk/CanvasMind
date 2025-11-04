@@ -2,7 +2,6 @@
 import json
 import os
 import re
-import uuid
 import pandas as pd
 
 from loguru import logger
