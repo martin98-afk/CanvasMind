@@ -1,17 +1,21 @@
 # -*- coding: utf-8 -*-
 import os
 import re
+import socket
+import subprocess
 import sys
+import hashlib
+import tempfile
 import time
 import traceback
-
+import shutil
 import jedi
 
 from loguru import logger
 from concurrent.futures import ThreadPoolExecutor, Future
 from pathlib import Path
 from typing import List, Tuple, Optional
-from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal, QObject, QRect, QEvent
+from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal, QObject, QRect, QEvent, QFileSystemWatcher
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter, QCursor
 from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle, QVBoxLayout
 from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QToolTip
@@ -29,6 +33,15 @@ jedi.settings.call_signatures_validity = 300  # 缓存5分钟
 
 # 线程池用于异步处理补全请求
 completion_pool = ThreadPoolExecutor(max_workers=5, thread_name_prefix="JediCompletion")
+
+
+def _get_temp_file_path(code: str) -> str:
+    # 用代码内容生成唯一文件名，便于复用
+    code_hash = hashlib.md5(code.encode('utf-8')).hexdigest()[:8]
+    temp_dir = os.path.join(tempfile.gettempdir(), "narrato_spyder_cache")
+    os.makedirs(temp_dir, exist_ok=True)
+    return os.path.join(temp_dir, f"code_{code_hash}.py")
+
 
 class CompletionItemDelegate(QStyledItemDelegate):
     """自定义补全项绘制器，解决重叠、颜色和间距问题"""
@@ -679,6 +692,14 @@ class JediCodeEditor(CodeEditor):
         # --- 添加放大按钮 ---
         self._create_fullscreen_button("放大" if dialog is None else "缩小")
 
+        # --- 创建“在 Spyder 中打开”按钮 ---
+        self.spyder_button = TransparentToolButton(get_icon("spyder"), parent=self)
+        self.spyder_button.setIconSize(QSize(28, 28))
+        self.spyder_button.setFixedSize(28, 28)
+        self.spyder_button.setToolTip("在 Spyder 中打开当前代码")
+        self.spyder_button.clicked.connect(self._open_in_spyder)
+        self._update_button_position()  # 确保初始位置正确
+
         # --- 连接补全工作线程信号 ---
         self.completion_worker.completion_ready.connect(self._on_completions_ready)
         self.completion_worker.error_occurred.connect(self._on_completion_error)
@@ -720,7 +741,6 @@ class JediCodeEditor(CodeEditor):
         self.fullscreen_button.setIconSize(QSize(28, 28))
         self.fullscreen_button.setFixedSize(28, 28)
         self.fullscreen_button.setToolTip("放大编辑器")
-        self._update_button_position()
 
     def resizeEvent(self, event):
         """重写调整大小事件以更新按钮位置"""
@@ -728,11 +748,15 @@ class JediCodeEditor(CodeEditor):
         self._update_button_position()
 
     def _update_button_position(self):
-        """更新按钮位置到右上角"""
-        button_width = self.fullscreen_button.width()
+        """更新按钮位置到右上角，垂直排列"""
+        button_width = 28
+        button_spacing = 8  # 两个按钮之间的间距
         x = self.width() - button_width - 30
-        y = 6
-        self.fullscreen_button.move(x, y)
+        y_top = 6
+        y_bottom = y_top + button_width + button_spacing
+
+        self.fullscreen_button.move(x, y_top)
+        self.spyder_button.move(x, y_bottom)
 
     def wheelEvent(self, event):
         """处理鼠标滚轮事件以缩放字体"""
@@ -1062,6 +1086,92 @@ class JediCodeEditor(CodeEditor):
         indent = ' ' * leading_spaces
         cursor.insertText('\n' + indent)
         self.setTextCursor(cursor)  # 注意：这里使用 self 而不是 self.code_editor
+
+    def _get_spyder_open_files_port(self) -> int:
+        """读取 Spyder 配置中的 open_files_port"""
+        try:
+            from spyder.config.manager import CONF
+            return CONF.get('main', 'open_files_port')
+        except Exception:
+            # 降级：使用默认端口
+            return 21128
+
+    def _is_spyder_running(self) -> bool:
+        """检查 Spyder 是否已在监听 open_files_port"""
+        port = self._get_spyder_open_files_port()
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('127.0.0.1', port)) == 0
+
+    def _send_file_to_spyder(self, file_path: str):
+        """通过 socket 发送文件路径给已运行的 Spyder"""
+        port = self._get_spyder_open_files_port()
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+                client.connect(("127.0.0.1", port))
+                client.send(os.path.abspath(file_path).encode('utf-8'))
+        except Exception as e:
+            logger.error(f"[Spyder] Failed to send file to running instance: {e}")
+            raise
+
+    def _open_in_spyder(self):
+        try:
+            code = self.toPlainText().strip()
+            if not code:
+                return
+
+            # 生成固定路径临时文件（便于复用）
+            temp_dir = Path(tempfile.gettempdir()) / "narrato_spyder_sync"
+            temp_dir.mkdir(exist_ok=True)
+            file_hash = hash(code) % 1000000
+            temp_path = temp_dir / f"code_{file_hash}.py"
+            temp_path.write_text(code, encoding='utf-8')
+
+            # 检查 Spyder 是否已在运行
+            if self._is_spyder_running():
+                # 直接发送文件路径
+                self._send_file_to_spyder(str(temp_path))
+            else:
+                # 启动 Spyder（单例模式）
+                spyder_cmd = shutil.which("spyder")
+                if not spyder_cmd:
+                    # 尝试虚拟环境路径
+                    spyder_cmd = Path(sys.prefix) / ("Scripts/spyder.exe" if os.name == "nt" else "bin/spyder")
+                    if not spyder_cmd.exists():
+                        raise FileNotFoundError("Spyder not found")
+
+                # 启动（不加 --new-instance！）
+                subprocess.Popen([str(spyder_cmd), str(temp_path)])
+
+            # 启动文件监听器（用于同步回编辑器）
+            self._start_file_watcher(str(temp_path))
+
+        except Exception as e:
+            logger.error(f"[Spyder] Failed to open in Spyder: {e}")
+
+    def _start_file_watcher(self, file_path: str):
+        if hasattr(self, '_file_watcher'):
+            self._file_watcher.removePaths(self._file_watcher.files())
+        else:
+            self._file_watcher = QFileSystemWatcher()
+            self._file_watcher.fileChanged.connect(self._on_spyder_file_changed)
+
+        self._file_watcher.addPath(file_path)
+        self._watched_file = file_path
+
+    def _on_spyder_file_changed(self, path: str):
+        """Spyder 保存文件后，自动重载内容"""
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                new_code = f.read()
+            current_code = self.toPlainText()
+            if new_code != current_code:
+                # 防止自己保存触发循环
+                self.blockSignals(True)
+                self.setPlainText(new_code)
+                self.blockSignals(False)
+                logger.info(f"[Spyder Sync] Code reloaded from {path}")
+        except Exception as e:
+            logger.error(f"[Spyder Sync] Failed to reload: {e}")
 
     def _should_show_completion_on_delete(self) -> bool:
         """判断删除字符时是否应该显示补全"""
