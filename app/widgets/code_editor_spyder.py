@@ -35,14 +35,6 @@ jedi.settings.call_signatures_validity = 300  # 缓存5分钟
 completion_pool = ThreadPoolExecutor(max_workers=5, thread_name_prefix="JediCompletion")
 
 
-def _get_temp_file_path(code: str) -> str:
-    # 用代码内容生成唯一文件名，便于复用
-    code_hash = hashlib.md5(code.encode('utf-8')).hexdigest()[:8]
-    temp_dir = os.path.join(tempfile.gettempdir(), "narrato_spyder_cache")
-    os.makedirs(temp_dir, exist_ok=True)
-    return os.path.join(temp_dir, f"code_{code_hash}.py")
-
-
 class CompletionItemDelegate(QStyledItemDelegate):
     """自定义补全项绘制器，解决重叠、颜色和间距问题"""
     def __init__(self, parent=None):
@@ -1087,17 +1079,17 @@ class JediCodeEditor(CodeEditor):
         cursor.insertText('\n' + indent)
         self.setTextCursor(cursor)  # 注意：这里使用 self 而不是 self.code_editor
 
+    # --- 集成spyder工具 ---
     def _get_spyder_open_files_port(self) -> int:
-        """读取 Spyder 配置中的 open_files_port"""
+        """获取 Spyder 的 open_files_port，默认 21128"""
         try:
             from spyder.config.manager import CONF
             return CONF.get('main', 'open_files_port')
         except Exception:
-            # 降级：使用默认端口
             return 21128
 
     def _is_spyder_running(self) -> bool:
-        """检查 Spyder 是否已在监听 open_files_port"""
+        """检查 Spyder 是否已在监听文件端口"""
         port = self._get_spyder_open_files_port()
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             return s.connect_ex(('127.0.0.1', port)) == 0
@@ -1105,73 +1097,79 @@ class JediCodeEditor(CodeEditor):
     def _send_file_to_spyder(self, file_path: str):
         """通过 socket 发送文件路径给已运行的 Spyder"""
         port = self._get_spyder_open_files_port()
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+            client.connect(("127.0.0.1", port))
+            client.send(os.path.abspath(file_path).encode('utf-8'))
+
+    def _activate_spyder_window(self):
+        """激活已存在的 Spyder 窗口（Windows）"""
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
-                client.connect(("127.0.0.1", port))
-                client.send(os.path.abspath(file_path).encode('utf-8'))
+            import pygetwindow as gw
+            windows = gw.getWindowsWithTitle("Spyder")
+            if windows:
+                win = windows[0]
+                if not win.isActive:
+                    win.activate()
         except Exception as e:
-            logger.error(f"[Spyder] Failed to send file to running instance: {e}")
-            raise
+            logger.warning(f"[Spyder] Failed to activate window: {e}")
+
+    def _start_file_watcher(self, file_path: str):
+        """监听文件变化，实现 Spyder -> 主编辑器同步"""
+        if not hasattr(self, '_file_watcher'):
+            self._file_watcher = QFileSystemWatcher()
+            self._file_watcher.fileChanged.connect(self._on_spyder_file_changed)
+        else:
+            self._file_watcher.removePaths(self._file_watcher.files())
+        self._file_watcher.addPath(file_path)
+        self._watched_spyder_file = file_path
+
+    def _on_spyder_file_changed(self, path: str):
+        """当 Spyder 中保存文件时，自动重载内容"""
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                new_code = f.read()
+            current = self.toPlainText()
+            if new_code != current:
+                self.blockSignals(True)
+                self.setPlainText(new_code)
+                self.blockSignals(False)
+        except Exception as e:
+            logger.error(f"[Spyder Sync] Reload failed: {e}")
 
     def _open_in_spyder(self):
+        """在 Spyder 中打开当前代码（单例 + 自动同步）"""
         try:
             code = self.toPlainText().strip()
             if not code:
                 return
 
-            # 生成固定路径临时文件（便于复用）
+            # 生成唯一临时文件（避免项目目录）
             temp_dir = Path(tempfile.gettempdir()) / "narrato_spyder_sync"
             temp_dir.mkdir(exist_ok=True)
-            file_hash = hash(code) % 1000000
+            file_hash = hashlib.md5(code.encode('utf-8')).hexdigest()[:8]
             temp_path = temp_dir / f"code_{file_hash}.py"
             temp_path.write_text(code, encoding='utf-8')
 
-            # 检查 Spyder 是否已在运行
             if self._is_spyder_running():
-                # 直接发送文件路径
                 self._send_file_to_spyder(str(temp_path))
+                self._activate_spyder_window()
             else:
-                # 启动 Spyder（单例模式）
                 spyder_cmd = shutil.which("spyder")
                 if not spyder_cmd:
-                    # 尝试虚拟环境路径
                     spyder_cmd = Path(sys.prefix) / ("Scripts/spyder.exe" if os.name == "nt" else "bin/spyder")
                     if not spyder_cmd.exists():
-                        raise FileNotFoundError("Spyder not found")
+                        raise FileNotFoundError("Spyder not found. Please run: pip install spyder")
 
-                # 启动（不加 --new-instance！）
                 subprocess.Popen([str(spyder_cmd), str(temp_path)])
+                # 延迟激活（等窗口创建）
+                QTimer.singleShot(2000, self._activate_spyder_window)
 
-            # 启动文件监听器（用于同步回编辑器）
             self._start_file_watcher(str(temp_path))
 
         except Exception as e:
-            logger.error(f"[Spyder] Failed to open in Spyder: {e}")
-
-    def _start_file_watcher(self, file_path: str):
-        if hasattr(self, '_file_watcher'):
-            self._file_watcher.removePaths(self._file_watcher.files())
-        else:
-            self._file_watcher = QFileSystemWatcher()
-            self._file_watcher.fileChanged.connect(self._on_spyder_file_changed)
-
-        self._file_watcher.addPath(file_path)
-        self._watched_file = file_path
-
-    def _on_spyder_file_changed(self, path: str):
-        """Spyder 保存文件后，自动重载内容"""
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                new_code = f.read()
-            current_code = self.toPlainText()
-            if new_code != current_code:
-                # 防止自己保存触发循环
-                self.blockSignals(True)
-                self.setPlainText(new_code)
-                self.blockSignals(False)
-                logger.info(f"[Spyder Sync] Code reloaded from {path}")
-        except Exception as e:
-            logger.error(f"[Spyder Sync] Failed to reload: {e}")
+            from qfluentwidgets import MessageBox
+            box = MessageBox("Spyder 打开失败", f"错误：{str(e)}", self)
+            box.exec()
 
     def _should_show_completion_on_delete(self) -> bool:
         """判断删除字符时是否应该显示补全"""

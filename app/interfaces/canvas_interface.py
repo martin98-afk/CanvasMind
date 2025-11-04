@@ -1234,6 +1234,7 @@ class CanvasPage(QWidget):
                     pos = event.pos()
                     scene_pos = self.canvas_widget.mapToScene(pos)
                     node = self.graph.create_node(node_type)
+                    self.nav_view.record_usage(full_path)
                     node.set_pos(scene_pos.x(), scene_pos.y())
                     QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
                     self.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN

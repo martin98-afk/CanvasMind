@@ -14,6 +14,7 @@ class StyleSheet(StyleSheetBase, Enum):
     HOME_INTERFACE = "home_interface"
     COMPONENT_DEVELOPER = "component_developer"
     PACKAGE_MANAGER = "package_manager"
+    CATEGORY_FILTER = "category_filter"
 
     def path(self, theme=Theme.AUTO):
         theme = qconfig.theme if theme == Theme.AUTO else theme
