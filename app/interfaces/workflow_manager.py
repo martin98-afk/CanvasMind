@@ -93,6 +93,10 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         # 全局统计节点连接情况
         self.recommendation_engine = NodeRecommendationEngine()  # 稍后在 register_components 后初始化
 
+        # 滚轮事件优化相关
+        self._last_wheel_time = 0
+        self._wheel_threshold = 100  # 毫秒，防止滚轮事件过于频繁
+
         self._setup_ui()
         self.load_workflows()
 
@@ -186,33 +190,37 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
     def eventFilter(self, obj, event):
         if obj == self.scroll_area.viewport() and event.type() == QEvent.Wheel:
+            from PyQt5.QtCore import QTime
+
+            # 防止滚轮事件过于频繁
+            current_time = QTime.currentTime().msecsSinceStartOfDay()
+            if current_time - self._last_wheel_time < self._wheel_threshold:
+                return True  # 消费事件，防止进一步处理
+            self._last_wheel_time = current_time
+
             scrollbar = self.scroll_area.verticalScrollBar()
             current_value = scrollbar.value()
             max_value = scrollbar.maximum()
             min_value = scrollbar.minimum()
 
-            # 检查是否滚动到底部且向下滚动
-            if current_value >= max_value - 5 and event.angleDelta().y() < 0:
+            # 检查是否滚动到底部且向下滚动，或者没有滚动条但向下滚动（当前页不是最后一页）
+            if (current_value >= max_value - 5 and event.angleDelta().y() < 0) or \
+                    (max_value == 0 and event.angleDelta().y() < 0 and self.current_page < self.total_pages - 1):
                 if self.current_page < self.total_pages - 1:
                     new_page_index = self.current_page + 1
-                    self.pips_pager.setCurrentIndex(new_page_index) # 触发 _on_page_changed
-                    # --- 优化：切换页面后，将滚动条置顶 ---
-                    # 注意：必须等待新页面内容加载并布局完成后，再设置滚动条位置。
-                    # 使用 QTimer.singleShot(0, ...) 将设置滚动条的操作推迟到事件循环的下一次迭代。
-                    # 这通常足以等待布局完成。
+                    self.pips_pager.setCurrentIndex(new_page_index)  # 触发 _on_page_changed
+                    # 切换页面后，将滚动条置顶
                     QTimer.singleShot(5, lambda: scrollbar.setValue(min_value))
-                    # -----------------------------------
                     return True
 
-            # 检查是否滚动到顶部且向上滚动
-            elif current_value <= min_value + 5 and event.angleDelta().y() > 0:
+            # 检查是否滚动到顶部且向上滚动，或者没有滚动条但向上滚动（当前页不是第一页）
+            elif (current_value <= min_value + 5 and event.angleDelta().y() > 0) or \
+                    (max_value == 0 and event.angleDelta().y() > 0 and self.current_page > 0):
                 if self.current_page > 0:
                     new_page_index = self.current_page - 1
-                    self.pips_pager.setCurrentIndex(new_page_index) # 触发 _on_page_changed
-                    # --- 优化：切换页面后，将滚动条置底 ---
-                    # 同样，使用 QTimer.singleShot(0, ...) 延迟设置。
-                    QTimer.singleShot(5, lambda: scrollbar.setValue(max_value))
-                    # -----------------------------------
+                    self.pips_pager.setCurrentIndex(new_page_index)  # 触发 _on_page_changed
+                    # 切换页面后，将滚动条置底
+                    QTimer.singleShot(5, lambda: scrollbar.setValue(scrollbar.maximum()))
                     return True
 
         # 将事件传递给父类处理

@@ -2,12 +2,13 @@
 import ast
 import re
 
-from PyQt5.QtCore import pyqtSignal, QTimer, Qt
+from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QEvent
 from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QShortcut, QHBoxLayout, \
     QLineEdit, QPushButton, QCheckBox, QLabel, QInputDialog
+from app.utils.utils import get_icon # 假设您有这个工具函数
 
-from app.widgets.code_editor_spyder import JediCodeEditor
+from app.widgets.code_editor_spyder import JediCodeEditor # 确保导入路径正确
 
 DEFAULT_CODE_TEMPLATE = '''class Component(BaseComponent):
     name = ""
@@ -43,27 +44,48 @@ class CodeEditorWidget(QWidget):
     parsed_component = pyqtSignal(dict)
 
     def __init__(self, parent=None, python_exe=None, popup_offset=0):
-        super().__init__()
-        self.code_editor = JediCodeEditor(parent, self, python_exe_path=python_exe, popup_offset=popup_offset)
-        self.code_editor.textChanged.connect(self.code_changed)
+        super().__init__(parent) # 确保父类初始化
+        self._suspend_sync_depth = 0 # 初始化，避免在_setup_ui前访问
+        self.original_parent = parent # 保存原始父对象，用于全屏后恢复
+        self.fullscreen_mode = False # 标记是否处于全屏模式
+        self.overlay_widget = None # 用于覆盖全屏的透明层
+        self._setup_ui(python_exe, popup_offset) # 将初始化UI的逻辑移到一个方法中
         self._setup_auto_sync()
-        self._setup_ui()
         # self._setup_syntax_highlighting()
         self._setup_shortcuts()
-        self._suspend_sync_depth = 0
 
-    def _setup_ui(self):
+    def _setup_ui(self, python_exe, popup_offset):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.replace_text_preserving_view(DEFAULT_CODE_TEMPLATE)
+
+        # 5. 创建主要的编辑器视图（包含查找替换面板和编辑器）
+        self.main_view = QWidget()
+        main_layout = QVBoxLayout(self.main_view)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 查找替换面板
         self.find_panel = self._create_find_replace_panel()
         self.find_panel.setVisible(False)
-        layout.addWidget(self.find_panel)
-        layout.addWidget(self.code_editor)
-        self.status_label = QLabel("Ln 1, Col 1", self)
+        main_layout.addWidget(self.find_panel)
+
+        # 代码编辑器
+        self.code_editor = JediCodeEditor(self, self, python_exe_path=python_exe, popup_offset=popup_offset)
+        self.code_editor.textChanged.connect(self.code_changed)
+        # --- 关键修改：连接内部按钮的点击信号到本类的切换方法 ---
+        self.code_editor.fullscreen_button.clicked.connect(self._toggle_fullscreen)
+        main_layout.addWidget(self.code_editor)
+
+        # 状态栏
+        self.status_label = QLabel("Ln 1, Col 1", self.main_view)
         self.status_label.setStyleSheet("color:#9aa0a6; padding:3px 6px; background:transparent;")
-        layout.addWidget(self.status_label)
+        main_layout.addWidget(self.status_label)
         self.code_editor.cursorPositionChanged.connect(self._update_status_label)
+
+        # 6. 将主视图添加到主布局
+        layout.addWidget(self.main_view)
+
+        # 7. 设置初始代码
+        self.replace_text_preserving_view(DEFAULT_CODE_TEMPLATE)
 
     def _setup_auto_sync(self):
         self._sync_timer = QTimer()
@@ -115,7 +137,7 @@ class CodeEditorWidget(QWidget):
         panel.setStyleSheet("""
             QWidget { background: #202124; }
             QLineEdit { background:#2b2d30; color:#e8eaed; border:1px solid #3c4043; padding:3px 6px; }
-            QLabel { color:#9aa0a6; }
+            QLabel { color:#9aa06; }
             QCheckBox { color:#c0c4c9; }
             QPushButton { background:#303134; color:#e8eaed; border:1px solid #3c4043; padding:3px 6px; }
             QPushButton:hover { background:#3a3b3e; }
@@ -253,14 +275,6 @@ class CodeEditorWidget(QWidget):
             self.replace_text_preserving_view(new_text)
             self.lbl_hits.setText(f"{n} replaced")
 
-    def _handle_shift_enter(self, cursor):
-        cursor.movePosition(QTextCursor.EndOfLine)
-        current_line = cursor.block().text()
-        leading_spaces = len(current_line) - len(current_line.lstrip(' '))
-        indent = ' ' * leading_spaces
-        cursor.insertText('\n' + indent)
-        self.code_editor.setTextCursor(cursor)
-
     def _toggle_comment(self):
         cursor = self.code_editor.textCursor()
         doc = self.code_editor.document()
@@ -393,3 +407,112 @@ class CodeEditorWidget(QWidget):
             c.setPosition(max(0, min(cursor.position(), len(new_text))))
         self.code_editor.setTextCursor(c)
         scrollbar.setValue(scroll_pos)
+
+    # ===== 新增：全屏/缩小功能 (基于覆盖层) =====
+    def _toggle_fullscreen(self):
+        """切换全屏模式"""
+        if not self.fullscreen_mode:
+            self._enter_fullscreen()
+        else:
+            self._exit_fullscreen()
+
+    def _enter_fullscreen(self):
+        """进入全屏模式 (覆盖层方式)"""
+        if self.fullscreen_mode:
+            return # 已经是全屏状态
+
+        # 1. 获取 FluentWindow 的顶层容器 (通常是 centralwidget 或直接是 window)
+        #    这里假设 self.original_parent 是 FluentWindow 实例
+        window_parent = self.original_parent
+        if not window_parent:
+            print("Error: Cannot enter fullscreen, no original parent window found.")
+            return
+
+        # 2. 创建或获取覆盖层
+        if self.overlay_widget is None:
+            self.overlay_widget = QWidget(window_parent)
+            self.overlay_widget.setStyleSheet("background-color: rgba(0, 0, 0, 180);") # 半透明黑色背景
+            # 确保覆盖层在最顶层
+            self.overlay_widget.raise_()
+            # 可选：为覆盖层添加 ESC 退出事件
+            self.overlay_widget.installEventFilter(self)
+
+        # 3. 调整覆盖层大小以匹配窗口内容区域
+        self.overlay_widget.resize(window_parent.size())
+        self.overlay_widget.move(0, 0) # 相对于其父窗口 (FluentWindow)
+        self.overlay_widget.show()
+
+        # 4. 将编辑器设置为覆盖层的子控件
+        self.code_editor.setParent(self.overlay_widget)
+
+        # 5. 调整编辑器大小以填满覆盖层
+        self.code_editor.resize(self.overlay_widget.size())
+        self.code_editor.move(0, 0) # 相对于其父控件 (overlay_widget)
+        self.code_editor.show() # 确保显示
+
+        # 6. 更新按钮图标和状态 (通过修改JediCodeEditor内部的按钮)
+        # 假设 get_icon("缩小") 返回缩小图标的QIcon
+        if hasattr(self.code_editor, 'fullscreen_button') and self.code_editor.fullscreen_button:
+            self.code_editor.fullscreen_button.setIcon(get_icon("缩小"))
+            self.code_editor.fullscreen_button.setToolTip("缩小编辑器")
+
+        self.fullscreen_mode = True
+
+    def _exit_fullscreen(self):
+        """退出全屏模式 (覆盖层方式)"""
+        if not self.fullscreen_mode:
+            return # 不是全屏状态
+
+        # 1. 停止监听覆盖层事件
+        if self.overlay_widget:
+            self.overlay_widget.removeEventFilter(self)
+
+        # 2. 将编辑器移回主界面布局
+        self.code_editor.setParent(self.main_view) # 重新设置父对象为 main_view
+        # 重新布局（假设编辑器在 main_layout 的索引是 1，查找面板之后）
+        main_layout = self.main_view.layout()
+        if main_layout and self.code_editor not in [main_layout.itemAt(i).widget() for i in range(main_layout.count())]:
+            main_layout.insertWidget(1, self.code_editor) # 插入到查找面板之后，状态栏之前
+
+        # 3. 隐藏覆盖层
+        if self.overlay_widget:
+            self.overlay_widget.hide()
+
+        # 4. 更新按钮图标和状态 (通过修改JediCodeEditor内部的按钮)
+        if hasattr(self.code_editor, 'fullscreen_button') and self.code_editor.fullscreen_button:
+            self.code_editor.fullscreen_button.setIcon(get_icon("放大"))
+            self.code_editor.fullscreen_button.setToolTip("放大编辑器")
+
+        self.fullscreen_mode = False
+
+    def eventFilter(self, obj, event):
+        """事件过滤器，用于处理覆盖层上的 ESC 键退出"""
+        # 检查是否是覆盖层，并且处于全屏模式
+        if obj == self.overlay_widget and self.fullscreen_mode:
+            # 检查事件类型是否为键盘按下事件
+            if event.type() == QEvent.KeyPress:
+                # 检查是否是ESC键
+                if event.key() == Qt.Key_Escape:
+                    self._exit_fullscreen()
+                    return True # 拦截事件
+        return super().eventFilter(obj, event)
+
+    def resizeEvent(self, event):
+        """重写调整大小事件，确保覆盖层跟随窗口大小变化"""
+        super().resizeEvent(event)
+        # 如果处于全屏模式，调整覆盖层大小
+        if self.fullscreen_mode and self.overlay_widget:
+            # 获取 FluentWindow 的顶层容器
+            window_parent = self.original_parent
+            if window_parent:
+                self.overlay_widget.resize(window_parent.size())
+                # 注意：如果 FluentWindow 有菜单栏、工具栏等，可能需要调整 y 坐标
+                # 例如， self.overlay_widget.move(0, top_offset)
+                # 但通常 resizeEvent 会跟随整个窗口，所以 move(0, 0) 通常是合适的
+                self.overlay_widget.move(0, 0)
+
+                # --- 关键修改：同步调整编辑器大小 ---
+                # 当覆盖层大小改变时，确保编辑器也跟随调整
+                self.code_editor.resize(self.overlay_widget.size())
+                self.code_editor.move(0, 0) # 确保编辑器位置正确
+

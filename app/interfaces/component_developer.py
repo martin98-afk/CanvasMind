@@ -1152,7 +1152,7 @@ class PropertyEditorWidget(QWidget):
         try:
             name_item = self.table.item(row, 0)
             if not name_item or not name_item.text().strip():
-                InfoBar.warning("警告", "请先填写属性名", parent=self, duration=2000)
+                InfoBar.warning("警告", "请先填写属性名", parent=self.parent, duration=2000)
                 return
 
             prop_name = name_item.text()
@@ -1182,7 +1182,7 @@ class PropertyEditorWidget(QWidget):
         try:
             name_item = self.table.item(row, 0)
             if not name_item or not name_item.text().strip():
-                InfoBar.warning("警告", "请先填写属性名", parent=self, duration=2000)
+                InfoBar.warning("警告", "请先填写属性名", parent=self.parent, duration=2000)
                 return
 
             prop_name = name_item.text()
@@ -1277,7 +1277,7 @@ class PropertyEditorWidget(QWidget):
         try:
             name_item = self.table.item(row, 0)
             if not name_item or not name_item.text().strip():
-                InfoBar.warning("警告", "请先填写属性名", parent=self, duration=2000)
+                InfoBar.warning("警告", "请先填写属性名", parent=self.parent, duration=2000)
                 return
 
             prop_name = name_item.text()

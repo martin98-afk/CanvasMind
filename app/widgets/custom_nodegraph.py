@@ -233,7 +233,7 @@ class CustomNodeGraph(NodeGraph):
 
                     nodes[n_id] = node
 
-                    if n_data.get('port_deletion_allowed', None):
+                    if not getattr(node, 'component_class', None) and n_data.get('port_deletion_allowed', None):
                         node.set_ports({
                             'input_ports': n_data['input_ports'],
                             'output_ports': n_data['output_ports']

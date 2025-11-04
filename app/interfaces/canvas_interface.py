@@ -1226,21 +1226,25 @@ class CanvasPage(QWidget):
             self.create_failed_info("导出失败", f"错误: {str(e)}")
 
     def canvas_drop_event(self, event):
-        if event.mimeData().hasText():
-            full_path = event.mimeData().text()
-            node_type = self.node_type_map.get(full_path)
-            if node_type:
-                pos = event.pos()
-                scene_pos = self.canvas_widget.mapToScene(pos)
-                node = self.graph.create_node(node_type)
-                node.set_pos(scene_pos.x(), scene_pos.y())
-                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
-                self.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
-                if hasattr(node, 'status'):
-                    node.status = NodeStatus.NODE_STATUS_UNRUN
-            event.accept()
-        else:
-            event.ignore()
+        try:
+            if event.mimeData().hasText():
+                full_path = event.mimeData().text()
+                node_type = self.node_type_map.get(full_path)
+                if node_type:
+                    pos = event.pos()
+                    scene_pos = self.canvas_widget.mapToScene(pos)
+                    node = self.graph.create_node(node_type)
+                    self.nav_view.record_usage(full_path)
+                    node.set_pos(scene_pos.x(), scene_pos.y())
+                    QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
+                    self.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
+                    if hasattr(node, 'status'):
+                        node.status = NodeStatus.NODE_STATUS_UNRUN
+                event.accept()
+            else:
+                event.ignore()
+        except Exception as e:
+            logger.error(traceback.format_exc())
 
     def get_node_status(self, node):
         return self.node_status.get(node.id, NodeStatus.NODE_STATUS_UNRUN)
@@ -1377,7 +1381,7 @@ class CanvasPage(QWidget):
 
         task = RecommendationTask(self.manager.recommendation_engine, full_path)
         task.signals.finished.connect(self.nav_view.add_recommendations)
-        task.signals.error.connect(lambda msg: print(f"推荐失败: {msg}"))
+        task.signals.error.connect(lambda msg: logger.error(f"推荐失败: {msg}"))
         self.thread_pool.start(task)
         self._current_recommendation_task = task
 
