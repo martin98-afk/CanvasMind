@@ -281,7 +281,6 @@ class PropertyPanel(CardWidget):
             if len(internal_nodes) > list_widget.count():
                 if list_widget.count() != len(internal_nodes):
                     return False  # 长度不匹配，需要重新构建
-
         # 成功更新了UI组件
         return True
 
@@ -790,7 +789,6 @@ class PropertyPanel(CardWidget):
             self.segmented_widget.setCurrentItem('input')
 
     def _add_internal_nodes_section(self, node):
-        # ... (卡片和布局的创建逻辑保持不变) ...
         nodes_card = CardWidget(self)
         initial_max_height = 200
         nodes_card.setMaximumHeight(initial_max_height)

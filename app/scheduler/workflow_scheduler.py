@@ -315,7 +315,7 @@ class WorkflowScheduler(QObject):
 
             input_proxy.set_output_value(input_data)
             # 执行内部节点（也收集输出，虽然不用于条件判断）
-            internal_outputs = self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
+            self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
 
             outputs = self._collect_outputs(output_proxy)
             input_data = outputs
