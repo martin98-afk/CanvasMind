@@ -17,6 +17,7 @@ from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, Smooth
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.utils.utils import serialize_for_json, get_icon
+from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
@@ -896,8 +897,8 @@ class PropertyPanel(CardWidget):
             expr_layout = QHBoxLayout()
             expr_label = BodyLabel("条件表达式:")
             expr_layout.addWidget(expr_label)
-
-            condition_edit = LineEdit(self)
+            global_vars = getattr(self.main_window, 'global_variables', None)
+            condition_edit = VariableCompletionLineEdit(get_variable_list_func=global_vars.get_vars, parent=self)
             condition_edit.setPlaceholderText("请输入条件表达式")
             current_condition = node.model.get_property("loop_condition")
             condition_edit.setText(current_condition)

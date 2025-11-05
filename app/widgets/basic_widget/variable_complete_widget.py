@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+import re
+
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QKeyEvent, QFont, QSyntaxHighlighter, QTextCharFormat, QColor
+from PyQt5.QtGui import QKeyEvent, QFont, QSyntaxHighlighter, QTextCharFormat, QColor, QPalette
 from PyQt5.QtGui import QTextCursor
-from PyQt5.QtWidgets import QListWidget
-from qfluentwidgets import TextEdit
+from PyQt5.QtWidgets import QListWidget, QDesktopWidget  # 添加 QDesktopWidget
+from qfluentwidgets import TextEdit, LineEdit
 
 
 # -----------------------
@@ -162,7 +164,37 @@ class VariableCompletionPopup(QListWidget):
     def show_at_cursor(self, editor):
         cursor_rect = editor.cursorRect()
         global_pos = editor.mapToGlobal(cursor_rect.bottomLeft())
-        self.move(global_pos)
+
+        # 获取屏幕几何信息
+        screen_geometry = QDesktopWidget().availableGeometry(editor)
+        screen_left = screen_geometry.left()
+        screen_top = screen_geometry.top()
+        screen_width = screen_geometry.width()
+        screen_height = screen_geometry.height()
+
+        # 计算弹窗的尺寸
+        popup_width = self.width()  # 或者使用 self.sizeHint().width()
+        popup_height = self.height()  # 或者使用 self.sizeHint().height()
+
+        # 计算调整后的 x, y 坐标
+        x = global_pos.x()
+        y = global_pos.y()
+
+        # 检查并调整 x 坐标，防止弹窗超出右边界
+        if x + popup_width > screen_left + screen_width:
+            x = screen_left + screen_width - popup_width
+        # 确保不超出左边界（虽然通常不会）
+        if x < screen_left:
+            x = screen_left
+
+        # 检查并调整 y 坐标，防止弹窗超出下边界
+        if y + popup_height > screen_top + screen_height:
+            y = screen_top + screen_height - popup_height
+        # 确保不超出上边界（虽然通常不会）
+        if y < screen_top:
+            y = screen_top
+
+        self.move(x, y)
         self.show()
         self.setFocus()
 
@@ -376,6 +408,185 @@ class VariableCompletionTextEdit(TextEdit):
             # 光标移到 $ 后
             cursor.setPosition(start_dollar + len(var_name) + 2)
             self.setTextCursor(cursor)
+        finally:
+            self._completing = False
+            self.popup.hide()
+
+
+class VariableCompletionLineEdit(LineEdit):
+    def __init__(self, get_variable_list_func, parent=None):
+        super().__init__(parent)
+        self.get_variable_list_func = get_variable_list_func
+        self.popup = VariableCompletionPopup()
+        self.popup.itemSelected.connect(self._apply_completion)
+        self._completing = False
+        self._input_timer = QTimer()
+        self._input_timer.setSingleShot(True)
+        self._input_timer.timeout.connect(self._trigger_completion)
+
+        # 为 LineEdit 使用 QPalette 进行背景高亮
+        self._original_palette = self.palette()
+        self._highlighted_palette = self._create_highlighted_palette()
+        self._last_text = ""
+        self.textChanged.connect(self._on_text_changed)
+
+    def _create_highlighted_palette(self):
+        palette = self.palette()
+        # 设置背景色为深灰色，模拟TextEdit的高亮背景
+        palette.setColor(QPalette.Base, QColor("#2C2C2C"))
+        # 设置文字颜色为白色或浅色，以匹配TextEdit的高亮文字
+        palette.setColor(QPalette.Text, QColor("#FFFFFF"))
+        # 因此这里只改变整体背景和文字颜色，提供一种视觉上的区分
+        return palette
+
+    def _on_text_changed(self, text):
+        # 检测文本中是否包含 $$ 模式，如果包含则应用高亮样式
+        if self._has_variable_pattern(text):
+            self.setPalette(self._highlighted_palette)
+        else:
+            self.setPalette(self._original_palette)
+        self._last_text = text
+
+    def _has_variable_pattern(self, text):
+        match = re.search(r'\$[^\$]*\$', text)
+        return match is not None
+
+    def keyPressEvent(self, event: QKeyEvent):
+        # 处理 $ 触发补全
+        if event.text() == '$' and not self._completing:
+            super().keyPressEvent(event)
+            self._input_timer.start(50)  # 短延迟确保 $ 已插入
+            return
+
+        # 处理退格或删除时可能需要更新补全
+        if event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
+            super().keyPressEvent(event)
+            if self._is_in_variable_context():
+                self._input_timer.start(50)
+            else:
+                self.popup.hide()
+            # textChanged 信号会触发 _on_text_changed，自动更新样式
+            return
+
+        # 处理弹窗导航
+        if self.popup.isVisible():
+            if event.key() == Qt.Key_Escape:
+                self.popup.hide()
+                return
+            elif event.key() == Qt.Key_Return or event.key() == Qt.Key_Tab:
+                if self.popup.currentItem():
+                    self._apply_completion(self.popup.currentItem().text())
+                    return
+            elif event.key() == Qt.Key_Up:
+                # LineEdit 上下键不移动选择，模拟为上一个/下一个
+                current_row = self.popup.currentRow()
+                if current_row > 0:
+                    self.popup.setCurrentRow(current_row - 1)
+                return
+            elif event.key() == Qt.Key_Down:
+                current_row = self.popup.currentRow()
+                if current_row < self.popup.count() - 1:
+                    self.popup.setCurrentRow(current_row + 1)
+                return
+
+        # 其他字符：若在变量上下文中，继续补全
+        super().keyPressEvent(event)
+        if self._is_in_variable_context():
+            self._input_timer.start(50)
+        elif self.popup.isVisible():
+            self.popup.hide()
+
+    def _is_in_variable_context(self) -> bool:
+        cursor_pos = self.cursorPosition()
+        text = self.text()
+        if cursor_pos == 0:
+            return False
+
+        # 使用平衡计数法判断是否在未闭合的 $ 内
+        # 从头开始计算到当前位置的平衡
+        balance = 0
+        in_variable_at_pos = False
+        for i in range(cursor_pos):
+            if text[i] == '$':
+                if balance == 0:
+                    # 新的开始
+                    balance = 1
+                    in_variable_at_pos = True
+                else:
+                    # 结束一个配对
+                    balance -= 1
+                    if balance == 0:
+                        in_variable_at_pos = False
+        return in_variable_at_pos
+
+    def _get_variable_prefix(self) -> str:
+        cursor_pos = self.cursorPosition()
+        text = self.text()
+        # 找到最近的未闭合的 $
+        # 从当前位置向前找
+        balance = 0
+        start_pos = -1
+        for i in range(cursor_pos - 1, -1, -1):
+            if text[i] == '$':
+                if balance == 0:
+                    # 这是一个未闭合的开始$
+                    start_pos = i
+                    break
+                else:
+                    balance -= 1
+        if start_pos == -1:
+            return ""
+        return text[start_pos + 1:cursor_pos]
+
+    def _trigger_completion(self):
+        if not self._is_in_variable_context():
+            self.popup.hide()
+            return
+
+        prefix = self._get_variable_prefix()
+        all_vars = self.get_variable_list_func()
+        filtered = [v for v in all_vars if v.lower().startswith(prefix.lower())]
+
+        if not filtered:
+            self.popup.hide()
+            return
+
+        self.popup.clear()
+        for var in filtered:
+            self.popup.addItem(var)
+
+        if not self.popup.isVisible():
+            self.popup.show_at_cursor(self)
+        self.popup.setCurrentRow(0)
+
+    def _apply_completion(self, var_name: str):
+        if self._completing:
+            return
+        self._completing = True
+        try:
+            cursor_pos = self.cursorPosition()
+            text = self.text()
+
+            # 找到最近的未闭合的 $
+            balance = 0
+            start_dollar = -1
+            for i in range(cursor_pos - 1, -1, -1):
+                if text[i] == '$':
+                    if balance == 0:
+                        start_dollar = i
+                        break
+                    else:
+                        balance -= 1
+            if start_dollar == -1:
+                return
+
+            # 替换文本
+            new_text = text[:start_dollar] + f"${var_name}$" + text[cursor_pos:]
+            self.setText(new_text)
+
+            # 设置新的光标位置
+            new_cursor_pos = start_dollar + len(var_name) + 2
+            self.setCursorPosition(new_cursor_pos)
         finally:
             self._completing = False
             self.popup.hide()
