@@ -3,6 +3,8 @@ from NodeGraphQt import NodeBaseWidget
 from Qt import QtWidgets, QtCore
 from qfluentwidgets import LineEdit, TextEdit
 
+from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
+
 
 class TextWidget(QtWidgets.QWidget):
     """节点内显示：摘要 + 编辑按钮"""
@@ -13,7 +15,8 @@ class TextWidget(QtWidgets.QWidget):
         self.parent = parent
         self._text = default_text
         if type.value == "多行文本":
-            self.summary_label = TextEdit()
+            global_vars = getattr(self.parent, 'global_variables', None)
+            self.summary_label = VariableCompletionTextEdit(get_variable_list_func=global_vars.get_vars)
             self.summary_label.setFixedWidth(300)
             self.summary_label.textChanged.connect(lambda: self._on_text_changed(self.summary_label.toPlainText()))
         else:
