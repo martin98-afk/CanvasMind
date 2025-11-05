@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
@@ -51,7 +52,7 @@ class BannerWidget(QWidget):
 
         self.linkCardView.addCard(
             FluentIcon.GITHUB,
-            self.tr('github地址'),
+            self.tr('项目地址'),
             self.tr(
                 '获取canvas mind最新更新消息及版本更新信息。'),
             "https://github.com/martin98-afk/CanvasMind"
@@ -67,7 +68,7 @@ class BannerWidget(QWidget):
 
         self.linkCardView.addCard(
             FluentIcon.FEEDBACK,
-            self.tr('反馈体验'),
+            self.tr('反馈意见'),
             self.tr('通过反馈使用体验帮助我们改善Canvas Mind。'),
             "https://github.com/martin98-afk/CanvasMind/issues/new"
         )
@@ -283,17 +284,11 @@ class HorizontalCardContainerWidget(ScrollArea):
 
     def _on_open_sample_canvas_clicked(self, model_name: str):
         """处理打开画布事件"""
-        try:
-            output_path = f"./workflows/{model_name}.workflow.json"
-            response = requests.get(EXAMPLES.get(model_name))
-            response.raise_for_status()  # 如果响应状态码不是 200，将抛出 HTTPError
-            with open(output_path, 'wb') as f:
-                f.write(response.content)
-            print(f"✅ 文件已成功下载到 {output_path}")
-        except requests.exceptions.RequestException as e:
-            print(f"❌ 下载失败: {e}")
+        src_path = Path(resource_path(f"./examples/{model_name}.workflow.json"))
+        target_path = Path(f"./workflows/{model_name}.workflow.json")
+        shutil.copyfile(src_path, target_path)
         if self.gallery_page and hasattr(self.gallery_page, 'open_canvas'):
-            self.gallery_page.open_canvas(Path(output_path))
+            self.gallery_page.open_canvas(Path(target_path))
 
 
 class HomeInterface(ScrollArea):
