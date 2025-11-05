@@ -17,7 +17,7 @@ from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, Smooth
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.utils.utils import serialize_for_json, get_icon
-from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
+from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit, VariableCompletionTextEdit
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
@@ -898,14 +898,26 @@ class PropertyPanel(CardWidget):
             expr_label = BodyLabel("条件表达式:")
             expr_layout.addWidget(expr_label)
             global_vars = getattr(self.main_window, 'global_variables', None)
-            condition_edit = VariableCompletionLineEdit(get_variable_list_func=global_vars.get_vars, parent=self)
+            extra_keys = ['data', 'result', 'current_index', 'current_iteration', 'iteration_count', 'loop_mode', 'max_iterations']
+            _, _, internal_nodes = node.get_nodes()
+            # 将内部节点的输出端口按node_vars.nodename_portname填写key
+            for n in internal_nodes:
+                name = re.sub(r'\s+', '_', n.name())
+                for port in n.output_ports():
+                    extra_keys.append(f"node_vars.{name}_{port.name()}")
+            condition_edit = VariableCompletionTextEdit(
+                get_variable_list_func=lambda keys=extra_keys: global_vars.get_vars(keys),
+                parent=self
+            )
+            condition_edit.setMaximumHeight(60)
             condition_edit.setPlaceholderText("请输入条件表达式")
             current_condition = node.model.get_property("loop_condition")
             condition_edit.setText(current_condition)
 
-            def on_condition_changed(text):
-                node.model.set_property('loop_condition', text)
-            condition_edit.textChanged.connect(on_condition_changed)
+            def on_condition_changed():
+                node.model.set_property('loop_condition', condition_edit.toPlainText())
+
+            condition_edit.cursorPositionChanged.connect(on_condition_changed)
             # ✅ 添加放大图标按钮
             browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
             browse_btn.setFixedSize(QSize(26, 20))
@@ -936,7 +948,7 @@ class PropertyPanel(CardWidget):
 
     def _open_long_text_editor(self, line_edit):
         # ✅ 根据你的实际路径导入 LongTextEditorDialog
-        dialog = LongTextEditorDialog(content=line_edit.text(), parent=self.window(), main_window=self.main_window)
+        dialog = LongTextEditorDialog(content=line_edit.toPlainText(), parent=self.window(), main_window=self.main_window)
         if dialog.exec():
             new_text = dialog.text_edit.toPlainText().strip()
             line_edit.setText(new_text)

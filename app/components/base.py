@@ -214,7 +214,7 @@ class GlobalVariableContext(BaseModel):
             value=output_value, update_policy=policy
         )
 
-    def get_vars(self):
+    def get_vars(self, extra_keys: List[str] = []):
         all_vars = []
         env_vars = self.env.get_all_env_vars()
         for key in sorted(env_vars.keys()):
@@ -223,7 +223,7 @@ class GlobalVariableContext(BaseModel):
             all_vars.append(f"custom.{key}")
         for key in sorted(self.node_vars.keys()):
             all_vars.append(f"node_vars.{key}")
-        return all_vars
+        return all_vars + extra_keys
 
     def to_dict(self) -> Dict[str, Any]:
         """兼容旧逻辑：返回扁平字典（仅 custom 变量）"""

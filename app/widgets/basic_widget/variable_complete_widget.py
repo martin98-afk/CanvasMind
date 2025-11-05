@@ -23,72 +23,12 @@ class VariableHighlighter(QSyntaxHighlighter):
         # 清除之前的所有格式
         self.setFormat(0, len(text), QTextCharFormat())
 
-        # 找到所有 $ 符号的位置
-        dollar_positions = []
-        for i, char in enumerate(text):
-            if char == '$':
-                dollar_positions.append(i)
-
-        # 配对 $ 符号
-        i = 0
-        while i < len(dollar_positions) - 1:
-            start_pos = dollar_positions[i]
-            # 寻找下一个非重叠的 $ 作为结束符
-            j = i + 1
-            # 确保中间没有换行符，且不跨越其他已配对的 $ 符号
-            while j < len(dollar_positions):
-                end_pos = dollar_positions[j]
-                # 检查 start_pos 和 end_pos 之间是否还有其他 $ 符号
-                # 如果有奇数个，则继续找下一个，因为可能有多重嵌套或连续变量
-                # 我们只处理最内层的配对
-                inner_dollars = text[start_pos + 1:end_pos].count('$')
-                if inner_dollars % 2 == 0:  # 如果内部 $ 是偶数个，则 start 和 end 可能是配对
-                    # 检查是否有其他配对冲突，这里简化处理，直接配对相邻的
-                    # 更精确的逻辑是找第一个能形成有效配对的
-                    # 例如 $a$ $b$ -> a 和 b 各自配对
-                    # 例如 $a$b$ -> a 开始，b 结束，无效
-                    # 例如 $a$b$c$ -> a 开始，c 结束，内部 $b$ 是无效的开始
-                    # 我们用平衡计数法
-                    balance = 0
-                    valid_start = start_pos
-                    found_end = -1
-                    for k in range(start_pos, len(text)):
-                        if text[k] == '$':
-                            if balance == 0:
-                                # 可能是开始
-                                if k == start_pos:  # 确认是我们找到的开始
-                                    balance = 1
-                                else:
-                                    break  # 找到了另一个开始，中断
-                            else:
-                                balance -= 1
-                                if balance == 0:  # 找到匹配的结束
-                                    found_end = k
-                                    break
-                        elif text[k] == '\n':
-                            break  # 换行符中断
-                    if found_end != -1 and found_end > valid_start:
-                        # 高亮从 valid_start 到 found_end
-                        self.setFormat(valid_start, found_end - valid_start + 1, self.variable_format)
-                        i = j + 1  # 移动到结束符之后
-                        break
-                    else:
-                        i += 1
-                else:
-                    # 内部有奇数个$，说明这个start可能不是真正的开始，或者end不是真正的结束
-                    # 我们继续寻找
-                    i += 1
-                    break
-            else:
-                # 没有找到匹配的结束符
-                i += 1
-
-        # 为了更精确地处理，我们使用更简单的平衡方法
-        # 重置格式
-        self.setFormat(0, len(text), QTextCharFormat())
+        # 使用平衡计数法准确判断开始和结束的 $ 符号
         balance = 0
         start_pos = -1
-        for i, char in enumerate(text):
+        i = 0
+        while i < len(text):
+            char = text[i]
             if char == '$':
                 if balance == 0:
                     # 开始
@@ -105,6 +45,7 @@ class VariableHighlighter(QSyntaxHighlighter):
                 # 换行符重置状态
                 balance = 0
                 start_pos = -1
+            i += 1
 
 
 # -----------------------
@@ -173,8 +114,9 @@ class VariableCompletionPopup(QListWidget):
         screen_height = screen_geometry.height()
 
         # 计算弹窗的尺寸
-        popup_width = self.width()  # 或者使用 self.sizeHint().width()
-        popup_height = self.height()  # 或者使用 self.sizeHint().height()
+        # 使用 sizeHint() 获取理想尺寸，因为它在 show() 之前可能更准确
+        popup_width = self.sizeHint().width()
+        popup_height = self.sizeHint().height()
 
         # 计算调整后的 x, y 坐标
         x = global_pos.x()
@@ -220,7 +162,32 @@ class VariableCompletionTextEdit(TextEdit):
         # 处理 $ 触发补全
         if event.text() == '$' and not self._completing:
             super().keyPressEvent(event)
-            self._input_timer.start(50)  # 短延迟确保 $ 已插入
+            # --- 优化触发逻辑 ---
+            # 检查输入 $ 后，当前位置是否处于未闭合的变量上下文中
+            # 获取光标位置（事件已处理，光标已移动）
+            cursor = self.textCursor()
+            pos_after_input = cursor.position()
+            text_after_input = self.toPlainText()
+
+            # 使用平衡计数法判断新输入的 $ 是否是未闭合的
+            balance = 0
+            in_unmatched_dollar_context = False
+            for i in range(pos_after_input):
+                if text_after_input[i] == '$':
+                    if balance == 0:
+                        # 新的开始，或恰好是当前光标前的那个$
+                        balance = 1
+                        in_unmatched_dollar_context = True
+                    else:
+                        # 结束一个配对
+                        balance -= 1
+                        if balance == 0:
+                            in_unmatched_dollar_context = False
+
+            # 只有在未闭合的上下文中才触发补全
+            if in_unmatched_dollar_context:
+                QTimer.singleShot(0, lambda: self._trigger_completion_if_needed())
+            # --- 优化结束 ---
             return
 
         # 处理退格或删除时可能需要更新补全
@@ -230,7 +197,7 @@ class VariableCompletionTextEdit(TextEdit):
                 self._input_timer.start(50)
             else:
                 self.popup.hide()
-            # 高亮器会自动更新
+            # 高亮器会自动更新，因为 document() 会感知到变化
             return
 
         # 处理弹窗导航
@@ -255,6 +222,11 @@ class VariableCompletionTextEdit(TextEdit):
             self._input_timer.start(50)
         elif self.popup.isVisible():
             self.popup.hide()
+
+    def _trigger_completion_if_needed(self):
+        """在UI更新后检查是否需要触发补全"""
+        if self._is_in_variable_context():
+            self._trigger_completion()
 
     def _is_in_variable_context(self) -> bool:
         cursor = self.textCursor()
@@ -282,37 +254,7 @@ class VariableCompletionTextEdit(TextEdit):
                 balance = 0
                 in_variable = False
 
-        # 检查当前位置前是否处于变量内
-        temp_balance = 0
-        start_pos = -1
-        for i in range(pos - 1, -1, -1):
-            if text[i] == '$':
-                if temp_balance == 0:
-                    # 这是一个潜在的开始
-                    start_pos = i
-                    # 检查这个开始之后到pos之间是否有结束
-                    inner_balance = 0
-                    has_end = False
-                    for j in range(start_pos + 1, pos):
-                        if text[j] == '$':
-                            if inner_balance == 0:
-                                # 这是结束
-                                has_end = True
-                                break
-                            else:
-                                inner_balance -= 1
-                        elif text[j] == '\n':
-                            break
-                    if not has_end:
-                        return True
-                    else:
-                        return False
-                else:
-                    temp_balance -= 1
-            elif text[i] == '\n':
-                break
-
-        return False
+        return in_variable
 
     def _get_variable_prefix(self) -> str:
         cursor = self.textCursor()
@@ -374,19 +316,19 @@ class VariableCompletionTextEdit(TextEdit):
         try:
             cursor = self.textCursor()
             pos = cursor.position()
-            text = self.toPlainText()
+            text_before = self.toPlainText()  # 获取修改前的文本
 
             # 找到最近的未闭合的 $
             temp_balance = 0
             start_dollar = -1
             for i in range(pos - 1, -1, -1):
-                if text[i] == '$':
+                if text_before[i] == '$':
                     if temp_balance == 0:
                         start_dollar = i
                         # 检查是否已闭合
                         has_end = False
                         for j in range(start_dollar + 1, pos):
-                            if text[j] == '$':
+                            if text_before[j] == '$':
                                 has_end = True
                                 break
                         if not has_end:
@@ -395,7 +337,7 @@ class VariableCompletionTextEdit(TextEdit):
                             continue
                     else:
                         temp_balance -= 1
-                elif text[i] == '\n':
+                elif text_before[i] == '\n':
                     break
             if start_dollar == -1:
                 return
@@ -411,6 +353,9 @@ class VariableCompletionTextEdit(TextEdit):
         finally:
             self._completing = False
             self.popup.hide()
+        # 手动触发 textChanged 信号，因为 setTextCursor 不会触发
+        # 高亮器会自动更新，其他连接到 textChanged 的功能也会被触发
+        self.textChanged.emit()
 
 
 class VariableCompletionLineEdit(LineEdit):
@@ -455,7 +400,30 @@ class VariableCompletionLineEdit(LineEdit):
         # 处理 $ 触发补全
         if event.text() == '$' and not self._completing:
             super().keyPressEvent(event)
-            self._input_timer.start(50)  # 短延迟确保 $ 已插入
+            # --- 优化触发逻辑 ---
+            # 检查输入 $ 后，当前位置是否处于未闭合的变量上下文中
+            pos_after_input = self.cursorPosition()
+            text_after_input = self.text()
+
+            # 使用平衡计数法判断新输入的 $ 是否是未闭合的
+            balance = 0
+            in_unmatched_dollar_context = False
+            for i in range(pos_after_input):
+                if text_after_input[i] == '$':
+                    if balance == 0:
+                        # 新的开始，或恰好是当前光标前的那个$
+                        balance = 1
+                        in_unmatched_dollar_context = True
+                    else:
+                        # 结束一个配对
+                        balance -= 1
+                        if balance == 0:
+                            in_unmatched_dollar_context = False
+
+            # 只有在未闭合的上下文中才触发补全
+            if in_unmatched_dollar_context:
+                QTimer.singleShot(0, lambda: self._trigger_completion_if_needed())
+            # --- 优化结束 ---
             return
 
         # 处理退格或删除时可能需要更新补全
@@ -495,6 +463,11 @@ class VariableCompletionLineEdit(LineEdit):
             self._input_timer.start(50)
         elif self.popup.isVisible():
             self.popup.hide()
+
+    def _trigger_completion_if_needed(self):
+        """在UI更新后检查是否需要触发补全"""
+        if self._is_in_variable_context():
+            self._trigger_completion()
 
     def _is_in_variable_context(self) -> bool:
         cursor_pos = self.cursorPosition()
@@ -565,13 +538,13 @@ class VariableCompletionLineEdit(LineEdit):
         self._completing = True
         try:
             cursor_pos = self.cursorPosition()
-            text = self.text()
+            text_before = self.text()  # 获取修改前的文本
 
             # 找到最近的未闭合的 $
             balance = 0
             start_dollar = -1
             for i in range(cursor_pos - 1, -1, -1):
-                if text[i] == '$':
+                if text_before[i] == '$':
                     if balance == 0:
                         start_dollar = i
                         break
@@ -581,7 +554,7 @@ class VariableCompletionLineEdit(LineEdit):
                 return
 
             # 替换文本
-            new_text = text[:start_dollar] + f"${var_name}$" + text[cursor_pos:]
+            new_text = text_before[:start_dollar] + f"${var_name}$" + text_before[cursor_pos:]
             self.setText(new_text)
 
             # 设置新的光标位置
@@ -590,3 +563,5 @@ class VariableCompletionLineEdit(LineEdit):
         finally:
             self._completing = False
             self.popup.hide()
+        # 手动触发高亮更新，因为 setText 不会触发 textChanged
+        self._on_text_changed(self.text())

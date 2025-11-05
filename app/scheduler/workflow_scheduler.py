@@ -366,8 +366,6 @@ class WorkflowScheduler(QObject):
                 break
 
             # 首先检查while条件（使用当前输入数据和内部节点输出）
-            # 在首次迭代时，内部节点尚未执行，所以 internal_outputs 为空
-            # 这里我们先执行内部节点，再检查条件，符合大多数while循环的语义
             input_proxy.set_output_value(input_data)
 
             # 执行内部节点并收集输出
