@@ -935,7 +935,7 @@ class PropertyPanel(CardWidget):
 
     def _open_long_text_editor(self, line_edit):
         # ✅ 根据你的实际路径导入 LongTextEditorDialog
-        dialog = LongTextEditorDialog(content=line_edit.text(), parent=self.window())
+        dialog = LongTextEditorDialog(content=line_edit.text(), parent=self.window(), main_window=self.main_window)
         if dialog.exec():
             new_text = dialog.text_edit.toPlainText().strip()
             line_edit.setText(new_text)
