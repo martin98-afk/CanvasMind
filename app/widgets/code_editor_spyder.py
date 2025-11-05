@@ -1160,7 +1160,7 @@ class JediCodeEditor(CodeEditor):
                     if not spyder_cmd.exists():
                         raise FileNotFoundError("Spyder not found. Please run: pip install spyder")
 
-                subprocess.Popen([str(spyder_cmd), str(temp_path)])
+                subprocess.Popen([self.python_exe_path, str(spyder_cmd), str(temp_path)])
                 # 延迟激活（等窗口创建）
                 QTimer.singleShot(2000, self._activate_spyder_window)
 

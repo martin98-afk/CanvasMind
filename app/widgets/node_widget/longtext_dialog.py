@@ -1,22 +1,36 @@
 # -*- coding: utf-8 -*-
 from NodeGraphQt import NodeBaseWidget
 from Qt import QtWidgets, QtCore
-from qfluentwidgets import MessageBoxBase, SubtitleLabel, TextEdit, PushButton, FluentIcon, ToolButton, LineEdit
+from qfluentwidgets import FluentIcon, ToolButton, LineEdit
+from qfluentwidgets import MessageBoxBase, SubtitleLabel
+
+from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
 
 
+# -----------------------
+# 改造后的对话框
+# -----------------------
 class LongTextEditorDialog(MessageBoxBase):
-    def __init__(self, content: str = "", parent=None):
+    def __init__(self, content: str = "", parent=None, main_window=None):
         super().__init__(parent)
+        self.main_window = main_window
         self.titleLabel = SubtitleLabel("编辑长文本")
-        self.text_edit = TextEdit()
+        if not self.main_window:
+            return []
+        global_vars = getattr(self.main_window, 'global_variables', None)
+
+        self.text_edit = VariableCompletionTextEdit(get_variable_list_func=global_vars.get_vars)
         self.text_edit.setPlainText(content)
-        self.text_edit.setMinimumSize(700, 500)  # 足够大的编辑区域
+        self.text_edit.setMinimumSize(700, 500)
 
         self.viewLayout.addWidget(self.titleLabel)
         self.viewLayout.addWidget(self.text_edit)
 
         self.yesButton.setText("保存")
         self.cancelButton.setText("取消")
+
+    def get_content(self) -> str:
+        return self.text_edit.toPlainText()
 
 
 class LongTextWidget(QtWidgets.QWidget):
@@ -46,7 +60,7 @@ class LongTextWidget(QtWidgets.QWidget):
         return (text[:30] + "...") if len(text) > 30 else text
 
     def _open_editor(self):
-        dialog = LongTextEditorDialog(self._text, self.parent)
+        dialog = LongTextEditorDialog(self._text, self.parent, self.parent)
         if dialog.exec() == QtWidgets.QDialog.Accepted:
             new_text = dialog.text_edit.toPlainText()
             if new_text != self._text:

@@ -9,6 +9,7 @@ from qfluentwidgets import LineEdit, PushButton, FluentIcon, ToolButton, ComboBo
 
 from app.components.base import PropertyType
 from app.widgets.basic_widget.combo_widget import CustomComboBox
+from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
 from app.widgets.node_widget.longtext_dialog import LongTextWidget
 from app.widgets.node_widget.variable_combo_widget import GlobalVarComboBoxWidget
 
@@ -79,7 +80,8 @@ class FormFieldWidget(QtWidgets.QWidget):
 
             else:
                 # 其他类型使用 LineEdit
-                widget = LineEdit(parent=self)
+                global_vars = getattr(self.home, 'global_variables', None)
+                widget = VariableCompletionLineEdit(get_variable_list_func=global_vars.get_vars, parent=self)
                 widget.setFixedWidth(180)
                 widget.setPlaceholderText(label)
                 widget.textChanged.connect(self.changed)
