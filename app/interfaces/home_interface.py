@@ -44,31 +44,31 @@ class BannerWidget(QWidget):
 
         self.linkCardView.addCard(
             get_icon("logo3"),
-            self.tr('Getting started'),
-            self.tr('An overview of app development options and samples.'),
+            self.tr('使用指南'),
+            self.tr('软件功能清单以及各个功能使用方法演示。'),
             "https://martin98-afk.github.io/CanvasMind"
         )
 
         self.linkCardView.addCard(
             FluentIcon.GITHUB,
-            self.tr('GitHub repo'),
+            self.tr('github地址'),
             self.tr(
-                'The latest fluent design controls and styles for your applications.'),
+                '获取canvas mind最新更新消息及版本更新信息。'),
             "https://github.com/martin98-afk/CanvasMind"
         )
 
         self.linkCardView.addCard(
             FluentIcon.CODE,
-            self.tr('Code samples'),
+            self.tr('流程图样例'),
             self.tr(
-                'Find samples that demonstrate specific tasks, features and APIs.'),
+                '获取官方样例流程图画布样例文件。'),
             "https://github.com/martin98-afk/CanvasMind/tree/master/workflows"
         )
 
         self.linkCardView.addCard(
             FluentIcon.FEEDBACK,
-            self.tr('Send feedback'),
-            self.tr('Help us improve Canvas Mind by providing feedback.'),
+            self.tr('反馈体验'),
+            self.tr('通过反馈使用体验帮助我们改善Canvas Mind。'),
             "https://github.com/martin98-afk/CanvasMind/issues/new"
         )
 

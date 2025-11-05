@@ -16,12 +16,17 @@ class LogMessageBox(MessageBoxBase):
         'CRITICAL': '#f44747',
     }
 
-    def __init__(self, log_content="", parent=None):
+    def __init__(self, log_content="", parent=None, max_chars_per_line=120):
         super().__init__(parent)
         # --- 新增：去重缓存 ---
         self.dedupe_cache = []
         self.dedupe_cache_size = 50
         # ---
+
+        # --- 新增：最大字符数设置 ---
+        self.max_chars_per_line = max_chars_per_line
+        # ---
+
         self.titleLabel = SubtitleLabel('模型日志', self)
         self._isDraggable = True
         self.setSizeGripEnabled(True)  # 显示大小调整手柄（在右下角）
@@ -82,6 +87,48 @@ class LogMessageBox(MessageBoxBase):
         # --- 用于直接操作文档 ---
         self._last_cursor_position = 0  # 记录上次光标位置，用于优化滚动
 
+    def wrap_line(self, line):
+        """将长行按指定字符数进行换行处理"""
+        if len(line) <= self.max_chars_per_line:
+            return line
+
+        wrapped_lines = []
+        current_line = ""
+
+        # 按字符逐个处理，但保留HTML标签的完整性
+        i = 0
+        while i < len(line):
+            char = line[i]
+
+            # 如果是HTML标签的一部分，完整地处理整个标签
+            if char == '<':
+                tag_end = line.find('>', i)
+                if tag_end != -1:
+                    tag = line[i:tag_end + 1]
+                    if len(current_line + tag) <= self.max_chars_per_line:
+                        current_line += tag
+                        i = tag_end + 1
+                    else:
+                        if current_line:
+                            wrapped_lines.append(current_line)
+                        current_line = tag
+                        i = tag_end + 1
+                    continue
+
+            # 正常字符处理
+            if len(current_line + char) > self.max_chars_per_line:
+                wrapped_lines.append(current_line)
+                current_line = char
+            else:
+                current_line += char
+
+            i += 1
+
+        if current_line:
+            wrapped_lines.append(current_line)
+
+        return '\n'.join(wrapped_lines)
+
     def set_log_content(self, log_content):
         """设置初始日志内容（带颜色解析）"""
         if log_content:
@@ -94,25 +141,32 @@ class LogMessageBox(MessageBoxBase):
             cursor.removeSelectedText()
 
             lines = log_content.split('\n')
-            for line in lines:
-                # 为了匹配日志级别，临时将 &nbsp; 替换回空格
-                line_for_level_check = line.replace('&nbsp;', ' ')
+            for original_line in lines:
+                # 对每行进行换行处理
+                processed_line = self.wrap_line(original_line)
 
-                format_found = False
-                for level, color_hex in self.LEVEL_COLORS.items():
-                    if re.search(rf'\b{level}\b', line_for_level_check, re.IGNORECASE):
-                        char_format = QTextCharFormat()
-                        char_format.setForeground(QColor(color_hex))
-                        cursor.setCharFormat(char_format)
-                        format_found = True
-                        break
+                # 按换行符分割处理后的文本
+                wrapped_parts = processed_line.split('\n')
 
-                if not format_found:
-                    cursor.setCharFormat(QTextCharFormat())
+                for part in wrapped_parts:
+                    # 为了匹配日志级别，临时将 &nbsp; 替换回空格
+                    line_for_level_check = part.replace('&nbsp;', ' ')
 
-                # 插入原始的、可能包含 &nbsp; 的行
-                cursor.insertText(line)
-                cursor.insertBlock()  # 插入一个新段落
+                    format_found = False
+                    for level, color_hex in self.LEVEL_COLORS.items():
+                        if re.search(rf'\b{level}\b', line_for_level_check, re.IGNORECASE):
+                            char_format = QTextCharFormat()
+                            char_format.setForeground(QColor(color_hex))
+                            cursor.setCharFormat(char_format)
+                            format_found = True
+                            break
+
+                    if not format_found:
+                        cursor.setCharFormat(QTextCharFormat())
+
+                    # 插入原始的、可能包含 &nbsp; 的行
+                    cursor.insertText(part)
+                    cursor.insertBlock()  # 插入一个新段落
         else:
             # 如果没有内容，可以清空文档或不操作
             # self.text_document.setPlainText('') # 或者 self.text_document.setHtml('')
@@ -135,35 +189,42 @@ class LogMessageBox(MessageBoxBase):
 
     def _deduplicate_and_add(self, line):
         """检查并添加单行日志，避免重复"""
-        # 检查当前行是否已经在缓存中
-        if line.strip() in self.dedupe_cache:
-            return  # 如果是重复的，直接返回，不添加
+        # 对行进行换行处理
+        processed_line = self.wrap_line(line)
 
-        # 如果不是重复的，添加到文档和缓存
-        # 为了匹配日志级别，临时将 &nbsp; 替换回空格
-        line_for_level_check = line.replace('&nbsp;', ' ')
+        # 按换行符分割处理后的文本
+        wrapped_parts = processed_line.split('\n')
 
-        format_found = False
-        for level, color_hex in self.LEVEL_COLORS.items():
-            if re.search(rf'\b{level}\b', line_for_level_check, re.IGNORECASE):
-                char_format = QTextCharFormat()
-                char_format.setForeground(QColor(color_hex))
-                self.logTextEdit.setCurrentCharFormat(char_format)
-                format_found = True
-                break
+        for part in wrapped_parts:
+            # 检查当前行是否已经在缓存中
+            if part.strip() in self.dedupe_cache:
+                continue  # 如果是重复的，跳过这一部分
 
-        if not format_found:
-            # 清除之前的格式
-            self.logTextEdit.setCurrentCharFormat(QTextCharFormat())
+            # 如果不是重复的，添加到文档和缓存
+            # 为了匹配日志级别，临时将 &nbsp; 替换回空格
+            line_for_level_check = part.replace('&nbsp;', ' ')
 
-        # 插入原始的、可能包含 &nbsp; 的行
-        self.logTextEdit.append(line.rstrip('\n'))  # append 会自动换行，所以先去掉行尾的 \n
+            format_found = False
+            for level, color_hex in self.LEVEL_COLORS.items():
+                if re.search(rf'\b{level}\b', line_for_level_check, re.IGNORECASE):
+                    char_format = QTextCharFormat()
+                    char_format.setForeground(QColor(color_hex))
+                    self.logTextEdit.setCurrentCharFormat(char_format)
+                    format_found = True
+                    break
 
-        # 更新缓存
-        self.dedupe_cache.append(line.strip())
-        # 保持缓存大小
-        if len(self.dedupe_cache) > self.dedupe_cache_size:
-            self.dedupe_cache.pop(0)  # 移除最旧的条目
+            if not format_found:
+                # 清除之前的格式
+                self.logTextEdit.setCurrentCharFormat(QTextCharFormat())
+
+            # 插入原始的、可能包含 &nbsp; 的行
+            self.logTextEdit.append(part.rstrip('\n'))  # append 会自动换行，所以先去掉行尾的 \n
+
+            # 更新缓存
+            self.dedupe_cache.append(part.strip())
+            # 保持缓存大小
+            if len(self.dedupe_cache) > self.dedupe_cache_size:
+                self.dedupe_cache.pop(0)  # 移除最旧的条目
 
     def process_log_queue(self):
         """定时器槽函数，处理日志队列中的内容"""
