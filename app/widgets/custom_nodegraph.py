@@ -43,6 +43,19 @@ class CustomNodeScene(NodeScene):
          for x in range(first_left, right, grid_size)
          for y in range(first_top, bottom, grid_size)]
 
+    def mousePressEvent(self, event):
+        selected_nodes = self.viewer().selected_nodes()
+        if self.viewer():
+            self.viewer().sceneMousePressEvent(event)
+        super(NodeScene, self).mousePressEvent(event)
+        keep_selection = any([
+            event.button() == QtCore.Qt.MiddleButton,
+            event.modifiers() == QtCore.Qt.AltModifier
+        ])
+        if keep_selection:
+            for node in selected_nodes:
+                node.setSelected(True)
+
 
 class CustomNodeViewer(NodeViewer):
 
@@ -299,8 +312,6 @@ class CustomNodeGraph(NodeGraph):
 
             if in_port and out_port:
                 # only connect if input port is not connected yet or input port
-                # can have multiple connections.
-                # important when duplicating nodes.
                 allow_connection = any([not in_port.model.connected_ports,
                                         in_port.model.multi_connection])
                 if allow_connection:
