@@ -3,7 +3,7 @@ from NodeGraphQt import NodeBaseWidget
 from Qt import QtWidgets, QtCore
 from qfluentwidgets import LineEdit, TextEdit
 
-from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
+from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit, VariableCompletionLineEdit
 
 
 class TextWidget(QtWidgets.QWidget):
@@ -14,13 +14,13 @@ class TextWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self.parent = parent
         self._text = default_text
+        global_vars = getattr(self.parent, 'global_variables', None)
         if type.value == "多行文本":
-            global_vars = getattr(self.parent, 'global_variables', None)
             self.summary_label = VariableCompletionTextEdit(get_variable_list_func=global_vars.get_vars)
             self.summary_label.setFixedWidth(300)
             self.summary_label.textChanged.connect(lambda: self._on_text_changed(self.summary_label.toPlainText()))
         else:
-            self.summary_label = LineEdit()
+            self.summary_label = VariableCompletionLineEdit(get_variable_list_func=global_vars.get_vars)
             self.summary_label.setFixedWidth(200)
             self.summary_label.textChanged.connect(self._on_text_changed)
         self.summary_label.setText(default_text)
