@@ -109,9 +109,6 @@ class CompletionItemDelegate(QStyledItemDelegate):
         return detail
 
     def paint(self, painter: QPainter, option, index):
-        """
-        绘制补全项，确保只绘制一次，使用不同颜色区分类型
-        """
         # 1. 绘制背景
         if option.state & QStyle.State_Selected:
             painter.fillRect(option.rect, QColor("#2A3B4D"))
@@ -120,121 +117,103 @@ class CompletionItemDelegate(QStyledItemDelegate):
             painter.fillRect(option.rect, QColor("#19232D"))
             painter.setPen(QColor("#FFFFFF"))
 
-        # 2. 获取数据 (使用 UserRole 存储的完整信息)
+        # 2. 获取数据
         item_data = index.data(Qt.UserRole)
         if item_data:
             name, type_name, description, detail = item_data
-            # --- 在绘制前截断描述和详情 ---
             description = self._truncate_description(description)
             detail = self._truncate_detail(detail) if detail else ""
         else:
-            # 兼容旧数据格式
-            name = index.data(Qt.DisplayRole) or index.data()
+            name = str(index.data(Qt.DisplayRole) or "")
             type_name = ""
             description = ""
             detail = ""
 
-        # 3. 计算区域
         padding = 10
-        char_width = 20  # 字符宽度
-        char_spacing = 10  # 字符和文字之间的间距
+        char_width = 20
+        char_spacing = 10
         rect = option.rect.adjusted(padding, 0, -padding, 0)
 
-        # 类型字符区域
+        # 类型字符区域：固定左端
         char_rect = QRect(rect.left(), rect.top(), char_width, rect.height())
 
-        # 名称区域（从字符右边开始）
-        name_start_x = rect.left() + char_width + char_spacing
-        name_rect = QRect(
-            name_start_x,
-            rect.top(),
-            rect.width() - char_width - char_spacing - 10,  # 减去右边内边距
-            rect.height()
-        )
+        # 可用宽度（除去类型字符和左右间距）
+        available_width = rect.width() - char_width - char_spacing
 
-        # 4. 绘制类型字符（单个字母，使用类型颜色）
+        # 字体准备
+        painter.setFont(option.font)
+        fm = painter.fontMetrics()
+
+        # --- 计算详情文本 ---
+        combined_info = ""
+        if description or detail:
+            parts = []
+            if description:
+                parts.append(description)
+            if detail:
+                parts.append(detail)
+            combined_info = "; ".join(parts)
+            combined_info = self._truncate_detail(combined_info)
+            info_width = fm.width(combined_info)
+            # 限制详情最大宽度（例如占可用宽度的40%）
+            max_info_width = int(available_width * 0.6)
+            if info_width > max_info_width:
+                # 需要二次截断以避免挤占名字
+                extra = info_width - max_info_width
+                cut_len = len(combined_info) - (extra // (fm.averageCharWidth() or 1)) - len(self.truncation_suffix)
+                if cut_len > 0:
+                    combined_info = combined_info[:max(0, cut_len)] + self.truncation_suffix
+                    info_width = fm.width(combined_info)
+        else:
+            info_width = 0
+            combined_info = ""
+
+        # --- 计算名字区域 ---
+        name_max_width = available_width - info_width - (10 if info_width > 0 else 0)  # 额外留空
+        if name_max_width < 0:
+            name_max_width = available_width  # 安全兜底
+            info_width = 0
+            combined_info = ""
+
+        # 截断名字（如果太长）
+        name_width = fm.width(name)
+        if name_width > name_max_width:
+            # 按像素截断（非字符数）
+            name = fm.elidedText(name, Qt.ElideRight, name_max_width)
+
+        # 名字起始 X
+        name_x = rect.left() + char_width + char_spacing
+        name_rect = QRect(name_x, rect.top(), name_max_width, rect.height())
+
+        # --- 绘制类型字符 ---
         type_char = self.type_chars.get(type_name, '?')
         type_color = self.type_colors.get(type_name, self.type_colors['unknown'])
         painter.setPen(type_color)
         char_font = painter.font()
-        char_font.setPointSize(char_font.pointSize() + 1)  # 比主文字大1号
-        char_font.setBold(True)  # 加粗显示
+        char_font.setPointSize(char_font.pointSize() + 1)
+        char_font.setBold(True)
         painter.setFont(char_font)
-        painter.drawText(
-            char_rect,
-            Qt.AlignCenter,  # 居中显示
-            type_char
-        )
-        # 恢复原字体
+        painter.drawText(char_rect, Qt.AlignCenter, type_char)
+        painter.setFont(option.font)  # 恢复
+
+        # --- 绘制名字（白色，左对齐） ---
+        painter.setPen(QColor("#FFFFFF"))
+        name_font = painter.font()
+        name_font.setPointSize(name_font.pointSize() + 1)
+        painter.setFont(name_font)
+        painter.drawText(name_rect, Qt.AlignLeft | Qt.AlignVCenter, name)
         painter.setFont(option.font)
 
-        # 5. 绘制主名称（白色）
-        painter.setPen(QColor("#FFFFFF"))  # 使用白色绘制名称
-        name_font = painter.font()
-        name_font.setPointSize(name_font.pointSize() + 1)  # 稍大一点
-        painter.setFont(name_font)
-
-        # --- 修改：支持详情信息 (如函数签名) ---
-        if (description or detail) and name_rect.width() > 150:
-            # 计算描述和详情区域（右侧）
+        # --- 绘制详情（灰色，右对齐） ---
+        if combined_info:
+            info_x = name_x + available_width - info_width
+            info_rect = QRect(info_x, rect.top(), info_width, rect.height())
             desc_font = painter.font()
             desc_font.setPointSize(desc_font.pointSize() - 1)
             desc_font.setItalic(True)
             painter.setFont(desc_font)
             painter.setPen(QColor("#AAAAAA"))
-
-            # 组合描述和详情，用分号分隔
-            combined_info = ""
-            if description:
-                combined_info += description
-            if detail:
-                if combined_info:
-                    combined_info += "; " # 分隔符
-                combined_info += detail
-
-            # 截断组合信息
-            combined_info = self._truncate_detail(combined_info) # 复用detail的截断逻辑
-
-            # 详情文本宽度
-            fm = painter.fontMetrics()
-            info_width = fm.width(combined_info)
-            # 详情区域矩形
-            info_rect = QRect(
-                name_rect.right() - info_width - 5,  # 右侧留5px间距
-                name_rect.top(),
-                info_width,
-                name_rect.height()
-            )
-            # 绘制详情和描述
-            painter.drawText(
-                info_rect,
-                Qt.AlignRight | Qt.AlignVCenter,
-                combined_info
-            )
-            # 绘制名称（左侧，不覆盖详情）
-            name_only_rect = QRect(
-                name_rect.left(),
-                name_rect.top(),
-                name_rect.width() - info_width - 15,  # 留出空间给详情和间距
-                name_rect.height()
-            )
-            painter.setFont(name_font)
-            painter.setPen(QColor("#FFFFFF"))
-            painter.drawText(
-                name_only_rect,
-                Qt.AlignLeft | Qt.AlignVCenter,
-                name
-            )
-            # 恢复原字体
-            painter.setFont(option.font)
-        else:
-            # 没有详情或描述，直接绘制名称
-            painter.drawText(
-                name_rect,
-                Qt.AlignLeft | Qt.AlignVCenter,
-                name
-            )
-            # 恢复原字体
+            painter.drawText(info_rect, Qt.AlignLeft | Qt.AlignVCenter, combined_info)  # 注意：这里用 AlignLeft 因为矩形已右对齐
             painter.setFont(option.font)
 
     def sizeHint(self, option, index):

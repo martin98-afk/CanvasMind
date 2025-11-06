@@ -7,7 +7,7 @@ from app.widgets.code_editer import CodeEditorWidget
 class CodeEditorWidgetWrapper(NodeBaseWidget):
     valueChanged = QtCore.Signal(str)
 
-    def __init__(self, parent=None, name="", label="", default="", window=None, width=600, height=400):
+    def __init__(self, parent=None, name="", label="", default="", window=None, width=700, height=400):
         super().__init__(parent)
         self.set_name(name)
         self.set_label(label)

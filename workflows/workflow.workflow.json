@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1a35d970c70": {
+      "0x2940267f7f0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -37,7 +37,7 @@
         "selected": false,
         "visible": true,
         "width": 160,
-        "height": 60,
+        "height": 69.6,
         "pos": [
           -263.0661542840139,
           466.28831821795535
@@ -58,7 +58,7 @@
           "debug_code": {}
         }
       },
-      "0x1a35d9715d0": {
+      "0x2940267d630": {
         "type_": "dynamic.StatusDynamicNode_数据集成_CSV_读取器",
         "icon": null,
         "name": "CSV 读取器",
@@ -84,7 +84,7 @@
         "selected": false,
         "visible": true,
         "width": 160,
-        "height": 60,
+        "height": 69.6,
         "pos": [
           112.43490602714337,
           465.39604691408084
@@ -111,7 +111,7 @@
           "debug_code": {}
         }
       },
-      "0x1a35d971810": {
+      "0x2940267d540": {
         "type_": "dynamic.StatusDynamicNode_数据集成_输入array",
         "icon": null,
         "name": "输入array",
@@ -136,8 +136,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 311.0,
-        "height": 91.10000000000001,
+        "width": 314.18,
+        "height": 101.10000000000001,
         "pos": [
           104.3208510999732,
           1241.4604955535306
@@ -159,7 +159,7 @@
           "param1": "1,2,3,4"
         }
       },
-      "0x1a357af7cd0": {
+      "0x29402006ce0": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(csv)",
         "icon": null,
         "name": "逻辑回归推理(csv)",
@@ -184,8 +184,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 160,
-        "height": 72.2,
+        "width": 205.62,
+        "height": 82.2,
         "pos": [
           1028.44205914354,
           404.63565477548605
@@ -217,7 +217,7 @@
           "debug_code": {}
         }
       },
-      "0x1a357af78e0": {
+      "0x29402004a00": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy)",
@@ -242,8 +242,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 160,
-        "height": 72.2,
+        "width": 205.62,
+        "height": 82.2,
         "pos": [
           1041.4093007266908,
           571.2842183555107
@@ -275,7 +275,7 @@
           "debug_code": null
         }
       },
-      "0x1a357af7100": {
+      "0x29402004730": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_MinMax归一化",
         "icon": null,
         "name": "MinMax归一化",
@@ -301,10 +301,10 @@
         "selected": false,
         "visible": true,
         "width": 160,
-        "height": 72.2,
+        "height": 82.2,
         "pos": [
           160.6387564890539,
-          1047.9076345649592
+          1049.5517835741996
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -333,7 +333,7 @@
           "debug_code": {}
         }
       },
-      "0x1a357af6f20": {
+      "0x294020055d0": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_归一化推理(npy)",
         "icon": null,
         "name": "归一化推理(npy)",
@@ -358,8 +358,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 160,
-        "height": 72.2,
+        "width": 186.3,
+        "height": 82.2,
         "pos": [
           801.0736331597129,
           1200.5842715465437
@@ -391,7 +391,7 @@
           "debug_code": {}
         }
       },
-      "0x1a357af6b90": {
+      "0x29402004310": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy) 1",
@@ -414,10 +414,10 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 160,
-        "height": 72.2,
+        "width": 224.94,
+        "height": 82.2,
         "pos": [
           1124.4610435958718,
           1001.2819099838512
@@ -449,7 +449,7 @@
           "debug_code": {}
         }
       },
-      "0x1a357af6890": {
+      "0x294020078b0": {
         "type_": "dynamic.StatusDynamicNode_数据转换_csv转npy",
         "icon": null,
         "name": "csv转npy",
@@ -475,7 +475,7 @@
         "selected": false,
         "visible": true,
         "width": 160,
-        "height": 72.2,
+        "height": 82.2,
         "pos": [
           568.8020227617427,
           756.2777651497062
@@ -507,7 +507,7 @@
           "debug_code": {}
         }
       },
-      "0x1a357af6620": {
+      "0x2946864a860": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练",
@@ -532,8 +532,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 339.0,
-        "height": 157.25,
+        "width": 343.16,
+        "height": 166.20000000000002,
         "pos": [
           475.3182179723134,
           507.36654136351103
@@ -572,7 +572,7 @@
           "max_iter": "100"
         }
       },
-      "0x1a357af6170": {
+      "0x294686484f0": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练 1",
@@ -597,8 +597,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 339.0,
-        "height": 157.25,
+        "width": 362.48,
+        "height": 166.20000000000002,
         "pos": [
           553.0827970296532,
           976.5760077778918
@@ -641,151 +641,151 @@
     "connections": [
       {
         "out": [
-          "0x1a35d970c70",
+          "0x2940267f7f0",
           "file"
         ],
         "in": [
-          "0x1a35d9715d0",
+          "0x2940267d630",
           "csv"
         ]
       },
       {
         "out": [
-          "0x1a35d9715d0",
+          "0x2940267d630",
           "csv"
         ],
         "in": [
-          "0x1a357af6620",
+          "0x2946864a860",
           "feature"
         ]
       },
       {
         "out": [
-          "0x1a35d9715d0",
+          "0x2940267d630",
           "csv"
         ],
         "in": [
-          "0x1a357af6620",
+          "0x2946864a860",
           "target"
         ]
       },
       {
         "out": [
-          "0x1a35d9715d0",
+          "0x2940267d630",
           "csv"
         ],
         "in": [
-          "0x1a357af7cd0",
+          "0x29402006ce0",
           "feature"
         ]
       },
       {
         "out": [
-          "0x1a35d9715d0",
+          "0x2940267d630",
           "csv"
         ],
         "in": [
-          "0x1a357af6890",
+          "0x294020078b0",
           "input"
         ]
       },
       {
         "out": [
-          "0x1a35d9715d0",
+          "0x2940267d630",
           "csv"
         ],
         "in": [
-          "0x1a357af7100",
+          "0x29402004730",
           "input"
         ]
       },
       {
         "out": [
-          "0x1a35d9715d0",
+          "0x2940267d630",
           "csv"
         ],
         "in": [
-          "0x1a357af6170",
+          "0x294686484f0",
           "target"
         ]
       },
       {
         "out": [
-          "0x1a35d971810",
+          "0x2940267d540",
           "output"
         ],
         "in": [
-          "0x1a357af6f20",
+          "0x294020055d0",
           "input"
         ]
       },
       {
         "in": [
-          "0x1a357af7cd0",
+          "0x29402006ce0",
           "model"
         ],
         "out": [
-          "0x1a357af6620",
+          "0x2946864a860",
           "model"
         ]
       },
       {
         "in": [
-          "0x1a357af78e0",
+          "0x29402004a00",
           "feature"
         ],
         "out": [
-          "0x1a357af6890",
+          "0x294020078b0",
           "output"
         ]
       },
       {
         "in": [
-          "0x1a357af78e0",
+          "0x29402004a00",
           "model"
         ],
         "out": [
-          "0x1a357af6620",
+          "0x2946864a860",
           "model"
         ]
       },
       {
         "out": [
-          "0x1a357af7100",
+          "0x29402004730",
           "output"
         ],
         "in": [
-          "0x1a357af6170",
+          "0x294686484f0",
           "feature"
         ]
       },
       {
         "out": [
-          "0x1a357af7100",
+          "0x29402004730",
           "scaler"
         ],
         "in": [
-          "0x1a357af6f20",
+          "0x294020055d0",
           "scaler"
         ]
       },
       {
         "out": [
-          "0x1a357af6f20",
+          "0x294020055d0",
           "output"
         ],
         "in": [
-          "0x1a357af6b90",
+          "0x29402004310",
           "feature"
         ]
       },
       {
         "in": [
-          "0x1a357af6b90",
+          "0x29402004310",
           "model"
         ],
         "out": [
-          "0x1a357af6170",
+          "0x294686484f0",
           "model"
         ]
       }
@@ -793,19 +793,19 @@
   },
   "runtime": {
     "environment": "3.14",
-    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.14\\python.exe",
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
     "node_id2stable_key": {
-      "0x1a35d970c70": "数据集成/文档上传||文档上传",
-      "0x1a35d9715d0": "数据集成/CSV 读取器||CSV 读取器",
-      "0x1a35d971810": "数据集成/输入array||输入array",
-      "0x1a357af7cd0": "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)",
-      "0x1a357af78e0": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
-      "0x1a357af7100": "数据预处理/MinMax归一化||MinMax归一化",
-      "0x1a357af6f20": "数据预处理/归一化推理(npy)||归一化推理(npy)",
-      "0x1a357af6b90": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
-      "0x1a357af6890": "数据转换/csv转npy||csv转npy",
-      "0x1a357af6620": "模型训练/逻辑回归训练||逻辑回归训练",
-      "0x1a357af6170": "模型训练/逻辑回归训练||逻辑回归训练 1"
+      "0x2940267f7f0": "数据集成/文档上传||文档上传",
+      "0x2940267d630": "数据集成/CSV 读取器||CSV 读取器",
+      "0x2940267d540": "数据集成/输入array||输入array",
+      "0x29402006ce0": "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)",
+      "0x29402004a00": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
+      "0x29402004730": "数据预处理/MinMax归一化||MinMax归一化",
+      "0x294020055d0": "数据预处理/归一化推理(npy)||归一化推理(npy)",
+      "0x29402004310": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
+      "0x294020078b0": "数据转换/csv转npy||csv转npy",
+      "0x2946864a860": "模型训练/逻辑回归训练||逻辑回归训练",
+      "0x294686484f0": "模型训练/逻辑回归训练||逻辑回归训练 1"
     },
     "node_states": {
       "数据集成/文档上传||文档上传": "success",
@@ -840,7 +840,7 @@
       "数据集成/CSV 读取器||CSV 读取器": {
         "csv": {
           "__type__": "DataFrame",
-          "data": "QVJST1cxAAD/////8AQAABAAAAAAAAoADgAGAAUACAAKAAAAAAEEABAAAAAAAAoADAAAAAQACAAKAAAArAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAAIQDAAAEAAAAdAMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJvYmplY3QiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInZpcmdpbmljYSIsICJmaWVsZF9uYW1lIjogInZpcmdpbmljYSIsICJwYW5kYXNfdHlwZSI6ICJpbnQ2NCIsICJudW1weV90eXBlIjogImludDY0IiwgIm1ldGFkYXRhIjogbnVsbH1d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",
+          "data": "QVJST1cxAAD/////AAUAABAAAAAAAAoADgAGAAUACAAKAAAAAAEEABAAAAAAAAoADAAAAAQACAAKAAAAvAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAAJQDAAAEAAAAhgMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJvYmplY3QiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInZpcmdpbmljYSIsICJmaWVsZF9uYW1lIjogInZpcmdpbmljYSIsICJwYW5kYXNfdHlwZSI6ICJpbnQ2NCIsICJudW1weV90eXBlIjogImludDY0IiwgIm1ldGFkYXRhIjogbnVsbH1d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",
           "format": "feather_base64",
           "shape": [
             150,
@@ -1170,14 +1170,14 @@
       "数据预处理/MinMax归一化||MinMax归一化": {
         "output": {
           "__type__": "DataFrame",
-          "data": "QVJST1cxAAD/////QAQAABAAAAAAAAoADgAGAAUACAAKAAAAAAEEABAAAAAAAAoADAAAAAQACAAKAAAAOAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAABADAAAEAAAAAQMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJvYmplY3QiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfV0sICJjcmVhdG9yIjogeyJsaWJyYXJ5IjogInB5YXJyb3ciLCAidmVyc2lvbiI6ICIyMS4wLjAifSwgInBhbmRhc192ZXJzaW9uIjogIjIuMi4zIn0AAAAGAAAAcGFuZGFzAAAEAAAApAAAAGgAAAA4AAAA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",
+          "data": "QVJST1cxAAD/////UAQAABAAAAAAAAoADgAGAAUACAAKAAAAAAEEABAAAAAAAAoADAAAAAQACAAKAAAASAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAACADAAAEAAAAEwMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJvYmplY3QiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfV0sICJhdHRyaWJ1dGVzIjoge30sICJjcmVhdG9yIjogeyJsaWJyYXJ5IjogInB5YXJyb3ciLCAidmVyc2lvbiI6ICIyMi4wLjAifSwgInBhbmRhc192ZXJzaW9uIjogIjIuMi4zIn0ABgAAAHBhbmRhcwAA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",
           "format": "feather_base64",
           "shape": [
             150,
             4
           ]
         },
-        "scaler": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_56fb73fef5494328b3777552940957ab.pkl"
+        "scaler": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_c795822df79a432b9ab1e7097521110e.pkl"
       },
       "数据预处理/归一化推理(npy)||归一化推理(npy)": {
         "output": {
@@ -1224,7 +1224,7 @@
         "value": [
           0
         ],
-        "model": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_d6c33016fca8404aa18a9f2c0ae76097.pkl"
+        "model": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_de48ec861650471c9099f1458c51587f.pkl"
       }
     },
     "column_select": {

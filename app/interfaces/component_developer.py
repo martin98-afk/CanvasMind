@@ -1306,7 +1306,7 @@ class PropertyEditorWidget(QWidget):
             default_item = self.table.item(row, 3)
             current_text = default_item.text() if default_item else ""
 
-            dialog = LongTextEditorDialog(current_text, self.window())
+            dialog = LongTextEditorDialog(current_text, self.window(), self.parent)
             if dialog.exec() == QDialog.Accepted:
                 new_text = dialog.text_edit.toPlainText()
                 if default_item:
