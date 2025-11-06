@@ -1,9 +1,156 @@
+from collections import OrderedDict
+
+from NodeGraphQt.constants import NodeEnum, ICON_NODE_BASE
 from NodeGraphQt.qgraphics.node_base import NodeItem
+from NodeGraphQt.qgraphics.node_overlay_disabled import XDisabledItem
+from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
+from PyQt5 import QtWidgets
 from Qt import QtCore
+from qtpy import QtGui
 
 
 class CustomNodeItem(NodeItem):
     _align = None
+
+    def __init__(self, name='node', parent=None):
+        super(NodeItem, self).__init__(name, parent)
+        pixmap = QtGui.QPixmap(ICON_NODE_BASE)
+        if pixmap.size().height() > NodeEnum.ICON_SIZE.value:
+            pixmap = pixmap.scaledToHeight(
+                28,
+                QtCore.Qt.SmoothTransformation
+            )
+        self._properties['icon'] = ICON_NODE_BASE
+        self._icon_item = QtWidgets.QGraphicsPixmapItem(pixmap, self)
+        self._icon_item.setTransformationMode(QtCore.Qt.SmoothTransformation)
+        self._text_item = NodeTextItem(self.name, self)
+        font = QtGui.QFont()
+        font.setPointSize(16)  # 推荐 10~12
+        font.setBold(False)  # 可选
+        self._text_item.setFont(font)
+        self._x_item = XDisabledItem(self, 'DISABLED')
+        self._input_items = OrderedDict()
+        self._output_items = OrderedDict()
+        self._widgets = OrderedDict()
+        self._proxy_mode = False
+        self._proxy_mode_threshold = 70
+
+    @property
+    def icon(self):
+        return self._properties['icon']
+
+    @icon.setter
+    def icon(self, path=None):
+        self._properties['icon'] = path
+        path = path or ICON_NODE_BASE
+        pixmap = QtGui.QPixmap(path)
+        if pixmap.size().height() >28:
+            pixmap = pixmap.scaledToHeight(
+                28,
+                QtCore.Qt.SmoothTransformation
+            )
+        if pixmap.size().width() > 28:
+            pixmap = pixmap.scaledToWidth(
+                28,
+                QtCore.Qt.SmoothTransformation
+            )
+        self._icon_item.setPixmap(pixmap)
+        if self.scene():
+            self.post_init()
+
+        self.update()
+
+    def _paint_horizontal(self, painter, option, widget):
+
+        painter.save()
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtCore.Qt.NoBrush)
+
+        # base background.
+        margin = 1.0
+        rect = self.boundingRect()
+        rect = QtCore.QRectF(rect.left() + margin,
+                             rect.top() + margin,
+                             rect.width() - (margin * 2),
+                             rect.height() - (margin * 2))
+
+        radius = 4.0
+        painter.setBrush(QtGui.QColor(*self.color))
+        painter.drawRoundedRect(rect, radius, radius)
+
+        # light overlay on background when selected.
+        if self.selected:
+            painter.setBrush(QtGui.QColor(*NodeEnum.SELECTED_COLOR.value))
+            painter.drawRoundedRect(rect, radius, radius)
+
+        # === 优化：节点名背景区域 ===
+        MIN_HEADER_HEIGHT = 16.0  # 可根据需要调整，推荐 22~26
+        header_height = max(self._text_item.boundingRect().height(), MIN_HEADER_HEIGHT)
+
+        # 背景区域：从顶部开始，固定高度
+        header_rect = QtCore.QRectF(
+            rect.left() + 2.0,  # 略微内缩
+            rect.top() + 1.0,
+            rect.width() - 4.0,  # 两侧留空
+            header_height
+        )
+
+        if self.selected:
+            painter.setBrush(QtGui.QColor(*NodeEnum.SELECTED_COLOR.value))
+        else:
+            painter.setBrush(QtGui.QColor(0, 0, 0, 80))
+        painter.drawRoundedRect(header_rect, 3.0, 3.0)
+
+        # node border
+        if self.selected:
+            border_width = 1.2
+            border_color = QtGui.QColor(*NodeEnum.SELECTED_BORDER_COLOR.value)
+        else:
+            border_width = 0.8
+            border_color = QtGui.QColor(*self.border_color)
+
+        border_rect = QtCore.QRectF(rect.left(), rect.top(),
+                                    rect.width(), rect.height())
+
+        pen = QtGui.QPen(border_color, border_width)
+        pen.setCosmetic(self.viewer().get_zoom() < 0.0)
+        path = QtGui.QPainterPath()
+        path.addRoundedRect(border_rect, radius, radius)
+        painter.setBrush(QtCore.Qt.NoBrush)
+        painter.setPen(pen)
+        painter.drawPath(path)
+
+        painter.restore()
+
+    def _draw_node_horizontal(self):
+        # === 新增：使用与 paint 一致的标题高度 ===
+        MIN_HEADER_HEIGHT = 16.0
+        text_height = self._text_item.boundingRect().height()
+        header_height = max(text_height + 4.0, MIN_HEADER_HEIGHT)
+        label_v_offset = (header_height - text_height) / 2.0
+
+        # update port text visibility
+        for port, text in self._input_items.items():
+            if port.isVisible():
+                text.setVisible(port.display_name)
+        for port, text in self._output_items.items():
+            if port.isVisible():
+                text.setVisible(port.display_name)
+
+        # setup base size —— 确保总高度至少包含标题
+        self._set_base_size(add_h=header_height)
+
+        # set colors and tooltip
+        self._set_text_color(self.text_color)
+        self._tooltip_disable(self.disabled)
+
+        # --- align all items with new header offset ---
+        self.align_label(v_offset=label_v_offset)
+        self.align_icon(h_offset=1.5, v_offset=label_v_offset - 1.5)
+        self.align_ports(v_offset=header_height)  # ⬅️ ports 下移
+        self.align_widgets(v_offset=header_height + 8.0)  # ⬅️ widgets 下移
+
+        self.update()
 
     def remove_widget(self, widget):
         widget = self._widgets.pop(widget.get_name(), None)
@@ -84,7 +231,7 @@ class CustomNodeItem(NodeItem):
             port_text_width = max([p_input_text_width, p_output_text_width])
             port_text_width *= 2
         elif widget_width:
-            side_padding = 10
+            side_padding = 0
 
         width = port_width + max([text_w, port_text_width]) + side_padding
         height = max([text_h, p_input_height, p_output_height, widget_height])
@@ -92,7 +239,7 @@ class CustomNodeItem(NodeItem):
             # add additional width for node widget.
             width += widget_width
         height *= 1.05
-
+        width *= 0.92
         return width, height
 
     def _align_widgets_horizontal(self, v_offset):

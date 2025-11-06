@@ -114,7 +114,8 @@ class FormFieldWidget(QtWidgets.QWidget):
         input_row.setContentsMargins(0, 0, 0, 0)
         # 删除按钮
         btn_remove = TransparentToolButton(FluentIcon.CLOSE, parent=self)
-        btn_remove.setIconSize(QSize(20,20))
+        btn_remove.setFixedSize(20, 32)
+        btn_remove.setIconSize(QSize(16,16))
         btn_remove.clicked.connect(lambda: self.removed.emit(self))
         input_row.addWidget(btn_remove)
         sub_layout.addLayout(input_row)
@@ -167,7 +168,6 @@ class DynamicFormWidget(QtWidgets.QWidget):
 
         # 添加按钮
         self.btn_add = TransparentPushButton(text=f"添加{self.label}", icon=FluentIcon.ADD, parent=self)
-
         self.container = QtWidgets.QVBoxLayout()
         self.container.setSpacing(6)
 
