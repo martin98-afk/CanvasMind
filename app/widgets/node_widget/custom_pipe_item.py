@@ -4,7 +4,7 @@ from NodeGraphQt.constants import (
     PipeLayoutEnum,
     PortTypeEnum
 )
-from NodeGraphQt.qgraphics.pipe import PipeItem
+from NodeGraphQt.qgraphics.pipe import PipeItem, LivePipeItem
 from NodeGraphQt.qgraphics.port import PortItem
 from Qt import QtCore
 
@@ -47,7 +47,7 @@ class CustomPipeItem(PipeItem):
                     br = widget.boundingRect()
                     height += br.height() + 12
 
-            return height + 30
+            return height + node.boundingRect().height() + 10
 
 
         if self.viewer_pipe_layout() == PipeLayoutEnum.CURVED.value:
@@ -141,6 +141,18 @@ class CustomPipeItem(PipeItem):
             self.setPath(path)
 
 
-class CustomLivePipeItem(CustomPipeItem):
+class CustomLivePipeItem(CustomPipeItem, LivePipeItem):
 
-    pass
+    def draw_path(self, start_port, end_port=None, cursor_pos=None, color=None):
+        """
+        re-implemented to also update the index pointer arrow position.
+
+        Args:
+            start_port (PortItem): port used to draw the starting point.
+            end_port (PortItem): port used to draw the end point.
+            cursor_pos (QtCore.QPointF): cursor position if specified this
+                will be the draw end point.
+            color (list[int]): override arrow index pointer color. (r, g, b)
+        """
+        super(LivePipeItem, self).draw_path(start_port, end_port, cursor_pos)
+        self.draw_index_pointer(start_port, cursor_pos, color)

@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x27e02956bc0": {
+      "0x1a35d970c70": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -58,7 +58,7 @@
           "debug_code": {}
         }
       },
-      "0x27e02957c70": {
+      "0x1a35d9715d0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_CSV_读取器",
         "icon": null,
         "name": "CSV 读取器",
@@ -111,7 +111,7 @@
           "debug_code": {}
         }
       },
-      "0x27e02956320": {
+      "0x1a35d971810": {
         "type_": "dynamic.StatusDynamicNode_数据集成_输入array",
         "icon": null,
         "name": "输入array",
@@ -134,7 +134,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 311.0,
         "height": 91.10000000000001,
@@ -159,7 +159,7 @@
           "param1": "1,2,3,4"
         }
       },
-      "0x27e02a7f3a0": {
+      "0x1a357af7cd0": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(csv)",
         "icon": null,
         "name": "逻辑回归推理(csv)",
@@ -217,7 +217,7 @@
           "debug_code": {}
         }
       },
-      "0x27e02a7f670": {
+      "0x1a357af78e0": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy)",
@@ -275,7 +275,7 @@
           "debug_code": null
         }
       },
-      "0x27e02a7f8b0": {
+      "0x1a357af7100": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_MinMax归一化",
         "icon": null,
         "name": "MinMax归一化",
@@ -333,7 +333,7 @@
           "debug_code": {}
         }
       },
-      "0x27e02a7fb80": {
+      "0x1a357af6f20": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_归一化推理(npy)",
         "icon": null,
         "name": "归一化推理(npy)",
@@ -391,7 +391,7 @@
           "debug_code": {}
         }
       },
-      "0x27e02a7ff70": {
+      "0x1a357af6b90": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy) 1",
@@ -414,7 +414,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 160,
         "height": 72.2,
@@ -449,7 +449,7 @@
           "debug_code": {}
         }
       },
-      "0x27e02a7d720": {
+      "0x1a357af6890": {
         "type_": "dynamic.StatusDynamicNode_数据转换_csv转npy",
         "icon": null,
         "name": "csv转npy",
@@ -507,7 +507,7 @@
           "debug_code": {}
         }
       },
-      "0x27e02a7d9c0": {
+      "0x1a357af6620": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练",
@@ -572,7 +572,7 @@
           "max_iter": "100"
         }
       },
-      "0x27e02a7c0a0": {
+      "0x1a357af6170": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练 1",
@@ -641,151 +641,151 @@
     "connections": [
       {
         "out": [
-          "0x27e02956bc0",
+          "0x1a35d970c70",
           "file"
         ],
         "in": [
-          "0x27e02957c70",
+          "0x1a35d9715d0",
           "csv"
         ]
       },
       {
         "out": [
-          "0x27e02957c70",
+          "0x1a35d9715d0",
           "csv"
         ],
         "in": [
-          "0x27e02a7d9c0",
+          "0x1a357af6620",
           "feature"
         ]
       },
       {
         "out": [
-          "0x27e02957c70",
+          "0x1a35d9715d0",
           "csv"
         ],
         "in": [
-          "0x27e02a7d9c0",
+          "0x1a357af6620",
           "target"
         ]
       },
       {
         "out": [
-          "0x27e02957c70",
+          "0x1a35d9715d0",
           "csv"
         ],
         "in": [
-          "0x27e02a7f3a0",
+          "0x1a357af7cd0",
           "feature"
         ]
       },
       {
         "out": [
-          "0x27e02957c70",
+          "0x1a35d9715d0",
           "csv"
         ],
         "in": [
-          "0x27e02a7d720",
+          "0x1a357af6890",
           "input"
         ]
       },
       {
         "out": [
-          "0x27e02957c70",
+          "0x1a35d9715d0",
           "csv"
         ],
         "in": [
-          "0x27e02a7f8b0",
+          "0x1a357af7100",
           "input"
         ]
       },
       {
         "out": [
-          "0x27e02957c70",
+          "0x1a35d9715d0",
           "csv"
         ],
         "in": [
-          "0x27e02a7c0a0",
+          "0x1a357af6170",
           "target"
         ]
       },
       {
         "out": [
-          "0x27e02956320",
+          "0x1a35d971810",
           "output"
         ],
         "in": [
-          "0x27e02a7fb80",
+          "0x1a357af6f20",
           "input"
         ]
       },
       {
         "in": [
-          "0x27e02a7f3a0",
+          "0x1a357af7cd0",
           "model"
         ],
         "out": [
-          "0x27e02a7d9c0",
+          "0x1a357af6620",
           "model"
         ]
       },
       {
         "in": [
-          "0x27e02a7f670",
+          "0x1a357af78e0",
           "feature"
         ],
         "out": [
-          "0x27e02a7d720",
+          "0x1a357af6890",
           "output"
         ]
       },
       {
         "in": [
-          "0x27e02a7f670",
+          "0x1a357af78e0",
           "model"
         ],
         "out": [
-          "0x27e02a7d9c0",
+          "0x1a357af6620",
           "model"
         ]
       },
       {
         "out": [
-          "0x27e02a7f8b0",
+          "0x1a357af7100",
           "output"
         ],
         "in": [
-          "0x27e02a7c0a0",
+          "0x1a357af6170",
           "feature"
         ]
       },
       {
         "out": [
-          "0x27e02a7f8b0",
+          "0x1a357af7100",
           "scaler"
         ],
         "in": [
-          "0x27e02a7fb80",
+          "0x1a357af6f20",
           "scaler"
         ]
       },
       {
         "out": [
-          "0x27e02a7fb80",
+          "0x1a357af6f20",
           "output"
         ],
         "in": [
-          "0x27e02a7ff70",
+          "0x1a357af6b90",
           "feature"
         ]
       },
       {
         "in": [
-          "0x27e02a7ff70",
+          "0x1a357af6b90",
           "model"
         ],
         "out": [
-          "0x27e02a7c0a0",
+          "0x1a357af6170",
           "model"
         ]
       }
@@ -795,17 +795,17 @@
     "environment": "3.14",
     "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.14\\python.exe",
     "node_id2stable_key": {
-      "0x27e02956bc0": "数据集成/文档上传||文档上传",
-      "0x27e02957c70": "数据集成/CSV 读取器||CSV 读取器",
-      "0x27e02956320": "数据集成/输入array||输入array",
-      "0x27e02a7f3a0": "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)",
-      "0x27e02a7f670": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
-      "0x27e02a7f8b0": "数据预处理/MinMax归一化||MinMax归一化",
-      "0x27e02a7fb80": "数据预处理/归一化推理(npy)||归一化推理(npy)",
-      "0x27e02a7ff70": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
-      "0x27e02a7d720": "数据转换/csv转npy||csv转npy",
-      "0x27e02a7d9c0": "模型训练/逻辑回归训练||逻辑回归训练",
-      "0x27e02a7c0a0": "模型训练/逻辑回归训练||逻辑回归训练 1"
+      "0x1a35d970c70": "数据集成/文档上传||文档上传",
+      "0x1a35d9715d0": "数据集成/CSV 读取器||CSV 读取器",
+      "0x1a35d971810": "数据集成/输入array||输入array",
+      "0x1a357af7cd0": "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)",
+      "0x1a357af78e0": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
+      "0x1a357af7100": "数据预处理/MinMax归一化||MinMax归一化",
+      "0x1a357af6f20": "数据预处理/归一化推理(npy)||归一化推理(npy)",
+      "0x1a357af6b90": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
+      "0x1a357af6890": "数据转换/csv转npy||csv转npy",
+      "0x1a357af6620": "模型训练/逻辑回归训练||逻辑回归训练",
+      "0x1a357af6170": "模型训练/逻辑回归训练||逻辑回归训练 1"
     },
     "node_states": {
       "数据集成/文档上传||文档上传": "success",
@@ -1177,7 +1177,7 @@
             4
           ]
         },
-        "scaler": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_2732094c2c1d40e9888bd15dbe5a7f49.pkl"
+        "scaler": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_56fb73fef5494328b3777552940957ab.pkl"
       },
       "数据预处理/归一化推理(npy)||归一化推理(npy)": {
         "output": {
@@ -1224,7 +1224,7 @@
         "value": [
           0
         ],
-        "model": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_43d5a269efc740258ce7281ede49aea6.pkl"
+        "model": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_d6c33016fca8404aa18a9f2c0ae76097.pkl"
       }
     },
     "column_select": {

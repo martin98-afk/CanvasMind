@@ -100,8 +100,8 @@ GLUE_CODE_TEMPLATES = {
         "code": '''def run(self, params, inputs=None):
     """
     params: 节点属性（来自UI）
-    inputs: 上游输入（key=输入端口名）
-    return: 输出数据（key=输出端口名）
+    inputs: 目标文件夹
+    return: 文件地址里列表（key=输出端口名）
     """
     from pathlib import Path
     path = Path(inputs.input)
