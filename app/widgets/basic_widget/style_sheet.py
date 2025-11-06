@@ -17,5 +17,4 @@ class StyleSheet(StyleSheetBase, Enum):
     CATEGORY_FILTER = "category_filter"
 
     def path(self, theme=Theme.AUTO):
-        theme = qconfig.theme if theme == Theme.AUTO else theme
         return resource_path(f"resource/{self.value}.qss")

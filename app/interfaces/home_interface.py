@@ -3,8 +3,6 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
-
-import requests
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import QPainter, QPainterPath, QLinearGradient, QColor, QBrush, QPixmap
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel

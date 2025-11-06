@@ -11,6 +11,8 @@ from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
 from qtpy import QtGui, QtCore, QtWidgets
 
+from app.widgets.node_widget.custom_pipe_item import CustomLivePipeItem, CustomPipeItem
+
 
 class CustomNodeScene(NodeScene):
 
@@ -109,7 +111,7 @@ class CustomNodeViewer(NodeViewer):
         self._cursor_text.setFont(font)
         self.scene().addItem(self._cursor_text)
 
-        self._LIVE_PIPE = LivePipeItem()
+        self._LIVE_PIPE = CustomLivePipeItem()
         self._LIVE_PIPE.setVisible(False)
         self.scene().addItem(self._LIVE_PIPE)
 
@@ -155,6 +157,20 @@ class CustomNodeViewer(NodeViewer):
         # connection constrains.
         self.accept_connection_types = None
         self.reject_connection_types = None
+
+    def establish_connection(self, start_port, end_port):
+        """
+        establish a new pipe connection.
+        (adds a new pipe item to draw between 2 ports)
+        """
+        pipe = CustomPipeItem()
+        self.scene().addItem(pipe)
+        pipe.set_connections(start_port, end_port)
+        pipe.draw_path(pipe.input_port, pipe.output_port)
+        if start_port.node.selected or end_port.node.selected:
+            pipe.highlight()
+        if not start_port.node.visible or not end_port.node.visible:
+            pipe.hide()
 
 
 class CustomNodeGraph(NodeGraph):
