@@ -741,7 +741,7 @@ class BaseComponent(ABC):
             elif output_type == ArgumentType.JSON:
                 return self._store_json_data(output_value)
             elif output_type == ArgumentType.EXCEL:
-                return self._store_excel_data(output_value, node_id)
+                return self._store_excel_data(output_value)
             elif output_type == ArgumentType.SKLEARNMODEL:
                 return self._store_sklearn_model(output_value, node_id)
             elif output_type == ArgumentType.TORCHMODEL:

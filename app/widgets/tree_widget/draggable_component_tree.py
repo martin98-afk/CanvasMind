@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 
 from PyQt5.QtCore import Qt, QMimeData, QRectF, QPoint
-from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont, QPainterPath
+from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont, QPainterPath, QFontMetrics
 from PyQt5.QtWidgets import QTreeWidgetItem, QWidget, QVBoxLayout, QHBoxLayout, QMenu, QCheckBox, QFrame
 from qfluentwidgets import FluentIcon as FIF, TransparentToggleToolButton
 from qfluentwidgets import TreeWidget, SearchLineEdit, FluentStyleSheet, ToggleToolButton, PushButton, \
@@ -455,85 +455,147 @@ class DraggableTreeWidget(TreeWidget):
             drag.setMimeData(mime_data)
 
             preview = self.create_drag_preview(full_path)
+            LOGIC_WIDTH, LOGIC_HEIGHT = 180, 120  # 和 create_drag_preview 中的 base 尺寸一致
+            preview = self.create_drag_preview(full_path)
             drag.setPixmap(preview)
-            drag.setHotSpot(preview.rect().center())
+            drag.setHotSpot(QPoint(LOGIC_WIDTH // 2 - 8, 3 * LOGIC_HEIGHT // 4))  # 👈 用逻辑中心
             drag.exec_(Qt.CopyAction)
 
     def create_drag_preview(self, full_path):
-        """创建拖拽预览 pixmap（圆角阴影）"""
         comp_cls = self.parent.component_map.get(full_path)
         if not comp_cls or comp_cls.__name__.startswith("ControlFlow"):
             return self.get_default_preview(full_path)
 
         try:
-            # 创建带阴影和圆角的预览图
-            size = (180, 120)
-            pixmap = QPixmap(size[0], size[1])
+            base_width, base_height = 180, 120
+            dpr = self.devicePixelRatioF() if hasattr(self, 'devicePixelRatioF') else 1.0
+
+            pixmap = QPixmap(int(base_width * dpr), int(base_height * dpr))
+            pixmap.setDevicePixelRatio(dpr)
             pixmap.fill(Qt.transparent)
+
             painter = QPainter(pixmap)
             painter.setRenderHint(QPainter.Antialiasing)
+            painter.setRenderHint(QPainter.TextAntialiasing)
+            painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
-            # 绘制圆角背景
+            width, height = base_width, base_height
+
+            # === 背景 ===
             path = QPainterPath()
-            path.addRoundedRect(0, 0, size[0] - 1, size[1] - 1, 8, 8)
-            painter.setPen(QPen(QColor("#4A90E2"), 2))
+            path.addRoundedRect(0, 0, width - 1, height - 1, 10, 10)
+            painter.setPen(QPen(QColor("#4A90E2"), 1.5))
             painter.setBrush(QColor("#2D2D2D"))
             painter.drawPath(path)
 
-            # 添加阴影
-            shadow_color = QColor(0, 0, 0, 80)
-            for i in range(1, 5):
-                painter.setPen(shadow_color)
+            for i, alpha in enumerate([40, 25, 10], 1):
+                painter.setPen(QColor(0, 0, 0, alpha))
                 painter.setBrush(Qt.NoBrush)
-                painter.drawRoundedRect(i, i, size[0] - 1 - i * 2, size[1] - 1 - i * 2, 8, 8)
+                painter.drawRoundedRect(i, i, width - 1 - i * 2, height - 1 - i * 2, 10, 10)
 
-            # 标题
+            # === 1. 标题 ===
             painter.setPen(Qt.white)
             font = QFont()
-            font.setPointSize(11)
+            font.setPointSize(12)
             font.setBold(True)
             painter.setFont(font)
-            title = comp_cls.name
-            if len(title) > 15:
-                title = title[:15] + "..."
-            painter.drawText(QRectF(15, 15, size[0] - 30, 25), Qt.AlignLeft, title)
+            title = getattr(comp_cls, 'name', comp_cls.__name__)
+            if len(title) > 14:
+                title = title[:14] + "…"
+            painter.drawText(QRectF(12, 12, width - 24, 24), Qt.AlignLeft, title)
 
-            # 类别
-            painter.setPen(QColor("#888888"))
-            font.setPointSize(9)
+            # === 2. 类别 ===
+            painter.setPen(QColor("#AAAAAA"))
+            font.setPointSize(10)
             font.setBold(False)
             painter.setFont(font)
             category = getattr(comp_cls, 'category', 'General')
-            painter.drawText(QRectF(15, 45, size[0] - 30, 18), Qt.AlignLeft, f"类别: {category}")
+            painter.drawText(QRectF(12, 38, width - 24, 20), Qt.AlignLeft, f"📁 {category}")
 
-            # 输入输出信息
+            # === 3. 描述（支持换行，最多2行）===
+            desc_lines = []
+            description = getattr(comp_cls, 'description', "")
+            if isinstance(description, str) and description.strip():
+                desc_text = description.strip()
+                font.setPointSize(9)
+                font.setItalic(True)
+                painter.setFont(font)
+                fm = QFontMetrics(font)
+                text_width = width - 24
+                max_lines = 2
+
+                # 支持中英文的换行（逐字试探，兼容无空格文本）
+                current_line = ""
+                for char in desc_text:
+                    test_line = current_line + char
+                    w = fm.horizontalAdvance(test_line) if hasattr(fm, 'horizontalAdvance') else fm.width(test_line)
+                    if w <= text_width:
+                        current_line = test_line
+                    else:
+                        if current_line:
+                            desc_lines.append(current_line)
+                            if len(desc_lines) >= max_lines:
+                                desc_lines[-1] = desc_lines[-1][:max(0, len(desc_lines[-1]) - 1)] + "…"
+                                break
+                        current_line = char
+                if current_line and len(desc_lines) < max_lines:
+                    desc_lines.append(current_line)
+
+            line_height = QFontMetrics(font).height() + 2
+            desc_height = len(desc_lines) * line_height
+            # 绘制描述
+            top_used = 38 + 20 + 4  # 类别结束 y + 间距
+            desc_y = top_used
+            painter.setPen(QColor("#CCCCCC"))
+            for i, line in enumerate(desc_lines):
+                painter.drawText(QRectF(12, desc_y + i * line_height, width - 24, line_height), Qt.AlignLeft, line)
+            io_y = desc_y + desc_height + 6
+
+            # === 底部统一信息行 ===
             inputs = getattr(comp_cls, 'get_inputs', lambda: [])()
             outputs = getattr(comp_cls, 'get_outputs', lambda: [])()
-
-            y_pos = 65
-            if inputs:
-                painter.setPen(QColor("#2ECC71"))
-                painter.drawText(QRectF(15, y_pos, size[0] - 30, 15), Qt.AlignLeft, f"输入: {len(inputs)}")
-                y_pos += 18
-            if outputs:
-                painter.setPen(QColor("#E74C3C"))
-                painter.drawText(QRectF(15, y_pos, size[0] - 30, 15), Qt.AlignLeft, f"输出: {len(outputs)}")
-                y_pos += 18
-
-            # 使用统计
             usage_count = len(self._usage_stats.get(full_path, []))
-            if usage_count > 0:
-                painter.setPen(QColor("#F39C12"))
-                painter.drawText(QRectF(15, y_pos, size[0] - 30, 15), Qt.AlignLeft, f"使用: {usage_count}次")
 
-            # 收藏标记
+            bottom_y = height - 22
+            font = QFont()
+            font.setPointSize(10)
+            font.setBold(True)
+            painter.setFont(font)
+
+            input_text = f"◂ {len(inputs)}" if inputs else ""
+            output_text = f"{len(outputs)} ▸" if outputs else ""
+            usage_text = f"🕒 {usage_count}次" if usage_count > 0 else ""
+
+            # 输入（左）
+            if input_text:
+                painter.setPen(QColor("#2ECC71"))
+                painter.drawText(QRectF(12, bottom_y, 80, 20), Qt.AlignLeft, input_text)
+
+            # 使用次数（居中）
+            if usage_text:
+                painter.setPen(QColor("#F39C12"))
+                fm = QFontMetrics(font)
+                tw = fm.horizontalAdvance(usage_text) if hasattr(fm, 'horizontalAdvance') else fm.width(usage_text)
+                cx = (width - tw) / 2
+                painter.drawText(QRectF(cx, bottom_y, tw, 20), Qt.AlignLeft, usage_text)
+
+            # 输出（右）
+            if output_text:
+                painter.setPen(QColor("#E74C3C"))
+                painter.drawText(QRectF(width - 92, bottom_y, 80, 20), Qt.AlignRight, output_text)
+
+            # === 收藏标记（右上角，不变）===
             if self.is_favorite(full_path):
                 painter.setPen(QColor("#FFD700"))
-                painter.drawText(QRectF(size[0] - 30, 15, 25, 25), Qt.AlignCenter, "★")
+                font.setPointSize(14)
+                painter.setFont(font)
+                painter.drawText(QRectF(width - 24, 10, 20, 20), Qt.AlignCenter, "★")
 
             painter.end()
             return pixmap
-        except:
+
+        except Exception as e:
+            print(f"预览图渲染失败: {e}")
             return self.get_default_preview(full_path)
 
     def get_default_preview(self, name):

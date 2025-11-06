@@ -7,6 +7,8 @@ from PyQt5.QtGui import QTextCursor
 from PyQt5.QtWidgets import QListWidget, QDesktopWidget  # 添加 QDesktopWidget
 from qfluentwidgets import TextEdit, LineEdit
 
+from app.widgets.basic_widget.style_sheet import StyleSheet
+
 
 # -----------------------
 # 高亮器类：用于高亮 $$ 变量表达式
@@ -123,8 +125,8 @@ class VariableCompletionPopup(QListWidget):
         y = global_pos.y()
 
         # 检查并调整 x 坐标，防止弹窗超出右边界
-        if x + popup_width > screen_left + screen_width:
-            x = screen_left + screen_width - popup_width
+        if x + 4 * popup_width // 3 > screen_left + screen_width:
+            x = screen_left + screen_width - 4 * popup_width // 3
         # 确保不超出左边界（虽然通常不会）
         if x < screen_left:
             x = screen_left

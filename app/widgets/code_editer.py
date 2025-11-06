@@ -43,8 +43,9 @@ class CodeEditorWidget(QWidget):
     code_changed = pyqtSignal()
     parsed_component = pyqtSignal(dict)
 
-    def __init__(self, parent=None, python_exe=None, popup_offset=0):
+    def __init__(self, parent=None, python_exe=None, popup_offset=0, default_code=DEFAULT_CODE_TEMPLATE):
         super().__init__(parent) # 确保父类初始化
+        self.default_code = default_code
         self._suspend_sync_depth = 0 # 初始化，避免在_setup_ui前访问
         self.original_parent = parent # 保存原始父对象，用于全屏后恢复
         self.fullscreen_mode = False # 标记是否处于全屏模式
@@ -85,7 +86,7 @@ class CodeEditorWidget(QWidget):
         layout.addWidget(self.main_view)
 
         # 7. 设置初始代码
-        self.replace_text_preserving_view(DEFAULT_CODE_TEMPLATE)
+        self.replace_text_preserving_view(self.default_code)
 
     def _setup_auto_sync(self):
         self._sync_timer = QTimer()

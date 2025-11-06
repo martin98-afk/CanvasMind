@@ -19,6 +19,8 @@ from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 from .node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from .status_node import StatusNode
+from app.utils.glue_code_templates import GLUE_CODE_TEMPLATES
+from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 
 # 在 app/components 下创建 .temp 目录（隐藏目录）
 TEMP_COMPONENTS_DIR = Path(__file__).parent.parent / "components" / ".temp"
@@ -47,22 +49,6 @@ class DynamicComponent(BaseComponent):
     }}
 
     {user_run_code}
-'''
-
-DEFAULT_CODE_TEMPLATE = '''def run(self, params, inputs=None):
-    """
-    params: 节点属性（来自UI）
-    inputs: 上游输入（key=输入端口名）
-    return: 输出数据（key=输出端口名）
-    """
-    # 在这里编写你的组件逻辑
-    input_data = inputs.get("input_data") if inputs else None
-    param1 = params.get("param1", "default_value")
-    # 处理逻辑
-    result = f"处理结果: {input_data} + {param1}"
-    return {
-        "output_data": result
-    }
 '''
 
 
@@ -130,7 +116,7 @@ def create_dynamic_code_node(parent_window=None):
                 label="输入端口定义",
                 schema=processed_schema,
                 window=parent_window,
-                z_value=2
+                z_value=4
             )
             self.add_custom_widget(self.input_widget, tab='Properties')
 
@@ -161,18 +147,48 @@ def create_dynamic_code_node(parent_window=None):
                 label="输出端口定义",
                 schema=processed_schema,
                 window=parent_window,
-                z_value=1
+                z_value=3
             )
             self.add_custom_widget(self.output_widget, tab='Properties')
+            template_items = [f"{key}:{info['name']}" for key, info in GLUE_CODE_TEMPLATES.items()]
+            self.glue_templates_widget = ComboBoxWidgetWrapper(
+                parent=self.view,
+                name="glue_code_template",
+                label="胶水代码模板",
+                items=template_items,
+                z_value=2
+            )
+            self.add_custom_widget(self.glue_templates_widget, tab='Properties')
 
             code_widget = CodeEditorWidgetWrapper(
                 parent=self.view,
                 name="code",
                 label="执行代码",
-                default=DEFAULT_CODE_TEMPLATE.strip(),
+                default=GLUE_CODE_TEMPLATES.get("default").get("code"),
                 window=parent_window
             )
+            self.code_editor = code_widget.get_custom_widget()
             self.add_custom_widget(code_widget, tab='Properties')
+
+            glue_combo = self.glue_templates_widget.get_custom_widget()
+            glue_combo.combobox.currentIndexChanged.connect(self._on_glue_template_changed)
+
+        def _on_glue_template_changed(self, index):
+            """当下拉选择胶水模板时，自动更新代码编辑器内容"""
+            combo = self.glue_templates_widget.get_custom_widget()
+            current_text = combo.combobox.currentText()
+            if not current_text:
+                return
+
+            # 解析 key（格式为 "key:name"）
+            try:
+                template_key = current_text.split(":", 1)[0]
+                template_code = GLUE_CODE_TEMPLATES[template_key]["code"]
+            except (IndexError, KeyError):
+                return
+
+            # 更新 code 编辑器
+            self.code_editor.set_code(template_code)
 
         def _sanitize_port_name(self, name: str) -> str:
             if not name:

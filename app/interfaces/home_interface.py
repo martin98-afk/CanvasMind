@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
-
-import requests
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import QPainter, QPainterPath, QLinearGradient, QColor, QBrush, QPixmap
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
@@ -44,31 +43,31 @@ class BannerWidget(QWidget):
 
         self.linkCardView.addCard(
             get_icon("logo3"),
-            self.tr('Getting started'),
-            self.tr('An overview of app development options and samples.'),
+            self.tr('使用指南'),
+            self.tr('软件功能清单以及各个功能使用方法演示。'),
             "https://martin98-afk.github.io/CanvasMind"
         )
 
         self.linkCardView.addCard(
             FluentIcon.GITHUB,
-            self.tr('GitHub repo'),
+            self.tr('项目地址'),
             self.tr(
-                'The latest fluent design controls and styles for your applications.'),
+                '获取canvas mind最新更新消息及版本更新信息。'),
             "https://github.com/martin98-afk/CanvasMind"
         )
 
         self.linkCardView.addCard(
             FluentIcon.CODE,
-            self.tr('Code samples'),
+            self.tr('流程图样例'),
             self.tr(
-                'Find samples that demonstrate specific tasks, features and APIs.'),
+                '获取官方样例流程图画布样例文件。'),
             "https://github.com/martin98-afk/CanvasMind/tree/master/workflows"
         )
 
         self.linkCardView.addCard(
             FluentIcon.FEEDBACK,
-            self.tr('Send feedback'),
-            self.tr('Help us improve Canvas Mind by providing feedback.'),
+            self.tr('反馈意见'),
+            self.tr('通过反馈使用体验帮助我们改善Canvas Mind。'),
             "https://github.com/martin98-afk/CanvasMind/issues/new"
         )
 
@@ -283,17 +282,11 @@ class HorizontalCardContainerWidget(ScrollArea):
 
     def _on_open_sample_canvas_clicked(self, model_name: str):
         """处理打开画布事件"""
-        try:
-            output_path = f"./workflows/{model_name}.workflow.json"
-            response = requests.get(EXAMPLES.get(model_name))
-            response.raise_for_status()  # 如果响应状态码不是 200，将抛出 HTTPError
-            with open(output_path, 'wb') as f:
-                f.write(response.content)
-            print(f"✅ 文件已成功下载到 {output_path}")
-        except requests.exceptions.RequestException as e:
-            print(f"❌ 下载失败: {e}")
+        src_path = Path(resource_path(f"./examples/{model_name}.workflow.json"))
+        target_path = Path(f"./workflows/{model_name}.workflow.json")
+        shutil.copyfile(src_path, target_path)
         if self.gallery_page and hasattr(self.gallery_page, 'open_canvas'):
-            self.gallery_page.open_canvas(Path(output_path))
+            self.gallery_page.open_canvas(Path(target_path))
 
 
 class HomeInterface(ScrollArea):

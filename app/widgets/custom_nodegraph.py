@@ -2,7 +2,7 @@ import json
 
 from NodeGraphQt import NodeGraph, BaseNode
 from NodeGraphQt.base.commands import PortConnectedCmd
-from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE
+from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE, PortTypeEnum
 from NodeGraphQt.qgraphics.pipe import LivePipeItem
 from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.actions import BaseMenu
@@ -10,6 +10,8 @@ from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
 from qtpy import QtGui, QtCore, QtWidgets
+
+from app.widgets.node_widget.custom_pipe_item import CustomLivePipeItem, CustomPipeItem
 
 
 class CustomNodeScene(NodeScene):
@@ -42,6 +44,19 @@ class CustomNodeScene(NodeScene):
         [painter.drawPoint(int(x), int(y))
          for x in range(first_left, right, grid_size)
          for y in range(first_top, bottom, grid_size)]
+
+    def mousePressEvent(self, event):
+        selected_nodes = self.viewer().selected_nodes()
+        if self.viewer():
+            self.viewer().sceneMousePressEvent(event)
+        super(NodeScene, self).mousePressEvent(event)
+        keep_selection = any([
+            event.button() == QtCore.Qt.MiddleButton,
+            event.modifiers() == QtCore.Qt.AltModifier
+        ])
+        if keep_selection:
+            for node in selected_nodes:
+                node.setSelected(True)
 
 
 class CustomNodeViewer(NodeViewer):
@@ -96,7 +111,7 @@ class CustomNodeViewer(NodeViewer):
         self._cursor_text.setFont(font)
         self.scene().addItem(self._cursor_text)
 
-        self._LIVE_PIPE = LivePipeItem()
+        self._LIVE_PIPE = CustomLivePipeItem()
         self._LIVE_PIPE.setVisible(False)
         self.scene().addItem(self._LIVE_PIPE)
 
@@ -142,6 +157,20 @@ class CustomNodeViewer(NodeViewer):
         # connection constrains.
         self.accept_connection_types = None
         self.reject_connection_types = None
+
+    def establish_connection(self, start_port, end_port):
+        """
+        establish a new pipe connection.
+        (adds a new pipe item to draw between 2 ports)
+        """
+        pipe = CustomPipeItem()
+        self.scene().addItem(pipe)
+        pipe.set_connections(start_port, end_port)
+        pipe.draw_path(pipe.input_port, pipe.output_port)
+        if start_port.node.selected or end_port.node.selected:
+            pipe.highlight()
+        if not start_port.node.visible or not end_port.node.visible:
+            pipe.hide()
 
 
 class CustomNodeGraph(NodeGraph):
@@ -299,8 +328,6 @@ class CustomNodeGraph(NodeGraph):
 
             if in_port and out_port:
                 # only connect if input port is not connected yet or input port
-                # can have multiple connections.
-                # important when duplicating nodes.
                 allow_connection = any([not in_port.model.connected_ports,
                                         in_port.model.multi_connection])
                 if allow_connection:

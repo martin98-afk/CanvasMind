@@ -101,7 +101,6 @@ class CanvasPage(QWidget):
         # 初始化 NodeGraph
         self.graph = CustomNodeGraph(viewer=CustomNodeViewer())
         self.graph.node_created.connect(self.on_node_created)
-        self.graph.node_selected.connect(self.on_node_selected)
         self.graph.port_connected.connect(self._on_port_connected)
         self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
         self._setup_pipeline_style()
@@ -292,8 +291,6 @@ class CanvasPage(QWidget):
                 self._copy_selected_nodes()
             elif event.key() == QtCore.Qt.Key_V:
                 self._paste_nodes()
-            elif event.key() == QtCore.Qt.Key_A:
-                self.graph.select_all()
 
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
@@ -584,6 +581,9 @@ class CanvasPage(QWidget):
             comp_name = os.path.basename(full_path).replace('.py', '')
             if icon_path and os.path.exists(icon_path):
                 icon = QtGui.QIcon(icon_path)
+            elif icon_path.startswith("builtin:\\"):
+                icon_name = icon_path.split("\\")[-1]
+                icon = FluentIcon[icon_name]
             else:
                 icon = FluentIcon.APPLICATION
             action = Action(
@@ -632,12 +632,14 @@ class CanvasPage(QWidget):
 
             if i > MAX_VISIBLE_QUICK_BUTTONS:
                 self._hidden_quick_components.append((qc["full_path"], qc.get("icon_path")))
-                if i == MAX_VISIBLE_QUICK_BUTTONS:
-                    self.more_quick_button.show()
+                self.more_quick_button.show()
             else:
 
                 if icon_path and os.path.exists(icon_path):
                     icon = QtGui.QIcon(icon_path)
+                elif icon_path.startswith("builtin:\\"):
+                    icon_name = icon_path.split("\\")[-1]
+                    icon = FluentIcon[icon_name]
                 else:
                     icon = FluentIcon.APPLICATION
 
@@ -1354,12 +1356,6 @@ class CanvasPage(QWidget):
         self._node_id_cache[node.id] = node
         self._request_recommendations(node)
 
-    def on_node_selected(self, node: BaseNode):
-        if not node:
-            self.nav_view.clear_recommendations()
-            return
-        self._request_recommendations(node)
-
     def _on_port_connected(self, input_port, output_port):
         in_node = input_port.node()
         out_node = output_port.node()
@@ -1410,11 +1406,14 @@ class CanvasPage(QWidget):
         if selected_nodes:
             for node in selected_nodes:
                 if isinstance(node, ControlFlowBackdrop):
+                    self.nav_view.clear_recommendations()
                     QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
                     return
             if isinstance(selected_nodes[0], BaseNode):
                 QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(selected_nodes[0]))
+                self._request_recommendations(selected_nodes[0])
             else:
+                self.nav_view.clear_recommendations()
                 QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
         else:
             self.nav_view.clear_recommendations()
@@ -1443,6 +1442,9 @@ class CanvasPage(QWidget):
 
     def save_full_workflow(self, file_path, show_info=True):
         graph_data = self.graph.serialize_session()
+        # 剔除节点中自定义全局变量，减少加载负担
+        for node, node_data in graph_data["nodes"].items():
+            node_data["custom"].pop("global_variable", None)
         # 解析图节点数据类
         runtime = {
             "environment": self.env_combo.currentData(),
@@ -1639,10 +1641,10 @@ class CanvasPage(QWidget):
         graph_menu.add_command('撤销', self._undo, 'Ctrl+Z')
         graph_menu.add_command('重做', self._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
         graph_menu.add_command('自动布局', self._auto_layout_selected, 'Ctrl+L')
-        edit_menu = graph_menu.add_menu('编辑')
-        edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
-        edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
-        edit_menu.add_command('删除选中', lambda graph: self.delete_selected_nodes(graph), 'Del')
+        # edit_menu = graph_menu.add_menu('编辑')
+        # edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
+        # edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
+        # edit_menu.add_command('删除选中', lambda graph: self.delete_selected_nodes(graph), 'Del')
 
     def delete_selected_nodes(self, graph):
         # 清除选中节点的输入输出端口连接线

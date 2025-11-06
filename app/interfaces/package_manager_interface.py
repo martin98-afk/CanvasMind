@@ -385,7 +385,7 @@ class EnvManagerUI(QWidget):
         if msg_box.exec_():
             try:
                 state_tooltip = StateToolTip("正在删除环境", "请稍候...", self)
-                state_tooltip.move(self.home.width() - state_tooltip.width() - 30, 20)
+                state_tooltip.move(self.home.width() - state_tooltip.width() - 40, 20)
                 state_tooltip.show()
                 self.mgr.remove_env(env_name)
                 self.mgr.remove_finished.connect(
@@ -485,7 +485,7 @@ class EnvManagerUI(QWidget):
                 try:
                     self.mgr.download_and_install(version, env_name=env_name, log_callback=self.logEdit.append)
                     state_tooltip = StateToolTip("正在安装环境", "请稍候...", window or self)
-                    state_tooltip.move(self.home.width() - state_tooltip.width() - 30, 20)
+                    state_tooltip.move(self.home.width() - state_tooltip.width() - 40, 20)
                     state_tooltip.show()
                     self.mgr.install_finished.connect(
                         lambda: (
