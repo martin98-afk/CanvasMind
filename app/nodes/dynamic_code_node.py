@@ -164,7 +164,7 @@ def create_dynamic_code_node(parent_window=None):
                 parent=self.view,
                 name="code",
                 label="执行代码",
-                default=GLUE_CODE_TEMPLATES.get("default"),
+                default=GLUE_CODE_TEMPLATES.get("default").get("code"),
                 window=parent_window
             )
             self.code_editor = code_widget.get_custom_widget()
