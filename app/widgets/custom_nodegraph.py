@@ -2,7 +2,7 @@ import json
 
 from NodeGraphQt import NodeGraph, BaseNode
 from NodeGraphQt.base.commands import PortConnectedCmd
-from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE
+from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE, PortTypeEnum
 from NodeGraphQt.qgraphics.pipe import LivePipeItem
 from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.actions import BaseMenu

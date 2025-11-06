@@ -179,7 +179,10 @@ class WorkflowScheduler(QObject):
 
     def register_global_variable(self, nodes):
         for node in nodes:
-            node.model.set_property("global_variable", self.global_variables.serialize())
+            if node.has_property("global_variable"):
+                node.set_property("global_variable", self.global_variables.serialize())
+            else:
+                node.model.add_property("global_variable", self.global_variables.serialize())
 
     def _execute_nodes(self, nodes: List):
         """启动执行：先解锁所有节点，再执行 active 节点"""

@@ -1442,6 +1442,9 @@ class CanvasPage(QWidget):
 
     def save_full_workflow(self, file_path, show_info=True):
         graph_data = self.graph.serialize_session()
+        # 剔除节点中自定义全局变量，减少加载负担
+        for node, node_data in graph_data["nodes"].items():
+            node_data["custom"].pop("global_variable", None)
         # 解析图节点数据类
         runtime = {
             "environment": self.env_combo.currentData(),
