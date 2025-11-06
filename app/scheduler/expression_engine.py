@@ -171,7 +171,10 @@ class ExpressionEngine:
             expr = match.group(1).strip()
             if not expr:
                 return ""
-            safe_expr = re.sub(r'\b(env|custom|node_vars|input)\.([a-zA-Z_][a-zA-Z0-9_]*)', r'\1_\2', expr)
+            safe_expr = re.sub(
+                r'\b(env|custom|node_vars|input)\.([a-zA-Z_\u4e00-\u9fff][a-zA-Z0-9_\u4e00-\u9fff]*)',
+                r'\1_\2', expr
+            )
             try:
                 interp_temp = Interpreter(max_time=2.0)
                 interp_temp.symtable.update(temp_symtable)

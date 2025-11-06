@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import time
+import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Set
@@ -12,6 +13,7 @@ from typing import List, Dict, Set
 from PyQt5.QtCore import QThread, pyqtSignal, QEasingCurve, Qt, QTimer, QSize
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QDialog, QTextEdit, QLabel, QFileDialog, QHBoxLayout, QFrame
+from loguru import logger
 from qfluentwidgets import (
     PrimaryPushButton,
     InfoBar,
@@ -69,7 +71,7 @@ class ProjectRunnerThread(QThread):
             self.finished.emit(outputs, log_content)
 
         except Exception as e:
-            self.error.emit(str(e))
+            self.error.emit(traceback.format_exc())
 
 
 class ExportedProjectsPage(QWidget):
@@ -506,6 +508,7 @@ class ExportedProjectsPage(QWidget):
         state_tooltip.setContent(f"运行失败 ❌\n{error}")
         state_tooltip.setState(True)
         self.create_error_info("运行失败", f"项目 {os.path.basename(project_path)} 执行失败:\n{error}")
+        logger.error(error)
         self._cleanup_project_run(project_path)
 
     def _cleanup_project_run(self, project_path):

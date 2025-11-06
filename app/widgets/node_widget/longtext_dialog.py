@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from NodeGraphQt import NodeBaseWidget
 from Qt import QtWidgets, QtCore
-from qfluentwidgets import FluentIcon, ToolButton, LineEdit
+from qfluentwidgets import FluentIcon, ToolButton, LineEdit, TextEdit
 from qfluentwidgets import MessageBoxBase, SubtitleLabel
 
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
@@ -18,8 +18,10 @@ class LongTextEditorDialog(MessageBoxBase):
         if not self.main_window:
             return []
         global_vars = getattr(self.main_window, 'global_variables', None)
-
-        self.text_edit = VariableCompletionTextEdit(get_variable_list_func=global_vars.get_vars)
+        if global_vars is not None and hasattr(global_vars, 'get_vars'):
+            self.text_edit = VariableCompletionTextEdit(get_variable_list_func=global_vars.get_vars)
+        else:
+            self.text_edit = TextEdit()
         self.text_edit.setPlainText(content)
         self.text_edit.setMinimumSize(700, 500)
 
