@@ -24,7 +24,7 @@ class HomeCard(CardWidget):
         self.hBoxLayout = QHBoxLayout(self)
         self.vBoxLayout = QVBoxLayout()
 
-        self.setFixedSize(360, 90)
+        self.setFixedSize(320, 90)
         self.iconWidget.setFixedSize(48, 48)
 
         self.hBoxLayout.setSpacing(28)

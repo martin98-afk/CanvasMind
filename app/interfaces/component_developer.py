@@ -101,33 +101,25 @@ class ComponentDeveloperWidget(QWidget):
         self.component_tree_panel = ComponentTreePanel(self)
         self.component_tree = self.component_tree_panel.tree  # 保留对 tree 的直接引用（如果已有代码依赖）
         splitter.addWidget(self.component_tree_panel)
-        # 右侧：开发区域 - 使用新的左右布局
-        self.development_area = self._create_development_area_new_layout()
-        splitter.addWidget(self.development_area)
-        splitter.setSizes([125, 850])  # 调整大小比例，给右侧更多空间
-        layout.addWidget(splitter)
-
-    def _create_development_area_new_layout(self):
-        """创建新的开发区域布局（左右两栏）"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        # 组件基本信息
-        # 左右分割器
-        main_splitter = QSplitter(Qt.Horizontal)
-        # 左侧：端口和属性
-        left_widget = self._create_left_panel()
-        main_splitter.addWidget(left_widget)
-        # 右侧：代码编辑器
-        right_widget = self._create_right_panel()
-        main_splitter.addWidget(right_widget)
-        # 设置初始比例
-        main_splitter.setSizes([400, 400])  # 左右各占一半
-        layout.addWidget(main_splitter)
-        return widget
-
-    def _create_left_panel(self):
-        """创建左侧面板（端口和属性）"""
+        # 代码编辑框
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        # 代码编辑器
+        self.code_editor = CodeEditorWidget(self, self.home.package_manager.get_current_python_exe())
+        right_layout.addWidget(BodyLabel("组件代码:"))
+        right_layout.addWidget(self.code_editor, stretch=1)
+        # 保存按钮
+        save_layout = QHBoxLayout()
+        save_btn = PrimaryPushButton(text="保存组件", icon=FluentIcon.SAVE, parent=self)
+        save_btn.clicked.connect(lambda: self._save_component(True))
+        cancel_btn = PushButton(text="取消", icon=FluentIcon.CLOSE, parent=self)
+        cancel_btn.clicked.connect(self._cancel_edit)
+        save_layout.addWidget(save_btn)
+        save_layout.addWidget(cancel_btn)
+        right_layout.addLayout(save_layout)
+        splitter.addWidget(right_widget)
+        # 组件属性
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -176,27 +168,9 @@ class ComponentDeveloperWidget(QWidget):
         # 属性编辑器
         self.property_editor = PropertyEditorWidget(self)
         left_layout.addWidget(self.property_editor, stretch=1)
-        return left_widget
-
-    def _create_right_panel(self):
-        """创建右侧面板（代码编辑器）"""
-        right_widget = QWidget()
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        # 代码编辑器
-        self.code_editor = CodeEditorWidget(self, self.home.package_manager.get_current_python_exe())
-        right_layout.addWidget(BodyLabel("组件代码:"))
-        right_layout.addWidget(self.code_editor, stretch=1)
-        # 保存按钮
-        save_layout = QHBoxLayout()
-        save_btn = PrimaryPushButton(text="保存组件", icon=FluentIcon.SAVE, parent=self)
-        save_btn.clicked.connect(lambda: self._save_component(True))
-        cancel_btn = PushButton(text="取消", icon=FluentIcon.CLOSE, parent=self)
-        cancel_btn.clicked.connect(self._cancel_edit)
-        save_layout.addWidget(save_btn)
-        save_layout.addWidget(cancel_btn)
-        right_layout.addLayout(save_layout)
-        return right_widget
+        splitter.addWidget(left_widget)
+        splitter.setSizes([125, 450, 450])  # 调整大小比例，给右侧更多空间
+        layout.addWidget(splitter)
 
     def _connect_signals(self):
         """连接信号"""
