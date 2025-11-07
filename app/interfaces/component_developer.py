@@ -102,13 +102,13 @@ class ComponentDeveloperWidget(QWidget):
         self.component_tree = self.component_tree_panel.tree  # 保留对 tree 的直接引用（如果已有代码依赖）
         splitter.addWidget(self.component_tree_panel)
         # 代码编辑框
-        right_widget = QWidget()
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
+        code_widget = QWidget()
+        code_layout = QVBoxLayout(code_widget)
+        code_layout.setContentsMargins(0, 0, 0, 0)
         # 代码编辑器
         self.code_editor = CodeEditorWidget(self, self.home.package_manager.get_current_python_exe())
-        right_layout.addWidget(BodyLabel("组件代码:"))
-        right_layout.addWidget(self.code_editor, stretch=1)
+        code_layout.addWidget(BodyLabel("组件代码:"))
+        code_layout.addWidget(self.code_editor, stretch=1)
         # 保存按钮
         save_layout = QHBoxLayout()
         save_btn = PrimaryPushButton(text="保存组件", icon=FluentIcon.SAVE, parent=self)
@@ -117,12 +117,12 @@ class ComponentDeveloperWidget(QWidget):
         cancel_btn.clicked.connect(self._cancel_edit)
         save_layout.addWidget(save_btn)
         save_layout.addWidget(cancel_btn)
-        right_layout.addLayout(save_layout)
-        splitter.addWidget(right_widget)
+        code_layout.addLayout(save_layout)
+        splitter.addWidget(code_widget)
         # 组件属性
-        left_widget = QWidget()
-        left_layout = QVBoxLayout(left_widget)
-        left_layout.setContentsMargins(0, 0, 0, 0)
+        info_widget = QWidget()
+        info_layout = QVBoxLayout(info_widget)
+        info_layout.setContentsMargins(0, 0, 0, 0)
 
         # --- 基本信息卡片 ---
         basic_info_widget = CardWidget()
@@ -155,7 +155,7 @@ class ComponentDeveloperWidget(QWidget):
         # 设置拉伸因子，让左侧稍微窄一些，右侧稍微宽一些，或者相等
         basic_info_h_layout.setStretch(0, 1)  # 左侧 (信息)
         basic_info_h_layout.setStretch(1, 1)  # 右侧 (依赖)
-        left_layout.addWidget(basic_info_widget)
+        info_layout.addWidget(basic_info_widget)
         # 端口编辑器（上下布局）
         port_splitter = QSplitter(Qt.Horizontal)
         # 输入输出端口编辑器
@@ -164,11 +164,11 @@ class ComponentDeveloperWidget(QWidget):
         port_splitter.addWidget(self.input_port_editor)
         port_splitter.addWidget(self.output_port_editor)
         port_splitter.setSizes([200, 100])  # 初始大小
-        left_layout.addWidget(port_splitter, stretch=1)
+        info_layout.addWidget(port_splitter, stretch=1)
         # 属性编辑器
         self.property_editor = PropertyEditorWidget(self)
-        left_layout.addWidget(self.property_editor, stretch=1)
-        splitter.addWidget(left_widget)
+        info_layout.addWidget(self.property_editor, stretch=1)
+        splitter.addWidget(info_widget)
         splitter.setSizes([125, 450, 450])  # 调整大小比例，给右侧更多空间
         layout.addWidget(splitter)
 
