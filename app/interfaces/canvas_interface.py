@@ -113,6 +113,7 @@ class CanvasPage(QWidget):
         self.nav_view = self.nav_panel.tree
         # 属性面板
         self.property_panel = PropertyPanel(self)
+        self.global_variables_changed.connect(self.property_panel._on_global_variables_changed)
         # 布局
         main_layout = VBoxLayout(self)
         canvas_layout = QHBoxLayout()
@@ -508,7 +509,9 @@ class CanvasPage(QWidget):
         self.iterate_node = TransparentToolButton(get_icon("更新"), self)
         self.iterate_node.setIconSize(QSize(20, 20))
         self.iterate_node.setToolTip("创建迭代")
-        self.iterate_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowIterateNode"))
+        self.iterate_node.clicked.connect(
+            lambda: self.create_backdrop_node("ControlFlowIterateNode")
+        )
         self.node_layout.addWidget(self.iterate_node)
 
         self.loop_node = TransparentToolButton(get_icon("无限"), self)
@@ -532,7 +535,9 @@ class CanvasPage(QWidget):
         self.tool_node = TransparentToolButton(get_icon("工具"), self)
         self.tool_node.setIconSize(QSize(20, 20))
         self.tool_node.setToolTip("创建工具调用")
-        self.tool_node.clicked.connect(lambda: self.create_next_node("dynamic.StatusDynamicNode_大模型组件_工具调用"))
+        self.tool_node.clicked.connect(
+            lambda: self.create_next_node("dynamic.StatusDynamicNode_大模型组件_工具调用", icon_path=get_icon("工具"))
+        )
         self.node_layout.addWidget(self.tool_node)
 
         # === 分隔线 ===

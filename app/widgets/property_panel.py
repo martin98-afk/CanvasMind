@@ -22,16 +22,18 @@ from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
 
+
 # --- 添加一个自定义信号的类，用于在卡片大小改变时通知布局更新 ---
 class ExpandableCardWidget(CardWidget):
-    sizeChanged = pyqtSignal() # 自定义信号
+    sizeChanged = pyqtSignal()  # 自定义信号
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.sizeChanged.emit() # 当大小改变时发射信号
+        self.sizeChanged.emit()  # 当大小改变时发射信号
+
 
 class PropertyPanel(CardWidget):
     def __init__(self, main_window, parent=None):
@@ -77,7 +79,6 @@ class PropertyPanel(CardWidget):
         self.segmented_widget = None
         self.stacked_widget = None
         self._current_global_tab = 'custom'
-        self.main_window.global_variables_changed.connect(self._on_global_variables_changed)
 
         # --- 用于存储内部节点卡片状态 ---
         self._internal_nodes_card_expanded = {}
@@ -88,10 +89,10 @@ class PropertyPanel(CardWidget):
     def _on_global_variables_changed(self, var_type: str, var_name: str, action: str):
         if not self._global_panel_built:
             return
+        global_vars = self.main_window.global_variables
         if var_type == "node_vars":
             if action == "add" or action == "update":
                 if var_name not in self._node_var_cards:
-                    global_vars = self.main_window.global_variables
                     if hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
                         card = self._create_variable_card(var_name, global_vars.node_vars[var_name])
                         self.node_vars_layout.addWidget(card)
@@ -100,10 +101,12 @@ class PropertyPanel(CardWidget):
                 if var_name in self._node_var_cards:
                     card = self._node_var_cards.pop(var_name)
                     card.deleteLater()
+            elif action == "clear":
+                global_vars.clear_node_vars(var_name)
+                self._refresh_node_vars_page()
         elif var_type == "custom":
             if action == "add" or action == "update":
                 if var_name not in self._custom_var_cards:
-                    global_vars = self.main_window.global_variables
                     if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
                         card = self._create_dict_row(var_name, global_vars.custom[var_name].value)
                         self.custom_vars_layout.addWidget(card)
@@ -115,7 +118,6 @@ class PropertyPanel(CardWidget):
         elif var_type == "env":
             if action == "add" or action == "update":
                 if var_name not in self._env_var_cards:
-                    global_vars = self.main_window.global_variables
                     if hasattr(global_vars, 'env'):
                         value = getattr(global_vars.env, var_name, None)
                         if value is not None:
@@ -611,13 +613,17 @@ class PropertyPanel(CardWidget):
         if layout is None:
             layout = self.node_vbox
         layout.addWidget(info_card)
+
         def show_context_menu(pos):
             menu = RoundMenu(parent=self)
             menu.addAction(
-                Action("复制为表达式",
-                       triggered=lambda: self._copy_as_expression("node_vars", f"{node.name()}_{port_name}"))
+                Action(
+                    FluentIcon.COPY, "复制为表达式", parent=self,
+                    triggered=lambda: self._copy_as_expression("node_vars", f"{node.name()}_{port_name}")
+                )
             )
             menu.exec_(info_card.mapToGlobal(pos))
+
         if is_output:
             info_card.setContextMenuPolicy(Qt.CustomContextMenu)
             info_card.customContextMenuRequested.connect(show_context_menu)
@@ -746,18 +752,18 @@ class PropertyPanel(CardWidget):
         progress_label = BodyLabel(f"进度: {current}/{total}")
         progress_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
         self.node_vbox.addWidget(progress_label)
-        self._backdrop_progress_label = progress_label # 缓存
+        self._backdrop_progress_label = progress_label  # 缓存
 
         progress_bar = ProgressBar(self, useAni=False)
         progress_bar.setRange(0, 100)
         progress_bar.setValue(int(current / max(1, total) * 100) if total > 0 else 0)
         self.node_vbox.addWidget(progress_bar)
-        self._backdrop_progress_bar = progress_bar # 缓存
+        self._backdrop_progress_bar = progress_bar  # 缓存
 
         if flow_type == "loop":
             self._add_loop_config_section(node)
 
-        self._add_internal_nodes_section(node) # 这个方法会缓存内部节点列表
+        self._add_internal_nodes_section(node)  # 这个方法会缓存内部节点列表
         self.node_vbox.addStretch()
 
         # ... (输入输出端口的构建逻辑保持不变) ...
@@ -805,6 +811,7 @@ class PropertyPanel(CardWidget):
 
         expand_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
         expand_btn.setFixedSize(QSize(26, 20))
+
         def toggle_expand():
             is_expanded = self._internal_nodes_card_expanded[node_id]
             if is_expanded:
@@ -822,6 +829,7 @@ class PropertyPanel(CardWidget):
                 expand_btn.setIcon(get_icon("缩小"))
                 self._internal_nodes_card_expanded[node_id] = True
             self.node_vbox.invalidate()
+
         expand_btn.clicked.connect(toggle_expand)
         title_btn_layout.addWidget(expand_btn)
         nodes_layout.addLayout(title_btn_layout)
@@ -861,10 +869,10 @@ class PropertyPanel(CardWidget):
         mode_combo = ComboBox(self)
         mode_combo.addItems(['固定次数', '条件循环', 'While循环'])
         mode_combo.setCurrentText({
-            'count': '固定次数',
-            'condition': '条件循环',
-            'while': 'While循环'
-        }.get(node.model.get_property("loop_mode"), '固定次数'))
+                                      'count': '固定次数',
+                                      'condition': '条件循环',
+                                      'while': 'While循环'
+                                  }.get(node.model.get_property("loop_mode"), '固定次数'))
 
         def on_mode_changed(text):
             mode_map = {'固定次数': 'count', '条件循环': 'condition', 'While循环': 'while'}
@@ -886,6 +894,7 @@ class PropertyPanel(CardWidget):
             def on_max_iter_changed(value):
                 node.model.set_property('loop_nums', value)
                 self._update_existing_backdrop_data(node)
+
             max_iter_spin.valueChanged.connect(on_max_iter_changed)
 
             config_layout.addWidget(BodyLabel("循环次数:"))
@@ -896,7 +905,8 @@ class PropertyPanel(CardWidget):
             expr_label = BodyLabel("条件表达式:")
             expr_layout.addWidget(expr_label)
             global_vars = getattr(self.main_window, 'global_variables', None)
-            extra_keys = ['data', 'result', 'current_index', 'current_iteration', 'iteration_count', 'loop_mode', 'max_iterations']
+            extra_keys = ['data', 'result', 'current_index', 'current_iteration', 'iteration_count', 'loop_mode',
+                          'max_iterations']
             _, _, internal_nodes = node.get_nodes()
             # 将内部节点的输出端口按node_vars.nodename_portname填写key
             for n in internal_nodes:
@@ -937,6 +947,7 @@ class PropertyPanel(CardWidget):
             def on_max_iterations_changed(value):
                 node.model.set_property('max_iterations', value)
                 self._update_existing_backdrop_data(node)
+
             max_iter_spin.valueChanged.connect(on_max_iterations_changed)
 
             config_layout.addWidget(BodyLabel("最大迭代次数:"))
@@ -946,7 +957,8 @@ class PropertyPanel(CardWidget):
 
     def _open_long_text_editor(self, line_edit):
         # ✅ 根据你的实际路径导入 LongTextEditorDialog
-        dialog = LongTextEditorDialog(content=line_edit.toPlainText(), parent=self.window(), main_window=self.main_window)
+        dialog = LongTextEditorDialog(content=line_edit.toPlainText(), parent=self.window(),
+                                      main_window=self.main_window)
         if dialog.exec():
             new_text = dialog.text_edit.toPlainText().strip()
             line_edit.setText(new_text)
@@ -969,6 +981,8 @@ class PropertyPanel(CardWidget):
         )
         if hasattr(node, "refresh_node_outports"):
             QtCore.QTimer.singleShot(100, node.refresh_node_outports)
+        if hasattr(node, "_sync_outputs_ports"):
+            QtCore.QTimer.singleShot(100, node._sync_outputs_ports)
         self.main_window.global_variables_changed.emit("node_vars", var_name, "add")
         InfoBar.success(
             title="成功",
@@ -1091,7 +1105,8 @@ class PropertyPanel(CardWidget):
                 value_label = card.layout().itemAt(1).widget()
                 if isinstance(value_label, BodyLabel):
                     try:
-                        preview = json.dumps(var_obj.value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(var_obj.value, (dict, list)) else str(var_obj.value)[:40]
+                        preview = json.dumps(var_obj.value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(
+                            var_obj.value, (dict, list)) else str(var_obj.value)[:40]
                     except:
                         preview = "<无法预览>"
                     value_label.setText(preview)
@@ -1144,7 +1159,10 @@ class PropertyPanel(CardWidget):
                 value_label = card.layout().itemAt(1).widget()
                 if isinstance(value_label, BodyLabel):
                     try:
-                        preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value, (dict, list)) else str(value)[:40]
+                        preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value,
+                                                                                                                (dict,
+                                                                                                                 list)) else str(
+                            value)[:40]
                     except:
                         preview = "<无法预览>"
                     value_label.setText(preview)
@@ -1159,7 +1177,9 @@ class PropertyPanel(CardWidget):
         layout.setSpacing(4)
         name_label = BodyLabel(f"{name}:")
         try:
-            preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value, (dict, list)) else str(value)[:40]
+            preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value, (dict,
+                                                                                                            list)) else str(
+                value)[:40]
         except:
             preview = "<无法预览>"
         value_label = BodyLabel(preview)
@@ -1172,13 +1192,25 @@ class PropertyPanel(CardWidget):
         layout.addWidget(value_label)
         layout.addStretch()
         layout.addWidget(del_btn)
+
         def show_context_menu(pos):
             current_val = self.main_window.global_variables.custom.get(name)
             current_val = current_val.value if current_val is not None else "<已删除>"
             menu = RoundMenu(parent=self)
-            menu.addAction(Action("复制为表达式", triggered=lambda: self._copy_as_expression("custom", name)))
-            menu.addAction(Action("编辑变量", triggered=lambda: self._edit_custom_variable(name, current_val)))
+            menu.addActions(
+                [
+                    Action(
+                        FluentIcon.COPY, "复制为表达式", parent=self,
+                        triggered=lambda: self._copy_as_expression("custom", name)
+                    ),
+                    Action(
+                        FluentIcon.EDIT, "编辑变量", parent=self,
+                        triggered=lambda: self._edit_custom_variable(name, current_val)
+                    )
+                ]
+            )
             menu.exec_(card.mapToGlobal(pos))
+
         card.setContextMenuPolicy(Qt.CustomContextMenu)
         card.customContextMenuRequested.connect(show_context_menu)
         return card
@@ -1222,19 +1254,33 @@ class PropertyPanel(CardWidget):
         tree.setMinimumHeight(80)
         tree.setMaximumHeight(120)
         layout.addWidget(tree)
+
         def show_context_menu(pos):
             menu = RoundMenu(parent=self)
-            menu.addAction(Action("复制为表达式", triggered=lambda: self._copy_as_expression("node_vars", name)))
-            menu.addAction(
-                Action(
-                    "跳转到该节点",
-                    triggered=lambda: self.main_window.center_to(self._locate_node_by_variable_name(name))
-                )
+            menu.addActions(
+                [
+                    Action(
+                        FluentIcon.COPY, "复制为表达式", parent=self,
+                        triggered=lambda: self._copy_as_expression("node_vars", name)
+                    ),
+                    Action(
+                        FluentIcon.DELETE, "清空变量结果", parent=self,
+                        triggered=lambda:
+                        self.main_window.global_variables_changed.emit("node_vars", name, "clear")
+                    ),
+                    Action(
+                        FluentIcon.FIT_PAGE, "跳转到该节点", parent=self,
+                        triggered=lambda: self.main_window.center_to(self._locate_node_by_variable_name(name))
+                    )
+                ]
+
             )
             menu.exec_(card.mapToGlobal(pos))
+
         card.setContextMenuPolicy(Qt.CustomContextMenu)
         card.customContextMenuRequested.connect(show_context_menu)
         card.strategy_combo = strategy_combo
+
         # 节点变量双击自动跳转到对应节点
         def on_card_double_clicked(event):
             if event.button() == Qt.LeftButton:
@@ -1264,7 +1310,7 @@ class PropertyPanel(CardWidget):
         original_name_candidate = re.sub(r'_(?=\d+$)', " ", safe_node_name_candidate)
 
         # 尝试通过名称查找节点
-        node_graph = self.main_window.graph # 获取 NodeGraphQt 实例
+        node_graph = self.main_window.graph  # 获取 NodeGraphQt 实例
         if not node_graph:
             logger.warning("无法获取节点图实例")
             return
@@ -1291,7 +1337,9 @@ class PropertyPanel(CardWidget):
         layout.setSpacing(4)
         name_label = BodyLabel(f"{key} : ")
         try:
-            preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value, (dict, list)) else str(value)[:40]
+            preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value, (dict,
+                                                                                                            list)) else str(
+                value)[:40]
         except:
             preview = "<无法预览>"
         value_label = BodyLabel(preview)
@@ -1304,12 +1352,16 @@ class PropertyPanel(CardWidget):
         layout.addWidget(value_label)
         layout.addStretch()
         layout.addWidget(del_btn)
+
         def show_context_menu(pos):
             current_val = getattr(self.main_window.global_variables.env, key, None)
             menu = RoundMenu(parent=self)
-            menu.addAction(Action("复制为表达式", triggered=lambda: self._copy_as_expression("env", key)))
-            menu.addAction(Action("编辑变量", triggered=lambda: self._edit_env_variable(key, current_val)))
+            menu.addAction(Action(FluentIcon.COPY, "复制为表达式", parent=self,
+                                  triggered=lambda: self._copy_as_expression("env", key)))
+            menu.addAction(Action(FluentIcon.EDIT, "编辑变量", parent=self,
+                                  triggered=lambda: self._edit_env_variable(key, current_val)))
             menu.exec_(card.mapToGlobal(pos))
+
         card.setContextMenuPolicy(Qt.CustomContextMenu)
         card.customContextMenuRequested.connect(show_context_menu)
         return card
@@ -1329,6 +1381,8 @@ class PropertyPanel(CardWidget):
                 node = self._locate_node_by_variable_name(var_name)
                 if hasattr(node, "refresh_node_outports"):
                     QtCore.QTimer.singleShot(0, node.refresh_node_outports)
+                if hasattr(node, "_sync_outputs_ports"):
+                    QtCore.QTimer.singleShot(0, node._sync_outputs_ports)
 
             self._refresh_custom_vars_page()
             self.main_window.global_variables_changed.emit(var_type, var_name, "delete")

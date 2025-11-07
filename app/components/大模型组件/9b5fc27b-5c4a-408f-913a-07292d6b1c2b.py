@@ -25,7 +25,7 @@ class Component(BaseComponent):
         PortDefinition(name="llm_output", label="模型原始输出", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="parsed_json", label="解析后的 JSON", type=ArgumentType.TEXT),
+        PortDefinition(name="parsed_json", label="解析后的 JSON", type=ArgumentType.JSON),
         PortDefinition(name="is_valid", label="是否有效", type=ArgumentType.BOOL),
     ]
 

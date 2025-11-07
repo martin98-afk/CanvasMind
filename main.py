@@ -19,7 +19,7 @@ def enable_dpi_scale():
 
 
 # ----------------------------
-# 启动应用
+# 启动应
 # ----------------------------
 if __name__ == '__main__':
     os.environ['PYTHONIOENCODING'] = 'utf-8'

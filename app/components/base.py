@@ -7,7 +7,7 @@ import uuid
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from pathlib import Path
-from typing import List, Tuple, Type, Union
+from typing import List, Tuple, Type, Union, OrderedDict
 from typing import Any, Dict, Optional
 
 from pandas import DataFrame
@@ -190,8 +190,8 @@ class NodeVariable(BaseModel):
 
 class GlobalVariableContext(BaseModel):
     env: ExecutionEnvironment = Field(default_factory=ExecutionEnvironment)
-    custom: Dict[str, CustomVariable] = Field(default_factory=dict)
-    node_vars: Dict[str, NodeVariable] = Field(default_factory=dict)
+    custom: OrderedDict[str, CustomVariable] = Field(default_factory=OrderedDict)
+    node_vars: OrderedDict[str, NodeVariable] = Field(default_factory=OrderedDict)
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -213,6 +213,14 @@ class GlobalVariableContext(BaseModel):
         self.node_vars[f"{node_id}_{output_name}"] = NodeVariable(
             value=output_value, update_policy=policy
         )
+
+    def clear_node_vars(self, name: str):
+        if isinstance(self.node_vars[name].value, (list, dict, tuple, set)):
+            self.node_vars[name].value.clear()
+        elif isinstance(self.node_vars[name].value, str):
+            self.node_vars[name].value = ""
+        else:
+            self.node_vars[name].value = None
 
     def get_vars(self, extra_keys: List[str] = []):
         all_vars = []
@@ -243,11 +251,13 @@ class GlobalVariableContext(BaseModel):
         self.env.canvas_id = history_env.get("canvas_id")
         self.env.session_id = history_env.get("session_id")
         self.env.run_id = history_env.get("run_id")
-        self.custom = {k: CustomVariable(**v) for k, v in data.get("custom", {}).items()}
-        self.node_vars = {
-            k: NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
+        self.custom = OrderedDict(
+            (k, CustomVariable(**v)) for k, v in data.get("custom", {}).items()
+        )
+        self.node_vars = OrderedDict(
+            (k, NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v))
             for k, v in data.get("node_vars", {}).items()
-        }
+        )
 
     def get(self, key: str, default=None) -> Any:
         if not isinstance(key, str):

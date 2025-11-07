@@ -6,7 +6,7 @@ from datetime import datetime
 from PyQt5.QtCore import Qt, QMimeData, QRectF, QPoint
 from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont, QPainterPath, QFontMetrics
 from PyQt5.QtWidgets import QTreeWidgetItem, QWidget, QVBoxLayout, QHBoxLayout, QMenu, QCheckBox, QFrame
-from qfluentwidgets import FluentIcon as FIF, TransparentToggleToolButton
+from qfluentwidgets import FluentIcon as FIF, TransparentToggleToolButton, RoundMenu, Action
 from qfluentwidgets import TreeWidget, SearchLineEdit, FluentStyleSheet, ToggleToolButton, PushButton, \
     DropDownPushButton
 
@@ -627,16 +627,17 @@ class DraggableTreeWidget(TreeWidget):
     def contextMenuEvent(self, event):
         item = self.itemAt(event.pos())
         if item and item.parent():  # 叶子节点
-            menu = QMenu(self)
+            menu = RoundMenu(parent=self)
             full_path = item.data(0, Qt.UserRole + 1)
             is_fav = self.is_favorite(full_path)
 
             if is_fav:
-                action = menu.addAction("❌ 移除收藏")
+                menu.addAction(
+                    Action("❌ 移除收藏", triggered=lambda: self._toggle_favorite(full_path, item, is_fav)))
             else:
-                action = menu.addAction("⭐ 添加收藏")
+                menu.addAction(
+                    Action("⭐ 添加收藏", triggered=lambda: self._toggle_favorite(full_path, item, is_fav)))
 
-            action.triggered.connect(lambda: self._toggle_favorite(full_path, item, is_fav))
             menu.exec_(event.globalPos())
 
     def _toggle_favorite(self, full_path, item, is_currently_fav):

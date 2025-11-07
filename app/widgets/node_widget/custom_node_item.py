@@ -40,20 +40,34 @@ class CustomNodeItem(NodeItem):
         return self._properties['icon']
 
     @icon.setter
-    def icon(self, path=None):
-        self._properties['icon'] = path
-        path = path or ICON_NODE_BASE
-        pixmap = QtGui.QPixmap(path)
-        if pixmap.size().height() >28:
-            pixmap = pixmap.scaledToHeight(
-                28,
-                QtCore.Qt.SmoothTransformation
-            )
-        if pixmap.size().width() > 28:
-            pixmap = pixmap.scaledToWidth(
-                28,
-                QtCore.Qt.SmoothTransformation
-            )
+    def icon(self, value=None):
+        self._properties['icon'] = value
+
+        # 确定最终使用的 pixmap
+        if isinstance(value, QtGui.QIcon):
+            # 从 QIcon 提取 QPixmap（推荐使用标准大小）
+            pixmap = value.pixmap(28, 28)  # 或根据需要调整
+        elif isinstance(value, str):
+            # 从路径加载
+            pixmap = QtGui.QPixmap(value)
+        else:
+            # fallback to default
+            pixmap = QtGui.QPixmap(ICON_NODE_BASE)
+
+        # 缩放逻辑保持不变
+        if not pixmap.isNull():
+            if pixmap.height() > 28:
+                pixmap = pixmap.scaledToHeight(28, QtCore.Qt.SmoothTransformation)
+            if pixmap.width() > 28:
+                pixmap = pixmap.scaledToWidth(28, QtCore.Qt.SmoothTransformation)
+        else:
+            # 如果加载失败，使用默认图标
+            pixmap = QtGui.QPixmap(ICON_NODE_BASE)
+            if pixmap.height() > 28:
+                pixmap = pixmap.scaledToHeight(28, QtCore.Qt.SmoothTransformation)
+            if pixmap.width() > 28:
+                pixmap = pixmap.scaledToWidth(28, QtCore.Qt.SmoothTransformation)
+
         self._icon_item.setPixmap(pixmap)
         if self.scene():
             self.post_init()
@@ -174,7 +188,9 @@ class CustomNodeItem(NodeItem):
 
     def _calc_size_horizontal(self):
         # width, height from node name text.
-        text_w = self._text_item.boundingRect().width()
+        font = self._text_item.font()
+        font_metrics = QtGui.QFontMetrics(font)
+        text_w = max(self._text_item.boundingRect().width(), font_metrics.horizontalAdvance(self.name)) + 50
         text_h = self._text_item.boundingRect().height()
 
         # width, height from node ports.
