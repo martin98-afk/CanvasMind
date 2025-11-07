@@ -4,6 +4,7 @@ import os
 import shutil
 import numpy as np
 import pandas as pd
+from loguru import logger
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QPixmap, QIcon, QImage, QFont, QPainter, QColor
 from PyQt5.QtWidgets import (
@@ -75,7 +76,7 @@ class BuildTreeWorker(QThread):
                 elif isinstance(obj, (str, bytes)):
                     try:
                         obj = json.loads(obj)
-                        return f"(JSON) {obj}"
+                        return self._format_value(obj)
                     except json.JSONDecodeError:
                         return f"(JSON) {self._format_value(obj)}"
                 else:
@@ -548,7 +549,7 @@ class VariableTreeWidget(TreeWidget):
                 elif isinstance(obj, (str, bytes)):
                     try:
                         obj = json.loads(obj)
-                        return f"(JSON) {obj}"
+                        return self._format_value(obj)
                     except json.JSONDecodeError:
                         return f"(JSON) {self._format_value(obj)}"
                 else:

@@ -981,6 +981,8 @@ class PropertyPanel(CardWidget):
         )
         if hasattr(node, "refresh_node_outports"):
             QtCore.QTimer.singleShot(100, node.refresh_node_outports)
+        if hasattr(node, "_sync_outputs_ports"):
+            QtCore.QTimer.singleShot(100, node._sync_outputs_ports)
         self.main_window.global_variables_changed.emit("node_vars", var_name, "add")
         InfoBar.success(
             title="成功",
@@ -1379,6 +1381,8 @@ class PropertyPanel(CardWidget):
                 node = self._locate_node_by_variable_name(var_name)
                 if hasattr(node, "refresh_node_outports"):
                     QtCore.QTimer.singleShot(0, node.refresh_node_outports)
+                if hasattr(node, "_sync_outputs_ports"):
+                    QtCore.QTimer.singleShot(0, node._sync_outputs_ports)
 
             self._refresh_custom_vars_page()
             self.main_window.global_variables_changed.emit(var_type, var_name, "delete")
