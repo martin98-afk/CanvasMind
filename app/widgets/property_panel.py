@@ -103,12 +103,7 @@ class PropertyPanel(CardWidget):
                     card.deleteLater()
             elif action == "clear":
                 global_vars.clear_node_vars(var_name)
-                if hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
-                    card = self._node_var_cards.pop(var_name)
-                    card.deleteLater()
-                    card = self._create_variable_card(var_name, global_vars.node_vars[var_name])
-                    self.node_vars_layout.addWidget(card)
-                    self._node_var_cards[var_name] = card
+                self._refresh_node_vars_page()
         elif var_type == "custom":
             if action == "add" or action == "update":
                 if var_name not in self._custom_var_cards:

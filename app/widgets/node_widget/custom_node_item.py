@@ -188,7 +188,9 @@ class CustomNodeItem(NodeItem):
 
     def _calc_size_horizontal(self):
         # width, height from node name text.
-        text_w = self._text_item.boundingRect().width() + 40
+        font = self._text_item.font()
+        font_metrics = QtGui.QFontMetrics(font)
+        text_w = max(self._text_item.boundingRect().width(), font_metrics.horizontalAdvance(self.name)) + 50
         text_h = self._text_item.boundingRect().height()
 
         # width, height from node ports.
