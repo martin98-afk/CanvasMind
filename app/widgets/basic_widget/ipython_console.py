@@ -3,8 +3,11 @@ import os
 import sys
 import tempfile
 import uuid
+import pickle
+import base64
+from typing import Dict, Any
 
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QSplitter, QVBoxLayout, QWidget
 from loguru import logger
 from qfluentwidgets import TabBar, ComboBox, CommandBar, Action, FluentIcon
@@ -122,12 +125,16 @@ class SpyderCollectionsVariableExplorer(QWidget):
         self.collection_widget.setStyleSheet(dark_qss)
         self.layout.addWidget(self.collection_widget)
 
+        # 存储上次变量快照，用于检测变化
+        self._last_snapshot_hash = None
+        self._last_variables = {}
+
         self.auto_refresh_timer = QTimer(self)
         self.auto_refresh_timer.timeout.connect(self.refresh_variables)
-        self.auto_refresh_timer.setInterval(500)
+        self.auto_refresh_timer.setInterval(1000)  # 增加到1秒，减少刷新频率
 
         # 改为延迟启动：比如等第一个 console 准备好后再启动
-        QTimer.singleShot(3000, self._maybe_start_timer)  # 延迟1秒尝试启动
+        QTimer.singleShot(3000, self._maybe_start_timer)  # 延迟3秒尝试启动
 
     def _maybe_start_timer(self):
         """尝试启动定时器，仅当已有有效 kernel"""
@@ -135,7 +142,7 @@ class SpyderCollectionsVariableExplorer(QWidget):
             self.auto_refresh_timer.start()
         else:
             # 如果还没准备好，再试一次（最多重试几次）
-            QTimer.singleShot(500, self._maybe_start_timer)
+            QTimer.singleShot(1000, self._maybe_start_timer)
 
     def _has_active_kernel(self):
         current_console = self.get_current_console()
@@ -153,57 +160,86 @@ class SpyderCollectionsVariableExplorer(QWidget):
             return
 
         # 生成临时文件路径
-        self._temp_file = os.path.join(TEMP_DIR, f"spyder_vars_{uuid.uuid4().hex}.json")
+        self._temp_file = os.path.join(TEMP_DIR, f"spyder_vars_{uuid.uuid4().hex}.pkl")
 
-        # 执行代码：将变量写入临时文件（使用safe_repr保持类型信息）
+        # 执行代码：获取变量并序列化到临时文件
         code = f'''
-import json
+import pickle
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import os
-_snapshot = {{k: v for k, v in globals().items() if not k.startswith('_') and not callable(v) and not isinstance(v, type) and not hasattr(v, '__module__')}}
 
-def safe_repr(obj, max_len=1000):
-    """安全的repr函数，避免pickle问题"""
-    try:
-        # 检查是否是基本类型或可序列化类型
-        if isinstance(obj, (int, float, str, bool, type(None))):
-            return obj
-        elif isinstance(obj, (list, tuple)):
-            if len(obj) > 100:  # 限制长度
-                return f"<{{type(obj).__name__}} of length {{len(obj)}}>"
-            return [safe_repr(item, max_len) for item in obj[:100]]
-        elif isinstance(obj, dict):
-            if len(obj) > 100:  # 限制长度
-                return f"<dict of length {{len(obj)}}>"
-            return {{k: safe_repr(v, max_len) for k, v in list(obj.items())[:100]}}
-        elif isinstance(obj, (set, frozenset)):
-            return f"<{{type(obj).__name__}} of length {{len(obj)}}>"
-        else:
-            # 对于其他类型，返回类型信息和字符串表示
-            return f"<{{type(obj).__name__}}: {{str(obj)[:max_len]}}>"
-    except:
-        return f"<unrepresentable: {{type(obj).__name__}}>"
+from PIL import Image
+from collections import OrderedDict
 
-_vars = {{k: safe_repr(v) for k, v in _snapshot.items()}}
-with open(r"{self._temp_file}", "w", encoding="utf-8") as f:
-    json.dump(_vars, f, ensure_ascii=False, indent=2)
-print("变量已导出")
+# 获取所有非内置、非函数、非类型的变量，并且可序列化
+_snapshot = OrderedDict()
+locals = globals().copy()
+for _k, _v in locals.items():
+    if (not _k.startswith('_') and 
+            not callable(_v) and 
+            not isinstance(_v, type) and (
+            # 基础类型
+            _v is None or
+            isinstance(_v, (bool, int, float, complex, str, bytes)) or
+            # 容器（递归检查交给 pickle，这里只看顶层类型）
+            isinstance(_v, (list, tuple, set, frozenset, dict)) or
+            # NumPy
+            isinstance(_v, (np.ndarray, np.generic)) or
+            # Pandas
+            isinstance(_v, (pd.DataFrame, pd.Series)) or
+            # Image
+            isinstance(_v, Image.Image) or
+            # Matplotlib
+            isinstance(_v, (plt.Figure, plt.Axes)) or
+            # 忽略文件
+            isinstance(_v, (os.PathLike, os.DirEntry))
+        )):
+        try:
+            pickle.dumps(_v, protocol=pickle.HIGHEST_PROTOCOL)
+            _snapshot[_k] = _v
+        except Exception as e:
+            pass
+        
+# 保存到临时文件
+with open(r"{self._temp_file}", "wb") as f:
+    pickle.dump(_snapshot, f)
+
+print("变量快照已保存")
 '''
         current_console.console.execute(code, hidden=True)
-        QTimer.singleShot(200, self._load_from_temp)
+        QTimer.singleShot(300, self._load_from_temp)
 
     def _load_from_temp(self):
         try:
             if hasattr(self, '_temp_file') and os.path.exists(self._temp_file):
-                with open(self._temp_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
+                with open(self._temp_file, 'rb') as f:
+                    data = pickle.load(f)
                 os.remove(self._temp_file)
 
-                # 设置数据到变量浏览器
+                # 检查数据是否有变化，避免不必要的刷新
+                # 创建一个简化的哈希用于比较
+                current_hash_data = {k: str(type(v)) for k, v in data.items()}
+                current_data_hash = hash(str(sorted(current_hash_data.items())))
+
+                if current_data_hash == self._last_snapshot_hash:
+                    # 数据没有变化，不刷新
+                    return
+
+                self._last_snapshot_hash = current_data_hash
+                self._last_variables = data
+
+                # 直接设置原始数据到变量浏览器
                 self.collection_widget.set_data(data)
             else:
                 logger.error("临时文件不存在")
         except Exception as e:
             logger.error(f"加载变量失败: {e}")
+
+    def refresh_variables_manually(self):
+        """手动刷新变量"""
+        self.refresh_variables()
 
 
 # --- 4. 嵌入式 Console + TabBar ---
