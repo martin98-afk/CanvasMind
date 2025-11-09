@@ -647,8 +647,6 @@ class JediCodeEditor(CodeEditor):
             automatic_completions=True,
             underline_errors=True,
             completions_hint=True,
-            scroll_past_end=True,
-            format_on_save=True,
             highlight_current_line=True,
         )
 

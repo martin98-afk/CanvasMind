@@ -8,7 +8,8 @@ import textwrap
 import uuid
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, pyqtSlot
+from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTableWidgetItem, QHeaderView,
     QFormLayout, QDialog, QTableWidget, QStackedWidget
@@ -16,14 +17,15 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PushButton,
     TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit, MessageBoxBase, SubtitleLabel,
-    ToolButton, DoubleSpinBox, TransparentToolButton, Pivot
+    ToolButton, DoubleSpinBox, TransparentToolButton, Pivot, SegmentedWidget
 )
 from spyder.widgets.collectionseditor import CollectionsEditorWidget
 
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition, ConnectionType
 from app.scan_components import scan_components
-from app.utils.utils import extract_class_source_from_file
-from app.widgets.basic_widget.ipython_console import IPythonConsoleManager  # 假设更新后的类名
+from app.utils.utils import extract_class_source_from_file, get_icon
+from app.widgets.basic_widget.ipython_console import IPythonConsoleManager, \
+    SpyderCollectionsVariableExplorer, IPythonConsoleWithTabBar  # 假设更新后的类名
 from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.code_editer import CodeEditorWidget, DEFAULT_CODE_TEMPLATE
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
@@ -156,7 +158,7 @@ class ComponentDeveloperWidget(QWidget):
         main_splitter.addWidget(self.component_tree_panel)  # 将新的左侧容器添加到    主分割器
         # --- 修改结束 ---
         # 代码编辑框
-        code_widget = QWidget()
+        code_widget = QWidget(self)
         code_layout = QVBoxLayout(code_widget)
         code_layout.setContentsMargins(0, 0, 0, 0)
         # 代码编辑器
@@ -180,9 +182,11 @@ class ComponentDeveloperWidget(QWidget):
         code_layout.addWidget(self.code_editor, stretch=1)
         main_splitter.addWidget(code_widget)
         # 右侧：组件属性
-        right_widgets = QWidget()
+        right_widgets = QWidget(self)
         vBoxLayout = QVBoxLayout(right_widgets)
-        self.pivot = Pivot(self)
+        vBoxLayout.setContentsMargins(0, 0, 0, 0)
+        vBoxLayout.setSpacing(0)  # 可选：移除组件之间的间距（如果不需要）
+        self.pivot = SegmentedWidget(self)
         self.stackedWidget = QStackedWidget(self)
         # 组件属性
         info_interface = QWidget()
@@ -194,7 +198,7 @@ class ComponentDeveloperWidget(QWidget):
         basic_info_h_layout = QHBoxLayout(basic_info_widget)
         basic_info_h_layout.setContentsMargins(0, 0, 0, 0)  # 设置整体边距
         # 左侧：名称、分类、描述
-        left_form_widget = QWidget()  # 容器用于左侧表单
+        left_form_widget = QWidget(self)  # 容器用于左侧表单
         left_form_layout = QFormLayout(left_form_widget)
         self.name_edit = LineEdit()
         self.category_edit = LineEdit()
@@ -204,7 +208,7 @@ class ComponentDeveloperWidget(QWidget):
         left_form_layout.addRow(BodyLabel("组件分类:"), self.category_edit)
         left_form_layout.addRow(BodyLabel("组件描述:"), self.description_edit)
         # 右侧：依赖 requirements
-        right_req_widget = QWidget()  # 容器用于右侧依赖
+        right_req_widget = QWidget(self)  # 容器用于右侧依赖
         right_req_layout = QVBoxLayout(right_req_widget)  # 垂直布局放标签和编辑器
         right_req_layout.addWidget(BodyLabel("组件依赖:"))  # 标签
         self.requirements_edit = TextEdit()  # 使用 qfluentwidgets 的 TextEdit
@@ -229,55 +233,43 @@ class ComponentDeveloperWidget(QWidget):
         # 属性编辑器
         self.property_editor = PropertyEditorWidget(self)
         info_layout.addWidget(self.property_editor, stretch=1)
-        self.addSubInterface(info_interface, "component_info", "组件属性")
+        self.addSubInterface(info_interface, "component_info", "组件属性", get_icon("配置"))
 
-        # --- Debug 区域：包含 CollectionEditor 和 IPython Console ---
-        self.debug_splitter = QSplitter(Qt.Vertical)
-        # 1. CollectionsEditor (Spyder)
-        dark_qss = """
-        CollectionsEditorTableView {
-            background-color: #19232D;
-            color: #FFFFFF;
-            alternate-background-color: #1A2029;
-            gridline-color: #32414B;
-            selection-background-color: #3D5DAE;
-            selection-color: #FFFFFF;
-        }
-        QDialog, QWidget {
-                background-color: #19232D;
-                color: #FFFFFF;
-            }
-        QHeaderView::section {
-            background-color: #262F3A;
-            color: #FFFFFF;
-            padding: 4px;
-            border: 1px solid #32414B;
-        }
-        QTableView::item {
-            padding: 4px;
-        }
-        """
-        self.collection_widget = CollectionsEditorWidget(
-            self, data={'bytes': b'kjkj kj k j j kj k jkj',
-                        'str': 'éù',
-                        'list': [1, 3, [sorted, 5, 6], 'kjkj', None],
-                        'set': {1, 2, 1, 3, None, 'A', 'B', 'C', True, False}}
+        # --- Debug 区域：包含 CollectionEditor 和 IPython Console --
+        # 创建中央部件
+        central_widget = QWidget(self)
+        central_layout = QVBoxLayout(central_widget)
+        central_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 创建Console管理器
+        self.console_manager = IPythonConsoleWithTabBar(
+            parent=self, package_manager=self.home.package_manager
         )
-        self.collection_widget.setStyleSheet(dark_qss)
-        self.debug_splitter.addWidget(self.collection_widget)
+        # 创建变量浏览器，传入console管理器引用
+        self.var_explorer = SpyderCollectionsVariableExplorer(
+            parent=self, console_manager=self.console_manager.console_manager
+        )
 
-        # 2. IPython Console (自定义)
-        self.console_widget = IPythonConsoleManager(self, self.home.package_manager)
-        # 将 console_widget 与 collection_widget 关联，以便 console 中的变量可以被 collection_widget 显示
-        self.debug_splitter.addWidget(self.console_widget)
-        self.addSubInterface(self.debug_splitter, "debug_interface", "组件调试")
+        # 设置变量浏览器的console引用
+        current_console = self.console_manager.get_current_console()
+        if current_console:
+            self.var_explorer.console_widget = current_console
+
+        # 创建垂直分割器
+        splitter = QSplitter(Qt.Vertical)
+        splitter.addWidget(self.var_explorer)
+        splitter.addWidget(self.console_manager)
+        splitter.setSizes([300, 400])  # 变量浏览器较小，控制台较大
+
+        central_layout.addWidget(splitter)
+        self.addSubInterface(central_widget, "debug_interface", "组件调试", get_icon("调试"))
 
         # --- 新增：历史记录卡片 ---
-        self.history_card = CardWidget()
+        self.history_card = CardWidget(self)
         history_card_layout = QVBoxLayout(self.history_card)
         history_card_layout.setContentsMargins(10, 10, 10, 10)  # 设置内边距
         history_label = BodyLabel("编辑历史:")
-        self.history_table = TableWidget()
+        self.history_table = TableWidget(self)
         self.history_table.setColumnCount(2)  # 只显示版本和时间
         self.history_table.setHorizontalHeaderLabels(["版本", "保存时间"])
         self.history_table.verticalHeader().hide()
@@ -291,10 +283,10 @@ class ComponentDeveloperWidget(QWidget):
         self.history_table.itemDoubleClicked.connect(self._load_history_code)
         history_card_layout.addWidget(history_label)
         history_card_layout.addWidget(self.history_table)
-        self.addSubInterface(self.history_card, "history_card", "组件历史")
+        self.addSubInterface(self.history_card, "history_card", "组件历史", FluentIcon.HISTORY)
         self.pivot.setCurrentItem("component_info")
-        vBoxLayout.addWidget(self.pivot, 0, Qt.AlignLeft)
-        vBoxLayout.addWidget(self.stackedWidget)
+        vBoxLayout.addWidget(self.pivot)
+        vBoxLayout.addWidget(self.stackedWidget, 1)
         main_splitter.addWidget(right_widgets)
         # 先设置 stretch，让左侧可收缩
         main_splitter.setStretchFactor(0, 0)  # 左侧不拉伸
@@ -321,14 +313,15 @@ class ComponentDeveloperWidget(QWidget):
         self.requirements_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
 
-    def addSubInterface(self, widget, objectName: str, text: str):
+    def addSubInterface(self, widget, objectName: str, text: str, icon: QIcon):
         widget.setObjectName(objectName)
         self.stackedWidget.addWidget(widget)
         # 使用全局唯一的 objectName 作为路由键
         self.pivot.addItem(
             routeKey=objectName,
             text=text,
-            onClick=lambda: self.stackedWidget.setCurrentWidget(widget)
+            onClick=lambda: self.stackedWidget.setCurrentWidget(widget),
+            icon=icon
         )
 
     def _load_existing_components(self):
@@ -451,46 +444,18 @@ class ComponentDeveloperWidget(QWidget):
             finally:
                 self.code_editor.resume_sync()
 
-    # --- 新增：运行组件代码 ---
     def _run_component_code(self):
         """运行当前编辑器中的组件代码"""
-        local_import = "from app.components.base import *\n\n"
+        local_import = "from app.components.base import *\n"
         current_code = local_import + self.code_editor.get_code()
         if not current_code.strip():
             self._show_warning("代码编辑器为空，无法运行！")
             return
-
-        # 将代码发送到 IPython 控制台执行
-        # 需要获取当前活动的控制台实例
-        if hasattr(self.console_widget, 'get_current_console'):
-            # 如果 IPythonConsoleManager 有获取当前控制台的方法
-            current_console = self.console_widget.get_current_console()
-            if current_console and current_console.kernel_client:
-                # 执行代码
-                current_console.console.execute(current_code)
-                # 执行后，可以尝试刷新变量显示（如果可能）
-                # 例如，执行 %who 或 %whos 命令
-                # current_console.console.execute("%who")
-                # 为了联动 Spyder 的 CollectionsEditor，可能需要更复杂的交互
-                # 一个简单的方法是在控制台中执行后，用户手动查看控制台输出或变量
-                # 或者，如果 kernel 支持，可以执行代码并获取变量列表
-                # 但这通常需要 kernel 与 UI 之间有更紧密的集成
-                # 这里我们只执行代码，联动部分可能需要更高级的实现
-            else:
-                self._show_error("当前控制台未启动或无 kernel 客户端！")
+        current_console = self.console_manager.get_current_console()
+        if current_console and current_console.kernel_client:
+            current_console.console.execute(current_code)
         else:
-            # 如果没有直接获取控制台的方法，假设第一个控制台
-            if self.console_widget.stacked_widget.count() > 0:
-                console_widget = self.console_widget.stacked_widget.widget(0) # 获取第一个
-                if hasattr(console_widget, 'console') and console_widget.console.kernel_client:
-                    print("正在执行组件代码...")
-                    console_widget.console.execute(current_code)
-                else:
-                    self._show_error("无法获取控制台实例或 kernel 客户端！")
-            else:
-                self._show_error("没有可用的控制台实例！")
-
-    # --- 新增结束 ---
+            self._show_error("当前控制台未启动或无 kernel 客户端！")
 
     def _sync_ports_to_code(self):
         """同步端口到代码"""
