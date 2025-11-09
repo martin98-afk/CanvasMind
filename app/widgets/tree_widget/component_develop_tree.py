@@ -8,15 +8,17 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QTreeWidgetItem,
     QFileDialog,
-    QDialog
+    QDialog,
+    QTreeWidget
 )
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from qfluentwidgets import FluentStyleSheet, SearchLineEdit
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from qfluentwidgets import FluentStyleSheet, SearchLineEdit, TransparentToolButton
 from qfluentwidgets import (
     TreeWidget, RoundMenu, Action, InfoBar, InfoBarPosition, MessageBox
 )
 
 from app.scan_components import scan_components
+from app.utils.utils import get_icon
 from app.widgets.dialog_widget.new_component_dialog import NewComponentDialog
 
 
@@ -36,6 +38,7 @@ class ComponentTreeWidget(TreeWidget):
         self._file_map: Dict[str, str] = {}
         self._copied_component = None
         self._all_items = []  # 用于搜索时恢复
+        self._current_editing_component = None  # 当前编辑的组件路径
         self.refresh_components()
 
         # 启用键盘焦点，以便接收快捷键
@@ -107,6 +110,51 @@ class ComponentTreeWidget(TreeWidget):
                 item.parent().setHidden(False)
                 item.parent().setExpanded(True)
 
+    # ==================== 展开折叠功能 ====================
+    def expand_all_categories(self):
+        """展开所有分类"""
+        for i in range(self.topLevelItemCount()):
+            item = self.topLevelItem(i)
+            item.setExpanded(True)
+
+    def collapse_all_categories(self):
+        """折叠所有分类"""
+        for i in range(self.topLevelItemCount()):
+            item = self.topLevelItem(i)
+            item.setExpanded(False)
+
+    def set_current_editing_component(self, full_path: str):
+        """设置当前编辑的组件路径"""
+        self._current_editing_component = full_path
+
+    def jump_to_current_component(self):
+        """跳转到当前正在编辑的组件"""
+        if not self._current_editing_component:
+            self._show_warning("没有当前编辑的组件")
+            return
+
+        # 遍历所有项目查找匹配的组件
+        for item in self._all_items:
+            if not item.parent():  # 跳过分类项
+                continue
+            item_path = item.data(0, Qt.UserRole + 1)
+            if item_path == self._current_editing_component:
+                # 展开父节点
+                parent = item.parent()
+                if parent:
+                    parent.setExpanded(True)
+
+                # 选中并滚动到该组件
+                self.setCurrentItem(item)
+                self.scrollToItem(item, hint=QTreeWidget.EnsureVisible)
+
+                # 设置焦点以高亮显示
+                item.setSelected(True)
+                self.setFocus()
+                return
+
+        self._show_warning("未找到当前编辑的组件")
+
     # ==================== 快捷键支持 ====================
     def keyPressEvent(self, event):
         """处理快捷键"""
@@ -126,6 +174,21 @@ class ComponentTreeWidget(TreeWidget):
         # Delete: 删除
         if key == Qt.Key_Delete:
             self._delete_component()
+            return
+
+        # Ctrl+Shift+加号: 展开所有
+        if modifiers == (Qt.ControlModifier | Qt.ShiftModifier) and key in [Qt.Key_Plus, Qt.Key_Equal]:
+            self.expand_all_categories()
+            return
+
+        # Ctrl+Shift+减号: 折叠所有
+        if modifiers == (Qt.ControlModifier | Qt.ShiftModifier) and key == Qt.Key_Minus:
+            self.collapse_all_categories()
+            return
+
+        # Ctrl+G: 跳转到当前组件
+        if modifiers == Qt.ControlModifier and key == Qt.Key_G:
+            self.jump_to_current_component()
             return
 
         # 其他按键交给父类
@@ -151,7 +214,6 @@ class ComponentTreeWidget(TreeWidget):
             menu.addActions([
                 Action("✏️ 编辑组件", triggered=self._edit_component),
                 Action("📋 复制组件 (Ctrl+C)", triggered=self._copy_component),
-                Action("📤 导出组件", triggered=self._export_component),
                 Action("🗑️ 删除组件 (Delete)", triggered=self._delete_component),
             ])
         else:
@@ -159,6 +221,10 @@ class ComponentTreeWidget(TreeWidget):
             if self._copied_component:
                 menu.addAction(Action("📌 粘贴组件 (Ctrl+V)", triggered=self._paste_component))
             menu.addAction(Action("🔄 刷新组件", triggered=self.refresh_components))
+            menu.addSeparator()
+            menu.addAction(Action("展开所有分类 (Ctrl+Shift++)", triggered=self.expand_all_categories))
+            menu.addAction(Action("折叠所有分类 (Ctrl+Shift+-)", triggered=self.collapse_all_categories))
+            menu.addAction(Action("跳转到当前组件 (Ctrl+G)", triggered=self.jump_to_current_component))
 
         if menu.actions():
             menu.exec_(self.viewport().mapToGlobal(position))
@@ -171,6 +237,8 @@ class ComponentTreeWidget(TreeWidget):
         full_path = item.data(0, Qt.UserRole + 1)
         comp_cls = self._components.get(full_path)
         if comp_cls:
+            # 更新当前编辑的组件
+            self.set_current_editing_component(full_path)
             self.component_selected.emit(comp_cls)
         else:
             self._show_warning("组件类定义丢失，请刷新组件树。")
@@ -301,11 +369,12 @@ class ComponentTreeWidget(TreeWidget):
 
 
 class ComponentTreePanel(QWidget):
-    """带搜索框的组件树面板"""
+    """带搜索框和控制按钮的组件树面板"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent_window = parent
+        self.tree = None  # 预先声明，避免初始化顺序问题
         self._setup_ui()
 
     def _setup_ui(self):
@@ -313,18 +382,48 @@ class ComponentTreePanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
+        # 搜索框和控制按钮行
+        top_layout = QHBoxLayout()
+        top_layout.setContentsMargins(5, 5, 5, 5)
+        top_layout.setSpacing(5)
+
         # 搜索框
         self.search_box = SearchLineEdit(self)
-        self.search_box.setPlaceholderText("🔍 搜索组件...")
+        self.search_box.setPlaceholderText("搜索组件...")
         self.search_box.setClearButtonEnabled(True)
-        FluentStyleSheet.LINE_EDIT.apply(self.search_box)  # 可选：应用 Fluent 风格
-        self.search_box.textChanged.connect(self._on_search_text_changed)
+        FluentStyleSheet.LINE_EDIT.apply(self.search_box)
 
-        # 组件树
+        # 组件树（必须先创建，然后才能连接信号）
         self.tree = ComponentTreeWidget(self.parent_window)
 
-        layout.addWidget(self.search_box)
+        # 控制按钮
+        self.expand_all_btn = TransparentToolButton(get_icon("expand_all"), self)
+        self.expand_all_btn.setToolTip("展开所有分类")
+        self.expand_all_btn.setFixedSize(20, 32)
+        self.expand_all_btn.clicked.connect(self.tree.expand_all_categories)
+
+        self.collapse_all_btn = TransparentToolButton(get_icon("collapse_all"), self)
+        self.collapse_all_btn.setToolTip("折叠所有分类")
+        self.collapse_all_btn.setFixedSize(20, 32)
+        self.collapse_all_btn.clicked.connect(self.tree.collapse_all_categories)
+
+        self.jump_to_current_btn = TransparentToolButton(get_icon("location"), self)
+        self.jump_to_current_btn.setToolTip("跳转到当前编辑的组件")
+        self.jump_to_current_btn.setFixedSize(20, 32)
+        self.jump_to_current_btn.clicked.connect(self.tree.jump_to_current_component)
+
+        # 添加到布局
+        top_layout.addWidget(self.search_box)
+        top_layout.addWidget(self.jump_to_current_btn)
+        top_layout.addWidget(self.expand_all_btn)
+        top_layout.addWidget(self.collapse_all_btn)
+
+
+        layout.addLayout(top_layout)
         layout.addWidget(self.tree)
+
+        # 连接搜索事件
+        self.search_box.textChanged.connect(self._on_search_text_changed)
 
     def _on_search_text_changed(self, text: str):
         self.tree.filter_items(text)
@@ -344,3 +443,11 @@ class ComponentTreePanel(QWidget):
 
     def refresh_components(self):
         self.tree.refresh_components()
+
+    def set_current_editing_component(self, full_path: str):
+        """设置当前编辑的组件路径"""
+        self.tree.set_current_editing_component(full_path)
+
+    def jump_to_current_component(self):
+        """跳转到当前编辑的组件"""
+        self.tree.jump_to_current_component()

@@ -1,3 +1,15 @@
+/* 样例卡片整体样式 */
+SampleCard {
+    /* 在深色主题下，添加一个非常淡的渐变背景 */
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 rgba(60, 60, 60, 100), /* 顶部颜色，略亮于主背景 */
+                                stop:1 rgba(40, 40, 40, 100)); /* 底部颜色，与主背景接近 */
+    /* 或者，如果你想用一个统一的半透明背景色，可以注释掉上面的 gradient，使用下面这行 */
+    /* background-color: rgba(50, 50, 50, 100); */
+    border-radius: 8px; /* 保持圆角 */
+    border: 1px solid rgba(255, 255, 255, 10); /* 添加一个非常淡的边框，增加一点轮廓感 */
+}
+
 #titleLabel {
     color: white;
     font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC';

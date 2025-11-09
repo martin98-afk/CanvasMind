@@ -29,7 +29,7 @@ class Component(BaseComponent):
     ]
     
     outputs = [
-        PortDefinition(name="output", label="判断结果", type=ArgumentType.BOOL),
+        PortDefinition(name="output", label="判断结果", type=ArgumentType.TORCHMODEL),
     ]
     
     properties = {

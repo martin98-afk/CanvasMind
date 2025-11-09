@@ -644,7 +644,8 @@ class JediCodeEditor(CodeEditor):
             indent_guides=True,
             folding=True,
             intelligent_backspace=True,
-            automatic_completions=False,
+            automatic_completions=True,
+            underline_errors=True,
             completions_hint=True,
             highlight_current_line=True,
         )
@@ -926,11 +927,18 @@ class JediCodeEditor(CodeEditor):
             global_mouse_pos = QCursor.pos()
             popup_rect = self.popup.geometry()
             if not popup_rect.contains(global_mouse_pos):
-                logger.info(f"[Jedi] Clicked outside popup, hiding.")
                 self.popup.hide()
                 self._popup_timeout_timer.stop()
                 return True # 拦截事件
         return super().eventFilter(obj, event)
+
+    def mousePressEvent(self, event):
+
+        if event.button() == Qt.LeftButton and self.popup.isVisible():
+            self.popup.hide()
+            self._popup_timeout_timer.stop()
+
+        super().mousePressEvent(event)
 
     def keyPressEvent(self, event):
         """处理按键事件"""
@@ -947,12 +955,17 @@ class JediCodeEditor(CodeEditor):
 
         # 处理补全弹窗导航
         if self.popup.isVisible():
-            if key == Qt.Key_Escape:
-                self.popup.hide()
-                self._popup_timeout_timer.stop()  # 停止超时计时器
-                event.accept()
-                return
-            elif key == Qt.Key_Tab:
+            # ---- Handle hard coded and builtin actions
+            operators = {'+', '-', '*', '**', '/', '//', '%', '@', '<<', '>>',
+                         '&', '|', '^', '~', '<', '>', '<=', '>=', '==', '!='}
+            delimiters = {',', ':', ';', '@', '=', '->', '+=', '-=', '*=', '/=',
+                          '//=', '%=', '@=', '&=', '|=', '^=', '>>=', '<<=', '**='}
+            text = str(event.text())
+            if text not in self.auto_completion_characters:
+                if text in operators or text in delimiters:
+                    self.popup.hide()
+
+            if key == Qt.Key_Tab:
                 # 检查是否有选中项，如果有则应用，否则执行默认Tab行为
                 if self.popup.currentItem():
                     self._apply_selected_completion()
@@ -963,14 +976,10 @@ class JediCodeEditor(CodeEditor):
                     super().keyPressEvent(event)
                     return
             elif key == Qt.Key_Return: # PyCharm 风格：回车确认
-                if self.popup.currentItem():
-                    self._apply_selected_completion()
-                    event.accept()
-                    return
-                else:
-                    # No item selected, let super handle Enter
-                    super().keyPressEvent(event)
-                    return
+                # No item selected, let super handle Enter
+                self.popup.hide()
+                super().keyPressEvent(event)
+                return
             elif key == Qt.Key_Up:
                 current = self.popup.currentRow()
                 self.popup.setCurrentRow(max(0, current - 1))

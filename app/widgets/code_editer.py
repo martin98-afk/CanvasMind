@@ -35,6 +35,17 @@ DEFAULT_CODE_TEMPLATE = '''class Component(BaseComponent):
         return {
             "output_data": result
         }
+        
+
+if __name__ == "__main__":
+    import warnings
+    warnings.filterwarnings("ignore")
+    model = Component()
+    result = model.run(
+        params={"param1": "test"},
+        inputs={"input_data": "output"}
+    )
+    print(result)
 '''
 
 
