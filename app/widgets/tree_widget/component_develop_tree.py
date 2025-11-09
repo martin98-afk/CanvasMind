@@ -9,13 +9,12 @@ from PyQt5.QtWidgets import (
     QTreeWidgetItem,
     QFileDialog,
     QDialog,
-    QHeaderView, QTreeWidget
+    QTreeWidget
 )
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from qfluentwidgets import FluentStyleSheet, SearchLineEdit, TransparentToolButton
 from qfluentwidgets import (
-    TreeWidget, RoundMenu, Action, InfoBar, InfoBarPosition, MessageBox,
-    ToolButton, FluentIcon
+    TreeWidget, RoundMenu, Action, InfoBar, InfoBarPosition, MessageBox
 )
 
 from app.scan_components import scan_components
@@ -215,7 +214,6 @@ class ComponentTreeWidget(TreeWidget):
             menu.addActions([
                 Action("✏️ 编辑组件", triggered=self._edit_component),
                 Action("📋 复制组件 (Ctrl+C)", triggered=self._copy_component),
-                Action("📤 导出组件", triggered=self._export_component),
                 Action("🗑️ 删除组件 (Delete)", triggered=self._delete_component),
             ])
         else:
@@ -391,7 +389,7 @@ class ComponentTreePanel(QWidget):
 
         # 搜索框
         self.search_box = SearchLineEdit(self)
-        self.search_box.setPlaceholderText("🔍 搜索组件...")
+        self.search_box.setPlaceholderText("搜索组件...")
         self.search_box.setClearButtonEnabled(True)
         FluentStyleSheet.LINE_EDIT.apply(self.search_box)
 
@@ -400,17 +398,17 @@ class ComponentTreePanel(QWidget):
 
         # 控制按钮
         self.expand_all_btn = TransparentToolButton(get_icon("expand_all"), self)
-        self.expand_all_btn.setToolTip("展开所有分类 (Ctrl+Shift++)")
+        self.expand_all_btn.setToolTip("展开所有分类")
         self.expand_all_btn.setFixedSize(20, 32)
         self.expand_all_btn.clicked.connect(self.tree.expand_all_categories)
 
         self.collapse_all_btn = TransparentToolButton(get_icon("collapse_all"), self)
-        self.collapse_all_btn.setToolTip("折叠所有分类 (Ctrl+Shift+-)")
+        self.collapse_all_btn.setToolTip("折叠所有分类")
         self.collapse_all_btn.setFixedSize(20, 32)
         self.collapse_all_btn.clicked.connect(self.tree.collapse_all_categories)
 
         self.jump_to_current_btn = TransparentToolButton(get_icon("location"), self)
-        self.jump_to_current_btn.setToolTip("跳转到当前编辑的组件 (Ctrl+G)")
+        self.jump_to_current_btn.setToolTip("跳转到当前编辑的组件")
         self.jump_to_current_btn.setFixedSize(20, 32)
         self.jump_to_current_btn.clicked.connect(self.tree.jump_to_current_component)
 

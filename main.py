@@ -2,6 +2,9 @@
 import os
 import sys
 import warnings
+
+from spyder.utils.palette import SpyderPalette, SpyderPaletteDark
+
 warnings.filterwarnings("ignore")
 
 from PyQt5.QtCore import Qt
@@ -27,7 +30,6 @@ if __name__ == '__main__':
     enable_dpi_scale()
     # 创建应用
     app = QApplication(sys.argv)
-
     # 创建并显示主窗口
     try:
         window = LowCodeWindow()

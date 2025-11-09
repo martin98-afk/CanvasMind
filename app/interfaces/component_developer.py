@@ -1,32 +1,42 @@
 # -*- coding: utf-8 -*-
 import ast
+import datetime
+import json
 import re
 import shutil
 import textwrap
 import uuid
 from pathlib import Path
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QUrl
+from types import SimpleNamespace
+
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QSize
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTableWidgetItem, QHeaderView,
-    QFormLayout, QDialog, QTableWidget
+    QFormLayout, QDialog, QTableWidget, QStackedWidget, QToolButton
 )
+from pyqtconsole.console import PythonConsole
 from qfluentwidgets import (
-    CardWidget, BodyLabel, LineEdit, PrimaryPushButton, PushButton,
+    CardWidget, BodyLabel, LineEdit, PushButton,
     TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit, MessageBoxBase, SubtitleLabel,
-    ToolButton, DoubleSpinBox, TransparentToolButton
+    ToolButton, DoubleSpinBox, TransparentToolButton, Pivot
 )
-import json
-import datetime
+from spyder.api.exceptions import SpyderAPIError
+from spyder.config.gui import get_font
+from spyder.config.manager import CONF
+from spyder.plugins.ipythonconsole.widgets.main_widget import IPythonConsoleWidget
+from spyder.utils.icon_manager import ima
+from spyder.widgets.collectionseditor import CollectionsEditorWidget
+
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition, ConnectionType
 from app.scan_components import scan_components
 from app.utils.utils import extract_class_source_from_file
+from app.widgets.basic_widget.ipython_console import EmbeddedIPythonConsole, IPythonConsoleManager
 from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.code_editer import CodeEditorWidget, DEFAULT_CODE_TEMPLATE
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
 
-# --- 组件开发主界面 (布局调整，修复同步) ---
-# --- 新增：组件历史记录管理器 ---
+# --- 组件历史版本记录 ---
 class ComponentHistoryManager:
     """管理组件的编辑历史记录"""
     HISTORY_FILE_SUFFIX = ".history.json"
@@ -57,10 +67,11 @@ class ComponentHistoryManager:
         # 检查当前代码是否与最近一次保存的代码相同
         if histories and histories[-1].get('code') == code:
             print("代码未改变，跳过保存历史记录。")
-            return # 如果代码相同，直接返回，不保存新版本
+            return  # 如果代码相同，直接返回，不保存新版本
 
         # 生成版本号 (V + 递增数字)
-        version_numbers = [int(h['version'][1:]) for h in histories if h['version'].startswith('V') and h['version'][1:].isdigit()]
+        version_numbers = [int(h['version'][1:]) for h in histories if
+                           h['version'].startswith('V') and h['version'][1:].isdigit()]
         next_version_num = max(version_numbers) + 1 if version_numbers else 1
         version = f"V{next_version_num}"
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -68,7 +79,7 @@ class ComponentHistoryManager:
             "version": version,
             "timestamp": timestamp,
             "component_name": component_name,
-            "code": code # 存储原始代码，不添加 COMPONENT_IMPORT_CODE
+            "code": code  # 存储原始代码，不添加 COMPONENT_IMPORT_CODE
         }
         histories.append(history_entry)
 
@@ -95,7 +106,7 @@ class ComponentHistoryManager:
         except (FileNotFoundError, json.JSONDecodeError) as e:
             print(f"加载历史记录文件失败: {e}")
             return []
-# --- 新增结束 ---
+
 
 class ComponentDeveloperWidget(QWidget):
     """组件开发主界面"""
@@ -129,6 +140,7 @@ class ComponentDeveloperWidget(QWidget):
         'tomli': 'tomli',
         'tomli_w': 'tomli-w',
     }
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.home = parent
@@ -154,42 +166,10 @@ class ComponentDeveloperWidget(QWidget):
         self_layout.setContentsMargins(0, 0, 0, 0)
         self_layout.setSpacing(0)
 
-        # --- 修改：左侧：组件树和历史记录面板 (使用 splitter) ---
-        left_splitter = QSplitter(Qt.Vertical)
+        # --- 修改：左侧：组件树 ---
         self.component_tree_panel = ComponentTreePanel(self)
         self.component_tree = self.component_tree_panel.tree  # 保留对 tree 的直接引用（如果已有代码依赖）
-
-        left_splitter.addWidget(self.component_tree_panel)
-
-        # --- 新增：历史记录卡片 ---
-        self.history_card = CardWidget()
-        history_card_layout = QVBoxLayout(self.history_card)
-        history_card_layout.setContentsMargins(10, 10, 10, 10) # 设置内边距
-
-        history_label = BodyLabel("编辑历史:")
-        self.history_table = TableWidget()
-        self.history_table.setColumnCount(2) # 只显示版本和时间
-        self.history_table.setHorizontalHeaderLabels(["版本", "保存时间"])
-        self.history_table.verticalHeader().hide()
-        self.history_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.history_table.setSelectionBehavior(QTableWidget.SelectItems)
-        self.history_table.setSelectionMode(QTableWidget.ContiguousSelection)
-        # 设置版本列宽度自适应内容，时间列拉伸填充
-        self.history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents) # 版本列
-        self.history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch) # 时间列
-        # 设置最大高度
-        self.history_table.setMaximumHeight(150) # 设置最大高度
-        # 连接双击信号
-        self.history_table.itemDoubleClicked.connect(self._load_history_code)
-
-        history_card_layout.addWidget(history_label)
-        history_card_layout.addWidget(self.history_table)
-
-        left_splitter.addWidget(self.history_card)
-        # 设置初始大小，让历史记录区域初始较小
-        left_splitter.setSizes([400, 150]) # 假设组件树初始高度400，历史记录初始150
-
-        main_splitter.addWidget(left_splitter) # 将新的左侧容器添加到主分割器
+        main_splitter.addWidget(self.component_tree_panel)  # 将新的左侧容器添加到    主分割器
         # --- 修改结束 ---
 
         # 代码编辑框
@@ -211,9 +191,15 @@ class ComponentDeveloperWidget(QWidget):
         code_layout.addLayout(save_layout)
         code_layout.addWidget(self.code_editor, stretch=1)
         main_splitter.addWidget(code_widget)
+
+        # 右侧：组件属性
+        right_widgets = QWidget()
+        vBoxLayout = QVBoxLayout(right_widgets)
+        self.pivot = Pivot(self)
+        self.stackedWidget = QStackedWidget(self)
         # 组件属性
-        info_widget = QWidget()
-        info_layout = QVBoxLayout(info_widget)
+        info_interface = QWidget()
+        info_layout = QVBoxLayout(info_interface)
         info_layout.setContentsMargins(0, 0, 0, 0)
         # --- 基本信息卡片 ---
         basic_info_widget = CardWidget()
@@ -256,9 +242,91 @@ class ComponentDeveloperWidget(QWidget):
         # 属性编辑器
         self.property_editor = PropertyEditorWidget(self)
         info_layout.addWidget(self.property_editor, stretch=1)
-        main_splitter.addWidget(info_widget)
-        main_splitter.setSizes([125, 450, 450])  # 调整大小比例，给右侧更多空间
+        self.addSubInterface(info_interface, "component_info", "组件属性")
+
+        self.debug_splitter = QSplitter(Qt.Vertical)
+        dark_qss = """
+        CollectionsEditorTableView {
+            background-color: #19232D;
+            color: #FFFFFF;
+            alternate-background-color: #1A2029;
+            gridline-color: #32414B;
+            selection-background-color: #3D5DAE;
+            selection-color: #FFFFFF;
+        }
+        QDialog, QWidget {
+                background-color: #19232D;
+                color: #FFFFFF;
+            }
+        QHeaderView::section {
+            background-color: #262F3A;
+            color: #FFFFFF;
+            padding: 4px;
+            border: 1px solid #32414B;
+        }
+
+        QTableView::item {
+            padding: 4px;
+        }
+        """
+        collection_widget = CollectionsEditorWidget(
+            self, data={'bytes': b'kjkj kj k j j kj k jkj',
+                        'str': 'éù',
+                        'list': [1, 3, [sorted, 5, 6], 'kjkj', None],
+                        'set': {1, 2, 1, 3, None, 'A', 'B', 'C', True, False}}
+        )
+        collection_widget.setStyleSheet(dark_qss)
+        self.debug_splitter.addWidget(collection_widget)
+        console_widget = IPythonConsoleManager(self, self.home.package_manager)
+        self.debug_splitter.addWidget(console_widget)
+        self.addSubInterface(self.debug_splitter, "debug_interface", "组件调试")
+
+        # --- 新增：历史记录卡片 ---
+        self.history_card = CardWidget()
+        history_card_layout = QVBoxLayout(self.history_card)
+        history_card_layout.setContentsMargins(10, 10, 10, 10)  # 设置内边距
+
+        history_label = BodyLabel("编辑历史:")
+        self.history_table = TableWidget()
+        self.history_table.setColumnCount(2)  # 只显示版本和时间
+        self.history_table.setHorizontalHeaderLabels(["版本", "保存时间"])
+        self.history_table.verticalHeader().hide()
+        self.history_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.history_table.setSelectionBehavior(QTableWidget.SelectItems)
+        self.history_table.setSelectionMode(QTableWidget.ContiguousSelection)
+        # 设置版本列宽度自适应内容，时间列拉伸填充
+        self.history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 版本列
+        self.history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)  # 时间列
+        # 连接双击信号
+        self.history_table.itemDoubleClicked.connect(self._load_history_code)
+
+        history_card_layout.addWidget(history_label)
+        history_card_layout.addWidget(self.history_table)
+        self.addSubInterface(self.history_card, "history_card", "组件历史")
+
+        self.pivot.setCurrentItem("component_info")
+        vBoxLayout.addWidget(self.pivot, 0, Qt.AlignLeft)
+        vBoxLayout.addWidget(self.stackedWidget)
+        main_splitter.addWidget(right_widgets)
+        # 先设置 stretch，让左侧可收缩
+        main_splitter.setStretchFactor(0, 0)  # 左侧不拉伸
+        main_splitter.setStretchFactor(1, 1)  # 中间拉伸
+        main_splitter.setStretchFactor(2, 1)  # 右侧拉伸
+
+        # 再设置一个“合理但小”的初始尺寸（避免 10 太小被忽略）
+        main_splitter.setSizes([50, 450, 450])  # 50 比 10 更可能生效
         layout.addWidget(main_splitter)
+
+    def addSubInterface(self, widget, objectName: str, text: str):
+        widget.setObjectName(objectName)
+        self.stackedWidget.addWidget(widget)
+
+        # 使用全局唯一的 objectName 作为路由键
+        self.pivot.addItem(
+            routeKey=objectName,
+            text=text,
+            onClick=lambda: self.stackedWidget.setCurrentWidget(widget)
+        )
 
     def _connect_signals(self):
         """连接信号"""
@@ -353,7 +421,7 @@ class ComponentDeveloperWidget(QWidget):
             if self._current_component_file:
                 self._load_history_list(self._current_component_file)
             else:
-                self.history_table.setRowCount(0) # 如果没有文件路径，清空历史列表
+                self.history_table.setRowCount(0)  # 如果没有文件路径，清空历史列表
             # --- 新增结束 ---
 
         except Exception as e:
@@ -848,7 +916,7 @@ class ComponentDeveloperWidget(QWidget):
             if self._current_component_file:
                 # 直接使用编辑器中的代码，不修改
                 ComponentHistoryManager.save_history(self._current_component_file, name, code)
-                self._load_history_list(self._current_component_file) # 保存后刷新历史列表
+                self._load_history_list(self._current_component_file)  # 保存后刷新历史列表
             # --- 新增结束 ---
 
             # 刷新组件树
@@ -917,6 +985,7 @@ class ComponentDeveloperWidget(QWidget):
             timestamp_item = QTableWidgetItem(history['timestamp'])
             # timestamp_item.setFlags(timestamp_item.flags() | Qt.ItemIsEditable) # 移除可编辑标志
             self.history_table.setItem(row, 1, timestamp_item)
+
     # --- 新增结束 ---
 
     # --- 新增：加载历史代码 ---
@@ -929,7 +998,7 @@ class ComponentDeveloperWidget(QWidget):
         if self._current_component_file:
             histories = ComponentHistoryManager.load_histories(self._current_component_file)
             if 0 <= row < len(histories):
-                history_data = histories[len(histories) - 1 - row] # 因为列表是反向的
+                history_data = histories[len(histories) - 1 - row]  # 因为列表是反向的
                 if history_data and 'code' in history_data:
                     code = history_data['code']
                     # 使用 replace_text_preserving_view 以保持编辑器状态（如光标位置、滚动条等）
@@ -944,8 +1013,8 @@ class ComponentDeveloperWidget(QWidget):
                 print("无效的历史记录行。")
         else:
             print("当前没有加载的组件文件，无法加载历史代码。")
-    # --- 新增结束 ---
 
+    # --- 新增结束 ---
 
     def _show_warning(self, message):
         """显示警告信息"""
@@ -983,10 +1052,12 @@ class ComponentDeveloperWidget(QWidget):
             parent=self
         )
 
+
 # --- 端口编辑器（已修改）---
 class PortEditorWidget(QWidget):
     """端口编辑器 - 支持动态添加删除"""
     ports_changed = pyqtSignal()
+
     def __init__(self, port_type="input", parent=None):
         super().__init__(parent)
         self.port_type = port_type
@@ -1012,6 +1083,7 @@ class PortEditorWidget(QWidget):
         button_layout.addWidget(remove_btn)
         layout.addLayout(button_layout)
         layout.addWidget(self.table)
+
     def _add_port(self, port: dict = {}):
         row = self.table.rowCount()
         self.table.insertRow(row)
@@ -1035,6 +1107,7 @@ class PortEditorWidget(QWidget):
             conn_combo.setCurrentIndex(0 if connection == ConnectionType.SINGLE else 1)
             self.table.setCellWidget(row, 3, conn_combo)
             conn_combo.currentIndexChanged.connect(lambda: self.ports_changed.emit())
+
     def _remove_port(self):
         selected_ranges = self.table.selectedRanges()
         if selected_ranges:
@@ -1045,6 +1118,7 @@ class PortEditorWidget(QWidget):
             for row in rows:
                 self.table.removeRow(row)
             self.ports_changed.emit()
+
     def get_ports(self):
         ports = []
         for row in range(self.table.rowCount()):
@@ -1067,15 +1141,18 @@ class PortEditorWidget(QWidget):
                 "connection": connection
             })
         return ports
+
     def set_ports(self, ports):
         self.table.setRowCount(0)
         for port in ports:
             self._add_port(port)
 
+
 # --- 属性编辑器 (未改动) ---
 class PropertyEditorWidget(QWidget):
     """属性编辑器 - 支持动态添加删除"""
     properties_changed = pyqtSignal()  # 属性改变信号
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
@@ -1100,6 +1177,7 @@ class PropertyEditorWidget(QWidget):
         button_layout.addWidget(remove_btn)
         layout.addLayout(button_layout)
         layout.addWidget(self.table)
+
     def _remove_property(self):
         """删除选中属性"""
         selected_ranges = self.table.selectedRanges()
@@ -1111,6 +1189,7 @@ class PropertyEditorWidget(QWidget):
             for row in rows:
                 self.table.removeRow(row)
             self.properties_changed.emit()
+
     def _add_property(self, prop_name: str = None, prop_def: PropertyType = None):
         """添加属性"""
         row = self.table.rowCount()
@@ -1172,6 +1251,7 @@ class PropertyEditorWidget(QWidget):
             options_item = QTableWidgetItem("")
             options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
             self.table.setItem(row, 4, options_item)
+
     def _on_type_changed(self, row):
         type_widget = self.table.cellWidget(row, 2)
         if not type_widget:
@@ -1213,6 +1293,7 @@ class PropertyEditorWidget(QWidget):
             options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
             self.table.setItem(row, 4, options_item)
         self.properties_changed.emit()
+
     def _edit_range(self, row):
         """编辑范围参数"""
         try:
@@ -1239,6 +1320,7 @@ class PropertyEditorWidget(QWidget):
             import traceback
             traceback.print_exc()
             InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
+
     def _edit_choice(self, row):
         """编辑下拉选项"""
         try:
@@ -1260,6 +1342,7 @@ class PropertyEditorWidget(QWidget):
             import traceback
             traceback.print_exc()
             InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
+
     def get_properties(self):
         """获取属性数据（支持 DYNAMICFORM）"""
         properties = {}
@@ -1292,6 +1375,7 @@ class PropertyEditorWidget(QWidget):
                     prop_dict["schema"] = self._dynamic_form_schemas[prop_name]
             properties[prop_name] = prop_dict
         return properties
+
     def set_properties(self, properties):
         """设置属性数据（支持 DYNAMICFORM）"""
         self.table.setRowCount(0)
@@ -1317,6 +1401,7 @@ class PropertyEditorWidget(QWidget):
                 self._choice_configs[prop_name] = getattr(prop_def, 'choices', [])
             # 调用 _add_property（它会根据类型显示"编辑表单"按钮）
             self._add_property(prop_name, prop_def)
+
     def _edit_dynamic_form(self, row):
         """编辑动态表单结构"""
         try:
@@ -1336,6 +1421,7 @@ class PropertyEditorWidget(QWidget):
             import traceback
             traceback.print_exc()
             InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
+
     def _edit_long_text(self, row):
         """编辑长文本"""
         try:
@@ -1357,8 +1443,10 @@ class PropertyEditorWidget(QWidget):
             traceback.print_exc()
             InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
 
+
 class DynamicFormEditorDialog(MessageBoxBase):
     """动态表单编辑器对话框"""
+
     def __init__(self, schema: dict, parent=None):
         super().__init__(parent)
         self.widget.setMinimumSize(600, 400)
@@ -1369,12 +1457,15 @@ class DynamicFormEditorDialog(MessageBoxBase):
         self.titleLabel = SubtitleLabel("编辑动态表单结构")
         self.viewLayout.addWidget(self.titleLabel)
         self.viewLayout.addWidget(self.editor)
+
     def get_schema(self):
         """获取编辑后的 schema"""
         return self.editor.get_properties()
 
+
 class RangeConfigDialog(MessageBoxBase):
     """范围配置对话框"""
+
     def __init__(self, min_val=0, max_val=100, step_val=1, parent=None):
         super().__init__(parent)
         self.widget.setMinimumSize(400, 200)
@@ -1397,6 +1488,7 @@ class RangeConfigDialog(MessageBoxBase):
         self.step_spin.setDecimals(3)
         form_layout.addRow("步长:", self.step_spin)
         self.viewLayout.addLayout(form_layout)
+
     def get_values(self):
         return {
             'min': self.min_spin.value(),
@@ -1404,8 +1496,10 @@ class RangeConfigDialog(MessageBoxBase):
             'step': self.step_spin.value()
         }
 
+
 class ChoiceConfigDialog(MessageBoxBase):
     """下拉框选项配置对话框（优化版：内联输入，不弹新窗）"""
+
     def __init__(self, choices=None, parent=None):
         super().__init__(parent)
         self.widget.setMinimumSize(500, 350)  # 稍微增加高度以容纳输入框
@@ -1414,7 +1508,7 @@ class ChoiceConfigDialog(MessageBoxBase):
         self.titleLabel = SubtitleLabel("配置下拉选项")
         self.viewLayout.addWidget(self.titleLabel)
         # 选项列表
-        self.list_widget = TableWidget() # 使用 TableWidget (虽然名字是list，但为了保持一致)
+        self.list_widget = TableWidget()  # 使用 TableWidget (虽然名字是list，但为了保持一致)
         self.list_widget.setColumnCount(1)
         self.list_widget.setHorizontalHeaderLabels(["选项"])
         self.list_widget.setRowCount(len(self.choices))
@@ -1437,6 +1531,7 @@ class ChoiceConfigDialog(MessageBoxBase):
         self.remove_btn = PushButton("删除选中")
         self.remove_btn.clicked.connect(self._remove_choice)
         self.viewLayout.addWidget(self.remove_btn)
+
     def _add_choice(self):
         text = self.input_line.text().strip()
         if text:
@@ -1445,10 +1540,12 @@ class ChoiceConfigDialog(MessageBoxBase):
             self.list_widget.setItem(row, 0, QTableWidgetItem(text))
             self.input_line.clear()
             self.input_line.setFocus()  # 保持焦点，方便连续输入
+
     def _remove_choice(self):
         current_row = self.list_widget.currentRow()
         if current_row >= 0:
             self.list_widget.removeRow(current_row)
+
     def get_choices(self):
         choices = []
         for i in range(self.list_widget.rowCount()):

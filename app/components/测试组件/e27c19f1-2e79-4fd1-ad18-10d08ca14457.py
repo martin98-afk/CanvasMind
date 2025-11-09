@@ -26,11 +26,10 @@ class Component(BaseComponent):
         PortDefinition(name="var1", label="变量1", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
         PortDefinition(name="var2", label="变量2", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
         PortDefinition(name="var3", label="变量3", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="input4", label="输入4", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]
     
     outputs = [
-        PortDefinition(name="output", label="判断结果", type=ArgumentType.BOOL),
+        PortDefinition(name="output", label="判断结果", type=ArgumentType.TORCHMODEL),
     ]
     
     properties = {
