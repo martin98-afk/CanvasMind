@@ -3,16 +3,18 @@ import os
 import sys
 import tempfile
 import uuid
-from base64 import b64encode
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtWidgets import QHBoxLayout, QLabel, QSplitter, QPushButton, QVBoxLayout, QWidget
+
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtWidgets import QLabel, QSplitter, QVBoxLayout, QWidget
+from loguru import logger
+from qfluentwidgets import TabBar, ComboBox, CommandBar, Action, FluentIcon
 from qtconsole.manager import QtKernelManager
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
+# 强制 PyInstaller 包含这些模块
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget
 )
-from qfluentwidgets import TabBar, ComboBox, CommandBar, Action, FluentIcon
 from spyder.widgets.collectionseditor import CollectionsEditorWidget
 
 TEMP_DIR = tempfile.gettempdir()
@@ -393,7 +395,7 @@ class EmbeddedIPythonConsole(QWidget):
             self.console.set_default_style(colors='linux')
 
         except Exception as e:
-            print(f"启动 kernel 失败: {e}")
+            logger.error(f"启动 kernel 失败: {e}")
             import traceback
             traceback.print_exc()
 

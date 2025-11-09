@@ -446,7 +446,12 @@ class ComponentDeveloperWidget(QWidget):
 
     def _run_component_code(self):
         """运行当前编辑器中的组件代码"""
-        local_import = "from app.components.base import *\n"
+        local_import = """# -*- coding: utf-8 -*-
+try:
+    from app.components.base import *
+except:
+    from _internal.app.components.base import *
+"""
         current_code = local_import + self.code_editor.get_code()
         if not current_code.strip():
             self._show_warning("代码编辑器为空，无法运行！")

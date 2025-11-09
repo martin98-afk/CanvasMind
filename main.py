@@ -2,9 +2,7 @@
 import os
 import sys
 import warnings
-
-from spyder.utils.palette import SpyderPalette, SpyderPaletteDark
-
+import qtconsole.client
 warnings.filterwarnings("ignore")
 
 from PyQt5.QtCore import Qt
