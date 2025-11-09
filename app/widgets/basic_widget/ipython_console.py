@@ -122,11 +122,24 @@ class SpyderCollectionsVariableExplorer(QWidget):
         self.collection_widget.setStyleSheet(dark_qss)
         self.layout.addWidget(self.collection_widget)
 
-        # 自动刷新定时器
         self.auto_refresh_timer = QTimer(self)
         self.auto_refresh_timer.timeout.connect(self.refresh_variables)
-        self.auto_refresh_timer.setInterval(500)  # 每秒刷新一次
-        self.auto_refresh_timer.start()
+        self.auto_refresh_timer.setInterval(500)
+
+        # 改为延迟启动：比如等第一个 console 准备好后再启动
+        QTimer.singleShot(3000, self._maybe_start_timer)  # 延迟1秒尝试启动
+
+    def _maybe_start_timer(self):
+        """尝试启动定时器，仅当已有有效 kernel"""
+        if self._has_active_kernel():
+            self.auto_refresh_timer.start()
+        else:
+            # 如果还没准备好，再试一次（最多重试几次）
+            QTimer.singleShot(500, self._maybe_start_timer)
+
+    def _has_active_kernel(self):
+        current_console = self.get_current_console()
+        return current_console is not None and current_console.kernel_client is not None
 
     def get_current_console(self):
         """获取当前活动的console"""
@@ -188,9 +201,9 @@ print("变量已导出")
                 # 设置数据到变量浏览器
                 self.collection_widget.set_data(data)
             else:
-                print("临时文件不存在")
+                logger.error("临时文件不存在")
         except Exception as e:
-            print(f"加载变量失败: {e}")
+            logger.error(f"加载变量失败: {e}")
 
 
 # --- 4. 嵌入式 Console + TabBar ---
@@ -253,7 +266,7 @@ class IPythonConsoleManager(QWidget):
         tab_title = f"Console ({initial_env})" if initial_env else "Console"
 
         index = self.stacked_widget.addWidget(console_widget)
-        self.tab_bar.addTab(routeKey=str(index), text=tab_title)
+        self.tab_bar.addTab(routeKey=str(uuid.uuid4()), text=tab_title)
         self.tab_bar.setCurrentIndex(index)
         self.stacked_widget.setCurrentIndex(index)
         console_widget.env_selector.env_changed.connect(
