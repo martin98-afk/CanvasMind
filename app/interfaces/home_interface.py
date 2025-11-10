@@ -36,7 +36,7 @@ class WelcomeBannerWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(300)
+        self.setFixedHeight(400)
         # 加载背景图片
         self.bannerPixmap = QPixmap(resource_path('./icons/banner.png'))
 

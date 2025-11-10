@@ -1,13 +1,11 @@
-import json
+import base64
 import os
+import pickle
 import sys
 import tempfile
 import uuid
-import pickle
-import base64
-from typing import Dict, Any
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QLabel, QSplitter, QVBoxLayout, QWidget
 from loguru import logger
 from qfluentwidgets import TabBar, ComboBox, CommandBar, Action, FluentIcon
@@ -18,7 +16,6 @@ from qtpy.QtCore import Signal
 from qtpy.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget
 )
-from spyder.plugins.ipythonconsole.widgets import NamepaceBrowserWidget
 from spyder.plugins.variableexplorer.widgets.namespacebrowser import NamespaceBrowser
 from spyder.widgets.collectionseditor import CollectionsEditorWidget
 

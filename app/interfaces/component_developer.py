@@ -966,6 +966,7 @@ except:
             self.name_edit.clear()
             self.category_edit.clear()
             self.description_edit.clear()
+            self.requirements_edit.clear()
             self.input_port_editor.set_ports([])
             self.output_port_editor.set_ports([])
             self.property_editor.set_properties({})
