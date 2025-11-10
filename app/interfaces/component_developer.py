@@ -682,6 +682,10 @@ except:
                                     if field_type == PropertyType.CHOICE and field_choices:
                                         choices_str = ', '.join([f'"{c}"' for c in field_choices])
                                         new_lines.append(f'                    choices=[{choices_str}]')
+                                    elif field_type == PropertyType.RANGE:
+                                        new_lines.append(f'                    min={field_def.get("min", 0)},')
+                                        new_lines.append(f'                    max={field_def.get("max", 100)},')
+                                        new_lines.append(f'                    step={field_def.get("step", 1)}')
                                     new_lines.append('                ),')
                                 new_lines.append('            }')
                             new_lines.append('        ),')

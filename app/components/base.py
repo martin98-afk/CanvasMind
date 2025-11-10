@@ -3,6 +3,7 @@ import json
 import os
 import pickle
 import re
+import sys
 import uuid
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -85,7 +86,7 @@ DEFAULT_NODE_TEMPLATE = '''class Component(BaseComponent):
         # 在这里编写你的组件逻辑
         input_data = inputs.input1
         param1 = params.prop1
-        print("这是组件输出信息")
+        self.logger.info("这是组件输出信息")
         # 处理逻辑
         result = f"处理结果: {input_data} + {param1}"
         return {
@@ -1160,6 +1161,8 @@ def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition'
             ft = float
         elif field_def.type == PropertyType.BOOL:
             ft = bool
+        elif field_def.type == PropertyType.RANGE:
+            ft = Union[int, float]
         else:
             ft = str
 
