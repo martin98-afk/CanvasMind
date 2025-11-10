@@ -1,0 +1,8 @@
+[
+    {
+        "version": "V1",
+        "timestamp": "2025-11-10 19:39:58",
+        "component_name": "CSV 读取器",
+        "code": "class Component(BaseComponent):\n    name = \"CSV 读取器\"\n    category = \"数据集成\"\n    description = \"接收本地上传csv文件\"\n    requirements = \"pandas\"\n    inputs = [\n        PortDefinition(name=\"csv\", label=\"csv文件\", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),\n    ]\n    outputs = [\n        PortDefinition(name=\"csv\", label=\"csv文件\", type=ArgumentType.CSV),\n    ]\n\n    def run(self, params, inputs=None):\n        try:\n            import pandas as pd\n            self.logger.debug(\"调试模式结果测试\")\n            self.logger.info(f\"开始读取csv文件: {inputs.csv}\")\n            return {\"csv\": inputs.csv}\n        except Exception as e:\n            self.logger.error(f\"无法读取csv文件: {str(e)}\")\n            raise e\n"
+    }
+]

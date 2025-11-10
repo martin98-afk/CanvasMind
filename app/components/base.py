@@ -759,18 +759,31 @@ class BaseComponent(ABC):
         else:
             raise ComponentError(f"无法读取图像数据: {data}")
 
-    def _read_file_data(self, data: Union[str, Path]) -> str:
-        file_path = Path(data)
-        if not file_path.exists():
-            raise ComponentError(f"文件不存在: {file_path}", "FILE_NOT_FOUND")
-
-        try:
-            return file_path.read_text(encoding='utf-8')
-        except UnicodeDecodeError:
-            try:
-                return file_path.read_text(encoding='gbk')
-            except UnicodeDecodeError:
-                return file_path.read_bytes().decode('utf-8', errors='ignore')
+    def _read_file_data(self, data: Any) -> Path:
+        """读取任意文件内容（路径、bytes、str），返回临时路径"""
+        temp_dir = _get_node_temp_dir(None)  # 使用通用临时目录
+        if isinstance(data, (str, Path)):
+            path = Path(data)
+            if path.is_file():
+                # 如果是已存在的文件路径，直接返回（也可复制到 temp_dir 保持隔离）
+                import shutil
+                dst = temp_dir / path.name
+                shutil.copy2(path, dst)
+                return dst
+            else:
+                # 假设是文本内容，保存为 file.txt
+                dst = temp_dir / "file.txt"
+                dst.write_text(str(data), encoding='utf-8')
+                return dst
+        elif isinstance(data, bytes):
+            dst = temp_dir / "file.bin"
+            dst.write_bytes(data)
+            return dst
+        else:
+            # 兜底：转为字符串保存
+            dst = temp_dir / "file.txt"
+            dst.write_text(str(data), encoding='utf-8')
+            return dst
 
     def _process_multiple_inputs(self, input_name: str, input_values: List[Any], input_type: ArgumentType) -> List[Any]:
         if not isinstance(input_values, (list, tuple)):
@@ -805,7 +818,7 @@ class BaseComponent(ABC):
             elif output_type == ArgumentType.IMAGE:
                 return self._store_image_data(output_value, node_id)
             elif output_type == ArgumentType.FILE:
-                return self._store_file_data(output_value, node_id)
+                    return self._store_file_data(output_value, node_id, output_name)
             else:
                 return output_value
         except Exception as e:
@@ -872,11 +885,34 @@ class BaseComponent(ABC):
         image.save(image_path, 'PNG')
         return str(image_path)
 
-    def _store_file_data(self, data: str, node_id: str = None) -> str:
-        """存储文件数据到节点专属目录"""
+    def _store_file_data(self, data: Any, node_id: str = None, output_name: str = "output_file") -> str:
+        """存储任意文件数据，使用 output_name 作为文件名"""
         temp_dir = _get_node_temp_dir(node_id)
-        file_path = temp_dir / f"file_{uuid.uuid4().hex}.txt"
-        file_path.write_text(str(data), encoding='utf-8')
+        # 保留扩展名：如果 output_name 有后缀，直接用；否则尝试推断或默认 .bin
+        filename = Path(output_name).name or "output_file"
+        if "." not in filename:
+            # 尝试推断扩展名（可选）
+            if isinstance(data, str):
+                filename += ".txt"
+            elif isinstance(data, bytes):
+                filename += ".bin"
+            else:
+                filename += ".dat"
+        file_path = temp_dir / filename
+
+        if isinstance(data, (str, Path)):
+            path = Path(data)
+            if path.is_file():
+                import shutil
+                shutil.copy2(path, file_path)
+            else:
+                file_path.write_text(str(data), encoding='utf-8')
+        elif isinstance(data, bytes):
+            file_path.write_bytes(data)
+        else:
+            # 兜底：转为字符串
+            file_path.write_text(str(data), encoding='utf-8')
+
         return str(file_path)
 
     # ---------------- 执行包装器 ----------------

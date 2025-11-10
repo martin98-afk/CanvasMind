@@ -8,7 +8,7 @@ import textwrap
 import uuid
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTableWidgetItem, QHeaderView,
@@ -170,6 +170,10 @@ class ComponentDeveloperWidget(QWidget):
         self.code_editor = CodeEditorWidget(self, self.home.package_manager.get_current_python_exe())
         # 保存按钮
         save_layout = QHBoxLayout()
+        code_btn = TransparentToolButton(get_icon("代码执行"), parent=self)
+        code_btn.setIconSize(QSize(20, 25))
+        code_btn.setFixedSize(20, 25)
+        save_layout.addWidget(code_btn)
         save_layout.addWidget(BodyLabel("组件代码:"))
         # --- 新增结束 ---
         save_layout.addStretch()

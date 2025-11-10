@@ -21,7 +21,7 @@ class Component(BaseComponent):
     description = "接收本地上传csv文件"
     requirements = "pandas"
     inputs = [
-        PortDefinition(name="csv", label="csv文件", type=ArgumentType.UPLOAD, connection=ConnectionType.SINGLE),
+        PortDefinition(name="csv", label="csv文件", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="csv", label="csv文件", type=ArgumentType.CSV),
