@@ -61,7 +61,7 @@ class Settings(QConfig):
         if cls._instance:
             cls._instance.save()
     # 版本信息
-    current_version = ConfigItem("General", "CurrentVersion", "v0.1.6")
+    current_version = ConfigItem("General", "CurrentVersion", "v0.1.7")
 
     # 通用设置
     auto_check_update = ConfigItem("General", "AutoCheckUpdate", True, BoolValidator())
@@ -72,13 +72,6 @@ class Settings(QConfig):
     # GitHub 配置
     github_repo = ConfigItem("Patch", "GitHub/Repo", "martin98-afk/CanvasMind")
     github_token = ConfigItem("Patch", "GitHub/Token", "")
-
-    # Gitee 配置
-    gitee_repo = ConfigItem("Patch", "Gitee/Repo", "yourname/yourrepo")
-    gitee_token = ConfigItem("Patch", "Gitee/Token", "")
-
-    # GitCode 配置（如有）
-    gitcode_repo = ConfigItem("Patch", "GitCode/Repo", "yourname/yourrepo")
 
     # ========== 新增：画布路径 ==========
     workflow_paths = ConfigItem(

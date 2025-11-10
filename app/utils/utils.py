@@ -107,7 +107,7 @@ def resource_path(relative_path) -> str:
 
 
 def canvas_file_dump_path(dump_location: str = "canvas_files") -> Path:
-    dump_path = Path(resource_path(dump_location))
+    dump_path = Path(dump_location)
     dump_path.mkdir(parents=True, exist_ok=True)
     return dump_path
 

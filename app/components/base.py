@@ -126,7 +126,7 @@ def resource_path(relative_path) -> str:
 
 
 def canvas_file_dump_path(dump_location: str = "canvas_files") -> Path:
-    dump_path = Path(resource_path(dump_location))
+    dump_path = Path(dump_location)
     dump_path.mkdir(parents=True, exist_ok=True)
     return dump_path
 
@@ -659,7 +659,7 @@ class BaseComponent(ABC):
             elif input_type == ArgumentType.IMAGE:
                 return self._read_image_data(input_value)
             elif input_type == ArgumentType.FILE:
-                return self._read_file_data(input_value)
+                return input_value
             else:
                 return input_value
         except Exception as e:
