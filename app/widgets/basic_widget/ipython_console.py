@@ -31,7 +31,7 @@ class MockPackageManagerManager:
 
     def get_python_exe(self, env_name):
         if env_name == "3.14":
-            path = r"D:\work\CanvasMind\envs\miniconda\envs\3.14\python.exe"
+            path = r"D:\work\WorkFlowGUI\envs\miniconda\envs\3.14\python.exe"
         else:  # base
             path = sys.executable
         return path
@@ -238,6 +238,8 @@ print("变量快照已保存")
 
                 # 直接设置原始数据到变量浏览器
                 self.collection_widget.set_data(data)
+                self.collection_widget.editor.resizeRowsToContents()
+                self.collection_widget.editor.resize_column_contents()
             else:
                 logger.error("临时文件不存在")
         except Exception as e:
