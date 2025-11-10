@@ -119,8 +119,8 @@ class SpyderCollectionsVariableExplorer(QWidget):
         self.collection_widget = CollectionsEditorWidget(
             self, data={}, namespacebrowser=NamespaceBrowser(self)
         )
-        self.collection_widget.setStyleSheet(dark_qss)
-        self.layout.addWidget(self.collection_widget)
+        self.collection_widget.editor.setStyleSheet(dark_qss)
+        self.layout.addWidget(self.collection_widget.editor)
 
         # 存储上次变量快照，用于检测变化
         self._last_snapshot_hash = None

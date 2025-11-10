@@ -18,7 +18,6 @@ from PyQt5.QtGui import QIcon
 from loguru import logger
 from qfluentwidgets import FluentIcon
 
-from app.components.base import COMPONENT_IMPORT_CODE
 
 # ANSI 颜色代码映射
 ANSI_COLOR_MAP = {
@@ -94,7 +93,8 @@ def ansi_to_rich_text(text):
     """
     return f"<pre style='font-family: Consolas, monospace;'>{ansi_to_html(text)}</pre>"
 
-def resource_path(relative_path):
+
+def resource_path(relative_path) -> str:
     """获取打包后资源文件的绝对路径"""
     if hasattr(sys, '_MEIPASS'):
         # 如果是打包后的环境
@@ -105,6 +105,11 @@ def resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
+
+def canvas_file_dump_path(dump_location: str = "canvas_files") -> Path:
+    dump_path = Path(resource_path(dump_location))
+    dump_path.mkdir(parents=True, exist_ok=True)
+    return dump_path
 
 
 def get_port_node(port):
@@ -461,14 +466,3 @@ def _evaluate_value_recursively(value, expr_engine):
         return {k: _evaluate_value_recursively(v, expr_engine) for k, v in value.items()}
     else:
         return value
-
-def extract_class_source_from_file(file_path: Path, class_name: str) -> str:
-    """从文件中提取指定类的源码（使用 ast）"""
-    try:
-        source_code = file_path.read_text(encoding='utf-8')
-        source_lines = source_code.splitlines(keepends=True)
-        start = len(COMPONENT_IMPORT_CODE.split("\n"))-1
-        return ''.join(source_lines[start:])
-    except Exception as e:
-        logger.warning(f"AST extraction failed for {file_path}:{class_name} - {e}")
-    return ""

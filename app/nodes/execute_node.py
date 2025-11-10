@@ -18,7 +18,8 @@ from app.components.base import ArgumentType, PropertyType, ConnectionType, Glob
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
-from app.utils.utils import draw_square_port, draw_special_outputport  # 假设 resource_path 也在 utils
+from app.utils.utils import draw_square_port, draw_special_outputport, \
+    canvas_file_dump_path  # 假设 resource_path 也在 utils
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 # 导入代码编辑器组件
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
@@ -30,7 +31,7 @@ from app.widgets.node_widget.range_widget import RangeWidgetWrapper
 from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 from app.widgets.node_widget.variable_combo_widget import GlobalVarComboBoxWidgetWrapper
 
-PERSISTENT_TEMP_ROOT = (Path("canvas_files") / "run_scripts").resolve()
+PERSISTENT_TEMP_ROOT = (canvas_file_dump_path() / "run_scripts").resolve()
 PERSISTENT_TEMP_ROOT.mkdir(exist_ok=True, parents=True)
 
 

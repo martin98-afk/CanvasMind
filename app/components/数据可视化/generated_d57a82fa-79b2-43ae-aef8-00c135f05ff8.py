@@ -28,6 +28,7 @@ class Component(BaseComponent):
         PortDefinition(name="output", label="输出图像", type=ArgumentType.IMAGE),
     ]
     properties = {}
+    
     def run(self, params, inputs=None):
         import matplotlib.pyplot as plt
         from PIL import Image

@@ -113,14 +113,27 @@ if __name__ == "__main__":
 
 # ==================== 工具函数 ====================
 
+def resource_path(relative_path) -> str:
+    """获取打包后资源文件的绝对路径"""
+    if hasattr(sys, '_MEIPASS'):
+        # 如果是打包后的环境
+        base_path = sys._MEIPASS
+    else:
+        # 开发环境，直接使用当前路径
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
+def canvas_file_dump_path(dump_location: str = "canvas_files") -> Path:
+    dump_path = Path(resource_path(dump_location))
+    dump_path.mkdir(parents=True, exist_ok=True)
+    return dump_path
+
+
 def _get_node_temp_dir(node_id: Optional[str]) -> Path:
     """获取节点专属临时目录"""
-    if not node_id:
-        # 无 node_id 时回退到系统临时目录（兼容旧逻辑）
-        import tempfile
-        return Path(tempfile.mkdtemp())
-
-    base_dir = Path("canvas_files") / "node_results" / node_id
+    base_dir = canvas_file_dump_path() / "node_results" / node_id
     base_dir.mkdir(parents=True, exist_ok=True)
     return base_dir
 

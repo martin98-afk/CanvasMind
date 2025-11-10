@@ -13,7 +13,7 @@ from PyQt5 import QtCore
 from app.components.base import PropertyType, GlobalVariableContext, ArgumentType
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.scheduler.expression_engine import ExpressionEngine
-from app.utils.utils import resource_path, draw_special_outputport
+from app.utils.utils import resource_path, draw_special_outputport, canvas_file_dump_path
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
@@ -25,7 +25,7 @@ from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 # 在 app/components 下创建 .temp 目录（隐藏目录）
 TEMP_COMPONENTS_DIR = Path(__file__).parent.parent / "components" / ".temp"
 TEMP_COMPONENTS_DIR.mkdir(exist_ok=True)
-PERSISTENT_TEMP_ROOT = (Path("canvas_files") / "run_scripts").resolve()
+PERSISTENT_TEMP_ROOT = (canvas_file_dump_path() / "run_scripts").resolve()
 PERSISTENT_TEMP_ROOT.mkdir(exist_ok=True, parents=True)
 
 

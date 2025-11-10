@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTableWidgetItem, QHeaderView,
     QFormLayout, QDialog, QTableWidget, QStackedWidget
 )
+from loguru import logger
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PushButton,
     TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit, MessageBoxBase, SubtitleLabel,
@@ -24,7 +25,7 @@ from qfluentwidgets.window.stacked_widget import StackedWidget
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition, ConnectionType, \
     DEFAULT_NODE_TEMPLATE
 from app.scan_components import scan_components
-from app.utils.utils import extract_class_source_from_file, get_icon
+from app.utils.utils import get_icon, canvas_file_dump_path
 from app.widgets.basic_widget.ipython_console import SpyderCollectionsVariableExplorer, \
     IPythonConsoleWithTabBar  # 假设更新后的类名
 from app.widgets.basic_widget.style_sheet import StyleSheet
@@ -36,6 +37,8 @@ from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
 # --- 组件历史版本记录 ---
 class ComponentHistoryManager:
     """管理组件的编辑历史记录"""
+    HISTORY_DIR = canvas_file_dump_path() / "node_histories"
+    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
     HISTORY_FILE_SUFFIX = ".history.json"
 
     @staticmethod
@@ -43,12 +46,14 @@ class ComponentHistoryManager:
         """根据组件文件路径生成历史记录文件路径"""
         if not component_file_path or not component_file_path.suffix == '.py':
             return None
-        return component_file_path.with_name(component_file_path.stem + ComponentHistoryManager.HISTORY_FILE_SUFFIX)
+        return (ComponentHistoryManager.HISTORY_DIR /
+                (component_file_path.name + ComponentHistoryManager.HISTORY_FILE_SUFFIX))
 
     @staticmethod
     def save_history(component_file_path: Path, component_name: str, code: str):
         """保存当前代码到历史记录，如果与上一版本相同则不保存"""
         history_file_path = ComponentHistoryManager.get_history_file_path(component_file_path)
+
         if not history_file_path:
             print(f"无法为 {component_file_path} 生成历史记录文件路径")
             return
@@ -353,6 +358,17 @@ class ComponentDeveloperWidget(QWidget):
         self._load_component(self.component_tree._copied_component)
         self._save_component(delete_original_file=False)
 
+    def extract_class_source_from_file(self, file_path: Path, class_name: str) -> str:
+        """从文件中提取指定类的源码（使用 ast）"""
+        try:
+            source_code = file_path.read_text(encoding='utf-8')
+            source_lines = source_code.splitlines(keepends=True)
+            start = len(COMPONENT_IMPORT_CODE.split("\n")) - 1
+            return ''.join(source_lines[start:])
+        except Exception as e:
+            logger.warning(f"AST extraction failed for {file_path}:{class_name} - {e}")
+        return ""
+
     def _load_component_filepath(self, component_path: Path):
         """根据文件路径重载组件"""
         file_map = {value: key for key, value in self.component_tree._file_map.items()}
@@ -390,7 +406,7 @@ class ComponentDeveloperWidget(QWidget):
             # 加载代码
             try:
                 source_file = getattr(component, '_source_file', None)
-                source_code = extract_class_source_from_file(source_file, component.__name__)
+                source_code = self.extract_class_source_from_file(source_file, component.__name__)
                 self._current_component_file = Path(source_file)
                 self._current_component_code = source_code  # 存储当前加载的代码
                 self.code_editor.set_code(source_code)
