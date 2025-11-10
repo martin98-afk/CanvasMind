@@ -244,9 +244,6 @@ class QuickStartCardView(CardWidget):
         self.recent_cards.clear()
 
         if not workflow_files:
-            no_recent_label = BodyLabel("暂无最近打开的文件")
-            no_recent_label.setAlignment(Qt.AlignCenter)
-            self.contentLayout.addWidget(no_recent_label)
             return
 
         # 按修改时间排序
