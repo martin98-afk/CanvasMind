@@ -49,3 +49,19 @@ class Component(BaseComponent):
                 params.prop_0: input
             }
         }
+
+
+if __name__ == "__main__":
+    import warnings
+    warnings.filterwarnings("ignore")
+    model = Component()
+    result = model.debug(
+        params={"prop_0": "test"},
+        inputs={"input1": "组件测试"},
+        node_id="测试模型",
+        show_input_types = True,
+        show_output_types = True,
+        show_execution_time = True,
+        global_vars = {}
+    )
+    print(result)

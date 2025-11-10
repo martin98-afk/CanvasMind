@@ -33,7 +33,7 @@ class Component(BaseComponent):
             type=PropertyType.CHOICE,
             default="liblinear",
             label="求解器",
-            choices=["liblinear"]
+            choices=["liblinear", "lbfgs", "newton-cg"]
         ),
         "max_iter": PropertyDefinition(
             type=PropertyType.INT,

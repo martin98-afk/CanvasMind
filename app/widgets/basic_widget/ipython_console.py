@@ -18,7 +18,11 @@ from qtpy.QtCore import Signal
 from qtpy.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget
 )
+from spyder.plugins.ipythonconsole.widgets import NamepaceBrowserWidget
+from spyder.plugins.variableexplorer.widgets.namespacebrowser import NamespaceBrowser
 from spyder.widgets.collectionseditor import CollectionsEditorWidget
+
+from app.utils.utils import get_icon
 
 TEMP_DIR = tempfile.gettempdir()
 
@@ -29,13 +33,7 @@ class MockPackageManagerManager:
         return ["3.14"]
 
     def get_python_exe(self, env_name):
-        if env_name == "env39":
-            path = sys.executable.replace("python.exe", "envs/env39/python.exe")
-        elif env_name == "env310":
-            path = sys.executable.replace("python.exe", "envs/env310/python.exe")
-        elif env_name == "env311":
-            path = sys.executable.replace("python.exe", "envs/env311/python.exe")
-        elif env_name == "3.14":
+        if env_name == "3.14":
             path = r"D:\work\CanvasMind\envs\miniconda\envs\3.14\python.exe"
         else:  # base
             path = sys.executable
@@ -121,7 +119,9 @@ class SpyderCollectionsVariableExplorer(QWidget):
         """
 
         # 初始空数据
-        self.collection_widget = CollectionsEditorWidget(self, data={})
+        self.collection_widget = CollectionsEditorWidget(
+            self, data={}, namespacebrowser=NamespaceBrowser(self)
+        )
         self.collection_widget.setStyleSheet(dark_qss)
         self.layout.addWidget(self.collection_widget)
 
@@ -220,7 +220,16 @@ print("变量快照已保存")
 
                 # 检查数据是否有变化，避免不必要的刷新
                 # 创建一个简化的哈希用于比较
-                current_hash_data = {k: str(type(v)) for k, v in data.items()}
+                def safe_hashable_repr(value):
+                    """尝试生成一个可用于哈希的稳定表示"""
+                    try:
+                        # 尝试 pickle（最通用，能处理 numpy、pandas 等）
+                        return base64.b64encode(pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)).decode('utf-8')
+                    except Exception:
+                        # 如果不可 pickle，回退到类型+id（避免崩溃）
+                        return f"{type(value)}@{id(value)}"
+
+                current_hash_data = {k: safe_hashable_repr(v) for k, v in data.items()}
                 current_data_hash = hash(str(sorted(current_hash_data.items())))
 
                 if current_data_hash == self._last_snapshot_hash:
@@ -368,27 +377,33 @@ class EmbeddedIPythonConsole(QWidget):
         """添加常用的IPython工具操作按钮"""
         # 添加分隔符
         commandBar.addSeparator()
-        restart_action = Action(FluentIcon.SYNC, "重新运行Console", self)
+        restart_action = Action(get_icon("远程重启"), "重新运行Console", self)
         restart_action.triggered.connect(self.restart_kernel)
         commandBar.addAction(restart_action)
-        # 添加常用功能
-        whos_action = Action(FluentIcon.VIEW, "whos", self)
-        whos_action.triggered.connect(lambda: self.execute_code("%whos"))
-        commandBar.addAction(whos_action)
 
-        reset_action = Action(FluentIcon.ROTATE, "reset", self)
+        # 添加常用功能
+        clear_action = Action(get_icon("清空参数"), "清空画面", self)
+        clear_action.triggered.connect(lambda: self.execute_code("%clear"))
+        commandBar.addAction(clear_action)
+
+        reset_action = Action(get_icon("删除变量"), "重置变量", self)
         reset_action.triggered.connect(lambda: self.execute_code("%reset -f"))
         commandBar.addAction(reset_action)
 
         # 添加分隔符
         commandBar.addSeparator()
 
+        # 添加常用功能
+        whos_action = Action(FluentIcon.VIEW, "whos", self)
+        whos_action.triggered.connect(lambda: self.execute_code("%whos"))
+        commandBar.addAction(whos_action)
+
         # 添加路径相关功能
         pwd_action = Action(FluentIcon.FOLDER, "pwd", self)
         pwd_action.triggered.connect(lambda: self.execute_code("%pwd"))
         commandBar.addAction(pwd_action)
 
-        ls_action = Action(FluentIcon.FOLDER, "ls", self)
+        ls_action = Action(get_icon("ls"), "ls", self)
         ls_action.triggered.connect(lambda: self.execute_code("%ls"))
         commandBar.addAction(ls_action)
 

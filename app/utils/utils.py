@@ -18,6 +18,8 @@ from PyQt5.QtGui import QIcon
 from loguru import logger
 from qfluentwidgets import FluentIcon
 
+from app.components.base import COMPONENT_IMPORT_CODE
+
 # ANSI 颜色代码映射
 ANSI_COLOR_MAP = {
     '30': '#000000',  # 黑色
@@ -463,17 +465,10 @@ def _evaluate_value_recursively(value, expr_engine):
 def extract_class_source_from_file(file_path: Path, class_name: str) -> str:
     """从文件中提取指定类的源码（使用 ast）"""
     try:
-        source_lines = file_path.read_text(encoding='utf-8').splitlines(keepends=True)
-        tree = ast.parse(''.join(source_lines), filename=str(file_path))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name == class_name:
-                start = node.lineno - 1  # ast 行号从1开始
-                end = node.end_lineno    # Python 3.8+
-                if end is None:
-                    end = len(source_lines)
-                else:
-                    end -= 1  # 转为0-based inclusive
-                return ''.join(source_lines[start:end+1])
+        source_code = file_path.read_text(encoding='utf-8')
+        source_lines = source_code.splitlines(keepends=True)
+        start = len(COMPONENT_IMPORT_CODE.split("\n"))-1
+        return ''.join(source_lines[start:])
     except Exception as e:
         logger.warning(f"AST extraction failed for {file_path}:{class_name} - {e}")
     return ""

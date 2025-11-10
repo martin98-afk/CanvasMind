@@ -2,6 +2,7 @@
 import os
 import sys
 import warnings
+import matplotlib
 import qtconsole.client
 warnings.filterwarnings("ignore")
 

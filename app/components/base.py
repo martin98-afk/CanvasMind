@@ -65,6 +65,51 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType\n\n\n"""
 
 
+DEFAULT_NODE_TEMPLATE = '''class Component(BaseComponent):
+    name = ""
+    category = ""
+    description = ""
+    requirements = ""
+    inputs = [
+    ]
+    outputs = [
+    ]
+    properties = {
+    }
+    def run(self, params, inputs=None):
+        """
+        params: 节点属性（来自UI）
+        inputs: 上游输入（key=输入端口名）
+        return: 输出数据（key=输出端口名）
+        """
+        # 在这里编写你的组件逻辑
+        input_data = inputs.input1
+        param1 = params.prop1
+        print("这是组件输出信息")
+        # 处理逻辑
+        result = f"处理结果: {input_data} + {param1}"
+        return {
+            "output1": result
+        }
+
+
+if __name__ == "__main__":
+    import warnings
+    warnings.filterwarnings("ignore")
+    model = Component()
+    result = model.debug(
+        params={"prop1": "test"},
+        inputs={"input1": "output"},
+        node_id="测试模型",
+        show_input_types = True,
+        show_output_types = True,
+        show_execution_time = True,
+        global_vars = {}
+    )
+    print(result)
+'''
+
+
 # ==================== 工具函数 ====================
 
 def _get_node_temp_dir(node_id: Optional[str]) -> Path:
@@ -894,6 +939,189 @@ class BaseComponent(ABC):
             import traceback
             error_msg = f"组件执行失败: {traceback.format_exc()}"
             raise ComponentError(error_msg, "EXECUTION_ERROR")
+
+    # ---------------- 组件调试专用方法 ----------------
+    def debug(self,
+              params: Dict[str, Any] = None,
+              inputs: Dict[str, Any] = None,
+              global_vars: Dict[str, Any] = None,
+              node_id: str = str(uuid.uuid4()),
+              show_input_types: bool = True,
+              show_output_types: bool = True,
+              show_execution_time: bool = True) -> Dict[str, Any]:
+        """
+        通用调试函数，用于测试组件运行效果
+
+        Args:
+            params: 组件参数，如果为None则使用默认值
+            inputs: 输入数据，如果为None则使用默认值
+            global_vars: 全局变量上下文
+            node_id: 节点ID，用于临时文件存储
+            show_input_types: 是否显示输入数据类型信息
+            show_output_types: 是否显示输出数据类型信息
+            show_execution_time: 是否显示执行时间
+
+        Returns:
+            Dict[str, Any]: 执行结果
+        """
+        import time
+
+        # 设置默认参数
+        if params is None:
+            params = {}
+            params_model = self.get_params_model()
+            # 使用模型的默认值
+            try:
+                default_params = params_model()
+                params = default_params.dict()
+            except Exception:
+                params = {}
+
+        if inputs is None:
+            inputs = {}
+            # 为每个输入端口设置默认值
+            for port in self.inputs:
+                if port.type == ArgumentType.TEXT:
+                    inputs[port.name] = ""
+                elif port.type == ArgumentType.INT:
+                    inputs[port.name] = 0
+                elif port.type == ArgumentType.FLOAT:
+                    inputs[port.name] = 0.0
+                elif port.type == ArgumentType.BOOL:
+                    inputs[port.name] = False
+                elif port.type == ArgumentType.ARRAY:
+                    inputs[port.name] = []
+                elif port.type == ArgumentType.CSV:
+                    inputs[port.name] = pd.DataFrame()
+                elif port.type == ArgumentType.JSON:
+                    inputs[port.name] = {}
+                elif port.type == ArgumentType.EXCEL:
+                    inputs[port.name] = pd.DataFrame()
+                else:
+                    inputs[port.name] = None
+
+        # 显示输入信息
+        if show_input_types:
+            print("=" * 50)
+            print("DEBUG: 输入数据信息")
+            print("-" * 30)
+            for port in self.inputs:
+                input_data = inputs.get(port.name)
+                print(f"输入端口 '{port.name}' ({port.label}):")
+                print(f"  类型: {type(input_data)}")
+                print(f"  值: {self._format_value(input_data)}")
+                print(f"  期望类型: {port.type}")
+                print()
+            print("-" * 30)
+            for property, prop_def in self.properties.items():
+                input_param = params.get(property)
+                print(f"参数 '{property}' ({prop_def.label}):")
+                print(f"  类型: {type(input_param)}")
+                print(f"  值: {self._format_value(input_param)}")
+                print(f"  期望类型: {prop_def.type}")
+                print()
+            print("-" * 30)
+
+        # 记录执行时间
+        start_time = None
+        if show_execution_time:
+            start_time = time.time()
+
+        try:
+            print("DEBUG: 组件执行日志信息")
+            # 执行组件
+            result = self.execute(params, inputs, global_vars, node_id)
+            print()
+            print("-" * 30)
+            print()
+            if show_execution_time and start_time is not None:
+                execution_time = time.time() - start_time
+                print(f"执行时间: {execution_time:.4f} 秒")
+                print()
+
+            # 显示输出信息
+            if show_output_types:
+                print("DEBUG: 输出数据信息")
+                print("-" * 30)
+                for port in self.outputs:
+                    if port.name in result:
+                        output_data = result[port.name]
+                        print(f"输出端口 '{port.name}' ({port.label}):")
+                        print(f"  类型: {type(output_data)}")
+                        print(f"  值: {self._format_value(output_data)}")
+                        print(f"  期望类型: {port.type}")
+                        print()
+
+            print("=" * 50)
+            print("DEBUG: 执行成功!")
+            print(f"组件: {self.name}")
+            print(f"输出: {result}")
+            print("=" * 50)
+
+            return result
+
+        except Exception as e:
+            print("=" * 50)
+            print("DEBUG: 执行失败!")
+            print(f"组件: {self.name}")
+            print(f"错误: {str(e)}")
+            print(f"错误类型: {type(e).__name__}")
+            print("=" * 50)
+            raise e
+
+    def _format_value(self, value: Any, max_length: int = 100) -> str:
+        """
+        格式化值以便显示，避免过长的输出
+
+        Args:
+            value: 要格式化的值
+            max_length: 最大显示长度
+
+        Returns:
+            str: 格式化后的字符串
+        """
+        if value is None:
+            return "None"
+
+        # 处理不同类型的值
+        if isinstance(value, (str, int, float, bool)):
+            str_val = str(value)
+            if len(str_val) > max_length:
+                return str_val[:max_length - 3] + "..."
+            return str_val
+
+        elif isinstance(value, (list, tuple)):
+            if len(value) == 0:
+                return f"{type(value).__name__}([])"
+            elif len(value) <= 5:  # 小数组完整显示
+                items = [self._format_value(item, max_length // 3) for item in value]
+                return f"{type(value).__name__}({items})"
+            else:  # 大数组只显示前几个
+                items = [self._format_value(item, max_length // 3) for item in value[:5]]
+                return f"{type(value).__name__}({items}... 共{len(value)}项)"
+
+        elif isinstance(value, dict):
+            if len(value) == 0:
+                return "dict({})"
+            elif len(value) <= 3:  # 小字典完整显示
+                items = {k: self._format_value(v, max_length // 3) for k, v in value.items()}
+                return f"dict({items})"
+            else:  # 大字典只显示前几个
+                items = {k: self._format_value(v, max_length // 3) for k, v in list(value.items())[:3]}
+                return f"dict({{...}} 共{len(value)}项)"
+
+        elif isinstance(value, pd.DataFrame):
+            return f"DataFrame(shape={value.shape}, columns={list(value.columns)})"
+
+        elif isinstance(value, np.ndarray):
+            return f"ndarray(shape={value.shape}, dtype={value.dtype})"
+
+        elif hasattr(value, '__class__'):
+            # 其他对象显示类型和主要属性
+            return f"{type(value).__name__} object"
+
+        else:
+            return f"{type(value).__name__}: {str(value)[:max_length]}"
 
 
 def _parse_default_value(default_str: str, target_type: type) -> Any:
