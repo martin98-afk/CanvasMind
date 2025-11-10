@@ -664,10 +664,10 @@ class PropertyPanel(CardWidget):
 
         # ✅ 定义目标目录：项目根目录下的 uploads/
         if hasattr(self.main_window, 'project_root'):
-            upload_root = Path(self.main_window.project_root) / "uploads"
+            upload_root = Path(self.main_window.project_root) / "canvas_files" / "uploads"
         else:
             # 回退：使用当前工作目录下的 uploads/
-            upload_root = Path.cwd() / "uploads"
+            upload_root = Path.cwd() / "canvas_files" / "uploads"
 
         upload_root.mkdir(exist_ok=True, parents=True)
 

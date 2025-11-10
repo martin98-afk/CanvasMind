@@ -120,7 +120,7 @@ def _get_node_temp_dir(node_id: Optional[str]) -> Path:
         import tempfile
         return Path(tempfile.mkdtemp())
 
-    base_dir = Path("temp_runs") / "nodes" / node_id
+    base_dir = Path("canvas_files") / "node_results" / node_id
     base_dir.mkdir(parents=True, exist_ok=True)
     return base_dir
 
@@ -858,7 +858,7 @@ class BaseComponent(ABC):
     def _store_sklearn_model(self, model: Any, node_id: str = None) -> str:
         """存储sklearn模型到节点专属目录"""
         temp_dir = _get_node_temp_dir(node_id)
-        model_path = temp_dir / f"model_{uuid.uuid4().hex}.pkl"
+        model_path = temp_dir / f"model_{node_id}.pkl"
         with open(model_path, 'wb') as f:
             pickle.dump(model, f)
         return str(model_path)
@@ -869,7 +869,7 @@ class BaseComponent(ABC):
         if torch is None:
             raise ComponentError("torch 未安装", "MISSING_DEPENDENCY")
         temp_dir = _get_node_temp_dir(node_id)
-        model_path = temp_dir / f"model_{uuid.uuid4().hex}.pth"
+        model_path = temp_dir / f"model_{node_id}.pth"
         scripted_model = torch.jit.script(model)
         scripted_model.save(str(model_path))
         return str(model_path)
@@ -881,7 +881,7 @@ class BaseComponent(ABC):
         elif not isinstance(image, Image.Image):
             raise ComponentError(f"无法存储图像数据: {type(image)}")
         temp_dir = _get_node_temp_dir(node_id)
-        image_path = temp_dir / f"image_{uuid.uuid4().hex}.png"
+        image_path = temp_dir / f"image_{node_id}.png"
         image.save(image_path, 'PNG')
         return str(image_path)
 

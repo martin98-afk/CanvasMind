@@ -4,7 +4,7 @@ import threading
 from pathlib import Path
 
 # 假设这些常量已定义
-LOG_ROOT = Path("logs") / "nodes"  # 示例路径
+LOG_ROOT = Path("canvas_files") / "node_logs"  # 示例路径
 MAX_LOG_LINES = 5000
 
 
