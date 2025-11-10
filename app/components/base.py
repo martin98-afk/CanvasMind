@@ -3,6 +3,7 @@ import json
 import os
 import pickle
 import re
+import sys
 import uuid
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -65,16 +66,74 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType\n\n\n"""
 
 
+DEFAULT_NODE_TEMPLATE = '''class Component(BaseComponent):
+    name = ""
+    category = ""
+    description = ""
+    requirements = ""
+    inputs = [
+    ]
+    outputs = [
+    ]
+    properties = {
+    }
+    def run(self, params, inputs=None):
+        """
+        params: 节点属性（来自UI）
+        inputs: 上游输入（key=输入端口名）
+        return: 输出数据（key=输出端口名）
+        """
+        # 在这里编写你的组件逻辑
+        input_data = inputs.input1
+        param1 = params.prop1
+        self.logger.info("这是组件输出信息")
+        # 处理逻辑
+        result = f"处理结果: {input_data} + {param1}"
+        return {
+            "output1": result
+        }
+
+
+if __name__ == "__main__":
+    import warnings
+    warnings.filterwarnings("ignore")
+    model = Component()
+    result = model.debug(
+        params={"prop1": "test"},
+        inputs={"input1": "output"},
+        node_id="测试模型",
+        show_input_types = True,
+        show_output_types = True,
+        show_execution_time = True,
+        global_vars = {}
+    )
+    print(result)
+'''
+
+
 # ==================== 工具函数 ====================
+
+def resource_path(relative_path) -> str:
+    """获取打包后资源文件的绝对路径"""
+    if hasattr(sys, '_MEIPASS'):
+        # 如果是打包后的环境
+        base_path = sys._MEIPASS
+    else:
+        # 开发环境，直接使用当前路径
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
+def canvas_file_dump_path(dump_location: str = "canvas_files") -> Path:
+    dump_path = Path(resource_path(dump_location))
+    dump_path.mkdir(parents=True, exist_ok=True)
+    return dump_path
+
 
 def _get_node_temp_dir(node_id: Optional[str]) -> Path:
     """获取节点专属临时目录"""
-    if not node_id:
-        # 无 node_id 时回退到系统临时目录（兼容旧逻辑）
-        import tempfile
-        return Path(tempfile.mkdtemp())
-
-    base_dir = Path("temp_runs") / "nodes" / node_id
+    base_dir = canvas_file_dump_path() / "node_results" / node_id
     base_dir.mkdir(parents=True, exist_ok=True)
     return base_dir
 
@@ -713,18 +772,31 @@ class BaseComponent(ABC):
         else:
             raise ComponentError(f"无法读取图像数据: {data}")
 
-    def _read_file_data(self, data: Union[str, Path]) -> str:
-        file_path = Path(data)
-        if not file_path.exists():
-            raise ComponentError(f"文件不存在: {file_path}", "FILE_NOT_FOUND")
-
-        try:
-            return file_path.read_text(encoding='utf-8')
-        except UnicodeDecodeError:
-            try:
-                return file_path.read_text(encoding='gbk')
-            except UnicodeDecodeError:
-                return file_path.read_bytes().decode('utf-8', errors='ignore')
+    def _read_file_data(self, data: Any) -> Path:
+        """读取任意文件内容（路径、bytes、str），返回临时路径"""
+        temp_dir = _get_node_temp_dir(None)  # 使用通用临时目录
+        if isinstance(data, (str, Path)):
+            path = Path(data)
+            if path.is_file():
+                # 如果是已存在的文件路径，直接返回（也可复制到 temp_dir 保持隔离）
+                import shutil
+                dst = temp_dir / path.name
+                shutil.copy2(path, dst)
+                return dst
+            else:
+                # 假设是文本内容，保存为 file.txt
+                dst = temp_dir / "file.txt"
+                dst.write_text(str(data), encoding='utf-8')
+                return dst
+        elif isinstance(data, bytes):
+            dst = temp_dir / "file.bin"
+            dst.write_bytes(data)
+            return dst
+        else:
+            # 兜底：转为字符串保存
+            dst = temp_dir / "file.txt"
+            dst.write_text(str(data), encoding='utf-8')
+            return dst
 
     def _process_multiple_inputs(self, input_name: str, input_values: List[Any], input_type: ArgumentType) -> List[Any]:
         if not isinstance(input_values, (list, tuple)):
@@ -759,7 +831,7 @@ class BaseComponent(ABC):
             elif output_type == ArgumentType.IMAGE:
                 return self._store_image_data(output_value, node_id)
             elif output_type == ArgumentType.FILE:
-                return self._store_file_data(output_value, node_id)
+                    return self._store_file_data(output_value, node_id, output_name)
             else:
                 return output_value
         except Exception as e:
@@ -799,7 +871,7 @@ class BaseComponent(ABC):
     def _store_sklearn_model(self, model: Any, node_id: str = None) -> str:
         """存储sklearn模型到节点专属目录"""
         temp_dir = _get_node_temp_dir(node_id)
-        model_path = temp_dir / f"model_{uuid.uuid4().hex}.pkl"
+        model_path = temp_dir / f"model_{node_id}.pkl"
         with open(model_path, 'wb') as f:
             pickle.dump(model, f)
         return str(model_path)
@@ -810,7 +882,7 @@ class BaseComponent(ABC):
         if torch is None:
             raise ComponentError("torch 未安装", "MISSING_DEPENDENCY")
         temp_dir = _get_node_temp_dir(node_id)
-        model_path = temp_dir / f"model_{uuid.uuid4().hex}.pth"
+        model_path = temp_dir / f"model_{node_id}.pth"
         scripted_model = torch.jit.script(model)
         scripted_model.save(str(model_path))
         return str(model_path)
@@ -822,15 +894,38 @@ class BaseComponent(ABC):
         elif not isinstance(image, Image.Image):
             raise ComponentError(f"无法存储图像数据: {type(image)}")
         temp_dir = _get_node_temp_dir(node_id)
-        image_path = temp_dir / f"image_{uuid.uuid4().hex}.png"
+        image_path = temp_dir / f"image_{node_id}.png"
         image.save(image_path, 'PNG')
         return str(image_path)
 
-    def _store_file_data(self, data: str, node_id: str = None) -> str:
-        """存储文件数据到节点专属目录"""
+    def _store_file_data(self, data: Any, node_id: str = None, output_name: str = "output_file") -> str:
+        """存储任意文件数据，使用 output_name 作为文件名"""
         temp_dir = _get_node_temp_dir(node_id)
-        file_path = temp_dir / f"file_{uuid.uuid4().hex}.txt"
-        file_path.write_text(str(data), encoding='utf-8')
+        # 保留扩展名：如果 output_name 有后缀，直接用；否则尝试推断或默认 .bin
+        filename = Path(output_name).name or "output_file"
+        if "." not in filename:
+            # 尝试推断扩展名（可选）
+            if isinstance(data, str):
+                filename += ".txt"
+            elif isinstance(data, bytes):
+                filename += ".bin"
+            else:
+                filename += ".dat"
+        file_path = temp_dir / filename
+
+        if isinstance(data, (str, Path)):
+            path = Path(data)
+            if path.is_file():
+                import shutil
+                shutil.copy2(path, file_path)
+            else:
+                file_path.write_text(str(data), encoding='utf-8')
+        elif isinstance(data, bytes):
+            file_path.write_bytes(data)
+        else:
+            # 兜底：转为字符串
+            file_path.write_text(str(data), encoding='utf-8')
+
         return str(file_path)
 
     # ---------------- 执行包装器 ----------------
@@ -895,6 +990,189 @@ class BaseComponent(ABC):
             error_msg = f"组件执行失败: {traceback.format_exc()}"
             raise ComponentError(error_msg, "EXECUTION_ERROR")
 
+    # ---------------- 组件调试专用方法 ----------------
+    def debug(self,
+              params: Dict[str, Any] = None,
+              inputs: Dict[str, Any] = None,
+              global_vars: Dict[str, Any] = None,
+              node_id: str = str(uuid.uuid4()),
+              show_input_types: bool = True,
+              show_output_types: bool = True,
+              show_execution_time: bool = True) -> Dict[str, Any]:
+        """
+        通用调试函数，用于测试组件运行效果
+
+        Args:
+            params: 组件参数，如果为None则使用默认值
+            inputs: 输入数据，如果为None则使用默认值
+            global_vars: 全局变量上下文
+            node_id: 节点ID，用于临时文件存储
+            show_input_types: 是否显示输入数据类型信息
+            show_output_types: 是否显示输出数据类型信息
+            show_execution_time: 是否显示执行时间
+
+        Returns:
+            Dict[str, Any]: 执行结果
+        """
+        import time
+
+        # 设置默认参数
+        if params is None:
+            params = {}
+            params_model = self.get_params_model()
+            # 使用模型的默认值
+            try:
+                default_params = params_model()
+                params = default_params.dict()
+            except Exception:
+                params = {}
+
+        if inputs is None:
+            inputs = {}
+            # 为每个输入端口设置默认值
+            for port in self.inputs:
+                if port.type == ArgumentType.TEXT:
+                    inputs[port.name] = ""
+                elif port.type == ArgumentType.INT:
+                    inputs[port.name] = 0
+                elif port.type == ArgumentType.FLOAT:
+                    inputs[port.name] = 0.0
+                elif port.type == ArgumentType.BOOL:
+                    inputs[port.name] = False
+                elif port.type == ArgumentType.ARRAY:
+                    inputs[port.name] = []
+                elif port.type == ArgumentType.CSV:
+                    inputs[port.name] = pd.DataFrame()
+                elif port.type == ArgumentType.JSON:
+                    inputs[port.name] = {}
+                elif port.type == ArgumentType.EXCEL:
+                    inputs[port.name] = pd.DataFrame()
+                else:
+                    inputs[port.name] = None
+
+        # 显示输入信息
+        if show_input_types:
+            print("=" * 50)
+            print("DEBUG: 输入数据信息")
+            print("-" * 30)
+            for port in self.inputs:
+                input_data = inputs.get(port.name)
+                print(f"输入端口 '{port.name}' ({port.label}):")
+                print(f"  类型: {type(input_data)}")
+                print(f"  值: {self._format_value(input_data)}")
+                print(f"  期望类型: {port.type}")
+                print()
+            print("-" * 30)
+            for property, prop_def in self.properties.items():
+                input_param = params.get(property)
+                print(f"参数 '{property}' ({prop_def.label}):")
+                print(f"  类型: {type(input_param)}")
+                print(f"  值: {self._format_value(input_param)}")
+                print(f"  期望类型: {prop_def.type}")
+                print()
+            print("-" * 30)
+
+        # 记录执行时间
+        start_time = None
+        if show_execution_time:
+            start_time = time.time()
+
+        try:
+            print("DEBUG: 组件执行日志信息")
+            # 执行组件
+            result = self.execute(params, inputs, global_vars, node_id)
+            print()
+            print("-" * 30)
+            print()
+            if show_execution_time and start_time is not None:
+                execution_time = time.time() - start_time
+                print(f"执行时间: {execution_time:.4f} 秒")
+                print()
+
+            # 显示输出信息
+            if show_output_types:
+                print("DEBUG: 输出数据信息")
+                print("-" * 30)
+                for port in self.outputs:
+                    if port.name in result:
+                        output_data = result[port.name]
+                        print(f"输出端口 '{port.name}' ({port.label}):")
+                        print(f"  类型: {type(output_data)}")
+                        print(f"  值: {self._format_value(output_data)}")
+                        print(f"  期望类型: {port.type}")
+                        print()
+
+            print("=" * 50)
+            print("DEBUG: 执行成功!")
+            print(f"组件: {self.name}")
+            print(f"输出: {result}")
+            print("=" * 50)
+
+            return result
+
+        except Exception as e:
+            print("=" * 50)
+            print("DEBUG: 执行失败!")
+            print(f"组件: {self.name}")
+            print(f"错误: {str(e)}")
+            print(f"错误类型: {type(e).__name__}")
+            print("=" * 50)
+            raise e
+
+    def _format_value(self, value: Any, max_length: int = 100) -> str:
+        """
+        格式化值以便显示，避免过长的输出
+
+        Args:
+            value: 要格式化的值
+            max_length: 最大显示长度
+
+        Returns:
+            str: 格式化后的字符串
+        """
+        if value is None:
+            return "None"
+
+        # 处理不同类型的值
+        if isinstance(value, (str, int, float, bool)):
+            str_val = str(value)
+            if len(str_val) > max_length:
+                return str_val[:max_length - 3] + "..."
+            return str_val
+
+        elif isinstance(value, (list, tuple)):
+            if len(value) == 0:
+                return f"{type(value).__name__}([])"
+            elif len(value) <= 5:  # 小数组完整显示
+                items = [self._format_value(item, max_length // 3) for item in value]
+                return f"{type(value).__name__}({items})"
+            else:  # 大数组只显示前几个
+                items = [self._format_value(item, max_length // 3) for item in value[:5]]
+                return f"{type(value).__name__}({items}... 共{len(value)}项)"
+
+        elif isinstance(value, dict):
+            if len(value) == 0:
+                return "dict({})"
+            elif len(value) <= 3:  # 小字典完整显示
+                items = {k: self._format_value(v, max_length // 3) for k, v in value.items()}
+                return f"dict({items})"
+            else:  # 大字典只显示前几个
+                items = {k: self._format_value(v, max_length // 3) for k, v in list(value.items())[:3]}
+                return f"dict({{...}} 共{len(value)}项)"
+
+        elif isinstance(value, pd.DataFrame):
+            return f"DataFrame(shape={value.shape}, columns={list(value.columns)})"
+
+        elif isinstance(value, np.ndarray):
+            return f"ndarray(shape={value.shape}, dtype={value.dtype})"
+
+        elif hasattr(value, '__class__'):
+            # 其他对象显示类型和主要属性
+            return f"{type(value).__name__} object"
+
+        else:
+            return f"{type(value).__name__}: {str(value)[:max_length]}"
+
 
 def _parse_default_value(default_str: str, target_type: type) -> Any:
     """安全解析默认值"""
@@ -932,6 +1210,8 @@ def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition'
             ft = float
         elif field_def.type == PropertyType.BOOL:
             ft = bool
+        elif field_def.type == PropertyType.RANGE:
+            ft = Union[int, float]
         else:
             ft = str
 

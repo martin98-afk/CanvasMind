@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "逻辑回归推理(csv)"
+    name = "sklearn模型推理(csv)"
     category = "模型推理"
     description = "组件开发生成组件"
     requirements = "scikit-learn,matplotlib"

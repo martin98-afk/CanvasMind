@@ -16,7 +16,7 @@ from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, Smooth
     TransparentDropDownToolButton
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
-from app.utils.utils import serialize_for_json, get_icon
+from app.utils.utils import serialize_for_json, get_icon, canvas_file_dump_path
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit, VariableCompletionTextEdit
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
@@ -663,11 +663,7 @@ class PropertyPanel(CardWidget):
             return
 
         # ✅ 定义目标目录：项目根目录下的 uploads/
-        if hasattr(self.main_window, 'project_root'):
-            upload_root = Path(self.main_window.project_root) / "uploads"
-        else:
-            # 回退：使用当前工作目录下的 uploads/
-            upload_root = Path.cwd() / "uploads"
+        upload_root = canvas_file_dump_path() / "uploads"
 
         upload_root.mkdir(exist_ok=True, parents=True)
 
@@ -962,8 +958,6 @@ class PropertyPanel(CardWidget):
         if dialog.exec():
             new_text = dialog.text_edit.toPlainText().strip()
             line_edit.setText(new_text)
-            # 手动触发 textChanged（因为 setText 不 emit）
-            line_edit.textChanged.emit(new_text)
 
     def _add_output_to_global_variable(self, node, port_name: str):
         value = node._output_values.get(port_name)

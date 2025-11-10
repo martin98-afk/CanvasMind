@@ -6,47 +6,11 @@ from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QEvent
 from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QShortcut, QHBoxLayout, \
     QLineEdit, QPushButton, QCheckBox, QLabel, QInputDialog
+
+from app.components.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon # 假设您有这个工具函数
 
 from app.widgets.code_editor_spyder import JediCodeEditor # 确保导入路径正确
-
-DEFAULT_CODE_TEMPLATE = '''class Component(BaseComponent):
-    name = ""
-    category = ""
-    description = ""
-    requirements = ""
-    inputs = [
-    ]
-    outputs = [
-    ]
-    properties = {
-    }
-    def run(self, params, inputs=None):
-        """
-        params: 节点属性（来自UI）
-        inputs: 上游输入（key=输入端口名）
-        return: 输出数据（key=输出端口名）
-        """
-        # 在这里编写你的组件逻辑
-        input_data = inputs.get("input_data") if inputs else None
-        param1 = params.get("param1", "default_value")
-        # 处理逻辑
-        result = f"处理结果: {input_data} + {param1}"
-        return {
-            "output_data": result
-        }
-        
-
-if __name__ == "__main__":
-    import warnings
-    warnings.filterwarnings("ignore")
-    model = Component()
-    result = model.run(
-        params={"param1": "test"},
-        inputs={"input_data": "output"}
-    )
-    print(result)
-'''
 
 
 # ---------------- 主部件 ----------------
@@ -54,7 +18,7 @@ class CodeEditorWidget(QWidget):
     code_changed = pyqtSignal()
     parsed_component = pyqtSignal(dict)
 
-    def __init__(self, parent=None, python_exe=None, popup_offset=0, default_code=DEFAULT_CODE_TEMPLATE):
+    def __init__(self, parent=None, python_exe=None, popup_offset=0, default_code=DEFAULT_NODE_TEMPLATE):
         super().__init__(parent) # 确保父类初始化
         self.default_code = default_code
         self._suspend_sync_depth = 0 # 初始化，避免在_setup_ui前访问

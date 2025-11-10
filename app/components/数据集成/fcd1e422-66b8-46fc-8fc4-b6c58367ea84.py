@@ -16,23 +16,24 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "CSV 读取器"
+    name = "获取当前时间"
     category = "数据集成"
-    description = "接收本地上传csv文件"
-    requirements = "pandas"
+    description = ""
+    requirements = ""
     inputs = [
-        PortDefinition(name="csv", label="csv文件", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="csv", label="csv文件", type=ArgumentType.CSV),
+        PortDefinition(name="output1", label="输出1", type=ArgumentType.TEXT),
     ]
-
+    properties = {
+    }
     def run(self, params, inputs=None):
-        try:
-            import pandas as pd
-            self.logger.debug("调试模式结果测试")
-            self.logger.info(f"开始读取csv文件: {inputs.csv}")
-            return {"csv": inputs.csv}
-        except Exception as e:
-            self.logger.error(f"无法读取csv文件: {str(e)}")
-            raise e
+        """
+        params: 节点属性（来自UI）
+        inputs: 上游输入（key=输入端口名）
+        return: 输出数据（key=输出端口名）
+        """
+        import datetime
+        return {
+            "output1": datetime.datetime.now()
+        }

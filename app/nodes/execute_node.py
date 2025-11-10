@@ -18,7 +18,8 @@ from app.components.base import ArgumentType, PropertyType, ConnectionType, Glob
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
-from app.utils.utils import draw_square_port, draw_special_outputport  # 假设 resource_path 也在 utils
+from app.utils.utils import draw_square_port, draw_special_outputport, \
+    canvas_file_dump_path  # 假设 resource_path 也在 utils
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 # 导入代码编辑器组件
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
@@ -30,7 +31,7 @@ from app.widgets.node_widget.range_widget import RangeWidgetWrapper
 from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 from app.widgets.node_widget.variable_combo_widget import GlobalVarComboBoxWidgetWrapper
 
-PERSISTENT_TEMP_ROOT = Path("temp_runs").resolve()
+PERSISTENT_TEMP_ROOT = (canvas_file_dump_path() / "run_scripts").resolve()
 PERSISTENT_TEMP_ROOT.mkdir(exist_ok=True, parents=True)
 
 
@@ -225,11 +226,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     with open(self.FILE_PATH, 'r', encoding='utf-8') as f:
                         current_code = f.read()
                     self._debug_code_content = current_code
-                    # 更新控件内容（如果控件支持）
-                    # self._debug_widget.set_value(current_code) # 如果有此方法
-                    # 或者，如果 valueChanged 信号只在用户交互时触发，可以手动更新内部值
-                    # 这取决于 CodeEditorWidgetWrapper 的具体实现
-                    # 此处假设控件内部会处理内容更新或需要用户手动刷新
                     logger.info(f"刷新了节点 {self.NODE_NAME} 的调试代码编辑器内容。")
                 except Exception as e:
                     logger.error(f"刷新节点 {self.NODE_NAME} 调试代码内容失败: {e}")
@@ -245,8 +241,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     logger.info(f"已将调试代码保存到 {self.FILE_PATH}")
                 except Exception as e:
                     logger.error(f"保存调试代码到 {self.FILE_PATH} 失败: {e}")
-                    # 可以考虑弹窗提示用户保存失败
-                    # QMessageBox.warning(self.view, "保存失败", f"无法保存代码到 {self.FILE_PATH}: {e}")
 
         def _generate_parms_widget(self):
             """生成节点属性配置控件"""
@@ -304,7 +298,10 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                             "type": field_type_enum.name,
                             "label": field_def.get("label", field_name),
                             "choices": field_def.get("choices", []),
-                            "default": field_def.get("default", "")
+                            "default": field_def.get("default", ""),
+                            "min": field_def.get("min", 0),
+                            "max": field_def.get("max", 100),
+                            "step": field_def.get("step", 1)
                         }
                     widget = DynamicFormWidgetWrapper(
                         parent=self.view,

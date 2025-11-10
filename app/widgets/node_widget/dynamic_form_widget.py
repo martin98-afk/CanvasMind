@@ -10,7 +10,9 @@ from qfluentwidgets import LineEdit, PushButton, FluentIcon, ToolButton, ComboBo
 from app.components.base import PropertyType
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
+from app.widgets.node_widget.checkbox_widget import CheckBoxWidget
 from app.widgets.node_widget.longtext_dialog import LongTextWidget
+from app.widgets.node_widget.range_widget import RangeWidget
 from app.widgets.node_widget.variable_combo_widget import GlobalVarComboBoxWidget
 
 
@@ -74,6 +76,23 @@ class FormFieldWidget(QtWidgets.QWidget):
             elif field_type == PropertyType.VARIABLE.name:
                 # VARIABLE 类型：检查是否支持 placeholder
                 widget = GlobalVarComboBoxWidget(main_window=home, parent=self)
+                widget.valueChanged.connect(self.changed)
+                self.fields[key] = widget
+                input_row.addWidget(widget)
+
+            elif field_type == PropertyType.RANGE.name:
+                # VARIABLE 类型：检查是否支持 placeholder
+                widget = RangeWidget(
+                    min_val=defn.get("min", 0), max_val=defn.get("max", 100), step=defn.get("step", 1), default=default,
+                    parent=self
+                )
+                widget.valueChanged.connect(self.changed)
+                self.fields[key] = widget
+                input_row.addWidget(widget)
+
+            elif field_type == PropertyType.BOOL.name:
+                # VARIABLE 类型：检查是否支持 placeholder
+                widget = CheckBoxWidget(text=label, state=default, parent=self)
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
                 input_row.addWidget(widget)

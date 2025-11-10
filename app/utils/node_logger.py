@@ -3,8 +3,10 @@ from loguru import logger
 import threading
 from pathlib import Path
 
+from app.utils.utils import canvas_file_dump_path
+
 # 假设这些常量已定义
-LOG_ROOT = Path("logs") / "nodes"  # 示例路径
+LOG_ROOT = canvas_file_dump_path() / "node_logs"  # 示例路径
 MAX_LOG_LINES = 5000
 
 

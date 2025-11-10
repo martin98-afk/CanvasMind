@@ -16,38 +16,51 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "JSON文本包装"
-    category = "大模型组件"
-    description = ""
+    name = "测试节点1"
+    category = "测试组件"
+    description = "测试专用组件"
     requirements = ""
     inputs = [
         PortDefinition(name="input1", label="输入1", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="output1", label="包装结果", type=ArgumentType.JSON),
+        PortDefinition(name="output1", label="输出1", type=ArgumentType.TEXT),
     ]
     properties = {
-        "prop_0": PropertyDefinition(
-            type=PropertyType.TEXT,
-            default="text",
+        "prop1": PropertyDefinition(
+            type=PropertyType.DYNAMICFORM,
             label="属性1",
+            schema={
+                "prop1": PropertyDefinition(
+                    type=PropertyType.RANGE,
+                    default="12",
+                    label="属性1",
+                    min=0.0,
+                    max=20.0,
+                    step=1.0
+                ),
+                "prop2": PropertyDefinition(
+                    type=PropertyType.BOOL,
+                    default=False,
+                    label="是否开启身份校验",
+                ),
+                "prop3": PropertyDefinition(
+                    type=PropertyType.TEXT,
+                    default="",
+                    label="属性3",
+                ),
+            }
         ),
     }
-
     def run(self, params, inputs=None):
         """
         params: 节点属性（来自UI）
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
-        self.logger.info(inputs)
-        self.logger.info(params.dict())
-        # 在这里编写你的组件逻辑
-        input = inputs.input1
+        self.logger.info(params)
         return {
-            "output1": {
-                params.prop_0: input
-            }
+            "output1": inputs.input1
         }
 
 
@@ -56,8 +69,8 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     model = Component()
     result = model.debug(
-        params={"prop_0": "test"},
-        inputs={"input1": "组件测试"},
+        params={"prop1": [{"prop1": "1", "prop2": True}]},
+        inputs={"input1": "output"},
         node_id="测试模型",
         show_input_types = True,
         show_output_types = True,

@@ -13,6 +13,8 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import TreeWidget, RoundMenu, MessageBoxBase, TextEdit, SegmentedWidget, TableWidget, ImageLabel
 from qtpy import QtCore
 from app.components.base import ArgumentType
+import subprocess
+import sys
 
 
 # --- Worker Class (修改错误处理) ---
@@ -48,7 +50,6 @@ class BuildTreeWorker(QThread):
         """
         if obj is None:
             return "(NoneType) None"
-
         # 如果指定了 arg_type，则优先使用它
         if arg_type is not None and isinstance(arg_type, ArgumentType):
             if arg_type.is_image():
@@ -115,7 +116,6 @@ class BuildTreeWorker(QThread):
                         return f"(str) '{obj[:200]}...' (右键预览)"
                 else:
                     return f"(str) '{str(obj)}'"
-
         # 如果没有指定 arg_type，根据对象的实际类型进行推断
         if isinstance(obj, bool):
             return f"(bool) {str(obj).lower()}"
@@ -189,14 +189,11 @@ class BuildTreeWorker(QThread):
             item_data = {"text": ["<max recursion depth>"], "data": None, "children": [], "icon": None}
             parent_list.append(item_data)
             return
-
         # 使用 _format_value 来获取完整的显示文本
         display_text = self._format_value(obj, arg_type)
-
         # 如果 key 不为空，则将其与值拼接起来，形成 "key: (type) value" 的格式
         if key != "":
             display_text = f"{key}: {display_text}"
-
         # 存储节点数据
         item_data = {
             "text": [display_text],
@@ -204,7 +201,6 @@ class BuildTreeWorker(QThread):
             "children": [],
             "icon": None
         }
-
         # 检查是否需要图标
         if (self._is_image_file(obj) or self._is_pil_image(obj) or
                 (arg_type is not None and isinstance(arg_type, ArgumentType) and arg_type.is_image())):
@@ -212,7 +208,6 @@ class BuildTreeWorker(QThread):
                 item_data["icon_path"] = obj
             elif self._is_pil_image(obj):
                 item_data["icon_pil"] = True
-
         # 递归构建子节点
         self._build_recursive_content_items(obj, max_depth, current_depth, arg_type, item_data["children"])
         parent_list.append(item_data)
@@ -221,7 +216,6 @@ class BuildTreeWorker(QThread):
         current_depth += 1
         if current_depth > max_depth:
             return
-
         if isinstance(obj, dict):
             for k, v in obj.items():
                 self._build_items(v, str(k), max_depth, current_depth, arg_type, children_list)
@@ -392,7 +386,6 @@ class VariableTreeWidget(TreeWidget):
         self._original_data = data
         self._arg_type = arg_type
         self.clear()  # 清空旧数据
-
         # 创建新的worker线程
         self._current_worker = BuildTreeWorker(data, arg_type, max_depth, parent=self)
         self._current_worker.finished.connect(self._on_build_finished)
@@ -431,16 +424,13 @@ class VariableTreeWidget(TreeWidget):
     def _add_item_from_data(self, parent_item, item_data):
         """根据数据字典创建TreeWidgetItem并添加到父项"""
         item = QTreeWidgetItem(parent_item, item_data["text"])
-
         # 只有当数据不为 None 时才设置 UserRole 数据
         if item_data["data"] is not None:
             item.setData(0, Qt.UserRole, item_data["data"])
-
         # 设置图标
         icon = self._get_icon_for_item(item_data["data"])
         if icon:
             item.setIcon(0, icon)
-
         # 递归添加子项
         for child_data in item_data["children"]:
             self._add_item_from_data(item, child_data)
@@ -451,10 +441,8 @@ class VariableTreeWidget(TreeWidget):
         这里使用简单的文字图标，您可以替换为更美观的图片资源。
         """
         from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor
-
         if obj is None:
             return None
-
         pixmap = QPixmap(25, 25)
         pixmap.fill(Qt.transparent)
         painter = QPainter(pixmap)
@@ -521,7 +509,6 @@ class VariableTreeWidget(TreeWidget):
         """
         if obj is None:
             return "(NoneType) None"
-
         # 如果指定了 arg_type，则优先使用它
         if arg_type is not None and isinstance(arg_type, ArgumentType):
             if arg_type.is_image():
@@ -588,7 +575,6 @@ class VariableTreeWidget(TreeWidget):
                         return f"(str) '{obj[:200]}...' (右键预览)"
                 else:
                     return f"(str) '{str(obj)}'"
-
         # 如果没有指定 arg_type，根据对象的实际类型进行推断
         if isinstance(obj, bool):
             return f"(bool) {str(obj).lower()}"
@@ -680,7 +666,6 @@ class VariableTreeWidget(TreeWidget):
                 return None
         else:
             return None
-
         if pixmap and not pixmap.isNull():
             scaled_pixmap = pixmap.scaled(
                 max_size, max_size,
@@ -690,9 +675,11 @@ class VariableTreeWidget(TreeWidget):
             return scaled_pixmap
         return None
 
-    # --- show_detail 方法保持不变 ---
+    # --- show_detail 方法更新 ---
     def show_detail(self):
         obj = self._original_data
+        has_file_preview = False  # 标记是否是文件类型，需要添加打开资源管理器按钮
+
         if isinstance(obj, str) and not os.path.isfile(obj):
             self._preview_text(obj)
         elif isinstance(obj, str) and os.path.isfile(obj):
@@ -700,12 +687,18 @@ class VariableTreeWidget(TreeWidget):
             ext = os.path.splitext(filepath.lower())[1]
             if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff', '.webp'}:
                 self._preview_image(filepath)
+                has_file_preview = True
             elif ext == '.csv':
                 self._preview_csv_full(filepath)
+                has_file_preview = True
             elif ext in {'.xlsx', '.xls'}:
                 self._preview_excel(filepath)  # 调用优化后的方法
+                has_file_preview = True
             elif ext in {'.txt', '.log', '.md', '.py', '.json', '.xml', '.yaml', '.yml', '.ini'}:
                 self._preview_text_file(filepath)
+                has_file_preview = True
+            else:
+                self._open_file_in_explorer(filepath)
         elif isinstance(obj, (list, tuple)):
             self._preview_nested_structure(obj, f"{'列表' if isinstance(obj, list) else '元组'}数据预览")
         elif isinstance(obj, dict):
@@ -714,9 +707,6 @@ class VariableTreeWidget(TreeWidget):
             # 修正标题
             self._preview_nested_structure(obj, "集合数据预览")
         elif isinstance(obj, np.ndarray):  # 添加对 ndarray 的处理
-            # ndarray 通常结构清晰，直接使用 _preview_nested_structure 也合适
-            # 或者，也可以调用 _preview_dataframe_full 并将 ndarray 转为 DataFrame (但可能不直观)
-            # 这里使用 _preview_nested_structure 更通用
             self._preview_nested_structure(obj, f"NumPy 数组 (shape: {obj.shape}, dtype: {obj.dtype}) 预览")
         elif isinstance(obj, pd.DataFrame):
             self._preview_dataframe_full(obj)
@@ -725,17 +715,28 @@ class VariableTreeWidget(TreeWidget):
             self._preview_dataframe_full(obj)
         elif self._is_pil_image(obj):
             self._preview_image(obj)
-        # 可以添加更多顶层类型处理，但以上已覆盖主要情况
 
-    # --- contextMenuEvent 方法保持不变 ---
+    # --- contextMenuEvent 方法更新 ---
     def contextMenuEvent(self, event):
         item = self.itemAt(event.pos())
         if not item:
             return
+
         obj = item.data(0, Qt.UserRole)
         if obj is None:
             return
+
         menu = RoundMenu(parent=self)
+
+        # --- 通用的“在资源管理器中打开”动作 ---
+        open_in_explorer_action = None
+        if isinstance(obj, str) and os.path.isfile(obj):
+            filepath = obj
+            open_in_explorer_action = QAction("📂 在资源管理器中打开", self)
+            open_in_explorer_action.triggered.connect(lambda: self._open_file_in_explorer(filepath))
+            menu.addAction(open_in_explorer_action)
+
+        # --- 其他预览动作 ---
         if isinstance(obj, str) and not os.path.isfile(obj):
             action = QAction("🔍 预览完整文本", self)
             action.triggered.connect(lambda: self._preview_text(obj))
@@ -760,9 +761,7 @@ class VariableTreeWidget(TreeWidget):
                 action = QAction("🔍 预览文本内容", self)
                 action.triggered.connect(lambda: self._preview_text_file(filepath))
                 menu.addAction(action)
-            save_action = QAction("💾 另存为...", self)
-            save_action.triggered.connect(lambda: self._save_file(filepath))
-            menu.addAction(save_action)
+            # 注意：这里移除了 save_action
         elif isinstance(obj, (list, tuple)):
             action = QAction("🔍 预览完整列表", self)
             action.triggered.connect(
@@ -796,13 +795,14 @@ class VariableTreeWidget(TreeWidget):
             action = QAction("🖼️ 预览原图", self)
             action.triggered.connect(lambda: self._preview_image(obj))
             menu.addAction(action)
+
         copy_action = QAction("📋 Copy Value", self)
         copy_action.triggered.connect(lambda: self._copy_value(str(obj)))
         menu.addAction(copy_action)
+
         menu.exec_(event.globalPos())
 
     # --- 其他方法 (_preview_nested_structure, _build_nested_tree, etc.) 保持不变 ---
-    # ... (这里省略，但代码中需要保留) ...
     def _preview_nested_structure(self, data, title="嵌套结构预览"):
         """
         为嵌套容器（list, dict, tuple, set）创建一个树状预览窗口
@@ -818,10 +818,8 @@ class VariableTreeWidget(TreeWidget):
         tree_widget.setMinimumSize(800, 500)
         tree_widget.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Key列自适应内容
         tree_widget.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Value列拉伸填充剩余空间
-
         # 构建树
         self._build_nested_tree(data, tree_widget.invisibleRootItem(), "", is_root=True)
-
         # 展开所有节点
         tree_widget.expandAll()
         dialog.viewLayout.addWidget(tree_widget)
@@ -836,15 +834,12 @@ class VariableTreeWidget(TreeWidget):
             item = QTreeWidgetItem(parent_item, ["<max recursion depth>", ""])
             item.setForeground(0, Qt.gray)
             return
-
         display_key = key if not is_root else "root"
         display_value = self._format_value(obj)
         item = QTreeWidgetItem(parent_item, [display_key, display_value])
-
         # 只有当 obj 不为 None 时才设置数据
         if obj is not None:
             item.setData(0, Qt.UserRole, obj)
-
         # 使用复用的递归逻辑
         self._build_recursive_content_nested(obj, item, max_depth, current_depth)
 
@@ -855,7 +850,6 @@ class VariableTreeWidget(TreeWidget):
         current_depth += 1
         if current_depth > max_depth:
             return
-
         if isinstance(obj, dict):
             for k, v in obj.items():
                 self._build_nested_tree(v, parent_item, str(k), max_depth=max_depth, current_depth=current_depth)
@@ -878,7 +872,6 @@ class VariableTreeWidget(TreeWidget):
                 attr_item = QTreeWidgetItem(parent_item, [f"{attr_name}", self._format_value(attr_val)])
                 # 如果属性值本身是容器，可以考虑展开，但要严格控制深度
                 self._build_recursive_content_nested(attr_val, attr_item, max_depth, current_depth)
-
             # --- 修改 ndarray 展开逻辑 (预览窗口) ---
             MAX_PER_DIM = 300
             if obj.ndim == 1:
@@ -940,22 +933,18 @@ class VariableTreeWidget(TreeWidget):
         # 限制数据框的行数
         if df.shape[0] > max_rows:
             df = df.head(max_rows)
-
         dialog = MessageBoxBase(parent=self.parent_widget)
         dialog.yesButton.hide()
         dialog.cancelButton.setText("关闭")
-
         table = self._create_styled_table()
         table.setMinimumSize(800, 500)
         table.verticalHeader().hide()
         header = table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
-
         table.setRowCount(df.shape[0])
         table.setColumnCount(df.shape[1])
         table.setHorizontalHeaderLabels(df.columns.astype(str).tolist())
         table.setVerticalHeaderLabels(df.index.astype(str).tolist())
-
         for i in range(df.shape[0]):
             for j in range(df.shape[1]):
                 val = df.iloc[i, j]
@@ -963,7 +952,6 @@ class VariableTreeWidget(TreeWidget):
                 item = QTableWidgetItem(text)
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 table.setItem(i, j, item)
-
         dialog.viewLayout.addWidget(table)
         dialog.exec_()
 
@@ -995,12 +983,10 @@ class VariableTreeWidget(TreeWidget):
             sheet_names = xls.sheet_names
             if not sheet_names:
                 raise ValueError("Excel 文件无有效工作表")
-
             # 使用 MessageBoxBase
             dialog = MessageBoxBase(parent=self.parent_widget)
             dialog.yesButton.hide()
             dialog.cancelButton.setText("关闭")
-
             # 创建 SegmentedWidget 用于切换工作表
             seg_widget = SegmentedWidget()
             table = self._create_styled_table()
@@ -1023,17 +1009,13 @@ class VariableTreeWidget(TreeWidget):
             # 添加所有工作表到 SegmentedWidget
             for name in sheet_names:
                 seg_widget.addItem(name, text=name)  # 使用 sheet_name 作为 key 和 text
-
             # 连接切换事件
             seg_widget.currentItemChanged.connect(load_sheet)
-
             # 默认加载第一个工作表
             load_sheet(sheet_names[0])
-
             # 将 SegmentedWidget 和 Table 添加到 MessageBoxBase 的布局中
             dialog.viewLayout.addWidget(seg_widget)
             dialog.viewLayout.addWidget(table)
-
             dialog.exec_()
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition
@@ -1082,16 +1064,13 @@ class VariableTreeWidget(TreeWidget):
                 pixmap = None
         else:
             pixmap = None
-
         if pixmap is None or pixmap.isNull():
             return
-
         # === 智能缩放逻辑 ===
         max_width = 700
         max_height = 700
         original_width = pixmap.width()
         original_height = pixmap.height()
-
         # 仅当图像太大时才缩放
         if original_width > max_width or original_height > max_height:
             scaled_pixmap = pixmap.scaled(
@@ -1102,12 +1081,10 @@ class VariableTreeWidget(TreeWidget):
             )
         else:
             scaled_pixmap = pixmap  # 小图保持原尺寸
-
         # === 显示对话框 ===
         w = MessageBoxBase(parent=self.parent_widget)
         w.yesButton.hide()
         w.cancelButton.setText("关闭")
-
         image_view = ImageLabel()
         image_view.setImage(scaled_pixmap)  # 使用缩放后的 pixmap
         w.viewLayout.addWidget(image_view)
@@ -1123,12 +1100,10 @@ class VariableTreeWidget(TreeWidget):
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             table.setItem(0, 0, item)
             return
-
         table.setRowCount(df.shape[0])
         table.setColumnCount(df.shape[1])
         table.setHorizontalHeaderLabels(df.columns.astype(str).tolist())
         table.setVerticalHeaderLabels(df.index.astype(str).tolist())
-
         for i in range(df.shape[0]):
             for j in range(df.shape[1]):
                 val = df.iloc[i, j]
@@ -1142,33 +1117,29 @@ class VariableTreeWidget(TreeWidget):
         clipboard = QApplication.clipboard()
         clipboard.setText(text)
 
-    def _save_file(self, filepath):
-        name = os.path.basename(filepath)
-        save_path, _ = QFileDialog.getSaveFileName(self, "另存为", name)
-        if save_path:
-            try:
-                shutil.copy2(filepath, save_path)
-                from qfluentwidgets import InfoBar, InfoBarPosition
-                InfoBar.success(
-                    title="保存成功",
-                    content=f"文件已保存至：{os.path.basename(save_path)}",
-                    orient=Qt.Horizontal,
-                    isClosable=True,
-                    position=InfoBarPosition.TOP_RIGHT,
-                    duration=2000,
-                    parent=self
-                )
-            except Exception as e:
-                from qfluentwidgets import InfoBar, InfoBarPosition
-                InfoBar.error(
-                    title="保存失败",
-                    content=str(e),
-                    orient=Qt.Horizontal,
-                    isClosable=True,
-                    position=InfoBarPosition.TOP_RIGHT,
-                    duration=3000,
-                    parent=self
-                )
+    # --- 新增方法 ---
+    def _open_file_in_explorer(self, filepath):
+        """在资源管理器中打开文件所在的文件夹，并选中该文件"""
+        if not os.path.isfile(filepath):
+            return
+
+        try:
+            if sys.platform == "win32":
+                # Windows: 使用 explorer /select, "file_path"
+                subprocess.run(["explorer", "/select,", filepath], check=True)
+            elif sys.platform == "darwin":  # macOS
+                # macOS: 使用 open -R "file_path"
+                subprocess.run(["open", "-R", filepath], check=True)
+            elif sys.platform.startswith("linux"):
+                # Linux: 使用 xdg-open "directory_path" (无法直接选中文件)
+                directory = os.path.dirname(filepath)
+                subprocess.run(["xdg-open", directory], check=True)
+            else:
+                print(f"Unsupported platform: {sys.platform}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error opening file in explorer: {e}")
+        except FileNotFoundError:
+            print("File or directory not found.")
 
     def _preview_text_file(self, filepath):
         try:

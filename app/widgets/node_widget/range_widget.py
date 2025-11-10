@@ -82,7 +82,22 @@ class RangeWidget(QtWidgets.QWidget):
         self.slider.setValue(int(steps))
 
     def get_value(self):
-        return float(self.value_edit.text()) if self.is_float else int(self.value_edit.text())
+        text = self.value_edit.text().strip()
+        if not text:
+            return 0  # 或 None，根据业务逻辑决定
+        try:
+            fval = float(text)
+            if self.is_float:
+                return fval
+            else:
+                # 检查是否为整数值（如 36.0 是合法整数，但 36.1 不是）
+                if fval.is_integer():
+                    return int(fval)
+                else:
+                    raise ValueError(f"Non-integer value '{text}' provided for integer field")
+        except ValueError as e:
+            # 可选：弹出提示或返回默认值，避免崩溃
+            raise ValueError(f"Invalid number format: '{text}'") from e
 
 
 class RangeWidgetWrapper(NodeBaseWidget):

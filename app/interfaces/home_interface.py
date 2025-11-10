@@ -36,7 +36,7 @@ class WelcomeBannerWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(300)
+        self.setFixedHeight(400)
         # 加载背景图片
         self.bannerPixmap = QPixmap(resource_path('./icons/banner.png'))
 
@@ -257,7 +257,7 @@ class QuickStartCardView(CardWidget):
         )
 
         # --- 关键修改：自适应数量 ---
-        estimated_card_width = 360 + self.contentLayout.horizontalSpacing() # 卡片宽度 + 右侧间距
+        estimated_card_width = 300 + self.contentLayout.horizontalSpacing() # 卡片宽度 + 右侧间距
         available_width = self.contentLayout.geometry().width() or self.width() - 2 * self.vLayout.contentsMargins().left()
         if available_width <= 0:
              # 如果 geometry.width() 无效，尝试用 parent widget 的宽度估算

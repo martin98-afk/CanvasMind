@@ -458,7 +458,7 @@ class DraggableTreeWidget(TreeWidget):
             LOGIC_WIDTH, LOGIC_HEIGHT = 180, 120  # 和 create_drag_preview 中的 base 尺寸一致
             preview = self.create_drag_preview(full_path)
             drag.setPixmap(preview)
-            drag.setHotSpot(QPoint(LOGIC_WIDTH // 2 - 8, 3 * LOGIC_HEIGHT // 4))  # 👈 用逻辑中心
+            drag.setHotSpot(QPoint(LOGIC_WIDTH // 2 - 12, 3 * LOGIC_HEIGHT // 4))  # 👈 用逻辑中心
             drag.exec_(Qt.CopyAction)
 
     def create_drag_preview(self, full_path):
