@@ -25,7 +25,7 @@ from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 # 在 app/components 下创建 .temp 目录（隐藏目录）
 TEMP_COMPONENTS_DIR = Path(__file__).parent.parent / "components" / ".temp"
 TEMP_COMPONENTS_DIR.mkdir(exist_ok=True)
-PERSISTENT_TEMP_ROOT = Path("temp_runs").resolve()
+PERSISTENT_TEMP_ROOT = (Path("canvas_files") / "run_scripts").resolve()
 PERSISTENT_TEMP_ROOT.mkdir(exist_ok=True, parents=True)
 
 
