@@ -41,11 +41,11 @@ class Component(BaseComponent):
             for path in inputs.paths:
                 file = Path(path)
                 if file.is_file():
-                    zipf.write(path, arcname=path.name)
+                    zipf.write(path, arcname=file.name)
                 elif file.is_dir():
                     for sub_file in file.rglob("*"):
                         if sub_file.is_file():
-                            zipf.write(sub_file, arcname=subfile.relateive_to(path.parent))
+                            zipf.write(sub_file, arcname=subfile.relateive_to(file.parent))
         file = open("output.zip", "rb")
         return {
             "output.zip": file.read()

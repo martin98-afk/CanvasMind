@@ -2,6 +2,7 @@ import os
 import pickle
 import platform
 import re
+import shutil
 import subprocess
 import time
 import uuid
@@ -13,7 +14,7 @@ from PyQt5 import QtCore
 from app.components.base import PropertyType, GlobalVariableContext, ArgumentType
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.scheduler.expression_engine import ExpressionEngine
-from app.utils.utils import resource_path, draw_special_outputport, canvas_file_dump_path
+from app.utils.utils import resource_path, draw_special_outputport, canvas_file_dump_path, _safe_load_pickle
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
@@ -295,32 +296,32 @@ def create_dynamic_code_node(parent_window=None):
                             continue
 
         # === 关键：重写 execute_sync，使用动态代码模板 ===
-        def execute_sync(self, comp_obj, python_executable=None, check_cancel=None):
+        def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None):
             self.init_logger()
             if python_executable is None:
                 raise Exception("未指定Python执行环境。")
 
-            # === 1. 收集参数 ===
+            # === 1. 收集参数（不变）===
             user_code = self.get_property("code") or ""
             requirements = self.get_property("requirements") or ""
             type_dict = {item.value: item.name for item in ArgumentType}
-            # 输入端口（全部视为 TEXT + SINGLE）
+
             input_defs = []
             for port, port_def in zip(self.input_ports(), self.get_property("input_ports")):
                 name = port.name()
                 input_defs.append(
-                    f'        PortDefinition(name="{name}", label="{name}", type=ArgumentType.{type_dict[port_def["type"]]}, connection=ConnectionType.SINGLE),')
+                    f'        PortDefinition(name="{name}", label="{name}", type=ArgumentType.{type_dict[port_def["type"]]}, connection=ConnectionType.SINGLE),'
+                )
 
-            # 输出端口
             output_defs = []
             for port, port_def in zip(self.output_ports(), self.get_property("output_ports")):
                 name = port.name()
-                output_defs.append(f'        PortDefinition(name="{name}", label="{name}", type=ArgumentType.{type_dict[port_def["type"]]}),')
+                output_defs.append(
+                    f'        PortDefinition(name="{name}", label="{name}", type=ArgumentType.{type_dict[port_def["type"]]}),')
 
-            # === 3. 拼接临时组件代码 ===
+            # === 2. 拼接临时组件代码（不变）===
             from app.components.base import COMPONENT_IMPORT_CODE
 
-            # 确保用户代码是 def run(...) 形式
             if "def run(" not in user_code:
                 raise ValueError("代码必须包含 def run(self, params, inputs=None): 函数")
             indented_user_code = "\n".join(
@@ -335,7 +336,8 @@ def create_dynamic_code_node(parent_window=None):
                 properties_dict="",
                 user_run_code=indented_user_code.strip()
             )
-            # === 4. 收集 inputs / params / global_variable（与普通组件一致）===
+
+            # === 3. 收集 inputs / params / global_variable（不变）===
             global_variable = self.global_variable
             gv = GlobalVariableContext()
             gv.deserialize(global_variable)
@@ -353,7 +355,6 @@ def create_dynamic_code_node(parent_window=None):
                         inputs_raw[port_name] = [
                             upstream.node()._output_values.get(upstream.name()) for upstream in connected
                         ]
-                # 如果没有连接则使用选择的默认变量
                 else:
                     inputs_raw[port_name] = gv.get(self.get_property("input_ports")[i]["var"])
 
@@ -371,14 +372,15 @@ def create_dynamic_code_node(parent_window=None):
                     return value
 
             inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
-            params = {}  # 当前无额外属性，可扩展
+            params = {}  # 动态节点无额外参数
 
-            # === 5. 写入临时文件并执行（复用你现有的子进程逻辑）===
+            # === 4. 准备临时文件（不变）===
             temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
             temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
-            run_id = f"run_{self.persistent_id}_{int(time.time())}"
+            run_id = f"run_{self.persistent_id}"
             run_dir = PERSISTENT_TEMP_ROOT / run_id
-            run_dir.mkdir(exist_ok=True)
+            shutil.rmtree(run_dir, ignore_errors=True)
+            run_dir.mkdir(parents=True, exist_ok=True)
             temp_script_path = run_dir / "exec_script.py"
             params_path = run_dir / "params.pkl"
             result_path = run_dir / "result.pkl"
@@ -389,11 +391,11 @@ def create_dynamic_code_node(parent_window=None):
             with open(temp_component_path, 'w', encoding='utf-8') as f:
                 f.write(temp_component_code)
 
-            # 保存执行参数
+            # 保存执行参数（IPython 和 subprocess 都需要）
             with open(params_path, 'wb') as f:
                 pickle.dump((params, inputs, global_variable), f)
 
-            # 使用通用执行模板
+            # 生成执行脚本（使用原始 subprocess 模板，不需双模式）
             script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
                 class_name="DynamicComponent",
                 file_path=temp_component_path,
@@ -406,11 +408,95 @@ def create_dynamic_code_node(parent_window=None):
             with open(temp_script_path, 'w', encoding='utf-8') as f:
                 f.write(script_content)
 
-            # 检查是否已取消
+            # === 5. 执行 ===
+            if kernel_manager is not None:
+                return self._execute_dynamic_via_ipython(
+                    temp_script_path, result_path, error_path, log_file_path,
+                    check_cancel, kernel_manager, temp_component_path
+                )
+            else:
+                return self._execute_dynamic_via_subprocess(
+                    python_executable, temp_script_path, result_path, error_path,
+                    log_file_path, check_cancel, temp_component_path
+                )
+
+        def _execute_dynamic_via_ipython(
+                self, temp_script_path, result_path, error_path, log_file_path,
+                check_cancel, kernel_manager, temp_component_path
+        ):
+            import time, os, pickle
+
+            # 执行脚本（无需注入变量，统一走文件）
+            run_code = f'%run -i "{temp_script_path.as_posix()}"'
+            kernel_manager.execute_code(run_code, hidden=False)
+
+            # 轮询结果（与 subprocess 一致）
+            start_time = time.time()
+            timeout = 300
+            last_log_pos = 0
+
+            while not (result_path.exists() or error_path.exists()):
+                if check_cancel and check_cancel():
+                    raise Exception("执行被用户取消")
+                if time.time() - start_time > timeout:
+                    raise Exception("❌ 节点执行超时（5分钟）")
+
+                try:
+                    if os.path.exists(log_file_path):
+                        with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                            lf.seek(last_log_pos)
+                            new_content = lf.read()
+                            if new_content:
+                                self._log_message(self.persistent_id, new_content)
+                                last_log_pos = lf.tell()
+                except Exception:
+                    pass
+                time.sleep(0.1)
+
+            # 读取剩余日志
+            try:
+                if os.path.exists(log_file_path):
+                    with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                        lf.seek(last_log_pos)
+                        tail_content = lf.read()
+                        if tail_content:
+                            self._log_message(self.persistent_id, tail_content)
+            except Exception:
+                pass
+
+            # 清理临时组件文件
+            try:
+                if temp_component_path.exists():
+                    temp_component_path.unlink()
+            except Exception:
+                pass
+
+            # 处理结果
+            if result_path.exists():
+                output = _safe_load_pickle(result_path)
+                for port in self.output_ports():
+                    if port.name() in output:
+                        self.set_output_value(port.name(), output[port.name()])
+                return output
+            elif error_path.exists():
+                with open(error_path, 'rb') as f:
+                    error_info = pickle.load(f)
+                error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
+                self._log_message(self.persistent_id, error_msg)
+                raise Exception(error_info['error'])
+            else:
+                raise Exception("未知错误：未生成结果或错误文件")
+
+        def _execute_dynamic_via_subprocess(
+                self, python_executable, temp_script_path, result_path, error_path,
+                log_file_path, check_cancel, temp_component_path
+        ):
+            import subprocess, platform, time, os, pickle
+
+            # 检查取消
             if check_cancel and check_cancel():
                 raise Exception("执行已被用户取消")
 
-            # 启动子进程（非阻塞）
             kwargs = {}
             if platform.system() == "Windows":
                 kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
@@ -423,14 +509,12 @@ def create_dynamic_code_node(parent_window=None):
                 **kwargs
             )
 
-            # 轮询 + 超时 + 取消检查
             start_time = time.time()
-            timeout = 300  # 5分钟
+            timeout = 300
             cancelled = False
             last_log_pos = 0
 
             while proc.poll() is None:
-                # 检查取消
                 if check_cancel and check_cancel():
                     proc.terminate()
                     try:
@@ -440,18 +524,15 @@ def create_dynamic_code_node(parent_window=None):
                     cancelled = True
                     break
 
-                # 检查超时
                 if time.time() - start_time > timeout:
                     proc.terminate()
                     try:
                         proc.wait(timeout=5)
                     except subprocess.TimeoutExpired:
                         proc.kill()
-
                     self._log_message(self.persistent_id, "❌ 节点执行超时（5分钟）")
                     raise Exception("❌ 节点执行超时（5分钟）")
 
-                # 增量读取日志，实时输出
                 try:
                     if os.path.exists(log_file_path):
                         with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
@@ -462,14 +543,12 @@ def create_dynamic_code_node(parent_window=None):
                                 last_log_pos = lf.tell()
                 except Exception:
                     pass
-
-                time.sleep(0.1)  # 避免 CPU 占用过高
+                time.sleep(0.1)
 
             if cancelled:
                 self._log_message(self.persistent_id, "执行已被用户取消")
                 raise Exception("执行已被用户取消")
 
-            # 读取剩余日志（无论成功失败）
             try:
                 if os.path.exists(log_file_path):
                     with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
@@ -479,32 +558,28 @@ def create_dynamic_code_node(parent_window=None):
                             self._log_message(self.persistent_id, tail_content)
             except Exception:
                 pass
-            # 清除零时组件
+
+            # 清理临时组件
             try:
                 if temp_component_path.exists():
                     temp_component_path.unlink()
             except Exception:
                 pass
-            # === 处理最终结果 ===
-            if os.path.exists(result_path):
+
+            if result_path.exists():
                 with open(result_path, 'rb') as f:
                     output = pickle.load(f)
                 for port in self.output_ports():
                     if port.name() in output:
                         self.set_output_value(port.name(), output[port.name()])
                 return output
-
-            elif os.path.exists(error_path):
+            elif error_path.exists():
                 with open(error_path, 'rb') as f:
                     error_info = pickle.load(f)
                 error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
                 self._log_message(self.persistent_id, error_msg)
                 raise Exception(error_info['error'])
-
             else:
-                # 未生成结果或错误文件，视为未知异常
-                error_msg = "❌ 节点执行异常: 未知错误"
-                self._log_message(self.persistent_id, error_msg)
                 raise Exception("未知错误")
 
     return DynamicCodeNode

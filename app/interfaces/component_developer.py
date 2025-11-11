@@ -26,9 +26,9 @@ from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentTyp
     DEFAULT_NODE_TEMPLATE
 from app.scan_components import scan_components
 from app.utils.utils import get_icon, canvas_file_dump_path
-from app.widgets.basic_widget.ipython_console import SpyderCollectionsVariableExplorer, \
-    IPythonConsoleWithTabBar  # 假设更新后的类名
+from app.widgets.basic_widget.ipython_console import IPythonConsoleManager  # 假设更新后的类名
 from app.widgets.basic_widget.style_sheet import StyleSheet
+from app.widgets.basic_widget.variable_explorer import VariableExplorerWidget
 from app.widgets.code_editer import CodeEditorWidget
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
@@ -256,18 +256,21 @@ class ComponentDeveloperWidget(QWidget):
         central_layout.setContentsMargins(0, 0, 0, 0)
 
         # 创建Console管理器
-        self.console_manager = IPythonConsoleWithTabBar(
+        self.console_manager = IPythonConsoleManager(
             parent=self, package_manager=self.home.package_manager
         )
-        # 创建变量浏览器，传入console管理器引用
-        self.var_explorer = SpyderCollectionsVariableExplorer(
-            parent=self, console_manager=self.console_manager.console_manager
+
+        # 创建变量浏览器
+        self.var_explorer = VariableExplorerWidget(
+            parent=self, kernel_manager=None  # 先不设置内核管理器
+        )
+        # 连接控制台和变量浏览器
+        self.console_manager.tab_bar.currentChanged.connect(
+            self._on_console_changed
         )
 
-        # 设置变量浏览器的console引用
-        current_console = self.console_manager.get_current_console()
-        if current_console:
-            self.var_explorer.console_widget = current_console
+        # 初始化第一个控制台的内核管理器
+        self._on_console_changed(0)
 
         # 创建垂直分割器
         splitter = QSplitter(Qt.Vertical)
@@ -309,6 +312,13 @@ class ComponentDeveloperWidget(QWidget):
         # 再设置一个“合理但小”的初始尺寸（避免 10 太小被忽略）
         main_splitter.setSizes([50, 450, 450])  # 50 比 10 更可能生效
         layout.addWidget(main_splitter)
+
+    def _on_console_changed(self, index):
+        """控制台切换时更新变量浏览器"""
+        kernel_manager = self.console_manager.get_current_kernel_manager()
+        if kernel_manager:
+            self.var_explorer.set_kernel_manager(kernel_manager)
+            self.var_explorer.start_auto_refresh()
 
     def _connect_signals(self):
         """连接信号"""
@@ -484,8 +494,8 @@ except:
             self._show_warning("代码编辑器为空，无法运行！")
             return
         current_console = self.console_manager.get_current_console()
-        if current_console and current_console.kernel_client:
-            current_console.console.execute(current_code)
+        if current_console:
+            current_console.execute_code(current_code)
         else:
             self._show_error("当前控制台未启动或无 kernel 客户端！")
 

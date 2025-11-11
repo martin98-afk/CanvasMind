@@ -14,7 +14,7 @@ from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer, QPoint, QThreadPool
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication, QSplitter
 from loguru import logger
 from qfluentwidgets import (
     InfoBar,
@@ -32,12 +32,16 @@ from app.scan_components import scan_components
 from app.scheduler.node_recommendation_engine import RecommendationTask, NodeRecommendationEngine
 from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导入
 from app.utils.config import Settings
+from app.utils.ipython_kernel_manager import IPythonKernelManager
 from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon
+from app.widgets.basic_widget.ipython_console import EmbeddedIPythonConsole
+from app.widgets.basic_widget.variable_explorer import VariableExplorerWidget
 from app.widgets.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
 from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
+from app.widgets.dialog_widget.ipython_dialog import IPythonConsoleDialog
 from app.widgets.dialog_widget.output_selection_dialog import OutputSelectionDialog
 from app.widgets.minimap_widget import MinimapWidget
 from app.widgets.property_panel import PropertyPanel
@@ -83,11 +87,9 @@ class CanvasPage(QWidget):
         self._scheduler = None  # ← 新增：调度器引用
         self._selection_update_pending = False
         self._current_recommendation_task = None  # 用于取消旧任务（可选）
-        # --- 新增：性能优化相关 ---
         self._node_id_cache = {}  # 缓存：node_id -> node_object
         self._node_id_cache_valid = False  # 标记缓存是否有效
-        # ---
-        # --- 新增：自动保存相关 ---
+        # --- 自动保存相关 ---
         self._auto_save_timer = QTimer(self)
         self._auto_save_timer.timeout.connect(self._auto_save_triggered)
         self._auto_save_enabled = self.config.canvas_auto_save.value  # 从 config 获取
@@ -129,9 +131,14 @@ class CanvasPage(QWidget):
         self.quick_manager.quick_components_changed.connect(self._refresh_quick_buttons)
         self.thread_pool = QThreadPool.globalInstance()
         # 创建悬浮按钮和环境选择
+        self.ipython_console = EmbeddedIPythonConsole(self)
+        self.var_explorer = VariableExplorerWidget(parent=self, kernel_manager=None)  # 先不设置内核管理器)
+        self.console_dialog = IPythonConsoleDialog(self.ipython_console, self)
         self.create_environment_selector()
         self.create_floating_buttons()
         self.create_floating_nodes()
+        self.create_console_panel()
+        QtCore.QTimer.singleShot(0, self.connect_ipython_kernel)
         # 启用画布拖拽
         self.canvas_widget.setAcceptDrops(True)
         self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
@@ -143,6 +150,37 @@ class CanvasPage(QWidget):
     # ========================
     # 调度器相关（核心新增）
     # ========================
+    def connect_ipython_kernel(self):
+        current_python_exe = self.get_current_python_exe()
+        if current_python_exe is not None and (
+                self.ipython_console.kernel_manager.python_exe_path != current_python_exe or
+                not self.ipython_console.kernel_manager.get_kernel_info().get("is_alive")):
+            self.ipython_console.kernel_manager.shutdown_kernel()
+            if not self.ipython_console.start_kernel(self.get_current_python_exe()):
+                raise RuntimeError("无法启动 IPython 内核")
+            self.var_explorer.set_kernel_manager(self.ipython_console.kernel_manager)
+            self.var_explorer.start_auto_refresh()
+
+    def toggle_console_panel(self):
+        """切换 Console 面板显示/隐藏"""
+        if self.console_container.isVisible():
+            self.hide_console_panel()
+        else:
+            self.show_console_panel()
+
+    def show_console_panel(self):
+        """显示 Console 面板"""
+        self.console_container.show()
+        self.ipython_console.setFocus()
+        # 重新定位 Console 面板
+        self._update_console_position()
+
+    def hide_console_panel(self):
+        """隐藏 Console 面板"""
+        self.console_container.hide()
+        # 重新定位 Console 面板（隐藏到画布下方）
+        self._update_console_position()
+
     def _create_scheduler(self):
         """创建工作流调度器"""
         scheduler = WorkflowScheduler(
@@ -150,6 +188,7 @@ class CanvasPage(QWidget):
             component_map=self.component_map,
             get_node_status=self.get_node_status,
             get_python_exe=self.get_current_python_exe,
+            kernel_manager=self.ipython_console,
             global_variables=self.global_variables,
             parent=self
         )
@@ -202,7 +241,7 @@ class CanvasPage(QWidget):
     def set_node_status_by_id(self, node_id, status):
         node = self._get_node_by_id_cached(node_id)
         if node:
-            self.set_node_status(node, status)
+            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, status))
 
     def update_node_property(self, node_id):
         selected_nodes = self.graph.selected_nodes()
@@ -296,14 +335,15 @@ class CanvasPage(QWidget):
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
             self._update_nodes_container_position()
-            self.buttons_container.move(self.graph.viewer().width() - 170, 10)
+            self.buttons_container.move(self.graph.viewer().width() - 210, 10)
             self._position_name_container()
+            self._update_console_position()
         return super().eventFilter(obj, event)
 
     def create_floating_buttons(self):
         self.buttons_container = QWidget(self.graph.viewer())
         self.buttons_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.buttons_container.move(self.graph.viewer().width() - 170, 10)
+        self.buttons_container.move(self.graph.viewer().width() - 210, 10)
         env_layout = QHBoxLayout(self.buttons_container)
         env_layout.setSpacing(5)
         env_layout.setContentsMargins(0, 0, 0, 0)
@@ -316,6 +356,10 @@ class CanvasPage(QWidget):
         self.stop_btn.clicked.connect(self.stop_workflow)
         self.stop_btn.hide()
         env_layout.addWidget(self.stop_btn)
+        self.console_btn = TransparentToolButton(get_icon("console"), self.canvas_widget)
+        self.console_btn.setToolTip("显示/隐藏调试控制台")
+        self.console_btn.clicked.connect(self.toggle_console_panel)
+        env_layout.addWidget(self.console_btn)
         self.export_btn = TransparentToolButton(FluentIcon.SAVE, self)
         self.export_btn.setToolTip("导出工作流")
         self.export_btn.clicked.connect(self._save_via_dialog)
@@ -331,6 +375,49 @@ class CanvasPage(QWidget):
         env_layout.addStretch()
         self.buttons_container.setLayout(env_layout)
         self.buttons_container.show()
+
+    def create_console_panel(self):
+        """创建 Console 面板和切换按钮"""
+        # --- 1. 创建 Console 容器面板 ---
+        self.console_container = QWidget(self.canvas_widget)
+        self.console_container.hide()  # 初始隐藏
+        self.console_container.setStyleSheet("background-color: #2d2d2d;")  # 深色背景，与你的偏好一致
+        self.console_container.setWindowOpacity(0.7)
+        # --- 2. 为 Console 容器创建布局 ---
+        console_layout = QHBoxLayout(self.console_container)
+        console_layout.setContentsMargins(0, 0, 40, 5)
+        console_layout.setSpacing(0)
+
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(self.ipython_console)
+        splitter.addWidget(self.var_explorer)
+        splitter.setSizes([400, 400])  # 变量浏览器较小，控制台较大
+
+        console_layout.addWidget(splitter)
+        # --- 5. 设置容器初始大小 ---
+        self.console_container.setFixedHeight(300)  # 可根据需要调整
+
+        # 初始位置和大小
+        self._update_console_position()
+
+        # --- 8. 安装事件过滤器 ---
+        self.canvas_widget.installEventFilter(self)
+
+        # --- 9. 显示按钮 ---
+        self.console_container.hide()  # 确保初始隐藏
+
+    def _update_console_position(self):
+        """更新 Console 面板的位置和大小"""
+        if not hasattr(self, 'console_container') or not hasattr(self, 'canvas_widget'):
+            return
+
+        canvas_width = self.canvas_widget.width()
+        canvas_height = self.canvas_widget.height()
+
+        if self.console_container.isVisible():
+            # Console 显示时，定位在 Canvas 底部
+            console_height = self.console_container.height()
+            self.console_container.setGeometry(40, canvas_height - console_height, canvas_width, console_height)
 
     def create_environment_selector(self):
         self.env_selector_container = QWidget(self.graph.viewer())
@@ -363,6 +450,7 @@ class CanvasPage(QWidget):
 
     def on_environment_changed(self):
         current_text = self.env_combo.currentText()
+        QtCore.QTimer.singleShot(0, self.connect_ipython_kernel)
         self.env_changed.emit(
             str(self.parent.package_manager.mgr.get_python_exe(self.env_combo.currentData()))
         )
@@ -548,17 +636,17 @@ class CanvasPage(QWidget):
         self.node_layout.addWidget(self.separator)
 
         # === 可显示的快捷按钮容器 ===
-        self.visible_quick_container = QWidget(self.nodes_container) # 用于存放可见的快捷按钮
+        self.visible_quick_container = QWidget(self.nodes_container)  # 用于存放可见的快捷按钮
         self.visible_quick_layout = QVBoxLayout(self.visible_quick_container)
         self.visible_quick_layout.setSpacing(3)
-        self.visible_quick_layout.setContentsMargins(0, 0, 0, 0) # 调整边距
+        self.visible_quick_layout.setContentsMargins(0, 0, 0, 0)  # 调整边距
         self.node_layout.addWidget(self.visible_quick_container)
 
         # === "更多"按钮及其菜单 ===
-        self.more_quick_button = TransparentToolButton(FluentIcon.MORE, self) # 使用 FluentIcon.MORE 或自定义图标
+        self.more_quick_button = TransparentToolButton(FluentIcon.MORE, self)  # 使用 FluentIcon.MORE 或自定义图标
         self.more_quick_button.setIconSize(QSize(20, 20))
         self.more_quick_button.setToolTip("更多快捷组件")
-        self.more_quick_menu = RoundMenu(parent=self) # 使用 qfluentwidgets 的菜单
+        self.more_quick_menu = RoundMenu(parent=self)  # 使用 qfluentwidgets 的菜单
         self.more_quick_button.clicked.connect(self._show_more_quick_menu)
 
         # 添加 "更多" 按钮到布局
@@ -771,6 +859,8 @@ class CanvasPage(QWidget):
 
     def close_current_canvas(self):
         self._stop_auto_save_timer()
+        self.ipython_console.stop_kernel()
+        self.console_dialog.hide()
         self.canvas_deleted.emit()
         self.parent.switchTo(self.parent.workflow_manager)
         self.parent.removeInterface(self)
@@ -1272,7 +1362,8 @@ class CanvasPage(QWidget):
             node._output_values = {}
             self.create_failed_info('错误', f'节点 "{node.name()}" 执行失败！')
             # 直接调用 set_node_status，恢复即时更新
-            self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
+            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED))
+
         self.run_btn.show()
         self.stop_btn.hide()
         self._scheduler = None
@@ -1295,7 +1386,7 @@ class CanvasPage(QWidget):
         node = self._get_node_by_id_cached(node_id)
         if node:
             # 直接调用 set_node_status，恢复即时更新
-            self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
+            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING))
 
     def _highlight_node_connections(self, node, status):
         """优化的连接线高亮方法"""
@@ -1343,7 +1434,7 @@ class CanvasPage(QWidget):
         node = self._get_node_by_id_cached(node_id)
         if node:
             # 直接调用 set_node_status，恢复即时更新
-            self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
+            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS))
         # 优化：只在节点被选中时更新属性面板
         if node and node.selected():
             QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
@@ -1770,4 +1861,6 @@ class CanvasPage(QWidget):
     def closeEvent(self, event):
         """窗口关闭事件，停止自动保存定时器"""
         self._stop_auto_save_timer()
+        self.ipython_console.stop_kernel()
+        self.console_dialog.hide()
         super().closeEvent(event)

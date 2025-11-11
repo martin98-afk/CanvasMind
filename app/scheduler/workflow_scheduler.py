@@ -11,6 +11,7 @@ from app.components.base import GlobalVariableContext
 from app.nodes.status_node import NodeStatus
 from app.scheduler.expression_engine import ExpressionEngine
 from app.scheduler.node_list_executor import NodeListExecutor
+from app.utils.ipython_kernel_manager import IPythonKernelManager
 from app.utils.utils import get_port_node
 
 
@@ -36,6 +37,7 @@ class WorkflowScheduler(QObject):
             component_map: Dict[str, Any],
             get_node_status: Callable,
             get_python_exe: Callable[[], Optional[str]],
+            kernel_manager: IPythonKernelManager,
             global_variables: GlobalVariableContext,
             parent=None
     ):
@@ -46,6 +48,7 @@ class WorkflowScheduler(QObject):
         self.component_map = component_map
         self.get_node_status = get_node_status
         self.get_python_exe = get_python_exe
+        self.kernel_manager = kernel_manager
         self._executor = None
 
     def set_node_status(self, node, status):
@@ -408,7 +411,8 @@ class WorkflowScheduler(QObject):
 
             try:
                 results = node.execute_sync(
-                    comp_cls, python_executable=self.get_python_exe(), check_cancel=check_cancel
+                    comp_cls, kernel_manager=self.kernel_manager,
+                    python_executable=self.get_python_exe(), check_cancel=check_cancel
                 )
                 if results is not None:
                     # 如果结果不为 None， 且其中有含自动更新或者自动累计的变量，则发送变量更新信号

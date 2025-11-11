@@ -68,6 +68,7 @@ class Component(BaseComponent):
         try:
             from sklearn.linear_model import LogisticRegression
             # 读取数据
+            self.logger.info(params)
             feature = inputs.feature
             target = inputs.target
             # 获取参数

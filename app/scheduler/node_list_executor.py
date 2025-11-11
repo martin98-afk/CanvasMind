@@ -40,6 +40,7 @@ class NodeListExecutor(QRunnable):
         self._is_cancelled = False
         self.component_map = {}
         self.scheduler = scheduler
+        self.kernel_manager = scheduler.kernel_manager if scheduler else None
 
     def cancel(self):
         self._is_cancelled = True
@@ -72,7 +73,8 @@ class NodeListExecutor(QRunnable):
                         results = node.execute_sync(
                             comp_cls,
                             python_executable=self.python_exe,
-                            check_cancel=self._check_cancel
+                            check_cancel=self._check_cancel,
+                            kernel_manager=self.kernel_manager
                         )
                         if results is not None:
                             # 如果结果不为 None， 且其中有含自动更新或者自动累计的变量，则发送变量更新信号
