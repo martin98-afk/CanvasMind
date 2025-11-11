@@ -19,7 +19,7 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import draw_square_port, draw_special_outputport, \
-    canvas_file_dump_path  # 假设 resource_path 也在 utils
+    canvas_file_dump_path, _safe_load_pickle  # 假设 resource_path 也在 utils
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 # 导入代码编辑器组件
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
@@ -388,7 +388,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
         def remove_property(self, name):
             self.model._custom_prop[name] = None
 
-        def execute_sync(self, comp_obj, python_executable=None, check_cancel=None, max_retries=1):
+        def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None, max_retries=1):
             """
             在独立Python环境中执行组件
             :param check_cancel: 可选回调函数，返回 True 表示应取消执行
@@ -479,14 +479,14 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             requirements_str = getattr(comp_obj, 'requirements', '').strip()
 
             # ✅ 关键修改：使用持久化运行目录，而非临时目录
-            run_id = f"run_{self.persistent_id}_{int(time.time())}"
+            run_id = f"run_{self.persistent_id}"
             run_dir = PERSISTENT_TEMP_ROOT / run_id
-            run_dir.mkdir(exist_ok=True)
+            run_dir.unlink(missing_ok=True)
+            run_dir.mkdir(parents=True, exist_ok=True)
             temp_script_path = run_dir / "exec_script.py"
             params_path = run_dir / "params.pkl"
             result_path = run_dir / "result.pkl"
             error_path = run_dir / "error.pkl"
-
             # ✅ 复用 NodeLogHandler 的持久化日志路径
             log_file_path = self.log_capture.get_log_file_path()
 
@@ -508,6 +508,92 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             with open(temp_script_path, 'w', encoding='utf-8') as f:
                 f.write(script_content)
 
+            if kernel_manager is not None:
+                # 使用 IPython 内核执行
+                return self._execute_via_ipython(
+                    comp_obj=comp_obj,
+                    temp_script_path=temp_script_path,
+                    result_path=result_path,
+                    error_path=error_path,
+                    log_file_path=log_file_path,
+                    check_cancel=check_cancel,
+                    kernel_manager=kernel_manager
+                )
+            else:
+                # 回退到 subprocess（兼容模式）
+                return self._execute_via_subprocess(
+                    python_executable, temp_script_path, comp_obj, result_path, error_path,
+                    log_file_path, check_cancel, max_retries, requirements_str
+                )
+
+        def _execute_via_ipython(
+                self, comp_obj, temp_script_path, result_path, error_path, log_file_path,
+                check_cancel, kernel_manager
+        ):
+
+            # 执行 %run -i
+            run_code = f'%run -i "{temp_script_path.as_posix()}"'
+            kernel_manager.execute_code(run_code, hidden=False)
+
+            # 轮询结果文件（与 subprocess 逻辑一致）
+            start_time = time.time()
+            timeout = 300  # 5分钟
+            last_log_pos = 0
+            while not (result_path.exists() or error_path.exists()):
+                if check_cancel and check_cancel():
+                    # IPython 无法强制终止，但可跳过后续处理
+                    raise Exception("执行被用户取消")
+
+                if time.time() - start_time > timeout:
+                    raise Exception("❌ 节点执行超时（5分钟）")
+
+                # 实时日志轮询（复用你原有逻辑）
+                try:
+                    if os.path.exists(log_file_path):
+                        with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                            lf.seek(last_log_pos)
+                            new_content = lf.read()
+                            if new_content:
+                                self._log_message(self.persistent_id, new_content)
+                                last_log_pos = lf.tell()
+                except Exception:
+                    pass
+
+                time.sleep(0.1)
+
+            # 读取剩余日志
+            try:
+                if os.path.exists(log_file_path):
+                    with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                        lf.seek(last_log_pos)
+                        tail_content = lf.read()
+                        if tail_content:
+                            self._log_message(self.persistent_id, tail_content)
+            except Exception:
+                pass
+
+            # 检查结果/错误
+            if result_path.exists():
+                output = _safe_load_pickle(result_path)
+                self._log_message(self.persistent_id, "✅ 节点在 IPython 内核中执行完成")
+                for port in comp_obj.outputs:
+                    if port.type != ArgumentType.UPLOAD:
+                        self.set_output_value(port.name, output.get(port.name))
+                return output
+            elif error_path.exists():
+                with open(error_path, 'rb') as f:
+                    error_info = pickle.load(f)
+                error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
+                self._log_message(self.persistent_id, error_msg)
+                raise Exception(error_info['traceback'])
+            else:
+                raise Exception("未知错误：未生成结果或错误文件")
+
+
+        def _execute_via_subprocess(
+                self, python_executable, temp_script_path, comp_obj, result_path, error_path,
+                log_file_path, check_cancel, max_retries, requirements_str
+        ):
             retry_count = 0
             while retry_count <= max_retries:
                 # 检查是否已取消

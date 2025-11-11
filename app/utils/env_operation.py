@@ -308,7 +308,7 @@ class EnvironmentManager(QObject):
                 error_msg = f"环境 {env_name} 创建失败，退出码: {exit_code}"
                 if self._current_log_callback:
                     self._current_log_callback(error_msg)
-                self.install_finished.emit(RuntimeError(error_msg))
+                self.install_finished.emit(error_msg)
                 return
 
             python_exe = self.get_python_exe(env_name)
@@ -316,7 +316,7 @@ class EnvironmentManager(QObject):
                 error_msg = f"环境 {env_name} 创建失败，未找到 python.exe"
                 if self._current_log_callback:
                     self._current_log_callback(error_msg)
-                self.install_finished.emit(RuntimeError(error_msg))
+                self.install_finished.emit(error_msg)
                 return
 
             env_path = python_exe.parent
@@ -370,7 +370,7 @@ class EnvironmentManager(QObject):
             error_msg = f"环境 {env_name} 不存在"
             if log_callback:
                 log_callback(error_msg)
-            self.remove_finished.emit(RuntimeError(error_msg))
+            self.remove_finished.emit(error_msg)
             return
 
         if log_callback:

@@ -79,7 +79,7 @@ class IPythonKernelManager:
                 'connection_file': self.connection_file,
                 'python_exe': self.python_exe_path
             }
-        return None
+        return {"is_alive": False}
     
     def __del__(self):
         self.shutdown_kernel()

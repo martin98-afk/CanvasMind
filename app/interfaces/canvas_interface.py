@@ -32,6 +32,7 @@ from app.scan_components import scan_components
 from app.scheduler.node_recommendation_engine import RecommendationTask, NodeRecommendationEngine
 from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导入
 from app.utils.config import Settings
+from app.utils.ipython_kernel_manager import IPythonKernelManager
 from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon
@@ -83,11 +84,9 @@ class CanvasPage(QWidget):
         self._scheduler = None  # ← 新增：调度器引用
         self._selection_update_pending = False
         self._current_recommendation_task = None  # 用于取消旧任务（可选）
-        # --- 新增：性能优化相关 ---
         self._node_id_cache = {}  # 缓存：node_id -> node_object
         self._node_id_cache_valid = False  # 标记缓存是否有效
-        # ---
-        # --- 新增：自动保存相关 ---
+        # --- 自动保存相关 ---
         self._auto_save_timer = QTimer(self)
         self._auto_save_timer.timeout.connect(self._auto_save_triggered)
         self._auto_save_enabled = self.config.canvas_auto_save.value  # 从 config 获取
@@ -129,9 +128,11 @@ class CanvasPage(QWidget):
         self.quick_manager.quick_components_changed.connect(self._refresh_quick_buttons)
         self.thread_pool = QThreadPool.globalInstance()
         # 创建悬浮按钮和环境选择
+        self.kernel_manager = IPythonKernelManager()
         self.create_environment_selector()
         self.create_floating_buttons()
         self.create_floating_nodes()
+        QtCore.QTimer.singleShot(0, self.connect_ipython_kernel)
         # 启用画布拖拽
         self.canvas_widget.setAcceptDrops(True)
         self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
@@ -143,6 +144,13 @@ class CanvasPage(QWidget):
     # ========================
     # 调度器相关（核心新增）
     # ========================
+    def connect_ipython_kernel(self):
+        if (self.kernel_manager.python_exe_path != self.get_current_python_exe() or
+                not self.kernel_manager.get_kernel_info().get("is_alive")):
+            self.kernel_manager.shutdown_kernel()
+            if not self.kernel_manager.start_kernel(self.get_current_python_exe()):
+                raise RuntimeError("无法启动 IPython 内核")
+
     def _create_scheduler(self):
         """创建工作流调度器"""
         scheduler = WorkflowScheduler(
@@ -150,6 +158,7 @@ class CanvasPage(QWidget):
             component_map=self.component_map,
             get_node_status=self.get_node_status,
             get_python_exe=self.get_current_python_exe,
+            kernel_manager=self.kernel_manager,
             global_variables=self.global_variables,
             parent=self
         )
@@ -363,6 +372,7 @@ class CanvasPage(QWidget):
 
     def on_environment_changed(self):
         current_text = self.env_combo.currentText()
+        QtCore.QTimer.singleShot(0, self.connect_ipython_kernel)
         self.env_changed.emit(
             str(self.parent.package_manager.mgr.get_python_exe(self.env_combo.currentData()))
         )
@@ -771,6 +781,7 @@ class CanvasPage(QWidget):
 
     def close_current_canvas(self):
         self._stop_auto_save_timer()
+        self.kernel_manager.shutdown_kernel()
         self.canvas_deleted.emit()
         self.parent.switchTo(self.parent.workflow_manager)
         self.parent.removeInterface(self)
@@ -1770,4 +1781,5 @@ class CanvasPage(QWidget):
     def closeEvent(self, event):
         """窗口关闭事件，停止自动保存定时器"""
         self._stop_auto_save_timer()
+        self.kernel_manager.shutdown_kernel()
         super().closeEvent(event)

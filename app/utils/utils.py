@@ -6,6 +6,8 @@ import os
 import pickle
 import re
 import sys
+import time
+
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -466,3 +468,28 @@ def _evaluate_value_recursively(value, expr_engine):
         return {k: _evaluate_value_recursively(v, expr_engine) for k, v in value.items()}
     else:
         return value
+
+
+def _safe_load_pickle(path, timeout=5.0, retry_interval=0.05):
+    """
+    安全加载 pickle 文件：等待文件存在、非空、且可完整加载
+    """
+    start = time.time()
+    while time.time() - start < timeout:
+        if not path.exists():
+            time.sleep(retry_interval)
+            continue
+
+        if path.stat().st_size == 0:
+            time.sleep(retry_interval)
+            continue
+
+        try:
+            with open(path, 'rb') as f:
+                return pickle.load(f)
+        except (EOFError, pickle.UnpicklingError):
+            # 文件未写完或损坏，继续等待
+            time.sleep(retry_interval)
+            continue
+
+    raise RuntimeError(f"无法加载结果文件: {path}")
