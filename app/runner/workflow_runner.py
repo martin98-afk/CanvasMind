@@ -393,7 +393,7 @@ def evaludate_model_inputs(engine, inputs, params):
     return inputs, params
 
 
-def execute_workflow(file_path, external_inputs=None, python_executable=None, **kwargs):
+def execute_workflow(file_path, external_inputs=None, **kwargs):
     """
     执行工作流（支持 project_spec.json 定义的接口）
 

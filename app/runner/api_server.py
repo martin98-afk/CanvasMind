@@ -1,12 +1,20 @@
 # api_server.py（优化版）
 import argparse
+import base64
+import io
 import json
+import pickle
 import sys
 import tempfile
+import pyarrow as pa
 from pathlib import Path
 from typing import Dict, Any, Optional, List
+
+import numpy as np
+import pandas as pd
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from loguru import logger
+from pyarrow import feather
 from pydantic import BaseModel, create_model
 
 sys.path.append(str(Path(__file__).parent))
@@ -20,6 +28,137 @@ if not SPEC_PATH.exists():
 
 with open(SPEC_PATH, 'r', encoding='utf-8') as f:
     project_spec = deserialize_from_json(json.load(f))
+
+
+def serialize_for_json(obj, large_list_threshold=1000):
+    """递归将对象转换为 JSON 可序列化格式"""
+    if isinstance(obj, dict):
+        return {k: serialize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        # 检查是否是大型列表
+        if len(obj) > large_list_threshold:
+            try:
+                # 尝试将列表转换为 numpy 数组，如果可能的话
+                # 这适用于数值型列表
+                try:
+                    arr = np.array(obj)
+                    if arr.ndim == 1:  # 确保是一维数组
+                        buffer = io.BytesIO()
+                        np.save(buffer, arr, allow_pickle=False)
+                        binary_data = buffer.getvalue()
+                        encoded_data = base64.b64encode(binary_data).decode('utf-8')
+
+                        return {
+                            "__type__": "LargeList",
+                            "data": encoded_data,
+                            "dtype": str(arr.dtype),
+                            "format": "numpy_binary",
+                            "original_type": "list" if isinstance(obj, list) else "tuple"
+                        }
+                except (ValueError, TypeError):
+                    # 如果无法转换为 numpy 数组（例如包含混合类型），则使用 pickle
+                    # pickle 通常比 tolist() 更高效，尤其是对于复杂对象
+                    buffer = io.BytesIO()
+                    pickle.dump(obj, buffer)
+                    binary_data = buffer.getvalue()
+                    encoded_data = base64.b64encode(binary_data).decode('utf-8')
+
+                    return {
+                        "__type__": "LargeList",
+                        "data": encoded_data,
+                        "format": "pickle_binary",
+                        "original_type": "list" if isinstance(obj, list) else "tuple"
+                    }
+            except Exception as e:
+                print(f"Large list/tuple serialization failed: {e}")
+                # 降级：如果优化失败，回退到原始行为
+                return [serialize_for_json(v, large_list_threshold) for v in obj]
+        else:
+            # 非大型列表，按常规方式处理
+            return [serialize_for_json(v, large_list_threshold) for v in obj]
+    elif isinstance(obj, pd.DataFrame):
+        try:
+            # 使用 BytesIO 作为虚拟文件
+            buffer = io.BytesIO()
+            # 写入 feather 格式
+            table = pa.Table.from_pandas(obj)
+            feather.write_feather(table, buffer, compression='zstd')  # zstd 压缩率高
+            # 获取二进制数据并编码
+            buffer.seek(0)
+            binary_data = buffer.read()
+            encoded_data = base64.b64encode(binary_data).decode('utf-8')
+
+            return {
+                "__type__": "DataFrame",
+                "data": encoded_data,
+                "format": "feather_base64",
+                "shape": obj.shape  # 便于调试
+            }
+        except Exception as e:
+            logger.error(f"DataFrame Feather serialization failed: {e}")
+    elif isinstance(obj, pd.Series):
+        try:
+            df_temp = obj.to_frame()
+            return serialize_for_json(df_temp)
+        except Exception:
+            return f"<Series {len(obj)}> (无法序列化)"
+    elif isinstance(obj, np.ndarray):
+        try:
+            # 将 ndarray 转换为二进制格式 (bytes)
+            buffer = io.BytesIO()
+            np.save(buffer, obj, allow_pickle=False)  # allow_pickle=False 更安全
+            binary_data = buffer.getvalue()
+            # 将二进制数据编码为 base64 字符串
+            encoded_data = base64.b64encode(binary_data).decode('utf-8')
+
+            return {
+                "__type__": "ndarray",
+                "data": encoded_data,  # 存储 base64 编码的二进制数据
+                "dtype": str(obj.dtype),
+                "shape": obj.shape,  # 存储形状信息，便于调试或验证
+                "format": "npy_base64"  # 标记格式
+            }
+        except Exception as e:
+            print(f"ndarray binary serialization failed: {e}")
+            # 降级：如果二进制方式失败，再尝试 tolist
+            try:
+                return {
+                    "__type__": "ndarray",
+                    "data": obj.tolist(),
+                    "dtype": str(obj.dtype),
+                    "format": "list"  # 标记为降级格式
+                }
+            except Exception as e2:
+                print(f"ndarray list serialization also failed: {e2}")
+                return f"<ndarray {obj.shape} {obj.dtype}> (无法序列化)"
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    elif hasattr(obj, 'serialize') and callable(getattr(obj, 'serialize')):
+        # 如果对象自己有 serialize 方法（如你的 ArgumentType）
+        try:
+            return obj.serialize()
+        except:
+            return str(obj)
+    elif hasattr(obj, '__dict__'):
+        # 通用对象：保存类名和 __dict__
+        try:
+            return {
+                "__type__": f"{obj.__class__.__module__}.{obj.__class__.__name__}",
+                "__data__": serialize_for_json(obj.__dict__)
+            }
+        except Exception:
+            return str(obj)
+    else:
+        # 其他类型：尝试转为字符串
+        try:
+            json.dumps(obj)  # 测试是否可序列化
+            return obj
+        except (TypeError, ValueError):
+            return str(obj)
 
 
 def get_pydantic_type(format_str: str, schema_def: Optional[Dict] = None):
@@ -125,7 +264,7 @@ async def run_workflow(input: InputModel):
             python_executable=args.python
         )
         logger.info(f"工作流执行成功，结果：{outputs}")
-        return {"result": outputs}
+        return {"result": serialize_for_json(outputs)}
 
     except Exception as e:
         logger.exception("工作流执行失败")
