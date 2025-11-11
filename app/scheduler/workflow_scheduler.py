@@ -411,7 +411,8 @@ class WorkflowScheduler(QObject):
 
             try:
                 results = node.execute_sync(
-                    comp_cls, python_executable=self.get_python_exe(), check_cancel=check_cancel
+                    comp_cls, kernel_manager=self.kernel_manager,
+                    python_executable=self.get_python_exe(), check_cancel=check_cancel
                 )
                 if results is not None:
                     # 如果结果不为 None， 且其中有含自动更新或者自动累计的变量，则发送变量更新信号

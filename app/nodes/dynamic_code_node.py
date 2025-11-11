@@ -2,6 +2,7 @@ import os
 import pickle
 import platform
 import re
+import shutil
 import subprocess
 import time
 import uuid
@@ -378,7 +379,7 @@ def create_dynamic_code_node(parent_window=None):
             temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
             run_id = f"run_{self.persistent_id}"
             run_dir = PERSISTENT_TEMP_ROOT / run_id
-            run_dir.unlink(missing_ok=True)
+            shutil.rmtree(run_dir, ignore_errors=True)
             run_dir.mkdir(parents=True, exist_ok=True)
             temp_script_path = run_dir / "exec_script.py"
             params_path = run_dir / "params.pkl"

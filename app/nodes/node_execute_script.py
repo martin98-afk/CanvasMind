@@ -74,7 +74,6 @@ if __name__ == "__main__":
             pickle.dump(output, f)
 
         node_logger.success("节点执行完成")
-        sys.exit(0)
 
     except ImportError as e:
         error_info = {{
@@ -87,8 +86,7 @@ if __name__ == "__main__":
             pickle.dump(error_info, f)
         node_logger.error(f"导入错误: {{e}}")
         print(f"EXECUTION_IMPORT_ERROR: {{e}}", flush=True)
-        sys.exit(1)
-
+        
     except Exception as e:
         error_info = {{
             "error": str(e),
@@ -100,9 +98,8 @@ if __name__ == "__main__":
             pickle.dump(error_info, f)
         node_logger.error(f"执行异常: {{e}}")
         print(f"EXECUTION_ERROR: {{e}}", flush=True)
-        sys.exit(1)
-
+        
     finally:
-        if 'log_handler_id' in locals():
+        if 'log_handler_id' in locals:
             logger.remove(log_handler_id)
 '''

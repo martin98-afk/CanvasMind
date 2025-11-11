@@ -1,5 +1,5 @@
 import uuid
-
+from loguru import logger
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
     QLabel, QVBoxLayout, QWidget, QStackedWidget
@@ -60,18 +60,19 @@ class EmbeddedIPythonConsole(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(0)
         self.layout.setContentsMargins(0, 0, 0, 0)
-
+        self.setStyleSheet("background-color: #2d2d2d;")  # 深色背景，与你的偏好一致
         # 命令栏
         commandBar = CommandBar()
-        title_label = QLabel("环境选择: ")
-        title_label.setStyleSheet("font: 12px 'Segoe UI', 'Microsoft YaHei'; color: white;")
-        commandBar.addWidget(title_label)
-        self.env_selector = EnvironmentSelector(parent=self, package_manager=package_manager)
-        commandBar.addWidget(self.env_selector)
+        if package_manager is not None:
+            title_label = QLabel("环境选择: ")
+            title_label.setStyleSheet("font: 12px 'Segoe UI', 'Microsoft YaHei'; color: white;")
+            commandBar.addWidget(title_label)
+            self.env_selector = EnvironmentSelector(parent=self, package_manager=package_manager)
+            commandBar.addWidget(self.env_selector)
+            self.env_selector.env_changed.connect(self.start_kernel)
+
         self.add_common_tools(commandBar)
-
         self.layout.addWidget(commandBar)
-
         # 控制台
         self.console = RichJupyterWidget()
         self.console.set_default_style(colors='linux')
@@ -80,8 +81,8 @@ class EmbeddedIPythonConsole(QWidget):
 
         # 内核管理器
         self.kernel_manager = IPythonKernelManager()
-        self.env_selector.env_changed.connect(self.start_kernel)
-        if self.env_selector.get_current_python_exe():
+
+        if hasattr(self, "env_selector") and self.env_selector.get_current_python_exe():
             self.start_kernel(self.env_selector.get_current_python_exe())
 
     def add_common_tools(self, commandBar):
@@ -121,8 +122,9 @@ class EmbeddedIPythonConsole(QWidget):
 
     def restart_kernel(self):
         """重新启动Kernel"""
-        print("正在重新启动 Kernel...")
-        self.start_kernel()
+        logger.info("正在重新启动 Kernel...")
+        self.kernel_manager.shutdown_kernel()
+        self.start_kernel(self.kernel_manager.python_exe_path)
 
     def execute_code(self, code, hidden=False):
         """执行代码"""
@@ -137,8 +139,10 @@ class EmbeddedIPythonConsole(QWidget):
             # 设置控制台的内核管理器和客户端
             self.console.kernel_manager = self.kernel_manager.kernel_manager
             self.console.kernel_client = self.kernel_manager.kernel_client
+            return True
         else:
-            print("Kernel启动失败")
+            logger.error("Kernel启动失败")
+            return False
 
     def get_kernel_manager(self):
         """获取内核管理器"""

@@ -3,6 +3,7 @@ import os
 import pickle
 import platform
 import re
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -481,7 +482,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             # ✅ 关键修改：使用持久化运行目录，而非临时目录
             run_id = f"run_{self.persistent_id}"
             run_dir = PERSISTENT_TEMP_ROOT / run_id
-            run_dir.unlink(missing_ok=True)
+            shutil.rmtree(run_dir, ignore_errors=True)
             run_dir.mkdir(parents=True, exist_ok=True)
             temp_script_path = run_dir / "exec_script.py"
             params_path = run_dir / "params.pkl"
