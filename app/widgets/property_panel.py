@@ -684,7 +684,7 @@ class PropertyPanel(CardWidget):
             return
 
         # ✅ 设置节点输出为新的相对路径
-        node._output_values[port_name] = str(dst_path.relative_to(Path.cwd()))
+        node._output_values[port_name] = str(dst_path)
 
         # 刷新 UI
         self.update_properties(node)
