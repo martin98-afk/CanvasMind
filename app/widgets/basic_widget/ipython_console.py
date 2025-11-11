@@ -60,7 +60,6 @@ class EmbeddedIPythonConsole(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(0)
         self.layout.setContentsMargins(0, 0, 0, 0)
-        self.setStyleSheet("background-color: #2d2d2d;")  # 深色背景，与你的偏好一致
         # 命令栏
         commandBar = CommandBar()
         if package_manager is not None:
@@ -69,6 +68,7 @@ class EmbeddedIPythonConsole(QWidget):
             commandBar.addWidget(title_label)
             self.env_selector = EnvironmentSelector(parent=self, package_manager=package_manager)
             commandBar.addWidget(self.env_selector)
+            commandBar.addSeparator()
             self.env_selector.env_changed.connect(self.start_kernel)
 
         self.add_common_tools(commandBar)
@@ -87,7 +87,6 @@ class EmbeddedIPythonConsole(QWidget):
 
     def add_common_tools(self, commandBar):
         """添加常用工具按钮"""
-        commandBar.addSeparator()
         restart_action = Action(get_icon("远程重启"), "重新运行Console", self)
         restart_action.triggered.connect(self.restart_kernel)
         commandBar.addAction(restart_action)
@@ -125,6 +124,11 @@ class EmbeddedIPythonConsole(QWidget):
         logger.info("正在重新启动 Kernel...")
         self.kernel_manager.shutdown_kernel()
         self.start_kernel(self.kernel_manager.python_exe_path)
+
+    def stop_kernel(self):
+        """停止内核"""
+        logger.info("正在停止 Kernel...")
+        self.kernel_manager.shutdown_kernel()
 
     def execute_code(self, code, hidden=False):
         """执行代码"""
