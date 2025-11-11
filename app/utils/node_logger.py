@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from loguru import logger
 import threading
-from pathlib import Path
+
+from loguru import logger
 
 from app.utils.utils import canvas_file_dump_path
 
@@ -13,7 +13,7 @@ MAX_LOG_LINES = 5000
 class NodeLogHandler:
     """Loguru 节点日志处理器 - 持久化日志，最多保留 5000 行"""
 
-    def __init__(self, node_id: str, log_callback, use_file_logging=False):
+    def __init__(self, node_id: str, log_callback, use_file_logging=True):
         self.node_id = node_id
         self.log_callback = log_callback
         self.use_file_logging = use_file_logging

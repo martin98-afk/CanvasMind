@@ -598,7 +598,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         for pkg in packages:
                             self._log_message(self.persistent_id, f"正在安装 {pkg} ...")
                             # 在 IPython 内核中执行 pip install
-                            install_code = f'!pip install "{pkg}"'
+                            install_code = f'%pip install "{pkg}"'
                             kernel_manager.execute_code(install_code, hidden=False)
 
                             # 等待安装完成（可能需要一些时间）

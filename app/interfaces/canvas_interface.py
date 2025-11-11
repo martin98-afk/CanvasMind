@@ -335,7 +335,7 @@ class CanvasPage(QWidget):
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
             self._update_nodes_container_position()
-            self.buttons_container.move(self.graph.viewer().width() - 210, 10)
+            self.buttons_container.move(self.graph.viewer().width() - 200, 10)
             self._position_name_container()
             self._update_console_position()
         return super().eventFilter(obj, event)
@@ -343,9 +343,9 @@ class CanvasPage(QWidget):
     def create_floating_buttons(self):
         self.buttons_container = QWidget(self.graph.viewer())
         self.buttons_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.buttons_container.move(self.graph.viewer().width() - 210, 10)
+        self.buttons_container.move(self.graph.viewer().width() - 200, 10)
         env_layout = QHBoxLayout(self.buttons_container)
-        env_layout.setSpacing(5)
+        env_layout.setSpacing(2)
         env_layout.setContentsMargins(0, 0, 0, 0)
         self.run_btn = TransparentToolButton(FluentIcon.PLAY, self)
         self.run_btn.setToolTip("运行工作流")
@@ -772,7 +772,7 @@ class CanvasPage(QWidget):
             node = self.graph.create_node(node_type)
 
         QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
-        if icon_path:
+        if isinstance(icon_path, str):
             node.set_icon(icon_path)
         if selected_nodes:
             node_x = selected_nodes[0].x_pos()

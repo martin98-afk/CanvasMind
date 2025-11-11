@@ -36,8 +36,10 @@ class Component(BaseComponent):
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
+        import os
         import json
-        runner_path = pathlib.Path(__file__).parent.parent.parent/ "runner" / "workflow_runner.py"
+        from pathlib import Path
+        runner_path = Path(__file__).parent.parent.parent / "runner" / "workflow_runner.py"
         spec = importlib.util.spec_from_file_location("base", str(runner_path))
         runner_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(runner_module)
@@ -46,16 +48,10 @@ class Component(BaseComponent):
         execute_workflow = runner_module.execute_workflow
         try:
             # 获取输入参数
-            project_name = inputs.project_name
-
-            if not project_name:
-                return {"output1": "错误: 请提供项目名称"}
-
+            project_path = Path(inputs.project_name)
+            
             # 解析输入数据
             external_inputs = inputs.input
-
-            # 构建项目路径 (假设项目在当前工作目录下的项目文件夹中)
-            project_path = pathlib.Path(project_name)
 
             # 检查项目是否存在
             if not project_path.exists():
@@ -73,13 +69,7 @@ class Component(BaseComponent):
                 logger=self.logger
             )
 
-            # 将结果转换为字符串返回
-            if isinstance(result, (dict, list)):
-                result_str = json.dumps(result, ensure_ascii=False, indent=2)
-            else:
-                result_str = str(result)
-
-            return {"output1": result_str}
+            return {"output1": result}
 
         except Exception as e:
             import traceback

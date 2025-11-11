@@ -1,8 +1,11 @@
 import base64
 import io
 import json
+import os
 import pickle
 import sys
+import tempfile
+import uuid
 import warnings
 import loguru
 import numpy as np
@@ -407,11 +410,11 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None, **
         full_data = deserialize_from_json(json.load(f))
     graph_data = full_data["graph"]
     runtime_data = full_data.get("runtime", {})
+    # 导入全局变量
     global_variable = runtime_data.get("global_variable", {})
     # 1. 反序列化全局变量
     global_ctx = GlobalVariableContext()
     global_ctx.deserialize(global_variable)
-    # print(global_variable)  # 移除调试打印
     expr_engine = ExpressionEngine(global_vars_context=global_ctx)
 
     # 2. 加载 project_spec（如果有）
@@ -498,6 +501,7 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None, **
 
         # 先复制静态 input_values
         for port, val in node["input_values"].items():
+            val = project_dir / val if isinstance(val, str) and val.startswith("inputs/") else val
             node_inputs[port] = val
 
         # 处理列选择
@@ -591,9 +595,9 @@ def execute_workflow(file_path, external_inputs=None, python_executable=None, **
                     params=node["params"],
                     inputs=node_inputs,
                     global_variable=global_variable,
-                    python_executable=python_executable or runtime_data.get("environment_exe"),
                     logger=logger
                 )
+                logger.info(f"输出: {output}")
                 node_outputs[node_id] = output or {}
             except Exception as e:
                 logger.error(f"节点执行失败 {node['name']}: {e}")
