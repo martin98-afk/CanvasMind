@@ -4,8 +4,11 @@ import base64
 import io
 import json
 import pickle
+import subprocess
 import sys
 import tempfile
+import time
+
 import pyarrow as pa
 from pathlib import Path
 from typing import Dict, Any, Optional, List
@@ -258,11 +261,21 @@ async def run_workflow(input: InputModel):
             else:
                 external_inputs[key] = value
 
-        outputs = execute_workflow(
-            str(PROJECT_DIR / "model.workflow.json"),
-            external_inputs=external_inputs,
-            python_executable=args.python
+        with open("model.workflow.json", 'r', encoding='utf-8') as f:
+            full_data = json.load(f)
+        runtime_data = full_data.get("runtime", {})
+        python_executable = runtime_data.get("environment_exe", sys.executable)
+        proc = subprocess.Popen(
+            [python_executable, Path(__file__).parent / "runner" / "workflow_runner.py"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            encoding='utf-8'
         )
+        while proc.poll() is None:
+            time.sleep(1)
+
+        with open(Path(__file__).parent / "result.pkl", "rb") as f:
+            outputs = pickle.load(f)
         logger.info(f"工作流执行成功，结果：{outputs}")
         return {"result": serialize_for_json(outputs)}
 

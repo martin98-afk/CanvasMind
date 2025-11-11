@@ -38,14 +38,13 @@ class Component(BaseComponent):
         """
         import os
         import json
+        import sys
+        import subprocess
+        import pickle
+        import time
         from pathlib import Path
         runner_path = Path(__file__).parent.parent.parent / "runner" / "workflow_runner.py"
-        spec = importlib.util.spec_from_file_location("base", str(runner_path))
-        runner_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(runner_module)
 
-        # 导入所需项目
-        execute_workflow = runner_module.execute_workflow
         try:
             # 获取输入参数
             project_path = Path(inputs.project_name)
@@ -61,15 +60,24 @@ class Component(BaseComponent):
             workflow_file = project_path / "model.workflow.json"
             if not workflow_file.exists():
                 return {"output1": f"错误: 工作流文件不存在: {workflow_file}"}
-
-            # 调用执行函数
-            result = execute_workflow(
-                str(workflow_file),
-                external_inputs=external_inputs,
-                logger=self.logger
+            
+            with open(workflow_file, 'r', encoding='utf-8') as f:
+                full_data = json.load(f)
+            runtime_data = full_data.get("runtime", {})
+            python_executable = runtime_data.get("environment_exe", sys.executable)
+            proc = subprocess.Popen(
+                [python_executable, runner_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                encoding='utf-8'
             )
-
-            return {"output1": result}
+            while proc.poll() is None:
+                time.sleep(1)
+            
+            with open(project_path / "result.pkl", "rb") as f:
+                outputs = pickle.load(f)
+            
+            return {"output1": outputs}
 
         except Exception as e:
             import traceback

@@ -393,7 +393,7 @@ def evaludate_model_inputs(engine, inputs, params):
     return inputs, params
 
 
-def execute_workflow(file_path, external_inputs=None, **kwargs):
+def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs):
     """
     执行工作流（支持 project_spec.json 定义的接口）
 
@@ -617,4 +617,34 @@ def execute_workflow(file_path, external_inputs=None, **kwargs):
         # 兼容老项目：返回所有节点输出
         final_outputs = node_outputs
 
-    return final_outputs
+    result_path = result_path if result_path else project_dir / "result.pkl"
+    with open(result_path, 'wb') as f:
+        pickle.dump(final_outputs, f)
+
+
+if __name__ == "__main__":
+
+    # ==================== 配置 ====================
+    logger.remove()  # 禁用默认 handler
+
+    # 日志配置（与原逻辑一致）
+    log_handler_id = logger.add(
+        Path(__file__).parent.parent / "run.log",
+        level="DEBUG",
+        format="[{{time:YYYY-MM-DD HH:mm:ss}}] {{function}}-{{line}} {{level}}: {{message}}",
+        encoding='utf-8',
+        enqueue=True,
+        rotation="10 MB",
+        retention=3
+    )
+    external_input_file = Path(__file__).parent.parent / "input.pkl"
+    if external_input_file.exists():
+        with open(external_input_file, "rb") as f:
+            external_inputs = pickle.load(f)
+    else:
+        external_inputs = None
+
+    execute_workflow(
+        Path(__file__).parent.parent / "model.workflow.json",
+        external_inputs=external_inputs
+    )
