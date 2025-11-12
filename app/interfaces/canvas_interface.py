@@ -29,10 +29,9 @@ from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
-from app.scheduler.node_recommendation_engine import RecommendationTask, NodeRecommendationEngine
+from app.scheduler.node_recommendation_engine import RecommendationTask
 from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导入
 from app.utils.config import Settings
-from app.utils.ipython_kernel_manager import IPythonKernelManager
 from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon
@@ -384,7 +383,7 @@ class CanvasPage(QWidget):
         self.console_container.setStyleSheet("background-color: #2d2d2d;")  # 深色背景，与你的偏好一致
         # --- 2. 为 Console 容器创建布局 ---
         console_layout = QHBoxLayout(self.console_container)
-        console_layout.setContentsMargins(0, 0, 80, 5)
+        console_layout.setContentsMargins(0, 0, 0, 5)
         console_layout.setSpacing(1)
 
         splitter = QSplitter(Qt.Horizontal)
@@ -416,7 +415,7 @@ class CanvasPage(QWidget):
         if self.console_container.isVisible():
             # Console 显示时，定位在 Canvas 底部
             console_height = self.console_container.height()
-            self.console_container.setGeometry(40, canvas_height - console_height, canvas_width, console_height)
+            self.console_container.setGeometry(40, canvas_height - console_height, canvas_width - 80, console_height)
 
     def create_environment_selector(self):
         self.env_selector_container = QWidget(self.graph.viewer())
@@ -1156,7 +1155,7 @@ class CanvasPage(QWidget):
             if not project_name:
                 self.create_warning_info("导出失败", "项目名不能为空！")
                 return
-            export_path = pathlib.Path("./projects") / project_name
+            export_path = pathlib.Path(self.config.project_paths.value[0]) / project_name
             export_path.mkdir(parents=True, exist_ok=True)
             # 创建目录
             components_dir = export_path / "components"
@@ -1720,7 +1719,7 @@ class CanvasPage(QWidget):
 
     def edit_node(self, node):
         self.parent.switchTo(self.parent.develop_page)
-        self.parent.develop_page._load_component(node.component_class)
+        self.parent.develop_page._load_component(node.component_class, node.FULL_PATH)
 
     def _setup_pipeline_style(self):
         self.graph.set_grid_mode(self.GRID_STYLE.get(self.config.canvas_grid_mode.value))

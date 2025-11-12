@@ -2,6 +2,7 @@
 import json
 import os
 from datetime import datetime
+from pathlib import Path
 
 from PyQt5.QtCore import Qt, QMimeData, QRectF, QPoint
 from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont, QPainterPath, QFontMetrics
@@ -213,8 +214,8 @@ class DraggableTreeWidget(TreeWidget):
         self.refresh_components()
 
     def _load_usage_stats(self):
-        stats_file = os.path.join(os.path.expanduser("~"), ".nodegraph_usage.json")
-        if os.path.exists(stats_file):
+        stats_file = Path("./canvas_files/nodegraph_usage.json")
+        if stats_file.exists():
             try:
                 with open(stats_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
@@ -223,7 +224,7 @@ class DraggableTreeWidget(TreeWidget):
         return {}
 
     def _save_usage_stats(self):
-        stats_file = os.path.join(os.path.expanduser("~"), ".nodegraph_usage.json")
+        stats_file = Path("./canvas_files/nodegraph_usage.json")
         try:
             with open(stats_file, 'w', encoding='utf-8') as f:
                 json.dump(self._usage_stats, f, ensure_ascii=False, indent=2)
@@ -231,8 +232,8 @@ class DraggableTreeWidget(TreeWidget):
             pass
 
     def _load_favorites(self):
-        fav_file = os.path.join(os.path.expanduser("~"), ".nodegraph_favorites.json")
-        if os.path.exists(fav_file):
+        fav_file = Path("./canvas_files/nodegraph_favorites.json")
+        if fav_file.exists():
             try:
                 with open(fav_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
@@ -241,7 +242,7 @@ class DraggableTreeWidget(TreeWidget):
         return []
 
     def _save_favorites(self):
-        fav_file = os.path.join(os.path.expanduser("~"), ".nodegraph_favorites.json")
+        fav_file = Path("./canvas_files/nodegraph_favorites.json")
         try:
             with open(fav_file, 'w', encoding='utf-8') as f:
                 json.dump(self._favorites, f, ensure_ascii=False, indent=2)

@@ -543,7 +543,7 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
 
             # 记录激活的分支端口 - 使用正确的格式
             if selected_ports:
-                  # 假设分支输出端口名
+                # 假设分支输出端口名
                 for port in selected_ports:
                     branch_var_name = f"node_vars_{n['name'].replace(' ', '_')}_{port}"
                     internal_outputs[branch_var_name] = output[port]
@@ -565,8 +565,36 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
                 file_path=n["file_path"],
                 params=node_params,
                 inputs=node_inputs,
-                global_variable=runtime_data.get("global_variable", {})
+                global_variable=global_variable
             )
+            for port in output:
+                if f"{n['name']}_{port}" in global_variable["node_vars"]:
+                    if global_variable["node_vars"][f"{n['name']}_{port}"]["update_policy"] == "更新":
+                        global_variable["node_vars"][f"{n['name']}_{port}"]["value"] = output[port]
+                    elif global_variable["node_vars"][f"{n['name']}_{port}"]["update_policy"] == "追加":
+                        current_value = global_variable["node_vars"][f"{n['name']}_{port}"]["value"]
+                        value = output[port]
+                        try:
+                            # --- 处理字符串 ---
+                            if isinstance(current_value, list):
+                                if isinstance(value, list):
+                                    update_value = current_value + value
+                                else:
+                                    # 如果当前是列表，但新值不是列表，将新值作为一个元素追加
+                                    update_value = current_value + [value]
+                            # --- 处理字典 ---
+                            elif isinstance(current_value, dict):
+                                if isinstance(value, dict):
+                                    # 合并字典，新值会覆盖同名键的旧值
+                                    update_value = {**current_value, **value}
+                            # --- 其他类型 ---
+                            else:
+                                # 对于其他类型，尝试直接相加，如果失败则覆盖
+                                update_value = [current_value, value]
+                        except Exception as e:
+                            update_value = value
+                        global_variable["node_vars"][f"{n['name']}_{port}"]["value"] = update_value
+
             logger.info(f"输出: {output}")
 
             # 对于内部节点，使用 node_vars_{节点名}_{端口名} 格式存储输出，以便在表达式引擎中使用
@@ -721,6 +749,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
     :return: {"output_0": ..., "output_1": ...}
     """
     global logger
+    global global_variable
     logger = kwargs.get("logger", logger)
     workflow_path = Path(file_path)
     project_dir = workflow_path.parent.absolute()
@@ -937,11 +966,40 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
                 output = run_component_in_subprocess(
                     comp_class=node["class"],
                     file_path=node["file_path"],
-                    params=node["params"],
+                    params=node_params,
                     inputs=node_inputs,
                     global_variable=global_variable,
                     logger=logger
                 )
+                # 更新全局变量中的节点输出
+                for port in output:
+                    if f"{node['name']}_{port}" in global_variable["node_vars"]:
+                        if global_variable["node_vars"][f"{node['name']}_{port}"]["update_policy"] == "更新":
+                            global_variable["node_vars"][f"{node['name']}_{port}"]["value"] = output[port]
+                        elif global_variable["node_vars"][f"{node['name']}_{port}"]["update_policy"] == "追加":
+                            current_value = global_variable["node_vars"][f"{node['name']}_{port}"]["value"]
+                            value = output[port]
+                            try:
+                                # --- 处理字符串 ---
+                                if isinstance(current_value, list):
+                                    if isinstance(value, list):
+                                        update_value = current_value + value
+                                    else:
+                                        # 如果当前是列表，但新值不是列表，将新值作为一个元素追加
+                                        update_value = current_value + [value]
+                                # --- 处理字典 ---
+                                elif isinstance(current_value, dict):
+                                    if isinstance(value, dict):
+                                        # 合并字典，新值会覆盖同名键的旧值
+                                        update_value = {**current_value, **value}
+                                # --- 其他类型 ---
+                                else:
+                                    # 对于其他类型，尝试直接相加，如果失败则覆盖
+                                    update_value = [current_value, value]
+                            except Exception as e:
+                                update_value = value
+                            global_variable["node_vars"][f"{node['name']}_{port}"]["value"] = update_value
+
                 logger.info(f"输出: {output}")
                 node_outputs[node_id] = output or {}
             except Exception as e:

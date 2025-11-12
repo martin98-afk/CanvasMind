@@ -12,7 +12,7 @@ from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTableWidgetItem, QHeaderView,
-    QFormLayout, QDialog, QTableWidget, QStackedWidget
+    QFormLayout, QDialog, QTableWidget
 )
 from loguru import logger
 from qfluentwidgets import (
@@ -383,11 +383,12 @@ class ComponentDeveloperWidget(QWidget):
         """根据文件路径重载组件"""
         file_map = {value: key for key, value in self.component_tree._file_map.items()}
         full_path = file_map.get(component_path)
-        self._load_component(self.component_tree._components[full_path])
+        self._load_component(self.component_tree._components[full_path], full_path)
 
-    def _load_component(self, component):
+    def _load_component(self, component, full_path=None):
         """加载组件到编辑器"""
         try:
+            self.component_tree.set_current_editing_component(full_path)
             # 基本信息
             self.name_edit.setText(getattr(component, 'name', ''))
             self.category_edit.setText(getattr(component, 'category', ''))
@@ -1006,6 +1007,7 @@ except:
             self.property_editor.set_properties({})
             self.code_editor.set_code(DEFAULT_NODE_TEMPLATE)
             self._current_component_file = None
+            self.component_tree.set_current_editing_component(None)
 
     # --- 新增：加载历史记录列表 ---
     def _load_history_list(self, component_file_path: Path):
