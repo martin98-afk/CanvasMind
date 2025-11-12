@@ -44,7 +44,7 @@ class Component(BaseComponent):
         import pickle
         import time
         from pathlib import Path
-        
+
         try:
             # 获取输入参数
             project_path = Path(inputs.project_name)
@@ -61,7 +61,7 @@ class Component(BaseComponent):
             workflow_file = project_path / "model.workflow.json"
             if not workflow_file.exists():
                 return {"output1": f"错误: 工作流文件不存在: {workflow_file}"}
-            
+
             with open(workflow_file, 'r', encoding='utf-8') as f:
                 full_data = json.load(f)
             runtime_data = full_data.get("runtime", {})
@@ -74,10 +74,10 @@ class Component(BaseComponent):
             )
             while proc.poll() is None:
                 time.sleep(1)
-            
+
             with open(project_path / "result.pkl", "rb") as f:
                 outputs = pickle.load(f)
-            
+
             return {
                 "result": outputs,
                 "log": open(project_path / "run.log", 'r', encoding="utf-8").read()
@@ -86,4 +86,4 @@ class Component(BaseComponent):
         except Exception as e:
             import traceback
             error_msg = f"执行失败: {str(e)}\n{traceback.format_exc()}"
-            return {"output1": error_msg}
+            return {"result": "", "log": error_msg}

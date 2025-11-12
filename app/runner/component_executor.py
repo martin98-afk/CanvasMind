@@ -37,28 +37,25 @@ def run_component_in_subprocess(
     """
     dir_path = Path(__file__).parent.parent
     sys.path.append(str(dir_path))
-
-    # 获取 requirements
-    requirements_str = getattr(comp_class, 'requirements', '')
-    if not requirements_str:
-        try:
-            source_code = Path(file_path).read_text(encoding='utf-8')
-            for line in source_code.split('\n'):
-                if line.strip().startswith('requirements ='):
-                    req_line = line.split('=', 1)[1].strip().strip('"\'')
-                    requirements_str = req_line
-                    break
-        except Exception as e:
-            logger.warning(f"无法解析 requirements: {e}")
-
     # 创建临时脚本
     temp_script_path = dir_path / "run"
     shutil.rmtree(temp_script_path, ignore_errors=True)
     temp_script_path.mkdir(parents=True, exist_ok=True)
     log_file_path = log_file_path or temp_script_path / "run.log"
 
-    CLASS_NAME = comp_class.__name__
-    FILE_PATH = file_path
+    if file_path == None and comp_class == "dynamic.DYNAMIC_CODE":
+        CLASS_NAME = "DynamicComponent"
+        component_code = params["run_script"]
+        FILE_PATH = dir_path / "components" / "temp" / "run.py"
+        (dir_path / "components" / "temp").mkdir(parents=True, exist_ok=True)
+        with open(FILE_PATH, "w", encoding="utf-8") as f:
+            f.write(component_code)
+    elif file_path == None:
+        return inputs
+    else:
+        CLASS_NAME = comp_class.__name__
+        FILE_PATH = file_path
+
     ERROR_PATH = temp_script_path / 'run.error'
     NODE_ID = str(uuid.uuid4())
     try:
@@ -75,10 +72,7 @@ def run_component_in_subprocess(
         # === 3. 执行组件 ===
         comp_instance = comp_class()
         comp_instance.logger = logger
-        logger.info("开始执行组件")
         output = comp_instance.execute(params, inputs, global_variable, NODE_ID)
-
-        logger.success("节点执行完成")
     except ImportError as e:
         error_info = {
             "error": str(e),
@@ -86,7 +80,7 @@ def run_component_in_subprocess(
             "type": "ImportError",
             "node_id": NODE_ID
         }
-        with open(ERROR_PATH, 'wb') as f:
+        with open(ERROR_PATH, 'wb', encoding='utf-8') as f:
             pickle.dump(error_info, f)
         logger.error(f"导入错误: {e}")
         print(f"EXECUTION_IMPORT_ERROR: {e}", flush=True)
@@ -233,8 +227,8 @@ if __name__ == "__main__":
             "type": "ImportError",
             "node_id": NODE_ID
         }}
-        with open(ERROR_PATH, 'wb') as f:
-            pickle.dump(error_info, f)
+        with open(ERROR_PATH, 'w', encoding='utf-8') as f:
+            f.write(error_info)
         node_logger.error(f"导入错误: {{e}}")
         print(f"EXECUTION_IMPORT_ERROR: {{e}}", flush=True)
 
@@ -245,8 +239,8 @@ if __name__ == "__main__":
             "type": type(e).__name__,
             "node_id": NODE_ID
         }}
-        with open(ERROR_PATH, 'wb') as f:
-            pickle.dump(error_info, f)
+        with open(ERROR_PATH, 'w', encoding='utf-8') as f:
+            f.write(error_info)
         node_logger.error(f"执行异常: {{e}}")
         print(f"EXECUTION_ERROR: {{e}}", flush=True)
 
@@ -258,7 +252,7 @@ def _check_needs_install(result, temp_script_path):
     if result.returncode == 0:
         return False
     if os.path.exists(f"{temp_script_path}.error"):
-        with open(f"{temp_script_path}.error", 'rb') as f:
+        with open(f"{temp_script_path}.error", 'rb', encoding='utf-8') as f:
             error_info = pickle.load(f)
         return error_info.get("type") == "ImportError"
     return "ImportError" in result.stderr

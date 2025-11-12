@@ -295,12 +295,7 @@ def create_dynamic_code_node(parent_window=None):
                         except Exception:
                             continue
 
-        # === 关键：重写 execute_sync，使用动态代码模板 ===
-        def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None):
-            self.init_logger()
-            if python_executable is None:
-                raise Exception("未指定Python执行环境。")
-
+        def format_code(self):
             # === 1. 收集参数（不变）===
             user_code = self.get_property("code") or ""
             requirements = self.get_property("requirements") or ""
@@ -336,7 +331,29 @@ def create_dynamic_code_node(parent_window=None):
                 properties_dict="",
                 user_run_code=indented_user_code.strip()
             )
+            return temp_component_code
 
+        # === 关键：重写 execute_sync，使用动态代码模板 ===
+        def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None):
+            self.init_logger()
+            temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
+            temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
+            run_id = f"run_{self.persistent_id}"
+            run_dir = PERSISTENT_TEMP_ROOT / run_id
+            shutil.rmtree(run_dir, ignore_errors=True)
+            run_dir.mkdir(parents=True, exist_ok=True)
+            temp_script_path = run_dir / "exec_script.py"
+            params_path = run_dir / "params.pkl"
+            result_path = run_dir / "result.pkl"
+            error_path = run_dir / "error.pkl"
+            log_file_path = self.log_capture.get_log_file_path()
+            if python_executable is None:
+                raise Exception("未指定Python执行环境。")
+
+            temp_component_code = self.format_code()
+            # 保存组件代码
+            with open(temp_component_path, 'w', encoding='utf-8') as f:
+                f.write(temp_component_code)
             # === 3. 收集 inputs / params / global_variable（不变）===
             global_variable = self.global_variable
             gv = GlobalVariableContext()
@@ -375,22 +392,6 @@ def create_dynamic_code_node(parent_window=None):
             params = {}  # 动态节点无额外参数
 
             # === 4. 准备临时文件（不变）===
-            temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
-            temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
-            run_id = f"run_{self.persistent_id}"
-            run_dir = PERSISTENT_TEMP_ROOT / run_id
-            shutil.rmtree(run_dir, ignore_errors=True)
-            run_dir.mkdir(parents=True, exist_ok=True)
-            temp_script_path = run_dir / "exec_script.py"
-            params_path = run_dir / "params.pkl"
-            result_path = run_dir / "result.pkl"
-            error_path = run_dir / "error.pkl"
-            log_file_path = self.log_capture.get_log_file_path()
-
-            # 保存组件代码
-            with open(temp_component_path, 'w', encoding='utf-8') as f:
-                f.write(temp_component_code)
-
             # 保存执行参数（IPython 和 subprocess 都需要）
             with open(params_path, 'wb') as f:
                 pickle.dump((params, inputs, global_variable), f)

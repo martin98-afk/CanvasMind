@@ -1207,6 +1207,9 @@ class CanvasPage(QWidget):
             new_nodes_data = {}
             for node in nodes_to_export:
                 editable_params = node.model.custom_properties
+                # 动态执行代码直接添加可执行代码
+                if node.FULL_PATH.startswith("代码执行/"):
+                    editable_params["run_script"] = node.format_code()
                 exported_params = {
                     param_name: _process_value_for_export(param_value, inputs_dir, export_path)
                     for param_name, param_value in editable_params.items()
