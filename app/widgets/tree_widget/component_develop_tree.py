@@ -24,7 +24,7 @@ from app.widgets.dialog_widget.new_component_dialog import NewComponentDialog
 
 class ComponentTreeWidget(TreeWidget):
     """组件树控件 - 支持右键菜单、搜索、快捷键"""
-    component_selected = pyqtSignal(object)
+    component_selected = pyqtSignal(object, str)
     component_created = pyqtSignal(dict)
     component_pasted = pyqtSignal()
 
@@ -239,7 +239,7 @@ class ComponentTreeWidget(TreeWidget):
         if comp_cls:
             # 更新当前编辑的组件
             self.set_current_editing_component(full_path)
-            self.component_selected.emit(comp_cls)
+            self.component_selected.emit(comp_cls, full_path)
         else:
             self._show_warning("组件类定义丢失，请刷新组件树。")
 

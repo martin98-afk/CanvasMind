@@ -14,7 +14,7 @@ from app.utils.utils import resource_path
 
 class RecommendationStatsManager:
     def __init__(self):
-        self.stats_file = Path(resource_path("recommend_stats.json"))
+        self.stats_file = Path("./canvas_files/recommend_stats.json")
         self._load_stats()
 
     def _load_stats(self):

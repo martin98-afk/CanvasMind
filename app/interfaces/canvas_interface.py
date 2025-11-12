@@ -29,10 +29,9 @@ from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
 from app.scan_components import scan_components
-from app.scheduler.node_recommendation_engine import RecommendationTask, NodeRecommendationEngine
+from app.scheduler.node_recommendation_engine import RecommendationTask
 from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导入
 from app.utils.config import Settings
-from app.utils.ipython_kernel_manager import IPythonKernelManager
 from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon
@@ -335,7 +334,7 @@ class CanvasPage(QWidget):
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
             self._update_nodes_container_position()
-            self.buttons_container.move(self.graph.viewer().width() - 210, 10)
+            self.buttons_container.move(self.graph.viewer().width() - 200, 10)
             self._position_name_container()
             self._update_console_position()
         return super().eventFilter(obj, event)
@@ -343,9 +342,9 @@ class CanvasPage(QWidget):
     def create_floating_buttons(self):
         self.buttons_container = QWidget(self.graph.viewer())
         self.buttons_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.buttons_container.move(self.graph.viewer().width() - 210, 10)
+        self.buttons_container.move(self.graph.viewer().width() - 200, 10)
         env_layout = QHBoxLayout(self.buttons_container)
-        env_layout.setSpacing(5)
+        env_layout.setSpacing(2)
         env_layout.setContentsMargins(0, 0, 0, 0)
         self.run_btn = TransparentToolButton(FluentIcon.PLAY, self)
         self.run_btn.setToolTip("运行工作流")
@@ -382,11 +381,10 @@ class CanvasPage(QWidget):
         self.console_container = QWidget(self.canvas_widget)
         self.console_container.hide()  # 初始隐藏
         self.console_container.setStyleSheet("background-color: #2d2d2d;")  # 深色背景，与你的偏好一致
-        self.console_container.setWindowOpacity(0.7)
         # --- 2. 为 Console 容器创建布局 ---
         console_layout = QHBoxLayout(self.console_container)
-        console_layout.setContentsMargins(0, 0, 40, 5)
-        console_layout.setSpacing(0)
+        console_layout.setContentsMargins(0, 0, 0, 5)
+        console_layout.setSpacing(1)
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.ipython_console)
@@ -417,7 +415,7 @@ class CanvasPage(QWidget):
         if self.console_container.isVisible():
             # Console 显示时，定位在 Canvas 底部
             console_height = self.console_container.height()
-            self.console_container.setGeometry(40, canvas_height - console_height, canvas_width, console_height)
+            self.console_container.setGeometry(40, canvas_height - console_height, canvas_width - 80, console_height)
 
     def create_environment_selector(self):
         self.env_selector_container = QWidget(self.graph.viewer())
@@ -772,7 +770,7 @@ class CanvasPage(QWidget):
             node = self.graph.create_node(node_type)
 
         QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
-        if icon_path:
+        if isinstance(icon_path, str):
             node.set_icon(icon_path)
         if selected_nodes:
             node_x = selected_nodes[0].x_pos()
@@ -1157,7 +1155,7 @@ class CanvasPage(QWidget):
             if not project_name:
                 self.create_warning_info("导出失败", "项目名不能为空！")
                 return
-            export_path = pathlib.Path("./projects") / project_name
+            export_path = pathlib.Path(self.config.project_paths.value[0]) / project_name
             export_path.mkdir(parents=True, exist_ok=True)
             # 创建目录
             components_dir = export_path / "components"
@@ -1208,6 +1206,9 @@ class CanvasPage(QWidget):
             new_nodes_data = {}
             for node in nodes_to_export:
                 editable_params = node.model.custom_properties
+                # 动态执行代码直接添加可执行代码
+                if node.FULL_PATH.startswith("代码执行/"):
+                    editable_params["run_script"] = node.format_code()
                 exported_params = {
                     param_name: _process_value_for_export(param_value, inputs_dir, export_path)
                     for param_name, param_value in editable_params.items()
@@ -1718,7 +1719,7 @@ class CanvasPage(QWidget):
 
     def edit_node(self, node):
         self.parent.switchTo(self.parent.develop_page)
-        self.parent.develop_page._load_component(node.component_class)
+        self.parent.develop_page._load_component(node.component_class, node.FULL_PATH)
 
     def _setup_pipeline_style(self):
         self.graph.set_grid_mode(self.GRID_STYLE.get(self.config.canvas_grid_mode.value))

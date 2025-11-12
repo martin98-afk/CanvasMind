@@ -6,7 +6,6 @@ import re
 import shutil
 import subprocess
 import time
-from pathlib import Path
 
 from NodeGraphQt import BaseNode, NodeBaseWidget
 from NodeGraphQt.errors import NodeWidgetError
@@ -531,15 +530,19 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 self, comp_obj, temp_script_path, result_path, error_path, log_file_path,
                 check_cancel, kernel_manager
         ):
+            import time
+            # 获取 requirements
+            requirements_str = getattr(comp_obj, 'requirements', '').strip()
 
             # 执行 %run -i
             run_code = f'%run -i "{temp_script_path.as_posix()}"'
             kernel_manager.execute_code(run_code, hidden=False)
 
-            # 轮询结果文件（与 subprocess 逻辑一致）
+            # 轮询结果文件
             start_time = time.time()
             timeout = 300  # 5分钟
             last_log_pos = 0
+
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
                     # IPython 无法强制终止，但可跳过后续处理
@@ -548,7 +551,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 if time.time() - start_time > timeout:
                     raise Exception("❌ 节点执行超时（5分钟）")
 
-                # 实时日志轮询（复用你原有逻辑）
+                # 实时日志轮询
                 try:
                     if os.path.exists(log_file_path):
                         with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
@@ -584,12 +587,91 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             elif error_path.exists():
                 with open(error_path, 'rb') as f:
                     error_info = pickle.load(f)
-                error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
-                self._log_message(self.persistent_id, error_msg)
-                raise Exception(error_info['traceback'])
+
+                # 检查是否为 ImportError 并尝试安装依赖
+                if error_info.get("type") == "ImportError" and requirements_str:
+                    self._log_message(self.persistent_id, "检测到 ImportError，尝试安装依赖包...")
+
+                    # 解析并安装依赖包
+                    packages = [pkg.strip() for pkg in requirements_str.split(',') if pkg.strip()]
+                    if packages:
+                        for pkg in packages:
+                            self._log_message(self.persistent_id, f"正在安装 {pkg} ...")
+                            # 在 IPython 内核中执行 pip install
+                            install_code = f'%pip install "{pkg}"'
+                            kernel_manager.execute_code(install_code, hidden=False)
+
+                            # 等待安装完成（可能需要一些时间）
+                            import time
+                            time.sleep(2)  # 简单等待，实际可能需要更复杂的等待逻辑
+
+                        self._log_message(self.persistent_id, "依赖包安装完成，重新执行...")
+
+                        # 清理之前的错误文件
+                        error_path.unlink(missing_ok=True)
+                        result_path.unlink(missing_ok=True)
+
+                        # 重新执行 %run -i
+                        kernel_manager.execute_code(run_code, hidden=False)
+
+                        # 再次轮询结果
+                        start_time = time.time()
+                        last_log_pos = 0  # 重置日志位置
+
+                        while not (result_path.exists() or error_path.exists()):
+                            if check_cancel and check_cancel():
+                                raise Exception("执行被用户取消")
+
+                            if time.time() - start_time > timeout:
+                                raise Exception("❌ 节点执行超时（5分钟）")
+
+                            # 实时日志轮询
+                            try:
+                                if os.path.exists(log_file_path):
+                                    with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                                        lf.seek(last_log_pos)
+                                        new_content = lf.read()
+                                        if new_content:
+                                            self._log_message(self.persistent_id, new_content)
+                                            last_log_pos = lf.tell()
+                            except Exception:
+                                pass
+
+                            time.sleep(0.1)
+
+                        # 读取剩余日志
+                        try:
+                            if os.path.exists(log_file_path):
+                                with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                                    lf.seek(last_log_pos)
+                                    tail_content = lf.read()
+                                    if tail_content:
+                                        self._log_message(self.persistent_id, tail_content)
+                        except Exception:
+                            pass
+
+                        # 检查重试后的结果
+                        if result_path.exists():
+                            output = _safe_load_pickle(result_path)
+                            self._log_message(self.persistent_id, "✅ 节点在 IPython 内核中执行完成（重试后）")
+                            for port in comp_obj.outputs:
+                                if port.type != ArgumentType.UPLOAD:
+                                    self.set_output_value(port.name, output.get(port.name))
+                            return output
+                        elif error_path.exists():
+                            with open(error_path, 'rb') as f:
+                                error_info_retry = pickle.load(f)
+                            error_msg = f"❌ 节点执行失败（重试后）: {error_info_retry['traceback']}"
+                            self._log_message(self.persistent_id, error_msg)
+                            raise Exception(error_info_retry['traceback'])
+                        else:
+                            raise Exception("未知错误：未生成结果或错误文件（重试后）")
+                else:
+                    error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
+                    self._log_message(self.persistent_id, error_msg)
+                    raise Exception(error_info['traceback'])
             else:
                 raise Exception("未知错误：未生成结果或错误文件")
-
 
         def _execute_via_subprocess(
                 self, python_executable, temp_script_path, comp_obj, result_path, error_path,

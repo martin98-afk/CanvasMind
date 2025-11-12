@@ -497,7 +497,7 @@ class ExportedProjectsPage(QWidget):
         try:
             with open(os.path.join(project_path, "output.json"), 'w', encoding='utf-8') as f:
                 json.dump(outputs, f, indent=2, ensure_ascii=False)
-            with open(os.path.join(project_path, "run.log"), 'w', encoding='utf-8') as f:
+            with open(os.path.join(project_path, "run.log"), 'a', encoding='utf-8') as f:
                 f.write(log_content)
         except Exception as e:
             self.create_error_info("保存日志失败", str(e))

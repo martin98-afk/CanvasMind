@@ -58,7 +58,7 @@ class ServiceRequestDialog(QDialog):
         self.spec = self._load_spec()
         self.input_widgets = {}
         self.thread_pool = QThreadPool.globalInstance()  # 使用全局线程池
-
+        self.setStyleSheet("background-color: #2d2d2d;")  # 深色背景，与你的偏好一致
         self.setWindowTitle(f"服务请求 - {os.path.basename(project_path)}")
         self.resize(960, 600)
         self._setup_ui()

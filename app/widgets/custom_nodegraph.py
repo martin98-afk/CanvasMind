@@ -255,7 +255,10 @@ class CustomNodeGraph(NodeGraph):
                     self.add_node(node, n_data.get('pos'), inherite_graph_style=adjust_graph_style)
                     # set custom properties.
                     for prop, val in n_data.get('custom', {}).items():
-                        node.model.set_property(prop, val)
+                        try:
+                            node.model.set_property(prop, val)
+                        except:
+                            pass
                         if isinstance(node, BaseNode):
                             if prop in node.view.widgets:
                                 node.view.widgets[prop].set_value(val)

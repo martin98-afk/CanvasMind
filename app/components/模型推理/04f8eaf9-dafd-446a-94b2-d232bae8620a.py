@@ -44,7 +44,6 @@ class Component(BaseComponent):
             # 读取数据
             feature = inputs.feature
             model = inputs.model
-            self.logger.info(feature)
             # 训练模型
             result = model.predict(feature)
             # 预测示例（使用第一行数据）

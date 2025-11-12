@@ -233,18 +233,6 @@ class UpdateChecker(QWidget):
             except:
                 pass
 
-    def _get_current_version(self):
-        """获取当前版本号"""
-        try:
-            import json
-            with open(resource_path("versions.json"), "r", encoding="utf-8") as f:
-                release_list = json.load(f)
-                release_list = sorted(release_list, key=lambda x: x['publishDate'], reverse=True)
-                return release_list[0]['version']
-        except Exception as e:
-            print(f"获取版本失败：{e}")
-            return "0.0.0"
-
     def check_update(self):
         """检查更新入口方法（支持 GitHub/Gitee）"""
         self.async_checker = AsyncUpdateChecker(self)

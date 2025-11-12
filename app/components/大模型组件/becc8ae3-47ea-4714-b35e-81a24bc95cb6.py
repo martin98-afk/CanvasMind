@@ -25,7 +25,8 @@ class Component(BaseComponent):
         PortDefinition(name="input", label="项目输入", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="output1", label="输出1", type=ArgumentType.TEXT),
+        PortDefinition(name="result", label="工具运行结果", type=ArgumentType.JSON),
+        PortDefinition(name="log", label="工具运行日志", type=ArgumentType.TEXT),
     ]
     properties = {
     }
@@ -36,27 +37,22 @@ class Component(BaseComponent):
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
+        import os
         import json
-        runner_path = pathlib.Path(__file__).parent.parent.parent/ "runner" / "workflow_runner.py"
-        spec = importlib.util.spec_from_file_location("base", str(runner_path))
-        runner_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(runner_module)
+        import sys
+        import subprocess
+        import pickle
+        import time
+        from pathlib import Path
 
-        # 导入所需项目
-        execute_workflow = runner_module.execute_workflow
         try:
             # 获取输入参数
-            project_name = inputs.project_name
-
-            if not project_name:
-                return {"output1": "错误: 请提供项目名称"}
-
+            project_path = Path(inputs.project_name)
+            runner_path = project_path / "runner" / "workflow_runner.py"
             # 解析输入数据
             external_inputs = inputs.input
-
-            # 构建项目路径 (假设项目在当前工作目录下的项目文件夹中)
-            project_path = pathlib.Path(project_name)
-
+            with open(project_path / "input.pkl", "wb") as f:
+                pickle.dump(external_inputs, f)
             # 检查项目是否存在
             if not project_path.exists():
                 return {"output1": f"错误: 项目路径不存在: {project_path}"}
@@ -66,22 +62,28 @@ class Component(BaseComponent):
             if not workflow_file.exists():
                 return {"output1": f"错误: 工作流文件不存在: {workflow_file}"}
 
-            # 调用执行函数
-            result = execute_workflow(
-                str(workflow_file),
-                external_inputs=external_inputs,
-                logger=self.logger
+            with open(workflow_file, 'r', encoding='utf-8') as f:
+                full_data = json.load(f)
+            runtime_data = full_data.get("runtime", {})
+            python_executable = runtime_data.get("environment_exe", sys.executable)
+            proc = subprocess.Popen(
+                [python_executable, runner_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                encoding='utf-8'
             )
+            while proc.poll() is None:
+                time.sleep(1)
 
-            # 将结果转换为字符串返回
-            if isinstance(result, (dict, list)):
-                result_str = json.dumps(result, ensure_ascii=False, indent=2)
-            else:
-                result_str = str(result)
+            with open(project_path / "result.pkl", "rb") as f:
+                outputs = pickle.load(f)
 
-            return {"output1": result_str}
+            return {
+                "result": outputs,
+                "log": open(project_path / "run.log", 'r', encoding="utf-8").read()
+            }
 
         except Exception as e:
             import traceback
             error_msg = f"执行失败: {str(e)}\n{traceback.format_exc()}"
-            return {"output1": error_msg}
+            return {"result": "", "log": error_msg}
