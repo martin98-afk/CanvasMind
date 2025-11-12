@@ -508,10 +508,10 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             InfoBar.warning("名称无效", "画布名称不能为空", parent=window or self)
             return
 
-        file_path = Path("workflows") / f"{base_name}.workflow.json"
+        file_path = self.workflow_dir[0] / f"{base_name}.workflow.json"
         counter = 1
         while file_path.exists():
-            file_path = Path("workflows") / f"{base_name}_{counter}.workflow.json"
+            file_path = self.workflow_dir[0] / f"{base_name}_{counter}.workflow.json"
             counter += 1
 
         if file_path not in self.opened_workflows:
@@ -554,10 +554,10 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             return
 
         base_name = src_path.stem.split(".")[0]
-        dest_path = Path("workflows") / f"{base_name}.workflow.json"
+        dest_path = self.workflow_dir[0] / f"{base_name}.workflow.json"
         counter = 1
         while dest_path.exists():
-            dest_path = Path("workflows") / f"{base_name}_{counter}.workflow.json"
+            dest_path = self.workflow_dir[0] / f"{base_name}_{counter}.workflow.json"
             counter += 1
 
         try:
@@ -587,15 +587,15 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             InfoBar.warning("名称无效", "画布名称不能为空", parent=self)
             return
 
-        dest_path = Path("workflows") / f"{new_name}.workflow.json"
-        dest_png = Path("workflows") / f"{new_name}.png"
+        dest_path = self.workflow_dir[0] / f"{new_name}.workflow.json"
+        dest_png = self.workflow_dir[0] / f"{new_name}.png"
         src_png = src_path.parent / f"{src_path.stem.split('.')[0]}.png"
         counter = 1
         base_name = new_name
         while dest_path.exists():
             new_name = f"{base_name}_{counter}"
-            dest_path = Path("workflows") / f"{new_name}.workflow.json"
-            dest_png = Path("workflows") / f"{new_name}.png"
+            dest_path = self.workflow_dir[0] / f"{new_name}.workflow.json"
+            dest_png = self.workflow_dir[0] / f"{new_name}.png"
             counter += 1
 
         try:
@@ -645,15 +645,15 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             InfoBar.warning("名称无效", "画布名称不能为空", parent=self)
             return
 
-        dest_path = Path("workflows") / f"{new_name}.workflow.json"
-        dest_png = Path("workflows") / f"{new_name}.png"
+        dest_path = self.workflow_dir[0] / f"{new_name}.workflow.json"
+        dest_png = self.workflow_dir[0] / f"{new_name}.png"
         src_png = src_path.parent / f"{src_path.stem.split('.')[0]}.png"
         counter = 1
         base_name = new_name
         while dest_path.exists():
             new_name = f"{base_name}_{counter}"
-            dest_path = Path("workflows") / f"{new_name}.workflow.json"
-            dest_png = Path("workflows") / f"{new_name}.png"
+            dest_path = self.workflow_dir[0] / f"{new_name}.workflow.json"
+            dest_png = self.workflow_dir[0] / f"{new_name}.png"
             counter += 1
 
         try:

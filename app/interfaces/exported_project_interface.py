@@ -437,10 +437,10 @@ class ExportedProjectsPage(QWidget):
             return
 
         base_name = src_path.name or "imported_project"
-        dest_path = Path("./projects") / base_name
+        dest_path = self.export_dir[0] / base_name
         counter = 1
         while dest_path.exists():
-            dest_path = Path("./projects") / f"{base_name}_{counter}"
+            dest_path = self.export_dir[0] / f"{base_name}_{counter}"
             counter += 1
 
         try:
