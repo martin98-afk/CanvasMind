@@ -382,11 +382,10 @@ class CanvasPage(QWidget):
         self.console_container = QWidget(self.canvas_widget)
         self.console_container.hide()  # 初始隐藏
         self.console_container.setStyleSheet("background-color: #2d2d2d;")  # 深色背景，与你的偏好一致
-        self.console_container.setWindowOpacity(0.7)
         # --- 2. 为 Console 容器创建布局 ---
         console_layout = QHBoxLayout(self.console_container)
-        console_layout.setContentsMargins(0, 0, 40, 5)
-        console_layout.setSpacing(0)
+        console_layout.setContentsMargins(0, 0, 80, 5)
+        console_layout.setSpacing(1)
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.ipython_console)

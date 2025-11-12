@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from NodeGraphQt.constants import NodeEnum, ICON_NODE_BASE
+from NodeGraphQt.constants import NodeEnum, ICON_NODE_BASE, ITEM_CACHE_MODE
 from NodeGraphQt.qgraphics.node_base import NodeItem
 from NodeGraphQt.qgraphics.node_overlay_disabled import XDisabledItem
 from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
@@ -302,3 +302,22 @@ class CustomNodeItem(NodeItem):
 
             widget.setPos(x, y)
             y += widget_height + 8  # 使用真实高度
+
+    def auto_switch_mode(self):
+        """
+        Decide whether to draw the node with proxy mode.
+        (this is called at the start in the "self.paint()" function.)
+        """
+        if ITEM_CACHE_MODE is QtWidgets.QGraphicsItem.ItemCoordinateCache:
+            return
+        if self.viewer() is None:
+            return
+        rect = self.sceneBoundingRect()
+        l = self.viewer().mapToGlobal(
+            self.viewer().mapFromScene(rect.topLeft()))
+        r = self.viewer().mapToGlobal(
+            self.viewer().mapFromScene(rect.topRight()))
+        # width is the node width in screen
+        width = r.x() - l.x()
+
+        self.set_proxy_mode(width < self._proxy_mode_threshold)

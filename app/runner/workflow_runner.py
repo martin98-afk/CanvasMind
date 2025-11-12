@@ -1,19 +1,16 @@
 import base64
 import io
 import json
-import os
 import pickle
 import sys
-import tempfile
 import uuid
 import warnings
-import loguru
+warnings.filterwarnings("ignore")
 import numpy as np
 import pandas as pd
+
 from pyarrow import feather
-
-warnings.filterwarnings("ignore")
-
+from loguru import logger
 from collections import defaultdict, deque
 from pathlib import Path
 from threading import Lock
@@ -402,7 +399,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
     :return: {"output_0": ..., "output_1": ...}
     """
     global logger
-    logger = kwargs.get("logger", loguru.logger)
+    logger = kwargs.get("logger", logger)
     workflow_path = Path(file_path)
     project_dir = workflow_path.parent.absolute()
     # 1. 加载工作流
@@ -626,17 +623,17 @@ if __name__ == "__main__":
 
     # ==================== 配置 ====================
     logger.remove()  # 禁用默认 handler
-
+    NODE_ID = uuid.uuid4().hex
     # 日志配置（与原逻辑一致）
     log_handler_id = logger.add(
         Path(__file__).parent.parent / "run.log",
-        level="DEBUG",
-        format="[{{time:YYYY-MM-DD HH:mm:ss}}] {{function}}-{{line}} {{level}}: {{message}}",
+        level="INFO",
         encoding='utf-8',
         enqueue=True,
         rotation="10 MB",
         retention=3
     )
+    logger = logger.bind(node_id=NODE_ID)
     external_input_file = Path(__file__).parent.parent / "input.pkl"
     if external_input_file.exists():
         with open(external_input_file, "rb") as f:
@@ -646,5 +643,6 @@ if __name__ == "__main__":
 
     execute_workflow(
         Path(__file__).parent.parent / "model.workflow.json",
-        external_inputs=external_inputs
+        external_inputs=external_inputs,
+        logger=logger,
     )

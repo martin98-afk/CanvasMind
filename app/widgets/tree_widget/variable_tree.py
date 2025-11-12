@@ -418,7 +418,7 @@ class VariableTreeWidget(TreeWidget):
             parent=self
         )
         # 也可以添加一个临时项来显示错误
-        error_item = QTreeWidgetItem(self.invisibleRootItem(), [f"Error: {type(self._original_data).__name__}"])
+        error_item = TreeWidgetItem(self.invisibleRootItem(), [f"Error: {type(self._original_data).__name__}"])
         error_item.setForeground(0, Qt.red)
 
     def _add_item_from_data(self, parent_item, item_data):

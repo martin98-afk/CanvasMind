@@ -25,7 +25,8 @@ class Component(BaseComponent):
         PortDefinition(name="input", label="项目输入", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="output1", label="输出1", type=ArgumentType.TEXT),
+        PortDefinition(name="result", label="工具运行结果", type=ArgumentType.JSON),
+        PortDefinition(name="log", label="工具运行日志", type=ArgumentType.TEXT),
     ]
     properties = {
     }
@@ -43,15 +44,15 @@ class Component(BaseComponent):
         import pickle
         import time
         from pathlib import Path
-        runner_path = Path(__file__).parent.parent.parent / "runner" / "workflow_runner.py"
-
+        
         try:
             # 获取输入参数
             project_path = Path(inputs.project_name)
-            
+            runner_path = project_path / "runner" / "workflow_runner.py"
             # 解析输入数据
             external_inputs = inputs.input
-
+            with open(project_path / "input.pkl", "wb") as f:
+                pickle.dump(external_inputs, f)
             # 检查项目是否存在
             if not project_path.exists():
                 return {"output1": f"错误: 项目路径不存在: {project_path}"}
@@ -77,7 +78,10 @@ class Component(BaseComponent):
             with open(project_path / "result.pkl", "rb") as f:
                 outputs = pickle.load(f)
             
-            return {"output1": outputs}
+            return {
+                "result": outputs,
+                "log": open(project_path / "run.log", 'r', encoding="utf-8").read()
+            }
 
         except Exception as e:
             import traceback

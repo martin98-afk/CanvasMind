@@ -260,7 +260,8 @@ async def run_workflow(input: InputModel):
                 external_inputs[key] = tmp_path
             else:
                 external_inputs[key] = value
-
+        with open("input.pkl", "wb") as f:
+            pickle.dump(external_inputs, f)
         with open("model.workflow.json", 'r', encoding='utf-8') as f:
             full_data = json.load(f)
         runtime_data = full_data.get("runtime", {})

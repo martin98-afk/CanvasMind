@@ -27,7 +27,6 @@ if __name__ == "__main__":
         encoding='utf-8'
     )
     while proc.poll() is None:
-        logger.info("等待模型执行完成...")
         time.sleep(1)
     with open(Path(__file__).parent / "result.pkl", "rb") as f:
         outputs = pickle.load(f)
