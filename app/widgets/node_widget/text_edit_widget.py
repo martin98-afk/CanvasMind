@@ -16,11 +16,15 @@ class TextWidget(QtWidgets.QWidget):
         self._text = default_text
         global_vars = getattr(self.parent, 'global_variables', None)
         if type.value == "多行文本":
-            self.summary_label = VariableCompletionTextEdit(get_variable_list_func=global_vars.get_vars)
+            self.summary_label = VariableCompletionTextEdit(
+                get_variable_list_func=global_vars.get_vars, use_qursor=True, parent=self
+            )
             self.summary_label.setFixedWidth(300)
             self.summary_label.textChanged.connect(lambda: self._on_text_changed(self.summary_label.toPlainText()))
         else:
-            self.summary_label = VariableCompletionLineEdit(get_variable_list_func=global_vars.get_vars)
+            self.summary_label = VariableCompletionLineEdit(
+                get_variable_list_func=global_vars.get_vars, use_qursor=True, parent=self
+            )
             self.summary_label.setFixedWidth(200)
             self.summary_label.textChanged.connect(self._on_text_changed)
         self.summary_label.setText(default_text)

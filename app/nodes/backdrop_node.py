@@ -4,7 +4,7 @@ from typing import Optional, List
 
 from NodeGraphQt import BackdropNode, Port
 from NodeGraphQt.base.commands import NodeVisibleCmd
-from NodeGraphQt.constants import ITEM_CACHE_MODE, PortTypeEnum, Z_VAL_NODE
+from NodeGraphQt.constants import ITEM_CACHE_MODE, PortTypeEnum, Z_VAL_NODE, ICON_NODE_BASE, NodeEnum
 from NodeGraphQt.errors import PortError
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QUndoCommand
 from qtpy import QtCore, QtGui, QtWidgets
 
 from app.nodes.status_node import StatusNode
-from app.utils.utils import get_port_node, draw_square_port
+from app.utils.utils import get_port_node, draw_square_port, resource_path
 
 
 # ──────────────── Undo/Redo Command ────────────────
@@ -51,6 +51,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
     - 支持 Undo/Redo
     """
     TYPE: str
+    ICON_PATH: str
     category = "控制流"
     __identifier__ = 'control_flow'
     NODE_NAME = '控制流区域'
@@ -58,6 +59,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
 
     def __init__(self):
         BackdropNode.__init__(self, ControlFlowBackdropNodeItem)
+        self.set_icon(resource_path(self.ICON_PATH))
         self._inputs = []
         self._outputs = []
         self._output_values = {}
@@ -509,12 +511,22 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         elif isinstance(port, str):
             return self.outputs().get(port, None)
 
+    def set_icon(self, icon=None):
+        """
+        Set the node icon.
+
+        Args:
+            icon (str): path to the icon image.
+        """
+        self.set_property('icon', icon)
+
 
 class ControlFlowLoopNode(ControlFlowBackdrop):
     category = "控制流"
     NODE_NAME = "循环控制流区域"
     TYPE = "loop"
     FULL_PATH = f"{category}/{NODE_NAME}"
+    ICON_PATH = "./icons/无限.png"
 
 
 class ControlFlowIterateNode(ControlFlowBackdrop):
@@ -522,6 +534,7 @@ class ControlFlowIterateNode(ControlFlowBackdrop):
     NODE_NAME = "迭代控制流区域"
     TYPE = "iterate"
     FULL_PATH = f"{category}/{NODE_NAME}"
+    ICON_PATH = "./icons/更新.svg"
 
 
 # ──────────────── 图形项（保持不变）────────────────
@@ -529,14 +542,21 @@ class ControlFlowIterateNode(ControlFlowBackdrop):
 class ControlFlowBackdropNodeItem(BackdropNodeItem):
     def __init__(self, name='控制流区域', text='', parent=None):
         super().__init__(name=name, text=text, parent=parent)
+        pixmap = QtGui.QPixmap(ICON_NODE_BASE)
+        if pixmap.size().height() > NodeEnum.ICON_SIZE.value:
+            pixmap = pixmap.scaledToHeight(
+                28,
+                QtCore.Qt.SmoothTransformation
+            )
+        self._icon_item = QtWidgets.QGraphicsPixmapItem(pixmap, self)
+        self._icon_item.setTransformationMode(QtCore.Qt.SmoothTransformation)
         self.setZValue(Z_VAL_NODE)
         self._input_items = OrderedDict()
         self._output_items = OrderedDict()
 
     def _add_port(self, port):
-        text = QtWidgets.QGraphicsTextItem(port.name, self)
-        text.setFont(QtGui.QFont("Arial", 8))
-        text.setVisible(port.display_name)
+        text = QtWidgets.QGraphicsTextItem("", self)
+        text.setVisible(False)
         text.setCacheMode(ITEM_CACHE_MODE)
         if port.port_type == PortTypeEnum.IN.value:
             self._input_items[port] = text
@@ -567,6 +587,45 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
         port.display_name = display_name
         port.locked = locked
         return self._add_port(port)
+
+    @property
+    def icon(self):
+        return self._properties.get("icon")
+
+    @icon.setter
+    def icon(self, value=None):
+        self._properties['icon'] = value
+
+        # 确定最终使用的 pixmap
+        if isinstance(value, QtGui.QIcon):
+            # 从 QIcon 提取 QPixmap（推荐使用标准大小）
+            pixmap = value.pixmap(28, 28)  # 或根据需要调整
+        elif isinstance(value, str):
+            # 从路径加载
+            pixmap = QtGui.QPixmap(value)
+        else:
+            # fallback to default
+            pixmap = QtGui.QPixmap(ICON_NODE_BASE)
+
+        # 缩放逻辑保持不变
+        if not pixmap.isNull():
+            if pixmap.height() > 28:
+                pixmap = pixmap.scaledToHeight(28, QtCore.Qt.SmoothTransformation)
+            if pixmap.width() > 28:
+                pixmap = pixmap.scaledToWidth(28, QtCore.Qt.SmoothTransformation)
+        else:
+            # 如果加载失败，使用默认图标
+            pixmap = QtGui.QPixmap(ICON_NODE_BASE)
+            if pixmap.height() > 28:
+                pixmap = pixmap.scaledToHeight(28, QtCore.Qt.SmoothTransformation)
+            if pixmap.width() > 28:
+                pixmap = pixmap.scaledToWidth(28, QtCore.Qt.SmoothTransformation)
+
+        self._icon_item.setPixmap(pixmap)
+        if self.scene():
+            self.post_init()
+
+        self.update()
 
     @property
     def inputs(self):
@@ -615,10 +674,17 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
 
     def draw_node(self):
         QtCore.QTimer.singleShot(50, self._align_ports_later)
+        QtCore.QTimer.singleShot(50, self._align_icon_horizontal)
 
     def _align_ports_later(self):
         title_height = 26.0
-        self.align_ports(v_offset=title_height + 5.0)
+        self.align_ports(v_offset=title_height + 5)
+
+    def _align_icon_horizontal(self):
+        icon_rect = self._icon_item.boundingRect()
+        x = self.boundingRect().left() + 10.0
+        y = 0
+        self._icon_item.setPos(x, y)
 
     @AbstractNodeItem.width.setter
     def width(self, width=0.0):

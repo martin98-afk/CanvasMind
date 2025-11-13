@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from NodeGraphQt.constants import NodeEnum, ICON_NODE_BASE, ITEM_CACHE_MODE
+from NodeGraphQt.constants import NodeEnum, ICON_NODE_BASE, ITEM_CACHE_MODE, PortTypeEnum
 from NodeGraphQt.qgraphics.node_base import NodeItem
 from NodeGraphQt.qgraphics.node_overlay_disabled import XDisabledItem
 from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
@@ -73,6 +73,29 @@ class CustomNodeItem(NodeItem):
             self.post_init()
 
         self.update()
+
+    def _add_port(self, port):
+        """
+        Adds a port qgraphics item into the node.
+
+        Args:
+            port (PortItem): port item.
+
+        Returns:
+            PortItem: port qgraphics item.
+        """
+        text = QtWidgets.QGraphicsTextItem(port.name, self)
+        text.setFont(QtGui.QFont("Arial", 10))
+        text.setDefaultTextColor(QtGui.QColor("white"))  # 设置字体颜色
+        text.setVisible(port.display_name)
+        text.setCacheMode(ITEM_CACHE_MODE)
+        if port.port_type == PortTypeEnum.IN.value:
+            self._input_items[port] = text
+        elif port.port_type == PortTypeEnum.OUT.value:
+            self._output_items[port] = text
+        if self.scene():
+            self.post_init()
+        return port
 
     def _paint_horizontal(self, painter, option, widget):
 
@@ -160,7 +183,7 @@ class CustomNodeItem(NodeItem):
 
         # --- align all items with new header offset ---
         self.align_label(v_offset=label_v_offset)
-        self.align_icon(h_offset=1.5, v_offset=label_v_offset - 1.5)
+        self.align_icon(h_offset=6, v_offset=label_v_offset - 1.5)
         self.align_ports(v_offset=header_height)  # ⬅️ ports 下移
         self.align_widgets(v_offset=header_height + 8.0)  # ⬅️ widgets 下移
 

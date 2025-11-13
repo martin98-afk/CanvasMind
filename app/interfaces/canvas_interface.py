@@ -18,7 +18,8 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QPro
 from loguru import logger
 from qfluentwidgets import (
     InfoBar,
-    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton, VBoxLayout
+    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton, VBoxLayout, getIconColor,
+    theme
 )
 
 from app.components.base import PropertyType, GlobalVariableContext
@@ -622,7 +623,7 @@ class CanvasPage(QWidget):
         self.tool_node.setIconSize(QSize(20, 20))
         self.tool_node.setToolTip("创建工具调用")
         self.tool_node.clicked.connect(
-            lambda: self.create_next_node("dynamic.StatusDynamicNode_大模型组件_工具调用", icon_path=get_icon("工具"))
+            lambda: self.create_next_node("dynamic.StatusDynamicNode_大模型组件_工具调用", icon_path="icons/工具.svg")
         )
         self.node_layout.addWidget(self.tool_node)
 
@@ -731,8 +732,10 @@ class CanvasPage(QWidget):
                 elif icon_path.startswith("builtin:\\"):
                     icon_name = icon_path.split("\\")[-1]
                     icon = FluentIcon[icon_name]
+                    icon_path = f":/qfluentwidgets/images/icons/{FluentIcon[icon_name].value}_white.svg"
                 else:
                     icon = FluentIcon.APPLICATION
+                    icon_path = f":/qfluentwidgets/images/icons/{FluentIcon.APPLICATION.value}_white.svg"
 
                 btn = TransparentToolButton(icon, self)
                 btn.setIconSize(QSize(20, 20))
@@ -850,6 +853,8 @@ class CanvasPage(QWidget):
             return
         backdrop_node = self.graph.create_node(f"control_flow.{key}")
         backdrop_node.wrap_nodes(nodes_to_wrap)
+        # 将nodes_to_wrap和backdropnode都选中
+        [node.set_selected(True) for node in nodes_to_wrap]
         QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(backdrop_node))
         # Step 6: 特定配置
         if key == "ControlFlowIterateNode":

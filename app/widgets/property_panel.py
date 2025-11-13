@@ -865,10 +865,10 @@ class PropertyPanel(CardWidget):
         mode_combo = ComboBox(self)
         mode_combo.addItems(['固定次数', '条件循环', 'While循环'])
         mode_combo.setCurrentText({
-                                      'count': '固定次数',
-                                      'condition': '条件循环',
-                                      'while': 'While循环'
-                                  }.get(node.model.get_property("loop_mode"), '固定次数'))
+              'count': '固定次数',
+              'condition': '条件循环',
+              'while': 'While循环'
+          }.get(node.model.get_property("loop_mode"), '固定次数'))
 
         def on_mode_changed(text):
             mode_map = {'固定次数': 'count', '条件循环': 'condition', 'While循环': 'while'}
@@ -1298,7 +1298,10 @@ class PropertyPanel(CardWidget):
         elif len(parts) == 2:
             safe_node_name_candidate = parts[0]
         else:
-            safe_node_name_candidate = "_".join(parts[:2])
+            if re.match(r'\d+', parts[1]):
+                safe_node_name_candidate = "_".join(parts[:2])
+            else:
+                safe_node_name_candidate = parts[0]
 
         # 根据规则，将 safe_node_name_candidate 中的下划线替换回空格，得到原始名称候选
         original_name_candidate = re.sub(r'_(?=\d+$)', " ", safe_node_name_candidate)
