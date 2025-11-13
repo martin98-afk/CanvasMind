@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from NodeGraphQt.constants import NodeEnum, ICON_NODE_BASE, ITEM_CACHE_MODE, PortTypeEnum
+from NodeGraphQt.constants import NodeEnum, ICON_NODE_BASE, ITEM_CACHE_MODE, PortTypeEnum, LayoutDirectionEnum
 from NodeGraphQt.qgraphics.node_base import NodeItem
 from NodeGraphQt.qgraphics.node_overlay_disabled import XDisabledItem
 from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
@@ -28,13 +28,25 @@ class CustomNodeItem(NodeItem):
         font.setPointSize(16)  # 推荐 10~12
         font.setBold(True)  # 可选
         self._text_item.setFont(font)
-        self._text_item.setDefaultTextColor(QtGui.QColor("white"))
         self._x_item = XDisabledItem(self, 'DISABLED')
         self._input_items = OrderedDict()
         self._output_items = OrderedDict()
         self._widgets = OrderedDict()
         self._proxy_mode = False
         self._proxy_mode_threshold = 70
+
+    def _set_text_color(self, color=None):
+        """
+        set text color.
+
+        Args:
+            color (tuple): color value in (r, g, b, a).
+        """
+        for port, text in self._input_items.items():
+            text.setDefaultTextColor(QtGui.QColor("white"))
+        for port, text in self._output_items.items():
+            text.setDefaultTextColor(QtGui.QColor("white"))
+        self._text_item.setDefaultTextColor(QtGui.QColor("white"))
 
     @property
     def icon(self):
@@ -74,6 +86,23 @@ class CustomNodeItem(NodeItem):
             self.post_init()
 
         self.update()
+
+    def paint(self, painter, option, widget):
+        """
+        Draws the node base not the ports.
+
+        Args:
+            painter (QtGui.QPainter): painter used for drawing the item.
+            option (QtGui.QStyleOptionGraphicsItem):
+                used to describe the parameters needed to draw.
+            widget (QtWidgets.QWidget): not used.
+        """
+        if self.layout_direction is LayoutDirectionEnum.HORIZONTAL.value:
+            self._paint_horizontal(painter, option, widget)
+        elif self.layout_direction is LayoutDirectionEnum.VERTICAL.value:
+            self._paint_vertical(painter, option, widget)
+        else:
+            raise RuntimeError('Node graph layout direction not valid!')
 
     def _add_port(self, port):
         """
