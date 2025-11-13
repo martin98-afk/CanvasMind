@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "graph_name": "react智能体",
+  "inputs": {
+    "input_text": {
+      "type": "组件超参数",
+      "node_id": "0x1863c26f460",
+      "node_name": "长文本输入",
+      "param_name": "input_text",
+      "current_value": "-1,-2,-3,-4的逻辑回归结果是多少",
+      "display_name": "长文本输入 → input_text",
+      "format": "LONGTEXT",
+      "custom_key": "input_text"
+    }
+  },
+  "outputs": {
+    "output1": {
+      "node_id": "0x1863c003820",
+      "output_name": "output1",
+      "format": "JSON"
+    }
+  }
+}

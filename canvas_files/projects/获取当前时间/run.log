@@ -1,0 +1,3 @@
+2025-11-13 14:24:44.602 | INFO     | __main__:execute_workflow:935 - 执行节点: 获取当前时间
+2025-11-13 14:24:44.602 | INFO     | __main__:execute_workflow:936 - 输入: {}
+2025-11-13 14:24:44.616 | INFO     | __main__:execute_workflow:945 - 输出: {'output1': '2025-11-13 14:24:44.616206'}

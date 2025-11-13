@@ -1,0 +1,1245 @@
+{
+  "version": "1.0",
+  "graph": {
+    "nodes": {
+      "0x1863c26f460": {
+        "name": "长文本输入",
+        "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
+        "pos": [
+          -1654.4492438646603,
+          229.9120782908749
+        ],
+        "custom": {
+          "FULL_PATH": "数据集成/长文本输入",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "fc046404-4453-4714-8bfc-6b80ed3b52be",
+            "debug_code": {},
+            "input_text": "-1,-2,-3,-4的逻辑回归结果是多少"
+          },
+          "input_values": {}
+        }
+      },
+      "0x18630c941f0": {
+        "name": "JSON文本包装",
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
+        "pos": [
+          -963.8735941538557,
+          230.32656499573363
+        ],
+        "custom": {
+          "FULL_PATH": "大模型组件/JSON文本包装",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "0bee4fd7-2dc6-4d6a-86fc-5a39cab749e8",
+            "debug_code": {},
+            "prop_0": "input"
+          },
+          "input_values": {
+            "input1": "-1,-2,-3,-4的逻辑回归结果是多少"
+          }
+        }
+      },
+      "0x1863c174ee0": {
+        "name": "循环控制流区域",
+        "type_": "control_flow.ControlFlowLoopNode",
+        "pos": [
+          -114.1462543907337,
+          299.1553400269454
+        ],
+        "custom": {
+          "FULL_PATH": "控制流/循环控制流区域",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "29a94b04-a2fc-44cc-a569-fda349eeb69f",
+            "backdrop_text": "",
+            "current_index": 1,
+            "loop_nums": 5,
+            "max_iterations": 5,
+            "loop_condition": "$node_vars.大模型输出解析_parsed_json[\"next_step\"] == '调用工具'$",
+            "loop_mode": "condition"
+          },
+          "input_values": {
+            "inputs": {
+              "input": "-1,-2,-3,-4的逻辑回归结果是多少"
+            }
+          },
+          "internal_nodes": [
+            "0x1863c1767d0",
+            "0x1863c174d30",
+            "0x1863c2046d0",
+            "0x1863c175120",
+            "0x1863c002f50",
+            "0x1863c174b50",
+            "0x1862e4661a0",
+            "0x1862e465240",
+            "0x1863c003280",
+            "0x18630c958a0",
+            "0x1862e465a50",
+            "0x1863c001630",
+            "0x18630d68580"
+          ]
+        }
+      },
+      "0x1863c2046d0": {
+        "name": "获取大模型历史对话",
+        "type_": "dynamic.StatusDynamicNode_数据集成_获取全局变量",
+        "pos": [
+          -74.1462543907337,
+          1190.3041868530888
+        ],
+        "custom": {
+          "FULL_PATH": "数据集成/获取全局变量",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "8d115879-b622-4c6f-8430-908cd3934304",
+            "debug_code": {},
+            "prop1": "node_vars.大模型对话_history"
+          },
+          "input_values": {}
+        }
+      },
+      "0x1863c174b50": {
+        "name": "输入端口",
+        "type_": "control_flow.ControlFlowInputPort",
+        "pos": [
+          -37.18909687974883,
+          339.1553400269454
+        ],
+        "custom": {
+          "FULL_PATH": "控制流/输入端口",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "7837e4b9-dd80-4028-b64f-9266b25965e2"
+          },
+          "input_values": {}
+        }
+      },
+      "0x1862e4661a0": {
+        "name": "大模型对话",
+        "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
+        "pos": [
+          598.6580038060465,
+          612.4867978161635
+        ],
+        "custom": {
+          "FULL_PATH": "大模型组件/大模型对话",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "285af8fc-5f98-4237-afb7-d47db44c1de4",
+            "debug_code": null,
+            "model": "$custom.model_name$",
+            "api_key": "",
+            "base_url": "$custom.url$",
+            "system_prompt": "# 智能体工作流程指令\n\n你是一个专业的AI助手，能够根据用户指令自动拆分步骤、调用工具并处理多轮交互。请严格遵循以下流程：\n\n1. **任务理解**\n- 解析用户指令，明确核心需求\n- 识别需要调用的工具集合（已知工具列表见下方）\n\n2. **步骤分解**\n- 将问题拆解为逻辑顺序的子任务\n- 每个子任务需包含：\n  - 预期目标\n  - 需要调用的工具名称\n  - 参数生成逻辑\n\n3. **工具调用规范**\n- 当需要调用工具时，输出以下JSON结构：\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"工具名称\",\n    \"tool_input\": 工具输入参数,\n}\n```\n- 严格使用用户提供的工具参数列表中的工具名称定义和参数格式，\n- 参数值需要根据用户的问题以及上下文关系生成\n\n4. **多轮交互流程**\n- 每次工具调用后暂停输出，等待执行结果\n- 接收工具返回结果后，继续处理后续步骤\n- 最终答案需整合所有工具调用结果\n- 当需要总结最终答案时，输出以下JSON结构：\n```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据工具调用过程整理结果，最终回答用户问题。\"\n}\n```\n\n5. **工具列表**\n参数的参考输入仅供参考，具体参数内容根据用户问题生成：\n$node_vars.代码编辑_2_output$\n\n6. **输出格式要求**\n- 首轮输出：分解步骤列表\n- 工具调用时：仅输出JSON结构\n- 接收结果后：继续生成后续步骤\n- 最终答案：自然语言总结\n- 没有匹配的工具时：直接返回错误\n- 交互次数大于等于5时：不再调用工具，直接输出最终答案\n- 如果没有可用工具，或者工具列表为空，直接给出最终结果\n\n7. **示例交互**\n用户: \"帮我查找北京的天气并规划出行路线\"\n智能体生成步骤一：\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"天气查询工具\",\n    \"tool_input\": {\"parameters\": { \"location\": \"北京\"}},\n}\n```\n工具调用结果：下雨\n\n智能体生成步骤二: \n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"路线规划工具\",\n    \"tool_input\": {\"parameters\": {\"start\": \"天安门\", \"end\": \"故宫\"}},\n}\n```\n工具调用结果：天安门-》朝天宫，20分钟，朝天宫-》故宫，1小时。\n\n最终答案示例：\n```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"第一步，天气查询结果为下雨，建议您携带雨具。第二步，查询天安门到故宫的路线，推荐路线结果：从天安门到故宫，预计步行1小时20分钟，途经朝天宫\"\n}\n```\n",
+            "temperature": 0.2,
+            "max_tokens": "20000",
+            "visual": false,
+            "model_params": []
+          },
+          "input_values": {
+            "user_input": "工具调用结果：\n{'output': array([[-1.47222222, -1.66666667, -0.6779661 , -1.70833333]]), 'value': [0]}\n\n用户问题：\n-1,-2,-3,-4的逻辑回归结果是多少",
+            "history": [
+              {
+                "role": "user",
+                "content": "{'input': '-1,-2,-3,-4的逻辑回归结果是多少'}"
+              },
+              {
+                "role": "assistant",
+                "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\逻辑回归\",\n    \"tool_input\": {\n        \"param1\": \"-1,-2,-3,-4\"\n    }\n}\n```"
+              }
+            ]
+          }
+        }
+      },
+      "0x1863c001630": {
+        "name": "移除思考过程",
+        "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
+        "pos": [
+          1177.803708041235,
+          620.9490903840031
+        ],
+        "custom": {
+          "FULL_PATH": "大模型组件/移除思考过程",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "20487951-31a2-481b-a8d5-6bcb53bfd40e",
+            "debug_code": {},
+            "remove_empty_lines": true,
+            "keep_inner_if_no_outer": true
+          },
+          "input_values": {
+            "raw_text": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。\"\n}\n```"
+          }
+        }
+      },
+      "0x18630d68580": {
+        "name": "大模型输出解析",
+        "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
+        "pos": [
+          1790.2161153273391,
+          605.5494519109677
+        ],
+        "custom": {
+          "FULL_PATH": "大模型组件/大模型输出解析",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "3120ac1c-49f8-45d3-acbe-c771c673beb0",
+            "debug_code": {},
+            "strict": true,
+            "type": "json"
+          },
+          "input_values": {
+            "llm_output": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。\"\n}\n```"
+          }
+        }
+      },
+      "0x1863c175120": {
+        "name": "条件分支 1",
+        "type_": "control_flow.ControlFlowBranchNode",
+        "pos": [
+          2315.866382964359,
+          572.9779742400885
+        ],
+        "custom": {
+          "FULL_PATH": "控制流/条件分支",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "e6a4ce08-3313-4957-8dfc-45884a672c02",
+            "conditions": [
+              {
+                "expr": "$input.input[\"next_step\"]==\"总结答案\"$",
+                "name": "branch"
+              },
+              {
+                "expr": "$input.input[\"next_step\"]==\"调用工具\"$",
+                "name": "branch_1"
+              }
+            ],
+            "enable_else": true,
+            "execute_all_matches": false
+          },
+          "input_values": {
+            "input": {
+              "next_step": "总结答案",
+              "answer": "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。"
+            }
+          }
+        }
+      },
+      "0x1863c1767d0": {
+        "name": "json筛选 2",
+        "type_": "dynamic.StatusDynamicNode_数据预处理_json筛选",
+        "pos": [
+          3149.0585050382333,
+          1168.7910117800955
+        ],
+        "custom": {
+          "FULL_PATH": "数据预处理/json筛选",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "a782c918-6d67-4f26-80df-25d016f63c0e",
+            "debug_code": {},
+            "prop1": "$input.input1[\"tool_input\"]$"
+          },
+          "input_values": {
+            "input1": null
+          }
+        }
+      },
+      "0x1862e465240": {
+        "name": "json筛选 1",
+        "type_": "dynamic.StatusDynamicNode_数据预处理_json筛选",
+        "pos": [
+          3152.795343784129,
+          941.3754856848798
+        ],
+        "custom": {
+          "FULL_PATH": "数据预处理/json筛选",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "23f69dd1-afe1-45c2-837b-3833907f0e90",
+            "debug_code": {},
+            "prop1": "$input.input1[\"tool_name\"]$"
+          },
+          "input_values": {
+            "input1": null
+          }
+        }
+      },
+      "0x1862e465a50": {
+        "name": "json筛选",
+        "type_": "dynamic.StatusDynamicNode_数据预处理_json筛选",
+        "pos": [
+          3162.7112278870445,
+          586.555177578173
+        ],
+        "custom": {
+          "FULL_PATH": "数据预处理/json筛选",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "8db4dff5-50be-4d45-89ab-320b70b56ae7",
+            "debug_code": {},
+            "prop1": "$input.input1[\"answer\"]$"
+          },
+          "input_values": {
+            "input1": {
+              "next_step": "总结答案",
+              "answer": "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。"
+            }
+          }
+        }
+      },
+      "0x1863c002f50": {
+        "name": "工具调用",
+        "type_": "dynamic.StatusDynamicNode_大模型组件_工具调用",
+        "pos": [
+          3902.1207576415172,
+          1161.2005758233206
+        ],
+        "custom": {
+          "FULL_PATH": "大模型组件/工具调用",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "c92c541f-f69b-4cab-b9dd-7678b5c0dbb3",
+            "debug_code": {}
+          },
+          "input_values": {
+            "project_name": null,
+            "input": null
+          }
+        }
+      },
+      "0x1863c003280": {
+        "name": "JSON文本包装 2",
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
+        "pos": [
+          4464.9514948170045,
+          1149.4518548655285
+        ],
+        "custom": {
+          "FULL_PATH": "大模型组件/JSON文本包装",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "f19a9cd5-fe2f-4ce9-b05a-aeeea023d40e",
+            "debug_code": {},
+            "prop_0": "input"
+          },
+          "input_values": {
+            "input1": null
+          }
+        }
+      },
+      "0x18630c958a0": {
+        "name": "提示词模板",
+        "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
+        "pos": [
+          5104.067464982535,
+          1154.8578073736778
+        ],
+        "custom": {
+          "FULL_PATH": "大模型组件/提示词模板",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "31c0d5b6-66ab-4c8a-96e8-42bd423762ee",
+            "debug_code": {},
+            "template": "工具调用结果：\n{{input}}\n\n用户问题：\n$node_vars.长文本输入_output$"
+          },
+          "input_values": {
+            "variables": null
+          }
+        }
+      },
+      "0x1863c174d30": {
+        "name": "输出端口",
+        "type_": "control_flow.ControlFlowOutputPort",
+        "pos": [
+          5773.05450877712,
+          443.1669745814529
+        ],
+        "custom": {
+          "FULL_PATH": "控制流/输出端口",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "4cf84646-541e-48e3-a776-64381d6ea1a9"
+          },
+          "input_values": {
+            "input": [
+              null,
+              "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。"
+            ]
+          }
+        }
+      },
+      "0x1863c003820": {
+        "name": "JSON文本包装 3",
+        "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
+        "pos": [
+          6313.091630840988,
+          307.8355068304893
+        ],
+        "custom": {
+          "FULL_PATH": "大模型组件/JSON文本包装",
+          "FILE_PATH": "",
+          "params": {
+            "persistent_id": "57870f2f-308b-42c4-993a-7a639daa8c4f",
+            "debug_code": {},
+            "prop_0": "answer"
+          },
+          "input_values": {
+            "input1": "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。"
+          }
+        }
+      }
+    },
+    "connections": [
+      {
+        "out": [
+          "0x1863c26f460",
+          "output"
+        ],
+        "in": [
+          "0x18630c941f0",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x18630c941f0",
+          "output1"
+        ],
+        "in": [
+          "0x1863c174ee0",
+          "inputs"
+        ]
+      },
+      {
+        "out": [
+          "0x1863c003280",
+          "output1"
+        ],
+        "in": [
+          "0x18630c958a0",
+          "variables"
+        ]
+      },
+      {
+        "out": [
+          "0x18630c958a0",
+          "prompt"
+        ],
+        "in": [
+          "0x1863c174d30",
+          "input"
+        ]
+      },
+      {
+        "out": [
+          "0x1862e4661a0",
+          "response"
+        ],
+        "in": [
+          "0x1863c001630",
+          "raw_text"
+        ]
+      },
+      {
+        "out": [
+          "0x1863c001630",
+          "cleaned_text"
+        ],
+        "in": [
+          "0x18630d68580",
+          "llm_output"
+        ]
+      },
+      {
+        "out": [
+          "0x1862e465240",
+          "output1"
+        ],
+        "in": [
+          "0x1863c002f50",
+          "project_name"
+        ]
+      },
+      {
+        "out": [
+          "0x1863c1767d0",
+          "output1"
+        ],
+        "in": [
+          "0x1863c002f50",
+          "input"
+        ]
+      },
+      {
+        "out": [
+          "0x1863c002f50",
+          "result"
+        ],
+        "in": [
+          "0x1863c003280",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x1863c174ee0",
+          "outputs"
+        ],
+        "in": [
+          "0x1863c003820",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x1863c2046d0",
+          "output1"
+        ],
+        "in": [
+          "0x1862e4661a0",
+          "history"
+        ]
+      },
+      {
+        "out": [
+          "0x18630d68580",
+          "parsed_json"
+        ],
+        "in": [
+          "0x1863c175120",
+          "input"
+        ]
+      },
+      {
+        "out": [
+          "0x1863c174b50",
+          "output"
+        ],
+        "in": [
+          "0x1862e4661a0",
+          "user_input"
+        ]
+      },
+      {
+        "out": [
+          "0x1863c175120",
+          "branch"
+        ],
+        "in": [
+          "0x1862e465a50",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x1862e465a50",
+          "output1"
+        ],
+        "in": [
+          "0x1863c174d30",
+          "input"
+        ]
+      },
+      {
+        "out": [
+          "0x1863c175120",
+          "branch_1"
+        ],
+        "in": [
+          "0x1862e465240",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x1863c175120",
+          "branch_1"
+        ],
+        "in": [
+          "0x1863c1767d0",
+          "input1"
+        ]
+      }
+    ],
+    "grid": null
+  },
+  "runtime": {
+    "environment": "3.14",
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
+    "node_id2stable_key": {
+      "0x1863c26f460": "数据集成/长文本输入||长文本输入",
+      "0x18630c941f0": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x1863c174ee0": "控制流/循环控制流区域||循环控制流区域",
+      "0x1863c2046d0": "数据集成/获取全局变量||获取大模型历史对话",
+      "0x1863c174b50": "控制流/输入端口||输入端口",
+      "0x1862e4661a0": "大模型组件/大模型对话||大模型对话",
+      "0x1863c001630": "大模型组件/移除思考过程||移除思考过程",
+      "0x18630d68580": "大模型组件/大模型输出解析||大模型输出解析",
+      "0x1863c175120": "控制流/条件分支||条件分支 1",
+      "0x1863c1767d0": "数据预处理/json筛选||json筛选 2",
+      "0x1862e465240": "数据预处理/json筛选||json筛选 1",
+      "0x1862e465a50": "数据预处理/json筛选||json筛选",
+      "0x1863c002f50": "大模型组件/工具调用||工具调用",
+      "0x1863c003280": "大模型组件/JSON文本包装||JSON文本包装 2",
+      "0x18630c958a0": "大模型组件/提示词模板||提示词模板",
+      "0x1863c174d30": "控制流/输出端口||输出端口",
+      "0x1863c003820": "大模型组件/JSON文本包装||JSON文本包装 3"
+    },
+    "node_states": {
+      "数据集成/长文本输入||长文本输入": "success",
+      "大模型组件/JSON文本包装||JSON文本包装": "success",
+      "控制流/循环控制流区域||循环控制流区域": "success",
+      "数据集成/获取全局变量||获取大模型历史对话": "success",
+      "控制流/输入端口||输入端口": "pending",
+      "大模型组件/大模型对话||大模型对话": "success",
+      "大模型组件/移除思考过程||移除思考过程": "success",
+      "大模型组件/大模型输出解析||大模型输出解析": "success",
+      "控制流/条件分支||条件分支 1": "success",
+      "数据预处理/json筛选||json筛选 2": "unrun",
+      "数据预处理/json筛选||json筛选 1": "unrun",
+      "数据预处理/json筛选||json筛选": "success",
+      "大模型组件/工具调用||工具调用": "unrun",
+      "大模型组件/JSON文本包装||JSON文本包装 2": "unrun",
+      "大模型组件/提示词模板||提示词模板": "unrun",
+      "控制流/输出端口||输出端口": "pending",
+      "大模型组件/JSON文本包装||JSON文本包装 3": "success"
+    },
+    "node_outputs": {
+      "数据集成/长文本输入||长文本输入": {
+        "output": "-1,-2,-3,-4的逻辑回归结果是多少"
+      },
+      "大模型组件/JSON文本包装||JSON文本包装": {
+        "output1": {
+          "input": "-1,-2,-3,-4的逻辑回归结果是多少"
+        }
+      },
+      "控制流/循环控制流区域||循环控制流区域": {
+        "outputs": "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。"
+      },
+      "数据集成/获取全局变量||获取大模型历史对话": {
+        "output1": [
+          {
+            "role": "user",
+            "content": "{'input': '-1,-2,-3,-4的逻辑回归结果是多少'}"
+          },
+          {
+            "role": "assistant",
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\逻辑回归\",\n    \"tool_input\": {\n        \"param1\": \"-1,-2,-3,-4\"\n    }\n}\n```"
+          }
+        ]
+      },
+      "控制流/输入端口||输入端口": {
+        "output": "工具调用结果：\n{'output': array([[-1.47222222, -1.66666667, -0.6779661 , -1.70833333]]), 'value': [0]}\n\n用户问题：\n-1,-2,-3,-4的逻辑回归结果是多少"
+      },
+      "大模型组件/大模型对话||大模型对话": {
+        "response": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。\"\n}\n```",
+        "raw_output": {
+          "id": "chatcmpl-6pnkkfhdhgloavot619cu8",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "logprobs": null,
+              "message": {
+                "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。\"\n}\n```",
+                "refusal": null,
+                "role": "assistant",
+                "annotations": null,
+                "audio": null,
+                "function_call": null,
+                "tool_calls": []
+              }
+            }
+          ],
+          "created": 1763041787,
+          "model": "qwen/qwen3-30b-a3b-2507",
+          "object": "chat.completion",
+          "service_tier": null,
+          "system_fingerprint": "qwen/qwen3-30b-a3b-2507",
+          "usage": {
+            "completion_tokens": 50,
+            "prompt_tokens": 1221,
+            "total_tokens": 1271,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "stats": {}
+        },
+        "history": []
+      },
+      "大模型组件/移除思考过程||移除思考过程": {
+        "cleaned_text": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。\"\n}\n```",
+        "think_text": ""
+      },
+      "大模型组件/大模型输出解析||大模型输出解析": {
+        "parsed_json": {
+          "next_step": "总结答案",
+          "answer": "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。"
+        },
+        "is_valid": true
+      },
+      "控制流/条件分支||条件分支 1": {
+        "branch": {
+          "next_step": "总结答案",
+          "answer": "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。"
+        }
+      },
+      "数据预处理/json筛选||json筛选 2": {},
+      "数据预处理/json筛选||json筛选 1": {},
+      "数据预处理/json筛选||json筛选": {
+        "output1": "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。"
+      },
+      "大模型组件/工具调用||工具调用": {},
+      "大模型组件/JSON文本包装||JSON文本包装 2": {},
+      "大模型组件/提示词模板||提示词模板": {},
+      "控制流/输出端口||输出端口": {},
+      "大模型组件/JSON文本包装||JSON文本包装 3": {
+        "output1": {
+          "answer": "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。"
+        }
+      }
+    },
+    "column_select": {
+      "数据集成/长文本输入||长文本输入": {},
+      "大模型组件/JSON文本包装||JSON文本包装": {},
+      "控制流/循环控制流区域||循环控制流区域": {},
+      "数据集成/获取全局变量||获取大模型历史对话": {},
+      "控制流/输入端口||输入端口": {},
+      "大模型组件/大模型对话||大模型对话": {},
+      "大模型组件/移除思考过程||移除思考过程": {},
+      "大模型组件/大模型输出解析||大模型输出解析": {},
+      "控制流/条件分支||条件分支 1": {},
+      "数据预处理/json筛选||json筛选 2": {},
+      "数据预处理/json筛选||json筛选 1": {},
+      "数据预处理/json筛选||json筛选": {},
+      "大模型组件/工具调用||工具调用": {},
+      "大模型组件/JSON文本包装||JSON文本包装 2": {},
+      "大模型组件/提示词模板||提示词模板": {},
+      "控制流/输出端口||输出端口": {},
+      "大模型组件/JSON文本包装||JSON文本包装 3": {}
+    },
+    "global_variable": {
+      "env": {
+        "user_id": null,
+        "canvas_id": null,
+        "session_id": null,
+        "run_id": null,
+        "metadata": {
+          "TZ": "Asia/Shanghai",
+          "LANG": "en_US.UTF-8",
+          "LC_ALL": "en_US.UTF-8",
+          "OMP_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "NUMEXPR_NUM_THREADS": "1",
+          "CUDA_VISIBLE_DEVICES": "0",
+          "PYTHONPATH": ".",
+          "PYTHONUNBUFFERED": "1",
+          "PYTHONIOENCODING": "utf-8",
+          "PYTHONWARNINGS": "ignore"
+        }
+      },
+      "custom": {
+        "url": {
+          "value": "http://127.0.0.1:1234/v1",
+          "description": null,
+          "read_only": false
+        },
+        "model_name": {
+          "value": "qwen/qwen3-30b-a3b-2507",
+          "description": null,
+          "read_only": false
+        },
+        "target_path": {
+          "value": "./canvas_files/projects",
+          "description": null,
+          "read_only": false
+        }
+      },
+      "node_vars": {
+        "JSON文本包装_output1": {
+          "value": {
+            "input": "-1,-2,-3,-4的逻辑回归结果是多少"
+          },
+          "update_policy": "更新"
+        },
+        "大模型对话_response": {
+          "value": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。\"\n}\n```",
+          "update_policy": "更新"
+        },
+        "获取智能体下一步计划_next_step": {
+          "value": "总结答案",
+          "update_policy": "更新"
+        },
+        "代码编辑_2_output": {
+          "value": "工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\react智能体 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：使用逻辑回归判断数据 [30,41,51,32]的类别\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\自动组件生成 \n输入格式：参数1：input_text1\n参数格式：LONGTEXT\n参数参考样例输入：输入是用户的列表数据输入是[1,2,3,4]格式数据\n所属组件名：组件输入\n组件参数类型：组件超参数\n\n参数2：input_text2\n参数格式：LONGTEXT\n参数参考样例输入：输出是画图结果，传参是PIL.Image格式图片\n所属组件名：组件输出\n组件参数类型：组件超参数\n\n参数3：input_text3\n参数格式：LONGTEXT\n参数参考样例输入：组件参数暂无\n所属组件名：组件参数\n组件参数类型：组件超参数\n\n参数4：input_text4\n参数格式：LONGTEXT\n参数参考样例输入：我的需求是开发一个matplotlib画图组件\n所属组件名：组件意图\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\获取当前时间 \n输入格式：无参数\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归 \n输入格式：参数1：param1\n参数格式：TEXT\n参数参考样例输入：1,2,3,4\n所属组件名：输入array\n组件参数类型：组件超参数\n\n",
+          "update_policy": "更新"
+        },
+        "大模型对话_history": {
+          "value": [],
+          "update_policy": "更新"
+        },
+        "长文本输入_output": {
+          "value": "-1,-2,-3,-4的逻辑回归结果是多少",
+          "update_policy": "更新"
+        }
+      }
+    }
+  },
+  "candidate_inputs": [
+    {
+      "type": "组件超参数",
+      "node_id": "0x1863c26f460",
+      "node_name": "长文本输入",
+      "param_name": "input_text",
+      "current_value": "-1,-2,-3,-4的逻辑回归结果是多少",
+      "display_name": "长文本输入 → input_text",
+      "format": "LONGTEXT"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x18630c941f0",
+      "node_name": "JSON文本包装",
+      "param_name": "prop_0",
+      "current_value": "input",
+      "display_name": "JSON文本包装 → prop_0",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x18630c941f0",
+      "node_name": "JSON文本包装",
+      "port_name": "input1",
+      "current_value": "-1,-2,-3,-4的逻辑回归结果是多少",
+      "display_name": "input1 → JSON文本包装",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1863c2046d0",
+      "node_name": "获取大模型历史对话",
+      "param_name": "prop1",
+      "current_value": "node_vars.大模型对话_history",
+      "display_name": "获取大模型历史对话 → prop1",
+      "format": "VARIABLE"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "param_name": "model",
+      "current_value": "$custom.model_name$",
+      "display_name": "大模型对话 → model",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "param_name": "api_key",
+      "current_value": "",
+      "display_name": "大模型对话 → api_key",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "param_name": "base_url",
+      "current_value": "$custom.url$",
+      "display_name": "大模型对话 → base_url",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "param_name": "system_prompt",
+      "current_value": "# 智能体工作流程指令\n\n你是一个专业的AI助手，能够根据用户指令自动拆分步骤、调用工具并处理多轮交互。请严格遵循以下流程：\n\n1. **任务理解**\n- 解析用户指令，明确核心需求\n- 识别需要调用的工具集合（已知工具列表见下方）\n\n2. **步骤分解**\n- 将问题拆解为逻辑顺序的子任务\n- 每个子任务需包含：\n  - 预期目标\n  - 需要调用的工具名称\n  - 参数生成逻辑\n\n3. **工具调用规范**\n- 当需要调用工具时，输出以下JSON结构：\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"工具名称\",\n    \"tool_input\": 工具输入参数,\n}\n```\n- 严格使用用户提供的工具参数列表中的工具名称定义和参数格式，\n- 参数值需要根据用户的问题以及上下文关系生成\n\n4. **多轮交互流程**\n- 每次工具调用后暂停输出，等待执行结果\n- 接收工具返回结果后，继续处理后续步骤\n- 最终答案需整合所有工具调用结果\n- 当需要总结最终答案时，输出以下JSON结构：\n```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据工具调用过程整理结果，最终回答用户问题。\"\n}\n```\n\n5. **工具列表**\n参数的参考输入仅供参考，具体参数内容根据用户问题生成：\n$node_vars.代码编辑_2_output$\n\n6. **输出格式要求**\n- 首轮输出：分解步骤列表\n- 工具调用时：仅输出JSON结构\n- 接收结果后：继续生成后续步骤\n- 最终答案：自然语言总结\n- 没有匹配的工具时：直接返回错误\n- 交互次数大于等于5时：不再调用工具，直接输出最终答案\n- 如果没有可用工具，或者工具列表为空，直接给出最终结果\n\n7. **示例交互**\n用户: \"帮我查找北京的天气并规划出行路线\"\n智能体生成步骤一：\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"天气查询工具\",\n    \"tool_input\": {\"parameters\": { \"location\": \"北京\"}},\n}\n```\n工具调用结果：下雨\n\n智能体生成步骤二: \n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"路线规划工具\",\n    \"tool_input\": {\"parameters\": {\"start\": \"天安门\", \"end\": \"故宫\"}},\n}\n```\n工具调用结果：天安门-》朝天宫，20分钟，朝天宫-》故宫，1小时。\n\n最终答案示例：\n```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"第一步，天气查询结果为下雨，建议您携带雨具。第二步，查询天安门到故宫的路线，推荐路线结果：从天安门到故宫，预计步行1小时20分钟，途经朝天宫\"\n}\n```\n",
+      "display_name": "大模型对话 → system_prompt",
+      "format": "LONGTEXT"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "param_name": "temperature",
+      "current_value": 0.2,
+      "display_name": "大模型对话 → temperature",
+      "format": "RANGE",
+      "min": 0.0,
+      "max": 1.0,
+      "step": 0.1
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "param_name": "max_tokens",
+      "current_value": "20000",
+      "display_name": "大模型对话 → max_tokens",
+      "format": "INT"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "param_name": "visual",
+      "current_value": false,
+      "display_name": "大模型对话 → visual",
+      "format": "BOOL"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "param_name": "model_params",
+      "current_value": [],
+      "display_name": "大模型对话 → model_params",
+      "format": "DYNAMICFORM",
+      "schema": {
+        "key": {
+          "type": "TEXT"
+        },
+        "value": {
+          "type": "TEXT"
+        }
+      }
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "port_name": "user_input",
+      "current_value": "工具调用结果：\n{'output': array([[-1.47222222, -1.66666667, -0.6779661 , -1.70833333]]), 'value': [0]}\n\n用户问题：\n-1,-2,-3,-4的逻辑回归结果是多少",
+      "display_name": "user_input → 大模型对话",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "port_name": "history",
+      "current_value": [
+        {
+          "role": "user",
+          "content": "{'input': '-1,-2,-3,-4的逻辑回归结果是多少'}"
+        },
+        {
+          "role": "assistant",
+          "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\逻辑回归\",\n    \"tool_input\": {\n        \"param1\": \"-1,-2,-3,-4\"\n    }\n}\n```"
+        }
+      ],
+      "display_name": "history → 大模型对话",
+      "format": "JSON"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1863c001630",
+      "node_name": "移除思考过程",
+      "param_name": "remove_empty_lines",
+      "current_value": true,
+      "display_name": "移除思考过程 → remove_empty_lines",
+      "format": "BOOL"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1863c001630",
+      "node_name": "移除思考过程",
+      "param_name": "keep_inner_if_no_outer",
+      "current_value": true,
+      "display_name": "移除思考过程 → keep_inner_if_no_outer",
+      "format": "BOOL"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x1863c001630",
+      "node_name": "移除思考过程",
+      "port_name": "raw_text",
+      "current_value": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。\"\n}\n```",
+      "display_name": "raw_text → 移除思考过程",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x18630d68580",
+      "node_name": "大模型输出解析",
+      "param_name": "strict",
+      "current_value": true,
+      "display_name": "大模型输出解析 → strict",
+      "format": "BOOL"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x18630d68580",
+      "node_name": "大模型输出解析",
+      "param_name": "type",
+      "current_value": "json",
+      "display_name": "大模型输出解析 → type",
+      "format": "CHOICE"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x18630d68580",
+      "node_name": "大模型输出解析",
+      "port_name": "llm_output",
+      "current_value": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。\"\n}\n```",
+      "display_name": "llm_output → 大模型输出解析",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1863c1767d0",
+      "node_name": "json筛选 2",
+      "param_name": "prop1",
+      "current_value": "$input.input1[\"tool_input\"]$",
+      "display_name": "json筛选 2 → prop1",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x1863c1767d0",
+      "node_name": "json筛选 2",
+      "port_name": "input1",
+      "current_value": null,
+      "display_name": "input1 → json筛选 2",
+      "format": "JSON"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1862e465240",
+      "node_name": "json筛选 1",
+      "param_name": "prop1",
+      "current_value": "$input.input1[\"tool_name\"]$",
+      "display_name": "json筛选 1 → prop1",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x1862e465240",
+      "node_name": "json筛选 1",
+      "port_name": "input1",
+      "current_value": null,
+      "display_name": "input1 → json筛选 1",
+      "format": "JSON"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1862e465a50",
+      "node_name": "json筛选",
+      "param_name": "prop1",
+      "current_value": "$input.input1[\"answer\"]$",
+      "display_name": "json筛选 → prop1",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x1862e465a50",
+      "node_name": "json筛选",
+      "port_name": "input1",
+      "current_value": {
+        "next_step": "总结答案",
+        "answer": "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。"
+      },
+      "display_name": "input1 → json筛选",
+      "format": "JSON"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x1863c002f50",
+      "node_name": "工具调用",
+      "port_name": "project_name",
+      "current_value": null,
+      "display_name": "project_name → 工具调用",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x1863c002f50",
+      "node_name": "工具调用",
+      "port_name": "input",
+      "current_value": null,
+      "display_name": "input → 工具调用",
+      "format": "JSON"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1863c003280",
+      "node_name": "JSON文本包装 2",
+      "param_name": "prop_0",
+      "current_value": "input",
+      "display_name": "JSON文本包装 2 → prop_0",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x1863c003280",
+      "node_name": "JSON文本包装 2",
+      "port_name": "input1",
+      "current_value": null,
+      "display_name": "input1 → JSON文本包装 2",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x18630c958a0",
+      "node_name": "提示词模板",
+      "param_name": "template",
+      "current_value": "工具调用结果：\n{{input}}\n\n用户问题：\n$node_vars.长文本输入_output$",
+      "display_name": "提示词模板 → template",
+      "format": "LONGTEXT"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x18630c958a0",
+      "node_name": "提示词模板",
+      "port_name": "variables",
+      "current_value": null,
+      "display_name": "variables → 提示词模板",
+      "format": "ARRAY[JSON]"
+    },
+    {
+      "type": "组件超参数",
+      "node_id": "0x1863c003820",
+      "node_name": "JSON文本包装 3",
+      "param_name": "prop_0",
+      "current_value": "answer",
+      "display_name": "JSON文本包装 3 → prop_0",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x1863c003820",
+      "node_name": "JSON文本包装 3",
+      "port_name": "input1",
+      "current_value": "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。",
+      "display_name": "input1 → JSON文本包装 3",
+      "format": "TEXT"
+    }
+  ],
+  "candidate_outputs": [
+    {
+      "node_id": "0x1863c26f460",
+      "node_name": "长文本输入",
+      "output_name": "output",
+      "sample_value": "-1,-2,-3,-4的逻辑回归结果是多少",
+      "display_name": "长文本输入 → output",
+      "format": "TEXT"
+    },
+    {
+      "node_id": "0x18630c941f0",
+      "node_name": "JSON文本包装",
+      "output_name": "output1",
+      "sample_value": "{'input': '-1,-2,-3,-4的逻辑回归结果是多少'}",
+      "display_name": "JSON文本包装 → output1",
+      "format": "JSON"
+    },
+    {
+      "node_id": "0x1863c174ee0",
+      "node_name": "循环控制流区域",
+      "output_name": "outputs",
+      "sample_value": "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。",
+      "display_name": "循环控制流区域 → outputs",
+      "format": "TEXT"
+    },
+    {
+      "node_id": "0x1863c2046d0",
+      "node_name": "获取大模型历史对话",
+      "output_name": "output1",
+      "sample_value": "[{'role': 'user', 'content': \"{'input': '-1,-2,-3,...",
+      "display_name": "获取大模型历史对话 → output1",
+      "format": "JSON"
+    },
+    {
+      "node_id": "0x1863c174b50",
+      "node_name": "输入端口",
+      "output_name": "output",
+      "sample_value": "工具调用结果：\n{'output': array([[-1.47222222, -1.6666666...",
+      "display_name": "输入端口 → output",
+      "format": "TEXT"
+    },
+    {
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "output_name": "response",
+      "sample_value": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"...",
+      "display_name": "大模型对话 → response",
+      "format": "TEXT"
+    },
+    {
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "output_name": "raw_output",
+      "sample_value": "{'id': 'chatcmpl-6pnkkfhdhgloavot619cu8', 'choices...",
+      "display_name": "大模型对话 → raw_output",
+      "format": "JSON"
+    },
+    {
+      "node_id": "0x1862e4661a0",
+      "node_name": "大模型对话",
+      "output_name": "history",
+      "sample_value": "[]",
+      "display_name": "大模型对话 → history",
+      "format": "JSON"
+    },
+    {
+      "node_id": "0x1863c001630",
+      "node_name": "移除思考过程",
+      "output_name": "cleaned_text",
+      "sample_value": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"...",
+      "display_name": "移除思考过程 → cleaned_text",
+      "format": "TEXT"
+    },
+    {
+      "node_id": "0x1863c001630",
+      "node_name": "移除思考过程",
+      "output_name": "think_text",
+      "sample_value": "",
+      "display_name": "移除思考过程 → think_text",
+      "format": "TEXT"
+    },
+    {
+      "node_id": "0x18630d68580",
+      "node_name": "大模型输出解析",
+      "output_name": "parsed_json",
+      "sample_value": "{'next_step': '总结答案', 'answer': '根据逻辑回归模型计算，输入数据 [...",
+      "display_name": "大模型输出解析 → parsed_json",
+      "format": "JSON"
+    },
+    {
+      "node_id": "0x18630d68580",
+      "node_name": "大模型输出解析",
+      "output_name": "is_valid",
+      "sample_value": "True",
+      "display_name": "大模型输出解析 → is_valid",
+      "format": "BOOL"
+    },
+    {
+      "node_id": "0x1863c175120",
+      "node_name": "条件分支 1",
+      "output_name": "branch",
+      "sample_value": "{'next_step': '总结答案', 'answer': '根据逻辑回归模型计算，输入数据 [...",
+      "display_name": "条件分支 1 → branch",
+      "format": "TEXT"
+    },
+    {
+      "node_id": "0x1862e465a50",
+      "node_name": "json筛选",
+      "output_name": "output1",
+      "sample_value": "根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为类别 0。",
+      "display_name": "json筛选 → output1",
+      "format": "TEXT"
+    },
+    {
+      "node_id": "0x1863c003820",
+      "node_name": "JSON文本包装 3",
+      "output_name": "output1",
+      "sample_value": "{'answer': '根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果...",
+      "display_name": "JSON文本包装 3 → output1",
+      "format": "JSON"
+    }
+  ]
+}

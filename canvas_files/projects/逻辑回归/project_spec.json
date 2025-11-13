@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "graph_name": "workflow",
+  "inputs": {
+    "param1": {
+      "type": "组件超参数",
+      "node_id": "0x280918577c0",
+      "node_name": "输入array",
+      "param_name": "param1",
+      "current_value": "1,2,3,4",
+      "display_name": "输入array → param1",
+      "format": "TEXT",
+      "custom_key": "param1"
+    }
+  },
+  "outputs": {
+    "output": {
+      "node_id": "0x2808db0f730",
+      "output_name": "output",
+      "format": "ARRAY"
+    },
+    "value": {
+      "node_id": "0x2808db0df60",
+      "output_name": "value",
+      "format": "ARRAY"
+    }
+  }
+}
