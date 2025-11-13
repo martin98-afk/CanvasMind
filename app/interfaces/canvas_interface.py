@@ -195,48 +195,7 @@ class CanvasPage(QWidget):
         # 优化：直接连接到 set_node_status_by_id
         scheduler.node_status_changed.connect(self.set_node_status_by_id)
         scheduler.property_changed.connect(self.update_node_property)
-        scheduler.node_variable_updated.connect(self.update_node_variable)
         return scheduler
-
-    def update_node_variable(self, name, value, policy):
-        node_var_obj = self.global_variables.node_vars.get(name)
-        if policy == "更新":
-            node_var_obj.value = value
-        elif policy == "追加":
-            current_value = node_var_obj.value
-            # 尝试进行追加操作
-            try:
-                # --- 处理字符串 ---
-                if isinstance(current_value, list):
-                    if isinstance(value, list):
-                        node_var_obj.value = current_value + value
-                        logger.debug(f"变量 '{name}' (list) 已追加列表: {value}")
-                    else:
-                        # 如果当前是列表，但新值不是列表，将新值作为一个元素追加
-                        node_var_obj.value = current_value + [value]
-                        logger.debug(f"变量 '{name}' (list) 已追加单个元素: {value}")
-                # --- 处理字典 ---
-                elif isinstance(current_value, dict):
-                    if isinstance(value, dict):
-                        # 合并字典，新值会覆盖同名键的旧值
-                        node_var_obj.value = {**current_value, **value}
-                        logger.debug(f"变量 '{name}' (dict) 已合并字典: {value}")
-                    else:
-                        logger.warning(f"无法将非字典值 {value} (type: {type(value)}) 追加到字典变量 '{name}'。")
-                # --- 其他类型 ---
-                else:
-                    # 对于其他类型，尝试直接相加，如果失败则覆盖
-                    node_var_obj.value = [current_value, value]
-                    logger.debug(f"变量 '{name}' (type: {type(current_value)}) 已尝试追加: {value}")
-            except TypeError as e:
-                # 如果相加操作不支持（例如 list + int），则记录警告并覆盖
-                logger.warning(f"追加变量 '{name}' 失败: {e}. 将覆盖旧值。")
-                node_var_obj.value = value
-            except Exception as e:
-                # 捕获其他任何可能的异常，记录警告并覆盖
-                logger.error(f"追加变量 '{name}' 时发生未知错误: {e}. 将覆盖旧值。")
-                node_var_obj.value = value
-        QtCore.QTimer.singleShot(0, self.property_panel._refresh_node_vars_page)
 
     def set_node_status_by_id(self, node_id, status):
         node = self._get_node_by_id_cached(node_id)
@@ -266,10 +225,10 @@ class CanvasPage(QWidget):
         self.stop_btn.show()
 
     def run_workflow(self):
-        """执行整个工作流"""
+        """执行所有选中节点的工作流"""
         self._scheduler = self._create_scheduler()
         self._connect_scheduler_signals()
-        self._scheduler.run_full()
+        self._scheduler.run_full(nodes=self.graph.selected_nodes())
 
     def run_to_node(self, target_node):
         """执行到目标节点"""
@@ -314,9 +273,9 @@ class CanvasPage(QWidget):
         self.canvas_widget._cursor_text.setVisible(False)
         if not self.canvas_widget.ALT_state:
             if self.canvas_widget.SHIFT_state:
-                overlay_text = '\n    SHIFT:\n    Toggle/Extend Selection'
+                overlay_text = '\n    SHIFT:\n    扩展节点选择'
             elif self.canvas_widget.CTRL_state:
-                overlay_text = '\n    CTRL:\n    Deselect Nodes'
+                overlay_text = '\n    CTRL:\n    取消节点选择'
         elif self.canvas_widget.ALT_state and self.canvas_widget.SHIFT_state:
             if self.canvas_widget.pipe_slicing:
                 overlay_text = '\n    ALT + SHIFT:\n    连线删除模式'
@@ -814,8 +773,8 @@ class CanvasPage(QWidget):
             # 创建 Input 和 Output Port，围绕视图中心布局
             input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
             output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-            input_port_node.set_pos(center_x - 350, center_y - input_port_node.view.height / 2)
-            output_port_node.set_pos(center_x + 350, center_y - output_port_node.view.height / 2)
+            input_port_node.set_pos(center_x - 500, center_y - input_port_node.view.height)
+            output_port_node.set_pos(center_x + 500, center_y + output_port_node.view.height + 200)
             nodes_to_wrap = [input_port_node, output_port_node]
         else:
             # Step 4: 有选中节点时，按原逻辑处理

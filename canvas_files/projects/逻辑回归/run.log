@@ -1,0 +1,10 @@
+2025-11-13 14:27:45.694 | INFO     | __main__:execute_workflow:935 - 执行节点: 输入array
+2025-11-13 14:27:45.695 | INFO     | __main__:execute_workflow:936 - 输入: {}
+2025-11-13 14:27:45.708 | INFO     | __main__:execute_workflow:945 - 输出: {'output': array([-1., -2., -3., -4.])}
+2025-11-13 14:27:45.708 | INFO     | __main__:execute_workflow:935 - 执行节点: 归一化推理(npy)
+2025-11-13 14:27:45.708 | INFO     | __main__:execute_workflow:936 - 输入: {'input': array([-1., -2., -3., -4.]), 'scaler': WindowsPath('D:/work/CanvasMind/canvas_files/projects/逻辑回归/inputs/model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl')}
+2025-11-13 14:27:46.230 | INFO     | __main__:execute_workflow:945 - 输出: {'output': array([[-1.47222222, -1.66666667, -0.6779661 , -1.70833333]])}
+2025-11-13 14:27:46.230 | INFO     | __main__:execute_workflow:935 - 执行节点: 逻辑回归推理(npy) 1
+2025-11-13 14:27:46.230 | INFO     | __main__:execute_workflow:936 - 输入: {'feature': array([[-1.47222222, -1.66666667, -0.6779661 , -1.70833333]]), 'model': WindowsPath('D:/work/CanvasMind/canvas_files/projects/逻辑回归/inputs/model_dc38700a-5e2b-41d0-ab95-4528f73e5f31.pkl')}
+2025-11-13 14:27:46.289 | INFO     | Component:run:50 - Model predict: [0]
+2025-11-13 14:27:46.289 | INFO     | __main__:execute_workflow:945 - 输出: {'value': [0]}

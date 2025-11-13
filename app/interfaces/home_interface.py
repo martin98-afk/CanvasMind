@@ -125,7 +125,7 @@ class WelcomeBannerWidget(QWidget):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "打开工作流文件",
-            "./workflows",
+            "./",
             "CanvasMind Files (*.workflow.json);;All Files (*)"
         )
         if file_path:
@@ -292,8 +292,9 @@ class SampleModelCardView(CardWidget):
 
     openSampleSignal = pyqtSignal(str)
 
-    def __init__(self, title="示例模型", parent=None):
+    def __init__(self, title="示例模型", wf_dir=None, parent=None):
         super().__init__(parent)
+        self.wf_dir = wf_dir
         self.setBorderRadius(8)
         self.vLayout = QVBoxLayout(self)
         self.vLayout.setContentsMargins(16, 16, 16, 16)
@@ -335,7 +336,7 @@ class SampleModelCardView(CardWidget):
 
     def _on_open_sample(self, model_name: str):
         src_path = Path(resource_path(f"./examples/{model_name}.workflow.json"))
-        target_path = Path(f"./workflows/{model_name}.workflow.json")
+        target_path = self.wf_dir / f"{model_name}.workflow.json"
         try:
             shutil.copyfile(src_path, target_path)
             self.openSampleSignal.emit(str(target_path))

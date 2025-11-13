@@ -82,7 +82,7 @@ class NodeListExecutor(QRunnable):
                                 node_name = re.sub(r"\s+", "_", node.name())
                                 if f"{node_name}_{port_name}" in self.scheduler.global_variables.node_vars and \
                                     self.scheduler.global_variables.node_vars[f"{node_name}_{port_name}"].update_policy!="固定":
-                                    self.scheduler.node_variable_updated.emit(
+                                    self.scheduler.update_node_variable(
                                         f"{node_name}_{port_name}", result,
                                         self.scheduler.global_variables.node_vars[f"{node_name}_{port_name}"].update_policy
                                     )

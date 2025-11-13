@@ -11,7 +11,7 @@ from app.widgets.basic_widget.variable_complete_widget import VariableCompletion
 # 改造后的对话框
 # -----------------------
 class LongTextEditorDialog(MessageBoxBase):
-    def __init__(self, content: str = "", parent=None, main_window=None):
+    def __init__(self, content: str = "", parent=None, main_window=None, extra_keys=[], get_port_func=lambda: []):
         super().__init__(parent)
         self.main_window = main_window
         self.titleLabel = SubtitleLabel("编辑长文本")
@@ -19,7 +19,9 @@ class LongTextEditorDialog(MessageBoxBase):
             return []
         global_vars = getattr(self.main_window, 'global_variables', None)
         if global_vars is not None and hasattr(global_vars, 'get_vars'):
-            self.text_edit = VariableCompletionTextEdit(get_variable_list_func=global_vars.get_vars)
+            self.text_edit = VariableCompletionTextEdit(
+                get_variable_list_func=lambda keys=extra_keys, func=get_port_func: global_vars.get_vars(keys + func()), parent=self
+            )
         else:
             self.text_edit = TextEdit()
         self.text_edit.setPlainText(content)
@@ -39,11 +41,11 @@ class LongTextWidget(QtWidgets.QWidget):
     """节点内显示：摘要 + 编辑按钮"""
     valueChanged = QtCore.Signal(str)
 
-    def __init__(self, parent=None, default_text=""):
+    def __init__(self, parent=None, default_text="", get_port_func=lambda: []):
         super().__init__(parent)
         self.parent = parent
         self._text = default_text
-
+        self.get_port_func = get_port_func
         self.summary_label = LineEdit()
         self.summary_label.setFixedWidth(300)
         self.summary_label.setText(self._get_summary())
@@ -62,7 +64,7 @@ class LongTextWidget(QtWidgets.QWidget):
         return (text[:30] + "...") if len(text) > 30 else text
 
     def _open_editor(self):
-        dialog = LongTextEditorDialog(self._text, self.parent, self.parent)
+        dialog = LongTextEditorDialog(self._text, self.parent, self.parent, get_port_func=self.get_port_func)
         if dialog.exec() == QtWidgets.QDialog.Accepted:
             new_text = dialog.text_edit.toPlainText()
             if new_text != self._text:
@@ -90,9 +92,13 @@ class LongTextWidgetWrapper(NodeBaseWidget):
         super().__init__(parent)
         self.set_name(name)
         self.set_label(label)
-        widget = LongTextWidget(default_text=default, parent=window)
+        widget = LongTextWidget(default_text=default, parent=window, get_port_func=self.get_port_func)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
+
+    def get_port_func(self):
+        vars = [f"input.{port.name()}" for port in self.node.input_ports()]
+        return vars
 
     def get_value(self):
         return self.get_custom_widget().get_value()

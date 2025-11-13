@@ -1,0 +1,292 @@
+{
+  "version": "1.0",
+  "graph": {
+    "nodes": {
+      "0x280918577c0": {
+        "name": "输入array",
+        "type_": "dynamic.StatusDynamicNode_数据集成_输入array",
+        "pos": [
+          104.3208510999732,
+          1241.4604955535306
+        ],
+        "custom": {
+          "FULL_PATH": "数据集成/输入array",
+          "FILE_PATH": "",
+          "params": {
+            "global_variable": {},
+            "persistent_id": "f023577e-5cd0-4099-9f53-4c747aae8a5c",
+            "debug_code": {},
+            "param1": "1,2,3,4"
+          },
+          "input_values": {}
+        }
+      },
+      "0x2808db0f730": {
+        "name": "归一化推理(npy)",
+        "type_": "dynamic.StatusDynamicNode_数据预处理_归一化推理(npy)",
+        "pos": [
+          801.0736331597129,
+          1202.3230719605704
+        ],
+        "custom": {
+          "FULL_PATH": "数据预处理/归一化推理(npy)",
+          "FILE_PATH": "",
+          "params": {
+            "global_variable": {},
+            "persistent_id": "0f14a852-995f-4c65-8cfb-ef6ccccfdc94",
+            "debug_code": {}
+          },
+          "input_values": {
+            "input": {
+              "__type__": "ndarray",
+              "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDQsKSwgfSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoAAAAAAADwPwAAAAAAAABAAAAAAAAACEAAAAAAAAAQQA==",
+              "dtype": "float64",
+              "shape": [
+                4
+              ],
+              "format": "npy_base64"
+            },
+            "scaler": "inputs/model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl"
+          }
+        }
+      },
+      "0x2808db0df60": {
+        "name": "逻辑回归推理(npy) 1",
+        "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
+        "pos": [
+          1129.4469605431755,
+          999.5181529082427
+        ],
+        "custom": {
+          "FULL_PATH": "模型推理/逻辑回归推理(npy)",
+          "FILE_PATH": "",
+          "params": {
+            "global_variable": {},
+            "persistent_id": "53081407-40bd-48e4-9e7a-ef3e4a06e3ed",
+            "debug_code": "# -*- coding: utf-8 -*-\nimport importlib.util\nimport pathlib\nbase_path = pathlib.Path(__file__).parent.parent / \"base.py\"\nspec = importlib.util.spec_from_file_location(\"base\", str(base_path))\nbase_module = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(base_module)\n\n# 导入所需项目\nBaseComponent = base_module.BaseComponent\nPortDefinition = base_module.PortDefinition\nPropertyDefinition = base_module.PropertyDefinition\nPropertyType = base_module.PropertyType\nArgumentType = base_module.ArgumentType\nConnectionType = base_module.ConnectionType\n\n\nclass Component(BaseComponent):\n    name = \"逻辑回归推理(npy)\"\n    category = \"模型推理\"\n    description = \"组件开发生成组件\"\n    requirements = \"scikit-learn\"\n    inputs = [\n        PortDefinition(name=\"feature\", label=\"特征\", type=ArgumentType.ARRAY),\n        PortDefinition(name=\"model\", label=\"模型\", type=ArgumentType.SKLEARNMODEL),\n    ]\n    outputs = [\n        PortDefinition(name=\"value\", label=\"预测值\", type=ArgumentType.ARRAY),\n    ]\n    properties = {\n    }\n\n    def run(self, params, inputs=None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        try:\n            from sklearn.linear_model import LogisticRegression\n            # 读取数据\n            print(\"打印到console\")\n            feature = inputs.feature\n            if len(feature.shape) == 1:\n                feature = feature[None, :]\n            model = inputs.model\n            # 训练模型\n            result = model.predict(feature)\n            # 预测示例（使用第一行数据）\n\n            self.logger.info(f\"Model predict: {result}\")\n            return {\n                \"value\": result.tolist()\n            }\n\n        except Exception as e:\n            self.logger.error(f\"Error in LogisticRegressionComponent: {e}\")\n            raise e\n"
+          },
+          "input_values": {
+            "feature": {
+              "__type__": "ndarray",
+              "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEsIDQpLCB9ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApUVVVVVVXtvwAAAAAAAAAA0HBS9+Wx1T8AAAAAAAD6Pw==",
+              "dtype": "float64",
+              "shape": [
+                1,
+                4
+              ],
+              "format": "npy_base64"
+            },
+            "model": "inputs/model_dc38700a-5e2b-41d0-ab95-4528f73e5f31.pkl"
+          }
+        }
+      }
+    },
+    "connections": [
+      {
+        "out": [
+          "0x280918577c0",
+          "output"
+        ],
+        "in": [
+          "0x2808db0f730",
+          "input"
+        ]
+      },
+      {
+        "out": [
+          "0x2808db0f730",
+          "output"
+        ],
+        "in": [
+          "0x2808db0df60",
+          "feature"
+        ]
+      }
+    ],
+    "grid": null
+  },
+  "runtime": {
+    "environment": "3.14",
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
+    "node_id2stable_key": {
+      "0x280918577c0": "数据集成/输入array||输入array",
+      "0x2808db0f730": "数据预处理/归一化推理(npy)||归一化推理(npy)",
+      "0x2808db0df60": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1"
+    },
+    "node_states": {
+      "数据集成/输入array||输入array": "success",
+      "数据预处理/归一化推理(npy)||归一化推理(npy)": "success",
+      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": "success"
+    },
+    "node_outputs": {
+      "数据集成/输入array||输入array": {
+        "output": {
+          "__type__": "ndarray",
+          "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDQsKSwgfSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoAAAAAAADwPwAAAAAAAABAAAAAAAAACEAAAAAAAAAQQA==",
+          "dtype": "float64",
+          "shape": [
+            4
+          ],
+          "format": "npy_base64"
+        }
+      },
+      "数据预处理/归一化推理(npy)||归一化推理(npy)": {
+        "output": {
+          "__type__": "ndarray",
+          "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEsIDQpLCB9ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApUVVVVVVXtvwAAAAAAAAAA0HBS9+Wx1T8AAAAAAAD6Pw==",
+          "dtype": "float64",
+          "shape": [
+            1,
+            4
+          ],
+          "format": "npy_base64"
+        }
+      },
+      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": {
+        "value": [
+          2
+        ]
+      }
+    },
+    "column_select": {
+      "数据集成/输入array||输入array": {},
+      "数据预处理/归一化推理(npy)||归一化推理(npy)": {},
+      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": {}
+    },
+    "global_variable": {
+      "env": {
+        "user_id": null,
+        "canvas_id": null,
+        "session_id": null,
+        "run_id": null,
+        "metadata": {
+          "TZ": "Asia/Shanghai",
+          "LANG": "en_US.UTF-8",
+          "LC_ALL": "en_US.UTF-8",
+          "OMP_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "NUMEXPR_NUM_THREADS": "1",
+          "CUDA_VISIBLE_DEVICES": "0",
+          "PYTHONPATH": ".",
+          "PYTHONUNBUFFERED": "1",
+          "PYTHONIOENCODING": "utf-8",
+          "PYTHONWARNINGS": "ignore"
+        }
+      },
+      "custom": {
+        "test": {
+          "value": 0.5,
+          "description": null,
+          "read_only": false
+        }
+      },
+      "node_vars": {
+        "MinMax归一化_scaler": {
+          "value": "canvas_files\\node_results\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl",
+          "update_policy": "更新"
+        },
+        "逻辑回归训练_1_model": {
+          "value": "canvas_files\\node_results\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_dc38700a-5e2b-41d0-ab95-4528f73e5f31.pkl",
+          "update_policy": "更新"
+        },
+        "逻辑回归训练_value": {
+          "value": [
+            0
+          ],
+          "update_policy": "固定"
+        }
+      }
+    }
+  },
+  "candidate_inputs": [
+    {
+      "type": "组件超参数",
+      "node_id": "0x280918577c0",
+      "node_name": "输入array",
+      "param_name": "param1",
+      "current_value": "1,2,3,4",
+      "display_name": "输入array → param1",
+      "format": "TEXT"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x2808db0f730",
+      "node_name": "归一化推理(npy)",
+      "port_name": "input",
+      "current_value": {
+        "__type__": "ndarray",
+        "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDQsKSwgfSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoAAAAAAADwPwAAAAAAAABAAAAAAAAACEAAAAAAAAAQQA==",
+        "dtype": "float64",
+        "shape": [
+          4
+        ],
+        "format": "npy_base64"
+      },
+      "display_name": "input → 归一化推理(npy)",
+      "format": "ARRAY"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x2808db0f730",
+      "node_name": "归一化推理(npy)",
+      "port_name": "scaler",
+      "current_value": "canvas_files\\node_results\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl",
+      "display_name": "scaler → 归一化推理(npy)",
+      "format": "SKLEARNMODEL"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x2808db0df60",
+      "node_name": "逻辑回归推理(npy) 1",
+      "port_name": "feature",
+      "current_value": {
+        "__type__": "ndarray",
+        "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEsIDQpLCB9ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApUVVVVVVXtvwAAAAAAAAAA0HBS9+Wx1T8AAAAAAAD6Pw==",
+        "dtype": "float64",
+        "shape": [
+          1,
+          4
+        ],
+        "format": "npy_base64"
+      },
+      "display_name": "feature → 逻辑回归推理(npy) 1",
+      "format": "ARRAY"
+    },
+    {
+      "type": "组件输入",
+      "node_id": "0x2808db0df60",
+      "node_name": "逻辑回归推理(npy) 1",
+      "port_name": "model",
+      "current_value": "canvas_files\\node_results\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_dc38700a-5e2b-41d0-ab95-4528f73e5f31.pkl",
+      "display_name": "model → 逻辑回归推理(npy) 1",
+      "format": "SKLEARNMODEL"
+    }
+  ],
+  "candidate_outputs": [
+    {
+      "node_id": "0x280918577c0",
+      "node_name": "输入array",
+      "output_name": "output",
+      "sample_value": "[1. 2. 3. 4.]",
+      "display_name": "输入array → output",
+      "format": "ARRAY"
+    },
+    {
+      "node_id": "0x2808db0f730",
+      "node_name": "归一化推理(npy)",
+      "output_name": "output",
+      "sample_value": "[[-0.91666667  0.          0.33898305  1.625     ]...",
+      "display_name": "归一化推理(npy) → output",
+      "format": "ARRAY"
+    },
+    {
+      "node_id": "0x2808db0df60",
+      "node_name": "逻辑回归推理(npy) 1",
+      "output_name": "value",
+      "sample_value": "[2]",
+      "display_name": "逻辑回归推理(npy) 1 → value",
+      "format": "ARRAY"
+    }
+  ]
+}
