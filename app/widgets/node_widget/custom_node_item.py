@@ -26,8 +26,9 @@ class CustomNodeItem(NodeItem):
         self._text_item = NodeTextItem(self.name, self)
         font = QtGui.QFont()
         font.setPointSize(16)  # 推荐 10~12
-        font.setBold(False)  # 可选
+        font.setBold(True)  # 可选
         self._text_item.setFont(font)
+        self._text_item.setDefaultTextColor(QtGui.QColor("white"))
         self._x_item = XDisabledItem(self, 'DISABLED')
         self._input_items = OrderedDict()
         self._output_items = OrderedDict()
