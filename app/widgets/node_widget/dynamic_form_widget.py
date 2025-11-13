@@ -20,7 +20,7 @@ class FormFieldWidget(QtWidgets.QWidget):
     removed = QtCore.Signal(object)
     changed = QtCore.Signal()
 
-    def __init__(self, schema, home=None, parent=None):
+    def __init__(self, schema, home=None, parent=None, get_port_func=lambda: []):
         super().__init__(parent)  # parent 是 DynamicFormWidget（正确！）
         self.schema = schema
         self.home = home  # 用于弹窗的主窗口
@@ -56,7 +56,7 @@ class FormFieldWidget(QtWidgets.QWidget):
             input_row.setContentsMargins(0, 0, 0, 0)
 
             if field_type == PropertyType.LONGTEXT.name:
-                widget = LongTextWidget(parent=home)
+                widget = LongTextWidget(parent=home, default_text=default, get_port_func=get_port_func)
                 widget.summary_label.setFixedWidth(180)
                 widget.summary_label.setPlaceholderText(label)
                 widget.valueChanged.connect(self.changed)
@@ -100,7 +100,9 @@ class FormFieldWidget(QtWidgets.QWidget):
             else:
                 # 其他类型使用 LineEdit
                 global_vars = getattr(self.home, 'global_variables', None)
-                widget = VariableCompletionLineEdit(get_variable_list_func=global_vars.get_vars, parent=self)
+                widget = VariableCompletionLineEdit(
+                    get_variable_list_func=lambda func=get_port_func: global_vars.get_vars(func()), parent=self
+                )
                 widget.setFixedWidth(180)
                 widget.setPlaceholderText(label)
                 widget.textChanged.connect(self.changed)
@@ -176,7 +178,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
     sizeHintChanged = QtCore.Signal()
     valueChanged = QtCore.Signal(object)
 
-    def __init__(self, schema, parent=None, label=None):
+    def __init__(self, schema, parent=None, label=None, get_port_func=lambda: []):
         super().__init__(parent)
         self.parent = parent
         self.schema = schema
@@ -184,7 +186,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
         self.field_widgets = []
         self._batch_mode = False
         self.field_width = 0
-
+        self.get_port_func = get_port_func
         # 添加按钮
         self.btn_add = TransparentPushButton(text=f"添加{self.label}", icon=FluentIcon.ADD, parent=self)
         self.container = QtWidgets.QVBoxLayout()
@@ -199,7 +201,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
         self.btn_add.clicked.connect(self.add_field)
 
     def add_field(self, data=None):
-        field = FormFieldWidget(self.schema, home=self.parent, parent=self)
+        field = FormFieldWidget(self.schema, home=self.parent, parent=self, get_port_func=self.get_port_func)
         if data:
             field.set_data(data)
         field.removed.connect(self.remove_field)
@@ -272,7 +274,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
 
         # 添加新字段
         for item in data_list or []:
-            field = FormFieldWidget(self.schema, home=self.parent, parent=self)
+            field = FormFieldWidget(self.schema, home=self.parent, parent=self, get_port_func=self.get_port_func)
             if item:
                 field.set_data(item)
             field.removed.connect(self.remove_field)
@@ -293,7 +295,7 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
         self.name = name
         self.set_name(name)
         self.set_label(label)
-        widget = DynamicFormWidget(schema or {}, parent=window, label=label)
+        widget = DynamicFormWidget(schema or {}, parent=window, label=label, get_port_func=self.get_port_func)
         self.set_custom_widget(widget)
         widget.sizeHintChanged.connect(self._update_node)
         widget.valueChanged.connect(self.on_value_changed)
@@ -304,6 +306,10 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
             self.node.view.draw_node()
             # 再强制重绘整个节点区域
             self.node.view.update()
+
+    def get_port_func(self):
+        vars = [f"input.{port.name()}" for port in self.node.input_ports()]
+        return vars
 
     def get_value(self):
         return self.get_custom_widget().get_data()

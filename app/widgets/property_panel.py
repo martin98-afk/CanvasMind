@@ -926,7 +926,7 @@ class PropertyPanel(CardWidget):
             browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
             browse_btn.setFixedSize(QSize(26, 20))
             browse_btn.clicked.connect(
-                lambda _, edit=condition_edit: self._open_long_text_editor(edit)
+                lambda _, edit=condition_edit, key=extra_keys: self._open_long_text_editor(edit, key)
             )
             expr_layout.addWidget(browse_btn)
 
@@ -951,10 +951,11 @@ class PropertyPanel(CardWidget):
 
         self.node_vbox.addWidget(config_card)
 
-    def _open_long_text_editor(self, line_edit):
+    def _open_long_text_editor(self, line_edit, key):
         # ✅ 根据你的实际路径导入 LongTextEditorDialog
-        dialog = LongTextEditorDialog(content=line_edit.toPlainText(), parent=self.window(),
-                                      main_window=self.main_window)
+        dialog = LongTextEditorDialog(
+            content=line_edit.toPlainText(), extra_keys=key, parent=self.window(),main_window=self.main_window
+        )
         if dialog.exec():
             new_text = dialog.text_edit.toPlainText().strip()
             line_edit.setText(new_text)

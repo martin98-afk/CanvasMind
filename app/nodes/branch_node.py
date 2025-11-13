@@ -8,7 +8,7 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import StatusNode
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.node_logger import NodeLogHandler
-from app.utils.utils import resource_path
+from app.utils.utils import resource_path, draw_square_port
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
@@ -32,7 +32,7 @@ def create_branch_node(parent_window):
             self.column_select = {}
 
             # === 固定输入端口 ===
-            self.add_input('input')
+            self.add_input('input', True, painter_func=draw_square_port)
 
             # === 初始化属性控件（但不立即同步端口）===
             self._init_properties()
@@ -444,6 +444,6 @@ def create_branch_node(parent_window):
 
             self.clear_output_value()  # 先清空
             for branch in activated_branches:
-                self.set_output_value(branch, inputs)
+                self.set_output_value(branch, inputs["input"])
 
     return ConditionalBranchNode

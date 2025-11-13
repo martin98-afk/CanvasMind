@@ -314,9 +314,9 @@ class CanvasPage(QWidget):
         self.canvas_widget._cursor_text.setVisible(False)
         if not self.canvas_widget.ALT_state:
             if self.canvas_widget.SHIFT_state:
-                overlay_text = '\n    SHIFT:\n    Toggle/Extend Selection'
+                overlay_text = '\n    SHIFT:\n    扩展节点选择'
             elif self.canvas_widget.CTRL_state:
-                overlay_text = '\n    CTRL:\n    Deselect Nodes'
+                overlay_text = '\n    CTRL:\n    取消节点选择'
         elif self.canvas_widget.ALT_state and self.canvas_widget.SHIFT_state:
             if self.canvas_widget.pipe_slicing:
                 overlay_text = '\n    ALT + SHIFT:\n    连线删除模式'
@@ -814,8 +814,8 @@ class CanvasPage(QWidget):
             # 创建 Input 和 Output Port，围绕视图中心布局
             input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
             output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-            input_port_node.set_pos(center_x - 350, center_y - input_port_node.view.height / 2)
-            output_port_node.set_pos(center_x + 350, center_y - output_port_node.view.height / 2)
+            input_port_node.set_pos(center_x - 500, center_y - input_port_node.view.height)
+            output_port_node.set_pos(center_x + 500, center_y + output_port_node.view.height + 200)
             nodes_to_wrap = [input_port_node, output_port_node]
         else:
             # Step 4: 有选中节点时，按原逻辑处理
