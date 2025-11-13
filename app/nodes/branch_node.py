@@ -30,12 +30,9 @@ def create_branch_node(parent_window):
             self._input_values = {}
             self.column_select = {}
 
-            # === 固定输入端口 ===
-            self.add_input('input', True, painter_func=draw_square_port)
-
             # === 初始化属性控件（但不立即同步端口）===
             self._init_properties()
-
+            self.add_input('input', True, painter_func=draw_square_port)
             # === 关键：延迟绑定监听器 + 延迟首次同步 ===
             QtCore.QTimer.singleShot(500, self._delayed_setup)
 
@@ -43,6 +40,7 @@ def create_branch_node(parent_window):
 
         # 替换 _delayed_setup 中的 connect
         def _delayed_setup(self):
+            # === 固定输入端口 ===
             widget = self.widget.get_custom_widget()
             widget.valueChanged.connect(self._on_conditions_changed)
             else_widget = self.get_widget("enable_else").get_custom_widget()
