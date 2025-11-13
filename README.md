@@ -29,6 +29,10 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 
 <img src="images/工作流示意图2.gif" width="800">
 
+## Diagram of a complex canvas model: (React calling a large model intelligent agent)
+
+<img src="canvas_files/workflows/react智能体.png" width="1200">
+
 ## 📦 Model Execution Preview
 
 <img src="images/模型运行效果.gif" width="800">

@@ -40,6 +40,10 @@
 
 <img src="images/工作流示意图2.gif" width="800">
 
+## 复杂画布模型示意图：（react调用工具大模型智能体）
+
+<img src="canvas_files/workflows/react智能体.png" width="800">
+
 ## 📦 智能节点推荐
 
 <img src="images/画布节点智能推荐示意图.gif" width="800">
