@@ -255,6 +255,7 @@ class GlobalVariableContext(BaseModel):
     def __init__(self, **data):
         super().__init__(**data)
         # 初始化默认 Python 环境变量（仅当 metadata 为空时）
+        self.deserialize(data)
         if not self.env.metadata:
             self.env.metadata.update(DEFAULT_PYTHON_ENV_VARS)
 

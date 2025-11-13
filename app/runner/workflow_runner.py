@@ -3,6 +3,7 @@ import io
 import json
 import pickle
 import sys
+import traceback
 import uuid
 import warnings
 
@@ -469,7 +470,7 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
     """
     if initial_outputs is None:
         initial_outputs = {}
-
+    engine.update_global_vars(GlobalVariableContext(**global_variable))
     # 注入当前项到输入代理
     input_proxy_outputs = {"output": input_data}  # 注意：端口名是 "output"
     internal_outputs = initial_outputs.copy()
@@ -560,6 +561,7 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
             node_inputs, node_params = evaludate_model_inputs(engine, node_inputs, n["params"])
             logger.info(f"执行内部节点: {n['name']}")
             logger.info(f"输入: {node_inputs}")
+            logger.info(f"参数: {node_params}")
             output = run_component_in_subprocess(
                 comp_class=n["class"],
                 file_path=n["file_path"],
@@ -761,8 +763,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
     # 导入全局变量
     global_variable = runtime_data.get("global_variable", {})
     # 1. 反序列化全局变量
-    global_ctx = GlobalVariableContext()
-    global_ctx.deserialize(global_variable)
+    global_ctx = GlobalVariableContext(**global_variable)
     expr_engine = ExpressionEngine(global_vars_context=global_ctx)
 
     # 2. 加载 project_spec（如果有）
@@ -999,11 +1000,11 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
                             except Exception as e:
                                 update_value = value
                             global_variable["node_vars"][f"{node['name']}_{port}"]["value"] = update_value
-
+                expr_engine.update_global_vars(GlobalVariableContext(**global_variable))
                 logger.info(f"输出: {output}")
                 node_outputs[node_id] = output or {}
             except Exception as e:
-                logger.error(f"节点执行失败 {node['name']}: {e}")
+                logger.error(f"节点执行失败 {node['name']}: {traceback.format_exc()}")
                 raise e
 
     # 8. ✅ 按 project_spec 提取最终输出
