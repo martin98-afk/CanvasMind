@@ -1,0 +1,1751 @@
+{
+  "version": "1.0",
+  "graph": {
+    "graph": {
+      "layout_direction": 0,
+      "acyclic": true,
+      "pipe_collision": false,
+      "pipe_slicing": true,
+      "pipe_style": 1,
+      "accept_connection_types": "{}",
+      "reject_connection_types": "{}"
+    },
+    "nodes": {
+      "0x1e0f46e3700": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
+        "icon": null,
+        "name": "文档上传",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 160,
+        "height": 60,
+        "pos": [
+          -263.0661542840139,
+          466.28831821795535
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "file",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "LC_ALL": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "OPENBLAS_NUM_THREADS": "1",
+                "NUMEXPR_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": 0.5,
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "MinMax归一化_scaler": {
+                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_1_model": {
+                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_value": {
+                "value": [
+                  0
+                ],
+                "update_policy": "固定"
+              }
+            }
+          },
+          "persistent_id": "7cd1da75-280b-424f-81e3-f40ffd756998",
+          "debug_code": {}
+        }
+      },
+      "0x1e0f46e2dd0": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_CSV_读取器",
+        "icon": null,
+        "name": "CSV 读取器",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 160,
+        "height": 60,
+        "pos": [
+          112.43490602714337,
+          465.39604691408084
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "csv",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "csv",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "LC_ALL": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "OPENBLAS_NUM_THREADS": "1",
+                "NUMEXPR_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": 0.5,
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "MinMax归一化_scaler": {
+                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_1_model": {
+                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_value": {
+                "value": [
+                  0
+                ],
+                "update_policy": "固定"
+              }
+            }
+          },
+          "persistent_id": "b03cda79-8772-4ae8-ab53-b3db191e2d58",
+          "debug_code": {}
+        }
+      },
+      "0x1e0f46e2950": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_输入array",
+        "icon": null,
+        "name": "输入array",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 311.0,
+        "height": 91.10000000000001,
+        "pos": [
+          104.3208510999732,
+          1241.4604955535306
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "output",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "LC_ALL": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "OPENBLAS_NUM_THREADS": "1",
+                "NUMEXPR_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": 0.5,
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "MinMax归一化_scaler": {
+                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_1_model": {
+                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_value": {
+                "value": [
+                  0
+                ],
+                "update_policy": "固定"
+              }
+            }
+          },
+          "persistent_id": "f023577e-5cd0-4099-9f53-4c747aae8a5c",
+          "debug_code": {},
+          "param1": "1,2,3,4"
+        }
+      },
+      "0x1e0f46e11e0": {
+        "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(csv)",
+        "icon": null,
+        "name": "逻辑回归推理(csv)",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 160,
+        "height": 72.2,
+        "pos": [
+          1028.44205914354,
+          404.63565477548605
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "feature",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "model",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "value",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {},
+          "persistent_id": "17f25b3e-fd45-4b55-94ea-8fce6cb34eca",
+          "debug_code": {}
+        }
+      },
+      "0x1e0f46e0f10": {
+        "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
+        "icon": null,
+        "name": "逻辑回归推理(npy)",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 160,
+        "height": 72.2,
+        "pos": [
+          1041.4093007266908,
+          571.2842183555107
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "feature",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "model",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "value",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "LC_ALL": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "OPENBLAS_NUM_THREADS": "1",
+                "NUMEXPR_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": 0.5,
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "逻辑回归训练_model": {
+                "value": "C:\\Users\\black\\AppData\\Local\\Temp\\tmphbo4hbqi.pkl",
+                "update_policy": "固定"
+              }
+            }
+          },
+          "persistent_id": "3a7164f5-6f4f-4b92-a362-8e9168fa0604",
+          "debug_code": null
+        }
+      },
+      "0x1e0f46e2650": {
+        "type_": "dynamic.StatusDynamicNode_数据预处理_MinMax归一化",
+        "icon": null,
+        "name": "MinMax归一化",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 160,
+        "height": 72.2,
+        "pos": [
+          160.6387564890539,
+          1049.537215416031
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "input",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "scaler",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "LC_ALL": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "OPENBLAS_NUM_THREADS": "1",
+                "NUMEXPR_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": 0.5,
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "MinMax归一化_scaler": {
+                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_1_model": {
+                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_value": {
+                "value": [
+                  0
+                ],
+                "update_policy": "固定"
+              }
+            }
+          },
+          "persistent_id": "3fd34b98-e9c6-42af-bf26-0cdee4adac74",
+          "debug_code": {}
+        }
+      },
+      "0x1e0f46e15d0": {
+        "type_": "dynamic.StatusDynamicNode_数据预处理_归一化推理(npy)",
+        "icon": null,
+        "name": "归一化推理(npy)",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 160,
+        "height": 72.2,
+        "pos": [
+          801.0736331597129,
+          1200.5842715465437
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "input",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "scaler",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "LC_ALL": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "OPENBLAS_NUM_THREADS": "1",
+                "NUMEXPR_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": 0.5,
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "MinMax归一化_scaler": {
+                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_1_model": {
+                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_value": {
+                "value": [
+                  0
+                ],
+                "update_policy": "固定"
+              }
+            }
+          },
+          "persistent_id": "0f14a852-995f-4c65-8cfb-ef6ccccfdc94",
+          "debug_code": {}
+        }
+      },
+      "0x1e0f46e1720": {
+        "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
+        "icon": null,
+        "name": "逻辑回归推理(npy) 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 160,
+        "height": 72.2,
+        "pos": [
+          1124.4610435958718,
+          1001.2819099838512
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "feature",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "model",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "value",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "LC_ALL": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "OPENBLAS_NUM_THREADS": "1",
+                "NUMEXPR_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": 0.5,
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "MinMax归一化_scaler": {
+                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_1_model": {
+                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_value": {
+                "value": [
+                  0
+                ],
+                "update_policy": "固定"
+              }
+            }
+          },
+          "persistent_id": "53081407-40bd-48e4-9e7a-ef3e4a06e3ed",
+          "debug_code": {}
+        }
+      },
+      "0x1e0f46e3760": {
+        "type_": "dynamic.StatusDynamicNode_数据转换_csv转npy",
+        "icon": null,
+        "name": "csv转npy",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 160,
+        "height": 72.2,
+        "pos": [
+          560.6541185063843,
+          679.6874651493371
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "input",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "columns",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "LC_ALL": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "OPENBLAS_NUM_THREADS": "1",
+                "NUMEXPR_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": 0.5,
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "逻辑回归训练_model": {
+                "value": "C:\\Users\\black\\AppData\\Local\\Temp\\tmphbo4hbqi.pkl",
+                "update_policy": "固定"
+              }
+            }
+          },
+          "persistent_id": "c49464d4-a050-472c-adfb-cb2d7c5a83b1",
+          "debug_code": {}
+        }
+      },
+      "0x1e0f49b8a60": {
+        "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
+        "icon": null,
+        "name": "逻辑回归训练",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 339.0,
+        "height": 156.20000000000002,
+        "pos": [
+          473.68863712124175,
+          508.99612221458267
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "feature",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "target",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "value",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "model",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "LC_ALL": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "OPENBLAS_NUM_THREADS": "1",
+                "NUMEXPR_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": 0.5,
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "文件转图片_image": {
+                "value": "temp_runs\\nodes\\d85a1d91-d97b-4f29-96ae-faa495ece382\\image_b6ce41e541354f879776b86d4beb7182.png",
+                "update_policy": "固定"
+              }
+            }
+          },
+          "persistent_id": "b7c16be4-b689-4b20-99e4-99ffde6c2819",
+          "debug_code": {},
+          "solver": "liblinear",
+          "max_iter": "100"
+        }
+      },
+      "0x1e0f49ba320": {
+        "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
+        "icon": null,
+        "name": "逻辑回归训练 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 339.0,
+        "height": 156.20000000000002,
+        "pos": [
+          553.0827970296532,
+          976.5760077778918
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "feature",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "target",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "value",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "model",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "global_variable": {
+            "env": {
+              "user_id": null,
+              "canvas_id": null,
+              "session_id": null,
+              "run_id": null,
+              "metadata": {
+                "TZ": "Asia/Shanghai",
+                "LANG": "en_US.UTF-8",
+                "LC_ALL": "en_US.UTF-8",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "OPENBLAS_NUM_THREADS": "1",
+                "NUMEXPR_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": ".",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONWARNINGS": "ignore"
+              }
+            },
+            "custom": {
+              "test": {
+                "value": 0.5,
+                "description": null,
+                "read_only": false
+              }
+            },
+            "node_vars": {
+              "MinMax归一化_scaler": {
+                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_1_model": {
+                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
+                "update_policy": "固定"
+              },
+              "逻辑回归训练_value": {
+                "value": [
+                  0
+                ],
+                "update_policy": "固定"
+              }
+            }
+          },
+          "persistent_id": "dc38700a-5e2b-41d0-ab95-4528f73e5f31",
+          "debug_code": {},
+          "solver": "liblinear",
+          "max_iter": "100"
+        }
+      }
+    },
+    "connections": [
+      {
+        "out": [
+          "0x1e0f46e3700",
+          "file"
+        ],
+        "in": [
+          "0x1e0f46e2dd0",
+          "csv"
+        ]
+      },
+      {
+        "out": [
+          "0x1e0f46e2dd0",
+          "csv"
+        ],
+        "in": [
+          "0x1e0f49b8a60",
+          "feature"
+        ]
+      },
+      {
+        "out": [
+          "0x1e0f46e2dd0",
+          "csv"
+        ],
+        "in": [
+          "0x1e0f49b8a60",
+          "target"
+        ]
+      },
+      {
+        "out": [
+          "0x1e0f46e2dd0",
+          "csv"
+        ],
+        "in": [
+          "0x1e0f46e11e0",
+          "feature"
+        ]
+      },
+      {
+        "out": [
+          "0x1e0f46e2dd0",
+          "csv"
+        ],
+        "in": [
+          "0x1e0f46e3760",
+          "input"
+        ]
+      },
+      {
+        "out": [
+          "0x1e0f46e2dd0",
+          "csv"
+        ],
+        "in": [
+          "0x1e0f46e2650",
+          "input"
+        ]
+      },
+      {
+        "out": [
+          "0x1e0f46e2dd0",
+          "csv"
+        ],
+        "in": [
+          "0x1e0f49ba320",
+          "target"
+        ]
+      },
+      {
+        "out": [
+          "0x1e0f46e2950",
+          "output"
+        ],
+        "in": [
+          "0x1e0f46e15d0",
+          "input"
+        ]
+      },
+      {
+        "in": [
+          "0x1e0f46e11e0",
+          "model"
+        ],
+        "out": [
+          "0x1e0f49b8a60",
+          "model"
+        ]
+      },
+      {
+        "in": [
+          "0x1e0f46e0f10",
+          "feature"
+        ],
+        "out": [
+          "0x1e0f46e3760",
+          "output"
+        ]
+      },
+      {
+        "in": [
+          "0x1e0f46e0f10",
+          "model"
+        ],
+        "out": [
+          "0x1e0f49b8a60",
+          "model"
+        ]
+      },
+      {
+        "out": [
+          "0x1e0f46e2650",
+          "output"
+        ],
+        "in": [
+          "0x1e0f49ba320",
+          "feature"
+        ]
+      },
+      {
+        "out": [
+          "0x1e0f46e2650",
+          "scaler"
+        ],
+        "in": [
+          "0x1e0f46e15d0",
+          "scaler"
+        ]
+      },
+      {
+        "out": [
+          "0x1e0f46e15d0",
+          "output"
+        ],
+        "in": [
+          "0x1e0f46e1720",
+          "feature"
+        ]
+      },
+      {
+        "in": [
+          "0x1e0f46e1720",
+          "model"
+        ],
+        "out": [
+          "0x1e0f49ba320",
+          "model"
+        ]
+      }
+    ]
+  },
+  "runtime": {
+    "environment": null,
+    "environment_exe": null,
+    "node_id2stable_key": {
+      "0x1e0f46e3700": "数据集成/文档上传||文档上传",
+      "0x1e0f46e2dd0": "数据集成/CSV 读取器||CSV 读取器",
+      "0x1e0f46e2950": "数据集成/输入array||输入array",
+      "0x1e0f46e11e0": "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)",
+      "0x1e0f46e0f10": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
+      "0x1e0f46e2650": "数据预处理/MinMax归一化||MinMax归一化",
+      "0x1e0f46e15d0": "数据预处理/归一化推理(npy)||归一化推理(npy)",
+      "0x1e0f46e1720": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
+      "0x1e0f46e3760": "数据转换/csv转npy||csv转npy",
+      "0x1e0f49b8a60": "模型训练/逻辑回归训练||逻辑回归训练",
+      "0x1e0f49ba320": "模型训练/逻辑回归训练||逻辑回归训练 1"
+    },
+    "node_states": {
+      "数据集成/文档上传||文档上传": "success",
+      "数据集成/CSV 读取器||CSV 读取器": "success",
+      "数据集成/输入array||输入array": "success",
+      "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)": "success",
+      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)": "success",
+      "数据预处理/MinMax归一化||MinMax归一化": "success",
+      "数据预处理/归一化推理(npy)||归一化推理(npy)": "success",
+      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": "success",
+      "数据转换/csv转npy||csv转npy": "success",
+      "模型训练/逻辑回归训练||逻辑回归训练": "success",
+      "模型训练/逻辑回归训练||逻辑回归训练 1": "success"
+    },
+    "node_inputs": {
+      "数据集成/文档上传||文档上传": {},
+      "数据集成/CSV 读取器||CSV 读取器": {},
+      "数据集成/输入array||输入array": {},
+      "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)": {},
+      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)": {},
+      "数据预处理/MinMax归一化||MinMax归一化": {},
+      "数据预处理/归一化推理(npy)||归一化推理(npy)": {},
+      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": {},
+      "数据转换/csv转npy||csv转npy": {},
+      "模型训练/逻辑回归训练||逻辑回归训练": {},
+      "模型训练/逻辑回归训练||逻辑回归训练 1": {}
+    },
+    "node_outputs": {
+      "数据集成/文档上传||文档上传": {
+        "file": "uploads\\iris_7cd1da75-280b-424f-81e3-f40ffd756998.csv"
+      },
+      "数据集成/CSV 读取器||CSV 读取器": {
+        "csv": {
+          "__type__": "DataFrame",
+          "data": "QVJST1cxAAD/////AAUAABAAAAAAAAoADgAGAAUACAAKAAAAAAEEABAAAAAAAAoADAAAAAQACAAKAAAAvAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAAJQDAAAEAAAAhgMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJvYmplY3QiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInZpcmdpbmljYSIsICJmaWVsZF9uYW1lIjogInZpcmdpbmljYSIsICJwYW5kYXNfdHlwZSI6ICJpbnQ2NCIsICJudW1weV90eXBlIjogImludDY0IiwgIm1ldGFkYXRhIjogbnVsbH1d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",
+          "format": "feather_base64",
+          "shape": [
+            150,
+            5
+          ]
+        }
+      },
+      "数据集成/输入array||输入array": {
+        "output": {
+          "__type__": "ndarray",
+          "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDQsKSwgfSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoAAAAAAADwPwAAAAAAAABAAAAAAAAACEAAAAAAAAAQQA==",
+          "dtype": "float64",
+          "shape": [
+            4
+          ],
+          "format": "npy_base64"
+        }
+      },
+      "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)": {
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          1,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)": {
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          1,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "数据预处理/MinMax归一化||MinMax归一化": {
+        "output": {
+          "__type__": "DataFrame",
+          "data": "QVJST1cxAAD/////UAQAABAAAAAAAAoADgAGAAUACAAKAAAAAAEEABAAAAAAAAoADAAAAAQACAAKAAAASAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAACADAAAEAAAAEwMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJvYmplY3QiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfV0sICJhdHRyaWJ1dGVzIjoge30sICJjcmVhdG9yIjogeyJsaWJyYXJ5IjogInB5YXJyb3ciLCAidmVyc2lvbiI6ICIyMi4wLjAifSwgInBhbmRhc192ZXJzaW9uIjogIjIuMi4zIn0ABgAAAHBhbmRhcwAA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",
+          "format": "feather_base64",
+          "shape": [
+            150,
+            4
+          ]
+        },
+        "scaler": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_384219dfb72a4c5ead4ff677fbacb6ad.pkl"
+      },
+      "数据预处理/归一化推理(npy)||归一化推理(npy)": {
+        "output": {
+          "__type__": "ndarray",
+          "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEsIDQpLCB9ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApUVVVVVVXtvwAAAAAAAAAA0HBS9+Wx1T8AAAAAAAD6Pw==",
+          "dtype": "float64",
+          "shape": [
+            1,
+            4
+          ],
+          "format": "npy_base64"
+        }
+      },
+      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": {
+        "value": [
+          2
+        ]
+      },
+      "数据转换/csv转npy||csv转npy": {
+        "output": {
+          "__type__": "ndarray",
+          "data": "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",
+          "dtype": "float64",
+          "shape": [
+            150,
+            4
+          ],
+          "format": "npy_base64"
+        },
+        "columns": [
+          "150",
+          "4",
+          "setosa",
+          "versicolor"
+        ]
+      },
+      "模型训练/逻辑回归训练||逻辑回归训练": {
+        "value": [
+          0
+        ],
+        "model": "temp_runs\\nodes\\b7c16be4-b689-4b20-99e4-99ffde6c2819\\model_ed3c5461656f45298888e3b424a1f86b.pkl"
+      },
+      "模型训练/逻辑回归训练||逻辑回归训练 1": {
+        "value": [
+          0
+        ],
+        "model": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_919426df1dc446728a0dc903d2a0ec9c.pkl"
+      }
+    },
+    "column_select": {
+      "数据集成/文档上传||文档上传": {},
+      "数据集成/CSV 读取器||CSV 读取器": {},
+      "数据集成/输入array||输入array": {},
+      "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)": {
+        "feature": [
+          "150",
+          "4",
+          "setosa",
+          "versicolor"
+        ]
+      },
+      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)": {},
+      "数据预处理/MinMax归一化||MinMax归一化": {
+        "input": [
+          "150",
+          "4",
+          "setosa",
+          "versicolor"
+        ]
+      },
+      "数据预处理/归一化推理(npy)||归一化推理(npy)": {},
+      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": {},
+      "数据转换/csv转npy||csv转npy": {
+        "input": [
+          "150",
+          "4",
+          "setosa",
+          "versicolor"
+        ]
+      },
+      "模型训练/逻辑回归训练||逻辑回归训练": {
+        "feature": [
+          "150",
+          "4",
+          "setosa",
+          "versicolor"
+        ],
+        "target": [
+          "virginica"
+        ]
+      },
+      "模型训练/逻辑回归训练||逻辑回归训练 1": {
+        "feature": [
+          "150",
+          "4",
+          "setosa",
+          "versicolor"
+        ],
+        "target": [
+          "virginica"
+        ]
+      }
+    }
+  },
+  "global_variable": {
+    "env": {
+      "user_id": null,
+      "canvas_id": null,
+      "session_id": null,
+      "run_id": null,
+      "metadata": {
+        "TZ": "Asia/Shanghai",
+        "LANG": "en_US.UTF-8",
+        "LC_ALL": "en_US.UTF-8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "0",
+        "PYTHONPATH": ".",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONWARNINGS": "ignore"
+      }
+    },
+    "custom": {
+      "test": {
+        "value": 0.5,
+        "description": null,
+        "read_only": false
+      }
+    },
+    "node_vars": {
+      "MinMax归一化_scaler": {
+        "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
+        "update_policy": "固定"
+      },
+      "逻辑回归训练_1_model": {
+        "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
+        "update_policy": "固定"
+      },
+      "逻辑回归训练_value": {
+        "value": [
+          0
+        ],
+        "update_policy": "固定"
+      }
+    }
+  }
+}
