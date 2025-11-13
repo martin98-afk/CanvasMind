@@ -4,6 +4,7 @@ from collections import deque, defaultdict
 from typing import List, Dict, Any, Optional, Callable
 
 from NodeGraphQt import BackdropNode
+from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, pyqtSignal
 from loguru import logger
 
@@ -29,7 +30,6 @@ class WorkflowScheduler(QObject):
     error = pyqtSignal(str)
     node_status_changed = pyqtSignal(str, str)  # node_id, status
     property_changed = pyqtSignal(str)
-    node_variable_updated = pyqtSignal(str, object, str)
 
     def __init__(
             self,
@@ -54,9 +54,49 @@ class WorkflowScheduler(QObject):
     def set_node_status(self, node, status):
         self.node_status_changed.emit(node.id, status)
 
-    def get_executable_nodes(self):
+    def update_node_variable(self, name, value, policy):
+        node_var_obj = self.parent.global_variables.node_vars.get(name)
+        if policy == "更新":
+            node_var_obj.value = value
+        elif policy == "追加":
+            current_value = node_var_obj.value
+            # 尝试进行追加操作
+            try:
+                # --- 处理字符串 ---
+                if isinstance(current_value, list):
+                    if isinstance(value, list):
+                        node_var_obj.value = current_value + value
+                        logger.debug(f"变量 '{name}' (list) 已追加列表: {value}")
+                    else:
+                        # 如果当前是列表，但新值不是列表，将新值作为一个元素追加
+                        node_var_obj.value = current_value + [value]
+                        logger.debug(f"变量 '{name}' (list) 已追加单个元素: {value}")
+                # --- 处理字典 ---
+                elif isinstance(current_value, dict):
+                    if isinstance(value, dict):
+                        # 合并字典，新值会覆盖同名键的旧值
+                        node_var_obj.value = {**current_value, **value}
+                        logger.debug(f"变量 '{name}' (dict) 已合并字典: {value}")
+                    else:
+                        logger.warning(f"无法将非字典值 {value} (type: {type(value)}) 追加到字典变量 '{name}'。")
+                # --- 其他类型 ---
+                else:
+                    # 对于其他类型，尝试直接相加，如果失败则覆盖
+                    node_var_obj.value = [current_value, value]
+                    logger.debug(f"变量 '{name}' (type: {type(current_value)}) 已尝试追加: {value}")
+            except TypeError as e:
+                # 如果相加操作不支持（例如 list + int），则记录警告并覆盖
+                logger.warning(f"追加变量 '{name}' 失败: {e}. 将覆盖旧值。")
+                node_var_obj.value = value
+            except Exception as e:
+                # 捕获其他任何可能的异常，记录警告并覆盖
+                logger.error(f"追加变量 '{name}' 时发生未知错误: {e}. 将覆盖旧值。")
+                node_var_obj.value = value
+        QtCore.QTimer.singleShot(0, self.parent.property_panel._refresh_node_vars_page)
+
+    def get_executable_nodes(self, nodes=[]):
         """获取所有顶层可执行节点（排除循环内部节点）"""
-        all_nodes = self.graph.all_nodes()
+        all_nodes = self.graph.all_nodes() if len(nodes) == 0 else nodes
 
         # 找出顶层循环 Backdrop
         loop_backdrops = [
@@ -77,9 +117,9 @@ class WorkflowScheduler(QObject):
 
         return executable_nodes
 
-    def run_full(self):
+    def run_full(self, nodes=[]):
         """执行整个工作流（排除 Backdrop）"""
-        all_nodes = self.get_executable_nodes()
+        all_nodes = self.get_executable_nodes(nodes)
         if not all_nodes:
             self.error.emit("工作流中没有可执行节点")
             return
@@ -421,7 +461,7 @@ class WorkflowScheduler(QObject):
                         if f"{node_name}_{port_name}" in self.global_variables.node_vars and \
                                 self.global_variables.node_vars[
                                     f"{node_name}_{port_name}"].update_policy != "固定":
-                            self.node_variable_updated.emit(
+                            self.update_node_variable(
                                 f"{node_name}_{port_name}", result,
                                 self.global_variables.node_vars[f"{node_name}_{port_name}"].update_policy
                             )

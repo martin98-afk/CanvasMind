@@ -118,39 +118,37 @@ class VariableCompletionPopup(QListWidget):
             x = cursor_pos.x()
             y = cursor_pos.y() + 10  # 在鼠标下方留一点间距
 
-        # 获取屏幕几何信息
-        screen_geometry = QDesktopWidget().availableGeometry(editor)
-        screen_left = screen_geometry.left()
-        screen_top = screen_geometry.top()
-        screen_width = screen_geometry.width()
-        screen_height = screen_geometry.height()
+        # # 获取屏幕几何信息
+        # screen_geometry = QDesktopWidget().availableGeometry(editor)
+        # screen_left = screen_geometry.left()
+        # screen_top = screen_geometry.top()
+        # screen_width = screen_geometry.width()
+        # screen_height = screen_geometry.height()
+        #
+        # # 计算弹窗的尺寸
+        # # 使用 sizeHint() 获取理想尺寸，因为它在 show() 之前可能更准确
+        # popup_width = self.sizeHint().width()
+        # popup_height = self.sizeHint().height()
+        #
+        # # 检查并调整 x 坐标，防止弹窗超出右边界
+        # if x + 4 * popup_width // 3 > screen_left + screen_width:
+        #     x = screen_left + screen_width - 4 * popup_width // 3
+        # # 确保不超出左边界
+        # if x < screen_left:
+        #     x = screen_left
+        #
+        # # 检查并调整 y 坐标，防止弹窗超出下边界
+        # if y + popup_height > screen_top + screen_height:
+        #     # 如果下方空间不够，尝试显示在鼠标上方
+        #     y = cursor_pos.y() - popup_height - 5
+        #     # 如果上方也不够，则调整到屏幕边界
+        #     if y < screen_top:
+        #         y = screen_top
+        # # 确保不超出上边界
+        # if y < screen_top:
+        #     y = screen_top
 
-        # 计算弹窗的尺寸
-        # 使用 sizeHint() 获取理想尺寸，因为它在 show() 之前可能更准确
-        popup_width = self.sizeHint().width()
-        popup_height = self.sizeHint().height()
-
-
-
-        # 检查并调整 x 坐标，防止弹窗超出右边界
-        if x + 4 * popup_width // 3 > screen_left + screen_width:
-            x = screen_left + screen_width - 4 * popup_width // 3
-        # 确保不超出左边界
-        if x < screen_left:
-            x = screen_left
-
-        # 检查并调整 y 坐标，防止弹窗超出下边界
-        if y + popup_height > screen_top + screen_height:
-            # 如果下方空间不够，尝试显示在鼠标上方
-            y = cursor_pos.y() - popup_height - 5
-            # 如果上方也不够，则调整到屏幕边界
-            if y < screen_top:
-                y = screen_top
-        # 确保不超出上边界
-        if y < screen_top:
-            y = screen_top
-
-        self.move(x, y)
+        self.move(int(x), int(y))
         self.show()
         self.setFocus()
 
