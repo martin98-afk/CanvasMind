@@ -190,7 +190,6 @@ $node_vars.代码编辑_2_output$
         api_key = params.api_key
         base_url = params.base_url.strip()
         system_prompt = params.system_prompt
-        self.logger.info(system_prompt)
         temperature = float(params.temperature)
         max_tokens = int(params.max_tokens)
         enable_visual = params.visual  # 获取视觉识别开关

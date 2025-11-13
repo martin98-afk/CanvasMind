@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from NodeGraphQt.constants import NodeEnum, ICON_NODE_BASE, ITEM_CACHE_MODE
+from NodeGraphQt.constants import NodeEnum, ICON_NODE_BASE, ITEM_CACHE_MODE, PortTypeEnum, LayoutDirectionEnum
 from NodeGraphQt.qgraphics.node_base import NodeItem
 from NodeGraphQt.qgraphics.node_overlay_disabled import XDisabledItem
 from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
@@ -26,7 +26,7 @@ class CustomNodeItem(NodeItem):
         self._text_item = NodeTextItem(self.name, self)
         font = QtGui.QFont()
         font.setPointSize(16)  # 推荐 10~12
-        font.setBold(False)  # 可选
+        font.setBold(True)  # 可选
         self._text_item.setFont(font)
         self._x_item = XDisabledItem(self, 'DISABLED')
         self._input_items = OrderedDict()
@@ -34,6 +34,19 @@ class CustomNodeItem(NodeItem):
         self._widgets = OrderedDict()
         self._proxy_mode = False
         self._proxy_mode_threshold = 70
+
+    def _set_text_color(self, color=None):
+        """
+        set text color.
+
+        Args:
+            color (tuple): color value in (r, g, b, a).
+        """
+        for port, text in self._input_items.items():
+            text.setDefaultTextColor(QtGui.QColor("white"))
+        for port, text in self._output_items.items():
+            text.setDefaultTextColor(QtGui.QColor("white"))
+        self._text_item.setDefaultTextColor(QtGui.QColor("white"))
 
     @property
     def icon(self):
@@ -73,6 +86,46 @@ class CustomNodeItem(NodeItem):
             self.post_init()
 
         self.update()
+
+    def paint(self, painter, option, widget):
+        """
+        Draws the node base not the ports.
+
+        Args:
+            painter (QtGui.QPainter): painter used for drawing the item.
+            option (QtGui.QStyleOptionGraphicsItem):
+                used to describe the parameters needed to draw.
+            widget (QtWidgets.QWidget): not used.
+        """
+        if self.layout_direction is LayoutDirectionEnum.HORIZONTAL.value:
+            self._paint_horizontal(painter, option, widget)
+        elif self.layout_direction is LayoutDirectionEnum.VERTICAL.value:
+            self._paint_vertical(painter, option, widget)
+        else:
+            raise RuntimeError('Node graph layout direction not valid!')
+
+    def _add_port(self, port):
+        """
+        Adds a port qgraphics item into the node.
+
+        Args:
+            port (PortItem): port item.
+
+        Returns:
+            PortItem: port qgraphics item.
+        """
+        text = QtWidgets.QGraphicsTextItem(port.name, self)
+        text.setFont(QtGui.QFont("Arial", 10))
+        text.setDefaultTextColor(QtGui.QColor("white"))  # 设置字体颜色
+        text.setVisible(port.display_name)
+        text.setCacheMode(ITEM_CACHE_MODE)
+        if port.port_type == PortTypeEnum.IN.value:
+            self._input_items[port] = text
+        elif port.port_type == PortTypeEnum.OUT.value:
+            self._output_items[port] = text
+        if self.scene():
+            self.post_init()
+        return port
 
     def _paint_horizontal(self, painter, option, widget):
 
@@ -160,7 +213,7 @@ class CustomNodeItem(NodeItem):
 
         # --- align all items with new header offset ---
         self.align_label(v_offset=label_v_offset)
-        self.align_icon(h_offset=1.5, v_offset=label_v_offset - 1.5)
+        self.align_icon(h_offset=6, v_offset=label_v_offset - 1.5)
         self.align_ports(v_offset=header_height)  # ⬅️ ports 下移
         self.align_widgets(v_offset=header_height + 8.0)  # ⬅️ widgets 下移
 

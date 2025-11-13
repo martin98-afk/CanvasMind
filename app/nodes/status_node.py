@@ -51,5 +51,3 @@ class StatusNode(BasicNodeWithGlobalProperty):
         elif self._status == NodeStatus.NODE_STATUS_PENDING:
             # 淡灰色 - 等待运行
             self.set_color(60, 60, 60)
-
-        self._view.draw_node()

@@ -2,7 +2,7 @@
 import re
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QKeyEvent, QFont, QSyntaxHighlighter, QTextCharFormat, QColor, QPalette
+from PyQt5.QtGui import QKeyEvent, QFont, QSyntaxHighlighter, QTextCharFormat, QColor, QPalette, QCursor
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtWidgets import QListWidget, QDesktopWidget  # 添加 QDesktopWidget
 from qfluentwidgets import TextEdit, LineEdit
@@ -56,8 +56,9 @@ class VariableHighlighter(QSyntaxHighlighter):
 class VariableCompletionPopup(QListWidget):
     itemSelected = pyqtSignal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, use_qcursor=False, parent=None):
         super().__init__(parent)
+        self.use_qcursor = use_qcursor
         self.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
         self.setFocusPolicy(Qt.NoFocus)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -105,8 +106,17 @@ class VariableCompletionPopup(QListWidget):
         self.hide()
 
     def show_at_cursor(self, editor):
-        cursor_rect = editor.cursorRect()
-        global_pos = editor.mapToGlobal(cursor_rect.bottomLeft())
+        # 获取当前鼠标位置
+        if not self.use_qcursor:
+            cursor_rect = editor.cursorRect()
+            cursor_pos = editor.mapToGlobal(cursor_rect.bottomLeft())
+            x = cursor_pos.x()
+            y = cursor_pos.y()
+        else:
+            cursor_pos = QCursor.pos()
+            # 计算调整后的 x, y 坐标 - 显示在鼠标位置下方
+            x = cursor_pos.x()
+            y = cursor_pos.y() + 10  # 在鼠标下方留一点间距
 
         # 获取屏幕几何信息
         screen_geometry = QDesktopWidget().availableGeometry(editor)
@@ -120,21 +130,23 @@ class VariableCompletionPopup(QListWidget):
         popup_width = self.sizeHint().width()
         popup_height = self.sizeHint().height()
 
-        # 计算调整后的 x, y 坐标
-        x = global_pos.x()
-        y = global_pos.y()
+
 
         # 检查并调整 x 坐标，防止弹窗超出右边界
         if x + 4 * popup_width // 3 > screen_left + screen_width:
             x = screen_left + screen_width - 4 * popup_width // 3
-        # 确保不超出左边界（虽然通常不会）
+        # 确保不超出左边界
         if x < screen_left:
             x = screen_left
 
         # 检查并调整 y 坐标，防止弹窗超出下边界
         if y + popup_height > screen_top + screen_height:
-            y = screen_top + screen_height - popup_height
-        # 确保不超出上边界（虽然通常不会）
+            # 如果下方空间不够，尝试显示在鼠标上方
+            y = cursor_pos.y() - popup_height - 5
+            # 如果上方也不够，则调整到屏幕边界
+            if y < screen_top:
+                y = screen_top
+        # 确保不超出上边界
         if y < screen_top:
             y = screen_top
 
@@ -147,10 +159,10 @@ class VariableCompletionPopup(QListWidget):
 # 支持变量补全和高亮的 TextEdit
 # -----------------------
 class VariableCompletionTextEdit(TextEdit):
-    def __init__(self, get_variable_list_func, parent=None):
+    def __init__(self, get_variable_list_func, use_qursor=False, parent=None):
         super().__init__(parent)
         self.get_variable_list_func = get_variable_list_func
-        self.popup = VariableCompletionPopup()
+        self.popup = VariableCompletionPopup(use_qursor)
         self.popup.itemSelected.connect(self._apply_completion)
         self._completing = False
         self._input_timer = QTimer()
@@ -361,10 +373,10 @@ class VariableCompletionTextEdit(TextEdit):
 
 
 class VariableCompletionLineEdit(LineEdit):
-    def __init__(self, get_variable_list_func, parent=None):
+    def __init__(self, get_variable_list_func, use_qursor=False, parent=None):
         super().__init__(parent)
         self.get_variable_list_func = get_variable_list_func
-        self.popup = VariableCompletionPopup()
+        self.popup = VariableCompletionPopup(use_qursor)
         self.popup.itemSelected.connect(self._apply_completion)
         self._completing = False
         self._input_timer = QTimer()

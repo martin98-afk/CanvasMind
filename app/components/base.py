@@ -268,7 +268,7 @@ class GlobalVariableContext(BaseModel):
         else:
             self.custom[key].value = value
 
-    def set_output(self, node_id: str, output_name: str, output_value: Any, policy: str="固定"):
+    def set_output(self, node_id: str, output_name: str, output_value: Any, policy: str="更新"):
         self.node_vars[f"{node_id}_{output_name}"] = NodeVariable(
             value=output_value, update_policy=policy
         )
