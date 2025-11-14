@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "Matplotlib画图"
     category = "数据可视化"
     description = "使用Matplotlib绘制图表"
-    requirements = "matplotlib,Pillow"
+    requirements = "Pillow,matplotlib"
     inputs = [
         PortDefinition(name="x", label="输入1", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE),
         PortDefinition(name="y", label="输入2", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE),
@@ -27,7 +27,14 @@ class Component(BaseComponent):
     outputs = [
         PortDefinition(name="output", label="输出图像", type=ArgumentType.IMAGE),
     ]
-    properties = {}
+    properties = {
+        "prop1": PropertyDefinition(
+            type=PropertyType.CHOICE,
+            default="",
+            label="属性1",
+            choices=["折线图", "散点图"]
+        ),
+    }
     
     def run(self, params, inputs=None):
         import matplotlib.pyplot as plt
@@ -39,7 +46,10 @@ class Component(BaseComponent):
         plt.figure()
         try:
             # 假设数据为x,y列表格式
-            plt.plot(inputs.x, inputs.y)
+            if params.prop1 == "折线图":
+                plt.plot(inputs.x, inputs.y)
+            elif params.prop1 == "散点图":
+                plt.scatter(inputs.x, inputs.y)
             plt.title("Matplotlib Chart")
             # 保存到临时文件
             buf = io.BytesIO()

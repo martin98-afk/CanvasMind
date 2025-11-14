@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1a24d96d120": {
+      "0x1ac86afd330": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话",
@@ -34,10 +34,10 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 554.76,
-        "height": 593.5500000000001,
+        "width": 552.0287500000001,
+        "height": 592.5,
         "pos": [
           -549.6061575949302,
           1941.7502453506295
@@ -48,9 +48,9 @@
         "custom": {
           "persistent_id": "66e21e98-9898-47c3-9e49-cb7b5698852a",
           "debug_code": {},
-          "model": "$custom.model_name2$",
+          "model": "$custom.model_name$",
           "api_key": "",
-          "base_url": "$custom.url2$",
+          "base_url": "$custom.url$",
           "system_prompt": "你是一个代码编辑专家，能够根据用户的需求生成专业的python代码，除了python代码不要输出任何其他文字。",
           "temperature": 0.0,
           "max_tokens": "20000",
@@ -63,7 +63,7 @@
           ]
         }
       },
-      "0x1a24c6ccbb0": {
+      "0x1ac97712aa0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件意图",
@@ -86,9 +86,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 486.68,
+        "width": 484.495,
         "height": 101.10000000000001,
         "pos": [
           -2251.795595653402,
@@ -103,7 +103,7 @@
           "input_text": "我的需求是开发一个matplotlib画图组件"
         }
       },
-      "0x1a24c6cc2e0": {
+      "0x1ac97713880": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装",
@@ -126,9 +126,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 398.36,
+        "width": 392.15000000000003,
         "height": 101.10000000000001,
         "pos": [
           -1719.965413544517,
@@ -143,7 +143,7 @@
           "prop_0": "intention"
         }
       },
-      "0x1a24c6cfaf0": {
+      "0x1ac97712e60": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "提示词模板 3",
@@ -166,9 +166,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 529.0,
+        "width": 523.8825,
         "height": 101.10000000000001,
         "pos": [
           -1149.8487281288146,
@@ -197,7 +197,7 @@
           "template": "## 组件开发需求\n{{intention}}\n\n## 组件输入参数\n{{input}}\n\n## 组件属性参数\n{{params}}\n\n## 组件输出参数\n{{output}}\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，但是组件定义的输入输出参数必须要在当前参数定义范围之内，不能输出新的参数类型。同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码"
         }
       },
-      "0x1a24c6ce500": {
+      "0x1ac97d72050": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件输入",
@@ -220,9 +220,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 486.68,
+        "width": 484.495,
         "height": 101.10000000000001,
         "pos": [
           -2277.9682509521176,
@@ -237,7 +237,7 @@
           "input_text": "输入是用户的列表数据输入是[1,2,3,4]格式数据"
         }
       },
-      "0x1a24b526920": {
+      "0x1ac97d72350": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 1",
@@ -260,9 +260,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 420.44,
+        "width": 411.84375,
         "height": 101.10000000000001,
         "pos": [
           -1750.674148297755,
@@ -277,7 +277,7 @@
           "prop_0": "input"
         }
       },
-      "0x1a24d8c1b40": {
+      "0x1aca06d6e30": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 3",
@@ -300,9 +300,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 420.44,
+        "width": 411.84375,
         "height": 101.10000000000001,
         "pos": [
           -1731.1074646991706,
@@ -317,7 +317,7 @@
           "prop_0": "output"
         }
       },
-      "0x1a24d8c3df0": {
+      "0x1aca06d7430": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件输出",
@@ -340,9 +340,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 486.68,
+        "width": 484.495,
         "height": 101.10000000000001,
         "pos": [
           -2258.5180922326917,
@@ -357,7 +357,7 @@
           "input_text": "输出是画图结果，传参是PIL.Image格式图片"
         }
       },
-      "0x1a24d8c3790": {
+      "0x1aca06d7a00": {
         "type_": "dynamic.StatusDynamicNode_数据存储_组件保存",
         "icon": null,
         "name": "组件保存",
@@ -382,7 +382,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 168.36,
+        "width": 166.175,
         "height": 69.6,
         "pos": [
           1076.6074239207896,
@@ -396,7 +396,7 @@
           "debug_code": {}
         }
       },
-      "0x1a24d8c3550": {
+      "0x1aca06d7ca0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
         "icon": null,
         "name": "大模型输出解析",
@@ -419,10 +419,10 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 322.92,
-        "height": 141.0,
+        "width": 320.01625,
+        "height": 139.95,
         "pos": [
           657.3546299057369,
           1802.9525076426921
@@ -437,7 +437,7 @@
           "type": "python"
         }
       },
-      "0x1a24d8c10c0": {
+      "0x1aca06d40d0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程",
@@ -460,9 +460,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 446.20000000000005,
+        "width": 442.0025,
         "height": 113.7,
         "pos": [
           70.26058052320559,
@@ -478,7 +478,7 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x1a24d8c09d0": {
+      "0x1aca06d63b0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_构建多轮对话",
         "icon": null,
         "name": "构建多轮对话",
@@ -503,8 +503,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 552.0,
-        "height": 464.40000000000003,
+        "width": 548.7225,
+        "height": 463.35,
         "pos": [
           -1488.3766861115637,
           2241.3958265546185
@@ -543,7 +543,7 @@
           ]
         }
       },
-      "0x1a24d8c07f0": {
+      "0x1aca06d6200": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 2",
@@ -566,9 +566,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 420.44,
+        "width": 411.84375,
         "height": 101.10000000000001,
         "pos": [
           -1686.0824351237516,
@@ -583,7 +583,7 @@
           "prop_0": "params"
         }
       },
-      "0x1a24d8c06d0": {
+      "0x1aca06d5ed0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件参数",
@@ -606,9 +606,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 486.68,
+        "width": 484.495,
         "height": 101.10000000000001,
         "pos": [
           -2257.607258860842,
@@ -623,7 +623,7 @@
           "input_text": "组件参数暂无"
         }
       },
-      "0x1a225772a10": {
+      "0x1ac97d402e0": {
         "type_": "dynamic.StatusDynamicNode_数据存储_组件保存",
         "icon": null,
         "name": "组件保存 1",
@@ -648,7 +648,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 190.44,
+        "width": 185.86875,
         "height": 69.6,
         "pos": [
           2889.007151591656,
@@ -662,7 +662,7 @@
           "debug_code": {}
         }
       },
-      "0x1a2257738b0": {
+      "0x1ac97d439d0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程 1",
@@ -687,7 +687,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 468.28000000000003,
+        "width": 461.69625,
         "height": 113.7,
         "pos": [
           1555.0035282576443,
@@ -703,7 +703,7 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x1a225771750": {
+      "0x1ac9d286650": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
         "icon": null,
         "name": "大模型输出解析 1",
@@ -728,8 +728,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 345.0,
-        "height": 141.0,
+        "width": 339.71000000000004,
+        "height": 139.95,
         "pos": [
           2108.321373412119,
           2396.8636516935057
@@ -744,7 +744,7 @@
           "type": "python"
         }
       },
-      "0x1a24d8c0a90": {
+      "0x1ac9d286e00": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话 1",
@@ -769,8 +769,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 576.84,
-        "height": 593.5500000000001,
+        "width": 571.7225,
+        "height": 592.5,
         "pos": [
           895.2285328217044,
           2242.188252527454
@@ -796,7 +796,7 @@
           ]
         }
       },
-      "0x1a24d861420": {
+      "0x1ac9d287e50": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "长文本输入",
@@ -821,7 +821,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 506.92,
+        "width": 504.18875,
         "height": 101.10000000000001,
         "pos": [
           387.0008284344908,
@@ -836,7 +836,7 @@
           "input_text": "有全局变量了就不需要在property上配置模型名称了呀，只需要用range类型控制下温度，还有你问题分类的配置呢，用动态表单动态创建问题分类，继续优化"
         }
       },
-      "0x1a24d860160": {
+      "0x1ac9d287760": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\WorkFlowGUI\\icons/代码执行.svg",
         "name": "代码编辑",
@@ -861,8 +861,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 814.2,
-        "height": 808.8000000000001,
+        "width": 812.015,
+        "height": 805.65,
         "pos": [
           1266.699627263219,
           1316.2617103508499
@@ -903,7 +903,7 @@
           "code": "def run(self, params, inputs=None):\n    import matplotlib.pyplot as plt\n    from PIL import Image\n    import io\n    # 获取输入数据\n    self.logger.info(type(inputs.input))\n    data = inputs.input if inputs else []\n    # 创建图表\n    plt.figure(figsize=(8, 4))\n    plt.plot(data, marker='o')\n    plt.title(\"Matplotlib Chart\")\n    plt.xlabel(\"X-axis\")\n    plt.ylabel(\"Y-axis\")\n    # 保存到内存中的字节流\n    buf = io.BytesIO()\n    plt.savefig(buf, format='png')\n    plt.close()\n    buf.seek(0)\n    # 转换为PIL.Image格式\n    image = Image.open(buf)\n    # 返回结果\n    return {\n        \"output1\": image\n    }"
         }
       },
-      "0x1a24db77130": {
+      "0x1ac9d07d3c0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": "D:\\work\\WorkFlowGUI\\icons\\文本输入.svg",
         "name": "文本输入",
@@ -928,7 +928,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 446.20000000000005,
+        "width": 444.01500000000004,
         "height": 268.05,
         "pos": [
           -55.5733661040731,
@@ -943,7 +943,7 @@
           "input": "[1,2,3,4,5,6,7,8,9,10]"
         }
       },
-      "0x1a24d8c0700": {
+      "0x1ac9d07d480": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\WorkFlowGUI\\icons/代码执行.svg",
         "name": "代码编辑 1",
@@ -968,8 +968,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 836.2800000000001,
-        "height": 808.8000000000001,
+        "width": 831.70875,
+        "height": 805.65,
         "pos": [
           2325.2192894661075,
           1314.5477532048956
@@ -995,7 +995,7 @@
           "persistent_id": {},
           "input_ports": [
             {
-              "name": "",
+              "name": "input_0",
               "type": "文本",
               "var": "无"
             }
@@ -1010,7 +1010,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    # 在这里编写你的组件逻辑\n    input_data = inputs.get(\"input_data\") if inputs else None\n    param1 = params.get(\"param1\", \"default_value\")\n    # 处理逻辑\n    result = f\"处理结果: {input_data} + {param1}\"\n    return {\n        \"output_0\": result\n    }"
         }
       },
-      "0x1a24db76fe0": {
+      "0x1ac9d21f850": {
         "type_": "dynamic.StatusDynamicNode_数据可视化_Matplotlib画图",
         "icon": null,
         "name": "Matplotlib画图",
@@ -1035,8 +1035,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 238.28,
-        "height": 82.2,
+        "width": 316.365,
+        "height": 101.10000000000001,
         "pos": [
           1106.9384579431799,
           1180.6289851536421
@@ -1046,10 +1046,11 @@
         "subgraph_session": {},
         "custom": {
           "persistent_id": "0816eac2-8f13-479c-80e3-cd3639d0a123",
-          "debug_code": {}
+          "debug_code": {},
+          "prop1": "折线图"
         }
       },
-      "0x1a225440670": {
+      "0x1ac9d21f370": {
         "type_": "dynamic.StatusDynamicNode_数据可视化_Matplotlib画图",
         "icon": null,
         "name": "Matplotlib画图 1",
@@ -1074,8 +1075,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 260.36,
-        "height": 82.2,
+        "width": 336.05875000000003,
+        "height": 101.10000000000001,
         "pos": [
           1048.5038100280408,
           975.6910454427601
@@ -1085,10 +1086,11 @@
         "subgraph_session": {},
         "custom": {
           "persistent_id": "cf6f5b40-81bc-468b-aeac-c7b0e32301eb",
-          "debug_code": {}
+          "debug_code": {},
+          "prop1": "折线图"
         }
       },
-      "0x1a246eb05b0": {
+      "0x1ac9d21c340": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话 3",
@@ -1113,8 +1115,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 529.0,
-        "height": 534.75,
+        "width": 523.8825,
+        "height": 533.7,
         "pos": [
           -991.3712212986521,
           3090.919506805821
@@ -1135,7 +1137,7 @@
           "model_params": []
         }
       },
-      "0x1a24db77040": {
+      "0x1ac9d21f2b0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程 3",
@@ -1160,7 +1162,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 468.28000000000003,
+        "width": 461.69625,
         "height": 113.7,
         "pos": [
           -241.50366028431938,
@@ -1176,7 +1178,7 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x1a243018220": {
+      "0x1ac9d40ded0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -1201,7 +1203,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 168.36,
+        "width": 166.175,
         "height": 69.6,
         "pos": [
           -2308.743187279715,
@@ -1215,7 +1217,7 @@
           "debug_code": {}
         }
       },
-      "0x1a246d51540": {
+      "0x1ac9b7b0160": {
         "type_": "dynamic.StatusDynamicNode_数据转换_文件转图片",
         "icon": null,
         "name": "文件转图片",
@@ -1240,7 +1242,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 188.6,
+        "width": 185.86875,
         "height": 69.6,
         "pos": [
           -2086.8414000419107,
@@ -1254,7 +1256,7 @@
           "debug_code": {}
         }
       },
-      "0x1a246bafd00": {
+      "0x1ac9b7b1540": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_图像4通道转3通道",
         "icon": null,
         "name": "图像4通道转3通道",
@@ -1279,7 +1281,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 251.16000000000003,
+        "width": 245.32375000000002,
         "height": 69.6,
         "pos": [
           -1860.7540530867414,
@@ -1293,7 +1295,7 @@
           "debug_code": {}
         }
       },
-      "0x1a246baf880": {
+      "0x1ac9b7b3220": {
         "type_": "dynamic.StatusDynamicNode_数据转换_图片转base64编码",
         "icon": null,
         "name": "图片转base64编码",
@@ -1318,7 +1320,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 254.84,
+        "width": 246.07125000000002,
         "height": 69.6,
         "pos": [
           -1546.8156227432778,
@@ -1332,7 +1334,7 @@
           "debug_code": {}
         }
       },
-      "0x1a246baeb30": {
+      "0x1ac9b7b1f60": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口 1",
@@ -1370,7 +1372,7 @@
           "persistent_id": {}
         }
       },
-      "0x1a246bac8b0": {
+      "0x1ac9b7b20b0": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口 1",
@@ -1408,7 +1410,7 @@
           "persistent_id": {}
         }
       },
-      "0x1a241a8f8e0": {
+      "0x1ac9b7b2290": {
         "type_": "control_flow.ControlFlowLoopNode",
         "icon": null,
         "name": "循环控制流区域",
@@ -1434,7 +1436,7 @@
         "selected": false,
         "visible": true,
         "width": 2478.895859595407,
-        "height": 673.5500000000002,
+        "height": 672.5,
         "pos": [
           220.96197751041416,
           2202.188252527454
@@ -1456,301 +1458,301 @@
     "connections": [
       {
         "in": [
-          "0x1a24d96d120",
+          "0x1ac86afd330",
           "user_input"
         ],
         "out": [
-          "0x1a24c6cfaf0",
+          "0x1ac97712e60",
           "prompt"
         ]
       },
       {
         "in": [
-          "0x1a24d96d120",
+          "0x1ac86afd330",
           "history"
         ],
         "out": [
-          "0x1a24d8c09d0",
+          "0x1aca06d63b0",
           "output1"
         ]
       },
       {
         "out": [
-          "0x1a24d96d120",
+          "0x1ac86afd330",
           "response"
         ],
         "in": [
-          "0x1a24d8c10c0",
+          "0x1aca06d40d0",
           "raw_text"
         ]
       },
       {
         "out": [
-          "0x1a24d96d120",
+          "0x1ac86afd330",
           "history"
         ],
         "in": [
-          "0x1a241a8f8e0",
+          "0x1ac9b7b2290",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1a24c6ccbb0",
+          "0x1ac97712aa0",
           "output"
         ],
         "in": [
-          "0x1a24c6cc2e0",
+          "0x1ac97713880",
           "input1"
         ]
       },
       {
         "out": [
-          "0x1a24c6cc2e0",
+          "0x1ac97713880",
           "output1"
         ],
         "in": [
-          "0x1a24c6cfaf0",
+          "0x1ac97712e60",
           "variables"
         ]
       },
       {
         "in": [
-          "0x1a24c6cfaf0",
+          "0x1ac97712e60",
           "variables"
         ],
         "out": [
-          "0x1a24b526920",
+          "0x1ac97d72350",
           "output1"
         ]
       },
       {
         "in": [
-          "0x1a24c6cfaf0",
+          "0x1ac97712e60",
           "variables"
         ],
         "out": [
-          "0x1a24d8c1b40",
+          "0x1aca06d6e30",
           "output1"
         ]
       },
       {
         "in": [
-          "0x1a24c6cfaf0",
+          "0x1ac97712e60",
           "variables"
         ],
         "out": [
-          "0x1a24d8c07f0",
+          "0x1aca06d6200",
           "output1"
         ]
       },
       {
         "out": [
-          "0x1a24c6ce500",
+          "0x1ac97d72050",
           "output"
         ],
         "in": [
-          "0x1a24b526920",
+          "0x1ac97d72350",
           "input1"
         ]
       },
       {
         "in": [
-          "0x1a24d8c1b40",
+          "0x1aca06d6e30",
           "input1"
         ],
         "out": [
-          "0x1a24d8c3df0",
+          "0x1aca06d7430",
           "output"
         ]
       },
       {
         "in": [
-          "0x1a24d8c3790",
+          "0x1aca06d7a00",
           "text"
         ],
         "out": [
-          "0x1a24d8c3550",
+          "0x1aca06d7ca0",
           "parsed_json"
         ]
       },
       {
         "in": [
-          "0x1a24d8c3550",
+          "0x1aca06d7ca0",
           "llm_output"
         ],
         "out": [
-          "0x1a24d8c10c0",
+          "0x1aca06d40d0",
           "cleaned_text"
         ]
       },
       {
         "in": [
-          "0x1a24d8c07f0",
+          "0x1aca06d6200",
           "input1"
         ],
         "out": [
-          "0x1a24d8c06d0",
+          "0x1aca06d5ed0",
           "output"
         ]
       },
       {
         "in": [
-          "0x1a2257738b0",
+          "0x1ac97d439d0",
           "raw_text"
         ],
         "out": [
-          "0x1a24d8c0a90",
+          "0x1ac9d286e00",
           "response"
         ]
       },
       {
         "out": [
-          "0x1a2257738b0",
+          "0x1ac97d439d0",
           "cleaned_text"
         ],
         "in": [
-          "0x1a225771750",
+          "0x1ac9d286650",
           "llm_output"
         ]
       },
       {
         "in": [
-          "0x1a24d8c0a90",
+          "0x1ac9d286e00",
           "user_input"
         ],
         "out": [
-          "0x1a24d861420",
+          "0x1ac9d287e50",
           "output"
         ]
       },
       {
         "in": [
-          "0x1a24d8c0a90",
+          "0x1ac9d286e00",
           "history"
         ],
         "out": [
-          "0x1a246baeb30",
+          "0x1ac9b7b1f60",
           "output"
         ]
       },
       {
         "out": [
-          "0x1a24d8c0a90",
+          "0x1ac9d286e00",
           "history"
         ],
         "in": [
-          "0x1a246bac8b0",
+          "0x1ac9b7b20b0",
           "input"
         ]
       },
       {
         "in": [
-          "0x1a24d860160",
+          "0x1ac9d287760",
           "input"
         ],
         "out": [
-          "0x1a24db77130",
+          "0x1ac9d07d3c0",
           "text"
         ]
       },
       {
         "out": [
-          "0x1a24d860160",
+          "0x1ac9d287760",
           "output1"
         ],
         "in": [
-          "0x1a24d8c0700",
+          "0x1ac9d07d480",
           "input_0"
         ]
       },
       {
         "out": [
-          "0x1a24db77130",
+          "0x1ac9d07d3c0",
           "text"
         ],
         "in": [
-          "0x1a24db76fe0",
+          "0x1ac9d21f850",
           "x"
         ]
       },
       {
         "out": [
-          "0x1a24db77130",
+          "0x1ac9d07d3c0",
           "text"
         ],
         "in": [
-          "0x1a24db76fe0",
+          "0x1ac9d21f850",
           "y"
         ]
       },
       {
         "out": [
-          "0x1a24db77130",
+          "0x1ac9d07d3c0",
           "text"
         ],
         "in": [
-          "0x1a225440670",
+          "0x1ac9d21f370",
           "x"
         ]
       },
       {
         "out": [
-          "0x1a24db77130",
+          "0x1ac9d07d3c0",
           "text"
         ],
         "in": [
-          "0x1a225440670",
+          "0x1ac9d21f370",
           "y"
         ]
       },
       {
         "in": [
-          "0x1a246eb05b0",
+          "0x1ac9d21c340",
           "user_input"
         ],
         "out": [
-          "0x1a246baf880",
+          "0x1ac9b7b3220",
           "output1"
         ]
       },
       {
         "out": [
-          "0x1a246eb05b0",
+          "0x1ac9d21c340",
           "response"
         ],
         "in": [
-          "0x1a24db77040",
+          "0x1ac9d21f2b0",
           "raw_text"
         ]
       },
       {
         "out": [
-          "0x1a243018220",
+          "0x1ac9d40ded0",
           "file"
         ],
         "in": [
-          "0x1a246d51540",
+          "0x1ac9b7b0160",
           "file"
         ]
       },
       {
         "out": [
-          "0x1a246d51540",
+          "0x1ac9b7b0160",
           "image"
         ],
         "in": [
-          "0x1a246bafd00",
+          "0x1ac9b7b1540",
           "input"
         ]
       },
       {
         "out": [
-          "0x1a246bafd00",
+          "0x1ac9b7b1540",
           "output"
         ],
         "in": [
-          "0x1a246baf880",
+          "0x1ac9b7b3220",
           "input1"
         ]
       }
@@ -1758,41 +1760,41 @@
   },
   "runtime": {
     "environment": "3.14",
-    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.14\\python.exe",
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
     "node_id2stable_key": {
-      "0x1a24d96d120": "大模型组件/大模型对话||大模型对话",
-      "0x1a24c6ccbb0": "数据集成/长文本输入||组件意图",
-      "0x1a24c6cc2e0": "大模型组件/JSON文本包装||JSON文本包装",
-      "0x1a24c6cfaf0": "大模型组件/提示词模板||提示词模板 3",
-      "0x1a24c6ce500": "数据集成/长文本输入||组件输入",
-      "0x1a24b526920": "大模型组件/JSON文本包装||JSON文本包装 1",
-      "0x1a24d8c1b40": "大模型组件/JSON文本包装||JSON文本包装 3",
-      "0x1a24d8c3df0": "数据集成/长文本输入||组件输出",
-      "0x1a24d8c3790": "数据存储/组件保存||组件保存",
-      "0x1a24d8c3550": "大模型组件/大模型输出解析||大模型输出解析",
-      "0x1a24d8c10c0": "大模型组件/移除思考过程||移除思考过程",
-      "0x1a24d8c09d0": "大模型组件/构建多轮对话||构建多轮对话",
-      "0x1a24d8c07f0": "大模型组件/JSON文本包装||JSON文本包装 2",
-      "0x1a24d8c06d0": "数据集成/长文本输入||组件参数",
-      "0x1a225772a10": "数据存储/组件保存||组件保存 1",
-      "0x1a2257738b0": "大模型组件/移除思考过程||移除思考过程 1",
-      "0x1a225771750": "大模型组件/大模型输出解析||大模型输出解析 1",
-      "0x1a24d8c0a90": "大模型组件/大模型对话||大模型对话 1",
-      "0x1a24d861420": "数据集成/长文本输入||长文本输入",
-      "0x1a24d860160": "代码执行/代码编辑||代码编辑",
-      "0x1a24db77130": "数据集成/文本输入||文本输入",
-      "0x1a24d8c0700": "代码执行/代码编辑||代码编辑 1",
-      "0x1a24db76fe0": "数据可视化/Matplotlib画图||Matplotlib画图",
-      "0x1a225440670": "数据可视化/Matplotlib画图||Matplotlib画图 1",
-      "0x1a246eb05b0": "大模型组件/大模型对话||大模型对话 3",
-      "0x1a24db77040": "大模型组件/移除思考过程||移除思考过程 3",
-      "0x1a243018220": "数据集成/文档上传||文档上传",
-      "0x1a246d51540": "数据转换/文件转图片||文件转图片",
-      "0x1a246bafd00": "数据预处理/图像4通道转3通道||图像4通道转3通道",
-      "0x1a246baf880": "数据转换/图片转base64编码||图片转base64编码",
-      "0x1a246baeb30": "控制流/输入端口||输入端口 1",
-      "0x1a246bac8b0": "控制流/输出端口||输出端口 1",
-      "0x1a241a8f8e0": "控制流/循环控制流区域||循环控制流区域"
+      "0x1ac86afd330": "大模型组件/大模型对话||大模型对话",
+      "0x1ac97712aa0": "数据集成/长文本输入||组件意图",
+      "0x1ac97713880": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x1ac97712e60": "大模型组件/提示词模板||提示词模板 3",
+      "0x1ac97d72050": "数据集成/长文本输入||组件输入",
+      "0x1ac97d72350": "大模型组件/JSON文本包装||JSON文本包装 1",
+      "0x1aca06d6e30": "大模型组件/JSON文本包装||JSON文本包装 3",
+      "0x1aca06d7430": "数据集成/长文本输入||组件输出",
+      "0x1aca06d7a00": "数据存储/组件保存||组件保存",
+      "0x1aca06d7ca0": "大模型组件/大模型输出解析||大模型输出解析",
+      "0x1aca06d40d0": "大模型组件/移除思考过程||移除思考过程",
+      "0x1aca06d63b0": "大模型组件/构建多轮对话||构建多轮对话",
+      "0x1aca06d6200": "大模型组件/JSON文本包装||JSON文本包装 2",
+      "0x1aca06d5ed0": "数据集成/长文本输入||组件参数",
+      "0x1ac97d402e0": "数据存储/组件保存||组件保存 1",
+      "0x1ac97d439d0": "大模型组件/移除思考过程||移除思考过程 1",
+      "0x1ac9d286650": "大模型组件/大模型输出解析||大模型输出解析 1",
+      "0x1ac9d286e00": "大模型组件/大模型对话||大模型对话 1",
+      "0x1ac9d287e50": "数据集成/长文本输入||长文本输入",
+      "0x1ac9d287760": "代码执行/代码编辑||代码编辑",
+      "0x1ac9d07d3c0": "数据集成/文本输入||文本输入",
+      "0x1ac9d07d480": "代码执行/代码编辑||代码编辑 1",
+      "0x1ac9d21f850": "数据可视化/Matplotlib画图||Matplotlib画图",
+      "0x1ac9d21f370": "数据可视化/Matplotlib画图||Matplotlib画图 1",
+      "0x1ac9d21c340": "大模型组件/大模型对话||大模型对话 3",
+      "0x1ac9d21f2b0": "大模型组件/移除思考过程||移除思考过程 3",
+      "0x1ac9d40ded0": "数据集成/文档上传||文档上传",
+      "0x1ac9b7b0160": "数据转换/文件转图片||文件转图片",
+      "0x1ac9b7b1540": "数据预处理/图像4通道转3通道||图像4通道转3通道",
+      "0x1ac9b7b3220": "数据转换/图片转base64编码||图片转base64编码",
+      "0x1ac9b7b1f60": "控制流/输入端口||输入端口 1",
+      "0x1ac9b7b20b0": "控制流/输出端口||输出端口 1",
+      "0x1ac9b7b2290": "控制流/循环控制流区域||循环控制流区域"
     },
     "node_states": {
       "大模型组件/大模型对话||大模型对话": "success",
@@ -1866,43 +1868,38 @@
     },
     "node_outputs": {
       "大模型组件/大模型对话||大模型对话": {
-        "response": "class Component(BaseComponent):\n    name = \"Matplotlib画图\"\n    category = \"数据可视化组件\"\n    description = \"使用Matplotlib绘制数据图表\"\n    requirements = \"需要安装matplotlib库\"\n\n    inputs = [\n        PortDefinition(name=\"data\", label=\"输入数据\", type=ArgumentType.ARRAY),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出图像\", type=ArgumentType.IMAGE),\n    ]\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入必要的库\n        import matplotlib.pyplot as plt\n        from io import BytesIO\n        from PIL import Image\n        \n        # 获取输入数据\n        data = inputs.get(\"data\") if inputs else []\n        \n        # 创建图表\n        plt.figure(figsize=(8, 4))\n        plt.plot(data)\n        plt.title(\"Matplotlib Plot\")\n        \n        # 保存图表到内存\n        buf = BytesIO()\n        plt.savefig(buf, format='png')\n        plt.close()\n        \n        # 将图像转换为PIL格式\n        image = Image.open(buf)\n        \n        # 返回图像结果\n        return {\n            \"output1\": image  # 注意：必须与 outputs 中的 name 一致\n        }",
+        "response": "class Component(BaseComponent):\n    name = \"Matplotlib画图组件\"\n    category = \"数据可视化\"\n    description = \"使用Matplotlib将输入的数值列表数据绘制为折线图，输出为PIL.Image格式的图片。\"\n    requirements = \"matplotlib, numpy, PIL\"\n\n    inputs = [\n        PortDefinition(name=\"data\", label=\"输入数据\", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output_image\", label=\"输出图片\", type=ArgumentType.IMAGE),\n    ]\n\n    properties = {}\n\n    def run(self, params, inputs=None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入所需第三方库\n        import matplotlib.pyplot as plt\n        import numpy as np\n        from PIL import Image\n        import io\n\n        # 获取输入数据\n        data = inputs.get(\"data\") if inputs else None\n        if not data:\n            raise ValueError(\"输入数据不能为空\")\n\n        # 确保数据是列表或数组\n        if not isinstance(data, (list, np.ndarray)):\n            raise ValueError(\"输入数据必须是列表或数组\")\n\n        # 转换为numpy数组\n        data = np.array(data)\n\n        # 创建画布\n        plt.figure(figsize=(8, 4))\n        plt.plot(data, marker='o', linestyle='-', color='b')\n        plt.title(\"数据折线图\")\n        plt.xlabel(\"索引\")\n        plt.ylabel(\"数值\")\n        plt.grid(True, alpha=0.3)\n\n        # 将图像保存到内存\n        img_buffer = io.BytesIO()\n        plt.savefig(img_buffer, format='png', bbox_inches='tight')\n        img_buffer.seek(0)\n        plt.close()\n\n        # 转换为PIL.Image\n        image = Image.open(img_buffer)\n\n        # 返回图片\n        return {\n            \"output_image\": image\n        }",
         "raw_output": {
-          "id": "chatcmpl-422ba8490b2244d0b5f32a9062b346f7",
+          "id": "chatcmpl-1apil0980t9nhshhadv15a",
           "choices": [
             {
               "finish_reason": "stop",
               "index": 0,
               "logprobs": null,
               "message": {
-                "content": "class Component(BaseComponent):\n    name = \"Matplotlib画图\"\n    category = \"数据可视化组件\"\n    description = \"使用Matplotlib绘制数据图表\"\n    requirements = \"需要安装matplotlib库\"\n\n    inputs = [\n        PortDefinition(name=\"data\", label=\"输入数据\", type=ArgumentType.ARRAY),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出图像\", type=ArgumentType.IMAGE),\n    ]\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入必要的库\n        import matplotlib.pyplot as plt\n        from io import BytesIO\n        from PIL import Image\n        \n        # 获取输入数据\n        data = inputs.get(\"data\") if inputs else []\n        \n        # 创建图表\n        plt.figure(figsize=(8, 4))\n        plt.plot(data)\n        plt.title(\"Matplotlib Plot\")\n        \n        # 保存图表到内存\n        buf = BytesIO()\n        plt.savefig(buf, format='png')\n        plt.close()\n        \n        # 将图像转换为PIL格式\n        image = Image.open(buf)\n        \n        # 返回图像结果\n        return {\n            \"output1\": image  # 注意：必须与 outputs 中的 name 一致\n        }",
+                "content": "class Component(BaseComponent):\n    name = \"Matplotlib画图组件\"\n    category = \"数据可视化\"\n    description = \"使用Matplotlib将输入的数值列表数据绘制为折线图，输出为PIL.Image格式的图片。\"\n    requirements = \"matplotlib, numpy, PIL\"\n\n    inputs = [\n        PortDefinition(name=\"data\", label=\"输入数据\", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output_image\", label=\"输出图片\", type=ArgumentType.IMAGE),\n    ]\n\n    properties = {}\n\n    def run(self, params, inputs=None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入所需第三方库\n        import matplotlib.pyplot as plt\n        import numpy as np\n        from PIL import Image\n        import io\n\n        # 获取输入数据\n        data = inputs.get(\"data\") if inputs else None\n        if not data:\n            raise ValueError(\"输入数据不能为空\")\n\n        # 确保数据是列表或数组\n        if not isinstance(data, (list, np.ndarray)):\n            raise ValueError(\"输入数据必须是列表或数组\")\n\n        # 转换为numpy数组\n        data = np.array(data)\n\n        # 创建画布\n        plt.figure(figsize=(8, 4))\n        plt.plot(data, marker='o', linestyle='-', color='b')\n        plt.title(\"数据折线图\")\n        plt.xlabel(\"索引\")\n        plt.ylabel(\"数值\")\n        plt.grid(True, alpha=0.3)\n\n        # 将图像保存到内存\n        img_buffer = io.BytesIO()\n        plt.savefig(img_buffer, format='png', bbox_inches='tight')\n        img_buffer.seek(0)\n        plt.close()\n\n        # 转换为PIL.Image\n        image = Image.open(img_buffer)\n\n        # 返回图片\n        return {\n            \"output_image\": image\n        }",
                 "refusal": null,
                 "role": "assistant",
                 "annotations": null,
                 "audio": null,
                 "function_call": null,
-                "tool_calls": [],
-                "reasoning_content": null
-              },
-              "stop_reason": null,
-              "token_ids": null
+                "tool_calls": []
+              }
             }
           ],
-          "created": 1763084820,
-          "model": "qwen3-30b-a3b",
+          "created": 1763125342,
+          "model": "qwen/qwen3-30b-a3b-2507",
           "object": "chat.completion",
           "service_tier": null,
-          "system_fingerprint": null,
+          "system_fingerprint": "qwen/qwen3-30b-a3b-2507",
           "usage": {
-            "completion_tokens": 300,
-            "prompt_tokens": 1267,
-            "total_tokens": 1567,
+            "completion_tokens": 427,
+            "prompt_tokens": 1263,
+            "total_tokens": 1690,
             "completion_tokens_details": null,
             "prompt_tokens_details": null
           },
-          "prompt_logprobs": null,
-          "prompt_token_ids": null,
-          "kv_transfer_params": null
+          "stats": {}
         },
         "history": [
           {
@@ -1935,7 +1932,7 @@
           },
           {
             "role": "assistant",
-            "content": "class Component(BaseComponent):\n    name = \"Matplotlib画图\"\n    category = \"数据可视化组件\"\n    description = \"使用Matplotlib绘制数据图表\"\n    requirements = \"需要安装matplotlib库\"\n\n    inputs = [\n        PortDefinition(name=\"data\", label=\"输入数据\", type=ArgumentType.ARRAY),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出图像\", type=ArgumentType.IMAGE),\n    ]\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入必要的库\n        import matplotlib.pyplot as plt\n        from io import BytesIO\n        from PIL import Image\n        \n        # 获取输入数据\n        data = inputs.get(\"data\") if inputs else []\n        \n        # 创建图表\n        plt.figure(figsize=(8, 4))\n        plt.plot(data)\n        plt.title(\"Matplotlib Plot\")\n        \n        # 保存图表到内存\n        buf = BytesIO()\n        plt.savefig(buf, format='png')\n        plt.close()\n        \n        # 将图像转换为PIL格式\n        image = Image.open(buf)\n        \n        # 返回图像结果\n        return {\n            \"output1\": image  # 注意：必须与 outputs 中的 name 一致\n        }"
+            "content": "class Component(BaseComponent):\n    name = \"Matplotlib画图组件\"\n    category = \"数据可视化\"\n    description = \"使用Matplotlib将输入的数值列表数据绘制为折线图，输出为PIL.Image格式的图片。\"\n    requirements = \"matplotlib, numpy, PIL\"\n\n    inputs = [\n        PortDefinition(name=\"data\", label=\"输入数据\", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output_image\", label=\"输出图片\", type=ArgumentType.IMAGE),\n    ]\n\n    properties = {}\n\n    def run(self, params, inputs=None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入所需第三方库\n        import matplotlib.pyplot as plt\n        import numpy as np\n        from PIL import Image\n        import io\n\n        # 获取输入数据\n        data = inputs.get(\"data\") if inputs else None\n        if not data:\n            raise ValueError(\"输入数据不能为空\")\n\n        # 确保数据是列表或数组\n        if not isinstance(data, (list, np.ndarray)):\n            raise ValueError(\"输入数据必须是列表或数组\")\n\n        # 转换为numpy数组\n        data = np.array(data)\n\n        # 创建画布\n        plt.figure(figsize=(8, 4))\n        plt.plot(data, marker='o', linestyle='-', color='b')\n        plt.title(\"数据折线图\")\n        plt.xlabel(\"索引\")\n        plt.ylabel(\"数值\")\n        plt.grid(True, alpha=0.3)\n\n        # 将图像保存到内存\n        img_buffer = io.BytesIO()\n        plt.savefig(img_buffer, format='png', bbox_inches='tight')\n        img_buffer.seek(0)\n        plt.close()\n\n        # 转换为PIL.Image\n        image = Image.open(img_buffer)\n\n        # 返回图片\n        return {\n            \"output_image\": image\n        }"
           }
         ]
       },
@@ -1970,11 +1967,11 @@
         "file_path": "D:\\work\\WorkFlowGUI\\app\\components\\generated\\generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8.py"
       },
       "大模型组件/大模型输出解析||大模型输出解析": {
-        "parsed_json": "class Component(BaseComponent):\n    name = \"Matplotlib画图\"\n    category = \"数据可视化组件\"\n    description = \"使用Matplotlib绘制数据图表\"\n    requirements = \"需要安装matplotlib库\"\n\n    inputs = [\n        PortDefinition(name=\"data\", label=\"输入数据\", type=ArgumentType.ARRAY),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出图像\", type=ArgumentType.IMAGE),\n    ]\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入必要的库\n        import matplotlib.pyplot as plt\n        from io import BytesIO\n        from PIL import Image\n        \n        # 获取输入数据\n        data = inputs.get(\"data\") if inputs else []\n        \n        # 创建图表\n        plt.figure(figsize=(8, 4))\n        plt.plot(data)\n        plt.title(\"Matplotlib Plot\")\n        \n        # 保存图表到内存\n        buf = BytesIO()\n        plt.savefig(buf, format='png')\n        plt.close()\n        \n        # 将图像转换为PIL格式\n        image = Image.open(buf)\n        \n        # 返回图像结果\n        return {\n            \"output1\": image  # 注意：必须与 outputs 中的 name 一致\n        }",
+        "parsed_json": "class Component(BaseComponent):\n    name = \"Matplotlib画图组件\"\n    category = \"数据可视化\"\n    description = \"使用Matplotlib将输入的数值列表数据绘制为折线图，输出为PIL.Image格式的图片。\"\n    requirements = \"matplotlib, numpy, PIL\"\n\n    inputs = [\n        PortDefinition(name=\"data\", label=\"输入数据\", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output_image\", label=\"输出图片\", type=ArgumentType.IMAGE),\n    ]\n\n    properties = {}\n\n    def run(self, params, inputs=None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入所需第三方库\n        import matplotlib.pyplot as plt\n        import numpy as np\n        from PIL import Image\n        import io\n\n        # 获取输入数据\n        data = inputs.get(\"data\") if inputs else None\n        if not data:\n            raise ValueError(\"输入数据不能为空\")\n\n        # 确保数据是列表或数组\n        if not isinstance(data, (list, np.ndarray)):\n            raise ValueError(\"输入数据必须是列表或数组\")\n\n        # 转换为numpy数组\n        data = np.array(data)\n\n        # 创建画布\n        plt.figure(figsize=(8, 4))\n        plt.plot(data, marker='o', linestyle='-', color='b')\n        plt.title(\"数据折线图\")\n        plt.xlabel(\"索引\")\n        plt.ylabel(\"数值\")\n        plt.grid(True, alpha=0.3)\n\n        # 将图像保存到内存\n        img_buffer = io.BytesIO()\n        plt.savefig(img_buffer, format='png', bbox_inches='tight')\n        img_buffer.seek(0)\n        plt.close()\n\n        # 转换为PIL.Image\n        image = Image.open(img_buffer)\n\n        # 返回图片\n        return {\n            \"output_image\": image\n        }",
         "is_valid": true
       },
       "大模型组件/移除思考过程||移除思考过程": {
-        "cleaned_text": "class Component(BaseComponent):\n    name = \"Matplotlib画图\"\n    category = \"数据可视化组件\"\n    description = \"使用Matplotlib绘制数据图表\"\n    requirements = \"需要安装matplotlib库\"\n\n    inputs = [\n        PortDefinition(name=\"data\", label=\"输入数据\", type=ArgumentType.ARRAY),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output1\", label=\"输出图像\", type=ArgumentType.IMAGE),\n    ]\n\n    def run(self, params, inputs = None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入必要的库\n        import matplotlib.pyplot as plt\n        from io import BytesIO\n        from PIL import Image\n        \n        # 获取输入数据\n        data = inputs.get(\"data\") if inputs else []\n        \n        # 创建图表\n        plt.figure(figsize=(8, 4))\n        plt.plot(data)\n        plt.title(\"Matplotlib Plot\")\n        \n        # 保存图表到内存\n        buf = BytesIO()\n        plt.savefig(buf, format='png')\n        plt.close()\n        \n        # 将图像转换为PIL格式\n        image = Image.open(buf)\n        \n        # 返回图像结果\n        return {\n            \"output1\": image  # 注意：必须与 outputs 中的 name 一致\n        }",
+        "cleaned_text": "class Component(BaseComponent):\n    name = \"Matplotlib画图组件\"\n    category = \"数据可视化\"\n    description = \"使用Matplotlib将输入的数值列表数据绘制为折线图，输出为PIL.Image格式的图片。\"\n    requirements = \"matplotlib, numpy, PIL\"\n\n    inputs = [\n        PortDefinition(name=\"data\", label=\"输入数据\", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE),\n    ]\n\n    outputs = [\n        PortDefinition(name=\"output_image\", label=\"输出图片\", type=ArgumentType.IMAGE),\n    ]\n\n    properties = {}\n\n    def run(self, params, inputs=None):\n        \"\"\"\n        params: 节点属性（来自UI）\n        inputs: 上游输入（key=输入端口名）\n        return: 输出数据（key=输出端口名）\n        \"\"\"\n        # 导入所需第三方库\n        import matplotlib.pyplot as plt\n        import numpy as np\n        from PIL import Image\n        import io\n\n        # 获取输入数据\n        data = inputs.get(\"data\") if inputs else None\n        if not data:\n            raise ValueError(\"输入数据不能为空\")\n\n        # 确保数据是列表或数组\n        if not isinstance(data, (list, np.ndarray)):\n            raise ValueError(\"输入数据必须是列表或数组\")\n\n        # 转换为numpy数组\n        data = np.array(data)\n\n        # 创建画布\n        plt.figure(figsize=(8, 4))\n        plt.plot(data, marker='o', linestyle='-', color='b')\n        plt.title(\"数据折线图\")\n        plt.xlabel(\"索引\")\n        plt.ylabel(\"数值\")\n        plt.grid(True, alpha=0.3)\n\n        # 将图像保存到内存\n        img_buffer = io.BytesIO()\n        plt.savefig(img_buffer, format='png', bbox_inches='tight')\n        img_buffer.seek(0)\n        plt.close()\n\n        # 转换为PIL.Image\n        image = Image.open(img_buffer)\n\n        # 返回图片\n        return {\n            \"output_image\": image\n        }",
         "think_text": ""
       },
       "大模型组件/构建多轮对话||构建多轮对话": {

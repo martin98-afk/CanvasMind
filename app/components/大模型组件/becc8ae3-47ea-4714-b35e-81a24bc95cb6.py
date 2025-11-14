@@ -74,7 +74,11 @@ class Component(BaseComponent):
             )
             while proc.poll() is None:
                 time.sleep(1)
-
+            if not (project_path / "result.pkl").exists():
+                return {
+                    "result": "",
+                    "log": open(project_path / "run.log", 'r', encoding="utf-8").read()
+                }
             with open(project_path / "result.pkl", "rb") as f:
                 outputs = pickle.load(f)
 

@@ -709,7 +709,7 @@ class BaseComponent(ABC):
         else:
             raise ComponentError(f"无法读取CSV数据: {type(data)}")
 
-    def _read_json_data(self, data: Union[str, dict, list, Path]) -> Union[dict, list]:
+    def _read_json_data(self, data: Union[str, dict, list, Path]) -> Union[dict, list, str]:
         if data is None or (isinstance(data, str) and not data.strip()):
             return {}
 
@@ -733,7 +733,7 @@ class BaseComponent(ABC):
                         except Exception:
                             pass
                     self.logger.warning(f"JSON 输入无法解析: {data[:100]}...")
-                    raise ComponentError(f"无效 JSON 数据: {type(data)}", "JSON_PARSE_ERROR")
+                    return data
         else:
             raise ComponentError(f"不支持的 JSON 输入类型: {type(data)}", "JSON_TYPE_ERROR")
 

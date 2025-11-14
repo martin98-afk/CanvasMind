@@ -6,7 +6,6 @@ import sys
 import traceback
 import uuid
 import warnings
-
 warnings.filterwarnings("ignore")
 import numpy as np
 import pandas as pd
@@ -15,7 +14,6 @@ from loguru import logger
 from collections import defaultdict, deque
 from pathlib import Path
 from threading import Lock
-
 # 确保能导入你的组件
 sys.path.append(str(Path(__file__).parent.parent))
 from scan_components import scan_components
@@ -23,15 +21,13 @@ from runner.component_executor import run_component_in_subprocess
 from components.base import GlobalVariableContext
 from runner.expression_engine import ExpressionEngine
 
-
+# --- (deserialize_from_json 函数保持不变) ---
 def deserialize_from_json(obj):
     if isinstance(obj, dict):
         if obj.get("__type__") == "DataFrame" and obj.get("format") == "feather_base64":
             try:
-                # 解码 base64
                 binary_data = base64.b64decode(obj["data"])
                 buffer = io.BytesIO(binary_data)
-                # 读取 feather 格式
                 table = feather.read_table(buffer)
                 df = table.to_pandas()
                 return df
@@ -46,7 +42,6 @@ def deserialize_from_json(obj):
             except Exception:
                 return obj  # 降级
         elif obj.get("__type__") == "Series":
-            # 如果 Series 是通过转为 DataFrame 序列化的
             df_temp = deserialize_from_json({**obj, "__type__": "DataFrame", "format": "feather_base64"})
             if isinstance(df_temp, pd.DataFrame) and len(df_temp.columns) == 1:
                 return df_temp.iloc[:, 0]
@@ -59,7 +54,6 @@ def deserialize_from_json(obj):
                     binary_data = base64.b64decode(obj["data"])
                     buffer = io.BytesIO(binary_data)
                     arr = np.load(buffer, allow_pickle=False)
-                    # 转回 Python 列表或元组
                     result = arr.tolist()
                     if original_type == "tuple":
                         result = tuple(result)
@@ -72,7 +66,6 @@ def deserialize_from_json(obj):
                     binary_data = base64.b64decode(obj["data"])
                     buffer = io.BytesIO(binary_data)
                     result = pickle.load(buffer)
-                    # 确保返回原始类型
                     if original_type == "tuple" and not isinstance(result, tuple):
                         result = tuple(result)
                     elif original_type == "list" and not isinstance(result, list):
@@ -88,17 +81,14 @@ def deserialize_from_json(obj):
             format_type = obj.get("format", "list")  # 默认为旧格式
             if format_type == "npy_base64":
                 try:
-                    # 解码 base64 数据
                     binary_data = base64.b64decode(obj["data"])
                     buffer = io.BytesIO(binary_data)
-                    # 从二进制数据加载 ndarray
                     arr = np.load(buffer, allow_pickle=False)
                     return arr
                 except Exception as e:
                     logger.info(f"ndarray binary deserialization failed: {e}")
                     return obj
             elif format_type == "list":
-                # 兼容旧的 list 格式
                 try:
                     return np.array(obj["data"], dtype=obj["dtype"])
                 except Exception as e:
@@ -108,7 +98,6 @@ def deserialize_from_json(obj):
                 logger.info(f"Unknown ndarray format: {format_type}")
                 return obj
         elif "__type__" in obj and "__data__" in obj:
-            # 通用对象（通常不重建，只保留字典）
             return obj["__data__"]
         else:
             return {k: deserialize_from_json(v) for k, v in obj.items()}
@@ -117,9 +106,8 @@ def deserialize_from_json(obj):
     else:
         return obj
 
-
+# --- (update_global_variable, build_execution_graph, build_internal_graph, execute_branch_node_internal, execute_loop_node_with_branches, execute_iterate_node_with_branches, _evaluate_condition_with_engine, evaludate_model_inputs 函数保持不变) ---
 def update_global_variable(node, output):
-    # 更新全局变量中的节点输出
     variable_changed = False
     for port in output:
         if f"{node['name']}_{port}" in global_variable["node_vars"]:
@@ -131,39 +119,28 @@ def update_global_variable(node, output):
                 current_value = global_variable["node_vars"][f"{node['name']}_{port}"]["value"]
                 value = output[port]
                 try:
-                    # --- 处理字符串 ---
                     if isinstance(current_value, list):
                         if isinstance(value, list):
                             update_value = current_value + value
                         else:
-                            # 如果当前是列表，但新值不是列表，将新值作为一个元素追加
                             update_value = current_value + [value]
-                    # --- 处理字典 ---
                     elif isinstance(current_value, dict):
                         if isinstance(value, dict):
-                            # 合并字典，新值会覆盖同名键的旧值
                             update_value = {**current_value, **value}
-                    # --- 其他类型 ---
                     else:
-                        # 对于其他类型，尝试直接相加，如果失败则覆盖
                         update_value = [current_value, value]
                 except Exception as e:
                     update_value = value
                 global_variable["node_vars"][f"{node['name']}_{port}"]["value"] = update_value
     if variable_changed:
-        # 更新全局变量
         expr_engine.update_global_vars(GlobalVariableContext(**global_variable))
 
-
 def build_execution_graph(nodes, graph_data):
-    # 找出所有循环节点
     loop_nodes = {nid for nid, n in nodes.items() if n.get("is_loop_node") or n.get("is_iterate_node")}
-    # 找出所有内部节点
     internal_nodes = set()
     for nid, n in nodes.items():
         if n.get("is_loop_node") or n.get("is_iterate_node"):
             internal_nodes.update(n.get("internal_nodes", []))
-    # 只对非内部节点构建图
     executable_nodes = {nid for nid in nodes if nid not in internal_nodes}
     graph = defaultdict(list)
     in_degree = {nid: 0 for nid in executable_nodes}
@@ -173,7 +150,6 @@ def build_execution_graph(nodes, graph_data):
         if out_node_id in executable_nodes and in_node_id in executable_nodes:
             graph[out_node_id].append(in_node_id)
             in_degree[in_node_id] += 1
-
     queue = deque([nid for nid in executable_nodes if in_degree[nid] == 0])
     order = []
     while queue:
@@ -183,12 +159,9 @@ def build_execution_graph(nodes, graph_data):
             in_degree[neighbor] -= 1
             if in_degree[neighbor] == 0:
                 queue.append(neighbor)
-
     return order, loop_nodes, internal_nodes
 
-
 def build_internal_graph(internal_nodes, graph_data):
-    """构建循环体内部的拓扑排序"""
     graph = defaultdict(list)
     in_degree = {nid: 0 for nid in internal_nodes}
     for conn in graph_data["connections"]:
@@ -196,8 +169,6 @@ def build_internal_graph(internal_nodes, graph_data):
         if out_id in internal_nodes and in_id in internal_nodes:
             graph[out_id].append(in_id)
             in_degree[in_id] += 1
-
-    # Kahn 算法
     queue = deque([nid for nid in internal_nodes if in_degree[nid] == 0])
     order = []
     while queue:
@@ -207,70 +178,40 @@ def build_internal_graph(internal_nodes, graph_data):
             in_degree[neighbor] -= 1
             if in_degree[neighbor] == 0:
                 queue.append(neighbor)
-
     if len(order) != len(internal_nodes):
         raise ValueError("循环体内部存在依赖环")
     return order
 
-
 def execute_branch_node_internal(branch_node, input_data, execute_all_matches=False):
-    """
-    内部分支节点执行函数，支持执行所有匹配分支或仅第一个匹配分支
-    """
-    # 准备局部变量
-    local_vars = {"input_input": input_data[0] if isinstance(input_data, (list, tuple)) and input_data else input_data}
-    # 初始化所有输出端口为 None
+    local_vars = {"input_input": input_data}
     output_dict = {}
-    # 评估条件
     selected_ports = []
     for cond in branch_node.get("conditions", []):
         expr = cond.get("expr", "").strip()
-        port_name = cond.get("name")  # 这就是输出端口名！
+        port_name = cond.get("name")
         if not expr or not port_name:
             continue
         try:
             if expr_engine.is_pure_expression_block(expr):
                 result = expr_engine.evaluate_expression_block(expr, local_vars)
-                if result:  # 真值判断
+                if result:
                     selected_ports.append(port_name)
-                    if not execute_all_matches:  # 如果只执行第一个匹配分支，则跳出
+                    if not execute_all_matches:
                         break
         except Exception as e:
             logger.warning(f"表达式评估失败 {expr}: {e}")
             continue
-
-    # 处理 else（如果启用）
     if not selected_ports and branch_node.get("enable_else", False):
-        selected_ports.append("else")  # 假设有一个叫 "else" 的输出端口
-
-    # 如果有选中端口，透传输入数据
+        selected_ports.append("else")
     if selected_ports:
         for port in selected_ports:
-            # 透传 input_data（保持原始结构）
-            output_dict[port] = input_data[0] if isinstance(input_data,
-                                                            (list, tuple)) and input_data else input_data
+            output_dict[port] = input_data
+    return selected_ports, output_dict
 
-    return selected_ports, output_dict  # 例如: {"branch_true": 42} 或 {"else": [1,2,3]}
-
-
-def execute_loop_node_with_branches(loop_node, all_nodes, graph_data, input_data, runtime_data):
-    """
-    优化的循环节点执行函数，支持内部分支节点
-    """
-    # 修复点：仅当 input_data 为空时，才使用预制参数
-    if not input_data:
-        input_data = loop_node["input_values"].get("inputs", [])
-
-    # 获取循环模式和参数
-    loop_mode = loop_node.get("loop_mode", "count")  # 默认为count模式
-    loop_condition = loop_node.get("loop_condition", "")
-    loop_nums = loop_node.get("loop_nums", 5)
-    max_iterations = loop_node.get("max_iterations", 100)  # 防止无限循环
-
+def execute_loop_node_with_branches(loop_node, all_nodes, graph_data, input_data, runtime_data, disabled_nodes=None):
     # 获取内部节点
     internal_ids = loop_node["internal_nodes"]
     internal_nodes = {nid: all_nodes[nid] for nid in internal_ids if nid in all_nodes}
-
     # 找到输入/输出代理节点
     input_proxy = None
     output_proxy = None
@@ -282,143 +223,117 @@ def execute_loop_node_with_branches(loop_node, all_nodes, graph_data, input_data
             output_proxy = n
         else:
             execute_nodes[nid] = n
-
     if not input_proxy or not output_proxy:
         raise ValueError("循环体缺少输入/输出代理节点")
-
     # 构建内部拓扑图
     internal_order = build_internal_graph(execute_nodes, graph_data)
 
     # 循环执行 - 根据不同模式执行
-    if loop_mode == "count":
+    if loop_node.get("loop_mode", "count") == "count":
         # count模式：执行固定次数
         results = []
         current_data = input_data
-        for i in range(min(loop_nums, max_iterations)):  # 限制最大迭代次数
+        for i in range(min(loop_node.get("loop_nums", 5), loop_node.get("max_iterations", 100))):
             # 注入当前项到输入代理
             input_proxy_outputs = {"output": current_data}
             internal_outputs = {input_proxy["node_id"]: input_proxy_outputs}
-
             # 执行内部节点，支持分支和并行-回合逻辑
-            internal_outputs = execute_internal_nodes_with_branches(
+            internal_outputs, internal_disabled_nodes = execute_internal_nodes_with_branches(
                 execute_nodes, internal_order, graph_data, input_proxy, output_proxy,
-                current_data, runtime_data, internal_outputs
+                current_data, runtime_data, internal_outputs, disabled_nodes.copy() if disabled_nodes else set()
             )
-
-            # 获取输出代理的值 - 使用正确的格式
+            # 获取输出代理的值
             input_port_values = []
             for conn in graph_data["connections"]:
                 if conn["in"][0] == output_proxy["node_id"]:
                     out_nid, out_port = conn["out"]
-                    # 使用正确的格式获取输出
                     var_name = f"node_vars_{execute_nodes[out_nid]['name'].replace(' ', '_')}_{out_port}"
                     if var_name in internal_outputs:
                         val = internal_outputs[var_name]
                         if val is not None:
                             input_port_values.append(val)
-
             current_data = input_port_values[0] if len(input_port_values) == 1 else input_port_values
             results.append(current_data)
-
-        return {"outputs": results[-1] if results else None}  # 返回最后一次执行的结果
-
-    elif loop_mode == "condition":
+        return {"outputs": results[-1] if results else None}, internal_disabled_nodes
+    elif loop_node.get("loop_mode", "count") == "condition":
         # condition模式：先执行，再根据条件判断是否继续
         current_data = input_data
         results = []
-        for i in range(max_iterations):  # 限制最大迭代次数
+        for i in range(loop_node.get("max_iterations", 100)):
             # 注入当前项到输入代理
             input_proxy_outputs = {"output": current_data}
             internal_outputs = {input_proxy["node_id"]: input_proxy_outputs}
-
             # 执行内部节点，支持分支和并行-回合逻辑
-            internal_outputs = execute_internal_nodes_with_branches(
+            internal_outputs, internal_disabled_nodes = execute_internal_nodes_with_branches(
                 execute_nodes, internal_order, graph_data, input_proxy, output_proxy,
-                current_data, runtime_data, internal_outputs
+                current_data, runtime_data, internal_outputs, disabled_nodes.copy() if disabled_nodes else set()
             )
-
-            # 获取输出代理的值 - 使用正确的格式
+            # 获取输出代理的值
             input_port_values = []
             for conn in graph_data["connections"]:
                 if conn["in"][0] == output_proxy["node_id"]:
                     out_nid, out_port = conn["out"]
-                    # 使用正确的格式获取输出
                     var_name = f"node_vars_{execute_nodes[out_nid]['name'].replace(' ', '_')}_{out_port}"
                     if var_name in internal_outputs:
                         val = internal_outputs[var_name]
                         if val is not None:
                             input_port_values.append(val)
-
             current_data = input_port_values[0] if len(input_port_values) == 1 else input_port_values
             results.append(current_data)
-
-            # 检查循环条件 - 使用表达式引擎评估，添加循环相关参数
+            # 检查循环条件
             should_continue = _evaluate_condition_with_engine(
-                loop_condition, current_data, runtime_data, internal_outputs, i + 1, loop_mode, max_iterations
+                loop_node.get("loop_condition", ""), current_data, runtime_data, internal_outputs, i + 1, "condition", loop_node.get("max_iterations", 100)
             )
             if not should_continue:
                 break
-
-        return {"outputs": results[-1] if results else None}
-
-    elif loop_mode == "while":
+        return {"outputs": results[-1] if results else None}, internal_disabled_nodes
+    elif loop_node.get("loop_mode", "count") == "while":
         # while模式：先判断条件，再执行（如果条件为真）
         current_data = input_data
         results = []
-        for i in range(max_iterations):  # 限制最大迭代次数
-            # 检查循环条件 - 使用表达式引擎评估，添加循环相关参数
+        for i in range(loop_node.get("max_iterations", 100)):
+            # 检查循环条件
             should_continue = _evaluate_condition_with_engine(
-                loop_condition, current_data, runtime_data, {}, i + 1, loop_mode, max_iterations
+                loop_node.get("loop_condition", ""), current_data, runtime_data, {}, i + 1, "while", loop_node.get("max_iterations", 100)
             )
             if not should_continue:
                 break
-
             # 注入当前项到输入代理
             input_proxy_outputs = {"output": current_data}
             internal_outputs = {input_proxy["node_id"]: input_proxy_outputs}
-
             # 执行内部节点，支持分支和并行-回合逻辑
-            internal_outputs = execute_internal_nodes_with_branches(
+            internal_outputs, internal_disabled_nodes = execute_internal_nodes_with_branches(
                 execute_nodes, internal_order, graph_data, input_proxy, output_proxy,
-                current_data, runtime_data, internal_outputs
+                current_data, runtime_data, internal_outputs, disabled_nodes.copy() if disabled_nodes else set()
             )
-
-            # 获取输出代理的值 - 使用正确的格式
+            # 获取输出代理的值
             input_port_values = []
             for conn in graph_data["connections"]:
                 if conn["in"][0] == output_proxy["node_id"]:
                     out_nid, out_port = conn["out"]
-                    # 使用正确的格式获取输出
                     var_name = f"node_vars_{execute_nodes[out_nid]['name'].replace(' ', '_')}_{out_port}"
                     if var_name in internal_outputs:
                         val = internal_outputs[var_name]
                         if val is not None:
                             input_port_values.append(val)
-
             current_data = input_port_values[0] if len(input_port_values) == 1 else input_port_values
             results.append(current_data)
-
-        return {"outputs": results[-1] if results else None}
-
+        return {"outputs": results[-1] if results else None}, internal_disabled_nodes
     else:
-        raise ValueError(f"未知的循环模式: {loop_mode}")
+        raise ValueError(f"未知的循环模式: {loop_node.get('loop_mode')}")
 
 
-def execute_iterate_node_with_branches(iterate_node, all_nodes, graph_data, input_data, runtime_data):
-    """
-    执行迭代节点，对可迭代input进行遍历
-    """
+def execute_iterate_node_with_branches(iterate_node, all_nodes, graph_data, input_data, runtime_data, disabled_nodes=None):
+    # ... (保持原有逻辑不变，但需要传递 disabled_nodes)
     # 修复点：仅当 input_data 为空时，才使用预制参数
     if not input_data:
         input_data = iterate_node["input_values"].get("inputs", [])
-
     if not isinstance(input_data, (list, tuple)):
         input_data = [input_data]
 
     # 获取内部节点
     internal_ids = iterate_node["internal_nodes"]
     internal_nodes = {nid: all_nodes[nid] for nid in internal_ids if nid in all_nodes}
-
     # 找到输入/输出代理节点
     input_proxy = None
     output_proxy = None
@@ -430,7 +345,6 @@ def execute_iterate_node_with_branches(iterate_node, all_nodes, graph_data, inpu
             output_proxy = n
         else:
             execute_nodes[nid] = n
-
     if not input_proxy or not output_proxy:
         raise ValueError("迭代体缺少输入/输出代理节点")
 
@@ -439,241 +353,84 @@ def execute_iterate_node_with_branches(iterate_node, all_nodes, graph_data, inpu
 
     # 迭代执行
     results = []
+    total_disabled_nodes = disabled_nodes.copy() if disabled_nodes else set()
     for item in input_data:
         # 注入当前项到输入代理
         input_proxy_outputs = {"output": item}
         internal_outputs = {input_proxy["node_id"]: input_proxy_outputs}
-
         # 执行内部节点，支持分支和并行-回合逻辑
-        internal_outputs = execute_internal_nodes_with_branches(
+        internal_outputs, internal_disabled_nodes = execute_internal_nodes_with_branches(
             execute_nodes, internal_order, graph_data, input_proxy, output_proxy,
-            item, runtime_data, internal_outputs
+            item, runtime_data, internal_outputs, total_disabled_nodes
         )
-
-        # 获取输出代理的值 - 使用正确的格式
+        # 获取输出代理的值
         input_port_values = []
         for conn in graph_data["connections"]:
             if conn["in"][0] == output_proxy["node_id"]:
                 out_nid, out_port = conn["out"]
-                # 使用正确的格式获取输出
                 var_name = f"node_vars_{execute_nodes[out_nid]['name'].replace(' ', '_')}_{out_port}"
                 if var_name in internal_outputs:
                     val = internal_outputs[var_name]
                     if val is not None:
                         input_port_values.append(val)
-
         result = input_port_values[0] if len(input_port_values) == 1 else input_port_values
         results.append(result)
+        # 合并本次迭代产生的禁用节点
+        total_disabled_nodes.update(internal_disabled_nodes)
 
-    return {"outputs": results}
-
-
-def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_data, input_proxy, output_proxy,
-                                         input_data, runtime_data, initial_outputs=None):
-    """
-    执行内部节点，支持分支节点和并行-回合逻辑
-    """
-    if initial_outputs is None:
-        initial_outputs = {}
-    # 注入当前项到输入代理
-    input_proxy_outputs = {"output": input_data}  # 注意：端口名是 "output"
-    internal_outputs = initial_outputs.copy()
-    internal_outputs[input_proxy["node_id"]] = input_proxy_outputs
-
-    # 记录分支激活状态和需要跳过的节点
-    active_branch_outputs = {}  # 记录分支节点的激活端口
-
-    for nid in internal_order:
-        n = execute_nodes[nid]
-
-        # --- 优化点：重新设计节点跳过逻辑 ---
-        should_skip = False
-        relevant_upstream_branches = []  # 记录与此节点相关的上游分支节点和端口
-        output_ports = []                # 节点的输出端口
-        # 检查所有输入连接，确定节点是否应该被跳过
-        for conn in graph_data["connections"]:
-            if conn["in"][0] == nid:
-                out_nid, out_port = conn["out"]
-                # 检查上游节点是否是分支节点
-                if out_nid in active_branch_outputs:
-                    relevant_upstream_branches.append((out_nid, out_port))
-            elif conn["out"][0] == nid:
-                output_ports.append(conn["out"][1])
-
-        # 如果有相关的上游分支节点
-        if relevant_upstream_branches:
-            all_connected_branches_inactive = True  # 假设所有相关分支都未激活
-            for out_nid, out_port in relevant_upstream_branches:
-                active_port = active_branch_outputs[out_nid]
-                if isinstance(active_port, list):  # execute_all_matches = True
-                    if out_port in active_port:
-                        all_connected_branches_inactive = False  # 至少有一个连接是激活的
-                        break  # 只要找到一个激活的，就可以执行
-                else:  # execute_all_matches = False (active_port 是字符串或 None)
-                    if out_port == active_port:
-                        all_connected_branches_inactive = False  # 连接的端口是激活的
-                        break  # 只要找到一个激活的，就可以执行
-
-            if all_connected_branches_inactive:
-                should_skip = True
-                logger.info(f"内部节点 {n['name']} 因其所有上游分支输入都未激活而被跳过。")
-
-        # 如果当前节点被标记为跳过，继续下一个节点
-        if should_skip:
-            for port in output_ports:
-                internal_outputs[f"node_vars_{n['name'].replace(' ', '_')}_{port}"] = None
-            logger.info(f"跳过内部节点: {n['name']} (因为其所有上游分支输入都未激活)")
-            continue  # 跳过本次循环，不执行此节点
-        node_inputs = {}
-        # 处理列选择
-        stable_key = runtime_data.get("node_id2stable_key", {}).get(nid, "")
-        column_select = runtime_data.get("column_select", {}).get(stable_key, {})
-        for port_name, cols in column_select.items():
-            if cols:
-                node_inputs[f"{port_name}_column_select"] = cols
-
-        # --- 聚合来自上游的输入（支持多连接） ---
-        input_port_values = defaultdict(list)
-        # 注意：现在不再需要 upstream_branch_nodes 列表来判断跳过
-        for conn in graph_data["connections"]:
-            if conn["in"][0] == nid:
-                out_nid, out_port = conn["out"]
-                in_port = conn["in"][1]
-                # 如果上游不是分支节点，或者分支节点的端口是激活的，则处理输入
-                var_name = f"node_vars_{execute_nodes[out_nid]['name'].replace(' ', '_')}_{out_port}"
-                if var_name in internal_outputs:
-                    val = internal_outputs[var_name]
-                    input_port_values[in_port].append(val)
-                # else: # 上游是分支节点且端口未激活，不处理其输出
-        # 没有节点输出使用节点默认输入
-        for port, input in n.get("input_values", {}).items():
-            if port not in node_inputs:
-                node_inputs[port] = input
-        # 合并：如果一个端口有多个输入，用列表；否则用单个值
-        for port, vals in input_port_values.items():
-            if len(vals) == 1:
-                node_inputs[port] = vals[0]
-            else:
-                node_inputs[port] = vals  # 多输入端口自动为列表
-
-        if n.get("is_branch_node", False):
-            # 提取输入值（假设只有一个输入端口）
-            input_val = None
-            if node_inputs:
-                input_val = next(iter(node_inputs.values()))
-            # 获取分支节点的 execute_all_matches 参数
-            execute_all_matches = n.get("execute_all_matches", False)
-            selected_ports, output = execute_branch_node_internal(n, input_val, execute_all_matches)
-            # 记录激活的分支端口 - 使用正确的格式
-            if selected_ports:
-                # 假设分支输出端口名
-                for port in selected_ports:
-                    branch_var_name = f"node_vars_{n['name'].replace(' ', '_')}_{port}"
-                    internal_outputs[branch_var_name] = output[port]
-                active_branch_outputs[n["node_id"]] = selected_ports if execute_all_matches else selected_ports[0]
-                logger.info(f"内部分支节点 {n['name']} 激活端口: {selected_ports}")
-            else:
-                logger.info(f"内部分支节点 {n['name']} 没有激活任何端口")
-        else:
-            # 执行普通节点
-            node_inputs, node_params = evaludate_model_inputs(node_inputs, n["params"])
-            logger.info(f"执行内部节点: {n['name']}")
-            logger.info(f"输入: {node_inputs}")
-            logger.info(f"参数: {node_params}")
-            output = run_component_in_subprocess(
-                comp_class=n["class"],
-                file_path=n["file_path"],
-                params=node_params,
-                inputs=node_inputs,
-                global_variable=global_variable
-            )
-            update_global_variable(n, output)
-            logger.info(f"输出: {output}")
-            # 对于内部节点，使用 node_vars_{节点名}_{端口名} 格式存储输出，以便在表达式引擎中使用
-            node_name = n["name"].replace(" ", "_")  # 替换空格为下划线
-            for port_name, port_value in (output or {}).items():
-                var_name = f"node_vars_{node_name}_{port_name}"
-                internal_outputs[var_name] = port_value
-
-    return internal_outputs
+    return {"outputs": results}, total_disabled_nodes
 
 
 def _evaluate_condition_with_engine(condition_expr, current_data, runtime_data, internal_outputs,
                                     current_index=0, loop_mode="count", max_iterations=100):
-    """使用表达式引擎评估条件表达式"""
     if not condition_expr:
         return False
     try:
-        # 准备临时变量，这些变量将在表达式评估时可用
         temp_vars = {
-            'data': current_data,  # 当前循环的数据
-            'result': current_data,  # 同上（兼容别名）
-            'current_index': current_index,  # 当前迭代索引
-            'current_iteration': current_index,  # 当前迭代次数（从0开始）
-            'iteration_count': current_index + 1,  # 当前迭代次数（从1开始）
-            'loop_mode': loop_mode,  # 当前循环模式
-            'max_iterations': max_iterations,  # 最大迭代次数
+            'data': current_data,
+            'result': current_data,
+            'current_index': current_index,
+            'current_iteration': current_index,
+            'iteration_count': current_index + 1,
+            'loop_mode': loop_mode,
+            'max_iterations': max_iterations,
             'runtime_data': runtime_data,
         }
-        # 添加内部节点的输出作为临时变量
         if internal_outputs:
             temp_vars.update(internal_outputs)
-
         result = expr_engine.evaluate_expression_block(condition_expr, temp_vars)
-        # 将结果转换为布尔值
         if isinstance(result, str) and result.startswith('[ExprError:'):
             logger.warning(f"条件表达式评估失败: {condition_expr}, 错误: {result}")
-            return False  # 表达式错误时停止循环
+            return False
         return bool(result)
     except Exception as e:
         logger.warning(f"条件表达式评估异常: {condition_expr}, 错误: {e}")
-        return False  # 异常时停止循环以防止无限循环
+        return False
 
+def evaludate_model_inputs(inputs, params):
+    input_vars = {}
+    for k, v in inputs.items():
+        safe_key = f"input_{k}"
+        input_vars[safe_key] = v
 
-def execute_branch_node(branch_node, input_data, execute_all_matches=False):
+    params = {k: expr_engine.evaluate_template(v, local_vars=input_vars) for k, v in params.items()}
+    inputs = {k: expr_engine.evaluate_template(v, local_vars=input_vars) for k, v in inputs.items()}
+    return inputs, params
+
+# --- 修改后的 get_downstream_nodes 函数 ---
+def get_downstream_nodes(start_node_id, connections, all_node_ids, specific_port=None, downstream_cache=None):
     """
-    外部分支节点执行函数，支持执行所有匹配分支或仅第一个匹配分支
+    获取从指定节点的指定输出端口开始的所有下游节点（包括间接连接的）
+    :param start_node_id: 起始节点ID
+    :param connections: 连接列表
+    :param all_node_ids: 所有节点ID集合
+    :param specific_port: 特定的输出端口名，如果提供，则只追踪从此端口出发的连接
+    :param downstream_cache: 缓存字典，键为 (start_node_id, specific_port)
+    :return: 下游节点集合
     """
-    # 准备局部变量
-    local_vars = {"input_input": input_data[0] if isinstance(input_data, (list, tuple)) and input_data else input_data}
-    # 初始化所有输出端口为 None
-    output_dict = {}
-    # 评估条件
-    selected_ports = []
-    for cond in branch_node.get("conditions", []):
-        expr = cond.get("expr", "").strip()
-        port_name = cond.get("name")  # 这就是输出端口名！
-        if not expr or not port_name:
-            continue
-        try:
-            if expr_engine.is_pure_expression_block(expr):
-                result = expr_engine.evaluate_expression_block(expr, local_vars)
-                if result:  # 真值判断
-                    selected_ports.append(port_name)
-                    if not execute_all_matches:  # 如果只执行第一个匹配分支，则跳出
-                        break
-        except Exception as e:
-            logger.warning(f"表达式评估失败 {expr}: {e}")
-            continue
-
-    # 处理 else（如果启用）
-    if not selected_ports and branch_node.get("enable_else", False):
-        selected_ports.append("else")  # 假设有一个叫 "else" 的输出端口
-
-    # 如果有选中端口，透传输入数据
-    if selected_ports:
-        for port in selected_ports:
-            # 透传 input_data（保持原始结构）
-            output_dict[port] = input_data[0] if isinstance(input_data,
-                                                            (list, tuple)) and input_data else input_data
-
-    return selected_ports, output_dict  # 例如: {"branch_true": 42} 或 {"else": [1,2,3]}
-
-
-def get_downstream_nodes(start_node_id, connections, all_node_ids, downstream_cache=None):
-    """获取从指定节点开始的所有下游节点（包括间接连接的）"""
-    if downstream_cache is not None and start_node_id in downstream_cache:
-        return downstream_cache[start_node_id]
+    cache_key = (start_node_id, specific_port)
+    if downstream_cache is not None and cache_key in downstream_cache:
+        return downstream_cache[cache_key]
 
     downstream = set()
     visited = set()
@@ -684,52 +441,160 @@ def get_downstream_nodes(start_node_id, connections, all_node_ids, downstream_ca
         if current in visited:
             continue
         visited.add(current)
-        # 找到所有从此节点输出的连接
-        for conn in connections:
-            if conn["out"][0] == current and conn["in"][0] in all_node_ids:
-                target_node = conn["in"][0]
-                if target_node not in visited:
-                    downstream.add(target_node)
-                    queue.append(target_node)
 
-    # 缓存结果
+        # 找到所有从此节点（和端口）输出的连接
+        for conn in connections:
+            if conn["out"][0] == current:
+                if specific_port is None or conn["out"][1] == specific_port:
+                    target_node = conn["in"][0]
+                    if target_node in all_node_ids and target_node not in visited:
+                        downstream.add(target_node)
+                        queue.append(target_node)
+
     if downstream_cache is not None:
-        downstream_cache[start_node_id] = downstream
+        downstream_cache[cache_key] = downstream
     return downstream
 
+# --- 修改后的 execute_internal_nodes_with_branches 函数 ---
+def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_data, input_proxy, output_proxy,
+                                         input_data, runtime_data, initial_outputs=None, disabled_nodes=None):
+    """
+    执行内部节点，支持分支节点和并行-回合逻辑
+    :param disabled_nodes: 传入的禁用节点集合，用于初始化和判断
+    """
+    if initial_outputs is None:
+        initial_outputs = {}
+    if disabled_nodes is None:
+        disabled_nodes = set()
 
-def evaludate_model_inputs(inputs, params):
-    # === 构建 input_xxx 变量 ===
-    input_vars = {}
-    for k, v in inputs.items():
-        # 将 input.port_name 转为 input_port_name（避免点号）
-        safe_key = f"input_{k}"
-        input_vars[safe_key] = v
+    input_proxy_outputs = {"output": input_data}
+    internal_outputs = initial_outputs.copy()
+    internal_outputs[input_proxy["node_id"]] = input_proxy_outputs
 
-    # === 递归求值 params，传入 input_vars ===
-    def _evaluate_with_inputs(value, expr_engine, input_vars_dict):
-        if isinstance(value, str):
-            return expr_engine.evaluate_template(value, local_vars=input_vars_dict)
-        elif isinstance(value, list):
-            return [_evaluate_with_inputs(v, expr_engine, input_vars_dict) for v in value]
-        elif isinstance(value, dict):
-            return {k: _evaluate_with_inputs(v, expr_engine, input_vars_dict) for k, v in value.items()}
+    active_branch_outputs = {}
+
+    # 为了高效查找，预计算每个分支节点未激活端口的下游节点
+    for nid in execute_nodes:
+        n = execute_nodes[nid]
+        if n.get("is_branch_node", False):
+            all_port_names = {cond.get("name") for cond in n.get("conditions", [])}
+            if n.get("enable_else", False):
+                all_port_names.add("else")
+
+    for nid in internal_order:
+        n = execute_nodes[nid]
+
+        # --- 新增：检查上游节点状态以决定是否跳过 ---
+        upstream_nodes = set()
+        for conn in graph_data["connections"]:
+            if conn["in"][0] == nid:
+                upstream_nodes.add(conn["out"][0])
+        # 从上游节点中移除输入代理（它总是有效的）
+        upstream_nodes.discard(input_proxy["node_id"])
+
+        # 如果所有上游节点都已被禁用，则当前节点也应被禁用
+        if upstream_nodes and all(up_node in disabled_nodes for up_node in upstream_nodes):
+            disabled_nodes.add(nid)
+            # 为所有输出端口设置 None
+            node_name = n["name"].replace(" ", "_")
+            for port_name in n.get("output_ports", []): # 假设节点定义了 output_ports
+                var_name = f"node_vars_{node_name}_{port_name}"
+                internal_outputs[var_name] = None
+            logger.info(f"内部节点 {n['name']} 因所有上游节点被禁用而被跳过。")
+            continue # 跳过执行
+
+        # --- 聚合输入 ---
+        input_port_values = defaultdict(list)
+        for conn in graph_data["connections"]:
+            if conn["in"][0] == nid:
+                out_nid, out_port = conn["out"]
+                in_port = conn["in"][1]
+                if out_nid not in execute_nodes: # 输入代理
+                    val = input_proxy_outputs.get(out_port)
+                else:
+                    node_name = execute_nodes[out_nid]["name"].replace(" ", "_")
+                    var_name = f"node_vars_{node_name}_{out_port}"
+                    val = internal_outputs.get(var_name)
+                input_port_values[in_port].append(val)
+
+        node_inputs = {}
+        for port, input_val in n.get("input_values", {}).items():
+            if port not in input_port_values:
+                node_inputs[port] = input_val
+        for port, vals in input_port_values.items():
+            if len(vals) == 1:
+                node_inputs[port] = vals[0]
+            else:
+                node_inputs[port] = vals
+
+        if n.get("is_branch_node", False):
+            input_val = next(iter(node_inputs.values()), None)
+            execute_all_matches = n.get("execute_all_matches", False)
+            selected_ports, output = execute_branch_node_internal(n, input_val, execute_all_matches)
+
+            # --- 新增：处理未激活端口及其下游节点 ---
+            all_port_names = {cond.get("name") for cond in n.get("conditions", [])}
+            if n.get("enable_else", False):
+                all_port_names.add("else")
+
+            # 记录激活的分支端口
+            if selected_ports:
+                for port in selected_ports:
+                    branch_var_name = f"node_vars_{n['name'].replace(' ', '_')}_{port}"
+                    internal_outputs[branch_var_name] = output[port]
+                active_branch_outputs[n["node_id"]] = selected_ports if execute_all_matches else selected_ports[0]
+                logger.info(f"内部分支节点 {n['name']} 激活端口: {selected_ports}")
+
+                # 计算未激活的端口
+                unselected_ports = all_port_names - set(selected_ports)
+                logger.info(f"内部分支节点 {n['name']} 未激活端口: {unselected_ports}")
+
+                # 找到未激活端口的下游节点并加入禁用集合
+                for unselected_port in unselected_ports:
+                    downstream_for_unselected = get_downstream_nodes(n["node_id"], graph_data["connections"], set(execute_nodes.keys()), specific_port=unselected_port)
+                    disabled_nodes.update(downstream_for_unselected)
+                    logger.info(f"将分支节点 {n['name']} 端口 '{unselected_port}' 的下游节点 {list(downstream_for_unselected)} 标记为禁用。")
+            else:
+                logger.info(f"内部分支节点 {n['name']} 没有激活任何端口")
+                # 如果没有激活任何端口，理论上所有输出端口的下游都应被禁用
+                for unselected_port in all_port_names:
+                    downstream_for_unselected = get_downstream_nodes(n["node_id"], graph_data["connections"], set(execute_nodes.keys()), specific_port=unselected_port)
+                    disabled_nodes.update(downstream_for_unselected)
+                    logger.info(f"将无激活分支节点 {n['name']} 端口 '{unselected_port}' 的下游节点 {list(downstream_for_unselected)} 标记为禁用。")
+
         else:
-            return value
+            # 执行普通节点（如果未被禁用）
+            if nid not in disabled_nodes:
+                node_inputs, node_params = evaludate_model_inputs(node_inputs, n["params"])
+                logger.info(f"执行内部节点: {n['name']}")
+                logger.info(f"输入: {node_inputs}")
+                logger.info(f"参数: {node_params}")
+                output = run_component_in_subprocess(
+                    comp_class=n["class"],
+                    file_path=n["file_path"],
+                    params=node_params,
+                    inputs=node_inputs,
+                    global_variable=global_variable
+                )
+                update_global_variable(n, output)
+                logger.info(f"输出: {output}")
+                node_name = n["name"].replace(" ", "_")
+                for port_name, port_value in (output or {}).items():
+                    var_name = f"node_vars_{node_name}_{port_name}"
+                    internal_outputs[var_name] = port_value
+            else:
+                # 节点已被禁用，但仍需为其输出变量设置 None
+                logger.info(f"跳过执行内部节点（已禁用）: {n['name']}")
+                node_name = n["name"].replace(" ", "_")
+                for port_name in n.get("output_ports", []): # 假设节点定义了 output_ports
+                    var_name = f"node_vars_{node_name}_{port_name}"
+                    internal_outputs[var_name] = None
 
-    params = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in params.items()}
-    inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs.items()}
-
-    return inputs, params
+    return internal_outputs, disabled_nodes # 返回更新后的禁用集合
 
 
+# --- 修改后的 execute_workflow 函数 ---
 def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs):
-    """
-    执行工作流（支持 project_spec.json 定义的接口）
-    :param file_path: model.workflow.json 路径
-    :param external_inputs: {"input_0": "hello", "input_1": 5}
-    :return: {"output_0": ..., "output_1": ...}
-    """
     global logger
     global global_variable
     global expr_engine
@@ -738,30 +603,23 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
     workflow_path = Path(file_path)
     project_dir = workflow_path.parent.absolute()
 
-    # 1. 加载工作流
     with open(workflow_path, 'r', encoding='utf-8') as f:
         full_data = deserialize_from_json(json.load(f))
-
     graph_data = full_data["graph"]
     runtime_data = full_data.get("runtime", {})
-    # 导入全局变量
     global_variable = runtime_data.get("global_variable", {})
-    # 1. 反序列化全局变量
     global_ctx = GlobalVariableContext(**global_variable)
     expr_engine = ExpressionEngine(global_vars_context=global_ctx)
 
-    # 2. 加载 project_spec（如果有）
     spec_path = project_dir / "project_spec.json"
     project_spec = {}
     if spec_path.exists():
         with open(spec_path, 'r', encoding='utf-8') as f:
             project_spec = json.load(f)
 
-    # 3. 扫描组件
     component_map, file_map = scan_components(components_dir=project_dir / "components", logger=logger)
 
-    # 4. 构建节点执行数据（使用原始 node.id）
-    nodes = {}  # key: node.id
+    nodes = {}
     for node_id, node_data in graph_data["nodes"].items():
         stable_key = runtime_data.get("node_id2stable_key", {}).get(node_id)
         if not stable_key:
@@ -773,15 +631,11 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
         else:
             comp_cls = node_data["type_"]
             file_path_comp = None
-
         is_loop_node = (node_data.get("type_") == "control_flow.ControlFlowLoopNode")
         is_iterate_node = (node_data.get("type_") == "control_flow.ControlFlowIterateNode")
         is_branch_node = (node_data.get("type_") == "control_flow.ControlFlowBranchNode")
-
-        # 直接使用 workflow 中的 params 和 input_values
         params = node_data["custom"].get("params", {})
         input_values = node_data["custom"].get("input_values", {})
-
         nodes[node_id] = {
             "node_id": node_id,
             "class": comp_cls,
@@ -789,21 +643,21 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             "name": node_data["name"],
             "params": params,
             "input_values": input_values,
-            "is_loop_node": is_loop_node,  # ← 标记
+            "is_loop_node": is_loop_node,
             "is_iterate_node": is_iterate_node,
             "internal_nodes": node_data["custom"].get("internal_nodes", []),
             "is_branch_node": is_branch_node,
             "conditions": node_data["custom"]["params"].get("conditions", []),
             "enable_else": node_data["custom"]["params"].get("enable_else", False),
-            "execute_all_matches": node_data["custom"]["params"].get("execute_all_matches", False),  # 新增
-            "loop_mode": node_data["custom"]["params"].get("loop_mode", "count"),  # 循环模式
-            "loop_condition": node_data["custom"]["params"].get("loop_condition", ""),  # 循环条件
-            "loop_nums": node_data["custom"]["params"].get("loop_nums", 5),  # 循环次数
-            "max_iterations": node_data["custom"]["params"].get("max_iterations", 100),  # 最大迭代次数
+            "execute_all_matches": node_data["custom"]["params"].get("execute_all_matches", False),
+            "loop_mode": node_data["custom"]["params"].get("loop_mode", "count"),
+            "loop_condition": node_data["custom"]["params"].get("loop_condition", ""),
+            "loop_nums": node_data["custom"]["params"].get("loop_nums", 5),
+            "max_iterations": node_data["custom"]["params"].get("max_iterations", 100),
             "global_variable": node_data["custom"]["params"].get("global_variable", {}),
+            "output_ports": [p["name"] for p in node_data.get("outputs", [])] # 添加输出端口列表
         }
 
-    # 5. ✅ 关键：用 external_inputs 覆盖 spec 指定的输入
     if external_inputs and "inputs" in project_spec:
         for input_key, cfg in project_spec["inputs"].items():
             if input_key in external_inputs:
@@ -812,140 +666,156 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
                     value = external_inputs[input_key]
                     if cfg["type"] == "组件超参数":
                         nodes[node_id]["params"][cfg["param_name"]] = value
-                    else:  # 组件输入
+                    else:
                         nodes[node_id]["input_values"][cfg["port_name"]] = value
 
-    # 6. 构建执行顺序
     execution_order, loop_nodes, internal_nodes = build_execution_graph(nodes, graph_data)
     outputs_lock = Lock()
 
-    # 7. 执行节点 - 跟踪已激活的分支
-    active_branch_outputs = {}  # 记录分支节点的激活端口
-    node_outputs = {}           # 存储节点输出
+    # --- 新增：初始化禁用节点集合 ---
+    disabled_nodes = set()
+
+    # 预计算每个分支节点未激活端口的下游节点（用于外部流程）
+    branch_downstream_cache = {}
+    for node_id in execution_order:
+        node = nodes[node_id]
+        if node.get("is_branch_node", False):
+            all_port_names = {cond.get("name") for cond in node.get("conditions", [])}
+            if node.get("enable_else", False):
+                all_port_names.add("else")
+            for port_name in all_port_names:
+                downstream_for_port = get_downstream_nodes(node_id, graph_data["connections"], set(nodes.keys()), specific_port=port_name, downstream_cache=branch_downstream_cache)
+
+    active_branch_outputs = {}
+    node_outputs = {}
+
     for node_id in execution_order:
         node = nodes[node_id]
 
-        # --- 优化点：重新设计节点跳过逻辑 ---
-        should_skip = False
-        relevant_upstream_branches = []  # 记录与此节点相关的上游分支节点和端口
-        out_ports = []                   # 当前节点输出端口
-        # 检查所有输入连接，确定节点是否应该被跳过
+        # --- 新增：检查上游节点状态以决定是否跳过 ---
+        upstream_nodes = set()
         for conn in graph_data["connections"]:
             if conn["in"][0] == node_id:
-                out_nid, out_port = conn["out"]
-                # 检查上游节点是否是分支节点
-                if out_nid in active_branch_outputs:
-                    relevant_upstream_branches.append((out_nid, out_port))
-            elif conn["out"][0] == node_id:
-                out_ports.append(conn["out"][1])
+                upstream_nodes.add(conn["out"][0])
+        # 从上游节点中移除全局变量等特殊输入（如果有的话），这里假设只考虑直接节点连接
 
-        # 如果有相关的上游分支节点
-        if relevant_upstream_branches:
-            all_connected_branches_inactive = True  # 假设所有相关分支都未激活
-            for out_nid, out_port in relevant_upstream_branches:
-                active_port = active_branch_outputs[out_nid]
-                if isinstance(active_port, list):  # execute_all_matches = True
-                    if out_port in active_port:
-                        all_connected_branches_inactive = False  # 至少有一个连接是激活的
-                        break  # 只要找到一个激活的，就可以执行
-                else:  # execute_all_matches = False (active_port 是字符串或 None)
-                    if out_port == active_port:
-                        all_connected_branches_inactive = False  # 连接的端口是激活的
-                        break  # 只要找到一个激活的，就可以执行
+        if upstream_nodes and all(up_node in disabled_nodes for up_node in upstream_nodes):
+            disabled_nodes.add(node_id)
+            # 为所有输出端口设置 None
+            node_name = node["name"].replace(" ", "_")
+            for port_name in node.get("output_ports", []):
+                var_name = f"node_vars_{node_name}_{port_name}"
+                node_outputs[node_id] = node_outputs.get(node_id, {})
+                node_outputs[node_id][port_name] = None
+            logger.info(f"节点 {node['name']} 因所有上游节点被禁用而被跳过。")
+            continue # 跳过执行
 
-            if all_connected_branches_inactive:
-                should_skip = True
-                logger.info(f"节点 {node['name']} 因其所有上游分支输入都未激活而被跳过。")
-
-        if should_skip:
-            # 该节点所有输出端口结果设为None
-            node_outputs[node_id] = {port: None for port in out_ports}
-            logger.info(f"跳过节点: {node['name']} (因为其所有上游分支输入都未激活)")
-            continue  # 跳过本次循环，不执行此节点
-
-        # 构建输入字典（支持多输入端口聚合）
+        # --- 聚合输入逻辑 ---
         node_inputs = {}
-        # 处理列选择
         stable_key = runtime_data.get("node_id2stable_key", {}).get(node_id, "")
         column_select = runtime_data.get("column_select", {}).get(stable_key, {})
         for port_name, cols in column_select.items():
             if cols:
                 node_inputs[f"{port_name}_column_select"] = cols
 
-        # 聚合来自上游的输入（支持多连接）
         input_port_values = defaultdict(list)
-        # 注意：现在不再需要 upstream_branch_nodes 列表来判断跳过
         for conn in graph_data["connections"]:
             if conn["in"][0] == node_id:
                 out_nid, out_port = conn["out"]
                 in_port = conn["in"][1]
-                # 如果上游不是分支节点，或者分支节点的端口是激活的，则处理输入
                 with outputs_lock:
                     if out_nid in node_outputs:
                         val = node_outputs[out_nid].get(out_port)
                         input_port_values[in_port].append(val)
 
-        # 先复制静态 input_values
         for port, val in node["input_values"].items():
             if port not in input_port_values:
                 val = project_dir / val if isinstance(val, str) and val.startswith("inputs/") else val
                 node_inputs[port] = val
-        # 合并：如果一个端口有多个输入，用列表；否则用单个值
         for port, vals in input_port_values.items():
             if len(vals) == 1:
                 node_inputs[port] = vals[0]
             else:
-                node_inputs[port] = vals  # 多输入端口自动为列表
+                node_inputs[port] = vals
 
         if node["is_loop_node"]:
-            # ✅ 执行循环节点（支持内部分支和多种循环模式）
-            output = execute_loop_node_with_branches(
-                node, nodes, graph_data, [item for item in node_inputs.values()][0], runtime_data
-            )
-            node_outputs[node_id] = output
-        elif node["is_iterate_node"]:
-            # 执行迭代节点（对可迭代input进行遍历）
-            output = execute_iterate_node_with_branches(
+            output, loop_disabled_nodes = execute_loop_node_with_branches(
                 node, nodes, graph_data, [item for item in node_inputs.values()][0], runtime_data,
+                disabled_nodes # 需要修改 execute_loop_node_with_branches 以接收和返回 disabled_nodes
             )
+            # 合并循环内部产生的禁用节点
+            disabled_nodes.update(loop_disabled_nodes)
             node_outputs[node_id] = output
+
+        elif node["is_iterate_node"]:
+            output, iter_disabled_nodes = execute_iterate_node_with_branches(
+                node, nodes, graph_data, [item for item in node_inputs.values()][0], runtime_data,
+                disabled_nodes # 需要修改 execute_iterate_node_with_branches 以接收和返回 disabled_nodes
+            )
+            # 合并迭代内部产生的禁用节点
+            disabled_nodes.update(iter_disabled_nodes)
+            node_outputs[node_id] = output
+
         elif node["is_branch_node"]:
-            # 提取输入值（假设只有一个输入端口）
-            input_val = None
-            if node_inputs:
-                input_val = next(iter(node_inputs.values()))
-            # 获取 execute_all_matches 参数
+            input_val = next(iter(node_inputs.values()), None)
             execute_all_matches = node.get("execute_all_matches", False)
             selected_ports, output = execute_branch_node(node, input_val, execute_all_matches)
             node_outputs[node_id] = output
-            # 记录激活的分支端口
+
             if selected_ports:
                 active_branch_outputs[node_id] = selected_ports if execute_all_matches else selected_ports[0]
                 logger.info(f"分支节点 {node['name']} 激活端口: {selected_ports}")
+
+                # --- 新增：处理未激活端口及其下游节点 ---
+                all_port_names = {cond.get("name") for cond in node.get("conditions", [])}
+                if node.get("enable_else", False):
+                    all_port_names.add("else")
+                unselected_ports = all_port_names - set(selected_ports)
+                logger.info(f"分支节点 {node['name']} 未激活端口: {unselected_ports}")
+
+                for unselected_port in unselected_ports:
+                    # 获取此未激活端口的下游节点
+                    downstream_for_unselected = get_downstream_nodes(node_id, graph_data["connections"], set(nodes.keys()), specific_port=unselected_port)
+                    # 将这些节点加入禁用集合
+                    disabled_nodes.update(downstream_for_unselected)
+                    logger.info(f"将分支节点 {node['name']} 端口 '{unselected_port}' 的下游节点 {list(downstream_for_unselected)} 标记为禁用。")
             else:
                 logger.info(f"分支节点 {node['name']} 没有激活任何端口")
-        else:
-            node_inputs, node_params = evaludate_model_inputs(node_inputs, node["params"])
-            # 执行普通节点
-            try:
-                logger.info(f"执行节点: {node['name']}")
-                logger.info(f"输入: {node_inputs}")
-                output = run_component_in_subprocess(
-                    comp_class=node["class"],
-                    file_path=node["file_path"],
-                    params=node_params,
-                    inputs=node_inputs,
-                    global_variable=global_variable,
-                    logger=logger
-                )
-                update_global_variable(node, output)
-                logger.info(f"输出: {output}")
-                node_outputs[node_id] = output or {}
-            except Exception as e:
-                logger.error(f"节点执行失败 {node['name']}: {traceback.format_exc()}")
-                raise e
+                # 如果没有激活任何端口，理论上所有输出端口的下游都应被禁用
+                all_port_names = {cond.get("name") for cond in node.get("conditions", [])}
+                if node.get("enable_else", False):
+                    all_port_names.add("else")
+                for unselected_port in all_port_names:
+                    downstream_for_unselected = get_downstream_nodes(node_id, graph_data["connections"], set(nodes.keys()), specific_port=unselected_port)
+                    disabled_nodes.update(downstream_for_unselected)
+                    logger.info(f"将无激活分支节点 {node['name']} 端口 '{unselected_port}' 的下游节点 {list(downstream_for_unselected)} 标记为禁用。")
 
-    # 8. ✅ 按 project_spec 提取最终输出
+        else:
+            # 执行普通节点（如果未被禁用）
+            if node_id not in disabled_nodes:
+                node_inputs, node_params = evaludate_model_inputs(node_inputs, node["params"])
+                try:
+                    logger.info(f"执行节点: {node['name']}")
+                    logger.info(f"输入: {node_inputs}")
+                    output = run_component_in_subprocess(
+                        comp_class=node["class"],
+                        file_path=node["file_path"],
+                        params=node_params,
+                        inputs=node_inputs,
+                        global_variable=global_variable,
+                        logger=logger
+                    )
+                    update_global_variable(node, output)
+                    logger.info(f"输出: {output}")
+                    node_outputs[node_id] = output or {}
+                except Exception as e:
+                    logger.error(f"节点执行失败 {node['name']}: {traceback.format_exc()}")
+                    raise e
+            else:
+                # 节点已被禁用，但仍需为其输出变量设置 None
+                logger.info(f"跳过执行节点（已禁用）: {node['name']}")
+                node_outputs[node_id] = {port: None for port in node.get("output_ports", [])}
+
     final_outputs = {}
     if "outputs" in project_spec:
         for output_key, out_cfg in project_spec["outputs"].items():
@@ -956,20 +826,46 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             else:
                 final_outputs[output_key] = None
     else:
-        # 兼容老项目：返回所有节点输出
         final_outputs = node_outputs
+
     logger.info(f"最终输出: {final_outputs}")
     result_path = result_path if result_path else project_dir / "result.pkl"
     with open(result_path, 'wb') as f:
         pickle.dump(final_outputs, f)
 
+# --- (execute_branch_node 函数保持不变) ---
+def execute_branch_node(branch_node, input_data, execute_all_matches=False):
+    local_vars = {"input_input": input_data}
+    output_dict = {}
+    selected_ports = []
+    for cond in branch_node.get("conditions", []):
+        expr = cond.get("expr", "").strip()
+        port_name = cond.get("name")
+        if not expr or not port_name:
+            continue
+        try:
+            if expr_engine.is_pure_expression_block(expr):
+                result = expr_engine.evaluate_expression_block(expr, local_vars)
+                if result:
+                    selected_ports.append(port_name)
+                    if not execute_all_matches:
+                        break
+        except Exception as e:
+            logger.warning(f"表达式评估失败 {expr}: {e}")
+            continue
+    if not selected_ports and branch_node.get("enable_else", False):
+        selected_ports.append("else")
+    if selected_ports:
+        for port in selected_ports:
+            output_dict[port] = input_data
+    return selected_ports, output_dict
+
 
 if __name__ == "__main__":
-    # ==================== 配置 ====================
-    logger.remove()  # 禁用默认 handler
+    logger.remove()
     NODE_ID = uuid.uuid4().hex
     (Path(__file__).parent.parent / "run.log").unlink(missing_ok=True)
-    # 日志配置（与原逻辑一致）
+    (Path(__file__).parent.parent / "result.pkl").unlink(missing_ok=True)
     log_handler_id = logger.add(
         Path(__file__).parent.parent / "run.log",
         level="INFO",
@@ -979,14 +875,12 @@ if __name__ == "__main__":
         retention=3
     )
     logger = logger.bind(node_id=NODE_ID)
-
     external_input_file = Path(__file__).parent.parent / "input.pkl"
     if external_input_file.exists():
         with open(external_input_file, "rb") as f:
             external_inputs = pickle.load(f)
     else:
         external_inputs = None
-
     execute_workflow(
         Path(__file__).parent.parent / "model.workflow.json",
         external_inputs=external_inputs,

@@ -306,6 +306,8 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
             self.node.view.draw_node()
             # 再强制重绘整个节点区域
             self.node.view.update()
+        if self.node.graph is not None:
+            self.node.graph.viewer().force_update()
 
     def get_port_func(self):
         vars = [f"input.{port.name()}" for port in self.node.input_ports()]
