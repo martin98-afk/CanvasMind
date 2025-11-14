@@ -70,6 +70,10 @@ class IPythonKernelManager:
                 pass
         self.kernel_client = None
         self.kernel_manager = None
+
+    def is_alive(self):
+        """内核是否存活"""
+        return self.kernel_manager.is_alive() if self.kernel_manager else False
     
     def get_kernel_info(self):
         """获取内核信息"""

@@ -118,36 +118,6 @@ class VariableCompletionPopup(QListWidget):
             x = cursor_pos.x()
             y = cursor_pos.y() + 10  # 在鼠标下方留一点间距
 
-        # # 获取屏幕几何信息
-        # screen_geometry = QDesktopWidget().availableGeometry(editor)
-        # screen_left = screen_geometry.left()
-        # screen_top = screen_geometry.top()
-        # screen_width = screen_geometry.width()
-        # screen_height = screen_geometry.height()
-        #
-        # # 计算弹窗的尺寸
-        # # 使用 sizeHint() 获取理想尺寸，因为它在 show() 之前可能更准确
-        # popup_width = self.sizeHint().width()
-        # popup_height = self.sizeHint().height()
-        #
-        # # 检查并调整 x 坐标，防止弹窗超出右边界
-        # if x + 4 * popup_width // 3 > screen_left + screen_width:
-        #     x = screen_left + screen_width - 4 * popup_width // 3
-        # # 确保不超出左边界
-        # if x < screen_left:
-        #     x = screen_left
-        #
-        # # 检查并调整 y 坐标，防止弹窗超出下边界
-        # if y + popup_height > screen_top + screen_height:
-        #     # 如果下方空间不够，尝试显示在鼠标上方
-        #     y = cursor_pos.y() - popup_height - 5
-        #     # 如果上方也不够，则调整到屏幕边界
-        #     if y < screen_top:
-        #         y = screen_top
-        # # 确保不超出上边界
-        # if y < screen_top:
-        #     y = screen_top
-
         self.move(int(x), int(y))
         self.show()
         self.setFocus()
@@ -157,10 +127,10 @@ class VariableCompletionPopup(QListWidget):
 # 支持变量补全和高亮的 TextEdit
 # -----------------------
 class VariableCompletionTextEdit(TextEdit):
-    def __init__(self, get_variable_list_func, use_qursor=False, parent=None):
+    def __init__(self, get_variable_list_func, use_qcursor=False, parent=None):
         super().__init__(parent)
         self.get_variable_list_func = get_variable_list_func
-        self.popup = VariableCompletionPopup(use_qursor)
+        self.popup = VariableCompletionPopup(use_qcursor)
         self.popup.itemSelected.connect(self._apply_completion)
         self._completing = False
         self._input_timer = QTimer()
@@ -169,6 +139,11 @@ class VariableCompletionTextEdit(TextEdit):
 
         # 创建并应用高亮器
         self.highlighter = VariableHighlighter(self.document())
+
+    def focusOutEvent(self, event):
+        """当焦点离开编辑框时自动隐藏补全框"""
+        self.popup.hide()
+        super().focusOutEvent(event)
 
     def keyPressEvent(self, event: QKeyEvent):
         # 处理 $ 触发补全
@@ -371,10 +346,10 @@ class VariableCompletionTextEdit(TextEdit):
 
 
 class VariableCompletionLineEdit(LineEdit):
-    def __init__(self, get_variable_list_func, use_qursor=False, parent=None):
+    def __init__(self, get_variable_list_func, use_qcursor=False, parent=None):
         super().__init__(parent)
         self.get_variable_list_func = get_variable_list_func
-        self.popup = VariableCompletionPopup(use_qursor)
+        self.popup = VariableCompletionPopup(use_qcursor)
         self.popup.itemSelected.connect(self._apply_completion)
         self._completing = False
         self._input_timer = QTimer()
@@ -407,6 +382,11 @@ class VariableCompletionLineEdit(LineEdit):
     def _has_variable_pattern(self, text):
         match = re.search(r'\$[^\$]*\$', text)
         return match is not None
+
+    def focusOutEvent(self, event):
+        """当焦点离开编辑框时自动隐藏补全框"""
+        self.popup.hide()
+        super().focusOutEvent(event)
 
     def keyPressEvent(self, event: QKeyEvent):
         # 处理 $ 触发补全

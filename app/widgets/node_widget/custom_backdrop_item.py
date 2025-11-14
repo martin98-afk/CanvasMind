@@ -199,8 +199,6 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
             painter.setPen(QtCore.Qt.NoPen)
             painter.drawRoundedRect(rect, radius, radius)
 
-        txt_rect = QtCore.QRectF(top_rect.x(), top_rect.y(),
-                                 rect.width(), top_rect.height())
         painter.setPen(QtGui.QColor(*self.text_color))
         self._align_label()
 

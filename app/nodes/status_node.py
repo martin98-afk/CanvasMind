@@ -53,4 +53,5 @@ class StatusNode(BasicNodeWithGlobalProperty):
             self.set_color(60, 60, 60)
         self.view.draw_node()
         if self.graph is not None:
+
             self.graph.viewer().force_update()

@@ -101,7 +101,8 @@ class FormFieldWidget(QtWidgets.QWidget):
                 # 其他类型使用 LineEdit
                 global_vars = getattr(self.home, 'global_variables', None)
                 widget = VariableCompletionLineEdit(
-                    get_variable_list_func=lambda func=get_port_func: global_vars.get_vars(func()), parent=self
+                    get_variable_list_func=lambda func=get_port_func: global_vars.get_vars(func()),
+                    use_qcursor=True, parent=self
                 )
                 widget.setFixedWidth(180)
                 widget.setPlaceholderText(label)
