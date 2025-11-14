@@ -255,6 +255,7 @@ class GlobalVariableContext(BaseModel):
     def __init__(self, **data):
         super().__init__(**data)
         # 初始化默认 Python 环境变量（仅当 metadata 为空时）
+        self.deserialize(data)
         if not self.env.metadata:
             self.env.metadata.update(DEFAULT_PYTHON_ENV_VARS)
 
@@ -268,7 +269,7 @@ class GlobalVariableContext(BaseModel):
         else:
             self.custom[key].value = value
 
-    def set_output(self, node_id: str, output_name: str, output_value: Any, policy: str="固定"):
+    def set_output(self, node_id: str, output_name: str, output_value: Any, policy: str="更新"):
         self.node_vars[f"{node_id}_{output_name}"] = NodeVariable(
             value=output_value, update_policy=policy
         )

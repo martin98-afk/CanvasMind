@@ -4,7 +4,7 @@
   "inputs": {
     "input_text1": {
       "type": "组件超参数",
-      "node_id": "0x22a04cf3010",
+      "node_id": "0x1a24c6ce500",
       "node_name": "组件输入",
       "param_name": "input_text",
       "current_value": "输入是用户的列表数据输入是[1,2,3,4]格式数据",
@@ -14,7 +14,7 @@
     },
     "input_text2": {
       "type": "组件超参数",
-      "node_id": "0x22a04cf2b00",
+      "node_id": "0x1a24d8c3df0",
       "node_name": "组件输出",
       "param_name": "input_text",
       "current_value": "输出是画图结果，传参是PIL.Image格式图片",
@@ -24,7 +24,7 @@
     },
     "input_text3": {
       "type": "组件超参数",
-      "node_id": "0x22a04f3ac20",
+      "node_id": "0x1a24d8c06d0",
       "node_name": "组件参数",
       "param_name": "input_text",
       "current_value": "组件参数暂无",
@@ -34,7 +34,7 @@
     },
     "input_text4": {
       "type": "组件超参数",
-      "node_id": "0x22a04e31e70",
+      "node_id": "0x1a24c6ccbb0",
       "node_name": "组件意图",
       "param_name": "input_text",
       "current_value": "我的需求是开发一个matplotlib画图组件",
@@ -45,11 +45,9 @@
   },
   "outputs": {
     "parsed_json": {
-      "node_id": "0x22a04f38730",
+      "node_id": "0x1a24d8c3550",
       "output_name": "parsed_json",
-      "format": "JSON",
-      "custom_key": "parsed_json",
-      "node_name": "大模型输出解析"
+      "format": "JSON"
     }
   }
 }
