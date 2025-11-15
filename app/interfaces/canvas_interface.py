@@ -1317,6 +1317,7 @@ class CanvasPage(QWidget):
             node.status = status
         # 优化：只高亮目标节点相关的连接线
         self._highlight_node_connections(node, status)
+        self.graph.viewer().force_update()
         # 优化：只在选中的节点是当前节点时才更新属性面板
         if self.property_panel.current_node and self.property_panel.current_node.id == node.id:
             self.property_panel.update_properties(self.property_panel.current_node)

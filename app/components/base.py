@@ -689,10 +689,10 @@ class BaseComponent(ABC):
                         self.logger.debug(f"字符串解析后无法转为 ndarray，回退到 list: {e}")
                         return list(parsed)
                 else:
-                    return [parsed]  # 单个值也视为数组
+                    return parsed  # 单个值也视为数组
             except (ValueError, SyntaxError):
-                return [data]  # 无法解析的字符串作为单元素
-        return [data]  # 兜底：包装为单元素列表
+                return data  # 无法解析的字符串作为单元素
+        return data  # 兜底：包装为单元素列表
 
     def _read_csv_data(self, data: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
         """读取CSV数据"""

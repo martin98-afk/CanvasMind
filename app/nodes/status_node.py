@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from dataclasses import dataclass
 
+from loguru import logger
+
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 
 
@@ -52,6 +54,3 @@ class StatusNode(BasicNodeWithGlobalProperty):
             # 淡灰色 - 等待运行
             self.set_color(60, 60, 60)
         self.view.draw_node()
-        if self.graph is not None:
-
-            self.graph.viewer().force_update()
