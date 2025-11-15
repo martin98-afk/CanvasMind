@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import QUndoCommand
 from qtpy import QtCore, QtGui, QtWidgets
 
 from app.nodes.status_node import StatusNode
-from app.utils.utils import get_port_node, draw_square_port, resource_path
+from app.utils.utils import get_port_node, draw_square_port, resource_path, topological_sort
 from app.widgets.node_widget.custom_backdrop_item import ControlFlowBackdropNodeItem
 
 
@@ -349,37 +349,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
                 output_proxy = node
             else:
                 execute_nodes.append(node)
-        return input_proxy, output_proxy, self._topological_sort(execute_nodes)
-
-    def _topological_sort(self, nodes: List) -> Optional[List]:
-        if not nodes:
-            return []
-
-        in_degree = {node: 0 for node in nodes}
-        graph_deps = defaultdict(list)
-
-        node_set = set(nodes)
-        for node in nodes:
-            for input_port in node.input_ports():
-                for upstream_out in input_port.connected_ports():
-                    upstream = get_port_node(upstream_out)
-                    if upstream in node_set:
-                        graph_deps[upstream].append(node)
-                        in_degree[node] += 1
-
-        queue = deque([n for n in nodes if in_degree[n] == 0])
-        execution_order = []
-        while queue:
-            n = queue.popleft()
-            execution_order.append(n)
-            for neighbor in graph_deps[n]:
-                in_degree[neighbor] -= 1
-                if in_degree[neighbor] == 0:
-                    queue.append(neighbor)
-
-        if len(execution_order) != len(nodes):
-            return None
-        return execution_order
+        return input_proxy, output_proxy, topological_sort(execute_nodes)
 
     # ──────────────── 端口管理（保持不变）────────────────
 

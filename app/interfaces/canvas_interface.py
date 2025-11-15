@@ -228,7 +228,7 @@ class CanvasPage(QWidget):
         """执行所有选中节点的工作流"""
         self._scheduler = self._create_scheduler()
         self._connect_scheduler_signals()
-        self._scheduler.run_full(nodes=self.graph.selected_nodes())
+        self._scheduler.run_full(nodes=self.property_panel.get_current_execution_order() or self.graph.selected_nodes())
 
     def run_to_node(self, target_node):
         """执行到目标节点"""
@@ -1320,9 +1320,6 @@ class CanvasPage(QWidget):
         # 优化：只高亮目标节点相关的连接线
         self._highlight_node_connections(node, status)
         self.graph.viewer().force_update()
-        # 优化：只在选中的节点是当前节点时才更新属性面板
-        if self.property_panel.current_node and self.property_panel.current_node.id == node.id:
-            self.property_panel.update_properties(self.property_panel.current_node)
 
     def on_node_error_simple(self, node_id):
         node = self._get_node_by_id_cached(node_id)
@@ -1468,14 +1465,27 @@ class CanvasPage(QWidget):
         selected_nodes = self.graph.selected_nodes()
         # 原有属性面板逻辑
         if selected_nodes:
+            # 展示控制流面板
+            backdrop_internal_nodes = []
             for node in selected_nodes:
                 if isinstance(node, ControlFlowBackdrop):
-                    self.nav_view.clear_recommendations()
-                    QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
-                    return
-            if isinstance(selected_nodes[0], BaseNode):
+                    internal_nodes = [n for n in node.nodes()]
+                    backdrop_internal_nodes.extend(internal_nodes)
+                    only_backdrop = all(n in internal_nodes for n in selected_nodes if n != node)
+                    if only_backdrop:
+                        self.nav_view.clear_recommendations()
+                        QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
+                        return
+            # 展示选中节点列表
+            if len(selected_nodes) > 1:
+                # 过滤掉在backdrop内部的节点，只保留顶层节点（包括backdrop本身）
+                top_level_nodes = [n for n in selected_nodes if n not in backdrop_internal_nodes]
+                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(top_level_nodes))
+            # 展示单独节点面板
+            elif isinstance(selected_nodes[0], BaseNode):
                 QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(selected_nodes[0]))
                 self._request_recommendations(selected_nodes[0])
+            # 展示全局变量面板
             else:
                 self.nav_view.clear_recommendations()
                 QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
@@ -1593,7 +1603,6 @@ class CanvasPage(QWidget):
     def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data, global_variable):
         try:
             self.global_variables.deserialize(global_variable)
-            self.property_panel.update_properties(None)
             # === 1. 准备数据 ===
             nodes_data = graph_data.get("nodes", {})
             total_nodes = len(nodes_data)
@@ -1631,7 +1640,6 @@ class CanvasPage(QWidget):
                 # 恢复原始方法
                 self.graph.add_node = original_add_node
                 progress.close()
-
             # === 5. 完成后续加载 ===
             self._finish_loading(runtime_data, node_status_data)
 
@@ -1678,11 +1686,13 @@ class CanvasPage(QWidget):
         self._node_id_cache_valid = True
 
         QTimer.singleShot(0, self.create_name_label)
-        QTimer.singleShot(300, self._delayed_fit_view)
+        QTimer.singleShot(100, self._delayed_fit_view)
         self.create_success_info("加载成功", "工作流加载成功！")
 
     def _delayed_fit_view(self):
-        QtCore.QTimer.singleShot(100, lambda: self.graph._viewer.zoom_to_nodes(self.graph._viewer.all_nodes()))
+        self.graph._viewer.zoom_to_nodes(self.graph._viewer.all_nodes())
+        self.property_panel.set_allowed_update(True)
+        self.property_panel.update_properties(None)
 
     def edit_node(self, node):
         self.parent.switchTo(self.parent.develop_page)

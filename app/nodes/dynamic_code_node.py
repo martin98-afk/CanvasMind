@@ -263,6 +263,7 @@ def create_dynamic_code_node(parent_window=None):
                         except Exception:
                             continue
             self._sync_names_to_form(input_configs, name_mapping, "input")
+            QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
 
         def _sync_outputs_ports(self):
             """同步输出端口：严格按表单顺序重建，仅当端口名未变时恢复连线"""
@@ -317,6 +318,7 @@ def create_dynamic_code_node(parent_window=None):
                             continue
 
             self._sync_names_to_form(output_configs, name_mapping, "output")
+            QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
 
         def _sync_names_to_form(self, ports, name_mapping, type="input"):
             """将生成的端口名称同步回表单"""
