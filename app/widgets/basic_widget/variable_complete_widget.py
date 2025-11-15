@@ -60,7 +60,7 @@ class VariableCompletionPopup(QListWidget):
         super().__init__(parent)
         self.use_qcursor = use_qcursor
         self.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
-        self.setFocusPolicy(Qt.NoFocus)
+        self.setFocusPolicy(Qt.StrongFocus)  # 改为 StrongFocus，允许接收焦点
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         # 改进样式，增加选中项的高亮
@@ -101,6 +101,9 @@ class VariableCompletionPopup(QListWidget):
         self.itemClicked.connect(self._on_item_clicked)
         self.hide()
 
+        # 添加鼠标事件处理，防止滚轮点击关闭
+        self.setMouseTracking(True)
+
     def _on_item_clicked(self, item):
         self.itemSelected.emit(item.text())
         self.hide()
@@ -122,6 +125,24 @@ class VariableCompletionPopup(QListWidget):
         self.show()
         self.setFocus()
 
+    def mousePressEvent(self, event):
+        # 检查是否是滚轮点击，如果是则不隐藏补全框
+        if event.button() == Qt.MiddleButton:
+            # 滚轮点击不隐藏补全框
+            return
+        # 其他鼠标点击正常处理
+        super().mousePressEvent(event)
+
+    def focusOutEvent(self, event):
+        """当补全框失去焦点时，只有在编辑框也失去焦点时才隐藏补全框"""
+        # 检查父编辑器是否还有焦点
+        if hasattr(self, 'editor') and self.editor and self.editor.hasFocus():
+            # 编辑器还有焦点，不隐藏补全框
+            return
+        # 只有当编辑器也失去焦点时才隐藏
+        self.hide()
+        super().focusOutEvent(event)
+
 
 # -----------------------
 # 支持变量补全和高亮的 TextEdit
@@ -140,8 +161,17 @@ class VariableCompletionTextEdit(TextEdit):
         # 创建并应用高亮器
         self.highlighter = VariableHighlighter(self.document())
 
+        # 将编辑器引用传递给补全框
+        self.popup.editor = self
+
     def focusOutEvent(self, event):
-        """当焦点离开编辑框时自动隐藏补全框"""
+        """当焦点离开编辑框时，只有在补全框也失去焦点时才隐藏补全框"""
+        # 检查补全框是否还有焦点
+        if self.popup.hasFocus():
+            # 补全框还有焦点，不隐藏，让补全框自己处理
+            super().focusOutEvent(event)
+            return
+        # 只有当补全框也失去焦点时才隐藏
         self.popup.hide()
         super().focusOutEvent(event)
 
@@ -340,8 +370,6 @@ class VariableCompletionTextEdit(TextEdit):
         finally:
             self._completing = False
             self.popup.hide()
-        # 手动触发 textChanged 信号，因为 setTextCursor 不会触发
-        # 高亮器会自动更新，其他连接到 textChanged 的功能也会被触发
         self.textChanged.emit()
 
 
@@ -361,6 +389,9 @@ class VariableCompletionLineEdit(LineEdit):
         self._highlighted_palette = self._create_highlighted_palette()
         self._last_text = ""
         self.textChanged.connect(self._on_text_changed)
+
+        # 将编辑器引用传递给补全框
+        self.popup.editor = self
 
     def _create_highlighted_palette(self):
         palette = self.palette()
@@ -384,7 +415,13 @@ class VariableCompletionLineEdit(LineEdit):
         return match is not None
 
     def focusOutEvent(self, event):
-        """当焦点离开编辑框时自动隐藏补全框"""
+        """当焦点离开编辑框时，只有在补全框也失去焦点时才隐藏补全框"""
+        # 检查补全框是否还有焦点
+        if self.popup.hasFocus():
+            # 补全框还有焦点，不隐藏，让补全框自己处理
+            super().focusOutEvent(event)
+            return
+        # 只有当补全框也失去焦点时才隐藏
         self.popup.hide()
         super().focusOutEvent(event)
 

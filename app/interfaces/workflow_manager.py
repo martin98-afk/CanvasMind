@@ -476,7 +476,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     def open_canvas(self, file_path: Path):
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
-            canvas_page.load_full_workflow(file_path)
+            QTimer.singleShot(100, lambda: canvas_page.load_full_workflow(file_path))
             # === 注入全局推荐系统 ===
             canvas_page.canvas_deleted.connect(
                 lambda: (

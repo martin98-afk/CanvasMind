@@ -19,14 +19,6 @@ from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.card_widget.home_card import HomeCardView, HomeCard
 from app.widgets.card_widget.link_card import LinkCardView
 
-# 示例工作流链接
-EXAMPLES = {
-    "自动组件生成": "https://raw.githubusercontent.com/martin98-afk/CanvasMind/refs/heads/master/workflows/%E8%87%AA%E5%8A%A8%E7%BB%84%E4%BB%B6%E7%94%9F%E6%88%90.workflow.json",
-    "循环、迭代样例模型": "https://raw.githubusercontent.com/martin98-afk/CanvasMind/refs/heads/master/workflows/%E5%BE%AA%E7%8E%AF%E3%80%81%E8%BF%AD%E4%BB%A3%E6%A0%B7%E4%BE%8B%E6%A8%A1%E5%9E%8B.workflow.json",
-    "机器学习算法样例模型": "https://raw.githubusercontent.com/martin98-afk/CanvasMind/refs/heads/master/workflows/workflow.workflow.json",
-    "react工具调用智能体": "https://raw.githubusercontent.com/martin98-afk/CanvasMind/refs/heads/master/workflows/react%E6%99%BA%E8%83%BD%E4%BD%93.workflow.json"
-}
-
 
 class WelcomeBannerWidget(QWidget):
     """ 改进的欢迎横幅，包含标题、副标题和主要操作按钮，带有背景图片和渐变 """
@@ -36,13 +28,13 @@ class WelcomeBannerWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(400)
+        self.setFixedHeight(350)
         # 加载背景图片
         self.bannerPixmap = QPixmap(resource_path('./icons/banner.png'))
 
         # 主布局
         self.vLayout = QVBoxLayout(self)
-        self.vLayout.setContentsMargins(40, 40, 40, 40)
+        self.vLayout.setContentsMargins(40, 0, 40, 0)
         self.vLayout.setSpacing(20)
 
         # 标题区域
@@ -263,7 +255,7 @@ class QuickStartCardView(CardWidget):
 
         cards_per_row = max(1, available_width // estimated_card_width)
         # 假设我们最多展示 2 行，可以根据需要调整
-        max_cards_to_show = cards_per_row * 2
+        max_cards_to_show = max(cards_per_row * 2, 6)
 
         # 取需要展示的数量
         paths_to_show = sorted_paths[:max_cards_to_show]
@@ -292,9 +284,8 @@ class SampleModelCardView(CardWidget):
 
     openSampleSignal = pyqtSignal(str)
 
-    def __init__(self, title="示例模型", wf_dir=None, parent=None):
+    def __init__(self, title="示例模型", parent=None):
         super().__init__(parent)
-        self.wf_dir = wf_dir
         self.setBorderRadius(8)
         self.vLayout = QVBoxLayout(self)
         self.vLayout.setContentsMargins(16, 16, 16, 16)
@@ -319,7 +310,7 @@ class SampleModelCardView(CardWidget):
             {"icon": get_icon("逻辑回归A"), "title": "机器学习样例", "content": "常见机器学习流程",
              "key": "机器学习算法样例模型"},
             {"icon": get_icon("智能体"), "title": "React智能体", "content": "工具调用智能体样例",
-             "key": "react工具调用智能体"},
+             "key": "react智能体"},
         ]
 
         for i, ex in enumerate(examples):
@@ -335,10 +326,8 @@ class SampleModelCardView(CardWidget):
             self.contentLayout.addWidget(card)
 
     def _on_open_sample(self, model_name: str):
-        src_path = Path(resource_path(f"./examples/{model_name}.workflow.json"))
-        target_path = self.wf_dir / f"{model_name}.workflow.json"
+        target_path = Path(resource_path("examples")) / f"{model_name}.workflow.json"
         try:
-            shutil.copyfile(src_path, target_path)
             self.openSampleSignal.emit(str(target_path))
         except Exception as e:
             print(f"复制示例文件失败: {e}")
@@ -398,7 +387,6 @@ class HomeInterface(ScrollArea):
         self.home = parent
         self.workflow_manager = parent.workflow_manager
         # 注意：这里假设 parent.package_manager 指向的是包含 envCombo 和 env_changed 信号的组件管理页面
-        # 你需要根据实际的 parent.package_manager 结构进行调整
         self.package_manager = parent.package_manager
 
         self.setObjectName('homeInterface')
@@ -409,22 +397,13 @@ class HomeInterface(ScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setWidgetResizable(True)
 
-        # --- 关键修改：设置 ScrollArea 背景 ---
-        # 滚动区域的背景色应与深色主题一致
-        if isDarkTheme():
-            # 设置一个深色背景，或者确保其透明以显示父级或样式表定义的颜色
-            # 如果样式表没有生效，可以强制设置一个深色
-            # self.setStyleSheet("background-color: #1E1E1E;") # 示例深色
-            pass  # 依赖样式表和主题，如果样式表生效，这行可以省略
-        # --- 结束修改 ---
-
         # 主内容 Widget
         self.view = QWidget()
         # --- 关键修改：设置 view 背景 ---
         # 主内容 view 的背景色也应与深色主题一致
         self.vBoxLayout = QVBoxLayout(self.view)
         self.vBoxLayout.setContentsMargins(24, 24, 24, 24)
-        self.vBoxLayout.setSpacing(20)
+        self.vBoxLayout.setSpacing(0)
 
         # 设置 view 的背景色
         if isDarkTheme():
@@ -445,17 +424,17 @@ class HomeInterface(ScrollArea):
         self.cardLayout.setSpacing(16)
 
         # 2.1 环境管理卡片 (新增)
-        self.environmentCard = EnvironmentCardView(self.package_manager)
+        self.environmentCard = EnvironmentCardView(self.package_manager, title="环境管理 >", parent=self)
         self.environmentCard.manageEnvSignal.connect(lambda: self.home.switchTo(self.package_manager))
         self.environmentCard.addEnvSignal.connect(
             lambda: self.package_manager.create_env(self))  # 假设 create_env 在 package_manager 上
 
         # 2.2 快速开始卡片
-        self.quickStartCard = QuickStartCardView("最近编辑 >")
+        self.quickStartCard = QuickStartCardView("最近编辑 >", self)
         self.quickStartCard.openFileSignal.connect(self._on_open_canvas_clicked)
 
         # 2.3 示例模型卡片
-        self.sampleModelCard = SampleModelCardView("示例模型 >")
+        self.sampleModelCard = SampleModelCardView("示例模型 >", self)
         self.sampleModelCard.openSampleSignal.connect(self._on_open_canvas_clicked)
 
         # 2.4 资源链接卡片

@@ -1,6 +1,6 @@
 # coding:utf-8
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint
-from PyQt5.QtGui import QPainter, QColor, QPen
+from PyQt5.QtGui import QPainter, QColor, QPen, QFont
 from PyQt5.QtWidgets import (QComboBox, QStyle, QStyleOptionComboBox,
                              QFrame)
 
@@ -17,6 +17,8 @@ class CustomComboBox(QComboBox):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        font = QFont('Consolas', 12)
+        self.setFont(font)
         # 应用fluent样式
         FluentStyleSheet.COMBO_BOX.apply(self)
         # 设置样式和字体
