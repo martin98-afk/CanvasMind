@@ -875,7 +875,7 @@ class BaseComponent(ABC):
         model_path = temp_dir / f"model_{node_id}.pkl"
         with open(model_path, 'wb') as f:
             pickle.dump(model, f)
-        return str(model_path)
+        return str(model_path.resolve())
 
     def _store_torch_model(self, model: Any, node_id: str = None) -> str:
         """存储torch模型到节点专属目录"""
@@ -886,7 +886,7 @@ class BaseComponent(ABC):
         model_path = temp_dir / f"model_{node_id}.pth"
         scripted_model = torch.jit.script(model)
         scripted_model.save(str(model_path))
-        return str(model_path)
+        return str(model_path.resolve())
 
     def _store_image_data(self, image: Any, node_id: str = None) -> str:
         """存储图像数据到节点专属目录"""
@@ -897,7 +897,7 @@ class BaseComponent(ABC):
         temp_dir = _get_node_temp_dir(node_id)
         image_path = temp_dir / f"image_{node_id}.png"
         image.save(image_path, 'PNG')
-        return str(image_path)
+        return str(image_path.resolve())
 
     def _store_file_data(self, data: Any, node_id: str = None, output_name: str = "output_file") -> str:
         """存储任意文件数据，使用 output_name 作为文件名"""
@@ -927,7 +927,7 @@ class BaseComponent(ABC):
             # 兜底：转为字符串
             file_path.write_text(str(data), encoding='utf-8')
 
-        return str(file_path)
+        return str(file_path.resolve())
 
     # ---------------- 执行包装器 ----------------
     def execute(
