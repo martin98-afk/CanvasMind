@@ -146,7 +146,6 @@ class CanvasPage(QWidget):
         self.canvas_widget.installEventFilter(self)
         # 右键菜单
         self._setup_context_menus()
-        self.property_panel.update_properties(None)
 
     # ========================
     # 调度器相关（核心新增）
