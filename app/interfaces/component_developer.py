@@ -200,6 +200,7 @@ class ComponentDeveloperWidget(QWidget):
         vBoxLayout = QVBoxLayout(right_widgets)
         vBoxLayout.setContentsMargins(0, 0, 0, 0)
         vBoxLayout.setSpacing(0)  # 可选：移除组件之间的间距（如果不需要）
+
         self.pivot = SegmentedWidget(self)
         self.stackedWidget = StackedWidget(self)
         # 组件属性
@@ -1205,7 +1206,8 @@ class PropertyEditorWidget(QWidget):
         self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "选项"])
         self.table.verticalHeader().hide()
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.itemChanged.connect(lambda item: self.properties_changed.emit())
+        # 连接itemChanged信号，区分是否是第一列（属性名）的修改
+        self.table.itemChanged.connect(self._on_item_changed)
         button_layout = QHBoxLayout()
         button_layout.addWidget(BodyLabel("参数设置:"))
         add_btn = ToolButton(FluentIcon.ADD, parent=self)
@@ -1217,6 +1219,41 @@ class PropertyEditorWidget(QWidget):
         layout.addLayout(button_layout)
         layout.addWidget(self.table)
 
+    def _on_item_changed(self, item):
+        """处理表格项改变事件"""
+        row = self.table.row(item)
+        col = item.column()
+
+        if col == 0:  # 属性名列被修改
+            old_name = item.data(Qt.UserRole)  # 获取旧的属性名（存储在userData中）
+            new_name = item.text().strip()
+
+            if old_name and old_name != new_name:
+                # 同步更新所有相关的配置字典
+                self._update_config_keys(old_name, new_name)
+
+                # 更新item的userData，记录当前属性名
+                item.setData(Qt.UserRole, new_name)
+
+        self.properties_changed.emit()
+
+    def _update_config_keys(self, old_name, new_name):
+        """当属性名改变时，更新所有相关的配置字典"""
+        # 更新 choice 配置
+        if old_name in self._choice_configs:
+            choices = self._choice_configs.pop(old_name)
+            self._choice_configs[new_name] = choices
+
+        # 更新 range 配置
+        if old_name in self._range_configs:
+            range_config = self._range_configs.pop(old_name)
+            self._range_configs[new_name] = range_config
+
+        # 更新 dynamic form schema
+        if old_name in self._dynamic_form_schemas:
+            schema = self._dynamic_form_schemas.pop(old_name)
+            self._dynamic_form_schemas[new_name] = schema
+
     def _remove_property(self):
         """删除选中属性"""
         selected_ranges = self.table.selectedRanges()
@@ -1226,6 +1263,14 @@ class PropertyEditorWidget(QWidget):
                 rows.extend(range(range_.topRow(), range_.bottomRow() + 1))
             rows = sorted(set(rows), reverse=True)
             for row in rows:
+                # 删除行时，同步删除相关配置
+                name_item = self.table.item(row, 0)
+                if name_item:
+                    prop_name = name_item.text()
+                    # 清除相关配置
+                    self._choice_configs.pop(prop_name, None)
+                    self._range_configs.pop(prop_name, None)
+                    self._dynamic_form_schemas.pop(prop_name, None)
                 self.table.removeRow(row)
             self.properties_changed.emit()
 
@@ -1235,6 +1280,8 @@ class PropertyEditorWidget(QWidget):
         self.table.insertRow(row)
         # 属性名
         name_item = QTableWidgetItem(prop_name if prop_name else f"prop{row + 1}")
+        # 设置userData记录属性名，用于后续对比
+        name_item.setData(Qt.UserRole, prop_name if prop_name else f"prop{row + 1}")
         self.table.setItem(row, 0, name_item)
         # 标签
         label_item = QTableWidgetItem(getattr(prop_def, 'label', f"属性{row + 1}"))

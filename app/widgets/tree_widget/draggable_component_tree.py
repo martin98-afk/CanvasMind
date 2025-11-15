@@ -172,7 +172,7 @@ class DraggableTreePanel(QWidget):
         """显示类别筛选对话框"""
         if self.category_filter_dialog:
             # 计算位置，让对话框出现在按钮下方
-            pos = self.category_button.mapToGlobal(QPoint(0, self.category_button.height()))
+            pos = self.category_button.mapToGlobal(QPoint(-10, self.category_button.height() - 10))
             self.category_filter_dialog.show_at(pos)
 
     def _on_categories_changed(self, selected_categories):

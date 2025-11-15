@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from dataclasses import dataclass
 
+from loguru import logger
+
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 
 
@@ -51,3 +53,4 @@ class StatusNode(BasicNodeWithGlobalProperty):
         elif self._status == NodeStatus.NODE_STATUS_PENDING:
             # 淡灰色 - 等待运行
             self.set_color(60, 60, 60)
+        self.view.draw_node()

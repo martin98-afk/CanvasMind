@@ -7,6 +7,8 @@ import pickle
 import re
 import sys
 import time
+from collections import defaultdict, deque
+from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -493,3 +495,118 @@ def _safe_load_pickle(path, timeout=5.0, retry_interval=0.05):
             continue
 
     raise RuntimeError(f"无法加载结果文件: {path}")
+
+
+def topological_sort(nodes: List, split_components: bool = False) -> Union[Optional[List], Optional[List[List]]]:
+    """
+    拓扑排序
+
+    Args:
+        nodes: 节点列表
+        split_components: 是否将非连通图拆分为多个连通分量，每个分量内部进行拓扑排序
+
+    Returns:
+        如果 split_components 为 False: 返回整个图的拓扑排序列表，如果存在环则返回 None
+        如果 split_components 为 True: 返回每个连通分量的拓扑排序列表组成的列表，如果存在环则返回 None
+    """
+    if not nodes:
+        return [] if split_components else []
+
+    in_degree = {node: 0 for node in nodes}
+    graph_deps = defaultdict(list)
+    graph_reverse_deps = defaultdict(list)  # 反向图，用于查找连通分量
+
+    node_set = set(nodes)
+    for node in nodes:
+        for input_port in node.input_ports():
+            for upstream_out in input_port.connected_ports():
+                upstream = get_port_node(upstream_out)
+                if upstream in node_set:
+                    graph_deps[upstream].append(node)
+                    graph_reverse_deps[node].append(upstream)  # 添加反向边
+                    in_degree[node] += 1
+
+    def find_connected_components():
+        """查找所有连通分量（无向图的连通分量）"""
+        visited = set()
+        components = []
+
+        for start_node in nodes:
+            if start_node not in visited:
+                # BFS 查找连通分量
+                component = []
+                queue = deque([start_node])
+                visited.add(start_node)
+
+                while queue:
+                    current = queue.popleft()
+                    component.append(current)
+
+                    # 检查所有相邻节点（包括前驱和后继）
+                    for neighbor in graph_deps[current] + graph_reverse_deps[current]:
+                        if neighbor not in visited and neighbor in node_set:
+                            visited.add(neighbor)
+                            queue.append(neighbor)
+
+                components.append(component)
+
+        return components
+
+    def topological_sort_single_component(component_nodes):
+        """对单个连通分量进行拓扑排序"""
+        component_in_degree = {node: 0 for node in component_nodes}
+
+        # 重新计算连通分量内的入度
+        for node in component_nodes:
+            for input_port in node.input_ports():
+                for upstream_out in input_port.connected_ports():
+                    upstream = get_port_node(upstream_out)
+                    if upstream in component_nodes:
+                        component_in_degree[node] += 1
+
+        queue = deque([n for n in component_nodes if component_in_degree[n] == 0])
+        execution_order = []
+
+        while queue:
+            n = queue.popleft()
+            execution_order.append(n)
+            for neighbor in graph_deps[n]:
+                if neighbor in component_nodes:
+                    component_in_degree[neighbor] -= 1
+                    if component_in_degree[neighbor] == 0:
+                        queue.append(neighbor)
+
+        if len(execution_order) != len(component_nodes):
+            return None  # 存在环
+
+        return execution_order
+
+    if split_components:
+        # 按连通分量分别处理
+        components = find_connected_components()
+        result = []
+
+        for component in components:
+            component_order = topological_sort_single_component(component)
+            if component_order is None:  # 某个连通分量内存在环
+                return None
+            result.append(component_order)
+
+        return result
+    else:
+        # 传统拓扑排序，处理整个图
+        queue = deque([n for n in nodes if in_degree[n] == 0])
+        execution_order = []
+
+        while queue:
+            n = queue.popleft()
+            execution_order.append(n)
+            for neighbor in graph_deps[n]:
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+
+        if len(execution_order) != len(nodes):
+            return None  # 存在环
+
+        return execution_order

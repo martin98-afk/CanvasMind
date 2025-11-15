@@ -158,7 +158,6 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
         painter.save()
         painter.setPen(QtCore.Qt.NoPen)
         painter.setBrush(QtCore.Qt.NoBrush)
-
         margin = 1.0
         rect = self.boundingRect()
         rect = QtCore.QRectF(
@@ -199,18 +198,20 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
             painter.setPen(QtCore.Qt.NoPen)
             painter.drawRoundedRect(rect, radius, radius)
 
-        txt_rect = QtCore.QRectF(top_rect.x(), top_rect.y(),
-                                 rect.width(), top_rect.height())
         painter.setPen(QtGui.QColor(*self.text_color))
         self._align_label()
 
+        # 绘制边框
         border = 0.8
         border_color = self.color
         if self.selected and NodeEnum.SELECTED_BORDER_COLOR.value:
             border = 1.0
             border_color = NodeEnum.SELECTED_BORDER_COLOR.value
+
         painter.setBrush(QtCore.Qt.NoBrush)
-        painter.setPen(QtGui.QPen(QtGui.QColor(*border_color), border))
+        pen = QtGui.QPen(QtGui.QColor(*border_color), border)
+        pen.setCosmetic(True)  # 确保线条在缩放时保持一致
+        painter.setPen(pen)
         painter.drawRoundedRect(rect, radius, radius)
 
         painter.restore()
@@ -239,8 +240,8 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
         super(BackdropNodeItem, self).mouseDoubleClickEvent(event)
 
     def draw_node(self):
-        QtCore.QTimer.singleShot(50, self._align_ports_later)
-        QtCore.QTimer.singleShot(50, self._align_icon_horizontal)
+        QtCore.QTimer.singleShot(0, self._align_ports_later)
+        QtCore.QTimer.singleShot(0, self._align_icon_horizontal)
 
     def _align_label(self):
         rect = self.boundingRect()

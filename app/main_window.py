@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from PyQt5 import QtCore
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QPlainTextEdit, QApplication, QDesktopWidget
@@ -21,28 +22,26 @@ class LowCodeWindow(FluentWindow):
     def __init__(self):
         super().__init__()
         setTheme(Theme.DARK)
-        self.config = Settings.get_instance()
-        self.config.save()
         self.setWindowIcon(get_icon("logo3"))
         self.setWindowTitle("Canvas Mind")
-        self.navigationInterface.setAcrylicEnabled(True)
-        # 初始化日志查看器
-        self.setup_log_viwer()
-        # 自动最大化窗口
+        # 1. 创建启动页面
         screen_rect = QDesktopWidget().screenGeometry()
         screen_width, screen_height = screen_rect.width(), screen_rect.height()
-        self.window_width = int(screen_width * 0.8)
-        self.window_height = int(screen_height * 0.8)
+        self.window_width = int(0.8 * screen_width)
+        self.window_height = int(0.85 * screen_height)
         self.navigationInterface.setExpandWidth(175)
-        self.resize(self.window_width, self.window_height)
         desktop = QApplication.desktop().availableGeometry()
-        w, h = desktop.width(), desktop.height()
-        self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
-        # 生成启动界面
-        # 1. 创建启动页面
+        self.w, self.h = desktop.width(), desktop.height()
+        self.move(self.w // 2 - self.width() // 2, self.h // 2 - self.height() // 2)
         self.splashScreen = SplashScreen(self.windowIcon(), self)
+        self.splashScreen.titleBar.hide()
         self.splashScreen.setIconSize(QSize(400, 400))
+        self.splashScreen.setFixedSize(500, 500)
         self.show()
+        self.config = Settings.get_instance()
+        self.config.save()
+        # 初始化日志查看器
+        self.setup_log_viwer()
         # 创建主界面页面
         self.workflow_manager = WorkflowCanvasGalleryPage(self)
         self.package_manager = EnvManagerUI(self)
@@ -91,7 +90,12 @@ class LowCodeWindow(FluentWindow):
         self.addSubInterface(
             self.setting_card, FluentIcon.SETTING, '系统设置', NavigationItemPosition.BOTTOM
         )
+        QtCore.QTimer.singleShot(1000, self.finish_splash_screen)
+
+    def finish_splash_screen(self):
         self.splashScreen.finish()
+        self.resize(self.window_width, self.window_height)
+        self.move(self.w // 2 - self.width() // 2, self.h // 2 - self.height() // 2)
 
     def setup_log_viwer(self):
         if not hasattr(self, 'log_viewer'):

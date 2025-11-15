@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x22335d87e80": {
+      "0x1e0f46e3700": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -103,7 +103,7 @@
           "debug_code": {}
         }
       },
-      "0x22335d87700": {
+      "0x1e0f46e2dd0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_CSV_读取器",
         "icon": null,
         "name": "CSV 读取器",
@@ -201,7 +201,7 @@
           "debug_code": {}
         }
       },
-      "0x22335d85cf0": {
+      "0x1e0f46e2950": {
         "type_": "dynamic.StatusDynamicNode_数据集成_输入array",
         "icon": null,
         "name": "输入array",
@@ -294,7 +294,7 @@
           "param1": "1,2,3,4"
         }
       },
-      "0x22335cf5c90": {
+      "0x1e0f46e11e0": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(csv)",
         "icon": null,
         "name": "逻辑回归推理(csv)",
@@ -353,7 +353,7 @@
           "debug_code": {}
         }
       },
-      "0x22335cf7d00": {
+      "0x1e0f46e0f10": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy)",
@@ -446,7 +446,7 @@
           "debug_code": null
         }
       },
-      "0x22335cf7490": {
+      "0x1e0f46e2650": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_MinMax归一化",
         "icon": null,
         "name": "MinMax归一化",
@@ -549,7 +549,7 @@
           "debug_code": {}
         }
       },
-      "0x22335cf76a0": {
+      "0x1e0f46e15d0": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_归一化推理(npy)",
         "icon": null,
         "name": "归一化推理(npy)",
@@ -652,7 +652,7 @@
           "debug_code": {}
         }
       },
-      "0x22335cf44c0": {
+      "0x1e0f46e1720": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy) 1",
@@ -755,7 +755,7 @@
           "debug_code": {}
         }
       },
-      "0x22335cf67a0": {
+      "0x1e0f46e3760": {
         "type_": "dynamic.StatusDynamicNode_数据转换_csv转npy",
         "icon": null,
         "name": "csv转npy",
@@ -848,7 +848,7 @@
           "debug_code": {}
         }
       },
-      "0x2232dd4e1a0": {
+      "0x1e0f49b8a60": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练",
@@ -948,7 +948,7 @@
           "max_iter": "100"
         }
       },
-      "0x2232dd4c460": {
+      "0x1e0f49ba320": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练 1",
@@ -1062,171 +1062,171 @@
     "connections": [
       {
         "out": [
-          "0x22335d87e80",
+          "0x1e0f46e3700",
           "file"
         ],
         "in": [
-          "0x22335d87700",
+          "0x1e0f46e2dd0",
           "csv"
         ]
       },
       {
         "out": [
-          "0x22335d87700",
+          "0x1e0f46e2dd0",
           "csv"
         ],
         "in": [
-          "0x2232dd4e1a0",
+          "0x1e0f49b8a60",
           "feature"
         ]
       },
       {
         "out": [
-          "0x22335d87700",
+          "0x1e0f46e2dd0",
           "csv"
         ],
         "in": [
-          "0x2232dd4e1a0",
+          "0x1e0f49b8a60",
           "target"
         ]
       },
       {
         "out": [
-          "0x22335d87700",
+          "0x1e0f46e2dd0",
           "csv"
         ],
         "in": [
-          "0x22335cf5c90",
+          "0x1e0f46e11e0",
           "feature"
         ]
       },
       {
         "out": [
-          "0x22335d87700",
+          "0x1e0f46e2dd0",
           "csv"
         ],
         "in": [
-          "0x22335cf67a0",
+          "0x1e0f46e3760",
           "input"
         ]
       },
       {
         "out": [
-          "0x22335d87700",
+          "0x1e0f46e2dd0",
           "csv"
         ],
         "in": [
-          "0x22335cf7490",
+          "0x1e0f46e2650",
           "input"
         ]
       },
       {
         "out": [
-          "0x22335d87700",
+          "0x1e0f46e2dd0",
           "csv"
         ],
         "in": [
-          "0x2232dd4c460",
+          "0x1e0f49ba320",
           "target"
         ]
       },
       {
         "out": [
-          "0x22335d85cf0",
+          "0x1e0f46e2950",
           "output"
         ],
         "in": [
-          "0x22335cf76a0",
+          "0x1e0f46e15d0",
           "input"
         ]
       },
       {
         "in": [
-          "0x22335cf5c90",
+          "0x1e0f46e11e0",
           "model"
         ],
         "out": [
-          "0x2232dd4e1a0",
+          "0x1e0f49b8a60",
           "model"
         ]
       },
       {
         "in": [
-          "0x22335cf7d00",
+          "0x1e0f46e0f10",
           "feature"
         ],
         "out": [
-          "0x22335cf67a0",
+          "0x1e0f46e3760",
           "output"
         ]
       },
       {
         "in": [
-          "0x22335cf7d00",
+          "0x1e0f46e0f10",
           "model"
         ],
         "out": [
-          "0x2232dd4e1a0",
+          "0x1e0f49b8a60",
           "model"
         ]
       },
       {
         "out": [
-          "0x22335cf7490",
+          "0x1e0f46e2650",
           "output"
         ],
         "in": [
-          "0x2232dd4c460",
+          "0x1e0f49ba320",
           "feature"
         ]
       },
       {
         "out": [
-          "0x22335cf7490",
+          "0x1e0f46e2650",
           "scaler"
         ],
         "in": [
-          "0x22335cf76a0",
+          "0x1e0f46e15d0",
           "scaler"
         ]
       },
       {
         "out": [
-          "0x22335cf76a0",
+          "0x1e0f46e15d0",
           "output"
         ],
         "in": [
-          "0x22335cf44c0",
+          "0x1e0f46e1720",
           "feature"
         ]
       },
       {
         "in": [
-          "0x22335cf44c0",
+          "0x1e0f46e1720",
           "model"
         ],
         "out": [
-          "0x2232dd4c460",
+          "0x1e0f49ba320",
           "model"
         ]
       }
     ]
   },
   "runtime": {
-    "environment": "3.14",
-    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
+    "environment": null,
+    "environment_exe": null,
     "node_id2stable_key": {
-      "0x22335d87e80": "数据集成/文档上传||文档上传",
-      "0x22335d87700": "数据集成/CSV 读取器||CSV 读取器",
-      "0x22335d85cf0": "数据集成/输入array||输入array",
-      "0x22335cf5c90": "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)",
-      "0x22335cf7d00": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
-      "0x22335cf7490": "数据预处理/MinMax归一化||MinMax归一化",
-      "0x22335cf76a0": "数据预处理/归一化推理(npy)||归一化推理(npy)",
-      "0x22335cf44c0": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
-      "0x22335cf67a0": "数据转换/csv转npy||csv转npy",
-      "0x2232dd4e1a0": "模型训练/逻辑回归训练||逻辑回归训练",
-      "0x2232dd4c460": "模型训练/逻辑回归训练||逻辑回归训练 1"
+      "0x1e0f46e3700": "数据集成/文档上传||文档上传",
+      "0x1e0f46e2dd0": "数据集成/CSV 读取器||CSV 读取器",
+      "0x1e0f46e2950": "数据集成/输入array||输入array",
+      "0x1e0f46e11e0": "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)",
+      "0x1e0f46e0f10": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
+      "0x1e0f46e2650": "数据预处理/MinMax归一化||MinMax归一化",
+      "0x1e0f46e15d0": "数据预处理/归一化推理(npy)||归一化推理(npy)",
+      "0x1e0f46e1720": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
+      "0x1e0f46e3760": "数据转换/csv转npy||csv转npy",
+      "0x1e0f49b8a60": "模型训练/逻辑回归训练||逻辑回归训练",
+      "0x1e0f49ba320": "模型训练/逻辑回归训练||逻辑回归训练 1"
     },
     "node_states": {
       "数据集成/文档上传||文档上传": "success",

@@ -71,17 +71,35 @@ def create_dynamic_code_node(parent_window=None):
 
             # 初始化属性控件（含 code 编辑器）
             self._init_properties()
-
+            self._sync_timer = None
             # 延迟绑定端口同步（避免初始化时 widget 未就绪）
             QtCore.QTimer.singleShot(50, self._setup_port_sync)
 
         def _setup_port_sync(self):
-            widget = self.input_widget.get_custom_widget()
-            widget.valueChanged.connect(self._sync_inputs_ports)
-            else_widget = self.output_widget.get_custom_widget()
-            else_widget.valueChanged.connect(self._sync_outputs_ports)
+            input_widget = self.input_widget.get_custom_widget()
+            input_widget.valueChanged.connect(self._on_inputs_changed)
+            output_widget = self.output_widget.get_custom_widget()
+            output_widget.valueChanged.connect(self._on_outputs_changed)
             self._sync_inputs_ports()
             self._sync_outputs_ports()
+
+        def _on_inputs_changed(self):
+            if self._sync_timer:
+                self._sync_timer.stop()
+                self._sync_timer.deleteLater()
+            self._sync_timer = QtCore.QTimer()
+            self._sync_timer.setSingleShot(True)
+            self._sync_timer.timeout.connect(self._sync_inputs_ports)
+            self._sync_timer.start(400)
+
+        def _on_outputs_changed(self):
+            if self._sync_timer:
+                self._sync_timer.stop()
+                self._sync_timer.deleteLater()
+            self._sync_timer = QtCore.QTimer()
+            self._sync_timer.setSingleShot(True)
+            self._sync_timer.timeout.connect(self._sync_outputs_ports)
+            self._sync_timer.start(400)
 
         def _init_properties(self):
             """初始化条件列表和 else 开关（只创建 widget，不绑定逻辑）"""
@@ -192,8 +210,6 @@ def create_dynamic_code_node(parent_window=None):
             self.code_editor.set_code(template_code)
 
         def _sanitize_port_name(self, name: str) -> str:
-            if not name:
-                name = "branch"
             name = re.sub(r"[^a-zA-Z0-9_]", "_", str(name))
             if name and name[0].isdigit():
                 name = "b_" + name
@@ -206,6 +222,7 @@ def create_dynamic_code_node(parent_window=None):
             # 1. 按顺序生成期望的输入端口名（自动去重）
             expected_names = []
             used_names = set()
+            name_mapping = {}  # {原始索引: 最终端口名}
             for i, item in enumerate(input_configs):
                 raw_name = item.get("name", f"input_{i}").strip() or f"input_{i}"
                 port_name = self._sanitize_port_name(raw_name)
@@ -216,6 +233,7 @@ def create_dynamic_code_node(parent_window=None):
                     counter += 1
                 used_names.add(port_name)
                 expected_names.append(port_name)
+                name_mapping[i] = port_name
 
             # 2. 记录当前所有输入端口的连线状态：{port_name: [connected_upstream_ports]}
             current_connections = {}
@@ -244,6 +262,8 @@ def create_dynamic_code_node(parent_window=None):
                                 upstream_port.connect_to(new_port, push_undo=False, emit_signal=False)
                         except Exception:
                             continue
+            self._sync_names_to_form(input_configs, name_mapping, "input")
+            QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
 
         def _sync_outputs_ports(self):
             """同步输出端口：严格按表单顺序重建，仅当端口名未变时恢复连线"""
@@ -252,6 +272,7 @@ def create_dynamic_code_node(parent_window=None):
             # 1. 按顺序生成期望的输出端口名（自动去重）
             expected_names = []
             used_names = set()
+            name_mapping = {}  # {原始索引: 最终端口名}
             for i, item in enumerate(output_configs):
                 raw_name = item.get("name", f"output_{i}").strip() or f"output_{i}"
                 port_name = self._sanitize_port_name(raw_name)
@@ -262,6 +283,7 @@ def create_dynamic_code_node(parent_window=None):
                     counter += 1
                 used_names.add(port_name)
                 expected_names.append(port_name)
+                name_mapping[i] = port_name
 
             # 2. 记录当前所有输出端口的连线状态：{port_name: [connected_downstream_ports]}
             current_connections = {}
@@ -294,6 +316,49 @@ def create_dynamic_code_node(parent_window=None):
                                 new_port.connect_to(downstream_port, push_undo=False, emit_signal=False)
                         except Exception:
                             continue
+
+            self._sync_names_to_form(output_configs, name_mapping, "output")
+            QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
+
+        def _sync_names_to_form(self, ports, name_mapping, type="input"):
+            """将生成的端口名称同步回表单"""
+            updated_ports = []
+            name_changed = False
+
+            for i, cond in enumerate(ports):
+                original_name = cond.get("name", type).strip() or type
+                generated_name = name_mapping.get(i, type)
+
+                # 检查是否需要更新名称
+                # 如果原始名称不符合规范（如包含特殊字符、以数字开头等）或与生成的名称不同，则更新
+                sanitized_original = self._sanitize_port_name(original_name)
+                needs_update = sanitized_original != generated_name
+
+                if needs_update:
+                    new_cond = cond.copy()
+                    new_cond["name"] = generated_name
+                    updated_ports.append(new_cond)
+                    name_changed = True
+                else:
+                    updated_ports.append(cond)
+
+            # 如果有名称变化，更新表单值（避免无限循环）
+            if name_changed and updated_ports != ports:
+                # 临时断开信号连接以避免循环触发
+                if type == "input":
+                    widget = self.input_widget.get_custom_widget()
+                    widget.valueChanged.disconnect(self._on_inputs_changed)
+                else:
+                    widget = self.output_widget.get_custom_widget()
+                    widget.valueChanged.disconnect(self._on_outputs_changed)
+                # 更新表单值
+                self.set_property(f"{type}_ports", updated_ports)
+
+                # 重新连接信号
+                if type == "input":
+                    widget.valueChanged.connect(self._on_inputs_changed)
+                else:
+                    widget.valueChanged.connect(self._on_outputs_changed)
 
         def format_code(self):
             # === 1. 收集参数（不变）===

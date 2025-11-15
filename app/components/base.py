@@ -689,10 +689,10 @@ class BaseComponent(ABC):
                         self.logger.debug(f"字符串解析后无法转为 ndarray，回退到 list: {e}")
                         return list(parsed)
                 else:
-                    return [parsed]  # 单个值也视为数组
+                    return parsed  # 单个值也视为数组
             except (ValueError, SyntaxError):
-                return [data]  # 无法解析的字符串作为单元素
-        return [data]  # 兜底：包装为单元素列表
+                return data  # 无法解析的字符串作为单元素
+        return data  # 兜底：包装为单元素列表
 
     def _read_csv_data(self, data: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
         """读取CSV数据"""
@@ -709,7 +709,7 @@ class BaseComponent(ABC):
         else:
             raise ComponentError(f"无法读取CSV数据: {type(data)}")
 
-    def _read_json_data(self, data: Union[str, dict, list, Path]) -> Union[dict, list]:
+    def _read_json_data(self, data: Union[str, dict, list, Path]) -> Union[dict, list, str]:
         if data is None or (isinstance(data, str) and not data.strip()):
             return {}
 
@@ -733,7 +733,7 @@ class BaseComponent(ABC):
                         except Exception:
                             pass
                     self.logger.warning(f"JSON 输入无法解析: {data[:100]}...")
-                    raise ComponentError(f"无效 JSON 数据: {type(data)}", "JSON_PARSE_ERROR")
+                    return data
         else:
             raise ComponentError(f"不支持的 JSON 输入类型: {type(data)}", "JSON_TYPE_ERROR")
 
@@ -875,7 +875,7 @@ class BaseComponent(ABC):
         model_path = temp_dir / f"model_{node_id}.pkl"
         with open(model_path, 'wb') as f:
             pickle.dump(model, f)
-        return str(model_path)
+        return str(model_path.resolve())
 
     def _store_torch_model(self, model: Any, node_id: str = None) -> str:
         """存储torch模型到节点专属目录"""
@@ -886,7 +886,7 @@ class BaseComponent(ABC):
         model_path = temp_dir / f"model_{node_id}.pth"
         scripted_model = torch.jit.script(model)
         scripted_model.save(str(model_path))
-        return str(model_path)
+        return str(model_path.resolve())
 
     def _store_image_data(self, image: Any, node_id: str = None) -> str:
         """存储图像数据到节点专属目录"""
@@ -897,7 +897,7 @@ class BaseComponent(ABC):
         temp_dir = _get_node_temp_dir(node_id)
         image_path = temp_dir / f"image_{node_id}.png"
         image.save(image_path, 'PNG')
-        return str(image_path)
+        return str(image_path.resolve())
 
     def _store_file_data(self, data: Any, node_id: str = None, output_name: str = "output_file") -> str:
         """存储任意文件数据，使用 output_name 作为文件名"""
@@ -927,7 +927,7 @@ class BaseComponent(ABC):
             # 兜底：转为字符串
             file_path.write_text(str(data), encoding='utf-8')
 
-        return str(file_path)
+        return str(file_path.resolve())
 
     # ---------------- 执行包装器 ----------------
     def execute(

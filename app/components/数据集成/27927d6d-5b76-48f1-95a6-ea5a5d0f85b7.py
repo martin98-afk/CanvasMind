@@ -25,4 +25,4 @@ class Component(BaseComponent):
     ]
 
     def run(self, params, inputs=None):
-        return {"file": None}
+        return {"file": "upload_file_placeholder"}

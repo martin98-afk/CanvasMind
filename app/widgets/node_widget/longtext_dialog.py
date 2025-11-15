@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from NodeGraphQt import NodeBaseWidget
 from Qt import QtWidgets, QtCore
-from qfluentwidgets import FluentIcon, ToolButton, LineEdit, TextEdit
+from qfluentwidgets import FluentIcon, ToolButton, LineEdit, TextEdit, TransparentToolButton
 from qfluentwidgets import MessageBoxBase, SubtitleLabel
 
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
@@ -51,7 +51,8 @@ class LongTextWidget(QtWidgets.QWidget):
         self.summary_label.setText(self._get_summary())
         self.summary_label.setReadOnly(True)
 
-        self.edit_btn = ToolButton(FluentIcon.EDIT)
+        self.edit_btn = TransparentToolButton(FluentIcon.EDIT, self)
+        self.edit_btn.setFixedSize(20,32)
         self.edit_btn.clicked.connect(self._open_editor)
 
         layout = QtWidgets.QHBoxLayout(self)

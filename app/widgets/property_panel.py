@@ -10,13 +10,13 @@ from NodeGraphQt import BaseNode
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
-    QStackedWidget, QHBoxLayout, QApplication
+    QStackedWidget, QHBoxLayout, QApplication, QSizePolicy
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
     ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
     TransparentDropDownToolButton
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
-from app.utils.utils import serialize_for_json, get_icon, canvas_file_dump_path
+from app.utils.utils import serialize_for_json, get_icon, canvas_file_dump_path, topological_sort
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit, VariableCompletionTextEdit
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
@@ -45,6 +45,7 @@ class PropertyPanel(CardWidget):
         self._node_var_cards = {}
         self._env_var_cards = {}
         self._global_panel_built = False
+        self._allowed_update = False
         # === 顶层堆叠：两个独立的 ScrollArea ===
         self.main_stacked = QStackedWidget(self)
         # --- 节点面板（带独立 ScrollArea）---
@@ -52,7 +53,9 @@ class PropertyPanel(CardWidget):
         node_scroll.viewport().setStyleSheet("background-color: transparent;")
         node_scroll.setWidgetResizable(True)
         node_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        node_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.node_container = QWidget()
+        self.node_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.node_vbox = QVBoxLayout(self.node_container)
         self.node_vbox.setContentsMargins(10, 10, 10, 10)
         self.node_vbox.setSpacing(8)
@@ -82,6 +85,9 @@ class PropertyPanel(CardWidget):
 
         # --- 用于存储内部节点卡片状态 ---
         self._internal_nodes_card_expanded = {}
+
+    def set_allowed_update(self, allowed: bool):
+        self._allowed_update = allowed
 
     # ========================
     # 全局变量信号响应（增量更新）
@@ -174,6 +180,9 @@ class PropertyPanel(CardWidget):
                     (node.input_ports() if is_input else node.output_ports())]
 
     def update_properties(self, node, node_changed=False):
+        if not self._allowed_update:
+            return
+
         is_backdrop_change = (
                 node is not None
                 and node is self.current_node
@@ -195,16 +204,21 @@ class PropertyPanel(CardWidget):
             current_segment = self.segmented_widget.currentRouteKey()
         if hasattr(self, 'global_segmented'):
             self._current_global_tab = self.global_segmented.currentRouteKey()
-        self.current_node = node
+
         if not node:
+            self.current_node = node
             self._show_global_variables_panel()
             self.main_stacked.setCurrentIndex(1)
         else:
             # 清理并构建节点面板
             self._clear_node_layout()
             if isinstance(node, ControlFlowBackdrop):
+                self.current_node = node
                 self._update_control_flow_properties(node, current_segment)
+            elif isinstance(node, list):
+                self._build_node_list_ui(node)
             elif isinstance(node, BaseNode):
+                self.current_node = node
                 self._build_node_ui(node, current_segment)
             self.main_stacked.setCurrentIndex(0)
 
@@ -285,6 +299,211 @@ class PropertyPanel(CardWidget):
                     return False  # 长度不匹配，需要重新构建
         # 成功更新了UI组件
         return True
+
+    def _build_node_list_ui(self, nodes):
+        """
+        清理并构建节点面板
+        """
+        # 对节点进行拓扑排序，按连通分量分组
+        components = topological_sort(nodes, split_components=True)
+        if components is None:  # 存在环
+            components = []
+
+        # 保存当前组件列表，用于移动操作
+        self._current_components = components
+
+        # 主卡片
+        nodes_card = CardWidget(self)
+        nodes_layout = QVBoxLayout(nodes_card)
+        nodes_layout.setContentsMargins(10, 10, 10, 10)
+
+        title_btn_layout = QHBoxLayout()
+        title = BodyLabel("子联通图列表：")
+        title_btn_layout.addWidget(title)
+        title_btn_layout.addStretch()
+
+        nodes_layout.addLayout(title_btn_layout)
+
+        # 为每个连通分量创建单独的卡片并保存引用
+        self._component_cards = []  # 保存组件卡片的引用
+        for i in range(len(components)):
+            component_card = self._create_component_card(nodes_layout, i, components)
+            self._component_cards.append(component_card)
+
+        nodes_layout.addStretch()
+        self.node_vbox.addWidget(nodes_card)
+        self.node_vbox.addStretch()
+
+    def _create_component_card(self, parent_layout, index, components):
+        """
+        创建单个连通分量的卡片
+        """
+        component = components[index]
+
+        component_card = CardWidget(self)
+        component_layout = QVBoxLayout(component_card)
+        component_layout.setContentsMargins(8, 8, 8, 8)
+
+        # 连通分量标题行，包含名称和上下移动按钮
+        header_layout = QHBoxLayout()
+        component_title = BodyLabel(f"子联通图 {index + 1} ({len(component)} 个节点)")
+        header_layout.addWidget(component_title)
+
+        # 上下移动按钮
+        move_up_btn = PushButton("↑")
+        move_down_btn = PushButton("↓")
+
+        # 设置按钮的固定大小
+        move_up_btn.setFixedSize(24, 24)
+        move_down_btn.setFixedSize(24, 24)
+
+        # 连接按钮信号
+        move_up_btn.clicked.connect(lambda _, idx=index: self._move_component(idx, -1))
+        move_down_btn.clicked.connect(lambda _, idx=index: self._move_component(idx, 1))
+
+        # 禁用边界按钮
+        if index == 0:  # 第一个组件，禁用上移按钮
+            move_up_btn.setEnabled(False)
+        if index == len(components) - 1:  # 最后一个组件，禁用下移按钮
+            move_down_btn.setEnabled(False)
+
+        header_layout.addWidget(move_up_btn)
+        header_layout.addWidget(move_down_btn)
+
+        component_layout.addLayout(header_layout)
+
+        # 创建列表显示该连通分量的节点
+        component_list = ListWidget(self)
+        num_items = len(component)
+        estimated_height_for_items = num_items * 35
+        total_estimated_height = estimated_height_for_items
+        component_list.setFixedHeight(total_estimated_height + 20)
+        for n in component:
+            status = self.main_window.get_node_status(n)
+            status_text = {
+                "running": "🟡 运行中",
+                "success": "🟢 成功",
+                "failed": "🔴 失败",
+                "unrun": "⚪ 未运行",
+                "pending": "🔵 待运行"
+            }.get(status, status)
+            item_text = f"{status_text} - {n.name()}"
+            item = QListWidgetItem(item_text)
+            component_list.addItem(item)
+
+        component_layout.addWidget(component_list)
+        parent_layout.addWidget(component_card)
+
+        return component_card
+
+    def _move_component(self, index, direction):
+        """
+        移动连通分量的位置
+        :param index: 当前组件索引
+        :param direction: 移动方向，-1为上移，1为下移
+        """
+        if not hasattr(self, '_current_components') or not self._current_components or len(
+                self._current_components) <= 1:
+            return  # 没有组件或只有一个组件，无法移动
+
+        # 执行移动操作
+        if direction == -1 and index > 0:  # 上移
+            # 交换组件数据
+            self._current_components[index], self._current_components[index - 1] = \
+                self._current_components[index - 1], self._current_components[index]
+            # 交换组件卡片在列表中的位置
+            self._component_cards[index], self._component_cards[index - 1] = \
+                self._component_cards[index - 1], self._component_cards[index]
+        elif direction == 1 and index < len(self._current_components) - 1:  # 下移
+            # 交换组件数据
+            self._current_components[index], self._current_components[index + 1] = \
+                self._current_components[index + 1], self._current_components[index]
+            # 交换组件卡片在列表中的位置
+            self._component_cards[index], self._component_cards[index + 1] = \
+                self._component_cards[index + 1], self._component_cards[index]
+        else:
+            return  # 无效移动
+
+        # 重新排列组件卡片在布局中的位置
+        self._rearrange_component_cards()
+
+    def _rearrange_component_cards(self):
+        """
+        重新排列组件卡片在布局中的位置
+        """
+        # 获取主布局中的内容布局（跳过标题行）
+        nodes_card = self.node_vbox.itemAt(0).widget()  # 假设第一个是nodes_card
+        nodes_layout = nodes_card.layout()
+
+        # 清空内容布局（除了标题）
+        for i in reversed(range(nodes_layout.count())):
+            if i > 0:  # 保留标题行
+                item = nodes_layout.itemAt(i)
+                if item.widget() and item.widget() != nodes_layout.itemAt(0).widget():
+                    nodes_layout.removeItem(item)
+
+        # 按照新的顺序重新添加组件卡片
+        for i, component_card in enumerate(self._component_cards):
+            # 更新标题和按钮状态
+            self._update_card_header(component_card, i)
+            nodes_layout.addWidget(component_card)
+
+    def _update_card_header(self, component_card, new_index):
+        """
+        更新组件卡片的标题和按钮状态
+        """
+        # 获取布局中的标题标签和按钮
+        component_layout = component_card.layout()
+        header_layout = component_layout.itemAt(0).layout()  # 假设标题在第一个位置
+
+        # 找到标题标签并更新文本
+        title_label = None
+        up_btn = None
+        down_btn = None
+
+        for i in range(header_layout.count()):
+            widget = header_layout.itemAt(i).widget()
+            if isinstance(widget, BodyLabel):
+                title_label = widget
+            elif isinstance(widget, PushButton):
+                if widget.text() == "↑":
+                    up_btn = widget
+                elif widget.text() == "↓":
+                    down_btn = widget
+
+        # 更新标题文本
+        if title_label:
+            current_component = self._current_components[new_index]
+            title_label.setText(f"子联通图 {new_index + 1} ({len(current_component)} 个节点)")
+
+        # 更新按钮状态
+        if up_btn:
+            up_btn.setEnabled(new_index > 0)
+        if down_btn:
+            down_btn.setEnabled(new_index < len(self._current_components) - 1)
+
+        # 重新连接按钮信号，传递新的索引
+        if up_btn:
+            up_btn.disconnect()  # 先断开旧连接
+            up_btn.clicked.connect(lambda _, idx=new_index: self._move_component(idx, -1))
+        if down_btn:
+            down_btn.disconnect()  # 先断开旧连接
+            down_btn.clicked.connect(lambda _, idx=new_index: self._move_component(idx, 1))
+
+    def get_current_execution_order(self):
+        """
+        获取当前排列的节点执行顺序
+        返回按当前顺序排列的所有节点列表
+        """
+        if not hasattr(self, '_current_components') or not self._current_components:
+            return []
+
+        # 将所有连通分量中的节点按当前顺序连接成一个列表
+        execution_order = []
+        for component in self._current_components:
+            execution_order.extend(component)
+
+        return execution_order
 
     def _build_node_ui(self, node, current_segment=None):
         if not hasattr(node, '_input_values'):

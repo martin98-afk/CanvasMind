@@ -269,6 +269,7 @@ class WorkflowScheduler(QObject):
     def _execute_backdrop_sync(self, backdrop, check_cancel):
         """同步执行循环型 Backdrop（支持条件循环）"""
         try:
+            self.set_node_status(backdrop, NodeStatus.NODE_STATUS_RUNNING)
             # 获取上游结果
             input_data = []
             for input_port in backdrop.input_ports():
@@ -323,7 +324,7 @@ class WorkflowScheduler(QObject):
             input_proxy.set_output_value(data)
 
             # 执行内部节点（也收集输出，虽然不用于条件判断）
-            internal_outputs = self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
+            self._execute_internal_nodes(backdrop, execute_nodes, check_cancel)
 
             # 收集输出
             outputs = self._collect_outputs(output_proxy)

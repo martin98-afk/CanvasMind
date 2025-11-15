@@ -4,7 +4,7 @@ import inspect
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QPoint
 from PyQt5.QtWidgets import (
     QTreeWidgetItem,
     QFileDialog,
@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
     QTreeWidget
 )
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
-from qfluentwidgets import FluentStyleSheet, SearchLineEdit, TransparentToolButton
+from qfluentwidgets import FluentStyleSheet, SearchLineEdit, TransparentToolButton, DropDownPushButton, FluentIcon
 from qfluentwidgets import (
     TreeWidget, RoundMenu, Action, InfoBar, InfoBarPosition, MessageBox
 )
@@ -20,6 +20,7 @@ from qfluentwidgets import (
 from app.scan_components import scan_components
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.new_component_dialog import NewComponentDialog
+from app.widgets.tree_widget.draggable_component_tree import CategoryFilterDialog
 
 
 class ComponentTreeWidget(TreeWidget):
@@ -40,7 +41,7 @@ class ComponentTreeWidget(TreeWidget):
         self._all_items = []  # 用于搜索时恢复
         self._current_editing_component = None  # 当前编辑的组件路径
         self.refresh_components()
-
+        self._selected_categories = set()
         # 启用键盘焦点，以便接收快捷键
         self.setFocusPolicy(Qt.StrongFocus)
 
@@ -79,6 +80,57 @@ class ComponentTreeWidget(TreeWidget):
             self.load_components(component_map, file_map)
         except Exception as e:
             self._show_error(f"刷新组件失败: {e}")
+
+    def show_selected_category(self):
+        """根据当前筛选条件构建树"""
+        self.clear()
+        self._all_items = []
+
+        # 获取所有组件
+        all_components = []
+        for full_path, comp_cls in self._components.items():
+            category = getattr(comp_cls, 'category', 'General')
+            name = getattr(comp_cls, 'name', comp_cls.__name__)
+            if not isinstance(name, str):
+                name = comp_cls.NODE_NAME
+
+
+            all_components.append({
+                'full_path': full_path,
+                'name': name,
+                'category': category
+            })
+
+        # 应用筛选
+        filtered = []
+        for comp in all_components:
+            # 类别筛选
+            if self._selected_categories and comp['category'] not in self._selected_categories:
+                continue
+            filtered.append(comp)
+
+        filtered.sort(key=lambda x: (x['category'], x['name']))
+
+        # 构建树结构
+        # 按类别分组
+        categories = {}
+        for comp in filtered:
+            category = comp['category']
+            if category not in categories:
+                cat_item = QTreeWidgetItem([category])
+                self.addTopLevelItem(cat_item)
+                categories[category] = cat_item
+                self._all_items.append(cat_item)
+            else:
+                cat_item = categories[category]
+
+            comp_item = QTreeWidgetItem([comp['name']])
+            comp_item.setData(0, Qt.UserRole + 1, comp['full_path'])
+            cat_item.addChild(comp_item)
+            self._all_items.append(comp_item)
+
+        for cat_item in categories.values():
+            cat_item.setExpanded(True)
 
     # ==================== 搜索功能 ====================
     def filter_items(self, keyword: str):
@@ -376,54 +428,87 @@ class ComponentTreePanel(QWidget):
         self.parent_window = parent
         self.tree = None  # 预先声明，避免初始化顺序问题
         self._setup_ui()
+        self._init_categories()
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-
-        # 搜索框和控制按钮行
-        top_layout = QHBoxLayout()
-        top_layout.setContentsMargins(5, 5, 5, 5)
-        top_layout.setSpacing(5)
-
-        # 搜索框
-        self.search_box = SearchLineEdit(self)
-        self.search_box.setPlaceholderText("搜索组件...")
-        self.search_box.setClearButtonEnabled(True)
-        FluentStyleSheet.LINE_EDIT.apply(self.search_box)
-
         # 组件树（必须先创建，然后才能连接信号）
         self.tree = ComponentTreeWidget(self.parent_window)
-
+        # 搜索框和控制按钮行
+        top_layout = QHBoxLayout()
+        top_layout.setContentsMargins(5, 5, 5, 2)
+        top_layout.setSpacing(5)
         # 控制按钮
+        # 类别选择按钮（点击弹出复选框）
+        self.category_button = DropDownPushButton(FluentIcon.BOOK_SHELF, "类别", self)
+        self.category_button.setToolTip("类别筛选")
+        self.category_button.clicked.connect(self._show_category_dialog)
+
         self.expand_all_btn = TransparentToolButton(get_icon("expand_all"), self)
         self.expand_all_btn.setToolTip("展开所有分类")
-        self.expand_all_btn.setFixedSize(20, 32)
+        self.expand_all_btn.setFixedSize(25, 32)
         self.expand_all_btn.clicked.connect(self.tree.expand_all_categories)
 
         self.collapse_all_btn = TransparentToolButton(get_icon("collapse_all"), self)
         self.collapse_all_btn.setToolTip("折叠所有分类")
-        self.collapse_all_btn.setFixedSize(20, 32)
+        self.collapse_all_btn.setFixedSize(25, 32)
         self.collapse_all_btn.clicked.connect(self.tree.collapse_all_categories)
 
         self.jump_to_current_btn = TransparentToolButton(get_icon("location"), self)
         self.jump_to_current_btn.setToolTip("跳转到当前编辑的组件")
-        self.jump_to_current_btn.setFixedSize(20, 32)
+        self.jump_to_current_btn.setFixedSize(25, 32)
         self.jump_to_current_btn.clicked.connect(self.tree.jump_to_current_component)
 
         # 添加到布局
-        top_layout.addWidget(self.search_box)
+        top_layout.addWidget(self.category_button)
+        top_layout.addStretch()
         top_layout.addWidget(self.jump_to_current_btn)
         top_layout.addWidget(self.expand_all_btn)
         top_layout.addWidget(self.collapse_all_btn)
 
+        # 搜索框
+        search_layout = QHBoxLayout()
+        search_layout.setContentsMargins(5, 3, 5, 5)
+        self.search_box = SearchLineEdit(self)
+        self.search_box.setMinimumWidth(150)
+        self.search_box.setPlaceholderText("搜索组件...")
+        self.search_box.setClearButtonEnabled(True)
+        FluentStyleSheet.LINE_EDIT.apply(self.search_box)
+        search_layout.addWidget(self.search_box)
 
         layout.addLayout(top_layout)
+        layout.addLayout(search_layout)
         layout.addWidget(self.tree)
 
         # 连接搜索事件
         self.search_box.textChanged.connect(self._on_search_text_changed)
+
+    def _init_categories(self):
+        """初始化类别列表"""
+        categories = set()
+        for full_path, comp_cls in self.tree._components.items():
+            category = getattr(comp_cls, 'category', 'General')
+            categories.add(category)
+
+        # 创建类别筛选对话框
+        self.category_filter_dialog = CategoryFilterDialog(sorted(categories), self)
+
+        # 设置默认全选
+        self.tree._selected_categories = set(categories)
+
+    def _show_category_dialog(self):
+        """显示类别筛选对话框"""
+        if self.category_filter_dialog:
+            # 计算位置，让对话框出现在按钮下方
+            pos = self.category_button.mapToGlobal(QPoint(-10, self.category_button.height() - 10))
+            self.category_filter_dialog.show_at(pos)
+
+    def _on_categories_changed(self, selected_categories):
+        """类别选择变化回调"""
+        self.tree._selected_categories = selected_categories
+        self.tree.show_selected_category()
 
     def _on_search_text_changed(self, text: str):
         self.tree.filter_items(text)
