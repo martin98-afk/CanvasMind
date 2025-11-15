@@ -200,6 +200,7 @@ class ComponentDeveloperWidget(QWidget):
         vBoxLayout = QVBoxLayout(right_widgets)
         vBoxLayout.setContentsMargins(0, 0, 0, 0)
         vBoxLayout.setSpacing(0)  # 可选：移除组件之间的间距（如果不需要）
+
         self.pivot = SegmentedWidget(self)
         self.stackedWidget = StackedWidget(self)
         # 组件属性

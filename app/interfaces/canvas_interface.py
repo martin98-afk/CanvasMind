@@ -146,6 +146,7 @@ class CanvasPage(QWidget):
         self.canvas_widget.installEventFilter(self)
         # 右键菜单
         self._setup_context_menus()
+        self.property_panel.update_properties(None)
 
     # ========================
     # 调度器相关（核心新增）
@@ -820,11 +821,13 @@ class CanvasPage(QWidget):
             backdrop_node.model.set_property("loop_nums", 3)
 
     def close_current_canvas(self):
-        self._stop_auto_save_timer()
-        self.ipython_console.stop_kernel()
-        self.console_dialog.hide()
-        self.canvas_deleted.emit()
         self.parent.switchTo(self.parent.workflow_manager)
+        self._stop_auto_save_timer()
+        self.var_explorer.auto_refresh_timer.stop()
+        QtCore.QTimer.singleShot(0, self.ipython_console.stop_kernel)
+        self.console_dialog.destroy()
+        self.var_explorer.destroy()
+        self.canvas_deleted.emit()
         self.parent.removeInterface(self)
 
     def create_name_label(self):

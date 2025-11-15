@@ -524,7 +524,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
             canvas_interface = self.parent_window.addSubInterface(
-                canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=window or self)
+                canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
             canvas_interface.clicked.connect(
                 lambda: (
                     canvas_page.register_components(),

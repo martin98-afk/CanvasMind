@@ -6,7 +6,7 @@ from loguru import logger
 
 class IPythonKernelManager:
     """纯IPython内核管理器，不依赖GUI组件"""
-    
+
     def __init__(self, python_exe_path=None):
         self.python_exe_path = python_exe_path
         self.kernel_manager = None
