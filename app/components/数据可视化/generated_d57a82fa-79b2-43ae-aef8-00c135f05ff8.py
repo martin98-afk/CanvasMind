@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "Matplotlib画图"
     category = "数据可视化"
     description = "使用Matplotlib绘制图表，支持多维数组矩阵图"
-    requirements = "Pillow,numpy,matplotlib"
+    requirements = "matplotlib,numpy,Pillow"
     inputs = [
         PortDefinition(name="x", label="输入1", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE),
         PortDefinition(name="y", label="输入2", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE),
@@ -119,7 +119,12 @@ class Component(BaseComponent):
                 # 绘制每个子图
                 for i in range(n_cols):
                     for j in range(n_rows):
-                        ax = axes[i][j]
+                        if int(n_cols) == 1:
+                            ax = axes[j]
+                        elif int(n_rows) == 1:
+                            ax = axes[i]
+                        else:
+                            ax = axes[i][j]
                         
                         # 获取当前子数组
                         if len(x_data.shape) > 1:

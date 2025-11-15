@@ -2,7 +2,7 @@
 
 from NodeGraphQt.constants import (
     PipeLayoutEnum,
-    PortTypeEnum
+    PortTypeEnum, PipeEnum, Z_VAL_PIPE, Z_VAL_NODE
 )
 from NodeGraphQt.qgraphics.pipe import PipeItem, LivePipeItem
 from NodeGraphQt.qgraphics.port import PortItem
@@ -41,13 +41,13 @@ class CustomPipeItem(PipeItem):
                 real_widget = widget.widget()
                 if real_widget is not None:
                     w_size = real_widget.sizeHint()
-                    height += w_size.height() + 12
+                    height += w_size.height() + 3
                 else:
                     # fallback（理论上不会走到这里）
                     br = widget.boundingRect()
-                    height += br.height() + 12
+                    height += br.height() + 3
 
-            return height + node.boundingRect().height() + 10
+            return height + node.boundingRect().height()
 
 
         if self.viewer_pipe_layout() == PipeLayoutEnum.CURVED.value:
@@ -139,6 +139,34 @@ class CustomPipeItem(PipeItem):
                     path.lineTo(pos2)
 
             self.setPath(path)
+
+    def activate(self):
+        self._active = True
+        self.set_pipe_styling(
+            color=PipeEnum.ACTIVE_COLOR.value,
+            width=3,
+            style=PipeEnum.DRAW_TYPE_DEFAULT.value
+        )
+        self.setZValue(Z_VAL_NODE+1)
+
+    def highlight(self):
+        self._highlight = True
+        self.set_pipe_styling(
+            color=PipeEnum.HIGHLIGHT_COLOR.value,
+            width=2,
+            style=PipeEnum.DRAW_TYPE_DEFAULT.value
+        )
+        self.setZValue(Z_VAL_NODE+1)
+
+    def reset(self):
+        """
+        reset the pipe state and styling.
+        """
+        self._active = False
+        self._highlight = False
+        self.set_pipe_styling(color=self.color, width=2, style=self.style)
+        self._draw_direction_pointer()
+        self.setZValue(Z_VAL_PIPE)
 
 
 class CustomLivePipeItem(CustomPipeItem, LivePipeItem):

@@ -211,11 +211,8 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 # 从节点移除控件
                 self.remove_property("debug_code")
                 self.view.remove_widget(self._debug_widget)
-                #: redraw node to address calls outside the "__init__" func.
                 self.view.draw_node()
-                # Note: 直接从 UI 移除控件可能比较复杂，取决于框架实现。
-                # 通常将控件放在一个特定的 'Debug' 标签页，禁用时可以隐藏标签页或清空其内容。
-                # 这里我们移除属性，控件应随之消失或被隐藏。
+                self.graph.viewer().force_update()
                 self._debug_widget = None
                 logger.info(f"节点 {self.NODE_NAME} ({self.id}) 禁用调试模式。")
 
