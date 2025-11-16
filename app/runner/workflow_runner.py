@@ -140,7 +140,7 @@ def update_global_variable(node, output):
         expr_engine.update_global_vars(GlobalVariableContext(**global_variable))
 
 
-def build_execution_graph(nodes, graph_data):
+def build_execution_graph(nodes, graph_data, execution_order=None):
     loop_nodes = {nid for nid, n in nodes.items() if n.get("is_loop_node") or n.get("is_iterate_node")}
     internal_nodes = set()
     for nid, n in nodes.items():
@@ -156,15 +156,19 @@ def build_execution_graph(nodes, graph_data):
             graph[out_node_id].append(in_node_id)
             in_degree[in_node_id] += 1
     queue = deque([nid for nid in executable_nodes if in_degree[nid] == 0])
-    order = []
-    while queue:
-        nid = queue.popleft()
-        order.append(nid)
-        for neighbor in graph[nid]:
-            in_degree[neighbor] -= 1
-            if in_degree[neighbor] == 0:
-                queue.append(neighbor)
-    return order, loop_nodes, internal_nodes
+    if execution_order is None:
+        execution_order = []
+        while queue:
+            nid = queue.popleft()
+            execution_order.append(nid)
+            for neighbor in graph[nid]:
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+    else:
+        execution_order = [node[0] for node in execution_order]
+
+    return execution_order, loop_nodes, internal_nodes
 
 
 def build_internal_graph(internal_nodes, graph_data):
@@ -630,6 +634,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
         full_data = deserialize_from_json(json.load(f))
     graph_data = full_data["graph"]
     runtime_data = full_data.get("runtime", {})
+    execution_order = runtime_data.get("execution_order", None)
     global_variable = runtime_data.get("global_variable", {})
     global_ctx = GlobalVariableContext(**global_variable)
     expr_engine = ExpressionEngine(global_vars_context=global_ctx)
@@ -692,7 +697,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
                     else:
                         nodes[node_id]["input_values"][cfg["port_name"]] = value
 
-    execution_order, loop_nodes, internal_nodes = build_execution_graph(nodes, graph_data)
+    execution_order, loop_nodes, internal_nodes = build_execution_graph(nodes, graph_data, execution_order)
     outputs_lock = Lock()
 
     # --- 新增：初始化禁用节点集合 ---

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from collections import OrderedDict
 
-from NodeGraphQt.constants import ITEM_CACHE_MODE, PortTypeEnum, Z_VAL_NODE, ICON_NODE_BASE, NodeEnum
+from NodeGraphQt.constants import ITEM_CACHE_MODE, PortTypeEnum, Z_VAL_NODE, ICON_NODE_BASE, NodeEnum, Z_VAL_BACKDROP
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
@@ -29,6 +29,7 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
         self.setZValue(Z_VAL_NODE)
         self._input_items = OrderedDict()
         self._output_items = OrderedDict()
+        self.setZValue(Z_VAL_BACKDROP)
 
     def _add_port(self, port):
         text = QtWidgets.QGraphicsTextItem("", self)

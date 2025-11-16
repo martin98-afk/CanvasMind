@@ -228,7 +228,14 @@ class CanvasPage(QWidget):
         """执行所有选中节点的工作流"""
         self._scheduler = self._create_scheduler()
         self._connect_scheduler_signals()
-        self._scheduler.run_full(nodes=self.property_panel.get_current_execution_order() or self.graph.selected_nodes())
+        if self.property_panel.get_current_execution_order():
+            nodes = self.property_panel.get_current_execution_order()
+            self._scheduler.run_full(nodes=nodes, sort=False)
+            self._scheduler.node_finished.connect(lambda : self.property_panel.update_properties(nodes))
+            self._scheduler.finished.connect(lambda : self.property_panel.update_properties(nodes))
+            self.property_panel.reset_current_components()
+        else:
+            self._scheduler.run_full(nodes=self.graph.selected_nodes())
 
     def run_to_node(self, target_node):
         """执行到目标节点"""
@@ -447,11 +454,12 @@ class CanvasPage(QWidget):
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_separator()
                 nodes_menu.add_command('调试模式', lambda graph, node: node._toggle_debug_mode(),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
@@ -903,7 +911,18 @@ class CanvasPage(QWidget):
     def export_selected_nodes_as_project(self):
         """导出选中节点为独立项目（支持交互式定义输入/输出接口）"""
         try:
-            nodes_to_export = self.graph.selected_nodes()
+            nodes_to_export = self.property_panel.get_current_execution_order()
+            # runtime_data
+            runtime_data = {
+                "environment": self.env_combo.currentData(),
+                "environment_exe": self.get_current_python_exe(),
+                "execution_order": [(node.id, node.name()) for node in nodes_to_export],
+                "node_id2stable_key": {},
+                "node_states": {},
+                "node_outputs": {},
+                "column_select": {},
+                "global_variable": self.global_variables.serialize()
+            }
             if not nodes_to_export:
                 self.create_warning_info("导出失败", "选中的节点无效（只有分组节点）！")
                 return
@@ -1227,16 +1246,7 @@ class CanvasPage(QWidget):
                 in_id, in_port = conn["in"]
                 if out_id in node_ids_set and in_id in node_ids_set:
                     new_connections.append({"out": [out_id, out_port], "in": [in_id, in_port]})
-            # runtime_data
-            runtime_data = {
-                "environment": self.env_combo.currentData(),
-                "environment_exe": self.get_current_python_exe(),
-                "node_id2stable_key": {},
-                "node_states": {},
-                "node_outputs": {},
-                "column_select": {},
-                "global_variable": self.global_variables.serialize()
-            }
+
             for node in nodes_to_export:
                 full_path = getattr(node, 'FULL_PATH', 'unknown')
                 node_name = node.name()
@@ -1400,8 +1410,8 @@ class CanvasPage(QWidget):
         if node:
             # 直接调用 set_node_status，恢复即时更新
             QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS))
-        # 优化：只在节点被选中时更新属性面板
-        if node and node.selected():
+        # 优化：只在只选中该节点时更新其属性面板
+        if node and node.selected() and len(self.graph.selected_nodes()) == 1:
             QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
 
     def _get_node_by_id_cached(self, node_id):

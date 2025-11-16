@@ -102,6 +102,18 @@ class SettingInterface(ScrollArea):
         # 连接配置变化信号，自动保存
         self.cfg.python_versions.valueChanged.connect(self.onConfigChanged)
 
+        # Python 镜像源管理
+        self.mirrorsCard = PackageListSettingCard(
+            icon=get_icon("镜像源"),
+            configItem=self.cfg.mirrors,
+            title="镜像源管理",
+            content="选择合适的镜像源连接",
+            parent=self.runtimeEnvGroup,
+            home=self
+        )
+        # 连接配置变化信号，自动保存
+        self.cfg.mirrors.valueChanged.connect(self.onConfigChanged)
+
         # Miniconda 版本
         self.minicondaVersionCard = PushSettingCard(
             "修改",
@@ -125,6 +137,7 @@ class SettingInterface(ScrollArea):
         self.cfg.default_packages.valueChanged.connect(self.onConfigChanged)
 
         self.runtimeEnvGroup.addSettingCard(self.pythonVersionsCard)
+        self.runtimeEnvGroup.addSettingCard(self.mirrorsCard)
         self.runtimeEnvGroup.addSettingCard(self.minicondaVersionCard)
         self.runtimeEnvGroup.addSettingCard(self.defaultPackagesCard)
         self.vBoxLayout.addWidget(self.runtimeEnvGroup)

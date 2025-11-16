@@ -1,6 +1,7 @@
 from collections import OrderedDict
 
-from NodeGraphQt.constants import NodeEnum, ICON_NODE_BASE, ITEM_CACHE_MODE, PortTypeEnum, LayoutDirectionEnum
+from NodeGraphQt.constants import NodeEnum, ICON_NODE_BASE, ITEM_CACHE_MODE, PortTypeEnum, LayoutDirectionEnum, \
+    Z_VAL_NODE
 from NodeGraphQt.qgraphics.node_base import NodeItem
 from NodeGraphQt.qgraphics.node_overlay_disabled import XDisabledItem
 from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
@@ -34,6 +35,7 @@ class CustomNodeItem(NodeItem):
         self._widgets = OrderedDict()
         self._proxy_mode = False
         self._proxy_mode_threshold = 70
+        self.setZValue(Z_VAL_NODE)
 
     def _set_text_color(self, color=None):
         """

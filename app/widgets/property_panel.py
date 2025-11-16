@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, Q
     QStackedWidget, QHBoxLayout, QApplication, QSizePolicy
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
     ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
-    TransparentDropDownToolButton
+    TransparentDropDownToolButton, ToolButton
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.utils.utils import serialize_for_json, get_icon, canvas_file_dump_path, topological_sort
@@ -193,10 +193,11 @@ class PropertyPanel(CardWidget):
 
         if is_backdrop_change:
             # 尝试更新现有Backdrop的状态
-            if self._update_existing_backdrop_data(node):
-                # 如果成功更新了Backdrop状态，则直接返回，不执行后续的全量更新
+            try:
+                self._update_existing_backdrop_data(node)
                 return
-            # 如果 _update_existing_backdrop_data 返回 False (例如缓存的UI组件不存在)，则继续全量更新
+            except Exception:
+                pass
 
         # 原有的全量更新逻辑
         current_segment = None
@@ -311,6 +312,9 @@ class PropertyPanel(CardWidget):
 
         # 保存当前组件列表，用于移动操作
         self._current_components = components
+        title = BodyLabel(f"⏬ 连通图执行顺序")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        self.node_vbox.addWidget(title)
 
         # 主卡片
         nodes_card = CardWidget(self)
@@ -318,7 +322,7 @@ class PropertyPanel(CardWidget):
         nodes_layout.setContentsMargins(10, 10, 10, 10)
 
         title_btn_layout = QHBoxLayout()
-        title = BodyLabel("子联通图列表：")
+        title = BodyLabel("连通图列表：")
         title_btn_layout.addWidget(title)
         title_btn_layout.addStretch()
 
@@ -330,28 +334,27 @@ class PropertyPanel(CardWidget):
             component_card = self._create_component_card(nodes_layout, i, components)
             self._component_cards.append(component_card)
 
-        nodes_layout.addStretch()
+        nodes_layout.addStretch(1)
         self.node_vbox.addWidget(nodes_card)
-        self.node_vbox.addStretch()
+        self.node_vbox.addStretch(1)
 
     def _create_component_card(self, parent_layout, index, components):
         """
         创建单个连通分量的卡片
         """
         component = components[index]
-
         component_card = CardWidget(self)
         component_layout = QVBoxLayout(component_card)
         component_layout.setContentsMargins(8, 8, 8, 8)
 
         # 连通分量标题行，包含名称和上下移动按钮
         header_layout = QHBoxLayout()
-        component_title = BodyLabel(f"子联通图 {index + 1} ({len(component)} 个节点)")
+        component_title = BodyLabel(f"子连通图 {index + 1} ({len(component)} 个节点)")
         header_layout.addWidget(component_title)
 
         # 上下移动按钮
-        move_up_btn = PushButton("↑")
-        move_down_btn = PushButton("↓")
+        move_up_btn = TransparentToolButton(FluentIcon.UP)
+        move_down_btn = TransparentToolButton(FluentIcon.DOWN)
 
         # 设置按钮的固定大小
         move_up_btn.setFixedSize(24, 24)
@@ -369,15 +372,20 @@ class PropertyPanel(CardWidget):
 
         header_layout.addWidget(move_up_btn)
         header_layout.addWidget(move_down_btn)
-
         component_layout.addLayout(header_layout)
 
         # 创建列表显示该连通分量的节点
         component_list = ListWidget(self)
         num_items = len(component)
-        estimated_height_for_items = num_items * 35
+        estimated_height_for_items = num_items * 40
         total_estimated_height = estimated_height_for_items
-        component_list.setFixedHeight(total_estimated_height + 20)
+        component_list.setFixedHeight(total_estimated_height)
+
+        # 存储节点对象，以便在双击时访问
+        self._component_nodes_list = getattr(self, '_component_nodes_list', {})
+        list_identifier = f"component_{index}"  # 使用组件索引作为唯一标识
+        self._component_nodes_list[list_identifier] = component
+
         for n in component:
             status = self.main_window.get_node_status(n)
             status_text = {
@@ -391,9 +399,22 @@ class PropertyPanel(CardWidget):
             item = QListWidgetItem(item_text)
             component_list.addItem(item)
 
+        # --- 添加双击事件处理 ---
+        def on_item_double_clicked(item):
+            # 获取当前点击项的索引
+            row = component_list.row(item)
+            # 根据索引从存储的组件列表中获取对应的节点对象
+            if 0 <= row < len(component):
+                node_to_center = component[row]
+                # 调用 main_window 的 center_to 函数
+                self.main_window.canvas_widget.zoom_to_nodes([node_to_center._view])
+
+        # 连接双击信号到处理函数
+        component_list.itemDoubleClicked.connect(on_item_double_clicked)
+        # ------------------------
+
         component_layout.addWidget(component_list)
         parent_layout.addWidget(component_card)
-
         return component_card
 
     def _move_component(self, index, direction):
@@ -432,7 +453,7 @@ class PropertyPanel(CardWidget):
         重新排列组件卡片在布局中的位置
         """
         # 获取主布局中的内容布局（跳过标题行）
-        nodes_card = self.node_vbox.itemAt(0).widget()  # 假设第一个是nodes_card
+        nodes_card = self.node_vbox.itemAt(1).widget()  # 假设第一个是nodes_card
         nodes_layout = nodes_card.layout()
 
         # 清空内容布局（除了标题）
@@ -465,10 +486,10 @@ class PropertyPanel(CardWidget):
             widget = header_layout.itemAt(i).widget()
             if isinstance(widget, BodyLabel):
                 title_label = widget
-            elif isinstance(widget, PushButton):
-                if widget.text() == "↑":
+            elif isinstance(widget, TransparentToolButton):
+                if widget._icon == FluentIcon.UP:
                     up_btn = widget
-                elif widget.text() == "↓":
+                elif widget._icon == FluentIcon.DOWN:
                     down_btn = widget
 
         # 更新标题文本
@@ -504,6 +525,12 @@ class PropertyPanel(CardWidget):
             execution_order.extend(component)
 
         return execution_order
+
+    def reset_current_components(self):
+        """
+        重置当前组件列表
+        """
+        self._current_components = []
 
     def _build_node_ui(self, node, current_segment=None):
         if not hasattr(node, '_input_values'):
@@ -1036,11 +1063,11 @@ class PropertyPanel(CardWidget):
                 self._internal_nodes_card_expanded[node_id] = False
             else:
                 num_items = internal_nodes_list.count()
-                estimated_height_for_items = num_items * 35
+                estimated_height_for_items = num_items * 40
                 padding_height = 10 + 10 + 10 + 10
                 title_height = 20
                 total_estimated_height = padding_height + title_height + estimated_height_for_items
-                nodes_card.setFixedHeight(total_estimated_height + 50)
+                nodes_card.setFixedHeight(total_estimated_height)
                 expand_btn.setIcon(get_icon("缩小"))
                 self._internal_nodes_card_expanded[node_id] = True
             self.node_vbox.invalidate()

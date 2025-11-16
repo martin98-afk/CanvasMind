@@ -15,6 +15,7 @@ from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 
 
 def create_branch_node(parent_window):
+
     class ConditionalBranchNode(BaseNode, StatusNode, BasicNodeWithGlobalProperty):
         category: str = "控制流"
         __identifier__ = 'control_flow'
@@ -29,7 +30,6 @@ def create_branch_node(parent_window):
             self._output_values = {}
             self._input_values = {}
             self.column_select = {}
-
             # === 初始化属性控件（但不立即同步端口）===
             self._init_properties()
             self.add_input('input', True, painter_func=draw_square_port)
