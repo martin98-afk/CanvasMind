@@ -294,12 +294,19 @@ class EnvManagerUI(QWidget):
 
             if action == "安装":
                 cmd = ["-m", "pip", "install", package_input]
+                # 添加镜像源配置
+                self._add_mirror_sources(cmd)
             elif action == "强制重装":
                 cmd = ["-m", "pip", "install", "--force-reinstall", package_input]
+                # 添加镜像源配置
+                self._add_mirror_sources(cmd)
             elif action == "更新":
                 cmd = ["-m", "pip", "install", "-U", package_input]
+                # 添加镜像源配置
+                self._add_mirror_sources(cmd)
             elif action == "卸载":
                 cmd = ["-m", "pip", "uninstall", "-y", package_input]
+                # 卸载命令不需要镜像源
             else:
                 return  # 不应该发生
 
@@ -341,11 +348,35 @@ class EnvManagerUI(QWidget):
                     cmd.append("--no-index")
                 cmd.extend(valid_whl_paths)
 
+                # 本地安装也支持镜像源（以防本地包依赖其他包）
+                self._add_mirror_sources(cmd)
+
         else:
             return  # 不应该发生
 
         # 启动 QProcess 执行并实时输出
         self._start_process(python_exe, cmd)
+
+    def _add_mirror_sources(self, cmd):
+        """为pip命令添加镜像源参数"""
+        # 获取配置的镜像源列表
+        mirrors = self.mgr.config.mirrors.value
+
+        if mirrors:  # 如果镜像源列表不为空
+            # 使用第一个镜像源作为主索引
+            primary_mirror = mirrors[0]
+            cmd.extend(["-i", primary_mirror])
+
+            # 提取主机名并添加信任
+            from urllib.parse import urlparse
+            parsed = urlparse(primary_mirror)
+            cmd.extend(["--trusted-host", parsed.hostname])
+
+            # 添加其他镜像源作为备用索引
+            for mirror_url in mirrors[1:]:
+                cmd.extend(["--extra-index-url", mirror_url])
+                parsed = urlparse(mirror_url)
+                cmd.extend(["--trusted-host", parsed.hostname])
 
     def on_update_package_clicked(self, package_name):
         """行内更新按钮处理"""
@@ -358,6 +389,10 @@ class EnvManagerUI(QWidget):
             InfoBar.error("错误", "pip 安装失败", parent=self)
             return
         cmd = ["-m", "pip", "install", "-U", package_name]
+
+        # 添加镜像源配置
+        self._add_mirror_sources(cmd)
+
         self.logEdit.append(f"> {self.current_env} :: update {package_name}\n")
         self._start_process(python_exe, cmd)
 
@@ -372,7 +407,7 @@ class EnvManagerUI(QWidget):
             return
         cmd = ["-m", "pip", "uninstall", "-y", package_name]
         self.logEdit.append(f"> {self.current_env} :: uninstall {package_name}\n")
-        self._start_process(python_exe, cmd)
+        self._start_process(python_exe, cmd)  # 卸载命令不需要镜像源
 
     def delete_env(self):
         """删除当前选中的环境"""

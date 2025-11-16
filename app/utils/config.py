@@ -114,7 +114,9 @@ class Settings(QConfig):
         ListValidator()
     )
     miniconda_version = ConfigItem("Package", "MinicondaVersion", "23.11.0")
-
+    mirrors = ConfigItem(
+        "Package", "Mirrors", ["https://pypi.tuna.tsinghua.edu.cn/simple"], ListValidator()
+    )
     # 默认要安装的包列表
     default_packages = ConfigItem(
         "Package",

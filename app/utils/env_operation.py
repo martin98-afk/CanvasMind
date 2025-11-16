@@ -5,6 +5,8 @@ import re
 import shutil
 import traceback
 from pathlib import Path
+from urllib.parse import urlparse
+
 from PyQt5.QtCore import QObject, pyqtSignal, QProcess, QTimer, QUrl
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from loguru import logger
@@ -354,7 +356,31 @@ class EnvironmentManager(QObject):
         self._process.finished.connect(
             lambda ec, es: self._on_package_installed(ec, es, python_exe, remaining_packages[1:])
         )
-        self._process.start(str(python_exe), ["-m", "pip", "install", package])
+
+        # 构建pip安装命令，使用配置的镜像源
+        install_cmd = self._build_pip_install_command(package)
+        self._process.start(str(python_exe), install_cmd)
+
+    def _build_pip_install_command(self, package):
+        """构建pip安装命令，使用配置的镜像源"""
+        cmd = ["-m", "pip", "install", package]
+
+        # 获取配置的镜像源列表
+        mirrors = self.config.mirrors.value  # 假设配置中有个mirrors字段
+
+        if mirrors:  # 如果镜像源列表不为空
+            # 添加所有镜像源作为信任的主机
+            for mirror_url in mirrors:
+                cmd.extend(["--extra-index-url", mirror_url])
+                try:
+                    parsed = urlparse(mirror_url)
+                except Exception:
+                    logger.warning(f"Invalid mirror URL: {mirror_url}")
+                cmd.extend(["--trusted-host", parsed.hostname])
+        else:  # 如果镜像源列表为空，使用默认源
+            pass
+
+        return cmd
 
     def _on_package_installed(self, exit_code, exit_status, python_exe, remaining_packages):
         if exit_code != 0:
@@ -460,7 +486,7 @@ class EnvironmentManager(QObject):
                     pip_upgrade_proc = QProcess()
                     if platform.system() == "Windows":
                         pip_upgrade_proc.setProcessEnvironment(self._get_hidden_window_environment())
-                    pip_upgrade_proc.start(python_exe, ["-m", "pip", "install", "--upgrade", "pip"])
+                    pip_upgrade_proc.start(python_exe, self._build_pip_install_command("pip"))
                     pip_upgrade_proc.waitForFinished()
                     if pip_upgrade_proc.exitCode() == 0:
                         log_callback and log_callback("pip 安装完成 ✅")

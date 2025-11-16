@@ -343,7 +343,6 @@ class PropertyPanel(CardWidget):
         创建单个连通分量的卡片
         """
         component = components[index]
-
         component_card = CardWidget(self)
         component_layout = QVBoxLayout(component_card)
         component_layout.setContentsMargins(8, 8, 8, 8)
@@ -356,6 +355,7 @@ class PropertyPanel(CardWidget):
         # 上下移动按钮
         move_up_btn = TransparentToolButton(FluentIcon.UP)
         move_down_btn = TransparentToolButton(FluentIcon.DOWN)
+
         # 设置按钮的固定大小
         move_up_btn.setFixedSize(24, 24)
         move_down_btn.setFixedSize(24, 24)
@@ -372,7 +372,6 @@ class PropertyPanel(CardWidget):
 
         header_layout.addWidget(move_up_btn)
         header_layout.addWidget(move_down_btn)
-
         component_layout.addLayout(header_layout)
 
         # 创建列表显示该连通分量的节点
@@ -381,6 +380,12 @@ class PropertyPanel(CardWidget):
         estimated_height_for_items = num_items * 40
         total_estimated_height = estimated_height_for_items
         component_list.setFixedHeight(total_estimated_height)
+
+        # 存储节点对象，以便在双击时访问
+        self._component_nodes_list = getattr(self, '_component_nodes_list', {})
+        list_identifier = f"component_{index}"  # 使用组件索引作为唯一标识
+        self._component_nodes_list[list_identifier] = component
+
         for n in component:
             status = self.main_window.get_node_status(n)
             status_text = {
@@ -394,9 +399,22 @@ class PropertyPanel(CardWidget):
             item = QListWidgetItem(item_text)
             component_list.addItem(item)
 
+        # --- 添加双击事件处理 ---
+        def on_item_double_clicked(item):
+            # 获取当前点击项的索引
+            row = component_list.row(item)
+            # 根据索引从存储的组件列表中获取对应的节点对象
+            if 0 <= row < len(component):
+                node_to_center = component[row]
+                # 调用 main_window 的 center_to 函数
+                self.main_window.canvas_widget.zoom_to_nodes([node_to_center._view])
+
+        # 连接双击信号到处理函数
+        component_list.itemDoubleClicked.connect(on_item_double_clicked)
+        # ------------------------
+
         component_layout.addWidget(component_list)
         parent_layout.addWidget(component_card)
-
         return component_card
 
     def _move_component(self, index, direction):
