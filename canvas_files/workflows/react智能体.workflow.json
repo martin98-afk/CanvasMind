@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x28bcf069390": {
+      "0x2af8c7570a0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "长文本输入",
@@ -59,7 +59,7 @@
           "input_text": "[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
         }
       },
-      "0x28bd881b0a0": {
+      "0x2af8db027d0": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\dist\\main\\_internal\\icons/代码执行.svg",
         "name": "代码编辑 1",
@@ -126,7 +126,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    import json\n    from pathlib import Path\n    input_data: list[str] = inputs.input\n    results = []\n    for path in input_data:\n        if not (Path(path) / \"project_spec.json\").exists():\n            continue\n        with open(Path(path) / \"project_spec.json\", \"r\", encoding=\"utf-8\") as f:\n            project_spec = json.loads(f.read())\n            project_input = project_spec[\"inputs\"]\n            format = \"\" if len(project_input) > 0 else \"无参数\"\n            for i, (inp, info) in enumerate(project_input.items()):\n                format += f\"参数{i+1}：{inp}\\n参数格式：{info['format']}\\n参数参考样例输入：{info['current_value']}\\n所属组件名：{info['node_name']}\\n组件参数类型：{info['type']}\\n\\n\"\n            results.append(f\"工具名称：{str(Path(path).resolve())} \\n输入格式：{format}\")\n    return {\n        \"output\": results\n    }"
         }
       },
-      "0x28bcf1e5330": {
+      "0x2af92b77be0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装",
@@ -180,7 +180,7 @@
           "prop_0": "input"
         }
       },
-      "0x28bcf1e5990": {
+      "0x2af92b75660": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "工具调用结果回写",
@@ -234,7 +234,7 @@
           "template": "工具调用结果：\n$input.variables[0]$\n\n用户问题：\n$node_vars.长文本输入_output$"
         }
       },
-      "0x28bcee40250": {
+      "0x2af92b756c0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程",
@@ -294,7 +294,7 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x28bcee40850": {
+      "0x2af92b75060": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_工具调用",
         "icon": null,
         "name": "工具调用",
@@ -357,7 +357,7 @@
           "debug_code": null
         }
       },
-      "0x28bcee40be0": {
+      "0x2af824b8220": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 3",
@@ -411,7 +411,7 @@
           "prop_0": "answer"
         }
       },
-      "0x28bcee41f60": {
+      "0x2af824bb490": {
         "type_": "dynamic.StatusDynamicNode_数据集成_获取全局变量",
         "icon": null,
         "name": "获取大模型历史对话",
@@ -459,7 +459,7 @@
           "prop1": "node_vars.大模型对话_history"
         }
       },
-      "0x28bcf1e70a0": {
+      "0x2af8b6587f0": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码编辑 2",
@@ -526,7 +526,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    input_data: list = inputs.input\n    return {\n        \"output\": \"\\n\\n\".join(input_data)\n    }"
         }
       },
-      "0x28bcee42a10": {
+      "0x2af82168370": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
         "icon": null,
         "name": "大模型输出解析",
@@ -567,7 +567,7 @@
           "type": "json"
         }
       },
-      "0x28bcee42710": {
+      "0x2af92b77f70": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码编辑",
@@ -634,7 +634,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 目标文件夹\n    return: 文件地址里列表（key=输出端口名）\n    \"\"\"\n    from pathlib import Path\n    path = Path(inputs.input)\n    projects = [str(p) for p in path.iterdir()]\n    self.logger.info(projects)\n    return {\n        \"output\": projects\n    }"
         }
       },
-      "0x28bcb927310": {
+      "0x2af92b06ec0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话",
@@ -710,7 +710,7 @@
           "model_params": []
         }
       },
-      "0x28bcf009480": {
+      "0x2af92b078e0": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "提取最终答案",
@@ -750,7 +750,7 @@
           "prop1": "$input.input1[\"answer\"]$"
         }
       },
-      "0x28bcf008040": {
+      "0x2af82169660": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "工具名提取",
@@ -790,7 +790,7 @@
           "prop1": "$input.input1[\"tool_name\"]$"
         }
       },
-      "0x28bcb925780": {
+      "0x2af825fa470": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "工具输入提取",
@@ -830,7 +830,7 @@
           "prop1": "$input.input1[\"tool_input\"]$"
         }
       },
-      "0x28bd9392020": {
+      "0x2af825fbe80": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": "D:\\work\\WorkFlowGUI\\icons\\list.svg",
         "name": "错误处理",
@@ -870,7 +870,7 @@
           "template": "生成的步骤json信息错误，步骤信息必须为严格的json格式，且包含next_step信息\n且 next_step 内容必须为：调用工具 或 总结答案 其一\n\n当前生成的错误步骤json信息：\n\n$input.variables$\n\n根据历史对话反思错误，生成正确的步骤信息。"
         }
       },
-      "0x28bceec4190": {
+      "0x2af825fb7f0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "工具执行错误反馈",
@@ -924,7 +924,93 @@
           "template": "工具调用报错根据执行日志修复请求参数：\n$input.variables[1]$\n\n用户问题：\n$node_vars.长文本输入_output$"
         }
       },
-      "0x28bceec4550": {
+      "0x2af825fb160": {
+        "type_": "dynamic.DYNAMIC_CODE",
+        "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
+        "name": "代码42",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 792.695,
+        "height": 921.1500000000001,
+        "pos": [
+          3062.602866817255,
+          -789.107189872971
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "input",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "input_1",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "output_1",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "persistent_id": "ff600241-e246-432c-ba56-f142e10bb803",
+          "input_ports": [
+            {
+              "name": "input",
+              "type": "文本",
+              "var": "env.LC_ALL"
+            },
+            {
+              "name": "input_1",
+              "type": "文本",
+              "var": "无"
+            }
+          ],
+          "output_ports": [
+            {
+              "name": "output",
+              "type": "文本"
+            },
+            {
+              "name": "output_1",
+              "type": "文本"
+            }
+          ],
+          "glue_code_template": "default:空白模板",
+          "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    # 在这里编写你的组件逻辑\n    input_data = inputs.get(\"input_data\") if inputs else None\n    param1 = params.get(\"param1\", \"default_value\")\n    # 处理逻辑\n    result = f\"处理结果: {input_data} + {param1}\"\n    return {\n        \"output_data\": result\n    }"
+        }
+      },
+      "0x2af823ef100": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -962,7 +1048,7 @@
           "persistent_id": "7837e4b9-dd80-4028-b64f-9266b25965e2"
         }
       },
-      "0x28bceec4070": {
+      "0x2af82414d90": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -1000,7 +1086,7 @@
           "persistent_id": "4cf84646-541e-48e3-a776-64381d6ea1a9"
         }
       },
-      "0x28bceec5e40": {
+      "0x2af8ba14580": {
         "type_": "control_flow.ControlFlowLoopNode",
         "icon": null,
         "name": "循环控制流区域",
@@ -1044,7 +1130,7 @@
           "loop_mode": "condition"
         }
       },
-      "0x28bceec7970": {
+      "0x2af8ba17eb0": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\CanvasMind\\./icons/条件分支.png",
         "name": "条件分支 1",
@@ -1118,7 +1204,7 @@
           "execute_all_matches": false
         }
       },
-      "0x28bceec4520": {
+      "0x2af8ba17d60": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\CanvasMind\\./icons/条件分支.png",
         "name": "条件分支",
@@ -1182,332 +1268,246 @@
           "enable_else": true,
           "execute_all_matches": false
         }
-      },
-      "0x28bceec4610": {
-        "type_": "dynamic.DYNAMIC_CODE",
-        "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
-        "name": "代码42",
-        "color": [
-          25,
-          70,
-          45,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": true,
-        "visible": true,
-        "width": 792.695,
-        "height": 921.1500000000001,
-        "pos": [
-          3062.602866817255,
-          -789.107189872971
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": true,
-        "subgraph_session": {},
-        "input_ports": [
-          {
-            "name": "input",
-            "multi_connection": false,
-            "display_name": true
-          },
-          {
-            "name": "input_1",
-            "multi_connection": false,
-            "display_name": true
-          }
-        ],
-        "output_ports": [
-          {
-            "name": "output",
-            "multi_connection": true,
-            "display_name": true
-          },
-          {
-            "name": "output_1",
-            "multi_connection": true,
-            "display_name": true
-          }
-        ],
-        "custom": {
-          "persistent_id": "ff600241-e246-432c-ba56-f142e10bb803",
-          "input_ports": [
-            {
-              "name": "input",
-              "type": "文本",
-              "var": "env.LC_ALL"
-            },
-            {
-              "name": "input_1",
-              "type": "文本",
-              "var": "无"
-            }
-          ],
-          "output_ports": [
-            {
-              "name": "output",
-              "type": "文本"
-            },
-            {
-              "name": "output_1",
-              "type": "文本"
-            }
-          ],
-          "glue_code_template": "default:空白模板",
-          "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    # 在这里编写你的组件逻辑\n    input_data = inputs.get(\"input_data\") if inputs else None\n    param1 = params.get(\"param1\", \"default_value\")\n    # 处理逻辑\n    result = f\"处理结果: {input_data} + {param1}\"\n    return {\n        \"output_data\": result\n    }"
-        }
       }
     },
     "connections": [
       {
         "out": [
-          "0x28bcf069390",
+          "0x2af8c7570a0",
           "output"
         ],
         "in": [
-          "0x28bcf1e5330",
+          "0x2af92b77be0",
           "input1"
         ]
       },
       {
         "in": [
-          "0x28bd881b0a0",
+          "0x2af8db027d0",
           "input"
         ],
         "out": [
-          "0x28bcee42710",
+          "0x2af92b77f70",
           "output"
         ]
       },
       {
         "out": [
-          "0x28bd881b0a0",
+          "0x2af8db027d0",
           "output"
         ],
         "in": [
-          "0x28bcf1e70a0",
+          "0x2af8b6587f0",
           "input"
         ]
       },
       {
         "out": [
-          "0x28bcf1e5330",
+          "0x2af92b77be0",
           "output1"
         ],
         "in": [
-          "0x28bceec5e40",
+          "0x2af8ba14580",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x28bcf1e5990",
+          "0x2af92b75660",
           "variables"
         ],
         "out": [
-          "0x28bceec4520",
+          "0x2af8ba17d60",
           "branch"
         ]
       },
       {
         "out": [
-          "0x28bcf1e5990",
+          "0x2af92b75660",
           "prompt"
         ],
         "in": [
-          "0x28bceec4070",
+          "0x2af82414d90",
           "input"
         ]
       },
       {
         "in": [
-          "0x28bcee40250",
+          "0x2af92b756c0",
           "raw_text"
         ],
         "out": [
-          "0x28bcb927310",
+          "0x2af92b06ec0",
           "response"
         ]
       },
       {
         "out": [
-          "0x28bcee40250",
+          "0x2af92b756c0",
           "cleaned_text"
         ],
         "in": [
-          "0x28bcee42a10",
+          "0x2af82168370",
           "llm_output"
         ]
       },
       {
         "in": [
-          "0x28bcee40850",
+          "0x2af92b75060",
           "project_name"
         ],
         "out": [
-          "0x28bcf008040",
+          "0x2af82169660",
           "output1"
         ]
       },
       {
         "in": [
-          "0x28bcee40850",
+          "0x2af92b75060",
           "input"
         ],
         "out": [
-          "0x28bcb925780",
+          "0x2af825fa470",
           "output1"
         ]
       },
       {
         "out": [
-          "0x28bcee40850",
+          "0x2af92b75060",
           "result"
         ],
         "in": [
-          "0x28bceec4520",
+          "0x2af8ba17d60",
           "input"
         ]
       },
       {
         "out": [
-          "0x28bcee40850",
+          "0x2af92b75060",
           "log"
         ],
         "in": [
-          "0x28bceec4520",
+          "0x2af8ba17d60",
           "input"
         ]
       },
       {
         "in": [
-          "0x28bcee40be0",
+          "0x2af824b8220",
           "input1"
         ],
         "out": [
-          "0x28bceec5e40",
+          "0x2af8ba14580",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x28bcee41f60",
+          "0x2af824bb490",
           "output1"
         ],
         "in": [
-          "0x28bcb927310",
+          "0x2af92b06ec0",
           "history"
         ]
       },
       {
         "out": [
-          "0x28bcee42a10",
+          "0x2af82168370",
           "parsed_json"
         ],
         "in": [
-          "0x28bceec7970",
+          "0x2af8ba17eb0",
           "input"
         ]
       },
       {
         "in": [
-          "0x28bcb927310",
+          "0x2af92b06ec0",
           "user_input"
         ],
         "out": [
-          "0x28bceec4550",
+          "0x2af823ef100",
           "output"
         ]
       },
       {
         "in": [
-          "0x28bcf009480",
+          "0x2af92b078e0",
           "input1"
         ],
         "out": [
-          "0x28bceec7970",
+          "0x2af8ba17eb0",
           "branch"
         ]
       },
       {
         "out": [
-          "0x28bcf009480",
+          "0x2af92b078e0",
           "output1"
         ],
         "in": [
-          "0x28bceec4070",
+          "0x2af82414d90",
           "input"
         ]
       },
       {
         "in": [
-          "0x28bcf008040",
+          "0x2af82169660",
           "input1"
         ],
         "out": [
-          "0x28bceec7970",
+          "0x2af8ba17eb0",
           "branch_1"
         ]
       },
       {
         "in": [
-          "0x28bcb925780",
+          "0x2af825fa470",
           "input1"
         ],
         "out": [
-          "0x28bceec7970",
+          "0x2af8ba17eb0",
           "branch_1"
         ]
       },
       {
         "in": [
-          "0x28bd9392020",
+          "0x2af825fbe80",
           "variables"
         ],
         "out": [
-          "0x28bceec7970",
+          "0x2af8ba17eb0",
           "else"
         ]
       },
       {
         "out": [
-          "0x28bd9392020",
+          "0x2af825fbe80",
           "prompt"
         ],
         "in": [
-          "0x28bceec4070",
+          "0x2af82414d90",
           "input"
         ]
       },
       {
         "in": [
-          "0x28bceec4190",
+          "0x2af825fb7f0",
           "variables"
         ],
         "out": [
-          "0x28bceec4520",
+          "0x2af8ba17d60",
           "else"
         ]
       },
       {
         "out": [
-          "0x28bceec4190",
+          "0x2af825fb7f0",
           "prompt"
         ],
         "in": [
-          "0x28bceec4070",
+          "0x2af82414d90",
           "input"
         ]
       }
@@ -1517,29 +1517,29 @@
     "environment": "3.14",
     "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
     "node_id2stable_key": {
-      "0x28bcf069390": "数据集成/长文本输入||长文本输入",
-      "0x28bd881b0a0": "代码执行/代码编辑||代码编辑 1",
-      "0x28bcf1e5330": "大模型组件/JSON文本包装||JSON文本包装",
-      "0x28bcf1e5990": "大模型组件/提示词模板||工具调用结果回写",
-      "0x28bcee40250": "大模型组件/移除思考过程||移除思考过程",
-      "0x28bcee40850": "大模型组件/工具调用||工具调用",
-      "0x28bcee40be0": "大模型组件/JSON文本包装||JSON文本包装 3",
-      "0x28bcee41f60": "数据集成/获取全局变量||获取大模型历史对话",
-      "0x28bcf1e70a0": "代码执行/代码编辑||代码编辑 2",
-      "0x28bcee42a10": "大模型组件/大模型输出解析||大模型输出解析",
-      "0x28bcee42710": "代码执行/代码编辑||代码编辑",
-      "0x28bcb927310": "大模型组件/大模型对话||大模型对话",
-      "0x28bcf009480": "数据预处理/JSON筛选||提取最终答案",
-      "0x28bcf008040": "数据预处理/JSON筛选||工具名提取",
-      "0x28bcb925780": "数据预处理/JSON筛选||工具输入提取",
-      "0x28bd9392020": "大模型组件/提示词模板||错误处理",
-      "0x28bceec4190": "大模型组件/提示词模板||工具执行错误反馈",
-      "0x28bceec4550": "控制流/输入端口||输入端口",
-      "0x28bceec4070": "控制流/输出端口||输出端口",
-      "0x28bceec5e40": "控制流/循环控制流区域||循环控制流区域",
-      "0x28bceec7970": "控制流/条件分支||条件分支 1",
-      "0x28bceec4520": "控制流/条件分支||条件分支",
-      "0x28bceec4610": "代码执行/代码编辑||代码42"
+      "0x2af8c7570a0": "数据集成/长文本输入||长文本输入",
+      "0x2af8db027d0": "代码执行/代码编辑||代码编辑 1",
+      "0x2af92b77be0": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x2af92b75660": "大模型组件/提示词模板||工具调用结果回写",
+      "0x2af92b756c0": "大模型组件/移除思考过程||移除思考过程",
+      "0x2af92b75060": "大模型组件/工具调用||工具调用",
+      "0x2af824b8220": "大模型组件/JSON文本包装||JSON文本包装 3",
+      "0x2af824bb490": "数据集成/获取全局变量||获取大模型历史对话",
+      "0x2af8b6587f0": "代码执行/代码编辑||代码编辑 2",
+      "0x2af82168370": "大模型组件/大模型输出解析||大模型输出解析",
+      "0x2af92b77f70": "代码执行/代码编辑||代码编辑",
+      "0x2af92b06ec0": "大模型组件/大模型对话||大模型对话",
+      "0x2af92b078e0": "数据预处理/JSON筛选||提取最终答案",
+      "0x2af82169660": "数据预处理/JSON筛选||工具名提取",
+      "0x2af825fa470": "数据预处理/JSON筛选||工具输入提取",
+      "0x2af825fbe80": "大模型组件/提示词模板||错误处理",
+      "0x2af825fb7f0": "大模型组件/提示词模板||工具执行错误反馈",
+      "0x2af825fb160": "代码执行/代码编辑||代码42",
+      "0x2af823ef100": "控制流/输入端口||输入端口",
+      "0x2af82414d90": "控制流/输出端口||输出端口",
+      "0x2af8ba14580": "控制流/循环控制流区域||循环控制流区域",
+      "0x2af8ba17eb0": "控制流/条件分支||条件分支 1",
+      "0x2af8ba17d60": "控制流/条件分支||条件分支"
     },
     "node_states": {
       "数据集成/长文本输入||长文本输入": "success",
@@ -1559,12 +1559,12 @@
       "数据预处理/JSON筛选||工具输入提取": "pending",
       "大模型组件/提示词模板||错误处理": "pending",
       "大模型组件/提示词模板||工具执行错误反馈": "pending",
+      "代码执行/代码编辑||代码42": "success",
       "控制流/输入端口||输入端口": "unrun",
       "控制流/输出端口||输出端口": "unrun",
       "控制流/循环控制流区域||循环控制流区域": "failed",
       "控制流/条件分支||条件分支 1": "pending",
-      "控制流/条件分支||条件分支": "pending",
-      "代码执行/代码编辑||代码42": "success"
+      "控制流/条件分支||条件分支": "pending"
     },
     "node_inputs": {
       "数据集成/长文本输入||长文本输入": {},
@@ -1584,12 +1584,12 @@
       "数据预处理/JSON筛选||工具输入提取": {},
       "大模型组件/提示词模板||错误处理": {},
       "大模型组件/提示词模板||工具执行错误反馈": {},
+      "代码执行/代码编辑||代码42": {},
       "控制流/输入端口||输入端口": {},
       "控制流/输出端口||输出端口": {},
       "控制流/循环控制流区域||循环控制流区域": {},
       "控制流/条件分支||条件分支 1": {},
-      "控制流/条件分支||条件分支": {},
-      "代码执行/代码编辑||代码42": {}
+      "控制流/条件分支||条件分支": {}
     },
     "node_outputs": {
       "数据集成/长文本输入||长文本输入": {
@@ -1753,6 +1753,7 @@
       "数据预处理/JSON筛选||工具输入提取": {},
       "大模型组件/提示词模板||错误处理": {},
       "大模型组件/提示词模板||工具执行错误反馈": {},
+      "代码执行/代码编辑||代码42": {},
       "控制流/输入端口||输入端口": {},
       "控制流/输出端口||输出端口": {},
       "控制流/循环控制流区域||循环控制流区域": {},
@@ -1762,8 +1763,7 @@
           "answer": "由于当前系统在执行逻辑回归分析时遇到技术问题（如文件路径缺失或组件依赖异常），无法完成对输入数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23] 的逻辑回归计算。建议检查模型组件的依赖环境、归一化参数配置是否匹配输入维度（当前报错提示输入特征数为11，但模型期望为4），或重新部署支持11维输入的逻辑回归组件。当前无法提供有效结果。"
         }
       },
-      "控制流/条件分支||条件分支": {},
-      "代码执行/代码编辑||代码42": {}
+      "控制流/条件分支||条件分支": {}
     },
     "column_select": {
       "数据集成/长文本输入||长文本输入": {},
@@ -1783,12 +1783,12 @@
       "数据预处理/JSON筛选||工具输入提取": {},
       "大模型组件/提示词模板||错误处理": {},
       "大模型组件/提示词模板||工具执行错误反馈": {},
+      "代码执行/代码编辑||代码42": {},
       "控制流/输入端口||输入端口": {},
       "控制流/输出端口||输出端口": {},
       "控制流/循环控制流区域||循环控制流区域": {},
       "控制流/条件分支||条件分支 1": {},
-      "控制流/条件分支||条件分支": {},
-      "代码执行/代码编辑||代码42": {}
+      "控制流/条件分支||条件分支": {}
     }
   },
   "global_variable": {

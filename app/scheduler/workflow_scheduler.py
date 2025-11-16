@@ -13,7 +13,7 @@ from app.nodes.status_node import NodeStatus
 from app.scheduler.expression_engine import ExpressionEngine
 from app.scheduler.node_list_executor import NodeListExecutor
 from app.utils.ipython_kernel_manager import IPythonKernelManager
-from app.utils.utils import get_port_node
+from app.utils.utils import get_port_node, topological_sort
 
 
 class WorkflowScheduler(QObject):
@@ -117,19 +117,15 @@ class WorkflowScheduler(QObject):
 
         return executable_nodes
 
-    def run_full(self, nodes=[]):
+    def run_full(self, nodes=[], sort=True):
         """执行整个工作流（排除 Backdrop）"""
-        all_nodes = self.get_executable_nodes(nodes)
-        if not all_nodes:
-            self.error.emit("工作流中没有可执行节点")
-            return
-
-        execution_order = self._topological_sort(all_nodes)
-        if execution_order is None:
-            self.error.emit("检测到循环依赖，无法执行")
-            return
-
-        self._execute_nodes(execution_order)
+        if sort:
+            nodes = self.get_executable_nodes(nodes)
+            nodes = topological_sort(nodes)
+            if nodes is None:
+                self.error.emit("检测到循环依赖，无法执行")
+                return
+        self._execute_nodes(nodes)
 
     def run(self, node):
         """强制执行单个节点（即使 disabled）"""
@@ -138,7 +134,7 @@ class WorkflowScheduler(QObject):
     def run_to(self, target_node):
         """执行到目标节点（含所有上游）"""
         nodes = self._get_ancestors_and_self(target_node)
-        execution_order = self._topological_sort(nodes)
+        execution_order = topological_sort(nodes)
         if execution_order is None:
             self.error.emit("检测到循环依赖，无法执行")
             return
@@ -147,7 +143,7 @@ class WorkflowScheduler(QObject):
     def run_from(self, start_node):
         """从起始节点开始执行（含所有下游）"""
         nodes = self._get_descendants_and_self(start_node)
-        execution_order = self._topological_sort(nodes)
+        execution_order = topological_sort(nodes)
         if execution_order is None:
             self.error.emit("检测到循环依赖，无法执行")
             return
@@ -189,37 +185,6 @@ class WorkflowScheduler(QObject):
         dfs(node)
         return result
 
-    def _topological_sort(self, nodes: List) -> Optional[List]:
-        """对 active 节点（非 disabled）进行拓扑排序"""
-        if not nodes:
-            return []
-
-        node_set = set(nodes)
-        in_degree = {node: 0 for node in nodes}
-        graph_deps = defaultdict(list)
-
-        for node in nodes:
-            for input_port in node.input_ports():
-                for upstream_out in input_port.connected_ports():
-                    upstream = get_port_node(upstream_out)
-                    if upstream and upstream in node_set:
-                        graph_deps[upstream].append(node)
-                        in_degree[node] += 1
-
-        queue = deque([n for n in nodes if in_degree[n] == 0])
-        execution_order = []
-        while queue:
-            n = queue.popleft()
-            execution_order.append(n)
-            for neighbor in graph_deps[n]:
-                in_degree[neighbor] -= 1
-                if in_degree[neighbor] == 0:
-                    queue.append(neighbor)
-
-        if len(execution_order) != len(nodes):
-            return None  # 存在环
-        return execution_order
-
     def register_global_variable(self, nodes):
         for node in nodes:
             if node.has_property("global_variable"):
@@ -230,9 +195,7 @@ class WorkflowScheduler(QObject):
     def _execute_nodes(self, nodes: List):
         """启动执行：先解锁所有节点，再执行 active 节点"""
         try:
-            # ✅ 仍然做拓扑排序（保证依赖顺序），但接受其中包含后续会被禁用的节点
-            execution_order = self._topological_sort(nodes)
-            for node in execution_order:
+            for node in nodes:
                 node.set_disabled(False)
                 self.set_node_status(node, NodeStatus.NODE_STATUS_PENDING)
                 if isinstance(node, BackdropNode):
@@ -240,14 +203,14 @@ class WorkflowScheduler(QObject):
                         n.set_disabled(False)
                         self.set_node_status(n, NodeStatus.NODE_STATUS_PENDING)
 
-            if execution_order is None:
+            if nodes is None:
                 self.error.emit("检测到循环依赖")
                 return
-            self.register_global_variable(execution_order)
+            self.register_global_variable(nodes)
             # 启动执行器
             self._executor = NodeListExecutor(
                 main_window=None,
-                nodes=execution_order,  # 传入拓扑序
+                nodes=nodes,  # 传入拓扑序
                 python_exe=self.get_python_exe(),
                 scheduler=self
             )

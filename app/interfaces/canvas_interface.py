@@ -228,7 +228,11 @@ class CanvasPage(QWidget):
         """执行所有选中节点的工作流"""
         self._scheduler = self._create_scheduler()
         self._connect_scheduler_signals()
-        self._scheduler.run_full(nodes=self.property_panel.get_current_execution_order() or self.graph.selected_nodes())
+        if self.property_panel.get_current_execution_order():
+            self._scheduler.run_full(nodes=self.property_panel.get_current_execution_order(), sort=False)
+            self.property_panel.reset_current_components()
+        else:
+            self._scheduler.run_full(nodes=self.graph.selected_nodes())
 
     def run_to_node(self, target_node):
         """执行到目标节点"""

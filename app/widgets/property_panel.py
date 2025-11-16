@@ -311,6 +311,9 @@ class PropertyPanel(CardWidget):
 
         # 保存当前组件列表，用于移动操作
         self._current_components = components
+        title = BodyLabel(f"⏬ 连通图执行顺序")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        self.node_vbox.addWidget(title)
 
         # 主卡片
         nodes_card = CardWidget(self)
@@ -318,7 +321,7 @@ class PropertyPanel(CardWidget):
         nodes_layout.setContentsMargins(10, 10, 10, 10)
 
         title_btn_layout = QHBoxLayout()
-        title = BodyLabel("子联通图列表：")
+        title = BodyLabel("连通图列表：")
         title_btn_layout.addWidget(title)
         title_btn_layout.addStretch()
 
@@ -346,7 +349,7 @@ class PropertyPanel(CardWidget):
 
         # 连通分量标题行，包含名称和上下移动按钮
         header_layout = QHBoxLayout()
-        component_title = BodyLabel(f"子联通图 {index + 1} ({len(component)} 个节点)")
+        component_title = BodyLabel(f"子连通图 {index + 1} ({len(component)} 个节点)")
         header_layout.addWidget(component_title)
 
         # 上下移动按钮
@@ -504,6 +507,12 @@ class PropertyPanel(CardWidget):
             execution_order.extend(component)
 
         return execution_order
+
+    def reset_current_components(self):
+        """
+        重置当前组件列表
+        """
+        self._current_components = []
 
     def _build_node_ui(self, node, current_segment=None):
         if not hasattr(node, '_input_values'):
