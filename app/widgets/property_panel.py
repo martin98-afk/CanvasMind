@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, Q
     QStackedWidget, QHBoxLayout, QApplication, QSizePolicy
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
     ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
-    TransparentDropDownToolButton
+    TransparentDropDownToolButton, ToolButton
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.utils.utils import serialize_for_json, get_icon, canvas_file_dump_path, topological_sort
@@ -193,10 +193,11 @@ class PropertyPanel(CardWidget):
 
         if is_backdrop_change:
             # 尝试更新现有Backdrop的状态
-            if self._update_existing_backdrop_data(node):
-                # 如果成功更新了Backdrop状态，则直接返回，不执行后续的全量更新
+            try:
+                self._update_existing_backdrop_data(node)
                 return
-            # 如果 _update_existing_backdrop_data 返回 False (例如缓存的UI组件不存在)，则继续全量更新
+            except Exception:
+                pass
 
         # 原有的全量更新逻辑
         current_segment = None
@@ -333,9 +334,9 @@ class PropertyPanel(CardWidget):
             component_card = self._create_component_card(nodes_layout, i, components)
             self._component_cards.append(component_card)
 
-        nodes_layout.addStretch()
+        nodes_layout.addStretch(1)
         self.node_vbox.addWidget(nodes_card)
-        self.node_vbox.addStretch()
+        self.node_vbox.addStretch(1)
 
     def _create_component_card(self, parent_layout, index, components):
         """
@@ -353,9 +354,8 @@ class PropertyPanel(CardWidget):
         header_layout.addWidget(component_title)
 
         # 上下移动按钮
-        move_up_btn = PushButton("↑")
-        move_down_btn = PushButton("↓")
-
+        move_up_btn = TransparentToolButton(FluentIcon.UP)
+        move_down_btn = TransparentToolButton(FluentIcon.DOWN)
         # 设置按钮的固定大小
         move_up_btn.setFixedSize(24, 24)
         move_down_btn.setFixedSize(24, 24)
@@ -378,9 +378,9 @@ class PropertyPanel(CardWidget):
         # 创建列表显示该连通分量的节点
         component_list = ListWidget(self)
         num_items = len(component)
-        estimated_height_for_items = num_items * 35
+        estimated_height_for_items = num_items * 40
         total_estimated_height = estimated_height_for_items
-        component_list.setFixedHeight(total_estimated_height + 20)
+        component_list.setFixedHeight(total_estimated_height)
         for n in component:
             status = self.main_window.get_node_status(n)
             status_text = {
@@ -435,7 +435,7 @@ class PropertyPanel(CardWidget):
         重新排列组件卡片在布局中的位置
         """
         # 获取主布局中的内容布局（跳过标题行）
-        nodes_card = self.node_vbox.itemAt(0).widget()  # 假设第一个是nodes_card
+        nodes_card = self.node_vbox.itemAt(1).widget()  # 假设第一个是nodes_card
         nodes_layout = nodes_card.layout()
 
         # 清空内容布局（除了标题）
@@ -468,10 +468,10 @@ class PropertyPanel(CardWidget):
             widget = header_layout.itemAt(i).widget()
             if isinstance(widget, BodyLabel):
                 title_label = widget
-            elif isinstance(widget, PushButton):
-                if widget.text() == "↑":
+            elif isinstance(widget, TransparentToolButton):
+                if widget._icon == FluentIcon.UP:
                     up_btn = widget
-                elif widget.text() == "↓":
+                elif widget._icon == FluentIcon.DOWN:
                     down_btn = widget
 
         # 更新标题文本
@@ -1045,11 +1045,11 @@ class PropertyPanel(CardWidget):
                 self._internal_nodes_card_expanded[node_id] = False
             else:
                 num_items = internal_nodes_list.count()
-                estimated_height_for_items = num_items * 35
+                estimated_height_for_items = num_items * 40
                 padding_height = 10 + 10 + 10 + 10
                 title_height = 20
                 total_estimated_height = padding_height + title_height + estimated_height_for_items
-                nodes_card.setFixedHeight(total_estimated_height + 50)
+                nodes_card.setFixedHeight(total_estimated_height)
                 expand_btn.setIcon(get_icon("缩小"))
                 self._internal_nodes_card_expanded[node_id] = True
             self.node_vbox.invalidate()

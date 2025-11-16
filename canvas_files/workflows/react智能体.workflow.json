@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x2af8c7570a0": {
+      "0x245cf825180": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "长文本输入",
@@ -34,7 +34,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 487.62875,
         "height": 101.10000000000001,
@@ -59,7 +59,7 @@
           "input_text": "[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
         }
       },
-      "0x2af8db027d0": {
+      "0x245c527ab30": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\dist\\main\\_internal\\icons/代码执行.svg",
         "name": "代码编辑 1",
@@ -82,13 +82,13 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 831.70875,
         "height": 803.5500000000001,
         "pos": [
-          1030.6075041213562,
-          -756.3484863635981
+          1772.5843797456287,
+          -939.9184395002817
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -126,7 +126,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    import json\n    from pathlib import Path\n    input_data: list[str] = inputs.input\n    results = []\n    for path in input_data:\n        if not (Path(path) / \"project_spec.json\").exists():\n            continue\n        with open(Path(path) / \"project_spec.json\", \"r\", encoding=\"utf-8\") as f:\n            project_spec = json.loads(f.read())\n            project_input = project_spec[\"inputs\"]\n            format = \"\" if len(project_input) > 0 else \"无参数\"\n            for i, (inp, info) in enumerate(project_input.items()):\n                format += f\"参数{i+1}：{inp}\\n参数格式：{info['format']}\\n参数参考样例输入：{info['current_value']}\\n所属组件名：{info['node_name']}\\n组件参数类型：{info['type']}\\n\\n\"\n            results.append(f\"工具名称：{str(Path(path).resolve())} \\n输入格式：{format}\")\n    return {\n        \"output\": results\n    }"
         }
       },
-      "0x2af92b77be0": {
+      "0x245c523c8b0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装",
@@ -149,7 +149,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 392.15000000000003,
         "height": 101.10000000000001,
@@ -180,14 +180,14 @@
           "prop_0": "input"
         }
       },
-      "0x2af92b75660": {
+      "0x245c527a740": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "工具调用结果回写",
         "color": [
-          60,
-          60,
-          60,
+          13,
+          18,
+          23,
           255
         ],
         "border_color": [
@@ -202,8 +202,8 @@
           255,
           180
         ],
-        "disabled": false,
-        "selected": false,
+        "disabled": true,
+        "selected": true,
         "visible": true,
         "width": 546.71,
         "height": 101.10000000000001,
@@ -234,14 +234,14 @@
           "template": "工具调用结果：\n$input.variables[0]$\n\n用户问题：\n$node_vars.长文本输入_output$"
         }
       },
-      "0x2af92b756c0": {
+      "0x245d3c99e40": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程",
         "color": [
-          60,
-          60,
-          60,
+          25,
+          70,
+          45,
           255
         ],
         "border_color": [
@@ -257,7 +257,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 442.0025,
         "height": 113.7,
@@ -294,14 +294,14 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x2af92b75060": {
+      "0x245d3c9a4d0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_工具调用",
         "icon": null,
         "name": "工具调用",
         "color": [
-          60,
-          60,
-          60,
+          13,
+          18,
+          23,
           255
         ],
         "border_color": [
@@ -316,8 +316,8 @@
           255,
           180
         ],
-        "disabled": false,
-        "selected": false,
+        "disabled": true,
+        "selected": true,
         "visible": true,
         "width": 166.175,
         "height": 82.2,
@@ -357,7 +357,7 @@
           "debug_code": null
         }
       },
-      "0x2af824b8220": {
+      "0x245d3c9bd90": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 3",
@@ -380,7 +380,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 411.84375,
         "height": 101.10000000000001,
@@ -411,7 +411,7 @@
           "prop_0": "answer"
         }
       },
-      "0x2af824bb490": {
+      "0x245d3c9b820": {
         "type_": "dynamic.StatusDynamicNode_数据集成_获取全局变量",
         "icon": null,
         "name": "获取大模型历史对话",
@@ -434,7 +434,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 555.36375,
         "height": 99.0,
@@ -459,7 +459,7 @@
           "prop1": "node_vars.大模型对话_history"
         }
       },
-      "0x2af8b6587f0": {
+      "0x245d3c9b550": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码编辑 2",
@@ -482,13 +482,13 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 831.70875,
         "height": 803.5500000000001,
         "pos": [
-          1968.6646719224482,
-          -750.8283320888032
+          2710.6415475467215,
+          -934.3982852254871
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -526,14 +526,14 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    input_data: list = inputs.input\n    return {\n        \"output\": \"\\n\\n\".join(input_data)\n    }"
         }
       },
-      "0x2af82168370": {
+      "0x245c5385600": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
         "icon": null,
         "name": "大模型输出解析",
         "color": [
-          60,
-          60,
-          60,
+          25,
+          70,
+          45,
           255
         ],
         "border_color": [
@@ -549,7 +549,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 308.05625000000003,
         "height": 137.85000000000002,
@@ -567,7 +567,7 @@
           "type": "json"
         }
       },
-      "0x2af92b77f70": {
+      "0x245cf411690": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码编辑",
@@ -590,13 +590,13 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 812.015,
         "height": 803.5500000000001,
         "pos": [
-          -43.8038641278863,
-          -764.6666933180082
+          698.1730114963871,
+          -948.2366464546917
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -634,14 +634,14 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 目标文件夹\n    return: 文件地址里列表（key=输出端口名）\n    \"\"\"\n    from pathlib import Path\n    path = Path(inputs.input)\n    projects = [str(p) for p in path.iterdir()]\n    self.logger.info(projects)\n    return {\n        \"output\": projects\n    }"
         }
       },
-      "0x2af92b06ec0": {
+      "0x245c572d2a0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话",
         "color": [
-          80,
-          30,
-          30,
+          25,
+          70,
+          45,
           255
         ],
         "border_color": [
@@ -657,7 +657,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 487.62875,
         "height": 533.7,
@@ -710,14 +710,14 @@
           "model_params": []
         }
       },
-      "0x2af92b078e0": {
+      "0x245c572d630": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "提取最终答案",
         "color": [
-          60,
-          60,
-          60,
+          25,
+          70,
+          45,
           255
         ],
         "border_color": [
@@ -733,7 +733,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 391.40250000000003,
         "height": 101.10000000000001,
@@ -750,14 +750,14 @@
           "prop1": "$input.input1[\"answer\"]$"
         }
       },
-      "0x2af82169660": {
+      "0x245c572f490": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "工具名提取",
         "color": [
-          60,
-          60,
-          60,
+          13,
+          18,
+          23,
           255
         ],
         "border_color": [
@@ -772,8 +772,8 @@
           255,
           180
         ],
-        "disabled": false,
-        "selected": false,
+        "disabled": true,
+        "selected": true,
         "visible": true,
         "width": 371.70875,
         "height": 101.10000000000001,
@@ -790,14 +790,14 @@
           "prop1": "$input.input1[\"tool_name\"]$"
         }
       },
-      "0x2af825fa470": {
+      "0x245d3c2bc10": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "工具输入提取",
         "color": [
-          60,
-          60,
-          60,
+          13,
+          18,
+          23,
           255
         ],
         "border_color": [
@@ -812,8 +812,8 @@
           255,
           180
         ],
-        "disabled": false,
-        "selected": false,
+        "disabled": true,
+        "selected": true,
         "visible": true,
         "width": 391.40250000000003,
         "height": 101.10000000000001,
@@ -830,14 +830,14 @@
           "prop1": "$input.input1[\"tool_input\"]$"
         }
       },
-      "0x2af825fbe80": {
+      "0x245d3c2b790": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": "D:\\work\\WorkFlowGUI\\icons\\list.svg",
         "name": "错误处理",
         "color": [
-          60,
-          60,
-          60,
+          13,
+          18,
+          23,
           255
         ],
         "border_color": [
@@ -852,8 +852,8 @@
           255,
           180
         ],
-        "disabled": false,
-        "selected": false,
+        "disabled": true,
+        "selected": true,
         "visible": true,
         "width": 467.935,
         "height": 101.10000000000001,
@@ -870,14 +870,14 @@
           "template": "生成的步骤json信息错误，步骤信息必须为严格的json格式，且包含next_step信息\n且 next_step 内容必须为：调用工具 或 总结答案 其一\n\n当前生成的错误步骤json信息：\n\n$input.variables$\n\n根据历史对话反思错误，生成正确的步骤信息。"
         }
       },
-      "0x2af825fb7f0": {
+      "0x245d3c2b100": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "工具执行错误反馈",
         "color": [
-          60,
-          60,
-          60,
+          13,
+          18,
+          23,
           255
         ],
         "border_color": [
@@ -892,8 +892,8 @@
           255,
           180
         ],
-        "disabled": false,
-        "selected": false,
+        "disabled": true,
+        "selected": true,
         "visible": true,
         "width": 546.71,
         "height": 101.10000000000001,
@@ -924,7 +924,7 @@
           "template": "工具调用报错根据执行日志修复请求参数：\n$input.variables[1]$\n\n用户问题：\n$node_vars.长文本输入_output$"
         }
       },
-      "0x2af825fb160": {
+      "0x245d3c2aa70": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码42",
@@ -947,13 +947,13 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 792.695,
         "height": 921.1500000000001,
         "pos": [
-          3062.602866817255,
-          -789.107189872971
+          3804.579742441528,
+          -974.1132871640243
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -993,7 +993,7 @@
             {
               "name": "input_1",
               "type": "文本",
-              "var": "无"
+              "var": "env.PYTHONPATH"
             }
           ],
           "output_ports": [
@@ -1007,10 +1007,10 @@
             }
           ],
           "glue_code_template": "default:空白模板",
-          "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    # 在这里编写你的组件逻辑\n    input_data = inputs.get(\"input_data\") if inputs else None\n    param1 = params.get(\"param1\", \"default_value\")\n    # 处理逻辑\n    result = f\"处理结果: {input_data} + {param1}\"\n    return {\n        \"output_data\": result\n    }"
+          "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    # 在这里编写你的组件逻辑\n    input_data = inputs.input if inputs else None\n    param1 = inputs.input_1\n    # 处理逻辑\n    result = f\"处理结果: {input_data} + {param1}\"\n    return {\n        \"output\": result,\n        \"output_1\": result\n    }"
         }
       },
-      "0x2af823ef100": {
+      "0x245cf761d20": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -1033,7 +1033,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 153.0,
         "height": 60,
@@ -1048,7 +1048,7 @@
           "persistent_id": "7837e4b9-dd80-4028-b64f-9266b25965e2"
         }
       },
-      "0x2af82414d90": {
+      "0x245cf7608e0": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -1071,7 +1071,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 153.0,
         "height": 60,
@@ -1086,14 +1086,14 @@
           "persistent_id": "4cf84646-541e-48e3-a776-64381d6ea1a9"
         }
       },
-      "0x2af8ba14580": {
+      "0x245cf8d2530": {
         "type_": "control_flow.ControlFlowLoopNode",
         "icon": null,
         "name": "循环控制流区域",
         "color": [
-          80,
-          30,
-          30,
+          25,
+          70,
+          45,
           255
         ],
         "border_color": [
@@ -1109,7 +1109,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 5309.408441644732,
         "height": 767.9511417613995,
@@ -1123,21 +1123,21 @@
         "custom": {
           "persistent_id": "29a94b04-a2fc-44cc-a569-fda349eeb69f",
           "backdrop_text": "",
-          "current_index": 0,
+          "current_index": 1,
           "loop_nums": 5,
           "max_iterations": 5,
-          "loop_condition": "$node_vars.大模型输出解析_parsed_json[\"next_step\"] == '调用工具'$",
+          "loop_condition": "$node_vars.大模型输出解析_parsed_json[\"next_step\"] != '总结答案'$",
           "loop_mode": "condition"
         }
       },
-      "0x2af8ba17eb0": {
+      "0x245cf8d1690": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\CanvasMind\\./icons/条件分支.png",
         "name": "条件分支 1",
         "color": [
-          60,
-          60,
-          60,
+          25,
+          70,
+          45,
           255
         ],
         "border_color": [
@@ -1153,7 +1153,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 575.94875,
         "height": 299.55,
@@ -1204,14 +1204,14 @@
           "execute_all_matches": false
         }
       },
-      "0x2af8ba17d60": {
+      "0x245cf8d15d0": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\CanvasMind\\./icons/条件分支.png",
         "name": "条件分支",
         "color": [
-          60,
-          60,
-          60,
+          13,
+          18,
+          23,
           255
         ],
         "border_color": [
@@ -1226,8 +1226,8 @@
           255,
           180
         ],
-        "disabled": false,
-        "selected": false,
+        "disabled": true,
+        "selected": true,
         "visible": true,
         "width": 556.255,
         "height": 240.75,
@@ -1273,241 +1273,241 @@
     "connections": [
       {
         "out": [
-          "0x2af8c7570a0",
+          "0x245cf825180",
           "output"
         ],
         "in": [
-          "0x2af92b77be0",
+          "0x245c523c8b0",
           "input1"
         ]
       },
       {
         "in": [
-          "0x2af8db027d0",
+          "0x245c527ab30",
           "input"
         ],
         "out": [
-          "0x2af92b77f70",
+          "0x245cf411690",
           "output"
         ]
       },
       {
         "out": [
-          "0x2af8db027d0",
+          "0x245c527ab30",
           "output"
         ],
         "in": [
-          "0x2af8b6587f0",
+          "0x245d3c9b550",
           "input"
         ]
       },
       {
         "out": [
-          "0x2af92b77be0",
+          "0x245c523c8b0",
           "output1"
         ],
         "in": [
-          "0x2af8ba14580",
+          "0x245cf8d2530",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x2af92b75660",
+          "0x245c527a740",
           "variables"
         ],
         "out": [
-          "0x2af8ba17d60",
+          "0x245cf8d15d0",
           "branch"
         ]
       },
       {
         "out": [
-          "0x2af92b75660",
+          "0x245c527a740",
           "prompt"
         ],
         "in": [
-          "0x2af82414d90",
+          "0x245cf7608e0",
           "input"
         ]
       },
       {
         "in": [
-          "0x2af92b756c0",
+          "0x245d3c99e40",
           "raw_text"
         ],
         "out": [
-          "0x2af92b06ec0",
+          "0x245c572d2a0",
           "response"
         ]
       },
       {
         "out": [
-          "0x2af92b756c0",
+          "0x245d3c99e40",
           "cleaned_text"
         ],
         "in": [
-          "0x2af82168370",
+          "0x245c5385600",
           "llm_output"
         ]
       },
       {
         "in": [
-          "0x2af92b75060",
+          "0x245d3c9a4d0",
           "project_name"
         ],
         "out": [
-          "0x2af82169660",
+          "0x245c572f490",
           "output1"
         ]
       },
       {
         "in": [
-          "0x2af92b75060",
+          "0x245d3c9a4d0",
           "input"
         ],
         "out": [
-          "0x2af825fa470",
+          "0x245d3c2bc10",
           "output1"
         ]
       },
       {
         "out": [
-          "0x2af92b75060",
+          "0x245d3c9a4d0",
           "result"
         ],
         "in": [
-          "0x2af8ba17d60",
+          "0x245cf8d15d0",
           "input"
         ]
       },
       {
         "out": [
-          "0x2af92b75060",
+          "0x245d3c9a4d0",
           "log"
         ],
         "in": [
-          "0x2af8ba17d60",
+          "0x245cf8d15d0",
           "input"
         ]
       },
       {
         "in": [
-          "0x2af824b8220",
+          "0x245d3c9bd90",
           "input1"
         ],
         "out": [
-          "0x2af8ba14580",
+          "0x245cf8d2530",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x2af824bb490",
+          "0x245d3c9b820",
           "output1"
         ],
         "in": [
-          "0x2af92b06ec0",
+          "0x245c572d2a0",
           "history"
         ]
       },
       {
         "out": [
-          "0x2af82168370",
+          "0x245c5385600",
           "parsed_json"
         ],
         "in": [
-          "0x2af8ba17eb0",
+          "0x245cf8d1690",
           "input"
         ]
       },
       {
         "in": [
-          "0x2af92b06ec0",
+          "0x245c572d2a0",
           "user_input"
         ],
         "out": [
-          "0x2af823ef100",
+          "0x245cf761d20",
           "output"
         ]
       },
       {
         "in": [
-          "0x2af92b078e0",
+          "0x245c572d630",
           "input1"
         ],
         "out": [
-          "0x2af8ba17eb0",
+          "0x245cf8d1690",
           "branch"
         ]
       },
       {
         "out": [
-          "0x2af92b078e0",
+          "0x245c572d630",
           "output1"
         ],
         "in": [
-          "0x2af82414d90",
+          "0x245cf7608e0",
           "input"
         ]
       },
       {
         "in": [
-          "0x2af82169660",
+          "0x245c572f490",
           "input1"
         ],
         "out": [
-          "0x2af8ba17eb0",
+          "0x245cf8d1690",
           "branch_1"
         ]
       },
       {
         "in": [
-          "0x2af825fa470",
+          "0x245d3c2bc10",
           "input1"
         ],
         "out": [
-          "0x2af8ba17eb0",
+          "0x245cf8d1690",
           "branch_1"
         ]
       },
       {
         "in": [
-          "0x2af825fbe80",
+          "0x245d3c2b790",
           "variables"
         ],
         "out": [
-          "0x2af8ba17eb0",
+          "0x245cf8d1690",
           "else"
         ]
       },
       {
         "out": [
-          "0x2af825fbe80",
+          "0x245d3c2b790",
           "prompt"
         ],
         "in": [
-          "0x2af82414d90",
+          "0x245cf7608e0",
           "input"
         ]
       },
       {
         "in": [
-          "0x2af825fb7f0",
+          "0x245d3c2b100",
           "variables"
         ],
         "out": [
-          "0x2af8ba17d60",
+          "0x245cf8d15d0",
           "else"
         ]
       },
       {
         "out": [
-          "0x2af825fb7f0",
+          "0x245d3c2b100",
           "prompt"
         ],
         "in": [
-          "0x2af82414d90",
+          "0x245cf7608e0",
           "input"
         ]
       }
@@ -1517,54 +1517,54 @@
     "environment": "3.14",
     "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
     "node_id2stable_key": {
-      "0x2af8c7570a0": "数据集成/长文本输入||长文本输入",
-      "0x2af8db027d0": "代码执行/代码编辑||代码编辑 1",
-      "0x2af92b77be0": "大模型组件/JSON文本包装||JSON文本包装",
-      "0x2af92b75660": "大模型组件/提示词模板||工具调用结果回写",
-      "0x2af92b756c0": "大模型组件/移除思考过程||移除思考过程",
-      "0x2af92b75060": "大模型组件/工具调用||工具调用",
-      "0x2af824b8220": "大模型组件/JSON文本包装||JSON文本包装 3",
-      "0x2af824bb490": "数据集成/获取全局变量||获取大模型历史对话",
-      "0x2af8b6587f0": "代码执行/代码编辑||代码编辑 2",
-      "0x2af82168370": "大模型组件/大模型输出解析||大模型输出解析",
-      "0x2af92b77f70": "代码执行/代码编辑||代码编辑",
-      "0x2af92b06ec0": "大模型组件/大模型对话||大模型对话",
-      "0x2af92b078e0": "数据预处理/JSON筛选||提取最终答案",
-      "0x2af82169660": "数据预处理/JSON筛选||工具名提取",
-      "0x2af825fa470": "数据预处理/JSON筛选||工具输入提取",
-      "0x2af825fbe80": "大模型组件/提示词模板||错误处理",
-      "0x2af825fb7f0": "大模型组件/提示词模板||工具执行错误反馈",
-      "0x2af825fb160": "代码执行/代码编辑||代码42",
-      "0x2af823ef100": "控制流/输入端口||输入端口",
-      "0x2af82414d90": "控制流/输出端口||输出端口",
-      "0x2af8ba14580": "控制流/循环控制流区域||循环控制流区域",
-      "0x2af8ba17eb0": "控制流/条件分支||条件分支 1",
-      "0x2af8ba17d60": "控制流/条件分支||条件分支"
+      "0x245cf825180": "数据集成/长文本输入||长文本输入",
+      "0x245c527ab30": "代码执行/代码编辑||代码编辑 1",
+      "0x245c523c8b0": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x245c527a740": "大模型组件/提示词模板||工具调用结果回写",
+      "0x245d3c99e40": "大模型组件/移除思考过程||移除思考过程",
+      "0x245d3c9a4d0": "大模型组件/工具调用||工具调用",
+      "0x245d3c9bd90": "大模型组件/JSON文本包装||JSON文本包装 3",
+      "0x245d3c9b820": "数据集成/获取全局变量||获取大模型历史对话",
+      "0x245d3c9b550": "代码执行/代码编辑||代码编辑 2",
+      "0x245c5385600": "大模型组件/大模型输出解析||大模型输出解析",
+      "0x245cf411690": "代码执行/代码编辑||代码编辑",
+      "0x245c572d2a0": "大模型组件/大模型对话||大模型对话",
+      "0x245c572d630": "数据预处理/JSON筛选||提取最终答案",
+      "0x245c572f490": "数据预处理/JSON筛选||工具名提取",
+      "0x245d3c2bc10": "数据预处理/JSON筛选||工具输入提取",
+      "0x245d3c2b790": "大模型组件/提示词模板||错误处理",
+      "0x245d3c2b100": "大模型组件/提示词模板||工具执行错误反馈",
+      "0x245d3c2aa70": "代码执行/代码编辑||代码42",
+      "0x245cf761d20": "控制流/输入端口||输入端口",
+      "0x245cf7608e0": "控制流/输出端口||输出端口",
+      "0x245cf8d2530": "控制流/循环控制流区域||循环控制流区域",
+      "0x245cf8d1690": "控制流/条件分支||条件分支 1",
+      "0x245cf8d15d0": "控制流/条件分支||条件分支"
     },
     "node_states": {
       "数据集成/长文本输入||长文本输入": "success",
       "代码执行/代码编辑||代码编辑 1": "success",
       "大模型组件/JSON文本包装||JSON文本包装": "success",
-      "大模型组件/提示词模板||工具调用结果回写": "pending",
-      "大模型组件/移除思考过程||移除思考过程": "pending",
-      "大模型组件/工具调用||工具调用": "pending",
+      "大模型组件/提示词模板||工具调用结果回写": "unrun",
+      "大模型组件/移除思考过程||移除思考过程": "success",
+      "大模型组件/工具调用||工具调用": "unrun",
       "大模型组件/JSON文本包装||JSON文本包装 3": "success",
       "数据集成/获取全局变量||获取大模型历史对话": "success",
       "代码执行/代码编辑||代码编辑 2": "success",
-      "大模型组件/大模型输出解析||大模型输出解析": "pending",
+      "大模型组件/大模型输出解析||大模型输出解析": "success",
       "代码执行/代码编辑||代码编辑": "success",
-      "大模型组件/大模型对话||大模型对话": "failed",
-      "数据预处理/JSON筛选||提取最终答案": "pending",
-      "数据预处理/JSON筛选||工具名提取": "pending",
-      "数据预处理/JSON筛选||工具输入提取": "pending",
-      "大模型组件/提示词模板||错误处理": "pending",
-      "大模型组件/提示词模板||工具执行错误反馈": "pending",
+      "大模型组件/大模型对话||大模型对话": "success",
+      "数据预处理/JSON筛选||提取最终答案": "success",
+      "数据预处理/JSON筛选||工具名提取": "unrun",
+      "数据预处理/JSON筛选||工具输入提取": "unrun",
+      "大模型组件/提示词模板||错误处理": "unrun",
+      "大模型组件/提示词模板||工具执行错误反馈": "unrun",
       "代码执行/代码编辑||代码42": "success",
-      "控制流/输入端口||输入端口": "unrun",
-      "控制流/输出端口||输出端口": "unrun",
-      "控制流/循环控制流区域||循环控制流区域": "failed",
-      "控制流/条件分支||条件分支 1": "pending",
-      "控制流/条件分支||条件分支": "pending"
+      "控制流/输入端口||输入端口": "pending",
+      "控制流/输出端口||输出端口": "pending",
+      "控制流/循环控制流区域||循环控制流区域": "success",
+      "控制流/条件分支||条件分支 1": "success",
+      "控制流/条件分支||条件分支": "unrun"
     },
     "node_inputs": {
       "数据集成/长文本输入||长文本输入": {},
@@ -1612,13 +1612,13 @@
       },
       "大模型组件/提示词模板||工具调用结果回写": {},
       "大模型组件/移除思考过程||移除思考过程": {
-        "cleaned_text": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"由于当前系统在执行逻辑回归分析时遇到技术问题（如文件路径缺失或组件依赖异常），无法完成对输入数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23] 的逻辑回归计算。建议检查模型组件的依赖环境、归一化参数配置是否匹配输入维度（当前报错提示输入特征数为11，但模型期望为4），或重新部署支持11维输入的逻辑回归组件。当前无法提供有效结果。\"\n}\n```",
+        "cleaned_text": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。\"\n}\n```",
         "think_text": ""
       },
       "大模型组件/工具调用||工具调用": {},
       "大模型组件/JSON文本包装||JSON文本包装 3": {
         "output1": {
-          "answer": "由于当前系统在执行逻辑回归分析时遇到技术问题（如文件路径缺失或组件依赖异常），无法完成对输入数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23] 的逻辑回归计算。建议检查模型组件的依赖环境、归一化参数配置是否匹配输入维度（当前报错提示输入特征数为11，但模型期望为4），或重新部署支持11维输入的逻辑回归组件。当前无法提供有效结果。"
+          "answer": "根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。"
         }
       },
       "数据集成/获取全局变量||获取大模型历史对话": {
@@ -1633,27 +1633,27 @@
           },
           {
             "role": "user",
-            "content": "工具调用报错根据执行日志修复请求参数：\n2025-11-14 14:43:04.918 | INFO     | __main__:execute_workflow:931 - 执行节点: 输入array\n2025-11-14 14:43:04.919 | INFO     | __main__:execute_workflow:932 - 输入: {}\n2025-11-14 14:43:04.934 | INFO     | __main__:execute_workflow:942 - 输出: {'output': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}\n2025-11-14 14:43:04.934 | INFO     | __main__:execute_workflow:931 - 执行节点: 归一化推理(npy)\n2025-11-14 14:43:04.934 | INFO     | __main__:execute_workflow:932 - 输入: {'scaler': WindowsPath('D:/work/CanvasMind/canvas_files/projects/逻辑回归/inputs/model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl'), 'input': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}\n2025-11-14 14:43:05.440 | ERROR    | runner.component_executor:run_component_in_subprocess:97 - 执行异常: 组件执行失败: Traceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\components\\base.py\", line 968, in execute\n    result = self.run(validated_params, validated_inputs)\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\components\\数据预处理\\2c162fc3-2275-4f49-aeac-5dd4778911e9.py\", line 43, in run\n    output = inputs.scaler.transform(input)\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\_set_output.py\", line 316, in wrapped\n    data_to_wrap = f(self, X, *args, **kwargs)\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\preprocessing\\_data.py\", line 545, in transform\n    X = validate_data(\n        self,\n    ...<5 lines>...\n        reset=False,\n    )\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\validation.py\", line 2975, in validate_data\n    _check_n_features(_estimator, X, reset=reset)\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\validation.py\", line 2839, in _check_n_features\n    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: X has 11 features, but MinMaxScaler is expecting 4 features as input.\n\n2025-11-14 14:43:05.442 | ERROR    | __main__:execute_workflow:945 - 节点执行失败 归一化推理(npy): Traceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\runner\\workflow_runner.py\", line 933, in execute_workflow\n    output = run_component_in_subprocess(\n        comp_class=node[\"class\"],\n    ...<4 lines>...\n        logger=logger\n    )\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\runner\\component_executor.py\", line 141, in run_component_in_subprocess\n    return output\n           ^^^^^^\nUnboundLocalError: cannot access local variable 'output' where it is not associated with a value\n\n\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
+            "content": "工具调用报错根据执行日志修复请求参数：\n2025-11-16 05:02:15.921 | INFO     | __main__:execute_workflow:931 - 执行节点: 输入array\n2025-11-16 05:02:15.921 | INFO     | __main__:execute_workflow:932 - 输入: {}\n2025-11-16 05:02:15.936 | INFO     | __main__:execute_workflow:942 - 输出: {'output': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}\n2025-11-16 05:02:15.936 | INFO     | __main__:execute_workflow:931 - 执行节点: 归一化推理(npy)\n2025-11-16 05:02:15.936 | INFO     | __main__:execute_workflow:932 - 输入: {'scaler': WindowsPath('D:/work/CanvasMind/canvas_files/projects/逻辑回归/inputs/model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl'), 'input': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}\n2025-11-16 05:02:16.429 | ERROR    | runner.component_executor:run_component_in_subprocess:97 - 执行异常: 组件执行失败: Traceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\components\\base.py\", line 968, in execute\n    result = self.run(validated_params, validated_inputs)\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\components\\数据预处理\\2c162fc3-2275-4f49-aeac-5dd4778911e9.py\", line 43, in run\n    output = inputs.scaler.transform(input)\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\_set_output.py\", line 316, in wrapped\n    data_to_wrap = f(self, X, *args, **kwargs)\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\preprocessing\\_data.py\", line 545, in transform\n    X = validate_data(\n        self,\n    ...<5 lines>...\n        reset=False,\n    )\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\validation.py\", line 2975, in validate_data\n    _check_n_features(_estimator, X, reset=reset)\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\validation.py\", line 2839, in _check_n_features\n    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: X has 11 features, but MinMaxScaler is expecting 4 features as input.\n\n2025-11-16 05:02:16.430 | ERROR    | __main__:execute_workflow:945 - 节点执行失败 归一化推理(npy): Traceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\runner\\workflow_runner.py\", line 933, in execute_workflow\n    output = run_component_in_subprocess(\n        comp_class=node[\"class\"],\n    ...<4 lines>...\n        logger=logger\n    )\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\runner\\component_executor.py\", line 141, in run_component_in_subprocess\n    return output\n           ^^^^^^\nUnboundLocalError: cannot access local variable 'output' where it is not associated with a value\n\n\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
           },
           {
             "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\自动组件生成\",\n    \"tool_input\": {\n        \"input_text1\": \"[123,31,51,42,32,332,32,32,32,23,23]\",\n        \"input_text2\": \"输出是画图结果，传参是PIL.Image格式图片\",\n        \"input_text3\": \"组件参数暂无\",\n        \"input_text4\": \"我的需求是开发一个逻辑回归组件，支持11维输入数据的归一化与预测\"\n    }\n}\n```"
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\逻辑回归\",\n    \"tool_input\": {\n        \"param1\": \"123,31,51,42\"\n    }\n}\n```"
           },
           {
             "role": "user",
-            "content": "工具调用报错根据执行日志修复请求参数：\n执行失败: [WinError 2] 系统找不到指定的文件。\nTraceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\app\\components\\大模型组件\\becc8ae3-47ea-4714-b35e-81a24bc95cb6.py\", line 69, in run\n    proc = subprocess.Popen(\n        [python_executable, runner_path],\n    ...<2 lines>...\n        encoding='utf-8'\n    )\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\subprocess.py\", line 1038, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\subprocess.py\", line 1552, in _execute_child\n    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,\n                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^\n                             # no special security\n                             ^^^^^^^^^^^^^^^^^^^^^\n    ...<4 lines>...\n                             cwd,\n                             ^^^^\n                             startupinfo)\n                             ^^^^^^^^^^^^\nFileNotFoundError: [WinError 2] 系统找不到指定的文件。\n\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
+            "content": "工具调用结果：\n{'output': array([[32.97222222, 12.08333333,  8.47457627, 17.45833333]]), 'value': [2]}\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
           },
           {
             "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\获取当前时间\",\n    \"tool_input\": {}\n}\n```"
+            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。\"\n}\n```"
           },
           {
             "role": "user",
-            "content": "工具调用结果：\n{'output1': '2025-11-14 14:43:10.333007'}\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
+            "content": "{'input': '[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？'}"
           },
           {
             "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"由于当前系统在执行逻辑回归分析时遇到技术问题（如文件路径缺失或组件依赖异常），无法完成对输入数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23] 的逻辑回归计算。建议检查模型组件的依赖环境、归一化参数配置是否匹配输入维度（当前报错提示输入特征数为11，但模型期望为4），或重新部署支持11维输入的逻辑回归组件。当前无法提供有效结果。\"\n}\n```"
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\逻辑回归\",\n    \"tool_input\": {\n        \"param1\": \"123,31,51,42\"\n    }\n}\n```"
           }
         ]
       },
@@ -1663,7 +1663,7 @@
       "大模型组件/大模型输出解析||大模型输出解析": {
         "parsed_json": {
           "next_step": "总结答案",
-          "answer": "由于当前系统在执行逻辑回归分析时遇到技术问题（如文件路径缺失或组件依赖异常），无法完成对输入数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23] 的逻辑回归计算。建议检查模型组件的依赖环境、归一化参数配置是否匹配输入维度（当前报错提示输入特征数为11，但模型期望为4），或重新部署支持11维输入的逻辑回归组件。当前无法提供有效结果。"
+          "answer": "根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。"
         },
         "is_valid": true
       },
@@ -1678,16 +1678,16 @@
         ]
       },
       "大模型组件/大模型对话||大模型对话": {
-        "response": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"由于当前系统在执行逻辑回归分析时遇到技术问题（如文件路径缺失或组件依赖异常），无法完成对输入数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23] 的逻辑回归计算。建议检查模型组件的依赖环境、归一化参数配置是否匹配输入维度（当前报错提示输入特征数为11，但模型期望为4），或重新部署支持11维输入的逻辑回归组件。当前无法提供有效结果。\"\n}\n```",
+        "response": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。\"\n}\n```",
         "raw_output": {
-          "id": "chatcmpl-xcuo9ziztire5swrnl5d0c",
+          "id": "chatcmpl-vvee2ppwunbfsaty89szj",
           "choices": [
             {
               "finish_reason": "stop",
               "index": 0,
               "logprobs": null,
               "message": {
-                "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"由于当前系统在执行逻辑回归分析时遇到技术问题（如文件路径缺失或组件依赖异常），无法完成对输入数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23] 的逻辑回归计算。建议检查模型组件的依赖环境、归一化参数配置是否匹配输入维度（当前报错提示输入特征数为11，但模型期望为4），或重新部署支持11维输入的逻辑回归组件。当前无法提供有效结果。\"\n}\n```",
+                "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。\"\n}\n```",
                 "refusal": null,
                 "role": "assistant",
                 "annotations": null,
@@ -1697,15 +1697,15 @@
               }
             }
           ],
-          "created": 1763131391,
+          "created": 1763283701,
           "model": "qwen/qwen3-30b-a3b-2507",
           "object": "chat.completion",
           "service_tier": null,
           "system_fingerprint": "qwen/qwen3-30b-a3b-2507",
           "usage": {
-            "completion_tokens": 154,
-            "prompt_tokens": 3057,
-            "total_tokens": 3211,
+            "completion_tokens": 177,
+            "prompt_tokens": 3146,
+            "total_tokens": 3323,
             "completion_tokens_details": null,
             "prompt_tokens_details": null
           },
@@ -1722,45 +1722,60 @@
           },
           {
             "role": "user",
-            "content": "工具调用报错根据执行日志修复请求参数：\n2025-11-14 14:43:04.918 | INFO     | __main__:execute_workflow:931 - 执行节点: 输入array\n2025-11-14 14:43:04.919 | INFO     | __main__:execute_workflow:932 - 输入: {}\n2025-11-14 14:43:04.934 | INFO     | __main__:execute_workflow:942 - 输出: {'output': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}\n2025-11-14 14:43:04.934 | INFO     | __main__:execute_workflow:931 - 执行节点: 归一化推理(npy)\n2025-11-14 14:43:04.934 | INFO     | __main__:execute_workflow:932 - 输入: {'scaler': WindowsPath('D:/work/CanvasMind/canvas_files/projects/逻辑回归/inputs/model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl'), 'input': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}\n2025-11-14 14:43:05.440 | ERROR    | runner.component_executor:run_component_in_subprocess:97 - 执行异常: 组件执行失败: Traceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\components\\base.py\", line 968, in execute\n    result = self.run(validated_params, validated_inputs)\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\components\\数据预处理\\2c162fc3-2275-4f49-aeac-5dd4778911e9.py\", line 43, in run\n    output = inputs.scaler.transform(input)\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\_set_output.py\", line 316, in wrapped\n    data_to_wrap = f(self, X, *args, **kwargs)\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\preprocessing\\_data.py\", line 545, in transform\n    X = validate_data(\n        self,\n    ...<5 lines>...\n        reset=False,\n    )\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\validation.py\", line 2975, in validate_data\n    _check_n_features(_estimator, X, reset=reset)\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\validation.py\", line 2839, in _check_n_features\n    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: X has 11 features, but MinMaxScaler is expecting 4 features as input.\n\n2025-11-14 14:43:05.442 | ERROR    | __main__:execute_workflow:945 - 节点执行失败 归一化推理(npy): Traceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\runner\\workflow_runner.py\", line 933, in execute_workflow\n    output = run_component_in_subprocess(\n        comp_class=node[\"class\"],\n    ...<4 lines>...\n        logger=logger\n    )\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\runner\\component_executor.py\", line 141, in run_component_in_subprocess\n    return output\n           ^^^^^^\nUnboundLocalError: cannot access local variable 'output' where it is not associated with a value\n\n\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
+            "content": "工具调用报错根据执行日志修复请求参数：\n2025-11-16 05:02:15.921 | INFO     | __main__:execute_workflow:931 - 执行节点: 输入array\n2025-11-16 05:02:15.921 | INFO     | __main__:execute_workflow:932 - 输入: {}\n2025-11-16 05:02:15.936 | INFO     | __main__:execute_workflow:942 - 输出: {'output': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}\n2025-11-16 05:02:15.936 | INFO     | __main__:execute_workflow:931 - 执行节点: 归一化推理(npy)\n2025-11-16 05:02:15.936 | INFO     | __main__:execute_workflow:932 - 输入: {'scaler': WindowsPath('D:/work/CanvasMind/canvas_files/projects/逻辑回归/inputs/model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl'), 'input': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}\n2025-11-16 05:02:16.429 | ERROR    | runner.component_executor:run_component_in_subprocess:97 - 执行异常: 组件执行失败: Traceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\components\\base.py\", line 968, in execute\n    result = self.run(validated_params, validated_inputs)\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\components\\数据预处理\\2c162fc3-2275-4f49-aeac-5dd4778911e9.py\", line 43, in run\n    output = inputs.scaler.transform(input)\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\_set_output.py\", line 316, in wrapped\n    data_to_wrap = f(self, X, *args, **kwargs)\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\preprocessing\\_data.py\", line 545, in transform\n    X = validate_data(\n        self,\n    ...<5 lines>...\n        reset=False,\n    )\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\validation.py\", line 2975, in validate_data\n    _check_n_features(_estimator, X, reset=reset)\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\validation.py\", line 2839, in _check_n_features\n    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: X has 11 features, but MinMaxScaler is expecting 4 features as input.\n\n2025-11-16 05:02:16.430 | ERROR    | __main__:execute_workflow:945 - 节点执行失败 归一化推理(npy): Traceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\runner\\workflow_runner.py\", line 933, in execute_workflow\n    output = run_component_in_subprocess(\n        comp_class=node[\"class\"],\n    ...<4 lines>...\n        logger=logger\n    )\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\runner\\component_executor.py\", line 141, in run_component_in_subprocess\n    return output\n           ^^^^^^\nUnboundLocalError: cannot access local variable 'output' where it is not associated with a value\n\n\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
           },
           {
             "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\自动组件生成\",\n    \"tool_input\": {\n        \"input_text1\": \"[123,31,51,42,32,332,32,32,32,23,23]\",\n        \"input_text2\": \"输出是画图结果，传参是PIL.Image格式图片\",\n        \"input_text3\": \"组件参数暂无\",\n        \"input_text4\": \"我的需求是开发一个逻辑回归组件，支持11维输入数据的归一化与预测\"\n    }\n}\n```"
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\逻辑回归\",\n    \"tool_input\": {\n        \"param1\": \"123,31,51,42\"\n    }\n}\n```"
           },
           {
             "role": "user",
-            "content": "工具调用报错根据执行日志修复请求参数：\n执行失败: [WinError 2] 系统找不到指定的文件。\nTraceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\app\\components\\大模型组件\\becc8ae3-47ea-4714-b35e-81a24bc95cb6.py\", line 69, in run\n    proc = subprocess.Popen(\n        [python_executable, runner_path],\n    ...<2 lines>...\n        encoding='utf-8'\n    )\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\subprocess.py\", line 1038, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\subprocess.py\", line 1552, in _execute_child\n    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,\n                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^\n                             # no special security\n                             ^^^^^^^^^^^^^^^^^^^^^\n    ...<4 lines>...\n                             cwd,\n                             ^^^^\n                             startupinfo)\n                             ^^^^^^^^^^^^\nFileNotFoundError: [WinError 2] 系统找不到指定的文件。\n\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
+            "content": "工具调用结果：\n{'output': array([[32.97222222, 12.08333333,  8.47457627, 17.45833333]]), 'value': [2]}\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
           },
           {
             "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\获取当前时间\",\n    \"tool_input\": {}\n}\n```"
+            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。\"\n}\n```"
           },
           {
             "role": "user",
-            "content": "工具调用结果：\n{'output1': '2025-11-14 14:43:10.333007'}\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
+            "content": "{'input': '[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？'}"
           },
           {
             "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"由于当前系统在执行逻辑回归分析时遇到技术问题（如文件路径缺失或组件依赖异常），无法完成对输入数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23] 的逻辑回归计算。建议检查模型组件的依赖环境、归一化参数配置是否匹配输入维度（当前报错提示输入特征数为11，但模型期望为4），或重新部署支持11维输入的逻辑回归组件。当前无法提供有效结果。\"\n}\n```"
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\逻辑回归\",\n    \"tool_input\": {\n        \"param1\": \"123,31,51,42\"\n    }\n}\n```"
+          },
+          {
+            "role": "user",
+            "content": "工具调用结果：\n{'output': array([[32.97222222, 12.08333333,  8.47457627, 17.45833333]]), 'value': [2]}\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
+          },
+          {
+            "role": "assistant",
+            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。\"\n}\n```"
           }
         ]
       },
       "数据预处理/JSON筛选||提取最终答案": {
-        "output1": "由于当前系统在执行逻辑回归分析时遇到技术问题（如文件路径缺失或组件依赖异常），无法完成对输入数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23] 的逻辑回归计算。建议检查模型组件的依赖环境、归一化参数配置是否匹配输入维度（当前报错提示输入特征数为11，但模型期望为4），或重新部署支持11维输入的逻辑回归组件。当前无法提供有效结果。"
+        "output1": "根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。"
       },
       "数据预处理/JSON筛选||工具名提取": {},
       "数据预处理/JSON筛选||工具输入提取": {},
       "大模型组件/提示词模板||错误处理": {},
       "大模型组件/提示词模板||工具执行错误反馈": {},
-      "代码执行/代码编辑||代码42": {},
-      "控制流/输入端口||输入端口": {},
+      "代码执行/代码编辑||代码42": {
+        "output": "处理结果: en_US.UTF-8 + .",
+        "output_1": "处理结果: en_US.UTF-8 + ."
+      },
+      "控制流/输入端口||输入端口": {
+        "output": "工具调用结果：\n{'output': array([[32.97222222, 12.08333333,  8.47457627, 17.45833333]]), 'value': [2]}\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
+      },
       "控制流/输出端口||输出端口": {},
-      "控制流/循环控制流区域||循环控制流区域": {},
+      "控制流/循环控制流区域||循环控制流区域": {
+        "outputs": "根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。"
+      },
       "控制流/条件分支||条件分支 1": {
         "branch": {
           "next_step": "总结答案",
-          "answer": "由于当前系统在执行逻辑回归分析时遇到技术问题（如文件路径缺失或组件依赖异常），无法完成对输入数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23] 的逻辑回归计算。建议检查模型组件的依赖环境、归一化参数配置是否匹配输入维度（当前报错提示输入特征数为11，但模型期望为4），或重新部署支持11维输入的逻辑回归组件。当前无法提供有效结果。"
+          "answer": "根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。"
         }
       },
       "控制流/条件分支||条件分支": {}
@@ -1847,7 +1862,7 @@
         "update_policy": "更新"
       },
       "大模型对话_response": {
-        "value": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"由于当前系统在执行逻辑回归分析时遇到技术问题（如文件路径缺失或组件依赖异常），无法完成对输入数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23] 的逻辑回归计算。建议检查模型组件的依赖环境、归一化参数配置是否匹配输入维度（当前报错提示输入特征数为11，但模型期望为4），或重新部署支持11维输入的逻辑回归组件。当前无法提供有效结果。\"\n}\n```",
+        "value": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。\"\n}\n```",
         "update_policy": "更新"
       },
       "获取智能体下一步计划_next_step": {
@@ -1870,27 +1885,35 @@
           },
           {
             "role": "user",
-            "content": "工具调用报错根据执行日志修复请求参数：\n2025-11-14 14:43:04.918 | INFO     | __main__:execute_workflow:931 - 执行节点: 输入array\n2025-11-14 14:43:04.919 | INFO     | __main__:execute_workflow:932 - 输入: {}\n2025-11-14 14:43:04.934 | INFO     | __main__:execute_workflow:942 - 输出: {'output': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}\n2025-11-14 14:43:04.934 | INFO     | __main__:execute_workflow:931 - 执行节点: 归一化推理(npy)\n2025-11-14 14:43:04.934 | INFO     | __main__:execute_workflow:932 - 输入: {'scaler': WindowsPath('D:/work/CanvasMind/canvas_files/projects/逻辑回归/inputs/model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl'), 'input': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}\n2025-11-14 14:43:05.440 | ERROR    | runner.component_executor:run_component_in_subprocess:97 - 执行异常: 组件执行失败: Traceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\components\\base.py\", line 968, in execute\n    result = self.run(validated_params, validated_inputs)\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\components\\数据预处理\\2c162fc3-2275-4f49-aeac-5dd4778911e9.py\", line 43, in run\n    output = inputs.scaler.transform(input)\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\_set_output.py\", line 316, in wrapped\n    data_to_wrap = f(self, X, *args, **kwargs)\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\preprocessing\\_data.py\", line 545, in transform\n    X = validate_data(\n        self,\n    ...<5 lines>...\n        reset=False,\n    )\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\validation.py\", line 2975, in validate_data\n    _check_n_features(_estimator, X, reset=reset)\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\validation.py\", line 2839, in _check_n_features\n    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: X has 11 features, but MinMaxScaler is expecting 4 features as input.\n\n2025-11-14 14:43:05.442 | ERROR    | __main__:execute_workflow:945 - 节点执行失败 归一化推理(npy): Traceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\runner\\workflow_runner.py\", line 933, in execute_workflow\n    output = run_component_in_subprocess(\n        comp_class=node[\"class\"],\n    ...<4 lines>...\n        logger=logger\n    )\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\runner\\component_executor.py\", line 141, in run_component_in_subprocess\n    return output\n           ^^^^^^\nUnboundLocalError: cannot access local variable 'output' where it is not associated with a value\n\n\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
+            "content": "工具调用报错根据执行日志修复请求参数：\n2025-11-16 05:02:15.921 | INFO     | __main__:execute_workflow:931 - 执行节点: 输入array\n2025-11-16 05:02:15.921 | INFO     | __main__:execute_workflow:932 - 输入: {}\n2025-11-16 05:02:15.936 | INFO     | __main__:execute_workflow:942 - 输出: {'output': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}\n2025-11-16 05:02:15.936 | INFO     | __main__:execute_workflow:931 - 执行节点: 归一化推理(npy)\n2025-11-16 05:02:15.936 | INFO     | __main__:execute_workflow:932 - 输入: {'scaler': WindowsPath('D:/work/CanvasMind/canvas_files/projects/逻辑回归/inputs/model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl'), 'input': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}\n2025-11-16 05:02:16.429 | ERROR    | runner.component_executor:run_component_in_subprocess:97 - 执行异常: 组件执行失败: Traceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\components\\base.py\", line 968, in execute\n    result = self.run(validated_params, validated_inputs)\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\components\\数据预处理\\2c162fc3-2275-4f49-aeac-5dd4778911e9.py\", line 43, in run\n    output = inputs.scaler.transform(input)\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\_set_output.py\", line 316, in wrapped\n    data_to_wrap = f(self, X, *args, **kwargs)\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\preprocessing\\_data.py\", line 545, in transform\n    X = validate_data(\n        self,\n    ...<5 lines>...\n        reset=False,\n    )\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\validation.py\", line 2975, in validate_data\n    _check_n_features(_estimator, X, reset=reset)\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\site-packages\\sklearn\\utils\\validation.py\", line 2839, in _check_n_features\n    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: X has 11 features, but MinMaxScaler is expecting 4 features as input.\n\n2025-11-16 05:02:16.430 | ERROR    | __main__:execute_workflow:945 - 节点执行失败 归一化推理(npy): Traceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\runner\\workflow_runner.py\", line 933, in execute_workflow\n    output = run_component_in_subprocess(\n        comp_class=node[\"class\"],\n    ...<4 lines>...\n        logger=logger\n    )\n  File \"D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归\\runner\\component_executor.py\", line 141, in run_component_in_subprocess\n    return output\n           ^^^^^^\nUnboundLocalError: cannot access local variable 'output' where it is not associated with a value\n\n\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
           },
           {
             "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\自动组件生成\",\n    \"tool_input\": {\n        \"input_text1\": \"[123,31,51,42,32,332,32,32,32,23,23]\",\n        \"input_text2\": \"输出是画图结果，传参是PIL.Image格式图片\",\n        \"input_text3\": \"组件参数暂无\",\n        \"input_text4\": \"我的需求是开发一个逻辑回归组件，支持11维输入数据的归一化与预测\"\n    }\n}\n```"
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\逻辑回归\",\n    \"tool_input\": {\n        \"param1\": \"123,31,51,42\"\n    }\n}\n```"
           },
           {
             "role": "user",
-            "content": "工具调用报错根据执行日志修复请求参数：\n执行失败: [WinError 2] 系统找不到指定的文件。\nTraceback (most recent call last):\n  File \"D:\\work\\CanvasMind\\app\\components\\大模型组件\\becc8ae3-47ea-4714-b35e-81a24bc95cb6.py\", line 69, in run\n    proc = subprocess.Popen(\n        [python_executable, runner_path],\n    ...<2 lines>...\n        encoding='utf-8'\n    )\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\subprocess.py\", line 1038, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\Lib\\subprocess.py\", line 1552, in _execute_child\n    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,\n                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^\n                             # no special security\n                             ^^^^^^^^^^^^^^^^^^^^^\n    ...<4 lines>...\n                             cwd,\n                             ^^^^\n                             startupinfo)\n                             ^^^^^^^^^^^^\nFileNotFoundError: [WinError 2] 系统找不到指定的文件。\n\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
+            "content": "工具调用结果：\n{'output': array([[32.97222222, 12.08333333,  8.47457627, 17.45833333]]), 'value': [2]}\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
           },
           {
             "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\获取当前时间\",\n    \"tool_input\": {}\n}\n```"
+            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。\"\n}\n```"
           },
           {
             "role": "user",
-            "content": "工具调用结果：\n{'output1': '2025-11-14 14:43:10.333007'}\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
+            "content": "{'input': '[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？'}"
           },
           {
             "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"由于当前系统在执行逻辑回归分析时遇到技术问题（如文件路径缺失或组件依赖异常），无法完成对输入数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23] 的逻辑回归计算。建议检查模型组件的依赖环境、归一化参数配置是否匹配输入维度（当前报错提示输入特征数为11，但模型期望为4），或重新部署支持11维输入的逻辑回归组件。当前无法提供有效结果。\"\n}\n```"
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\逻辑回归\",\n    \"tool_input\": {\n        \"param1\": \"123,31,51,42\"\n    }\n}\n```"
+          },
+          {
+            "role": "user",
+            "content": "工具调用结果：\n{'output': array([[32.97222222, 12.08333333,  8.47457627, 17.45833333]]), 'value': [2]}\n\n用户问题：\n[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？"
+          },
+          {
+            "role": "assistant",
+            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据提供的数据 [123, 31, 51, 42, 32, 332, 32, 32, 32, 23, 23]，逻辑回归模型的输入特征维度与训练时的预期不匹配（模型期望4个特征，但输入有11个）。因此，系统仅对前4个特征 [123, 31, 51, 42] 进行了推理，结果为：[32.97, 12.08, 8.47, 17.46]，预测类别为 2。完整数据因维度不匹配无法处理。\"\n}\n```"
           }
         ],
         "update_policy": "更新"

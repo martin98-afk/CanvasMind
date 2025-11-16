@@ -1,39 +1,11 @@
-2025-11-14 14:43:04.918 | INFO     | __main__:execute_workflow:931 - 执行节点: 输入array
-2025-11-14 14:43:04.919 | INFO     | __main__:execute_workflow:932 - 输入: {}
-2025-11-14 14:43:04.934 | INFO     | __main__:execute_workflow:942 - 输出: {'output': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}
-2025-11-14 14:43:04.934 | INFO     | __main__:execute_workflow:931 - 执行节点: 归一化推理(npy)
-2025-11-14 14:43:04.934 | INFO     | __main__:execute_workflow:932 - 输入: {'scaler': WindowsPath('D:/work/CanvasMind/canvas_files/projects/逻辑回归/inputs/model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl'), 'input': array([123.,  31.,  51.,  42.,  32., 332.,  32.,  32.,  32.,  23.,  23.])}
-2025-11-14 14:43:05.440 | ERROR    | runner.component_executor:run_component_in_subprocess:97 - 执行异常: 组件执行失败: Traceback (most recent call last):
-  File "D:\work\CanvasMind\canvas_files\projects\逻辑回归\components\base.py", line 968, in execute
-    result = self.run(validated_params, validated_inputs)
-  File "D:\work\CanvasMind\canvas_files\projects\逻辑回归\components\数据预处理\2c162fc3-2275-4f49-aeac-5dd4778911e9.py", line 43, in run
-    output = inputs.scaler.transform(input)
-  File "D:\work\CanvasMind\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\utils\_set_output.py", line 316, in wrapped
-    data_to_wrap = f(self, X, *args, **kwargs)
-  File "D:\work\CanvasMind\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\preprocessing\_data.py", line 545, in transform
-    X = validate_data(
-        self,
-    ...<5 lines>...
-        reset=False,
-    )
-  File "D:\work\CanvasMind\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\utils\validation.py", line 2975, in validate_data
-    _check_n_features(_estimator, X, reset=reset)
-    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\work\CanvasMind\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\utils\validation.py", line 2839, in _check_n_features
-    raise ValueError(
-    ...<2 lines>...
-    )
-ValueError: X has 11 features, but MinMaxScaler is expecting 4 features as input.
-
-2025-11-14 14:43:05.442 | ERROR    | __main__:execute_workflow:945 - 节点执行失败 归一化推理(npy): Traceback (most recent call last):
-  File "D:\work\CanvasMind\canvas_files\projects\逻辑回归\runner\workflow_runner.py", line 933, in execute_workflow
-    output = run_component_in_subprocess(
-        comp_class=node["class"],
-    ...<4 lines>...
-        logger=logger
-    )
-  File "D:\work\CanvasMind\canvas_files\projects\逻辑回归\runner\component_executor.py", line 141, in run_component_in_subprocess
-    return output
-           ^^^^^^
-UnboundLocalError: cannot access local variable 'output' where it is not associated with a value
-
+2025-11-16 09:01:39.666 | INFO     | __main__:execute_workflow:931 - 执行节点: 输入array
+2025-11-16 09:01:39.666 | INFO     | __main__:execute_workflow:932 - 输入: {}
+2025-11-16 09:01:39.679 | INFO     | __main__:execute_workflow:942 - 输出: {'output': array([123.,  31.,  51.,  42.])}
+2025-11-16 09:01:39.679 | INFO     | __main__:execute_workflow:931 - 执行节点: 归一化推理(npy)
+2025-11-16 09:01:39.679 | INFO     | __main__:execute_workflow:932 - 输入: {'scaler': WindowsPath('D:/work/CanvasMind/canvas_files/projects/逻辑回归/inputs/model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl'), 'input': array([123.,  31.,  51.,  42.])}
+2025-11-16 09:01:40.567 | INFO     | __main__:execute_workflow:942 - 输出: {'output': array([[32.97222222, 12.08333333,  8.47457627, 17.45833333]])}
+2025-11-16 09:01:40.567 | INFO     | __main__:execute_workflow:931 - 执行节点: 逻辑回归推理(npy) 1
+2025-11-16 09:01:40.567 | INFO     | __main__:execute_workflow:932 - 输入: {'model': WindowsPath('D:/work/CanvasMind/canvas_files/projects/逻辑回归/inputs/model_dc38700a-5e2b-41d0-ab95-4528f73e5f31.pkl'), 'feature': array([[32.97222222, 12.08333333,  8.47457627, 17.45833333]])}
+2025-11-16 09:01:40.668 | INFO     | Component:run:50 - Model predict: [2]
+2025-11-16 09:01:40.668 | INFO     | __main__:execute_workflow:942 - 输出: {'value': [2]}
+2025-11-16 09:01:40.668 | INFO     | __main__:execute_workflow:961 - 最终输出: {'output': array([[32.97222222, 12.08333333,  8.47457627, 17.45833333]]), 'value': [2]}
