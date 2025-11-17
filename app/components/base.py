@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import ast
 import json
 import os
 import pickle
@@ -710,7 +711,7 @@ class BaseComponent(ABC):
             raise ComponentError(f"无法读取CSV数据，不支持的类型: {type(data)}")
 
     def _read_json_data(self, data: Union[str, dict, list, Path]) -> Union[dict, list, str]:
-        """读取JSON数据。如果输入是字符串或路径，则尝试作为文件或标准JSON解析。"""
+        """读取JSON数据。如果输入是字符串或路径，则尝试作为文件、标准JSON或Python字面量解析。"""
         if data is None or (isinstance(data, str) and not data.strip()):
             return {}
         if isinstance(data, (dict, list)):
@@ -725,9 +726,20 @@ class BaseComponent(ABC):
                 try:
                     return json.loads(data)
                 except json.JSONDecodeError:
-                    # 如果标准解析失败，直接抛出错误，不再尝试修复
-                    self.logger.warning(f"JSON 输入无法解析 (非标准JSON或文件不存在): {data[:100]}...")
-                    raise ComponentError(f"JSON 输入格式错误或文件不存在: {data}", "JSON_PARSE_ERROR")
+                    self.logger.debug(f"标准JSON解析失败，尝试作为Python字面量解析: {data[:100]}...")
+                    try:
+                        # 使用 ast.literal_eval 安全解析 Python 字面量（如单引号字典、列表）
+                        parsed = ast.literal_eval(data)
+                        if isinstance(parsed, (dict, list)):
+                            return parsed
+                        else:
+                            # 如果解析出来不是 dict 或 list，说明不是我们期望的 JSON 格式
+                            self.logger.warning(f"解析出的数据不是字典或列表，而是 {type(parsed)}: {data}")
+                            raise ComponentError(f"输入内容解析后不是有效的JSON结构: {data}", "JSON_PARSE_ERROR")
+                    except (ValueError, SyntaxError):
+                        # ast.literal_eval 也失败了
+                        self.logger.warning(f"Python字面量解析也失败: {data[:100]}...")
+                        raise ComponentError(f"JSON 输入格式错误或文件不存在: {data}", "JSON_PARSE_ERROR")
         else:
             raise ComponentError(f"不支持的 JSON 输入类型: {type(data)}", "JSON_TYPE_ERROR")
 

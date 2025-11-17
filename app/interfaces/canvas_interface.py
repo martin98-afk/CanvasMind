@@ -1695,7 +1695,7 @@ class CanvasPage(QWidget):
         self._node_id_cache_valid = True
 
         QTimer.singleShot(0, self.create_name_label)
-        QTimer.singleShot(100, self._delayed_fit_view)
+        QTimer.singleShot(0, self._delayed_fit_view)
         self.create_success_info("加载成功", "工作流加载成功！")
 
     def _delayed_fit_view(self):
