@@ -6,12 +6,12 @@
       "acyclic": true,
       "pipe_collision": false,
       "pipe_slicing": true,
-      "pipe_style": 1,
+      "pipe_style": 2,
       "accept_connection_types": "{}",
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1e0f46e3700": {
+      "0x14580fa44c0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -34,10 +34,10 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 160,
-        "height": 60,
+        "width": 168.36,
+        "height": 69.6,
         "pos": [
           -263.0661542840139,
           466.28831821795535
@@ -54,56 +54,11 @@
           }
         ],
         "custom": {
-          "global_variable": {
-            "env": {
-              "user_id": null,
-              "canvas_id": null,
-              "session_id": null,
-              "run_id": null,
-              "metadata": {
-                "TZ": "Asia/Shanghai",
-                "LANG": "en_US.UTF-8",
-                "LC_ALL": "en_US.UTF-8",
-                "OMP_NUM_THREADS": "1",
-                "MKL_NUM_THREADS": "1",
-                "OPENBLAS_NUM_THREADS": "1",
-                "NUMEXPR_NUM_THREADS": "1",
-                "CUDA_VISIBLE_DEVICES": "0",
-                "PYTHONPATH": ".",
-                "PYTHONUNBUFFERED": "1",
-                "PYTHONIOENCODING": "utf-8",
-                "PYTHONWARNINGS": "ignore"
-              }
-            },
-            "custom": {
-              "test": {
-                "value": 0.5,
-                "description": null,
-                "read_only": false
-              }
-            },
-            "node_vars": {
-              "MinMax归一化_scaler": {
-                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_1_model": {
-                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_value": {
-                "value": [
-                  0
-                ],
-                "update_policy": "固定"
-              }
-            }
-          },
           "persistent_id": "7cd1da75-280b-424f-81e3-f40ffd756998",
           "debug_code": {}
         }
       },
-      "0x1e0f46e2dd0": {
+      "0x14580fa4f10": {
         "type_": "dynamic.StatusDynamicNode_数据集成_CSV_读取器",
         "icon": null,
         "name": "CSV 读取器",
@@ -126,13 +81,13 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 160,
-        "height": 60,
+        "width": 192.28,
+        "height": 69.6,
         "pos": [
-          112.43490602714337,
-          465.39604691408084
+          114.210293329828,
+          467.1714342167655
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -152,56 +107,11 @@
           }
         ],
         "custom": {
-          "global_variable": {
-            "env": {
-              "user_id": null,
-              "canvas_id": null,
-              "session_id": null,
-              "run_id": null,
-              "metadata": {
-                "TZ": "Asia/Shanghai",
-                "LANG": "en_US.UTF-8",
-                "LC_ALL": "en_US.UTF-8",
-                "OMP_NUM_THREADS": "1",
-                "MKL_NUM_THREADS": "1",
-                "OPENBLAS_NUM_THREADS": "1",
-                "NUMEXPR_NUM_THREADS": "1",
-                "CUDA_VISIBLE_DEVICES": "0",
-                "PYTHONPATH": ".",
-                "PYTHONUNBUFFERED": "1",
-                "PYTHONIOENCODING": "utf-8",
-                "PYTHONWARNINGS": "ignore"
-              }
-            },
-            "custom": {
-              "test": {
-                "value": 0.5,
-                "description": null,
-                "read_only": false
-              }
-            },
-            "node_vars": {
-              "MinMax归一化_scaler": {
-                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_1_model": {
-                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_value": {
-                "value": [
-                  0
-                ],
-                "update_policy": "固定"
-              }
-            }
-          },
           "persistent_id": "b03cda79-8772-4ae8-ab53-b3db191e2d58",
           "debug_code": {}
         }
       },
-      "0x1e0f46e2950": {
+      "0x14580fa50f0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_输入array",
         "icon": null,
         "name": "输入array",
@@ -224,10 +134,10 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 311.0,
-        "height": 91.10000000000001,
+        "width": 368.92,
+        "height": 101.10000000000001,
         "pos": [
           104.3208510999732,
           1241.4604955535306
@@ -244,116 +154,12 @@
           }
         ],
         "custom": {
-          "global_variable": {
-            "env": {
-              "user_id": null,
-              "canvas_id": null,
-              "session_id": null,
-              "run_id": null,
-              "metadata": {
-                "TZ": "Asia/Shanghai",
-                "LANG": "en_US.UTF-8",
-                "LC_ALL": "en_US.UTF-8",
-                "OMP_NUM_THREADS": "1",
-                "MKL_NUM_THREADS": "1",
-                "OPENBLAS_NUM_THREADS": "1",
-                "NUMEXPR_NUM_THREADS": "1",
-                "CUDA_VISIBLE_DEVICES": "0",
-                "PYTHONPATH": ".",
-                "PYTHONUNBUFFERED": "1",
-                "PYTHONIOENCODING": "utf-8",
-                "PYTHONWARNINGS": "ignore"
-              }
-            },
-            "custom": {
-              "test": {
-                "value": 0.5,
-                "description": null,
-                "read_only": false
-              }
-            },
-            "node_vars": {
-              "MinMax归一化_scaler": {
-                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_1_model": {
-                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_value": {
-                "value": [
-                  0
-                ],
-                "update_policy": "固定"
-              }
-            }
-          },
           "persistent_id": "f023577e-5cd0-4099-9f53-4c747aae8a5c",
           "debug_code": {},
           "param1": "1,2,3,4"
         }
       },
-      "0x1e0f46e11e0": {
-        "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(csv)",
-        "icon": null,
-        "name": "逻辑回归推理(csv)",
-        "color": [
-          25,
-          70,
-          45,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 160,
-        "height": 72.2,
-        "pos": [
-          1028.44205914354,
-          404.63565477548605
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": true,
-        "subgraph_session": {},
-        "input_ports": [
-          {
-            "name": "feature",
-            "multi_connection": false,
-            "display_name": true
-          },
-          {
-            "name": "model",
-            "multi_connection": false,
-            "display_name": true
-          }
-        ],
-        "output_ports": [
-          {
-            "name": "value",
-            "multi_connection": true,
-            "display_name": true
-          }
-        ],
-        "custom": {
-          "global_variable": {},
-          "persistent_id": "17f25b3e-fd45-4b55-94ea-8fce6cb34eca",
-          "debug_code": {}
-        }
-      },
-      "0x1e0f46e0f10": {
+      "0x145821c8c70": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy)",
@@ -376,10 +182,10 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 160,
-        "height": 72.2,
+        "width": 264.04,
+        "height": 82.2,
         "pos": [
           1041.4093007266908,
           571.2842183555107
@@ -407,46 +213,11 @@
           }
         ],
         "custom": {
-          "global_variable": {
-            "env": {
-              "user_id": null,
-              "canvas_id": null,
-              "session_id": null,
-              "run_id": null,
-              "metadata": {
-                "TZ": "Asia/Shanghai",
-                "LANG": "en_US.UTF-8",
-                "LC_ALL": "en_US.UTF-8",
-                "OMP_NUM_THREADS": "1",
-                "MKL_NUM_THREADS": "1",
-                "OPENBLAS_NUM_THREADS": "1",
-                "NUMEXPR_NUM_THREADS": "1",
-                "CUDA_VISIBLE_DEVICES": "0",
-                "PYTHONPATH": ".",
-                "PYTHONUNBUFFERED": "1",
-                "PYTHONIOENCODING": "utf-8",
-                "PYTHONWARNINGS": "ignore"
-              }
-            },
-            "custom": {
-              "test": {
-                "value": 0.5,
-                "description": null,
-                "read_only": false
-              }
-            },
-            "node_vars": {
-              "逻辑回归训练_model": {
-                "value": "C:\\Users\\black\\AppData\\Local\\Temp\\tmphbo4hbqi.pkl",
-                "update_policy": "固定"
-              }
-            }
-          },
           "persistent_id": "3a7164f5-6f4f-4b92-a362-8e9168fa0604",
           "debug_code": null
         }
       },
-      "0x1e0f46e2650": {
+      "0x145821cb8b0": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_MinMax归一化",
         "icon": null,
         "name": "MinMax归一化",
@@ -469,13 +240,13 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 160,
-        "height": 72.2,
+        "width": 214.36,
+        "height": 82.2,
         "pos": [
-          160.6387564890539,
-          1049.537215416031
+          189.90156877110405,
+          1033.2800974815586
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -500,56 +271,11 @@
           }
         ],
         "custom": {
-          "global_variable": {
-            "env": {
-              "user_id": null,
-              "canvas_id": null,
-              "session_id": null,
-              "run_id": null,
-              "metadata": {
-                "TZ": "Asia/Shanghai",
-                "LANG": "en_US.UTF-8",
-                "LC_ALL": "en_US.UTF-8",
-                "OMP_NUM_THREADS": "1",
-                "MKL_NUM_THREADS": "1",
-                "OPENBLAS_NUM_THREADS": "1",
-                "NUMEXPR_NUM_THREADS": "1",
-                "CUDA_VISIBLE_DEVICES": "0",
-                "PYTHONPATH": ".",
-                "PYTHONUNBUFFERED": "1",
-                "PYTHONIOENCODING": "utf-8",
-                "PYTHONWARNINGS": "ignore"
-              }
-            },
-            "custom": {
-              "test": {
-                "value": 0.5,
-                "description": null,
-                "read_only": false
-              }
-            },
-            "node_vars": {
-              "MinMax归一化_scaler": {
-                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_1_model": {
-                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_value": {
-                "value": [
-                  0
-                ],
-                "update_policy": "固定"
-              }
-            }
-          },
           "persistent_id": "3fd34b98-e9c6-42af-bf26-0cdee4adac74",
-          "debug_code": {}
+          "debug_code": null
         }
       },
-      "0x1e0f46e15d0": {
+      "0x145821c9f30": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_归一化推理(npy)",
         "icon": null,
         "name": "归一化推理(npy)",
@@ -572,10 +298,10 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 160,
-        "height": 72.2,
+        "width": 243.8,
+        "height": 82.2,
         "pos": [
           801.0736331597129,
           1200.5842715465437
@@ -603,56 +329,11 @@
           }
         ],
         "custom": {
-          "global_variable": {
-            "env": {
-              "user_id": null,
-              "canvas_id": null,
-              "session_id": null,
-              "run_id": null,
-              "metadata": {
-                "TZ": "Asia/Shanghai",
-                "LANG": "en_US.UTF-8",
-                "LC_ALL": "en_US.UTF-8",
-                "OMP_NUM_THREADS": "1",
-                "MKL_NUM_THREADS": "1",
-                "OPENBLAS_NUM_THREADS": "1",
-                "NUMEXPR_NUM_THREADS": "1",
-                "CUDA_VISIBLE_DEVICES": "0",
-                "PYTHONPATH": ".",
-                "PYTHONUNBUFFERED": "1",
-                "PYTHONIOENCODING": "utf-8",
-                "PYTHONWARNINGS": "ignore"
-              }
-            },
-            "custom": {
-              "test": {
-                "value": 0.5,
-                "description": null,
-                "read_only": false
-              }
-            },
-            "node_vars": {
-              "MinMax归一化_scaler": {
-                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_1_model": {
-                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_value": {
-                "value": [
-                  0
-                ],
-                "update_policy": "固定"
-              }
-            }
-          },
           "persistent_id": "0f14a852-995f-4c65-8cfb-ef6ccccfdc94",
           "debug_code": {}
         }
       },
-      "0x1e0f46e1720": {
+      "0x145821ca170": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy) 1",
@@ -675,10 +356,10 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 160,
-        "height": 72.2,
+        "width": 286.12,
+        "height": 82.2,
         "pos": [
           1124.4610435958718,
           1001.2819099838512
@@ -706,56 +387,11 @@
           }
         ],
         "custom": {
-          "global_variable": {
-            "env": {
-              "user_id": null,
-              "canvas_id": null,
-              "session_id": null,
-              "run_id": null,
-              "metadata": {
-                "TZ": "Asia/Shanghai",
-                "LANG": "en_US.UTF-8",
-                "LC_ALL": "en_US.UTF-8",
-                "OMP_NUM_THREADS": "1",
-                "MKL_NUM_THREADS": "1",
-                "OPENBLAS_NUM_THREADS": "1",
-                "NUMEXPR_NUM_THREADS": "1",
-                "CUDA_VISIBLE_DEVICES": "0",
-                "PYTHONPATH": ".",
-                "PYTHONUNBUFFERED": "1",
-                "PYTHONIOENCODING": "utf-8",
-                "PYTHONWARNINGS": "ignore"
-              }
-            },
-            "custom": {
-              "test": {
-                "value": 0.5,
-                "description": null,
-                "read_only": false
-              }
-            },
-            "node_vars": {
-              "MinMax归一化_scaler": {
-                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_1_model": {
-                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_value": {
-                "value": [
-                  0
-                ],
-                "update_policy": "固定"
-              }
-            }
-          },
           "persistent_id": "53081407-40bd-48e4-9e7a-ef3e4a06e3ed",
           "debug_code": {}
         }
       },
-      "0x1e0f46e3760": {
+      "0x145821ca440": {
         "type_": "dynamic.StatusDynamicNode_数据转换_csv转npy",
         "icon": null,
         "name": "csv转npy",
@@ -778,10 +414,10 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 160,
-        "height": 72.2,
+        "width": 173.88,
+        "height": 82.2,
         "pos": [
           560.6541185063843,
           679.6874651493371
@@ -809,46 +445,11 @@
           }
         ],
         "custom": {
-          "global_variable": {
-            "env": {
-              "user_id": null,
-              "canvas_id": null,
-              "session_id": null,
-              "run_id": null,
-              "metadata": {
-                "TZ": "Asia/Shanghai",
-                "LANG": "en_US.UTF-8",
-                "LC_ALL": "en_US.UTF-8",
-                "OMP_NUM_THREADS": "1",
-                "MKL_NUM_THREADS": "1",
-                "OPENBLAS_NUM_THREADS": "1",
-                "NUMEXPR_NUM_THREADS": "1",
-                "CUDA_VISIBLE_DEVICES": "0",
-                "PYTHONPATH": ".",
-                "PYTHONUNBUFFERED": "1",
-                "PYTHONIOENCODING": "utf-8",
-                "PYTHONWARNINGS": "ignore"
-              }
-            },
-            "custom": {
-              "test": {
-                "value": 0.5,
-                "description": null,
-                "read_only": false
-              }
-            },
-            "node_vars": {
-              "逻辑回归训练_model": {
-                "value": "C:\\Users\\black\\AppData\\Local\\Temp\\tmphbo4hbqi.pkl",
-                "update_policy": "固定"
-              }
-            }
-          },
           "persistent_id": "c49464d4-a050-472c-adfb-cb2d7c5a83b1",
           "debug_code": {}
         }
       },
-      "0x1e0f49b8a60": {
+      "0x145821cb670": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练",
@@ -871,10 +472,10 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 339.0,
-        "height": 156.20000000000002,
+        "width": 394.68,
+        "height": 164.1,
         "pos": [
           473.68863712124175,
           508.99612221458267
@@ -907,48 +508,13 @@
           }
         ],
         "custom": {
-          "global_variable": {
-            "env": {
-              "user_id": null,
-              "canvas_id": null,
-              "session_id": null,
-              "run_id": null,
-              "metadata": {
-                "TZ": "Asia/Shanghai",
-                "LANG": "en_US.UTF-8",
-                "LC_ALL": "en_US.UTF-8",
-                "OMP_NUM_THREADS": "1",
-                "MKL_NUM_THREADS": "1",
-                "OPENBLAS_NUM_THREADS": "1",
-                "NUMEXPR_NUM_THREADS": "1",
-                "CUDA_VISIBLE_DEVICES": "0",
-                "PYTHONPATH": ".",
-                "PYTHONUNBUFFERED": "1",
-                "PYTHONIOENCODING": "utf-8",
-                "PYTHONWARNINGS": "ignore"
-              }
-            },
-            "custom": {
-              "test": {
-                "value": 0.5,
-                "description": null,
-                "read_only": false
-              }
-            },
-            "node_vars": {
-              "文件转图片_image": {
-                "value": "temp_runs\\nodes\\d85a1d91-d97b-4f29-96ae-faa495ece382\\image_b6ce41e541354f879776b86d4beb7182.png",
-                "update_policy": "固定"
-              }
-            }
-          },
           "persistent_id": "b7c16be4-b689-4b20-99e4-99ffde6c2819",
           "debug_code": {},
           "solver": "liblinear",
           "max_iter": "100"
         }
       },
-      "0x1e0f49ba320": {
+      "0x145821f2b60": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练 1",
@@ -971,10 +537,10 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 339.0,
-        "height": 156.20000000000002,
+        "width": 416.76,
+        "height": 164.1,
         "pos": [
           553.0827970296532,
           976.5760077778918
@@ -1007,256 +573,259 @@
           }
         ],
         "custom": {
-          "global_variable": {
-            "env": {
-              "user_id": null,
-              "canvas_id": null,
-              "session_id": null,
-              "run_id": null,
-              "metadata": {
-                "TZ": "Asia/Shanghai",
-                "LANG": "en_US.UTF-8",
-                "LC_ALL": "en_US.UTF-8",
-                "OMP_NUM_THREADS": "1",
-                "MKL_NUM_THREADS": "1",
-                "OPENBLAS_NUM_THREADS": "1",
-                "NUMEXPR_NUM_THREADS": "1",
-                "CUDA_VISIBLE_DEVICES": "0",
-                "PYTHONPATH": ".",
-                "PYTHONUNBUFFERED": "1",
-                "PYTHONIOENCODING": "utf-8",
-                "PYTHONWARNINGS": "ignore"
-              }
-            },
-            "custom": {
-              "test": {
-                "value": 0.5,
-                "description": null,
-                "read_only": false
-              }
-            },
-            "node_vars": {
-              "MinMax归一化_scaler": {
-                "value": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_f99022e2a45d4defb7660ca2ef943f09.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_1_model": {
-                "value": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_cf2096f41c7848f0a0099017fc12dbe8.pkl",
-                "update_policy": "固定"
-              },
-              "逻辑回归训练_value": {
-                "value": [
-                  0
-                ],
-                "update_policy": "固定"
-              }
-            }
-          },
           "persistent_id": "dc38700a-5e2b-41d0-ab95-4528f73e5f31",
           "debug_code": {},
-          "solver": "liblinear",
+          "solver": "newton-cg",
           "max_iter": "100"
+        }
+      },
+      "0x145821f09d0": {
+        "type_": "dynamic.StatusDynamicNode_数据可视化_Matplotlib画图",
+        "icon": null,
+        "name": "Matplotlib画图",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 484.84000000000003,
+        "height": 565.2,
+        "pos": [
+          1620.928607351026,
+          695.951822652357
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "fa4b5189-cafe-416f-859a-3864b4ec006f",
+          "debug_code": {},
+          "title": "",
+          "xlabel": "",
+          "ylabel": "",
+          "plot_mode": "柱状图",
+          "line_color": "blue",
+          "line_width": 1.0,
+          "show_grid": true,
+          "fig_size": "8,6",
+          "auto_arrange": true
         }
       }
     },
     "connections": [
       {
         "out": [
-          "0x1e0f46e3700",
+          "0x14580fa44c0",
           "file"
         ],
         "in": [
-          "0x1e0f46e2dd0",
+          "0x14580fa4f10",
           "csv"
         ]
       },
       {
         "out": [
-          "0x1e0f46e2dd0",
+          "0x14580fa4f10",
           "csv"
         ],
         "in": [
-          "0x1e0f49b8a60",
+          "0x145821cb670",
           "feature"
         ]
       },
       {
         "out": [
-          "0x1e0f46e2dd0",
+          "0x14580fa4f10",
           "csv"
         ],
         "in": [
-          "0x1e0f49b8a60",
+          "0x145821cb670",
           "target"
         ]
       },
       {
         "out": [
-          "0x1e0f46e2dd0",
+          "0x14580fa4f10",
           "csv"
         ],
         "in": [
-          "0x1e0f46e11e0",
-          "feature"
-        ]
-      },
-      {
-        "out": [
-          "0x1e0f46e2dd0",
-          "csv"
-        ],
-        "in": [
-          "0x1e0f46e3760",
+          "0x145821ca440",
           "input"
         ]
       },
       {
         "out": [
-          "0x1e0f46e2dd0",
+          "0x14580fa4f10",
           "csv"
         ],
         "in": [
-          "0x1e0f46e2650",
+          "0x145821cb8b0",
           "input"
         ]
       },
       {
         "out": [
-          "0x1e0f46e2dd0",
+          "0x14580fa4f10",
           "csv"
         ],
         "in": [
-          "0x1e0f49ba320",
+          "0x145821f2b60",
           "target"
         ]
       },
       {
         "out": [
-          "0x1e0f46e2950",
+          "0x14580fa50f0",
           "output"
         ],
         "in": [
-          "0x1e0f46e15d0",
+          "0x145821c9f30",
           "input"
         ]
       },
       {
         "in": [
-          "0x1e0f46e11e0",
-          "model"
-        ],
-        "out": [
-          "0x1e0f49b8a60",
-          "model"
-        ]
-      },
-      {
-        "in": [
-          "0x1e0f46e0f10",
+          "0x145821c8c70",
           "feature"
         ],
         "out": [
-          "0x1e0f46e3760",
+          "0x145821ca440",
           "output"
         ]
       },
       {
         "in": [
-          "0x1e0f46e0f10",
+          "0x145821c8c70",
           "model"
         ],
         "out": [
-          "0x1e0f49b8a60",
+          "0x145821cb670",
           "model"
         ]
       },
       {
         "out": [
-          "0x1e0f46e2650",
+          "0x145821cb8b0",
           "output"
         ],
         "in": [
-          "0x1e0f49ba320",
+          "0x145821f2b60",
           "feature"
         ]
       },
       {
         "out": [
-          "0x1e0f46e2650",
+          "0x145821cb8b0",
           "scaler"
         ],
         "in": [
-          "0x1e0f46e15d0",
+          "0x145821c9f30",
           "scaler"
         ]
       },
       {
         "out": [
-          "0x1e0f46e15d0",
+          "0x145821c9f30",
           "output"
         ],
         "in": [
-          "0x1e0f46e1720",
+          "0x145821ca170",
           "feature"
         ]
       },
       {
         "in": [
-          "0x1e0f46e1720",
+          "0x145821ca170",
           "model"
         ],
         "out": [
-          "0x1e0f49ba320",
+          "0x145821f2b60",
           "model"
+        ]
+      },
+      {
+        "out": [
+          "0x145821ca440",
+          "output"
+        ],
+        "in": [
+          "0x145821f09d0",
+          "x"
+        ]
+      },
+      {
+        "out": [
+          "0x145821ca440",
+          "output"
+        ],
+        "in": [
+          "0x145821f09d0",
+          "y"
         ]
       }
     ]
   },
   "runtime": {
-    "environment": null,
-    "environment_exe": null,
+    "environment": "3.12",
+    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.12\\python.exe",
     "node_id2stable_key": {
-      "0x1e0f46e3700": "数据集成/文档上传||文档上传",
-      "0x1e0f46e2dd0": "数据集成/CSV 读取器||CSV 读取器",
-      "0x1e0f46e2950": "数据集成/输入array||输入array",
-      "0x1e0f46e11e0": "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)",
-      "0x1e0f46e0f10": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
-      "0x1e0f46e2650": "数据预处理/MinMax归一化||MinMax归一化",
-      "0x1e0f46e15d0": "数据预处理/归一化推理(npy)||归一化推理(npy)",
-      "0x1e0f46e1720": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
-      "0x1e0f46e3760": "数据转换/csv转npy||csv转npy",
-      "0x1e0f49b8a60": "模型训练/逻辑回归训练||逻辑回归训练",
-      "0x1e0f49ba320": "模型训练/逻辑回归训练||逻辑回归训练 1"
+      "0x14580fa44c0": "数据集成/文档上传||文档上传",
+      "0x14580fa4f10": "数据集成/CSV 读取器||CSV 读取器",
+      "0x14580fa50f0": "数据集成/输入array||输入array",
+      "0x145821c8c70": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
+      "0x145821cb8b0": "数据预处理/MinMax归一化||MinMax归一化",
+      "0x145821c9f30": "数据预处理/归一化推理(npy)||归一化推理(npy)",
+      "0x145821ca170": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
+      "0x145821ca440": "数据转换/csv转npy||csv转npy",
+      "0x145821cb670": "模型训练/逻辑回归训练||逻辑回归训练",
+      "0x145821f2b60": "模型训练/逻辑回归训练||逻辑回归训练 1",
+      "0x145821f09d0": "数据可视化/Matplotlib画图||Matplotlib画图"
     },
     "node_states": {
       "数据集成/文档上传||文档上传": "success",
       "数据集成/CSV 读取器||CSV 读取器": "success",
       "数据集成/输入array||输入array": "success",
-      "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)": "success",
       "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)": "success",
       "数据预处理/MinMax归一化||MinMax归一化": "success",
       "数据预处理/归一化推理(npy)||归一化推理(npy)": "success",
       "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": "success",
       "数据转换/csv转npy||csv转npy": "success",
       "模型训练/逻辑回归训练||逻辑回归训练": "success",
-      "模型训练/逻辑回归训练||逻辑回归训练 1": "success"
+      "模型训练/逻辑回归训练||逻辑回归训练 1": "success",
+      "数据可视化/Matplotlib画图||Matplotlib画图": "success"
     },
     "node_inputs": {
       "数据集成/文档上传||文档上传": {},
       "数据集成/CSV 读取器||CSV 读取器": {},
       "数据集成/输入array||输入array": {},
-      "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)": {},
       "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)": {},
       "数据预处理/MinMax归一化||MinMax归一化": {},
       "数据预处理/归一化推理(npy)||归一化推理(npy)": {},
       "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": {},
       "数据转换/csv转npy||csv转npy": {},
       "模型训练/逻辑回归训练||逻辑回归训练": {},
-      "模型训练/逻辑回归训练||逻辑回归训练 1": {}
+      "模型训练/逻辑回归训练||逻辑回归训练 1": {},
+      "数据可视化/Matplotlib画图||Matplotlib画图": {}
     },
     "node_outputs": {
       "数据集成/文档上传||文档上传": {
-        "file": "uploads\\iris_7cd1da75-280b-424f-81e3-f40ffd756998.csv"
+        "file": "canvas_files\\uploads\\iris_7cd1da75-280b-424f-81e3-f40ffd756998.csv"
       },
       "数据集成/CSV 读取器||CSV 读取器": {
         "csv": {
@@ -1279,160 +848,6 @@
           ],
           "format": "npy_base64"
         }
-      },
-      "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)": {
-        "value": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          2,
-          1,
-          1,
-          1,
-          2,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          2,
-          2,
-          2,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          1,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2
-        ]
       },
       "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)": {
         "value": [
@@ -1598,7 +1013,7 @@
             4
           ]
         },
-        "scaler": "temp_runs\\nodes\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_384219dfb72a4c5ead4ff677fbacb6ad.pkl"
+        "scaler": "D:\\work\\WorkFlowGUI\\canvas_files\\node_results\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl"
       },
       "数据预处理/归一化推理(npy)||归一化推理(npy)": {
         "output": {
@@ -1639,27 +1054,22 @@
         "value": [
           0
         ],
-        "model": "temp_runs\\nodes\\b7c16be4-b689-4b20-99e4-99ffde6c2819\\model_ed3c5461656f45298888e3b424a1f86b.pkl"
+        "model": "D:\\work\\WorkFlowGUI\\canvas_files\\node_results\\b7c16be4-b689-4b20-99e4-99ffde6c2819\\model_b7c16be4-b689-4b20-99e4-99ffde6c2819.pkl"
       },
       "模型训练/逻辑回归训练||逻辑回归训练 1": {
         "value": [
           0
         ],
-        "model": "temp_runs\\nodes\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_919426df1dc446728a0dc903d2a0ec9c.pkl"
+        "model": "D:\\work\\WorkFlowGUI\\canvas_files\\node_results\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_dc38700a-5e2b-41d0-ab95-4528f73e5f31.pkl"
+      },
+      "数据可视化/Matplotlib画图||Matplotlib画图": {
+        "output": "D:\\work\\WorkFlowGUI\\canvas_files\\node_results\\fa4b5189-cafe-416f-859a-3864b4ec006f\\image_fa4b5189-cafe-416f-859a-3864b4ec006f.png"
       }
     },
     "column_select": {
       "数据集成/文档上传||文档上传": {},
       "数据集成/CSV 读取器||CSV 读取器": {},
       "数据集成/输入array||输入array": {},
-      "模型推理/逻辑回归推理(csv)||逻辑回归推理(csv)": {
-        "feature": [
-          "150",
-          "4",
-          "setosa",
-          "versicolor"
-        ]
-      },
       "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)": {},
       "数据预处理/MinMax归一化||MinMax归一化": {
         "input": [
@@ -1700,7 +1110,8 @@
         "target": [
           "virginica"
         ]
-      }
+      },
+      "数据可视化/Matplotlib画图||Matplotlib画图": {}
     }
   },
   "global_variable": {

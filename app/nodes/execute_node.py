@@ -592,15 +592,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     # 解析并安装依赖包
                     packages = [pkg.strip() for pkg in requirements_str.split(',') if pkg.strip()]
                     if packages:
-                        for pkg in packages:
-                            self._log_message(self.persistent_id, f"正在安装 {pkg} ...")
-                            # 在 IPython 内核中执行 pip install
-                            install_code = f'%pip install "{pkg}"'
-                            kernel_manager.execute_code(install_code, hidden=False)
-
-                            # 等待安装完成（可能需要一些时间）
-                            import time
-                            time.sleep(2)  # 简单等待，实际可能需要更复杂的等待逻辑
+                        parent_window.parent.package_manager.run_pip_command("安装", " ".join(packages))
 
                         self._log_message(self.persistent_id, "依赖包安装完成，重新执行...")
 

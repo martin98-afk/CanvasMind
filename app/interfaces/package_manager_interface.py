@@ -9,6 +9,7 @@ from PyQt5.QtGui import QTextCursor
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem, QSplitter, QHeaderView, QSizePolicy, QFileDialog, QCheckBox
 )
+from loguru import logger
 from qfluentwidgets import (
     ComboBox, PrimaryPushButton, LineEdit, TableWidget,
     FluentIcon, InfoBar, SearchLineEdit, TextEdit, PushButton, MessageBox, BodyLabel, StateToolTip
@@ -95,7 +96,7 @@ class EnvManagerUI(QWidget):
         self.packageEdit.setPlaceholderText("输入包名或本地文件路径...")
 
         self.execBtn = PrimaryPushButton("执行", self, icon=FluentIcon.PLAY)
-        self.execBtn.clicked.connect(self.run_pip_command)
+        self.execBtn.clicked.connect(lambda: self.run_pip_command())
 
         self._update_action_combo()  # 初始化 actionCombo 的内容
         # ------------------------------
@@ -266,7 +267,7 @@ class EnvManagerUI(QWidget):
             filtered = [p for p in self.pkgs_data if text in p.get("name", "").lower()]
         self._repopulate_table(filtered)
 
-    def run_pip_command(self):
+    def run_pip_command(self, action=None, package_input=None):
         """根据 sourceCombo 和 actionCombo 执行对应的 pip 命令"""
         if not self.current_env:
             InfoBar.error("错误", "请选择环境", parent=self)
@@ -282,9 +283,11 @@ class EnvManagerUI(QWidget):
             InfoBar.error("错误", "pip 安装失败", parent=self)
             return
 
-        source = self.sourceCombo.currentText()
-        action = self.actionCombo.currentText()
-        package_input = self.packageEdit.text().strip()
+        source = self.sourceCombo.currentText() if action is None else "在线"
+        action = self.actionCombo.currentText() if action is None else action
+        package_input = self.packageEdit.text().strip() if package_input is None else package_input
+        package_input = package_input.split(" ")
+        logger.info(f"[信息] 执行 pip {action} {package_input}")
 
         if source == "在线":
             # --- 在线安装逻辑 ---
@@ -293,19 +296,20 @@ class EnvManagerUI(QWidget):
                 return
 
             if action == "安装":
-                cmd = ["-m", "pip", "install", package_input]
-                # 添加镜像源配置
+                cmd = ["-m", "pip", "install"]
                 self._add_mirror_sources(cmd)
+                cmd.extend(package_input)
             elif action == "强制重装":
-                cmd = ["-m", "pip", "install", "--force-reinstall", package_input]
-                # 添加镜像源配置
+                cmd = ["-m", "pip", "install", "--force-reinstall"]
                 self._add_mirror_sources(cmd)
+                cmd.extend(package_input)
             elif action == "更新":
-                cmd = ["-m", "pip", "install", "-U", package_input]
-                # 添加镜像源配置
+                cmd = ["-m", "pip", "install", "-U"]
                 self._add_mirror_sources(cmd)
+                cmd.extend(package_input)
             elif action == "卸载":
-                cmd = ["-m", "pip", "uninstall", "-y", package_input]
+                cmd = ["-m", "pip", "uninstall", "-y"]
+                cmd.extend(package_input)
                 # 卸载命令不需要镜像源
             else:
                 return  # 不应该发生

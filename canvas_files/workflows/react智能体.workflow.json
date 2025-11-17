@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1569de0c0a0": {
+      "0x14587ae1960": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "长文本输入",
@@ -36,7 +36,7 @@
         "disabled": false,
         "selected": true,
         "visible": true,
-        "width": 487.62875,
+        "width": 490.36,
         "height": 101.10000000000001,
         "pos": [
           -1162.6711543424617,
@@ -59,7 +59,7 @@
           "input_text": "[123，31，51，42]的逻辑回归结果是多少？"
         }
       },
-      "0x15694adb490": {
+      "0x14587d25930": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\dist\\main\\_internal\\icons/代码执行.svg",
         "name": "代码编辑 1",
@@ -84,8 +84,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 831.70875,
-        "height": 803.5500000000001,
+        "width": 836.2800000000001,
+        "height": 805.65,
         "pos": [
           1772.5843797456287,
           -939.9184395002817
@@ -126,7 +126,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    import json\n    from pathlib import Path\n    input_data: list[str] = inputs.input\n    results = []\n    for path in input_data:\n        if not (Path(path) / \"project_spec.json\").exists():\n            continue\n        with open(Path(path) / \"project_spec.json\", \"r\", encoding=\"utf-8\") as f:\n            project_spec = json.loads(f.read())\n            project_input = project_spec[\"inputs\"]\n            format = \"\" if len(project_input) > 0 else \"无参数\"\n            for i, (inp, info) in enumerate(project_input.items()):\n                format += f\"参数{i+1}：{inp}\\n参数格式：{info['format']}\\n参数参考样例输入：{info['current_value']}\\n所属组件名：{info['node_name']}\\n组件参数类型：{info['type']}\\n\\n\"\n            results.append(f\"工具名称：{str(Path(path).resolve())} \\n输入格式：{format}\")\n    return {\n        \"output\": results\n    }"
         }
       },
-      "0x1569e9b2f80": {
+      "0x1458adbab90": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装",
@@ -149,9 +149,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 392.15000000000003,
+        "width": 398.36,
         "height": 101.10000000000001,
         "pos": [
           -556.231135551021,
@@ -180,7 +180,7 @@
           "prop_0": "input"
         }
       },
-      "0x1569e9b2ec0": {
+      "0x1458adbada0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "工具调用结果回写",
@@ -203,9 +203,9 @@
           180
         ],
         "disabled": true,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 546.71,
+        "width": 551.08,
         "height": 101.10000000000001,
         "pos": [
           4467.984318875551,
@@ -234,7 +234,7 @@
           "template": "工具调用结果：\n$input.variables[0]$\n\n用户问题：\n$node_vars.长文本输入_output$"
         }
       },
-      "0x1569491df00": {
+      "0x1458204c040": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程",
@@ -257,9 +257,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 442.0025,
+        "width": 446.20000000000005,
         "height": 113.7,
         "pos": [
           1334.9769109617391,
@@ -294,14 +294,14 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x1569491fd00": {
+      "0x145f6bda470": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_工具调用",
         "icon": null,
         "name": "工具调用",
         "color": [
-          13,
-          18,
-          23,
+          25,
+          70,
+          45,
           255
         ],
         "border_color": [
@@ -316,10 +316,10 @@
           255,
           180
         ],
-        "disabled": true,
-        "selected": true,
+        "disabled": false,
+        "selected": false,
         "visible": true,
-        "width": 166.175,
+        "width": 168.36,
         "height": 82.2,
         "pos": [
           3543.7378301571807,
@@ -357,7 +357,7 @@
           "debug_code": null
         }
       },
-      "0x1569491fa30": {
+      "0x145f6bd8070": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 3",
@@ -380,9 +380,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 411.84375,
+        "width": 420.44,
         "height": 101.10000000000001,
         "pos": [
           5791.960569963427,
@@ -411,7 +411,7 @@
           "prop_0": "answer"
         }
       },
-      "0x1569491e560": {
+      "0x145f6bda950": {
         "type_": "dynamic.StatusDynamicNode_数据集成_获取全局变量",
         "icon": null,
         "name": "获取大模型历史对话",
@@ -434,9 +434,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 555.36375,
+        "width": 559.36,
         "height": 99.0,
         "pos": [
           36.945014700873344,
@@ -459,7 +459,7 @@
           "prop1": "node_vars.大模型对话_history"
         }
       },
-      "0x1569491d630": {
+      "0x145f6bd9f30": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码编辑 2",
@@ -484,8 +484,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 831.70875,
-        "height": 803.5500000000001,
+        "width": 836.2800000000001,
+        "height": 805.65,
         "pos": [
           2710.6415475467215,
           -934.3982852254871
@@ -526,7 +526,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    input_data: list = inputs.input\n    return {\n        \"output\": \"\\n\\n\".join(input_data)\n    }"
         }
       },
-      "0x1569eb29690": {
+      "0x1458ad7a5f0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
         "icon": null,
         "name": "大模型输出解析",
@@ -549,9 +549,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 308.05625000000003,
+        "width": 311.88,
         "height": 137.85000000000002,
         "pos": [
           1881.185565446949,
@@ -567,7 +567,7 @@
           "type": "json"
         }
       },
-      "0x1569491c3d0": {
+      "0x1458ad79ba0": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码编辑",
@@ -592,8 +592,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 812.015,
-        "height": 803.5500000000001,
+        "width": 814.2,
+        "height": 805.65,
         "pos": [
           698.1730114963871,
           -948.2366464546917
@@ -634,7 +634,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 目标文件夹\n    return: 文件地址里列表（key=输出端口名）\n    \"\"\"\n    from pathlib import Path\n    path = Path(inputs.input)\n    projects = [str(p) for p in path.iterdir()]\n    self.logger.info(projects)\n    return {\n        \"output\": projects\n    }"
         }
       },
-      "0x156948b6050": {
+      "0x145fa9e1660": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话",
@@ -657,10 +657,10 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 487.62875,
-        "height": 533.7,
+        "width": 490.36,
+        "height": 534.75,
         "pos": [
           729.6446003343735,
           401.4363716421256
@@ -700,9 +700,9 @@
         "custom": {
           "persistent_id": "285af8fc-5f98-4237-afb7-d47db44c1de4",
           "debug_code": null,
-          "model": "$custom.model_name$",
+          "model": "$custom.model_name2$",
           "api_key": "",
-          "base_url": "$custom.url$",
+          "base_url": "$custom.url2$",
           "system_prompt": "# 智能体工作流程指令\n\n你是一个专业的AI助手，能够根据用户指令自动拆分步骤、调用工具并处理多轮交互。请严格遵循以下流程：\n\n1. **任务理解**\n- 解析用户指令，明确核心需求\n- 识别需要调用的工具集合（已知工具列表见下方）\n\n2. **步骤分解**\n- 将问题拆解为逻辑顺序的子任务\n- 每个子任务需包含：\n  - 预期目标\n  - 需要调用的工具名称\n  - 参数生成逻辑\n\n3. **工具调用规范**\n- 当需要调用工具时，输出以下JSON结构：\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"工具名称\",\n    \"tool_input\": 工具输入参数,\n}\n```\n- 严格使用用户提供的工具参数列表中的工具名称定义和参数格式，\n- 参数值需要根据用户的问题以及上下文关系生成\n\n4. **多轮交互流程**\n- 每次工具调用后暂停输出，等待执行结果\n- 接收工具返回结果后，继续处理后续步骤\n- 最终答案需整合所有工具调用结果\n- 当需要总结最终答案时，输出以下JSON结构：\n```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据工具调用过程整理结果，最终回答用户问题。\"\n}\n```\n\n5. **工具列表**\n参数的参考输入仅供参考，具体参数内容根据用户问题生成：\n$node_vars.代码编辑_2_output$\n\n6. **输出格式要求**\n- 首轮输出：分解步骤列表\n- 工具调用时：仅输出JSON结构\n- 接收结果后：继续生成后续步骤\n- 最终答案：自然语言总结\n- 没有匹配的工具时：直接返回错误\n- 交互次数大于等于5时：不再调用工具，直接输出最终答案\n- 如果没有可用工具，或者工具列表为空，直接给出最终结果\n\n7. **示例交互**\n用户: \"帮我查找北京的天气并规划出行路线\"\n智能体生成步骤一：\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"天气查询工具\",\n    \"tool_input\": {\"parameters\": { \"location\": \"北京\"}},\n}\n```\n工具调用结果：下雨\n\n智能体生成步骤二: \n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"路线规划工具\",\n    \"tool_input\": {\"parameters\": {\"start\": \"天安门\", \"end\": \"故宫\"}},\n}\n```\n工具调用结果：天安门-》朝天宫，20分钟，朝天宫-》故宫，1小时。\n\n最终答案示例：\n```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"第一步，天气查询结果为下雨，建议您携带雨具。第二步，查询天安门到故宫的路线，推荐路线结果：从天安门到故宫，预计步行1小时20分钟，途经朝天宫\"\n}\n```\n\n8. **错误处理**\n工具调用失败会返回失败日志，详细分析错误原因，结合错误原因、用户问题以及现有工具设计工具调用。",
           "temperature": 0.2,
           "max_tokens": "20000",
@@ -710,10 +710,50 @@
           "model_params": []
         }
       },
-      "0x1569fdf6ad0": {
+      "0x1458adba4d0": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "提取最终答案",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": true,
+        "selected": false,
+        "visible": true,
+        "width": 394.68,
+        "height": 101.10000000000001,
+        "pos": [
+          3085.387808766003,
+          379.45247524262305
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "5aa60e34-f9da-4b1c-8bc9-035e565ddd8f",
+          "debug_code": {},
+          "prop1": "$input.input1[\"answer\"]$"
+        }
+      },
+      "0x145fa837640": {
+        "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
+        "icon": null,
+        "name": "工具名提取",
         "color": [
           25,
           70,
@@ -733,49 +773,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 391.40250000000003,
-        "height": 101.10000000000001,
-        "pos": [
-          3085.387808766003,
-          379.45247524262305
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "5aa60e34-f9da-4b1c-8bc9-035e565ddd8f",
-          "debug_code": {},
-          "prop1": "$input.input1[\"answer\"]$"
-        }
-      },
-      "0x156948b5900": {
-        "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
-        "icon": null,
-        "name": "工具名提取",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": true,
-        "selected": true,
-        "visible": true,
-        "width": 371.70875,
+        "width": 374.44,
         "height": 101.10000000000001,
         "pos": [
           3059.6068522205296,
@@ -790,14 +790,14 @@
           "prop1": "$input.input1[\"tool_name\"]$"
         }
       },
-      "0x156945d22f0": {
+      "0x14580e53c70": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "工具输入提取",
         "color": [
-          13,
-          18,
-          23,
+          25,
+          70,
+          45,
           255
         ],
         "border_color": [
@@ -812,10 +812,10 @@
           255,
           180
         ],
-        "disabled": true,
-        "selected": true,
+        "disabled": false,
+        "selected": false,
         "visible": true,
-        "width": 391.40250000000003,
+        "width": 394.68,
         "height": 101.10000000000001,
         "pos": [
           3058.3045710937895,
@@ -830,7 +830,7 @@
           "prop1": "$input.input1[\"tool_input\"]$"
         }
       },
-      "0x156945d1f60": {
+      "0x14580e523e0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": "D:\\work\\WorkFlowGUI\\icons\\list.svg",
         "name": "错误处理",
@@ -853,9 +853,9 @@
           180
         ],
         "disabled": true,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 467.935,
+        "width": 470.12,
         "height": 101.10000000000001,
         "pos": [
           3003.6408256426457,
@@ -870,14 +870,14 @@
           "template": "生成的步骤json信息错误，步骤信息必须为严格的json格式，且包含next_step信息\n且 next_step 内容必须为：调用工具 或 总结答案 其一\n\n当前生成的错误步骤json信息：\n\n$input.variables$\n\n根据历史对话反思错误，生成正确的步骤信息。"
         }
       },
-      "0x1569475ead0": {
+      "0x14587a73730": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "工具执行错误反馈",
         "color": [
-          13,
-          18,
-          23,
+          25,
+          70,
+          45,
           255
         ],
         "border_color": [
@@ -892,10 +892,10 @@
           255,
           180
         ],
-        "disabled": true,
-        "selected": true,
+        "disabled": false,
+        "selected": false,
         "visible": true,
-        "width": 546.71,
+        "width": 551.08,
         "height": 101.10000000000001,
         "pos": [
           4469.686482351928,
@@ -924,7 +924,7 @@
           "template": "工具调用报错根据执行日志修复请求参数：\n$input.variables[1]$\n\n用户问题：\n$node_vars.长文本输入_output$"
         }
       },
-      "0x1569475ffd0": {
+      "0x14587a71fc0": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码42",
@@ -949,8 +949,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 792.695,
-        "height": 921.1500000000001,
+        "width": 795.8000000000001,
+        "height": 923.25,
         "pos": [
           3804.579742441528,
           -974.1132871640243
@@ -1010,7 +1010,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    # 在这里编写你的组件逻辑\n    input_data = inputs.input if inputs else None\n    param1 = inputs.input_1\n    # 处理逻辑\n    result = f\"处理结果: {input_data} + {param1}\"\n    return {\n        \"output\": result,\n        \"output_1\": result\n    }"
         }
       },
-      "0x1569495ac50": {
+      "0x1458ac4c940": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -1033,13 +1033,13 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 153.0,
         "height": 60,
         "pos": [
-          100.4843786808583,
-          328.27180192428915
+          83.4405800214372,
+          365.7681589750155
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1048,7 +1048,7 @@
           "persistent_id": "7837e4b9-dd80-4028-b64f-9266b25965e2"
         }
       },
-      "0x156948b4700": {
+      "0x1458ac4f850": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -1071,7 +1071,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 153.0,
         "height": 60,
@@ -1086,7 +1086,7 @@
           "persistent_id": "4cf84646-541e-48e3-a776-64381d6ea1a9"
         }
       },
-      "0x1569de68bb0": {
+      "0x1458ac4c790": {
         "type_": "control_flow.ControlFlowLoopNode",
         "icon": null,
         "name": "循环控制流区域",
@@ -1109,13 +1109,13 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 5309.408441644732,
-        "height": 767.9511417613995,
+        "width": 5309.408441644731,
+        "height": 730.454784710673,
         "pos": [
           -3.054985299126656,
-          288.27180192428915
+          325.7681589750155
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1123,14 +1123,14 @@
         "custom": {
           "persistent_id": "29a94b04-a2fc-44cc-a569-fda349eeb69f",
           "backdrop_text": "",
-          "current_index": 1,
+          "current_index": 0,
           "loop_nums": 5,
           "max_iterations": 5,
           "loop_condition": "$node_vars.大模型输出解析_parsed_json.get(\"next_step\")!= '总结答案'$",
           "loop_mode": "condition"
         }
       },
-      "0x1569de68fa0": {
+      "0x145879a8220": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\CanvasMind\\./icons/条件分支.png",
         "name": "条件分支 1",
@@ -1153,10 +1153,10 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 575.94875,
-        "height": 299.55,
+        "width": 580.52,
+        "height": 300.6,
         "pos": [
           2353.3181521189617,
           413.0678883739536
@@ -1204,14 +1204,14 @@
           "execute_all_matches": false
         }
       },
-      "0x1569de69db0": {
+      "0x145879abe20": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\CanvasMind\\./icons/条件分支.png",
         "name": "条件分支",
         "color": [
-          13,
-          18,
-          23,
+          25,
+          70,
+          45,
           255
         ],
         "border_color": [
@@ -1226,11 +1226,11 @@
           255,
           180
         ],
-        "disabled": true,
-        "selected": true,
+        "disabled": false,
+        "selected": false,
         "visible": true,
-        "width": 556.255,
-        "height": 240.75,
+        "width": 558.44,
+        "height": 241.8,
         "pos": [
           3808.8910101829024,
           648.3907071165652
@@ -1273,273 +1273,273 @@
     "connections": [
       {
         "out": [
-          "0x1569de0c0a0",
+          "0x14587ae1960",
           "output"
         ],
         "in": [
-          "0x1569e9b2f80",
+          "0x1458adbab90",
           "input1"
         ]
       },
       {
         "in": [
-          "0x15694adb490",
+          "0x14587d25930",
           "input"
         ],
         "out": [
-          "0x1569491c3d0",
+          "0x1458ad79ba0",
           "output"
         ]
       },
       {
         "out": [
-          "0x15694adb490",
+          "0x14587d25930",
           "output"
         ],
         "in": [
-          "0x1569491d630",
+          "0x145f6bd9f30",
           "input"
         ]
       },
       {
         "out": [
-          "0x1569e9b2f80",
+          "0x1458adbab90",
           "output1"
         ],
         "in": [
-          "0x1569de68bb0",
+          "0x1458ac4c790",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x1569e9b2ec0",
+          "0x1458adbada0",
           "variables"
         ],
         "out": [
-          "0x1569de69db0",
+          "0x145879abe20",
           "branch"
         ]
       },
       {
         "out": [
-          "0x1569e9b2ec0",
+          "0x1458adbada0",
           "prompt"
         ],
         "in": [
-          "0x156948b4700",
+          "0x1458ac4f850",
           "input"
         ]
       },
       {
         "in": [
-          "0x1569491df00",
+          "0x1458204c040",
           "raw_text"
         ],
         "out": [
-          "0x156948b6050",
+          "0x145fa9e1660",
           "response"
         ]
       },
       {
         "out": [
-          "0x1569491df00",
+          "0x1458204c040",
           "cleaned_text"
         ],
         "in": [
-          "0x1569eb29690",
+          "0x1458ad7a5f0",
           "llm_output"
         ]
       },
       {
         "in": [
-          "0x1569491fd00",
+          "0x145f6bda470",
           "project_name"
         ],
         "out": [
-          "0x156948b5900",
+          "0x145fa837640",
           "output1"
         ]
       },
       {
         "in": [
-          "0x1569491fd00",
+          "0x145f6bda470",
           "input"
         ],
         "out": [
-          "0x156945d22f0",
+          "0x14580e53c70",
           "output1"
         ]
       },
       {
         "out": [
-          "0x1569491fd00",
+          "0x145f6bda470",
           "result"
         ],
         "in": [
-          "0x1569de69db0",
+          "0x145879abe20",
           "input"
         ]
       },
       {
         "out": [
-          "0x1569491fd00",
+          "0x145f6bda470",
           "log"
         ],
         "in": [
-          "0x1569de69db0",
+          "0x145879abe20",
           "input"
         ]
       },
       {
         "in": [
-          "0x1569491fa30",
+          "0x145f6bd8070",
           "input1"
         ],
         "out": [
-          "0x1569de68bb0",
+          "0x1458ac4c790",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x1569491e560",
+          "0x145f6bda950",
           "output1"
         ],
         "in": [
-          "0x156948b6050",
+          "0x145fa9e1660",
           "history"
         ]
       },
       {
         "out": [
-          "0x1569eb29690",
+          "0x1458ad7a5f0",
           "parsed_json"
         ],
         "in": [
-          "0x1569de68fa0",
+          "0x145879a8220",
           "input"
         ]
       },
       {
         "in": [
-          "0x156948b6050",
+          "0x145fa9e1660",
           "user_input"
         ],
         "out": [
-          "0x1569495ac50",
+          "0x1458ac4c940",
           "output"
         ]
       },
       {
         "in": [
-          "0x1569fdf6ad0",
+          "0x1458adba4d0",
           "input1"
         ],
         "out": [
-          "0x1569de68fa0",
+          "0x145879a8220",
           "branch"
         ]
       },
       {
         "out": [
-          "0x1569fdf6ad0",
+          "0x1458adba4d0",
           "output1"
         ],
         "in": [
-          "0x156948b4700",
+          "0x1458ac4f850",
           "input"
         ]
       },
       {
         "in": [
-          "0x156948b5900",
+          "0x145fa837640",
           "input1"
         ],
         "out": [
-          "0x1569de68fa0",
+          "0x145879a8220",
           "branch_1"
         ]
       },
       {
         "in": [
-          "0x156945d22f0",
+          "0x14580e53c70",
           "input1"
         ],
         "out": [
-          "0x1569de68fa0",
+          "0x145879a8220",
           "branch_1"
         ]
       },
       {
         "in": [
-          "0x156945d1f60",
+          "0x14580e523e0",
           "variables"
         ],
         "out": [
-          "0x1569de68fa0",
+          "0x145879a8220",
           "else"
         ]
       },
       {
         "out": [
-          "0x156945d1f60",
+          "0x14580e523e0",
           "prompt"
         ],
         "in": [
-          "0x156948b4700",
+          "0x1458ac4f850",
           "input"
         ]
       },
       {
         "in": [
-          "0x1569475ead0",
+          "0x14587a73730",
           "variables"
         ],
         "out": [
-          "0x1569de69db0",
+          "0x145879abe20",
           "else"
         ]
       },
       {
         "out": [
-          "0x1569475ead0",
+          "0x14587a73730",
           "prompt"
         ],
         "in": [
-          "0x156948b4700",
+          "0x1458ac4f850",
           "input"
         ]
       }
     ]
   },
   "runtime": {
-    "environment": "3.14",
-    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
+    "environment": "3.12",
+    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.12\\python.exe",
     "node_id2stable_key": {
-      "0x1569de0c0a0": "数据集成/长文本输入||长文本输入",
-      "0x15694adb490": "代码执行/代码编辑||代码编辑 1",
-      "0x1569e9b2f80": "大模型组件/JSON文本包装||JSON文本包装",
-      "0x1569e9b2ec0": "大模型组件/提示词模板||工具调用结果回写",
-      "0x1569491df00": "大模型组件/移除思考过程||移除思考过程",
-      "0x1569491fd00": "大模型组件/工具调用||工具调用",
-      "0x1569491fa30": "大模型组件/JSON文本包装||JSON文本包装 3",
-      "0x1569491e560": "数据集成/获取全局变量||获取大模型历史对话",
-      "0x1569491d630": "代码执行/代码编辑||代码编辑 2",
-      "0x1569eb29690": "大模型组件/大模型输出解析||大模型输出解析",
-      "0x1569491c3d0": "代码执行/代码编辑||代码编辑",
-      "0x156948b6050": "大模型组件/大模型对话||大模型对话",
-      "0x1569fdf6ad0": "数据预处理/JSON筛选||提取最终答案",
-      "0x156948b5900": "数据预处理/JSON筛选||工具名提取",
-      "0x156945d22f0": "数据预处理/JSON筛选||工具输入提取",
-      "0x156945d1f60": "大模型组件/提示词模板||错误处理",
-      "0x1569475ead0": "大模型组件/提示词模板||工具执行错误反馈",
-      "0x1569475ffd0": "代码执行/代码编辑||代码42",
-      "0x1569495ac50": "控制流/输入端口||输入端口",
-      "0x156948b4700": "控制流/输出端口||输出端口",
-      "0x1569de68bb0": "控制流/循环控制流区域||循环控制流区域",
-      "0x1569de68fa0": "控制流/条件分支||条件分支 1",
-      "0x1569de69db0": "控制流/条件分支||条件分支"
+      "0x14587ae1960": "数据集成/长文本输入||长文本输入",
+      "0x14587d25930": "代码执行/代码编辑||代码编辑 1",
+      "0x1458adbab90": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x1458adbada0": "大模型组件/提示词模板||工具调用结果回写",
+      "0x1458204c040": "大模型组件/移除思考过程||移除思考过程",
+      "0x145f6bda470": "大模型组件/工具调用||工具调用",
+      "0x145f6bd8070": "大模型组件/JSON文本包装||JSON文本包装 3",
+      "0x145f6bda950": "数据集成/获取全局变量||获取大模型历史对话",
+      "0x145f6bd9f30": "代码执行/代码编辑||代码编辑 2",
+      "0x1458ad7a5f0": "大模型组件/大模型输出解析||大模型输出解析",
+      "0x1458ad79ba0": "代码执行/代码编辑||代码编辑",
+      "0x145fa9e1660": "大模型组件/大模型对话||大模型对话",
+      "0x1458adba4d0": "数据预处理/JSON筛选||提取最终答案",
+      "0x145fa837640": "数据预处理/JSON筛选||工具名提取",
+      "0x14580e53c70": "数据预处理/JSON筛选||工具输入提取",
+      "0x14580e523e0": "大模型组件/提示词模板||错误处理",
+      "0x14587a73730": "大模型组件/提示词模板||工具执行错误反馈",
+      "0x14587a71fc0": "代码执行/代码编辑||代码42",
+      "0x1458ac4c940": "控制流/输入端口||输入端口",
+      "0x1458ac4f850": "控制流/输出端口||输出端口",
+      "0x1458ac4c790": "控制流/循环控制流区域||循环控制流区域",
+      "0x145879a8220": "控制流/条件分支||条件分支 1",
+      "0x145879abe20": "控制流/条件分支||条件分支"
     },
     "node_states": {
       "数据集成/长文本输入||长文本输入": "success",
@@ -1547,24 +1547,24 @@
       "大模型组件/JSON文本包装||JSON文本包装": "success",
       "大模型组件/提示词模板||工具调用结果回写": "unrun",
       "大模型组件/移除思考过程||移除思考过程": "success",
-      "大模型组件/工具调用||工具调用": "unrun",
+      "大模型组件/工具调用||工具调用": "success",
       "大模型组件/JSON文本包装||JSON文本包装 3": "success",
       "数据集成/获取全局变量||获取大模型历史对话": "success",
       "代码执行/代码编辑||代码编辑 2": "success",
       "大模型组件/大模型输出解析||大模型输出解析": "success",
       "代码执行/代码编辑||代码编辑": "success",
       "大模型组件/大模型对话||大模型对话": "success",
-      "数据预处理/JSON筛选||提取最终答案": "success",
-      "数据预处理/JSON筛选||工具名提取": "unrun",
-      "数据预处理/JSON筛选||工具输入提取": "unrun",
+      "数据预处理/JSON筛选||提取最终答案": "unrun",
+      "数据预处理/JSON筛选||工具名提取": "success",
+      "数据预处理/JSON筛选||工具输入提取": "success",
       "大模型组件/提示词模板||错误处理": "unrun",
-      "大模型组件/提示词模板||工具执行错误反馈": "unrun",
+      "大模型组件/提示词模板||工具执行错误反馈": "success",
       "代码执行/代码编辑||代码42": "success",
-      "控制流/输入端口||输入端口": "pending",
-      "控制流/输出端口||输出端口": "pending",
+      "控制流/输入端口||输入端口": "unrun",
+      "控制流/输出端口||输出端口": "unrun",
       "控制流/循环控制流区域||循环控制流区域": "success",
       "控制流/条件分支||条件分支 1": "success",
-      "控制流/条件分支||条件分支": "unrun"
+      "控制流/条件分支||条件分支": "success"
     },
     "node_inputs": {
       "数据集成/长文本输入||长文本输入": {},
@@ -1597,14 +1597,13 @@
       },
       "代码执行/代码编辑||代码编辑 1": {
         "output": [
-          "工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\react智能体 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：-1,-2,-3,-4的逻辑回归结果是多少\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n",
-          "工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\react智能体增加错误反馈 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：[123，31，51，42]的逻辑回归结果是多少？\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n",
-          "工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\测试导出节点顺序 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n",
-          "工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\测试执行逻辑 \n输入格式：无参数",
-          "工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\画图测试 \n输入格式：参数1：title\n参数格式：TEXT\n参数参考样例输入：\n所属组件名：Matplotlib画图 2\n组件参数类型：组件超参数\n\n参数2：xlabel\n参数格式：TEXT\n参数参考样例输入：X轴\n所属组件名：Matplotlib画图 2\n组件参数类型：组件超参数\n\n参数3：ylabel\n参数格式：TEXT\n参数参考样例输入：Y轴\n所属组件名：Matplotlib画图 2\n组件参数类型：组件超参数\n\n",
-          "工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\自动组件生成 \n输入格式：参数1：input_text1\n参数格式：LONGTEXT\n参数参考样例输入：输入是用户的列表数据输入是[1,2,3,4]格式数据\n所属组件名：组件输入\n组件参数类型：组件超参数\n\n参数2：input_text2\n参数格式：LONGTEXT\n参数参考样例输入：输出是画图结果，传参是PIL.Image格式图片\n所属组件名：组件输出\n组件参数类型：组件超参数\n\n参数3：input_text3\n参数格式：LONGTEXT\n参数参考样例输入：组件参数暂无\n所属组件名：组件参数\n组件参数类型：组件超参数\n\n参数4：input_text4\n参数格式：LONGTEXT\n参数参考样例输入：我的需求是开发一个matplotlib画图组件\n所属组件名：组件意图\n组件参数类型：组件超参数\n\n",
-          "工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\获取当前时间 \n输入格式：无参数",
-          "工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归 \n输入格式：参数1：param1\n参数格式：TEXT\n参数参考样例输入：1,2,3,4\n所属组件名：输入array\n组件参数类型：组件超参数\n\n"
+          "工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\react智能体 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：-1,-2,-3,-4的逻辑回归结果是多少\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n",
+          "工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\条件分支导出测试 \n输入格式：无参数",
+          "工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\条件分支导出测试2 \n输入格式：无参数",
+          "工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\自动组件生成 \n输入格式：参数1：input_text1\n参数格式：LONGTEXT\n参数参考样例输入：输入是用户的列表数据输入是[1,2,3,4]格式数据\n所属组件名：组件输入\n组件参数类型：组件超参数\n\n参数2：input_text2\n参数格式：LONGTEXT\n参数参考样例输入：输出是画图结果，传参是PIL.Image格式图片\n所属组件名：组件输出\n组件参数类型：组件超参数\n\n参数3：input_text3\n参数格式：LONGTEXT\n参数参考样例输入：组件参数暂无\n所属组件名：组件参数\n组件参数类型：组件超参数\n\n参数4：input_text4\n参数格式：LONGTEXT\n参数参考样例输入：我的需求是开发一个matplotlib画图组件\n所属组件名：组件意图\n组件参数类型：组件超参数\n\n",
+          "工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\获取工具路径 \n输入格式：无参数",
+          "工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\获取当前时间 \n输入格式：无参数",
+          "工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\逻辑回归 \n输入格式：参数1：param1\n参数格式：TEXT\n参数参考样例输入：1,2,3,4\n所属组件名：输入array\n组件参数类型：组件超参数\n\n"
         ]
       },
       "大模型组件/JSON文本包装||JSON文本包装": {
@@ -1614,127 +1613,130 @@
       },
       "大模型组件/提示词模板||工具调用结果回写": {},
       "大模型组件/移除思考过程||移除思考过程": {
-        "cleaned_text": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。\"\n}\n```",
-        "think_text": ""
+        "cleaned_text": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"逻辑回归\",\n    \"tool_input\": {\"param1\": \"-1,-2,-3,-4\"}\n}\n```",
+        "think_text": "<think>\n好的，我现在需要处理用户的查询：“-1,-2,-3,-4的逻辑回归结果是多少”。首先，我要理解用户的需求。他们似乎在问这些数值的逻辑回归结果，但逻辑回归通常用于分类问题，可能用户是想求这些数值的某种统计结果，或者可能有其他意图。不过根据提供的工具列表，有一个名为“逻辑回归”的工具，参数是param1，格式TEXT，参考输入是1,2,3,4。所以用户可能希望将这些数值作为输入进行逻辑回归计算。\n\n接下来，我需要检查可用的工具。用户提供的工具中有“逻辑回归”工具，参数是param1，类型TEXT，示例输入是“1,2,3,4”。用户给出的输入是“-1,-2,-3,-4”，这符合参数格式，所以应该调用这个工具。\n\n步骤分解：首先，将用户提供的数值转换为工具所需的参数格式。用户输入是四个负数，用逗号分隔，符合param1的格式要求。因此，直接调用逻辑回归工具，参数为{\"param1\": \"-1,-2,-3,-4\"}。\n\n然后，等待工具返回结果。假设工具处理完成后，返回结果可能是系数、概率或其他相关数据。最后，将结果整理成自然语言回答用户。\n</think>"
       },
-      "大模型组件/工具调用||工具调用": {},
+      "大模型组件/工具调用||工具调用": {
+        "result": "",
+        "log": "执行失败: [Errno 2] No such file or directory: '逻辑回归\\\\input.pkl'\nTraceback (most recent call last):\n  File \"D:\\work\\WorkFlowGUI\\app\\components\\大模型组件\\becc8ae3-47ea-4714-b35e-81a24bc95cb6.py\", line 54, in run\n    with open(project_path / \"input.pkl\", \"wb\") as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '逻辑回归\\\\input.pkl'\n"
+      },
       "大模型组件/JSON文本包装||JSON文本包装 3": {
         "output1": {
           "answer": "根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。"
         }
       },
       "数据集成/获取全局变量||获取大模型历史对话": {
-        "output1": [
-          {
-            "role": "user",
-            "content": "{'input': '[123，31，51，42]的逻辑回归结果是多少？'}"
-          },
-          {
-            "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\react智能体增加错误反馈\",\n    \"tool_input\": {\n        \"input_text\": \"[123，31，51，42]的逻辑回归结果是多少？\"\n    }\n}\n```"
-          }
-        ]
+        "output1": []
       },
       "代码执行/代码编辑||代码编辑 2": {
-        "output": "工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\react智能体 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：-1,-2,-3,-4的逻辑回归结果是多少\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\react智能体增加错误反馈 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：[123，31，51，42]的逻辑回归结果是多少？\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\测试导出节点顺序 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\测试执行逻辑 \n输入格式：无参数\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\画图测试 \n输入格式：参数1：title\n参数格式：TEXT\n参数参考样例输入：\n所属组件名：Matplotlib画图 2\n组件参数类型：组件超参数\n\n参数2：xlabel\n参数格式：TEXT\n参数参考样例输入：X轴\n所属组件名：Matplotlib画图 2\n组件参数类型：组件超参数\n\n参数3：ylabel\n参数格式：TEXT\n参数参考样例输入：Y轴\n所属组件名：Matplotlib画图 2\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\自动组件生成 \n输入格式：参数1：input_text1\n参数格式：LONGTEXT\n参数参考样例输入：输入是用户的列表数据输入是[1,2,3,4]格式数据\n所属组件名：组件输入\n组件参数类型：组件超参数\n\n参数2：input_text2\n参数格式：LONGTEXT\n参数参考样例输入：输出是画图结果，传参是PIL.Image格式图片\n所属组件名：组件输出\n组件参数类型：组件超参数\n\n参数3：input_text3\n参数格式：LONGTEXT\n参数参考样例输入：组件参数暂无\n所属组件名：组件参数\n组件参数类型：组件超参数\n\n参数4：input_text4\n参数格式：LONGTEXT\n参数参考样例输入：我的需求是开发一个matplotlib画图组件\n所属组件名：组件意图\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\获取当前时间 \n输入格式：无参数\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归 \n输入格式：参数1：param1\n参数格式：TEXT\n参数参考样例输入：1,2,3,4\n所属组件名：输入array\n组件参数类型：组件超参数\n\n"
+        "output": "工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\react智能体 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：-1,-2,-3,-4的逻辑回归结果是多少\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\条件分支导出测试 \n输入格式：无参数\n\n工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\条件分支导出测试2 \n输入格式：无参数\n\n工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\自动组件生成 \n输入格式：参数1：input_text1\n参数格式：LONGTEXT\n参数参考样例输入：输入是用户的列表数据输入是[1,2,3,4]格式数据\n所属组件名：组件输入\n组件参数类型：组件超参数\n\n参数2：input_text2\n参数格式：LONGTEXT\n参数参考样例输入：输出是画图结果，传参是PIL.Image格式图片\n所属组件名：组件输出\n组件参数类型：组件超参数\n\n参数3：input_text3\n参数格式：LONGTEXT\n参数参考样例输入：组件参数暂无\n所属组件名：组件参数\n组件参数类型：组件超参数\n\n参数4：input_text4\n参数格式：LONGTEXT\n参数参考样例输入：我的需求是开发一个matplotlib画图组件\n所属组件名：组件意图\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\获取工具路径 \n输入格式：无参数\n\n工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\获取当前时间 \n输入格式：无参数\n\n工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\逻辑回归 \n输入格式：参数1：param1\n参数格式：TEXT\n参数参考样例输入：1,2,3,4\n所属组件名：输入array\n组件参数类型：组件超参数\n\n"
       },
       "大模型组件/大模型输出解析||大模型输出解析": {
         "parsed_json": {
-          "next_step": "总结答案",
-          "answer": "根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。"
+          "next_step": "调用工具",
+          "tool_name": "逻辑回归",
+          "tool_input": {
+            "param1": "-1,-2,-3,-4"
+          }
         },
         "is_valid": true
       },
       "代码执行/代码编辑||代码编辑": {
         "output": [
           "canvas_files\\projects\\react智能体",
-          "canvas_files\\projects\\react智能体增加错误反馈",
-          "canvas_files\\projects\\测试导出节点顺序",
-          "canvas_files\\projects\\测试执行逻辑",
-          "canvas_files\\projects\\画图测试",
+          "canvas_files\\projects\\条件分支导出测试",
+          "canvas_files\\projects\\条件分支导出测试2",
           "canvas_files\\projects\\自动组件生成",
+          "canvas_files\\projects\\获取工具路径",
           "canvas_files\\projects\\获取当前时间",
           "canvas_files\\projects\\逻辑回归"
         ]
       },
       "大模型组件/大模型对话||大模型对话": {
-        "response": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。\"\n}\n```",
+        "response": "<think>\n好的，我现在需要处理用户的查询：“-1,-2,-3,-4的逻辑回归结果是多少”。首先，我要理解用户的需求。他们似乎在问这些数值的逻辑回归结果，但逻辑回归通常用于分类问题，可能用户是想求这些数值的某种统计结果，或者可能有其他意图。不过根据提供的工具列表，有一个名为“逻辑回归”的工具，参数是param1，格式TEXT，参考输入是1,2,3,4。所以用户可能希望将这些数值作为输入进行逻辑回归计算。\n\n接下来，我需要检查可用的工具。用户提供的工具中有“逻辑回归”工具，参数是param1，类型TEXT，示例输入是“1,2,3,4”。用户给出的输入是“-1,-2,-3,-4”，这符合参数格式，所以应该调用这个工具。\n\n步骤分解：首先，将用户提供的数值转换为工具所需的参数格式。用户输入是四个负数，用逗号分隔，符合param1的格式要求。因此，直接调用逻辑回归工具，参数为{\"param1\": \"-1,-2,-3,-4\"}。\n\n然后，等待工具返回结果。假设工具处理完成后，返回结果可能是系数、概率或其他相关数据。最后，将结果整理成自然语言回答用户。\n</think>\n\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"逻辑回归\",\n    \"tool_input\": {\"param1\": \"-1,-2,-3,-4\"}\n}\n```",
         "raw_output": {
-          "id": "chatcmpl-i5mw29nsy3opi12aioe5db",
+          "id": "chatcmpl-d5256a04dc1646b896f94ea64a09857a",
           "choices": [
             {
               "finish_reason": "stop",
               "index": 0,
               "logprobs": null,
               "message": {
-                "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。\"\n}\n```",
+                "content": "<think>\n好的，我现在需要处理用户的查询：“-1,-2,-3,-4的逻辑回归结果是多少”。首先，我要理解用户的需求。他们似乎在问这些数值的逻辑回归结果，但逻辑回归通常用于分类问题，可能用户是想求这些数值的某种统计结果，或者可能有其他意图。不过根据提供的工具列表，有一个名为“逻辑回归”的工具，参数是param1，格式TEXT，参考输入是1,2,3,4。所以用户可能希望将这些数值作为输入进行逻辑回归计算。\n\n接下来，我需要检查可用的工具。用户提供的工具中有“逻辑回归”工具，参数是param1，类型TEXT，示例输入是“1,2,3,4”。用户给出的输入是“-1,-2,-3,-4”，这符合参数格式，所以应该调用这个工具。\n\n步骤分解：首先，将用户提供的数值转换为工具所需的参数格式。用户输入是四个负数，用逗号分隔，符合param1的格式要求。因此，直接调用逻辑回归工具，参数为{\"param1\": \"-1,-2,-3,-4\"}。\n\n然后，等待工具返回结果。假设工具处理完成后，返回结果可能是系数、概率或其他相关数据。最后，将结果整理成自然语言回答用户。\n</think>\n\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"逻辑回归\",\n    \"tool_input\": {\"param1\": \"-1,-2,-3,-4\"}\n}\n```",
                 "refusal": null,
                 "role": "assistant",
                 "annotations": null,
                 "audio": null,
                 "function_call": null,
-                "tool_calls": []
-              }
+                "tool_calls": [],
+                "reasoning_content": null
+              },
+              "stop_reason": null,
+              "token_ids": null
             }
           ],
-          "created": 1763297096,
-          "model": "qwen/qwen3-30b-a3b-2507",
+          "created": 1763351871,
+          "model": "qwen3-30b-a3b",
           "object": "chat.completion",
           "service_tier": null,
-          "system_fingerprint": "qwen/qwen3-30b-a3b-2507",
+          "system_fingerprint": null,
           "usage": {
-            "completion_tokens": 110,
-            "prompt_tokens": 1654,
-            "total_tokens": 1764,
+            "completion_tokens": 322,
+            "prompt_tokens": 1169,
+            "total_tokens": 1491,
             "completion_tokens_details": null,
             "prompt_tokens_details": null
           },
-          "stats": {}
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "kv_transfer_params": null
         },
         "history": [
           {
             "role": "user",
-            "content": "{'input': '[123，31，51，42]的逻辑回归结果是多少？'}"
+            "content": ""
           },
           {
             "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\react智能体增加错误反馈\",\n    \"tool_input\": {\n        \"input_text\": \"[123，31，51，42]的逻辑回归结果是多少？\"\n    }\n}\n```"
-          },
-          {
-            "role": "user",
-            "content": "工具调用结果：\n{'output1': {'answer': '根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。'}}\n\n用户问题：\n[123，31，51，42]的逻辑回归结果是多少？"
-          },
-          {
-            "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。\"\n}\n```"
+            "content": "<think>\n好的，我现在需要处理用户的查询：“-1,-2,-3,-4的逻辑回归结果是多少”。首先，我要理解用户的需求。他们似乎在问这些数值的逻辑回归结果，但逻辑回归通常用于分类问题，可能用户是想求这些数值的某种统计结果，或者可能有其他意图。不过根据提供的工具列表，有一个名为“逻辑回归”的工具，参数是param1，格式TEXT，参考输入是1,2,3,4。所以用户可能希望将这些数值作为输入进行逻辑回归计算。\n\n接下来，我需要检查可用的工具。用户提供的工具中有“逻辑回归”工具，参数是param1，类型TEXT，示例输入是“1,2,3,4”。用户给出的输入是“-1,-2,-3,-4”，这符合参数格式，所以应该调用这个工具。\n\n步骤分解：首先，将用户提供的数值转换为工具所需的参数格式。用户输入是四个负数，用逗号分隔，符合param1的格式要求。因此，直接调用逻辑回归工具，参数为{\"param1\": \"-1,-2,-3,-4\"}。\n\n然后，等待工具返回结果。假设工具处理完成后，返回结果可能是系数、概率或其他相关数据。最后，将结果整理成自然语言回答用户。\n</think>\n\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"逻辑回归\",\n    \"tool_input\": {\"param1\": \"-1,-2,-3,-4\"}\n}\n```"
           }
         ]
       },
-      "数据预处理/JSON筛选||提取最终答案": {
-        "output1": "根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。"
+      "数据预处理/JSON筛选||提取最终答案": {},
+      "数据预处理/JSON筛选||工具名提取": {
+        "output1": "逻辑回归"
       },
-      "数据预处理/JSON筛选||工具名提取": {},
-      "数据预处理/JSON筛选||工具输入提取": {},
+      "数据预处理/JSON筛选||工具输入提取": {
+        "output1": "{'param1': '-1,-2,-3,-4'}"
+      },
       "大模型组件/提示词模板||错误处理": {},
-      "大模型组件/提示词模板||工具执行错误反馈": {},
+      "大模型组件/提示词模板||工具执行错误反馈": {
+        "prompt": "工具调用报错根据执行日志修复请求参数：\n执行失败: [Errno 2] No such file or directory: '逻辑回归\\\\input.pkl'\nTraceback (most recent call last):\n  File \"D:\\work\\WorkFlowGUI\\app\\components\\大模型组件\\becc8ae3-47ea-4714-b35e-81a24bc95cb6.py\", line 54, in run\n    with open(project_path / \"input.pkl\", \"wb\") as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '逻辑回归\\\\input.pkl'\n\n\n用户问题：\n[123，31，51，42]的逻辑回归结果是多少？"
+      },
       "代码执行/代码编辑||代码42": {
-        "output": "处理结果: en_US.UTF-8 + {'input': '[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？'}",
-        "output_1": "处理结果: en_US.UTF-8 + {'input': '[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？'}"
+        "output": "处理结果: en_US.UTF-8 + {'input': '[123，31，51，42]的逻辑回归结果是多少？'}",
+        "output_1": "处理结果: en_US.UTF-8 + {'input': '[123，31，51，42]的逻辑回归结果是多少？'}"
       },
-      "控制流/输入端口||输入端口": {
-        "output": "工具调用结果：\n{'output1': {'answer': '根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。'}}\n\n用户问题：\n[123，31，51，42]的逻辑回归结果是多少？"
-      },
+      "控制流/输入端口||输入端口": {},
       "控制流/输出端口||输出端口": {},
       "控制流/循环控制流区域||循环控制流区域": {
         "outputs": "根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。"
       },
       "控制流/条件分支||条件分支 1": {
-        "branch": {
-          "next_step": "总结答案",
-          "answer": "根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。"
+        "branch_1": {
+          "next_step": "调用工具",
+          "tool_name": "逻辑回归",
+          "tool_input": {
+            "param1": "-1,-2,-3,-4"
+          }
         }
       },
-      "控制流/条件分支||条件分支": {}
+      "控制流/条件分支||条件分支": {
+        "else": [
+          "",
+          "执行失败: [Errno 2] No such file or directory: '逻辑回归\\\\input.pkl'\nTraceback (most recent call last):\n  File \"D:\\work\\WorkFlowGUI\\app\\components\\大模型组件\\becc8ae3-47ea-4714-b35e-81a24bc95cb6.py\", line 54, in run\n    with open(project_path / \"input.pkl\", \"wb\") as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '逻辑回归\\\\input.pkl'\n"
+        ]
+      }
     },
     "column_select": {
       "数据集成/长文本输入||长文本输入": {},
@@ -1818,7 +1820,7 @@
         "update_policy": "更新"
       },
       "大模型对话_response": {
-        "value": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。\"\n}\n```",
+        "value": "<think>\n好的，我现在需要处理用户的查询：“-1,-2,-3,-4的逻辑回归结果是多少”。首先，我要理解用户的需求。他们似乎在问这些数值的逻辑回归结果，但逻辑回归通常用于分类问题，可能用户是想求这些数值的某种统计结果，或者可能有其他意图。不过根据提供的工具列表，有一个名为“逻辑回归”的工具，参数是param1，格式TEXT，参考输入是1,2,3,4。所以用户可能希望将这些数值作为输入进行逻辑回归计算。\n\n接下来，我需要检查可用的工具。用户提供的工具中有“逻辑回归”工具，参数是param1，类型TEXT，示例输入是“1,2,3,4”。用户给出的输入是“-1,-2,-3,-4”，这符合参数格式，所以应该调用这个工具。\n\n步骤分解：首先，将用户提供的数值转换为工具所需的参数格式。用户输入是四个负数，用逗号分隔，符合param1的格式要求。因此，直接调用逻辑回归工具，参数为{\"param1\": \"-1,-2,-3,-4\"}。\n\n然后，等待工具返回结果。假设工具处理完成后，返回结果可能是系数、概率或其他相关数据。最后，将结果整理成自然语言回答用户。\n</think>\n\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"逻辑回归\",\n    \"tool_input\": {\"param1\": \"-1,-2,-3,-4\"}\n}\n```",
         "update_policy": "更新"
       },
       "获取智能体下一步计划_next_step": {
@@ -1826,26 +1828,18 @@
         "update_policy": "更新"
       },
       "代码编辑_2_output": {
-        "value": "工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\react智能体 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：-1,-2,-3,-4的逻辑回归结果是多少\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\react智能体增加错误反馈 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：[123，31，51，42]的逻辑回归结果是多少？\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\测试导出节点顺序 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\测试执行逻辑 \n输入格式：无参数\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\画图测试 \n输入格式：参数1：title\n参数格式：TEXT\n参数参考样例输入：\n所属组件名：Matplotlib画图 2\n组件参数类型：组件超参数\n\n参数2：xlabel\n参数格式：TEXT\n参数参考样例输入：X轴\n所属组件名：Matplotlib画图 2\n组件参数类型：组件超参数\n\n参数3：ylabel\n参数格式：TEXT\n参数参考样例输入：Y轴\n所属组件名：Matplotlib画图 2\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\自动组件生成 \n输入格式：参数1：input_text1\n参数格式：LONGTEXT\n参数参考样例输入：输入是用户的列表数据输入是[1,2,3,4]格式数据\n所属组件名：组件输入\n组件参数类型：组件超参数\n\n参数2：input_text2\n参数格式：LONGTEXT\n参数参考样例输入：输出是画图结果，传参是PIL.Image格式图片\n所属组件名：组件输出\n组件参数类型：组件超参数\n\n参数3：input_text3\n参数格式：LONGTEXT\n参数参考样例输入：组件参数暂无\n所属组件名：组件参数\n组件参数类型：组件超参数\n\n参数4：input_text4\n参数格式：LONGTEXT\n参数参考样例输入：我的需求是开发一个matplotlib画图组件\n所属组件名：组件意图\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\获取当前时间 \n输入格式：无参数\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归 \n输入格式：参数1：param1\n参数格式：TEXT\n参数参考样例输入：1,2,3,4\n所属组件名：输入array\n组件参数类型：组件超参数\n\n",
+        "value": "工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\react智能体 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：-1,-2,-3,-4的逻辑回归结果是多少\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\条件分支导出测试 \n输入格式：无参数\n\n工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\条件分支导出测试2 \n输入格式：无参数\n\n工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\自动组件生成 \n输入格式：参数1：input_text1\n参数格式：LONGTEXT\n参数参考样例输入：输入是用户的列表数据输入是[1,2,3,4]格式数据\n所属组件名：组件输入\n组件参数类型：组件超参数\n\n参数2：input_text2\n参数格式：LONGTEXT\n参数参考样例输入：输出是画图结果，传参是PIL.Image格式图片\n所属组件名：组件输出\n组件参数类型：组件超参数\n\n参数3：input_text3\n参数格式：LONGTEXT\n参数参考样例输入：组件参数暂无\n所属组件名：组件参数\n组件参数类型：组件超参数\n\n参数4：input_text4\n参数格式：LONGTEXT\n参数参考样例输入：我的需求是开发一个matplotlib画图组件\n所属组件名：组件意图\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\获取工具路径 \n输入格式：无参数\n\n工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\获取当前时间 \n输入格式：无参数\n\n工具名称：D:\\work\\WorkFlowGUI\\canvas_files\\projects\\逻辑回归 \n输入格式：参数1：param1\n参数格式：TEXT\n参数参考样例输入：1,2,3,4\n所属组件名：输入array\n组件参数类型：组件超参数\n\n",
         "update_policy": "更新"
       },
       "大模型对话_history": {
         "value": [
           {
             "role": "user",
-            "content": "{'input': '[123，31，51，42]的逻辑回归结果是多少？'}"
+            "content": ""
           },
           {
             "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\react智能体增加错误反馈\",\n    \"tool_input\": {\n        \"input_text\": \"[123，31，51，42]的逻辑回归结果是多少？\"\n    }\n}\n```"
-          },
-          {
-            "role": "user",
-            "content": "工具调用结果：\n{'output1': {'answer': '根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。'}}\n\n用户问题：\n[123，31，51，42]的逻辑回归结果是多少？"
-          },
-          {
-            "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据逻辑回归计算结果，输入数据[123, 31, 51, 42]的输出为 [[32.97222222, 12.08333333, 8.47457627, 17.45833333]]，对应的预测类别为 [2]。\"\n}\n```"
+            "content": "<think>\n好的，我现在需要处理用户的查询：“-1,-2,-3,-4的逻辑回归结果是多少”。首先，我要理解用户的需求。他们似乎在问这些数值的逻辑回归结果，但逻辑回归通常用于分类问题，可能用户是想求这些数值的某种统计结果，或者可能有其他意图。不过根据提供的工具列表，有一个名为“逻辑回归”的工具，参数是param1，格式TEXT，参考输入是1,2,3,4。所以用户可能希望将这些数值作为输入进行逻辑回归计算。\n\n接下来，我需要检查可用的工具。用户提供的工具中有“逻辑回归”工具，参数是param1，类型TEXT，示例输入是“1,2,3,4”。用户给出的输入是“-1,-2,-3,-4”，这符合参数格式，所以应该调用这个工具。\n\n步骤分解：首先，将用户提供的数值转换为工具所需的参数格式。用户输入是四个负数，用逗号分隔，符合param1的格式要求。因此，直接调用逻辑回归工具，参数为{\"param1\": \"-1,-2,-3,-4\"}。\n\n然后，等待工具返回结果。假设工具处理完成后，返回结果可能是系数、概率或其他相关数据。最后，将结果整理成自然语言回答用户。\n</think>\n\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"逻辑回归\",\n    \"tool_input\": {\"param1\": \"-1,-2,-3,-4\"}\n}\n```"
           }
         ],
         "update_policy": "更新"

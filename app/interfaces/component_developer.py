@@ -255,23 +255,14 @@ class ComponentDeveloperWidget(QWidget):
         central_widget = QWidget(self)
         central_layout = QVBoxLayout(central_widget)
         central_layout.setContentsMargins(0, 0, 0, 0)
-
-        # 创建Console管理器
-        self.console_manager = IPythonConsoleManager(
-            parent=self, package_manager=self.home.package_manager
-        )
-
         # 创建变量浏览器
         self.var_explorer = VariableExplorerWidget(
             parent=self, kernel_manager=None  # 先不设置内核管理器
         )
-        # 连接控制台和变量浏览器
-        self.console_manager.tab_bar.currentChanged.connect(
-            self._on_console_changed
+        # 创建Console管理器
+        self.console_manager = IPythonConsoleManager(
+            parent=self, package_manager=self.home.package_manager, var_explorer=self.var_explorer
         )
-
-        # 初始化第一个控制台的内核管理器
-        self._on_console_changed(0)
 
         # 创建垂直分割器
         splitter = QSplitter(Qt.Vertical)
@@ -313,13 +304,6 @@ class ComponentDeveloperWidget(QWidget):
         # 再设置一个“合理但小”的初始尺寸（避免 10 太小被忽略）
         main_splitter.setSizes([50, 450, 450])  # 50 比 10 更可能生效
         layout.addWidget(main_splitter)
-
-    def _on_console_changed(self, index):
-        """控制台切换时更新变量浏览器"""
-        kernel_manager = self.console_manager.get_current_kernel_manager()
-        if kernel_manager:
-            self.var_explorer.set_kernel_manager(kernel_manager)
-            self.var_explorer.start_auto_refresh()
 
     def _connect_signals(self):
         """连接信号"""
