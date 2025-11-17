@@ -77,6 +77,7 @@ class PropertyPanel(CardWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(self.main_stacked)
         self.current_node = None
+        self._user_execution_order = {}
         self._column_list_widgets = {}
         self._text_edit_widgets = {}
         self.segmented_widget = None
@@ -303,15 +304,145 @@ class PropertyPanel(CardWidget):
 
     def _build_node_list_ui(self, nodes):
         """
-        清理并构建节点面板
+        清理并构建节点面板，支持基于节点交集的用户自定义执行顺序
         """
-        # 对节点进行拓扑排序，按连通分量分组
-        components = topological_sort(nodes, split_components=True)
-        if components is None:  # 存在环
-            components = []
+        from app.utils.utils import topological_sort  # 确保导入
+
+        # 获取连通分量
+        new_components = topological_sort(nodes, split_components=True)
+        if new_components is None:
+            new_components = []
+
+        # --- 核心逻辑：映射新组件到用户历史顺序 ---
+        ordered_components = []
+        used_new_indices = set()
+        used_old_keys = set()
+
+        # 将 new_components 转换为 node_id 集合列表，方便后续比较
+        new_node_sets = [set(n.id for n in comp) for comp in new_components]
+
+        # --- 修正点1: 遍历 _user_execution_order.items() 的副本 ---
+        for old_key_node_ids, old_ordered_nodes in list(self._user_execution_order.items()):
+            old_node_set = set(old_key_node_ids)
+
+            matched_new_idx = None
+            best_overlap = 0
+
+            # 寻找与 old_node_set 交集最大的 new_component
+            for i, new_node_set in enumerate(new_node_sets):
+                if i in used_new_indices:
+                    continue  # 跳过已匹配的新组件
+
+                overlap = len(old_node_set & new_node_set)
+                if overlap > best_overlap:
+                    best_overlap = overlap
+                    matched_new_idx = i
+
+            if matched_new_idx is not None:
+                # 找到匹配项
+                matched_new_component = new_components[matched_new_idx]
+
+                # --- 重建或应用用户顺序 ---
+                # 方案A: 尝试从 old_ordered_nodes 中保留未删除节点的顺序
+                old_node_map = {n.id: n for n in old_ordered_nodes}
+                sorted_part_from_old = [old_node_map[nid] for nid in old_key_node_ids if
+                                        nid in old_node_map and nid in new_node_sets[matched_new_idx]]
+
+                # 找出新增的节点
+                new_nodes_in_matched = [n for n in matched_new_component if n.id not in old_node_map]
+
+                # 拓扑排序新增节点
+                if new_nodes_in_matched:
+                    # 创建一个包含新增节点和原有节点连接关系的子图进行排序
+                    # 这里简化处理，直接对新增节点进行拓扑排序
+                    subgraph_nodes = new_nodes_in_matched
+                    # 获取这些新增节点与原组件节点的连接，以确定其插入位置
+                    # 为了简化，这里直接将拓扑排序结果附加到旧节点排序之后
+                    # TODO: 更精确的方式是分析连接关系来确定插入点
+                    topo_sorted_new = topological_sort(subgraph_nodes, split_components=False)  # 获取单个组件内的拓扑排序
+                    if topo_sorted_new is None:  # 理论上不应发生，因来自同一连通分量
+                        topo_sorted_new = subgraph_nodes
+                else:
+                    topo_sorted_new = []
+
+                # 合并：旧的保留顺序 + 新的拓扑排序
+                final_sorted_component = sorted_part_from_old + topo_sorted_new
+                # 保存更新后的顺序，key 用当前实际的 node_ids
+                current_node_ids_for_key = tuple(sorted(n.id for n in final_sorted_component))
+
+                # --- 修正点2: 不在此处修改 _user_execution_order，而是记录要添加/修改的项 ---
+                # self._user_execution_order[current_node_ids_for_key] = final_sorted_component # 注释掉
+                # 删除旧的 key 的操作也推迟
+                # used_old_keys.add(old_key_node_ids) # 注释掉，直接用 del self._user_execution_order[old_key_node_ids] 也可以，但统一用 used_old_keys
+                # 记录需要删除的旧key和需要添加的新key-value对
+                used_old_keys.add(old_key_node_ids)  # 标记旧key为已处理
+                # 在循环外统一处理 _user_execution_order 的更新
+
+                ordered_components.append(final_sorted_component)
+                used_new_indices.add(matched_new_idx)
+
+        # --- 修正点3: 在迭代完成后，统一修改 _user_execution_order ---
+        # 1. 删除已处理的旧key
+        for old_key in used_old_keys:
+            if old_key in self._user_execution_order:  # 安全检查
+                del self._user_execution_order[old_key]
+
+        # 2. 添加或更新匹配后的新key-value对
+        # 重新计算 final_sorted_components 来添加它们（复用上面的逻辑，但这次是存储）
+        # 为了简化，我们可以在匹配循环中就收集这些信息
+        # 重新进行匹配循环，这次收集要更新的字典项
+        new_user_order_updates = {}
+        new_node_sets_temp = [set(n.id for n in comp) for comp in new_components]  # 重新计算，因为上面的变量可能被修改
+        for old_key_node_ids, old_ordered_nodes in list(self._user_execution_order.items()):  # 重新遍历剩余的
+            old_node_set = set(old_key_node_ids)
+            matched_new_idx = None
+            best_overlap = 0
+            for i, new_node_set in enumerate(new_node_sets_temp):
+                if i in used_new_indices:
+                    continue
+                overlap = len(old_node_set & new_node_set)
+                if overlap > best_overlap:
+                    best_overlap = overlap
+                    matched_new_idx = i
+            if matched_new_idx is not None:
+                matched_new_component = new_components[matched_new_idx]
+                old_node_map = {n.id: n for n in old_ordered_nodes}
+                sorted_part_from_old = [old_node_map[nid] for nid in old_key_node_ids if
+                                        nid in old_node_map and nid in new_node_sets_temp[matched_new_idx]]
+                new_nodes_in_matched = [n for n in matched_new_component if n.id not in old_node_map]
+                if new_nodes_in_matched:
+                    topo_sorted_new = topological_sort(new_nodes_in_matched, split_components=False)
+                    if topo_sorted_new is None:
+                        topo_sorted_new = new_nodes_in_matched
+                else:
+                    topo_sorted_new = []
+                final_sorted_component = sorted_part_from_old + topo_sorted_new
+                current_node_ids_for_key = tuple(sorted(n.id for n in final_sorted_component))
+                new_user_order_updates[current_node_ids_for_key] = final_sorted_component
+                used_old_keys.add(old_key_node_ids)
+                # 注意：used_new_indices 已经在上一次循环中设置了，这里不需要重复 set
+
+        # 应用收集到的更新
+        for key, value in new_user_order_updates.items():
+            self._user_execution_order[key] = value
+        # 再次删除已处理的旧key (如果上面的逻辑没有完全覆盖)
+        for old_key in used_old_keys:
+            if old_key in self._user_execution_order:  # 安全检查
+                del self._user_execution_order[old_key]
+
+        # 第二步：将未匹配的新组件（即全新的连通分量）追加到末尾
+        for i, comp in enumerate(new_components):
+            if i not in used_new_indices:
+                ordered_components.append(comp)
+                # 新组件不在此时加入 _user_execution_order，除非用户移动它
 
         # 保存当前组件列表，用于移动操作
-        self._current_components = components
+        # 注意：这里保存的是经过映射和排序后的最终列表
+        self._current_components = ordered_components
+        # ... 后续创建 UI 卡片逻辑不变 ...
+        # 清理布局
+        self._clear_node_layout()
+
         title = BodyLabel(f"⏬ 连通图执行顺序")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.node_vbox.addWidget(title)
@@ -320,18 +451,16 @@ class PropertyPanel(CardWidget):
         nodes_card = CardWidget(self)
         nodes_layout = QVBoxLayout(nodes_card)
         nodes_layout.setContentsMargins(10, 10, 10, 10)
-
         title_btn_layout = QHBoxLayout()
         title = BodyLabel("连通图列表：")
         title_btn_layout.addWidget(title)
         title_btn_layout.addStretch()
-
         nodes_layout.addLayout(title_btn_layout)
 
         # 为每个连通分量创建单独的卡片并保存引用
         self._component_cards = []  # 保存组件卡片的引用
-        for i in range(len(components)):
-            component_card = self._create_component_card(nodes_layout, i, components)
+        for i in range(len(ordered_components)):
+            component_card = self._create_component_card(nodes_layout, i, ordered_components)
             self._component_cards.append(component_card)
 
         nodes_layout.addStretch(1)
@@ -447,6 +576,14 @@ class PropertyPanel(CardWidget):
 
         # 重新排列组件卡片在布局中的位置
         self._rearrange_component_cards()
+        # --- 保存用户自定义顺序 ---
+        # 清空旧的用户顺序记录
+        self._user_execution_order.clear()
+        # 为当前排列的每个连通分量重新建立记录
+        for comp_nodes in self._current_components:
+            if comp_nodes:  # 确保组件非空
+                node_ids = tuple(sorted(n.id for n in comp_nodes))  # 使用排序元组作为稳定键
+                self._user_execution_order[node_ids] = comp_nodes.copy()  # 存储当前顺序
 
     def _rearrange_component_cards(self):
         """

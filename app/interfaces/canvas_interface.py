@@ -230,8 +230,8 @@ class CanvasPage(QWidget):
         if self.property_panel.get_current_execution_order():
             nodes = self.property_panel.get_current_execution_order()
             self._scheduler.run_full(nodes=nodes, sort=False)
-            self._scheduler.node_finished.connect(lambda : self.property_panel.update_properties(nodes))
-            self._scheduler.finished.connect(lambda : self.property_panel.update_properties(nodes))
+            self._scheduler.node_finished.connect(lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes)))
+            self._scheduler.finished.connect(lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes)))
             self.property_panel.reset_current_components()
         else:
             self._scheduler.run_full(nodes=self.graph.selected_nodes())
@@ -1463,8 +1463,10 @@ class CanvasPage(QWidget):
         self._invalidate_node_cache()
         self.graph.delete_node(node)
 
-    def on_selection_changed(self, node_ids, prev_ids):
+    def on_selection_changed(self, node_ids: list, prev_ids: list):
         if self._selection_update_pending:
+            return
+        if node_ids == prev_ids:
             return
         self._selection_update_pending = True
         QtCore.QTimer.singleShot(50, self._do_selection_update)
