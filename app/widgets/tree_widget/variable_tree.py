@@ -13,8 +13,13 @@ from PyQt5.QtWidgets import (
 )
 from qfluentwidgets import TreeWidget, RoundMenu, MessageBoxBase, TextEdit, SegmentedWidget, TableWidget, ImageLabel
 from qtpy import QtCore
+from spyder.plugins.variableexplorer.widgets.arrayeditor import ArrayEditor
+from spyder.plugins.variableexplorer.widgets.dataframeeditor import DataFrameEditor
+from spyder.plugins.variableexplorer.widgets.namespacebrowser import NamespaceBrowser
 
 from app.components.base import ArgumentType
+from app.widgets.basic_widget.style_sheet import StyleSheet
+from app.widgets.dialog_widget.excel_viewer import ExcelViewer
 
 
 # --- Worker Class (修改错误处理) ---
@@ -416,7 +421,7 @@ class VariableTreeWidget(TreeWidget):
             parent=self
         )
         # 也可以添加一个临时项来显示错误
-        error_item = TreeWidgetItem(self.invisibleRootItem(), [f"Error: {type(self._original_data).__name__}"])
+        error_item = QTreeWidgetItem(self.invisibleRootItem(), [f"Error: {type(self._original_data).__name__}"])
         error_item.setForeground(0, Qt.red)
 
     def _add_item_from_data(self, parent_item, item_data):
@@ -694,15 +699,21 @@ class VariableTreeWidget(TreeWidget):
                 has_file_preview = True
             else:
                 self._open_file_in_explorer(filepath)
-        elif isinstance(obj, (list, tuple)):
-            self._preview_nested_structure(obj, f"{'列表' if isinstance(obj, list) else '元组'}数据预览")
+        elif isinstance(obj, list):
+            try:
+                obj = np.array(obj)
+                self._preview_array(obj, f"NumPy 数组 (shape: {obj.shape}, dtype: {obj.dtype}) 预览")
+            except Exception as e:
+                self._preview_nested_structure(obj, f"列表数据 (len: {len(obj)})预览")
+        elif isinstance(obj, tuple):
+            self._preview_nested_structure(obj, f"元组数据 (len: {len(obj)}) 预览")
         elif isinstance(obj, dict):
             self._preview_nested_structure(obj, "字典数据预览")
         elif isinstance(obj, set):
             # 修正标题
-            self._preview_nested_structure(obj, "集合数据预览")
+            self._preview_array(obj, "集合数据预览")
         elif isinstance(obj, np.ndarray):  # 添加对 ndarray 的处理
-            self._preview_nested_structure(obj, f"NumPy 数组 (shape: {obj.shape}, dtype: {obj.dtype}) 预览")
+            self._preview_array(obj,f"NumPy 数组 (shape: {obj.shape}, dtype: {obj.dtype}) 预览")
         elif isinstance(obj, pd.DataFrame):
             self._preview_dataframe_full(obj)
         elif isinstance(obj, pd.Series):
@@ -774,8 +785,7 @@ class VariableTreeWidget(TreeWidget):
         elif isinstance(obj, np.ndarray):  # 添加对 ndarray 的右键菜单处理
             action = QAction("🔍 预览数组内容", self)
             # 使用更通用的预览方法，或者可以专门写一个 _preview_ndarray
-            action.triggered.connect(lambda: self._preview_nested_structure(obj,
-                                                                            f"NumPy 数组 (shape: {obj.shape}, dtype: {obj.dtype}) 预览"))
+            action.triggered.connect(lambda: self._preview_array(obj,f"NumPy 数组 (shape: {obj.shape}, dtype: {obj.dtype}) 预览"))
             menu.addAction(action)
         elif isinstance(obj, pd.DataFrame):
             action = QAction("🔍 预览完整数据表", self)
@@ -924,37 +934,22 @@ class VariableTreeWidget(TreeWidget):
                     if not slot.startswith('_'):
                         self._build_nested_tree(attr_value, parent_item, slot, max_depth, current_depth)
 
-    def _preview_dataframe_full(self, df: pd.DataFrame, max_rows=1000):
-        # 限制数据框的行数
-        if df.shape[0] > max_rows:
-            df = df.head(max_rows)
-        dialog = MessageBoxBase(parent=self.parent_widget)
-        dialog.yesButton.hide()
-        dialog.cancelButton.setText("关闭")
-        table = self._create_styled_table()
-        table.setMinimumSize(800, 500)
-        table.verticalHeader().hide()
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-        table.setRowCount(df.shape[0])
-        table.setColumnCount(df.shape[1])
-        table.setHorizontalHeaderLabels(df.columns.astype(str).tolist())
-        table.setVerticalHeaderLabels(df.index.astype(str).tolist())
-        for i in range(df.shape[0]):
-            for j in range(df.shape[1]):
-                val = df.iloc[i, j]
-                text = "NaN" if pd.isna(val) else str(val)
-                item = QTableWidgetItem(text)
-                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                table.setItem(i, j, item)
-        dialog.viewLayout.addWidget(table)
-        dialog.exec_()
+    def _preview_dataframe_full(self, df: pd.DataFrame, title: str= "csv表格"):
+        editor = DataFrameEditor(
+            parent=self.parent_widget,
+            namespacebrowser=NamespaceBrowser(self),
+            readonly=True
+        )
+        StyleSheet.VARIABLE_EXPLORER.apply(editor)
+        if editor.setup_and_check(df, title=title):
+            editor.exec_()
+            return editor.get_value()
 
     def _preview_csv_full(self, filepath):
         try:
             df = pd.read_csv(filepath)
             # 调用时传递最大行数限制
-            self._preview_dataframe_full(df, max_rows=1000)
+            self._preview_dataframe_full(df)
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition
             InfoBar.error(
@@ -973,45 +968,10 @@ class VariableTreeWidget(TreeWidget):
         使用 MessageBoxBase 作为主窗口
         """
         try:
-            # 使用 pd.ExcelFile 获取所有 sheet 名称
-            xls = pd.ExcelFile(filepath)
-            sheet_names = xls.sheet_names
-            if not sheet_names:
-                raise ValueError("Excel 文件无有效工作表")
-            # 使用 MessageBoxBase
-            dialog = MessageBoxBase(parent=self.parent_widget)
-            dialog.yesButton.hide()
-            dialog.cancelButton.setText("关闭")
-            # 创建 SegmentedWidget 用于切换工作表
-            seg_widget = SegmentedWidget()
-            table = self._create_styled_table()
-            table.setMinimumSize(800, 500)
+            viewer = ExcelViewer(self)
+            if viewer.setup_and_check(filepath):
+                viewer.show()
 
-            def load_sheet(name):
-                """加载指定工作表到表格"""
-                try:
-                    # 从 ExcelFile 对象读取指定 sheet，避免重复打开文件
-                    df = pd.read_excel(xls, sheet_name=name, nrows=1000)  # 限制行数
-                    self._fill_native_table(table, df)
-                except Exception as e:
-                    table.clear()
-                    table.setRowCount(1)
-                    table.setColumnCount(1)
-                    item = QTableWidgetItem(f"加载失败: {e}")
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                    table.setItem(0, 0, item)
-
-            # 添加所有工作表到 SegmentedWidget
-            for name in sheet_names:
-                seg_widget.addItem(name, text=name)  # 使用 sheet_name 作为 key 和 text
-            # 连接切换事件
-            seg_widget.currentItemChanged.connect(load_sheet)
-            # 默认加载第一个工作表
-            load_sheet(sheet_names[0])
-            # 将 SegmentedWidget 和 Table 添加到 MessageBoxBase 的布局中
-            dialog.viewLayout.addWidget(seg_widget)
-            dialog.viewLayout.addWidget(table)
-            dialog.exec_()
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition
             InfoBar.error(
@@ -1034,6 +994,13 @@ class VariableTreeWidget(TreeWidget):
         text_edit.setMinimumSize(700, 500)
         w.viewLayout.addWidget(text_edit)
         w.exec_()
+
+    def _preview_array(self, array, title="列表数据"):
+        editor = ArrayEditor(self.parent_widget)
+        StyleSheet.VARIABLE_EXPLORER.apply(editor)
+        if editor.setup_and_check(array, title=title):
+            editor.exec_()
+            return editor.get_value()
 
     def _preview_image(self, image_data):
         pixmap = None

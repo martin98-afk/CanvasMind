@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1f780d19000": {
+      "0x19e5c92aad0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话",
@@ -36,8 +36,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 554.76,
-        "height": 593.5500000000001,
+        "width": 552.0287500000001,
+        "height": 592.5,
         "pos": [
           -549.6061575949302,
           1941.7502453506295
@@ -63,7 +63,7 @@
           ]
         }
       },
-      "0x1f7804b3e80": {
+      "0x19e5c88dae0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件意图",
@@ -88,7 +88,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 470.12,
+        "width": 467.935,
         "height": 101.10000000000001,
         "pos": [
           -2251.795595653402,
@@ -103,7 +103,7 @@
           "input_text": "我的需求是开发一个matplotlib画图组件"
         }
       },
-      "0x1f7804b04c0": {
+      "0x19e5c88d930": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装",
@@ -128,7 +128,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 398.36,
+        "width": 392.15000000000003,
         "height": 101.10000000000001,
         "pos": [
           -1719.965413544517,
@@ -143,7 +143,7 @@
           "prop_0": "intention"
         }
       },
-      "0x1f7804b2d70": {
+      "0x19e4ac83a00": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "提示词模板 3",
@@ -166,9 +166,9 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 512.44,
+        "width": 507.32250000000005,
         "height": 101.10000000000001,
         "pos": [
           -1149.8487281288146,
@@ -197,7 +197,7 @@
           "template": "## 组件开发需求\n{{intention}}\n\n## 组件输入参数\n{{input}}\n\n## 组件属性参数\n{{params}}\n\n## 组件输出参数\n{{output}}\n\n## 代码输出要求\n输出代码不需要包含输入、输出以及属性参数定义代码，这部分已经写好了，但是组件定义的输入输出参数必须要在当前参数定义范围之内，不能输出新的参数类型。同时第三方工具包导入时只能在函数内导入，不能在文件开头导入，不要引入Dict，List这些参数格式定义。\n\n## 生成的组件代码"
         }
       },
-      "0x1f7804b35e0": {
+      "0x19e4ac830a0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件输入",
@@ -222,7 +222,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 470.12,
+        "width": 467.935,
         "height": 101.10000000000001,
         "pos": [
           -2277.9682509521176,
@@ -237,7 +237,7 @@
           "input_text": "输入是用户的列表数据输入是[1,2,3,4]格式数据"
         }
       },
-      "0x1f7804b11e0": {
+      "0x19e4ac83250": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 1",
@@ -262,7 +262,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 420.44,
+        "width": 411.84375,
         "height": 101.10000000000001,
         "pos": [
           -1750.674148297755,
@@ -277,7 +277,7 @@
           "prop_0": "input"
         }
       },
-      "0x1f780141e40": {
+      "0x19e4ac82950": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 3",
@@ -302,7 +302,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 420.44,
+        "width": 411.84375,
         "height": 101.10000000000001,
         "pos": [
           -1731.1074646991706,
@@ -317,7 +317,7 @@
           "prop_0": "output"
         }
       },
-      "0x1f7801427a0": {
+      "0x19e4adb5c60": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件输出",
@@ -342,7 +342,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 470.12,
+        "width": 467.935,
         "height": 101.10000000000001,
         "pos": [
           -2258.5180922326917,
@@ -357,7 +357,7 @@
           "input_text": "输出是画图结果，传参是PIL.Image格式图片"
         }
       },
-      "0x1f7801428f0": {
+      "0x19e4adb4c40": {
         "type_": "dynamic.StatusDynamicNode_数据存储_组件保存",
         "icon": null,
         "name": "组件保存",
@@ -382,7 +382,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 168.36,
+        "width": 166.175,
         "height": 69.6,
         "pos": [
           793.5580428707995,
@@ -396,7 +396,7 @@
           "debug_code": {}
         }
       },
-      "0x1f780143ee0": {
+      "0x19e4adb6bf0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
         "icon": null,
         "name": "大模型输出解析",
@@ -421,7 +421,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 311.88,
+        "width": 308.05625000000003,
         "height": 137.85000000000002,
         "pos": [
           374.30524885574687,
@@ -437,7 +437,7 @@
           "type": "python"
         }
       },
-      "0x1f780143a30": {
+      "0x19e4adb6500": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程",
@@ -462,7 +462,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 446.20000000000005,
+        "width": 442.0025,
         "height": 113.7,
         "pos": [
           -212.7888005267846,
@@ -478,7 +478,7 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x1f780eb9f00": {
+      "0x19e4adb6890": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_构建多轮对话",
         "icon": null,
         "name": "构建多轮对话",
@@ -503,8 +503,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 523.48,
-        "height": 464.40000000000003,
+        "width": 519.2825,
+        "height": 463.35,
         "pos": [
           -1488.3766861115637,
           2241.3958265546185
@@ -543,7 +543,7 @@
           ]
         }
       },
-      "0x1f780eb8310": {
+      "0x19e4adb7460": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 2",
@@ -568,7 +568,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 420.44,
+        "width": 411.84375,
         "height": 101.10000000000001,
         "pos": [
           -1686.0824351237516,
@@ -583,7 +583,7 @@
           "prop_0": "params"
         }
       },
-      "0x1f780eb9b70": {
+      "0x19e4adb68f0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "组件参数",
@@ -608,7 +608,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 470.12,
+        "width": 467.935,
         "height": 101.10000000000001,
         "pos": [
           -2257.607258860842,
@@ -623,7 +623,7 @@
           "input_text": "组件参数暂无"
         }
       },
-      "0x1f7803885e0": {
+      "0x19e5edfe3b0": {
         "type_": "dynamic.StatusDynamicNode_数据存储_组件保存",
         "icon": null,
         "name": "组件保存 1",
@@ -648,7 +648,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 190.44,
+        "width": 185.86875,
         "height": 69.6,
         "pos": [
           2889.007151591656,
@@ -662,7 +662,7 @@
           "debug_code": {}
         }
       },
-      "0x1f780388280": {
+      "0x19e5edfe380": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程 1",
@@ -687,7 +687,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 468.28000000000003,
+        "width": 461.69625,
         "height": 113.7,
         "pos": [
           1591.2919104435405,
@@ -703,7 +703,7 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x1f78038af50": {
+      "0x19e5edfdd50": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
         "icon": null,
         "name": "大模型输出解析 1",
@@ -728,7 +728,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 333.96000000000004,
+        "width": 327.75,
         "height": 137.85000000000002,
         "pos": [
           2144.609755598015,
@@ -744,7 +744,7 @@
           "type": "python"
         }
       },
-      "0x1f78038b520": {
+      "0x19e5edfd6f0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话 1",
@@ -769,8 +769,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 576.84,
-        "height": 593.5500000000001,
+        "width": 571.7225,
+        "height": 592.5,
         "pos": [
           931.5169150076003,
           2383.712943052449
@@ -796,7 +796,7 @@
           ]
         }
       },
-      "0x1f780fcf490": {
+      "0x19e5c98eda0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "长文本输入",
@@ -821,7 +821,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 490.36,
+        "width": 487.62875,
         "height": 101.10000000000001,
         "pos": [
           423.2892106203867,
@@ -836,7 +836,7 @@
           "input_text": "有全局变量了就不需要在property上配置模型名称了呀，只需要用range类型控制下温度，还有你问题分类的配置呢，用动态表单动态创建问题分类，继续优化"
         }
       },
-      "0x1f780fcf970": {
+      "0x19e5c98f4f0": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\WorkFlowGUI\\icons/代码执行.svg",
         "name": "代码编辑",
@@ -861,8 +861,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 814.2,
-        "height": 805.65,
+        "width": 812.015,
+        "height": 803.5500000000001,
         "pos": [
           1266.699627263219,
           1316.2617103508499
@@ -903,7 +903,7 @@
           "code": "def run(self, params, inputs=None):\n    import matplotlib.pyplot as plt\n    from PIL import Image\n    import io\n    # 获取输入数据\n    self.logger.info(type(inputs.input))\n    data = inputs.input if inputs else []\n    # 创建图表\n    plt.figure(figsize=(8, 4))\n    plt.plot(data, marker='o')\n    plt.title(\"Matplotlib Chart\")\n    plt.xlabel(\"X-axis\")\n    plt.ylabel(\"Y-axis\")\n    # 保存到内存中的字节流\n    buf = io.BytesIO()\n    plt.savefig(buf, format='png')\n    plt.close()\n    buf.seek(0)\n    # 转换为PIL.Image格式\n    image = Image.open(buf)\n    # 返回结果\n    return {\n        \"output1\": image\n    }"
         }
       },
-      "0x1f780decdf0": {
+      "0x19e4c3c8ca0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": "D:\\work\\WorkFlowGUI\\icons\\文本输入.svg",
         "name": "文本输入",
@@ -928,7 +928,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 446.20000000000005,
+        "width": 444.01500000000004,
         "height": 268.05,
         "pos": [
           -55.5733661040731,
@@ -943,7 +943,7 @@
           "input": "[1,2,3,4,5,6,7,8,9,10]"
         }
       },
-      "0x1f780decca0": {
+      "0x19e4c3c8520": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\WorkFlowGUI\\icons/代码执行.svg",
         "name": "代码编辑 1",
@@ -968,8 +968,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 836.2800000000001,
-        "height": 805.65,
+        "width": 831.70875,
+        "height": 803.5500000000001,
         "pos": [
           2325.2192894661075,
           1314.5477532048956
@@ -1010,7 +1010,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    # 在这里编写你的组件逻辑\n    input_data = inputs.get(\"input_data\") if inputs else None\n    param1 = params.get(\"param1\", \"default_value\")\n    # 处理逻辑\n    result = f\"处理结果: {input_data} + {param1}\"\n    return {\n        \"output_0\": result\n    }"
         }
       },
-      "0x1f7804ee560": {
+      "0x19e5ca2cf70": {
         "type_": "dynamic.StatusDynamicNode_数据可视化_Matplotlib画图",
         "icon": null,
         "name": "Matplotlib画图",
@@ -1035,7 +1035,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 484.84000000000003,
+        "width": 473.685,
         "height": 565.2,
         "pos": [
           2052.2691118456814,
@@ -1060,7 +1060,7 @@
           "prop1": "折线图"
         }
       },
-      "0x1f780decdc0": {
+      "0x19e5c8c7280": {
         "type_": "dynamic.StatusDynamicNode_数据可视化_Matplotlib画图",
         "icon": null,
         "name": "Matplotlib画图 1",
@@ -1085,7 +1085,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 506.92,
+        "width": 493.37875,
         "height": 565.2,
         "pos": [
           645.0569955949172,
@@ -1110,7 +1110,7 @@
           "prop1": "折线图"
         }
       },
-      "0x1f7804ef0a0": {
+      "0x19e40ae1cc0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话 3",
@@ -1135,8 +1135,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 512.44,
-        "height": 534.75,
+        "width": 507.32250000000005,
+        "height": 533.7,
         "pos": [
           -991.3712212986521,
           3090.919506805821
@@ -1157,7 +1157,7 @@
           "model_params": []
         }
       },
-      "0x1f7804ec880": {
+      "0x19e5ccd1f00": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程 3",
@@ -1182,7 +1182,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 468.28000000000003,
+        "width": 461.69625,
         "height": 113.7,
         "pos": [
           -241.50366028431938,
@@ -1198,7 +1198,7 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x1f780454df0": {
+      "0x19e5ccd19f0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -1223,7 +1223,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 168.36,
+        "width": 166.175,
         "height": 69.6,
         "pos": [
           -2105.5282470386965,
@@ -1237,7 +1237,7 @@
           "debug_code": {}
         }
       },
-      "0x1f780211d20": {
+      "0x19e5ccd2800": {
         "type_": "dynamic.StatusDynamicNode_数据转换_文件转图片",
         "icon": null,
         "name": "文件转图片",
@@ -1262,7 +1262,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 188.6,
+        "width": 185.86875,
         "height": 69.6,
         "pos": [
           -1883.6264598008922,
@@ -1276,7 +1276,7 @@
           "debug_code": {}
         }
       },
-      "0x1f780211690": {
+      "0x19e5ccd2a40": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_图像4通道转3通道",
         "icon": null,
         "name": "图像4通道转3通道",
@@ -1301,7 +1301,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 251.16000000000003,
+        "width": 245.32375000000002,
         "height": 69.6,
         "pos": [
           -1657.539112845723,
@@ -1315,7 +1315,7 @@
           "debug_code": {}
         }
       },
-      "0x1f780211720": {
+      "0x19e5ccd2c80": {
         "type_": "dynamic.StatusDynamicNode_数据转换_图片转base64编码",
         "icon": null,
         "name": "图片转base64编码",
@@ -1340,7 +1340,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 254.84,
+        "width": 246.07125000000002,
         "height": 69.6,
         "pos": [
           -1343.6006825022594,
@@ -1354,7 +1354,7 @@
           "debug_code": {}
         }
       },
-      "0x1f780211540": {
+      "0x19e5ccd2ef0": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口 1",
@@ -1392,7 +1392,7 @@
           "persistent_id": {}
         }
       },
-      "0x1f780210b50": {
+      "0x19e5ccd2f50": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口 1",
@@ -1430,7 +1430,7 @@
           "persistent_id": {}
         }
       },
-      "0x1f780213fd0": {
+      "0x19e5ccd3220": {
         "type_": "control_flow.ControlFlowLoopNode",
         "icon": null,
         "name": "循环控制流区域",
@@ -1456,7 +1456,7 @@
         "selected": false,
         "visible": true,
         "width": 2478.895859595407,
-        "height": 673.5500000000002,
+        "height": 672.5,
         "pos": [
           257.25035969631017,
           2343.712943052449
@@ -1478,343 +1478,343 @@
     "connections": [
       {
         "in": [
-          "0x1f780d19000",
+          "0x19e5c92aad0",
           "user_input"
         ],
         "out": [
-          "0x1f7804b2d70",
+          "0x19e4ac83a00",
           "prompt"
         ]
       },
       {
         "in": [
-          "0x1f780d19000",
+          "0x19e5c92aad0",
           "history"
         ],
         "out": [
-          "0x1f780eb9f00",
+          "0x19e4adb6890",
           "output1"
         ]
       },
       {
         "out": [
-          "0x1f780d19000",
+          "0x19e5c92aad0",
           "response"
         ],
         "in": [
-          "0x1f780143a30",
+          "0x19e4adb6500",
           "raw_text"
         ]
       },
       {
         "out": [
-          "0x1f780d19000",
+          "0x19e5c92aad0",
           "history"
         ],
         "in": [
-          "0x1f780213fd0",
+          "0x19e5ccd3220",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1f7804b3e80",
+          "0x19e5c88dae0",
           "output"
         ],
         "in": [
-          "0x1f7804b04c0",
+          "0x19e5c88d930",
           "input1"
         ]
       },
       {
         "out": [
-          "0x1f7804b04c0",
+          "0x19e5c88d930",
           "output1"
         ],
         "in": [
-          "0x1f7804b2d70",
+          "0x19e4ac83a00",
           "variables"
         ]
       },
       {
         "in": [
-          "0x1f7804b2d70",
+          "0x19e4ac83a00",
           "variables"
         ],
         "out": [
-          "0x1f7804b11e0",
+          "0x19e4ac83250",
           "output1"
         ]
       },
       {
         "in": [
-          "0x1f7804b2d70",
+          "0x19e4ac83a00",
           "variables"
         ],
         "out": [
-          "0x1f780141e40",
+          "0x19e4ac82950",
           "output1"
         ]
       },
       {
         "in": [
-          "0x1f7804b2d70",
+          "0x19e4ac83a00",
           "variables"
         ],
         "out": [
-          "0x1f780eb8310",
+          "0x19e4adb7460",
           "output1"
         ]
       },
       {
         "out": [
-          "0x1f7804b35e0",
+          "0x19e4ac830a0",
           "output"
         ],
         "in": [
-          "0x1f7804b11e0",
+          "0x19e4ac83250",
           "input1"
         ]
       },
       {
         "in": [
-          "0x1f780141e40",
+          "0x19e4ac82950",
           "input1"
         ],
         "out": [
-          "0x1f7801427a0",
+          "0x19e4adb5c60",
           "output"
         ]
       },
       {
         "in": [
-          "0x1f7801428f0",
+          "0x19e4adb4c40",
           "text"
         ],
         "out": [
-          "0x1f780143ee0",
+          "0x19e4adb6bf0",
           "parsed_json"
         ]
       },
       {
         "in": [
-          "0x1f780143ee0",
+          "0x19e4adb6bf0",
           "llm_output"
         ],
         "out": [
-          "0x1f780143a30",
+          "0x19e4adb6500",
           "cleaned_text"
         ]
       },
       {
         "in": [
-          "0x1f780eb8310",
+          "0x19e4adb7460",
           "input1"
         ],
         "out": [
-          "0x1f780eb9b70",
+          "0x19e4adb68f0",
           "output"
         ]
       },
       {
         "in": [
-          "0x1f780388280",
+          "0x19e5edfe380",
           "raw_text"
         ],
         "out": [
-          "0x1f78038b520",
+          "0x19e5edfd6f0",
           "response"
         ]
       },
       {
         "out": [
-          "0x1f780388280",
+          "0x19e5edfe380",
           "cleaned_text"
         ],
         "in": [
-          "0x1f78038af50",
+          "0x19e5edfdd50",
           "llm_output"
         ]
       },
       {
         "in": [
-          "0x1f78038b520",
+          "0x19e5edfd6f0",
           "user_input"
         ],
         "out": [
-          "0x1f780fcf490",
+          "0x19e5c98eda0",
           "output"
         ]
       },
       {
         "in": [
-          "0x1f78038b520",
+          "0x19e5edfd6f0",
           "history"
         ],
         "out": [
-          "0x1f780211540",
+          "0x19e5ccd2ef0",
           "output"
         ]
       },
       {
         "out": [
-          "0x1f78038b520",
+          "0x19e5edfd6f0",
           "history"
         ],
         "in": [
-          "0x1f780210b50",
+          "0x19e5ccd2f50",
           "input"
         ]
       },
       {
         "in": [
-          "0x1f780fcf970",
+          "0x19e5c98f4f0",
           "input"
         ],
         "out": [
-          "0x1f780decdf0",
+          "0x19e4c3c8ca0",
           "text"
         ]
       },
       {
         "out": [
-          "0x1f780fcf970",
+          "0x19e5c98f4f0",
           "output1"
         ],
         "in": [
-          "0x1f780decca0",
+          "0x19e4c3c8520",
           "input_0"
         ]
       },
       {
         "out": [
-          "0x1f780decdf0",
+          "0x19e4c3c8ca0",
           "text"
         ],
         "in": [
-          "0x1f7804ee560",
+          "0x19e5ca2cf70",
           "x"
         ]
       },
       {
         "out": [
-          "0x1f780decdf0",
+          "0x19e4c3c8ca0",
           "text"
         ],
         "in": [
-          "0x1f7804ee560",
+          "0x19e5ca2cf70",
           "y"
         ]
       },
       {
         "out": [
-          "0x1f780decdf0",
+          "0x19e4c3c8ca0",
           "text"
         ],
         "in": [
-          "0x1f780decdc0",
+          "0x19e5c8c7280",
           "x"
         ]
       },
       {
         "out": [
-          "0x1f780decdf0",
+          "0x19e4c3c8ca0",
           "text"
         ],
         "in": [
-          "0x1f780decdc0",
+          "0x19e5c8c7280",
           "y"
         ]
       },
       {
         "in": [
-          "0x1f7804ef0a0",
+          "0x19e40ae1cc0",
           "user_input"
         ],
         "out": [
-          "0x1f780211720",
+          "0x19e5ccd2c80",
           "output1"
         ]
       },
       {
         "out": [
-          "0x1f7804ef0a0",
+          "0x19e40ae1cc0",
           "response"
         ],
         "in": [
-          "0x1f7804ec880",
+          "0x19e5ccd1f00",
           "raw_text"
         ]
       },
       {
         "out": [
-          "0x1f780454df0",
+          "0x19e5ccd19f0",
           "file"
         ],
         "in": [
-          "0x1f780211d20",
+          "0x19e5ccd2800",
           "file"
         ]
       },
       {
         "out": [
-          "0x1f780211d20",
+          "0x19e5ccd2800",
           "image"
         ],
         "in": [
-          "0x1f780211690",
+          "0x19e5ccd2a40",
           "input"
         ]
       },
       {
         "out": [
-          "0x1f780211690",
+          "0x19e5ccd2a40",
           "output"
         ],
         "in": [
-          "0x1f780211720",
+          "0x19e5ccd2c80",
           "input1"
         ]
       }
     ]
   },
   "runtime": {
-    "environment": "3.12",
-    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.12\\python.exe",
+    "environment": "3.14",
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
     "node_id2stable_key": {
-      "0x1f780d19000": "大模型组件/大模型对话||大模型对话",
-      "0x1f7804b3e80": "数据集成/长文本输入||组件意图",
-      "0x1f7804b04c0": "大模型组件/JSON文本包装||JSON文本包装",
-      "0x1f7804b2d70": "大模型组件/提示词模板||提示词模板 3",
-      "0x1f7804b35e0": "数据集成/长文本输入||组件输入",
-      "0x1f7804b11e0": "大模型组件/JSON文本包装||JSON文本包装 1",
-      "0x1f780141e40": "大模型组件/JSON文本包装||JSON文本包装 3",
-      "0x1f7801427a0": "数据集成/长文本输入||组件输出",
-      "0x1f7801428f0": "数据存储/组件保存||组件保存",
-      "0x1f780143ee0": "大模型组件/大模型输出解析||大模型输出解析",
-      "0x1f780143a30": "大模型组件/移除思考过程||移除思考过程",
-      "0x1f780eb9f00": "大模型组件/构建多轮对话||构建多轮对话",
-      "0x1f780eb8310": "大模型组件/JSON文本包装||JSON文本包装 2",
-      "0x1f780eb9b70": "数据集成/长文本输入||组件参数",
-      "0x1f7803885e0": "数据存储/组件保存||组件保存 1",
-      "0x1f780388280": "大模型组件/移除思考过程||移除思考过程 1",
-      "0x1f78038af50": "大模型组件/大模型输出解析||大模型输出解析 1",
-      "0x1f78038b520": "大模型组件/大模型对话||大模型对话 1",
-      "0x1f780fcf490": "数据集成/长文本输入||长文本输入",
-      "0x1f780fcf970": "代码执行/代码编辑||代码编辑",
-      "0x1f780decdf0": "数据集成/文本输入||文本输入",
-      "0x1f780decca0": "代码执行/代码编辑||代码编辑 1",
-      "0x1f7804ee560": "数据可视化/Matplotlib画图||Matplotlib画图",
-      "0x1f780decdc0": "数据可视化/Matplotlib画图||Matplotlib画图 1",
-      "0x1f7804ef0a0": "大模型组件/大模型对话||大模型对话 3",
-      "0x1f7804ec880": "大模型组件/移除思考过程||移除思考过程 3",
-      "0x1f780454df0": "数据集成/文档上传||文档上传",
-      "0x1f780211d20": "数据转换/文件转图片||文件转图片",
-      "0x1f780211690": "数据预处理/图像4通道转3通道||图像4通道转3通道",
-      "0x1f780211720": "数据转换/图片转base64编码||图片转base64编码",
-      "0x1f780211540": "控制流/输入端口||输入端口 1",
-      "0x1f780210b50": "控制流/输出端口||输出端口 1",
-      "0x1f780213fd0": "控制流/循环控制流区域||循环控制流区域"
+      "0x19e5c92aad0": "大模型组件/大模型对话||大模型对话",
+      "0x19e5c88dae0": "数据集成/长文本输入||组件意图",
+      "0x19e5c88d930": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x19e4ac83a00": "大模型组件/提示词模板||提示词模板 3",
+      "0x19e4ac830a0": "数据集成/长文本输入||组件输入",
+      "0x19e4ac83250": "大模型组件/JSON文本包装||JSON文本包装 1",
+      "0x19e4ac82950": "大模型组件/JSON文本包装||JSON文本包装 3",
+      "0x19e4adb5c60": "数据集成/长文本输入||组件输出",
+      "0x19e4adb4c40": "数据存储/组件保存||组件保存",
+      "0x19e4adb6bf0": "大模型组件/大模型输出解析||大模型输出解析",
+      "0x19e4adb6500": "大模型组件/移除思考过程||移除思考过程",
+      "0x19e4adb6890": "大模型组件/构建多轮对话||构建多轮对话",
+      "0x19e4adb7460": "大模型组件/JSON文本包装||JSON文本包装 2",
+      "0x19e4adb68f0": "数据集成/长文本输入||组件参数",
+      "0x19e5edfe3b0": "数据存储/组件保存||组件保存 1",
+      "0x19e5edfe380": "大模型组件/移除思考过程||移除思考过程 1",
+      "0x19e5edfdd50": "大模型组件/大模型输出解析||大模型输出解析 1",
+      "0x19e5edfd6f0": "大模型组件/大模型对话||大模型对话 1",
+      "0x19e5c98eda0": "数据集成/长文本输入||长文本输入",
+      "0x19e5c98f4f0": "代码执行/代码编辑||代码编辑",
+      "0x19e4c3c8ca0": "数据集成/文本输入||文本输入",
+      "0x19e4c3c8520": "代码执行/代码编辑||代码编辑 1",
+      "0x19e5ca2cf70": "数据可视化/Matplotlib画图||Matplotlib画图",
+      "0x19e5c8c7280": "数据可视化/Matplotlib画图||Matplotlib画图 1",
+      "0x19e40ae1cc0": "大模型组件/大模型对话||大模型对话 3",
+      "0x19e5ccd1f00": "大模型组件/移除思考过程||移除思考过程 3",
+      "0x19e5ccd19f0": "数据集成/文档上传||文档上传",
+      "0x19e5ccd2800": "数据转换/文件转图片||文件转图片",
+      "0x19e5ccd2a40": "数据预处理/图像4通道转3通道||图像4通道转3通道",
+      "0x19e5ccd2c80": "数据转换/图片转base64编码||图片转base64编码",
+      "0x19e5ccd2ef0": "控制流/输入端口||输入端口 1",
+      "0x19e5ccd2f50": "控制流/输出端口||输出端口 1",
+      "0x19e5ccd3220": "控制流/循环控制流区域||循环控制流区域"
     },
     "node_states": {
       "大模型组件/大模型对话||大模型对话": "success",

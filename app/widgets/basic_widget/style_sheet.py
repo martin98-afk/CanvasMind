@@ -9,6 +9,7 @@ from app.utils.utils import resource_path
 class StyleSheet(StyleSheetBase, Enum):
     """ Style sheet  """
 
+    VARIABLE_EXPLORER = "variable_explorer"
     LINK_CARD = "link_card"
     SAMPLE_CARD = "sample_card"
     HOME_INTERFACE = "home_interface"

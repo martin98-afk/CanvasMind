@@ -14,7 +14,8 @@ from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer, QPoint, QThreadPool
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication, QSplitter
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication, QSplitter, \
+    QSizePolicy
 from loguru import logger
 from qfluentwidgets import (
     InfoBar,
@@ -37,6 +38,7 @@ from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon
 from app.widgets.basic_widget.ipython_console import EmbeddedIPythonConsole
+from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.basic_widget.variable_explorer import VariableExplorerWidget
 from app.widgets.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
@@ -116,12 +118,19 @@ class CanvasPage(QWidget):
         self.property_panel = PropertyPanel(self)
         self.global_variables_changed.connect(self.property_panel._on_global_variables_changed)
         # 布局
-        main_layout = VBoxLayout(self)
-        canvas_layout = QHBoxLayout()
-        canvas_layout.addWidget(self.nav_panel)
-        canvas_layout.addWidget(self.canvas_widget, 1)
-        canvas_layout.addWidget(self.property_panel, 0, Qt.AlignRight)
-        main_layout.addLayout(canvas_layout)
+        StyleSheet.COMPONENT_DEVELOPER.apply(self)
+        main_layout = QHBoxLayout(self)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(self.nav_panel)
+        splitter.addWidget(self.canvas_widget)
+        splitter.addWidget(self.property_panel)
+        splitter.setSizes([150, 800, 150])  # 画布初始分配更大空间
+
+        # 设置分割器的拉伸因子，确保画布区域优先扩展
+        splitter.setStretchFactor(0, 0)  # 左侧导航不拉伸
+        splitter.setStretchFactor(1, 1)  # 中间画布拉伸（主要区域）
+        splitter.setStretchFactor(2, 0)  # 右侧属性不拉伸
+        main_layout.addWidget(splitter, 1)
         # 快捷组件工具管理
         self.quick_manager = QuickComponentManager(
             parent_widget=self,

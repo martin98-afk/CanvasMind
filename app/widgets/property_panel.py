@@ -39,7 +39,7 @@ class PropertyPanel(CardWidget):
     def __init__(self, main_window, parent=None):
         super().__init__(parent)
         self.main_window = main_window
-        self.setFixedWidth(280)
+        self.setMinimumWidth(280)
         # === 全局变量缓存 ===
         self._custom_var_cards = {}
         self._node_var_cards = {}
@@ -853,6 +853,7 @@ class PropertyPanel(CardWidget):
     def _add_column_selector_widget_to_layout(self, node, port_name, data, layout):
         if not isinstance(data, pd.DataFrame) or data.empty:
             return
+
         columns = list(data.columns)
         if not columns:
             return
@@ -862,24 +863,20 @@ class PropertyPanel(CardWidget):
         initial_max_height = 200  # 初始显示的最大高度
         column_card.setMaximumHeight(initial_max_height)
         column_card.setMinimumHeight(initial_max_height)
-
         # 用于存储该卡片的展开/收缩状态 (使用 port_name 作为唯一标识)
         node_id = node.id
         port_identifier = f"{node_id}_{port_name}"  # 组合 node_id 和 port_name 确保唯一性
         if not hasattr(self, '_column_selector_card_expanded'):
             self._column_selector_card_expanded = {}
         self._column_selector_card_expanded[port_identifier] = False
-
         card_layout = QVBoxLayout(column_card)
         card_layout.setContentsMargins(4, 4, 4, 4)
         card_layout.setSpacing(8)
-
         # --- 新增：标题和展开/收缩按钮布局 ---
         title_btn_layout = QHBoxLayout()
         title_label = BodyLabel("列选择:")
         title_btn_layout.addWidget(title_label)
         title_btn_layout.addStretch()
-
         expand_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
         expand_btn.setFixedSize(QSize(26, 20))
 
@@ -895,14 +892,14 @@ class PropertyPanel(CardWidget):
                 # 展开
                 # 计算展开所需的高度 (估算每个列表项大约 35 像素)
                 num_items = list_widget.count()
-                estimated_height_for_items = num_items * 40
+                estimated_height_for_items = num_items * 39
                 # 估算布局填充和标题的高度
                 padding_height = card_layout.contentsMargins().top() + card_layout.contentsMargins().bottom()
                 # 标题和按钮布局的高度 (BodyLabel + Layout spacing)
                 title_height = title_label.sizeHint().height() + card_layout.spacing()
                 total_estimated_height = padding_height + title_height + estimated_height_for_items
                 # 如果需要完全展开，可以设置固定高度
-                column_card.setFixedHeight(total_estimated_height + 50)
+                column_card.setFixedHeight(total_estimated_height + 40)
                 expand_btn.setIcon(get_icon("缩小"))
                 self._column_selector_card_expanded[port_identifier] = True
             # 调用布局无效化以触发更新
@@ -913,10 +910,8 @@ class PropertyPanel(CardWidget):
         title_btn_layout.addWidget(expand_btn)
         card_layout.addLayout(title_btn_layout)
         # --- 结束新增 ---
-
         list_widget = ListWidget(self)
         list_widget.setSelectionMode(ListWidget.NoSelection)
-
         for col in columns:
             item = QListWidgetItem(col)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
@@ -938,34 +933,54 @@ class PropertyPanel(CardWidget):
         clear_btn = PushButton("清空", self)
 
         def select_all():
-            for i in range(list_widget.count()):
-                list_widget.item(i).setCheckState(Qt.Checked)
+            # 阻止 itemChanged 信号，避免每次设置状态都触发更新
+            list_widget.blockSignals(True)
+            try:
+                for i in range(list_widget.count()):
+                    item = list_widget.item(i)
+                    item.setCheckState(Qt.Checked)
+            finally:
+                # 确保无论如何都要恢复信号连接
+                list_widget.blockSignals(False)
+            # 手动触发一次更新
             _on_selection_changed()
 
         def clear_all():
-            for i in range(list_widget.count()):
-                list_widget.item(i).setCheckState(Qt.Unchecked)
+            # 阻止 itemChanged 信号
+            list_widget.blockSignals(True)
+            try:
+                for i in range(list_widget.count()):
+                    item = list_widget.item(i)
+                    item.setCheckState(Qt.Unchecked)
+            finally:
+                # 确保无论如何都要恢复信号连接
+                list_widget.blockSignals(False)
+            # 手动触发一次更新
             _on_selection_changed()
 
         def _on_selection_changed():
+            # 这个函数现在只在全选/全清或单个项改变时被调用
             current_selected = [
                 list_widget.item(i).text()
                 for i in range(list_widget.count())
                 if list_widget.item(i).checkState() == Qt.Checked
             ]
             node.column_select[port_name] = current_selected
-            self._update_text_edit_for_port(port_name, data[current_selected])
+            # 这里只获取选中的列数据，避免全量传递
+            selected_data_subset = data[current_selected] if current_selected else pd.DataFrame()
+            self._update_text_edit_for_port(port_name, selected_data_subset)
+
+        # 连接 itemChanged 信号，用于单个项的勾选/取消勾选
+        list_widget.itemChanged.connect(_on_selection_changed)
 
         select_all_btn.clicked.connect(select_all)
         clear_btn.clicked.connect(clear_all)
-        list_widget.itemChanged.connect(_on_selection_changed)
 
         btn_layout.addWidget(select_all_btn)
         btn_layout.addWidget(clear_btn)
         card_layout.addLayout(btn_layout)
 
         layout.addWidget(column_card)
-
         # 存储 list_widget 以便后续更新
         self._column_list_widgets[port_name] = list_widget
 
@@ -1248,10 +1263,10 @@ class PropertyPanel(CardWidget):
         mode_combo = ComboBox(self)
         mode_combo.addItems(['固定次数', '条件循环', 'While循环'])
         mode_combo.setCurrentText({
-              'count': '固定次数',
-              'condition': '条件循环',
-              'while': 'While循环'
-          }.get(node.model.get_property("loop_mode"), '固定次数'))
+                                      'count': '固定次数',
+                                      'condition': '条件循环',
+                                      'while': 'While循环'
+                                  }.get(node.model.get_property("loop_mode"), '固定次数'))
 
         def on_mode_changed(text):
             mode_map = {'固定次数': 'count', '条件循环': 'condition', 'While循环': 'while'}
@@ -1337,7 +1352,7 @@ class PropertyPanel(CardWidget):
     def _open_long_text_editor(self, line_edit, key):
         # ✅ 根据你的实际路径导入 LongTextEditorDialog
         dialog = LongTextEditorDialog(
-            content=line_edit.toPlainText(), extra_keys=key, parent=self.window(),main_window=self.main_window
+            content=line_edit.toPlainText(), extra_keys=key, parent=self.window(), main_window=self.main_window
         )
         if dialog.exec():
             new_text = dialog.text_edit.toPlainText().strip()
@@ -1549,7 +1564,6 @@ class PropertyPanel(CardWidget):
 
     def _create_dict_row(self, name: str, value):
         card = CardWidget(self)
-        card.setMaximumWidth(250)
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
@@ -1595,7 +1609,6 @@ class PropertyPanel(CardWidget):
 
     def _create_variable_card(self, name: str, node_var_obj):
         card = CardWidget(self)
-        card.setMaximumWidth(250)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(3)
@@ -1712,7 +1725,6 @@ class PropertyPanel(CardWidget):
 
     def _create_env_var_row(self, key: str, value):
         card = CardWidget(self)
-        card.setMaximumWidth(250)
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)

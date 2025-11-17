@@ -159,9 +159,6 @@ class ComponentDeveloperWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         # 左侧：组件树和开发区域
         main_splitter = QSplitter(Qt.Horizontal)
-        self_layout = QVBoxLayout(self)
-        self_layout.setContentsMargins(0, 0, 0, 0)
-        self_layout.setSpacing(0)
         # --- 修改：左侧：组件树 ---
         self.component_tree_panel = ComponentTreePanel(self)
         self.component_tree = self.component_tree_panel.tree  # 保留对 tree 的直接引用（如果已有代码依赖）
