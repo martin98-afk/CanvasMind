@@ -209,7 +209,7 @@ class WorkflowScheduler(QObject):
             self.register_global_variable(nodes)
             # 启动执行器
             self._executor = NodeListExecutor(
-                main_window=None,
+                main_window=self.parent,
                 nodes=nodes,  # 传入拓扑序
                 python_exe=self.get_python_exe(),
                 scheduler=self
@@ -414,10 +414,15 @@ class WorkflowScheduler(QObject):
             self.property_changed.emit(backdrop.id)
 
             try:
-                results = node.execute_sync(
-                    comp_cls, kernel_manager=self.kernel_manager,
-                    python_executable=self.get_python_exe(), check_cancel=check_cancel
-                )
+                if self.parent.config.canvas_run_mode.value == "ipython运行":
+                    results = node.execute_sync(
+                        comp_cls, kernel_manager=self.kernel_manager,
+                        python_executable=self.get_python_exe(), check_cancel=check_cancel
+                    )
+                else:
+                    results = node.execute_sync(
+                        comp_cls, python_executable=self.get_python_exe(), check_cancel=check_cancel
+                    )
                 if results is not None:
                     # 如果结果不为 None， 且其中有含自动更新或者自动累计的变量，则发送变量更新信号
                     for port_name, result in results.items():

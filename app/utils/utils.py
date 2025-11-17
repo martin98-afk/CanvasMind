@@ -512,12 +512,15 @@ def topological_sort(nodes: List, split_components: bool = False) -> Union[Optio
     if not nodes:
         return [] if split_components else []
 
-    in_degree = {node: 0 for node in nodes}
+    # 为了确保顺序固定，先对节点进行排序
+    sorted_nodes = sorted(nodes, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
+
+    in_degree = {node: 0 for node in sorted_nodes}
     graph_deps = defaultdict(list)
     graph_reverse_deps = defaultdict(list)  # 反向图，用于查找连通分量
 
-    node_set = set(nodes)
-    for node in nodes:
+    node_set = set(sorted_nodes)
+    for node in sorted_nodes:
         for input_port in node.input_ports():
             for upstream_out in input_port.connected_ports():
                 upstream = get_port_node(upstream_out)
@@ -531,7 +534,8 @@ def topological_sort(nodes: List, split_components: bool = False) -> Union[Optio
         visited = set()
         components = []
 
-        for start_node in nodes:
+        # 按照排序后的节点顺序遍历，确保连通分量发现的顺序固定
+        for start_node in sorted_nodes:
             if start_node not in visited:
                 # BFS 查找连通分量
                 component = []
@@ -542,12 +546,21 @@ def topological_sort(nodes: List, split_components: bool = False) -> Union[Optio
                     current = queue.popleft()
                     component.append(current)
 
-                    # 检查所有相邻节点（包括前驱和后继）
-                    for neighbor in graph_deps[current] + graph_reverse_deps[current]:
+                    # 检查所有相邻节点（包括前驱和后继），按固定顺序处理
+                    neighbors = []
+                    neighbors.extend(graph_deps[current])
+                    neighbors.extend(graph_reverse_deps[current])
+
+                    # 对邻居节点排序以确保处理顺序固定
+                    neighbors = sorted(neighbors, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
+
+                    for neighbor in neighbors:
                         if neighbor not in visited and neighbor in node_set:
                             visited.add(neighbor)
                             queue.append(neighbor)
 
+                # 对连通分量内的节点排序以确保顺序固定
+                component.sort(key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
                 components.append(component)
 
         return components
@@ -564,17 +577,30 @@ def topological_sort(nodes: List, split_components: bool = False) -> Union[Optio
                     if upstream in component_nodes:
                         component_in_degree[node] += 1
 
-        queue = deque([n for n in component_nodes if component_in_degree[n] == 0])
+        # 从队列中获取零入度节点时也要排序以确保顺序固定
+        zero_in_degree_nodes = [n for n in component_nodes if component_in_degree[n] == 0]
+        queue = deque(sorted(zero_in_degree_nodes, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x)))
+
         execution_order = []
 
         while queue:
+            # 从队列中取出节点时，确保每次处理的顺序一致
             n = queue.popleft()
             execution_order.append(n)
+
+            # 获取邻居节点并排序以确保处理顺序固定
+            neighbors = []
             for neighbor in graph_deps[n]:
                 if neighbor in component_nodes:
-                    component_in_degree[neighbor] -= 1
-                    if component_in_degree[neighbor] == 0:
-                        queue.append(neighbor)
+                    neighbors.append(neighbor)
+
+            # 排序邻居节点
+            neighbors = sorted(neighbors, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
+
+            for neighbor in neighbors:
+                component_in_degree[neighbor] -= 1
+                if component_in_degree[neighbor] == 0:
+                    queue.append(neighbor)
 
         if len(execution_order) != len(component_nodes):
             return None  # 存在环
@@ -595,18 +621,30 @@ def topological_sort(nodes: List, split_components: bool = False) -> Union[Optio
         return result
     else:
         # 传统拓扑排序，处理整个图
-        queue = deque([n for n in nodes if in_degree[n] == 0])
+        # 对初始零入度节点排序以确保顺序固定
+        zero_in_degree_nodes = [n for n in sorted_nodes if in_degree[n] == 0]
+        queue = deque(sorted(zero_in_degree_nodes, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x)))
+
         execution_order = []
 
         while queue:
             n = queue.popleft()
             execution_order.append(n)
+
+            # 获取邻居节点并排序以确保顺序固定
+            neighbors = []
             for neighbor in graph_deps[n]:
                 in_degree[neighbor] -= 1
                 if in_degree[neighbor] == 0:
-                    queue.append(neighbor)
+                    neighbors.append(neighbor)
 
-        if len(execution_order) != len(nodes):
+            # 排序新变为零入度的节点
+            neighbors = sorted(neighbors, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
+
+            for neighbor in neighbors:
+                queue.append(neighbor)
+
+        if len(execution_order) != len(sorted_nodes):
             return None  # 存在环
 
         return execution_order

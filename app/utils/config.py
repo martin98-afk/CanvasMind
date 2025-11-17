@@ -87,6 +87,8 @@ class Settings(QConfig):
     )
 
     # ========== 新增：画布设置 ==========
+    canvas_run_mode = OptionsConfigItem("Canvas", "RunMode", "ipython运行",
+                                         OptionsValidator(["ipython运行", "subprocess运行"]))
     canvas_grid_mode = OptionsConfigItem("Canvas", "ShowGrid", "线网格",
                                             OptionsValidator(["线网格", "点网格", "无网格"]))
     canvas_grid_size = ConfigItem("Canvas", "GridSize", 20, RangeValidator(10, 30))

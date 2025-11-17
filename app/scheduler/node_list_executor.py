@@ -41,6 +41,7 @@ class NodeListExecutor(QRunnable):
         self.component_map = {}
         self.scheduler = scheduler
         self.kernel_manager = scheduler.kernel_manager if scheduler else None
+        self.run_mode = main_window.config.canvas_run_mode.value
 
     def cancel(self):
         self._is_cancelled = True
@@ -70,12 +71,19 @@ class NodeListExecutor(QRunnable):
                 try:
                     if getattr(node, "execute_sync", None) is not None:
                         comp_cls = self.component_map.get(getattr(node, "FULL_PATH", None))
-                        results = node.execute_sync(
-                            comp_cls,
-                            python_executable=self.python_exe,
-                            check_cancel=self._check_cancel,
-                            kernel_manager=self.kernel_manager
-                        )
+                        if self.run_mode == "ipython运行":
+                            results = node.execute_sync(
+                                comp_cls,
+                                python_executable=self.python_exe,
+                                check_cancel=self._check_cancel,
+                                kernel_manager=self.kernel_manager
+                            )
+                        else:
+                            results = node.execute_sync(
+                                comp_cls,
+                                python_executable=self.python_exe,
+                                check_cancel=self._check_cancel
+                            )
                         if results is not None:
                             # 如果结果不为 None， 且其中有含自动更新或者自动累计的变量，则发送变量更新信号
                             for port_name, result in results.items():
