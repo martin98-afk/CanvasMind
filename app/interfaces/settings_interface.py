@@ -193,6 +193,7 @@ class SettingInterface(ScrollArea):
             texts=["ipython运行", "subprocess运行"],
             parent=self.canvasGroup
         )
+        self.cfg.canvas_run_mode.valueChanged.connect(self.onConfigChanged)
         self.showGridCard = OptionsSettingCard(
             self.cfg.canvas_grid_mode,
             get_icon("画布"),
