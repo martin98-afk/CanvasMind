@@ -361,14 +361,14 @@ class ResourceLinkCardView(CardWidget):
             get_icon("logo3"),
             "使用指南",
             "功能清单及使用方法演示",
-            "https://martin98-afk.github.io/CanvasMind"
+            "https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/"
         )
 
         self.linkCardView.addCard(
             FluentIcon.CODE,
             "流程图样例",
             "获取官方画布样例文件",
-            "https://github.com/martin98-afk/CanvasMind/tree/master/workflows"
+            "https://github.com/martin98-afk/CanvasMind/tree/master/examples"
         )
 
         self.linkCardView.addCard(

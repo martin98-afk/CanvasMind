@@ -156,9 +156,10 @@ class EmbeddedIPythonConsole(QWidget):
 class IPythonConsoleManager(QWidget):
     """控制台标签管理器"""
 
-    def __init__(self, parent=None, package_manager=None):
+    def __init__(self, parent=None, package_manager=None, var_explorer=None):
         super().__init__(parent)
         self.package_manager = package_manager
+        self.var_explorer = var_explorer
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
@@ -176,12 +177,20 @@ class IPythonConsoleManager(QWidget):
         self.tab_bar.tabAddRequested.connect(self.add_new_console_tab)
         self.tab_bar.tabCloseRequested.connect(self.close_console_tab)
         self.tab_bar.currentChanged.connect(self.on_tab_changed)
-
-        self.add_new_console_tab()
+        if len(package_manager.mgr.list_envs()) > 0:
+            self.add_new_console_tab()
 
     def on_tab_changed(self, index):
         """标签切换"""
         self.stacked_widget.setCurrentIndex(index)
+        self.set_var_explorer()
+
+    def set_var_explorer(self):
+        kernel_manager = self.get_current_kernel_manager()
+        if kernel_manager:
+            self.var_explorer.stop_auto_refresh()
+            self.var_explorer.set_kernel_manager(kernel_manager)
+            self.var_explorer.start_auto_refresh()
 
     def add_new_console_tab(self):
         console_widget = EmbeddedIPythonConsole(
@@ -197,6 +206,7 @@ class IPythonConsoleManager(QWidget):
         console_widget.env_selector.env_changed.connect(
             lambda path, idx=index: self.update_tab_title(idx)
         )
+        self.set_var_explorer()
 
     def update_tab_title(self, index):
         console_widget = self.stacked_widget.widget(index)
@@ -214,6 +224,9 @@ class IPythonConsoleManager(QWidget):
             if self.tab_bar.currentIndex() == -1 and self.tab_bar.count() > 0:
                 new_index = min(index, self.tab_bar.count() - 1)
                 self.tab_bar.setCurrentIndex(new_index)
+        # 当前如果没有任何控制台，停止变量同步
+        if self.tab_bar.count() == 0:
+            self.var_explorer.stop_auto_refresh()
 
     def get_current_console(self):
         current_index = self.stacked_widget.currentIndex()

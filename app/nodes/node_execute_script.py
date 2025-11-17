@@ -98,8 +98,4 @@ if __name__ == "__main__":
             pickle.dump(error_info, f)
         node_logger.error(f"执行异常: {{e}}")
         print(f"EXECUTION_ERROR: {{e}}", flush=True)
-        
-    finally:
-        if 'log_handler_id' in locals:
-            logger.remove(log_handler_id)
 '''

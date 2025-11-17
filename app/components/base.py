@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import ast
 import json
 import os
 import pickle
@@ -695,24 +696,24 @@ class BaseComponent(ABC):
         return data  # 兜底：包装为单元素列表
 
     def _read_csv_data(self, data: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
-        """读取CSV数据"""
-        if isinstance(data, pd.DataFrame):
+        """读取CSV数据。如果输入是字符串或路径，则必须是存在的文件。"""
+        if isinstance(data, (pd.DataFrame, pd.Series)):
             return data
-        elif isinstance(data, str):
-            data = Path(data)
-            if data.is_file():
-                return pd.read_csv(str(data))
+        # 如果是字符串或 Path 对象，必须是存在的文件
+        elif isinstance(data, (str, Path)):
+            path = Path(data)
+            if path.is_file():
+                return pd.read_csv(str(path))
             else:
-                # 如果是CSV字符串
-                import io
-                return pd.read_csv(io.StringIO(data))
+                # 修复：不再尝试将不存在的路径作为 CSV 字符串解析
+                raise ComponentError(f"CSV 文件不存在: {path}")
         else:
-            raise ComponentError(f"无法读取CSV数据: {type(data)}")
+            raise ComponentError(f"无法读取CSV数据，不支持的类型: {type(data)}")
 
     def _read_json_data(self, data: Union[str, dict, list, Path]) -> Union[dict, list, str]:
+        """读取JSON数据。如果输入是字符串或路径，则尝试作为文件、标准JSON或Python字面量解析。"""
         if data is None or (isinstance(data, str) and not data.strip()):
             return {}
-
         if isinstance(data, (dict, list)):
             return data
         elif isinstance(data, (str, Path)):
@@ -725,15 +726,20 @@ class BaseComponent(ABC):
                 try:
                     return json.loads(data)
                 except json.JSONDecodeError:
-                    # 尝试修复单引号（仅当明显是 dict/list 字符串时）
-                    if data.strip().startswith(("{", "[")) and data.strip().endswith(("}", "]")):
-                        try:
-                            fixed = data.replace("'", '"')
-                            return json.loads(fixed)
-                        except Exception:
-                            pass
-                    self.logger.warning(f"JSON 输入无法解析: {data[:100]}...")
-                    return data
+                    self.logger.debug(f"标准JSON解析失败，尝试作为Python字面量解析: {data[:100]}...")
+                    try:
+                        # 使用 ast.literal_eval 安全解析 Python 字面量（如单引号字典、列表）
+                        parsed = ast.literal_eval(data)
+                        if isinstance(parsed, (dict, list)):
+                            return parsed
+                        else:
+                            # 如果解析出来不是 dict 或 list，说明不是我们期望的 JSON 格式
+                            self.logger.warning(f"解析出的数据不是字典或列表，而是 {type(parsed)}: {data}")
+                            raise ComponentError(f"输入内容解析后不是有效的JSON结构: {data}", "JSON_PARSE_ERROR")
+                    except (ValueError, SyntaxError):
+                        # ast.literal_eval 也失败了
+                        self.logger.warning(f"Python字面量解析也失败: {data[:100]}...")
+                        raise ComponentError(f"JSON 输入格式错误或文件不存在: {data}", "JSON_PARSE_ERROR")
         else:
             raise ComponentError(f"不支持的 JSON 输入类型: {type(data)}", "JSON_TYPE_ERROR")
 
@@ -840,7 +846,7 @@ class BaseComponent(ABC):
 
     def _store_csv_data(self, data: pd.DataFrame) -> Union[DataFrame, str, Path]:
         """存储CSV数据"""
-        if isinstance(data, pd.DataFrame):
+        if isinstance(data, (pd.DataFrame, pd.Series)):
             return data
         elif isinstance(data, (str, Path)):
             if os.path.exists(data):

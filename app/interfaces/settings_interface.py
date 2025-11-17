@@ -185,7 +185,15 @@ class SettingInterface(ScrollArea):
     def setup_canvas_settings(self):
         """画布详细设置"""
         self.canvasGroup = SettingCardGroup(" 画布设置", self.view)
-
+        self.runModeCard = OptionsSettingCard(
+            self.cfg.canvas_run_mode,
+            get_icon("画布"),
+            "画布运行方式",
+            "选择画布节点运行方式，ipython：在同一环境下运行，初始化慢、执行快、可调试，有环境污染风险；subprocess：独立环境运行，初始化、执行慢，无环境污染风险。",
+            texts=["ipython运行", "subprocess运行"],
+            parent=self.canvasGroup
+        )
+        self.cfg.canvas_run_mode.valueChanged.connect(self.onConfigChanged)
         self.showGridCard = OptionsSettingCard(
             self.cfg.canvas_grid_mode,
             get_icon("画布"),
@@ -238,6 +246,7 @@ class SettingInterface(ScrollArea):
         # 连接配置变化信号，自动保存
         self.cfg.canvas_direction.valueChanged.connect(self.onConfigChanged)
 
+        self.canvasGroup.addSettingCard(self.runModeCard)
         self.canvasGroup.addSettingCard(self.showGridCard)
         self.canvasGroup.addSettingCard(self.autoSaveCard)
         self.canvasGroup.addSettingCard(self.autoSaveIntervalCard)

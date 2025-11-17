@@ -76,7 +76,6 @@ class CanvasPage(QWidget):
         self.file_path = object_name
         self.workflow_name = object_name.stem.split(".")[0] if object_name else "未命名工作流"
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
-        self.parent = parent
         self.config = Settings.get_instance()
         # 初始化状态存储数据分析/因子分析
         self.node_status = {}  # {node_id: status}
@@ -1696,7 +1695,7 @@ class CanvasPage(QWidget):
         self._node_id_cache_valid = True
 
         QTimer.singleShot(0, self.create_name_label)
-        QTimer.singleShot(100, self._delayed_fit_view)
+        QTimer.singleShot(0, self._delayed_fit_view)
         self.create_success_info("加载成功", "工作流加载成功！")
 
     def _delayed_fit_view(self):

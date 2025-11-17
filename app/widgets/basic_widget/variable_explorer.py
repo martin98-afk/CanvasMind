@@ -41,6 +41,7 @@ class VariableExplorerCore:
             self._failed_attempts += 1
             if self._failed_attempts >= self._max_failed_attempts:
                 logger.warning("连续获取变量失败，准备重启kernel")
+                self.reset_failure_count()
                 return "RESTART_KERNEL"
             return None
 

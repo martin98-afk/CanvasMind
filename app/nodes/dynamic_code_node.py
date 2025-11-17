@@ -263,7 +263,8 @@ def create_dynamic_code_node(parent_window=None):
                         except Exception:
                             continue
             self._sync_names_to_form(input_configs, name_mapping, "input")
-            QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
+            if self.selected():
+                QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
 
         def _sync_outputs_ports(self):
             """同步输出端口：严格按表单顺序重建，仅当端口名未变时恢复连线"""
@@ -318,7 +319,8 @@ def create_dynamic_code_node(parent_window=None):
                             continue
 
             self._sync_names_to_form(output_configs, name_mapping, "output")
-            QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
+            if self.selected():
+                QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
 
         def _sync_names_to_form(self, ports, name_mapping, type="input"):
             """将生成的端口名称同步回表单"""
@@ -537,21 +539,25 @@ def create_dynamic_code_node(parent_window=None):
             except Exception:
                 pass
 
-            # 处理结果
-            if result_path.exists():
-                output = _safe_load_pickle(result_path)
-                for port in self.output_ports():
-                    if port.name() in output:
-                        self.set_output_value(port.name(), output[port.name()])
-                return output
-            elif error_path.exists():
-                with open(error_path, 'rb') as f:
-                    error_info = pickle.load(f)
-                error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
-                self._log_message(self.persistent_id, error_msg)
-                raise Exception(error_info['error'])
-            else:
-                raise Exception("未知错误：未生成结果或错误文件")
+            try:
+                # 处理结果
+                if result_path.exists():
+                    output = _safe_load_pickle(result_path)
+                    for port in self.output_ports():
+                        if port.name() in output:
+                            self.set_output_value(port.name(), output[port.name()])
+                    return output
+                elif error_path.exists():
+                    with open(error_path, 'rb') as f:
+                        error_info = pickle.load(f)
+                    error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
+                    self._log_message(self.persistent_id, error_msg)
+                    raise Exception(error_info['error'])
+                else:
+                    raise Exception("未知错误：未生成结果或错误文件")
+            finally:
+                run_code = f'%reset -f'
+                kernel_manager.execute_code(run_code, hidden=True)
 
         def _execute_dynamic_via_subprocess(
                 self, python_executable, temp_script_path, result_path, error_path,

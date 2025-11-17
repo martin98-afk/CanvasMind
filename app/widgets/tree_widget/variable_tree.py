@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-import shutil
+import subprocess
+import sys
+
 import numpy as np
 import pandas as pd
-from loguru import logger
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QPixmap, QIcon, QImage, QFont, QPainter, QColor
+from PyQt5.QtGui import QPixmap, QImage, QFont
 from PyQt5.QtWidgets import (
-    QTreeWidgetItem, QAction, QApplication, QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog
+    QTreeWidgetItem, QAction, QApplication, QTableWidget, QTableWidgetItem, QHeaderView
 )
 from qfluentwidgets import TreeWidget, RoundMenu, MessageBoxBase, TextEdit, SegmentedWidget, TableWidget, ImageLabel
 from qtpy import QtCore
+
 from app.components.base import ArgumentType
-import subprocess
-import sys
 
 
 # --- Worker Class (修改错误处理) ---
@@ -120,21 +120,19 @@ class BuildTreeWorker(QThread):
         if isinstance(obj, bool):
             return f"(bool) {str(obj).lower()}"
         elif isinstance(obj, str):
-            if len(obj) <= 50:
-                return f"(str) '{obj}'"
-            else:
-                if os.path.isfile(obj):
-                    ext = os.path.splitext(obj)[1].lower()
-                    if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif'}:
-                        return f"(Image) '{os.path.basename(obj)}'"
-                    elif ext in {'.csv', '.xlsx', '.xls'}:
-                        return f"(File) '{os.path.basename(obj)}'"
-                    elif ext in {'.txt', '.log', '.md', '.py', '.json'}:
-                        return f"(Text) '{os.path.basename(obj)}'"
-                    else:
-                        return f"(File) '{os.path.basename(obj)}'"
+            if os.path.isfile(obj):
+                ext = os.path.splitext(obj)[1].lower()
+                if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif'}:
+                    return f"(Image) '{os.path.basename(obj)}'"
+                elif ext in {'.csv', '.xlsx', '.xls'}:
+                    return f"(File) '{os.path.basename(obj)}'"
+                elif ext in {'.txt', '.log', '.md', '.py', '.json'}:
+                    return f"(Text) '{os.path.basename(obj)}'"
                 else:
-                    return f"(str) '{obj[:200]}...' (右键预览)"
+                    return f"(File) '{os.path.basename(obj)}'"
+            else:
+                return f"(str) '{obj[:200]}...' (右键预览)"
+
         elif isinstance(obj, (int, float)):
             return f"({type(obj).__name__}) {obj}"
         elif isinstance(obj, np.number):
@@ -579,21 +577,18 @@ class VariableTreeWidget(TreeWidget):
         if isinstance(obj, bool):
             return f"(bool) {str(obj).lower()}"
         elif isinstance(obj, str):
-            if len(obj) <= 50:
-                return f"(str) '{obj}'"
-            else:
-                if os.path.isfile(obj):
-                    ext = os.path.splitext(obj)[1].lower()
-                    if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif'}:
-                        return f"(Image) '{os.path.basename(obj)}'"
-                    elif ext in {'.csv', '.xlsx', '.xls'}:
-                        return f"(File) '{os.path.basename(obj)}'"
-                    elif ext in {'.txt', '.log', '.md', '.py', '.json'}:
-                        return f"(Text) '{os.path.basename(obj)}'"
-                    else:
-                        return f"(File) '{os.path.basename(obj)}'"
+            if os.path.isfile(obj):
+                ext = os.path.splitext(obj)[1].lower()
+                if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif'}:
+                    return f"(Image) '{os.path.basename(obj)}'"
+                elif ext in {'.csv', '.xlsx', '.xls'}:
+                    return f"(File) '{os.path.basename(obj)}'"
+                elif ext in {'.txt', '.log', '.md', '.py', '.json'}:
+                    return f"(Text) '{os.path.basename(obj)}'"
                 else:
-                    return f"(str) '{obj[:200]}...' (右键预览)"
+                    return f"(File) '{os.path.basename(obj)}'"
+            else:
+                return f"(str) '{obj[:200]}...' (右键预览)"
         elif isinstance(obj, (int, float)):
             return f"({type(obj).__name__}) {obj}"
         elif isinstance(obj, np.number):
