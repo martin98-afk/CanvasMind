@@ -14,13 +14,11 @@ from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer, QPoint, QThreadPool
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication, QSplitter, \
-    QSizePolicy
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication, QSplitter
 from loguru import logger
 from qfluentwidgets import (
     InfoBar,
-    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton, VBoxLayout, getIconColor,
-    theme
+    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton
 )
 
 from app.components.base import PropertyType, GlobalVariableContext
@@ -130,7 +128,7 @@ class CanvasPage(QWidget):
         splitter.setStretchFactor(0, 0)  # 左侧导航不拉伸
         splitter.setStretchFactor(1, 1)  # 中间画布拉伸（主要区域）
         splitter.setStretchFactor(2, 0)  # 右侧属性不拉伸
-        main_layout.addWidget(splitter, 1)
+        main_layout.addWidget(splitter)
         # 快捷组件工具管理
         self.quick_manager = QuickComponentManager(
             parent_widget=self,
@@ -892,6 +890,9 @@ class CanvasPage(QWidget):
 
     def center_to(self, node):
         self.graph.clear_selection()
+        if node not in self.graph.all_nodes():
+            self.create_warning_info("错误", "原节点不存在！")
+            return
         node.set_selected(True)
         self.graph.fit_to_selection()
 

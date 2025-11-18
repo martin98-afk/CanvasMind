@@ -355,6 +355,7 @@ class VariableTreeWidget(TreeWidget):
         self.setFixedHeight(150)
         self.setStyleSheet("""
             TreeWidget {
+                background-color: transparent; /* 设置背景为透明 */
                 font-family: "Consolas", "Courier New", monospace;
                 font-size: 11px;
                 show-decoration-selected: 1;

@@ -2,22 +2,23 @@
 import json
 import os
 import re
-import pandas as pd
-
-from loguru import logger
 from pathlib import Path
+
+import pandas as pd
 from NodeGraphQt import BaseNode
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, QWidget, \
     QStackedWidget, QHBoxLayout, QApplication, QSizePolicy
+from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
     ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
-    TransparentDropDownToolButton, ToolButton
+    TransparentDropDownToolButton, SubtitleLabel, CaptionLabel
+
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
-from app.utils.utils import serialize_for_json, get_icon, canvas_file_dump_path, topological_sort
-from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit, VariableCompletionTextEdit
+from app.utils.utils import serialize_for_json, get_icon, canvas_file_dump_path
+from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
@@ -53,9 +54,9 @@ class PropertyPanel(CardWidget):
         node_scroll.viewport().setStyleSheet("background-color: transparent;")
         node_scroll.setWidgetResizable(True)
         node_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        node_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        node_scroll.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         self.node_container = QWidget()
-        self.node_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.node_container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         self.node_vbox = QVBoxLayout(self.node_container)
         self.node_vbox.setContentsMargins(10, 10, 10, 10)
         self.node_vbox.setSpacing(8)
@@ -66,7 +67,9 @@ class PropertyPanel(CardWidget):
         global_scroll.viewport().setStyleSheet("background-color: transparent;")
         global_scroll.setWidgetResizable(True)
         global_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        global_scroll.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         self.global_container = QWidget()
+        self.global_container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         self.global_vbox = QVBoxLayout(self.global_container)
         self.global_vbox.setContentsMargins(10, 10, 10, 10)
         self.global_vbox.setSpacing(8)
@@ -83,7 +86,7 @@ class PropertyPanel(CardWidget):
         self.segmented_widget = None
         self.stacked_widget = None
         self._current_global_tab = 'custom'
-
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         # --- 用于存储内部节点卡片状态 ---
         self._internal_nodes_card_expanded = {}
 
@@ -353,12 +356,7 @@ class PropertyPanel(CardWidget):
 
                 # 拓扑排序新增节点
                 if new_nodes_in_matched:
-                    # 创建一个包含新增节点和原有节点连接关系的子图进行排序
-                    # 这里简化处理，直接对新增节点进行拓扑排序
                     subgraph_nodes = new_nodes_in_matched
-                    # 获取这些新增节点与原组件节点的连接，以确定其插入位置
-                    # 为了简化，这里直接将拓扑排序结果附加到旧节点排序之后
-                    # TODO: 更精确的方式是分析连接关系来确定插入点
                     topo_sorted_new = topological_sort(subgraph_nodes, split_components=False)  # 获取单个组件内的拓扑排序
                     if topo_sorted_new is None:  # 理论上不应发生，因来自同一连通分量
                         topo_sorted_new = subgraph_nodes
@@ -535,7 +533,6 @@ class PropertyPanel(CardWidget):
             # 根据索引从存储的组件列表中获取对应的节点对象
             if 0 <= row < len(component):
                 node_to_center = component[row]
-                # 调用 main_window 的 center_to 函数
                 self.main_window.canvas_widget.zoom_to_nodes([node_to_center._view])
 
         # 连接双击信号到处理函数
@@ -674,19 +671,17 @@ class PropertyPanel(CardWidget):
             node._input_values = {}
         if not hasattr(node, 'column_select'):
             node.column_select = {}
-        title = BodyLabel(f"📌 {node.name()}")
+        title = SubtitleLabel(f"📌 {node.name()}")
         title.setWordWrap(True)
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.node_vbox.addWidget(title)
         description = self.get_node_description(node)
         if description and description.strip():
             desc_label = BodyLabel(f"📝 {description}")
             desc_label.setWordWrap(True)
-            desc_label.setStyleSheet("color: #888888; font-size: 16px;")
             self.node_vbox.addWidget(desc_label)
         self._add_seperator(self.node_vbox)
-        self.segmented_widget = SegmentedWidget()
-        self.stacked_widget = QStackedWidget()
+        self.segmented_widget = SegmentedWidget(self)
+        self.stacked_widget = QStackedWidget(self)
         input_widget = QWidget()
         input_layout = QVBoxLayout(input_widget)
         input_layout.setContentsMargins(0, 0, 0, 0)
@@ -769,7 +764,9 @@ class PropertyPanel(CardWidget):
             layout.addWidget(BodyLabel("  无输入端口"))
             return
         for port_name, port_label, port_type in port_infos:
-            layout.addWidget(BodyLabel(f"  • {port_label} ({port_name}): {port_type.value}"))
+            port_label = BodyLabel(f"  • {port_label} ({port_name}): {port_type.value}")
+            port_label.setWordWrap(True)
+            layout.addWidget(port_label)
             input_port = node.get_input(port_name)
             connected = input_port.connected_ports() if input_port else []
             if len(connected) == 1:
@@ -802,7 +799,9 @@ class PropertyPanel(CardWidget):
             layout.addWidget(BodyLabel("  无输出端口"))
             return
         for port_name, port_label, port_type in port_infos:
-            layout.addWidget(BodyLabel(f"  • {port_label} ({port_name}): {port_type.value}"))
+            port_label = BodyLabel(f"  • {port_label} ({port_name}): {port_type.value}")
+            port_label.setWordWrap(True)
+            layout.addWidget(port_label)
             output_values = getattr(node, '_output_values', None)
             if output_values is None:
                 # 初始化为空 dict，避免跳过渲染
@@ -1110,8 +1109,7 @@ class PropertyPanel(CardWidget):
         if hasattr(self, '_backdrop_internal_nodes_list'):
             delattr(self, '_backdrop_internal_nodes_list')
 
-        title = BodyLabel(f"🔁 {node.NODE_NAME}")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        title = SubtitleLabel(f"🔁 {node.NODE_NAME}")
         self.node_vbox.addWidget(title)
 
         flow_type = getattr(node, 'TYPE', 'unknown')
@@ -1144,7 +1142,6 @@ class PropertyPanel(CardWidget):
 
         # --- 缓存进度标签和进度条 ---
         progress_label = BodyLabel(f"进度: {current}/{total}")
-        progress_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
         self.node_vbox.addWidget(progress_label)
         self._backdrop_progress_label = progress_label  # 缓存
 
@@ -1164,7 +1161,7 @@ class PropertyPanel(CardWidget):
         self.segmented_widget = SegmentedWidget()
         self.segmented_widget.addItem('input', '输入端口')
         self.segmented_widget.addItem('output', '输出端口')
-        self.stacked_widget = QStackedWidget()
+        self.stacked_widget = QStackedWidget(self)
         input_widget = QWidget()
         input_layout = QVBoxLayout(input_widget)
         input_layout.setContentsMargins(0, 0, 0, 0)
@@ -1259,7 +1256,7 @@ class PropertyPanel(CardWidget):
         config_layout = QVBoxLayout(config_card)
         config_layout.setContentsMargins(10, 10, 10, 10)
 
-        from qfluentwidgets import ComboBox, SpinBox, LineEdit
+        from qfluentwidgets import ComboBox, SpinBox
         mode_combo = ComboBox(self)
         mode_combo.addItems(['固定次数', '条件循环', 'While循环'])
         mode_combo.setCurrentText({
@@ -1390,8 +1387,7 @@ class PropertyPanel(CardWidget):
     def _show_global_variables_panel(self):
         if self._global_panel_built:
             return
-        title = BodyLabel("🌍 全局变量")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        title = SubtitleLabel("🌍 全局变量")
         self.global_vbox.addWidget(title)
         self.global_segmented = SegmentedWidget(self)
         self.global_segmented.addItem('env', '环境变量')
@@ -1498,8 +1494,8 @@ class PropertyPanel(CardWidget):
                 value_label = card.layout().itemAt(1).widget()
                 if isinstance(value_label, BodyLabel):
                     try:
-                        preview = json.dumps(var_obj.value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(
-                            var_obj.value, (dict, list)) else str(var_obj.value)[:40]
+                        preview = json.dumps(var_obj.value, ensure_ascii=False, default=str)[:40] + "..."\
+                            if isinstance(var_obj.value, (dict, list)) else str(var_obj.value)[:40]
                     except:
                         preview = "<无法预览>"
                     value_label.setText(preview)
@@ -1552,10 +1548,8 @@ class PropertyPanel(CardWidget):
                 value_label = card.layout().itemAt(1).widget()
                 if isinstance(value_label, BodyLabel):
                     try:
-                        preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value,
-                                                                                                                (dict,
-                                                                                                                 list)) else str(
-                            value)[:40]
+                        preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." \
+                            if isinstance(value, (dict, list)) else str(value)[:40]
                     except:
                         preview = "<无法预览>"
                     value_label.setText(preview)
@@ -1569,12 +1563,12 @@ class PropertyPanel(CardWidget):
         layout.setSpacing(4)
         name_label = BodyLabel(f"{name}:")
         try:
-            preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value, (dict,
-                                                                                                            list)) else str(
-                value)[:40]
+            preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." \
+                if isinstance(value, (dict, list)) else str(value)[:40]
         except:
             preview = "<无法预览>"
         value_label = BodyLabel(preview)
+        value_label.setWordWrap(True)
         value_label.setStyleSheet("color: #888888;")
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
         del_btn.setIconSize(QSize(12, 12))
@@ -1608,12 +1602,27 @@ class PropertyPanel(CardWidget):
         return card
 
     def _create_variable_card(self, name: str, node_var_obj):
+        parts = name.split("_")
+        if len(parts) == 2:
+            node_name = parts[0]
+            port_name = parts[1]
+        else:
+            if re.match(r'\d+', parts[1]):
+                node_name = "_".join(parts[:2])
+                port_name = "_".join(parts[2:])
+            else:
+                node_name = parts[0]
+                port_name = "_".join(parts[1:])
+
+        # 根据规则，将 safe_node_name_candidate 中的下划线替换回空格，得到原始名称候选
+        node_name = re.sub(r'_(?=\d+$)', " ", node_name)
+
         card = CardWidget(self)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(3)
         title_layout = QHBoxLayout()
-        title = BodyLabel(name)
+        title = CaptionLabel(f"{node_name}\n{port_name}")
         title_layout.addWidget(title)
         # 节点变量更新策略
         strategy_combo = TransparentDropDownToolButton(icon=get_icon(node_var_obj.update_policy), parent=self)
@@ -1636,8 +1645,6 @@ class PropertyPanel(CardWidget):
         title_layout.addStretch()
         title_layout.addWidget(strategy_combo)
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
-        del_btn.setIconSize(QSize(12, 12))
-        del_btn.setFixedSize(16, 16)
         del_btn.clicked.connect(lambda _, n=name: self._delete_custom_variable(n, 'node_vars'))
         title_layout.addWidget(del_btn)
         layout.addLayout(title_layout)
@@ -1661,7 +1668,7 @@ class PropertyPanel(CardWidget):
                     ),
                     Action(
                         FluentIcon.FIT_PAGE, "跳转到该节点", parent=self,
-                        triggered=lambda: self.main_window.center_to(self._locate_node_by_variable_name(name))
+                        triggered=lambda: self._locate_node_by_variable_name(name)
                     )
                 ]
 
@@ -1675,7 +1682,7 @@ class PropertyPanel(CardWidget):
         # 节点变量双击自动跳转到对应节点
         def on_card_double_clicked(event):
             if event.button() == Qt.LeftButton:
-                self.main_window.center_to(self._locate_node_by_variable_name(name))
+                self._locate_node_by_variable_name(name)
 
         card.mouseDoubleClickEvent = on_card_double_clicked
         card.setCursor(Qt.PointingHandCursor)  # 可选：改变鼠标指针提示可点击
@@ -1720,8 +1727,8 @@ class PropertyPanel(CardWidget):
                 parent=self.main_window,
                 position=InfoBarPosition.TOP_RIGHT
             )
-
-        return found_node
+            return
+        self.main_window.canvas_widget.zoom_to_nodes([found_node._view])
 
     def _create_env_var_row(self, key: str, value):
         card = CardWidget(self)
@@ -1730,12 +1737,12 @@ class PropertyPanel(CardWidget):
         layout.setSpacing(4)
         name_label = BodyLabel(f"{key} : ")
         try:
-            preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." if isinstance(value, (dict,
-                                                                                                            list)) else str(
-                value)[:40]
+            preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." \
+                if isinstance(value, (dict, list)) else str(value)[:40]
         except:
             preview = "<无法预览>"
         value_label = BodyLabel(preview)
+        value_label.setWordWrap(True)
         value_label.setStyleSheet("color: #888888;")
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
         del_btn.setIconSize(QSize(12, 12))

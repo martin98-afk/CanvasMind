@@ -200,6 +200,7 @@ class ComponentDeveloperWidget(QWidget):
 
         self.pivot = SegmentedWidget(self)
         self.stackedWidget = StackedWidget(self)
+        self.stackedWidget.setAnimationEnabled(False)
         # 组件属性
         info_interface = QWidget()
         info_layout = QVBoxLayout(info_interface)
