@@ -4,6 +4,7 @@ import os
 import re
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from NodeGraphQt import BaseNode
 from PyQt5 import QtCore
@@ -327,57 +328,44 @@ class PropertyPanel(CardWidget):
         current_user_order = self._user_execution_order.copy()
 
         # 3. 创建最终排序结果列表
-        final_ordered_components = []
+        final_components = []
         processed_new_indices = set() # 记录已处理的新组件索引
 
         # 4. 遍历用户定义的顺序，尝试映射到新组件
         # 优先处理用户有明确顺序偏好的连通图
         for old_key_node_ids, old_ordered_nodes in current_user_order.items():
+            topo_order = [n.id for n in old_ordered_nodes]
             old_node_set = set(old_key_node_ids)
-            matched_new_idx = None
-            best_overlap = 0
-
-            # 寻找与 old_node_set 交集最大的 new_component
+            # 寻找与 old_node_set 有交集的 new_component
+            overlaped_component_index = []
+            overlaped_id = []
             for i, new_node_set in enumerate(new_node_sets):
                 if i in processed_new_indices:
                     continue  # 跳过已匹配的新组件
                 overlap = len(old_node_set & new_node_set)
-                if overlap > best_overlap:
-                    best_overlap = overlap
-                    matched_new_idx = i
+                if overlap > 1:
+                    # 存储第一个匹配想的节点id
+                    for j, nid in enumerate(topo_order):
+                        if nid in new_node_set:
+                            overlaped_id.append(j)
+                            overlaped_component_index.append(i)
+                            break
 
-            if matched_new_idx is not None:
-                # 找到匹配项
-                matched_new_component = new_components[matched_new_idx]
-                # 记录为已处理
-                processed_new_indices.add(matched_new_idx)
+            # 并将有交集的子连通图按照原拓扑排序的关系顺序进行添加
+            overlaped_component_index = [overlaped_component_index[k] for k in np.argsort(overlaped_id)]
 
-                # --- 重建或应用用户顺序 (但仅用于确定连通图位置) ---
-                # 这里我们保留 old_ordered_nodes 的顺序，但不直接用于UI显示，
-                # UI显示的顺序由 _create_component_card 中的拓扑排序决定。
-                # 我们只是将这个匹配到的组件（可能包含新节点）添加到最终结果列表中。
-                # 为了保持 _user_execution_order 的键与当前节点集一致，我们重新计算键
-                current_node_ids_for_key = tuple(sorted(n.id for n in matched_new_component))
-                # 这里 _user_execution_order 的 value 可以是临时的，因为最终UI顺序由拓扑排序决定
-                # 但我们仍然更新它，以反映当前的节点集
-                # 为了稳定性，我们可以选择保留旧的顺序结构，或者直接用当前组件的拓扑排序
-                # 推荐使用当前组件的拓扑排序作为 value，因为它代表了最终UI将显示的顺序
-                topo_sorted_current = topological_sort(matched_new_component, split_components=False)
-                if topo_sorted_current is None: # 理论上不应发生，因来自同一连通分量
-                     topo_sorted_current = matched_new_component
-                final_ordered_components.append(topo_sorted_current) # 添加拓扑排序后的组件
+            if len(overlaped_component_index) > 0:
+                for matched_new_idx in overlaped_component_index:
+                    # 找到匹配项
+                    matched_new_component = new_components[matched_new_idx]
+                    # 记录为已处理
+                    processed_new_indices.add(matched_new_idx)
+                    final_components.append(matched_new_component)  # 添加拓扑排序后的组件
 
         # 5. 处理剩余未被映射的新组件（即新增的连通图）
         for i, comp in enumerate(new_components):
             if i not in processed_new_indices:
-                # 对新增组件也进行拓扑排序
-                topo_sorted_new = topological_sort(comp, split_components=False)
-                if topo_sorted_new is None: # 理论上不应发生
-                    topo_sorted_new = comp
-                final_ordered_components.append(topo_sorted_new) # 添加拓扑排序后的组件
-
-        # 6. 更新当前组件列表
-        self._current_components = final_ordered_components
+                final_components.append(comp) # 添加拓扑排序后的组件
 
         # 7. 重建UI
         self._clear_node_layout()
@@ -398,17 +386,19 @@ class PropertyPanel(CardWidget):
 
         # 为每个连通分量创建单独的卡片并保存引用
         self._component_cards = []
-        for i in range(len(final_ordered_components)):
+        final_ordered_components = []
+        for i in range(len(final_components)):
             # 此时 final_ordered_components[i] 已经是拓扑排序后的节点列表
-            component_card = self._create_component_card(nodes_layout, i, final_ordered_components)
+            component_card, comp_order = self._create_component_card(nodes_layout, i, final_components)
+            final_ordered_components.append(comp_order)
             self._component_cards.append(component_card)
-
+        # 6. 更新当前组件列表
+        self._current_components = final_ordered_components
         nodes_layout.addStretch(1)
         self.node_vbox.addWidget(nodes_card)
         self.node_vbox.addStretch(1)
 
         # 8. 更新 _user_execution_order 以反映当前最终的排序
-        # 这次 _user_execution_order 的 value 是拓扑排序后的节点列表
         updated_user_order = {}
         for comp_nodes in final_ordered_components:
             if comp_nodes:
@@ -423,9 +413,6 @@ class PropertyPanel(CardWidget):
         创建单个连通分量的卡片
         """
         component = components[index]
-        # --- 关键修改：在创建UI之前，再次对组件内部进行稳定的拓扑排序 ---
-        # 这确保了即使 _build_node_list_ui 中的 component 顺序因用户交互而改变，
-        # 最终显示在UI列表中的顺序依然是拓扑排序的。
         topo_sorted_component = topological_sort(component, split_components=False)
         if topo_sorted_component is None:  # 理论上不应发生
             topo_sorted_component = component
@@ -505,7 +492,7 @@ class PropertyPanel(CardWidget):
 
         component_layout.addWidget(component_list)
         parent_layout.addWidget(component_card)
-        return component_card
+        return component_card, topo_sorted_component
 
     def _move_component(self, index, direction):
         """
@@ -1151,9 +1138,6 @@ class PropertyPanel(CardWidget):
 
     def _add_internal_nodes_section(self, node):
         nodes_card = CardWidget(self)
-        initial_max_height = 200
-        nodes_card.setMaximumHeight(initial_max_height)
-        nodes_card.setMinimumHeight(initial_max_height)
         node_id = node.id
         self._internal_nodes_card_expanded[node_id] = False
         nodes_layout = QVBoxLayout(nodes_card)
@@ -1175,11 +1159,6 @@ class PropertyPanel(CardWidget):
                 expand_btn.setIcon(get_icon("放大"))
                 self._internal_nodes_card_expanded[node_id] = False
             else:
-                num_items = internal_nodes_list.count()
-                estimated_height_for_items = num_items * 40
-                padding_height = 10 + 10 + 10 + 10
-                title_height = 20
-                total_estimated_height = padding_height + title_height + estimated_height_for_items
                 nodes_card.setFixedHeight(total_estimated_height)
                 expand_btn.setIcon(get_icon("缩小"))
                 self._internal_nodes_card_expanded[node_id] = True
@@ -1209,6 +1188,14 @@ class PropertyPanel(CardWidget):
                 item = QListWidgetItem(item_text)
                 internal_nodes_list.addItem(item)
 
+        num_items = internal_nodes_list.count()
+        estimated_height_for_items = num_items * 40
+        padding_height = 25
+        title_height = 20
+        total_estimated_height = padding_height + title_height + estimated_height_for_items
+        initial_max_height = min(total_estimated_height, 200)
+        nodes_card.setMaximumHeight(initial_max_height)
+        nodes_card.setMinimumHeight(initial_max_height)
         nodes_layout.addWidget(internal_nodes_list)
         self.node_vbox.addWidget(nodes_card)
 
