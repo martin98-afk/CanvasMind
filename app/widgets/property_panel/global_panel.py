@@ -109,7 +109,6 @@ class GlobalPanelWidget:
                     card.deleteLater()
             elif action == "clear":
                 global_vars.clear_node_vars(var_name)
-                self._refresh_node_vars_page()
         elif var_type == "custom":
             if action == "add" or action == "update":
                 if var_name not in self._custom_var_cards:
@@ -140,6 +139,7 @@ class GlobalPanelWidget:
                 if var_name in self._env_var_cards:
                     card = self._env_var_cards.pop(var_name)
                     card.deleteLater()
+        self._refresh_node_vars_page()
 
     def _on_global_tab_changed(self, key):
         if key == 'env':

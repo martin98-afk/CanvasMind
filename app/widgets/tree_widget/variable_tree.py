@@ -370,7 +370,7 @@ class BuildTreeWorker(QThread):
 class VariableTreeWidget(TreeWidget):
     """用于展示单个变量的详细树状结构"""
 
-    def __init__(self, data=None, port_type=None, max_depth=5, parent=None):
+    def  __init__(self, data=None, port_type=None, max_depth=5, parent=None):
         super().__init__(parent)
         self.parent_widget = parent
         self.setHeaderHidden(True)
