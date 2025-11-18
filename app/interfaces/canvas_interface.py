@@ -238,7 +238,9 @@ class CanvasPage(QWidget):
             nodes = self.property_panel.get_current_execution_order()
             self._scheduler.run_full(nodes=nodes, sort=False)
             self._scheduler.node_finished.connect(lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes)))
-            self._scheduler.finished.connect(lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes)))
+            self._scheduler.finished.connect(
+                lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes))
+            )
             self.property_panel.reset_current_components()
         else:
             self._scheduler.run_full(nodes=self.graph.selected_nodes())

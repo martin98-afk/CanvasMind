@@ -13,11 +13,11 @@ from PyQt5.QtWidgets import QVBoxLayout, QFrame, QFileDialog, QListWidgetItem, Q
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SmoothScrollArea, SegmentedWidget, \
     ProgressBar, FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
-    TransparentDropDownToolButton, SubtitleLabel, CaptionLabel
+    TransparentDropDownToolButton, SubtitleLabel, CaptionLabel, StrongBodyLabel
 
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
-from app.utils.utils import serialize_for_json, get_icon, canvas_file_dump_path
+from app.utils.utils import serialize_for_json, get_icon, canvas_file_dump_path, topological_sort
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
@@ -307,35 +307,40 @@ class PropertyPanel(CardWidget):
 
     def _build_node_list_ui(self, nodes):
         """
-        清理并构建节点面板，支持基于节点交集的用户自定义执行顺序
+        清理并构建节点面板，支持基于节点交集的用户自定义执行顺序，并优化稳定性。
+        规则：
+        1. 节点集合完全相同的连通图，保持原有顺序和位置。
+        2. 节点集合有交集但不完全相同的连通图，尝试在原位置附近重建（应用旧顺序，拓扑排序新节点）。
+        3. 新增的、与任何历史连通图无交集的连通图，追加到末尾。
+        4. 用户手动调整的顺序 (_user_execution_order) 会被应用和更新。
         """
-        from app.utils.utils import topological_sort  # 确保导入
-
-        # 获取连通分量
+        # 1. 获取当前连通分量
         new_components = topological_sort(nodes, split_components=True)
         if new_components is None:
             new_components = []
+        logger.debug(f"New components from topological_sort: {[len(c) for c in new_components]}")
 
-        # --- 核心逻辑：映射新组件到用户历史顺序 ---
-        ordered_components = []
-        used_new_indices = set()
-        used_old_keys = set()
-
+        # 2. 准备数据结构
         # 将 new_components 转换为 node_id 集合列表，方便后续比较
         new_node_sets = [set(n.id for n in comp) for comp in new_components]
+        # 获取当前用户定义的顺序（key是排序过的node_id元组，value是按用户顺序排列的节点列表）
+        current_user_order = self._user_execution_order.copy()
 
-        # --- 修正点1: 遍历 _user_execution_order.items() 的副本 ---
-        for old_key_node_ids, old_ordered_nodes in list(self._user_execution_order.items()):
+        # 3. 创建最终排序结果列表
+        final_ordered_components = []
+        processed_new_indices = set() # 记录已处理的新组件索引
+
+        # 4. 遍历用户定义的顺序，尝试映射到新组件
+        # 优先处理用户有明确顺序偏好的连通图
+        for old_key_node_ids, old_ordered_nodes in current_user_order.items():
             old_node_set = set(old_key_node_ids)
-
             matched_new_idx = None
             best_overlap = 0
 
             # 寻找与 old_node_set 交集最大的 new_component
             for i, new_node_set in enumerate(new_node_sets):
-                if i in used_new_indices:
+                if i in processed_new_indices:
                     continue  # 跳过已匹配的新组件
-
                 overlap = len(old_node_set & new_node_set)
                 if overlap > best_overlap:
                     best_overlap = overlap
@@ -344,103 +349,38 @@ class PropertyPanel(CardWidget):
             if matched_new_idx is not None:
                 # 找到匹配项
                 matched_new_component = new_components[matched_new_idx]
+                # 记录为已处理
+                processed_new_indices.add(matched_new_idx)
 
-                # --- 重建或应用用户顺序 ---
-                # 方案A: 尝试从 old_ordered_nodes 中保留未删除节点的顺序
-                old_node_map = {n.id: n for n in old_ordered_nodes}
-                sorted_part_from_old = [old_node_map[nid] for nid in old_key_node_ids if
-                                        nid in old_node_map and nid in new_node_sets[matched_new_idx]]
+                # --- 重建或应用用户顺序 (但仅用于确定连通图位置) ---
+                # 这里我们保留 old_ordered_nodes 的顺序，但不直接用于UI显示，
+                # UI显示的顺序由 _create_component_card 中的拓扑排序决定。
+                # 我们只是将这个匹配到的组件（可能包含新节点）添加到最终结果列表中。
+                # 为了保持 _user_execution_order 的键与当前节点集一致，我们重新计算键
+                current_node_ids_for_key = tuple(sorted(n.id for n in matched_new_component))
+                # 这里 _user_execution_order 的 value 可以是临时的，因为最终UI顺序由拓扑排序决定
+                # 但我们仍然更新它，以反映当前的节点集
+                # 为了稳定性，我们可以选择保留旧的顺序结构，或者直接用当前组件的拓扑排序
+                # 推荐使用当前组件的拓扑排序作为 value，因为它代表了最终UI将显示的顺序
+                topo_sorted_current = topological_sort(matched_new_component, split_components=False)
+                if topo_sorted_current is None: # 理论上不应发生，因来自同一连通分量
+                     topo_sorted_current = matched_new_component
+                final_ordered_components.append(topo_sorted_current) # 添加拓扑排序后的组件
 
-                # 找出新增的节点
-                new_nodes_in_matched = [n for n in matched_new_component if n.id not in old_node_map]
-
-                # 拓扑排序新增节点
-                if new_nodes_in_matched:
-                    subgraph_nodes = new_nodes_in_matched
-                    topo_sorted_new = topological_sort(subgraph_nodes, split_components=False)  # 获取单个组件内的拓扑排序
-                    if topo_sorted_new is None:  # 理论上不应发生，因来自同一连通分量
-                        topo_sorted_new = subgraph_nodes
-                else:
-                    topo_sorted_new = []
-
-                # 合并：旧的保留顺序 + 新的拓扑排序
-                final_sorted_component = sorted_part_from_old + topo_sorted_new
-                # 保存更新后的顺序，key 用当前实际的 node_ids
-                current_node_ids_for_key = tuple(sorted(n.id for n in final_sorted_component))
-
-                # --- 修正点2: 不在此处修改 _user_execution_order，而是记录要添加/修改的项 ---
-                # self._user_execution_order[current_node_ids_for_key] = final_sorted_component # 注释掉
-                # 删除旧的 key 的操作也推迟
-                # used_old_keys.add(old_key_node_ids) # 注释掉，直接用 del self._user_execution_order[old_key_node_ids] 也可以，但统一用 used_old_keys
-                # 记录需要删除的旧key和需要添加的新key-value对
-                used_old_keys.add(old_key_node_ids)  # 标记旧key为已处理
-                # 在循环外统一处理 _user_execution_order 的更新
-
-                ordered_components.append(final_sorted_component)
-                used_new_indices.add(matched_new_idx)
-
-        # --- 修正点3: 在迭代完成后，统一修改 _user_execution_order ---
-        # 1. 删除已处理的旧key
-        for old_key in used_old_keys:
-            if old_key in self._user_execution_order:  # 安全检查
-                del self._user_execution_order[old_key]
-
-        # 2. 添加或更新匹配后的新key-value对
-        # 重新计算 final_sorted_components 来添加它们（复用上面的逻辑，但这次是存储）
-        # 为了简化，我们可以在匹配循环中就收集这些信息
-        # 重新进行匹配循环，这次收集要更新的字典项
-        new_user_order_updates = {}
-        new_node_sets_temp = [set(n.id for n in comp) for comp in new_components]  # 重新计算，因为上面的变量可能被修改
-        for old_key_node_ids, old_ordered_nodes in list(self._user_execution_order.items()):  # 重新遍历剩余的
-            old_node_set = set(old_key_node_ids)
-            matched_new_idx = None
-            best_overlap = 0
-            for i, new_node_set in enumerate(new_node_sets_temp):
-                if i in used_new_indices:
-                    continue
-                overlap = len(old_node_set & new_node_set)
-                if overlap > best_overlap:
-                    best_overlap = overlap
-                    matched_new_idx = i
-            if matched_new_idx is not None:
-                matched_new_component = new_components[matched_new_idx]
-                old_node_map = {n.id: n for n in old_ordered_nodes}
-                sorted_part_from_old = [old_node_map[nid] for nid in old_key_node_ids if
-                                        nid in old_node_map and nid in new_node_sets_temp[matched_new_idx]]
-                new_nodes_in_matched = [n for n in matched_new_component if n.id not in old_node_map]
-                if new_nodes_in_matched:
-                    topo_sorted_new = topological_sort(new_nodes_in_matched, split_components=False)
-                    if topo_sorted_new is None:
-                        topo_sorted_new = new_nodes_in_matched
-                else:
-                    topo_sorted_new = []
-                final_sorted_component = sorted_part_from_old + topo_sorted_new
-                current_node_ids_for_key = tuple(sorted(n.id for n in final_sorted_component))
-                new_user_order_updates[current_node_ids_for_key] = final_sorted_component
-                used_old_keys.add(old_key_node_ids)
-                # 注意：used_new_indices 已经在上一次循环中设置了，这里不需要重复 set
-
-        # 应用收集到的更新
-        for key, value in new_user_order_updates.items():
-            self._user_execution_order[key] = value
-        # 再次删除已处理的旧key (如果上面的逻辑没有完全覆盖)
-        for old_key in used_old_keys:
-            if old_key in self._user_execution_order:  # 安全检查
-                del self._user_execution_order[old_key]
-
-        # 第二步：将未匹配的新组件（即全新的连通分量）追加到末尾
+        # 5. 处理剩余未被映射的新组件（即新增的连通图）
         for i, comp in enumerate(new_components):
-            if i not in used_new_indices:
-                ordered_components.append(comp)
-                # 新组件不在此时加入 _user_execution_order，除非用户移动它
+            if i not in processed_new_indices:
+                # 对新增组件也进行拓扑排序
+                topo_sorted_new = topological_sort(comp, split_components=False)
+                if topo_sorted_new is None: # 理论上不应发生
+                    topo_sorted_new = comp
+                final_ordered_components.append(topo_sorted_new) # 添加拓扑排序后的组件
 
-        # 保存当前组件列表，用于移动操作
-        # 注意：这里保存的是经过映射和排序后的最终列表
-        self._current_components = ordered_components
-        # ... 后续创建 UI 卡片逻辑不变 ...
-        # 清理布局
+        # 6. 更新当前组件列表
+        self._current_components = final_ordered_components
+
+        # 7. 重建UI
         self._clear_node_layout()
-
         title = BodyLabel(f"⏬ 连通图执行顺序")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.node_vbox.addWidget(title)
@@ -449,6 +389,7 @@ class PropertyPanel(CardWidget):
         nodes_card = CardWidget(self)
         nodes_layout = QVBoxLayout(nodes_card)
         nodes_layout.setContentsMargins(10, 10, 10, 10)
+
         title_btn_layout = QHBoxLayout()
         title = BodyLabel("连通图列表：")
         title_btn_layout.addWidget(title)
@@ -456,27 +397,47 @@ class PropertyPanel(CardWidget):
         nodes_layout.addLayout(title_btn_layout)
 
         # 为每个连通分量创建单独的卡片并保存引用
-        self._component_cards = []  # 保存组件卡片的引用
-        for i in range(len(ordered_components)):
-            component_card = self._create_component_card(nodes_layout, i, ordered_components)
+        self._component_cards = []
+        for i in range(len(final_ordered_components)):
+            # 此时 final_ordered_components[i] 已经是拓扑排序后的节点列表
+            component_card = self._create_component_card(nodes_layout, i, final_ordered_components)
             self._component_cards.append(component_card)
 
         nodes_layout.addStretch(1)
         self.node_vbox.addWidget(nodes_card)
         self.node_vbox.addStretch(1)
 
+        # 8. 更新 _user_execution_order 以反映当前最终的排序
+        # 这次 _user_execution_order 的 value 是拓扑排序后的节点列表
+        updated_user_order = {}
+        for comp_nodes in final_ordered_components:
+            if comp_nodes:
+                node_ids = tuple(sorted(n.id for n in comp_nodes))
+                # value 现在是拓扑排序后的节点列表
+                updated_user_order[node_ids] = comp_nodes.copy()
+        self._user_execution_order = updated_user_order
+        logger.debug(f"Updated _user_execution_order keys: {list(self._user_execution_order.keys())}")
+
     def _create_component_card(self, parent_layout, index, components):
         """
         创建单个连通分量的卡片
         """
         component = components[index]
+        # --- 关键修改：在创建UI之前，再次对组件内部进行稳定的拓扑排序 ---
+        # 这确保了即使 _build_node_list_ui 中的 component 顺序因用户交互而改变，
+        # 最终显示在UI列表中的顺序依然是拓扑排序的。
+        topo_sorted_component = topological_sort(component, split_components=False)
+        if topo_sorted_component is None:  # 理论上不应发生
+            topo_sorted_component = component
+        # --- 修改结束 ---
+
         component_card = CardWidget(self)
         component_layout = QVBoxLayout(component_card)
         component_layout.setContentsMargins(8, 8, 8, 8)
 
         # 连通分量标题行，包含名称和上下移动按钮
         header_layout = QHBoxLayout()
-        component_title = BodyLabel(f"子连通图 {index + 1} ({len(component)} 个节点)")
+        component_title = BodyLabel(f"子连通图 {index + 1} ({len(topo_sorted_component)} 个节点)")
         header_layout.addWidget(component_title)
 
         # 上下移动按钮
@@ -503,17 +464,19 @@ class PropertyPanel(CardWidget):
 
         # 创建列表显示该连通分量的节点
         component_list = ListWidget(self)
-        num_items = len(component)
+        num_items = len(topo_sorted_component)  # 使用拓扑排序后的长度
         estimated_height_for_items = num_items * 40
         total_estimated_height = estimated_height_for_items
         component_list.setFixedHeight(total_estimated_height)
 
         # 存储节点对象，以便在双击时访问
+        # 注意：现在存储的是拓扑排序后的节点列表
         self._component_nodes_list = getattr(self, '_component_nodes_list', {})
-        list_identifier = f"component_{index}"  # 使用组件索引作为唯一标识
-        self._component_nodes_list[list_identifier] = component
+        list_identifier = f"component_{index}"
+        self._component_nodes_list[list_identifier] = topo_sorted_component  # 存储拓扑排序后的列表
 
-        for n in component:
+        # 遍历拓扑排序后的节点列表
+        for n in topo_sorted_component:  # 使用 topo_sorted_component
             status = self.main_window.get_node_status(n)
             status_text = {
                 "running": "🟡 运行中",
@@ -531,8 +494,9 @@ class PropertyPanel(CardWidget):
             # 获取当前点击项的索引
             row = component_list.row(item)
             # 根据索引从存储的组件列表中获取对应的节点对象
-            if 0 <= row < len(component):
-                node_to_center = component[row]
+            # 注意：现在 _component_nodes_list[list_identifier] 是拓扑排序后的
+            if 0 <= row < len(topo_sorted_component):  # 使用 topo_sorted_component 长度
+                node_to_center = topo_sorted_component[row]  # 从拓扑排序列表获取
                 self.main_window.canvas_widget.zoom_to_nodes([node_to_center._view])
 
         # 连接双击信号到处理函数
@@ -1141,7 +1105,7 @@ class PropertyPanel(CardWidget):
             total = 0
 
         # --- 缓存进度标签和进度条 ---
-        progress_label = BodyLabel(f"进度: {current}/{total}")
+        progress_label = StrongBodyLabel(f"进度: {current}/{total}")
         self.node_vbox.addWidget(progress_label)
         self._backdrop_progress_label = progress_label  # 缓存
 
@@ -1561,13 +1525,13 @@ class PropertyPanel(CardWidget):
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
-        name_label = BodyLabel(f"{name}:")
+        name_label = CaptionLabel(f"{name}:")
         try:
             preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." \
                 if isinstance(value, (dict, list)) else str(value)[:40]
         except:
             preview = "<无法预览>"
-        value_label = BodyLabel(preview)
+        value_label = CaptionLabel(preview)
         value_label.setWordWrap(True)
         value_label.setStyleSheet("color: #888888;")
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
@@ -1735,13 +1699,13 @@ class PropertyPanel(CardWidget):
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
-        name_label = BodyLabel(f"{key} : ")
+        name_label = CaptionLabel(f"{key} : ")
         try:
             preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." \
                 if isinstance(value, (dict, list)) else str(value)[:40]
         except:
             preview = "<无法预览>"
-        value_label = BodyLabel(preview)
+        value_label = CaptionLabel(preview)
         value_label.setWordWrap(True)
         value_label.setStyleSheet("color: #888888;")
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self)
