@@ -10,6 +10,9 @@ from app.utils.utils import get_icon
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 
+# --- 导入新的 PortWidget ---
+from app.widgets.property_panel.port_widget import PortWidget
+
 
 class FlowControlPanelWidget:
     """处理控制流节点（如循环、迭代）UI的子模块"""
@@ -23,11 +26,13 @@ class FlowControlPanelWidget:
         self._backdrop_progress_label = None
         self._backdrop_progress_bar = None
         self._backdrop_internal_nodes_list = None
+        # --- 新增：用于缓存 PortWidget ---
+        self._port_widget = None
 
     def build_ui(self, node, current_segment=None):
         """构建控制流节点UI"""
         # 清理之前的Backdrop缓存
-        self._cleanup_backdrop_cache()
+        # self._cleanup_backdrop_cache()
 
         title = SubtitleLabel(f"🔁 {node.NODE_NAME}")
         self.parent_layout.addWidget(title)
@@ -76,34 +81,32 @@ class FlowControlPanelWidget:
 
         self.parent_layout.addStretch()
 
-        # 输入输出端口的构建逻辑保持不变
-        self.parent_panel.segmented_widget = SegmentedWidget()
-        self.parent_panel.segmented_widget.addItem('input', '输入端口')
-        self.parent_panel.segmented_widget.addItem('output', '输出端口')
-        self.parent_panel.stacked_widget = QStackedWidget(self.parent_panel)
-        input_widget = QWidget()
-        input_layout = QVBoxLayout(input_widget)
-        input_layout.setContentsMargins(0, 0, 0, 0)
-        input_layout.setSpacing(8)
-        self.parent_panel._populate_input_ports(node, input_layout) # 调用父控件方法
-        input_layout.addStretch(1)
-        self.parent_panel.stacked_widget.addWidget(input_widget)
-        output_widget = QWidget()
-        output_layout = QVBoxLayout(output_widget)
-        output_layout.setContentsMargins(0, 0, 0, 0)
-        output_layout.setSpacing(8)
-        self.parent_panel._populate_output_ports(node, output_layout) # 调用父控件方法
-        output_layout.addStretch(1)
-        self.parent_panel.stacked_widget.addWidget(output_widget)
-        self.parent_panel.segmented_widget.currentItemChanged.connect(self.parent_panel._on_segmented_changed) # 调用父控件方法
-        self.parent_layout.addWidget(self.parent_panel.segmented_widget)
-        self.parent_layout.addWidget(self.parent_panel.stacked_widget)
-        self.parent_layout.addStretch(1)
+        # --- 修改：使用 PortWidget 替代手动构建输入输出端口 ---
+        # 清理旧的 PortWidget（如果存在）
+        if self._port_widget:
+            try:
+                self.parent_layout.removeWidget(self._port_widget)
+                self._port_widget.deleteLater()
+                self._port_widget = None
+            except:
+                pass
 
-        if current_segment in ['input', 'output']:
-            self.parent_panel.segmented_widget.setCurrentItem(current_segment)
-        else:
-            self.parent_panel.segmented_widget.setCurrentItem('input')
+        # 创建新的 PortWidget 实例
+        self._port_widget = PortWidget(
+            main_window=self.main_window,
+            parent_panel=self.parent_panel, # 传递 PropertyPanel 实例
+            node=node,
+            port_info_func=self.parent_panel.get_port_info, # 传递获取端口信息的函数
+            copy_as_expression_func=self.parent_panel._copy_as_expression, # 传递复制表达式的函数
+            add_output_to_global_func=self.parent_panel._add_output_to_global_variable, # 传递添加到全局变量的函数
+            parent=self.parent_panel # 传递父控件
+        )
+        # 根据 current_segment 设置 PortWidget 内部的分段控件状态
+        if hasattr(self._port_widget, 'segmented_widget'):
+             if current_segment in ['input', 'output']:
+                 self._port_widget.segmented_widget.setCurrentItem(current_segment)
+        self.parent_layout.addWidget(self._port_widget)
+        self.parent_layout.addStretch(1)
 
     def _cleanup_backdrop_cache(self):
         """清理旧的Backdrop缓存引用"""
@@ -224,6 +227,13 @@ class FlowControlPanelWidget:
                 item = QListWidgetItem(item_text)
                 internal_nodes_list.addItem(item)
 
+        def on_item_double_clicked(item):
+            row = internal_nodes_list.row(item)
+            if 0 <= row < len(internal_nodes):
+                node_to_center = internal_nodes[row]
+                self.main_window.canvas_widget.zoom_to_nodes([node_to_center._view])
+
+        internal_nodes_list.itemDoubleClicked.connect(on_item_double_clicked)
         num_items = internal_nodes_list.count()
         estimated_height_for_items = num_items * 40
         padding_height = 25

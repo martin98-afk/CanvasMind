@@ -7,7 +7,6 @@ from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import StatusNode
 from app.scheduler.expression_engine import ExpressionEngine
-from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import resource_path, draw_square_port
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.custom_node_item import CustomNodeItem
@@ -170,6 +169,8 @@ def create_branch_node(parent_window):
 
             # 6. 将生成的端口名称同步回表单（仅在名称发生变化时）
             self._sync_names_to_form(conditions, name_mapping)
+            if self.selected():
+                QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
 
         def _sync_names_to_form(self, conditions, name_mapping):
             """将生成的端口名称同步回表单"""

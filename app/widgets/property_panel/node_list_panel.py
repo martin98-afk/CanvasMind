@@ -26,14 +26,6 @@ class NodeListPanelWidget:
 
     def build_ui(self, nodes):
         """构建节点列表UI"""
-        self._column_list_widgets.clear()
-        self._text_edit_widgets.clear()
-        self.parent_panel._internal_nodes_card_expanded.clear()
-        while self.parent_layout.count():
-            child = self.parent_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-
         new_components = topological_sort(nodes, split_components=True)
         if new_components is None:
             new_components = []
