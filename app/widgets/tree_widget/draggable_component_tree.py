@@ -106,9 +106,9 @@ class DraggableTreePanel(QWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setFixedWidth(210)
+        self.setMinimumWidth(210)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 8, 0, 8)
+        layout.setContentsMargins(3, 8, 3, 8)
         layout.setSpacing(8)
 
         # 第一行：控制栏
@@ -146,7 +146,6 @@ class DraggableTreePanel(QWidget):
         # 组件树
         self.tree = DraggableTreeWidget(self.parent_window)
         self.tree.setHeaderHidden(True)
-        self.tree.setFixedWidth(210)
 
         layout.addLayout(control_layout)
         layout.addWidget(self.search_box)

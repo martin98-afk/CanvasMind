@@ -10,6 +10,8 @@ from PyQt5.QtWidgets import QVBoxLayout, QWidget
 from spyder.widgets.collectionseditor import CollectionsEditorWidget
 from spyder.plugins.variableexplorer.widgets.namespacebrowser import NamespaceBrowser
 
+from app.widgets.basic_widget.style_sheet import StyleSheet
+
 
 class VariableExplorerCore:
     """变量浏览器核心逻辑，不依赖具体GUI组件"""
@@ -195,30 +197,6 @@ class VariableExplorerWidget(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
-        # 深色 QSS
-        dark_qss = """
-        CollectionsEditorTableView {
-            background-color: #19232D;
-            color: #FFFFFF;
-            alternate-background-color: #1A2029;
-            gridline-color: #32414B;
-            selection-background-color: #3D5DAE;
-            selection-color: #FFFFFF;
-        }
-        QDialog, QWidget {
-            background-color: #19232D;
-            color: #FFFFFF;
-        }
-        QHeaderView::section {
-            background-color: #262F3A;
-            color: #FFFFFF;
-            padding: 4px;
-            border: 1px solid #32414B;
-        }
-        QTableView::item {
-            padding: 4px;
-        }
-        """
 
         # 创建变量浏览器核心
         self.core = VariableExplorerCore(kernel_manager)
@@ -227,7 +205,7 @@ class VariableExplorerWidget(QWidget):
         self.collection_widget = CollectionsEditorWidget(
             self, data={}, namespacebrowser=NamespaceBrowser(self)
         )
-        self.collection_widget.editor.setStyleSheet(dark_qss)
+        StyleSheet.VARIABLE_EXPLORER.apply(self.collection_widget.editor)
         self.layout.addWidget(self.collection_widget.editor)
 
         # 定时器用于自动刷新

@@ -747,9 +747,14 @@ class BaseComponent(ABC):
         """读取Excel数据"""
         if isinstance(data, pd.DataFrame):
             return data
+        elif isinstance(data, dict):
+            for key, value in data.items():
+                if not isinstance(value, pd.DataFrame):
+                    raise ComponentError(f"无法读取Excel数据字典，key: {key}, value: {type(value)}")
+                return data
         elif isinstance(data, (str, Path)):
             if os.path.exists(data):
-                return pd.read_excel(data)
+                return pd.read_excel(data, sheet_name=None)
             else:
                 raise ComponentError(f"Excel文件不存在: {data}")
         else:
@@ -862,14 +867,14 @@ class BaseComponent(ABC):
         """存储JSON数据（直接返回）"""
         return data
 
-    def _store_excel_data(self, data: pd.DataFrame) -> Union[DataFrame, str, Path]:
+    def _store_excel_data(self, data: pd.DataFrame) -> Union[dict[DataFrame], str, Path]:
         """存储Excel数据"""
         import io
         if isinstance(data, pd.DataFrame):
             return data
         elif isinstance(data, (str, Path)):
             if os.path.exists(data):
-                return pd.read_excel(data)
+                return pd.read_excel(data, sheet_name=None)
             else:
                 return pd.read_excel(io.StringIO(data))
         else:

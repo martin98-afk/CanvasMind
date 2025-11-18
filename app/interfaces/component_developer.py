@@ -159,9 +159,6 @@ class ComponentDeveloperWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         # 左侧：组件树和开发区域
         main_splitter = QSplitter(Qt.Horizontal)
-        self_layout = QVBoxLayout(self)
-        self_layout.setContentsMargins(0, 0, 0, 0)
-        self_layout.setSpacing(0)
         # --- 修改：左侧：组件树 ---
         self.component_tree_panel = ComponentTreePanel(self)
         self.component_tree = self.component_tree_panel.tree  # 保留对 tree 的直接引用（如果已有代码依赖）
@@ -203,6 +200,7 @@ class ComponentDeveloperWidget(QWidget):
 
         self.pivot = SegmentedWidget(self)
         self.stackedWidget = StackedWidget(self)
+        self.stackedWidget.setAnimationEnabled(False)
         # 组件属性
         info_interface = QWidget()
         info_layout = QVBoxLayout(info_interface)

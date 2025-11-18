@@ -1,0 +1,21 @@
+CollectionsEditorTableView {
+    background-color: #19232D;
+    color: #FFFFFF;
+    alternate-background-color: #1A2029;
+    gridline-color: #32414B;
+    selection-background-color: #3D5DAE;
+    selection-color: #FFFFFF;
+}
+QDialog, QWidget {
+    background-color: #19232D;
+    color: #FFFFFF;
+}
+QHeaderView::section {
+    background-color: #262F3A;
+    color: #FFFFFF;
+    padding: 4px;
+    border: 1px solid #32414B;
+}
+QTableView::item {
+    padding: 4px;
+}
