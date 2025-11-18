@@ -32,6 +32,7 @@ class BuildTreeWorker(QThread):
 
     def __init__(self, data, arg_type, max_depth, parent=None):
         super().__init__(parent)
+        self.parent = parent
         self.data = data
         self.arg_type = arg_type
         self.max_depth = max_depth
@@ -188,40 +189,55 @@ class BuildTreeWorker(QThread):
             return False
 
     def _build_items(self, obj, key, max_depth, current_depth, arg_type, parent_list):
+        """构建单个树形项，并递归处理其子项"""
+        current_depth += 1
         if current_depth > max_depth:
-            item_data = {"text": ["<max recursion depth>"], "data": None, "children": [], "icon": None}
-            parent_list.append(item_data)
+            trunc_item_data = {
+                "text": ["<max recursion depth>"],
+                "data": None,
+                "children": [],
+                "icon": None
+            }
+            parent_list.append(trunc_item_data)
             return
-        # 使用 _format_value 来获取完整的显示文本
-        display_text = self._format_value(obj, arg_type)
-        # 如果 key 不为空，则将其与值拼接起来，形成 "key: (type) value" 的格式
-        if key != "":
-            display_text = f"{key}: {display_text}"
-        # 存储节点数据
+
+        formatted_value = self._format_value(obj, arg_type)
         item_data = {
-            "text": [display_text],
+            "text": [f"{key}: {formatted_value}"],
             "data": obj,
             "children": [],
-            "icon": None
+            "icon": self.parent._get_icon_for_item(obj)
         }
-        # 检查是否需要图标
-        if (self._is_image_file(obj) or self._is_pil_image(obj) or
-                (arg_type is not None and isinstance(arg_type, ArgumentType) and arg_type.is_image())):
-            if isinstance(obj, str) and os.path.isfile(obj):
-                item_data["icon_path"] = obj
-            elif self._is_pil_image(obj):
-                item_data["icon_pil"] = True
+
+        # --- 修改：为字典的直接子项添加标识 ---
+        if current_depth > 1 and isinstance(parent_list, list):  # 确保不是根项
+            pass  # 主要逻辑在 _build_recursive_content_items 中
+
+        # 检查是否是文件路径
+        if isinstance(obj, str) and os.path.isfile(obj):
+            item_data["icon_path"] = obj
+        elif self._is_pil_image(obj):
+            item_data["icon_pil"] = True
+
         # 递归构建子节点
         self._build_recursive_content_items(obj, max_depth, current_depth, arg_type, item_data["children"])
         parent_list.append(item_data)
 
     def _build_recursive_content_items(self, obj, max_depth, current_depth, arg_type, children_list):
+        """递归构建内容项"""
         current_depth += 1
         if current_depth > max_depth:
             return
+
         if isinstance(obj, dict):
             for k, v in obj.items():
                 self._build_items(v, str(k), max_depth, current_depth, arg_type, children_list)
+                # --- 修改：为刚添加的子项添加字典项标识 ---
+                if children_list:  # 确保列表不为空
+                    last_added_item_data = children_list[-1]
+                    # 在数据字典中添加一个标识
+                    last_added_item_data['is_dict_item'] = True
+                    last_added_item_data['dict_key'] = str(k)  # 存储键名
         elif isinstance(obj, (list, tuple)):
             for i, v in enumerate(obj):
                 self._build_items(v, str(i), max_depth, current_depth, arg_type, children_list)
@@ -324,21 +340,30 @@ class BuildTreeWorker(QThread):
                     }
                     children_list.append(trunc_high_dim_item_data)
         elif isinstance(obj, pd.DataFrame):
-            for col in obj.columns:
+            for col in obj.columns[:20]:  # 限制展开列数
                 self._build_items(obj[col], str(col), max_depth, current_depth, arg_type, children_list)
+                if children_list:  # 为 DataFrame 的列项也添加标识（如果需要）
+                    last_added_item_data = children_list[-1]
+                    last_added_item_data['is_dict_item'] = True  # 视为类似字典项
+                    last_added_item_data['dict_key'] = str(col)
         elif isinstance(obj, pd.Series):
             for idx in obj.index[:20]:  # 限制展开数量
                 self._build_items(obj[idx], str(idx), max_depth, current_depth, arg_type, children_list)
+                if children_list:  # 为 Series 的索引项也添加标识（如果需要）
+                    last_added_item_data = children_list[-1]
+                    last_added_item_data['is_dict_item'] = True  # 视为类似字典项
+                    last_added_item_data['dict_key'] = str(idx)
         elif hasattr(obj, '__dict__') and obj.__dict__:
             for attr_name, attr_value in obj.__dict__.items():
                 if not attr_name.startswith('_'):
                     self._build_items(attr_value, attr_name, max_depth, current_depth, arg_type, children_list)
-        elif hasattr(obj, '__slots__'):
-            for slot in getattr(obj, '__slots__', []):
-                if hasattr(obj, slot):
-                    attr_value = getattr(obj, slot)
-                    if not slot.startswith('_'):
-                        self._build_items(attr_value, slot, max_depth, current_depth, arg_type, children_list)
+                    if children_list:  # 为对象属性项也添加标识（如果需要）
+                        last_added_item_data = children_list[-1]
+                        last_added_item_data['is_dict_item'] = True  # 视为类似字典项
+                        last_added_item_data['dict_key'] = str(attr_name)
+        else:
+            # 非容器类型，直接添加
+            pass
 
 
 # --- Main Widget Class (错误处理更新) ---
@@ -431,6 +456,11 @@ class VariableTreeWidget(TreeWidget):
         # 只有当数据不为 None 时才设置 UserRole 数据
         if item_data["data"] is not None:
             item.setData(0, Qt.UserRole, item_data["data"])
+        # --- 修改：设置字典项标识和键名 ---
+        if 'is_dict_item' in item_data:
+            item.setData(0, Qt.UserRole + 1, item_data['is_dict_item']) # 使用不同的角色
+            item.setData(0, Qt.UserRole + 2, item_data['dict_key']) # 存储键名
+        # --- 修改结束 ---
         # 设置图标
         icon = self._get_icon_for_item(item_data["data"])
         if icon:
@@ -734,6 +764,8 @@ class VariableTreeWidget(TreeWidget):
             return
 
         menu = RoundMenu(parent=self)
+        is_dict_item = item.data(0, Qt.UserRole + 1)  # 从 Qt.UserRole + 1 获取标识
+        dict_key = item.data(0, Qt.UserRole + 2)  # 从 Qt.UserRole + 2 获取键名
 
         # --- 通用的“在资源管理器中打开”动作 ---
         open_in_explorer_action = None
@@ -801,8 +833,11 @@ class VariableTreeWidget(TreeWidget):
             action = QAction("🖼️ 预览原图", self)
             action.triggered.connect(lambda: self._preview_image(obj))
             menu.addAction(action)
-
-        copy_action = QAction("📋 Copy Value", self)
+        if is_dict_item and dict_key:
+            copy_key_action = QAction("📋 复制字典键", self)
+            copy_key_action.triggered.connect(lambda: self._copy_value(dict_key))
+            menu.addAction(copy_key_action)
+        copy_action = QAction("📋 复制值", self)
         copy_action.triggered.connect(lambda: self._copy_value(str(obj)))
         menu.addAction(copy_action)
 

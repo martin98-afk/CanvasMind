@@ -747,6 +747,11 @@ class BaseComponent(ABC):
         """读取Excel数据"""
         if isinstance(data, pd.DataFrame):
             return data
+        elif isinstance(data, dict):
+            for key, value in data.items():
+                if not isinstance(value, pd.DataFrame):
+                    raise ComponentError(f"无法读取Excel数据字典，key: {key}, value: {type(value)}")
+                return data
         elif isinstance(data, (str, Path)):
             if os.path.exists(data):
                 return pd.read_excel(data, sheet_name=None)
