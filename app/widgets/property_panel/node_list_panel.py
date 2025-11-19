@@ -6,6 +6,7 @@ from qfluentwidgets import CardWidget, BodyLabel, ListWidget, \
     FluentIcon, TransparentToolButton
 
 from app.utils.utils import topological_sort
+from app.widgets.property_panel.internal_node_list import InternalNodeList
 
 
 class NodeListPanelWidget:
@@ -45,7 +46,7 @@ class NodeListPanelWidget:
                 if i in processed_new_indices:
                     continue
                 overlap = len(old_node_set & new_node_set)
-                if overlap > 1:
+                if overlap > 0:
                     for j, nid in enumerate(topo_order):
                         if nid in new_node_set:
                             overlaped_id.append(j)
@@ -61,7 +62,6 @@ class NodeListPanelWidget:
         for i, comp in enumerate(new_components):
             if i not in processed_new_indices:
                 final_components.append(comp)
-
         title = BodyLabel(f"⏬ 连通图执行顺序")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.parent_layout.addWidget(title)
@@ -122,27 +122,16 @@ class NodeListPanelWidget:
         header_layout.addWidget(move_down_btn)
         component_layout.addLayout(header_layout)
 
-        component_list = ListWidget(self.parent_panel)
         num_items = len(topo_sorted_component)
         estimated_height_for_items = num_items * 40
         total_estimated_height = estimated_height_for_items
-        component_list.setFixedHeight(total_estimated_height)
 
         list_identifier = f"component_{index}"
         self._component_nodes_list[list_identifier] = topo_sorted_component
-
-        for n in topo_sorted_component:
-            status = self.main_window.get_node_status(n)
-            status_text = {
-                "running": "🟡 运行中",
-                "success": "🟢 成功",
-                "failed": "🔴 失败",
-                "unrun": "⚪ 未运行",
-                "pending": "🔵 待运行"
-            }.get(status, status)
-            item_text = f"{status_text} - {n.name()}"
-            item = QListWidgetItem(item_text)
-            component_list.addItem(item)
+        status_list = [self.main_window.get_node_status(n) for n in topo_sorted_component]
+        name_list = [n.name() for n in topo_sorted_component]
+        component_list = InternalNodeList(status_list, name_list, self.parent_panel)
+        component_list.setFixedHeight(total_estimated_height)
 
         def on_item_double_clicked(item):
             row = component_list.row(item)

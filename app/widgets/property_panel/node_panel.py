@@ -15,7 +15,6 @@ class NodePanelWidget:
         self.parent_layout = parent_layout # PropertyPanel 中的 node_vbox
 
         # 存储当前节点的UI元素
-        self.current_node = None
         self.port_widget = None # 引用 PortWidget 实例
         self.current_segment = None
 
@@ -30,15 +29,10 @@ class NodePanelWidget:
             add_output_to_global_func=self.parent_panel._add_output_to_global_variable,  # 传递添加到全局变量的函数
             parent=self.parent_panel  # 或者传入 self.parent_layout 的父控件
         )
+        self.port_widget.segmented_widget.currentItemChanged.connect(self._on_port_segment_changed)
 
     def build_ui(self, node, current_segment=None):
         """构建节点UI"""
-        # 1. 检查是否是当前节点
-        is_current_node = (self.current_node is not None and self.current_node.id == node.id)
-
-        # 更新当前节点引用
-        self.current_node = node
-
         # 2. 初始化节点属性
         if not hasattr(node, '_input_values'):
             node._input_values = {}
@@ -69,6 +63,10 @@ class NodePanelWidget:
 
         self.parent_layout.addWidget(self.port_widget)
         self.parent_layout.addStretch(1) # 添加伸缩项，使内容靠上
+
+    def _on_port_segment_changed(self, segment):
+        """处理 PortWidget 的分段切换事件"""
+        self.current_segment = segment
 
     def _add_separator(self, layout):
         """向布局添加分隔线"""

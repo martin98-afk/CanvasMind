@@ -9,6 +9,7 @@ from qfluentwidgets import CardWidget, BodyLabel, ListWidget, SegmentedWidget, \
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
+from app.widgets.property_panel.internal_node_list import InternalNodeList
 
 # --- 导入新的 PortWidget ---
 from app.widgets.property_panel.port_widget import PortWidget
@@ -19,8 +20,8 @@ class FlowControlPanelWidget:
 
     def __init__(self, main_window, parent_panel, parent_layout):
         self.main_window = main_window
-        self.parent_panel = parent_panel # PropertyPanel 的实例
-        self.parent_layout = parent_layout # PropertyPanel 中的 node_vbox
+        self.parent_panel = parent_panel  # PropertyPanel 的实例
+        self.parent_layout = parent_layout  # PropertyPanel 中的 node_vbox
 
         # 用于更新现有Backdrop状态的缓存
         self._backdrop_progress_label = None
@@ -28,12 +29,24 @@ class FlowControlPanelWidget:
         self._backdrop_internal_nodes_list = None
         # --- 新增：用于缓存 PortWidget ---
         self._port_widget = None
+        self.current_segment = None
+
+    def build_port(self, node):
+        # 创建新的 PortWidget 实例
+        self._port_widget = PortWidget(
+            main_window=self.main_window,
+            parent_panel=self.parent_panel,  # 传递 PropertyPanel 实例
+            node=node,
+            port_info_func=self.parent_panel.get_port_info,  # 传递获取端口信息的函数
+            copy_as_expression_func=self.parent_panel._copy_as_expression,  # 传递复制表达式的函数
+            add_output_to_global_func=self.parent_panel._add_output_to_global_variable,  # 传递添加到全局变量的函数
+            parent=self.parent_panel  # 传递父控件
+        )
+        self._port_widget.segmented_widget.currentItemChanged.connect(self._on_port_segment_changed)
 
     def build_ui(self, node, current_segment=None):
         """构建控制流节点UI"""
-        # 清理之前的Backdrop缓存
-        # self._cleanup_backdrop_cache()
-
+        # 1. 节点名称
         title = SubtitleLabel(f"🔁 {node.NODE_NAME}")
         self.parent_layout.addWidget(title)
 
@@ -64,7 +77,7 @@ class FlowControlPanelWidget:
             node.model.set_property("loop_nums", total)
         else:
             total = 0
-
+        # 2. 控制流进度
         progress_label = StrongBodyLabel(f"进度: {current}/{total}")
         self.parent_layout.addWidget(progress_label)
         self._backdrop_progress_label = progress_label
@@ -74,48 +87,27 @@ class FlowControlPanelWidget:
         progress_bar.setValue(int(current / max(1, total) * 100) if total > 0 else 0)
         self.parent_layout.addWidget(progress_bar)
         self._backdrop_progress_bar = progress_bar
-
+        # 3. 循环流配置
         if flow_type == "loop":
             self._add_loop_config_section(node)
+
+        # 4. 内部节点
         self._add_internal_nodes_section(node)
-
         self.parent_layout.addStretch()
-
-        # --- 修改：使用 PortWidget 替代手动构建输入输出端口 ---
-        # 清理旧的 PortWidget（如果存在）
-        if self._port_widget:
-            try:
-                self.parent_layout.removeWidget(self._port_widget)
-                self._port_widget.deleteLater()
-                self._port_widget = None
-            except:
-                pass
-
-        # 创建新的 PortWidget 实例
-        self._port_widget = PortWidget(
-            main_window=self.main_window,
-            parent_panel=self.parent_panel, # 传递 PropertyPanel 实例
-            node=node,
-            port_info_func=self.parent_panel.get_port_info, # 传递获取端口信息的函数
-            copy_as_expression_func=self.parent_panel._copy_as_expression, # 传递复制表达式的函数
-            add_output_to_global_func=self.parent_panel._add_output_to_global_variable, # 传递添加到全局变量的函数
-            parent=self.parent_panel # 传递父控件
-        )
+        # 5. 输入输出端口
+        self.build_port(node)
         # 根据 current_segment 设置 PortWidget 内部的分段控件状态
-        if hasattr(self._port_widget, 'segmented_widget'):
-             if current_segment in ['input', 'output']:
-                 self._port_widget.segmented_widget.setCurrentItem(current_segment)
+        if self.current_segment is not None:
+            self._port_widget.segmented_widget.setCurrentItem(self.current_segment)
+        elif hasattr(self._port_widget, 'segmented_widget'):
+            if current_segment in ['input', 'output']:
+                self._port_widget.segmented_widget.setCurrentItem(current_segment)
         self.parent_layout.addWidget(self._port_widget)
         self.parent_layout.addStretch(1)
 
-    def _cleanup_backdrop_cache(self):
-        """清理旧的Backdrop缓存引用"""
-        if hasattr(self, '_backdrop_progress_label') and self._backdrop_progress_label:
-            delattr(self, '_backdrop_progress_label')
-        if hasattr(self, '_backdrop_progress_bar') and self._backdrop_progress_bar:
-            delattr(self, '_backdrop_progress_bar')
-        if hasattr(self, '_backdrop_internal_nodes_list') and self._backdrop_internal_nodes_list:
-            delattr(self, '_backdrop_internal_nodes_list')
+    def _on_port_segment_changed(self, segment):
+        """处理 PortWidget 的分段切换事件"""
+        self.current_segment = segment
 
     def update_backdrop_data(self, node):
         """尝试更新现有 ControlFlowBackdrop 的状态。"""
@@ -161,13 +153,7 @@ class FlowControlPanelWidget:
                 if i < len(internal_nodes):
                     n = internal_nodes[i]
                     status = self.main_window.get_node_status(n)
-                    status_text = {
-                        "running": "🟡 运行中",
-                        "success": "🟢 成功",
-                        "failed": "🔴 失败",
-                        "unrun": "⚪ 未运行",
-                        "pending": "🔵 待运行"
-                    }.get(status, status)
+                    status_text = self._backdrop_internal_nodes_list.STATUS_TEXT_MAP.get(status, status)
                     item.setText(f"{status_text} - {n.name()}")
                 else:
                     item.setText("")
@@ -210,22 +196,9 @@ class FlowControlPanelWidget:
         nodes_layout.addLayout(title_btn_layout)
 
         _, _, internal_nodes = node.get_nodes()
-        internal_nodes_list = ListWidget(self.parent_panel)
-        if not internal_nodes:
-            internal_nodes_list.addItem(QListWidgetItem("暂无内部节点"))
-        else:
-            for n in internal_nodes:
-                status = self.main_window.get_node_status(n)
-                status_text = {
-                    "running": "🟡 运行中",
-                    "success": "🟢 成功",
-                    "failed": "🔴 失败",
-                    "unrun": "⚪ 未运行",
-                    "pending": "🔵 待运行"
-                }.get(status, status)
-                item_text = f"{status_text} - {n.name()}"
-                item = QListWidgetItem(item_text)
-                internal_nodes_list.addItem(item)
+        status_list = [self.main_window.get_node_status(n) for n in internal_nodes]
+        name_list = [n.name() for n in internal_nodes]
+        internal_nodes_list = InternalNodeList(status_list, name_list, self.parent_panel)
 
         def on_item_double_clicked(item):
             row = internal_nodes_list.row(item)
@@ -244,7 +217,7 @@ class FlowControlPanelWidget:
         nodes_card.setMinimumHeight(initial_max_height)
         nodes_layout.addWidget(internal_nodes_list)
         self.parent_layout.addWidget(nodes_card)
-        self._backdrop_internal_nodes_list = internal_nodes_list # 缓存
+        self._backdrop_internal_nodes_list = internal_nodes_list  # 缓存
 
     def _add_loop_config_section(self, node):
         config_card = CardWidget(self.parent_panel)
@@ -263,7 +236,7 @@ class FlowControlPanelWidget:
         def on_mode_changed(text):
             mode_map = {'固定次数': 'count', '条件循环': 'condition', 'While循环': 'while'}
             node.model.set_property("loop_mode", mode_map.get(text, "count"))
-            self.parent_panel.update_properties(node, node_changed=True) # 调用父控件方法
+            self.parent_panel.update_properties(node, node_changed=True)  # 调用父控件方法
 
         mode_combo.currentTextChanged.connect(on_mode_changed)
         config_layout.addWidget(BodyLabel("循环模式:"))
@@ -338,7 +311,8 @@ class FlowControlPanelWidget:
 
     def _open_long_text_editor(self, line_edit, key):
         dialog = LongTextEditorDialog(
-            content=line_edit.toPlainText(), extra_keys=key, parent=self.parent_panel.window(), main_window=self.main_window
+            content=line_edit.toPlainText(), extra_keys=key, parent=self.parent_panel.window(),
+            main_window=self.main_window
         )
         if dialog.exec():
             new_text = dialog.text_edit.toPlainText().strip()
