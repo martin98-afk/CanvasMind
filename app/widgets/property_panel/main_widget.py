@@ -161,7 +161,7 @@ class PropertyPanel(CardWidget):
                 # 补充动态端口（如有）
                 for port in (node.input_ports() if is_input else node.output_ports()):
                     if port.name() not in [r[0] for r in result]:
-                        result.append((port.name(), port.name(), ArgumentType.TEXT))
+                        result.append((port.name(), port.name(), ArgumentType.JSON))
                 return result
         # === 旧逻辑（兼容非动态节点）===
         if node.has_property(f"{'input' if is_input else 'output'}_ports"):
@@ -170,7 +170,7 @@ class PropertyPanel(CardWidget):
             type_dict = {item.value: item for item in ArgumentType}
             return [(p.name(), p.name(), type_dict[pd["type"]]) for p, pd in zip(ports, port_defs)]
         else:
-            return [(p.name(), p.name(), ArgumentType.TEXT) for p in
+            return [(p.name(), p.name(), ArgumentType.JSON) for p in
                     (node.input_ports() if is_input else node.output_ports())]
 
     def update_properties(self, node, node_changed=False):
@@ -186,7 +186,6 @@ class PropertyPanel(CardWidget):
         )
         if is_backdrop_change:
             # 尝试更新现有Backdrop的状态
-            # 委托给 FlowControlPanelWidget 处理
             if hasattr(self, 'flow_control_panel_widget') and self.flow_control_panel_widget:
                 try:
                     self.flow_control_panel_widget.update_backdrop_data(node)
@@ -238,7 +237,6 @@ class PropertyPanel(CardWidget):
 
     def _build_node_ui(self, node, current_segment=None):
         """构建普通节点UI"""
-        # 委托给 NodePanelWidget
         if not hasattr(self, 'node_panel_widget') or not self.node_panel_widget:
             self.node_panel_widget = NodePanelWidget(self.main_window, self, self.node_vbox)
         self.node_panel_widget.build_ui(node, current_segment)
@@ -279,7 +277,6 @@ class PropertyPanel(CardWidget):
     # ========================
     # 全局变量操作
     # ========================
-    # 这些方法也可以委托给 GlobalPanelWidget
     def _delete_custom_variable(self, var_name: str, var_type: str):
         if hasattr(self, 'global_panel_widget') and self.global_panel_widget:
             self.global_panel_widget.delete_variable(var_type, var_name)

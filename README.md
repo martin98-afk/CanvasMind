@@ -5,95 +5,10 @@
 <div align="center">
   <h1>Visual Programming Workflow Development Tool</h1>
   
-  [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md)
+  [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md)| [📘 使用手册](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/)
 </div>
 
 A modern low-code visual programming platform built on **NodeGraphQt** and **qfluentwidgets**, supporting drag-and-drop component orchestration, asynchronous execution, file operations, loop control, and one-click export of workflows into standalone runnable projects—enabling seamless transition from development to deployment.
-
----
-## 📷 Welecome Interface Preview
-
-<img src="images/欢迎界面示意图.png" width="800">
-
----
-
-## 📷 Workflow Management UI Preview
-
-<img src="images/工作流管理示意图.gif" width="800">
-
----
-
-## 🎉 Workflow Diagrams
-
-<img src="images/工作流示意图.gif" width="800">
-
-<img src="images/工作流示意图2.gif" width="800">
-
-## Diagram of a complex canvas model: (React calling a large model intelligent agent)
-
-<img src="canvas_files/workflows/react智能体.png" width="1200">
-
-## 📦 Model Execution Preview
-
-<img src="images/模型运行效果.gif" width="800">
-
-## Node Debug Mode Preview
-
-<img src="images/组件调试模式示意图.gif" width="800">
-
-## Complex Component UI Preview
-
-<img src="images/复杂组件控件示意图.png" width="800">
-
-## Loop Control Flow Logic
-
-<img src="images/循环控制示意图.png" width="800">
-
-## Loop Node Execution
-
-<img src="images/循环节点执行示意图.gif" width="800">
-
-## Global Variables Usage
-
-<img src="images/全局变量使用示意图.gif" width="800">
-
-## Branch Node Execution
-
-<img src="images/分支执行效果示意图.gif" width="800">
-
-## Code Editor & Execution Component
-
-<img src="images/代码编辑执行效果示意图.gif" width="800">
-
----
-
-## 📦 Subgraph Export Preview
-
-<img src="images/项目导出示意图.gif" width="800">  
-
----
-
-## 📷 Component Development Preview
-
-<img src="images/组件开发示意图.gif" width="800">
-
----
-
-### Exported Project Management
-
-<img src="images/导出项目管理示意图.png" width="800">
-
-### Project Service Logs
-
-<img src="images/项目服务日志示意图.png" width="800">
-
----
-
-## 📦 Runtime Environment Management
-
-<img src="images/运行环境管理示意图.png" width="800">
-
----
 
 ## 🌟 Key Features
 

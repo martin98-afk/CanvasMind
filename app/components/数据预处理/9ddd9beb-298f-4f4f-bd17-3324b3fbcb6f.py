@@ -39,7 +39,7 @@ class Component(BaseComponent):
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
-
+        self.logger.info(params)
         return {
             "output1": params.prop1
         }

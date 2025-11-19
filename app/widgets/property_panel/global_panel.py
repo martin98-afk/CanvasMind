@@ -109,7 +109,6 @@ class GlobalPanelWidget:
                     card.deleteLater()
             elif action == "clear":
                 global_vars.clear_node_vars(var_name)
-                self._refresh_node_vars_page()
         elif var_type == "custom":
             if action == "add" or action == "update":
                 if var_name not in self._custom_var_cards:
@@ -140,6 +139,7 @@ class GlobalPanelWidget:
                 if var_name in self._env_var_cards:
                     card = self._env_var_cards.pop(var_name)
                     card.deleteLater()
+        self._refresh_node_vars_page()
 
     def _on_global_tab_changed(self, key):
         if key == 'env':
@@ -293,13 +293,13 @@ class GlobalPanelWidget:
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
-        name_label = CaptionLabel(f"{name}:")
+        name_label = BodyLabel(f"{name}:")
         try:
             preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." \
                 if isinstance(value, (dict, list)) else str(value)[:40]
         except:
             preview = "<无法预览>"
-        value_label = CaptionLabel(preview)
+        value_label = BodyLabel(preview)
         value_label.setWordWrap(True)
         value_label.setStyleSheet("color: #888888;")
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self.parent_panel)
@@ -307,7 +307,7 @@ class GlobalPanelWidget:
         del_btn.setFixedSize(16, 16)
         del_btn.clicked.connect(lambda _, n=name: self.delete_variable('custom', n))
         layout.addWidget(name_label)
-        layout.addWidget(value_label)
+        layout.addWidget(value_label, 1)
         layout.addStretch()
         layout.addWidget(del_btn)
 
@@ -421,13 +421,13 @@ class GlobalPanelWidget:
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
-        name_label = CaptionLabel(f"{key} : ")
+        name_label = BodyLabel(f"{key} : ")
         try:
             preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." \
                 if isinstance(value, (dict, list)) else str(value)[:40]
         except:
             preview = "<无法预览>"
-        value_label = CaptionLabel(preview)
+        value_label = BodyLabel(preview)
         value_label.setWordWrap(True)
         value_label.setStyleSheet("color: #888888;")
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self.parent_panel)
@@ -435,7 +435,7 @@ class GlobalPanelWidget:
         del_btn.setFixedSize(16, 16)
         del_btn.clicked.connect(lambda _, k=key: self.delete_env_variable(k))
         layout.addWidget(name_label)
-        layout.addWidget(value_label)
+        layout.addWidget(value_label, 1)
         layout.addStretch()
         layout.addWidget(del_btn)
 

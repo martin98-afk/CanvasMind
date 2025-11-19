@@ -7,7 +7,6 @@ from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import StatusNode
 from app.scheduler.expression_engine import ExpressionEngine
-from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import resource_path, draw_square_port
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.custom_node_item import CustomNodeItem
@@ -34,7 +33,7 @@ def create_branch_node(parent_window):
             self._init_properties()
             self.add_input('input', True, painter_func=draw_square_port)
             # === 关键：延迟绑定监听器 + 延迟首次同步 ===
-            QtCore.QTimer.singleShot(500, self._delayed_setup)
+            QtCore.QTimer.singleShot(0, self._delayed_setup)
 
             self._sync_timer = None
 
@@ -170,6 +169,8 @@ def create_branch_node(parent_window):
 
             # 6. 将生成的端口名称同步回表单（仅在名称发生变化时）
             self._sync_names_to_form(conditions, name_mapping)
+            if self.selected():
+                QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
 
         def _sync_names_to_form(self, conditions, name_mapping):
             """将生成的端口名称同步回表单"""
@@ -338,12 +339,7 @@ def create_branch_node(parent_window):
                 port_name = input_port.name()
                 connected = input_port.connected_ports()
                 if connected:
-                    if len(connected) == 1:
-                        upstream = connected[0]
-                        value = upstream.node()._output_values.get(upstream.name())
-                        inputs_raw[port_name] = value
-                    else:
-                        inputs_raw[port_name] = [
+                    inputs_raw[port_name] = [
                             upstream.node()._output_values.get(upstream.name()) for upstream in connected
                         ]
                     if port_name in self.column_select:
@@ -441,6 +437,6 @@ def create_branch_node(parent_window):
 
             self.clear_output_value()  # 先清空
             for branch in activated_branches:
-                self.set_output_value(branch, inputs["input"])
+                self.set_output_value(branch, inputs["input"] if len(inputs["input"]) > 1 else inputs["input"][0])
 
     return ConditionalBranchNode

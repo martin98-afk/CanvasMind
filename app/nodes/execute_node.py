@@ -420,14 +420,12 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     port_name = input_port.name()
                     connected = input_port.connected_ports()
                     if connected:
-                        if len(connected) == 1:
-                            upstream = connected[0]
-                            value = upstream.node()._output_values.get(upstream.name())
-                            inputs_raw[port_name] = value
-                        else:
+                        if input_port.model.multi_connection:
                             inputs_raw[port_name] = [
-                                upstream.node()._output_values.get(upstream.name()) for upstream in connected
-                            ]
+                                    upstream.node()._output_values.get(upstream.name()) for upstream in connected
+                                ]
+                        else:
+                            inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
                         if port_name in self.column_select:
                             inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
 
@@ -437,7 +435,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                     # 将 input.port_name 转为 input_port_name（避免点号）
                     safe_key = f"input_{k}"
                     input_vars[safe_key] = v
-
                 # === 创建表达式引擎（带全局变量）===
                 expr_engine = ExpressionEngine(global_vars_context=gv)
 

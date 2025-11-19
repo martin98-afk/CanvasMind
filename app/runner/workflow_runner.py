@@ -216,7 +216,7 @@ def execute_branch_node_internal(branch_node, input_data, execute_all_matches=Fa
         selected_ports.append("else")
     if selected_ports:
         for port in selected_ports:
-            output_dict[port] = input_data
+            output_dict[port] = input_data if len(input_data) > 1 else input_data[0]
     return selected_ports, output_dict
 
 
@@ -541,11 +541,10 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
             node_inputs[port] = val
 
         for port, vals in input_port_values.items():
-            if len(vals) == 1:
-                node_inputs[port] = node_inputs[port] if isinstance(vals[0], str) and vals[
-                    0] == "upload_file_placeholder" else vals[0]
-            else:
+            if n["multi_input"].get(port):
                 node_inputs[port] = vals
+            else:
+                node_inputs[port] = node_inputs[port] if isinstance(vals[0], str) and vals[0] == "upload_file_placeholder" else vals[0]
 
         if n.get("is_branch_node", False):
             input_val = next(iter(node_inputs.values()), None)
@@ -674,6 +673,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             "is_loop_node": is_loop_node,
             "is_iterate_node": is_iterate_node,
             "internal_nodes": node_data["custom"].get("internal_nodes", []),
+            "multi_input": node_data.get("input_ports_multi"),
             "is_branch_node": is_branch_node,
             "conditions": node_data["custom"]["params"].get("conditions", []),
             "enable_else": node_data["custom"]["params"].get("enable_else", False),
@@ -721,7 +721,6 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
 
     for node_id in execution_order:
         node = nodes[node_id]
-
         # --- 新增：检查上游节点状态以决定是否跳过 ---
         upstream_nodes = set()
         for conn in graph_data["connections"]:
@@ -763,11 +762,11 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             node_inputs[port] = val
 
         for port, vals in input_port_values.items():
-            if len(vals) == 1:
+            if node["multi_input"].get(port):
+                node_inputs[port] = vals
+            else:
                 node_inputs[port] = node_inputs[port] if isinstance(vals[0], str) and vals[
                     0] == "upload_file_placeholder" else vals[0]
-            else:
-                node_inputs[port] = vals
 
         if node["is_loop_node"]:
             output, loop_disabled_nodes = execute_loop_node_with_branches(
@@ -893,7 +892,7 @@ def execute_branch_node(branch_node, input_data, execute_all_matches=False):
         selected_ports.append("else")
     if selected_ports:
         for port in selected_ports:
-            output_dict[port] = input_data
+            output_dict[port] = input_data if len(input_data) > 1 else input_data[0]
     return selected_ports, output_dict
 
 

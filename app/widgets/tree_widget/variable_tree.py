@@ -3,7 +3,6 @@ import json
 import os
 import subprocess
 import sys
-
 import numpy as np
 import pandas as pd
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
@@ -16,13 +15,182 @@ from qtpy import QtCore
 from spyder.plugins.variableexplorer.widgets.arrayeditor import ArrayEditor
 from spyder.plugins.variableexplorer.widgets.dataframeeditor import DataFrameEditor
 from spyder.plugins.variableexplorer.widgets.namespacebrowser import NamespaceBrowser
-
 from app.components.base import ArgumentType
 from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.dialog_widget.excel_viewer import ExcelViewer
 
 
-# --- Worker Class (修改错误处理) ---
+def _resolve_json_content(obj, arg_type):
+    """
+    根据 arg_type 解析 JSON 内容。
+    如果 arg_type 是 JSON 且 obj 是字符串，则尝试解析它。
+    否则，返回原始 obj。
+    """
+    if arg_type == ArgumentType.JSON and isinstance(obj, str):
+        try:
+            return json.loads(obj)
+        except (json.JSONDecodeError, TypeError):
+            # 解析失败，返回原始字符串
+            pass
+    return obj
+
+
+def _get_formatted_type_and_value(obj, arg_type=None):
+    """
+    根据 obj 的实际类型和可选的 arg_type，返回格式化的类型和值字符串。
+    这个函数统一了 _format_value 的逻辑。
+    """
+    if obj is None:
+        return "(NoneType) None"
+
+    # 优先使用 arg_type
+    if arg_type is not None and isinstance(arg_type, ArgumentType):
+        if arg_type.is_image():
+            if isinstance(obj, str) and os.path.isfile(obj):
+                return f"(Image) '{os.path.basename(obj)}'"
+            elif _is_pil_image(obj):
+                return f"(PIL.Image) size={obj.size}"
+            else:
+                return "(Image) <invalid>"
+        elif arg_type == ArgumentType.CSV:
+            if isinstance(obj, str) and os.path.isfile(obj):
+                return f"(CSV) '{os.path.basename(obj)}'"
+            elif isinstance(obj, pd.DataFrame):
+                return f"(DataFrame) ({obj.shape[0]} x {obj.shape[1]})"
+        elif arg_type == ArgumentType.EXCEL:
+            if isinstance(obj, str) and os.path.isfile(obj):
+                return f"(Excel) '{os.path.basename(obj)}'"
+            elif isinstance(obj, pd.DataFrame):
+                return f"(DataFrame) ({obj.shape[0]} x {obj.shape[1]})"
+        elif arg_type == ArgumentType.JSON:
+            # 首先尝试解析 JSON
+            parsed_obj = _resolve_json_content(obj, arg_type)
+            if isinstance(parsed_obj, (dict, list, tuple, set)):
+                length = len(parsed_obj) if hasattr(parsed_obj, '__len__') else '?'
+                type_name = type(parsed_obj).__name__
+                return f"(JSON/{type_name}) (len={length})"
+            elif isinstance(parsed_obj, (str, bytes)):
+                # 如果解析后仍是字符串或 bytes，说明原字符串不是 JSON，或者解析后是字符串
+                # 但原 obj 是字符串，尝试解析失败，所以显示为 JSON 字符串
+                # 或者原 obj 不是字符串，直接显示为 JSON
+                if isinstance(obj, (str, bytes)):
+                    # 原始 obj 是字符串，但解析失败 -> JSON 字符串
+                    return f"(JSON) {get_simple_repr(obj)}"
+                else:
+                    # 原始 obj 不是字符串 -> 作为 JSON 的通用格式化
+                    return f"(JSON) {get_simple_repr(obj)}"
+            else:
+                # 解析后是其他类型，按 JSON 规则格式化
+                return f"(JSON) {get_simple_repr(parsed_obj)}"
+        elif arg_type == ArgumentType.FILE:
+            if isinstance(obj, str) and os.path.isfile(obj):
+                return f"(File) '{os.path.basename(obj)}'"
+            else:
+                return f"(File) {str(obj)}"
+        elif arg_type in (ArgumentType.SKLEARNMODEL, ArgumentType.TORCHMODEL):
+            return f"(Model: {arg_type.value})"
+        elif arg_type.is_array():
+            if isinstance(obj, np.ndarray):
+                shape_str = str(obj.shape).replace(" ", "")
+                return f"(Array/ndarray) {shape_str}"
+            elif isinstance(obj, (list, tuple)):
+                return f"(Array/list) len={len(obj)}"
+            else:
+                return f"(Array) {str(obj)}"
+        elif arg_type.is_bool():
+            return f"(bool) {str(bool(obj)).lower()}"
+        elif arg_type.is_number():
+            try:
+                val = float(obj)
+                if arg_type == ArgumentType.INT:
+                    return f"(int) {int(val)}"
+                else:
+                    return f"(float) {val}"
+            except (TypeError, ValueError):
+                return f"(Number) {str(obj)}"
+        elif arg_type == ArgumentType.TEXT:
+            if isinstance(obj, str):
+                if len(obj) <= 50:
+                    return f"(str) '{obj}'"
+                else:
+                    return f"(str) '{obj[:200]}...' (右键预览)"
+            else:
+                return f"(str) '{str(obj)}'"
+
+    # 如果没有指定 arg_type，根据对象的实际类型进行推断
+    if isinstance(obj, bool):
+        return f"(bool) {str(obj).lower()}"
+    elif isinstance(obj, str):
+        if os.path.isfile(obj):
+            ext = os.path.splitext(obj)[1].lower()
+            if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif'}:
+                return f"(Image) '{os.path.basename(obj)}'"
+            elif ext in {'.csv', '.xlsx', '.xls'}:
+                return f"(File) '{os.path.basename(obj)}'"
+            elif ext in {'.txt', '.log', '.md', '.py', '.json'}:
+                return f"(Text) '{os.path.basename(obj)}'"
+            else:
+                return f"(File) '{os.path.basename(obj)}'"
+        else:
+            return f"(str) '{obj[:200]}...' (右键预览)"
+    elif isinstance(obj, (int, float)):
+        return f"({type(obj).__name__}) {obj}"
+    elif isinstance(obj, np.number):
+        return f"({type(obj).__name__}) {obj}"
+    elif isinstance(obj, np.ndarray):
+        shape_str = str(obj.shape).replace(" ", "")
+        return f"(ndarray) {shape_str}"
+    elif isinstance(obj, pd.DataFrame):
+        return f"(DataFrame) ({obj.shape[0]} x {obj.shape[1]})"
+    elif isinstance(obj, pd.Series):
+        return f"(Series) len={len(obj)}"
+    elif isinstance(obj, dict):
+        return f"(dict) len={len(obj)}"
+    elif isinstance(obj, list):
+        return f"(list) len={len(obj)}"
+    elif isinstance(obj, tuple):
+        return f"(tuple) len={len(obj)}"
+    elif isinstance(obj, set):
+        return f"(set) len={len(obj)}"
+    elif _is_image_file(obj):
+        return f"(Image) '{os.path.basename(str(obj))}'"
+    elif _is_pil_image(obj):
+        return f"(PIL.Image) size={obj.size}"
+    elif hasattr(obj, '__class__'):
+        cls = obj.__class__
+        mod = cls.__module__
+        name = cls.__name__
+        if mod == 'builtins':
+            return f"({name}) {obj}"
+        else:
+            return f"({mod}.{name}) {obj}"
+    else:
+        return f"({type(obj).__name__}) {str(obj)}"
+
+
+def get_simple_repr(obj, max_len=200):
+    """获取对象的简单字符串表示，用于格式化输出，避免过长."""
+    s = str(obj)
+    if len(s) > max_len:
+        s = s[:max_len] + "..."
+    return s
+
+
+def _is_image_file(obj):
+    if isinstance(obj, str) and os.path.isfile(obj):
+        image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
+        return os.path.splitext(obj.lower())[1] in image_extensions
+    return False
+
+
+def _is_pil_image(obj):
+    try:
+        from PIL import Image
+        return isinstance(obj, Image.Image)
+    except ImportError:
+        return False
+
+
 class BuildTreeWorker(QThread):
     """
     后台线程工作类，用于构建树形结构数据
@@ -39,154 +207,13 @@ class BuildTreeWorker(QThread):
 
     def run(self):
         try:
-            # 在后台线程创建一个临时的QTreeWidget，用于生成QTreeWidgetItem
-            # 注意：QTreeWidgetItem本身不需要父对象，可以在线程中创建
             root_items = []
             self._build_items(self.data, "", self.max_depth, 0, self.arg_type, root_items)
             self.finished.emit(root_items)
         except Exception as e:
-            # 捕获异常并传递完整错误信息
             import traceback
             full_error_msg = f"{type(e).__name__}: {str(e)}\nTraceback:\n{traceback.format_exc()}"
             self.error.emit(full_error_msg)
-
-    def _format_value(self, obj, arg_type=None):
-        """
-        格式化对象的显示文本，使其风格更接近 PyCharm 变量视图。
-        """
-        if obj is None:
-            return "(NoneType) None"
-        # 如果指定了 arg_type，则优先使用它
-        if arg_type is not None and isinstance(arg_type, ArgumentType):
-            if arg_type.is_image():
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"(Image) '{os.path.basename(obj)}'"
-                elif self._is_pil_image(obj):
-                    return f"(PIL.Image) size={obj.size}"
-                else:
-                    return "(Image) <invalid>"
-            elif arg_type == ArgumentType.CSV:
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"(CSV) '{os.path.basename(obj)}'"
-                elif isinstance(obj, pd.DataFrame):
-                    return f"(DataFrame) ({obj.shape[0]} x {obj.shape[1]})"
-            elif arg_type == ArgumentType.EXCEL:
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"(Excel) '{os.path.basename(obj)}'"
-                elif isinstance(obj, pd.DataFrame):
-                    return f"(DataFrame) ({obj.shape[0]} x {obj.shape[1]})"
-            elif arg_type == ArgumentType.JSON:
-                if isinstance(obj, (dict, list, tuple, set)):
-                    length = len(obj) if hasattr(obj, '__len__') else '?'
-                    type_name = type(obj).__name__
-                    return f"(JSON/{type_name}) (len={length})"
-                elif isinstance(obj, (str, bytes)):
-                    try:
-                        obj = json.loads(obj)
-                        return self._format_value(obj)
-                    except json.JSONDecodeError:
-                        return f"(JSON) {self._format_value(obj)}"
-                else:
-                    return f"(JSON) {self._format_value(obj)}"
-            elif arg_type == ArgumentType.FILE:
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"(File) '{os.path.basename(obj)}'"
-                else:
-                    return f"(File) {str(obj)}"
-            elif arg_type in (ArgumentType.SKLEARNMODEL, ArgumentType.TORCHMODEL):
-                return f"(Model: {arg_type.value})"
-            elif arg_type.is_array():
-                if isinstance(obj, np.ndarray):
-                    shape_str = str(obj.shape).replace(" ", "")
-                    return f"(Array/ndarray) {shape_str}"
-                elif isinstance(obj, (list, tuple)):
-                    return f"(Array/list) len={len(obj)}"
-                else:
-                    return f"(Array) {str(obj)}"
-            elif arg_type.is_bool():
-                return f"(bool) {str(bool(obj)).lower()}"
-            elif arg_type.is_number():
-                try:
-                    val = float(obj)
-                    if arg_type == ArgumentType.INT:
-                        return f"(int) {int(val)}"
-                    else:
-                        return f"(float) {val}"
-                except (TypeError, ValueError):
-                    return f"(Number) {str(obj)}"
-            elif arg_type == ArgumentType.TEXT:
-                if isinstance(obj, str):
-                    if len(obj) <= 50:
-                        return f"(str) '{obj}'"
-                    else:
-                        return f"(str) '{obj[:200]}...' (右键预览)"
-                else:
-                    return f"(str) '{str(obj)}'"
-        # 如果没有指定 arg_type，根据对象的实际类型进行推断
-        if isinstance(obj, bool):
-            return f"(bool) {str(obj).lower()}"
-        elif isinstance(obj, str):
-            if os.path.isfile(obj):
-                ext = os.path.splitext(obj)[1].lower()
-                if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif'}:
-                    return f"(Image) '{os.path.basename(obj)}'"
-                elif ext in {'.csv', '.xlsx', '.xls'}:
-                    return f"(File) '{os.path.basename(obj)}'"
-                elif ext in {'.txt', '.log', '.md', '.py', '.json'}:
-                    return f"(Text) '{os.path.basename(obj)}'"
-                else:
-                    return f"(File) '{os.path.basename(obj)}'"
-            else:
-                return f"(str) '{obj[:200]}...' (右键预览)"
-
-        elif isinstance(obj, (int, float)):
-            return f"({type(obj).__name__}) {obj}"
-        elif isinstance(obj, np.number):
-            return f"({type(obj).__name__}) {obj}"
-        elif isinstance(obj, np.ndarray):
-            shape_str = str(obj.shape).replace(" ", "")
-            total = obj.size
-            # 对于 numpy 数组，只显示形状，不展开内容
-            return f"(ndarray) {shape_str}"
-        elif isinstance(obj, pd.DataFrame):
-            return f"(DataFrame) ({obj.shape[0]} x {obj.shape[1]})"
-        elif isinstance(obj, pd.Series):
-            return f"(Series) len={len(obj)}"
-        elif isinstance(obj, dict):
-            return f"(dict) len={len(obj)}"
-        elif isinstance(obj, list):
-            return f"(list) len={len(obj)}"
-        elif isinstance(obj, tuple):
-            return f"(tuple) len={len(obj)}"
-        elif isinstance(obj, set):
-            return f"(set) len={len(obj)}"
-        elif self._is_image_file(obj):
-            return f"(Image) '{os.path.basename(str(obj))}'"
-        elif self._is_pil_image(obj):
-            return f"(PIL.Image) size={obj.size}"
-        elif hasattr(obj, '__class__'):
-            cls = obj.__class__
-            mod = cls.__module__
-            name = cls.__name__
-            if mod == 'builtins':
-                return f"({name}) {obj}"
-            else:
-                return f"({mod}.{name}) {obj}"
-        else:
-            return f"({type(obj).__name__}) {str(obj)}"
-
-    def _is_image_file(self, obj):
-        if isinstance(obj, str) and os.path.isfile(obj):
-            image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
-            return os.path.splitext(obj.lower())[1] in image_extensions
-        return False
-
-    def _is_pil_image(self, obj):
-        try:
-            from PIL import Image
-            return isinstance(obj, Image.Image)
-        except ImportError:
-            return False
 
     def _build_items(self, obj, key, max_depth, current_depth, arg_type, parent_list):
         """构建单个树形项，并递归处理其子项"""
@@ -201,49 +228,47 @@ class BuildTreeWorker(QThread):
             parent_list.append(trunc_item_data)
             return
 
-        formatted_value = self._format_value(obj, arg_type)
+        # 1. 解析内容 (如果需要)
+        actual_obj = _resolve_json_content(obj, arg_type)
+        # 2. 格式化显示文本
+        formatted_value = _get_formatted_type_and_value(actual_obj, arg_type)
+
         item_data = {
             "text": [f"{key}: {formatted_value}"],
-            "data": obj,
+            "data": obj,  # 保存原始数据
             "children": [],
-            "icon": self.parent._get_icon_for_item(obj)
+            "icon": self.parent._get_icon_for_item(actual_obj) # 使用解析后的对象获取图标
         }
 
-        # --- 修改：为字典的直接子项添加标识 ---
-        if current_depth > 1 and isinstance(parent_list, list):  # 确保不是根项
-            pass  # 主要逻辑在 _build_recursive_content_items 中
+        # 3. 递归构建子节点 (基于解析后的 actual_obj)
+        self._build_recursive_content_items(actual_obj, max_depth, current_depth, arg_type, item_data["children"])
 
-        # 检查是否是文件路径
-        if isinstance(obj, str) and os.path.isfile(obj):
-            item_data["icon_path"] = obj
-        elif self._is_pil_image(obj):
-            item_data["icon_pil"] = True
-
-        # 递归构建子节点
-        self._build_recursive_content_items(obj, max_depth, current_depth, arg_type, item_data["children"])
         parent_list.append(item_data)
 
     def _build_recursive_content_items(self, obj, max_depth, current_depth, arg_type, children_list):
-        """递归构建内容项"""
+        """递归构建内容项，现在逻辑与 _format_value 同步"""
         current_depth += 1
         if current_depth > max_depth:
             return
 
+        # 重要：对于子项，arg_type 应该是 None 或基于子项自身的类型推断
+        # 因为 arg_type 主要影响当前层级 obj 的处理方式。
+        # 例如，一个 JSON 字符串解析后是一个 dict，其子项（键值对）应按其自身类型处理，而非 JSON。
+        sub_arg_type = None
+
         if isinstance(obj, dict):
             for k, v in obj.items():
-                self._build_items(v, str(k), max_depth, current_depth, arg_type, children_list)
-                # --- 修改：为刚添加的子项添加字典项标识 ---
-                if children_list:  # 确保列表不为空
+                self._build_items(v, str(k), max_depth, current_depth, sub_arg_type, children_list)
+                if children_list:
                     last_added_item_data = children_list[-1]
-                    # 在数据字典中添加一个标识
                     last_added_item_data['is_dict_item'] = True
-                    last_added_item_data['dict_key'] = str(k)  # 存储键名
+                    last_added_item_data['dict_key'] = str(k)
         elif isinstance(obj, (list, tuple)):
             for i, v in enumerate(obj):
-                self._build_items(v, str(i), max_depth, current_depth, arg_type, children_list)
+                self._build_items(v, str(i), max_depth, current_depth, sub_arg_type, children_list)
         elif isinstance(obj, set):
             for i, v in enumerate(obj):
-                self._build_items(v, f"[{i}]", max_depth, current_depth, arg_type, children_list)
+                self._build_items(v, f"[{i}]", max_depth, current_depth, sub_arg_type, children_list)
         elif isinstance(obj, np.ndarray):
             attrs = {
                 'shape': obj.shape,
@@ -253,41 +278,36 @@ class BuildTreeWorker(QThread):
             }
             for attr_name, attr_val in attrs.items():
                 attr_children = []
-                self._build_recursive_content_items(attr_val, max_depth, current_depth, arg_type, attr_children)
+                # 属性值也按其自身类型处理
+                self._build_recursive_content_items(attr_val, max_depth, current_depth, sub_arg_type, attr_children)
                 attr_item_data = {
-                    "text": [f"{attr_name}", self._format_value(attr_val)],
+                    "text": [f"{attr_name}", _get_formatted_type_and_value(attr_val)],
                     "data": attr_val,
                     "children": attr_children,
                     "icon": None
                 }
                 children_list.append(attr_item_data)
-            # --- 修改 ndarray 展开逻辑 ---
-            # 移除 obj.size <= 20 的限制，改为按维度长度限制
-            # 为每个维度设置最大展示数量
+
             MAX_PER_DIM = 300
             if obj.ndim == 1:
-                # 1D array: 限制展示数量，使用切片
                 slice_obj = slice(0, min(obj.shape[0], MAX_PER_DIM))
                 for i in range(slice_obj.start, min(slice_obj.stop, obj.shape[0])):
-                    self._build_items(obj[i], f"[{i}]", max_depth, current_depth, arg_type, children_list)
-                # 如果被截断，添加提示节点
+                    self._build_items(obj[i], f"[{i}]", max_depth, current_depth, sub_arg_type, children_list)
                 if obj.shape[0] > MAX_PER_DIM:
                     trunc_item_data = {
                         "text": [f"... ({obj.shape[0] - MAX_PER_DIM} more items truncated ...)"],
-                        "data": None,  # 截断节点不关联实际数据
+                        "data": None,
                         "children": [],
                         "icon": None
                     }
                     children_list.append(trunc_item_data)
             elif obj.ndim == 2:
-                # 2D array: 限制行和列
                 max_rows = min(obj.shape[0], MAX_PER_DIM)
                 max_cols = min(obj.shape[1], MAX_PER_DIM)
                 for i in range(max_rows):
                     row_children = []
                     for j in range(max_cols):
-                        self._build_items(obj[i, j], str(j), max_depth, current_depth, arg_type, row_children)
-                    # 如果列被截断，添加提示
+                        self._build_items(obj[i, j], str(j), max_depth, current_depth, sub_arg_type, row_children)
                     if obj.shape[1] > MAX_PER_DIM:
                         trunc_col_item_data = {
                             "text": [f"... ({obj.shape[1] - MAX_PER_DIM} more items truncated ...)"],
@@ -296,15 +316,13 @@ class BuildTreeWorker(QThread):
                             "icon": None
                         }
                         row_children.append(trunc_col_item_data)
-                    # 为行创建节点
                     row_item_data = {
                         "text": [f"[{i}]"],
-                        "data": obj[i],  # 行本身也是一个对象
+                        "data": obj[i],
                         "children": row_children,
                         "icon": None
                     }
                     children_list.append(row_item_data)
-                # 如果行被截断，添加提示
                 if obj.shape[0] > MAX_PER_DIM:
                     trunc_row_item_data = {
                         "text": [f"... ({obj.shape[0] - MAX_PER_DIM} more rows truncated ...)"],
@@ -314,15 +332,11 @@ class BuildTreeWorker(QThread):
                     }
                     children_list.append(trunc_row_item_data)
             elif obj.ndim > 2:
-                # 对于更高维度的数组，递归处理
-                # 限制第一个维度
                 max_first_dim = min(obj.shape[0], MAX_PER_DIM)
                 for i in range(max_first_dim):
-                    # 创建一个切片，代表当前维度的一个元素 (例如，一个2D矩阵)
                     sub_obj = obj[i]
                     sub_children = []
-                    # 递归处理这个子对象
-                    self._build_recursive_content_items(sub_obj, max_depth, current_depth, arg_type, sub_children)
+                    self._build_recursive_content_items(sub_obj, max_depth, current_depth, sub_arg_type, sub_children)
                     sub_item_data = {
                         "text": [f"[{i}]"],
                         "data": sub_obj,
@@ -330,7 +344,6 @@ class BuildTreeWorker(QThread):
                         "icon": None
                     }
                     children_list.append(sub_item_data)
-                # 如果第一个维度被截断，添加提示
                 if obj.shape[0] > MAX_PER_DIM:
                     trunc_high_dim_item_data = {
                         "text": [f"... ({obj.shape[0] - MAX_PER_DIM} more items in first dimension truncated ...)"],
@@ -340,37 +353,35 @@ class BuildTreeWorker(QThread):
                     }
                     children_list.append(trunc_high_dim_item_data)
         elif isinstance(obj, pd.DataFrame):
-            for col in obj.columns[:20]:  # 限制展开列数
-                self._build_items(obj[col], str(col), max_depth, current_depth, arg_type, children_list)
-                if children_list:  # 为 DataFrame 的列项也添加标识（如果需要）
+            for col in obj.columns[:20]:
+                self._build_items(obj[col], str(col), max_depth, current_depth, sub_arg_type, children_list)
+                if children_list:
                     last_added_item_data = children_list[-1]
-                    last_added_item_data['is_dict_item'] = True  # 视为类似字典项
+                    last_added_item_data['is_dict_item'] = True
                     last_added_item_data['dict_key'] = str(col)
         elif isinstance(obj, pd.Series):
-            for idx in obj.index[:20]:  # 限制展开数量
-                self._build_items(obj[idx], str(idx), max_depth, current_depth, arg_type, children_list)
-                if children_list:  # 为 Series 的索引项也添加标识（如果需要）
+            for idx in obj.index[:20]:
+                self._build_items(obj[idx], str(idx), max_depth, current_depth, sub_arg_type, children_list)
+                if children_list:
                     last_added_item_data = children_list[-1]
-                    last_added_item_data['is_dict_item'] = True  # 视为类似字典项
+                    last_added_item_data['is_dict_item'] = True
                     last_added_item_data['dict_key'] = str(idx)
         elif hasattr(obj, '__dict__') and obj.__dict__:
             for attr_name, attr_value in obj.__dict__.items():
                 if not attr_name.startswith('_'):
-                    self._build_items(attr_value, attr_name, max_depth, current_depth, arg_type, children_list)
-                    if children_list:  # 为对象属性项也添加标识（如果需要）
+                    self._build_items(attr_value, attr_name, max_depth, current_depth, sub_arg_type, children_list)
+                    if children_list:
                         last_added_item_data = children_list[-1]
-                        last_added_item_data['is_dict_item'] = True  # 视为类似字典项
+                        last_added_item_data['is_dict_item'] = True
                         last_added_item_data['dict_key'] = str(attr_name)
         else:
             # 非容器类型，直接添加
             pass
 
 
-# --- Main Widget Class (错误处理更新) ---
 class VariableTreeWidget(TreeWidget):
     """用于展示单个变量的详细树状结构"""
-
-    def __init__(self, data=None, port_type=None, max_depth=5, parent=None):
+    def  __init__(self, data=None, port_type=None, max_depth=5, parent=None):
         super().__init__(parent)
         self.parent_widget = parent
         self.setHeaderHidden(True)
@@ -403,26 +414,23 @@ class VariableTreeWidget(TreeWidget):
         """)
         self._original_data = None
         self._arg_type = None
-        self._current_worker = None  # 用于跟踪当前正在运行的worker线程
+        self._current_worker = None
         if data is not None:
             self.set_data(data, arg_type=port_type, max_depth=max_depth)
 
     def set_data(self, data, arg_type=None, max_depth=5):
-        # 如果当前有正在运行的worker，先停止它
         if self._current_worker and self._current_worker.isRunning():
             self._current_worker.quit()
             self._current_worker.wait()
         self._original_data = data
         self._arg_type = arg_type
-        self.clear()  # 清空旧数据
-        # 创建新的worker线程
+        self.clear()
         self._current_worker = BuildTreeWorker(data, arg_type, max_depth, parent=self)
         self._current_worker.finished.connect(self._on_build_finished)
         self._current_worker.error.connect(self._on_build_error)
         self._current_worker.start()
 
     def _on_build_finished(self, root_items_data):
-        """在主线程中接收构建好的数据并更新UI"""
         self.clear()
         for item_data in root_items_data:
             self._add_item_from_data(self.invisibleRootItem(), item_data)
@@ -432,48 +440,34 @@ class VariableTreeWidget(TreeWidget):
                 self.expandItem(top_item)
 
     def _on_build_error(self, error_message):
-        """处理构建过程中的错误"""
-        print(f"构建树形结构时出错: {error_message}")  # 打印完整错误信息
-        # 可以选择在UI上显示错误信息
+        print(f"构建树形结构时出错: {error_message}")
         from qfluentwidgets import InfoBar, InfoBarPosition
         InfoBar.error(
             title="数据结构解析失败",
-            # content=error_message, # 可能太长，只显示关键部分
             content=f"解析变量时出错: {type(self._original_data).__name__}",
             orient=Qt.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP_RIGHT,
-            duration=5000,  # 延长显示时间
+            duration=5000,
             parent=self
         )
-        # 也可以添加一个临时项来显示错误
         error_item = QTreeWidgetItem(self.invisibleRootItem(), [f"Error: {type(self._original_data).__name__}"])
         error_item.setForeground(0, Qt.red)
 
     def _add_item_from_data(self, parent_item, item_data):
-        """根据数据字典创建TreeWidgetItem并添加到父项"""
         item = QTreeWidgetItem(parent_item, item_data["text"])
-        # 只有当数据不为 None 时才设置 UserRole 数据
         if item_data["data"] is not None:
             item.setData(0, Qt.UserRole, item_data["data"])
-        # --- 修改：设置字典项标识和键名 ---
         if 'is_dict_item' in item_data:
-            item.setData(0, Qt.UserRole + 1, item_data['is_dict_item']) # 使用不同的角色
-            item.setData(0, Qt.UserRole + 2, item_data['dict_key']) # 存储键名
-        # --- 修改结束 ---
-        # 设置图标
+            item.setData(0, Qt.UserRole + 1, item_data['is_dict_item'])
+            item.setData(0, Qt.UserRole + 2, item_data['dict_key'])
         icon = self._get_icon_for_item(item_data["data"])
         if icon:
             item.setIcon(0, icon)
-        # 递归添加子项
         for child_data in item_data["children"]:
             self._add_item_from_data(item, child_data)
 
     def _get_icon_for_item(self, obj):
-        """
-        根据对象类型返回对应的图标。
-        这里使用简单的文字图标，您可以替换为更美观的图片资源。
-        """
         from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor
         if obj is None:
             return None
@@ -482,235 +476,43 @@ class VariableTreeWidget(TreeWidget):
         painter = QPainter(pixmap)
         painter.setPen(QColor(255, 165, 0))
         font = QFont('Arial', 12)
-        font.setBold(True)  # 设置字体为加粗
+        font.setBold(True)
         painter.setFont(font)
-        # 为不同的类型设置不同的图标
+
         if isinstance(obj, dict):
             painter.drawText(pixmap.rect(), Qt.AlignCenter, "{...}")
-            painter.end()
-            return QIcon(pixmap)
         elif isinstance(obj, (list, tuple)):
             painter.drawText(pixmap.rect(), Qt.AlignCenter, "[...]")
-            painter.end()
-            return QIcon(pixmap)
         elif isinstance(obj, set):
             painter.drawText(pixmap.rect(), Qt.AlignCenter, "{...}")
-            painter.end()
-            return QIcon(pixmap)
         elif isinstance(obj, np.ndarray):
             painter.drawText(pixmap.rect(), Qt.AlignCenter, "[...]")
-            painter.end()
-            return QIcon(pixmap)
         elif isinstance(obj, pd.DataFrame):
             painter.drawText(pixmap.rect(), Qt.AlignCenter, "DF")
-            painter.end()
-            return QIcon(pixmap)
         elif isinstance(obj, pd.Series):
             painter.drawText(pixmap.rect(), Qt.AlignCenter, "S")
-            painter.end()
-            return QIcon(pixmap)
         elif isinstance(obj, str) and os.path.isfile(obj):
             painter.drawText(pixmap.rect(), Qt.AlignCenter, "📄")
-            painter.end()
-            return QIcon(pixmap)
         elif isinstance(obj, str):
             painter.drawText(pixmap.rect(), Qt.AlignCenter, "\"...\"")
-            painter.end()
-            return QIcon(pixmap)
         elif isinstance(obj, (int, float, bool, np.int8, np.int32, np.int64, np.float32, np.float64)):
             painter.drawText(pixmap.rect(), Qt.AlignCenter, "123")
-            painter.end()
-            return QIcon(pixmap)
         elif hasattr(obj, '__class__'):
             cls = obj.__class__
             mod = cls.__module__
             if mod == 'builtins':
                 painter.drawText(pixmap.rect(), Qt.AlignCenter, "C")
-                painter.end()
-                return QIcon(pixmap)
             else:
                 painter.drawText(pixmap.rect(), Qt.AlignCenter, "M")
-                painter.end()
-                return QIcon(pixmap)
         else:
             return None
+        painter.end()
+        return QIcon(pixmap)
 
-    # --- 其他辅助方法 (_format_value, _is_image_file, etc.) 保持不变 ---
-    # ... (这里省略，但代码中需要保留) ...
-    def _format_value(self, obj, arg_type=None):
-        """
-        格式化对象的显示文本，使其风格更接近 PyCharm 变量视图。
-        """
-        if obj is None:
-            return "(NoneType) None"
-        # 如果指定了 arg_type，则优先使用它
-        if arg_type is not None and isinstance(arg_type, ArgumentType):
-            if arg_type.is_image():
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"(Image) '{os.path.basename(obj)}'"
-                elif self._is_pil_image(obj):
-                    return f"(PIL.Image) size={obj.size}"
-                else:
-                    return "(Image) <invalid>"
-            elif arg_type == ArgumentType.CSV:
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"(CSV) '{os.path.basename(obj)}'"
-                elif isinstance(obj, pd.DataFrame):
-                    return f"(DataFrame) ({obj.shape[0]} x {obj.shape[1]})"
-            elif arg_type == ArgumentType.EXCEL:
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"(Excel) '{os.path.basename(obj)}'"
-                elif isinstance(obj, pd.DataFrame):
-                    return f"(DataFrame) ({obj.shape[0]} x {obj.shape[1]})"
-            elif arg_type == ArgumentType.JSON:
-                if isinstance(obj, (dict, list, tuple, set)):
-                    length = len(obj) if hasattr(obj, '__len__') else '?'
-                    type_name = type(obj).__name__
-                    return f"(JSON/{type_name}) (len={length})"
-                elif isinstance(obj, (str, bytes)):
-                    try:
-                        obj = json.loads(obj)
-                        return self._format_value(obj)
-                    except json.JSONDecodeError:
-                        return f"(JSON) {self._format_value(obj)}"
-                else:
-                    return f"(JSON) {self._format_value(obj)}"
-            elif arg_type == ArgumentType.FILE:
-                if isinstance(obj, str) and os.path.isfile(obj):
-                    return f"(File) '{os.path.basename(obj)}'"
-                else:
-                    return f"(File) {str(obj)}"
-            elif arg_type in (ArgumentType.SKLEARNMODEL, ArgumentType.TORCHMODEL):
-                return f"(Model: {arg_type.value})"
-            elif arg_type.is_array():
-                if isinstance(obj, np.ndarray):
-                    shape_str = str(obj.shape).replace(" ", "")
-                    return f"(Array/ndarray) {shape_str}"
-                elif isinstance(obj, (list, tuple)):
-                    return f"(Array/list) len={len(obj)}"
-                else:
-                    return f"(Array) {str(obj)}"
-            elif arg_type.is_bool():
-                return f"(bool) {str(bool(obj)).lower()}"
-            elif arg_type.is_number():
-                try:
-                    val = float(obj)
-                    if arg_type == ArgumentType.INT:
-                        return f"(int) {int(val)}"
-                    else:
-                        return f"(float) {val}"
-                except (TypeError, ValueError):
-                    return f"(Number) {str(obj)}"
-            elif arg_type == ArgumentType.TEXT:
-                if isinstance(obj, str):
-                    if len(obj) <= 50:
-                        return f"(str) '{obj}'"
-                    else:
-                        return f"(str) '{obj[:200]}...' (右键预览)"
-                else:
-                    return f"(str) '{str(obj)}'"
-        # 如果没有指定 arg_type，根据对象的实际类型进行推断
-        if isinstance(obj, bool):
-            return f"(bool) {str(obj).lower()}"
-        elif isinstance(obj, str):
-            if os.path.isfile(obj):
-                ext = os.path.splitext(obj)[1].lower()
-                if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.gif'}:
-                    return f"(Image) '{os.path.basename(obj)}'"
-                elif ext in {'.csv', '.xlsx', '.xls'}:
-                    return f"(File) '{os.path.basename(obj)}'"
-                elif ext in {'.txt', '.log', '.md', '.py', '.json'}:
-                    return f"(Text) '{os.path.basename(obj)}'"
-                else:
-                    return f"(File) '{os.path.basename(obj)}'"
-            else:
-                return f"(str) '{obj[:200]}...' (右键预览)"
-        elif isinstance(obj, (int, float)):
-            return f"({type(obj).__name__}) {obj}"
-        elif isinstance(obj, np.number):
-            return f"({type(obj).__name__}) {obj}"
-        elif isinstance(obj, np.ndarray):
-            shape_str = str(obj.shape).replace(" ", "")
-            total = obj.size
-            # 对于 numpy 数组，只显示形状，不展开内容
-            return f"(ndarray) {shape_str}"
-        elif isinstance(obj, pd.DataFrame):
-            return f"(DataFrame) ({obj.shape[0]} x {obj.shape[1]})"
-        elif isinstance(obj, pd.Series):
-            return f"(Series) len={len(obj)}"
-        elif isinstance(obj, dict):
-            return f"(dict) len={len(obj)}"
-        elif isinstance(obj, list):
-            return f"(list) len={len(obj)}"
-        elif isinstance(obj, tuple):
-            return f"(tuple) len={len(obj)}"
-        elif isinstance(obj, set):
-            return f"(set) len={len(obj)}"
-        elif self._is_image_file(obj):
-            return f"(Image) '{os.path.basename(str(obj))}'"
-        elif self._is_pil_image(obj):
-            return f"(PIL.Image) size={obj.size}"
-        elif hasattr(obj, '__class__'):
-            cls = obj.__class__
-            mod = cls.__module__
-            name = cls.__name__
-            if mod == 'builtins':
-                return f"({name}) {obj}"
-            else:
-                return f"({mod}.{name}) {obj}"
-        else:
-            return f"({type(obj).__name__}) {str(obj)}"
-
-    def _is_image_file(self, obj):
-        if isinstance(obj, str) and os.path.isfile(obj):
-            image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
-            return os.path.splitext(obj.lower())[1] in image_extensions
-        return False
-
-    def _is_pil_image(self, obj):
-        try:
-            from PIL import Image
-            return isinstance(obj, Image.Image)
-        except ImportError:
-            return False
-
-    def _get_thumbnail_pixmap(self, obj, max_size=150):
-        if isinstance(obj, str) and os.path.isfile(obj):
-            pixmap = QPixmap(obj)
-        elif self._is_pil_image(obj):
-            try:
-                from PIL import Image
-                if obj.mode not in ('RGB', 'RGBA'):
-                    if obj.mode == 'P':
-                        obj = obj.convert('RGBA')
-                    else:
-                        obj = obj.convert('RGB')
-                width, height = obj.size
-                data = obj.tobytes('raw', obj.mode)
-                if obj.mode == 'RGBA':
-                    qimage = QImage(data, width, height, QImage.Format_RGBA8888)
-                else:
-                    qimage = QImage(data, width, height, QImage.Format_RGB888)
-                pixmap = QPixmap.fromImage(qimage)
-            except Exception as e:
-                print(f"转换PIL图像失败: {e}")
-                return None
-        else:
-            return None
-        if pixmap and not pixmap.isNull():
-            scaled_pixmap = pixmap.scaled(
-                max_size, max_size,
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            )
-            return scaled_pixmap
-        return None
-
-    # --- show_detail 方法更新 ---
+    # --- 其他方法保持不变 ---
     def show_detail(self):
         obj = self._original_data
-        has_file_preview = False  # 标记是否是文件类型，需要添加打开资源管理器按钮
-
+        has_file_preview = False
         if isinstance(obj, str) and not os.path.isfile(obj):
             self._preview_text(obj)
         elif isinstance(obj, str) and os.path.isfile(obj):
@@ -723,7 +525,7 @@ class VariableTreeWidget(TreeWidget):
                 self._preview_csv_full(filepath)
                 has_file_preview = True
             elif ext in {'.xlsx', '.xls'}:
-                self._preview_excel(filepath)  # 调用优化后的方法
+                self._preview_excel(filepath)
                 has_file_preview = True
             elif ext in {'.txt', '.log', '.md', '.py', '.json', '.xml', '.yaml', '.yml', '.ini'}:
                 self._preview_text_file(filepath)
@@ -741,33 +543,29 @@ class VariableTreeWidget(TreeWidget):
         elif isinstance(obj, dict):
             self._preview_nested_structure(obj, "字典数据预览")
         elif isinstance(obj, set):
-            # 修正标题
-            self._preview_array(obj, "集合数据预览")
-        elif isinstance(obj, np.ndarray):  # 添加对 ndarray 的处理
+            self._preview_array(obj, "集合数据预览") # Note: 用array viewer显示set可能不理想
+        elif isinstance(obj, np.ndarray):
             self._preview_array(obj,f"NumPy 数组 (shape: {obj.shape}, dtype: {obj.dtype}) 预览")
         elif isinstance(obj, pd.DataFrame):
             self._preview_dataframe_full(obj)
         elif isinstance(obj, pd.Series):
             obj = obj.to_frame()
             self._preview_dataframe_full(obj)
-        elif self._is_pil_image(obj):
+        elif _is_pil_image(obj):
             self._preview_image(obj)
 
-    # --- contextMenuEvent 方法更新 ---
     def contextMenuEvent(self, event):
         item = self.itemAt(event.pos())
         if not item:
             return
-
         obj = item.data(0, Qt.UserRole)
         if obj is None:
             return
 
         menu = RoundMenu(parent=self)
-        is_dict_item = item.data(0, Qt.UserRole + 1)  # 从 Qt.UserRole + 1 获取标识
-        dict_key = item.data(0, Qt.UserRole + 2)  # 从 Qt.UserRole + 2 获取键名
+        is_dict_item = item.data(0, Qt.UserRole + 1)
+        dict_key = item.data(0, Qt.UserRole + 2)
 
-        # --- 通用的“在资源管理器中打开”动作 ---
         open_in_explorer_action = None
         if isinstance(obj, str) and os.path.isfile(obj):
             filepath = obj
@@ -775,7 +573,6 @@ class VariableTreeWidget(TreeWidget):
             open_in_explorer_action.triggered.connect(lambda: self._open_file_in_explorer(filepath))
             menu.addAction(open_in_explorer_action)
 
-        # --- 其他预览动作 ---
         if isinstance(obj, str) and not os.path.isfile(obj):
             action = QAction("🔍 预览完整文本", self)
             action.triggered.connect(lambda: self._preview_text(obj))
@@ -792,7 +589,6 @@ class VariableTreeWidget(TreeWidget):
                 preview_full.triggered.connect(lambda: self._preview_csv_full(filepath))
                 menu.addAction(preview_full)
             elif ext in {'.xlsx', '.xls'}:
-                # 移除旧的预览动作，使用新的优化后方法
                 preview_limited = QAction("📊 预览所有工作表", self)
                 preview_limited.triggered.connect(lambda: self._preview_excel(filepath))
                 menu.addAction(preview_limited)
@@ -800,7 +596,6 @@ class VariableTreeWidget(TreeWidget):
                 action = QAction("🔍 预览文本内容", self)
                 action.triggered.connect(lambda: self._preview_text_file(filepath))
                 menu.addAction(action)
-            # 注意：这里移除了 save_action
         elif isinstance(obj, (list, tuple)):
             action = QAction("🔍 预览完整列表", self)
             action.triggered.connect(
@@ -811,13 +606,11 @@ class VariableTreeWidget(TreeWidget):
             action.triggered.connect(lambda: self._preview_nested_structure(obj, "字典数据预览"))
             menu.addAction(action)
         elif isinstance(obj, set):
-            # 修正标题
             action = QAction("🔍 预览完整集合", self)
             action.triggered.connect(lambda: self._preview_nested_structure(obj, "集合数据预览"))
             menu.addAction(action)
-        elif isinstance(obj, np.ndarray):  # 添加对 ndarray 的右键菜单处理
+        elif isinstance(obj, np.ndarray):
             action = QAction("🔍 预览数组内容", self)
-            # 使用更通用的预览方法，或者可以专门写一个 _preview_ndarray
             action.triggered.connect(lambda: self._preview_array(obj,f"NumPy 数组 (shape: {obj.shape}, dtype: {obj.dtype}) 预览"))
             menu.addAction(action)
         elif isinstance(obj, pd.DataFrame):
@@ -829,68 +622,63 @@ class VariableTreeWidget(TreeWidget):
             action = QAction("🔍 预览完整数据表", self)
             action.triggered.connect(lambda: self._preview_dataframe_full(obj))
             menu.addAction(action)
-        elif self._is_pil_image(obj):
+        elif _is_pil_image(obj):
             action = QAction("🖼️ 预览原图", self)
             action.triggered.connect(lambda: self._preview_image(obj))
             menu.addAction(action)
+
         if is_dict_item and dict_key:
             copy_key_action = QAction("📋 复制字典键", self)
             copy_key_action.triggered.connect(lambda: self._copy_value(dict_key))
             menu.addAction(copy_key_action)
+
         copy_action = QAction("📋 复制值", self)
         copy_action.triggered.connect(lambda: self._copy_value(str(obj)))
         menu.addAction(copy_action)
 
         menu.exec_(event.globalPos())
 
-    # --- 其他方法 (_preview_nested_structure, _build_nested_tree, etc.) 保持不变 ---
     def _preview_nested_structure(self, data, title="嵌套结构预览"):
-        """
-        为嵌套容器（list, dict, tuple, set）创建一个树状预览窗口
-        """
         dialog = MessageBoxBase(parent=self.parent_widget)
         dialog.yesButton.hide()
         dialog.cancelButton.setText("关闭")
-        # 创建一个 TreeWidget 用于展示嵌套结构
         tree_widget = TreeWidget()
         tree_widget.setHeaderLabels(["Key", "Value"])
         tree_widget.setAlternatingRowColors(False)
         tree_widget.setSortingEnabled(False)
         tree_widget.setMinimumSize(800, 500)
-        tree_widget.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Key列自适应内容
-        tree_widget.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Value列拉伸填充剩余空间
-        # 构建树
+        tree_widget.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        tree_widget.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        # Use the same logic as the main widget for consistency
         self._build_nested_tree(data, tree_widget.invisibleRootItem(), "", is_root=True)
-        # 展开所有节点
         tree_widget.expandAll()
         dialog.viewLayout.addWidget(tree_widget)
         dialog.exec_()
 
     def _build_nested_tree(self, obj, parent_item, key, is_root=False, max_depth=10, current_depth=0):
-        """
-        递归构建嵌套结构的树
-        与 _build_tree 逻辑类似，但使用两列显示
-        """
         if current_depth > max_depth:
             item = QTreeWidgetItem(parent_item, ["<max recursion depth>", ""])
             item.setForeground(0, Qt.gray)
             return
+
         display_key = key if not is_root else "root"
-        display_value = self._format_value(obj)
+        # Use the unified formatting function
+        display_value = _get_formatted_type_and_value(obj)
         item = QTreeWidgetItem(parent_item, [display_key, display_value])
-        # 只有当 obj 不为 None 时才设置数据
+
         if obj is not None:
             item.setData(0, Qt.UserRole, obj)
-        # 使用复用的递归逻辑
+
+        # Use the same recursive logic, but adapted for two-column tree
         self._build_recursive_content_nested(obj, item, max_depth, current_depth)
 
     def _build_recursive_content_nested(self, obj, parent_item, max_depth, current_depth):
-        """
-        专门用于递归构建预览窗口中子项内容的函数，对应两列的 TreeWidget
-        """
         current_depth += 1
         if current_depth > max_depth:
             return
+
+        sub_arg_type = None
+
         if isinstance(obj, dict):
             for k, v in obj.items():
                 self._build_nested_tree(v, parent_item, str(k), max_depth=max_depth, current_depth=current_depth)
@@ -901,7 +689,6 @@ class VariableTreeWidget(TreeWidget):
             for i, v in enumerate(obj):
                 self._build_nested_tree(v, parent_item, f"[{i}]", max_depth=max_depth, current_depth=current_depth)
         elif isinstance(obj, np.ndarray):
-            # 对于 ndarray，展示属性和可展开的内容
             attrs = {
                 'shape': obj.shape,
                 'dtype': str(obj.dtype),
@@ -909,11 +696,9 @@ class VariableTreeWidget(TreeWidget):
                 'ndim': obj.ndim,
             }
             for attr_name, attr_val in attrs.items():
-                # 为属性创建子节点，但不继续递归展开属性值（如 shape 元组）
-                attr_item = QTreeWidgetItem(parent_item, [f"{attr_name}", self._format_value(attr_val)])
-                # 如果属性值本身是容器，可以考虑展开，但要严格控制深度
+                attr_item = QTreeWidgetItem(parent_item, [f"{attr_name}", _get_formatted_type_and_value(attr_val)])
                 self._build_recursive_content_nested(attr_val, attr_item, max_depth, current_depth)
-            # --- 修改 ndarray 展开逻辑 (预览窗口) ---
+
             MAX_PER_DIM = 300
             if obj.ndim == 1:
                 max_items = min(obj.shape[0], MAX_PER_DIM)
@@ -952,12 +737,10 @@ class VariableTreeWidget(TreeWidget):
                                                            ""])
                     trunc_high_dim_item.setForeground(0, Qt.gray)
         elif isinstance(obj, pd.DataFrame):
-            # 对于 DataFrame，展开列
             for col in obj.columns:
                 self._build_nested_tree(obj[col], parent_item, str(col), max_depth, current_depth)
         elif isinstance(obj, pd.Series):
-            # 对于 Series，展开索引
-            for idx in obj.index[:20]:  # 限制展开数量
+            for idx in obj.index[:20]:
                 self._build_nested_tree(obj[idx], parent_item, str(idx), max_depth, current_depth)
         elif hasattr(obj, '__dict__') and obj.__dict__:
             for attr_name, attr_value in obj.__dict__.items():
@@ -984,7 +767,6 @@ class VariableTreeWidget(TreeWidget):
     def _preview_csv_full(self, filepath):
         try:
             df = pd.read_csv(filepath)
-            # 调用时传递最大行数限制
             self._preview_dataframe_full(df)
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition
@@ -999,15 +781,10 @@ class VariableTreeWidget(TreeWidget):
             )
 
     def _preview_excel(self, filepath):
-        """
-        优化：使用 SegmentedWidget 预览 Excel 文件的所有工作表
-        使用 MessageBoxBase 作为主窗口
-        """
         try:
             viewer = ExcelViewer(self)
             if viewer.setup_and_check(filepath):
                 viewer.show()
-
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition
             InfoBar.error(
@@ -1042,7 +819,7 @@ class VariableTreeWidget(TreeWidget):
         pixmap = None
         if isinstance(image_data, str) and os.path.isfile(image_data):
             pixmap = QPixmap(image_data)
-        elif self._is_pil_image(image_data):
+        elif _is_pil_image(image_data):
             try:
                 from PIL import Image
                 if image_data.mode not in ('RGB', 'RGBA'):
@@ -1062,14 +839,15 @@ class VariableTreeWidget(TreeWidget):
                 pixmap = None
         else:
             pixmap = None
+
         if pixmap is None or pixmap.isNull():
             return
-        # === 智能缩放逻辑 ===
+
         max_width = 700
         max_height = 700
         original_width = pixmap.width()
         original_height = pixmap.height()
-        # 仅当图像太大时才缩放
+
         if original_width > max_width or original_height > max_height:
             scaled_pixmap = pixmap.scaled(
                 max_width,
@@ -1078,13 +856,13 @@ class VariableTreeWidget(TreeWidget):
                 transformMode=QtCore.Qt.SmoothTransformation
             )
         else:
-            scaled_pixmap = pixmap  # 小图保持原尺寸
-        # === 显示对话框 ===
+            scaled_pixmap = pixmap
+
         w = MessageBoxBase(parent=self.parent_widget)
         w.yesButton.hide()
         w.cancelButton.setText("关闭")
         image_view = ImageLabel()
-        image_view.setImage(scaled_pixmap)  # 使用缩放后的 pixmap
+        image_view.setImage(scaled_pixmap)
         w.viewLayout.addWidget(image_view)
         w.exec_()
 
@@ -1098,10 +876,12 @@ class VariableTreeWidget(TreeWidget):
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             table.setItem(0, 0, item)
             return
+
         table.setRowCount(df.shape[0])
         table.setColumnCount(df.shape[1])
         table.setHorizontalHeaderLabels(df.columns.astype(str).tolist())
         table.setVerticalHeaderLabels(df.index.astype(str).tolist())
+
         for i in range(df.shape[0]):
             for j in range(df.shape[1]):
                 val = df.iloc[i, j]
@@ -1115,21 +895,15 @@ class VariableTreeWidget(TreeWidget):
         clipboard = QApplication.clipboard()
         clipboard.setText(text)
 
-    # --- 新增方法 ---
     def _open_file_in_explorer(self, filepath):
-        """在资源管理器中打开文件所在的文件夹，并选中该文件"""
         if not os.path.isfile(filepath):
             return
-
         try:
             if sys.platform == "win32":
-                # Windows: 使用 explorer /select, "file_path"
                 subprocess.run(["explorer", "/select,", filepath], check=True)
-            elif sys.platform == "darwin":  # macOS
-                # macOS: 使用 open -R "file_path"
+            elif sys.platform == "darwin":
                 subprocess.run(["open", "-R", filepath], check=True)
             elif sys.platform.startswith("linux"):
-                # Linux: 使用 xdg-open "directory_path" (无法直接选中文件)
                 directory = os.path.dirname(filepath)
                 subprocess.run(["xdg-open", directory], check=True)
             else:
@@ -1142,7 +916,7 @@ class VariableTreeWidget(TreeWidget):
     def _preview_text_file(self, filepath):
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read(10000)  # 限制读取长度
+                content = f.read(10000)
             self._preview_text(content)
         except Exception as e:
             from qfluentwidgets import InfoBar, InfoBarPosition

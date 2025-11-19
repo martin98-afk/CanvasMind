@@ -6,7 +6,7 @@
 <div align="center">
   <h1>可视化编程流程算法开发工具</h1>
   
-  [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md)
+  [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md)| [📘 使用手册](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/)
 </div>
 
 <div align="center">
@@ -19,94 +19,6 @@
 
 
 一个基于 **NodeGraphQt** 和 **qfluentwidgets** 的现代化低代码可视化编程平台，支持拖拽式组件编排、异步执行、文件操作、循环控制，并可将工作流一键导出为独立可运行项目，实现从开发到部署的无缝衔接。
-
----
-
-## 欢迎界面示意图
-
-<img src="images/欢迎界面示意图.png" width="800">
-
----
-
-## 📷 工作流管理界面示意图
-
-<img src="images/工作流管理示意图.gif" width="800">
-
----
-
-## 🎉 工作流示意图
-
-<img src="images/工作流示意图.gif" width="800">
-
-<img src="images/工作流示意图2.gif" width="800">
-
-## 复杂画布模型示意图：（react调用工具大模型智能体）
-
-<img src="canvas_files/workflows/react智能体.png" width="800">
-
-## 📦 智能节点推荐
-
-<img src="images/画布节点智能推荐示意图.gif" width="800">
-
-## 📦 模型运行效果
-
-<img src="images/模型运行效果.gif" width="800">
-
-## 节点调试模式效果
-
-<img src="images/组件调试模式示意图.gif" width="800">
-
-## 复杂组件控件示意图
-
-<img src="images/复杂组件控件示意图.png" width="800">
-
-## 循环控制流逻辑示意图
-
-<img src="images/循环控制示意图.png" width="800">
-
-## 循环节点运行效果
-
-<img src="images/循环节点执行示意图.gif" width="800">
-
-## 全局变量使用示意图
-
-<img src="images/全局变量使用示意图.gif" width="800">
-
-## 分支节点执行效果图
-
-<img src="images/分支执行效果示意图.gif" width="800">
-
-## 代码编辑运行组件示意图
-
-<img src="images/代码编辑执行效果示意图.gif" width="800">
-
----
-
-## 📦 子图导出示意图
-
-<img src="images/项目导出示意图.gif" width="800">  
-
----
-
-## 📷 组件开发示意图
-
-<img src="images/组件开发示意图.gif" width="800">
-
----
-
-### 导出项目管理示意图
-
-<img src="images/导出项目管理示意图.png" width="800">
-
-### 项目服务日志示意图
-
-<img src="images/项目服务日志示意图.png" width="800">
-
----
-
-## 📦 运行环境管理示意图
-
-<img src="images/运行环境管理示意图.png" width="800">
 
 ---
 
