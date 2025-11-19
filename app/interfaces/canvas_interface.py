@@ -34,7 +34,7 @@ from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导�
 from app.utils.config import Settings
 from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
-from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon
+from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon, topological_sort
 from app.widgets.basic_widget.ipython_console import EmbeddedIPythonConsole
 from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.basic_widget.variable_explorer import VariableExplorerWidget
@@ -237,8 +237,11 @@ class CanvasPage(QWidget):
         if self.property_panel.get_current_execution_order():
             nodes = self.property_panel.get_current_execution_order()
             self._scheduler.run_full(nodes=nodes, sort=False)
-            self._scheduler.node_finished.connect(
+            self._scheduler.node_started.connect(
                 lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes))
+            )
+            self._scheduler.node_finished.connect(
+                lambda: QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes))
             )
             self._scheduler.finished.connect(
                 lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes))
@@ -927,12 +930,13 @@ class CanvasPage(QWidget):
     def export_selected_nodes_as_project(self):
         """导出选中节点为独立项目（支持交互式定义输入/输出接口）"""
         try:
-            nodes_to_export = self.property_panel.get_current_execution_order()
+            nodes_to_export = (self.graph.selected_nodes() or self.graph.all_nodes())
+            execution_order = self.property_panel.get_current_execution_order() or topological_sort(nodes_to_export)
             # runtime_data
             runtime_data = {
                 "environment": self.env_combo.currentData(),
                 "environment_exe": self.get_current_python_exe(),
-                "execution_order": [(node.id, node.name()) for node in nodes_to_export],
+                "execution_order": [(node.id, node.name()) for node in execution_order],
                 "node_id2stable_key": {},
                 "node_states": {},
                 "node_outputs": {},
@@ -1241,6 +1245,7 @@ class CanvasPage(QWidget):
                     "name": node.name(),
                     "type_": node.type_,
                     "pos": node.pos(),
+                    "input_ports_multi": {port.name(): port.model.multi_connection for port in node.input_ports()},
                     "custom": {
                         "FULL_PATH": node.FULL_PATH,
                         "FILE_PATH": component_path_map.get(self.file_map.get(node.FULL_PATH, ""), ""),

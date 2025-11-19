@@ -238,12 +238,7 @@ class WorkflowScheduler(QObject):
             for input_port in backdrop.input_ports():
                 connected = input_port.connected_ports()
                 if connected:
-                    if len(connected) == 1:
-                        upstream = connected[0]
-                        value = upstream.node()._output_values.get(upstream.name())
-                        input_data = value
-                    else:
-                        input_data.extend(
+                    input_data.extend(
                             [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
                         )
 

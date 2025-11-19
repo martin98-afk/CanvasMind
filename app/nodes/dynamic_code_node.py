@@ -73,7 +73,7 @@ def create_dynamic_code_node(parent_window=None):
             self._init_properties()
             self._sync_timer = None
             # 延迟绑定端口同步（避免初始化时 widget 未就绪）
-            QtCore.QTimer.singleShot(50, self._setup_port_sync)
+            QtCore.QTimer.singleShot(0, self._setup_port_sync)
 
         def _setup_port_sync(self):
             input_widget = self.input_widget.get_custom_widget()
@@ -90,7 +90,7 @@ def create_dynamic_code_node(parent_window=None):
             self._sync_timer = QtCore.QTimer()
             self._sync_timer.setSingleShot(True)
             self._sync_timer.timeout.connect(self._sync_inputs_ports)
-            self._sync_timer.start(400)
+            self._sync_timer.start(100)
 
         def _on_outputs_changed(self):
             if self._sync_timer:
@@ -99,7 +99,7 @@ def create_dynamic_code_node(parent_window=None):
             self._sync_timer = QtCore.QTimer()
             self._sync_timer.setSingleShot(True)
             self._sync_timer.timeout.connect(self._sync_outputs_ports)
-            self._sync_timer.start(400)
+            self._sync_timer.start(100)
 
         def _init_properties(self):
             """初始化条件列表和 else 开关（只创建 widget，不绑定逻辑）"""

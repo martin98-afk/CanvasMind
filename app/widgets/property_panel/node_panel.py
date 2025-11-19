@@ -75,22 +75,3 @@ class NodePanelWidget:
         separator.setFrameShadow(QFrame.Sunken)
         separator.setStyleSheet("color: #444444;")
         layout.addWidget(separator)
-
-    # --- 可选：提供方法访问 PortWidget 的内部字典 ---
-    def get_port_widget_text_edit_widgets(self):
-        """获取 PortWidget 内部的 text_edit_widgets 字典"""
-        if self.port_widget:
-            return self.port_widget.get_text_edit_widgets()
-        return {}
-
-    def get_port_widget_column_list_widgets(self):
-        """获取 PortWidget 内部的 column_list_widgets 字典"""
-        if self.port_widget:
-            return self.port_widget.get_column_list_widgets()
-        return {}
-
-    # --- 可选：提供方法更新 PortWidget 内容 ---
-    def update_port_data_in_widget(self, port_name, new_value):
-        """更新 PortWidget 内部特定端口的数据"""
-        if self.port_widget:
-            self.port_widget.update_port_data(port_name, new_value)

@@ -33,7 +33,7 @@ def create_branch_node(parent_window):
             self._init_properties()
             self.add_input('input', True, painter_func=draw_square_port)
             # === 关键：延迟绑定监听器 + 延迟首次同步 ===
-            QtCore.QTimer.singleShot(500, self._delayed_setup)
+            QtCore.QTimer.singleShot(0, self._delayed_setup)
 
             self._sync_timer = None
 
@@ -339,12 +339,7 @@ def create_branch_node(parent_window):
                 port_name = input_port.name()
                 connected = input_port.connected_ports()
                 if connected:
-                    if len(connected) == 1:
-                        upstream = connected[0]
-                        value = upstream.node()._output_values.get(upstream.name())
-                        inputs_raw[port_name] = value
-                    else:
-                        inputs_raw[port_name] = [
+                    inputs_raw[port_name] = [
                             upstream.node()._output_values.get(upstream.name()) for upstream in connected
                         ]
                     if port_name in self.column_select:
@@ -442,6 +437,6 @@ def create_branch_node(parent_window):
 
             self.clear_output_value()  # 先清空
             for branch in activated_branches:
-                self.set_output_value(branch, inputs["input"])
+                self.set_output_value(branch, inputs["input"] if len(inputs["input"]) > 1 else inputs["input"][0])
 
     return ConditionalBranchNode

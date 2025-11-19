@@ -69,8 +69,8 @@ class PortWidget(QWidget):
             self.node.column_select = {}
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0) # SegmentedWidget 和 StackedWidget 之间可能不需要额外间距
+        layout.setContentsMargins(3, 3, 3, 3)
+        layout.setSpacing(10) # SegmentedWidget 和 StackedWidget 之间可能不需要额外间距
 
         # 1. 创建分段控件和堆叠控件
         self.segmented_widget = SegmentedWidget(self)
@@ -78,12 +78,12 @@ class PortWidget(QWidget):
 
         self.input_widget = QWidget()
         input_layout = QVBoxLayout(self.input_widget)
-        input_layout.setContentsMargins(0, 0, 0, 0)
+        input_layout.setContentsMargins(3, 3, 3, 3)
         input_layout.setSpacing(8)
 
         self.output_widget = QWidget()
         output_layout = QVBoxLayout(self.output_widget)
-        output_layout.setContentsMargins(0, 0, 0, 0)
+        output_layout.setContentsMargins(3, 3, 3, 3)
         output_layout.setSpacing(8)
 
         # 2. 判断是否有输入输出端口并构建
@@ -327,7 +327,7 @@ class PortWidget(QWidget):
         info_card = CardWidget(self)
         info_card.setMaximumHeight(300)
         card_layout = QVBoxLayout(info_card)
-        card_layout.setContentsMargins(4, 4, 4, 4)
+        card_layout.setContentsMargins(8, 8, 8, 8)
         title_layout = QHBoxLayout()
         title_layout.setContentsMargins(0, 0, 0, 0)
         title_text = "数据信息:"
@@ -409,67 +409,3 @@ class PortWidget(QWidget):
             return
         self.node._output_values[port_name] = str(dst_path)
         InfoBar.success("上传成功", f"文件已保存至：{dst_path.name}", parent=self.main_window, duration=2000)
-
-    # --- 新增：更新 PortWidget 内容 ---
-    def update_content(self, node, current_segment=None):
-        """
-        更新 PortWidget 的内容，而不重建整个控件。
-        这个方法会尝试更新输入输出端口的 VariableTreeWidget 中的数据，
-        并根据 current_segment 切换显示的标签页。
-        """
-        # 更新当前节点引用
-        self.node = node
-        # 更新分段控件
-        if hasattr(self, 'segmented_widget') and current_segment in ['input', 'output']:
-            self.segmented_widget.setCurrentItem(current_segment)
-
-        # 重新获取端口信息，以应对端口定义可能的变化
-        input_port_infos = self.port_info_func(node, is_input=True)
-        output_port_infos = self.port_info_func(node, is_input=False)
-
-        # --- 更新输入端口 ---
-        if self.input_widget and input_port_infos:
-            input_layout = self.input_widget.layout()
-            if input_layout:
-                # 清理旧的输入端口内容（除了可能的伸缩项）
-                for i in reversed(range(input_layout.count())):
-                    item = input_layout.itemAt(i)
-                    if item.widget() and not isinstance(item.widget(), QSpacerItem):
-                        widget = item.widget()
-                        input_layout.removeWidget(widget)
-                        widget.deleteLater()
-
-                # 重新填充输入端口
-                self._populate_input_ports(input_layout)
-
-        # --- 更新输出端口 ---
-        if self.output_widget and output_port_infos:
-            output_layout = self.output_widget.layout()
-            if output_layout:
-                # 清理旧的输出端口内容（除了可能的伸缩项）
-                for i in reversed(range(output_layout.count())):
-                    item = output_layout.itemAt(i)
-                    if item.widget() and not isinstance(item.widget(), QSpacerItem):
-                        widget = item.widget()
-                        output_layout.removeWidget(widget)
-                        widget.deleteLater()
-
-                # 重新填充输出端口
-                self._populate_output_ports(output_layout)
-
-    # --- 可选：提供方法供外部更新特定端口 ---
-    def update_port_data(self, port_name, new_value):
-        """更新指定端口的 VariableTreeWidget 数据"""
-        if port_name in self._text_edit_widgets:
-            widget = self._text_edit_widgets[port_name]
-            if isinstance(widget, VariableTreeWidget):
-                widget.set_data(new_value)
-
-    # --- 可选：提供方法供外部获取内部字典 ---
-    def get_text_edit_widgets(self):
-        """获取内部的 text_edit_widgets 字典引用"""
-        return self._text_edit_widgets
-
-    def get_column_list_widgets(self):
-        """获取内部的 column_list_widgets 字典引用"""
-        return self._column_list_widgets

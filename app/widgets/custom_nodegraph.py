@@ -3,6 +3,7 @@ import json
 from NodeGraphQt import NodeGraph, BaseNode
 from NodeGraphQt.base.commands import PortConnectedCmd
 from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE, PortTypeEnum
+from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.pipe import LivePipeItem
 from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.actions import BaseMenu
@@ -172,6 +173,75 @@ class CustomNodeViewer(NodeViewer):
         if not start_port.node.visible or not end_port.node.visible:
             pipe.hide()
 
+    def mouseReleaseEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            self.LMB_state = False
+        elif event.button() == QtCore.Qt.RightButton:
+            self.RMB_state = False
+        elif event.button() == QtCore.Qt.MiddleButton:
+            self.MMB_state = False
+
+        # hide pipe slicer.
+        if self._SLICER_PIPE.isVisible():
+            self._on_pipes_sliced(self._SLICER_PIPE.path())
+            p = QtCore.QPointF(0.0, 0.0)
+            self._SLICER_PIPE.draw_path(p, p)
+            self._SLICER_PIPE.setVisible(False)
+
+        # hide selection marquee
+        if self._rubber_band.isActive:
+            self._rubber_band.isActive = False
+            if self._rubber_band.isVisible():
+                rect = self._rubber_band.rect()
+                map_rect = self.mapToScene(rect).boundingRect()
+                self._rubber_band.hide()
+
+                rect = QtCore.QRect(self._origin_pos, event.pos()).normalized()
+                rect_items = self.scene().items(
+                    self.mapToScene(rect).boundingRect()
+                )
+                node_ids = []
+                for item in rect_items:
+                    if isinstance(item, AbstractNodeItem):
+                        node_ids.append(item.id)
+
+                # emit the node selection signals.
+                if node_ids:
+                    prev_ids = [
+                        n.id for n in self._prev_selection_nodes
+                        if not n.selected
+                    ]
+                    self.node_selected.emit(node_ids[0])
+                    self.node_selection_changed.emit(node_ids, prev_ids)
+
+                self.scene().update(map_rect)
+                return
+
+        # find position changed nodes and emit signal.
+        moved_nodes = {
+            n: xy_pos for n, xy_pos in self._node_positions.items()
+            if n.xy_pos != xy_pos
+        }
+        # only emit of node is not colliding with a pipe.
+        if moved_nodes and not self.COLLIDING_state:
+            self.moved_nodes.emit(moved_nodes)
+
+        # reset recorded positions.
+        self._node_positions = {}
+
+        # emit signal if selected node collides with pipe.
+        # Note: if collide state is true then only 1 node is selected.
+        nodes, pipes = self.selected_items()
+        if self.COLLIDING_state and nodes and pipes:
+            self.insert_node.emit(pipes[0], nodes[0].id, moved_nodes)
+
+        # emit node selection changed signal.
+        prev_ids = [n.id for n in self._prev_selection_nodes]
+        node_ids = [n.id for n in nodes if n not in self._prev_selection_nodes]
+        self.node_selection_changed.emit(node_ids, prev_ids)
+
+        super(NodeViewer, self).mouseReleaseEvent(event)
+
 
 class CustomNodeGraph(NodeGraph):
 
@@ -291,13 +361,7 @@ class CustomNodeGraph(NodeGraph):
 
                     nodes[n_id] = node
 
-                    if n_data.get('port_deletion_allowed', None):
-                        node.set_ports({
-                            'input_ports': n_data['input_ports'],
-                            'output_ports': n_data['output_ports']
-                        })
-
-            QtCore.QTimer.singleShot(50, lambda: self.build_connections(data, nodes))
+            QtCore.QTimer.singleShot(200, lambda: self.build_connections(data, nodes))
             node_objs = nodes.values()
             if relative_pos:
                 self._viewer.move_nodes([n.view for n in node_objs])

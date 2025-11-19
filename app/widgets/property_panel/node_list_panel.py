@@ -3,7 +3,7 @@ import numpy as np
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, ListWidget, \
-    FluentIcon, TransparentToolButton
+    FluentIcon, TransparentToolButton, SubtitleLabel
 
 from app.utils.utils import topological_sort
 from app.widgets.property_panel.internal_node_list import InternalNodeList
@@ -30,7 +30,6 @@ class NodeListPanelWidget:
         new_components = topological_sort(nodes, split_components=True)
         if new_components is None:
             new_components = []
-        logger.debug(f"New components from topological_sort: {[len(c) for c in new_components]}")
 
         new_node_sets = [set(n.id for n in comp) for comp in new_components]
         current_user_order = self._user_execution_order.copy()
@@ -62,8 +61,7 @@ class NodeListPanelWidget:
         for i, comp in enumerate(new_components):
             if i not in processed_new_indices:
                 final_components.append(comp)
-        title = BodyLabel(f"⏬ 连通图执行顺序")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        title = SubtitleLabel(f"⏬ 连通图执行顺序")
         self.parent_layout.addWidget(title)
 
         nodes_card = CardWidget(self.parent_panel)
@@ -93,7 +91,6 @@ class NodeListPanelWidget:
                 node_ids = tuple(sorted(n.id for n in comp_nodes))
                 updated_user_order[node_ids] = comp_nodes.copy()
         self._user_execution_order = updated_user_order
-        logger.debug(f"Updated _user_execution_order keys: {list(self._user_execution_order.keys())}")
 
     def _create_component_card(self, parent_layout, index, components):
         component = components[index]
