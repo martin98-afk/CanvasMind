@@ -27,7 +27,7 @@ from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentTyp
 from app.scan_components import scan_components
 from app.utils.utils import get_icon, canvas_file_dump_path
 from app.widgets.basic_widget.ipython_console import IPythonConsoleManager  # 假设更新后的类名
-from app.widgets.basic_widget.style_sheet import StyleSheet
+from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.basic_widget.variable_explorer import VariableExplorerWidget
 from app.widgets.code_editer import CodeEditorWidget
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
@@ -154,11 +154,10 @@ class ComponentDeveloperWidget(QWidget):
         self._updating_requirements_from_analysis = False
 
     def _setup_ui(self):
-        StyleSheet.COMPONENT_DEVELOPER.apply(self)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         # 左侧：组件树和开发区域
-        main_splitter = QSplitter(Qt.Horizontal)
+        main_splitter = ModernSplitter(Qt.Horizontal)
         # --- 修改：左侧：组件树 ---
         self.component_tree_panel = ComponentTreePanel(self)
         self.component_tree = self.component_tree_panel.tree  # 保留对 tree 的直接引用（如果已有代码依赖）
@@ -192,11 +191,12 @@ class ComponentDeveloperWidget(QWidget):
         code_layout.addLayout(save_layout)
         code_layout.addWidget(self.code_editor, stretch=1)
         main_splitter.addWidget(code_widget)
+
         # 右侧：组件属性
         right_widgets = QWidget(self)
         vBoxLayout = QVBoxLayout(right_widgets)
-        vBoxLayout.setContentsMargins(0, 0, 0, 0)
-        vBoxLayout.setSpacing(0)  # 可选：移除组件之间的间距（如果不需要）
+        vBoxLayout.setContentsMargins(3, 3, 3, 3)
+        vBoxLayout.setSpacing(3)  # 可选：移除组件之间的间距（如果不需要）
 
         self.pivot = SegmentedWidget(self)
         self.stackedWidget = StackedWidget(self)
@@ -235,7 +235,7 @@ class ComponentDeveloperWidget(QWidget):
         basic_info_h_layout.setStretch(1, 1)  # 右侧 (依赖)
         info_layout.addWidget(basic_info_widget)
         # 端口编辑器（上下布局）
-        port_splitter = QSplitter(Qt.Horizontal)
+        port_splitter = ModernSplitter(Qt.Horizontal)
         # 输入输出端口编辑器
         self.input_port_editor = PortEditorWidget("input")
         self.output_port_editor = PortEditorWidget("output")
@@ -263,7 +263,7 @@ class ComponentDeveloperWidget(QWidget):
         )
 
         # 创建垂直分割器
-        splitter = QSplitter(Qt.Vertical)
+        splitter = ModernSplitter(Qt.Vertical)
         splitter.addWidget(self.var_explorer)
         splitter.addWidget(self.console_manager)
         splitter.setSizes([300, 400])  # 变量浏览器较小，控制台较大
@@ -1076,7 +1076,7 @@ except:
 
 
 # --- 端口编辑器（已修改）---
-class PortEditorWidget(QWidget):
+class PortEditorWidget(CardWidget):
     """端口编辑器 - 支持动态添加删除"""
     ports_changed = pyqtSignal()
 
@@ -1097,9 +1097,13 @@ class PortEditorWidget(QWidget):
         self.table.itemChanged.connect(lambda item: self.ports_changed.emit())
         button_layout = QHBoxLayout()
         button_layout.addWidget(BodyLabel("输入端口:" if port_type == "input" else "输出端口:"))
-        add_btn = ToolButton(FluentIcon.ADD, parent=self)
+        add_btn = TransparentToolButton(FluentIcon.ADD, parent=self)
+        add_btn.setToolTip("添加参数")
+        add_btn.setFixedSize(25, 25)
         add_btn.clicked.connect(lambda: self._add_port())
-        remove_btn = ToolButton(FluentIcon.CLOSE, parent=self)
+        remove_btn = TransparentToolButton(FluentIcon.DELETE, parent=self)
+        remove_btn.setToolTip("删除添加参数")
+        remove_btn.setFixedSize(25, 25)
         remove_btn.clicked.connect(self._remove_port)
         button_layout.addWidget(add_btn)
         button_layout.addWidget(remove_btn)
@@ -1171,7 +1175,7 @@ class PortEditorWidget(QWidget):
 
 
 # --- 属性编辑器 (未改动) ---
-class PropertyEditorWidget(QWidget):
+class PropertyEditorWidget(CardWidget):
     """属性编辑器 - 支持动态添加删除"""
     properties_changed = pyqtSignal()  # 属性改变信号
 
@@ -1192,9 +1196,13 @@ class PropertyEditorWidget(QWidget):
         self.table.itemChanged.connect(self._on_item_changed)
         button_layout = QHBoxLayout()
         button_layout.addWidget(BodyLabel("参数设置:"))
-        add_btn = ToolButton(FluentIcon.ADD, parent=self)
+        add_btn = TransparentToolButton(FluentIcon.ADD, parent=self)
+        add_btn.setToolTip("添加参数")
+        add_btn.setFixedSize(25, 25)
         add_btn.clicked.connect(lambda: self._add_property())
-        remove_btn = ToolButton(FluentIcon.CLOSE, parent=self)
+        remove_btn = TransparentToolButton(FluentIcon.DELETE, parent=self)
+        remove_btn.setToolTip("删除添加参数")
+        remove_btn.setFixedSize(25, 25)
         remove_btn.clicked.connect(self._remove_property)
         button_layout.addWidget(add_btn)
         button_layout.addWidget(remove_btn)

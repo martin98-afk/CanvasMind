@@ -28,6 +28,7 @@ from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
+from app.runner.readme_template import DETAILED_README
 from app.scan_components import scan_components
 from app.scheduler.node_recommendation_engine import RecommendationTask
 from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导入
@@ -36,7 +37,7 @@ from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon, topological_sort
 from app.widgets.basic_widget.ipython_console import EmbeddedIPythonConsole
-from app.widgets.basic_widget.style_sheet import StyleSheet
+from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.basic_widget.variable_explorer import VariableExplorerWidget
 from app.widgets.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
@@ -116,9 +117,8 @@ class CanvasPage(QWidget):
         self.property_panel = PropertyPanel(self)
         self.global_variables_changed.connect(self.property_panel._on_global_variables_changed)
         # 布局
-        StyleSheet.COMPONENT_DEVELOPER.apply(self)
         main_layout = QHBoxLayout(self)
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = ModernSplitter(Qt.Horizontal)
         splitter.addWidget(self.nav_panel)
         splitter.addWidget(self.canvas_widget)
         splitter.addWidget(self.property_panel)
@@ -151,6 +151,7 @@ class CanvasPage(QWidget):
         self.canvas_widget.dropEvent = self.canvas_drop_event
         self.canvas_widget.installEventFilter(self)
         # 右键菜单
+        self._register_builtin_components()
         self._setup_context_menus()
 
     # ========================
@@ -447,38 +448,8 @@ class CanvasPage(QWidget):
                 return None
         return None
 
-    def register_components(self):
-        self._registered_nodes.extend(list(self.graph.registered_nodes()))
-        self.graph._node_factory.clear_registered_nodes()
-        self.component_map, self.file_map = scan_components()
-        # 重建推荐索引
-        self.manager.recommendation_engine._recommendation_cache.clear()
-        self.manager.recommendation_engine._build_index(self.component_map)  # 重建索引
-        # 普通节点
+    def _register_builtin_components(self):
         nodes_menu = self.graph.get_context_menu('nodes')
-        for full_path, comp_cls in self.component_map.items():
-            safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
-            node_class = create_node_class(comp_cls, full_path, self.file_map.get(full_path), self)
-            node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
-            node_class.__name__ = f"StatusDynamicNode_{safe_name}"
-            self.graph.register_node(node_class)
-            self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
-            if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
-                nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_separator()
-                nodes_menu.add_command('调试模式', lambda graph, node: node._toggle_debug_mode(),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
         # 迭代节点
         code_node = create_dynamic_code_node(self)
         code_node.__name__ = "DYNAMIC_CODE"
@@ -541,6 +512,41 @@ class CanvasPage(QWidget):
         nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                node_type=f"control_flow.{branch_node.__name__}")
         self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
+
+    def register_components(self):
+        self._registered_nodes.extend(list(self.graph.registered_nodes()))
+        self.graph._node_factory.clear_registered_nodes()
+        self.graph._context_menu = {}
+        self.graph._register_context_menu()
+        self.component_map, self.file_map = scan_components()
+        # 重建推荐索引
+        self.manager.recommendation_engine._recommendation_cache.clear()
+        self.manager.recommendation_engine._build_index(self.component_map)  # 重建索引
+        # 普通节点
+        nodes_menu = self.graph.get_context_menu('nodes')
+        for full_path, comp_cls in self.component_map.items():
+            safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
+            node_class = create_node_class(comp_cls, full_path, self.file_map.get(full_path), self)
+            node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
+            node_class.__name__ = f"StatusDynamicNode_{safe_name}"
+            self.graph.register_node(node_class)
+            self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
+            if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
+                nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_separator()
+                nodes_menu.add_command('调试模式', lambda graph, node: node._toggle_debug_mode(),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
 
     def create_minimap(self):
         self.minimap = MinimapWidget(self)
@@ -1084,6 +1090,8 @@ class CanvasPage(QWidget):
                             pkg = pkg.strip()
                             if pkg:
                                 requirements.add(pkg)
+            default_pkgs = self.config.default_packages.value
+            requirements.update(default_pkgs)
             # === 构建详细 README（关键增强）===
             project_name_placeholder = self.workflow_name
             original_canvas = getattr(self, 'workflow_name', '未知画布')
@@ -1125,33 +1133,18 @@ class CanvasPage(QWidget):
                 1 for conn in original_connections
                 if conn["out"][0] in node_ids_set and conn["in"][0] in node_ids_set
             )
-            # 详细 README 内容
-            detailed_readme = f"""# {project_name_placeholder}
-> 从 **{original_canvas}** 导出的子项目 · {export_time}
----
-## 📌 项目概览
-- **来源画布**: `{original_canvas}`
-- **导出时间**: `{export_time}`
-- **节点数量**: {len(nodes_to_export)}
-- **内部连接**: {conn_count}
-- **组件数量**: {len(component_names)}
-## 🧩 输入接口
-{chr(10).join(input_desc)}
-## 📤 输出接口
-{chr(10).join(output_desc)}
-## 🧱 包含组件
-{chr(10).join(component_names)}
-## ▶️ 使用方法
-1. 安装依赖: `pip install -r requirements.txt`
-2. 准备输入: 创建 `inputs.json`，如 `{{"input_0": "hello"}}`
-3. 直接运行: `python run.py --input inputs.json`
-4. 创建微服务: `python api_server.py --port 8888`
-"""
             # === 弹出新对话框 ===
             export_dialog = ProjectExportDialog(
                 project_name=project_name_placeholder,
                 requirements='\n'.join(sorted(requirements)) if requirements else "# 无依赖",
-                readme=detailed_readme,
+                readme=DETAILED_README.format(
+                    project_name_placeholder=project_name_placeholder,
+                    original_canvas=original_canvas,
+                    export_time=export_time,
+                    input_desc=chr(10).join(input_desc),
+                    output_desc=chr(10).join(output_desc),
+                    component_names=component_names
+                ),
                 parent=self
             )
             if not export_dialog.exec():

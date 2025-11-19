@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1e30a8c4d90": {
+      "0x1d39a821810": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "长文本输入",
@@ -34,9 +34,9 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 490.36,
+        "width": 487.62875,
         "height": 101.10000000000001,
         "pos": [
           -1162.6711543424617,
@@ -59,7 +59,7 @@
           "input_text": "获取当前时间"
         }
       },
-      "0x1e30a9d0a00": {
+      "0x1d3a4ed4400": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\dist\\main\\_internal\\icons/代码执行.svg",
         "name": "代码编辑 1",
@@ -84,8 +84,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 836.2800000000001,
-        "height": 805.65,
+        "width": 831.70875,
+        "height": 803.5500000000001,
         "pos": [
           1772.5843797456287,
           -939.9184395002817
@@ -126,7 +126,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    import json\n    from pathlib import Path\n    input_data: list[str] = inputs.input\n    results = []\n    for path in input_data:\n        if not (Path(path) / \"project_spec.json\").exists():\n            continue\n        with open(Path(path) / \"project_spec.json\", \"r\", encoding=\"utf-8\") as f:\n            project_spec = json.loads(f.read())\n            project_input = project_spec[\"inputs\"]\n            format = \"\" if len(project_input) > 0 else \"无参数\"\n            for i, (inp, info) in enumerate(project_input.items()):\n                format += f\"参数{i+1}：{inp}\\n参数格式：{info['format']}\\n参数参考样例输入：{info['current_value']}\\n所属组件名：{info['node_name']}\\n组件参数类型：{info['type']}\\n\\n\"\n            results.append(f\"工具名称：{str(Path(path).resolve())} \\n输入格式：{format}\")\n    return {\n        \"output\": results\n    }"
         }
       },
-      "0x1e30ac4e0b0": {
+      "0x1d3a1bdfdf0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装",
@@ -149,9 +149,9 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 398.36,
+        "width": 392.15000000000003,
         "height": 101.10000000000001,
         "pos": [
           -556.231135551021,
@@ -180,7 +180,7 @@
           "prop_0": "input"
         }
       },
-      "0x1e30aae7370": {
+      "0x1d396613b20": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "工具调用结果回写",
@@ -203,9 +203,9 @@
           180
         ],
         "disabled": true,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 551.08,
+        "width": 546.71,
         "height": 101.10000000000001,
         "pos": [
           4467.984318875551,
@@ -230,11 +230,11 @@
         ],
         "custom": {
           "persistent_id": "31c0d5b6-66ab-4c8a-96e8-42bd423762ee",
-          "debug_code": {},
-          "template": "工具调用结果：\n$input.variables[0]$\n\n用户问题：\n$node_vars.长文本输入_output$"
+          "debug_code": null,
+          "template": "工具调用结果：\n$input.variables[0][0]$\n\n用户问题：\n$node_vars.长文本输入_output$"
         }
       },
-      "0x1e30ae0a8f0": {
+      "0x1d396611750": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程",
@@ -257,9 +257,9 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 446.20000000000005,
+        "width": 442.0025,
         "height": 113.7,
         "pos": [
           1334.9769109617391,
@@ -294,7 +294,7 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x1e30ae098d0": {
+      "0x1d396611b40": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_工具调用",
         "icon": null,
         "name": "工具调用",
@@ -317,13 +317,13 @@
           180
         ],
         "disabled": true,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 168.36,
+        "width": 166.175,
         "height": 82.2,
         "pos": [
-          3543.7378301571807,
-          646.4169936101887
+          3505.218642266274,
+          670.2622051617029
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -357,7 +357,7 @@
           "debug_code": null
         }
       },
-      "0x1e30ae094b0": {
+      "0x1d396611e40": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 3",
@@ -380,13 +380,13 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 420.44,
+        "width": 411.84375,
         "height": 101.10000000000001,
         "pos": [
-          5791.960569963427,
-          296.1087438056781
+          5796.207576311221,
+          296.10874380567816
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -411,7 +411,7 @@
           "prop_0": "answer"
         }
       },
-      "0x1e30ae09a20": {
+      "0x1d3a4e67be0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_获取全局变量",
         "icon": null,
         "name": "获取大模型历史对话",
@@ -434,9 +434,9 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 533.6,
+        "width": 529.60375,
         "height": 99.0,
         "pos": [
           36.945014700873344,
@@ -459,7 +459,7 @@
           "prop1": "node_vars.大模型对话_history"
         }
       },
-      "0x1e30ae09cc0": {
+      "0x1d3a4e67f10": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码编辑 2",
@@ -484,8 +484,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 836.2800000000001,
-        "height": 805.65,
+        "width": 831.70875,
+        "height": 803.5500000000001,
         "pos": [
           2710.6415475467215,
           -934.3982852254871
@@ -526,7 +526,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    input_data: list = inputs.input\n    return {\n        \"output\": \"\\n\\n\".join(input_data)\n    }"
         }
       },
-      "0x1e311c11660": {
+      "0x1d3965573a0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
         "icon": null,
         "name": "大模型输出解析",
@@ -549,9 +549,9 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 311.88,
+        "width": 308.05625000000003,
         "height": 137.85000000000002,
         "pos": [
           1881.185565446949,
@@ -586,7 +586,7 @@
           "type": "json"
         }
       },
-      "0x1e311c10370": {
+      "0x1d396612cb0": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码编辑",
@@ -609,10 +609,10 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 814.2,
-        "height": 805.65,
+        "width": 812.015,
+        "height": 803.5500000000001,
         "pos": [
           698.1730114963871,
           -948.2366464546917
@@ -653,7 +653,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 目标文件夹\n    return: 文件地址里列表（key=输出端口名）\n    \"\"\"\n    from pathlib import Path\n    path = Path(inputs.input)\n    projects = [str(p) for p in path.iterdir()]\n    self.logger.info(projects)\n    return {\n        \"output\": projects\n    }"
         }
       },
-      "0x1e30aa34d60": {
+      "0x1d3a4dfffd0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话",
         "icon": null,
         "name": "大模型对话",
@@ -676,13 +676,13 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 490.36,
-        "height": 534.75,
+        "width": 487.62875,
+        "height": 533.7,
         "pos": [
-          729.6446003343735,
-          401.4363716421256
+          733.5324802511955,
+          401.43637164212566
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -729,7 +729,7 @@
           "model_params": []
         }
       },
-      "0x1e30aa345e0": {
+      "0x1d3965575b0": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "提取最终答案",
@@ -752,9 +752,9 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 394.68,
+        "width": 391.40250000000003,
         "height": 101.10000000000001,
         "pos": [
           3085.387808766003,
@@ -783,7 +783,7 @@
           "prop1": "$input.input1[\"answer\"]$"
         }
       },
-      "0x1e30ac4db70": {
+      "0x1d3a4dfd1b0": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "工具名提取",
@@ -806,9 +806,9 @@
           180
         ],
         "disabled": true,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 374.44,
+        "width": 371.70875,
         "height": 101.10000000000001,
         "pos": [
           3059.6068522205296,
@@ -823,7 +823,7 @@
           "prop1": "$input.input1[\"tool_name\"]$"
         }
       },
-      "0x1e30aa763e0": {
+      "0x1d39a50dc00": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "工具输入提取",
@@ -846,12 +846,12 @@
           180
         ],
         "disabled": true,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 394.68,
+        "width": 391.40250000000003,
         "height": 101.10000000000001,
         "pos": [
-          3058.3045710937895,
+          3060.138818136214,
           741.2081310840442
         ],
         "layout_direction": 0,
@@ -863,7 +863,7 @@
           "prop1": "$input.input1[\"tool_input\"]$"
         }
       },
-      "0x1e30ac4c940": {
+      "0x1d39a50d2d0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": "D:\\work\\WorkFlowGUI\\icons\\list.svg",
         "name": "错误处理",
@@ -886,9 +886,9 @@
           180
         ],
         "disabled": true,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 470.12,
+        "width": 467.935,
         "height": 101.10000000000001,
         "pos": [
           3003.6408256426457,
@@ -903,7 +903,7 @@
           "template": "生成的步骤json信息错误，步骤信息必须为严格的json格式，且包含next_step信息\n且 next_step 内容必须为：调用工具 或 总结答案 其一\n\n当前生成的错误步骤json信息：\n\n$input.variables$\n\n根据历史对话反思错误，生成正确的步骤信息。"
         }
       },
-      "0x1e30aa75e70": {
+      "0x1d39a50e170": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "工具执行错误反馈",
@@ -926,9 +926,9 @@
           180
         ],
         "disabled": true,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 551.08,
+        "width": 546.71,
         "height": 101.10000000000001,
         "pos": [
           4469.686482351928,
@@ -957,7 +957,7 @@
           "template": "工具调用报错根据执行日志修复请求参数：\n$input.variables[1]$\n\n用户问题：\n$node_vars.长文本输入_output$"
         }
       },
-      "0x1e30aa76c50": {
+      "0x1d39a50c4f0": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码42",
@@ -980,10 +980,10 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 795.8000000000001,
-        "height": 1103.8500000000001,
+        "width": 792.695,
+        "height": 1101.75,
         "pos": [
           3803.4231342558787,
           -961.3905971218812
@@ -1073,7 +1073,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    # 在这里编写你的组件逻辑\n    input_data = inputs.input if inputs else None\n    param1 = inputs.input_1\n    # 处理逻辑\n    result = f\"处理结果: {input_data} + {param1}\"\n    return {\n        \"output\": result,\n        \"output_1\": result\n    }"
         }
       },
-      "0x1e311199270": {
+      "0x1d3a1ae1d50": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -1096,7 +1096,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 153.0,
         "height": 60,
@@ -1111,7 +1111,7 @@
           "persistent_id": "7837e4b9-dd80-4028-b64f-9266b25965e2"
         }
       },
-      "0x1e31119bdf0": {
+      "0x1d3a0717070": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -1134,7 +1134,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 153.0,
         "height": 60,
@@ -1149,7 +1149,7 @@
           "persistent_id": "4cf84646-541e-48e3-a776-64381d6ea1a9"
         }
       },
-      "0x1e31120f970": {
+      "0x1d3a0716ec0": {
         "type_": "control_flow.ControlFlowLoopNode",
         "icon": null,
         "name": "循环控制流区域",
@@ -1172,7 +1172,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 5309.408441644731,
         "height": 730.454784710673,
@@ -1186,14 +1186,14 @@
         "custom": {
           "persistent_id": "29a94b04-a2fc-44cc-a569-fda349eeb69f",
           "backdrop_text": "",
-          "current_index": 0,
+          "current_index": 1,
           "loop_nums": 5,
           "max_iterations": 5,
           "loop_condition": "$node_vars.大模型输出解析_parsed_json.get(\"next_step\")!= '总结答案'$",
           "loop_mode": "condition"
         }
       },
-      "0x1e31120f2e0": {
+      "0x1d3a4d819c0": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\CanvasMind\\./icons/条件分支.png",
         "name": "条件分支 1",
@@ -1216,10 +1216,10 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 580.52,
-        "height": 300.6,
+        "width": 575.94875,
+        "height": 299.55,
         "pos": [
           2353.3181521189617,
           413.0678883739536
@@ -1255,11 +1255,11 @@
           "persistent_id": "e6a4ce08-3313-4957-8dfc-45884a672c02",
           "conditions": [
             {
-              "expr": "$input.input[\"next_step\"]==\"总结答案\"$",
+              "expr": "$input.input[0][\"next_step\"]==\"总结答案\"$",
               "name": "branch"
             },
             {
-              "expr": "$input.input[\"next_step\"]==\"调用工具\"$",
+              "expr": "$input.input[0][\"next_step\"]==\"调用工具\"$",
               "name": "branch_1"
             }
           ],
@@ -1267,7 +1267,7 @@
           "execute_all_matches": false
         }
       },
-      "0x1e31120f340": {
+      "0x1d3a4d80490": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\CanvasMind\\./icons/条件分支.png",
         "name": "条件分支",
@@ -1290,13 +1290,13 @@
           180
         ],
         "disabled": true,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 558.44,
-        "height": 241.8,
+        "width": 556.255,
+        "height": 240.75,
         "pos": [
-          3808.8910101829024,
-          648.3907071165652
+          3788.411954937259,
+          540.8756670769368
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -1336,273 +1336,273 @@
     "connections": [
       {
         "out": [
-          "0x1e30a8c4d90",
+          "0x1d39a821810",
           "output"
         ],
         "in": [
-          "0x1e30ac4e0b0",
+          "0x1d3a1bdfdf0",
           "input1"
         ]
       },
       {
         "in": [
-          "0x1e30a9d0a00",
+          "0x1d3a4ed4400",
           "input"
         ],
         "out": [
-          "0x1e311c10370",
+          "0x1d396612cb0",
           "output"
         ]
       },
       {
         "out": [
-          "0x1e30a9d0a00",
+          "0x1d3a4ed4400",
           "output"
         ],
         "in": [
-          "0x1e30ae09cc0",
+          "0x1d3a4e67f10",
           "input"
         ]
       },
       {
         "out": [
-          "0x1e30ac4e0b0",
+          "0x1d3a1bdfdf0",
           "output1"
         ],
         "in": [
-          "0x1e31120f970",
+          "0x1d3a0716ec0",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x1e30aae7370",
+          "0x1d396613b20",
           "variables"
         ],
         "out": [
-          "0x1e31120f340",
+          "0x1d3a4d80490",
           "branch"
         ]
       },
       {
         "out": [
-          "0x1e30aae7370",
+          "0x1d396613b20",
           "prompt"
         ],
         "in": [
-          "0x1e31119bdf0",
+          "0x1d3a0717070",
           "input"
         ]
       },
       {
         "in": [
-          "0x1e30ae0a8f0",
+          "0x1d396611750",
           "raw_text"
         ],
         "out": [
-          "0x1e30aa34d60",
+          "0x1d3a4dfffd0",
           "response"
         ]
       },
       {
         "out": [
-          "0x1e30ae0a8f0",
+          "0x1d396611750",
           "cleaned_text"
         ],
         "in": [
-          "0x1e311c11660",
+          "0x1d3965573a0",
           "llm_output"
         ]
       },
       {
         "in": [
-          "0x1e30ae098d0",
+          "0x1d396611b40",
           "project_name"
         ],
         "out": [
-          "0x1e30ac4db70",
+          "0x1d3a4dfd1b0",
           "output1"
         ]
       },
       {
         "in": [
-          "0x1e30ae098d0",
+          "0x1d396611b40",
           "input"
         ],
         "out": [
-          "0x1e30aa763e0",
+          "0x1d39a50dc00",
           "output1"
         ]
       },
       {
         "out": [
-          "0x1e30ae098d0",
+          "0x1d396611b40",
           "result"
         ],
         "in": [
-          "0x1e31120f340",
+          "0x1d3a4d80490",
           "input"
         ]
       },
       {
         "out": [
-          "0x1e30ae098d0",
+          "0x1d396611b40",
           "log"
         ],
         "in": [
-          "0x1e31120f340",
+          "0x1d3a4d80490",
           "input"
         ]
       },
       {
         "in": [
-          "0x1e30ae094b0",
+          "0x1d396611e40",
           "input1"
         ],
         "out": [
-          "0x1e31120f970",
+          "0x1d3a0716ec0",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x1e30ae09a20",
+          "0x1d3a4e67be0",
           "output1"
         ],
         "in": [
-          "0x1e30aa34d60",
+          "0x1d3a4dfffd0",
           "history"
         ]
       },
       {
         "out": [
-          "0x1e311c11660",
+          "0x1d3965573a0",
           "parsed_json"
         ],
         "in": [
-          "0x1e31120f2e0",
+          "0x1d3a4d819c0",
           "input"
         ]
       },
       {
         "in": [
-          "0x1e30aa34d60",
+          "0x1d3a4dfffd0",
           "user_input"
         ],
         "out": [
-          "0x1e311199270",
+          "0x1d3a1ae1d50",
           "output"
         ]
       },
       {
         "in": [
-          "0x1e30aa345e0",
+          "0x1d3965575b0",
           "input1"
         ],
         "out": [
-          "0x1e31120f2e0",
+          "0x1d3a4d819c0",
           "branch"
         ]
       },
       {
         "out": [
-          "0x1e30aa345e0",
+          "0x1d3965575b0",
           "output1"
         ],
         "in": [
-          "0x1e31119bdf0",
+          "0x1d3a0717070",
           "input"
         ]
       },
       {
         "in": [
-          "0x1e30ac4db70",
+          "0x1d3a4dfd1b0",
           "input1"
         ],
         "out": [
-          "0x1e31120f2e0",
+          "0x1d3a4d819c0",
           "branch_1"
         ]
       },
       {
         "in": [
-          "0x1e30aa763e0",
+          "0x1d39a50dc00",
           "input1"
         ],
         "out": [
-          "0x1e31120f2e0",
+          "0x1d3a4d819c0",
           "branch_1"
         ]
       },
       {
         "in": [
-          "0x1e30ac4c940",
+          "0x1d39a50d2d0",
           "variables"
         ],
         "out": [
-          "0x1e31120f2e0",
+          "0x1d3a4d819c0",
           "else"
         ]
       },
       {
         "out": [
-          "0x1e30ac4c940",
+          "0x1d39a50d2d0",
           "prompt"
         ],
         "in": [
-          "0x1e31119bdf0",
+          "0x1d3a0717070",
           "input"
         ]
       },
       {
         "in": [
-          "0x1e30aa75e70",
+          "0x1d39a50e170",
           "variables"
         ],
         "out": [
-          "0x1e31120f340",
+          "0x1d3a4d80490",
           "else"
         ]
       },
       {
         "out": [
-          "0x1e30aa75e70",
+          "0x1d39a50e170",
           "prompt"
         ],
         "in": [
-          "0x1e31119bdf0",
+          "0x1d3a0717070",
           "input"
         ]
       }
     ]
   },
   "runtime": {
-    "environment": "3.12",
-    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.12\\python.exe",
+    "environment": "3.14",
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
     "node_id2stable_key": {
-      "0x1e30a8c4d90": "数据集成/长文本输入||长文本输入",
-      "0x1e30a9d0a00": "代码执行/代码编辑||代码编辑 1",
-      "0x1e30ac4e0b0": "大模型组件/JSON文本包装||JSON文本包装",
-      "0x1e30aae7370": "大模型组件/提示词模板||工具调用结果回写",
-      "0x1e30ae0a8f0": "大模型组件/移除思考过程||移除思考过程",
-      "0x1e30ae098d0": "大模型组件/工具调用||工具调用",
-      "0x1e30ae094b0": "大模型组件/JSON文本包装||JSON文本包装 3",
-      "0x1e30ae09a20": "数据集成/获取全局变量||获取大模型历史对话",
-      "0x1e30ae09cc0": "代码执行/代码编辑||代码编辑 2",
-      "0x1e311c11660": "大模型组件/大模型输出解析||大模型输出解析",
-      "0x1e311c10370": "代码执行/代码编辑||代码编辑",
-      "0x1e30aa34d60": "大模型组件/大模型对话||大模型对话",
-      "0x1e30aa345e0": "数据预处理/JSON筛选||提取最终答案",
-      "0x1e30ac4db70": "数据预处理/JSON筛选||工具名提取",
-      "0x1e30aa763e0": "数据预处理/JSON筛选||工具输入提取",
-      "0x1e30ac4c940": "大模型组件/提示词模板||错误处理",
-      "0x1e30aa75e70": "大模型组件/提示词模板||工具执行错误反馈",
-      "0x1e30aa76c50": "代码执行/代码编辑||代码42",
-      "0x1e311199270": "控制流/输入端口||输入端口",
-      "0x1e31119bdf0": "控制流/输出端口||输出端口",
-      "0x1e31120f970": "控制流/循环控制流区域||循环控制流区域",
-      "0x1e31120f2e0": "控制流/条件分支||条件分支 1",
-      "0x1e31120f340": "控制流/条件分支||条件分支"
+      "0x1d39a821810": "数据集成/长文本输入||长文本输入",
+      "0x1d3a4ed4400": "代码执行/代码编辑||代码编辑 1",
+      "0x1d3a1bdfdf0": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x1d396613b20": "大模型组件/提示词模板||工具调用结果回写",
+      "0x1d396611750": "大模型组件/移除思考过程||移除思考过程",
+      "0x1d396611b40": "大模型组件/工具调用||工具调用",
+      "0x1d396611e40": "大模型组件/JSON文本包装||JSON文本包装 3",
+      "0x1d3a4e67be0": "数据集成/获取全局变量||获取大模型历史对话",
+      "0x1d3a4e67f10": "代码执行/代码编辑||代码编辑 2",
+      "0x1d3965573a0": "大模型组件/大模型输出解析||大模型输出解析",
+      "0x1d396612cb0": "代码执行/代码编辑||代码编辑",
+      "0x1d3a4dfffd0": "大模型组件/大模型对话||大模型对话",
+      "0x1d3965575b0": "数据预处理/JSON筛选||提取最终答案",
+      "0x1d3a4dfd1b0": "数据预处理/JSON筛选||工具名提取",
+      "0x1d39a50dc00": "数据预处理/JSON筛选||工具输入提取",
+      "0x1d39a50d2d0": "大模型组件/提示词模板||错误处理",
+      "0x1d39a50e170": "大模型组件/提示词模板||工具执行错误反馈",
+      "0x1d39a50c4f0": "代码执行/代码编辑||代码42",
+      "0x1d3a1ae1d50": "控制流/输入端口||输入端口",
+      "0x1d3a0717070": "控制流/输出端口||输出端口",
+      "0x1d3a0716ec0": "控制流/循环控制流区域||循环控制流区域",
+      "0x1d3a4d819c0": "控制流/条件分支||条件分支 1",
+      "0x1d3a4d80490": "控制流/条件分支||条件分支"
     },
     "node_states": {
       "数据集成/长文本输入||长文本输入": "success",
@@ -1623,8 +1623,8 @@
       "大模型组件/提示词模板||错误处理": "unrun",
       "大模型组件/提示词模板||工具执行错误反馈": "unrun",
       "代码执行/代码编辑||代码42": "success",
-      "控制流/输入端口||输入端口": "unrun",
-      "控制流/输出端口||输出端口": "unrun",
+      "控制流/输入端口||输入端口": "pending",
+      "控制流/输出端口||输出端口": "pending",
       "控制流/循环控制流区域||循环控制流区域": "success",
       "控制流/条件分支||条件分支 1": "success",
       "控制流/条件分支||条件分支": "unrun"
@@ -1656,7 +1656,7 @@
     },
     "node_outputs": {
       "数据集成/长文本输入||长文本输入": {
-        "output": "[123，31，51，42]的逻辑回归结果是多少？"
+        "output": "获取当前时间"
       },
       "代码执行/代码编辑||代码编辑 1": {
         "output": [
@@ -1672,22 +1672,47 @@
       },
       "大模型组件/JSON文本包装||JSON文本包装": {
         "output1": {
-          "input": "[123，31，51，42]的逻辑回归结果是多少？"
+          "input": "获取当前时间"
         }
       },
       "大模型组件/提示词模板||工具调用结果回写": {},
       "大模型组件/移除思考过程||移除思考过程": {
-        "cleaned_text": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\\\"123,31,51,42\\\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。\"\n}\n```",
+        "cleaned_text": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"当前时间是 2025年11月19日 17时25分39秒。\"\n}\n```",
         "think_text": ""
       },
       "大模型组件/工具调用||工具调用": {},
       "大模型组件/JSON文本包装||JSON文本包装 3": {
         "output1": {
-          "answer": "系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\"123,31,51,42\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。"
+          "answer": "当前时间是 2025年11月19日 17时25分39秒。"
         }
       },
       "数据集成/获取全局变量||获取大模型历史对话": {
-        "output1": []
+        "output1": [
+          {
+            "role": "user",
+            "content": "[{'input': '获取当前时间'}]"
+          },
+          {
+            "role": "assistant",
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\获取当前时间\",\n    \"tool_input\": {}\n}\n```"
+          },
+          {
+            "role": "user",
+            "content": ""
+          },
+          {
+            "role": "assistant",
+            "content": ""
+          },
+          {
+            "role": "user",
+            "content": "[{'input': '获取当前时间'}]"
+          },
+          {
+            "role": "assistant",
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\获取当前时间\",\n    \"tool_input\": {}\n}\n```"
+          }
+        ]
       },
       "代码执行/代码编辑||代码编辑 2": {
         "output": "工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\react智能体 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：-1,-2,-3,-4的逻辑回归结果是多少\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\react智能体增加错误反馈 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：[123，31，51，42]的逻辑回归结果是多少？\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\测试导出节点顺序 \n输入格式：参数1：input_text\n参数格式：LONGTEXT\n参数参考样例输入：[123，31，51，42,32,332,32,32,32,23,23]的逻辑回归结果是多少？\n所属组件名：长文本输入\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\测试执行逻辑 \n输入格式：无参数\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\画图测试 \n输入格式：参数1：title\n参数格式：TEXT\n参数参考样例输入：\n所属组件名：Matplotlib画图 2\n组件参数类型：组件超参数\n\n参数2：xlabel\n参数格式：TEXT\n参数参考样例输入：X轴\n所属组件名：Matplotlib画图 2\n组件参数类型：组件超参数\n\n参数3：ylabel\n参数格式：TEXT\n参数参考样例输入：Y轴\n所属组件名：Matplotlib画图 2\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\自动组件生成 \n输入格式：参数1：input_text1\n参数格式：LONGTEXT\n参数参考样例输入：输入是用户的列表数据输入是[1,2,3,4]格式数据\n所属组件名：组件输入\n组件参数类型：组件超参数\n\n参数2：input_text2\n参数格式：LONGTEXT\n参数参考样例输入：输出是画图结果，传参是PIL.Image格式图片\n所属组件名：组件输出\n组件参数类型：组件超参数\n\n参数3：input_text3\n参数格式：LONGTEXT\n参数参考样例输入：组件参数暂无\n所属组件名：组件参数\n组件参数类型：组件超参数\n\n参数4：input_text4\n参数格式：LONGTEXT\n参数参考样例输入：我的需求是开发一个matplotlib画图组件\n所属组件名：组件意图\n组件参数类型：组件超参数\n\n\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\获取当前时间 \n输入格式：无参数\n\n工具名称：D:\\work\\CanvasMind\\canvas_files\\projects\\逻辑回归 \n输入格式：参数1：param1\n参数格式：TEXT\n参数参考样例输入：1,2,3,4\n所属组件名：输入array\n组件参数类型：组件超参数\n\n"
@@ -1695,32 +1720,33 @@
       "大模型组件/大模型输出解析||大模型输出解析": {
         "parsed_json": {
           "next_step": "总结答案",
-          "answer": "系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\"123,31,51,42\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。"
+          "answer": "当前时间是 2025年11月19日 17时25分39秒。"
         },
         "is_valid": true
       },
       "代码执行/代码编辑||代码编辑": {
         "output": [
           "canvas_files\\projects\\react智能体",
-          "canvas_files\\projects\\条件分支导出测试",
-          "canvas_files\\projects\\条件分支导出测试2",
+          "canvas_files\\projects\\react智能体增加错误反馈",
+          "canvas_files\\projects\\测试导出节点顺序",
+          "canvas_files\\projects\\测试执行逻辑",
+          "canvas_files\\projects\\画图测试",
           "canvas_files\\projects\\自动组件生成",
-          "canvas_files\\projects\\获取工具路径",
           "canvas_files\\projects\\获取当前时间",
           "canvas_files\\projects\\逻辑回归"
         ]
       },
       "大模型组件/大模型对话||大模型对话": {
-        "response": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\\\"123,31,51,42\\\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。\"\n}\n```",
+        "response": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"当前时间是 2025年11月19日 17时25分39秒。\"\n}\n```",
         "raw_output": {
-          "id": "chatcmpl-zzf7s9jiy0pw2j1m0dnq0r",
+          "id": "chatcmpl-l8y6du3i4w22fni751jk2",
           "choices": [
             {
               "finish_reason": "stop",
               "index": 0,
               "logprobs": null,
               "message": {
-                "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\\\"123,31,51,42\\\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。\"\n}\n```",
+                "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"当前时间是 2025年11月19日 17时25分39秒。\"\n}\n```",
                 "refusal": null,
                 "role": "assistant",
                 "annotations": null,
@@ -1730,15 +1756,15 @@
               }
             }
           ],
-          "created": 1763487039,
+          "created": 1763573140,
           "model": "qwen/qwen3-30b-a3b-2507",
           "object": "chat.completion",
           "service_tier": null,
           "system_fingerprint": "qwen/qwen3-30b-a3b-2507",
           "usage": {
-            "completion_tokens": 120,
-            "prompt_tokens": 2362,
-            "total_tokens": 2482,
+            "completion_tokens": 48,
+            "prompt_tokens": 1590,
+            "total_tokens": 1638,
             "completion_tokens_details": null,
             "prompt_tokens_details": null
           },
@@ -1746,87 +1772,61 @@
         },
         "history": [
           {
+            "role": "user",
+            "content": "[{'input': '获取当前时间'}]"
+          },
+          {
             "role": "assistant",
-            "content": "<think>\n好的，我现在需要处理用户的查询：“-1,-2,-3,-4的逻辑回归结果是多少”。首先，我要理解用户的需求。他们似乎在问这些数值的逻辑回归结果，但逻辑回归通常用于分类问题，可能用户是想求这些数值的某种统计结果，或者可能有其他意图。不过根据提供的工具列表，有一个名为“逻辑回归”的工具，参数是param1，格式TEXT，参考输入是1,2,3,4。所以用户可能希望将这些数值作为输入进行逻辑回归计算。\n\n接下来，我需要检查可用的工具。用户提供的工具中有“逻辑回归”工具，参数是param1，类型TEXT，示例输入是“1,2,3,4”。用户给出的输入是“-1,-2,-3,-4”，这符合参数格式，所以应该调用这个工具。\n\n步骤分解：首先，将用户提供的数值转换为工具所需的参数格式。用户输入是四个负数，用逗号分隔，符合param1的格式要求。因此，直接调用逻辑回归工具，参数为{\"param1\": \"-1,-2,-3,-4\"}。\n\n然后，等待工具返回结果。假设工具处理完成后，返回结果可能是系数、概率或其他相关数据。最后，将结果整理成自然语言回答用户。\n</think>\n\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"逻辑回归\",\n    \"tool_input\": {\"param1\": \"-1,-2,-3,-4\"}\n}\n```"
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\获取当前时间\",\n    \"tool_input\": {}\n}\n```"
           },
           {
             "role": "user",
-            "content": "{'input': '[123，31，51，42]的逻辑回归结果是多少？'}"
+            "content": ""
           },
           {
             "role": "assistant",
-            "content": "<think>\n好的，用户现在问的是“[123，31，51，42]的逻辑回归结果是多少？”。首先，我需要确认用户的需求。他们可能是在问这些数值的逻辑回归结果，但逻辑回归通常用于分类问题，需要目标变量。不过用户提供的数据似乎只有特征值，没有对应的标签。这可能是一个误解，或者用户可能想进行某种特定的计算。\n\n接下来，查看可用的工具。有一个名为“逻辑回归”的工具，参数是param1，格式是TEXT，参考输入是\"1,2,3,4\"。用户当前的输入是\"[123，31，51，42]\"，看起来像是四个数字，但可能需要确认是否正确。不过用户可能将数值用中文逗号分隔，或者可能是输入错误，比如应该用英文逗号或者别的分隔符。\n\n根据工具的参数格式，需要将输入转换为TEXT类型，用逗号分隔。用户提供的数值可能需要调整格式，比如替换中文逗号为英文逗号，或者直接作为字符串传递。但工具的参数可能接受这样的输入，所以直接调用逻辑回归工具，参数为\"123,31,51,42\"。\n\n不过用户的问题可能存在误解，因为逻辑回归通常需要特征矩阵和目标变量。但根据工具的设定，可能该工具处理单变量的情况，或者用户可能有其他意图。此时，按照用户提供的数据调用工具，返回结果即可。如果工具返回错误，可能需要提示用户补充数据或检查格式。\n</think>\n\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"逻辑回归\",\n    \"tool_input\": {\"param1\": \"123,31,51,42\"}\n}\n```"
+            "content": ""
           },
           {
             "role": "user",
-            "content": "工具调用报错根据执行日志修复请求参数：\n执行失败: [Errno 2] No such file or directory: '逻辑回归\\\\input.pkl'\nTraceback (most recent call last):\n  File \"D:\\work\\WorkFlowGUI\\app\\components\\大模型组件\\becc8ae3-47ea-4714-b35e-81a24bc95cb6.py\", line 54, in run\n    with open(project_path / \"input.pkl\", \"wb\") as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '逻辑回归\\\\input.pkl'\n\n\n用户问题：\n[123，31，51，42]的逻辑回归结果是多少？"
+            "content": "[{'input': '获取当前时间'}]"
           },
           {
             "role": "assistant",
-            "content": "<think>\n好的，我现在需要处理用户的问题：“[123，31，51，42]的逻辑回归结果是多少？”。之前用户已经尝试调用逻辑回归工具，但遇到了错误，提示找不到'逻辑回归\\input.pkl'文件。现在需要分析错误原因并修复参数。\n\n首先，错误信息显示在执行逻辑回归工具时，尝试打开一个名为'input.pkl'的文件，但该文件不存在。这可能是因为工具期望的输入格式或路径不正确。用户提供的参数是\"[123，31，51，42]\"，但工具可能需要不同的格式，比如数值列表而不是字符串。\n\n接下来，我需要检查工具的参数要求。根据工具列表，逻辑回归工具的参数是param1，格式为TEXT，参考样例输入是\"1,2,3,4\"。用户当前的输入是\"[123，31，51，42]\"，可能包含中文逗号和方括号，这可能不符合工具期望的格式。正确的格式应该是用英文逗号分隔的数值，如\"123,31,51,42\"，并且去掉方括号。\n\n因此，修复步骤应该是将用户输入的字符串进行处理，替换中文符号为英文符号，并去除方括号。然后重新调用逻辑回归工具，确保参数正确。此外，可能需要确认工具是否需要其他参数或路径，但根据现有信息，主要问题是参数格式不正确。\n\n最后，生成正确的工具调用，使用处理后的参数，并确保路径正确。如果问题仍然存在，可能需要进一步调整参数或检查工具的其他配置。\n</think>\n\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"逻辑回归\",\n    \"tool_input\": {\"param1\": \"123,31,51,42\"}\n}\n```"
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\获取当前时间\",\n    \"tool_input\": {}\n}\n```"
           },
           {
             "role": "user",
-            "content": "工具调用报错根据执行日志修复请求参数：\n执行失败: [Errno 2] No such file or directory: '逻辑回归\\\\input.pkl'\nTraceback (most recent call last):\n  File \"D:\\work\\WorkFlowGUI\\app\\components\\大模型组件\\becc8ae3-47ea-4714-b35e-81a24bc95cb6.py\", line 54, in run\n    with open(project_path / \"input.pkl\", \"wb\") as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '逻辑回归\\\\input.pkl'\n\n\n用户问题：\n[123，31，51，42]的逻辑回归结果是多少？"
+            "content": "工具调用结果：\n{'output1': '2025-11-19 17:25:39.048452'}\n\n用户问题：\n获取当前时间"
           },
           {
             "role": "assistant",
-            "content": "<think>\n好的，用户的问题是关于逻辑回归的，他们提供的输入是[123，31，51，42]，但之前调用工具时出现了文件未找到的错误，具体是无法找到'逻辑回归\\input.pkl'。首先，我需要理解这个错误的原因。根据错误信息，代码尝试打开一个名为input.pkl的文件，但该文件不存在。可能的原因是路径不正确，或者工具本身需要不同的参数格式。\n\n用户之前已经尝试过两次调用逻辑回归工具，但都失败了。第一次是使用参数\"-1,-2,-3,-4\"，第二次是\"123,31,51,42\"。但每次调用都导致同样的文件错误。这说明工具可能在处理参数时存在格式问题，或者工具的路径设置有问题。\n\n接下来，我需要检查工具的参数要求。根据工具列表，逻辑回归工具的参数是param1，格式是TEXT，参考样例输入是\"1,2,3,4\"。用户提供的输入是\"[123，31，51，42]\"，这里可能的问题是输入的格式不符合工具预期。例如，工具可能期望逗号分隔的字符串，而用户使用了中文顿号或者方括号。比如，用户输入的\"[123，31，51，42]\"中的方括号可能不是工具所期望的，应该去掉，改为\"123,31,51,42\"。\n\n另外，错误信息中的路径是'逻辑回归\\input.pkl'，可能工具在保存输入时需要特定的路径，但当前环境可能没有正确设置，导致文件无法创建或找到。不过用户的问题可能无法直接修复路径问题，所以可能需要调整参数格式。\n\n因此，正确的做法是确保参数符合工具的预期格式。用户输入的列表可能需要转换为逗号分隔的字符串，去掉方括号和中文顿号。例如，将\"[123，31，51，42]\"转换为\"123,31,51,42\"。这样参数就符合工具的TEXT类型，且可能解决文件生成的问题。\n\n所以，下一步应该调用逻辑回归工具，使用正确的参数格式，即\"123,31,51,42\"，确保没有多余的符号。如果仍然失败，可能需要进一步调整或提示用户检查输入格式。\n</think>\n\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"逻辑回归\",\n    \"tool_input\": {\"param1\": \"123,31,51,42\"}\n}\n```"
-          },
-          {
-            "role": "user",
-            "content": "工具调用报错根据执行日志修复请求参数：\n执行失败: [Errno 2] No such file or directory: '逻辑回归\\\\input.pkl'\nTraceback (most recent call last):\n  File \"D:\\work\\WorkFlowGUI\\app\\components\\大模型组件\\becc8ae3-47ea-4714-b35e-81a24bc95cb6.py\", line 54, in run\n    with open(project_path / \"input.pkl\", \"wb\") as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '逻辑回归\\\\input.pkl'\n\n\n用户问题：\n[123，31，51，42]的逻辑回归结果是多少？"
-          },
-          {
-            "role": "assistant",
-            "content": "<think>\n好的，用户一直在尝试获取逻辑回归的结果，但每次调用工具都返回相同的错误，即找不到'逻辑回归\\input.pkl'文件。首先，我需要理解这个错误的原因。根据错误信息，程序在尝试打开一个名为input.pkl的文件时失败，因为该文件不存在。这可能是因为工具期望的文件路径或文件名有误，或者工具本身需要调整参数格式。\n\n用户提供的参数是\"[123，31，51，42]\"，看起来像是一个列表，但工具的参数格式可能需要不同的输入方式。例如，工具可能期望逗号分隔的字符串，或者需要处理特定的格式。不过用户已经尝试了多次调整参数，但问题依旧。\n\n接下来，我需要检查工具的参数要求。根据工具列表中的“逻辑回归”工具，参数是param1，格式是TEXT，参考样例输入是\"1,2,3,4\"。用户当前的输入是\"123,31,51,42\"，这可能符合格式，但可能工具内部处理时有其他问题，比如文件路径错误。\n\n错误日志中提到的路径是'逻辑回归\\input.pkl'，这可能是一个目录结构的问题。可能工具在保存或加载文件时，路径拼接有误，或者目录不存在。例如，project_path可能没有正确设置，或者工具在运行时无法访问该路径。\n\n考虑到用户多次尝试相同参数都失败，可能需要调整参数的格式。例如，是否应该将列表转换为字符串，或者使用不同的分隔符？或者可能需要使用其他工具，比如“自动组件生成”来处理数据，再传递给逻辑回归工具？\n\n另外，用户的问题可能涉及多个步骤，比如先处理数据，再进行逻辑回归。但根据当前工具列表，可能没有其他相关工具可用。因此，可能需要建议用户检查参数格式是否正确，或者确认工具的路径设置是否正确。\n\n最终，由于多次调用失败，可能需要终止流程，给出最终答案，说明问题可能出在文件路径或参数格式，建议用户检查输入参数的格式是否符合工具要求，或者联系支持获取更多帮助。\n</think>\n\n```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"当前工具调用持续报错，可能原因：1.逻辑回归工具依赖的input.pkl文件路径缺失 2.参数格式可能需要调整为浮点数格式 3.建议检查工作目录权限。当前无法获取有效结果，请尝试重新提交或联系技术支持\"\n}\n```"
-          },
-          {
-            "role": "user",
-            "content": "{'input': '[123，31，51，42]的逻辑回归结果是多少？'}"
-          },
-          {
-            "role": "assistant",
-            "content": "<think>\n好的，用户再次提交了同样的问题：“[123，31，51，42]的逻辑回归结果是多少？”。之前多次尝试调用逻辑回归工具都失败，错误是找不到input.pkl文件。现在需要分析可能的原因并调整参数。\n\n首先，之前的错误信息显示在保存文件时出现FileNotFoundError，路径是'逻辑回归\\\\input.pkl'。可能的问题是路径不存在或者权限不足。但用户现在的问题可能需要不同的处理方式。\n\n检查工具列表，逻辑回归工具的参数是param1，格式是TEXT，参考输入是\"1,2,3,4\"。用户当前的输入是\"[123，31，51，42]\"，可能需要将列表转换为字符串，用逗号分隔。但之前的尝试可能没有正确转换格式。\n\n另外，用户可能使用的是中文标点，比如逗号是“，”而不是英文的\",\"。这可能导致参数解析错误。需要确认参数是否正确格式化为英文逗号分隔的字符串。\n\n可能的解决方案：将用户输入的列表转换为字符串，替换中文逗号为英文，并确保参数正确传递。例如，\"123,31,51,42\"。\n\n但之前多次调用都失败，可能工具本身有其他问题，比如需要特定的文件路径或权限。如果调整参数后仍然失败，可能需要提示用户检查工具配置或联系支持。\n\n根据规则，如果交互次数达到5次，直接输出最终答案。之前已经调用多次，可能已经超过了次数限制，所以需要总结答案。\n</think>\n\n```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"经过多次尝试，逻辑回归工具仍无法正常执行。可能原因：1.工具依赖的input.pkl文件路径缺失或权限不足 2.参数格式可能需要调整为纯数字字符串（如\\\"123,31,51,42\\\"）而非列表格式。建议：1.检查工作目录权限 2.确认工具是否需要额外配置 3.尝试简化输入格式。当前无法获取结果，请稍后重试。\"\n}\n```"
-          },
-          {
-            "role": "user",
-            "content": "{'input': '[123，31，51，42]的逻辑回归结果是多少？'}"
-          },
-          {
-            "role": "assistant",
-            "content": "<think>\n好的，用户再次提交了同样的问题：“[123，31，51，42]的逻辑回归结果是多少？”。之前多次尝试调用逻辑回归工具都失败，错误是找不到input.pkl文件。现在用户再次提问，可能需要重新尝试调用工具或者给出最终答案。\n\n首先，检查用户的问题是否需要调整参数格式。之前的尝试中，用户输入是列表形式，但工具可能需要纯字符串。比如，将[123，31，51，42]转换为\"123,31,51,42\"。不过用户可能已经尝试过这种格式，但工具仍然报错。\n\n接下来，考虑工具的错误信息：No such file or directory: '逻辑回归\\input.pkl'。这可能意味着工具需要特定的文件路径或权限。但用户可能没有权限创建或访问该文件，或者路径不正确。\n\n另外，用户可能没有提供足够的信息，或者工具本身存在配置问题。根据之前的回复，已经尝试过多次调用，但失败。此时，根据流程，如果交互次数达到5次，应直接输出最终答案。\n\n现在，用户的问题重复，可能需要总结之前的错误，并给出建议。根据之前的错误处理，应该返回一个总结答案，说明问题可能的原因，并建议检查参数格式或联系支持。\n\n因此，生成最终答案，指出可能的原因，如文件路径问题、参数格式问题，并建议调整输入格式或检查权限，同时说明当前无法获取结果。\n</think>\n\n```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\\\"123,31,51,42\\\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。\"\n}\n```"
-          },
-          {
-            "role": "user",
-            "content": "{'input': '[123，31，51，42]的逻辑回归结果是多少？'}"
-          },
-          {
-            "role": "assistant",
-            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\\\"123,31,51,42\\\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。\"\n}\n```"
+            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"当前时间是 2025年11月19日 17时25分39秒。\"\n}\n```"
           }
         ]
       },
       "数据预处理/JSON筛选||提取最终答案": {
-        "output1": "系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\"123,31,51,42\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。"
+        "output1": "当前时间是 2025年11月19日 17时25分39秒。"
       },
       "数据预处理/JSON筛选||工具名提取": {},
       "数据预处理/JSON筛选||工具输入提取": {},
       "大模型组件/提示词模板||错误处理": {},
       "大模型组件/提示词模板||工具执行错误反馈": {},
       "代码执行/代码编辑||代码42": {
-        "output": "处理结果: en_US.UTF-8 + {'input': '[123，31，51，42]的逻辑回归结果是多少？'}",
-        "output_1": "处理结果: en_US.UTF-8 + {'input': '[123，31，51，42]的逻辑回归结果是多少？'}"
+        "output": "处理结果: en_US.UTF-8 + {'input': '获取当前时间'}",
+        "output_1": "处理结果: en_US.UTF-8 + {'input': '获取当前时间'}"
       },
-      "控制流/输入端口||输入端口": {},
+      "控制流/输入端口||输入端口": {
+        "output": "工具调用结果：\n{'output1': '2025-11-19 17:25:39.048452'}\n\n用户问题：\n获取当前时间"
+      },
       "控制流/输出端口||输出端口": {},
       "控制流/循环控制流区域||循环控制流区域": {
-        "outputs": "系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\"123,31,51,42\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。"
+        "outputs": "当前时间是 2025年11月19日 17时25分39秒。"
       },
       "控制流/条件分支||条件分支 1": {
         "branch": {
           "next_step": "总结答案",
-          "answer": "系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\"123,31,51,42\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。"
+          "answer": "当前时间是 2025年11月19日 17时25分39秒。"
         }
       },
       "控制流/条件分支||条件分支": {}
@@ -1908,12 +1908,12 @@
     "node_vars": {
       "JSON文本包装_output1": {
         "value": {
-          "input": "[123，31，51，42]的逻辑回归结果是多少？"
+          "input": "获取当前时间"
         },
         "update_policy": "更新"
       },
       "大模型对话_response": {
-        "value": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\\\"123,31,51,42\\\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。\"\n}\n```",
+        "value": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"当前时间是 2025年11月19日 17时25分39秒。\"\n}\n```",
         "update_policy": "更新"
       },
       "代码编辑_2_output": {
@@ -1921,22 +1921,55 @@
         "update_policy": "更新"
       },
       "大模型对话_history": {
-        "value": [],
+        "value": [
+          {
+            "role": "user",
+            "content": "[{'input': '获取当前时间'}]"
+          },
+          {
+            "role": "assistant",
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\获取当前时间\",\n    \"tool_input\": {}\n}\n```"
+          },
+          {
+            "role": "user",
+            "content": ""
+          },
+          {
+            "role": "assistant",
+            "content": ""
+          },
+          {
+            "role": "user",
+            "content": "[{'input': '获取当前时间'}]"
+          },
+          {
+            "role": "assistant",
+            "content": "```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"D:\\\\work\\\\CanvasMind\\\\canvas_files\\\\projects\\\\获取当前时间\",\n    \"tool_input\": {}\n}\n```"
+          },
+          {
+            "role": "user",
+            "content": "工具调用结果：\n{'output1': '2025-11-19 17:25:39.048452'}\n\n用户问题：\n获取当前时间"
+          },
+          {
+            "role": "assistant",
+            "content": "```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"当前时间是 2025年11月19日 17时25分39秒。\"\n}\n```"
+          }
+        ],
         "update_policy": "更新"
       },
       "长文本输入_output": {
-        "value": "[123，31，51，42]的逻辑回归结果是多少？",
+        "value": "获取当前时间",
         "update_policy": "更新"
       },
       "大模型输出解析_parsed_json": {
         "value": {
           "next_step": "总结答案",
-          "answer": "系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\"123,31,51,42\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。"
+          "answer": "当前时间是 2025年11月19日 17时25分39秒。"
         },
         "update_policy": "更新"
       },
       "提取最终答案_output1": {
-        "value": "系统持续报错：逻辑回归工具无法执行。可能原因：1. 工具依赖的input.pkl文件缺失或权限不足 2. 输入格式可能需要调整为纯数字字符串（如\"123,31,51,42\"）而非列表格式。建议：1. 检查工作目录权限 2. 确认工具是否需要额外配置 3. 尝试简化输入格式。当前无法获取结果，请稍后重试。",
+        "value": "当前时间是 2025年11月19日 17时25分39秒。",
         "update_policy": "更新"
       }
     }

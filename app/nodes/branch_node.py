@@ -33,7 +33,7 @@ def create_branch_node(parent_window):
             self._init_properties()
             self.add_input('input', True, painter_func=draw_square_port)
             # === 关键：延迟绑定监听器 + 延迟首次同步 ===
-            QtCore.QTimer.singleShot(0, self._delayed_setup)
+            QtCore.QTimer.singleShot(50, self._delayed_setup)
 
             self._sync_timer = None
 

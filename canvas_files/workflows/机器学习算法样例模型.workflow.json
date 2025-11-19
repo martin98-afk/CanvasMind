@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x253ce8ef2e0": {
+      "0x1cfade30100": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -34,7 +34,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 166.175,
         "height": 69.6,
@@ -58,7 +58,7 @@
           "debug_code": {}
         }
       },
-      "0x253ce8ef940": {
+      "0x1cfade32260": {
         "type_": "dynamic.StatusDynamicNode_数据集成_CSV_读取器",
         "icon": null,
         "name": "CSV 读取器",
@@ -81,7 +81,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 186.2425,
         "height": 69.6,
@@ -111,7 +111,7 @@
           "debug_code": {}
         }
       },
-      "0x253ce8efd90": {
+      "0x1cfade32410": {
         "type_": "dynamic.StatusDynamicNode_数据集成_输入array",
         "icon": null,
         "name": "输入array",
@@ -134,7 +134,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 362.79625000000004,
         "height": 101.10000000000001,
@@ -159,7 +159,7 @@
           "param1": "1,2,3,4"
         }
       },
-      "0x253b1461ba0": {
+      "0x1cfade33580": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy)",
@@ -182,7 +182,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 255.73125000000002,
         "height": 82.2,
@@ -217,7 +217,7 @@
           "debug_code": null
         }
       },
-      "0x253b1463cd0": {
+      "0x1cfade330a0": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_MinMax归一化",
         "icon": null,
         "name": "MinMax归一化",
@@ -275,7 +275,7 @@
           "debug_code": null
         }
       },
-      "0x253b1460a00": {
+      "0x1cfb0811d80": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_归一化推理(npy)",
         "icon": null,
         "name": "归一化推理(npy)",
@@ -298,7 +298,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 236.03750000000002,
         "height": 82.2,
@@ -333,7 +333,7 @@
           "debug_code": {}
         }
       },
-      "0x253b14638b0": {
+      "0x1cfb0812050": {
         "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
         "icon": null,
         "name": "逻辑回归推理(npy) 1",
@@ -356,7 +356,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 275.425,
         "height": 82.2,
@@ -391,7 +391,7 @@
           "debug_code": {}
         }
       },
-      "0x253b14636d0": {
+      "0x1cfb08121a0": {
         "type_": "dynamic.StatusDynamicNode_数据转换_csv转npy",
         "icon": null,
         "name": "csv转npy",
@@ -414,7 +414,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 167.29625000000001,
         "height": 82.2,
@@ -449,7 +449,7 @@
           "debug_code": {}
         }
       },
-      "0x253b1460070": {
+      "0x1cfb0813f10": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练",
@@ -472,7 +472,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 391.40250000000003,
         "height": 164.1,
@@ -514,7 +514,7 @@
           "max_iter": "100"
         }
       },
-      "0x253b14607f0": {
+      "0x1cfb0813760": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练 1",
@@ -537,7 +537,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 411.09625,
         "height": 164.1,
@@ -579,7 +579,7 @@
           "max_iter": "100"
         }
       },
-      "0x253b1462290": {
+      "0x1cfb0812710": {
         "type_": "dynamic.StatusDynamicNode_数据可视化_Matplotlib画图",
         "icon": null,
         "name": "Matplotlib画图",
@@ -602,7 +602,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 473.685,
         "height": 565.2,
@@ -627,7 +627,7 @@
           "auto_arrange": true
         }
       },
-      "0x253ce8ed4e0": {
+      "0x1cf92993430": {
         "type_": "dynamic.StatusDynamicNode_数据集成_CSV_读取器",
         "icon": null,
         "name": "CSV 读取器 1",
@@ -650,7 +650,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 205.93625,
         "height": 69.6,
@@ -666,7 +666,7 @@
           "debug_code": {}
         }
       },
-      "0x253ccf7df90": {
+      "0x1cfae69a650": {
         "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
         "icon": null,
         "name": "逻辑回归训练 2",
@@ -689,7 +689,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 411.09625,
         "height": 164.1,
@@ -707,7 +707,7 @@
           "max_iter": "100"
         }
       },
-      "0x253ccf7d150": {
+      "0x1cfc136a050": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\WorkFlowGUI\\icons/代码执行.svg",
         "name": "代码编辑",
@@ -730,7 +730,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 812.015,
         "height": 803.5500000000001,
@@ -774,7 +774,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    import pandas as pd \n    series = inputs.input.iloc[:, -1].apply(lambda x: abs(int(x)))\n    return {\n        \"output\": pd.DataFrame(series, columns=[inputs.input.columns[-1]])\n    }"
         }
       },
-      "0x253b11d4850": {
+      "0x1cfb0c05600": {
         "type_": "dynamic.StatusDynamicNode_模型推理_sklearn模型推理(csv)",
         "icon": null,
         "name": "sklearn模型推理(csv)",
@@ -797,7 +797,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 286.58,
         "height": 82.2,
@@ -813,7 +813,7 @@
           "debug_code": {}
         }
       },
-      "0x253ce7ab7f0": {
+      "0x1cfb0c05330": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传 1",
@@ -836,7 +836,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 185.86875,
         "height": 69.6,
@@ -856,211 +856,211 @@
     "connections": [
       {
         "out": [
-          "0x253ce8ef2e0",
+          "0x1cfade30100",
           "file"
         ],
         "in": [
-          "0x253ce8ef940",
+          "0x1cfade32260",
           "csv"
         ]
       },
       {
         "out": [
-          "0x253ce8ef940",
+          "0x1cfade32260",
           "csv"
         ],
         "in": [
-          "0x253b1460070",
+          "0x1cfb0813f10",
           "feature"
         ]
       },
       {
         "out": [
-          "0x253ce8ef940",
+          "0x1cfade32260",
           "csv"
         ],
         "in": [
-          "0x253b1460070",
+          "0x1cfb0813f10",
           "target"
         ]
       },
       {
         "out": [
-          "0x253ce8ef940",
+          "0x1cfade32260",
           "csv"
         ],
         "in": [
-          "0x253b14636d0",
+          "0x1cfb08121a0",
           "input"
         ]
       },
       {
         "out": [
-          "0x253ce8ef940",
+          "0x1cfade32260",
           "csv"
         ],
         "in": [
-          "0x253b1463cd0",
+          "0x1cfade330a0",
           "input"
         ]
       },
       {
         "out": [
-          "0x253ce8ef940",
+          "0x1cfade32260",
           "csv"
         ],
         "in": [
-          "0x253b14607f0",
+          "0x1cfb0813760",
           "target"
         ]
       },
       {
         "out": [
-          "0x253ce8ef940",
+          "0x1cfade32260",
           "csv"
         ],
         "in": [
-          "0x253b11d4850",
+          "0x1cfb0c05600",
           "feature"
         ]
       },
       {
         "out": [
-          "0x253ce8efd90",
+          "0x1cfade32410",
           "output"
         ],
         "in": [
-          "0x253b1460a00",
+          "0x1cfb0811d80",
           "input"
         ]
       },
       {
         "in": [
-          "0x253b1461ba0",
+          "0x1cfade33580",
           "feature"
         ],
         "out": [
-          "0x253b14636d0",
+          "0x1cfb08121a0",
           "output"
         ]
       },
       {
         "in": [
-          "0x253b1461ba0",
+          "0x1cfade33580",
           "model"
         ],
         "out": [
-          "0x253b1460070",
+          "0x1cfb0813f10",
           "model"
         ]
       },
       {
         "out": [
-          "0x253b1463cd0",
+          "0x1cfade330a0",
           "output"
         ],
         "in": [
-          "0x253b14607f0",
+          "0x1cfb0813760",
           "feature"
         ]
       },
       {
         "out": [
-          "0x253b1463cd0",
+          "0x1cfade330a0",
           "scaler"
         ],
         "in": [
-          "0x253b1460a00",
+          "0x1cfb0811d80",
           "scaler"
         ]
       },
       {
         "out": [
-          "0x253b1460a00",
+          "0x1cfb0811d80",
           "output"
         ],
         "in": [
-          "0x253b14638b0",
+          "0x1cfb0812050",
           "feature"
         ]
       },
       {
         "in": [
-          "0x253b14638b0",
+          "0x1cfb0812050",
           "model"
         ],
         "out": [
-          "0x253b14607f0",
+          "0x1cfb0813760",
           "model"
         ]
       },
       {
         "out": [
-          "0x253b14636d0",
+          "0x1cfb08121a0",
           "output"
         ],
         "in": [
-          "0x253b1462290",
+          "0x1cfb0812710",
           "x"
         ]
       },
       {
         "out": [
-          "0x253b14636d0",
+          "0x1cfb08121a0",
           "output"
         ],
         "in": [
-          "0x253b1462290",
+          "0x1cfb0812710",
           "y"
         ]
       },
       {
         "out": [
-          "0x253b1460070",
+          "0x1cfb0813f10",
           "model"
         ],
         "in": [
-          "0x253b11d4850",
+          "0x1cfb0c05600",
           "model"
         ]
       },
       {
         "in": [
-          "0x253ce8ed4e0",
+          "0x1cf92993430",
           "csv"
         ],
         "out": [
-          "0x253ce7ab7f0",
+          "0x1cfb0c05330",
           "file"
         ]
       },
       {
         "out": [
-          "0x253ce8ed4e0",
+          "0x1cf92993430",
           "csv"
         ],
         "in": [
-          "0x253ccf7df90",
+          "0x1cfae69a650",
           "feature"
         ]
       },
       {
         "out": [
-          "0x253ce8ed4e0",
+          "0x1cf92993430",
           "csv"
         ],
         "in": [
-          "0x253ccf7d150",
+          "0x1cfc136a050",
           "input"
         ]
       },
       {
         "in": [
-          "0x253ccf7df90",
+          "0x1cfae69a650",
           "target"
         ],
         "out": [
-          "0x253ccf7d150",
+          "0x1cfc136a050",
           "output"
         ]
       }
@@ -1070,22 +1070,22 @@
     "environment": "3.14",
     "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
     "node_id2stable_key": {
-      "0x253ce8ef2e0": "数据集成/文档上传||文档上传",
-      "0x253ce8ef940": "数据集成/CSV 读取器||CSV 读取器",
-      "0x253ce8efd90": "数据集成/输入array||输入array",
-      "0x253b1461ba0": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
-      "0x253b1463cd0": "数据预处理/MinMax归一化||MinMax归一化",
-      "0x253b1460a00": "数据预处理/归一化推理(npy)||归一化推理(npy)",
-      "0x253b14638b0": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
-      "0x253b14636d0": "数据转换/csv转npy||csv转npy",
-      "0x253b1460070": "模型训练/逻辑回归训练||逻辑回归训练",
-      "0x253b14607f0": "模型训练/逻辑回归训练||逻辑回归训练 1",
-      "0x253b1462290": "数据可视化/Matplotlib画图||Matplotlib画图",
-      "0x253ce8ed4e0": "数据集成/CSV 读取器||CSV 读取器 1",
-      "0x253ccf7df90": "模型训练/逻辑回归训练||逻辑回归训练 2",
-      "0x253ccf7d150": "代码执行/代码编辑||代码编辑",
-      "0x253b11d4850": "模型推理/sklearn模型推理(csv)||sklearn模型推理(csv)",
-      "0x253ce7ab7f0": "数据集成/文档上传||文档上传 1"
+      "0x1cfade30100": "数据集成/文档上传||文档上传",
+      "0x1cfade32260": "数据集成/CSV 读取器||CSV 读取器",
+      "0x1cfade32410": "数据集成/输入array||输入array",
+      "0x1cfade33580": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
+      "0x1cfade330a0": "数据预处理/MinMax归一化||MinMax归一化",
+      "0x1cfb0811d80": "数据预处理/归一化推理(npy)||归一化推理(npy)",
+      "0x1cfb0812050": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
+      "0x1cfb08121a0": "数据转换/csv转npy||csv转npy",
+      "0x1cfb0813f10": "模型训练/逻辑回归训练||逻辑回归训练",
+      "0x1cfb0813760": "模型训练/逻辑回归训练||逻辑回归训练 1",
+      "0x1cfb0812710": "数据可视化/Matplotlib画图||Matplotlib画图",
+      "0x1cf92993430": "数据集成/CSV 读取器||CSV 读取器 1",
+      "0x1cfae69a650": "模型训练/逻辑回归训练||逻辑回归训练 2",
+      "0x1cfc136a050": "代码执行/代码编辑||代码编辑",
+      "0x1cfb0c05600": "模型推理/sklearn模型推理(csv)||sklearn模型推理(csv)",
+      "0x1cfb0c05330": "数据集成/文档上传||文档上传 1"
     },
     "node_states": {
       "数据集成/文档上传||文档上传": "success",
@@ -1664,6 +1664,10 @@
       },
       "逻辑回归训练_value": {
         "value": [
+          0,
+          0,
+          0,
+          0,
           0,
           0,
           0,

@@ -1,4 +1,4 @@
-2025-11-18 17:43:05.577 | INFO     | __main__:execute_workflow:931 - 执行节点: 获取当前时间
-2025-11-18 17:43:05.577 | INFO     | __main__:execute_workflow:932 - 输入: {}
-2025-11-18 17:43:05.592 | INFO     | __main__:execute_workflow:942 - 输出: {'output1': '2025-11-18 17:43:05.592468'}
-2025-11-18 17:43:05.592 | INFO     | __main__:execute_workflow:961 - 最终输出: {'output1': '2025-11-18 17:43:05.592468'}
+2025-11-19 17:25:39.035 | INFO     | __main__:execute_workflow:832 - 执行节点: 获取当前时间
+2025-11-19 17:25:39.035 | INFO     | __main__:execute_workflow:833 - 输入: {}
+2025-11-19 17:25:39.048 | INFO     | __main__:execute_workflow:843 - 输出: {'output1': '2025-11-19 17:25:39.048452'}
+2025-11-19 17:25:39.048 | INFO     | __main__:execute_workflow:865 - 最终输出: {'output1': '2025-11-19 17:25:39.048452'}

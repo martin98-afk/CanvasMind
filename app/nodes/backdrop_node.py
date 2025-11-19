@@ -248,9 +248,9 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
                 self, old_pos, old_size, new_pos, (new_width, new_height)
             )
             self.graph.undo_stack().push(command)
+        self.graph.viewer().force_update()
         # 更新记录（无论是否变化）
         self._contained_nodes = {n.id for n in nodes_to_include}
-
     # ──────────────── 几何辅助方法 ────────────────
 
     def _get_backdrop_scene_rect(self):

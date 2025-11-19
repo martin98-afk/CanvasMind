@@ -249,7 +249,6 @@ def serialize_for_json(obj, large_list_threshold=1000):
     elif isinstance(obj, np.bool_):
         return bool(obj)
     elif hasattr(obj, 'serialize') and callable(getattr(obj, 'serialize')):
-        # 如果对象自己有 serialize 方法（如你的 ArgumentType）
         try:
             return obj.serialize()
         except:

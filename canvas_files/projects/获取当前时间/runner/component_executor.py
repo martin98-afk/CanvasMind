@@ -80,7 +80,7 @@ def run_component_in_subprocess(
             "type": "ImportError",
             "node_id": NODE_ID
         }
-        with open(ERROR_PATH, 'wb', encoding='utf-8') as f:
+        with open(ERROR_PATH, 'wb') as f:
             pickle.dump(error_info, f)
         logger.error(f"导入错误: {e}")
         print(f"EXECUTION_IMPORT_ERROR: {e}", flush=True)

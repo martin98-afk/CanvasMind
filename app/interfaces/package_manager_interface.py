@@ -4,10 +4,11 @@ import json
 import platform
 import re
 import subprocess
+
 from PyQt5.QtCore import QThread, pyqtSignal, QProcess, Qt, QTimer
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem, QSplitter, QHeaderView, QSizePolicy, QFileDialog, QCheckBox
+    QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView, QSizePolicy, QFileDialog
 )
 from loguru import logger
 from qfluentwidgets import (
@@ -16,6 +17,7 @@ from qfluentwidgets import (
 )
 
 from app.utils.env_operation import EnvironmentManager
+from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.dialog_widget.custom_messagebox import CustomComboDialog, CustomInputDialog
 
@@ -139,7 +141,7 @@ class EnvManagerUI(QWidget):
         self.logEdit.setReadOnly(True)
 
         # 使用 QSplitter 让包列表和日志可拖拽分配空间
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = ModernSplitter(Qt.Horizontal)
         splitter.addWidget(packageWidget)  # 左：搜索框 + 包列表
         splitter.addWidget(self.logEdit)  # 右：日志
         splitter.setStretchFactor(0, 1)

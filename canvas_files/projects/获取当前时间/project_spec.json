@@ -1,10 +1,10 @@
 {
   "version": "1.0",
-  "graph_name": "test_2",
+  "graph_name": "测试补全功能",
   "inputs": {},
   "outputs": {
     "output1": {
-      "node_id": "0x280a8a18f70",
+      "node_id": "0x234af2879d0",
       "output_name": "output1",
       "format": "TEXT"
     }

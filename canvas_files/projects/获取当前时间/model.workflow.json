@@ -2,18 +2,19 @@
   "version": "1.0",
   "graph": {
     "nodes": {
-      "0x280a8a18f70": {
+      "0x234af2879d0": {
         "name": "获取当前时间",
         "type_": "dynamic.StatusDynamicNode_数据集成_获取当前时间",
         "pos": [
-          602.4166288927314,
-          1138.379624862044
+          -250.38289161942365,
+          486.144884458151
         ],
+        "input_ports_multi": {},
         "custom": {
           "FULL_PATH": "数据集成/获取当前时间",
           "FILE_PATH": "",
           "params": {
-            "persistent_id": "319e0947-2417-4d4c-ba45-c5294b20af31",
+            "persistent_id": "58ddd316-8904-4478-9b19-75c5504d6103",
             "debug_code": {}
           },
           "input_values": {}
@@ -26,15 +27,21 @@
   "runtime": {
     "environment": "3.14",
     "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
+    "execution_order": [
+      [
+        "0x234af2879d0",
+        "获取当前时间"
+      ]
+    ],
     "node_id2stable_key": {
-      "0x280a8a18f70": "数据集成/获取当前时间||获取当前时间"
+      "0x234af2879d0": "数据集成/获取当前时间||获取当前时间"
     },
     "node_states": {
       "数据集成/获取当前时间||获取当前时间": "success"
     },
     "node_outputs": {
       "数据集成/获取当前时间||获取当前时间": {
-        "output1": "2025-11-12 19:54:26.472827"
+        "output1": "2025-11-19 23:46:14.088654"
       }
     },
     "column_select": {
@@ -68,10 +75,10 @@
   "candidate_inputs": [],
   "candidate_outputs": [
     {
-      "node_id": "0x280a8a18f70",
+      "node_id": "0x234af2879d0",
       "node_name": "获取当前时间",
       "output_name": "output1",
-      "sample_value": "2025-11-12 19:54:26.472827",
+      "sample_value": "2025-11-19 23:46:14.088654",
       "display_name": "获取当前时间 → output1",
       "format": "TEXT"
     }
