@@ -374,9 +374,9 @@ class CanvasPage(QWidget):
         console_layout.setContentsMargins(0, 0, 0, 5)
         console_layout.setSpacing(1)
 
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(self.ipython_console)
+        splitter = ModernSplitter(Qt.Horizontal)
         splitter.addWidget(self.var_explorer)
+        splitter.addWidget(self.ipython_console)
         splitter.setSizes([400, 400])  # 变量浏览器较小，控制台较大
 
         console_layout.addWidget(splitter)

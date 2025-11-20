@@ -334,6 +334,28 @@ class GlobalVariableContext(BaseModel):
         except KeyError:
             return default
 
+    def __getattr__(self, name: str):
+        """支持 global_variable.variable_name 这种点号访问方式"""
+        # 检查是否是预定义的属性（如 env, custom, node_vars）
+        if name in {"env", "custom", "node_vars"}:
+            return getattr(self, name)
+
+        # 尝试在 custom 变量中查找
+        if name in self.custom:
+            return self.custom[name].value
+
+        # 尝试在 env 变量中查找
+        env_all = self.env.get_all_env_vars()
+        if name in env_all:
+            return env_all[name]
+
+        # 尝试在 node_vars 中查找
+        if name in self.node_vars:
+            return self.node_vars[name].value
+
+        # 如果都找不到，抛出 AttributeError
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
     def __getitem__(self, path: str) -> Any:
         if not isinstance(path, str):
             raise KeyError("Path must be a string")

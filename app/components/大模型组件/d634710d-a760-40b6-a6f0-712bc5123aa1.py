@@ -63,7 +63,7 @@ class Component(BaseComponent):
         )
         from openai import OpenAI
         # 在这里编写你的组件逻辑
-        client = OpenAI(api_key="", base_url=self.global_variable.custom.get("url").value)
+        client = OpenAI(api_key="", base_url=self.global_variable.url)
         messages = [
             {
                 "role": "user",
@@ -72,7 +72,7 @@ class Component(BaseComponent):
         ]
         try:
             response = client.chat.completions.create(
-                model=self.global_variable.custom.get("model_name").value,
+                model=self.global_variable.model_name,
                 messages=messages
             )
         except:
