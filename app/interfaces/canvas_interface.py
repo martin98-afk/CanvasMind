@@ -353,7 +353,12 @@ class CanvasPage(QWidget):
         env_layout.addWidget(self.export_model_btn)
         self.close_btn = TransparentToolButton(FluentIcon.CLOSE, self)
         self.close_btn.setToolTip("关闭当前画布")
-        self.close_btn.clicked.connect(self.close_current_canvas)
+        self.close_btn.clicked.connect(
+            lambda: (
+                self.parent.switchTo(self.parent.workflow_manager),
+                QtCore.QTimer.singleShot(1000, self.close_current_canvas)
+            )
+        )
         env_layout.addWidget(self.close_btn)
         env_layout.addStretch()
         self.buttons_container.setLayout(env_layout)
@@ -850,10 +855,10 @@ class CanvasPage(QWidget):
             backdrop_node.model.set_property("loop_nums", 3)
 
     def close_current_canvas(self):
-        self.parent.switchTo(self.parent.workflow_manager)
+
         self._stop_auto_save_timer()
         self.var_explorer.auto_refresh_timer.stop()
-        QtCore.QTimer.singleShot(0, self.ipython_console.stop_kernel)
+        self.ipython_console.stop_kernel()
         self.console_dialog.destroy()
         self.var_explorer.destroy()
         self.canvas_deleted.emit()
@@ -1477,6 +1482,7 @@ class CanvasPage(QWidget):
         # 删除节点后，使缓存无效
         self._invalidate_node_cache()
         self.graph.delete_node(node)
+        self.property_panel.update_properties(None)
 
     def on_selection_changed(self, node_ids: list, prev_ids: list):
         if self._selection_update_pending:
@@ -1501,6 +1507,7 @@ class CanvasPage(QWidget):
                     if only_backdrop:
                         self.nav_view.clear_recommendations()
                         QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
+                        self.property_panel.reset_current_components()
                         return
             # 展示选中节点列表
             if len(selected_nodes) > 1:
@@ -1510,13 +1517,16 @@ class CanvasPage(QWidget):
             # 展示单独节点面板
             elif isinstance(selected_nodes[0], BaseNode):
                 QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(selected_nodes[0]))
+                self.property_panel.reset_current_components()
                 self._request_recommendations(selected_nodes[0])
             # 展示全局变量面板
             else:
                 self.nav_view.clear_recommendations()
+                self.property_panel.reset_current_components()
                 QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
         else:
             self.nav_view.clear_recommendations()
+            self.property_panel.reset_current_components()
             QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
 
     def _start_auto_save_timer(self):
@@ -1651,7 +1661,7 @@ class CanvasPage(QWidget):
             count = [0]  # 使用 list 保持引用
 
             def patched_add_node(node, pos=None, inherite_graph_style=True):
-                result = original_add_node(node, pos, inherite_graph_style)
+                result = original_add_node(node, pos, False, False, inherite_graph_style)
                 count[0] += 1
                 progress.setValue(count[0])
                 QApplication.processEvents()  # 刷新 UI
@@ -1742,9 +1752,13 @@ class CanvasPage(QWidget):
         graph_menu.add_command('重做', self._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
         graph_menu.add_command('自动布局', self._auto_layout_selected, 'Ctrl+L')
         edit_menu = graph_menu.add_menu('编辑')
-        # edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
+        edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
         edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
-        edit_menu.add_command('删除选中', lambda graph: self.delete_selected_nodes(graph), 'Del')
+        edit_menu.add_command(
+            '删除选中', lambda graph: (
+                self.delete_selected_nodes(graph), self.property_panel.update_properties(None)
+            ), 'Del'
+        )
 
     def delete_selected_nodes(self, graph):
         # 清除选中节点的输入输出端口连接线

@@ -319,35 +319,13 @@ class PropertyPanel(CardWidget):
         return None
 
     def _add_output_to_global_variable(self, node, port_name: str):
-        if hasattr(self, 'global_panel_widget') and self.global_panel_widget:
-            self.global_panel_widget.add_output_to_global_var(self.main_window, node, port_name)
-        else:
-            # 原有逻辑的后备实现（如果 GlobalPanelWidget 未初始化）
-            value = node._output_values.get(port_name)
-            if value is None:
-                InfoBar.warning(
-                    title="警告",
-                    content=f"端口 {port_name} 当前无有效输出值",
-                    parent=self.main_window,
-                    position=InfoBarPosition.TOP_RIGHT
-                )
-                return
-            safe_node_name = re.sub(r'\s+', '_', node.name())
-            var_name = f"{safe_node_name}_{port_name}"
-            self.main_window.global_variables.set_output(
-                node_id=safe_node_name, output_name=port_name, output_value=serialize_for_json(value)
-            )
-            if hasattr(node, "refresh_node_outports"):
-                QtCore.QTimer.singleShot(100, node.refresh_node_outports)
-            if hasattr(node, "_sync_outputs_ports"):
-                QtCore.QTimer.singleShot(100, node._sync_outputs_ports)
-            self.main_window.global_variables_changed.emit("node_vars", var_name, "add")
-            InfoBar.success(
-                title="成功",
-                content=f"已添加全局变量：{var_name}",
-                parent=self.main_window,
-                position=InfoBarPosition.TOP_RIGHT
-            )
+        self.global_panel_widget.add_output_to_global_var(self.main_window, node, port_name)
+
+    def _delete_output_from_global_variable(self, node, port_name: str):
+        self.global_panel_widget.delete_output_from_global_var(self.main_window, node, port_name)
+
+    def _is_output_in_global_variable(self, node, port_name: str):
+        return self.global_panel_widget.is_output_in_global_var(self.main_window, node, port_name)
 
     def _refresh_node_vars_page(self):
         """

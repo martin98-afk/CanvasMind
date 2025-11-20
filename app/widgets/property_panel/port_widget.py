@@ -13,7 +13,8 @@ from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QFrame, QListWidgetItem, Q
     QSpacerItem
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SegmentedWidget, \
-    FluentIcon, InfoBar, TransparentToolButton, RoundMenu, Action, TransparentPushButton
+    FluentIcon, InfoBar, TransparentToolButton, RoundMenu, Action, TransparentPushButton, CaptionLabel, \
+    PrimaryToolButton, ToolButton, ToggleToolButton
 
 from app.components.base import ArgumentType
 from app.utils.utils import get_icon, canvas_file_dump_path
@@ -26,7 +27,16 @@ class PortWidget(QWidget):
     这个控件内部管理分段控件和堆叠控件，以及输入/输出页面的布局。
     """
 
-    def __init__(self, main_window, parent_panel, node, port_info_func, copy_as_expression_func, add_output_to_global_func, parent=None):
+    def __init__(self,
+                 main_window,
+                 parent_panel,
+                 node,
+                 port_info_func,
+                 copy_as_expression_func,
+                 add_func,
+                 delete_func,
+                 is_in_func,
+                 parent=None):
         """
         初始化 PortWidget。
 
@@ -36,7 +46,9 @@ class PortWidget(QWidget):
             node: 要显示端口信息的节点对象。
             port_info_func: 一个函数，用于获取端口信息，例如 parent_panel.get_port_info。
             copy_as_expression_func: 一个函数，用于复制表达式，例如 parent_panel._copy_as_expression。
-            add_output_to_global_func: 一个函数，用于将输出添加到全局变量，例如 parent_panel._add_output_to_global_variable。
+            add_func: 一个函数，用于将输出添加到全局变量，例如 parent_panel._add_output_to_global_variable。
+            delete_func: 一个函数，用于将输出从全局变量中删除
+            is_in_func: 一个函数，用于判断输出是否在全局变量中
             parent: PyQt父控件。
         """
         super().__init__(parent)
@@ -45,7 +57,9 @@ class PortWidget(QWidget):
         self.node = node
         self.port_info_func = port_info_func
         self.copy_as_expression_func = copy_as_expression_func
-        self.add_output_to_global_func = add_output_to_global_func
+        self.add_output_to_global_func = add_func
+        self.delete_output_from_global_func = delete_func
+        self.is_in_global_func = is_in_func
 
         # 存储当前节点的UI元素
         self.segmented_widget = None
@@ -69,8 +83,8 @@ class PortWidget(QWidget):
             self.node.column_select = {}
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(3, 3, 3, 3)
-        layout.setSpacing(10) # SegmentedWidget 和 StackedWidget 之间可能不需要额外间距
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6) # SegmentedWidget 和 StackedWidget 之间可能不需要额外间距
 
         # 1. 创建分段控件和堆叠控件
         self.segmented_widget = SegmentedWidget(self)
@@ -78,13 +92,13 @@ class PortWidget(QWidget):
 
         self.input_widget = QWidget()
         input_layout = QVBoxLayout(self.input_widget)
-        input_layout.setContentsMargins(3, 3, 3, 3)
-        input_layout.setSpacing(8)
+        input_layout.setContentsMargins(0, 0, 0, 0)
+        input_layout.setSpacing(5)
 
         self.output_widget = QWidget()
         output_layout = QVBoxLayout(self.output_widget)
-        output_layout.setContentsMargins(3, 3, 3, 3)
-        output_layout.setSpacing(8)
+        output_layout.setContentsMargins(0, 0, 0, 0)
+        output_layout.setSpacing(5)
 
         # 2. 判断是否有输入输出端口并构建
         has_input_ports = False
@@ -128,13 +142,7 @@ class PortWidget(QWidget):
     def _populate_input_ports(self, layout):
         """构建输入端口UI"""
         port_infos = self.port_info_func(self.node, is_input=True)
-        if not port_infos:
-            layout.addWidget(BodyLabel("  无输入端口"))
-            return
         for port_name, port_label, port_type in port_infos:
-            port_label = BodyLabel(f"  • {port_label} ({port_name}): {port_type.value}")
-            port_label.setWordWrap(True)
-            layout.addWidget(port_label)
             input_port = self.node.get_input(port_name)
             connected = input_port.connected_ports() if input_port else []
             if len(connected) == 1:
@@ -144,17 +152,9 @@ class PortWidget(QWidget):
                 original_data = [up.node().get_output_value(up.name()) for up in connected]
             else:
                 original_data = "暂无数据"
-            if port_type == ArgumentType.CSV and isinstance(original_data, pd.DataFrame) and not original_data.empty:
-                self._add_column_selector_widget_to_layout(port_name, original_data, layout)
-                current_selected_data = self._get_current_input_value(port_name, original_data)
-            elif port_type == ArgumentType.CSV and isinstance(original_data, str) and Path(original_data).is_file():
-                sample_data = pd.read_csv(original_data, nrows=5)
-                self._add_column_selector_widget_to_layout(port_name, sample_data, layout)
-                current_selected_data = self._get_current_input_value(port_name, original_data)
-            else:
-                current_selected_data = original_data
-            self._add_text_edit_to_layout(
-                current_selected_data,
+            self._add_port(
+                f"• {port_label} ({port_name}): {port_type.value}",
+                original_data,
                 port_type=port_type,
                 port_name=port_name,
                 layout=layout,
@@ -164,13 +164,7 @@ class PortWidget(QWidget):
     def _populate_output_ports(self, layout):
         """构建输出端口UI"""
         port_infos = self.port_info_func(self.node, is_input=False)
-        if not port_infos:
-            layout.addWidget(BodyLabel("  无输出端口"))
-            return
         for port_name, port_label, port_type in port_infos:
-            port_label = BodyLabel(f"  • {port_label} ({port_name}): {port_type.value}")
-            port_label.setWordWrap(True)
-            layout.addWidget(port_label)
             output_values = getattr(self.node, '_output_values', None)
             if output_values is None:
                 output_values = {}
@@ -182,7 +176,8 @@ class PortWidget(QWidget):
                     display_data = "暂无数据"
             if port_type == ArgumentType.UPLOAD:
                 self._add_upload_widget_to_layout(port_name, layout)
-            self._add_text_edit_to_layout(
+            self._add_port(
+                f"• {port_label} ({port_name}): {port_type.value}",
                 display_data,
                 port_type=port_type,
                 port_name=port_name,
@@ -228,7 +223,7 @@ class PortWidget(QWidget):
         card_layout.setSpacing(8)
 
         title_btn_layout = QHBoxLayout()
-        title_label = BodyLabel("列选择:")
+        title_label = BodyLabel("   CSV列选择:")
         title_btn_layout.addWidget(title_label)
         title_btn_layout.addStretch()
         expand_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
@@ -242,7 +237,7 @@ class PortWidget(QWidget):
                 self.parent_panel._column_selector_card_expanded[port_identifier] = False
             else:
                 num_items = list_widget.count()
-                estimated_height_for_items = num_items * 39
+                estimated_height_for_items = num_items * 40
                 padding_height = card_layout.contentsMargins().top() + card_layout.contentsMargins().bottom()
                 title_height = title_label.sizeHint().height() + card_layout.spacing()
                 total_estimated_height = padding_height + title_height + estimated_height_for_items
@@ -275,7 +270,9 @@ class PortWidget(QWidget):
 
         btn_layout = QHBoxLayout()
         select_all_btn = PushButton("全选", self)
+        select_all_btn.setFixedHeight(26)
         clear_btn = PushButton("清空", self)
+        clear_btn.setFixedHeight(26)
 
         def select_all():
             list_widget.blockSignals(True)
@@ -317,36 +314,51 @@ class PortWidget(QWidget):
         btn_layout.addWidget(select_all_btn)
         btn_layout.addWidget(clear_btn)
         card_layout.addLayout(btn_layout)
-        layout.addWidget(column_card)
+        layout.addWidget(column_card, 1)
 
         self._column_list_widgets[port_name] = list_widget
 
-    def _add_text_edit_to_layout(self, text, port_type=None, port_name=None, layout=None, is_output=False):
+    def _add_port(self, title="数据信息:", data="", port_type=None, port_name=None, layout=None, is_output=False):
         """向布局添加 VariableTreeWidget 用于显示数据"""
-        tree_widget = VariableTreeWidget(text, port_type, parent=self.main_window)
         info_card = CardWidget(self)
-        info_card.setMaximumHeight(300)
         card_layout = QVBoxLayout(info_card)
         card_layout.setContentsMargins(8, 8, 8, 8)
         title_layout = QHBoxLayout()
         title_layout.setContentsMargins(0, 0, 0, 0)
-        title_text = "数据信息:"
-        title_label = BodyLabel(title_text)
-        title_layout.addWidget(title_label)
+        title_text = title
+        title_label = CaptionLabel(title_text)
+        title_label.setWordWrap(True)
+        title_layout.addWidget(title_label, 1)
         title_layout.addStretch()
         if is_output:
-            add_global_btn = TransparentPushButton(text="全局变量", icon=FluentIcon.ADD, parent=self)
-            add_global_btn.setFixedHeight(26)
-            add_global_btn.clicked.connect(
-                lambda _, n=self.node, p=port_name: self.add_output_to_global_func(n, p)
-            )
+            add_global_btn = ToggleToolButton(icon=get_icon("Global"), parent=self)
+            add_global_btn.setToolTip("全局变量")
+            add_global_btn.setFixedSize(QSize(26, 26))
+            is_in_global = self.is_in_global_func(self.node, port_name)
+            add_global_btn.setChecked(is_in_global)
+            # 如果从未选中状态到选中则添加到全局变量中，反之则从全局变量中删除
+            add_global_btn.clicked.connect(lambda: self.handle_global_variable(self.node, port_name, add_global_btn.isChecked()))
             title_layout.addWidget(add_global_btn)
+            filtered_data = data
+        else:
+            if port_type == ArgumentType.CSV and isinstance(data, pd.DataFrame) and not data.empty:
+                filtered_data = self._get_current_input_value(port_name, data)
+            elif port_type == ArgumentType.CSV and isinstance(data, str) and Path(data).is_file():
+                data = pd.read_csv(data, nrows=5)
+                filtered_data = self._get_current_input_value(port_name, data)
+            else:
+                filtered_data = data
+
+        tree_widget = VariableTreeWidget(filtered_data, port_type, parent=self.main_window)
         browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
         browse_btn.setFixedSize(QSize(26, 20))
         browse_btn.clicked.connect(tree_widget.show_detail)
         title_layout.addWidget(browse_btn)
         card_layout.addLayout(title_layout)
         card_layout.addWidget(tree_widget)
+        card_layout.addStretch()
+        if port_type == ArgumentType.CSV and not is_output:
+            self._add_column_selector_widget_to_layout(port_name, data, card_layout)
 
         if layout is None:
             layout = self.layout() # Fallback
@@ -369,6 +381,12 @@ class PortWidget(QWidget):
         if port_name is not None:
             self._text_edit_widgets[port_name] = tree_widget
         return tree_widget
+
+    def handle_global_variable(self, node, port_name, is_in_global):
+        if is_in_global:
+            self.add_output_to_global_func(node, port_name)
+        else:
+            self.delete_output_from_global_func(node, port_name)
 
     def _add_upload_widget_to_layout(self, port_name, layout):
         """向布局添加文件上传控件"""

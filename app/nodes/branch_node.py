@@ -33,7 +33,7 @@ def create_branch_node(parent_window):
             self._init_properties()
             self.add_input('input', True, painter_func=draw_square_port)
             # === 关键：延迟绑定监听器 + 延迟首次同步 ===
-            QtCore.QTimer.singleShot(50, self._delayed_setup)
+            self._delayed_setup()
 
             self._sync_timer = None
 
@@ -53,7 +53,7 @@ def create_branch_node(parent_window):
             self._sync_timer = QtCore.QTimer()
             self._sync_timer.setSingleShot(True)
             self._sync_timer.timeout.connect(self._sync_output_ports)
-            self._sync_timer.start(400)
+            self._sync_timer.start(100)
 
         def _init_properties(self):
             """初始化条件列表和 else 开关（只创建 widget，不绑定逻辑）"""

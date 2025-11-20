@@ -42,30 +42,28 @@ class ModernSplitterHandle(QSplitterHandle):
             bg_color = QColor("#0078D4")  # 蓝色
             border_color = QColor("#0096D6")
         else:
-            bg_color = QColor("#444444")  # 默认灰色
-            border_color = QColor("#555555")
+            # 未hover和select状态下背景透明，只显示虚线
+            bg_color = QColor(0, 0, 0, 0)  # 完全透明
+            border_color = QColor("#0096D6")
 
-        # 绘制背景
+        # 绘制背景（透明）
         painter.fillRect(self.rect(), bg_color)
 
-        # 绘制边框
+        # 设置虚线画笔
         pen = QPen(border_color, 1)
+        pen.setStyle(Qt.DashLine)  # 设置为虚线样式
+        pen.setDashPattern([16, 8])  # 虚线模式：4像素线段，4像素间隔
         painter.setPen(pen)
-        painter.drawRect(self.rect().adjusted(0, 0, -1, -1))
 
-        # 绘制分隔线上的小点（可选）
+        # 绘制虚线分隔线
         if self.orientation() == Qt.Horizontal:
-            # 垂直方向的分隔线上画水平排列的小点
-            center_y = self.height() // 2
-            for i in range(0, self.height(), 6):
-                if i + 2 <= self.height():
-                    painter.fillRect(self.width() // 2 - 1, i, 2, 2, QColor("#888888"))
-        else:
-            # 水平方向的分隔线上画垂直排列的小点
+            # 水平分割器，绘制垂直虚线
             center_x = self.width() // 2
-            for i in range(0, self.width(), 6):
-                if i + 2 <= self.width():
-                    painter.fillRect(i, self.height() // 2 - 1, 2, 2, QColor("#888888"))
+            painter.drawLine(center_x, 0, center_x, self.height())
+        else:
+            # 垂直分割器，绘制水平虚线
+            center_y = self.height() // 2
+            painter.drawLine(0, center_y, self.width(), center_y)
 
 
 class ModernSplitter(QSplitter):

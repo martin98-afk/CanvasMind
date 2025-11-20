@@ -1,4 +1,5 @@
-2025-11-19 17:25:39.035 | INFO     | __main__:execute_workflow:832 - 执行节点: 获取当前时间
-2025-11-19 17:25:39.035 | INFO     | __main__:execute_workflow:833 - 输入: {}
-2025-11-19 17:25:39.048 | INFO     | __main__:execute_workflow:843 - 输出: {'output1': '2025-11-19 17:25:39.048452'}
-2025-11-19 17:25:39.048 | INFO     | __main__:execute_workflow:865 - 最终输出: {'output1': '2025-11-19 17:25:39.048452'}
+2025-11-20 04:46:49.970 | INFO     | __main__:execute_workflow:842 - 执行节点: 获取当前时间
+2025-11-20 04:46:49.971 | INFO     | __main__:execute_workflow:843 - 输入: {}
+2025-11-20 04:46:49.971 | INFO     | __main__:execute_workflow:844 - 参数: {'persistent_id': '1e8fb20c-824c-42cf-b47d-6f8d455badb2', 'debug_code': {}}
+2025-11-20 04:46:50.000 | INFO     | __main__:execute_workflow:854 - 输出: {'output1': '2025-11-20 04:46:49.999675'}
+2025-11-20 04:46:50.000 | INFO     | __main__:execute_workflow:876 - 最终输出: {'output1': '2025-11-20 04:46:49.999675'}

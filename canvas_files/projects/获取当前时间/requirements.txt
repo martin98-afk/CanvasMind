@@ -1,1 +1,12 @@
-# 无依赖
+Pillow
+asteval
+fastapi
+ipykernel
+jedi
+loguru
+matplotlib
+pandas
+pyarrow
+pydantic
+uvicorn
+wcwidth
