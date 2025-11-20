@@ -534,7 +534,7 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
                         out_nid, out_port = input_port_connections[port][i]
                         # 使用下划线连接，替换可能的空格或特殊字符
                         upstream_node_name_safe = execute_nodes[out_nid]["name"].replace(" ", "_").replace("-", "_")
-                        precise_var_name = f"input_{port}_{upstream_node_name_safe}_{out_port}"
+                        precise_var_name = f"input_{upstream_node_name_safe}_{out_port}"
                         local_vars_for_inputs[precise_var_name] = val
                 local_vars_for_inputs[f"input_{port}"] = vals # 保留列表
             else:
@@ -699,10 +699,6 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             all_port_names = {cond.get("name") for cond in node.get("conditions", [])}
             if node.get("enable_else", False):
                 all_port_names.add("else")
-            for port_name in all_port_names:
-                downstream_for_port = get_downstream_nodes(node_id, graph_data["connections"], set(nodes.keys()),
-                                                           specific_port=port_name,
-                                                           downstream_cache=branch_downstream_cache)
 
     active_branch_outputs = {}
     node_outputs = {}
@@ -719,7 +715,6 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             # 为所有输出端口设置 None
             node_name = node["name"].replace(" ", "_")
             for port_name in node.get("output_ports", []):
-                var_name = f"node_vars_{node_name}_{port_name}"
                 node_outputs[node_id] = node_outputs.get(node_id, {})
                 node_outputs[node_id][port_name] = None
             logger.info(f"节点 {node['name']} 因所有上游节点被禁用而被跳过。")
@@ -773,7 +768,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
                         out_nid, out_port, upstream_node_name = input_port_connections[port][i]
                         # 使用下划线连接，替换可能的空格或特殊字符
                         upstream_node_name_safe = upstream_node_name.replace(" ", "_").replace("-", "_")
-                        precise_var_name = f"input_{port}_{upstream_node_name_safe}_{out_port}"
+                        precise_var_name = f"input_{upstream_node_name_safe}_{out_port}"
                         local_vars_for_inputs[precise_var_name] = val
                 # 保留原始的 $input_portname$ 引用，取第一个值或整个列表
                 local_vars_for_inputs[f"input_{port}"] = vals # 保留列表

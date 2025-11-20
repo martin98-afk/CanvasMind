@@ -429,7 +429,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                             input_vars[safe_key] = inputs_raw[port_name]
                             for upstream in connected:
                                 safe_name = upstream.node().name().replace(" ", "_")
-                                safe_key = f"input_{port_name}_{safe_name}_{upstream.name()}"
+                                safe_key = f"input_{safe_name}_{upstream.name()}"
                                 input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
                         else:
                             inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
