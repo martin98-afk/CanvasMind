@@ -16,7 +16,7 @@ from loguru import logger
 # --- 其他原有导入 ---
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext
 from app.nodes.base_node import BasicNodeWithGlobalProperty
-from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
+from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import draw_square_port, draw_special_outputport, \
     canvas_file_dump_path, _safe_load_pickle  # 假设 resource_path 也在 utils
@@ -24,7 +24,7 @@ from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 # 导入代码编辑器组件
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
-from app.widgets.node_widget.custom_node_item import CustomNodeItem
+from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 from app.widgets.node_widget.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.node_widget.range_widget import RangeWidgetWrapper

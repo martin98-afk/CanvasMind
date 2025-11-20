@@ -7,7 +7,7 @@ from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QShortcut, QHBoxLayout, \
     QLineEdit, QPushButton, QCheckBox, QLabel, QInputDialog
 
-from app.components.base import DEFAULT_NODE_TEMPLATE
+from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon # 假设您有这个工具函数
 
 from app.widgets.code_editor_spyder import JediCodeEditor # 确保导入路径正确
@@ -482,13 +482,9 @@ class CodeEditorWidget(QWidget):
             window_parent = self.original_parent
             if window_parent:
                 self.overlay_widget.resize(window_parent.size())
-                # 注意：如果 FluentWindow 有菜单栏、工具栏等，可能需要调整 y 坐标
-                # 例如， self.overlay_widget.move(0, top_offset)
-                # 但通常 resizeEvent 会跟随整个窗口，所以 move(0, 0) 通常是合适的
                 self.overlay_widget.move(0, 0)
 
                 # --- 关键修改：同步调整编辑器大小 ---
-                # 当覆盖层大小改变时，确保编辑器也跟随调整
                 self.code_editor.resize(self.overlay_widget.size())
                 self.code_editor.move(0, 0) # 确保编辑器位置正确
 

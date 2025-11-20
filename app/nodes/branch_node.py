@@ -9,7 +9,7 @@ from app.nodes.status_node import StatusNode
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import resource_path, draw_square_port
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
-from app.widgets.node_widget.custom_node_item import CustomNodeItem
+from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 
 

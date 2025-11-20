@@ -14,7 +14,7 @@ from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer, QPoint, QThreadPool
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication, QSplitter
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication
 from loguru import logger
 from qfluentwidgets import (
     InfoBar,
@@ -28,7 +28,7 @@ from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
-from app.runner.readme_template import DETAILED_README
+from app.templates.readme_template import DETAILED_README
 from app.scan_components import scan_components
 from app.scheduler.node_recommendation_engine import RecommendationTask
 from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导入
@@ -39,7 +39,7 @@ from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon,
 from app.widgets.basic_widget.ipython_console import EmbeddedIPythonConsole
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.basic_widget.variable_explorer import VariableExplorerWidget
-from app.widgets.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
+from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
 from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
 from app.widgets.dialog_widget.ipython_dialog import IPythonConsoleDialog

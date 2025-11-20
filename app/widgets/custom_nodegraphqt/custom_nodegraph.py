@@ -1,10 +1,8 @@
 import json
 
 from NodeGraphQt import NodeGraph, BaseNode
-from NodeGraphQt.base.commands import PortConnectedCmd
-from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE, PortTypeEnum
+from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
-from NodeGraphQt.qgraphics.pipe import LivePipeItem
 from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.actions import BaseMenu
 from NodeGraphQt.widgets.scene import NodeScene
@@ -12,7 +10,7 @@ from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
 from qtpy import QtGui, QtCore, QtWidgets
 
-from app.widgets.node_widget.custom_pipe_item import CustomLivePipeItem, CustomPipeItem
+from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomLivePipeItem, CustomPipeItem
 
 
 class CustomNodeScene(NodeScene):

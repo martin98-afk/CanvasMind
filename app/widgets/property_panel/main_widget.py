@@ -18,18 +18,6 @@ from app.widgets.property_panel.global_panel import GlobalPanelWidget
 from app.widgets.property_panel.node_list_panel import NodeListPanelWidget
 
 
-class ExpandableCardWidget(CardWidget):
-    """自定义卡片，用于在大小改变时发出信号"""
-    sizeChanged = pyqtSignal()
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self.sizeChanged.emit()
-
-
 class PropertyPanel(CardWidget):
     """
     主属性面板控件，负责协调和管理各个子面板模块。

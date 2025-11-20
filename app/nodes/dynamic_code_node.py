@@ -1,10 +1,6 @@
-import os
 import pickle
-import platform
 import re
 import shutil
-import subprocess
-import time
 import uuid
 from pathlib import Path
 
@@ -16,11 +12,11 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import resource_path, draw_special_outputport, canvas_file_dump_path, _safe_load_pickle
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
-from app.widgets.node_widget.custom_node_item import CustomNodeItem
+from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
-from .node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
+from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from .status_node import StatusNode
-from app.utils.glue_code_templates import GLUE_CODE_TEMPLATES
+from app.templates.glue_code_templates import GLUE_CODE_TEMPLATES
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 
 # 在 app/components 下创建 .temp 目录（隐藏目录）

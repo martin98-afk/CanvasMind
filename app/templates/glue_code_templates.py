@@ -10,7 +10,7 @@ DEFAULT_CODE_TEMPLATE = '''def run(self, params, inputs=None):
     # 处理逻辑
     result = f"处理结果: {input_data} + {param1}"
     return {
-        "output_data": result
+        "output": result
     }
 '''
 
