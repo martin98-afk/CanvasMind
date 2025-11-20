@@ -33,7 +33,7 @@ def create_branch_node(parent_window):
             self._init_properties()
             self.add_input('input', True, painter_func=draw_square_port)
             # === 关键：延迟绑定监听器 + 延迟首次同步 ===
-            QtCore.QTimer.singleShot(0, self._delayed_setup)
+            self._delayed_setup()
 
             self._sync_timer = None
 
@@ -53,7 +53,7 @@ def create_branch_node(parent_window):
             self._sync_timer = QtCore.QTimer()
             self._sync_timer.setSingleShot(True)
             self._sync_timer.timeout.connect(self._sync_output_ports)
-            self._sync_timer.start(400)
+            self._sync_timer.start(100)
 
         def _init_properties(self):
             """初始化条件列表和 else 开关（只创建 widget，不绑定逻辑）"""
@@ -335,20 +335,20 @@ def create_branch_node(parent_window):
             gv.deserialize(global_variable)
 
             inputs_raw = {}
+            input_vars = {}
             for input_port in self.input_ports():
                 port_name = input_port.name()
                 connected = input_port.connected_ports()
                 if connected:
                     inputs_raw[port_name] = [
-                            upstream.node()._output_values.get(upstream.name()) for upstream in connected
-                        ]
-                    if port_name in self.column_select:
-                        inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
-
-            input_vars = {}
-            for k, v in inputs_raw.items():
-                safe_key = f"input_{k}"
-                input_vars[safe_key] = v
+                        upstream.node()._output_values.get(upstream.name()) for upstream in connected
+                    ]
+                    safe_key = f"input_{port_name}"
+                    input_vars[safe_key] = inputs_raw[port_name]
+                    for upstream in connected:
+                        safe_name = upstream.node().name().replace(" ", "_")
+                        safe_key = f"input_{port_name}_{safe_name}_{upstream.name()}"
+                        input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
 
             expr_engine = ExpressionEngine(global_vars_context=gv)
 

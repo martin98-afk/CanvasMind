@@ -96,7 +96,6 @@ class VariableCompletionPopup(QListWidget):
         """)
         font = QFont('Consolas', 12)
         self.setFont(font)
-        self.setMaximumWidth(600)
         self.setMinimumWidth(300)
         self.itemClicked.connect(self._on_item_clicked)
         self.hide()

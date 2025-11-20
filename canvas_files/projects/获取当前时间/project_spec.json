@@ -1,10 +1,10 @@
 {
   "version": "1.0",
-  "graph_name": "test_2",
+  "graph_name": "react智能体_copy",
   "inputs": {},
   "outputs": {
     "output1": {
-      "node_id": "0x280a8a18f70",
+      "node_id": "0x1edc2796d40",
       "output_name": "output1",
       "format": "TEXT"
     }

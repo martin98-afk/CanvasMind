@@ -19,8 +19,8 @@ class NodeLogHandler:
         self.use_file_logging = use_file_logging
         self.handler_id = None
         self.file_handler_id = None
-        self.log_window = None  # 新增：存储 LogMessageBox 实例
-        self._lock = threading.Lock()  # 新增：线程锁，保护 log_window 的读写
+        self.log_window = None  # 存储 LogMessageBox 实例
+        self._lock = threading.Lock()  # 线程锁，保护 log_window 的读写
 
         # 持久化日志路径
         safe_node_id = "".join(c if c.isalnum() or c in "._-" else "_" for c in str(node_id))
@@ -31,12 +31,12 @@ class NodeLogHandler:
 
     def set_log_window(self, log_window):
         """设置日志窗口实例，用于实时推送日志"""
-        with self._lock:  # 确保线程安全
+        with self._lock:
             self.log_window = log_window
 
     def remove_log_window(self, log_window):
         """移除日志窗口实例"""
-        with self._lock:  # 确保线程安全
+        with self._lock:
             if self.log_window == log_window:
                 self.log_window = None
 
@@ -51,16 +51,20 @@ class NodeLogHandler:
         # 调用原有的 UI 回调
         self.log_callback(self.node_id, formatted_msg)
 
-        # --- 新增：推送到实时日志窗口 ---
-        with self._lock:  # 确保线程安全
-            if self.log_window:
+        # 推送到实时日志窗口
+        with self._lock:
+            if self.log_window and not getattr(self.log_window, '_closed', True):
                 try:
-                    # 直接调用 LogMessageBox 的 add_log_entry 方法
+                    # 检查窗口是否仍然有效
                     self.log_window.add_log_entry(formatted_msg)
                 except Exception as e:
                     # 防止日志窗口异常影响主流程
                     print(f"Error sending log to window: {e}")
-        # ---
+                    # 如果窗口无效，清理引用
+                    self.log_window = None
+            elif self.log_window:
+                # 如果窗口已关闭，清理引用
+                self.log_window = None
 
     def _file_sink(self, message):
         """持久化文件日志接收器（带行数限制）"""
@@ -72,18 +76,17 @@ class NodeLogHandler:
         formatted_msg = f"[{timestamp}] {record['function']}-{record['line']} {record['level'].name}: {record['message']}\n"
 
         try:
-            # 1. 读取现有日志（最多 MAX_LOG_LINES - 1 行）
+            # 读取现有日志（最多 MAX_LOG_LINES - 1 行）
             existing_lines = []
             if self.log_file_path.exists():
                 with open(self.log_file_path, 'r', encoding='utf-8') as f:
                     lines = f.readlines()
-                    # 保留最后 (MAX_LOG_LINES - 1) 行
                     existing_lines = lines[-(MAX_LOG_LINES - 1):]
 
-            # 2. 添加新日志
+            # 添加新日志
             all_lines = existing_lines + [formatted_msg]
 
-            # 3. 写回（最多 MAX_LOG_LINES 行）
+            # 写回（最多 MAX_LOG_LINES 行）
             with open(self.log_file_path, 'w', encoding='utf-8') as f:
                 f.writelines(all_lines[-MAX_LOG_LINES:])
 
@@ -98,7 +101,7 @@ class NodeLogHandler:
         self.handler_id = logger.add(
             self._log_sink,
             level="INFO",
-            enqueue=True,  # 启用队列，实现异步日志处理
+            enqueue=True,
             filter=lambda r: r["extra"].get("node_id") == self.node_id
         )
 
@@ -125,7 +128,7 @@ class NodeLogHandler:
                 with open(self.log_file_path, 'r', encoding='utf-8') as f:
                     lines = f.readlines()
                 # 返回最近 5000 行
-                return ''.join(lines[-5000:])
+                return ''.join(lines[-MAX_LOG_LINES:])
             except Exception:
                 return ""
         return ""

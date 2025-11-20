@@ -274,6 +274,12 @@ class GlobalVariableContext(BaseModel):
             value=output_value, update_policy=policy
         )
 
+    def delete_output(self, node_id: str, output_name: str):
+        self.node_vars.pop(f"{node_id}_{output_name}", None)
+
+    def is_output_in_node_vars(self, node_id: str, output_name: str):
+        return f"{node_id}_{output_name}" in self.node_vars
+
     def clear_node_vars(self, name: str):
         if isinstance(self.node_vars[name].value, (list, dict, tuple, set)):
             self.node_vars[name].value.clear()

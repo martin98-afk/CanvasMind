@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import ast
 import json
 import os
 import pickle
@@ -199,7 +200,6 @@ def validate_env_value(key: str, value: Any) -> str:
 
 
 # ==================== 执行环境 ====================
-
 class ExecutionEnvironment(BaseModel):
     user_id: Optional[str] = None
     canvas_id: Optional[str] = None
@@ -255,6 +255,7 @@ class GlobalVariableContext(BaseModel):
     def __init__(self, **data):
         super().__init__(**data)
         # 初始化默认 Python 环境变量（仅当 metadata 为空时）
+        self.deserialize(data)
         if not self.env.metadata:
             self.env.metadata.update(DEFAULT_PYTHON_ENV_VARS)
 
@@ -268,7 +269,7 @@ class GlobalVariableContext(BaseModel):
         else:
             self.custom[key].value = value
 
-    def set_output(self, node_id: str, output_name: str, output_value: Any, policy: str="固定"):
+    def set_output(self, node_id: str, output_name: str, output_value: Any, policy: str="更新"):
         self.node_vars[f"{node_id}_{output_name}"] = NodeVariable(
             value=output_value, update_policy=policy
         )
@@ -500,6 +501,352 @@ class ComponentError(Exception):
         super().__init__(message)
 
 
+# --- 数据处理器类 ---
+class DataHandler:
+    """
+    专门处理组件输入输出数据的类。
+    负责根据类型读取输入和存储输出。
+    """
+    def __init__(self, node_id: Optional[str] = None, logger_instance=logger):
+        self.node_id = node_id
+        self.logger = logger_instance or logger
+        # 可以在这里添加更多与数据处理相关的状态或配置
+
+    def read_input_data(self, input_name: str, input_value: Any, input_type: ArgumentType) -> Any:
+        """根据输入类型读取数据，增强鲁棒性"""
+        # 统一空值处理
+        if input_value is None or (isinstance(input_value, str) and input_value.strip() == ""):
+            if input_type.is_file():
+                raise ComponentError(f"输入 {input_name} 为空或路径无效", "INPUT_EMPTY_ERROR")
+            elif input_type.is_number():
+                return 0 if input_type == ArgumentType.INT else 0.0
+            elif input_type.is_bool():
+                return False
+            elif input_type.is_array():
+                return np.array([])
+            else:
+                return ""
+
+        try:
+            if input_type == ArgumentType.TEXT:
+                return str(input_value)
+            elif input_type == ArgumentType.INT:
+                return int(float(input_value))  # 兼容 "1.0" 字符串
+            elif input_type == ArgumentType.FLOAT:
+                return float(input_value)
+            elif input_type == ArgumentType.BOOL:
+                if isinstance(input_value, str):
+                    return input_value.lower() in ("true", "1", "yes", "on")
+                return bool(input_value)
+            elif input_type == ArgumentType.ARRAY:
+                return self._read_array_data(input_name, input_value)
+            elif input_type == ArgumentType.CSV:
+                return self._read_csv_data(input_value)
+            elif input_type == ArgumentType.JSON:
+                return self._read_json_data(input_value)
+            elif input_type == ArgumentType.EXCEL:
+                return self._read_excel_data(input_value)
+            elif input_type == ArgumentType.SKLEARNMODEL:
+                return self._read_sklearn_model(input_value)
+            elif input_type == ArgumentType.TORCHMODEL:
+                return self._read_torch_model(input_value)
+            elif input_type == ArgumentType.IMAGE:
+                return self._read_image_data(input_value)
+            elif input_type == ArgumentType.FILE:
+                return input_value
+            else:
+                return input_value
+        except Exception as e:
+            self.logger.error(f"读取输入 '{input_name}'（类型: {input_type}）失败: {e}")
+            raise ComponentError(f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR") from e
+
+    def _read_array_data(self, input_name: str, data: Any) -> Union[list, np.ndarray]:
+        """安全解析数组输入，优先返回 np.ndarray，失败则回退到 list"""
+        if isinstance(data, np.ndarray):
+            return data
+        if isinstance(data, (list, tuple)):
+            try:
+                # 使用 dtype=object 提高兼容性（允许混合类型）
+                return np.array(data, dtype=object)
+            except Exception as e:
+                self.logger.debug(f"输入 {input_name} 无法转为 np.ndarray，回退到 list: {e}")
+                return list(data)
+        if isinstance(data, str):
+            try:
+                import ast
+                parsed = ast.literal_eval(data)
+                if isinstance(parsed, (list, tuple)):
+                    try:
+                        return np.array(parsed, dtype=object)
+                    except Exception as e:
+                        self.logger.debug(f"字符串解析后无法转为 ndarray，回退到 list: {e}")
+                        return list(parsed)
+                else:
+                    return parsed  # 单个值也视为数组
+            except (ValueError, SyntaxError):
+                return data  # 无法解析的字符串作为单元素
+        return data  # 兜底：包装为单元素列表
+
+    def _read_csv_data(self, data: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
+        """读取CSV数据。如果输入是字符串或路径，则必须是存在的文件。"""
+        if isinstance(data, (pd.DataFrame, pd.Series)):
+            return data
+        elif isinstance(data, (str, Path)):
+            path = Path(data)
+            if path.is_file():
+                return pd.read_csv(str(path))
+            else:
+                # 修复：不再尝试将不存在的路径作为 CSV 字符串解析
+                raise ComponentError(f"CSV 文件不存在: {path}")
+        else:
+            raise ComponentError(f"无法读取CSV数据，不支持的类型: {type(data)}")
+
+    def _read_json_data(self, data: Union[str, dict, list, Path]) -> Union[dict, list, str]:
+        """读取JSON数据。如果输入是字符串或路径，则尝试作为文件、标准JSON或Python字面量解析。"""
+        if data is None or (isinstance(data, str) and not data.strip()):
+            return {}
+        if isinstance(data, (dict, list)):
+            return data
+        elif isinstance(data, (str, Path)):
+            path = Path(data)
+            if path.is_file():
+                with open(path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            else:
+                # 尝试标准 JSON
+                try:
+                    return json.loads(data)
+                except json.JSONDecodeError:
+                    self.logger.debug(f"标准JSON解析失败，尝试作为Python字面量解析: {data[:100]}...")
+                    try:
+                        # 使用 ast.literal_eval 安全解析 Python 字面量（如单引号字典、列表）
+                        parsed = ast.literal_eval(data)
+                        if isinstance(parsed, (dict, list)):
+                            return parsed
+                        else:
+                            # 如果解析出来不是 dict 或 list，说明不是我们期望的 JSON 结构
+                            self.logger.warning(f"解析出的数据不是字典或列表，而是 {type(parsed)}: {data}")
+                            raise ComponentError(f"输入内容解析后不是有效的JSON结构: {data}", "JSON_PARSE_ERROR")
+                    except (ValueError, SyntaxError):
+                        # ast.literal_eval 也失败了
+                        self.logger.warning(f"Python字面量解析也失败: {type(data)} {data[:100]}...")
+                        raise ComponentError(f"JSON 输入格式错误或文件不存在: {type(data)} {data}", "JSON_PARSE_ERROR")
+        else:
+            raise ComponentError(f"不支持的 JSON 输入类型: {type(data)}", "JSON_TYPE_ERROR")
+
+    def _read_excel_data(self, data: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
+        """读取Excel数据"""
+        if isinstance(data, pd.DataFrame):
+            return data
+        elif isinstance(data, dict):
+            for key, value in data.items():
+                if not isinstance(value, pd.DataFrame):
+                    raise ComponentError(f"无法读取Excel数据字典，key: {key}, value: {type(value)}")
+            return data
+        elif isinstance(data, (str, Path)):
+            if os.path.exists(data):
+                return pd.read_excel(data, sheet_name=None)
+            else:
+                raise ComponentError(f"Excel文件不存在: {data}")
+        else:
+            raise ComponentError(f"无法读取Excel数据: {type(data)}")
+
+    def _read_sklearn_model(self, data: Union[str, Path]) -> Any:
+        """读取sklearn模型"""
+        if isinstance(data, (str, Path)) and os.path.exists(data):
+            with open(data, 'rb') as f:
+                return pickle.load(f)
+        else:
+            raise ComponentError(f"无法读取sklearn模型: {data}")
+
+    def _read_torch_model(self, data: Union[str, Path]) -> Any:
+        """读取torch模型"""
+        torch = self._get_torch()
+        if isinstance(data, (str, Path)) and os.path.exists(data):
+            return torch.jit.load(data)
+        else:
+            raise ComponentError(f"无法读取torch模型: {data}")
+
+    def _read_image_data(self, data: Union[str, Path]) -> Any:
+        """读取图像数据"""
+        if isinstance(data, (str, Path)) and os.path.exists(data):
+            return Image.open(data)
+        else:
+            raise ComponentError(f"无法读取图像数据: {data}")
+
+    def _read_file_data(self, data: Any) -> Path:
+        """读取任意文件内容（路径、bytes、str），返回临时路径"""
+        temp_dir = self._get_node_temp_dir()
+        if isinstance(data, (str, Path)):
+            path = Path(data)
+            if path.is_file():
+                # 如果是已存在的文件路径，直接返回（也可复制到 temp_dir 保持隔离）
+                import shutil
+                dst = temp_dir / path.name
+                shutil.copy2(path, dst)
+                return dst
+            else:
+                # 假设是文本内容，保存为 file.txt
+                dst = temp_dir / "file.txt"
+                dst.write_text(str(data), encoding='utf-8')
+                return dst
+        elif isinstance(data, bytes):
+            dst = temp_dir / "file.bin"
+            dst.write_bytes(data)
+            return dst
+        else:
+            # 兜底：转为字符串保存
+            dst = temp_dir / "file.txt"
+            dst.write_text(str(data), encoding='utf-8')
+            return dst
+
+    def _process_multiple_inputs(self, input_name: str, input_values: List[Any], input_type: ArgumentType) -> List[Any]:
+        return [
+            self.read_input_data(input_name, val, input_type)
+            for val in input_values
+        ]
+
+    # --- 输出数据存储 ---
+    def store_output_data(self, output_name: str, output_value: Any, output_type: ArgumentType) -> Any:
+        """根据输出类型存储数据，支持按 node_id 持久化"""
+        try:
+            if output_type == ArgumentType.TEXT:
+                return str(output_value) if output_value is not None else ""
+            elif output_type == ArgumentType.INT:
+                return int(output_value) if output_value is not None else 0
+            elif output_type == ArgumentType.FLOAT:
+                return float(output_value) if output_value is not None else 0.0
+            elif output_type == ArgumentType.ARRAY:
+                return output_value
+            elif output_type == ArgumentType.CSV:
+                return self._store_csv_data(output_value)
+            elif output_type == ArgumentType.JSON:
+                return self._store_json_data(output_value)
+            elif output_type == ArgumentType.EXCEL:
+                return self._store_excel_data(output_value)
+            elif output_type == ArgumentType.SKLEARNMODEL:
+                return self._store_sklearn_model(output_value)
+            elif output_type == ArgumentType.TORCHMODEL:
+                return self._store_torch_model(output_value)
+            elif output_type == ArgumentType.IMAGE:
+                return self._store_image_data(output_value)
+            elif output_type == ArgumentType.FILE:
+                return self._store_file_data(output_value, output_name)
+            else:
+                return output_value
+        except Exception as e:
+            raise ComponentError(f"存储输出 {output_name} 失败: {str(e)}", "OUTPUT_STORE_ERROR")
+
+    def _store_csv_data(self, data: pd.DataFrame) -> Union[pd.DataFrame, str, Path]:
+        """存储CSV数据"""
+        if isinstance(data, (pd.DataFrame, pd.Series)):
+            return data
+        elif isinstance(data, (str, Path)):
+            if os.path.exists(data):
+                return pd.read_csv(data)
+            else:
+                # 如果是CSV字符串
+                import io
+                return pd.read_csv(io.StringIO(data))
+        else:
+            raise ComponentError(f"无法存储CSV数据: {type(data)}")
+
+    def _store_json_data(self, data: Union[dict, list]) -> str:
+        """存储JSON数据（直接返回）"""
+        return data
+
+    def _store_excel_data(self, data: pd.DataFrame) -> Union[dict[pd.DataFrame], str, Path]:
+        """存储Excel数据"""
+        import io
+        if isinstance(data, pd.DataFrame):
+            return data
+        elif isinstance(data, (str, Path)):
+            if os.path.exists(data):
+                return pd.read_excel(data, sheet_name=None)
+            else:
+                return pd.read_excel(io.StringIO(data))
+        else:
+            raise ComponentError(f"无法存储Excel数据: {type(data)}")
+
+    def _store_sklearn_model(self, model: Any) -> str:
+        """存储sklearn模型到节点专属目录"""
+        temp_dir = self._get_node_temp_dir()
+        model_path = temp_dir / f"model_{self.node_id}.pkl"
+        with open(model_path, 'wb') as f:
+            pickle.dump(model, f)
+        return str(model_path.resolve())
+
+    def _store_torch_model(self, model: Any) -> str:
+        """存储torch模型到节点专属目录"""
+        torch = self._get_torch()
+        if torch is None:
+            raise ComponentError("torch 未安装", "MISSING_DEPENDENCY")
+        temp_dir = self._get_node_temp_dir()
+        model_path = temp_dir / f"model_{self.node_id}.pth"
+        scripted_model = torch.jit.script(model)
+        scripted_model.save(str(model_path))
+        return str(model_path.resolve())
+
+    def _store_image_data(self, image: Any) -> str:
+        """存储图像数据到节点专属目录"""
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(image)
+        elif not isinstance(image, Image.Image):
+            raise ComponentError(f"无法存储图像数据: {type(image)}")
+        temp_dir = self._get_node_temp_dir()
+        image_path = temp_dir / f"image_{self.node_id}.png"
+        image.save(image_path, 'PNG')
+        return str(image_path.resolve())
+
+    def _store_file_data(self, data: Any, output_name: str = "output_file") -> str:
+        """存储任意文件数据，使用 output_name 作为文件名"""
+        temp_dir = self._get_node_temp_dir()
+        # 保留扩展名：如果 output_name 有后缀，直接用；否则尝试推断或默认 .bin
+        filename = Path(output_name).name or "output_file"
+        if "." not in filename:
+            # 尝试推断扩展名（可选）
+            if isinstance(data, str):
+                filename += ".txt"
+            elif isinstance(data, bytes):
+                filename += ".bin"
+            else:
+                filename += ".dat"
+        file_path = temp_dir / filename
+        if isinstance(data, (str, Path)):
+            path = Path(data)
+            if path.is_file():
+                import shutil
+                shutil.copy2(path, file_path)
+            else:
+                file_path.write_text(str(data), encoding='utf-8')
+        elif isinstance(data, bytes):
+            file_path.write_bytes(data)
+        else:
+            # 兜底：转为字符串
+            file_path.write_text(str(data), encoding='utf-8')
+        return str(file_path.resolve())
+
+    # --- 辅助方法 ---
+    def _get_node_temp_dir(self) -> Path:
+        """获取节点专属临时目录"""
+        # 假设 canvas_file_dump_path 是一个全局函数或从其他地方导入
+        # 这里简化处理，实际项目中需要正确引用
+        dump_path = Path("canvas_files") / "node_results" / (self.node_id or "default")
+        dump_path.mkdir(parents=True, exist_ok=True)
+        return dump_path
+
+    def _get_torch(self):
+        """懒加载 torch"""
+        if not hasattr(self, "_torch_cache"):
+            self._torch_cache = None
+            try:
+                import torch
+                self._torch_cache = torch
+            except ImportError:
+                self._torch_cache = None
+        return self._torch_cache
+
+
 class BaseComponent(ABC):
     """所有组件必须继承此类"""
     # 组件配置（子类需要定义）
@@ -530,6 +877,10 @@ class BaseComponent(ABC):
     def get_outputs(cls) -> List[Tuple[str, str]]:
         """返回输出端口定义：[('port_name', 'Port Label')]"""
         return [(port.name, port.label) for port in cls.outputs]
+
+    @classmethod
+    def get_output_type(cls):
+        return {port.name: port.type for port in cls.outputs}
 
     @classmethod
     def get_properties(cls) -> Dict[str, Dict[str, Any]]:
@@ -617,317 +968,6 @@ class BaseComponent(ABC):
         base_classes = (ModelMixin, BaseModel)
         return create_model(model_name, __base__=base_classes, **fields)
 
-    # ---------------- 输入数据读取 ----------------
-    def read_input_data(self, input_name: str, input_value: Any, input_type: ArgumentType) -> Any:
-        """根据输入类型读取数据，增强鲁棒性"""
-        # 统一空值处理
-        if input_value is None or (isinstance(input_value, str) and input_value.strip() == ""):
-            if input_type.is_file():
-                raise ComponentError(f"输入 {input_name} 为空或路径无效", "INPUT_EMPTY_ERROR")
-            elif input_type.is_number():
-                return 0 if input_type == ArgumentType.INT else 0.0
-            elif input_type.is_bool():
-                return False
-            elif input_type.is_array():
-                return np.array([])
-            else:
-                return ""
-
-        try:
-            if input_type == ArgumentType.TEXT:
-                return str(input_value)
-            elif input_type == ArgumentType.INT:
-                return int(float(input_value))  # 兼容 "1.0" 字符串
-            elif input_type == ArgumentType.FLOAT:
-                return float(input_value)
-            elif input_type == ArgumentType.BOOL:
-                if isinstance(input_value, str):
-                    return input_value.lower() in ("true", "1", "yes", "on")
-                return bool(input_value)
-            elif input_type == ArgumentType.ARRAY:
-                return self._read_array_data(input_name, input_value)
-            elif input_type == ArgumentType.CSV:
-                return self._read_csv_data(input_value)
-            elif input_type == ArgumentType.JSON:
-                return self._read_json_data(input_value)
-            elif input_type == ArgumentType.EXCEL:
-                return self._read_excel_data(input_value)
-            elif input_type == ArgumentType.SKLEARNMODEL:
-                return self._read_sklearn_model(input_value)
-            elif input_type == ArgumentType.TORCHMODEL:
-                return self._read_torch_model(input_value)
-            elif input_type == ArgumentType.IMAGE:
-                return self._read_image_data(input_value)
-            elif input_type == ArgumentType.FILE:
-                return input_value
-            else:
-                return input_value
-        except Exception as e:
-            self.logger.error(f"读取输入 '{input_name}'（类型: {input_type}）失败: {e}")
-            raise ComponentError(f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR") from e
-
-    def _read_array_data(self, input_name: str, data: Any) -> Union[list, np.ndarray]:
-        """安全解析数组输入，优先返回 np.ndarray，失败则回退到 list"""
-        if isinstance(data, np.ndarray):
-            return data
-        if isinstance(data, (list, tuple)):
-            try:
-                # 使用 dtype=object 提高兼容性（允许混合类型）
-                return np.array(data, dtype=object)
-            except Exception as e:
-                self.logger.debug(f"输入 {input_name} 无法转为 np.ndarray，回退到 list: {e}")
-                return list(data)
-        if isinstance(data, str):
-            try:
-                import ast
-                parsed = ast.literal_eval(data)
-                if isinstance(parsed, (list, tuple)):
-                    try:
-                        return np.array(parsed, dtype=object)
-                    except Exception as e:
-                        self.logger.debug(f"字符串解析后无法转为 ndarray，回退到 list: {e}")
-                        return list(parsed)
-                else:
-                    return [parsed]  # 单个值也视为数组
-            except (ValueError, SyntaxError):
-                return [data]  # 无法解析的字符串作为单元素
-        return [data]  # 兜底：包装为单元素列表
-
-    def _read_csv_data(self, data: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
-        """读取CSV数据"""
-        if isinstance(data, pd.DataFrame):
-            return data
-        elif isinstance(data, str):
-            data = Path(data)
-            if data.is_file():
-                return pd.read_csv(str(data))
-            else:
-                # 如果是CSV字符串
-                import io
-                return pd.read_csv(io.StringIO(data))
-        else:
-            raise ComponentError(f"无法读取CSV数据: {type(data)}")
-
-    def _read_json_data(self, data: Union[str, dict, list, Path]) -> Union[dict, list]:
-        if data is None or (isinstance(data, str) and not data.strip()):
-            return {}
-
-        if isinstance(data, (dict, list)):
-            return data
-        elif isinstance(data, (str, Path)):
-            path = Path(data)
-            if path.is_file():
-                with open(path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            else:
-                # 尝试标准 JSON
-                try:
-                    return json.loads(data)
-                except json.JSONDecodeError:
-                    # 尝试修复单引号（仅当明显是 dict/list 字符串时）
-                    if data.strip().startswith(("{", "[")) and data.strip().endswith(("}", "]")):
-                        try:
-                            fixed = data.replace("'", '"')
-                            return json.loads(fixed)
-                        except Exception:
-                            pass
-                    self.logger.warning(f"JSON 输入无法解析: {data[:100]}...")
-                    raise ComponentError(f"无效 JSON 数据: {type(data)}", "JSON_PARSE_ERROR")
-        else:
-            raise ComponentError(f"不支持的 JSON 输入类型: {type(data)}", "JSON_TYPE_ERROR")
-
-    def _read_excel_data(self, data: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
-        """读取Excel数据"""
-        if isinstance(data, pd.DataFrame):
-            return data
-        elif isinstance(data, (str, Path)):
-            if os.path.exists(data):
-                return pd.read_excel(data)
-            else:
-                raise ComponentError(f"Excel文件不存在: {data}")
-        else:
-            raise ComponentError(f"无法读取Excel数据: {type(data)}")
-
-    def _read_sklearn_model(self, data: Union[str, Path]) -> Any:
-        """读取sklearn模型"""
-        if isinstance(data, (str, Path)) and os.path.exists(data):
-            with open(data, 'rb') as f:
-                return pickle.load(f)
-        else:
-            raise ComponentError(f"无法读取sklearn模型: {data}")
-
-    def _read_torch_model(self, data: Union[str, Path]) -> Any:
-        """读取torch模型"""
-        torch = _get_torch()
-        if isinstance(data, (str, Path)) and os.path.exists(data):
-            return torch.jit.load(data)
-        else:
-            raise ComponentError(f"无法读取torch模型: {data}")
-
-    def _read_image_data(self, data: Union[str, Path]) -> Any:
-        """读取图像数据"""
-        from PIL import Image
-        if isinstance(data, (str, Path)) and os.path.exists(data):
-            return Image.open(data)
-        else:
-            raise ComponentError(f"无法读取图像数据: {data}")
-
-    def _read_file_data(self, data: Any) -> Path:
-        """读取任意文件内容（路径、bytes、str），返回临时路径"""
-        temp_dir = _get_node_temp_dir(None)  # 使用通用临时目录
-        if isinstance(data, (str, Path)):
-            path = Path(data)
-            if path.is_file():
-                # 如果是已存在的文件路径，直接返回（也可复制到 temp_dir 保持隔离）
-                import shutil
-                dst = temp_dir / path.name
-                shutil.copy2(path, dst)
-                return dst
-            else:
-                # 假设是文本内容，保存为 file.txt
-                dst = temp_dir / "file.txt"
-                dst.write_text(str(data), encoding='utf-8')
-                return dst
-        elif isinstance(data, bytes):
-            dst = temp_dir / "file.bin"
-            dst.write_bytes(data)
-            return dst
-        else:
-            # 兜底：转为字符串保存
-            dst = temp_dir / "file.txt"
-            dst.write_text(str(data), encoding='utf-8')
-            return dst
-
-    def _process_multiple_inputs(self, input_name: str, input_values: List[Any], input_type: ArgumentType) -> List[Any]:
-        if not isinstance(input_values, (list, tuple)):
-            input_values = [input_values]
-        return [
-            self.read_input_data(input_name, val, input_type)
-            for val in input_values
-        ]
-
-    # ---------------- 输出数据存储 ----------------
-    def store_output_data(self, output_name: str, output_value: Any, output_type: ArgumentType, node_id: str = None) -> Any:
-        """根据输出类型存储数据，支持按 node_id 持久化"""
-        try:
-            if output_type == ArgumentType.TEXT:
-                return str(output_value) if output_value is not None else ""
-            elif output_type == ArgumentType.INT:
-                return int(output_value) if output_value is not None else 0
-            elif output_type == ArgumentType.FLOAT:
-                return float(output_value) if output_value is not None else 0.0
-            elif output_type == ArgumentType.ARRAY:
-                return output_value
-            elif output_type == ArgumentType.CSV:
-                return self._store_csv_data(output_value)
-            elif output_type == ArgumentType.JSON:
-                return self._store_json_data(output_value)
-            elif output_type == ArgumentType.EXCEL:
-                return self._store_excel_data(output_value)
-            elif output_type == ArgumentType.SKLEARNMODEL:
-                return self._store_sklearn_model(output_value, node_id)
-            elif output_type == ArgumentType.TORCHMODEL:
-                return self._store_torch_model(output_value, node_id)
-            elif output_type == ArgumentType.IMAGE:
-                return self._store_image_data(output_value, node_id)
-            elif output_type == ArgumentType.FILE:
-                    return self._store_file_data(output_value, node_id, output_name)
-            else:
-                return output_value
-        except Exception as e:
-            raise ComponentError(f"存储输出 {output_name} 失败: {str(e)}", "OUTPUT_STORE_ERROR")
-
-    def _store_csv_data(self, data: pd.DataFrame) -> Union[DataFrame, str, Path]:
-        """存储CSV数据"""
-        if isinstance(data, pd.DataFrame):
-            return data
-        elif isinstance(data, (str, Path)):
-            if os.path.exists(data):
-                return pd.read_csv(data)
-            else:
-                # 如果是CSV字符串
-                import io
-                return pd.read_csv(io.StringIO(data))
-        else:
-            raise ComponentError(f"无法存储CSV数据: {type(data)}")
-
-    def _store_json_data(self, data: Union[dict, list]) -> str:
-        """存储JSON数据（直接返回）"""
-        return data
-
-    def _store_excel_data(self, data: pd.DataFrame) -> Union[DataFrame, str, Path]:
-        """存储Excel数据"""
-        import io
-        if isinstance(data, pd.DataFrame):
-            return data
-        elif isinstance(data, (str, Path)):
-            if os.path.exists(data):
-                return pd.read_excel(data)
-            else:
-                return pd.read_excel(io.StringIO(data))
-        else:
-            raise ComponentError(f"无法存储Excel数据: {type(data)}")
-
-    def _store_sklearn_model(self, model: Any, node_id: str = None) -> str:
-        """存储sklearn模型到节点专属目录"""
-        temp_dir = _get_node_temp_dir(node_id)
-        model_path = temp_dir / f"model_{node_id}.pkl"
-        with open(model_path, 'wb') as f:
-            pickle.dump(model, f)
-        return str(model_path)
-
-    def _store_torch_model(self, model: Any, node_id: str = None) -> str:
-        """存储torch模型到节点专属目录"""
-        torch = _get_torch()
-        if torch is None:
-            raise ComponentError("torch 未安装", "MISSING_DEPENDENCY")
-        temp_dir = _get_node_temp_dir(node_id)
-        model_path = temp_dir / f"model_{node_id}.pth"
-        scripted_model = torch.jit.script(model)
-        scripted_model.save(str(model_path))
-        return str(model_path)
-
-    def _store_image_data(self, image: Any, node_id: str = None) -> str:
-        """存储图像数据到节点专属目录"""
-        if isinstance(image, np.ndarray):
-            image = Image.fromarray(image)
-        elif not isinstance(image, Image.Image):
-            raise ComponentError(f"无法存储图像数据: {type(image)}")
-        temp_dir = _get_node_temp_dir(node_id)
-        image_path = temp_dir / f"image_{node_id}.png"
-        image.save(image_path, 'PNG')
-        return str(image_path)
-
-    def _store_file_data(self, data: Any, node_id: str = None, output_name: str = "output_file") -> str:
-        """存储任意文件数据，使用 output_name 作为文件名"""
-        temp_dir = _get_node_temp_dir(node_id)
-        # 保留扩展名：如果 output_name 有后缀，直接用；否则尝试推断或默认 .bin
-        filename = Path(output_name).name or "output_file"
-        if "." not in filename:
-            # 尝试推断扩展名（可选）
-            if isinstance(data, str):
-                filename += ".txt"
-            elif isinstance(data, bytes):
-                filename += ".bin"
-            else:
-                filename += ".dat"
-        file_path = temp_dir / filename
-
-        if isinstance(data, (str, Path)):
-            path = Path(data)
-            if path.is_file():
-                import shutil
-                shutil.copy2(path, file_path)
-            else:
-                file_path.write_text(str(data), encoding='utf-8')
-        elif isinstance(data, bytes):
-            file_path.write_bytes(data)
-        else:
-            # 兜底：转为字符串
-            file_path.write_text(str(data), encoding='utf-8')
-
-        return str(file_path)
-
     # ---------------- 执行包装器 ----------------
     def execute(
             self,
@@ -937,6 +977,7 @@ class BaseComponent(ABC):
             node_id: str = None
     ) -> Dict[str, Any]:
         """执行组件，包含错误处理和数据类型转换"""
+        self.data_handler = DataHandler(node_id=node_id, logger_instance=self.logger)
         try:
             if global_vars is not None:
                 self.global_variable.deserialize(global_vars)
@@ -948,11 +989,11 @@ class BaseComponent(ABC):
                 for port in self.inputs:
                     if port.name in inputs:
                         if port.connection == ConnectionType.MULTIPLE:
-                            validated_inputs[port.name] = self._process_multiple_inputs(
+                            validated_inputs[port.name] = self.data_handler._process_multiple_inputs(
                                 port.name, inputs[port.name], port.type
                             )
                         else:
-                            validated_inputs[port.name] = self.read_input_data(
+                            validated_inputs[port.name] = self.data_handler.read_input_data(
                                 port.name, inputs[port.name], port.type
                             )
                     if f"{port.name}_column_select" in inputs:
@@ -975,8 +1016,8 @@ class BaseComponent(ABC):
             stored_result = {}
             for port in self.outputs:
                 if port.name in result:
-                    stored_result[port.name] = self.store_output_data(
-                        port.name, result[port.name], port.type, node_id=node_id
+                    stored_result[port.name] = self.data_handler.store_output_data(
+                        port.name, result[port.name], port.type
                     )
 
             return stored_result

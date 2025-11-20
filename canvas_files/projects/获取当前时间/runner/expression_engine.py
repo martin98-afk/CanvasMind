@@ -29,6 +29,11 @@ class ExpressionEngine:
         # 注册安全函数
         self._register_functions()
 
+    def update_global_vars(self, global_vars_context):
+        """更新全局变量"""
+        flat_vars = self._flatten_global_vars(global_vars_context)
+        self.interp.symtable.update(flat_vars)
+
     def _flatten_global_vars(self, ctx) -> Dict[str, Any]:
         """将 GlobalVariableContext 展平为字典，带作用域前缀"""
         flat = {}

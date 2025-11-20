@@ -254,7 +254,7 @@ class GlobalPanelWidget:
                 combo = card.strategy_combo
                 if combo.property("policy") != node_var_obj.update_policy:
                     combo.blockSignals(True)
-                    combo.setCurrentText(node_var_obj.update_policy)
+                    combo.setProperty("policy", node_var_obj.update_policy)
                     combo.blockSignals(False)
             if hasattr(card, 'tree_widget'):
                 card.tree_widget.set_data(node_var_obj.value)
@@ -732,3 +732,27 @@ class GlobalPanelWidget:
             parent=main_window,
             position=InfoBarPosition.TOP_RIGHT
         )
+
+    def delete_output_from_global_var(self, main_window, node, port_name: str):
+        """从全局变量中删除输出"""
+        safe_node_name = re.sub(r'\s+', '_', node.name())
+        main_window.global_variables.delete_output(
+            node_id=safe_node_name, output_name=port_name
+        )
+        if hasattr(node, "refresh_node_outports"):
+            from PyQt5.QtCore import QTimer
+            QTimer.singleShot(100, node.refresh_node_outports)
+        if hasattr(node, "_sync_outputs_ports"):
+            QTimer.singleShot(100, node._sync_outputs_ports)
+        self._handle_global_variable_change("node_vars", f"{safe_node_name}_{port_name}", "delete")
+        InfoBar.success(
+            title="成功",
+            content=f"已删除全局变量：{safe_node_name}_{port_name}",
+            parent=main_window,
+            position=InfoBarPosition.TOP_RIGHT
+        )
+
+    def is_output_in_global_var(self, main_window, node, port_name: str):
+        """判断输出是否在全局变量中"""
+        safe_node_name = re.sub(r'\s+', '_', node.name())
+        return main_window.global_variables.is_output_in_node_vars(safe_node_name, port_name)

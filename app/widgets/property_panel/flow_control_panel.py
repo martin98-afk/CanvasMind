@@ -39,7 +39,9 @@ class FlowControlPanelWidget:
             node=node,
             port_info_func=self.parent_panel.get_port_info,  # 传递获取端口信息的函数
             copy_as_expression_func=self.parent_panel._copy_as_expression,  # 传递复制表达式的函数
-            add_output_to_global_func=self.parent_panel._add_output_to_global_variable,  # 传递添加到全局变量的函数
+            add_func=self.parent_panel._add_output_to_global_variable,  # 传递添加到全局变量的函数
+            delete_func=self.parent_panel._delete_output_from_global_variable,
+            is_in_func=self.parent_panel._is_output_in_global_variable,
             parent=self.parent_panel  # 传递父控件
         )
         self._port_widget.segmented_widget.currentItemChanged.connect(self._on_port_segment_changed)
