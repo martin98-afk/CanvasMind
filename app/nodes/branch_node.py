@@ -335,20 +335,20 @@ def create_branch_node(parent_window):
             gv.deserialize(global_variable)
 
             inputs_raw = {}
+            input_vars = {}
             for input_port in self.input_ports():
                 port_name = input_port.name()
                 connected = input_port.connected_ports()
                 if connected:
                     inputs_raw[port_name] = [
-                            upstream.node()._output_values.get(upstream.name()) for upstream in connected
-                        ]
-                    if port_name in self.column_select:
-                        inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
-
-            input_vars = {}
-            for k, v in inputs_raw.items():
-                safe_key = f"input_{k}"
-                input_vars[safe_key] = v
+                        upstream.node()._output_values.get(upstream.name()) for upstream in connected
+                    ]
+                    safe_key = f"input_{port_name}"
+                    input_vars[safe_key] = inputs_raw[port_name]
+                    for upstream in connected:
+                        safe_name = upstream.node().name().replace(" ", "_")
+                        safe_key = f"input_{port_name}_{safe_name}_{upstream.name()}"
+                        input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
 
             expr_engine = ExpressionEngine(global_vars_context=gv)
 

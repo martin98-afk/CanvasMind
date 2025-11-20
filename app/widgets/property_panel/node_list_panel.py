@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QWidget
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, ListWidget, \
     FluentIcon, TransparentToolButton, SubtitleLabel
@@ -64,7 +64,7 @@ class NodeListPanelWidget:
         title = SubtitleLabel(f"⏬ 连通图执行顺序")
         self.parent_layout.addWidget(title)
 
-        nodes_card = CardWidget(self.parent_panel)
+        nodes_card = QWidget(self.parent_panel)
         nodes_layout = QVBoxLayout(nodes_card)
         nodes_layout.setContentsMargins(10, 10, 10, 10)
         title_btn_layout = QHBoxLayout()

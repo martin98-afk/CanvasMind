@@ -336,6 +336,7 @@ class PortWidget(QWidget):
         title_layout.addStretch()
         if is_output:
             add_global_btn = TransparentPushButton(text="全局变量", icon=FluentIcon.ADD, parent=self)
+            add_global_btn.setFixedHeight(26)
             add_global_btn.clicked.connect(
                 lambda _, n=self.node, p=port_name: self.add_output_to_global_func(n, p)
             )

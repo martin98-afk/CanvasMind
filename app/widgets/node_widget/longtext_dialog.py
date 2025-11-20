@@ -99,6 +99,12 @@ class LongTextWidgetWrapper(NodeBaseWidget):
 
     def get_port_func(self):
         vars = [f"input.{port.name()}" for port in self.node.input_ports()]
+        for port in self.node.input_ports():
+            connected_ports = port.connected_ports()
+            for connected_port in connected_ports:
+                safe_name = connected_port.node().name().replace(" ", "_")
+                vars.append(f"input.{port.name()}_{safe_name}_{connected_port.name()}")
+
         return vars
 
     def get_value(self):

@@ -217,6 +217,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
             self._emit_changes()
 
     def _emit_changes(self):
+        self.updateGeometry()
         self.sizeHintChanged.emit()
         self.valueChanged.emit(self.get_data())
 
