@@ -33,7 +33,7 @@ if __name__ == '__main__':
     try:
         window = LowCodeWindow()
         window.show()
-        print("✅ 低代码平台启动成功！")
+        print("✅ 启动成功！")
     except Exception as e:
         import traceback
         with open("error.log", "w") as f:
