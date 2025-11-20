@@ -458,6 +458,9 @@ class ModelMixin:
             return value if value is not None else default
         return default
 
+    def __getattr__(self, item: str):
+        return self.get(item)
+
     def __getitem__(self, key: str):
         """
         支持 item["key"] 语法

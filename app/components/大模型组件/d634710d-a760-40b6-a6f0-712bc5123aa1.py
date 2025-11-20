@@ -31,7 +31,7 @@ class Component(BaseComponent):
             type=PropertyType.DYNAMICFORM,
             label="类别定义",
             schema={
-                "class": PropertyDefinition(
+                "clas": PropertyDefinition(
                     type=PropertyType.TEXT,
                     default="",
                     label="类别",
@@ -58,7 +58,7 @@ class Component(BaseComponent):
         ## 用户问题
         {}
         """.format(
-            "\n".join([c.get("class") for c in params.classes]),
+            "\n".join([c.clas for c in params.classes]),
             inputs.input1
         )
         from openai import OpenAI
