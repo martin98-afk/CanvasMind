@@ -32,6 +32,7 @@ class FormFieldWidget(QtWidgets.QWidget):
         for key, defn in schema.items():
             field_type = defn["type"]
             label = defn.get("label", "")
+            name = defn.get("name", "")
             default = defn.get("default", "")
             # 为这种布局创建一个包含标签和输入框的子布局
             sub_layout = QtWidgets.QVBoxLayout()
@@ -43,7 +44,7 @@ class FormFieldWidget(QtWidgets.QWidget):
             label_row.setContentsMargins(0, 0, 0, 0)
             label_row.setSpacing(6)
 
-            label_widget = QtWidgets.QLabel(label + ":")
+            label_widget = QtWidgets.QLabel(f"{label} ({name}):" if name else label + ":")
             label_widget.setStyleSheet("QLabel { font-weight: bold; color: white; font-size: 12px; }")
             label_row.addWidget(label_widget)
 
@@ -296,7 +297,7 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
         self.window = window
         self.name = name
         self.set_name(name)
-        self.set_label(label)
+        self.set_label(f"{label} ({name})")
         widget = DynamicFormWidget(schema or {}, parent=window, label=label, get_port_func=self.get_port_func)
         self.set_custom_widget(widget)
         widget.sizeHintChanged.connect(self._update_node)

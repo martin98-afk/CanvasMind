@@ -92,7 +92,7 @@ class LongTextWidgetWrapper(NodeBaseWidget):
     def __init__(self, parent=None, name="", label="", default="", window=None):
         super().__init__(parent)
         self.set_name(name)
-        self.set_label(label)
+        self.set_label(f"{label} ({name})")
         widget = LongTextWidget(default_text=default, parent=window, get_port_func=self.get_port_func)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)

@@ -32,7 +32,7 @@ class NumberWidgetWrapper(NodeBaseWidget):
     def __init__(self, parent=None, name="", label="", default=0, type="float", window=None):
         super().__init__(parent)
         self.set_name(name)
-        self.set_label(label)
+        self.set_label(f"{label} ({name})")
         self.type = type
         widget = SpinBoxWidget(default=default, parent=window, type=type)
         self.set_custom_widget(widget)

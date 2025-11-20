@@ -162,7 +162,7 @@ class GlobalVarComboBoxWidgetWrapper(NodeBaseWidget):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
-        self.set_label(label)
+        self.set_label(f"{label} ({name})")
 
         # 创建自定义控件
         widget = GlobalVarComboBoxWidget(main_window=main_window, parent=parent)

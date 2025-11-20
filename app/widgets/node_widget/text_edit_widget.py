@@ -60,7 +60,7 @@ class TextWidgetWrapper(NodeBaseWidget):
     def __init__(self, parent=None, name="", label="", type=None, default="", window=None):
         super().__init__(parent)
         self.set_name(name)
-        self.set_label(label)
+        self.set_label(f"{label} ({name})")
         widget = TextWidget(default_text=default, type=type, parent=window, get_port_func=self.get_port_func)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)

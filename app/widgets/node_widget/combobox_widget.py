@@ -45,7 +45,7 @@ class ComboBoxWidgetWrapper(NodeBaseWidget):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
-        self.set_label(label)
+        self.set_label(f"{label} ({name})")
         widget = ComboBoxWidget(items=items, parent=parent)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)

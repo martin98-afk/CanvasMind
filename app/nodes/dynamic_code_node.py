@@ -402,91 +402,101 @@ def create_dynamic_code_node(parent_window=None):
 
         # === 关键：重写 execute_sync，使用动态代码模板 ===
         def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None):
-            self.init_logger()
-            temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
-            temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
-            run_id = f"run_{self.persistent_id}"
-            run_dir = PERSISTENT_TEMP_ROOT / run_id
-            shutil.rmtree(run_dir, ignore_errors=True)
-            run_dir.mkdir(parents=True, exist_ok=True)
-            temp_script_path = run_dir / "exec_script.py"
-            params_path = run_dir / "params.pkl"
-            result_path = run_dir / "result.pkl"
-            error_path = run_dir / "error.pkl"
-            log_file_path = self.log_capture.get_log_file_path()
-            if python_executable is None:
-                raise Exception("未指定Python执行环境。")
+            try:
+                self.init_logger()
+                temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
+                temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
+                run_id = f"run_{self.persistent_id}"
+                run_dir = PERSISTENT_TEMP_ROOT / run_id
+                shutil.rmtree(run_dir, ignore_errors=True)
+                run_dir.mkdir(parents=True, exist_ok=True)
+                temp_script_path = run_dir / "exec_script.py"
+                params_path = run_dir / "params.pkl"
+                result_path = run_dir / "result.pkl"
+                error_path = run_dir / "error.pkl"
+                log_file_path = self.log_capture.get_log_file_path()
+                if python_executable is None:
+                    raise Exception("未指定Python执行环境。")
 
-            temp_component_code = self.format_code()
-            # 保存组件代码
-            with open(temp_component_path, 'w', encoding='utf-8') as f:
-                f.write(temp_component_code)
-            # === 3. 收集 inputs / params / global_variable（不变）===
-            global_variable = self.global_variable
-            gv = GlobalVariableContext()
-            gv.deserialize(global_variable)
+                temp_component_code = self.format_code()
+                # 保存组件代码
+                with open(temp_component_path, 'w', encoding='utf-8') as f:
+                    f.write(temp_component_code)
+                # === 3. 收集 inputs / params / global_variable（不变）===
+                global_variable = self.global_variable
+                gv = GlobalVariableContext()
+                gv.deserialize(global_variable)
 
-            inputs_raw = {}
-            for i, input_port in enumerate(self.input_ports()):
-                port_name = input_port.name()
-                connected = input_port.connected_ports()
-                if connected:
-                    if len(connected) == 1:
-                        upstream = connected[0]
-                        value = upstream.node()._output_values.get(upstream.name())
-                        inputs_raw[port_name] = value
+                inputs_raw = {}
+                for i, input_port in enumerate(self.input_ports()):
+                    port_name = input_port.name()
+                    connected = input_port.connected_ports()
+                    if connected:
+                        if len(connected) == 1:
+                            upstream = connected[0]
+                            value = upstream.node()._output_values.get(upstream.name())
+                            inputs_raw[port_name] = value
+                        else:
+                            inputs_raw[port_name] = [
+                                upstream.node()._output_values.get(upstream.name()) for upstream in connected
+                            ]
                     else:
-                        inputs_raw[port_name] = [
-                            upstream.node()._output_values.get(upstream.name()) for upstream in connected
-                        ]
-                else:
-                    inputs_raw[port_name] = gv.get(self.get_property("input_ports")[i]["var"])
+                        inputs_raw[port_name] = gv.get(self.get_property("input_ports")[i]["var"])
 
-            input_vars = {f"input_{k}": v for k, v in inputs_raw.items()}
-            expr_engine = ExpressionEngine(global_vars_context=gv)
+                input_vars = {f"input_{k}": v for k, v in inputs_raw.items()}
+                expr_engine = ExpressionEngine(global_vars_context=gv)
 
-            def _evaluate_with_inputs(value, engine, input_vars_dict):
-                if isinstance(value, str):
-                    return engine.evaluate_template(value, local_vars=input_vars_dict)
-                elif isinstance(value, list):
-                    return [_evaluate_with_inputs(v, engine, input_vars_dict) for v in value]
-                elif isinstance(value, dict):
-                    return {k: _evaluate_with_inputs(v, engine, input_vars_dict) for k, v in value.items()}
-                else:
-                    return value
+                def _evaluate_with_inputs(value, engine, input_vars_dict):
+                    if isinstance(value, str):
+                        return engine.evaluate_template(value, local_vars=input_vars_dict)
+                    elif isinstance(value, list):
+                        return [_evaluate_with_inputs(v, engine, input_vars_dict) for v in value]
+                    elif isinstance(value, dict):
+                        return {k: _evaluate_with_inputs(v, engine, input_vars_dict) for k, v in value.items()}
+                    else:
+                        return value
 
-            inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
-            params = {}  # 动态节点无额外参数
+                inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
+                params = {}  # 动态节点无额外参数
 
-            # === 4. 准备临时文件（不变）===
-            # 保存执行参数（IPython 和 subprocess 都需要）
-            with open(params_path, 'wb') as f:
-                pickle.dump((params, inputs, global_variable), f)
+                # === 4. 准备临时文件（不变）===
+                # 保存执行参数（IPython 和 subprocess 都需要）
+                with open(params_path, 'wb') as f:
+                    pickle.dump((params, inputs, global_variable), f)
 
-            # 生成执行脚本（使用原始 subprocess 模板，不需双模式）
-            script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
-                class_name="DynamicComponent",
-                file_path=temp_component_path,
-                params_path=params_path,
-                result_path=result_path,
-                error_path=error_path,
-                log_file_path=log_file_path,
-                node_id=self.persistent_id
-            )
-            with open(temp_script_path, 'w', encoding='utf-8') as f:
-                f.write(script_content)
-
-            # === 5. 执行 ===
-            if kernel_manager is not None:
-                return self._execute_dynamic_via_ipython(
-                    temp_script_path, result_path, error_path, log_file_path,
-                    check_cancel, kernel_manager, temp_component_path
+                # 生成执行脚本（使用原始 subprocess 模板，不需双模式）
+                script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
+                    class_name="DynamicComponent",
+                    file_path=temp_component_path,
+                    params_path=params_path,
+                    result_path=result_path,
+                    error_path=error_path,
+                    log_file_path=log_file_path,
+                    node_id=self.persistent_id
                 )
-            else:
-                return self._execute_dynamic_via_subprocess(
-                    python_executable, temp_script_path, result_path, error_path,
-                    log_file_path, check_cancel, temp_component_path
-                )
+                with open(temp_script_path, 'w', encoding='utf-8') as f:
+                    f.write(script_content)
+
+                # === 5. 执行 ===
+                if kernel_manager is not None:
+                    return self._execute_dynamic_via_ipython(
+                        temp_script_path, result_path, error_path, log_file_path,
+                        check_cancel, kernel_manager, temp_component_path
+                    )
+                else:
+                    return self._execute_dynamic_via_subprocess(
+                        python_executable, temp_script_path, result_path, error_path,
+                        log_file_path, check_cancel, temp_component_path
+                    )
+            finally:
+                # 清理临时组件
+                try:
+                    temp_component_path.unlink(missing_ok=True)
+                    params_path.unlink(missing_ok=True)
+                    temp_script_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
 
         def _execute_dynamic_via_ipython(
                 self, temp_script_path, result_path, error_path, log_file_path,
@@ -628,13 +638,6 @@ def create_dynamic_code_node(parent_window=None):
                         tail_content = lf.read()
                         if tail_content:
                             self._log_message(self.persistent_id, tail_content)
-            except Exception:
-                pass
-
-            # 清理临时组件
-            try:
-                if temp_component_path.exists():
-                    temp_component_path.unlink()
             except Exception:
                 pass
 

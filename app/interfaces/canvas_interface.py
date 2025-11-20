@@ -151,7 +151,6 @@ class CanvasPage(QWidget):
         self.canvas_widget.dropEvent = self.canvas_drop_event
         self.canvas_widget.installEventFilter(self)
         # 右键菜单
-        self._register_builtin_components()
         self._setup_context_menus()
 
     # ========================
@@ -454,47 +453,21 @@ class CanvasPage(QWidget):
         return None
 
     def _register_builtin_components(self):
-        nodes_menu = self.graph.get_context_menu('nodes')
         # 迭代节点
         code_node = create_dynamic_code_node(self)
         code_node.__name__ = "DYNAMIC_CODE"
         self.graph.register_node(code_node)
-        nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
-                               node_type=f"dynamic.{code_node.__name__}")
-        nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
-                               node_type=f"dynamic.{code_node.__name__}")
-        nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
-                               node_type=f"dynamic.{code_node.__name__}")
-        nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
-                               node_type=f"dynamic.{code_node.__name__}")
-        nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                               node_type=f"dynamic.{code_node.__name__}")
+
         self.node_type_map[code_node.FULL_PATH] = f"dynamic.{code_node.__name__}"
         # 迭代节点
         iterate_node = ControlFlowIterateNode
         iterate_node.__name__ = "ControlFlowIterateNode"
         self.graph.register_node(iterate_node)
-        nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
-                               node_type=f"control_flow.{iterate_node.__name__}")
-        nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
-                               node_type=f"control_flow.{iterate_node.__name__}")
-        nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
-                               node_type=f"control_flow.{iterate_node.__name__}")
-        nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                               node_type=f"control_flow.{iterate_node.__name__}")
-        self.node_type_map[iterate_node.FULL_PATH] = f"control_flow.{iterate_node.__name__}"
+        self.node_type_map[iterate_node.FULL_PATH] = f"control_flow.ControlFlowIterateNode"
         # 循环节点
         loop_node = ControlFlowLoopNode
         loop_node.__name__ = "ControlFlowLoopNode"
         self.graph.register_node(loop_node)
-        nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
-                               node_type=f"control_flow.{loop_node.__name__}")
-        nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
-                               node_type=f"control_flow.{loop_node.__name__}")
-        nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
-                               node_type=f"control_flow.{loop_node.__name__}")
-        nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                               node_type=f"control_flow.{loop_node.__name__}")
         self.node_type_map[loop_node.FULL_PATH] = f"control_flow.{loop_node.__name__}"
         # 输入端口节点
         input_port_node = CustomPortInputNode
@@ -508,14 +481,6 @@ class CanvasPage(QWidget):
         branch_node = create_branch_node(self)
         branch_node.__name__ = "ControlFlowBranchNode"
         self.graph.register_node(branch_node)
-        nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
-                               node_type=f"control_flow.{branch_node.__name__}")
-        nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
-                               node_type=f"control_flow.{branch_node.__name__}")
-        nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
-                               node_type=f"control_flow.{branch_node.__name__}")
-        nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                               node_type=f"control_flow.{branch_node.__name__}")
         self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
 
     def register_components(self):
@@ -527,6 +492,7 @@ class CanvasPage(QWidget):
         # 重建推荐索引
         self.manager.recommendation_engine._recommendation_cache.clear()
         self.manager.recommendation_engine._build_index(self.component_map)  # 重建索引
+        self._register_builtin_components()
         # 普通节点
         nodes_menu = self.graph.get_context_menu('nodes')
         for full_path, comp_cls in self.component_map.items():
@@ -1759,6 +1725,21 @@ class CanvasPage(QWidget):
                 self.delete_selected_nodes(graph), self.property_panel.update_properties(None)
             ), 'Del'
         )
+        nodes_menu = self.graph.get_context_menu('nodes')
+        for special_node in [
+            "dynamic.DYNAMIC_CODE", "control_flow.ControlFlowIterateNode",
+            "control_flow.ControlFlowLoopNode", "control_flow.ControlFlowBranchNode"
+        ]:
+            nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
+                                   node_type=special_node)
+            nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
+                                   node_type=special_node)
+            nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
+                                   node_type=special_node)
+            if special_node == "dynamic.DYNAMIC_CODE":
+                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(), node_type=special_node)
+            nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
+                                   node_type=special_node)
 
     def delete_selected_nodes(self, graph):
         # 清除选中节点的输入输出端口连接线

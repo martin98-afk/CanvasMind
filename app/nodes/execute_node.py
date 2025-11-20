@@ -293,6 +293,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         field_type_enum = PropertyType(field_def["type"])
                         processed_schema[field_name] = {
                             "type": field_type_enum.name,
+                            "name": field_name,
                             "label": field_def.get("label", field_name),
                             "choices": field_def.get("choices", []),
                             "default": field_def.get("default", ""),
