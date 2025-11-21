@@ -10,17 +10,19 @@ import time
 import traceback
 import shutil
 import jedi
+from intervaltree import IntervalTree
 
 from loguru import logger
 from concurrent.futures import ThreadPoolExecutor, Future
 from pathlib import Path
 from typing import List, Tuple, Optional
 from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal, QObject, QRect, QEvent, QFileSystemWatcher
-from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter, QCursor
+from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter, QCursor, QTextBlock
 from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle, QVBoxLayout
 from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QToolTip
 from qfluentwidgets import TransparentToolButton
 from qtpy import QtCore
+from spyder.plugins.editor.panels.utils import FoldingRegion
 from spyder.plugins.editor.widgets.codeeditor import CodeEditor
 from spyder.widgets.findreplace import FindReplace
 
@@ -34,6 +36,68 @@ jedi.settings.call_signatures_validity = 300  # 缓存5分钟
 
 # 线程池用于异步处理补全请求
 completion_pool = ThreadPoolExecutor(max_workers=5, thread_name_prefix="JediCompletion")
+
+
+# --- 新增：使用 Jedi 计算折叠区域 ---
+def compute_folding_from_jedi(code: str, path: str = '<string>') -> tuple:
+    """
+    尝试使用 Jedi 计算代码的折叠区域。
+    这是一个基础实现，可能无法覆盖所有情况。
+    返回值: (current_tree, root, folding_regions, folding_nesting, folding_levels, folding_status)
+    """
+    try:
+        script = jedi.Script(code=code, path=path)
+        # Jedi 0.18+ 推荐使用 names() 来获取定义
+        names = script.get_names(all_scopes=True, definitions=True)
+
+        # 存储折叠区域的字典 {start_line: end_line}
+        folding_regions = {}
+        # 存储折叠状态的字典 {start_line: is_collapsed}
+        folding_status = {}
+
+        for name in names:
+            # Jedi 的 type 可能是 'function', 'class', 'module', 'instance', 'statement'
+            # 我们主要关心 'function' 和 'class'
+            if name.type in ['function', 'class']:
+                start_line = name.line  # Jedi 是 1-based，转换为 0-based
+                lines = code.split('\n')
+                if start_line < len(lines):
+                    start_indent = len(lines[start_line]) - len(lines[start_line].lstrip())
+                    end_line = start_line
+                    for i in range(start_line + 1, len(lines)):
+                        line_text = lines[i]
+                        if line_text.strip(): # 忽略空行
+                            line_indent = len(line_text) - len(line_text.lstrip())
+                            # 如果遇到同级或更浅的缩进，且不是注释，则可能是结束
+                            if line_indent <= start_indent and not line_text.lstrip().startswith('#'):
+                                end_line = i - 1 # 结束行是上一行
+                                break
+                            # 如果遇到更深的缩进，继续
+                        # 如果到达文件末尾
+                        if i == len(lines) - 1:
+                            end_line = i
+                    # 确保结束行在开始行之后
+                    if end_line > start_line:
+                         folding_regions[start_line] = end_line
+                         folding_status[start_line] = False # 默认不折叠
+
+        # --- 构建其他返回值 (简化处理) ---
+        current_tree = IntervalTree()
+        root = FoldingRegion(None, None)
+        folding_nesting = {}
+        folding_levels = {}
+
+        for start, end in folding_regions.items():
+            current_tree[start:end+1] = (start, end) # 存储 (start, end) 作为数据
+            folding_levels[start] = 1 # 简单层级
+            folding_nesting[start] = [] # 简单嵌套关系
+
+        return current_tree, root, folding_regions, folding_nesting, folding_levels, folding_status
+
+    except Exception as e:
+        logger.error(f"[Folding] Error computing folding from Jedi: {e}")
+        # 返回空结构
+        return IntervalTree(), FoldingRegion(None, None), {}, {}, {}, {}
 
 
 class CompletionItemDelegate(QStyledItemDelegate):
@@ -707,6 +771,38 @@ class JediCodeEditor(CodeEditor):
 
         # --- 新增：用于记录上次衰减时间 ---
         self._last_decay_time = time.time()
+        self.textChanged.connect(self._on_text_changed_for_folding)  # 新增折叠更新
+
+    def _on_text_changed_for_folding(self):
+        """当编辑器文本改变时，延迟触发折叠计算和更新"""
+        # 停止之前的计算定时器
+        if hasattr(self, '_folding_update_timer'):
+            self._folding_update_timer.stop()
+        else:
+            self._folding_update_timer = QTimer()
+            self._folding_update_timer.setSingleShot(True)
+            self._folding_update_timer.timeout.connect(self._update_folding_from_code)
+
+        # 设置一个短暂的延迟，避免频繁计算
+        self._folding_update_timer.start(800)  # 800ms 延迟
+
+    def _update_folding_from_code(self):
+        """计算折叠信息并更新折叠面板"""
+        code = self.toPlainText()
+        folding_info = compute_folding_from_jedi(code)
+        if folding_info:
+            self.folding_panel.update_folding(folding_info)
+            logger.info(f"[Folding] Updated folding structure. Regions: {len(folding_info[2])}")
+        else:
+            # 如果计算失败，清空折叠信息
+            self.folding_panel.update_folding(None)
+            logger.info(f"[Folding] Cleared folding structure due to error or empty code.")
+
+    def _on_fold_trigger_changed(self, block: QTextBlock, collapsed: bool):
+        """当折叠触发器被点击时，更新状态"""
+        line_number = block.blockNumber()
+        logger.info(
+            f"[Folding] Trigger on line {line_number + 1} changed to {'collapsed' if collapsed else 'expanded'}")
 
     def _create_fullscreen_button(self, type="放大"):
         """创建全屏按钮"""

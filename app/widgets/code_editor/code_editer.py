@@ -262,7 +262,6 @@ class CodeEditorWidget(QWidget):
         # 2. 创建或获取覆盖层
         if self.overlay_widget is None:
             self.overlay_widget = QWidget(window_parent)
-            self.overlay_widget.setStyleSheet("background-color: rgba(0, 0, 0, 180);")  # 半透明黑色背景
             # 确保覆盖层在最顶层
             self.overlay_widget.raise_()
             # 为覆盖层添加 ESC 退出事件
