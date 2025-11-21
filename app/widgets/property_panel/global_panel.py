@@ -39,11 +39,13 @@ class ParameterGroupDialog(MessageBoxBase):
             self.name_edit.setText(group_name)
         self.hbox_layout.addWidget(BodyLabel("参数组名称：", self))
         self.hbox_layout.addWidget(self.name_edit, 1)
+
         self.save_as_template = ToggleToolButton(FluentIcon.SAVE_AS, self)
         self.save_as_template.setChecked(False)
         self.save_as_template.setToolTip("是否保存为参数模板")
         self.hbox_layout.addStretch()
         self.hbox_layout.addWidget(self.save_as_template)
+
         # 参数编辑区域
         self.params_list = ListWidget()
         self.params_list.setMinimumHeight(200)
@@ -162,34 +164,27 @@ class TemplateSelectionDialog(MessageBoxBase):
         # 创建布局
         self.viewLayout.addWidget(self.titleLabel)
 
-        # 创建模板选择区域
-        self.template_widget = QWidget()
-        self.template_layout = QVBoxLayout(self.template_widget)
+        # 创建模板列表
+        self.template_list = ListWidget()
+        self.template_list.setMinimumHeight(150)
 
-        # 添加模板按钮
+        # 添加模板项
         for template_name in self.templates.keys():
-            btn = PushButton(template_name, self)
-            btn.clicked.connect(lambda checked=False, name=template_name: self.select_template(name))
-            self.template_layout.addWidget(btn)
+            item = QListWidgetItem(template_name)
+            self.template_list.addItem(item)
 
-        # 添加自定义按钮
-        custom_btn = PushButton("自定义参数组", self)
-        custom_btn.clicked.connect(lambda: self.select_template("custom"))
-        self.template_layout.addWidget(custom_btn)
+        # 添加自定义项
+        custom_item = QListWidgetItem("自定义参数组")
+        self.template_list.addItem(custom_item)
 
-        # 添加滚动区域
-        scroll_area = QScrollArea()
-        # 深色背景
-        scroll_area.setStyleSheet("QScrollArea { background-color: #333333; }")
-        scroll_area.setWidget(self.template_widget)
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setMinimumHeight(150)
+        # 设置点击事件
+        self.template_list.itemClicked.connect(self.select_template_item)
 
-        self.viewLayout.addWidget(scroll_area)
+        self.viewLayout.addWidget(self.template_list)
 
-    def select_template(self, template_name):
-        """选择模板"""
-        self.selected_template = template_name
+    def select_template_item(self, item):
+        """选择模板项"""
+        self.selected_template = item.text()
         self.accept()
 
 
@@ -309,7 +304,8 @@ class GlobalPanelWidget:
             elif action == "clear":
                 global_vars.clear_node_vars(var_name)
         elif var_type == "custom":
-            if action == "add" or action == "update":
+            if action == "add":
+                # 仅处理新增
                 if var_name not in self._custom_var_cards:
                     if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
                         value = global_vars.custom[var_name].value
@@ -323,6 +319,23 @@ class GlobalPanelWidget:
                             self._custom_var_cards[var_name] = card
                         else:
                             logger.warning("custom_vars_layout not found, cannot add card.")
+            elif action == "update":
+                # 处理更新：删除旧卡片，创建新卡片
+                if var_name in self._custom_var_cards:
+                    old_card = self._custom_var_cards.pop(var_name)
+                    old_card.deleteLater()
+                    # 现在当作新增来处理
+                    if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
+                        value = global_vars.custom[var_name].value
+                        if isinstance(value, dict):
+                            card = self._create_parameter_group_row(var_name, value)
+                        else:
+                            card = self._create_dict_row(var_name, value)
+                        if self.custom_vars_layout:
+                            self.custom_vars_layout.addWidget(card)
+                            self._custom_var_cards[var_name] = card
+                        else:
+                            logger.warning("custom_vars_layout not found, cannot update card.")
             elif action == "delete":
                 if var_name in self._custom_var_cards:
                     card = self._custom_var_cards.pop(var_name)
@@ -439,37 +452,6 @@ class GlobalPanelWidget:
         for name in existing_custom - current_custom:
             card = self._custom_var_cards.pop(name)
             card.deleteLater()
-        for name in current_custom & existing_custom:
-            var_obj = global_vars.custom[name]
-            card = self._custom_var_cards[name]
-            # 更新卡片显示内容
-            self._update_card_display(card, var_obj.value)
-
-    def _update_card_display(self, card, value):
-        """更新卡片的显示内容"""
-        if isinstance(value, dict):
-            # 更新参数组卡片
-            self._update_parameter_group_card(card, value)
-        else:
-            # 更新普通KV卡片
-            if card.layout().count() >= 2:
-                value_label = card.layout().itemAt(1).widget()
-                if isinstance(value_label, BodyLabel):
-                    try:
-                        preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." \
-                            if isinstance(value, (dict, list)) else str(value)[:40]
-                    except:
-                        preview = "<无法预览>"
-                    value_label.setText(preview)
-
-    def _update_parameter_group_card(self, card, value):
-        """更新参数组卡片的显示内容"""
-        # 更新预览文本
-        if card.layout().count() >= 2:
-            value_label = card.layout().itemAt(1).widget()
-            if isinstance(value_label, BodyLabel):
-                param_count = len(value) if isinstance(value, dict) else 0
-                value_label.setText(f"[参数组: {param_count}个参数]")
 
     def _refresh_node_vars_page(self):
         global_vars = getattr(self.main_window, 'global_variables', None)
@@ -610,9 +592,13 @@ class GlobalPanelWidget:
             for key, val in value.items():
                 param_row = QHBoxLayout()
                 param_key = BodyLabel(f"{key}:")
-                param_value = BodyLabel(str(val)[:50] + "..." if len(str(val)) > 50 else str(val))
+                # 限制预览长度并启用换行
+                param_value_text = str(val)
+                if len(param_value_text) > 50:
+                    param_value_text = param_value_text[:50] + "..."
+                param_value = BodyLabel(param_value_text)
                 param_value.setStyleSheet("color: #888888;")
-                param_value.setWordWrap(True)
+                param_value.setWordWrap(True)  # 启用换行
                 param_row.addWidget(param_key)
                 param_row.addWidget(param_value, 1)
                 detail_layout.addLayout(param_row)
@@ -849,7 +835,7 @@ class GlobalPanelWidget:
         if template_dialog.exec():
             selected_template = template_dialog.selected_template
 
-            if selected_template == "custom":
+            if selected_template == "自定义参数组":
                 # 创建自定义参数组
                 self._open_parameter_group_editor("", {}, True)
             elif selected_template in self.parameter_group_templates:
@@ -889,8 +875,6 @@ class GlobalPanelWidget:
 
                 # 设置新的参数组
                 global_vars.set(new_name, parameters)
-                self._refresh_custom_vars_page()
-                self._handle_global_variable_change("custom", new_name, "add")
 
                 # 如果用户选择了保存为模板
                 if dialog.should_save_as_template():
@@ -898,6 +882,9 @@ class GlobalPanelWidget:
                     InfoBar.success("已保存", f"参数组 {new_name} 已保存为模板", parent=self.main_window)
                 else:
                     InfoBar.success("已保存", f"参数组 {new_name}", parent=self.main_window)
+
+                # 强制刷新自定义变量页面以更新显示
+                self._refresh_custom_vars_page()
 
     def add_new_env_variable(self):
         dialog = CustomTwoInputDialog(
@@ -974,8 +961,11 @@ class GlobalPanelWidget:
                 del global_vars.custom[var_name]
                 self._handle_global_variable_change("custom", var_name, "delete")
                 self._handle_global_variable_change("custom", new_name, "add")
-            global_vars.set(new_name, new_value)
-            self._refresh_custom_vars_page()
+            else:
+                # 仅更新值，名称不变
+                global_vars.set(new_name, new_value)
+                # 发送更新信号
+                self._handle_global_variable_change("custom", new_name, "update")
             InfoBar.success("已更新", f"变量 {new_name}", parent=self.main_window)
 
     def edit_parameter_group(self, var_name: str, current_value):
@@ -1013,11 +1003,14 @@ class GlobalPanelWidget:
 
                 # 设置新的参数组
                 global_vars.set(new_name, parameters)
-                self._refresh_custom_vars_page()
+
+                # 发送更新信号，而不是直接刷新整个页面
+                # 如果名称改变，则发送 add 信号给新名称，否则发送 update 信号
                 if new_name != var_name:
                     self._handle_global_variable_change("custom", new_name, "add")
                 else:
                     self._handle_global_variable_change("custom", new_name, "update")
+
                 InfoBar.success("已更新", f"参数组 {new_name}", parent=self.main_window)
 
     def edit_env_variable(self, key: str, current_value):
