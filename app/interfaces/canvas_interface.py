@@ -1333,8 +1333,6 @@ class CanvasPage(QWidget):
         self.stop_btn.hide()
         self._scheduler = None
         self.create_success_info("完成", "工作流执行完成!")
-        if self.file_path:
-            self.save_full_workflow(self.file_path, show_info=False)
 
     def _on_workflow_error(self, msg=""):
         self._scheduler = None

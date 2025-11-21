@@ -11,15 +11,15 @@ import traceback
 import shutil
 import jedi
 import ast  # 导入 ast 模块用于代码解析
-
 import parso
+import pyflakes
 from intervaltree import IntervalTree
 from loguru import logger
 from concurrent.futures import ThreadPoolExecutor, Future
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict
 from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal, QObject, QRect, QEvent, QFileSystemWatcher
-from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter, QCursor, QTextBlock
+from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter, QCursor, QTextBlock, QTextCharFormat
 from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle, QVBoxLayout
 from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QToolTip
 from qfluentwidgets import TransparentToolButton
@@ -29,15 +29,21 @@ from spyder.plugins.editor.widgets.codeeditor import CodeEditor
 from spyder.widgets.findreplace import FindReplace
 from app.utils.utils import get_icon  # 确保路径正确
 
+# --- 新增：导入 pyflakes 相关模块 ---
+from pyflakes import api as pyflakes_api
+from pyflakes import checker as pyflakes_checker
+from pyflakes.messages import Message
+from io import StringIO
+import sys
+# --- 结束新增 ---
+
 # 禁用jedi子进程，避免在GUI应用中出现子进程问题
 jedi.settings.use_subprocess = False
 # 限制jedi缓存大小，防止内存占用过高
 jedi.settings.cache_directory = os.path.expanduser("~/.jedi_cache")
 jedi.settings.call_signatures_validity = 300  # 缓存5分钟
-
 # 线程池用于异步处理补全请求
 completion_pool = ThreadPoolExecutor(max_workers=5, thread_name_prefix="JediCompletion")
-
 
 # --- 新增：使用 AST 计算折叠区域 ---
 def compute_folding_from_ast(code: str):
@@ -50,13 +56,10 @@ def compute_folding_from_ast(code: str):
     try:
         # 1. 解析代码为 AST 树
         tree = ast.parse(code)
-
         folding_regions: Dict[int, int] = {}
         folding_status: Dict[int, bool] = {}
-
         # 行列表，用于计算缩进
         lines = code.splitlines(keepends=True) # keepends=True 保留换行符，便于计算
-
         # --- 定义一个内部函数来递归处理 AST 节点 ---
         def visit_node(node):
             # 2. 确定节点类型和是否需要折叠
@@ -68,7 +71,6 @@ def compute_folding_from_ast(code: str):
                                  ast.ExceptHandler)): # except (特殊处理)
                 # 3. 获取节点的起始行号 (ast 行号是 1-based)
                 start_line = node.lineno
-
                 # 4. 计算代码块的结束行号
                 end_line = -1
                 if isinstance(node, ast.ExceptHandler):
@@ -101,34 +103,27 @@ def compute_folding_from_ast(code: str):
                             end_line = max(end_line, start_line)
                         else:
                             end_line = start_line # 如果 body 为空
-
                 # 5. 存储折叠区域 (转换为 0-based 索引)
                 # folding_regions 存储 {起始行号(0-based): 结束行号(0-based)}
                 if end_line > start_line:
                     folding_regions[start_line] = end_line
                     folding_status[start_line] = False # 默认不折叠
-
             # 6. 递归处理子节点
             for child_node in ast.iter_child_nodes(node):
                 visit_node(child_node)
-
         # 从 AST 根节点开始处理
         visit_node(tree)
-
         # --- 构建其他返回值 (简化处理，因为主要关注 folding_regions) ---
         current_tree = IntervalTree()
         root = FoldingRegion(None, None)
         folding_nesting = {}
         folding_levels = {}
-
         for start, end in folding_regions.items():
             current_tree[start:end+1] = (start, end) # 存储 (start, end) 作为数据
             folding_levels[start] = 1 # 简单层级，实际层级需更复杂算法
             folding_nesting[start] = [] # 简单嵌套关系，实际嵌套需更复杂算法
-
         logger.info(f"[Folding] AST found {len(folding_regions)} regions.")
         return current_tree, root, folding_regions, folding_nesting, folding_levels, folding_status
-
     except SyntaxError as e:
         # AST 解析失败（语法错误）
         logger.warning(f"[Folding] Syntax error in code, cannot compute folding: {e}")
@@ -139,10 +134,8 @@ def compute_folding_from_ast(code: str):
         # 返回空结构
         return IntervalTree(), FoldingRegion(None, None), {}, {}, {}, {}
 
-
 class CompletionItemDelegate(QStyledItemDelegate):
     """自定义补全项绘制器，解决重叠、颜色和间距问题"""
-
     def __init__(self, parent=None):
         super().__init__(parent)
         # 定义类型颜色，模仿PyCharm风格
@@ -201,19 +194,16 @@ class CompletionItemDelegate(QStyledItemDelegate):
         self.truncation_suffix = "..."  # 截断后缀
         # --- 新增：详情信息截断参数 ---
         self.max_detail_length = 40  # 用于显示函数签名等
-
     def _truncate_description(self, description: str) -> str:
         """截断描述文本"""
         if len(description) > self.max_description_length:
             return description[:self.max_description_length - len(self.truncation_suffix)] + self.truncation_suffix
         return description
-
     def _truncate_detail(self, detail: str) -> str:
         """截断详情文本 (如函数签名)"""
         if len(detail) > self.max_detail_length:
             return detail[:self.max_detail_length - len(self.truncation_suffix)] + self.truncation_suffix
         return detail
-
     def paint(self, painter: QPainter, option, index):
         # 1. 绘制背景
         if option.state & QStyle.State_Selected:
@@ -309,12 +299,10 @@ class CompletionItemDelegate(QStyledItemDelegate):
             painter.setPen(QColor("#AAAAAA"))
             painter.drawText(info_rect, Qt.AlignLeft | Qt.AlignVCenter, combined_info)  # 注意：这里用 AlignLeft 因为矩形已右对齐
             painter.setFont(option.font)
-
     def sizeHint(self, option, index):
         """返回补全项的推荐尺寸"""
         size = super().sizeHint(option, index)
         return QSize(size.width(), 40)  # 保持40px高度
-
 
 class CompletionWorker(QObject):
     """异步补全工作线程"""
@@ -322,11 +310,9 @@ class CompletionWorker(QObject):
     error_occurred = pyqtSignal(str)  # 发送错误信息
     # 新增信号：用于发送延迟补全请求的结果
     delayed_completion_ready = pyqtSignal(list)
-
     def __init__(self):
         super().__init__()
         self.running = True
-
     def _find_identifier_at_position(self, code: str, line: int, column: int) -> str:
         """
         根据行号和列号找到代码中的标识符。
@@ -348,7 +334,6 @@ class CompletionWorker(QObject):
         if start < end:
             return line_text[start:end]
         return ""
-
     def _guess_type_from_code(self, code: str, line: int, column: int, name: str) -> str:
         """
         尝试从代码中直接推断变量类型
@@ -415,7 +400,6 @@ class CompletionWorker(QObject):
             logger.error(f"[Jedi] Error during type guess from code for '{name}': {e}")
             pass
         return None
-
     def _get_self_attributes(self, script: jedi.Script, line: int, column: int) -> List[Tuple[str, str, str, str]]:
         """通过 Jedi 推断 self 所在类，并获取其所有属性（含继承）"""
         try:
@@ -452,7 +436,6 @@ class CompletionWorker(QObject):
         except Exception as e:
             logger.error(f"[Jedi] Failed to get self attributes: {e}")
             return []
-
     def _parse_jedi_completion(self, comp) -> Tuple[str, str, str, str]:
         """解析 jedi 的 completion 对象，提取类型、描述、详情和更精确的类型信息"""
         name = comp.name
@@ -511,7 +494,6 @@ class CompletionWorker(QObject):
         # 6. 检查 docstring 或其他属性 (可选，增加复杂度)
         # 例如，如果 docstring 包含 "class" 或 "Class"，可以推断为 class
         return name, refined_type_name, description, detail
-
     def request_completions(self, code: str, line: int, column: int,
                             site_packages_path: Optional[str] = None):
         """请求补全"""
@@ -564,7 +546,6 @@ class CompletionWorker(QObject):
                 logger.error(f"[Jedi] Restored original sys.path after error.")
             logger.error(f"[Jedi] Error during completion: {e}")
             self.error_occurred.emit(str(e))
-
     def request_delayed_completion(self, code: str, line: int, column: int, site_packages_path: Optional[str] = None):
         """处理延迟的补全请求 (对应原来的 _on_completions_ready_callback)"""
         try:
@@ -609,10 +590,49 @@ class CompletionWorker(QObject):
             self.error_occurred.emit(f"Delayed completion error: {e}")
 
 
-class JediCodeEditor(CodeEditor):
-    """增强的代码编辑器，支持Jedi补全和AST折叠"""
-    _BASE_CODE_CACHE = None
+class ParsoCodeAnalysis:
+    """
+    使用 parso 分析代码错误和警告。
+    """
+    @staticmethod
+    def run_parso_analysis(code):
+        """
+        运行 parso 分析代码。
+        返回一个包含错误和警告信息的列表。
+        每个元素是一个字典，包含 'row', 'column', 'type' (error/warning), 'message'。
+        parso.errors.Error 类包含 row, column, message, code 等属性。
+        """
+        try:
+            # 解析代码，encoding 可以设为 None，parso 通常能处理
+            grammar = parso.load_grammar()
+            module = grammar.parse(code, error_recovery=True) # error_recovery=True 是关键
+            errors = grammar.iter_errors(module)
+            messages = []
+            for error in errors:
+                # Parso 的错误行号是 1-based
+                line_number = error.start_pos[0]
+                # Parso 的错误列号是 0-based，我们转换为 1-based 以保持一致性
+                column_number = error.start_pos[1] + 1
+                message_text = error.message
+                # Parso 通常报告语法错误，可以视为 error
+                msg_type = 'error'
+                messages.append({
+                    'row': line_number,
+                    'column': column_number, # 提供列信息
+                    'type': msg_type,
+                    'message': message_text
+                })
+        except Exception as e:
+            # 如果 parso 解析本身出错（虽然不太可能），记录下来
+            logger.error(f"[Parso] Unexpected error during analysis: {e}")
+            messages = []
+        return messages
 
+
+
+class JediCodeEditor(CodeEditor):
+    """增强的代码编辑器，支持Jedi补全、AST折叠和Pyflakes错误检查"""
+    _BASE_CODE_CACHE = None
     def __init__(self, parent=None, code_parent=None, python_exe_path=None, popup_offset=2, dialog=None):
         super().__init__()
         if JediCodeEditor._BASE_CODE_CACHE is None:
@@ -723,7 +743,7 @@ class JediCodeEditor(CodeEditor):
             folding=True,  # 启用折叠
             intelligent_backspace=True,
             automatic_completions=True,
-            underline_errors=True,
+            underline_errors=True, # 启用下划线错误
             completions_hint=True,
             highlight_current_line=True,
         )
@@ -777,8 +797,115 @@ class JediCodeEditor(CodeEditor):
         }
         # --- 新增：用于记录上次衰减时间 ---
         self._last_decay_time = time.time()
+
+        # --- 新增：Pyflakes 分析相关 ---
+        self._parso_timer = QTimer()
+        self._parso_timer.setSingleShot(True)
+        self._parso_timer.timeout.connect(self._run_parso_analysis)
+        # 连接文本改变信号到分析函数
+        self.textChanged.connect(self._on_text_changed_for_parso)
+        # --- 结束新增 ---
+
         # --- 新增：连接文本改变信号以触发折叠更新 ---
         self.textChanged.connect(self._on_text_changed_for_folding)
+
+    def _on_text_changed_for_parso(self):
+        """当编辑器文本改变时，延迟触发 parso 分析"""
+        # 停止之前的分析定时器
+        self._parso_timer.stop()
+        # 设置一个短暂的延迟，避免频繁分析
+        self._parso_timer.start(800)  # 800ms 延迟
+
+    def _run_parso_analysis(self):
+        """执行 parso 分析并将结果存储到 BlockUserData"""
+        code = self.toPlainText()
+        if not code.strip():
+            # 如果代码为空，清除所有分析结果
+            self._clear_parso_results()
+            return
+
+        # 运行 parso
+        messages = ParsoCodeAnalysis.run_parso_analysis(code)
+
+        # 清除旧的分析结果
+        self._clear_parso_results()
+
+        # 清除旧的 "code_analysis_underline" 高亮
+        self.clear_extra_selections('code_analysis_underline')
+
+        # 将结果存储到对应的行块中
+        for msg in messages:
+            line_number = msg['row']
+            col_start = msg['column'] - 1  # Parso 是 1-based，转换为 0-based 用于定位
+            message_text = msg['message']
+            msg_type = msg['type']
+
+            # 获取对应行的 QTextBlock (0-based index)
+            block = self.document().findBlockByNumber(line_number - 1)  # 0-based
+            if block and block.isValid():
+                # 获取或创建 BlockUserData
+                data = block.userData()
+                if not data:
+                    from spyder.plugins.editor.utils.editor import BlockUserData
+                    data = BlockUserData(self)
+                    block.setUserData(data)
+
+                # 将 parso 消息添加到 code_analysis 列表
+                # 格式: (source, code, severity, message)
+                # source: 'parso', code: '', severity: 2 (error) or 1 (warning), message: text
+                severity = 2 if msg_type == 'error' else 1
+                data.code_analysis.append(('parso', '', severity, message_text))
+                # 为错误/警告设置颜色
+                data.color = self.error_color if msg_type == 'error' else self.warning_color
+
+                # --- 修正：为当前块添加下划线高亮 ---
+                # 从 Spyder 源码 _process_code_analysis 看，使用 "code_analysis_underline" 作为 key
+                underline_color = self.error_color if msg_type == 'error' else self.warning_color
+
+                # 1. 创建 QTextCursor 来定义高亮区域
+                # 尝试获取更精确的列信息 (start_col, end_col)
+                # Parso 提供了 start_pos，我们可以尝试用它来定位
+                start_pos = block.position() + col_start
+                # 简单起见，高亮错误消息描述的第一个单词或整个错误位置
+                # 这里可以根据 message_text 做更复杂的词法分析，但暂时高亮一个字符
+                end_pos = start_pos + 1  # 高亮一个字符
+
+                # 确保 end_pos 不超出 block 范围
+                if end_pos > block.position() + block.length() - 1:  # -1 是为了去掉换行符
+                    end_pos = block.position() + block.length() - 1
+                    if end_pos <= start_pos:  # 如果 block 只有一个字符或为空
+                        end_pos = start_pos + 1  # 至少高亮一个位置，如果可能的话
+
+                cursor = QTextCursor(self.document())
+                cursor.setPosition(start_pos)
+                cursor.setPosition(end_pos, QTextCursor.KeepAnchor)
+
+                # 2. 使用 highlight_selection 方法添加下划线
+                self.highlight_selection(
+                    'code_analysis_underline',
+                    cursor,
+                    underline_color=QColor(underline_color),
+                    underline_style=QTextCharFormat.SingleUnderline  # 或其他样式
+                )
+                # --- 结束修正 ---
+
+        # 发射信号通知 ScrollFlagArea 和 LineNumberArea 更新
+        self.sig_flags_changed.emit()
+        self.linenumberarea.update()
+
+    def _clear_parso_results(self):
+        """清除所有 parso 分析结果"""
+        # 遍历所有块，清除 parso 相关的 code_analysis
+        block = self.document().firstBlock()
+        while block.isValid():
+            data = block.userData()
+            if data and hasattr(data, 'code_analysis'):
+                # 只清除 parso 来源的分析
+                data.code_analysis = [(s, c, sev, msg) for s, c, sev, msg in data.code_analysis if s != 'parso']
+                # 如果 code_analysis 为空，可能需要重置颜色
+                if not data.code_analysis:
+                    data.color = None  # 重置颜色
+            block = block.next()
 
     def _on_text_changed_for_folding(self):
         """当编辑器文本改变时，延迟触发折叠计算和更新"""
@@ -1044,7 +1171,6 @@ class JediCodeEditor(CodeEditor):
             self._handle_shift_enter(cursor)
             event.accept()  # 确保事件被处理
             return  # 直接返回，不执行后续逻辑
-
         # 处理补全弹窗导航
         if self.popup.isVisible():
             # ---- Handle hard coded and builtin actions
@@ -1081,12 +1207,10 @@ class JediCodeEditor(CodeEditor):
                 self.popup.setCurrentRow(min(self.popup.count() - 1, current + 1))
                 event.accept()
                 return
-
         # 隐藏弹窗
         if event.text() in '()[]{}.,;:!? ' and self.popup.isVisible():
             self.popup.hide()
             self._popup_timeout_timer.stop()  # 停止超时计时器
-
         # 处理Enter/Return的缩进逻辑 (只处理普通回车，不处理Shift+Enter)
         if key in (Qt.Key_Return, Qt.Key_Enter):
             cursor = self.textCursor()
@@ -1109,18 +1233,14 @@ class JediCodeEditor(CodeEditor):
                     self.setTextCursor(cursor)
                 event.accept()
                 return
-
         # 记录光标位置和文本状态，以便在删除时也能触发补全
         cursor = self.textCursor()
         old_pos = cursor.position()
         old_text = self.toPlainText()
-
         # 执行默认的 keyPressEvent
         super().keyPressEvent(event)
-
         # 判断是否为删除操作（Backspace 或 Delete）
         is_delete = (key == Qt.Key_Backspace) or (key == Qt.Key_Delete)
-
         # 根据输入内容决定是否触发补全
         text = event.text()
         should_trigger = False
@@ -1143,7 +1263,6 @@ class JediCodeEditor(CodeEditor):
             # 在删除后，检查是否应该显示补全
             if self._should_show_completion_on_delete():
                 should_trigger = True
-
         if should_trigger:
             self._input_delay_timer.start(self._input_delay_ms)
             # 如果触发了补全，重新启动超时计时器
@@ -1229,7 +1348,6 @@ class JediCodeEditor(CodeEditor):
             file_hash = hashlib.md5(code.encode('utf-8')).hexdigest()[:8]
             temp_path = temp_dir / f"code_{file_hash}.py"
             temp_path.write_text(code, encoding='utf-8')
-
             if self._is_spyder_running():
                 self._send_file_to_spyder(str(temp_path))
                 self._activate_spyder_window()
@@ -1242,7 +1360,6 @@ class JediCodeEditor(CodeEditor):
                 subprocess.Popen([self.python_exe_path, str(spyder_cmd), str(temp_path)])
                 # 延迟激活（等窗口创建）
                 QTimer.singleShot(2000, self._activate_spyder_window)
-
             self._start_file_watcher(str(temp_path))
         except Exception as e:
             from qfluentwidgets import MessageBox
@@ -1286,12 +1403,10 @@ class JediCodeEditor(CodeEditor):
             # 传递 _target_site_packages
             self.pending_completion_request = (text, line, column, self._target_site_packages)
             return
-
         cursor = self.textCursor()
         text = self.toPlainText()
         line = cursor.blockNumber() + 1
         column = cursor.columnNumber()
-
         # 传递 _target_site_packages
         self.completion_future = completion_pool.submit(
             self.completion_worker.request_completions,
@@ -1337,12 +1452,10 @@ class JediCodeEditor(CodeEditor):
             if word.lower().startswith(current_prefix.lower()) and word not in seen and len(word) >= 2:
                 completions.append((word, 'custom', '', ''))  # 修改：添加空的detail
                 seen.add(word)
-
         if not completions:
             self.popup.hide()
             self._popup_timeout_timer.stop()  # 停止超时计时器
             return
-
         # --- 优化排序算法 ---
         def sort_key(item):
             name, type_name, description, detail = item  # 修改：解包detail
@@ -1459,7 +1572,6 @@ class JediCodeEditor(CodeEditor):
 
         completions.sort(key=sort_key)
         completions = completions[:self.max_completions]
-
         self.popup.clear()
         for name, type_name, description, detail in completions:  # 修改：解包detail
             item = QListWidgetItem(name)
@@ -1467,7 +1579,6 @@ class JediCodeEditor(CodeEditor):
             item.setData(Qt.UserRole, (name, type_name, description, detail))
             item.setData(Qt.DisplayRole, name)  # 确保兼容性
             self.popup.addItem(item)
-
         if self.popup.count() > 0:
             self._show_popup()
             self.popup.setCurrentRow(0)
@@ -1536,14 +1647,12 @@ class JediCodeEditor(CodeEditor):
         # 这个值可能需要根据字体和行高进行调整
         vertical_offset = 0  # 例如，-2, -1, 0, 1, 2
         screen_cursor_pos.setY(screen_cursor_pos.y() + vertical_offset)
-
         # --- 修改：动态计算最佳宽度，使用截断后的描述和详情 ---
         max_width = 0
         # --- 新增：定义截断参数，与 CompletionItemDelegate 保持一致 ---
         max_description_length = 60  # 与 delegate 中保持一致
         max_detail_length = 40
         truncation_suffix = "..."
-
         for i in range(self.popup.count()):
             item = self.popup.item(i)
             item_data = item.data(Qt.UserRole)
@@ -1564,43 +1673,35 @@ class JediCodeEditor(CodeEditor):
                 type_name = ""
                 truncated_description = ""
                 truncated_detail = ""
-
             # 计算该项所需宽度 (使用截断后的描述和详情)
             fm = self.popup.fontMetrics()
-
             # 替换 fm.width(text) → fm.boundingRect(0, 0, 10000, 100, 0, text).width()
             def text_width(s):
                 if not s:
                     return 0
                 return fm.boundingRect(0, 0, 10000, 100, 0, s).width()
-
             char_width = text_width(self.type_chars.get(type_name, '?')) + 20
             name_width = text_width(name) + 20
             desc_width = text_width(truncated_description) + 20
             detail_width = text_width(truncated_detail) + 20
             total_width = char_width + name_width + max(desc_width, detail_width) + 60  # 留间距
             max_width = max(max_width, total_width)
-
         # 设置弹窗宽度（限制在屏幕范围内）
         screen_width = self.screen().geometry().width()
         popup_width = min(max_width, screen_width - 100)
         popup_width = max(popup_width, 500)
         self.popup.setFixedWidth(popup_width)
-
         # 调整弹窗位置，确保不超出屏幕边界
         x = screen_cursor_pos.x()
         y = screen_cursor_pos.y()
-
         # 检查右边是否超出屏幕
         if x + popup_width > screen_width:
             x = screen_width - popup_width - 10
-
         # 检查底部是否超出屏幕
         screen_height = self.screen().geometry().height()
         item_height = self.popup.sizeHintForRow(0) if self.popup.count() > 0 else 40
         visible_items = min(self.popup.count(), 15)
         popup_height = item_height * visible_items + 10
-
         self.popup.move(x, y)
         self.popup.setFixedHeight(popup_height)
         self.popup.show()
@@ -1626,7 +1727,6 @@ class JediCodeEditor(CodeEditor):
             self.popup.hide()
             self._popup_timeout_timer.stop()  # 停止超时计时器
             return
-
         self._completing = True
         try:
             item = self.popup.currentItem()
@@ -1636,7 +1736,6 @@ class JediCodeEditor(CodeEditor):
             else:
                 completion = item.text()
                 type_name = ""  # 如果没有类型信息，设为空字符串
-
             # 更新使用记录 (带时间衰减)
             current_time = time.time()
             if completion in self.completion_usage:
@@ -1646,30 +1745,25 @@ class JediCodeEditor(CodeEditor):
             else:
                 # 新增记录
                 self.completion_usage[completion] = (current_time, 1)
-
             # 限制记录数量
             if len(self.completion_usage) > self.max_usage_records:
                 # 按时间排序，删除最旧的
                 sorted_items = sorted(self.completion_usage.items(), key=lambda x: x[1][0])
                 oldest_key = sorted_items[0][0]
                 del self.completion_usage[oldest_key]
-
             cursor = self.textCursor()
             prefix = self._get_completion_prefix()
             if prefix:
                 # 智能替换：选择 'my_variable' 时替换整个 'my_var'
                 cursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, len(prefix))
             cursor.insertText(completion)
-
             # --- 新增：如果类型是函数或方法，自动添加 () ---
             if type_name in ['function', 'method', 'class', 'builtin_function_or_method', 'instance']:
                 cursor.insertText('()')
                 # 将光标移动到括号内
                 cursor.movePosition(QTextCursor.PreviousCharacter, QTextCursor.MoveAnchor, 1)
             # ---
-
             self.setTextCursor(cursor)
-
         finally:
             self._completing = False
             self.popup.hide()
@@ -1692,10 +1786,8 @@ class JediCodeEditor(CodeEditor):
         if hasattr(self, 'completion_worker'):
             self.completion_worker.running = False
 
-
 class MainWindow(QMainWindow):
     """主窗口"""
-
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Jedi Code Editor with Smart Completion")
@@ -1706,7 +1798,7 @@ class MainWindow(QMainWindow):
         self.editor = JediCodeEditor()
         # 示例代码，包含多种可折叠的结构
         example_code = """import os
-
+os.environ()
 def outer_function():
     print("This is the outer function.")
     x = 10
@@ -1716,22 +1808,17 @@ def outer_function():
             print(f"Inner loop: {i}")
     else:
         print("x is 5 or less")
-
     def inner_function():
         print("This is the inner function.")
         y = 20
         return x + y
-
     result = inner_function()
     return result
-
 class MyClass:
     def __init__(self):
         self.value = 42
-
     def my_method(self):
         print(f"My value is {self.value}")
-
 def another_function():
     try:
         risky_operation = 1 / 0
@@ -1739,10 +1826,8 @@ def another_function():
         print("Caught an error!")
     finally:
         print("This runs no matter what.")
-
 # This is a simple assignment
 simple_var = "Hello, World!"
-
 """
         self.editor.set_text(example_code)
         self.find_replace.set_editor(self.editor)
@@ -1751,7 +1836,6 @@ simple_var = "Hello, World!"
         layout.addWidget(self.find_replace)
         layout.addWidget(self.editor)
         self.setCentralWidget(central)
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
