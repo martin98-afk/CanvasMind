@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QFileDialog, QStackedWidget, QApplication
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QFileDialog, QStackedWidget, QApplication, \
+    QLineEdit, QLabel, QFormLayout, QScrollArea, QDialog, QButtonGroup, QListWidgetItem, QFrame, QPushButton
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SegmentedWidget, \
     FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
-    TransparentDropDownToolButton, SubtitleLabel, CaptionLabel
+    TransparentDropDownToolButton, SubtitleLabel, CaptionLabel, ComboBox, MessageBoxBase, MessageBox, LineEdit, \
+    ScrollArea, PrimaryPushButton, ToggleToolButton
 from app.utils.utils import get_icon, serialize_for_json
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
@@ -14,13 +16,190 @@ from pathlib import Path
 from loguru import logger
 
 
+class ParameterGroupDialog(MessageBoxBase):
+    """参数组编辑对话框"""
+
+    def __init__(self, parent=None, group_name="", group_data=None, is_new=True):
+        super().__init__(parent)
+        self.titleLabel = SubtitleLabel("编辑参数组" if not is_new else "新建参数组", self)
+        self.group_name = group_name
+        self.group_data = group_data or {}
+        self.is_new = is_new
+
+        # 设置对话框大小
+        self.widget.setFixedSize(600, 500)
+
+        # 创建表单布局
+        self.hbox_layout = QHBoxLayout()
+
+        # 参数组名称输入
+        self.name_edit = LineEdit()
+        self.name_edit.setPlaceholderText("请输入参数组名称")
+        if group_name:
+            self.name_edit.setText(group_name)
+        self.hbox_layout.addWidget(BodyLabel("参数组名称：", self))
+        self.hbox_layout.addWidget(self.name_edit, 1)
+        self.save_as_template = ToggleToolButton(FluentIcon.SAVE_AS, self)
+        self.save_as_template.setChecked(False)
+        self.save_as_template.setToolTip("是否保存为参数模板")
+        self.hbox_layout.addStretch()
+        self.hbox_layout.addWidget(self.save_as_template)
+        # 参数编辑区域
+        self.params_list = ListWidget()
+        self.params_list.setMinimumHeight(200)
+
+        # 添加参数按钮
+        self.add_param_btn = PushButton("添加参数", self)
+        self.add_param_btn.clicked.connect(self.add_parameter_row)
+
+        # 将表单和滚动区域添加到主布局
+        self.viewLayout.setSpacing(5)
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addLayout(self.hbox_layout)
+        self.viewLayout.addWidget(self.params_list)
+        self.viewLayout.addWidget(self.add_param_btn)
+
+        # 初始化已有参数
+        if group_data:
+            for key, value in group_data.items():
+                self.add_parameter_row(key, str(value))
+
+        # 如果没有参数，添加一个空行
+        if not group_data:
+            self.add_parameter_row()
+
+    def add_parameter_row(self, key="", value=""):
+        """添加参数行"""
+        # 创建参数项容器
+        item_widget = QWidget()
+        item_layout = QHBoxLayout(item_widget)
+        item_layout.setContentsMargins(4, 2, 4, 2)
+
+        key_edit = LineEdit()
+        key_edit.setPlaceholderText("参数名")
+        if key:
+            key_edit.setText(key)
+
+        value_edit = LineEdit()
+        value_edit.setPlaceholderText("参数值")
+        if value:
+            value_edit.setText(value)
+
+        delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
+        delete_btn.clicked.connect(lambda: self.remove_parameter_row(item_widget))
+
+        item_layout.addWidget(key_edit)
+        item_layout.addWidget(value_edit)
+        item_layout.addWidget(delete_btn)
+
+        # 创建ListWidgetItem并设置为自定义widget
+        list_item = QListWidgetItem(self.params_list)
+        list_item.setSizeHint(item_widget.sizeHint())
+        self.params_list.setItemWidget(list_item, item_widget)
+
+        # 更新item大小
+        item_widget.adjustSize()
+        list_item.setSizeHint(item_widget.sizeHint())
+
+    def remove_parameter_row(self, item_widget):
+        """移除参数行"""
+        for i in range(self.params_list.count()):
+            item = self.params_list.item(i)
+            if self.params_list.itemWidget(item) == item_widget:
+                self.params_list.takeItem(i)
+                item_widget.deleteLater()
+                break
+
+    def get_parameters(self):
+        """获取参数字典"""
+        params = {}
+        for i in range(self.params_list.count()):
+            item = self.params_list.item(i)
+            item_widget = self.params_list.itemWidget(item)
+            if item_widget:
+                layout = item_widget.layout()
+                if layout and layout.count() >= 2:
+                    key_widget = layout.itemAt(0).widget()
+                    value_widget = layout.itemAt(1).widget()
+                    if isinstance(key_widget, LineEdit) and isinstance(value_widget, LineEdit):
+                        key = key_widget.text().strip()
+                        value = value_widget.text().strip()
+                        if key:  # 只有当key不为空时才添加
+                            try:
+                                # 尝试转换为合适的数据类型
+                                if value.lower() in ('true', 'false'):
+                                    value = value.lower() == 'true'
+                                elif '.' in value:
+                                    value = float(value)
+                                elif value.isdigit():
+                                    value = int(value)
+                            except:
+                                pass  # 保持字符串
+                            params[key] = value
+        return params
+
+    def get_group_name(self):
+        """获取参数组名称"""
+        return self.name_edit.text().strip()
+
+    def should_save_as_template(self):
+        """是否保存为模板"""
+        return self.save_as_template.isChecked()
+
+
+class TemplateSelectionDialog(MessageBoxBase):
+    """参数组模板选择对话框"""
+
+    def __init__(self, parent=None, templates=None):
+        super().__init__(parent)
+        self.titleLabel = SubtitleLabel("选择参数组类型", self)
+        self.selected_template = None
+        self.templates = templates or {}
+
+        # 设置对话框大小
+        self.widget.setFixedSize(400, 300)
+
+        # 创建布局
+        self.viewLayout.addWidget(self.titleLabel)
+
+        # 创建模板选择区域
+        self.template_widget = QWidget()
+        self.template_layout = QVBoxLayout(self.template_widget)
+
+        # 添加模板按钮
+        for template_name in self.templates.keys():
+            btn = PushButton(template_name, self)
+            btn.clicked.connect(lambda checked=False, name=template_name: self.select_template(name))
+            self.template_layout.addWidget(btn)
+
+        # 添加自定义按钮
+        custom_btn = PushButton("自定义参数组", self)
+        custom_btn.clicked.connect(lambda: self.select_template("custom"))
+        self.template_layout.addWidget(custom_btn)
+
+        # 添加滚动区域
+        scroll_area = QScrollArea()
+        # 深色背景
+        scroll_area.setStyleSheet("QScrollArea { background-color: #333333; }")
+        scroll_area.setWidget(self.template_widget)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setMinimumHeight(150)
+
+        self.viewLayout.addWidget(scroll_area)
+
+    def select_template(self, template_name):
+        """选择模板"""
+        self.selected_template = template_name
+        self.accept()
+
+
 class GlobalPanelWidget:
     """处理全局变量UI的子模块"""
 
     def __init__(self, main_window, parent_panel, parent_layout):
         self.main_window = main_window
-        self.parent_panel = parent_panel # PropertyPanel 的实例
-        self.parent_layout = parent_layout # PropertyPanel 中的 global_vbox
+        self.parent_panel = parent_panel  # PropertyPanel 的实例
+        self.parent_layout = parent_layout  # PropertyPanel 中的 global_vbox
 
         # 缓存字典
         self._custom_var_cards = {}
@@ -39,6 +218,25 @@ class GlobalPanelWidget:
         self.custom_vars_layout = None
         self.node_vars_layout = None
         self.env_vars_layout = None
+
+        # 预定义的参数组模板
+        self.parameter_group_templates = {
+            "大模型配置": {
+                "模型名称": "gpt-4",
+                "API_URL": "https://api.openai.com/v1/chat/completions",
+                "API_KEY": "",
+                "温度": 0.7,
+                "最大Token": 2048,
+                "系统提示": ""
+            },
+            "数据库配置": {
+                "主机": "localhost",
+                "端口": 3306,
+                "用户名": "root",
+                "密码": "",
+                "数据库名": "mydb"
+            }
+        }
 
     def build_ui(self):
         """构建全局变量UI"""
@@ -76,7 +274,7 @@ class GlobalPanelWidget:
         这个方法是 PropertyPanel 转发信号的入口。
         """
         if not self._built:
-            # 如果全局面板尚未构建，直接返回，不处理信号
+            # 如果全般面板尚未构建，直接返回，不处理信号
             return
 
         # 调用内部处理逻辑
@@ -114,7 +312,12 @@ class GlobalPanelWidget:
             if action == "add" or action == "update":
                 if var_name not in self._custom_var_cards:
                     if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
-                        card = self._create_dict_row(var_name, global_vars.custom[var_name].value)
+                        value = global_vars.custom[var_name].value
+                        # 检查是否是字典类型，决定创建哪种卡片
+                        if isinstance(value, dict):
+                            card = self._create_parameter_group_row(var_name, value)
+                        else:
+                            card = self._create_dict_row(var_name, value)
                         if self.custom_vars_layout:
                             self.custom_vars_layout.addWidget(card)
                             self._custom_var_cards[var_name] = card
@@ -158,9 +361,19 @@ class GlobalPanelWidget:
         layout.setSpacing(8)
         title = TransparentPushButton(text="自定义变量 (custom)", icon=get_icon("自定义变量"), parent=self.parent_panel)
         layout.addWidget(title)
-        add_custom_btn = TransparentPushButton(text="新增自定义变量", parent=self.parent_panel, icon=FluentIcon.ADD)
+
+        # 创建一个水平布局来放置两个按钮
+        btn_layout = QHBoxLayout()
+        add_custom_btn = TransparentPushButton(text="新增KV变量", parent=self.parent_panel, icon=FluentIcon.ADD)
         add_custom_btn.clicked.connect(self.add_new_custom_variable)
-        layout.addWidget(add_custom_btn)
+
+        add_group_btn = TransparentPushButton(text="新增参数组", parent=self.parent_panel, icon=FluentIcon.ADD)
+        add_group_btn.clicked.connect(self.add_new_parameter_group)
+
+        btn_layout.addWidget(add_custom_btn)
+        btn_layout.addWidget(add_group_btn)
+        layout.addLayout(btn_layout)
+
         self.custom_vars_container = QWidget()
         self.custom_vars_layout = QVBoxLayout(self.custom_vars_container)
         self.custom_vars_layout.setContentsMargins(0, 0, 0, 0)
@@ -174,7 +387,8 @@ class GlobalPanelWidget:
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
-        title = TransparentPushButton(text="节点输出变量 (node_vars)", icon=get_icon("节点变量"), parent=self.parent_panel)
+        title = TransparentPushButton(text="节点输出变量 (node_vars)", icon=get_icon("节点变量"),
+                                      parent=self.parent_panel)
         layout.addWidget(title)
         self.node_vars_container = QWidget()
         self.node_vars_layout = QVBoxLayout(self.node_vars_container)
@@ -215,7 +429,11 @@ class GlobalPanelWidget:
         existing_custom = set(self._custom_var_cards.keys())
         for name in current_custom - existing_custom:
             var_obj = global_vars.custom[name]
-            card = self._create_dict_row(name, var_obj.value)
+            # 根据值的类型决定创建哪种卡片
+            if isinstance(var_obj.value, dict):
+                card = self._create_parameter_group_row(name, var_obj.value)
+            else:
+                card = self._create_dict_row(name, var_obj.value)
             self.custom_vars_layout.addWidget(card)
             self._custom_var_cards[name] = card
         for name in existing_custom - current_custom:
@@ -224,15 +442,34 @@ class GlobalPanelWidget:
         for name in current_custom & existing_custom:
             var_obj = global_vars.custom[name]
             card = self._custom_var_cards[name]
+            # 更新卡片显示内容
+            self._update_card_display(card, var_obj.value)
+
+    def _update_card_display(self, card, value):
+        """更新卡片的显示内容"""
+        if isinstance(value, dict):
+            # 更新参数组卡片
+            self._update_parameter_group_card(card, value)
+        else:
+            # 更新普通KV卡片
             if card.layout().count() >= 2:
                 value_label = card.layout().itemAt(1).widget()
                 if isinstance(value_label, BodyLabel):
                     try:
-                        preview = json.dumps(var_obj.value, ensure_ascii=False, default=str)[:40] + "..."\
-                            if isinstance(var_obj.value, (dict, list)) else str(var_obj.value)[:40]
+                        preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." \
+                            if isinstance(value, (dict, list)) else str(value)[:40]
                     except:
                         preview = "<无法预览>"
                     value_label.setText(preview)
+
+    def _update_parameter_group_card(self, card, value):
+        """更新参数组卡片的显示内容"""
+        # 更新预览文本
+        if card.layout().count() >= 2:
+            value_label = card.layout().itemAt(1).widget()
+            if isinstance(value_label, BodyLabel):
+                param_count = len(value) if isinstance(value, dict) else 0
+                value_label.setText(f"[参数组: {param_count}个参数]")
 
     def _refresh_node_vars_page(self):
         global_vars = getattr(self.main_window, 'global_variables', None)
@@ -290,6 +527,7 @@ class GlobalPanelWidget:
             self.env_vars_layout.addWidget(BodyLabel("暂无环境变量"))
 
     def _create_dict_row(self, name: str, value):
+        """创建普通的KV变量卡片"""
         card = CardWidget(self.parent_panel)
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
@@ -334,6 +572,88 @@ class GlobalPanelWidget:
         card.customContextMenuRequested.connect(show_context_menu)
         return card
 
+    def _create_parameter_group_row(self, name: str, value):
+        """创建参数组卡片"""
+        card = CardWidget(self.parent_panel)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setSpacing(4)
+
+        # 标题行
+        title_layout = QHBoxLayout()
+        name_label = BodyLabel(f"{name}:")
+        title_layout.addWidget(name_label)
+
+        # 参数组信息
+        param_count = len(value) if isinstance(value, dict) else 0
+        value_label = BodyLabel(f"[参数组: {param_count}个参数]")
+        value_label.setStyleSheet("color: #888888;")
+        title_layout.addWidget(value_label)
+        title_layout.addStretch()
+
+        # 删除按钮
+        del_btn = TransparentToolButton(FluentIcon.CLOSE, self.parent_panel)
+        del_btn.setIconSize(QSize(12, 12))
+        del_btn.setFixedSize(16, 16)
+        del_btn.clicked.connect(lambda _, n=name: self.delete_variable('custom', n))
+        title_layout.addWidget(del_btn)
+        layout.addLayout(title_layout)
+
+        # 参数详情展开区域
+        detail_container = QWidget()
+        detail_layout = QVBoxLayout(detail_container)
+        detail_layout.setContentsMargins(8, 4, 8, 4)
+        detail_layout.setSpacing(2)
+
+        # 显示参数详情
+        if isinstance(value, dict):
+            for key, val in value.items():
+                param_row = QHBoxLayout()
+                param_key = BodyLabel(f"{key}:")
+                param_value = BodyLabel(str(val)[:50] + "..." if len(str(val)) > 50 else str(val))
+                param_value.setStyleSheet("color: #888888;")
+                param_value.setWordWrap(True)
+                param_row.addWidget(param_key)
+                param_row.addWidget(param_value, 1)
+                detail_layout.addLayout(param_row)
+
+        # 默认折叠参数详情
+        detail_container.setVisible(False)
+        layout.addWidget(detail_container)
+
+        # 添加展开/折叠按钮
+        toggle_btn = TransparentPushButton(text="展开", parent=self.parent_panel)
+        toggle_btn.clicked.connect(lambda: self._toggle_parameter_group_detail(detail_container, toggle_btn))
+        layout.addWidget(toggle_btn)
+
+        def show_context_menu(pos):
+            current_val = self.main_window.global_variables.custom.get(name)
+            current_val = current_val.value if current_val is not None else "<已删除>"
+            menu = RoundMenu(parent=self.parent_panel)
+            menu.addActions(
+                [
+                    Action(
+                        FluentIcon.COPY, "复制为表达式", parent=self.parent_panel,
+                        triggered=lambda: self.copy_as_expression("custom", name)
+                    ),
+                    Action(
+                        FluentIcon.EDIT, "编辑参数组", parent=self.parent_panel,
+                        triggered=lambda: self.edit_parameter_group(name, current_val)
+                    )
+                ]
+            )
+            menu.exec_(card.mapToGlobal(pos))
+
+        card.setContextMenuPolicy(Qt.CustomContextMenu)
+        card.customContextMenuRequested.connect(show_context_menu)
+        return card
+
+    def _toggle_parameter_group_detail(self, detail_container, toggle_btn):
+        """切换参数组详情的显示/隐藏"""
+        is_visible = detail_container.isVisible()
+        detail_container.setVisible(not is_visible)
+        toggle_btn.setText("收起" if not is_visible else "展开")
+
     def _create_variable_card(self, name: str, node_var_obj):
         parts = name.split("_")
         if len(parts) == 2:
@@ -354,7 +674,8 @@ class GlobalPanelWidget:
         title_layout = QHBoxLayout()
         title = CaptionLabel(f"{node_name}\n{port_name}")
         title_layout.addWidget(title)
-        strategy_combo = TransparentDropDownToolButton(icon=get_icon(node_var_obj.update_policy), parent=self.parent_panel)
+        strategy_combo = TransparentDropDownToolButton(icon=get_icon(node_var_obj.update_policy),
+                                                       parent=self.parent_panel)
         strategy_combo.setProperty("policy", node_var_obj.update_policy)
         strategy_combo.setProperty("node_var_name", name)
         menu = RoundMenu(parent=strategy_combo)
@@ -411,6 +732,7 @@ class GlobalPanelWidget:
         def on_card_double_clicked(event):
             if event.button() == Qt.LeftButton:
                 self.zoom_to_node(name)
+
         card.mouseDoubleClickEvent = on_card_double_clicked
         card.setCursor(Qt.PointingHandCursor)
         card.tree_widget = tree
@@ -516,6 +838,67 @@ class GlobalPanelWidget:
                 self._handle_global_variable_change("custom", name, "add")
                 InfoBar.success("已添加", f"自定义变量 {name}", parent=self.main_window)
 
+    def add_new_parameter_group(self):
+        """添加新的参数组"""
+        # 显示模板选择对话框
+        template_dialog = TemplateSelectionDialog(
+            parent=self.main_window,
+            templates=self.parameter_group_templates
+        )
+
+        if template_dialog.exec():
+            selected_template = template_dialog.selected_template
+
+            if selected_template == "custom":
+                # 创建自定义参数组
+                self._open_parameter_group_editor("", {}, True)
+            elif selected_template in self.parameter_group_templates:
+                # 使用模板创建参数组
+                template_data = self.parameter_group_templates[selected_template]
+                group_name = selected_template
+                self._open_parameter_group_editor(group_name, template_data, True)
+
+    def _open_parameter_group_editor(self, group_name, group_data, is_new=True):
+        """打开参数组编辑器"""
+        dialog = ParameterGroupDialog(
+            parent=self.main_window,
+            group_name=group_name,
+            group_data=group_data,
+            is_new=is_new
+        )
+
+        if dialog.exec():
+            new_name = dialog.get_group_name()
+            parameters = dialog.get_parameters()
+
+            if not new_name:
+                InfoBar.warning("无效名称", "参数组名称不能为空", parent=self.main_window)
+                return
+
+            if not parameters:
+                InfoBar.warning("无效参数", "参数组至少需要一个参数", parent=self.main_window)
+                return
+
+            global_vars = getattr(self.main_window, 'global_variables', None)
+            if global_vars:
+                # 如果是编辑现有参数组且名称改变，先删除旧的
+                if not is_new and group_name != new_name:
+                    if hasattr(global_vars, 'custom') and group_name in global_vars.custom:
+                        del global_vars.custom[group_name]
+                        self._handle_global_variable_change("custom", group_name, "delete")
+
+                # 设置新的参数组
+                global_vars.set(new_name, parameters)
+                self._refresh_custom_vars_page()
+                self._handle_global_variable_change("custom", new_name, "add")
+
+                # 如果用户选择了保存为模板
+                if dialog.should_save_as_template():
+                    self.parameter_group_templates[new_name] = parameters.copy()
+                    InfoBar.success("已保存", f"参数组 {new_name} 已保存为模板", parent=self.main_window)
+                else:
+                    InfoBar.success("已保存", f"参数组 {new_name}", parent=self.main_window)
+
     def add_new_env_variable(self):
         dialog = CustomTwoInputDialog(
             title1="环境变量名",
@@ -594,6 +977,48 @@ class GlobalPanelWidget:
             global_vars.set(new_name, new_value)
             self._refresh_custom_vars_page()
             InfoBar.success("已更新", f"变量 {new_name}", parent=self.main_window)
+
+    def edit_parameter_group(self, var_name: str, current_value):
+        """编辑参数组"""
+        if not isinstance(current_value, dict):
+            InfoBar.error("编辑失败", "该变量不是参数组", parent=self.main_window)
+            return
+
+        dialog = ParameterGroupDialog(
+            parent=self.main_window,
+            group_name=var_name,
+            group_data=current_value,
+            is_new=False
+        )
+
+        if dialog.exec():
+            new_name = dialog.get_group_name()
+            parameters = dialog.get_parameters()
+
+            if not new_name:
+                InfoBar.warning("无效名称", "参数组名称不能为空", parent=self.main_window)
+                return
+
+            if not parameters:
+                InfoBar.warning("无效参数", "参数组至少需要一个参数", parent=self.main_window)
+                return
+
+            global_vars = getattr(self.main_window, 'global_variables', None)
+            if global_vars:
+                # 如果名称改变，先删除旧的
+                if var_name != new_name:
+                    if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
+                        del global_vars.custom[var_name]
+                        self._handle_global_variable_change("custom", var_name, "delete")
+
+                # 设置新的参数组
+                global_vars.set(new_name, parameters)
+                self._refresh_custom_vars_page()
+                if new_name != var_name:
+                    self._handle_global_variable_change("custom", new_name, "add")
+                else:
+                    self._handle_global_variable_change("custom", new_name, "update")
+                InfoBar.success("已更新", f"参数组 {new_name}", parent=self.main_window)
 
     def edit_env_variable(self, key: str, current_value):
         dialog = CustomTwoInputDialog(
@@ -686,7 +1111,12 @@ class GlobalPanelWidget:
                 if var_name not in self._custom_var_cards:
                     global_vars = self.main_window.global_variables
                     if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
-                        card = self._create_dict_row(var_name, global_vars.custom[var_name].value)
+                        value = global_vars.custom[var_name].value
+                        # 检查是否是字典类型，决定创建哪种卡片
+                        if isinstance(value, dict):
+                            card = self._create_parameter_group_row(var_name, value)
+                        else:
+                            card = self._create_dict_row(var_name, value)
                         self.custom_vars_layout.addWidget(card)
                         self._custom_var_cards[var_name] = card
             elif action == "delete":
