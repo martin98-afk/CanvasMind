@@ -1,4 +1,3 @@
-
 from NodeGraphQt.constants import ViewerEnum, Z_VAL_NODE_WIDGET
 from NodeGraphQt.errors import NodeWidgetError
 from qtpy import QtWidgets, QtCore
@@ -10,14 +9,19 @@ class _NodeGroupBox(QtWidgets.QGroupBox):
         super(_NodeGroupBox, self).__init__(parent)
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(1)
+        self._label = label
         self.setTitle(label)
 
     def setTitle(self, text):
+        self._label = text
         margin = (0, 2, 0, 0) if text else (0, 0, 0, 0)
         self.layout().setContentsMargins(*margin)
         super(_NodeGroupBox, self).setTitle(text)
+        # 重新应用样式以适应新的标题
+        self.setTitleAlign(self._current_align if hasattr(self, '_current_align') else 'center')
 
     def setTitleAlign(self, align='center'):
+        self._current_align = align
         text_color = tuple(map(lambda i, j: i - j, (255, 255, 255),
                                ViewerEnum.BACKGROUND_COLOR.value))
         style_dict = {
@@ -32,25 +36,31 @@ class _NodeGroupBox(QtWidgets.QGroupBox):
                 'font-weight': 'bold'
             },
             'QGroupBox::title': {
-                'subcontrol-origin': 'margin',
-                'subcontrol-position': 'top center',
                 'color': 'rgba({0}, {1}, {2}, 200)'.format(*text_color),
                 'padding': '0px',
+                'font-size': '12pt',
+                'font-weight': 'bold'
             }
         }
+
         if self.title():
             style_dict['QGroupBox']['padding-top'] = '14px'
         else:
             style_dict['QGroupBox']['padding-top'] = '2px'
 
+        # 根据对齐方式设置标题位置，但不强制限制宽度
         if align == 'center':
+            style_dict['QGroupBox::title']['subcontrol-origin'] = 'margin'
             style_dict['QGroupBox::title']['subcontrol-position'] = 'top center'
         elif align == 'left':
-            style_dict['QGroupBox::title']['subcontrol-position'] += 'top left'
-            style_dict['QGroupBox::title']['margin-left'] = '4px'
+            style_dict['QGroupBox::title']['subcontrol-origin'] = 'margin'
+            style_dict['QGroupBox::title']['subcontrol-position'] = 'top left'
+            style_dict['QGroupBox::title']['padding-left'] = '4px'
         elif align == 'right':
-            style_dict['QGroupBox::title']['subcontrol-position'] += 'top right'
-            style_dict['QGroupBox::title']['margin-right'] = '4px'
+            style_dict['QGroupBox::title']['subcontrol-origin'] = 'margin'
+            style_dict['QGroupBox::title']['subcontrol-position'] = 'top right'
+            style_dict['QGroupBox::title']['padding-right'] = '4px'
+
         stylesheet = ''
         for css_class, css in style_dict.items():
             style = '{} {{\n'.format(css_class)
@@ -65,6 +75,29 @@ class _NodeGroupBox(QtWidgets.QGroupBox):
 
     def get_node_widget(self):
         return self.layout().itemAt(0).widget()
+
+    def minimumSizeHint(self):
+        """重写最小尺寸提示，确保标题有足够空间，但不影响子控件布局"""
+        size = super(_NodeGroupBox, self).minimumSizeHint()
+        if self.title():
+            # 只为标题文本提供最小宽度，不影响子控件
+            font_metrics = self.fontMetrics()
+            title_width = font_metrics.horizontalAdvance(self.title())
+            # 设置一个合理的最小宽度，但不要强制子控件适应
+            min_width = max(size.width(), title_width + 20)
+            size.setWidth(min_width)
+        return size
+
+    def sizeHint(self):
+        """重写尺寸提示，优化布局，但保持子控件的独立布局"""
+        size = super(_NodeGroupBox, self).sizeHint()
+        if self.title():
+            font_metrics = self.fontMetrics()
+            title_width = font_metrics.horizontalAdvance(self.title())
+            # 仅在必要时调整宽度，让子控件决定实际布局
+            preferred_width = max(size.width(), title_width + 20)
+            size.setWidth(preferred_width)
+        return size
 
 
 class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
@@ -84,7 +117,7 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
     value_changed = QtCore.Signal(str, object)
     """
     Signal triggered when the ``value`` attribute has changed.
-    
+
     (This is connected to the :meth: `BaseNode.set_property` function when the 
     widget is added into the node.)
 

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from NodeGraphQt import NodeBaseWidget
+from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
 from qfluentwidgets import LineEdit, TextEdit
 
@@ -60,8 +61,9 @@ class TextWidget(QtWidgets.QWidget):
 class TextWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", type=None, default="", window=None):
         super().__init__(parent)
+        self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
-        self.set_label(f"{label} ({name})")
+        self.set_label(f"{label}({name})")
         widget = TextWidget(default_text=default, type=type, parent=window, get_port_func=self.get_port_func)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)

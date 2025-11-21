@@ -296,7 +296,7 @@ class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
         self.window = window
         self.name = name
         self.set_name(name)
-        self.set_label(f"{label} ({name})")
+        self.set_label(f"{label}({name})")
         widget = DynamicFormWidget(schema or {}, parent=window, label=label, get_port_func=self.get_port_func)
         self.set_custom_widget(widget)
         widget.sizeHintChanged.connect(self._update_node)

@@ -364,10 +364,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 self.set_property(prop_name, path)
 
         def _add_custom_widget(self, widget, widget_type=None, tab=None):
-            if not isinstance(widget, NodeBaseWidget):
-                raise NodeWidgetError(
-                    '\'widget\' must be an instance of a NodeBaseWidget')
-
             # widget_type = widget_type or NodePropWidgetEnum.HIDDEN.value
             self.set_property(widget.get_name(), widget.get_value())
             widget.value_changed.connect(lambda k, v: self.set_property(k, v))

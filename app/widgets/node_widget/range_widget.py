@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
 from NodeGraphQt import NodeBaseWidget
 from qfluentwidgets import Slider, LineEdit
@@ -105,8 +106,9 @@ class RangeWidget(QtWidgets.QWidget):
 class RangeWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", min_val=0, max_val=100, step=1, default=0):
         super().__init__(parent)
+        self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
-        self.set_label(f"{label} ({name})")
+        self.set_label(f"{label}({name})")
         widget = RangeWidget(min_val, max_val, step, default)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
