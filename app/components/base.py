@@ -8,20 +8,18 @@ import sys
 import uuid
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from pathlib import Path
-from typing import List, Tuple, Type, Union, OrderedDict
-from typing import Any, Dict, Optional
-
-from pandas import DataFrame
-from pydantic import BaseModel, Field
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, Optional
+from typing import List, Tuple, Type, Union, OrderedDict
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 from PIL import Image
 from loguru import logger
+from pydantic import BaseModel, Field
 from pydantic import create_model
-
 
 ENV_RULES = {
     "user_id": {"type": str, "readonly": True},
@@ -914,6 +912,7 @@ class BaseComponent(ABC):
         fields: Dict[str, tuple] = {}
 
         for prop_name, prop_def in cls.properties.items():
+            le, ge = None, None
             if prop_def.type == PropertyType.INT:
                 field_type = int
                 default_val = _parse_default_value(prop_def.default, int)
@@ -927,16 +926,15 @@ class BaseComponent(ABC):
                 default_val = _parse_default_value(prop_def.default, bool)
 
             elif prop_def.type == PropertyType.CHOICE:
-                # 使用 Literal 限制选项
-                from typing import Literal
-                choices = prop_def.choices or ["option1"]
+                choices = prop_def.choices
                 # 动态创建 Literal 类型
                 field_type = Literal[tuple(choices)]  # type: ignore
                 default_val = prop_def.default if prop_def.default in choices else choices[0]
             elif prop_def.type == PropertyType.RANGE:
                 field_type = float if isinstance(prop_def.step, float) else int
                 default_val = _parse_default_value(prop_def.default, field_type)
-                fields[prop_name] = (field_type, Field(default=default_val, ge=prop_def.min, le=prop_def.max))
+                ge = prop_def.min
+                le = prop_def.max
             elif prop_def.type == PropertyType.DYNAMICFORM:
                 # 创建嵌套模型，并用 List[Model] 表示
                 item_model = _create_dynamic_form_model(prop_name, prop_def.schema or {})
@@ -948,7 +946,10 @@ class BaseComponent(ABC):
                 default_val = prop_def.default if prop_def.default != "" else ""
 
             # 使用 Field 确保默认值正确
-            fields[prop_name] = (field_type, Field(default=default_val))
+            if le is not None:
+                fields[prop_name] = (field_type, Field(default=default_val, le=le, ge=ge))
+            else:
+                fields[prop_name] = (field_type, Field(default=default_val))
 
         model_name = f"{cls.__name__}Params"
         base_classes = (ModelMixin, BaseModel)
@@ -1241,10 +1242,9 @@ def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition'
             ft = Union[int, float]
         else:
             ft = str
-
         default_val = _parse_default_value(field_def.default, ft)
-        fields[field_name] = (ft, default_val)
-
+        # 修改这里：使用 Field 包装默认值
+        fields[field_name] = (ft, Field(default=default_val))
     model_name = f"{name}Item"
     base_classes = (ModelMixin, BaseModel)
     return create_model(model_name, __base__=base_classes, **fields)

@@ -26,8 +26,7 @@ from app.utils.config import Settings
 from app.utils.service_manager import SERVICE_MANAGER
 from app.utils.utils import ansi_to_html, get_icon
 from app.widgets.card_widget.project_card import ProjectCard
-from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
-from app.widgets.dialog_widget.output_selection_dialog import OutputSelectionDialog
+from app.widgets.dialog_widget.project_export_dialog import ProjectExportFlowDialog
 
 
 class ProjectRunnerThread(QThread):
@@ -522,15 +521,19 @@ class ExportedProjectsPage(QWidget):
 
     def _edit_project(self, project_path: str):
         """
-        Edits the project's input and output specifications by reusing the selection dialogs
-        and pre-filling them with current values from project_spec.json.
+        Edits the project's input and output specifications and project info by using the
+        integrated ProjectExportFlowDialog, pre-filling it with current values from
+        project_spec.json, requirements.txt, and README.md.
         Uses candidate_inputs and candidate_outputs from model.workflow.json.
         """
         workflow_path = os.path.join(project_path, "model.workflow.json")
         spec_path = os.path.join(project_path, "project_spec.json")
+        requirements_path = os.path.join(project_path, "requirements.txt")
+        readme_path = os.path.join(project_path, "README.md")
 
         if not os.path.exists(workflow_path):
-            self.create_error_info("编辑失败", f"项目 '{os.path.basename(project_path)}' 缺少 model.workflow.json 文件。")
+            self.create_error_info("编辑失败",
+                                   f"项目 '{os.path.basename(project_path)}' 缺少 model.workflow.json 文件。")
             return
         if not os.path.exists(spec_path):
             self.create_error_info("编辑失败", f"项目 '{os.path.basename(project_path)}' 缺少 project_spec.json 文件。")
@@ -550,69 +553,103 @@ class ExportedProjectsPage(QWidget):
             self.create_error_info("加载失败", f"无法读取 project_spec.json: {e}")
             return
 
-        # Get candidates from workflow
-        candidate_inputs = workflow_data.get("candidate_inputs", [])
-        candidate_outputs = workflow_data.get("candidate_outputs", [])
+        # 读取 requirements 和 README
+        requirements_content = ""
+        if os.path.exists(requirements_path):
+            try:
+                with open(requirements_path, 'r', encoding='utf-8') as f:
+                    requirements_content = f.read()
+            except Exception as e:
+                self.logger.warning(f"无法读取 requirements.txt: {e}")
 
-        # Get current selections from the spec
+        readme_content = ""
+        if os.path.exists(readme_path):
+            try:
+                with open(readme_path, 'r', encoding='utf-8') as f:
+                    readme_content = f.read()
+            except Exception as e:
+                self.logger.warning(f"无法读取 README.md: {e}")
+
+        # 获取候选人选和当前选择
+        candidate_items = workflow_data.get("candidate_inputs", []) + workflow_data.get("candidate_outputs", [])
         current_inputs = project_spec.get('inputs', {})
         current_outputs = project_spec.get('outputs', {})
+        project_name = project_spec.get('graph_name', os.path.basename(project_path))  # 从 spec 或路径获取项目名
 
-        # --- Edit Inputs ---
-        input_dialog = InputSelectionDialog(candidate_inputs, current_selected_items=current_inputs, parent=self)
-        if input_dialog.exec():
-            new_selected_inputs = input_dialog.get_selected_items()
-            # Rebuild the inputs dict with new custom_keys
+        # 创建集成流程对话框
+        flow_dialog = ProjectExportFlowDialog(
+            candidate_items=candidate_items,
+            parent=self,
+            current_selected_inputs=current_inputs,
+            current_selected_outputs=current_outputs,
+            project_name=project_name,
+            requirements=requirements_content,
+            readme=readme_content
+        )
+
+        if flow_dialog.exec() == QDialog.Accepted:
+            # 获取用户最终选择
             updated_inputs = {}
-            for item in new_selected_inputs:
-                 key = item.get("custom_key", f"input_{len(updated_inputs)}")
-                 updated_inputs[key] = item
-            project_spec['inputs'] = updated_inputs
-        else:
-            # User cancelled input editing, do nothing and return
-            print("Input editing cancelled by user.")
-            return
+            for item in flow_dialog.get_selected_inputs():
+                key = item.get("custom_key", f"input_{len(updated_inputs)}")
+                updated_inputs[key] = item
 
-        # --- Edit Outputs ---
-        # Assuming OutputSelectionDialog has similar modifications as InputSelectionDialog
-        output_dialog = OutputSelectionDialog(candidate_outputs, current_selected_items=current_outputs, parent=self)
-        if output_dialog.exec():
-            new_selected_outputs = output_dialog.get_selected_items()
-            # Rebuild the outputs dict with new custom_keys
             updated_outputs = {}
-            for item in new_selected_outputs:
-                 # Ensure 'format' is preserved or added if missing from dialog result
-                 # The original spec had 'format' in outputs
-                 if 'format' not in item:
-                     # Try to get format from the original candidate if available
-                     original_candidate = next((c for c in candidate_outputs if
-                                               c['node_id'] == item['node_id'] and
-                                               c['output_name'] == item['output_name']), None)
-                     if original_candidate:
-                         item['format'] = original_candidate.get('format', 'TEXT') # Fallback to TEXT
-                 key = item.get("custom_key", f"output_{len(updated_outputs)}")
-                 # Output spec typically stores node_id, output_name, format (and custom_key)
-                 # Ensure these are present in the item returned by the dialog
-                 updated_outputs[key] = {
-                     "node_id": item["node_id"],
-                     "output_name": item["output_name"],
-                     "format": item["format"],
-                     "custom_key": item["custom_key"], # Should be present from dialog
-                     "node_name": item.get("node_name") # Optional, for reference
-                 }
-            project_spec['outputs'] = updated_outputs
-        else:
-            # User cancelled output editing, do nothing and return
-            print("Output editing cancelled by user.")
-            return
+            for item in flow_dialog.get_selected_outputs():
+                key = item.get("custom_key", f"output_{len(updated_outputs)}")
+                # 确保输出项包含必要的格式信息
+                if 'format' not in item:
+                    # 尝试从候选人选中恢复格式
+                    original_candidate = next(
+                        (c for c in workflow_data.get("candidate_outputs", [])
+                         if c['node_id'] == item['node_id'] and c['output_name'] == item['output_name']),
+                        None
+                    )
+                    item['format'] = original_candidate.get('format', 'TEXT') if original_candidate else 'TEXT'
+                updated_outputs[key] = {
+                    "node_id": item["node_id"],
+                    "output_name": item["output_name"],
+                    "format": item["format"],
+                    "custom_key": item.get("custom_key", key)  # 确保 custom_key 存在
+                }
 
-        # --- Save Updated Spec ---
-        try:
-            with open(spec_path, 'w', encoding='utf-8') as f:
-                json.dump(project_spec, f, indent=2, ensure_ascii=False)
-            self.create_success_info("编辑成功", f"项目 '{os.path.basename(project_path)}' 的接口已更新。")
-        except Exception as e:
-            self.create_error_info("保存失败", f"无法保存 project_spec.json: {e}")
+            final_project_name = flow_dialog.get_project_name()
+            final_readme = flow_dialog.get_readme_content()
+            final_requirements = flow_dialog.get_requirements()
+
+            # 更新 spec 数据
+            project_spec['inputs'] = updated_inputs
+            project_spec['outputs'] = updated_outputs
+            project_spec['graph_name'] = final_project_name  # 更新 spec 中的项目名
+
+            # 保存更新后的 spec
+            try:
+                with open(spec_path, 'w', encoding='utf-8') as f:
+                    json.dump(project_spec, f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                self.create_error_info("保存失败", f"无法保存 project_spec.json: {e}")
+                return
+
+            # 保存更新后的 requirements 和 README
+            try:
+                with open(requirements_path, 'w', encoding='utf-8') as f:
+                    f.write(final_requirements)
+            except Exception as e:
+                self.create_error_info("保存失败", f"无法保存 requirements.txt: {e}")
+                # 注意：即使这里失败，spec 已经保存了，所以不直接返回
+
+            try:
+                with open(readme_path, 'w', encoding='utf-8') as f:
+                    f.write(final_readme)
+            except Exception as e:
+                self.create_error_info("保存失败", f"无法保存 README.md: {e}")
+                # 注意：即使这里失败，spec 已经保存了，所以不直接返回
+
+            self.create_success_info("编辑成功", f"项目 '{final_project_name}' 的接口和信息已更新。")
+        else:
+            print("项目编辑流程被用户取消。")
+            # 用户取消，不做任何更改
+            return
 
     def _view_project_log(self, project_path):
         all_logs = []

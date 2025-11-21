@@ -832,7 +832,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             # 执行普通节点（如果未被禁用）
             if node_id not in disabled_nodes:
                 # 将精确引用变量合并到 node_inputs 作为 evaludate_model_inputs 的局部变量
-                node_inputs_evaluated, node_params_evaluated = evaludate_model_inputs(node["input_values"], node["params"], local_vars=local_vars_for_inputs)
+                node_inputs_evaluated, node_params_evaluated = evaludate_model_inputs(node_inputs, node["params"], local_vars=local_vars_for_inputs)
                 try:
                     logger.info(f"执行节点: {node['name']}")
                     logger.info(f"输入: {node_inputs_evaluated}")

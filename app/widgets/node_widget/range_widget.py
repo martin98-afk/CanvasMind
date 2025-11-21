@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
-from NodeGraphQt import NodeBaseWidget
 from qfluentwidgets import Slider, LineEdit
 
 from app.widgets.node_widget.base import CustomNodeBaseWidget
@@ -15,6 +14,12 @@ class RangeWidget(QtWidgets.QWidget):
         self.min_val = min_val
         self.max_val = max_val
         self.step = step
+
+        # 防抖定时器
+        self._debounce_timer = QtCore.QTimer()
+        self._debounce_timer.setSingleShot(True)
+        self._debounce_timer.timeout.connect(self._emit_value_changed)
+        self._debounce_delay = 100  # 100ms延迟
 
         # 判断是整数还是浮点
         self.is_float = isinstance(step, float) or isinstance(min_val, float)
@@ -48,7 +53,11 @@ class RangeWidget(QtWidgets.QWidget):
         if not self.is_float:
             real_val = int(real_val)
         self.value_edit.setText(f"{real_val:.1f}")
-        self.valueChanged.emit(real_val)
+
+        # 只设置内部值，不立即触发信号
+        self._current_value = real_val
+        # 启动防抖定时器
+        self._debounce_timer.start(self._debounce_delay)
 
     def _on_text_changed(self):
         try:
@@ -65,9 +74,16 @@ class RangeWidget(QtWidgets.QWidget):
                 val = int(val)
             self.value_edit.setText(f"{val:.1f}")
             self.slider.setValue(int((val - self.min_val) / self.step))
+
+            # 设置内部值并立即触发（因为是手动输入完成）
+            self._current_value = val
             self.valueChanged.emit(val)
         except ValueError:
             self.value_edit.setText(f"{self.min_val:.1f}")
+
+    def _emit_value_changed(self):
+        """防抖定时器触发的最终信号发射"""
+        self.valueChanged.emit(self._current_value)
 
     def set_value(self, value):
         if isinstance(value, str) and len(value) == 0:
@@ -83,6 +99,8 @@ class RangeWidget(QtWidgets.QWidget):
             real_val = int(real_val)
         self.value_edit.setText(f"{real_val:.1f}")
         self.slider.setValue(int(steps))
+        # 设置内部值但不触发信号
+        self._current_value = real_val
 
     def get_value(self):
         text = self.value_edit.text().strip()
@@ -101,7 +119,6 @@ class RangeWidget(QtWidgets.QWidget):
         except ValueError as e:
             # 可选：弹出提示或返回默认值，避免崩溃
             raise ValueError(f"Invalid number format: '{text}'") from e
-
 
 class RangeWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", min_val=0, max_val=100, step=1, default=0):
