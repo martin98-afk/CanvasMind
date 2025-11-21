@@ -131,9 +131,6 @@ class InputSelectionDialog(QWidget):  # 继承 QWidget
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
 
-        title_label = SubtitleLabel('选择项目输入参数（未勾选的将使用当前值固化）', self)
-        layout.addWidget(title_label)
-
         # 分组
         input_ports = [item for item in candidate_items if item["type"] == "组件输入"]
         component_params = [item for item in candidate_items if item["type"] == "组件超参数"]
@@ -280,9 +277,6 @@ class OutputSelectionDialog(QWidget):  # 继承 QWidget
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
 
-        title_label = SubtitleLabel('选择项目输出结果', self)
-        layout.addWidget(title_label)
-
         groups = defaultdict(list)
         for item in candidate_items:
             groups[(item["node_id"], item["node_name"])].append(item)
@@ -396,9 +390,6 @@ class ProjectExportDialog(QWidget):  # 继承 QWidget
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
 
-        self.titleLabel = SubtitleLabel("导出为独立项目", self)
-        layout.addWidget(self.titleLabel)
-
         self.project_name_edit = LineEdit()
         self.project_name_edit.setText(project_name)
         self.project_name_edit.setPlaceholderText("请输入项目名称")
@@ -417,7 +408,6 @@ class ProjectExportDialog(QWidget):  # 继承 QWidget
 
         # 布局
         top_layout = VBoxLayout()
-        top_layout.addWidget(self.titleLabel)
         top_layout.addWidget(self.project_name_edit)
 
         # 中间区域：左右分栏

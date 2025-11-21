@@ -113,7 +113,7 @@ def _get_formatted_type_and_value(obj, arg_type=None):
                 if len(obj) <= 50:
                     return f"(str) '{obj}'"
                 else:
-                    return f"(str) '{obj[:200]}...' (右键预览)"
+                    return f"(str) '{obj[:200]}...‘"
             else:
                 return f"(str) '{str(obj)}'"
 
@@ -132,7 +132,7 @@ def _get_formatted_type_and_value(obj, arg_type=None):
             else:
                 return f"(File) '{os.path.basename(obj)}'"
         else:
-            return f"(str) '{obj[:200]}...' (右键预览)"
+            return f"(str) '{obj[:200]}...'"
     elif isinstance(obj, (int, float)):
         return f"({type(obj).__name__}) {obj}"
     elif isinstance(obj, np.number):
