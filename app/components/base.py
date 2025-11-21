@@ -953,7 +953,6 @@ class BaseComponent(ABC):
 
         model_name = f"{cls.__name__}Params"
         base_classes = (ModelMixin, BaseModel)
-        print(fields)
         return create_model(model_name, __base__=base_classes, **fields)
 
     # ---------------- 执行包装器 ----------------
