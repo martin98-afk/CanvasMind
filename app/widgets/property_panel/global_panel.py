@@ -642,7 +642,7 @@ class GlobalPanelWidget:
 
         # 参数组信息
         param_count = len(value) if isinstance(value, dict) else 0
-        value_label = BodyLabel(f"[参数组]")
+        value_label = BodyLabel(f"[参数x{param_count}]")
         value_label.setStyleSheet("color: #888888;")
         title_layout.addWidget(value_label)
         title_layout.addStretch()
@@ -920,6 +920,9 @@ class GlobalPanelWidget:
 
             global_vars = getattr(self.main_window, 'global_variables', None)
             if global_vars:
+                if new_name in global_vars.custom:
+                    InfoBar.warning("已存在", f"参数组 {new_name} 已存在", parent=self.main_window)
+                    return
                 # 设置新的参数组
                 global_vars.set(new_name, parameters)
                 self._handle_global_variable_change("custom", new_name, "add")

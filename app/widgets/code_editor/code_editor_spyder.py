@@ -22,6 +22,7 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QToolTip
 from qfluentwidgets import TransparentToolButton
 from qtpy import QtCore
 from spyder.plugins.editor.widgets.codeeditor import CodeEditor
+from spyder.widgets.findreplace import FindReplace
 
 from app.utils.utils import get_icon  # 确保路径正确
 
@@ -1605,11 +1606,16 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Jedi Code Editor with Smart Completion")
+        # 深色背景
+        self.setStyleSheet("background-color: #333; color: white;")
         self.resize(800, 600)
+        self.find_replace = FindReplace(self, True)
         self.editor = JediCodeEditor()
         self.editor.set_text("import os\nos.\nx = 'hello'\nx.")
+        self.find_replace.set_editor(self.editor)
         central = QWidget()
         layout = QVBoxLayout(central)
+        layout.addWidget(self.find_replace)
         layout.addWidget(self.editor)
         self.setCentralWidget(central)
 
