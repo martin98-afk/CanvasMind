@@ -1,75 +1,192 @@
 # -*- coding: utf-8 -*-
+import json
+import re
+
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QFileDialog, QStackedWidget, QApplication, \
-    QLineEdit, QLabel, QFormLayout, QScrollArea, QDialog, QButtonGroup, QListWidgetItem, QFrame, QPushButton
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QStackedWidget, QApplication, \
+    QListWidgetItem
+from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SegmentedWidget, \
     FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
-    TransparentDropDownToolButton, SubtitleLabel, CaptionLabel, ComboBox, MessageBoxBase, MessageBox, LineEdit, \
-    ScrollArea, PrimaryPushButton, ToggleToolButton
+    TransparentDropDownToolButton, SubtitleLabel, CaptionLabel, LineEdit, \
+    ToggleToolButton, SearchLineEdit
 
 from app.templates.global_custom_var_template import PARAMETER_TEMPLATE
 from app.utils.utils import get_icon, serialize_for_json
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
+from app.widgets.dialog_widget.step_messageboxbase import StepMessageBoxBase
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
-import json
-import re
-from pathlib import Path
-from loguru import logger
 
 
-class ParameterGroupDialog(MessageBoxBase):
-    """参数组编辑对话框"""
+class ParameterGroupDialog(StepMessageBoxBase):
+    """参数组编辑对话框 - 使用 StepMessageBoxBase"""
 
-    def __init__(self, parent=None, group_name="", group_data=None, is_new=True):
-        super().__init__(parent)
-        self.titleLabel = SubtitleLabel("编辑参数组" if not is_new else "新建参数组", self)
+    def __init__(self, parent=None, group_name="", group_data=None, is_new=True, templates=None):
+        # 定义步骤
+        steps = [
+            {"name": "template_selection", "title": "选择模板"},
+            {"name": "parameter_edit", "title": "编辑参数"}
+        ]
+        super().__init__(parent=parent, steps=steps)
+
         self.group_name = group_name
         self.group_data = group_data or {}
         self.is_new = is_new
+        self.templates = templates or {}
+        self.selected_template_name = None
 
         # 设置对话框大小
-        self.widget.setFixedSize(600, 500)
+        self.widget.setFixedSize(700, 600)
 
-        # 创建表单布局
-        self.hbox_layout = QHBoxLayout()
-        self.hbox_layout.setContentsMargins(10, 5, 10, 5)
+        # --- 页面1: 模板选择 ---
+        self.template_selection_page = QWidget()
+        self._setup_template_selection_page()
+
+        # --- 页面2: 参数编辑 ---
+        self.param_edit_page = QWidget()
+        self._setup_param_edit_page()
+
+        # 添加页面到堆叠布局
+        self.add_page(self.template_selection_page)
+        self.add_page(self.param_edit_page)
+
+        # 根据 is_new 决定起始页面
+        if not is_new:
+            # 如果是编辑现有组，则跳到参数编辑页
+            self._current_step_index = 1
+            self.page_stack.setCurrentIndex(1)
+            # 加载现有数据
+            self._load_parameters_for_edit(group_name, group_data)
+
+        # 更新按钮状态
+        self._update_button_states()
+
+        # 隐藏不需要的按钮（根据第一步的逻辑）
+        if self.is_new:
+            self.backButton.hide()
+        else:
+            # 编辑模式下，第一步是参数编辑
+            self.backButton.hide()
+            self.nextButton.hide()  # 或者可以隐藏 next，只显示 ok
+            # 为了保持一致性，我们保留 next/ok 切换逻辑
+            self._update_button_states()  # 这会根据 _current_step_index (1) 隐藏 next，显示 ok
+
+    def _setup_template_selection_page(self):
+        """设置模板选择界面"""
+        layout = QVBoxLayout(self.template_selection_page)
+        # 搜索框
+        self.search_box = SearchLineEdit(self.template_selection_page)
+        self.search_box.setPlaceholderText("搜索模板...")
+        self.search_box.textChanged.connect(self._filter_templates)
+        layout.addWidget(self.search_box)
+
+        # 模板列表
+        self.template_list = ListWidget(self.template_selection_page)
+        self.template_list.setMinimumHeight(200)
+
+        # 填充模板列表
+        self.all_template_items = []
+        for template_name in self.templates.keys():
+            item = QListWidgetItem(template_name)
+            self.template_list.addItem(item)
+            self.all_template_items.append(item)
+
+        # 添加自定义项
+        custom_item = QListWidgetItem("自定义参数组")
+        self.template_list.addItem(custom_item)
+        self.all_template_items.append(custom_item)
+
+        # 设置点击事件
+        self.template_list.itemClicked.connect(self._on_template_selected)
+        layout.addWidget(self.template_list)
+
+    def _setup_param_edit_page(self):
+        """设置参数编辑界面"""
+        layout = QVBoxLayout(self.param_edit_page)
+
         # 参数组名称输入
+        self.hbox_layout = QHBoxLayout()
+        self.hbox_layout.setContentsMargins(0, 0, 30, 0)
         self.name_edit = LineEdit()
         self.name_edit.setPlaceholderText("请输入参数组名称")
-        if group_name:
-            self.name_edit.setText(group_name)
-        self.hbox_layout.addWidget(BodyLabel("参数组名称：", self))
+        if self.group_name:
+            self.name_edit.setText(self.group_name)
+        self.hbox_layout.addWidget(BodyLabel("参数组名称：", self.param_edit_page))
         self.hbox_layout.addWidget(self.name_edit, 1)
 
-        self.save_as_template = ToggleToolButton(FluentIcon.SAVE_AS, self)
+        self.save_as_template = ToggleToolButton(FluentIcon.SAVE_AS, self.param_edit_page)
         self.save_as_template.setChecked(False)
         self.save_as_template.setToolTip("是否保存为参数模板")
         self.hbox_layout.addStretch()
         self.hbox_layout.addWidget(self.save_as_template)
 
+        layout.addLayout(self.hbox_layout)
+
         # 参数编辑区域
         self.params_list = ListWidget()
         self.params_list.setMinimumHeight(200)
+        layout.addWidget(self.params_list)
 
         # 添加参数按钮
-        self.add_param_btn = PushButton("添加参数", self)
+        self.add_param_btn = PushButton("添加参数", self.param_edit_page)
         self.add_param_btn.clicked.connect(self.add_parameter_row)
+        layout.addWidget(self.add_param_btn)
 
-        # 将表单和滚动区域添加到主布局
-        self.viewLayout.setSpacing(5)
-        self.viewLayout.addWidget(self.titleLabel)
-        self.viewLayout.addLayout(self.hbox_layout)
-        self.viewLayout.addWidget(self.params_list)
-        self.viewLayout.addWidget(self.add_param_btn)
+    def _filter_templates(self, text):
+        """过滤模板列表"""
+        for item in self.all_template_items:
+            item.setHidden(text.lower() not in item.text().lower())
 
-        # 初始化已有参数
-        if group_data:
-            for key, value in group_data.items():
+    def _on_template_selected(self, item):
+        """模板选择响应"""
+        self.selected_template_name = item.text()
+
+    def validate_current_step(self) -> bool:
+        """重写父类方法，验证当前步骤"""
+        current_index = self.current_step_index()
+        if current_index == 0:  # 模板选择步骤
+            # 验证是否已选择模板
+            if self.selected_template_name is None:
+                InfoBar.warning("未选择模板", "请选择一个模板或选择自定义", parent=self, duration=2000)
+                return False
+            return True
+        # 其他步骤的验证可以在这里添加
+        return super().validate_current_step()
+
+    def validate_final_data(self) -> bool:
+        """重写父类方法，验证最终数据"""
+        # 验证参数组名称
+        name = self.name_edit.text().strip()
+        if not name:
+            InfoBar.warning("无效名称", "参数组名称不能为空", parent=self, duration=2000)
+            return False
+        # 验证参数列表不为空
+        params = self.get_parameters()
+        if not params:
+            InfoBar.warning("无效参数", "参数组至少需要一个参数", parent=self, duration=2000)
+            return False
+        return True
+
+    def _load_parameters_for_edit(self, name, data):
+        """加载参数数据到编辑界面"""
+        # 清空现有参数
+        while self.params_list.count():
+            item = self.params_list.takeItem(0)
+            widget = self.params_list.itemWidget(item)
+            if widget:
+                widget.deleteLater()
+
+        # 设置名称（如果是模板，则使用模板名作为默认名称）
+        if name and not self.name_edit.text():
+            self.name_edit.setText(name)
+
+        # 添加参数行
+        if data:
+            for key, value in data.items():
                 self.add_parameter_row(key, str(value))
-
-        # 如果没有参数，添加一个空行
-        if not group_data:
+        else:
+            # 如果没有数据（自定义），添加一个空行
             self.add_parameter_row()
 
     def add_parameter_row(self, key="", value=""):
@@ -89,7 +206,7 @@ class ParameterGroupDialog(MessageBoxBase):
         if value:
             value_edit.setText(value)
 
-        delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
+        delete_btn = TransparentToolButton(FluentIcon.DELETE, self.param_edit_page)
         delete_btn.clicked.connect(lambda: self.remove_parameter_row(item_widget))
 
         item_layout.addWidget(key_edit)
@@ -150,43 +267,14 @@ class ParameterGroupDialog(MessageBoxBase):
         """是否保存为模板"""
         return self.save_as_template.isChecked()
 
-
-class TemplateSelectionDialog(MessageBoxBase):
-    """参数组模板选择对话框"""
-
-    def __init__(self, parent=None, templates=None):
-        super().__init__(parent)
-        self.titleLabel = SubtitleLabel("选择参数组类型", self)
-        self.selected_template = None
-        self.templates = templates or {}
-
-        # 设置对话框大小
-        self.widget.setFixedSize(600, 500)
-
-        # 创建布局
-        self.viewLayout.addWidget(self.titleLabel)
-
-        # 创建模板列表
-        self.template_list = ListWidget()
-        self.template_list.setMinimumHeight(150)
-
-        # 添加自定义项
-        custom_item = QListWidgetItem("自定义参数组")
-        self.template_list.addItem(custom_item)
-
-        # 添加模板项
-        for template_name in self.templates.keys():
-            item = QListWidgetItem(template_name)
-            self.template_list.addItem(item)
-
-        # 设置点击事件
-        self.template_list.itemClicked.connect(self.select_template_item)
-        self.viewLayout.addWidget(self.template_list)
-
-    def select_template_item(self, item):
-        """选择模板项"""
-        self.selected_template = item.text()
-        self.accept()
+    # 重写 _on_next_clicked 以处理模板选择后的数据加载
+    def _on_next_clicked(self):
+        if self.current_step_index() == 0:  # 从模板选择页到参数编辑页
+            if self.selected_template_name == "自定义参数组":
+                self._load_parameters_for_edit("", {})
+            elif self.selected_template_name in self.templates:
+                self._load_parameters_for_edit(self.selected_template_name, self.templates[self.selected_template_name])
+        super()._on_next_clicked()
 
 
 class GlobalPanelWidget:
@@ -256,6 +344,7 @@ class GlobalPanelWidget:
         if not self._built:
             # 如果全般面板尚未构建，直接返回，不处理信号
             return
+
         # 调用内部处理逻辑
         self._handle_global_variable_change(var_type, var_name, action)
 
@@ -553,7 +642,7 @@ class GlobalPanelWidget:
 
         # 参数组信息
         param_count = len(value) if isinstance(value, dict) else 0
-        value_label = BodyLabel(f"[参数组: {param_count}个参数]")
+        value_label = BodyLabel(f"[参数组]")
         value_label.setStyleSheet("color: #888888;")
         title_layout.addWidget(value_label)
         title_layout.addStretch()
@@ -811,31 +900,10 @@ class GlobalPanelWidget:
 
     def add_new_parameter_group(self):
         """添加新的参数组"""
-        # 显示模板选择对话框
-        template_dialog = TemplateSelectionDialog(
-            parent=self.main_window,
-            templates=self.parameter_group_templates
-        )
-
-        if template_dialog.exec():
-            selected_template = template_dialog.selected_template
-
-            if selected_template == "自定义参数组":
-                # 创建自定义参数组
-                self._open_parameter_group_editor("", {}, True)
-            elif selected_template in self.parameter_group_templates:
-                # 使用模板创建参数组
-                template_data = self.parameter_group_templates[selected_template]
-                group_name = selected_template
-                self._open_parameter_group_editor(group_name, template_data, True)
-
-    def _open_parameter_group_editor(self, group_name, group_data, is_new=True):
-        """打开参数组编辑器"""
+        # 显示合并后的参数组编辑对话框
         dialog = ParameterGroupDialog(
             parent=self.main_window,
-            group_name=group_name,
-            group_data=group_data,
-            is_new=is_new
+            templates=self.parameter_group_templates
         )
 
         if dialog.exec():
@@ -852,12 +920,6 @@ class GlobalPanelWidget:
 
             global_vars = getattr(self.main_window, 'global_variables', None)
             if global_vars:
-                # 如果是编辑现有参数组且名称改变，先删除旧的
-                if not is_new and group_name != new_name:
-                    if hasattr(global_vars, 'custom') and group_name in global_vars.custom:
-                        del global_vars.custom[group_name]
-                        self._handle_global_variable_change("custom", group_name, "delete")
-
                 # 设置新的参数组
                 global_vars.set(new_name, parameters)
                 self._handle_global_variable_change("custom", new_name, "add")
@@ -961,11 +1023,13 @@ class GlobalPanelWidget:
             InfoBar.error("编辑失败", "该变量不是参数组", parent=self.main_window)
             return
 
+        # 显示合并后的参数组编辑对话框，传入现有数据
         dialog = ParameterGroupDialog(
             parent=self.main_window,
             group_name=var_name,
             group_data=current_value,
-            is_new=False
+            is_new=False,
+            templates=self.parameter_group_templates
         )
 
         if dialog.exec():
