@@ -2,6 +2,7 @@
 import asyncio
 import json
 import os
+import traceback
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -10,6 +11,8 @@ import requests
 from PyQt5.QtCore import QObject, pyqtSignal, QThread, QRectF, Qt
 from PyQt5.QtGui import QPainter, QImage
 from loguru import logger
+
+from app.utils.utils import deserialize_from_json
 
 
 class ThumbnailGenerator(QThread):
@@ -75,6 +78,7 @@ class WorkflowLoader(QThread):
             self.progress.emit("正在读取工作流文件...")
             with open(self.file_path, 'r', encoding='utf-8') as f:
                 full_data = json.load(f)
+            full_data = deserialize_from_json(full_data)
 
             graph_data = full_data.get("graph", {})
             runtime_data = full_data.get("runtime", {})
@@ -111,6 +115,7 @@ class WorkflowLoader(QThread):
             self.progress.emit("节点处理完成，准备加载...")
             self.finished.emit(graph_data, runtime_data, node_status_data, global_variable)
         except Exception as e:
+            traceback.print_exc()
             logger.error(f"工作流加载失败: {str(e)}")
             self.finished.emit({}, {}, {}, {})
 

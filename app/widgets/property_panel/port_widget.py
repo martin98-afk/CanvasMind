@@ -174,8 +174,6 @@ class PortWidget(QWidget):
                     display_data = self.node.model.get_property(port_name)
                 except KeyError:
                     display_data = "暂无数据"
-            if port_type == ArgumentType.UPLOAD:
-                self._add_upload_widget_to_layout(port_name, layout)
             self._add_port(
                 f"• {port_label} ({port_name}): {port_type.value}",
                 display_data,
@@ -355,7 +353,9 @@ class PortWidget(QWidget):
         browse_btn.clicked.connect(tree_widget.show_detail)
         title_layout.addWidget(browse_btn)
         card_layout.addLayout(title_layout)
-        card_layout.addWidget(tree_widget)
+        card_layout.addWidget(tree_widget, 1)
+        if port_type == ArgumentType.UPLOAD and is_output:
+            self._add_upload_widget_to_layout(port_name, card_layout)
         card_layout.addStretch()
         if port_type == ArgumentType.CSV and not is_output:
             self._add_column_selector_widget_to_layout(port_name, data, card_layout)
@@ -428,3 +428,7 @@ class PortWidget(QWidget):
             return
         self.node._output_values[port_name] = str(dst_path)
         InfoBar.success("上传成功", f"文件已保存至：{dst_path.name}", parent=self.main_window, duration=2000)
+        if port_name in self._text_edit_widgets:
+            widget = self._text_edit_widgets[port_name]
+            if isinstance(widget, VariableTreeWidget):
+                widget.set_data(str(dst_path))

@@ -208,6 +208,7 @@ class CodeEditorWidget(QWidget):
         else:
             c.setPosition(max(0, min(cursor.position(), len(new_text))))
         self.code_editor.setTextCursor(c)
+        self.code_editor.textChanged.emit()
         scrollbar.setValue(scroll_pos)
 
     def _toggle_find_panel(self, focus_replace=False):

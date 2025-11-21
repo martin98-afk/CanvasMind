@@ -1315,7 +1315,6 @@ class CanvasPage(QWidget):
             node.status = status
         # 优化：只高亮目标节点相关的连接线
         self._highlight_node_connections(node, status)
-        self.graph.viewer().force_update()
 
     def on_node_error_simple(self, node_id):
         node = self._get_node_by_id_cached(node_id)
@@ -1538,8 +1537,8 @@ class CanvasPage(QWidget):
             stable_key = f"{full_path}||{node_name}"
             runtime["node_id2stable_key"][node.id] = stable_key
             runtime["node_states"][stable_key] = self.node_status.get(node.id, "unrun")
-            runtime["node_inputs"][stable_key] = serialize_for_json(getattr(node, '_input_values', {}))
-            runtime["node_outputs"][stable_key] = serialize_for_json(getattr(node, '_output_values', {}))
+            runtime["node_inputs"][stable_key] = getattr(node, '_input_values', {})
+            runtime["node_outputs"][stable_key] = getattr(node, '_output_values', {})
             runtime["column_select"][stable_key] = getattr(node, 'column_select', {})
         full_data = {
             "version": "1.0",
@@ -1548,7 +1547,7 @@ class CanvasPage(QWidget):
             "global_variable": self.global_variables.serialize()
         }
         with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(full_data, f, indent=2, ensure_ascii=False)
+            json.dump(serialize_for_json(full_data), f, indent=2, ensure_ascii=False)
         self._generate_canvas_thumbnail_async(file_path)
         if show_info:
             self.create_success_info("保存成功", "工作流保存成功！")

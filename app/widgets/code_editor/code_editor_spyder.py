@@ -11,11 +11,13 @@ import traceback
 import shutil
 import jedi
 import ast  # 导入 ast 模块用于代码解析
+
+import parso
 from intervaltree import IntervalTree
 from loguru import logger
 from concurrent.futures import ThreadPoolExecutor, Future
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal, QObject, QRect, QEvent, QFileSystemWatcher
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter, QCursor, QTextBlock
 from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle, QVBoxLayout
@@ -38,104 +40,102 @@ completion_pool = ThreadPoolExecutor(max_workers=5, thread_name_prefix="JediComp
 
 
 # --- 新增：使用 AST 计算折叠区域 ---
-def compute_folding_from_ast(code: str) -> tuple:
+def compute_folding_from_ast(code: str):
     """
-    使用 AST 解析代码，计算可折叠区域。
+    使用 ast 模块解析代码，计算可折叠区域。
     识别 def, class, if, elif, else, for, while, try, except, finally, with, with ... as 等块。
+    相比 parso，ast 通常结构更清晰，便于处理。
     返回值: (current_tree, root, folding_regions, folding_nesting, folding_levels, folding_status)
     """
     try:
-        # 解析代码为 AST
+        # 1. 解析代码为 AST 树
         tree = ast.parse(code)
-        lines = code.split('\n')
-        folding_regions = {}
-        folding_status = {}
 
-        # 用于存储行号和缩进级别的栈
-        # 栈中元素: (start_line, indent_level, node_type)
-        stack = []
+        folding_regions: Dict[int, int] = {}
+        folding_status: Dict[int, bool] = {}
 
-        def get_line_indent(line_text):
-            """获取行的缩进字符数"""
-            return len(line_text) - len(line_text.lstrip())
+        # 行列表，用于计算缩进
+        lines = code.splitlines(keepends=True) # keepends=True 保留换行符，便于计算
 
-        def process_node(node):
-            """递归处理 AST 节点"""
-            # 获取节点起始行号 (AST 是 1-based)
-            # --- 修正：检查 node 是否有 lineno 属性 ---
-            start_line = getattr(node, 'lineno', None)
-            if start_line is None:
-                # 如果节点没有行号（例如 Module），则跳过
-                # 对于有子节点的容器（如 If, For, While, Try, With, FunctionDef, ClassDef），
-                # 我们只处理它们的子节点，但需要确保在子节点处理完后弹出栈
-                for child in ast.iter_child_nodes(node):
-                    process_node(child)
-                return  # Module 或其他没有 lineno 的节点直接返回
+        # --- 定义一个内部函数来递归处理 AST 节点 ---
+        def visit_node(node):
+            # 2. 确定节点类型和是否需要折叠
+            # 检查节点是否是需要折叠的代码块
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, # def, class
+                                 ast.If, ast.For, ast.AsyncFor, ast.While, # if, for, while
+                                 ast.Try, # try
+                                 ast.With, ast.AsyncWith, # with
+                                 ast.ExceptHandler)): # except (特殊处理)
+                # 3. 获取节点的起始行号 (ast 行号是 1-based)
+                start_line = node.lineno
 
-            # 确定节点类型和是否需要折叠
-            node_type = type(node).__name__
-            needs_folding = node_type in [
-                'FunctionDef', 'AsyncFunctionDef', 'ClassDef',  # def, class
-                'If', 'For', 'AsyncFor', 'While', 'Try', 'With'  # if, for, while, try, with
-            ]
+                # 4. 计算代码块的结束行号
+                end_line = -1
+                if isinstance(node, ast.ExceptHandler):
+                    # ExceptHandler 的 end_lineno 是 Python 3.8+ 才有的属性
+                    # 对于 ExceptHandler，其结束行通常是其 body 的最后一行
+                    if hasattr(node, 'end_lineno') and node.end_lineno is not None:
+                         end_line = node.end_lineno
+                    else:
+                        # 兼容旧版本 Python 或当 end_lineno 为 None 时
+                        # 找到 body 中最后一个节点的行号
+                        if node.body:
+                            last_stmt = node.body[-1]
+                            end_line = getattr(last_stmt, 'end_lineno', last_stmt.lineno)
+                            # 确保 end_line 不小于 start_line
+                            end_line = max(end_line, start_line)
+                        else:
+                            end_line = start_line # 如果 body 为空
+                else:
+                    # 对于其他节点，使用 end_lineno (Python 3.8+)
+                    # 如果没有 end_lineno (旧版本)，则尝试计算
+                    if hasattr(node, 'end_lineno') and node.end_lineno is not None:
+                        end_line = node.end_lineno
+                    else:
+                        # 兼容旧版本 Python 或当 end_lineno 为 None 时
+                        # 找到 body 中最后一个节点的行号
+                        if node.body:
+                            last_stmt = node.body[-1]
+                            end_line = getattr(last_stmt, 'end_lineno', last_stmt.lineno)
+                            # 确保 end_line 不小于 start_line
+                            end_line = max(end_line, start_line)
+                        else:
+                            end_line = start_line # 如果 body 为空
 
-            if needs_folding:
-                start_indent = get_line_indent(lines[start_line]) if start_line < len(lines) else 0
-                # 将当前节点压入栈
-                stack.append((start_line, start_indent, node_type))
-
-                # 寻找当前块的结束行
-                # 从 start_line + 1 开始，找到下一个缩进小于等于 start_indent 的行
-                end_line = start_line
-                for i in range(start_line + 1, len(lines)):
-                    line_text = lines[i]
-                    if line_text.strip():  # 忽略空行
-                        line_indent = get_line_indent(line_text)
-                        if line_indent < start_indent:
-                            # 找到了同级或更浅的缩进，当前块在此行之前结束
-                            end_line = i - 1
-                            break
-                    # 如果到达文件末尾
-                    if i == len(lines) - 1:
-                        end_line = i
-
-                # 确保结束行在开始行之后
+                # 5. 存储折叠区域 (转换为 0-based 索引)
+                # folding_regions 存储 {起始行号(0-based): 结束行号(0-based)}
                 if end_line > start_line:
                     folding_regions[start_line] = end_line
-                    folding_status[start_line] = False  # 默认不折叠
+                    folding_status[start_line] = False # 默认不折叠
 
-            # 递归处理子节点
-            for child in ast.iter_child_nodes(node):
-                process_node(child)
+            # 6. 递归处理子节点
+            for child_node in ast.iter_child_nodes(node):
+                visit_node(child_node)
 
-            # 如果当前节点需要折叠，处理完子节点后弹出栈
-            if needs_folding and stack and stack[-1][0] == start_line:
-                stack.pop()
+        # 从 AST 根节点开始处理
+        visit_node(tree)
 
-        # 从 AST 根节点（即 Module.body）开始处理
-        # Module 本身没有 lineno，但我们处理它的 body 列表
-        for node in tree.body:
-            process_node(node)
-
-        # --- 构建其他返回值 (简化处理) ---
+        # --- 构建其他返回值 (简化处理，因为主要关注 folding_regions) ---
         current_tree = IntervalTree()
         root = FoldingRegion(None, None)
         folding_nesting = {}
         folding_levels = {}
+
         for start, end in folding_regions.items():
-            current_tree[start:end + 1] = (start, end)  # 存储 (start, end) 作为数据
-            folding_levels[start] = 1  # 简单层级
-            folding_nesting[start] = []  # 简单嵌套关系
+            current_tree[start:end+1] = (start, end) # 存储 (start, end) 作为数据
+            folding_levels[start] = 1 # 简单层级，实际层级需更复杂算法
+            folding_nesting[start] = [] # 简单嵌套关系，实际嵌套需更复杂算法
 
         logger.info(f"[Folding] AST found {len(folding_regions)} regions.")
         return current_tree, root, folding_regions, folding_nesting, folding_levels, folding_status
 
     except SyntaxError as e:
-        logger.error(f"[Folding] Syntax error during AST parsing: {e}")
-        # 语法错误时返回空结构
+        # AST 解析失败（语法错误）
+        logger.warning(f"[Folding] Syntax error in code, cannot compute folding: {e}")
+        # 返回空结构
         return IntervalTree(), FoldingRegion(None, None), {}, {}, {}, {}
     except Exception as e:
-        logger.error(f"[Folding] Error computing folding from AST: {e}")
+        logger.error(f"[Folding] Unexpected error computing folding from AST: {e}")
         # 返回空结构
         return IntervalTree(), FoldingRegion(None, None), {}, {}, {}, {}
 
@@ -1662,7 +1662,7 @@ class JediCodeEditor(CodeEditor):
             cursor.insertText(completion)
 
             # --- 新增：如果类型是函数或方法，自动添加 () ---
-            if type_name in ['function', 'method', 'class', 'module', 'builtin_function_or_method', 'instance']:
+            if type_name in ['function', 'method', 'class', 'builtin_function_or_method', 'instance']:
                 cursor.insertText('()')
                 # 将光标移动到括号内
                 cursor.movePosition(QTextCursor.PreviousCharacter, QTextCursor.MoveAnchor, 1)

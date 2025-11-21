@@ -1199,7 +1199,7 @@ class GlobalPanelWidget:
         safe_node_name = re.sub(r'\s+', '_', node.name())
         var_name = f"{safe_node_name}_{port_name}"
         main_window.global_variables.set_output(
-            node_id=safe_node_name, output_name=port_name, output_value=serialize_for_json(value)
+            node_id=safe_node_name, output_name=port_name, output_value=value
         )
         if hasattr(node, "refresh_node_outports"):
             QtCore.QTimer.singleShot(100, node.refresh_node_outports)
