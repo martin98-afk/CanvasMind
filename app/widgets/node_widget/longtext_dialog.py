@@ -5,6 +5,7 @@ from qfluentwidgets import FluentIcon, ToolButton, LineEdit, TextEdit, Transpare
 from qfluentwidgets import MessageBoxBase, SubtitleLabel
 
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
 # -----------------------
@@ -88,7 +89,7 @@ class LongTextWidget(QtWidgets.QWidget):
         return self._text
 
 
-class LongTextWidgetWrapper(NodeBaseWidget):
+class LongTextWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", default="", window=None):
         super().__init__(parent)
         self.set_name(name)

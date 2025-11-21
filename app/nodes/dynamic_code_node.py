@@ -8,7 +8,7 @@ from NodeGraphQt import BaseNode
 from PyQt5 import QtCore
 
 from app.components.base import PropertyType, GlobalVariableContext, ArgumentType
-from app.nodes.base_node import BasicNodeWithGlobalProperty
+from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import resource_path, draw_special_outputport, canvas_file_dump_path, _safe_load_pickle
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
@@ -51,7 +51,7 @@ class DynamicComponent(BaseComponent):
 
 def create_dynamic_code_node(parent_window=None):
 
-    class DynamicCodeNode(BaseNode, StatusNode, BasicNodeWithGlobalProperty):
+    class DynamicCodeNode(CustomBaseNode, StatusNode, BasicNodeWithGlobalProperty):
         __identifier__ = 'dynamic'
         NODE_NAME = "代码编辑"
         FULL_PATH = f"代码执行/{NODE_NAME}"

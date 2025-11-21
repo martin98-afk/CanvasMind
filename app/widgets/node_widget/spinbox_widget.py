@@ -5,6 +5,8 @@ from NodeGraphQt import NodeBaseWidget
 from Qt import QtWidgets, QtCore
 from qfluentwidgets import SpinBox, DoubleSpinBox
 
+from app.widgets.node_widget.base import CustomNodeBaseWidget
+
 
 class SpinBoxWidget(QtWidgets.QWidget):
     """节点内显示：摘要 + 编辑按钮"""
@@ -28,7 +30,7 @@ class SpinBoxWidget(QtWidgets.QWidget):
     def set_value(self, value):
         self.spinbox.setValue(value)
 
-class NumberWidgetWrapper(NodeBaseWidget):
+class NumberWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", default=0, type="float", window=None):
         super().__init__(parent)
         self.set_name(name)

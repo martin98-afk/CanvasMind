@@ -1,6 +1,8 @@
 from NodeGraphQt import BaseNode, NodeBaseWidget
 from Qt import QtWidgets
 
+from app.widgets.node_widget.base import CustomNodeBaseWidget
+
 
 class TemplatePlotWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
@@ -20,7 +22,7 @@ class TemplatePlotWidget(QtWidgets.QWidget):
         self.mainLayout.addWidget(self.toolbar)
     
         
-class TemplatePlotWidgetWrapper(NodeBaseWidget):
+class TemplatePlotWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, fretData=None):
         super().__init__(parent)
         self.plot_widget = TemplatePlotWidget(parent=parent)

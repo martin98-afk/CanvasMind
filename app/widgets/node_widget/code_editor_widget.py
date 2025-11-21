@@ -1,10 +1,11 @@
 from NodeGraphQt import NodeBaseWidget
 from qtpy import QtCore
 
-from app.widgets.code_editer import CodeEditorWidget
+from app.widgets.code_editor.code_editer import CodeEditorWidget
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
-class CodeEditorWidgetWrapper(NodeBaseWidget):
+class CodeEditorWidgetWrapper(CustomNodeBaseWidget):
     valueChanged = QtCore.Signal(str)
 
     def __init__(self, parent=None, name="", label="", default="", window=None, width=700, height=400):

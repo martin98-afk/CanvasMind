@@ -1,6 +1,7 @@
-from NodeGraphQt import NodeBaseWidget
 from Qt import QtWidgets, QtCore
 from qfluentwidgets import CheckBox  # 使用 Fluent Design 风格的 CheckBox
+
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
 class CheckBoxWidget(QtWidgets.QWidget):
@@ -35,7 +36,7 @@ class CheckBoxWidget(QtWidgets.QWidget):
             self.checkbox.setChecked(value)
 
 
-class CheckBoxWidgetWrapper(NodeBaseWidget):
+class CheckBoxWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", text="", state=False):
         super().__init__(parent)
         self.set_name(name)

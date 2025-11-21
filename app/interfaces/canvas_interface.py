@@ -36,9 +36,9 @@ from app.utils.config import Settings
 from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon, topological_sort
-from app.widgets.basic_widget.ipython_console import EmbeddedIPythonConsole
+from app.widgets.ipython_console.ipython_console import EmbeddedIPythonConsole
 from app.widgets.basic_widget.splitter import ModernSplitter
-from app.widgets.basic_widget.variable_explorer import VariableExplorerWidget
+from app.widgets.ipython_console.variable_explorer import VariableExplorerWidget
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
 from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
@@ -105,18 +105,34 @@ class CanvasPage(QWidget):
         self.graph.node_created.connect(self.on_node_created)
         self.graph.port_connected.connect(self._on_port_connected)
         self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
+        # 注册节点
+        self.register_components()
+        # 快捷组件工具管理
+        self.quick_manager = QuickComponentManager(
+            parent_widget=self,
+            component_map=self.component_map
+        )
+        self.quick_manager.quick_components_changed.connect(self._refresh_quick_buttons)
+        # 线程池
+        self.thread_pool = QThreadPool.globalInstance()
+        # 初始化ui
+        self._setup_ui()
+        # 全局变量
+        self.global_variables = GlobalVariableContext()
+        self.global_variables_changed.connect(self.property_panel._on_global_variables_changed)
+
+    def _setup_ui(self):
+        # 布局
         self._setup_pipeline_style()
+        # 画布控件
         self.canvas_widget = self.graph.viewer()
         self.canvas_widget.keyPressEvent = self._canvas_key_press_event
-        self.global_variables = GlobalVariableContext()
-        # 组件面板
-        self.register_components()
+        # 节点拖拽树
         self.nav_panel = DraggableTreePanel(self)
         self.nav_view = self.nav_panel.tree
         # 属性面板
         self.property_panel = PropertyPanel(self)
-        self.global_variables_changed.connect(self.property_panel._on_global_variables_changed)
-        # 布局
+
         main_layout = QHBoxLayout(self)
         splitter = ModernSplitter(Qt.Horizontal)
         splitter.addWidget(self.nav_panel)
@@ -129,22 +145,12 @@ class CanvasPage(QWidget):
         splitter.setStretchFactor(1, 1)  # 中间画布拉伸（主要区域）
         splitter.setStretchFactor(2, 0)  # 右侧属性不拉伸
         main_layout.addWidget(splitter)
-        # 快捷组件工具管理
-        self.quick_manager = QuickComponentManager(
-            parent_widget=self,
-            component_map=self.component_map
-        )
-        self.quick_manager.quick_components_changed.connect(self._refresh_quick_buttons)
-        self.thread_pool = QThreadPool.globalInstance()
+
         # 创建悬浮按钮和环境选择
-        self.ipython_console = EmbeddedIPythonConsole(self)
-        self.var_explorer = VariableExplorerWidget(parent=self, kernel_manager=None)  # 先不设置内核管理器)
-        self.console_dialog = IPythonConsoleDialog(self.ipython_console, self)
         self.create_environment_selector()
         self.create_floating_buttons()
         self.create_floating_nodes()
         self.create_console_panel()
-        QtCore.QTimer.singleShot(0, self.connect_ipython_kernel)
         # 启用画布拖拽
         self.canvas_widget.setAcceptDrops(True)
         self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
@@ -152,20 +158,6 @@ class CanvasPage(QWidget):
         self.canvas_widget.installEventFilter(self)
         # 右键菜单
         self._setup_context_menus()
-
-    # ========================
-    # 调度器相关（核心新增）
-    # ========================
-    def connect_ipython_kernel(self):
-        current_python_exe = self.get_current_python_exe()
-        if current_python_exe is not None and (
-                self.ipython_console.kernel_manager.python_exe_path != current_python_exe or
-                not self.ipython_console.kernel_manager.get_kernel_info().get("is_alive")):
-            self.ipython_console.kernel_manager.shutdown_kernel()
-            if not self.ipython_console.start_kernel(self.get_current_python_exe()):
-                raise RuntimeError("无法启动 IPython 内核")
-            self.var_explorer.set_kernel_manager(self.ipython_console.kernel_manager)
-            self.var_explorer.start_auto_refresh()
 
     def toggle_console_panel(self):
         """切换 Console 面板显示/隐藏"""
@@ -365,6 +357,9 @@ class CanvasPage(QWidget):
 
     def create_console_panel(self):
         """创建 Console 面板和切换按钮"""
+        self.ipython_console = EmbeddedIPythonConsole(self)
+        self.var_explorer = VariableExplorerWidget(parent=self, kernel_manager=None)  # 先不设置内核管理器)
+        self.console_dialog = IPythonConsoleDialog(self.ipython_console, self)
         # --- 1. 创建 Console 容器面板 ---
         self.console_container = QWidget(self.canvas_widget)
         self.console_container.hide()  # 初始隐藏
@@ -391,6 +386,18 @@ class CanvasPage(QWidget):
 
         # --- 9. 显示按钮 ---
         self.console_container.hide()  # 确保初始隐藏
+        QtCore.QTimer.singleShot(0, self.connect_ipython_kernel)
+
+    def connect_ipython_kernel(self):
+        current_python_exe = self.get_current_python_exe()
+        if current_python_exe is not None and (
+                self.ipython_console.kernel_manager.python_exe_path != current_python_exe or
+                not self.ipython_console.kernel_manager.get_kernel_info().get("is_alive")):
+            self.ipython_console.kernel_manager.shutdown_kernel()
+            if not self.ipython_console.start_kernel(self.get_current_python_exe()):
+                raise RuntimeError("无法启动 IPython 内核")
+            self.var_explorer.set_kernel_manager(self.ipython_console.kernel_manager)
+            self.var_explorer.start_auto_refresh()
 
     def _update_console_position(self):
         """更新 Console 面板的位置和大小"""

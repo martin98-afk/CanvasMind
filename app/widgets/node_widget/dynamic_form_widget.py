@@ -2,14 +2,13 @@
 from NodeGraphQt import NodeBaseWidget
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from PyQt5.QtCore import QSize
-from PyQt5.QtWidgets import QComboBox
 from Qt import QtWidgets, QtCore
-from qfluentwidgets import LineEdit, PushButton, FluentIcon, ToolButton, ComboBox, TextEdit, PrimaryPushButton, \
-    TransparentPushButton, TransparentToolButton
+from qfluentwidgets import FluentIcon, TransparentPushButton, TransparentToolButton
 
 from app.components.base import PropertyType
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidget
 from app.widgets.node_widget.longtext_dialog import LongTextWidget
 from app.widgets.node_widget.range_widget import RangeWidget
@@ -290,7 +289,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
         self._emit_changes()
 
 
-class DynamicFormWidgetWrapper(NodeBaseWidget):
+class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", schema=None, window=None, z_value=1):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)

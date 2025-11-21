@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QShortcut, QHBoxLay
 from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon # 假设您有这个工具函数
 
-from app.widgets.code_editor_spyder import JediCodeEditor # 确保导入路径正确
+from app.widgets.code_editor.code_editor_spyder import JediCodeEditor # 确保导入路径正确
 
 
 # ---------------- 主部件 ----------------

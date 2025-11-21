@@ -4,6 +4,7 @@ from Qt import QtWidgets, QtCore
 from qfluentwidgets import LineEdit, TextEdit
 
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit, VariableCompletionLineEdit
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
 class TextWidget(QtWidgets.QWidget):
@@ -56,7 +57,7 @@ class TextWidget(QtWidgets.QWidget):
         return self._text
 
 
-class TextWidgetWrapper(NodeBaseWidget):
+class TextWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", type=None, default="", window=None):
         super().__init__(parent)
         self.set_name(name)

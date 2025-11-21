@@ -4,7 +4,7 @@ from NodeGraphQt import BaseNode
 from PyQt5 import QtCore
 
 from app.components.base import PropertyType, GlobalVariableContext
-from app.nodes.base_node import BasicNodeWithGlobalProperty
+from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
 from app.nodes.status_node import StatusNode
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import resource_path, draw_square_port
@@ -15,7 +15,7 @@ from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 
 def create_branch_node(parent_window):
 
-    class ConditionalBranchNode(BaseNode, StatusNode, BasicNodeWithGlobalProperty):
+    class ConditionalBranchNode(CustomBaseNode, StatusNode, BasicNodeWithGlobalProperty):
         category: str = "控制流"
         __identifier__ = 'control_flow'
         NODE_NAME = '条件分支'
