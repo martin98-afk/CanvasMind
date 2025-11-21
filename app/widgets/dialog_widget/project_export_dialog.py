@@ -32,7 +32,6 @@ class ProjectExportFlowDialog(StepMessageBoxBase):
             {"name": "project_info", "title": "项目信息"}
         ]
         super().__init__(parent=parent, steps=steps)
-
         self.candidate_items = candidate_items
         self.current_selected_inputs = current_selected_inputs or {}
         self.current_selected_outputs = current_selected_outputs or {}
