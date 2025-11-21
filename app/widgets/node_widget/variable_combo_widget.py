@@ -51,7 +51,6 @@ class GlobalVarComboBoxWidget(QtWidgets.QWidget):
             operation: 操作类型 ('add', 'delete', 'update')
         """
         full_var_name = f"{type}.{value}"
-
         if operation == 'add':
             # 检查是否已存在该选项
             existing_index = self.combobox.findText(full_var_name)

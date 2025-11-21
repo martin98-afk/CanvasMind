@@ -271,7 +271,6 @@ class GlobalPanelWidget:
         if not self._built:
             # 如果全般面板尚未构建，直接返回，不处理信号
             return
-
         # 调用内部处理逻辑
         self._handle_global_variable_change(var_type, var_name, action)
 
@@ -279,6 +278,7 @@ class GlobalPanelWidget:
         """
         内部处理逻辑，根据 var_type, var_name, action 更新UI。
         """
+        self.main_window.global_variables_changed.emit(var_type, var_name, action)
         # 重新获取 global_vars 对象，以防信号处理延迟导致的数据不一致
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars:
@@ -875,6 +875,7 @@ class GlobalPanelWidget:
 
                 # 设置新的参数组
                 global_vars.set(new_name, parameters)
+                self._handle_global_variable_change("custom", new_name, "add")
 
                 # 如果用户选择了保存为模板
                 if dialog.should_save_as_template():
@@ -960,6 +961,7 @@ class GlobalPanelWidget:
             if new_name != var_name and var_name in global_vars.custom:
                 del global_vars.custom[var_name]
                 self._handle_global_variable_change("custom", var_name, "delete")
+                global_vars.set(new_name, new_value)
                 self._handle_global_variable_change("custom", new_name, "add")
             else:
                 # 仅更新值，名称不变

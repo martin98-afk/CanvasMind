@@ -119,7 +119,6 @@ class CanvasPage(QWidget):
         self._setup_ui()
         # 全局变量
         self.global_variables = GlobalVariableContext()
-        self.global_variables_changed.connect(self.property_panel._on_global_variables_changed)
 
     def _setup_ui(self):
         # 布局

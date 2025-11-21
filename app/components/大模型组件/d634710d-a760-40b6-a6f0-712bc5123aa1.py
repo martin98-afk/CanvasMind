@@ -27,6 +27,11 @@ class Component(BaseComponent):
         PortDefinition(name="class", label="判断类别", type=ArgumentType.TEXT),
     ]
     properties = {
+        "model": PropertyDefinition(
+            type=PropertyType.VARIABLE,
+            default="",
+            label="大模型配置",
+        ),
         "classes": PropertyDefinition(
             type=PropertyType.DYNAMICFORM,
             label="类别定义",
@@ -63,7 +68,16 @@ class Component(BaseComponent):
         )
         from openai import OpenAI
         # 在这里编写你的组件逻辑
-        client = OpenAI(api_key="", base_url=self.global_variable.url)
+        if self.global_variable.get(params.model_config.get("API_KEY")):
+            client = OpenAI(
+                api_key=self.global_variable.get(params.model_config.get("API_KEY")),
+                base_url=self.global_variable.get(params.model_config.get("API_URL"))
+                )
+        else:
+            client = OpenAI(
+                api_key="",
+                base_url=self.global_variable.get(params.model_config.get("API_URL"))
+                )
         messages = [
             {
                 "role": "user",
@@ -72,11 +86,15 @@ class Component(BaseComponent):
         ]
         try:
             response = client.chat.completions.create(
-                model=self.global_variable.model_name,
-                messages=messages
+                model=self.global_variable.get(params.model_config.get("模型名称")),
+                messages=messages,
+                temperature=self.global_variable.get(params.model_config.get("温度")),
+                max_tokens=self.global_variable.get(params.model_config.get("最大Token")),
             )
         except:
-            pass
+            import traceback
+            self.logger.error(traceback.format_exc())
+            
         
         return {
             "class": response.choices[0].message.content.strip()
