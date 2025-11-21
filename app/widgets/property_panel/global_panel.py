@@ -7,6 +7,8 @@ from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, Segmen
     FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
     TransparentDropDownToolButton, SubtitleLabel, CaptionLabel, ComboBox, MessageBoxBase, MessageBox, LineEdit, \
     ScrollArea, PrimaryPushButton, ToggleToolButton
+
+from app.templates.global_custom_var_template import PARAMETER_TEMPLATE
 from app.utils.utils import get_icon, serialize_for_json
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
@@ -31,7 +33,7 @@ class ParameterGroupDialog(MessageBoxBase):
 
         # 创建表单布局
         self.hbox_layout = QHBoxLayout()
-
+        self.hbox_layout.setContentsMargins(10, 5, 10, 5)
         # 参数组名称输入
         self.name_edit = LineEdit()
         self.name_edit.setPlaceholderText("请输入参数组名称")
@@ -159,7 +161,7 @@ class TemplateSelectionDialog(MessageBoxBase):
         self.templates = templates or {}
 
         # 设置对话框大小
-        self.widget.setFixedSize(400, 300)
+        self.widget.setFixedSize(600, 500)
 
         # 创建布局
         self.viewLayout.addWidget(self.titleLabel)
@@ -168,18 +170,17 @@ class TemplateSelectionDialog(MessageBoxBase):
         self.template_list = ListWidget()
         self.template_list.setMinimumHeight(150)
 
+        # 添加自定义项
+        custom_item = QListWidgetItem("自定义参数组")
+        self.template_list.addItem(custom_item)
+
         # 添加模板项
         for template_name in self.templates.keys():
             item = QListWidgetItem(template_name)
             self.template_list.addItem(item)
 
-        # 添加自定义项
-        custom_item = QListWidgetItem("自定义参数组")
-        self.template_list.addItem(custom_item)
-
         # 设置点击事件
         self.template_list.itemClicked.connect(self.select_template_item)
-
         self.viewLayout.addWidget(self.template_list)
 
     def select_template_item(self, item):
@@ -215,23 +216,7 @@ class GlobalPanelWidget:
         self.env_vars_layout = None
 
         # 预定义的参数组模板
-        self.parameter_group_templates = {
-            "大模型配置": {
-                "模型名称": "gpt-4",
-                "API_URL": "https://api.openai.com/v1/chat/completions",
-                "API_KEY": "",
-                "温度": 0.7,
-                "最大Token": 2048,
-                "系统提示": ""
-            },
-            "数据库配置": {
-                "主机": "localhost",
-                "端口": 3306,
-                "用户名": "root",
-                "密码": "",
-                "数据库名": "mydb"
-            }
-        }
+        self.parameter_group_templates = PARAMETER_TEMPLATE
 
     def build_ui(self):
         """构建全局变量UI"""
