@@ -47,7 +47,7 @@ class CustomPipeItem(PipeItem):
                     br = widget.boundingRect()
                     height += br.height() + 3
 
-            return height + node.boundingRect().height()
+            return node.boundingRect().height()
 
 
         if self.viewer_pipe_layout() == PipeLayoutEnum.CURVED.value:

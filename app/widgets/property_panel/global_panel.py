@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QFileDialog, QStackedWidget, QApplication
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SegmentedWidget, \
@@ -396,7 +397,7 @@ class GlobalPanelWidget:
                     ),
                     Action(
                         FluentIcon.FIT_PAGE, "跳转到该节点", parent=self.parent_panel,
-                        triggered=lambda: self.locate_node_by_name(name)
+                        triggered=lambda: self.zoom_to_node(name)
                     )
                 ]
             )
@@ -409,7 +410,7 @@ class GlobalPanelWidget:
 
         def on_card_double_clicked(event):
             if event.button() == Qt.LeftButton:
-                self.locate_node_by_name(name)
+                self.zoom_to_node(name)
         card.mouseDoubleClickEvent = on_card_double_clicked
         card.setCursor(Qt.PointingHandCursor)
         card.tree_widget = tree
@@ -463,14 +464,13 @@ class GlobalPanelWidget:
             if var_type == 'custom' and hasattr(global_vars, 'custom') and var_name in global_vars.custom:
                 del global_vars.custom[var_name]
             elif var_type == 'node_vars' and hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
-                del global_vars.node_vars[var_name]
+                global_vars.node_vars.pop(var_name, None)
                 node = self.locate_node_by_name(var_name)
                 if node:
                     if hasattr(node, "refresh_node_outports"):
-                        from PyQt5.QtCore import QTimer
-                        QTimer.singleShot(0, node.refresh_node_outports)
+                        QtCore.QTimer.singleShot(0, node.refresh_node_outports)
                     if hasattr(node, "_sync_outputs_ports"):
-                        QTimer.singleShot(0, node._sync_outputs_ports)
+                        QtCore.QTimer.singleShot(0, node._sync_outputs_ports)
             self._refresh_custom_vars_page()
             self._handle_global_variable_change(var_type, var_name, "delete")
             InfoBar.success("已删除", f"变量 '{var_name}' 已移除", parent=self.main_window, duration=1500)
@@ -627,6 +627,10 @@ class GlobalPanelWidget:
             self._refresh_env_page()
             InfoBar.success("已更新", f"环境变量 {new_key}", parent=self.main_window)
 
+    def zoom_to_node(self, var_name: str):
+        found_node = self.locate_node_by_name(var_name)
+        self.main_window.canvas_widget.zoom_to_nodes([found_node._view])
+
     def locate_node_by_name(self, var_name: str):
         """根据全局变量名定位到对应的节点"""
         parts = var_name.split("_")
@@ -656,7 +660,7 @@ class GlobalPanelWidget:
                 position=InfoBarPosition.TOP_RIGHT
             )
             return None
-        self.main_window.canvas_widget.zoom_to_nodes([found_node._view])
+
         return found_node
 
     def handle_global_variable_change(self, var_type: str, var_name: str, action: str):
@@ -721,10 +725,9 @@ class GlobalPanelWidget:
             node_id=safe_node_name, output_name=port_name, output_value=serialize_for_json(value)
         )
         if hasattr(node, "refresh_node_outports"):
-            from PyQt5.QtCore import QTimer
-            QTimer.singleShot(100, node.refresh_node_outports)
+            QtCore.QTimer.singleShot(100, node.refresh_node_outports)
         if hasattr(node, "_sync_outputs_ports"):
-            QTimer.singleShot(100, node._sync_outputs_ports)
+            QtCore.QTimer.singleShot(100, node._sync_outputs_ports)
         self._handle_global_variable_change("node_vars", var_name, "add")
         InfoBar.success(
             title="成功",
@@ -740,10 +743,9 @@ class GlobalPanelWidget:
             node_id=safe_node_name, output_name=port_name
         )
         if hasattr(node, "refresh_node_outports"):
-            from PyQt5.QtCore import QTimer
-            QTimer.singleShot(100, node.refresh_node_outports)
+            QtCore.QTimer.singleShot(100, node.refresh_node_outports)
         if hasattr(node, "_sync_outputs_ports"):
-            QTimer.singleShot(100, node._sync_outputs_ports)
+            QtCore.QTimer.singleShot(100, node._sync_outputs_ports)
         self._handle_global_variable_change("node_vars", f"{safe_node_name}_{port_name}", "delete")
         InfoBar.success(
             title="成功",

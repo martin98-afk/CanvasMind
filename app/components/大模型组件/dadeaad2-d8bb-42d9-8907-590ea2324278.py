@@ -121,9 +121,12 @@ class Component(BaseComponent):
                             text += shape.text + "\n"
 
             elif file_ext == ".txt":
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                    text = f.read()
-
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        text = f.read()
+                except:
+                    with open(file_path, "r", encoding="gbk", errors="ignore") as f:
+                        text = f.read()
             else:
                 # 尝试以文本方式读取
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:

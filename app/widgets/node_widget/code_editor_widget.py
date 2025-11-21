@@ -1,14 +1,17 @@
 from NodeGraphQt import NodeBaseWidget
+from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from qtpy import QtCore
 
-from app.widgets.code_editer import CodeEditorWidget
+from app.widgets.code_editor.code_editer import CodeEditorWidget
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
-class CodeEditorWidgetWrapper(NodeBaseWidget):
+class CodeEditorWidgetWrapper(CustomNodeBaseWidget):
     valueChanged = QtCore.Signal(str)
 
     def __init__(self, parent=None, name="", label="", default="", window=None, width=700, height=400):
         super().__init__(parent)
+        self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
         self.set_label(label)
         self._editor = CodeEditorWidget(

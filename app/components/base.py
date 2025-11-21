@@ -67,51 +67,6 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType\n\n\n"""
 
 
-DEFAULT_NODE_TEMPLATE = '''class Component(BaseComponent):
-    name = ""
-    category = ""
-    description = ""
-    requirements = ""
-    inputs = [
-    ]
-    outputs = [
-    ]
-    properties = {
-    }
-    def run(self, params, inputs=None):
-        """
-        params: 节点属性（来自UI）
-        inputs: 上游输入（key=输入端口名）
-        return: 输出数据（key=输出端口名）
-        """
-        # 在这里编写你的组件逻辑
-        input_data = inputs.input1
-        param1 = params.prop1
-        self.logger.info("这是组件输出信息")
-        # 处理逻辑
-        result = f"处理结果: {input_data} + {param1}"
-        return {
-            "output1": result
-        }
-
-
-if __name__ == "__main__":
-    import warnings
-    warnings.filterwarnings("ignore")
-    model = Component()
-    result = model.debug(
-        params={"prop1": "test"},
-        inputs={"input1": "output"},
-        node_id="测试模型",
-        show_input_types = True,
-        show_output_types = True,
-        show_execution_time = True,
-        global_vars = {}
-    )
-    print(result)
-'''
-
-
 # ==================== 工具函数 ====================
 
 def resource_path(relative_path) -> str:
@@ -334,6 +289,28 @@ class GlobalVariableContext(BaseModel):
         except KeyError:
             return default
 
+    def __getattr__(self, name: str):
+        """支持 global_variable.variable_name 这种点号访问方式"""
+        # 检查是否是预定义的属性（如 env, custom, node_vars）
+        if name in {"env", "custom", "node_vars"}:
+            return getattr(self, name)
+
+        # 尝试在 custom 变量中查找
+        if name in self.custom:
+            return self.custom[name].value
+
+        # 尝试在 env 变量中查找
+        env_all = self.env.get_all_env_vars()
+        if name in env_all:
+            return env_all[name]
+
+        # 尝试在 node_vars 中查找
+        if name in self.node_vars:
+            return self.node_vars[name].value
+
+        # 如果都找不到，抛出 AttributeError
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
     def __getitem__(self, path: str) -> Any:
         if not isinstance(path, str):
             raise KeyError("Path must be a string")
@@ -480,6 +457,9 @@ class ModelMixin:
             value = getattr(self, key)
             return value if value is not None else default
         return default
+
+    def __getattr__(self, item: str):
+        return self.get(item)
 
     def __getitem__(self, key: str):
         """

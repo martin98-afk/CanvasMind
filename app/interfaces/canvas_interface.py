@@ -14,7 +14,7 @@ from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer, QPoint, QThreadPool
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication, QSplitter
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication
 from loguru import logger
 from qfluentwidgets import (
     InfoBar,
@@ -28,7 +28,7 @@ from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
-from app.runner.readme_template import DETAILED_README
+from app.templates.readme_template import DETAILED_README
 from app.scan_components import scan_components
 from app.scheduler.node_recommendation_engine import RecommendationTask
 from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导入
@@ -36,10 +36,10 @@ from app.utils.config import Settings
 from app.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon, topological_sort
-from app.widgets.basic_widget.ipython_console import EmbeddedIPythonConsole
+from app.widgets.ipython_console.ipython_console import EmbeddedIPythonConsole
 from app.widgets.basic_widget.splitter import ModernSplitter
-from app.widgets.basic_widget.variable_explorer import VariableExplorerWidget
-from app.widgets.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
+from app.widgets.ipython_console.variable_explorer import VariableExplorerWidget
+from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 from app.widgets.dialog_widget.custom_messagebox import ProjectExportDialog
 from app.widgets.dialog_widget.input_selection_dialog import InputSelectionDialog
 from app.widgets.dialog_widget.ipython_dialog import IPythonConsoleDialog
@@ -105,18 +105,34 @@ class CanvasPage(QWidget):
         self.graph.node_created.connect(self.on_node_created)
         self.graph.port_connected.connect(self._on_port_connected)
         self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
+        # 注册节点
+        self.register_components()
+        # 快捷组件工具管理
+        self.quick_manager = QuickComponentManager(
+            parent_widget=self,
+            component_map=self.component_map
+        )
+        self.quick_manager.quick_components_changed.connect(self._refresh_quick_buttons)
+        # 线程池
+        self.thread_pool = QThreadPool.globalInstance()
+        # 初始化ui
+        self._setup_ui()
+        # 全局变量
+        self.global_variables = GlobalVariableContext()
+        self.global_variables_changed.connect(self.property_panel._on_global_variables_changed)
+
+    def _setup_ui(self):
+        # 布局
         self._setup_pipeline_style()
+        # 画布控件
         self.canvas_widget = self.graph.viewer()
         self.canvas_widget.keyPressEvent = self._canvas_key_press_event
-        self.global_variables = GlobalVariableContext()
-        # 组件面板
-        self.register_components()
+        # 节点拖拽树
         self.nav_panel = DraggableTreePanel(self)
         self.nav_view = self.nav_panel.tree
         # 属性面板
         self.property_panel = PropertyPanel(self)
-        self.global_variables_changed.connect(self.property_panel._on_global_variables_changed)
-        # 布局
+
         main_layout = QHBoxLayout(self)
         splitter = ModernSplitter(Qt.Horizontal)
         splitter.addWidget(self.nav_panel)
@@ -129,44 +145,19 @@ class CanvasPage(QWidget):
         splitter.setStretchFactor(1, 1)  # 中间画布拉伸（主要区域）
         splitter.setStretchFactor(2, 0)  # 右侧属性不拉伸
         main_layout.addWidget(splitter)
-        # 快捷组件工具管理
-        self.quick_manager = QuickComponentManager(
-            parent_widget=self,
-            component_map=self.component_map
-        )
-        self.quick_manager.quick_components_changed.connect(self._refresh_quick_buttons)
-        self.thread_pool = QThreadPool.globalInstance()
+
         # 创建悬浮按钮和环境选择
-        self.ipython_console = EmbeddedIPythonConsole(self)
-        self.var_explorer = VariableExplorerWidget(parent=self, kernel_manager=None)  # 先不设置内核管理器)
-        self.console_dialog = IPythonConsoleDialog(self.ipython_console, self)
         self.create_environment_selector()
         self.create_floating_buttons()
         self.create_floating_nodes()
         self.create_console_panel()
-        QtCore.QTimer.singleShot(0, self.connect_ipython_kernel)
         # 启用画布拖拽
         self.canvas_widget.setAcceptDrops(True)
         self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
         self.canvas_widget.dropEvent = self.canvas_drop_event
         self.canvas_widget.installEventFilter(self)
         # 右键菜单
-        self._register_builtin_components()
         self._setup_context_menus()
-
-    # ========================
-    # 调度器相关（核心新增）
-    # ========================
-    def connect_ipython_kernel(self):
-        current_python_exe = self.get_current_python_exe()
-        if current_python_exe is not None and (
-                self.ipython_console.kernel_manager.python_exe_path != current_python_exe or
-                not self.ipython_console.kernel_manager.get_kernel_info().get("is_alive")):
-            self.ipython_console.kernel_manager.shutdown_kernel()
-            if not self.ipython_console.start_kernel(self.get_current_python_exe()):
-                raise RuntimeError("无法启动 IPython 内核")
-            self.var_explorer.set_kernel_manager(self.ipython_console.kernel_manager)
-            self.var_explorer.start_auto_refresh()
 
     def toggle_console_panel(self):
         """切换 Console 面板显示/隐藏"""
@@ -366,6 +357,9 @@ class CanvasPage(QWidget):
 
     def create_console_panel(self):
         """创建 Console 面板和切换按钮"""
+        self.ipython_console = EmbeddedIPythonConsole(self)
+        self.var_explorer = VariableExplorerWidget(parent=self, kernel_manager=None)  # 先不设置内核管理器)
+        self.console_dialog = IPythonConsoleDialog(self.ipython_console, self)
         # --- 1. 创建 Console 容器面板 ---
         self.console_container = QWidget(self.canvas_widget)
         self.console_container.hide()  # 初始隐藏
@@ -375,9 +369,9 @@ class CanvasPage(QWidget):
         console_layout.setContentsMargins(0, 0, 0, 5)
         console_layout.setSpacing(1)
 
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(self.ipython_console)
+        splitter = ModernSplitter(Qt.Horizontal)
         splitter.addWidget(self.var_explorer)
+        splitter.addWidget(self.ipython_console)
         splitter.setSizes([400, 400])  # 变量浏览器较小，控制台较大
 
         console_layout.addWidget(splitter)
@@ -392,6 +386,18 @@ class CanvasPage(QWidget):
 
         # --- 9. 显示按钮 ---
         self.console_container.hide()  # 确保初始隐藏
+        QtCore.QTimer.singleShot(0, self.connect_ipython_kernel)
+
+    def connect_ipython_kernel(self):
+        current_python_exe = self.get_current_python_exe()
+        if current_python_exe is not None and (
+                self.ipython_console.kernel_manager.python_exe_path != current_python_exe or
+                not self.ipython_console.kernel_manager.get_kernel_info().get("is_alive")):
+            self.ipython_console.kernel_manager.shutdown_kernel()
+            if not self.ipython_console.start_kernel(self.get_current_python_exe()):
+                raise RuntimeError("无法启动 IPython 内核")
+            self.var_explorer.set_kernel_manager(self.ipython_console.kernel_manager)
+            self.var_explorer.start_auto_refresh()
 
     def _update_console_position(self):
         """更新 Console 面板的位置和大小"""
@@ -454,47 +460,21 @@ class CanvasPage(QWidget):
         return None
 
     def _register_builtin_components(self):
-        nodes_menu = self.graph.get_context_menu('nodes')
         # 迭代节点
         code_node = create_dynamic_code_node(self)
         code_node.__name__ = "DYNAMIC_CODE"
         self.graph.register_node(code_node)
-        nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
-                               node_type=f"dynamic.{code_node.__name__}")
-        nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
-                               node_type=f"dynamic.{code_node.__name__}")
-        nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
-                               node_type=f"dynamic.{code_node.__name__}")
-        nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
-                               node_type=f"dynamic.{code_node.__name__}")
-        nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                               node_type=f"dynamic.{code_node.__name__}")
+
         self.node_type_map[code_node.FULL_PATH] = f"dynamic.{code_node.__name__}"
         # 迭代节点
         iterate_node = ControlFlowIterateNode
         iterate_node.__name__ = "ControlFlowIterateNode"
         self.graph.register_node(iterate_node)
-        nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
-                               node_type=f"control_flow.{iterate_node.__name__}")
-        nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
-                               node_type=f"control_flow.{iterate_node.__name__}")
-        nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
-                               node_type=f"control_flow.{iterate_node.__name__}")
-        nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                               node_type=f"control_flow.{iterate_node.__name__}")
-        self.node_type_map[iterate_node.FULL_PATH] = f"control_flow.{iterate_node.__name__}"
+        self.node_type_map[iterate_node.FULL_PATH] = f"control_flow.ControlFlowIterateNode"
         # 循环节点
         loop_node = ControlFlowLoopNode
         loop_node.__name__ = "ControlFlowLoopNode"
         self.graph.register_node(loop_node)
-        nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
-                               node_type=f"control_flow.{loop_node.__name__}")
-        nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
-                               node_type=f"control_flow.{loop_node.__name__}")
-        nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
-                               node_type=f"control_flow.{loop_node.__name__}")
-        nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                               node_type=f"control_flow.{loop_node.__name__}")
         self.node_type_map[loop_node.FULL_PATH] = f"control_flow.{loop_node.__name__}"
         # 输入端口节点
         input_port_node = CustomPortInputNode
@@ -508,14 +488,6 @@ class CanvasPage(QWidget):
         branch_node = create_branch_node(self)
         branch_node.__name__ = "ControlFlowBranchNode"
         self.graph.register_node(branch_node)
-        nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
-                               node_type=f"control_flow.{branch_node.__name__}")
-        nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
-                               node_type=f"control_flow.{branch_node.__name__}")
-        nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
-                               node_type=f"control_flow.{branch_node.__name__}")
-        nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                               node_type=f"control_flow.{branch_node.__name__}")
         self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
 
     def register_components(self):
@@ -527,6 +499,7 @@ class CanvasPage(QWidget):
         # 重建推荐索引
         self.manager.recommendation_engine._recommendation_cache.clear()
         self.manager.recommendation_engine._build_index(self.component_map)  # 重建索引
+        self._register_builtin_components()
         # 普通节点
         nodes_menu = self.graph.get_context_menu('nodes')
         for full_path, comp_cls in self.component_map.items():
@@ -1759,6 +1732,21 @@ class CanvasPage(QWidget):
                 self.delete_selected_nodes(graph), self.property_panel.update_properties(None)
             ), 'Del'
         )
+        nodes_menu = self.graph.get_context_menu('nodes')
+        for special_node in [
+            "dynamic.DYNAMIC_CODE", "control_flow.ControlFlowIterateNode",
+            "control_flow.ControlFlowLoopNode", "control_flow.ControlFlowBranchNode"
+        ]:
+            nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
+                                   node_type=special_node)
+            nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
+                                   node_type=special_node)
+            nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
+                                   node_type=special_node)
+            if special_node == "dynamic.DYNAMIC_CODE":
+                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(), node_type=special_node)
+            nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
+                                   node_type=special_node)
 
     def delete_selected_nodes(self, graph):
         # 清除选中节点的输入输出端口连接线

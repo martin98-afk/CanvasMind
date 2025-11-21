@@ -15,8 +15,8 @@ from loguru import logger
 
 # --- 其他原有导入 ---
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext
-from app.nodes.base_node import BasicNodeWithGlobalProperty
-from app.nodes.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
+from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
+from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import draw_square_port, draw_special_outputport, \
     canvas_file_dump_path, _safe_load_pickle  # 假设 resource_path 也在 utils
@@ -24,7 +24,7 @@ from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 # 导入代码编辑器组件
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
-from app.widgets.node_widget.custom_node_item import CustomNodeItem
+from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 from app.widgets.node_widget.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.node_widget.range_widget import RangeWidgetWrapper
@@ -82,7 +82,7 @@ def _install_requirements(python_executable, requirements_str, logger=logger):
 def create_node_class(component_class, full_path, file_path, parent_window=None):
     """返回一个高性能、支持独立环境执行的动态节点类"""
 
-    class DynamicNode(BaseNode, BasicNodeWithGlobalProperty):
+    class DynamicNode(CustomBaseNode, BasicNodeWithGlobalProperty):
         __identifier__ = 'dynamic'
         NODE_NAME = component_class.name
         FULL_PATH = full_path
@@ -293,6 +293,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         field_type_enum = PropertyType(field_def["type"])
                         processed_schema[field_name] = {
                             "type": field_type_enum.name,
+                            "name": field_name,
                             "label": field_def.get("label", field_name),
                             "choices": field_def.get("choices", []),
                             "default": field_def.get("default", ""),
@@ -363,10 +364,6 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 self.set_property(prop_name, path)
 
         def _add_custom_widget(self, widget, widget_type=None, tab=None):
-            if not isinstance(widget, NodeBaseWidget):
-                raise NodeWidgetError(
-                    '\'widget\' must be an instance of a NodeBaseWidget')
-
             # widget_type = widget_type or NodePropWidgetEnum.HIDDEN.value
             self.set_property(widget.get_name(), widget.get_value())
             widget.value_changed.connect(lambda k, v: self.set_property(k, v))
@@ -429,7 +426,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                             input_vars[safe_key] = inputs_raw[port_name]
                             for upstream in connected:
                                 safe_name = upstream.node().name().replace(" ", "_")
-                                safe_key = f"input_{port_name}_{safe_name}_{upstream.name()}"
+                                safe_key = f"input_{safe_name}_{upstream.name()}"
                                 input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
                         else:
                             inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())

@@ -1,21 +1,16 @@
 # -*- coding: utf-8 -*-
-from collections import OrderedDict, defaultdict, deque
-from typing import Optional, List
+from collections import OrderedDict
 
 from NodeGraphQt import BackdropNode, Port
 from NodeGraphQt.base.commands import NodeVisibleCmd
-from NodeGraphQt.constants import ITEM_CACHE_MODE, PortTypeEnum, Z_VAL_NODE, ICON_NODE_BASE, NodeEnum
+from NodeGraphQt.constants import PortTypeEnum
 from NodeGraphQt.errors import PortError
-from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
-from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
-from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
-from NodeGraphQt.qgraphics.port import CustomPortItem, PortItem
 from PyQt5.QtWidgets import QUndoCommand
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore
 
 from app.nodes.status_node import StatusNode
-from app.utils.utils import get_port_node, draw_square_port, resource_path, topological_sort
-from app.widgets.node_widget.custom_backdrop_item import ControlFlowBackdropNodeItem
+from app.utils.utils import draw_square_port, resource_path, topological_sort
+from app.widgets.custom_nodegraphqt.custom_backdrop_item import ControlFlowBackdropNodeItem
 
 
 # ──────────────── Undo/Redo Command ────────────────

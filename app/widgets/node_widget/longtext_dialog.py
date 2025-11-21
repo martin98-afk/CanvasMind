@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 from NodeGraphQt import NodeBaseWidget
+from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
 from qfluentwidgets import FluentIcon, ToolButton, LineEdit, TextEdit, TransparentToolButton
 from qfluentwidgets import MessageBoxBase, SubtitleLabel
 
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
 # -----------------------
@@ -88,11 +90,12 @@ class LongTextWidget(QtWidgets.QWidget):
         return self._text
 
 
-class LongTextWidgetWrapper(NodeBaseWidget):
+class LongTextWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", default="", window=None):
         super().__init__(parent)
+        self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
-        self.set_label(label)
+        self.set_label(f"{label}({name})")
         widget = LongTextWidget(default_text=default, parent=window, get_port_func=self.get_port_func)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
@@ -101,10 +104,9 @@ class LongTextWidgetWrapper(NodeBaseWidget):
         vars = [f"input.{port.name()}" for port in self.node.input_ports()]
         for port in self.node.input_ports():
             connected_ports = port.connected_ports()
-            print(connected_ports)
             for connected_port in connected_ports:
                 safe_name = connected_port.node().name().replace(" ", "_")
-                vars.append(f"input.{port.name()}_{safe_name}_{connected_port.name()}")
+                vars.append(f"input.{safe_name}_{connected_port.name()}")
 
         return vars
 

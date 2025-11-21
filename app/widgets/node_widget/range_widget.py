@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
+from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
 from NodeGraphQt import NodeBaseWidget
 from qfluentwidgets import Slider, LineEdit
+
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
 class RangeWidget(QtWidgets.QWidget):
@@ -100,11 +103,12 @@ class RangeWidget(QtWidgets.QWidget):
             raise ValueError(f"Invalid number format: '{text}'") from e
 
 
-class RangeWidgetWrapper(NodeBaseWidget):
+class RangeWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", min_val=0, max_val=100, step=1, default=0):
         super().__init__(parent)
+        self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
-        self.set_label(label)
+        self.set_label(f"{label}({name})")
         widget = RangeWidget(min_val, max_val, step, default)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)

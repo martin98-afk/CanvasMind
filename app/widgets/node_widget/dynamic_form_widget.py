@@ -2,14 +2,13 @@
 from NodeGraphQt import NodeBaseWidget
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from PyQt5.QtCore import QSize
-from PyQt5.QtWidgets import QComboBox
 from Qt import QtWidgets, QtCore
-from qfluentwidgets import LineEdit, PushButton, FluentIcon, ToolButton, ComboBox, TextEdit, PrimaryPushButton, \
-    TransparentPushButton, TransparentToolButton
+from qfluentwidgets import FluentIcon, TransparentPushButton, TransparentToolButton
 
 from app.components.base import PropertyType
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidget
 from app.widgets.node_widget.longtext_dialog import LongTextWidget
 from app.widgets.node_widget.range_widget import RangeWidget
@@ -32,6 +31,7 @@ class FormFieldWidget(QtWidgets.QWidget):
         for key, defn in schema.items():
             field_type = defn["type"]
             label = defn.get("label", "")
+            name = defn.get("name", "")
             default = defn.get("default", "")
             # 为这种布局创建一个包含标签和输入框的子布局
             sub_layout = QtWidgets.QVBoxLayout()
@@ -43,7 +43,7 @@ class FormFieldWidget(QtWidgets.QWidget):
             label_row.setContentsMargins(0, 0, 0, 0)
             label_row.setSpacing(6)
 
-            label_widget = QtWidgets.QLabel(label + ":")
+            label_widget = QtWidgets.QLabel(f"{label} ({name}):" if name else label + ":")
             label_widget.setStyleSheet("QLabel { font-weight: bold; color: white; font-size: 12px; }")
             label_row.addWidget(label_widget)
 
@@ -289,14 +289,14 @@ class DynamicFormWidget(QtWidgets.QWidget):
         self._emit_changes()
 
 
-class DynamicFormWidgetWrapper(NodeBaseWidget):
+class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", schema=None, window=None, z_value=1):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.window = window
         self.name = name
         self.set_name(name)
-        self.set_label(label)
+        self.set_label(f"{label}({name})")
         widget = DynamicFormWidget(schema or {}, parent=window, label=label, get_port_func=self.get_port_func)
         self.set_custom_widget(widget)
         widget.sizeHintChanged.connect(self._update_node)
@@ -313,6 +313,12 @@ class DynamicFormWidgetWrapper(NodeBaseWidget):
 
     def get_port_func(self):
         vars = [f"input.{port.name()}" for port in self.node.input_ports()]
+        for port in self.node.input_ports():
+            connected_ports = port.connected_ports()
+            for connected_port in connected_ports:
+                safe_name = connected_port.node().name().replace(" ", "_")
+                vars.append(f"input.{safe_name}_{connected_port.name()}")
+
         return vars
 
     def get_value(self):

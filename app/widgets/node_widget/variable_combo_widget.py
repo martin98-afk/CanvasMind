@@ -11,6 +11,7 @@ from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
 
 from app.widgets.basic_widget.combo_widget import CustomComboBox
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
 class GlobalVarComboBoxWidget(QtWidgets.QWidget):
@@ -155,14 +156,14 @@ class GlobalVarComboBoxWidget(QtWidgets.QWidget):
             self.combobox.setCurrentIndex(0)  # "无"
 
 
-class GlobalVarComboBoxWidgetWrapper(NodeBaseWidget):
+class GlobalVarComboBoxWidgetWrapper(CustomNodeBaseWidget):
     """全局变量下拉框包装器（用于 NodeGraphQt）"""
 
     def __init__(self, parent=None, name="", label="", main_window=None, z_value=1):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
-        self.set_label(label)
+        self.set_label(f"{label}({name})")
 
         # 创建自定义控件
         widget = GlobalVarComboBoxWidget(main_window=main_window, parent=parent)

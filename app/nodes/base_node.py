@@ -1,9 +1,45 @@
 import uuid
-from NodeGraphQt import NodeObject
+from NodeGraphQt import NodeObject, BaseNode
+from NodeGraphQt.constants import NodePropWidgetEnum
 from loguru import logger
 
 from app.utils.node_logger import NodeLogHandler
 from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
+
+
+class CustomBaseNode(BaseNode):
+
+    def add_custom_widget(self, widget, widget_type=None, tab=None):
+        """
+        Add a custom node widget into the node.
+
+        see example :ref:`Embedding Custom Widgets`.
+
+        Note:
+            The ``value_changed`` signal from the added node widget is wired
+            up to the :meth:`NodeObject.set_property` function.
+
+        Args:
+            widget (NodeBaseWidget): node widget class object.
+            widget_type: widget flag to display in the
+                :class:`NodeGraphQt.PropertiesBinWidget`
+                (default: :attr:`NodeGraphQt.constants.NodePropWidgetEnum.HIDDEN`).
+            tab (str): name of the widget tab to display in.
+        """
+        widget_type = widget_type or NodePropWidgetEnum.HIDDEN.value
+        self.create_property(widget.get_name(),
+                             widget.get_value(),
+                             widget_type=widget_type,
+                             tab=tab)
+        widget.value_changed.connect(lambda k, v: self.set_property(k, v))
+        widget._node = self
+        self.view.add_widget(widget)
+        #: redraw node to address calls outside the "__init__" func.
+        self.view.draw_node()
+
+        #: HACK: calling the .parent() function here on the widget as it seems
+        #        to address a seg fault issue when exiting the application.
+        widget.parent()
 
 
 class BasicNodeWithGlobalProperty(NodeObject):

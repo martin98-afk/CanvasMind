@@ -3,6 +3,7 @@ from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
 
 from app.widgets.basic_widget.combo_widget import CustomComboBox
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
 class ComboBoxWidget(QtWidgets.QWidget):
@@ -40,12 +41,12 @@ class ComboBoxWidget(QtWidgets.QWidget):
         self.combobox.setCurrentText(self._value)
 
 
-class ComboBoxWidgetWrapper(NodeBaseWidget):
+class ComboBoxWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", items=[], z_value=1):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
-        self.set_label(label)
+        self.set_label(f"{label}({name})")
         widget = ComboBoxWidget(items=items, parent=parent)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)

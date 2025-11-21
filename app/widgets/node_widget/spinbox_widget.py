@@ -2,8 +2,11 @@
 from typing import Any
 
 from NodeGraphQt import NodeBaseWidget
+from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
 from qfluentwidgets import SpinBox, DoubleSpinBox
+
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
 class SpinBoxWidget(QtWidgets.QWidget):
@@ -28,11 +31,12 @@ class SpinBoxWidget(QtWidgets.QWidget):
     def set_value(self, value):
         self.spinbox.setValue(value)
 
-class NumberWidgetWrapper(NodeBaseWidget):
+class NumberWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", default=0, type="float", window=None):
         super().__init__(parent)
+        self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
-        self.set_label(label)
+        self.set_label(f"{label} ({name})")
         self.type = type
         widget = SpinBoxWidget(default=default, parent=window, type=type)
         self.set_custom_widget(widget)

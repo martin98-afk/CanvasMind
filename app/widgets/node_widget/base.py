@@ -1,0 +1,277 @@
+from NodeGraphQt.constants import ViewerEnum, Z_VAL_NODE_WIDGET
+from NodeGraphQt.errors import NodeWidgetError
+from qtpy import QtWidgets, QtCore
+
+
+class _NodeGroupBox(QtWidgets.QGroupBox):
+
+    def __init__(self, label, parent=None):
+        super(_NodeGroupBox, self).__init__(parent)
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(1)
+        self._label = label
+        self.setTitle(label)
+
+    def setTitle(self, text):
+        self._label = text
+        margin = (0, 2, 0, 0) if text else (0, 0, 0, 0)
+        self.layout().setContentsMargins(*margin)
+        super(_NodeGroupBox, self).setTitle(text)
+        # 重新应用样式以适应新的标题
+        self.setTitleAlign(self._current_align if hasattr(self, '_current_align') else 'center')
+
+    def setTitleAlign(self, align='center'):
+        self._current_align = align
+        text_color = tuple(map(lambda i, j: i - j, (255, 255, 255),
+                               ViewerEnum.BACKGROUND_COLOR.value))
+        style_dict = {
+            'QGroupBox': {
+                'background-color': 'rgba(0, 0, 0, 0)',
+                'border': '0px solid rgba(0, 0, 0, 0)',
+                'margin-top': '1px',
+                'padding-bottom': '2px',
+                'padding-left': '1px',
+                'padding-right': '1px',
+                'font-size': '12pt',
+                'font-weight': 'bold'
+            },
+            'QGroupBox::title': {
+                'color': 'rgba({0}, {1}, {2}, 200)'.format(*text_color),
+                'padding': '0px',
+                'font-size': '12pt',
+                'font-weight': 'bold'
+            }
+        }
+
+        if self.title():
+            style_dict['QGroupBox']['padding-top'] = '14px'
+        else:
+            style_dict['QGroupBox']['padding-top'] = '2px'
+
+        # 根据对齐方式设置标题位置，但不强制限制宽度
+        if align == 'center':
+            style_dict['QGroupBox::title']['subcontrol-origin'] = 'margin'
+            style_dict['QGroupBox::title']['subcontrol-position'] = 'top center'
+        elif align == 'left':
+            style_dict['QGroupBox::title']['subcontrol-origin'] = 'margin'
+            style_dict['QGroupBox::title']['subcontrol-position'] = 'top left'
+            style_dict['QGroupBox::title']['padding-left'] = '4px'
+        elif align == 'right':
+            style_dict['QGroupBox::title']['subcontrol-origin'] = 'margin'
+            style_dict['QGroupBox::title']['subcontrol-position'] = 'top right'
+            style_dict['QGroupBox::title']['padding-right'] = '4px'
+
+        stylesheet = ''
+        for css_class, css in style_dict.items():
+            style = '{} {{\n'.format(css_class)
+            for elm_name, elm_val in css.items():
+                style += '  {}:{};\n'.format(elm_name, elm_val)
+            style += '}\n'
+            stylesheet += style
+        self.setStyleSheet(stylesheet)
+
+    def add_node_widget(self, widget):
+        self.layout().addWidget(widget)
+
+    def get_node_widget(self):
+        return self.layout().itemAt(0).widget()
+
+    def minimumSizeHint(self):
+        """重写最小尺寸提示，确保标题有足够空间，但不影响子控件布局"""
+        size = super(_NodeGroupBox, self).minimumSizeHint()
+        if self.title():
+            # 只为标题文本提供最小宽度，不影响子控件
+            font_metrics = self.fontMetrics()
+            title_width = font_metrics.horizontalAdvance(self.title())
+            # 设置一个合理的最小宽度，但不要强制子控件适应
+            min_width = max(size.width(), title_width + 20)
+            size.setWidth(min_width)
+        return size
+
+    def sizeHint(self):
+        """重写尺寸提示，优化布局，但保持子控件的独立布局"""
+        size = super(_NodeGroupBox, self).sizeHint()
+        if self.title():
+            font_metrics = self.fontMetrics()
+            title_width = font_metrics.horizontalAdvance(self.title())
+            # 仅在必要时调整宽度，让子控件决定实际布局
+            preferred_width = max(size.width(), title_width + 20)
+            size.setWidth(preferred_width)
+        return size
+
+
+class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
+    """
+    This is the main wrapper class that allows a ``QtWidgets.QWidget`` to be
+    added in a :class:`NodeGraphQt.BaseNode` object.
+
+    .. inheritance-diagram:: NodeGraphQt.NodeBaseWidget
+        :parts: 1
+
+    Args:
+        parent (NodeGraphQt.BaseNode.view): parent node view.
+        name (str): property name for the parent node.
+        label (str): label text above the embedded widget.
+    """
+
+    value_changed = QtCore.Signal(str, object)
+    """
+    Signal triggered when the ``value`` attribute has changed.
+
+    (This is connected to the :meth: `BaseNode.set_property` function when the 
+    widget is added into the node.)
+
+    :parameters: str, object
+    :emits: property name, propety value
+    """
+
+    def __init__(self, parent=None, name=None, label=''):
+        super(CustomNodeBaseWidget, self).__init__(parent)
+        self.setZValue(Z_VAL_NODE_WIDGET)
+        self._name = name
+        self._label = label
+        self._node = None
+
+    def setToolTip(self, tooltip):
+        tooltip = tooltip.replace('\n', '<br/>')
+        tooltip = '<b>{}</b><br/>{}'.format(self.get_name(), tooltip)
+        super(CustomNodeBaseWidget, self).setToolTip(tooltip)
+
+    def on_value_changed(self, *args, **kwargs):
+        """
+        This is the slot function that
+        Emits the widgets current :meth:`NodeBaseWidget.value` with the
+        :attr:`NodeBaseWidget.value_changed` signal.
+
+        Args:
+            args: not used.
+            kwargs: not used.
+
+        Emits:
+            str, object: <node_property_name>, <node_property_value>
+        """
+        self.value_changed.emit(self.get_name(), self.get_value())
+
+    @property
+    def type_(self):
+        """
+        Returns the node widget type.
+
+        Returns:
+            str: widget type.
+        """
+        return str(self.__class__.__name__)
+
+    @property
+    def node(self):
+        """
+        Returns the node object this widget is embedded in.
+        (This will return ``None`` if the widget has not been added to
+        the node yet.)
+
+        Returns:
+            NodeGraphQt.BaseNode: parent node.
+        """
+        return self._node
+
+    def get_icon(self, name):
+        """
+        Returns the default icon from the Qt framework.
+
+        Returns:
+            str: icon name.
+        """
+        return self.style().standardIcon(QtWidgets.QStyle.StandardPixmap(name))
+
+    def get_name(self):
+        """
+        Returns the parent node property name.
+
+        Returns:
+            str: property name.
+        """
+        return self._name
+
+    def set_name(self, name):
+        """
+        Set the property name for the parent node.
+
+        Important:
+            The property name must be set before the widget is added to
+            the node.
+
+        Args:
+            name (str): property name.
+        """
+        if not name:
+            return
+        if self.node:
+            raise NodeWidgetError(
+                'Can\'t set property name widget already added to a Node'
+            )
+        self._name = name
+
+    def get_value(self):
+        """
+        Returns the widgets current value.
+
+        You must re-implement this property to if you're using a custom widget.
+
+        Returns:
+            str: current property value.
+        """
+        raise NotImplementedError
+
+    def set_value(self, text):
+        """
+        Sets the widgets current value.
+
+        You must re-implement this property to if you're using a custom widget.
+
+        Args:
+            text (str): new text value.
+        """
+        raise NotImplementedError
+
+    def get_custom_widget(self):
+        """
+        Returns the embedded QWidget used in the node.
+
+        Returns:
+            QtWidgets.QWidget: nested QWidget
+        """
+        widget = self.widget()
+        return widget.get_node_widget()
+
+    def set_custom_widget(self, widget):
+        """
+        Set the custom QWidget used in the node.
+
+        Args:
+            widget (QtWidgets.QWidget): custom.
+        """
+        if self.widget():
+            raise NodeWidgetError('Custom node widget already set.')
+        group = _NodeGroupBox(self._label)
+        group.add_node_widget(widget)
+        self.setWidget(group)
+
+    def get_label(self):
+        """
+        Returns the label text displayed above the embedded node widget.
+
+        Returns:
+            str: label text.
+        """
+        return self._label
+
+    def set_label(self, label=''):
+        """
+        Sets the label text above the embedded widget.
+
+        Args:
+            label (str): new label ext.
+        """
+        if self.widget():
+            self.widget().setTitle(label)
+        self._label = label

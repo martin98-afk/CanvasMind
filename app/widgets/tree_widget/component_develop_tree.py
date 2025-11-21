@@ -273,10 +273,6 @@ class ComponentTreeWidget(TreeWidget):
             if self._copied_component:
                 menu.addAction(Action("📌 粘贴组件 (Ctrl+V)", triggered=self._paste_component))
             menu.addAction(Action("🔄 刷新组件", triggered=self.refresh_components))
-            menu.addSeparator()
-            menu.addAction(Action("展开所有分类 (Ctrl+Shift++)", triggered=self.expand_all_categories))
-            menu.addAction(Action("折叠所有分类 (Ctrl+Shift+-)", triggered=self.collapse_all_categories))
-            menu.addAction(Action("跳转到当前组件 (Ctrl+G)", triggered=self.jump_to_current_component))
 
         if menu.actions():
             menu.exec_(self.viewport().mapToGlobal(position))
