@@ -2,14 +2,50 @@
 
 from NodeGraphQt.constants import (
     PipeLayoutEnum,
-    PortTypeEnum, PipeEnum, Z_VAL_PIPE, Z_VAL_NODE
+    PortTypeEnum, PipeEnum, Z_VAL_PIPE, Z_VAL_NODE, ITEM_CACHE_MODE
 )
 from NodeGraphQt.qgraphics.pipe import PipeItem, LivePipeItem
 from NodeGraphQt.qgraphics.port import PortItem
+from PyQt5 import QtGui, QtWidgets
 from Qt import QtCore
 
 
 class CustomPipeItem(PipeItem):
+
+    def __init__(self, input_port=None, output_port=None):
+        super(CustomPipeItem, self).__init__()
+        self.setZValue(Z_VAL_PIPE)
+        self.setAcceptHoverEvents(True)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable)
+        self.setCacheMode(ITEM_CACHE_MODE)
+
+        self._color = PipeEnum.COLOR.value
+        self._style = PipeEnum.DRAW_TYPE_DEFAULT.value
+        self._active = False
+        self._highlight = False
+        self._input_port = input_port
+        self._output_port = output_port
+
+        size = 6.0
+        self._poly = QtGui.QPolygonF()
+        self._poly.append(QtCore.QPointF(-size, size))
+        self._poly.append(QtCore.QPointF(0.0, -size * 1.5))
+        self._poly.append(QtCore.QPointF(size, size))
+
+        self._dir_pointer = QtWidgets.QGraphicsPolygonItem(self)
+        self._dir_pointer.setPolygon(self._poly)
+        self._dir_pointer.setFlag(
+            QtWidgets.QGraphicsPathItem.ItemIsSelectable, False
+        )
+
+        # --- 修正：定义一个更细的笔用于 hover 区域 ---
+        self._hover_pen = QtGui.QPen()
+        self._hover_pen.setWidth(8)  # 可以根据需要调整这个值，比如 6 或 10
+        self._hover_pen.setCapStyle(QtCore.Qt.RoundCap)
+        self._hover_pen.setJoinStyle(QtCore.Qt.MiterJoin)
+        # --- 结束修正 ---
+
+        self.reset()
 
     def _draw_path_horizontal(self, start_port, pos1, pos2, path):
         """
@@ -139,6 +175,18 @@ class CustomPipeItem(PipeItem):
                     path.lineTo(pos2)
 
             self.setPath(path)
+
+    def shape(self):
+        """
+        Defines the shape used for hover detection.
+        Creates a stroked path using a wider pen to define the sensitive area.
+        """
+        # 使用 QPainterPathStroker 从当前路径和 hover 笔创建一个形状
+        stroker = QtGui.QPainterPathStroker()
+        stroker.setWidth(self._hover_pen.width())
+        stroker.setCapStyle(self._hover_pen.capStyle())
+        stroker.setJoinStyle(self._hover_pen.joinStyle())
+        return stroker.createStroke(self.path())
 
     def activate(self):
         self._active = True

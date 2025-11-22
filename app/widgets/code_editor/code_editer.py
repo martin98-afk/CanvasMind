@@ -10,6 +10,7 @@ from spyder.widgets.findreplace import FindReplace
 
 from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon  # 假设您有这个工具函数
+from app.widgets.basic_widget.style_sheet import StyleSheet
 
 from app.widgets.code_editor.code_editor_spyder import JediCodeEditor  # 确保导入路径正确
 
@@ -28,7 +29,7 @@ class CodeEditorWidget(QWidget):
         self.overlay_widget = None  # 用于覆盖全屏的透明层
         self._setup_ui(python_exe, popup_offset)  # 将初始化UI的逻辑移到一个方法中
         self._setup_auto_sync()
-        # self._setup_syntax_highlighting()
+        StyleSheet.CODE_EDITOR.apply(self)
         self._setup_shortcuts()
 
     def _setup_ui(self, python_exe, popup_offset):
@@ -42,7 +43,7 @@ class CodeEditorWidget(QWidget):
 
         # 查找替换面板
         self.find_replace = FindReplace(self, True)
-        # self.find_replace.setVisible(False)
+        StyleSheet.FIND_REPLACE.apply(self.find_replace)
         self.main_layout.addWidget(self.find_replace)
 
         # 代码编辑器
@@ -235,14 +236,14 @@ class CodeEditorWidget(QWidget):
         """创建全屏容器，包含查找替换面板、代码编辑器和状态栏"""
         container = QWidget()
         layout = QVBoxLayout(container)
+        # 深色半透明背景
+        container.setStyleSheet("background-color: rgba(0, 0, 0, 200);")
         layout.setContentsMargins(0, 0, 0, 0)
 
         # 添加查找替换面板
         layout.addWidget(self.find_replace)
-
         # 添加代码编辑器
         layout.addWidget(self.code_editor)
-
         # 添加状态栏
         layout.addWidget(self.status_label)
 
@@ -253,8 +254,15 @@ class CodeEditorWidget(QWidget):
         if self.fullscreen_mode:
             return  # 已经是全屏状态
 
+        # 保存当前的大小信息，用于退出全屏后恢复
+        self._original_size = self.size()
+        self._original_main_view_size = self.main_view.size()
+
+        # 保存当前的可见性状态
+        self._find_replace_visible = self.find_replace.isVisible()
+        self._status_label_visible = self.status_label.isVisible()
+
         # 1. 获取 FluentWindow 的顶层容器 (通常是 centralwidget 或直接是 window)
-        #    这里假设 self.original_parent 是 FluentWindow 实例
         window_parent = self.original_parent
         if not window_parent:
             print("Error: Cannot enter fullscreen, no original parent window found.")
@@ -312,22 +320,24 @@ class CodeEditorWidget(QWidget):
             fullscreen_container.setParent(None)
             fullscreen_container.hide()
 
-        # 3. 将组件移回原布局
+        # 3. 重新将组件添加到原布局
         main_layout = self.main_view.layout()
 
-        # 先从原布局中移除组件（以防万一）
+        # 清空原布局中的内容
         for i in reversed(range(main_layout.count())):
             item = main_layout.itemAt(i)
-            if item and item.widget() in [self.find_replace, self.code_editor, self.status_label]:
-                main_layout.removeItem(item)
+            if item and item.widget():
+                # 不实际移除组件，只是清理布局项
+                pass
 
         # 重新添加组件到原布局
         main_layout.addWidget(self.find_replace)
         main_layout.addWidget(self.code_editor)
         main_layout.addWidget(self.status_label)
 
-        # 重新设置编辑器的查找替换组件
-        self.find_replace.set_editor(self.code_editor)
+        # 恢复可见性状态
+        self.find_replace.setVisible(getattr(self, '_find_replace_visible', True))
+        self.status_label.setVisible(getattr(self, '_status_label_visible', True))
 
         # 4. 隐藏覆盖层
         if self.overlay_widget:
@@ -337,7 +347,16 @@ class CodeEditorWidget(QWidget):
         if hasattr(self, '_current_fullscreen_container'):
             delattr(self, '_current_fullscreen_container')
 
-        # 6. 更新按钮图标和状态 (通过修改JediCodeEditor内部的按钮)
+        # 6. 恢复原来的大小（如果保存了的话）
+        if hasattr(self, '_original_size'):
+            self.resize(self._original_size)
+        if hasattr(self, '_original_main_view_size'):
+            self.main_view.resize(self._original_main_view_size)
+
+        # 7. 重新设置编辑器的查找替换组件
+        self.find_replace.set_editor(self.code_editor)
+
+        # 8. 更新按钮图标和状态 (通过修改JediCodeEditor内部的按钮)
         if hasattr(self.code_editor, 'fullscreen_button') and self.code_editor.fullscreen_button:
             self.code_editor.fullscreen_button.setIcon(get_icon("放大"))
             self.code_editor.fullscreen_button.setToolTip("放大编辑器")

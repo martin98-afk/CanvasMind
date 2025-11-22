@@ -344,7 +344,7 @@ class CanvasPage(QWidget):
         self.close_btn.clicked.connect(
             lambda: (
                 self.parent.switchTo(self.parent.workflow_manager),
-                QtCore.QTimer.singleShot(1000, self.close_current_canvas)
+                QtCore.QTimer.singleShot(300, self.close_current_canvas)
             )
         )
         env_layout.addWidget(self.close_btn)

@@ -1,0 +1,200 @@
+/* FindReplace组件深色主题QSS样式 */
+FindReplace {
+    background-color: #2d2d2d;
+    color: #ffffff;
+}
+
+FindReplace QLabel {
+    color: #ffffff;
+    font-size: 12px;
+}
+
+FindReplace QLabel#number_matches_text {
+    color: #cccccc;
+    font-size: 11px;
+    padding: 2px;
+}
+
+/* 搜索文本框样式 */
+FindReplace SearchText,
+FindReplace QComboBox {
+    background-color: #3c3c3c;
+    border: 1px solid #555555;
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: #ffffff;
+    font-size: 12px;
+    min-height: 24px;
+}
+
+FindReplace SearchText:focus,
+FindReplace QComboBox:focus {
+    border: 1px solid #007acc;
+    outline: none;
+}
+
+FindReplace SearchText QLineEdit,
+FindReplace QComboBox QLineEdit {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    color: #ffffff;
+}
+
+FindReplace SearchText QLineEdit:focus,
+FindReplace QComboBox QLineEdit:focus {
+    border: none;
+    outline: none;
+}
+
+FindReplace SearchText QAbstractItemView,
+FindReplace QComboBox QAbstractItemView {
+    background-color: #2d2d2d;
+    border: 1px solid #555555;
+    selection-background-color: #3d3d3d;
+    color: #ffffff;
+    padding: 2px;
+}
+
+/* 按钮样式 */
+FindReplace QToolButton {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 4px;
+    margin: 1px;
+}
+
+FindReplace QToolButton:hover {
+    background-color: #444444;
+}
+
+FindReplace QToolButton:pressed {
+    background-color: #555555;
+}
+
+FindReplace QToolButton:checked {
+    background-color: #007acc;
+}
+
+FindReplace QToolButton#close_button {
+    background-color: transparent;
+    border: none;
+    padding: 2px;
+}
+
+FindReplace QToolButton#close_button:hover {
+    background-color: #444444;
+    border-radius: 3px;
+}
+
+FindReplace QToolButton#close_button:pressed {
+    background-color: #555555;
+}
+
+FindReplace QToolButton#replace_text_button:checked {
+    background-color: #007acc;
+}
+
+FindReplace QToolButton#re_button:checked {
+    background-color: #007acc;
+}
+
+FindReplace QToolButton#case_button:checked {
+    background-color: #007acc;
+}
+
+FindReplace QToolButton#words_button:checked {
+    background-color: #007acc;
+}
+
+/* 替换相关按钮样式 */
+FindReplace QToolButton#replace_button,
+FindReplace QToolButton#replace_sel_button,
+FindReplace QToolButton#replace_all_button {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 4px;
+    margin: 1px;
+}
+
+FindReplace QToolButton#replace_button:hover,
+FindReplace QToolButton#replace_sel_button:hover,
+FindReplace QToolButton#replace_all_button:hover {
+    background-color: #444444;
+}
+
+FindReplace QToolButton#replace_button:pressed,
+FindReplace QToolButton#replace_sel_button:pressed,
+FindReplace QToolButton#replace_all_button:pressed {
+    background-color: #555555;
+}
+
+/* 输入框样式 */
+FindReplace QLineEdit {
+    background-color: #3c3c3c;
+    border: 1px solid #555555;
+    border-radius: 4px;
+    padding: 4px;
+    color: #ffffff;
+    selection-background-color: #007acc;
+}
+
+FindReplace QLineEdit:focus {
+    border: 1px solid #007acc;
+    outline: none;
+}
+
+FindReplace QLineEdit:disabled {
+    color: #888888;
+    background-color: #333333;
+}
+
+/* 占位符文本样式 */
+FindReplace QLineEdit::placeholder {
+    color: #aaaaaa;
+}
+
+/* 滚动条样式（如果需要） */
+FindReplace QScrollBar:vertical {
+    background-color: #3c3c3c;
+    width: 12px;
+    border-radius: 4px;
+}
+
+FindReplace QScrollBar::handle:vertical {
+    background-color: #555555;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+FindReplace QScrollBar::handle:vertical:hover {
+    background-color: #666666;
+}
+
+FindReplace QScrollBar:horizontal {
+    background-color: #3c3c3c;
+    height: 12px;
+    border-radius: 4px;
+}
+
+FindReplace QScrollBar::handle:horizontal {
+    background-color: #555555;
+    border-radius: 4px;
+    min-width: 20px;
+}
+
+FindReplace QScrollBar::handle:horizontal:hover {
+    background-color: #666666;
+}
+
+/* 状态指示器样式 */
+FindReplace QAction#messages_action {
+    color: #ff6b6b;
+}
+
+FindReplace QLabel#status_label {
+    color: #ff6b6b;
+    font-style: italic;
+}

@@ -1277,7 +1277,7 @@ class JediCodeEditor(CodeEditor):
         leading_spaces = len(current_line) - len(current_line.lstrip(' '))
         indent = ' ' * leading_spaces
         cursor.insertText('\n' + indent)
-        self.setTextCursor(cursor)  # 注意：这里使用 self 而不是 self.code_editor
+        self.setTextCursor(cursor)  # 注意：这里使用 self 而不是 self.code_editor.qss
 
     # --- 集成spyder工具 ---
     def _get_spyder_open_files_port(self) -> int:
