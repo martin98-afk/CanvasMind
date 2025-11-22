@@ -10,11 +10,12 @@ from pathlib import Path
 import pandas as pd
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QFrame, QListWidgetItem, QWidget, QFileDialog, QStackedWidget, \
-    QSpacerItem
+    QSpacerItem, QSizePolicy
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SegmentedWidget, \
     FluentIcon, InfoBar, TransparentToolButton, RoundMenu, Action, TransparentPushButton, CaptionLabel, \
-    PrimaryToolButton, ToolButton, ToggleToolButton
+    PrimaryToolButton, ToolButton, ToggleToolButton, SmoothScrollArea
+from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleCardWidget, HeaderCardWidget
 
 from app.components.base import ArgumentType
 from app.utils.utils import get_icon, canvas_file_dump_path
@@ -64,8 +65,8 @@ class PortWidget(QWidget):
         # 存储当前节点的UI元素
         self.segmented_widget = None
         self.stacked_widget = None
-        self.input_widget = None # 缓存输入页面
-        self.output_widget = None # 缓存输出页面
+        self.input_widget = None  # 缓存输入页面
+        self.output_widget = None  # 缓存输出页面
         self._column_list_widgets = {}
         self._text_edit_widgets = {}
 
@@ -84,22 +85,14 @@ class PortWidget(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6) # SegmentedWidget 和 StackedWidget 之间可能不需要额外间距
+        layout.setSpacing(6)  # SegmentedWidget 和 StackedWidget 之间可能不需要额外间距
 
         # 1. 创建分段控件和堆叠控件
+        segment_layout = QHBoxLayout(self.parent_panel)
+        segment_layout.setContentsMargins(5, 5, 5, 5)
         self.segmented_widget = SegmentedWidget(self)
         self.stacked_widget = QStackedWidget(self)
-
-        self.input_widget = QWidget()
-        input_layout = QVBoxLayout(self.input_widget)
-        input_layout.setContentsMargins(0, 0, 0, 0)
-        input_layout.setSpacing(5)
-
-        self.output_widget = QWidget()
-        output_layout = QVBoxLayout(self.output_widget)
-        output_layout.setContentsMargins(0, 0, 0, 0)
-        output_layout.setSpacing(5)
-
+        segment_layout.addWidget(self.segmented_widget)
         # 2. 判断是否有输入输出端口并构建
         has_input_ports = False
         has_output_ports = False
@@ -113,17 +106,15 @@ class PortWidget(QWidget):
 
         if has_input_ports:
             self.segmented_widget.addItem('input', '输入端口')
-            self._populate_input_ports(input_layout)
-            input_layout.addStretch(1)
+            self.input_widget = self._populate_input_ports()
             self.stacked_widget.addWidget(self.input_widget)
         if has_output_ports:
             self.segmented_widget.addItem('output', '输出端口')
-            self._populate_output_ports(output_layout)
-            output_layout.addStretch(1)
+            self.output_widget = self._populate_output_ports()
             self.stacked_widget.addWidget(self.output_widget)
 
         self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
-        layout.addWidget(self.segmented_widget)
+        layout.addLayout(segment_layout)
         layout.addWidget(self.stacked_widget)
 
         # 默认选中输入端口
@@ -139,8 +130,17 @@ class PortWidget(QWidget):
         elif item_key == 'output':
             self.stacked_widget.setCurrentIndex(1)
 
-    def _populate_input_ports(self, layout):
+    def _populate_input_ports(self):
         """构建输入端口UI"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        port_container = QWidget()
+        port_container.setStyleSheet("background: transparent; border: none;")
+        port_layout = QVBoxLayout(port_container)
+        port_layout.setContentsMargins(10, 10, 10, 10)
+        port_layout.setSpacing(8)
+
         port_infos = self.port_info_func(self.node, is_input=True)
         for port_name, port_label, port_type in port_infos:
             input_port = self.node.get_input(port_name)
@@ -157,12 +157,25 @@ class PortWidget(QWidget):
                 original_data,
                 port_type=port_type,
                 port_name=port_name,
-                layout=layout,
+                layout=port_layout,
                 is_output=False
             )
+        port_layout.addStretch(1)
+        node_scroll = self.parent_panel.set_scrollbar(port_container)
+        layout.addWidget(node_scroll, 1)
+        return widget
 
-    def _populate_output_ports(self, layout):
+    def _populate_output_ports(self):
         """构建输出端口UI"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        port_container = QWidget()
+        port_container.setStyleSheet("background: transparent; border: none;")
+        port_layout = QVBoxLayout(port_container)
+        port_layout.setContentsMargins(10, 10, 10, 10)
+        port_layout.setSpacing(8)
+
         port_infos = self.port_info_func(self.node, is_input=False)
         for port_name, port_label, port_type in port_infos:
             output_values = getattr(self.node, '_output_values', None)
@@ -179,9 +192,13 @@ class PortWidget(QWidget):
                 display_data,
                 port_type=port_type,
                 port_name=port_name,
-                layout=layout,
+                layout=port_layout,
                 is_output=True
             )
+        port_layout.addStretch(1)
+        node_scroll = self.parent_panel.set_scrollbar(port_container)
+        layout.addWidget(node_scroll, 1)
+        return widget
 
     def _get_current_input_value(self, port_name, original_data):
         """获取当前经过列选择过滤的输入值"""
@@ -242,7 +259,7 @@ class PortWidget(QWidget):
                 column_card.setFixedHeight(total_estimated_height + 40)
                 expand_btn.setIcon(get_icon("缩小"))
                 self.parent_panel._column_selector_card_expanded[port_identifier] = True
-            layout.invalidate() # 通知父布局重新计算大小
+            layout.invalidate()  # 通知父布局重新计算大小
 
         expand_btn.clicked.connect(toggle_expand)
         title_btn_layout.addWidget(expand_btn)
@@ -318,7 +335,7 @@ class PortWidget(QWidget):
 
     def _add_port(self, title="数据信息:", data="", port_type=None, port_name=None, layout=None, is_output=False):
         """向布局添加 VariableTreeWidget 用于显示数据"""
-        info_card = CardWidget(self)
+        info_card = SimpleCardWidget(self.parent_panel)
         card_layout = QVBoxLayout(info_card)
         card_layout.setContentsMargins(8, 8, 8, 8)
         title_layout = QHBoxLayout()
@@ -335,7 +352,8 @@ class PortWidget(QWidget):
             is_in_global = self.is_in_global_func(self.node, port_name)
             add_global_btn.setChecked(is_in_global)
             # 如果从未选中状态到选中则添加到全局变量中，反之则从全局变量中删除
-            add_global_btn.clicked.connect(lambda: self.handle_global_variable(self.node, port_name, add_global_btn.isChecked()))
+            add_global_btn.clicked.connect(
+                lambda: self.handle_global_variable(self.node, port_name, add_global_btn.isChecked()))
             title_layout.addWidget(add_global_btn)
             filtered_data = data
         else:
@@ -353,15 +371,16 @@ class PortWidget(QWidget):
         browse_btn.clicked.connect(tree_widget.show_detail)
         title_layout.addWidget(browse_btn)
         card_layout.addLayout(title_layout)
+        card_layout.addWidget(CardSeparator(info_card))
         card_layout.addWidget(tree_widget, 1)
+        card_layout.addWidget(CardSeparator(info_card))
+        card_layout.addStretch()
         if port_type == ArgumentType.UPLOAD and is_output:
             self._add_upload_widget_to_layout(port_name, card_layout)
-        card_layout.addStretch()
         if port_type == ArgumentType.CSV and not is_output:
             self._add_column_selector_widget_to_layout(port_name, data, card_layout)
-
         if layout is None:
-            layout = self.layout() # Fallback
+            layout = self.layout()  # Fallback
         layout.addWidget(info_card)
 
         def show_context_menu(pos):

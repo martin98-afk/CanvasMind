@@ -7,7 +7,8 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, \
     QStackedWidget, QSizePolicy
 from loguru import logger
-from qfluentwidgets import CardWidget, SmoothScrollArea, InfoBar, InfoBarPosition, TransparentDropDownToolButton
+from qfluentwidgets import CardWidget, SmoothScrollArea, InfoBar, InfoBarPosition, TransparentDropDownToolButton, \
+    SimpleCardWidget
 
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
@@ -18,7 +19,7 @@ from app.widgets.property_panel.global_panel import GlobalPanelWidget
 from app.widgets.property_panel.node_list_panel import NodeListPanelWidget
 
 
-class PropertyPanel(CardWidget):
+class PropertyPanel(SimpleCardWidget):
     """
     主属性面板控件，负责协调和管理各个子面板模块。
     该控件现在主要负责：
@@ -65,39 +66,39 @@ class PropertyPanel(CardWidget):
         # --- 用于存储内部节点卡片状态 ---
         self._internal_nodes_card_expanded = {}
 
+    def set_scrollbar(self, widget):
+        scroll = SmoothScrollArea(self)
+        scroll.setStyleSheet("""
+                SmoothScrollArea {
+                    background: transparent;
+                    border: none;
+                }
+            """)
+        scroll.viewport().setStyleSheet("background-color: transparent; border: none;")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        scroll.setWidget(widget)
+        return scroll
+
     def _setup_node_panel(self):
         """初始化节点面板的滚动区域和容器"""
-        node_scroll = SmoothScrollArea(self)
-        node_scroll.viewport().setStyleSheet("background-color: transparent;")
-        node_scroll.setWidgetResizable(True)
-        node_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        node_scroll.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-
         self.node_container = QWidget()
         self.node_container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         self.node_vbox = QVBoxLayout(self.node_container)
-        self.node_vbox.setContentsMargins(10, 10, 10, 10)
+        self.node_vbox.setContentsMargins(0, 0, 0, 0)
         self.node_vbox.setSpacing(8)
-
-        node_scroll.setWidget(self.node_container)
-        self.main_stacked.addWidget(node_scroll)  # index 0
+        self.main_stacked.addWidget(self.node_container)  # index 0
 
     def _setup_global_panel(self):
         """初始化全局变量面板的滚动区域和容器"""
-        global_scroll = SmoothScrollArea(self)
-        global_scroll.viewport().setStyleSheet("background-color: transparent;")
-        global_scroll.setWidgetResizable(True)
-        global_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        global_scroll.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-
         self.global_container = QWidget()
         self.global_container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         self.global_vbox = QVBoxLayout(self.global_container)
-        self.global_vbox.setContentsMargins(10, 10, 10, 10)
+        self.global_vbox.setContentsMargins(0, 0, 0, 0)
         self.global_vbox.setSpacing(8)
 
-        global_scroll.setWidget(self.global_container)
-        self.main_stacked.addWidget(global_scroll)  # index 1
+        self.main_stacked.addWidget(self.global_container)  # index 1
 
     def set_allowed_update(self, allowed: bool):
         self._allowed_update = allowed

@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, Q
 from qfluentwidgets import (
     ScrollArea, FluentIcon, isDarkTheme, FlowLayout, MessageBox,
     PrimaryPushButton, PushButton, ComboBox, LineEdit, CardWidget,
-    ToolButton, TitleLabel, BodyLabel, CaptionLabel, StrongBodyLabel
+    ToolButton, TitleLabel, BodyLabel, CaptionLabel, StrongBodyLabel, ElevatedCardWidget, SimpleCardWidget
 )
 from qfluentwidgets.common.icon import FluentIconBase
 
@@ -124,7 +124,7 @@ class WelcomeBannerWidget(QWidget):
             self.openCanvasSignal.emit(file_path)
 
 
-class EnvironmentCardView(CardWidget):
+class EnvironmentCardView(SimpleCardWidget):
     """ 环境管理区域，显示环境状态和操作按钮 """
 
     manageEnvSignal = pyqtSignal()
@@ -202,7 +202,7 @@ class EnvironmentCardView(CardWidget):
         self._update_env_cards()
 
 
-class QuickStartCardView(CardWidget):
+class QuickStartCardView(SimpleCardWidget):
     """ 快速开始区域，展示最近打开的文件，自适应数量 """
 
     openFileSignal = pyqtSignal(str)
@@ -279,7 +279,7 @@ class QuickStartCardView(CardWidget):
             self.recent_cards.append(card)
 
 
-class SampleModelCardView(CardWidget):
+class SampleModelCardView(SimpleCardWidget):
     """ 示例模型区域，展示官方示例 """
 
     openSampleSignal = pyqtSignal(str)

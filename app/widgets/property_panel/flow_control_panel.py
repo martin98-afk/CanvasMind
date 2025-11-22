@@ -89,13 +89,15 @@ class FlowControlPanelWidget:
         progress_bar.setValue(int(current / max(1, total) * 100) if total > 0 else 0)
         self.parent_layout.addWidget(progress_bar)
         self._backdrop_progress_bar = progress_bar
+
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
         # 3. 循环流配置
         if flow_type == "loop":
-            self._add_loop_config_section(node)
-
+            self._add_loop_config_section(node, layout)
         # 4. 内部节点
-        self._add_internal_nodes_section(node)
-        self.parent_layout.addStretch()
+        self._add_internal_nodes_section(node, layout)
         # 5. 输入输出端口
         self.build_port(node)
         # 根据 current_segment 设置 PortWidget 内部的分段控件状态
@@ -104,8 +106,9 @@ class FlowControlPanelWidget:
         elif hasattr(self._port_widget, 'segmented_widget'):
             if current_segment in ['input', 'output']:
                 self._port_widget.segmented_widget.setCurrentItem(current_segment)
-        self.parent_layout.addWidget(self._port_widget)
-        self.parent_layout.addStretch(1)
+        layout.addWidget(self._port_widget, 1)
+        scroll = self.parent_panel.set_scrollbar(widget)
+        self.parent_layout.addWidget(scroll, 1)
 
     def _on_port_segment_changed(self, segment):
         """处理 PortWidget 的分段切换事件"""
@@ -164,7 +167,7 @@ class FlowControlPanelWidget:
                     return False
         return True
 
-    def _add_internal_nodes_section(self, node):
+    def _add_internal_nodes_section(self, node, layout):
         nodes_card = CardWidget(self.parent_panel)
         node_id = node.id
         if not hasattr(self.parent_panel, '_internal_nodes_card_expanded'):
@@ -218,10 +221,10 @@ class FlowControlPanelWidget:
         nodes_card.setMaximumHeight(initial_max_height)
         nodes_card.setMinimumHeight(initial_max_height)
         nodes_layout.addWidget(internal_nodes_list)
-        self.parent_layout.addWidget(nodes_card)
+        layout.addWidget(nodes_card, 1)
         self._backdrop_internal_nodes_list = internal_nodes_list  # 缓存
 
-    def _add_loop_config_section(self, node):
+    def _add_loop_config_section(self, node, layout):
         config_card = CardWidget(self.parent_panel)
         config_layout = QVBoxLayout(config_card)
         config_layout.setContentsMargins(10, 10, 10, 10)
@@ -309,7 +312,7 @@ class FlowControlPanelWidget:
             config_layout.addWidget(BodyLabel("最大迭代次数:"))
             config_layout.addWidget(max_iter_spin)
 
-        self.parent_layout.addWidget(config_card)
+        layout.addWidget(config_card)
 
     def _open_long_text_editor(self, line_edit, key):
         dialog = LongTextEditorDialog(
