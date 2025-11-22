@@ -7,8 +7,6 @@ import shutil
 import subprocess
 import time
 
-from NodeGraphQt import BaseNode, NodeBaseWidget
-from NodeGraphQt.errors import NodeWidgetError
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QFileDialog
 from loguru import logger
@@ -153,6 +151,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                                 new_port.connect_to(downstream_port, push_undo=False, emit_signal=False)
                         except Exception:
                             continue
+            self.set_port_deletion_allowed(False)
 
         def _toggle_debug_mode(self):
             """调试模式开关回调"""
@@ -507,23 +506,26 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             with open(temp_script_path, 'w', encoding='utf-8') as f:
                 f.write(script_content)
 
-            if kernel_manager is not None:
-                # 使用 IPython 内核执行
-                return self._execute_via_ipython(
-                    comp_obj=comp_obj,
-                    temp_script_path=temp_script_path,
-                    result_path=result_path,
-                    error_path=error_path,
-                    log_file_path=log_file_path,
-                    check_cancel=check_cancel,
-                    kernel_manager=kernel_manager
-                )
-            else:
-                # 回退到 subprocess（兼容模式）
-                return self._execute_via_subprocess(
-                    python_executable, temp_script_path, comp_obj, result_path, error_path,
-                    log_file_path, check_cancel, max_retries, requirements_str
-                )
+            try:
+                if kernel_manager is not None:
+                    # 使用 IPython 内核执行
+                    return self._execute_via_ipython(
+                        comp_obj=comp_obj,
+                        temp_script_path=temp_script_path,
+                        result_path=result_path,
+                        error_path=error_path,
+                        log_file_path=log_file_path,
+                        check_cancel=check_cancel,
+                        kernel_manager=kernel_manager
+                    )
+                else:
+                    # 回退到 subprocess（兼容模式）
+                    return self._execute_via_subprocess(
+                        python_executable, temp_script_path, comp_obj, result_path, error_path,
+                        log_file_path, check_cancel, max_retries, requirements_str
+                    )
+            finally:
+                shutil.rmtree(run_dir, ignore_errors=True)
 
         def _execute_via_ipython(
                 self, comp_obj, temp_script_path, result_path, error_path, log_file_path,
