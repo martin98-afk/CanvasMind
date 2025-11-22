@@ -6,7 +6,8 @@ import re
 import shutil
 import socket
 import subprocess
-# --- 新增：导入 pyflakes 相关模块 ---
+import jedi
+import parso
 import sys
 import tempfile
 import time
@@ -15,8 +16,6 @@ from concurrent.futures import ThreadPoolExecutor, Future
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict
 
-import jedi
-import parso
 from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal, QObject, QRect, QEvent, QFileSystemWatcher
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter, QCursor, QTextBlock, QTextCharFormat
 from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle, QVBoxLayout
