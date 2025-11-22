@@ -162,6 +162,8 @@ class NodeListPanelWidget:
 
     def _rearrange_component_cards(self):
         nodes_layout = self.nodes_card.layout()
+        # 移除strech
+        nodes_layout.removeItem(nodes_layout.itemAt(nodes_layout.count() - 1))
         for i in reversed(range(nodes_layout.count())):
             if i > 0:
                 item = nodes_layout.itemAt(i)
@@ -170,6 +172,7 @@ class NodeListPanelWidget:
         for i, component_card in enumerate(self._component_cards):
             self._update_card_header(component_card, i)
             nodes_layout.addWidget(component_card)
+        nodes_layout.addStretch(1)
 
     def _update_card_header(self, component_card, new_index):
         component_layout = component_card.layout()

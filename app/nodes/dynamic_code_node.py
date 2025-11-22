@@ -1,6 +1,8 @@
+import os
 import pickle
 import re
 import shutil
+import time
 import uuid
 from pathlib import Path
 
@@ -498,8 +500,8 @@ def create_dynamic_code_node(parent_window=None):
                 self, temp_script_path, result_path, error_path, log_file_path,
                 check_cancel, kernel_manager, temp_component_path
         ):
-            import time, os, pickle
-
+            run_code = f'%reset -f'
+            kernel_manager.execute_code(run_code, hidden=True)
             # 执行脚本（无需注入变量，统一走文件）
             run_code = f'%run -i "{temp_script_path.as_posix()}"'
             kernel_manager.execute_code(run_code, hidden=False)
@@ -544,26 +546,21 @@ def create_dynamic_code_node(parent_window=None):
                     temp_component_path.unlink()
             except Exception:
                 pass
-
-            try:
-                # 处理结果
-                if result_path.exists():
-                    output = _safe_load_pickle(result_path)
-                    for port in self.output_ports():
-                        if port.name() in output:
-                            self.set_output_value(port.name(), output[port.name()])
-                    return output
-                elif error_path.exists():
-                    with open(error_path, 'rb') as f:
-                        error_info = pickle.load(f)
-                    error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
-                    self._log_message(self.persistent_id, error_msg)
-                    raise Exception(error_info['error'])
-                else:
-                    raise Exception("未知错误：未生成结果或错误文件")
-            finally:
-                run_code = f'%reset -f'
-                kernel_manager.execute_code(run_code, hidden=True)
+            # 处理结果
+            if result_path.exists():
+                output = _safe_load_pickle(result_path)
+                for port in self.output_ports():
+                    if port.name() in output:
+                        self.set_output_value(port.name(), output[port.name()])
+                return output
+            elif error_path.exists():
+                with open(error_path, 'rb') as f:
+                    error_info = pickle.load(f)
+                error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
+                self._log_message(self.persistent_id, error_msg)
+                raise Exception(error_info['error'])
+            else:
+                raise Exception("未知错误：未生成结果或错误文件")
 
         def _execute_dynamic_via_subprocess(
                 self, python_executable, temp_script_path, result_path, error_path,
