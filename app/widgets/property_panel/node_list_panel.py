@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QWidget
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QWidget, QSizePolicy
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, ListWidget, \
-    FluentIcon, TransparentToolButton, SubtitleLabel
+    FluentIcon, TransparentToolButton, SubtitleLabel, SmoothScrollArea
 
 from app.utils.utils import topological_sort
 from app.widgets.property_panel.internal_node_list import InternalNodeList
@@ -63,16 +63,12 @@ class NodeListPanelWidget:
                 final_components.append(comp)
         title = SubtitleLabel(f"⏬ 连通图执行顺序")
         self.parent_layout.addWidget(title)
-
-        nodes_card = QWidget(self.parent_panel)
-        nodes_layout = QVBoxLayout(nodes_card)
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.nodes_card = QWidget(self.parent_panel)
+        nodes_layout = QVBoxLayout(self.nodes_card)
         nodes_layout.setContentsMargins(10, 10, 10, 10)
-        title_btn_layout = QHBoxLayout()
-        title = BodyLabel("连通图列表：")
-        title_btn_layout.addWidget(title)
-        title_btn_layout.addStretch()
-        nodes_layout.addLayout(title_btn_layout)
-
         self._component_cards = []
         final_ordered_components = []
         for i in range(len(final_components)):
@@ -82,8 +78,9 @@ class NodeListPanelWidget:
 
         self._current_components = final_ordered_components
         nodes_layout.addStretch(1)
-        self.parent_layout.addWidget(nodes_card)
-        self.parent_layout.addStretch(1)
+        scroll = self.parent_panel.set_scrollbar(self.nodes_card)
+        layout.addWidget(scroll, 1)
+        self.parent_layout.addWidget(widget)
 
         updated_user_order = {}
         for comp_nodes in final_ordered_components:
@@ -164,8 +161,9 @@ class NodeListPanelWidget:
                 self._user_execution_order[node_ids] = comp_nodes.copy()
 
     def _rearrange_component_cards(self):
-        nodes_card = self.parent_layout.itemAt(1).widget()
-        nodes_layout = nodes_card.layout()
+        nodes_layout = self.nodes_card.layout()
+        # 移除strech
+        nodes_layout.removeItem(nodes_layout.itemAt(nodes_layout.count() - 1))
         for i in reversed(range(nodes_layout.count())):
             if i > 0:
                 item = nodes_layout.itemAt(i)
@@ -174,6 +172,7 @@ class NodeListPanelWidget:
         for i, component_card in enumerate(self._component_cards):
             self._update_card_header(component_card, i)
             nodes_layout.addWidget(component_card)
+        nodes_layout.addStretch(1)
 
     def _update_card_header(self, component_card, new_index):
         component_layout = component_card.layout()

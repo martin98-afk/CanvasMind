@@ -44,9 +44,9 @@ class Component(BaseComponent):
 
     def run(self, params, inputs = None):
         import re
-        raw_text = inputs.get("raw_text", "") if inputs else ""
-        remove_empty = params.get("remove_empty_lines", True)
-        keep_inner = params.get("keep_inner_if_no_outer", True)
+        raw_text = inputs.raw_text
+        remove_empty = params.remove_empty_lines
+        keep_inner = params.keep_inner_if_no_outer
 
         if not raw_text:
             return {

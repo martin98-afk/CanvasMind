@@ -1,40 +1,35 @@
 # -*- coding: utf-8 -*-
+import ast  # 导入 ast 模块用于代码解析
+import hashlib
 import os
 import re
+import shutil
 import socket
 import subprocess
+import jedi
+import parso
 import sys
-import hashlib
 import tempfile
 import time
 import traceback
-import shutil
-import jedi
-import ast  # 导入 ast 模块用于代码解析
-import parso
-import pyflakes
-from intervaltree import IntervalTree
-from loguru import logger
 from concurrent.futures import ThreadPoolExecutor, Future
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict
+
 from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal, QObject, QRect, QEvent, QFileSystemWatcher
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter, QCursor, QTextBlock, QTextCharFormat
 from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle, QVBoxLayout
 from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QToolTip
+from intervaltree import IntervalTree
+from loguru import logger
 from qfluentwidgets import TransparentToolButton
 from qtpy import QtCore
 from spyder.plugins.editor.panels.utils import FoldingRegion
 from spyder.plugins.editor.widgets.codeeditor import CodeEditor
 from spyder.widgets.findreplace import FindReplace
+
 from app.utils.utils import get_icon  # 确保路径正确
 
-# --- 新增：导入 pyflakes 相关模块 ---
-from pyflakes import api as pyflakes_api
-from pyflakes import checker as pyflakes_checker
-from pyflakes.messages import Message
-from io import StringIO
-import sys
 # --- 结束新增 ---
 
 # 禁用jedi子进程，避免在GUI应用中出现子进程问题

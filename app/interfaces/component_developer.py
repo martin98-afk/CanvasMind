@@ -18,7 +18,8 @@ from loguru import logger
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PushButton,
     TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit, MessageBoxBase, SubtitleLabel,
-    DoubleSpinBox, TransparentToolButton, SegmentedWidget, TransparentDropDownToolButton, Action, RoundMenu
+    DoubleSpinBox, TransparentToolButton, SegmentedWidget, TransparentDropDownToolButton, Action, RoundMenu,
+    SimpleCardWidget
 )
 from qfluentwidgets.window.stacked_widget import StackedWidget
 
@@ -215,7 +216,7 @@ class ComponentDeveloperWidget(QWidget):
         info_layout = QVBoxLayout(info_interface)
         info_layout.setContentsMargins(0, 0, 0, 0)
         # --- 基本信息卡片 ---
-        basic_info_widget = CardWidget()
+        basic_info_widget = SimpleCardWidget()
         # 使用水平布局来并排放置信息和依赖
         basic_info_h_layout = QHBoxLayout(basic_info_widget)
         basic_info_h_layout.setContentsMargins(0, 0, 0, 0)  # 设置整体边距
@@ -1091,7 +1092,7 @@ except:
 
 
 # --- 端口编辑器（已修改）---
-class PortEditorWidget(CardWidget):
+class PortEditorWidget(SimpleCardWidget):
     """端口编辑器 - 支持动态添加删除"""
     ports_changed = pyqtSignal()
 
@@ -1190,7 +1191,7 @@ class PortEditorWidget(CardWidget):
 
 
 # --- 属性编辑器 (未改动) ---
-class PropertyEditorWidget(CardWidget):
+class PropertyEditorWidget(SimpleCardWidget):
     """属性编辑器 - 支持动态添加删除"""
     properties_changed = pyqtSignal()  # 属性改变信号
 

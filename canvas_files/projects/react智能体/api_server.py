@@ -38,47 +38,7 @@ def serialize_for_json(obj, large_list_threshold=1000):
     if isinstance(obj, dict):
         return {k: serialize_for_json(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple)):
-        # 检查是否是大型列表
-        if len(obj) > large_list_threshold:
-            try:
-                # 尝试将列表转换为 numpy 数组，如果可能的话
-                # 这适用于数值型列表
-                try:
-                    arr = np.array(obj)
-                    if arr.ndim == 1:  # 确保是一维数组
-                        buffer = io.BytesIO()
-                        np.save(buffer, arr, allow_pickle=False)
-                        binary_data = buffer.getvalue()
-                        encoded_data = base64.b64encode(binary_data).decode('utf-8')
-
-                        return {
-                            "__type__": "LargeList",
-                            "data": encoded_data,
-                            "dtype": str(arr.dtype),
-                            "format": "numpy_binary",
-                            "original_type": "list" if isinstance(obj, list) else "tuple"
-                        }
-                except (ValueError, TypeError):
-                    # 如果无法转换为 numpy 数组（例如包含混合类型），则使用 pickle
-                    # pickle 通常比 tolist() 更高效，尤其是对于复杂对象
-                    buffer = io.BytesIO()
-                    pickle.dump(obj, buffer)
-                    binary_data = buffer.getvalue()
-                    encoded_data = base64.b64encode(binary_data).decode('utf-8')
-
-                    return {
-                        "__type__": "LargeList",
-                        "data": encoded_data,
-                        "format": "pickle_binary",
-                        "original_type": "list" if isinstance(obj, list) else "tuple"
-                    }
-            except Exception as e:
-                print(f"Large list/tuple serialization failed: {e}")
-                # 降级：如果优化失败，回退到原始行为
-                return [serialize_for_json(v, large_list_threshold) for v in obj]
-        else:
-            # 非大型列表，按常规方式处理
-            return [serialize_for_json(v, large_list_threshold) for v in obj]
+        return obj
     elif isinstance(obj, pd.DataFrame):
         try:
             # 使用 BytesIO 作为虚拟文件
@@ -141,6 +101,7 @@ def serialize_for_json(obj, large_list_threshold=1000):
     elif isinstance(obj, np.bool_):
         return bool(obj)
     elif hasattr(obj, 'serialize') and callable(getattr(obj, 'serialize')):
+        # 如果对象自己有 serialize 方法（如你的 ArgumentType）
         try:
             return obj.serialize()
         except:

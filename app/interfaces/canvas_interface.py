@@ -306,7 +306,7 @@ class CanvasPage(QWidget):
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
             self._update_nodes_container_position()
-            self.buttons_container.move(self.graph.viewer().width() - 200, 10)
+            self.buttons_container.move(self.graph.viewer().width() - 190, 5)
             self._position_name_container()
             self._update_console_position()
         return super().eventFilter(obj, event)
@@ -314,7 +314,7 @@ class CanvasPage(QWidget):
     def create_floating_buttons(self):
         self.buttons_container = QWidget(self.graph.viewer())
         self.buttons_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.buttons_container.move(self.graph.viewer().width() - 200, 10)
+        self.buttons_container.move(self.graph.viewer().width() - 190, 5)
         env_layout = QHBoxLayout(self.buttons_container)
         env_layout.setSpacing(2)
         env_layout.setContentsMargins(0, 0, 0, 0)
@@ -412,7 +412,7 @@ class CanvasPage(QWidget):
     def create_environment_selector(self):
         self.env_selector_container = QWidget(self.graph.viewer())
         self.env_selector_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.env_selector_container.move(0, 10)
+        self.env_selector_container.move(0, 5)
         env_layout = QHBoxLayout(self.env_selector_container)
         env_layout.setSpacing(5)
         env_layout.setContentsMargins(0, 0, 0, 0)
@@ -838,6 +838,17 @@ class CanvasPage(QWidget):
         self.name_container = QWidget(self.canvas_widget)
         self.name_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         name_label = LineEdit(self.name_container)
+        # 设置透明背景
+        name_label.setStyleSheet("""
+            LineEdit {
+                background: transparent;
+                border: none;
+                padding: 2px 4px;
+                color: white; /* 或你主题对应的文字颜色 */
+                font-size: 18px;
+                font-weight: bold;
+            }
+        """)
         name_label.setText(self.workflow_name)
         name_label.textChanged.connect(self.update_workflow_name)
         self._update_name_label_width(name_label)
@@ -870,7 +881,7 @@ class CanvasPage(QWidget):
         self._update_name_label_width(name_edit)
         container_width = self.name_container.width()
         x = max(0, (self.canvas_widget.width() - container_width) // 2)
-        self.name_container.move(x, 10)
+        self.name_container.move(x, 0)
 
     def update_workflow_name(self, text):
         self.workflow_name = text

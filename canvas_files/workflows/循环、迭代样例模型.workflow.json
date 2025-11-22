@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x20eeecf7430": {
+      "0x2b2104638b0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入",
@@ -39,8 +39,8 @@
         "width": 444.01500000000004,
         "height": 268.05,
         "pos": [
-          -1279.2786098819088,
-          -678.9613264092363
+          -1282.3735869982756,
+          -675.8663492928697
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -51,7 +51,7 @@
           "input": "文本内容"
         }
       },
-      "0x20eeecf6c50": {
+      "0x2b2108cad70": {
         "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
         "icon": null,
         "name": "添加字符串",
@@ -76,11 +76,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 429.66875000000005,
+        "width": 419.54875000000004,
         "height": 99.0,
         "pos": [
-          -535.4711007778387,
-          -219.5678414880138
+          -545.2214381121387,
+          -209.81750415371403
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -91,7 +91,7 @@
           "prop1": "env.LANG"
         }
       },
-      "0x20eeecf5570": {
+      "0x2b2108cb190": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装",
@@ -119,8 +119,8 @@
         "width": 392.15000000000003,
         "height": 101.10000000000001,
         "pos": [
-          177.22916495642323,
-          -247.87483343565458
+          294.0794948891404,
+          -477.8061278193884
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -131,7 +131,7 @@
           "prop_0": "text"
         }
       },
-      "0x20eeecf6950": {
+      "0x2b2108cb670": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 1",
@@ -159,8 +159,8 @@
         "width": 463.70875,
         "height": 268.05,
         "pos": [
-          -1264.3929556992132,
-          -37.66331644496953
+          -1264.3929556992134,
+          -36.219360746465924
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -171,7 +171,7 @@
           "input": "文本内容"
         }
       },
-      "0x20eeecf62c0": {
+      "0x2b2108cbd30": {
         "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
         "icon": null,
         "name": "添加字符串 1",
@@ -196,7 +196,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 449.3625,
+        "width": 439.2425,
         "height": 99.0,
         "pos": [
           -253.34255475880184,
@@ -211,7 +211,7 @@
           "prop1": "env.LANG"
         }
       },
-      "0x20eeecf4970": {
+      "0x2b2108c8400": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 1",
@@ -251,7 +251,7 @@
           "prop_0": "text"
         }
       },
-      "0x20ed3927310": {
+      "0x2b2108ca7d0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 2",
@@ -280,7 +280,7 @@
         "height": 268.05,
         "pos": [
           -1219.0225037028695,
-          255.70706242963917
+          258.80203954600586
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -291,7 +291,7 @@
           "input": "文本内容"
         }
       },
-      "0x20ed3924220": {
+      "0x2b2108c9fc0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 3",
@@ -331,7 +331,7 @@
           "input": "文本内容文本内容文本内容"
         }
       },
-      "0x20eeec58220": {
+      "0x2b2108c9300": {
         "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
         "icon": null,
         "name": "添加字符串 2",
@@ -356,7 +356,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 449.3625,
+        "width": 439.2425,
         "height": 99.0,
         "pos": [
           268.43916291324086,
@@ -371,7 +371,7 @@
           "prop1": "env.PYTHONWARNINGS"
         }
       },
-      "0x20eeec5b7f0": {
+      "0x2b210684be0": {
         "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
         "icon": null,
         "name": "添加字符串 3",
@@ -396,7 +396,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 449.3625,
+        "width": 439.2425,
         "height": 99.0,
         "pos": [
           841.5403828060585,
@@ -411,7 +411,7 @@
           "prop1": "custom.test"
         }
       },
-      "0x20eeec5b460": {
+      "0x2b2106862c0": {
         "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
         "icon": null,
         "name": "添加字符串 4",
@@ -436,7 +436,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 449.3625,
+        "width": 439.2425,
         "height": 99.0,
         "pos": [
           -776.4917898015907,
@@ -451,7 +451,7 @@
           "prop1": "env.PYTHONWARNINGS"
         }
       },
-      "0x20eeec58b50": {
+      "0x2b210460340": {
         "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
         "icon": null,
         "name": "添加字符串 5",
@@ -476,7 +476,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 449.3625,
+        "width": 439.2425,
         "height": 99.0,
         "pos": [
           -174.42824843224253,
@@ -491,7 +491,7 @@
           "prop1": "env.CUDA_VISIBLE_DEVICES"
         }
       },
-      "0x20eeeaaf520": {
+      "0x2b210685cc0": {
         "type_": "dynamic.StatusDynamicNode_测试组件_添加字符串",
         "icon": null,
         "name": "添加字符串 6",
@@ -516,7 +516,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 449.3625,
+        "width": 439.2425,
         "height": 99.0,
         "pos": [
           -515.0957592540981,
@@ -531,7 +531,7 @@
           "prop1": "env.TZ"
         }
       },
-      "0x20eeeaaf0a0": {
+      "0x2b2106858d0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 4",
@@ -571,7 +571,7 @@
           "input": "文本内容"
         }
       },
-      "0x20eeeaaf9d0": {
+      "0x2b210685270": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 2",
@@ -611,7 +611,7 @@
           "prop_0": "text"
         }
       },
-      "0x20eeeaad6c0": {
+      "0x2b210685ff0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_获取全局变量",
         "icon": null,
         "name": "获取全局变量",
@@ -636,7 +636,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 449.3625,
+        "width": 439.2425,
         "height": 99.0,
         "pos": [
           -615.3168365826773,
@@ -651,7 +651,7 @@
           "prop1": "env.CUDA_VISIBLE_DEVICES"
         }
       },
-      "0x20eeeaaf7c0": {
+      "0x2b210687e80": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 3",
@@ -691,7 +691,7 @@
           "prop_0": "text"
         }
       },
-      "0x20efb0ddfc0": {
+      "0x2b210722f20": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 4",
@@ -731,7 +731,7 @@
           "prop_0": "text"
         }
       },
-      "0x20efb0dd600": {
+      "0x2b210722860": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_文档内容提取",
         "icon": "D:\\work\\WorkFlowGUI\\icons\\文档提取器.svg",
         "name": "文档内容提取",
@@ -756,8 +756,8 @@
         "disabled": true,
         "selected": false,
         "visible": true,
-        "width": 391.40250000000003,
-        "height": 139.95,
+        "width": 548.7225,
+        "height": 154.65,
         "pos": [
           1480.5645941263117,
           1169.464631208388
@@ -772,7 +772,7 @@
           "page_range": ""
         }
       },
-      "0x20efb0dc8e0": {
+      "0x2b210721f90": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_知识库查询",
         "icon": null,
         "name": "知识库查询",
@@ -797,11 +797,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 371.70875,
+        "width": 410.34875,
         "height": 166.20000000000002,
         "pos": [
-          1544.7483001969129,
-          893.4346452850583
+          1544.748300196913,
+          896.1109968278416
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -813,7 +813,7 @@
           "knowledge_base_id": "default_kb"
         }
       },
-      "0x20efb0de140": {
+      "0x2b210723d30": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\WorkFlowGUI\\icons/代码执行.svg",
         "name": "代码编辑",
@@ -841,8 +841,8 @@
         "width": 812.015,
         "height": 921.1500000000001,
         "pos": [
-          1998.937204175401,
-          627.284887284786
+          2126.447009392168,
+          578.1554906778528
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -877,7 +877,7 @@
             {
               "name": "input1",
               "type": "文本",
-              "var": "node_vars.JSON文本包装 1_output1"
+              "var": "custom.test"
             },
             {
               "name": "fefeffef",
@@ -900,7 +900,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    # 在这里编写你的组件逻辑\n    input_data = inputs.get(\"input_data\") if inputs else None\n    param1 = params.get(\"param1\", \"default_value\")\n    # 处理逻辑\n    result = f\"处理结果: {input_data} + {param1}\"\n    return {\n        \"output_data\": result\n    }"
         }
       },
-      "0x20efb145ab0": {
+      "0x2b21029f220": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 5",
@@ -928,8 +928,8 @@
         "width": 463.70875,
         "height": 268.05,
         "pos": [
-          -1285.5922651926996,
-          -375.5498775106774
+          -1282.497288076333,
+          -372.45490039431076
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -940,7 +940,7 @@
           "input": "文本内容"
         }
       },
-      "0x20eeeaad600": {
+      "0x2b210399ba0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 5",
@@ -968,8 +968,8 @@
         "width": 411.84375,
         "height": 101.10000000000001,
         "pos": [
-          2042.7100966263868,
-          149.03366918133463
+          2037.8349279592367,
+          149.03366918133466
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -980,7 +980,7 @@
           "prop_0": "text"
         }
       },
-      "0x20eee826fb0": {
+      "0x2b21039a590": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 6",
@@ -1020,7 +1020,7 @@
           "input": "文本内容"
         }
       },
-      "0x20eee825a20": {
+      "0x2b21039b250": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 7",
@@ -1060,7 +1060,7 @@
           "input": "文本内容"
         }
       },
-      "0x20eee824f10": {
+      "0x2b210398340": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 8",
@@ -1100,7 +1100,7 @@
           "input": "文本内容"
         }
       },
-      "0x20eee827b50": {
+      "0x2b210595270": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": null,
         "name": "文本输入 9",
@@ -1140,7 +1140,48 @@
           "input": "文本内容"
         }
       },
-      "0x20eeebb36a0": {
+      "0x2b210594c40": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_文档内容提取",
+        "icon": null,
+        "name": "文档内容提取 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 568.41625,
+        "height": 154.65,
+        "pos": [
+          1497.042616954953,
+          -619.0302804286305
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "70d57b2c-ce70-40f3-a72c-c7a1a1b4a7a4",
+          "debug_code": {},
+          "extract_images": false,
+          "page_range": ""
+        }
+      },
+      "0x2b210594340": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -1168,8 +1209,8 @@
         "width": 153.0,
         "height": 60,
         "pos": [
-          -603.8527332106075,
-          -435.7606922035855
+          -613.6030705449075,
+          -426.0103548692857
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1178,7 +1219,7 @@
           "persistent_id": "8bb4de28-26f0-4375-b71f-34f874b1bade"
         }
       },
-      "0x20eeebb34f0": {
+      "0x2b210594460": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -1206,8 +1247,8 @@
         "width": 153.0,
         "height": 60,
         "pos": [
-          -190.8527332106076,
-          -435.7606922035855
+          -200.60307054490755,
+          -426.0103548692857
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1216,7 +1257,7 @@
           "persistent_id": "ebeb99b3-cd9c-48e6-8dc0-94b2d6160ee5"
         }
       },
-      "0x20eeebb3310": {
+      "0x2b2105953f0": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": null,
         "name": "迭代控制流区域",
@@ -1244,8 +1285,8 @@
         "width": 646.0,
         "height": 395.1928507155717,
         "pos": [
-          -643.8527332106075,
-          -475.7606922035855
+          -653.6030705449075,
+          -466.0103548692857
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1260,7 +1301,7 @@
           "loop_mode": "count"
         }
       },
-      "0x20eeebb3130": {
+      "0x2b210595690": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口 1",
@@ -1298,7 +1339,7 @@
           "persistent_id": "4fab0064-d378-4004-8f06-a2515796576c"
         }
       },
-      "0x20eeebb30a0": {
+      "0x2b210595780": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口 1",
@@ -1336,7 +1377,7 @@
           "persistent_id": "c3a6fb75-a773-460f-8f8b-5bbef0441d72"
         }
       },
-      "0x20eeebb2da0": {
+      "0x2b210595a80": {
         "type_": "control_flow.ControlFlowLoopNode",
         "icon": null,
         "name": "循环控制流区域",
@@ -1359,7 +1400,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 2361.416787552727,
         "height": 291.32618797580636,
@@ -1373,14 +1414,14 @@
         "custom": {
           "persistent_id": "6b86cb12-c940-40c8-bd6f-3bfea61ecc93",
           "backdrop_text": "",
-          "current_index": 1,
-          "loop_nums": 3,
+          "current_index": 6,
+          "loop_nums": 6,
           "max_iterations": 1000,
           "loop_condition": "$len(node_vars.添加字符串_2_output1)<50$",
-          "loop_mode": "while"
+          "loop_mode": "count"
         }
       },
-      "0x20eeebb2b60": {
+      "0x2b210594880": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口 3",
@@ -1418,7 +1459,7 @@
           "persistent_id": "c6096dcb-514c-4446-9cec-89f117f7c7e6"
         }
       },
-      "0x20eeebb2860": {
+      "0x2b2105949a0": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口 2",
@@ -1456,7 +1497,7 @@
           "persistent_id": "be406e6f-26b1-4750-b1c5-b221d781b810"
         }
       },
-      "0x20eeebb2800": {
+      "0x2b210594b20": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": null,
         "name": "迭代控制流区域 1",
@@ -1500,7 +1541,7 @@
           "loop_mode": "count"
         }
       },
-      "0x20eeebb23b0": {
+      "0x2b210595000": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\WorkFlowGUI\\./icons/条件分支.png",
         "name": "条件分支",
@@ -1526,10 +1567,10 @@
         "selected": false,
         "visible": true,
         "width": 556.255,
-        "height": 419.25,
+        "height": 448.65000000000003,
         "pos": [
-          -48.264823970915245,
-          618.4487824199432
+          -50.33411588900617,
+          624.6566581742159
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -1537,7 +1578,7 @@
         "input_ports": [
           {
             "name": "input",
-            "multi_connection": false,
+            "multi_connection": true,
             "display_name": true
           }
         ],
@@ -1591,307 +1632,447 @@
           "enable_else": true,
           "execute_all_matches": true
         }
+      },
+      "0x2b210597640": {
+        "type_": "control_flow.ControlFlowInputPort",
+        "icon": null,
+        "name": "输入端口 2",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          1181.900771033657,
+          -703.0797065716924
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "2315ba30-22a1-4d10-bb30-0cb86b9632ed"
+        }
+      },
+      "0x2b21029f250": {
+        "type_": "control_flow.ControlFlowOutputPort",
+        "icon": null,
+        "name": "输出端口 3",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          2181.9007710336573,
+          -383.07970657169244
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "4493ee97-eb64-4703-8957-6583cadf09fa"
+        }
+      },
+      "0x2b2104ff490": {
+        "type_": "control_flow.ControlFlowLoopNode",
+        "icon": "D:\\work\\CanvasMind\\./icons/无限.png",
+        "name": "循环控制流区域 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 1245.0000000000002,
+        "height": 460.0,
+        "pos": [
+          1141.900771033657,
+          -743.0797065716924
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "b9b23154-89ba-4f49-a2e7-572edabe8dd9",
+          "backdrop_text": "",
+          "current_index": 0,
+          "loop_nums": 5,
+          "max_iterations": 1000,
+          "loop_condition": "",
+          "loop_mode": "condition"
+        }
       }
     },
     "connections": [
       {
         "out": [
-          "0x20eeecf7430",
+          "0x2b2104638b0",
           "text"
         ],
         "in": [
-          "0x20eeebb3310",
+          "0x2b2105953f0",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x20eeecf6c50",
+          "0x2b2108cad70",
           "input1"
         ],
         "out": [
-          "0x20eeebb36a0",
+          "0x2b210594340",
           "output"
         ]
       },
       {
         "out": [
-          "0x20eeecf6c50",
+          "0x2b2108cad70",
           "output1"
         ],
         "in": [
-          "0x20eeebb34f0",
+          "0x2b210594460",
           "input"
         ]
       },
       {
         "in": [
-          "0x20eeecf5570",
+          "0x2b2108cb190",
           "input1"
         ],
         "out": [
-          "0x20eeebb3310",
+          "0x2b2105953f0",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x20eeecf6950",
+          "0x2b2108cb670",
           "text"
         ],
         "in": [
-          "0x20eeebb2da0",
+          "0x2b210595a80",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x20eeecf62c0",
+          "0x2b2108cbd30",
           "input1"
         ],
         "out": [
-          "0x20eeebb3130",
+          "0x2b210595690",
           "output"
         ]
       },
       {
         "out": [
-          "0x20eeecf62c0",
+          "0x2b2108cbd30",
           "output1"
         ],
         "in": [
-          "0x20eeec58220",
+          "0x2b2108c9300",
           "input1"
         ]
       },
       {
         "out": [
-          "0x20ed3927310",
+          "0x2b2108ca7d0",
           "text"
         ],
         "in": [
-          "0x20eeebb2da0",
+          "0x2b210595a80",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x20ed3924220",
+          "0x2b2108c9fc0",
           "text"
         ],
         "in": [
-          "0x20eeebb2da0",
+          "0x2b210595a80",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x20eeec58220",
+          "0x2b2108c9300",
           "output1"
         ],
         "in": [
-          "0x20eeec5b7f0",
+          "0x2b210684be0",
           "input1"
         ]
       },
       {
         "out": [
-          "0x20eeec5b7f0",
+          "0x2b210684be0",
           "output1"
         ],
         "in": [
-          "0x20eeebb30a0",
+          "0x2b210595780",
           "input"
         ]
       },
       {
         "in": [
-          "0x20eeec5b460",
+          "0x2b2106862c0",
           "input1"
         ],
         "out": [
-          "0x20eeebb2b60",
+          "0x2b210594880",
           "output"
         ]
       },
       {
         "out": [
-          "0x20eeec5b460",
+          "0x2b2106862c0",
           "output1"
         ],
         "in": [
-          "0x20eeec58b50",
+          "0x2b210460340",
           "input1"
         ]
       },
       {
         "out": [
-          "0x20eeec58b50",
+          "0x2b210460340",
           "output1"
         ],
         "in": [
-          "0x20eeebb2860",
+          "0x2b2105949a0",
           "input"
         ]
       },
       {
         "in": [
-          "0x20eeeaaf520",
+          "0x2b210685cc0",
           "input1"
         ],
         "out": [
-          "0x20eeebb2b60",
+          "0x2b210594880",
           "output"
         ]
       },
       {
         "out": [
-          "0x20eeeaaf520",
+          "0x2b210685cc0",
           "output1"
         ],
         "in": [
-          "0x20eeebb2860",
+          "0x2b2105949a0",
           "input"
         ]
       },
       {
         "out": [
-          "0x20eeeaaf0a0",
+          "0x2b2106858d0",
           "text"
         ],
         "in": [
-          "0x20eeebb2800",
+          "0x2b210594b20",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x20eeeaaf9d0",
+          "0x2b210685270",
           "input1"
         ],
         "out": [
-          "0x20eeebb2800",
+          "0x2b210594b20",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x20eeeaad6c0",
+          "0x2b210685ff0",
           "output1"
         ],
         "in": [
-          "0x20eeebb23b0",
+          "0x2b210595000",
           "input"
         ]
       },
       {
         "in": [
-          "0x20eeeaaf7c0",
+          "0x2b210687e80",
           "input1"
         ],
         "out": [
-          "0x20eeebb23b0",
+          "0x2b210595000",
           "branch2"
         ]
       },
       {
         "out": [
-          "0x20eeeaaf7c0",
+          "0x2b210687e80",
           "output1"
         ],
         "in": [
-          "0x20efb0dc8e0",
+          "0x2b210721f90",
           "query"
         ]
       },
       {
         "in": [
-          "0x20efb0ddfc0",
+          "0x2b210722f20",
           "input1"
         ],
         "out": [
-          "0x20eeebb23b0",
+          "0x2b210595000",
           "else"
         ]
       },
       {
         "out": [
-          "0x20efb0ddfc0",
+          "0x2b210722f20",
           "output1"
         ],
         "in": [
-          "0x20efb0dd600",
+          "0x2b210722860",
           "file_path"
         ]
       },
       {
         "in": [
-          "0x20efb0de140",
+          "0x2b210723d30",
           "input1"
         ],
         "out": [
-          "0x20eeebb23b0",
+          "0x2b210595000",
           "test_port"
         ]
       },
       {
         "out": [
-          "0x20efb145ab0",
+          "0x2b21029f220",
           "text"
         ],
         "in": [
-          "0x20eeebb3310",
+          "0x2b2105953f0",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x20eeeaad600",
+          "0x2b210399ba0",
           "input1"
         ],
         "out": [
-          "0x20eeebb2da0",
+          "0x2b210595a80",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x20eee826fb0",
+          "0x2b21039a590",
           "text"
         ],
         "in": [
-          "0x20eeebb2800",
+          "0x2b210594b20",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x20eee825a20",
+          "0x2b21039b250",
           "text"
         ],
         "in": [
-          "0x20eeebb2800",
+          "0x2b210594b20",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x20eee824f10",
+          "0x2b210398340",
           "text"
         ],
         "in": [
-          "0x20eeebb2800",
+          "0x2b210594b20",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x20eee827b50",
+          "0x2b210595270",
           "text"
         ],
         "in": [
-          "0x20eeebb2800",
+          "0x2b210594b20",
           "inputs"
+        ]
+      },
+      {
+        "in": [
+          "0x2b210594c40",
+          "file_path"
+        ],
+        "out": [
+          "0x2b210597640",
+          "output"
+        ]
+      },
+      {
+        "out": [
+          "0x2b210594c40",
+          "text"
+        ],
+        "in": [
+          "0x2b21029f250",
+          "input"
         ]
       }
     ]
@@ -1900,43 +2081,47 @@
     "environment": "3.14",
     "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
     "node_id2stable_key": {
-      "0x20eeecf7430": "数据集成/文本输入||文本输入",
-      "0x20eeecf6c50": "测试组件/添加字符串||添加字符串",
-      "0x20eeecf5570": "大模型组件/JSON文本包装||JSON文本包装",
-      "0x20eeecf6950": "数据集成/文本输入||文本输入 1",
-      "0x20eeecf62c0": "测试组件/添加字符串||添加字符串 1",
-      "0x20eeecf4970": "大模型组件/JSON文本包装||JSON文本包装 1",
-      "0x20ed3927310": "数据集成/文本输入||文本输入 2",
-      "0x20ed3924220": "数据集成/文本输入||文本输入 3",
-      "0x20eeec58220": "测试组件/添加字符串||添加字符串 2",
-      "0x20eeec5b7f0": "测试组件/添加字符串||添加字符串 3",
-      "0x20eeec5b460": "测试组件/添加字符串||添加字符串 4",
-      "0x20eeec58b50": "测试组件/添加字符串||添加字符串 5",
-      "0x20eeeaaf520": "测试组件/添加字符串||添加字符串 6",
-      "0x20eeeaaf0a0": "数据集成/文本输入||文本输入 4",
-      "0x20eeeaaf9d0": "大模型组件/JSON文本包装||JSON文本包装 2",
-      "0x20eeeaad6c0": "数据集成/获取全局变量||获取全局变量",
-      "0x20eeeaaf7c0": "大模型组件/JSON文本包装||JSON文本包装 3",
-      "0x20efb0ddfc0": "大模型组件/JSON文本包装||JSON文本包装 4",
-      "0x20efb0dd600": "大模型组件/文档内容提取||文档内容提取",
-      "0x20efb0dc8e0": "大模型组件/知识库查询||知识库查询",
-      "0x20efb0de140": "代码执行/代码编辑||代码编辑",
-      "0x20efb145ab0": "数据集成/文本输入||文本输入 5",
-      "0x20eeeaad600": "大模型组件/JSON文本包装||JSON文本包装 5",
-      "0x20eee826fb0": "数据集成/文本输入||文本输入 6",
-      "0x20eee825a20": "数据集成/文本输入||文本输入 7",
-      "0x20eee824f10": "数据集成/文本输入||文本输入 8",
-      "0x20eee827b50": "数据集成/文本输入||文本输入 9",
-      "0x20eeebb36a0": "控制流/输入端口||输入端口",
-      "0x20eeebb34f0": "控制流/输出端口||输出端口",
-      "0x20eeebb3310": "控制流/迭代控制流区域||迭代控制流区域",
-      "0x20eeebb3130": "控制流/输入端口||输入端口 1",
-      "0x20eeebb30a0": "控制流/输出端口||输出端口 1",
-      "0x20eeebb2da0": "控制流/循环控制流区域||循环控制流区域",
-      "0x20eeebb2b60": "控制流/输入端口||输入端口 3",
-      "0x20eeebb2860": "控制流/输出端口||输出端口 2",
-      "0x20eeebb2800": "控制流/迭代控制流区域||迭代控制流区域 1",
-      "0x20eeebb23b0": "控制流/条件分支||条件分支"
+      "0x2b2104638b0": "数据集成/文本输入||文本输入",
+      "0x2b2108cad70": "测试组件/添加字符串||添加字符串",
+      "0x2b2108cb190": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x2b2108cb670": "数据集成/文本输入||文本输入 1",
+      "0x2b2108cbd30": "测试组件/添加字符串||添加字符串 1",
+      "0x2b2108c8400": "大模型组件/JSON文本包装||JSON文本包装 1",
+      "0x2b2108ca7d0": "数据集成/文本输入||文本输入 2",
+      "0x2b2108c9fc0": "数据集成/文本输入||文本输入 3",
+      "0x2b2108c9300": "测试组件/添加字符串||添加字符串 2",
+      "0x2b210684be0": "测试组件/添加字符串||添加字符串 3",
+      "0x2b2106862c0": "测试组件/添加字符串||添加字符串 4",
+      "0x2b210460340": "测试组件/添加字符串||添加字符串 5",
+      "0x2b210685cc0": "测试组件/添加字符串||添加字符串 6",
+      "0x2b2106858d0": "数据集成/文本输入||文本输入 4",
+      "0x2b210685270": "大模型组件/JSON文本包装||JSON文本包装 2",
+      "0x2b210685ff0": "数据集成/获取全局变量||获取全局变量",
+      "0x2b210687e80": "大模型组件/JSON文本包装||JSON文本包装 3",
+      "0x2b210722f20": "大模型组件/JSON文本包装||JSON文本包装 4",
+      "0x2b210722860": "大模型组件/文档内容提取||文档内容提取",
+      "0x2b210721f90": "大模型组件/知识库查询||知识库查询",
+      "0x2b210723d30": "代码执行/代码编辑||代码编辑",
+      "0x2b21029f220": "数据集成/文本输入||文本输入 5",
+      "0x2b210399ba0": "大模型组件/JSON文本包装||JSON文本包装 5",
+      "0x2b21039a590": "数据集成/文本输入||文本输入 6",
+      "0x2b21039b250": "数据集成/文本输入||文本输入 7",
+      "0x2b210398340": "数据集成/文本输入||文本输入 8",
+      "0x2b210595270": "数据集成/文本输入||文本输入 9",
+      "0x2b210594c40": "大模型组件/文档内容提取||文档内容提取 1",
+      "0x2b210594340": "控制流/输入端口||输入端口",
+      "0x2b210594460": "控制流/输出端口||输出端口",
+      "0x2b2105953f0": "控制流/迭代控制流区域||迭代控制流区域",
+      "0x2b210595690": "控制流/输入端口||输入端口 1",
+      "0x2b210595780": "控制流/输出端口||输出端口 1",
+      "0x2b210595a80": "控制流/循环控制流区域||循环控制流区域",
+      "0x2b210594880": "控制流/输入端口||输入端口 3",
+      "0x2b2105949a0": "控制流/输出端口||输出端口 2",
+      "0x2b210594b20": "控制流/迭代控制流区域||迭代控制流区域 1",
+      "0x2b210595000": "控制流/条件分支||条件分支",
+      "0x2b210597640": "控制流/输入端口||输入端口 2",
+      "0x2b21029f250": "控制流/输出端口||输出端口 3",
+      "0x2b2104ff490": "控制流/循环控制流区域||循环控制流区域 1"
     },
     "node_states": {
       "数据集成/文本输入||文本输入": "success",
@@ -1966,16 +2151,20 @@
       "数据集成/文本输入||文本输入 7": "success",
       "数据集成/文本输入||文本输入 8": "success",
       "数据集成/文本输入||文本输入 9": "success",
+      "大模型组件/文档内容提取||文档内容提取 1": "unrun",
       "控制流/输入端口||输入端口": "unrun",
       "控制流/输出端口||输出端口": "unrun",
       "控制流/迭代控制流区域||迭代控制流区域": "success",
-      "控制流/输入端口||输入端口 1": "pending",
-      "控制流/输出端口||输出端口 1": "pending",
+      "控制流/输入端口||输入端口 1": "unrun",
+      "控制流/输出端口||输出端口 1": "unrun",
       "控制流/循环控制流区域||循环控制流区域": "success",
       "控制流/输入端口||输入端口 3": "unrun",
       "控制流/输出端口||输出端口 2": "unrun",
       "控制流/迭代控制流区域||迭代控制流区域 1": "success",
-      "控制流/条件分支||条件分支": "success"
+      "控制流/条件分支||条件分支": "success",
+      "控制流/输入端口||输入端口 2": "unrun",
+      "控制流/输出端口||输出端口 3": "unrun",
+      "控制流/循环控制流区域||循环控制流区域 1": "unrun"
     },
     "node_inputs": {
       "数据集成/文本输入||文本输入": {},
@@ -2005,6 +2194,7 @@
       "数据集成/文本输入||文本输入 7": {},
       "数据集成/文本输入||文本输入 8": {},
       "数据集成/文本输入||文本输入 9": {},
+      "大模型组件/文档内容提取||文档内容提取 1": {},
       "控制流/输入端口||输入端口": {},
       "控制流/输出端口||输出端口": {},
       "控制流/迭代控制流区域||迭代控制流区域": null,
@@ -2014,7 +2204,10 @@
       "控制流/输入端口||输入端口 3": {},
       "控制流/输出端口||输出端口 2": {},
       "控制流/迭代控制流区域||迭代控制流区域 1": null,
-      "控制流/条件分支||条件分支": {}
+      "控制流/条件分支||条件分支": {},
+      "控制流/输入端口||输入端口 2": {},
+      "控制流/输出端口||输出端口 3": {},
+      "控制流/循环控制流区域||循环控制流区域 1": {}
     },
     "node_outputs": {
       "数据集成/文本输入||文本输入": {
@@ -2032,7 +2225,7 @@
         "text": "文本内容"
       },
       "测试组件/添加字符串||添加字符串 1": {
-        "output1": "['文本内容', '文本内容', '文本内容文本内容文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8"
+        "output1": "['文本内容', '文本内容', '文本内容文本内容文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8"
       },
       "大模型组件/JSON文本包装||JSON文本包装 1": {
         "output1": {
@@ -2046,10 +2239,10 @@
         "text": "文本内容文本内容文本内容"
       },
       "测试组件/添加字符串||添加字符串 2": {
-        "output1": "['文本内容', '文本内容', '文本内容文本内容文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore"
+        "output1": "['文本内容', '文本内容', '文本内容文本内容文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore"
       },
       "测试组件/添加字符串||添加字符串 3": {
-        "output1": "['文本内容', '文本内容', '文本内容文本内容文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+        "output1": "['文本内容', '文本内容', '文本内容文本内容文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
       },
       "测试组件/添加字符串||添加字符串 4": {
         "output1": "文本内容ignore"
@@ -2116,6 +2309,7 @@
       "数据集成/文本输入||文本输入 9": {
         "text": "文本内容"
       },
+      "大模型组件/文档内容提取||文档内容提取 1": {},
       "控制流/输入端口||输入端口": {},
       "控制流/输出端口||输出端口": {},
       "控制流/迭代控制流区域||迭代控制流区域": {
@@ -2124,12 +2318,10 @@
           "文本内容en_US.UTF-8"
         ]
       },
-      "控制流/输入端口||输入端口 1": {
-        "output": "['文本内容', '文本内容', '文本内容文本内容文本内容']en_US.UTF-8ignore0.,.12321"
-      },
+      "控制流/输入端口||输入端口 1": {},
       "控制流/输出端口||输出端口 1": {},
       "控制流/循环控制流区域||循环控制流区域": {
-        "outputs": "['文本内容', '文本内容', '文本内容文本内容文本内容']en_US.UTF-8ignore0.,.12321"
+        "outputs": "['文本内容', '文本内容', '文本内容文本内容文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
       },
       "控制流/输入端口||输入端口 3": {},
       "控制流/输出端口||输出端口 2": {},
@@ -2150,7 +2342,10 @@
       "控制流/条件分支||条件分支": {
         "test_port": "0",
         "branch2": "0"
-      }
+      },
+      "控制流/输入端口||输入端口 2": {},
+      "控制流/输出端口||输出端口 3": {},
+      "控制流/循环控制流区域||循环控制流区域 1": {}
     },
     "column_select": {
       "数据集成/文本输入||文本输入": {},
@@ -2180,6 +2375,7 @@
       "数据集成/文本输入||文本输入 7": {},
       "数据集成/文本输入||文本输入 8": {},
       "数据集成/文本输入||文本输入 9": {},
+      "大模型组件/文档内容提取||文档内容提取 1": {},
       "控制流/输入端口||输入端口": {},
       "控制流/输出端口||输出端口": {},
       "控制流/迭代控制流区域||迭代控制流区域": null,
@@ -2189,7 +2385,10 @@
       "控制流/输入端口||输入端口 3": {},
       "控制流/输出端口||输出端口 2": {},
       "控制流/迭代控制流区域||迭代控制流区域 1": null,
-      "控制流/条件分支||条件分支": {}
+      "控制流/条件分支||条件分支": {},
+      "控制流/输入端口||输入端口 2": {},
+      "控制流/输出端口||输出端口 3": {},
+      "控制流/循环控制流区域||循环控制流区域 1": {}
     }
   },
   "global_variable": {
@@ -2218,17 +2417,64 @@
         "value": "0.,.12321",
         "description": null,
         "read_only": false
+      },
+      "大模型配置": {
+        "value": {
+          "模型名称": "gpt-4",
+          "API_URL": "https://api.openai.com/v1/chat/completions",
+          "API_KEY": "",
+          "温度": 0.7,
+          "最大Token": 2048,
+          "系统提示": ""
+        },
+        "description": null,
+        "read_only": false
+      },
+      "数据源配置 (JSON)": {
+        "value": {
+          "文件路径": "/path/to/data.json",
+          "根级数据路径": "$.data",
+          "编码": "utf-8"
+        },
+        "description": null,
+        "read_only": false
       }
     },
+    "custom_order": [
+      "test",
+      "大模型配置",
+      "数据源配置 (JSON)"
+    ],
     "node_vars": {
-      "JSON文本包装 1_output1": {
-        "value": null,
-        "update_policy": "固定"
+      "文本输入_1_text": {
+        "value": "文本内容",
+        "update_policy": "更新"
       },
-      "文本输入_3_text": {
-        "value": "文本内容文本内容文本内容",
+      "文本输入_2_text": {
+        "value": "文本内容",
+        "update_policy": "更新"
+      },
+      "文本输入_5_text": {
+        "value": "文本内容",
+        "update_policy": "更新"
+      },
+      "文本输入_text": {
+        "value": "文本内容",
+        "update_policy": "更新"
+      },
+      "JSON文本包装_output1": {
+        "value": {
+          "text": "['文本内容en_US.UTF-8', '文本内容en_US.UTF-8']"
+        },
         "update_policy": "更新"
       }
-    }
+    },
+    "node_vars_order": [
+      "文本输入_1_text",
+      "文本输入_2_text",
+      "文本输入_5_text",
+      "文本输入_text",
+      "JSON文本包装_output1"
+    ]
   }
 }

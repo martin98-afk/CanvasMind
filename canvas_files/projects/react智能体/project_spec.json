@@ -4,10 +4,10 @@
   "inputs": {
     "input_text": {
       "type": "组件超参数",
-      "node_id": "0x1863c26f460",
+      "node_id": "0x2c5dfdd1b10",
       "node_name": "长文本输入",
       "param_name": "input_text",
-      "current_value": "-1,-2,-3,-4的逻辑回归结果是多少",
+      "current_value": "获取当前时间",
       "display_name": "长文本输入 → input_text",
       "format": "LONGTEXT",
       "custom_key": "input_text"
@@ -15,7 +15,7 @@
   },
   "outputs": {
     "output1": {
-      "node_id": "0x1863c003820",
+      "node_id": "0x2c5dea5e7a0",
       "output_name": "output1",
       "format": "JSON"
     }

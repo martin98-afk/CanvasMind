@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWidgets import QFrame
-from qfluentwidgets import BodyLabel, SubtitleLabel
+from PyQt5.QtWidgets import QFrame, QSizePolicy
+from Qt import Qt
+from qfluentwidgets import BodyLabel, SubtitleLabel, SmoothScrollArea
 
 # --- 导入新模块 ---
 from app.widgets.property_panel.port_widget import PortWidget
@@ -64,7 +65,6 @@ class NodePanelWidget:
                  self.port_widget.segmented_widget.setCurrentItem(current_segment)
 
         self.parent_layout.addWidget(self.port_widget)
-        self.parent_layout.addStretch(1) # 添加伸缩项，使内容靠上
 
     def _on_port_segment_changed(self, segment):
         """处理 PortWidget 的分段切换事件"""

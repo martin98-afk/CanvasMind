@@ -5,12 +5,13 @@ import re
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QStackedWidget, QApplication, \
-    QListWidgetItem
+    QListWidgetItem, QSizePolicy
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SegmentedWidget, \
     FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
-    TransparentDropDownToolButton, SubtitleLabel, CaptionLabel, LineEdit, \
-    ToggleToolButton, SearchLineEdit
+    TransparentDropDownToolButton, SubtitleLabel, BodyLabel, LineEdit, \
+    ToggleToolButton, SearchLineEdit, SmoothScrollArea
+from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleCardWidget
 
 from app.templates.global_custom_var_template import PARAMETER_TEMPLATE
 from app.utils.utils import get_icon, serialize_for_json
@@ -314,12 +315,14 @@ class GlobalPanelWidget:
         title = SubtitleLabel("🌍 全局变量")
         self.parent_layout.addWidget(title)
 
+        segment_layout = QHBoxLayout(self.parent_panel)
+        segment_layout.setContentsMargins(5, 5, 5, 5)
         self.global_segmented = SegmentedWidget(self.parent_panel)
         self.global_segmented.addItem('env', '环境变量')
         self.global_segmented.addItem('node', '节点变量')
         self.global_segmented.addItem('custom', '自定义变量')
         self.global_segmented.setCurrentItem('node')
-
+        segment_layout.addWidget(self.global_segmented)
         self.global_stacked = QStackedWidget(self.parent_panel)
 
         self.env_page = self._create_env_page()
@@ -332,7 +335,7 @@ class GlobalPanelWidget:
         self.global_stacked.setCurrentIndex(1)
 
         self.global_segmented.currentItemChanged.connect(self._on_global_tab_changed)
-        self.parent_layout.addWidget(self.global_segmented)
+        self.parent_layout.addLayout(segment_layout)
         self.parent_layout.addWidget(self.global_stacked)
         self._built = True
 
@@ -383,37 +386,50 @@ class GlobalPanelWidget:
                 if var_name not in self._custom_var_cards:
                     if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
                         value = global_vars.custom[var_name].value
-                        # 检查是否是字典类型，决定创建哪种卡片
                         if isinstance(value, dict):
                             card = self._create_parameter_group_row(var_name, value)
+                            layout_to_use = self.custom_params_layout  # 添加到参数组布局
                         else:
                             card = self._create_dict_row(var_name, value)
-                        if self.custom_vars_layout:
-                            self.custom_vars_layout.addWidget(card)
-                            self._custom_var_cards[var_name] = card
-                        else:
-                            logger.warning("custom_vars_layout not found, cannot add card.")
+                            layout_to_use = self.custom_kvs_layout  # 添加到KV布局
+                        layout_to_use.addWidget(card)
+                        self._custom_var_cards[var_name] = card
+                        # 更新分割线可见性
+                        has_params = self.custom_params_layout.count() > 0
+                        has_kvs = self.custom_kvs_layout.count() > 0
+                        self.custom_separator.setVisible(has_params and has_kvs)
+                    else:
+                        logger.warning(f"Variable {var_name} not found in global_vars.custom during add.")
             elif action == "update":
-                # 处理更新：删除旧卡片，创建新卡片
+                # 处理更新：删除旧卡片，根据新值类型创建新卡片并放入对应布局
                 if var_name in self._custom_var_cards:
                     old_card = self._custom_var_cards.pop(var_name)
                     old_card.deleteLater()
                     # 现在当作新增来处理
                     if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
-                        value = global_vars.custom[var_name].value
-                        if isinstance(value, dict):
-                            card = self._create_parameter_group_row(var_name, value)
+                        new_value = global_vars.custom[var_name].value
+                        if isinstance(new_value, dict):
+                            new_card = self._create_parameter_group_row(var_name, new_value)
+                            layout_to_use = self.custom_params_layout
                         else:
-                            card = self._create_dict_row(var_name, value)
-                        if self.custom_vars_layout:
-                            self.custom_vars_layout.addWidget(card)
-                            self._custom_var_cards[var_name] = card
-                        else:
-                            logger.warning("custom_vars_layout not found, cannot update card.")
+                            new_card = self._create_dict_row(var_name, new_value)
+                            layout_to_use = self.custom_kvs_layout
+                        layout_to_use.addWidget(new_card)
+                        self._custom_var_cards[var_name] = new_card
+                        # 更新分割线可见性
+                        has_params = self.custom_params_layout.count() > 0
+                        has_kvs = self.custom_kvs_layout.count() > 0
+                        self.custom_separator.setVisible(has_params and has_kvs)
+                    else:
+                        logger.warning(f"Variable {var_name} not found in global_vars.custom during update.")
             elif action == "delete":
                 if var_name in self._custom_var_cards:
                     card = self._custom_var_cards.pop(var_name)
                     card.deleteLater()
+                    # 更新分割线可见性
+                    has_params = self.custom_params_layout.count() > 0
+                    has_kvs = self.custom_kvs_layout.count() > 0
+                    self.custom_separator.setVisible(has_params and has_kvs)
         elif var_type == "env":
             if action == "add" or action == "update":
                 if var_name not in self._env_var_cards:
@@ -446,6 +462,7 @@ class GlobalPanelWidget:
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
+
         title = TransparentPushButton(text="自定义变量 (custom)", icon=get_icon("自定义变量"), parent=self.parent_panel)
         layout.addWidget(title)
 
@@ -453,20 +470,37 @@ class GlobalPanelWidget:
         btn_layout = QHBoxLayout()
         add_custom_btn = TransparentPushButton(text="新增KV变量", parent=self.parent_panel, icon=FluentIcon.ADD)
         add_custom_btn.clicked.connect(self.add_new_custom_variable)
-
         add_group_btn = TransparentPushButton(text="新增参数组", parent=self.parent_panel, icon=FluentIcon.ADD)
         add_group_btn.clicked.connect(self.add_new_parameter_group)
-
         btn_layout.addWidget(add_custom_btn)
         btn_layout.addWidget(add_group_btn)
         layout.addLayout(btn_layout)
 
-        self.custom_vars_container = QWidget()
-        self.custom_vars_layout = QVBoxLayout(self.custom_vars_container)
-        self.custom_vars_layout.setContentsMargins(0, 0, 0, 0)
-        self.custom_vars_layout.setSpacing(6)
-        layout.addWidget(self.custom_vars_container)
-        layout.addStretch()
+        # --- 分类容器 ---
+        self.custom_container = QWidget()
+        self.custom_container.setStyleSheet("background: transparent; border: none;")
+        self.custom_layout = QVBoxLayout(self.custom_container)
+        self.custom_layout.setContentsMargins(5, 5, 5, 5)
+
+        self.custom_params_container = QWidget()  # 参数组容器
+        self.custom_params_layout = QVBoxLayout(self.custom_params_container)
+        self.custom_params_layout.setContentsMargins(0, 0, 0, 0)
+        self.custom_params_layout.setSpacing(6)
+
+        self.custom_kvs_container = QWidget()  # KV变量容器
+        self.custom_kvs_layout = QVBoxLayout(self.custom_kvs_container)
+        self.custom_kvs_layout.setContentsMargins(0, 0, 0, 0)
+        self.custom_kvs_layout.setSpacing(6)
+
+        # 添加容器到主布局
+        self.custom_layout.addWidget(self.custom_params_container)
+        # 分割线
+        self.custom_separator = CardSeparator()
+        self.custom_layout.addWidget(self.custom_separator)
+        self.custom_layout.addWidget(self.custom_kvs_container)
+        self.custom_layout.addStretch()
+        scroll = self.parent_panel.set_scrollbar(self.custom_container)
+        layout.addWidget(scroll, 1)
         self._refresh_custom_vars_page()
         return widget
 
@@ -478,11 +512,12 @@ class GlobalPanelWidget:
                                       parent=self.parent_panel)
         layout.addWidget(title)
         self.node_vars_container = QWidget()
+        self.node_vars_container.setStyleSheet("background: transparent; border: none;")
         self.node_vars_layout = QVBoxLayout(self.node_vars_container)
-        self.node_vars_layout.setContentsMargins(0, 0, 0, 0)
+        self.node_vars_layout.setContentsMargins(10, 10, 10, 10)
         self.node_vars_layout.setSpacing(8)
-        layout.addWidget(self.node_vars_container)
-        layout.addStretch(1)
+        node_scroll = self.parent_panel.set_scrollbar(self.node_vars_container)
+        layout.addWidget(node_scroll, 1)
         self._refresh_node_vars_page()
         return widget
 
@@ -497,12 +532,13 @@ class GlobalPanelWidget:
         add_env_btn.clicked.connect(self.add_new_env_variable)
         layout.addWidget(add_env_btn)
         self.env_vars_container = QWidget()
+        self.env_vars_container.setStyleSheet("background: transparent; border: none;")
         self.env_vars_layout = QVBoxLayout(self.env_vars_container)
-        self.env_vars_layout.setContentsMargins(0, 0, 0, 0)
+        self.env_vars_layout.setContentsMargins(5, 5, 5, 5)
         self.env_vars_layout.setSpacing(6)
-        layout.addWidget(self.env_vars_container)
+        env_scroll = self.parent_panel.set_scrollbar(self.env_vars_container)
+        layout.addWidget(env_scroll, 1)
         self._refresh_env_page()
-        layout.addStretch()
         return widget
 
     # ========================
@@ -512,46 +548,153 @@ class GlobalPanelWidget:
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars:
             return
+
+        # 获取当前所有自定义变量
         current_custom = set(global_vars.custom.keys()) if hasattr(global_vars, 'custom') else set()
         existing_custom = set(self._custom_var_cards.keys())
-        for name in current_custom - existing_custom:
-            var_obj = global_vars.custom[name]
-            # 根据值的类型决定创建哪种卡片
-            if isinstance(var_obj.value, dict):
-                card = self._create_parameter_group_row(name, var_obj.value)
-            else:
-                card = self._create_dict_row(name, var_obj.value)
-            self.custom_vars_layout.addWidget(card)
+
+        # 分类当前变量
+        current_params = {name: global_vars.custom[name].value for name, obj in global_vars.custom.items() if
+                          isinstance(obj.value, dict)}
+        current_kvs = {name: global_vars.custom[name].value for name, obj in global_vars.custom.items() if
+                       not isinstance(obj.value, dict)}
+
+        # --- 处理参数组 (Params) ---
+        current_param_names = set(current_params.keys())
+        existing_param_names = {name for name in existing_custom if name in self._custom_var_cards and isinstance(
+            global_vars.custom.get(name, type('obj', (), {'value': None})()).value, dict)}
+        # Note: 上面这行 existing_param_names 的判断逻辑依赖于 global_vars.custom 的实时性
+
+        # 添加新参数组
+        for name in current_param_names - existing_param_names:
+            card = self._create_parameter_group_row(name, current_params[name])
+            self.custom_params_layout.addWidget(card)
             self._custom_var_cards[name] = card
-        for name in existing_custom - current_custom:
-            card = self._custom_var_cards.pop(name)
-            card.deleteLater()
+
+        # 删除旧参数组
+        for name in existing_param_names - current_param_names:
+            if name in self._custom_var_cards:
+                card = self._custom_var_cards.pop(name)
+                card.deleteLater()
+
+        # --- 处理KV变量 (KVs) ---
+        current_kv_names = set(current_kvs.keys())
+        existing_kv_names = {name for name in existing_custom if name in self._custom_var_cards and not isinstance(
+            global_vars.custom.get(name, type('obj', (), {'value': None})()).value, dict)}
+
+        # 添加新KV变量
+        for name in current_kv_names - existing_kv_names:
+            card = self._create_dict_row(name, current_kvs[name])
+            self.custom_kvs_layout.addWidget(card)
+            self._custom_var_cards[name] = card
+
+        # 删除旧KV变量
+        for name in existing_kv_names - current_kv_names:
+            if name in self._custom_var_cards:
+                card = self._custom_var_cards.pop(name)
+                card.deleteLater()
+
+        # --- 控制分割线可见性 ---
+        has_params = self.custom_params_layout.count() > 0
+        has_kvs = self.custom_kvs_layout.count() > 0
+        self.custom_separator.setVisible(has_params and has_kvs)
 
     def _refresh_node_vars_page(self):
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars:
             return
+
         current_node_vars = set(global_vars.node_vars.keys()) if hasattr(global_vars, 'node_vars') else set()
         existing_node_vars = set(self._node_var_cards.keys())
-        for name in current_node_vars - existing_node_vars:
-            node_var_obj = global_vars.node_vars[name]
-            card = self._create_variable_card(name, node_var_obj)
-            self.node_vars_layout.addWidget(card)
-            self._node_var_cards[name] = card
-        for name in existing_node_vars - current_node_vars:
-            card = self._node_var_cards.pop(name)
+
+        # 重构逻辑：按节点分组
+        current_node_groups = {}
+        for var_name in current_node_vars:
+            node_name = self._extract_node_name(var_name)  # 使用辅助函数提取节点名
+            if node_name not in current_node_groups:
+                current_node_groups[node_name] = []
+            current_node_groups[node_name].append((var_name, global_vars.node_vars[var_name]))
+
+        # 清空现有布局
+        while self.node_vars_layout.count():
+            child = self.node_vars_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        # 重新创建并排序分组
+        sorted_node_names = sorted(current_node_groups.keys())
+        for node_name in sorted_node_names:
+            group_items = sorted(current_node_groups[node_name], key=lambda x: x[0])  # 按 var_name 排序端口
+            group_card = self._create_node_group_card(node_name, group_items)
+            self.node_vars_layout.addWidget(group_card)
+        self.node_vars_layout.addStretch(1)
+        # 由于完全重建，现有卡片缓存也需要更新
+        # 清空旧缓存
+        for card in self._node_var_cards.values():
             card.deleteLater()
-        for name in current_node_vars & existing_node_vars:
-            node_var_obj = global_vars.node_vars[name]
-            card = self._node_var_cards[name]
-            if hasattr(card, 'strategy_combo'):
-                combo = card.strategy_combo
-                if combo.property("policy") != node_var_obj.update_policy:
-                    combo.blockSignals(True)
-                    combo.setProperty("policy", node_var_obj.update_policy)
-                    combo.blockSignals(False)
-            if hasattr(card, 'tree_widget'):
-                card.tree_widget.set_data(node_var_obj.value)
+        self._node_var_cards.clear()
+
+    def _extract_node_name(self, var_name: str):
+        """从 var_name 提取节点名，与 locate_node_by_name 逻辑一致"""
+        parts = var_name.split("_")
+        if len(parts) == 2:
+            safe_node_name_candidate = parts[0]
+        else:
+            if re.match(r'\d+', parts[1]):
+                safe_node_name_candidate = "_".join(parts[:2])
+            else:
+                safe_node_name_candidate = parts[0]
+        original_name_candidate = re.sub(r'_(?=\d+$)', " ", safe_node_name_candidate)
+        return original_name_candidate
+
+    def _create_node_group_card(self, node_name: str, node_var_items: list):
+        """创建一个包含该节点所有端口变量的分组卡片"""
+        group_card = CardWidget(self.parent_panel)
+        group_layout = QVBoxLayout(group_card)
+        group_layout.setContentsMargins(8, 8, 8, 8)
+        group_layout.setSpacing(4)
+
+        # 节点标题
+        node_title_layout = QHBoxLayout()
+        node_title = BodyLabel(node_name)
+        node_title_layout.addWidget(node_title)
+
+        group_layout.addLayout(node_title_layout)
+
+        group_layout.addWidget(CardSeparator(group_card))
+
+        # 添加该节点的所有端口变量卡片
+        for var_name, node_var_obj in node_var_items:
+            port_card = self._create_variable_card(var_name, node_var_obj)
+            group_layout.addWidget(port_card)
+
+        # 为分组卡片添加跳转功能
+        def on_group_card_double_clicked(event):
+            if event.button() == Qt.LeftButton:
+                self.zoom_to_node_by_name(node_name)
+
+        group_card.mouseDoubleClickEvent = on_group_card_double_clicked
+        group_card.setCursor(Qt.PointingHandCursor)
+        group_layout.addStretch()
+        return group_card
+
+    def zoom_to_node_by_name(self, node_name: str):
+        """根据节点名称跳转到节点"""
+        node_graph = self.main_window.graph
+        if not node_graph:
+            logger.warning("无法获取节点图实例")
+            return None
+        found_node = node_graph.get_node_by_name(node_name)
+        if not found_node:
+            logger.warning(f"未找到节点: '{node_name}'")
+            InfoBar.warning(
+                title="未找到节点",
+                content=f"无法定位到节点 '{node_name}'。",
+                parent=self.main_window,
+                position=InfoBarPosition.TOP_RIGHT
+            )
+            return None
+        self.main_window.canvas_widget.zoom_to_nodes([found_node._view])
 
     def _refresh_env_page(self):
         global_vars = getattr(self.main_window, 'global_variables', None)
@@ -581,6 +724,7 @@ class GlobalPanelWidget:
                     value_label.setText(preview)
         if not current_env and self.env_vars_layout.count() == 0:
             self.env_vars_layout.addWidget(BodyLabel("暂无环境变量"))
+        self.env_vars_layout.addStretch()
 
     def _create_dict_row(self, name: str, value):
         """创建普通的KV变量卡片"""
@@ -727,12 +871,12 @@ class GlobalPanelWidget:
                 node_name = parts[0]
                 port_name = "_".join(parts[1:])
         node_name = re.sub(r'_(?=\d+$)', " ", node_name)
-        card = CardWidget(self.parent_panel)
+        card = SimpleCardWidget(self.parent_panel)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(3)
         title_layout = QHBoxLayout()
-        title = CaptionLabel(f"{node_name}\n{port_name}")
+        title = BodyLabel(f"端口: {port_name}")
         title_layout.addWidget(title)
         strategy_combo = TransparentDropDownToolButton(icon=get_icon(node_var_obj.update_policy),
                                                        parent=self.parent_panel)
@@ -758,10 +902,12 @@ class GlobalPanelWidget:
         del_btn.clicked.connect(lambda _, n=name: self.delete_variable('node_vars', n))
         title_layout.addWidget(del_btn)
         layout.addLayout(title_layout)
+        layout.addWidget(CardSeparator(self.parent_panel))
         tree = VariableTreeWidget(node_var_obj.value, parent=self.main_window)
         tree.setMinimumHeight(80)
         tree.setMaximumHeight(120)
-        layout.addWidget(tree)
+        layout.addWidget(tree, 1)
+        layout.addWidget(CardSeparator(self.parent_panel))
 
         def show_context_menu(pos):
             menu = RoundMenu(parent=self.parent_panel)
