@@ -838,6 +838,17 @@ class CanvasPage(QWidget):
         self.name_container = QWidget(self.canvas_widget)
         self.name_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         name_label = LineEdit(self.name_container)
+        # 设置透明背景
+        name_label.setStyleSheet("""
+            LineEdit {
+                background: transparent;
+                border: none;
+                padding: 2px 4px;
+                color: white; /* 或你主题对应的文字颜色 */
+                font-size: 18px;
+                font-weight: bold;
+            }
+        """)
         name_label.setText(self.workflow_name)
         name_label.textChanged.connect(self.update_workflow_name)
         self._update_name_label_width(name_label)
@@ -870,7 +881,7 @@ class CanvasPage(QWidget):
         self._update_name_label_width(name_edit)
         container_width = self.name_container.width()
         x = max(0, (self.canvas_widget.width() - container_width) // 2)
-        self.name_container.move(x, 10)
+        self.name_container.move(x, 0)
 
     def update_workflow_name(self, text):
         self.workflow_name = text
