@@ -68,15 +68,15 @@ class Component(BaseComponent):
         )
         from openai import OpenAI
         # 在这里编写你的组件逻辑
-        if self.global_variable.get(params.model_config.get("API_KEY")):
+        if self.global_variable.get(params.model).get("API_KEY"):
             client = OpenAI(
-                api_key=self.global_variable.get(params.model_config.get("API_KEY")),
-                base_url=self.global_variable.get(params.model_config.get("API_URL"))
+                api_key=self.global_variable.get(params.model).get("API_KEY"),
+                base_url=self.global_variable.get(params.model).get("API_URL")
                 )
         else:
             client = OpenAI(
                 api_key="",
-                base_url=self.global_variable.get(params.model_config.get("API_URL"))
+                base_url=self.global_variable.get(params.model).get("API_URL")
                 )
         messages = [
             {
@@ -86,10 +86,10 @@ class Component(BaseComponent):
         ]
         try:
             response = client.chat.completions.create(
-                model=self.global_variable.get(params.model_config.get("模型名称")),
+                model=self.global_variable.get(params.model).get("模型名称"),
                 messages=messages,
-                temperature=self.global_variable.get(params.model_config.get("温度")),
-                max_tokens=self.global_variable.get(params.model_config.get("最大Token")),
+                temperature=self.global_variable.get(params.model).get("温度"),
+                max_tokens=self.global_variable.get(params.model).get("最大Token"),
             )
         except:
             import traceback

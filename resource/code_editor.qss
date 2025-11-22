@@ -1,0 +1,52 @@
+/* 代码编辑器深色主题QSS样式 */
+CodeEditorWidget,
+CodeEditorWidget QWidget {
+    background-color: #2d2d2d;
+    color: #ffffff;
+}
+
+CodeEditorWidget QLabel {
+    color: #ffffff;
+}
+
+CodeEditorWidget QLabel#status_label {
+    color: #9aa0a6;
+    background-color: #2d2d2d;
+    font-size: 12px;
+    padding: 3px 6px;
+}
+
+CodeEditorWidget QWidget#main_view {
+    background-color: #2d2d2d;
+}
+
+QTextEdit#code_editor {
+    background-color: #2d2d2d;
+    color: #ffffff;
+    border: 1px solid #444444;
+    font-family: 'Consolas', 'Courier New', 'Monaco', 'Menlo', monospace;
+    font-size: 12px;
+    selection-background-color: #264f78;
+    selection-color: #ffffff;
+}
+
+QTextEdit#code_editor:focus {
+    border: 1px solid #007acc;
+}
+
+QTextEdit#code_editor::selected {
+    background-color: #264f78;
+    color: #ffffff;
+}
+
+/* 行号区域样式（如果有的话） */
+QPlainTextEdit#code_editor[with_line_numbers="true"] {
+    background-color: #252526;
+    color: #cccccc;
+}
+
+QPlainTextEdit#code_editor[with_line_numbers="true"] QWidget#line_numbers {
+    background-color: #313131;
+    color: #858585;
+    border-right: 1px solid #444444;
+}

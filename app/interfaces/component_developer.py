@@ -18,12 +18,13 @@ from loguru import logger
 from qfluentwidgets import (
     CardWidget, BodyLabel, LineEdit, PushButton,
     TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit, MessageBoxBase, SubtitleLabel,
-    DoubleSpinBox, TransparentToolButton, SegmentedWidget
+    DoubleSpinBox, TransparentToolButton, SegmentedWidget, TransparentDropDownToolButton, Action, RoundMenu
 )
 from qfluentwidgets.window.stacked_widget import StackedWidget
 
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition, ConnectionType
 from app.scan_components import scan_components
+from app.templates.component_templates import default_templates
 from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon, canvas_file_dump_path
 from app.widgets.ipython_console.ipython_console import IPythonConsoleManager  # 假设更新后的类名
@@ -176,9 +177,17 @@ class ComponentDeveloperWidget(QWidget):
         code_btn.setFixedSize(20, 25)
         save_layout.addWidget(code_btn)
         save_layout.addWidget(BodyLabel("组件代码:"))
-        # --- 新增结束 ---
+        template_dropdown = TransparentDropDownToolButton(FluentIcon.ALIGNMENT, parent=self)
+        menu = RoundMenu(parent=template_dropdown)
+        for template_name in default_templates.keys():
+            action = Action(
+                template_name, triggered=lambda checked=False, name=template_name,
+                code=default_templates[template_name]: self._switch_template(name, code)
+            )
+            menu.addAction(action)
+        template_dropdown.setMenu(menu)
+        save_layout.addWidget(template_dropdown)
         save_layout.addStretch()
-        # --- 新增：运行按钮 ---
         run_btn = TransparentToolButton(FluentIcon.PLAY, parent=self)
         run_btn.clicked.connect(self._run_component_code)
         save_layout.addWidget(run_btn)
@@ -319,6 +328,12 @@ class ComponentDeveloperWidget(QWidget):
         self.description_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.requirements_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
+
+    def _switch_template(self, template_name, template_code):
+        """根据选择的模板名称和代码更新编辑器"""
+        self.code_editor.replace_text_preserving_view(template_code)
+        self._current_component_code = template_code
+        self._show_success(f"已切换到模板: {template_name}")
 
     def addSubInterface(self, widget, objectName: str, text: str, icon: QIcon):
         widget.setObjectName(objectName)

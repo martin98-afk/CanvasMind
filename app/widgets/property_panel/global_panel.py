@@ -642,7 +642,7 @@ class GlobalPanelWidget:
 
         # 参数组信息
         param_count = len(value) if isinstance(value, dict) else 0
-        value_label = BodyLabel(f"[参数组]")
+        value_label = BodyLabel(f"[参数x{param_count}]")
         value_label.setStyleSheet("color: #888888;")
         title_layout.addWidget(value_label)
         title_layout.addStretch()
@@ -920,6 +920,9 @@ class GlobalPanelWidget:
 
             global_vars = getattr(self.main_window, 'global_variables', None)
             if global_vars:
+                if new_name in global_vars.custom:
+                    InfoBar.warning("已存在", f"参数组 {new_name} 已存在", parent=self.main_window)
+                    return
                 # 设置新的参数组
                 global_vars.set(new_name, parameters)
                 self._handle_global_variable_change("custom", new_name, "add")
@@ -1196,7 +1199,7 @@ class GlobalPanelWidget:
         safe_node_name = re.sub(r'\s+', '_', node.name())
         var_name = f"{safe_node_name}_{port_name}"
         main_window.global_variables.set_output(
-            node_id=safe_node_name, output_name=port_name, output_value=serialize_for_json(value)
+            node_id=safe_node_name, output_name=port_name, output_value=value
         )
         if hasattr(node, "refresh_node_outports"):
             QtCore.QTimer.singleShot(100, node.refresh_node_outports)
