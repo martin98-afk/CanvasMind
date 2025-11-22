@@ -185,8 +185,7 @@ def build_internal_graph(internal_nodes, graph_data):
         raise ValueError("循环体内部存在依赖环")
     return order
 
-def execute_branch_node_internal(branch_node, input_data, execute_all_matches=False):
-    local_vars = {"input_input": input_data}
+def execute_branch_node_internal(branch_node, input_data, local_vars, execute_all_matches=False):
     output_dict = {}
     selected_ports = []
     for cond in branch_node.get("conditions", []):
@@ -547,7 +546,7 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
         if n.get("is_branch_node", False):
             input_val = next(iter(node_inputs.values()), None)
             execute_all_matches = n.get("execute_all_matches", False)
-            selected_ports, output = execute_branch_node_internal(n, input_val, execute_all_matches)
+            selected_ports, output = execute_branch_node_internal(n, input_val, local_vars_for_inputs, execute_all_matches)
             # --- 新增：处理未激活端口及其下游节点 ---
             all_port_names = {cond.get("name") for cond in n.get("conditions", [])}
             if n.get("enable_else", False):
@@ -797,7 +796,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
         elif node["is_branch_node"]:
             input_val = next(iter(node_inputs.values()), None)
             execute_all_matches = node.get("execute_all_matches", False)
-            selected_ports, output = execute_branch_node(node, input_val, execute_all_matches)
+            selected_ports, output = execute_branch_node(node, input_val, local_vars_for_inputs, execute_all_matches)
             node_outputs[node_id] = output
             if selected_ports:
                 active_branch_outputs[node_id] = selected_ports if execute_all_matches else selected_ports[0]
@@ -874,8 +873,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
         pickle.dump(final_outputs, f)
 
 # --- (execute_branch_node 函数保持不变) ---
-def execute_branch_node(branch_node, input_data, execute_all_matches=False):
-    local_vars = {"input_input": input_data}
+def execute_branch_node(branch_node, input_data, local_vars, execute_all_matches=False):
     output_dict = {}
     selected_ports = []
     for cond in branch_node.get("conditions", []):

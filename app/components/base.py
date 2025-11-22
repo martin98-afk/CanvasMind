@@ -260,7 +260,9 @@ class GlobalVariableContext(BaseModel):
         return {
             "env": self.env.dict(),
             "custom": {k: v.dict() for k, v in self.custom.items()},
-            "node_vars": {k: v.dict() for k, v in self.node_vars.items()}
+            "custom_order": list(self.custom.keys()),  # 显式保存顺序
+            "node_vars": {k: v.dict() for k, v in self.node_vars.items()},
+            "node_vars_order": list(self.node_vars.keys()),  # 显式保存顺序
         }
 
     def deserialize(self, data):
@@ -270,13 +272,30 @@ class GlobalVariableContext(BaseModel):
         self.env.canvas_id = history_env.get("canvas_id")
         self.env.session_id = history_env.get("session_id")
         self.env.run_id = history_env.get("run_id")
-        self.custom = OrderedDict(
-            (k, CustomVariable(**v)) for k, v in data.get("custom", {}).items()
-        )
-        self.node_vars = OrderedDict(
-            (k, NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v))
-            for k, v in data.get("node_vars", {}).items()
-        )
+        # custom
+        custom_data = data.get("custom", {})
+        custom_order = data.get("custom_order", [])
+        # 按 custom_order 顺序重建 OrderedDict，缺失的键放在最后（或忽略）
+        self.custom = OrderedDict()
+        for k in custom_order:
+            if k in custom_data:
+                self.custom[k] = CustomVariable(**custom_data[k])
+        # 可选：补充未在 order 中的键（兼容旧数据）
+        for k, v in custom_data.items():
+            if k not in self.custom:
+                self.custom[k] = CustomVariable(**v)
+
+        # node_vars 同理
+        node_vars_data = data.get("node_vars", {})
+        node_vars_order = data.get("node_vars_order", [])
+        self.node_vars = OrderedDict()
+        for k in node_vars_order:
+            if k in node_vars_data:
+                v = node_vars_data[k]
+                self.node_vars[k] = NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
+        for k, v in node_vars_data.items():
+            if k not in self.node_vars:
+                self.node_vars[k] = NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
 
     def get(self, key: str, default=None) -> Any:
         if not isinstance(key, str):
