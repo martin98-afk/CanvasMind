@@ -73,51 +73,9 @@ class CodeEditorWidget(QWidget):
     def _setup_shortcuts(self):
         QShortcut(Qt.Key_F3, self.code_editor, activated=lambda: self._find_next(backward=False))
         QShortcut(Qt.SHIFT + Qt.Key_F3, self.code_editor, activated=lambda: self._find_next(backward=True))
-        QShortcut(Qt.CTRL + Qt.Key_H, self.code_editor, activated=lambda: self._toggle_find_panel(focus_replace=True))
+        QShortcut(Qt.CTRL + Qt.Key_F, self.code_editor, activated=lambda: self._toggle_find_panel(focus_replace=True))
         QShortcut(Qt.CTRL + Qt.Key_G, self.code_editor, activated=self._goto_line)
-        QShortcut(Qt.CTRL + Qt.Key_Slash, self.code_editor, activated=self._toggle_comment)
         QShortcut(Qt.CTRL + Qt.Key_D, self.code_editor, activated=self._duplicate_line)
-
-    def _toggle_comment(self):
-        cursor = self.code_editor.textCursor()
-        doc = self.code_editor.document()
-        start = cursor.selectionStart()
-        end = cursor.selectionEnd()
-        c = QTextCursor(doc)
-        c.setPosition(start)
-        c.movePosition(QTextCursor.StartOfLine)
-        start_line_pos = c.position()
-        c.setPosition(end)
-        if c.atBlockStart() and end > start:
-            c.movePosition(QTextCursor.Left)
-        c.movePosition(QTextCursor.EndOfLine)
-        end_line_pos = c.position()
-        c.setPosition(start_line_pos)
-        c.setPosition(end_line_pos, QTextCursor.KeepAnchor)
-        lines = c.selectedText().split('\u2029')
-
-        def is_commented(s):
-            return bool(re.match(r"^\s*#", s))
-
-        all_commented = all((t.strip() == '' or is_commented(t)) for t in lines)
-        new_lines = []
-        if all_commented:
-            for t in lines:
-                if not t.strip():
-                    new_lines.append(t)
-                    continue
-                new_lines.append(re.sub(r"^(\s*)#\s?", r"\1", t))
-        else:
-            for t in lines:
-                if not t.strip():
-                    new_lines.append(t)
-                else:
-                    m = re.match(r"^(\s*)", t)
-                    indent = m.group(1) if m else ''
-                    new_lines.append(f"{indent}# " + t[len(indent):])
-        cursor.beginEditBlock()
-        c.insertText("\n".join(new_lines))
-        cursor.endEditBlock()
 
     def _duplicate_line(self):
         cursor = self.code_editor.textCursor()

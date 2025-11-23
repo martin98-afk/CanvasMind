@@ -185,8 +185,7 @@ def build_internal_graph(internal_nodes, graph_data):
         raise ValueError("循环体内部存在依赖环")
     return order
 
-def execute_branch_node_internal(branch_node, input_data, execute_all_matches=False):
-    local_vars = {"input_input": input_data}
+def execute_branch_node_internal(branch_node, input_data, local_vars, execute_all_matches=False):
     output_dict = {}
     selected_ports = []
     for cond in branch_node.get("conditions", []):
@@ -534,7 +533,7 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
                         out_nid, out_port = input_port_connections[port][i]
                         # 使用下划线连接，替换可能的空格或特殊字符
                         upstream_node_name_safe = execute_nodes[out_nid]["name"].replace(" ", "_").replace("-", "_")
-                        precise_var_name = f"input_{port}_{upstream_node_name_safe}_{out_port}"
+                        precise_var_name = f"input_{upstream_node_name_safe}_{out_port}"
                         local_vars_for_inputs[precise_var_name] = val
                 local_vars_for_inputs[f"input_{port}"] = vals # 保留列表
             else:
@@ -547,7 +546,7 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
         if n.get("is_branch_node", False):
             input_val = next(iter(node_inputs.values()), None)
             execute_all_matches = n.get("execute_all_matches", False)
-            selected_ports, output = execute_branch_node_internal(n, input_val, execute_all_matches)
+            selected_ports, output = execute_branch_node_internal(n, input_val, local_vars_for_inputs, execute_all_matches)
             # --- 新增：处理未激活端口及其下游节点 ---
             all_port_names = {cond.get("name") for cond in n.get("conditions", [])}
             if n.get("enable_else", False):
@@ -699,10 +698,6 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             all_port_names = {cond.get("name") for cond in node.get("conditions", [])}
             if node.get("enable_else", False):
                 all_port_names.add("else")
-            for port_name in all_port_names:
-                downstream_for_port = get_downstream_nodes(node_id, graph_data["connections"], set(nodes.keys()),
-                                                           specific_port=port_name,
-                                                           downstream_cache=branch_downstream_cache)
 
     active_branch_outputs = {}
     node_outputs = {}
@@ -719,7 +714,6 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             # 为所有输出端口设置 None
             node_name = node["name"].replace(" ", "_")
             for port_name in node.get("output_ports", []):
-                var_name = f"node_vars_{node_name}_{port_name}"
                 node_outputs[node_id] = node_outputs.get(node_id, {})
                 node_outputs[node_id][port_name] = None
             logger.info(f"节点 {node['name']} 因所有上游节点被禁用而被跳过。")
@@ -773,7 +767,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
                         out_nid, out_port, upstream_node_name = input_port_connections[port][i]
                         # 使用下划线连接，替换可能的空格或特殊字符
                         upstream_node_name_safe = upstream_node_name.replace(" ", "_").replace("-", "_")
-                        precise_var_name = f"input_{port}_{upstream_node_name_safe}_{out_port}"
+                        precise_var_name = f"input_{upstream_node_name_safe}_{out_port}"
                         local_vars_for_inputs[precise_var_name] = val
                 # 保留原始的 $input_portname$ 引用，取第一个值或整个列表
                 local_vars_for_inputs[f"input_{port}"] = vals # 保留列表
@@ -802,7 +796,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
         elif node["is_branch_node"]:
             input_val = next(iter(node_inputs.values()), None)
             execute_all_matches = node.get("execute_all_matches", False)
-            selected_ports, output = execute_branch_node(node, input_val, execute_all_matches)
+            selected_ports, output = execute_branch_node(node, input_val, local_vars_for_inputs, execute_all_matches)
             node_outputs[node_id] = output
             if selected_ports:
                 active_branch_outputs[node_id] = selected_ports if execute_all_matches else selected_ports[0]
@@ -837,7 +831,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             # 执行普通节点（如果未被禁用）
             if node_id not in disabled_nodes:
                 # 将精确引用变量合并到 node_inputs 作为 evaludate_model_inputs 的局部变量
-                node_inputs_evaluated, node_params_evaluated = evaludate_model_inputs(node["input_values"], node["params"], local_vars=local_vars_for_inputs)
+                node_inputs_evaluated, node_params_evaluated = evaludate_model_inputs(node_inputs, node["params"], local_vars=local_vars_for_inputs)
                 try:
                     logger.info(f"执行节点: {node['name']}")
                     logger.info(f"输入: {node_inputs_evaluated}")
@@ -879,8 +873,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
         pickle.dump(final_outputs, f)
 
 # --- (execute_branch_node 函数保持不变) ---
-def execute_branch_node(branch_node, input_data, execute_all_matches=False):
-    local_vars = {"input_input": input_data}
+def execute_branch_node(branch_node, input_data, local_vars, execute_all_matches=False):
     output_dict = {}
     selected_ports = []
     for cond in branch_node.get("conditions", []):

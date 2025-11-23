@@ -3,6 +3,8 @@ import json
 from NodeGraphQt import NodeGraph, BaseNode
 from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
+from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
+from NodeGraphQt.qgraphics.pipe import PipeItem
 from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.actions import BaseMenu
 from NodeGraphQt.widgets.scene import NodeScene
@@ -80,6 +82,7 @@ class CustomNodeViewer(NodeViewer):
         self._layout_direction = LayoutDirectionEnum.HORIZONTAL.value
 
         self._pipe_layout = PipeLayoutEnum.CURVED.value
+        self._panning = False
         self._detached_port = None
         self._start_port = None
         self._origin_pos = None
@@ -171,13 +174,147 @@ class CustomNodeViewer(NodeViewer):
         if not start_port.node.visible or not end_port.node.visible:
             pipe.hide()
 
+    def mousePressEvent(self, event):
+        # 检查是否是平移操作
+        if (event.button() == QtCore.Qt.MiddleButton or
+                (event.button() == QtCore.Qt.LeftButton and event.modifiers() == QtCore.Qt.AltModifier)):
+            self._panning = True
+        if event.button() == QtCore.Qt.LeftButton:
+            self.LMB_state = True
+        elif event.button() == QtCore.Qt.RightButton:
+            self.RMB_state = True
+        elif event.button() == QtCore.Qt.MiddleButton:
+            self.MMB_state = True
+
+        self._origin_pos = event.pos()
+        self._previous_pos = event.pos()
+        (self._prev_selection_nodes,
+         self._prev_selection_pipes) = self.selected_items()
+
+        # close tab search
+        if self._search_widget.isVisible():
+            self.tab_search_toggle()
+
+        # cursor pos.
+        map_pos = self.mapToScene(event.pos())
+
+        # pipe slicer enabled.
+        if self.pipe_slicing:
+            slicer_mode = all([
+                self.ALT_state, self.SHIFT_state, self.LMB_state
+            ])
+            if slicer_mode:
+                self._SLICER_PIPE.draw_path(map_pos, map_pos)
+                self._SLICER_PIPE.setVisible(True)
+                return
+
+        # pan mode.
+        if self.ALT_state:
+            return
+
+        items = self._items_near(map_pos, None, 20, 20)
+        pipes = []
+        nodes = []
+        backdrop = None
+        for itm in items:
+            if isinstance(itm, PipeItem):
+                pipes.append(itm)
+            elif isinstance(itm, AbstractNodeItem):
+                if isinstance(itm, BackdropNodeItem):
+                    backdrop = itm
+                    continue
+                nodes.append(itm)
+
+        if nodes:
+            self.MMB_state = False
+
+        # record the node selection as "self.selected_nodes()" is not updated
+        # here on the mouse press event.
+        selection = set([])
+
+        if self.LMB_state:
+            # toggle extend node selection.
+            if self.SHIFT_state:
+                if items and backdrop == items[0]:
+                    backdrop.selected = not backdrop.selected
+                    if backdrop.selected:
+                        selection.add(backdrop)
+                    for n in backdrop.get_nodes():
+                        n.selected = backdrop.selected
+                        if backdrop.selected:
+                            selection.add(n)
+                else:
+                    for node in nodes:
+                        node.selected = not node.selected
+                        if node.selected:
+                            selection.add(node)
+            # unselected nodes with the "ctrl" key.
+            elif self.CTRL_state:
+                if items and backdrop == items[0]:
+                    backdrop.selected = False
+                else:
+                    for node in nodes:
+                        node.selected = False
+            # if no modifier keys then add to selection set.
+            else:
+
+                if backdrop:
+                    selection.add(backdrop)
+                    for n in backdrop.get_nodes():
+                        selection.add(n)
+                for node in nodes:
+                    if node.selected:
+                        selection.add(node)
+
+
+        selection.update(self.selected_nodes())
+
+        # update the recorded node positions.
+        self._node_positions.update({n: n.xy_pos for n in selection})
+
+        # show selection marquee.
+        if self.LMB_state and not items:
+            rect = QtCore.QRect(self._previous_pos, QtCore.QSize())
+            rect = rect.normalized()
+            map_rect = self.mapToScene(rect).boundingRect()
+            self.scene().update(map_rect)
+            self._rubber_band.setGeometry(rect)
+            self._rubber_band.isActive = True
+
+        # stop here so we don't select a node.
+        # (ctrl modifier can be used for something else in future.)
+        if self.CTRL_state:
+            return
+
+        # allow new live pipe with the shift modifier on port that allow
+        # for multi connection.
+        if self.SHIFT_state:
+            if pipes:
+                pipes[0].reset()
+                port = pipes[0].port_from_pos(map_pos, reverse=True)
+                if not port.locked and port.multi_connection:
+                    self._cursor_text.setPlainText('')
+                    self._cursor_text.setVisible(False)
+                    self.start_live_connection(port)
+
+            # return here as the default behaviour unselects nodes with
+            # the shift modifier.
+            return
+
+        if not self._LIVE_PIPE.isVisible():
+            super(NodeViewer, self).mousePressEvent(event)
+
     def mouseReleaseEvent(self, event):
+        was_panning = self._panning  # 记录是否刚结束平移
         if event.button() == QtCore.Qt.LeftButton:
             self.LMB_state = False
+            if event.modifiers() == QtCore.Qt.AltModifier:
+                self._panning = False
         elif event.button() == QtCore.Qt.RightButton:
             self.RMB_state = False
         elif event.button() == QtCore.Qt.MiddleButton:
             self.MMB_state = False
+            self._panning = False
 
         # hide pipe slicer.
         if self._SLICER_PIPE.isVisible():
@@ -233,10 +370,16 @@ class CustomNodeViewer(NodeViewer):
         if self.COLLIDING_state and nodes and pipes:
             self.insert_node.emit(pipes[0], nodes[0].id, moved_nodes)
 
-        # emit node selection changed signal.
-        prev_ids = [n.id for n in self._prev_selection_nodes]
-        node_ids = [n.id for n in nodes if n not in self._prev_selection_nodes]
-        self.node_selection_changed.emit(node_ids, prev_ids)
+        # 关键：只有在非平移操作时才检查选中变化
+        if not was_panning:
+            prev_ids = [n.id for n in self._prev_selection_nodes if not n.selected]
+            nodes, _ = self.selected_items()
+            node_ids = [n.id for n in nodes if n not in self._prev_selection_nodes]
+
+            # 只有当有变化时才发射信号（可选进一步优化）
+            self.node_selection_changed.emit(node_ids, prev_ids)
+        # 更新 _prev_selection_nodes（无论是否平移）
+        self._prev_selection_nodes = [n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)]
 
         super(NodeViewer, self).mouseReleaseEvent(event)
 

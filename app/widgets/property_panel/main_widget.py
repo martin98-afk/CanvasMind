@@ -1,22 +1,19 @@
 # -*- coding: utf-8 -*-
-import re
 
 from NodeGraphQt import BaseNode
-from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, \
     QStackedWidget, QSizePolicy
 from loguru import logger
-from qfluentwidgets import CardWidget, SmoothScrollArea, InfoBar, InfoBarPosition, TransparentDropDownToolButton, \
+from qfluentwidgets import SmoothScrollArea, TransparentDropDownToolButton, \
     SimpleCardWidget
 
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
-from app.utils.utils import serialize_for_json
-from app.widgets.property_panel.node_panel import NodePanelWidget
 from app.widgets.property_panel.flow_control_panel import FlowControlPanelWidget
 from app.widgets.property_panel.global_panel import GlobalPanelWidget
 from app.widgets.property_panel.node_list_panel import NodeListPanelWidget
+from app.widgets.property_panel.node_panel import NodePanelWidget
 
 
 class PropertyPanel(SimpleCardWidget):
@@ -257,6 +254,7 @@ class PropertyPanel(SimpleCardWidget):
         """构建全局变量面板"""
         if self._global_panel_built:
             return
+        print("构建全局变量面板")
         # 委托给 GlobalPanelWidget
         if not hasattr(self, 'global_panel_widget') or not self.global_panel_widget:
             self.global_panel_widget = GlobalPanelWidget(self.main_window, self, self.global_vbox)

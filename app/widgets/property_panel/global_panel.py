@@ -364,43 +364,11 @@ class GlobalPanelWidget:
             return
 
         if var_type == "node_vars":
-            if action == "add" or action == "update":
-                if var_name not in self._node_var_cards:
-                    if hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
-                        card = self._create_variable_card(var_name, global_vars.node_vars[var_name])
-                        # 确保 node_vars_layout 存在且有效
-                        if self.node_vars_layout:
-                            self.node_vars_layout.addWidget(card)
-                            self._node_var_cards[var_name] = card
-                        else:
-                            logger.warning("node_vars_layout not found, cannot add card.")
-            elif action == "delete":
-                if var_name in self._node_var_cards:
-                    card = self._node_var_cards.pop(var_name)
-                    card.deleteLater()
-            elif action == "clear":
+            if action == "clear":
                 global_vars.clear_node_vars(var_name)
+            self._refresh_node_vars_page()
         elif var_type == "custom":
-            if action == "add":
-                # 仅处理新增
-                if var_name not in self._custom_var_cards:
-                    if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
-                        value = global_vars.custom[var_name].value
-                        if isinstance(value, dict):
-                            card = self._create_parameter_group_row(var_name, value)
-                            layout_to_use = self.custom_params_layout  # 添加到参数组布局
-                        else:
-                            card = self._create_dict_row(var_name, value)
-                            layout_to_use = self.custom_kvs_layout  # 添加到KV布局
-                        layout_to_use.addWidget(card)
-                        self._custom_var_cards[var_name] = card
-                        # 更新分割线可见性
-                        has_params = self.custom_params_layout.count() > 0
-                        has_kvs = self.custom_kvs_layout.count() > 0
-                        self.custom_separator.setVisible(has_params and has_kvs)
-                    else:
-                        logger.warning(f"Variable {var_name} not found in global_vars.custom during add.")
-            elif action == "update":
+            if action == "update":
                 # 处理更新：删除旧卡片，根据新值类型创建新卡片并放入对应布局
                 if var_name in self._custom_var_cards:
                     old_card = self._custom_var_cards.pop(var_name)
@@ -422,31 +390,10 @@ class GlobalPanelWidget:
                         self.custom_separator.setVisible(has_params and has_kvs)
                     else:
                         logger.warning(f"Variable {var_name} not found in global_vars.custom during update.")
-            elif action == "delete":
-                if var_name in self._custom_var_cards:
-                    card = self._custom_var_cards.pop(var_name)
-                    card.deleteLater()
-                    # 更新分割线可见性
-                    has_params = self.custom_params_layout.count() > 0
-                    has_kvs = self.custom_kvs_layout.count() > 0
-                    self.custom_separator.setVisible(has_params and has_kvs)
+            else:
+                self._refresh_custom_vars_page()
         elif var_type == "env":
-            if action == "add" or action == "update":
-                if var_name not in self._env_var_cards:
-                    if hasattr(global_vars, 'env'):
-                        value = getattr(global_vars.env, var_name, None)
-                        if value is not None:
-                            card = self._create_env_var_row(var_name, value)
-                            if self.env_vars_layout:
-                                self.env_vars_layout.addWidget(card)
-                                self._env_var_cards[var_name] = card
-                            else:
-                                logger.warning("env_vars_layout not found, cannot add card.")
-            elif action == "delete":
-                if var_name in self._env_var_cards:
-                    card = self._env_var_cards.pop(var_name)
-                    card.deleteLater()
-        self._refresh_node_vars_page()
+            self._refresh_env_page()
 
     def _on_global_tab_changed(self, key):
         if key == 'env':
@@ -629,7 +576,6 @@ class GlobalPanelWidget:
             self.node_vars_layout.addWidget(group_card)
         self.node_vars_layout.addStretch(1)
         # 由于完全重建，现有卡片缓存也需要更新
-        # 清空旧缓存
         for card in self._node_var_cards.values():
             card.deleteLater()
         self._node_var_cards.clear()
@@ -697,6 +643,8 @@ class GlobalPanelWidget:
         self.main_window.canvas_widget.zoom_to_nodes([found_node._view])
 
     def _refresh_env_page(self):
+        # 去除最后strech
+        self.env_vars_layout.removeItem(self.env_vars_layout.itemAt(self.env_vars_layout.count() - 1))
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars or not hasattr(global_vars, 'env'):
             return
@@ -724,7 +672,7 @@ class GlobalPanelWidget:
                     value_label.setText(preview)
         if not current_env and self.env_vars_layout.count() == 0:
             self.env_vars_layout.addWidget(BodyLabel("暂无环境变量"))
-        self.env_vars_layout.addStretch()
+        self.env_vars_layout.addStretch(1)
 
     def _create_dict_row(self, name: str, value):
         """创建普通的KV变量卡片"""
@@ -969,7 +917,7 @@ class GlobalPanelWidget:
         layout.addWidget(del_btn)
 
         def show_context_menu(pos):
-            current_val = getattr(self.main_window.global_variables.env, key, None)
+            current_val = self.main_window.global_variables.get(f"env.{key}")
             menu = RoundMenu(parent=self.parent_panel)
             menu.addAction(Action(FluentIcon.COPY, "复制为表达式", parent=self.parent_panel,
                                   triggered=lambda: self.copy_as_expression("env", key)))
@@ -999,7 +947,6 @@ class GlobalPanelWidget:
                         QtCore.QTimer.singleShot(0, node.refresh_node_outports)
                     if hasattr(node, "_sync_outputs_ports"):
                         QtCore.QTimer.singleShot(0, node._sync_outputs_ports)
-            self._refresh_custom_vars_page()
             self._handle_global_variable_change(var_type, var_name, "delete")
             InfoBar.success("已删除", f"变量 '{var_name}' 已移除", parent=self.main_window, duration=1500)
         except Exception as e:
@@ -1040,7 +987,6 @@ class GlobalPanelWidget:
             global_vars = getattr(self.main_window, 'global_variables', None)
             if global_vars:
                 global_vars.set(name, value)
-                self._refresh_custom_vars_page()
                 self._handle_global_variable_change("custom", name, "add")
                 InfoBar.success("已添加", f"自定义变量 {name}", parent=self.main_window)
 
@@ -1080,9 +1026,6 @@ class GlobalPanelWidget:
                 else:
                     InfoBar.success("已保存", f"参数组 {new_name}", parent=self.main_window)
 
-                # 强制刷新自定义变量页面以更新显示
-                self._refresh_custom_vars_page()
-
     def add_new_env_variable(self):
         dialog = CustomTwoInputDialog(
             title1="环境变量名",
@@ -1099,7 +1042,6 @@ class GlobalPanelWidget:
             global_vars = getattr(self.main_window, 'global_variables', None)
             if global_vars:
                 global_vars.env.set_env_var(name, value)
-                self._refresh_env_page()
                 self._handle_global_variable_change("env", name, "add")
                 InfoBar.success("已添加", f"环境变量 {name}", parent=self.main_window)
 
@@ -1205,7 +1147,6 @@ class GlobalPanelWidget:
                 global_vars.set(new_name, parameters)
 
                 # 发送更新信号，而不是直接刷新整个页面
-                # 如果名称改变，则发送 add 信号给新名称，否则发送 update 信号
                 if new_name != var_name:
                     self._handle_global_variable_change("custom", new_name, "add")
                 else:
@@ -1280,56 +1221,6 @@ class GlobalPanelWidget:
             return None
 
         return found_node
-
-    def handle_global_variable_change(self, var_type: str, var_name: str, action: str):
-        """处理全局变量变化的信号"""
-        if var_type == "node_vars":
-            if action == "add" or action == "update":
-                if var_name not in self._node_var_cards:
-                    global_vars = self.main_window.global_variables
-                    if hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
-                        card = self._create_variable_card(var_name, global_vars.node_vars[var_name])
-                        self.node_vars_layout.addWidget(card)
-                        self._node_var_cards[var_name] = card
-            elif action == "delete":
-                if var_name in self._node_var_cards:
-                    card = self._node_var_cards.pop(var_name)
-                    card.deleteLater()
-            elif action == "clear":
-                global_vars = self.main_window.global_variables
-                global_vars.clear_node_vars(var_name)
-                self._refresh_node_vars_page()
-        elif var_type == "custom":
-            if action == "add" or action == "update":
-                if var_name not in self._custom_var_cards:
-                    global_vars = self.main_window.global_variables
-                    if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
-                        value = global_vars.custom[var_name].value
-                        # 检查是否是字典类型，决定创建哪种卡片
-                        if isinstance(value, dict):
-                            card = self._create_parameter_group_row(var_name, value)
-                        else:
-                            card = self._create_dict_row(var_name, value)
-                        self.custom_vars_layout.addWidget(card)
-                        self._custom_var_cards[var_name] = card
-            elif action == "delete":
-                if var_name in self._custom_var_cards:
-                    card = self._custom_var_cards.pop(var_name)
-                    card.deleteLater()
-        elif var_type == "env":
-            if action == "add" or action == "update":
-                if var_name not in self._env_var_cards:
-                    global_vars = self.main_window.global_variables
-                    if hasattr(global_vars, 'env'):
-                        value = getattr(global_vars.env, var_name, None)
-                        if value is not None:
-                            card = self._create_env_var_row(var_name, value)
-                            self.env_vars_layout.addWidget(card)
-                            self._env_var_cards[var_name] = card
-            elif action == "delete":
-                if var_name in self._env_var_cards:
-                    card = self._env_var_cards.pop(var_name)
-                    card.deleteLater()
 
     def add_output_to_global_var(self, main_window, node, port_name: str):
         """将输出添加到全局变量"""

@@ -100,18 +100,18 @@ class GlobalVarComboBoxWidget(QtWidgets.QWidget):
         # 收集所有变量（带作用域前缀）
         all_vars = []
 
-        # 1. 环境变量
-        env_vars = global_vars.env.get_all_env_vars()
-        for key in sorted(env_vars.keys()):
-            all_vars.append(f"env.{key}")
-
-        # 2. 自定义变量
+        # 1. 自定义变量
         for key in sorted(global_vars.custom.keys()):
             all_vars.append(f"custom.{key}")
 
-        # 3. 节点输出变量
+        # 2. 节点输出变量
         for key in sorted(global_vars.node_vars.keys()):
             all_vars.append(f"node_vars.{key}")
+
+        # 3. 环境变量
+        env_vars = global_vars.env.get_all_env_vars()
+        for key in sorted(env_vars.keys()):
+            all_vars.append(f"env.{key}")
 
         # 添加到下拉框
         if all_vars:

@@ -189,24 +189,13 @@ class CanvasPage(QWidget):
         )
         # 优化：直接连接到 set_node_status_by_id
         scheduler.node_status_changed.connect(self.set_node_status_by_id)
-        scheduler.property_changed.connect(self.update_node_property)
+        scheduler.property_changed.connect(self.property_panel.update_properties)
         return scheduler
 
     def set_node_status_by_id(self, node_id, status):
         node = self._get_node_by_id_cached(node_id)
         if node:
-            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, status))
-
-    def update_node_property(self, node_id):
-        selected_nodes = self.graph.selected_nodes()
-        backdrop = None
-        for node in selected_nodes:
-            if isinstance(node, ControlFlowBackdrop):
-                backdrop = node
-                break
-        node = self._get_node_by_id_cached(node_id)
-        if selected_nodes and node == backdrop:
-            QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
+            self.set_node_status(node, status)
 
     def _connect_scheduler_signals(self):
         """连接调度器信号到 UI 回调"""
@@ -227,18 +216,35 @@ class CanvasPage(QWidget):
             nodes = self.property_panel.get_current_execution_order()
             self._scheduler.run_full(nodes=nodes, sort=False)
             self._scheduler.node_started.connect(
-                lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes))
+                lambda : QtCore.QTimer.singleShot(
+                    50, self.property_panel.node_list_panel_widget.update_node_list_content
+                )
+            )
+            self._scheduler.backdrop_finished.connect(
+                lambda: QtCore.QTimer.singleShot(
+                    50, lambda: self.property_panel.update_properties(nodes)
+                )
             )
             self._scheduler.node_finished.connect(
-                lambda: QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes))
+                lambda: QtCore.QTimer.singleShot(
+                    50, self.property_panel.node_list_panel_widget.update_node_list_content
+                )
             )
             self._scheduler.finished.connect(
-                lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes))
+                lambda: QtCore.QTimer.singleShot(
+                    50, self.property_panel.node_list_panel_widget.update_node_list_content
+                )
             )
             self._scheduler.error.connect(
-                lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes))
+                lambda: QtCore.QTimer.singleShot(
+                    50, self.property_panel.node_list_panel_widget.update_node_list_content
+                )
             )
-            self.property_panel.reset_current_components()
+            self._scheduler.cancelled.connect(
+                lambda: QtCore.QTimer.singleShot(
+                    50, self.property_panel.node_list_panel_widget.update_node_list_content
+                )
+            )
         else:
             self._scheduler.run_full(nodes=self.graph.selected_nodes())
 
@@ -825,14 +831,86 @@ class CanvasPage(QWidget):
             backdrop_node.model.set_property("loop_nums", 3)
 
     def close_current_canvas(self):
+        # 1. 停止并断开所有定时器
+        self._auto_save_timer.stop()
+        self._auto_save_timer.deleteLater()
+        if hasattr(self.var_explorer, 'auto_refresh_timer'):
+            self.var_explorer.auto_refresh_timer.stop()
+            self.var_explorer.auto_refresh_timer.deleteLater()
+            self.var_explorer.kernel_check_timer.stop()
+            self.var_explorer.kernel_check_timer.deleteLater()
 
-        self._stop_auto_save_timer()
-        self.var_explorer.auto_refresh_timer.stop()
+        # 2. 停止并清理 IPython 内核
         self.ipython_console.stop_kernel()
-        self.console_dialog.destroy()
-        self.var_explorer.destroy()
+        self.var_explorer.set_kernel_manager(None)  # 解绑引用
+        self.console_dialog.setParent(None)
+        self.console_dialog.deleteLater()
+
+        # 3. 停止并清理调度器
+        if self._scheduler:
+            self._scheduler.cancel()
+            # 尝试断开所有信号（若支持）
+            try:
+                self._scheduler.disconnect()
+            except Exception:
+                pass
+            self._scheduler.setParent(None)
+            self._scheduler.deleteLater()
+            self._scheduler = None
+
+        # 4. 清理推荐任务
+        if self._current_recommendation_task:
+            # 虽然 QThreadPool 无法取消，但可标记忽略结果
+            self._current_recommendation_task = None
+
+        # 5. 移除事件过滤器
+        self.canvas_widget.removeEventFilter(self)
+
+        # 6. 清理 graph 信号连接（若可能）
+        try:
+            self.graph.node_created.disconnect(self.on_node_created)
+            self.graph.port_connected.disconnect(self._on_port_connected)
+            self.graph.viewer().node_selection_changed.disconnect(self.on_selection_changed)
+        except Exception:
+            pass
+
+        # 7. 清理属性面板等子组件
+        self.property_panel.setParent(None)
+        self.nav_panel.setParent(None)
+
+        # 2. 清理动态导入的模块（关键！）
+        import sys
+        modules_to_remove = []
+        for full_path in self.component_map:
+            # 假设你的 scan_components 使用了类似命名
+            safe_name = full_path.replace("/", "_").replace(" ", "_")
+            module_name = f"dynamic.{safe_name}"
+            if module_name in sys.modules:
+                modules_to_remove.append(module_name)
+        for mod in modules_to_remove:
+            del sys.modules[mod]
+        # ===== 7. 销毁 UI 控件（确保 parent=None）=====
+        for widget in [
+            self.console_dialog,
+            self.var_explorer,
+            self.property_panel,
+            self.nav_panel,
+            self.buttons_container,
+            self.name_container,
+            self.env_selector_container,
+            self.nodes_container,
+            getattr(self, 'console_container', None),
+        ]:
+            if widget:
+                widget.setParent(None)
+                widget.deleteLater()
+        # 3. 彻底清理节点
+        self.graph.clear_session()
+        self.graph.deleteLater()
+        # 8. 发射信号 & 移除自身
         self.canvas_deleted.emit()
         self.parent.removeInterface(self)
+        self.deleteLater()  # 关键：触发 Qt 对象销毁
 
     def create_name_label(self):
         self.name_container = QWidget(self.canvas_widget)

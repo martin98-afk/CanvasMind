@@ -465,34 +465,25 @@ class ModelMixin:
     """为输入模型添加 .get() 和 [] 访问方法，兼容字典用法"""
 
     def get(self, key: str, default=None):
-        """
-        类似 dict.get()：
-        - 如果字段存在且不为 None，返回值
-        - 如果字段不存在或值为 None，返回 default
-        """
-        if hasattr(self, key):
-            value = getattr(self, key)
+        # 直接查 __dict__，不触发任何钩子
+        if key in self.__dict__:
+            value = self.__dict__[key]
             return value if value is not None else default
         return default
 
     def __getattr__(self, item: str):
+        # get() 不再调用 hasattr，所以不会递归
         return self.get(item)
 
     def __getitem__(self, key: str):
-        """
-        支持 item["key"] 语法
-        - 如果字段存在且不为 None，返回值
-        - 如果字段不存在或值为 None，抛出 KeyError（与 dict 行为一致）
-        """
-        if hasattr(self, key):
-            value = getattr(self, key)
+        if key in self.__dict__:
+            value = self.__dict__[key]
             if value is not None:
                 return value
         raise KeyError(key)
 
     def __contains__(self, key: str) -> bool:
-        """支持 "key" in item 语法"""
-        return hasattr(self, key) and getattr(self, key) is not None
+        return key in self.__dict__ and self.__dict__[key] is not None
 
 
 class ComponentError(Exception):

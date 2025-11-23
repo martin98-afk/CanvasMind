@@ -1166,6 +1166,11 @@ class JediCodeEditor(CodeEditor):
             self._handle_shift_enter(cursor)
             event.accept()  # 确保事件被处理
             return  # 直接返回，不执行后续逻辑
+        # 处理 ctrl + / 注释
+        if modifiers == Qt.ControlModifier and key == Qt.Key_Slash:
+            self._toggle_comment()
+            event.accept()  # 确保事件被处理
+            return
         # 处理补全弹窗导航
         if self.popup.isVisible():
             # ---- Handle hard coded and builtin actions
@@ -1263,6 +1268,47 @@ class JediCodeEditor(CodeEditor):
             # 如果触发了补全，重新启动超时计时器
             if self.popup.isVisible():
                 self._popup_timeout_timer.start(self._popup_timeout_duration)
+
+    def _toggle_comment(self):
+        cursor = self.textCursor()
+        doc = self.document()
+        start = cursor.selectionStart()
+        end = cursor.selectionEnd()
+        c = QTextCursor(doc)
+        c.setPosition(start)
+        c.movePosition(QTextCursor.StartOfLine)
+        start_line_pos = c.position()
+        c.setPosition(end)
+        if c.atBlockStart() and end > start:
+            c.movePosition(QTextCursor.Left)
+        c.movePosition(QTextCursor.EndOfLine)
+        end_line_pos = c.position()
+        c.setPosition(start_line_pos)
+        c.setPosition(end_line_pos, QTextCursor.KeepAnchor)
+        lines = c.selectedText().split('\u2029')
+
+        def is_commented(s):
+            return bool(re.match(r"^\s*#", s))
+
+        all_commented = all((t.strip() == '' or is_commented(t)) for t in lines)
+        new_lines = []
+        if all_commented:
+            for t in lines:
+                if not t.strip():
+                    new_lines.append(t)
+                    continue
+                new_lines.append(re.sub(r"^(\s*)#\s?", r"\1", t))
+        else:
+            for t in lines:
+                if not t.strip():
+                    new_lines.append(t)
+                else:
+                    m = re.match(r"^(\s*)", t)
+                    indent = m.group(1) if m else ''
+                    new_lines.append(f"{indent}# " + t[len(indent):])
+        cursor.beginEditBlock()
+        c.insertText("\n".join(new_lines))
+        cursor.endEditBlock()
 
     # --- 新增：集成的 Shift+Enter 处理方法 ---
     def _handle_shift_enter(self, cursor):

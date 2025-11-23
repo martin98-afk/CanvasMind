@@ -25,9 +25,13 @@ class StepMessageBoxBase(MaskDialogBase):
         # 按钮组
         self.buttonGroup = QFrame(self.widget)
         self.nextButton = PrimaryPushButton(self.tr('下一步'), self.buttonGroup)
+        self.nextButton.setFixedWidth(150)
         self.backButton = PushButton(self.tr('上一步'), self.buttonGroup)
+        self.backButton.setFixedWidth(150)
         self.okButton = PrimaryPushButton(self.tr('确认'), self.buttonGroup)
+        self.okButton.setFixedWidth(150)
         self.cancelButton = PushButton(self.tr('取消'), self.buttonGroup)
+        self.cancelButton.setFixedWidth(150)
 
         # 布局
         self.vBoxLayout = QVBoxLayout(self.widget)

@@ -4,7 +4,7 @@ import time
 import traceback
 from typing import List, Optional, Any
 
-from PyQt5.QtCore import QObject, QRunnable, pyqtSignal
+from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, QTimer
 from loguru import logger
 
 from app.nodes.backdrop_node import ControlFlowBackdrop
@@ -18,6 +18,7 @@ class WorkerSignals(QObject):
     node_started = pyqtSignal(str)
     node_finished = pyqtSignal(str)
     node_error = pyqtSignal(str)
+    backdrop_finished = pyqtSignal()
 
 class NodeListExecutor(QRunnable):
     """
@@ -100,6 +101,7 @@ class NodeListExecutor(QRunnable):
                                 node,
                                 check_cancel=self._check_cancel
                             )
+                            self.signals.backdrop_finished.emit()
                     else:
                         pass
 
@@ -128,3 +130,5 @@ class NodeListExecutor(QRunnable):
             else:
                 logger.info("执行被用户取消")
                 self.signals.error.emit("执行被用户取消")
+        finally:
+            QTimer.singleShot(100, lambda: self.scheduler.unregister_global_variable(self.nodes))

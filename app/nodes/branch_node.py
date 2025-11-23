@@ -1,6 +1,4 @@
 import re
-
-from NodeGraphQt import BaseNode
 from PyQt5 import QtCore
 
 from app.components.base import PropertyType, GlobalVariableContext

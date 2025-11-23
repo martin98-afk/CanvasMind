@@ -8,20 +8,18 @@ import sys
 import uuid
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from pathlib import Path
-from typing import List, Tuple, Type, Union, OrderedDict
-from typing import Any, Dict, Optional
-
-from pandas import DataFrame
-from pydantic import BaseModel, Field
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, Optional
+from typing import List, Tuple, Type, Union, OrderedDict
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 from PIL import Image
 from loguru import logger
+from pydantic import BaseModel, Field
 from pydantic import create_model
-
 
 ENV_RULES = {
     "user_id": {"type": str, "readonly": True},
@@ -65,51 +63,6 @@ PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType\n\n\n"""
-
-
-DEFAULT_NODE_TEMPLATE = '''class Component(BaseComponent):
-    name = ""
-    category = ""
-    description = ""
-    requirements = ""
-    inputs = [
-    ]
-    outputs = [
-    ]
-    properties = {
-    }
-    def run(self, params, inputs=None):
-        """
-        params: 节点属性（来自UI）
-        inputs: 上游输入（key=输入端口名）
-        return: 输出数据（key=输出端口名）
-        """
-        # 在这里编写你的组件逻辑
-        input_data = inputs.input1
-        param1 = params.prop1
-        self.logger.info("这是组件输出信息")
-        # 处理逻辑
-        result = f"处理结果: {input_data} + {param1}"
-        return {
-            "output1": result
-        }
-
-
-if __name__ == "__main__":
-    import warnings
-    warnings.filterwarnings("ignore")
-    model = Component()
-    result = model.debug(
-        params={"prop1": "test"},
-        inputs={"input1": "output"},
-        node_id="测试模型",
-        show_input_types = True,
-        show_output_types = True,
-        show_execution_time = True,
-        global_vars = {}
-    )
-    print(result)
-'''
 
 
 # ==================== 工具函数 ====================
@@ -274,6 +227,12 @@ class GlobalVariableContext(BaseModel):
             value=output_value, update_policy=policy
         )
 
+    def delete_output(self, node_id: str, output_name: str):
+        self.node_vars.pop(f"{node_id}_{output_name}", None)
+
+    def is_output_in_node_vars(self, node_id: str, output_name: str):
+        return f"{node_id}_{output_name}" in self.node_vars
+
     def clear_node_vars(self, name: str):
         if isinstance(self.node_vars[name].value, (list, dict, tuple, set)):
             self.node_vars[name].value.clear()
@@ -301,7 +260,9 @@ class GlobalVariableContext(BaseModel):
         return {
             "env": self.env.dict(),
             "custom": {k: v.dict() for k, v in self.custom.items()},
-            "node_vars": {k: v.dict() for k, v in self.node_vars.items()}
+            "custom_order": list(self.custom.keys()),  # 显式保存顺序
+            "node_vars": {k: v.dict() for k, v in self.node_vars.items()},
+            "node_vars_order": list(self.node_vars.keys()),  # 显式保存顺序
         }
 
     def deserialize(self, data):
@@ -311,13 +272,30 @@ class GlobalVariableContext(BaseModel):
         self.env.canvas_id = history_env.get("canvas_id")
         self.env.session_id = history_env.get("session_id")
         self.env.run_id = history_env.get("run_id")
-        self.custom = OrderedDict(
-            (k, CustomVariable(**v)) for k, v in data.get("custom", {}).items()
-        )
-        self.node_vars = OrderedDict(
-            (k, NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v))
-            for k, v in data.get("node_vars", {}).items()
-        )
+        # custom
+        custom_data = data.get("custom", {})
+        custom_order = data.get("custom_order", [])
+        # 按 custom_order 顺序重建 OrderedDict，缺失的键放在最后（或忽略）
+        self.custom = OrderedDict()
+        for k in custom_order:
+            if k in custom_data:
+                self.custom[k] = CustomVariable(**custom_data[k])
+        # 可选：补充未在 order 中的键（兼容旧数据）
+        for k, v in custom_data.items():
+            if k not in self.custom:
+                self.custom[k] = CustomVariable(**v)
+
+        # node_vars 同理
+        node_vars_data = data.get("node_vars", {})
+        node_vars_order = data.get("node_vars_order", [])
+        self.node_vars = OrderedDict()
+        for k in node_vars_order:
+            if k in node_vars_data:
+                v = node_vars_data[k]
+                self.node_vars[k] = NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
+        for k, v in node_vars_data.items():
+            if k not in self.node_vars:
+                self.node_vars[k] = NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
 
     def get(self, key: str, default=None) -> Any:
         if not isinstance(key, str):
@@ -327,6 +305,28 @@ class GlobalVariableContext(BaseModel):
             return self[key]  # 复用 __getitem__ 的全部逻辑
         except KeyError:
             return default
+
+    def __getattr__(self, name: str):
+        """支持 global_variable.variable_name 这种点号访问方式"""
+        # 检查是否是预定义的属性（如 env, custom, node_vars）
+        if name in {"env", "custom", "node_vars"}:
+            return getattr(self, name)
+
+        # 尝试在 custom 变量中查找
+        if name in self.custom:
+            return self.custom[name].value
+
+        # 尝试在 env 变量中查找
+        env_all = self.env.get_all_env_vars()
+        if name in env_all:
+            return env_all[name]
+
+        # 尝试在 node_vars 中查找
+        if name in self.node_vars:
+            return self.node_vars[name].value
+
+        # 如果都找不到，抛出 AttributeError
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     def __getitem__(self, path: str) -> Any:
         if not isinstance(path, str):
@@ -474,6 +474,9 @@ class ModelMixin:
             value = getattr(self, key)
             return value if value is not None else default
         return default
+
+    def __getattr__(self, item: str):
+        return self.get(item)
 
     def __getitem__(self, key: str):
         """
@@ -928,6 +931,7 @@ class BaseComponent(ABC):
         fields: Dict[str, tuple] = {}
 
         for prop_name, prop_def in cls.properties.items():
+            le, ge = None, None
             if prop_def.type == PropertyType.INT:
                 field_type = int
                 default_val = _parse_default_value(prop_def.default, int)
@@ -941,16 +945,15 @@ class BaseComponent(ABC):
                 default_val = _parse_default_value(prop_def.default, bool)
 
             elif prop_def.type == PropertyType.CHOICE:
-                # 使用 Literal 限制选项
-                from typing import Literal
-                choices = prop_def.choices or ["option1"]
+                choices = prop_def.choices
                 # 动态创建 Literal 类型
                 field_type = Literal[tuple(choices)]  # type: ignore
                 default_val = prop_def.default if prop_def.default in choices else choices[0]
             elif prop_def.type == PropertyType.RANGE:
                 field_type = float if isinstance(prop_def.step, float) else int
                 default_val = _parse_default_value(prop_def.default, field_type)
-                fields[prop_name] = (field_type, Field(default=default_val, ge=prop_def.min, le=prop_def.max))
+                ge = prop_def.min
+                le = prop_def.max
             elif prop_def.type == PropertyType.DYNAMICFORM:
                 # 创建嵌套模型，并用 List[Model] 表示
                 item_model = _create_dynamic_form_model(prop_name, prop_def.schema or {})
@@ -962,7 +965,10 @@ class BaseComponent(ABC):
                 default_val = prop_def.default if prop_def.default != "" else ""
 
             # 使用 Field 确保默认值正确
-            fields[prop_name] = (field_type, Field(default=default_val))
+            if le is not None:
+                fields[prop_name] = (field_type, Field(default=default_val, le=le, ge=ge))
+            else:
+                fields[prop_name] = (field_type, Field(default=default_val))
 
         model_name = f"{cls.__name__}Params"
         base_classes = (ModelMixin, BaseModel)
@@ -1255,10 +1261,9 @@ def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition'
             ft = Union[int, float]
         else:
             ft = str
-
         default_val = _parse_default_value(field_def.default, ft)
-        fields[field_name] = (ft, default_val)
-
+        # 修改这里：使用 Field 包装默认值
+        fields[field_name] = (ft, Field(default=default_val))
     model_name = f"{name}Item"
     base_classes = (ModelMixin, BaseModel)
     return create_model(model_name, __base__=base_classes, **fields)

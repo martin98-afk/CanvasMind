@@ -18,7 +18,6 @@ from app.utils.utils import get_icon
 from app.widgets.card_widget.workflow_card import WorkflowCard
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
 
-
 class WorkflowFileInfoScanner(QThread):
     scan_finished = pyqtSignal(list, dict)
 
@@ -516,6 +515,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
+            canvas_page.property_panel.set_allowed_update(True)
+            canvas_page.property_panel.update_properties(None)
             canvas_page.canvas_deleted.connect(
                 lambda: (
                     self.opened_workflows.pop(file_path, None),

@@ -89,6 +89,23 @@ class NodeListPanelWidget:
                 updated_user_order[node_ids] = comp_nodes.copy()
         self._user_execution_order = updated_user_order
 
+    def update_node_list_content(self):
+        """
+        更新所有连通图卡片中的节点列表文字内容（状态 + 名称）
+        """
+        if not self._component_nodes_list:
+            return
+
+        for list_key, node_list in self._component_nodes_list.items():
+            if list_key not in self._column_list_widgets:
+                continue
+
+            list_widget = self._column_list_widgets[list_key]
+            status_list = [self.main_window.get_node_status(n) for n in node_list]
+            name_list = [n.name() for n in node_list]
+
+            list_widget.update_content(status_list, name_list)
+
     def _create_component_card(self, parent_layout, index, components):
         component = components[index]
         topo_sorted_component = topological_sort(component, split_components=False)
@@ -125,6 +142,7 @@ class NodeListPanelWidget:
         status_list = [self.main_window.get_node_status(n) for n in topo_sorted_component]
         name_list = [n.name() for n in topo_sorted_component]
         component_list = InternalNodeList(status_list, name_list, self.parent_panel)
+        self._column_list_widgets[list_identifier] = component_list
         component_list.setFixedHeight(total_estimated_height)
 
         def on_item_double_clicked(item):
