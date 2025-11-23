@@ -66,8 +66,6 @@ class LowCodeWindow(FluentWindow):
         package_interface = self.addSubInterface(self.package_manager, get_icon("工具包"), '环境管理')
         package_interface.clicked.connect(self.package_manager.on_env_changed)
         self.updater = UpdateChecker(self)
-        if self.config.auto_check_update.value:
-            self.updater.check_update()
         self.navigationInterface.addItem(
             routeKey='update',
             icon=FluentIcon.SYNC,
@@ -96,6 +94,8 @@ class LowCodeWindow(FluentWindow):
         self.splashScreen.finish()
         self.resize(self.window_width, self.window_height)
         self.move(self.w // 2 - self.width() // 2, self.h // 2 - self.height() // 2)
+        if self.config.auto_check_update.value:
+            QtCore.QTimer.singleShot(1000, self.updater.check_update)
 
     def setup_log_viwer(self):
         if not hasattr(self, 'log_viewer'):

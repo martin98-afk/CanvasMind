@@ -18,7 +18,6 @@ from app.utils.utils import get_icon
 from app.widgets.card_widget.workflow_card import WorkflowCard
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
 
-
 class WorkflowFileInfoScanner(QThread):
     scan_finished = pyqtSignal(list, dict)
 

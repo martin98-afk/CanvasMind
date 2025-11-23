@@ -99,6 +99,8 @@ class CustomNodeItem(NodeItem):
                 used to describe the parameters needed to draw.
             widget (QtWidgets.QWidget): not used.
         """
+        if self.viewer() is None:
+            return
         if self.layout_direction is LayoutDirectionEnum.HORIZONTAL.value:
             self._paint_horizontal(painter, option, widget)
         elif self.layout_direction is LayoutDirectionEnum.VERTICAL.value:

@@ -88,7 +88,7 @@ def create_dynamic_code_node(parent_window=None):
             self._sync_timer = QtCore.QTimer()
             self._sync_timer.setSingleShot(True)
             self._sync_timer.timeout.connect(self._sync_inputs_ports)
-            self._sync_timer.start(100)
+            self._sync_timer.start(400)
 
         def _on_outputs_changed(self):
             if self._sync_timer:
@@ -97,7 +97,7 @@ def create_dynamic_code_node(parent_window=None):
             self._sync_timer = QtCore.QTimer()
             self._sync_timer.setSingleShot(True)
             self._sync_timer.timeout.connect(self._sync_outputs_ports)
-            self._sync_timer.start(100)
+            self._sync_timer.start(400)
 
         def _init_properties(self):
             """初始化条件列表和 else 开关（只创建 widget，不绑定逻辑）"""
@@ -262,7 +262,7 @@ def create_dynamic_code_node(parent_window=None):
                             continue
             self._sync_names_to_form(input_configs, name_mapping, "input")
             if self.selected():
-                QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
+                QtCore.QTimer.singleShot(200, lambda: parent_window.property_panel.update_properties(self))
 
         def _sync_outputs_ports(self):
             """同步输出端口：严格按表单顺序重建，仅当端口名未变时恢复连线"""
@@ -318,7 +318,7 @@ def create_dynamic_code_node(parent_window=None):
 
             self._sync_names_to_form(output_configs, name_mapping, "output")
             if self.selected():
-                QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
+                QtCore.QTimer.singleShot(200, lambda: parent_window.property_panel.update_properties(self))
 
         def _sync_names_to_form(self, ports, name_mapping, type="input"):
             """将生成的端口名称同步回表单"""

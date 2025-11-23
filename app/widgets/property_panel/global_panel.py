@@ -969,7 +969,7 @@ class GlobalPanelWidget:
         layout.addWidget(del_btn)
 
         def show_context_menu(pos):
-            current_val = getattr(self.main_window.global_variables.env, key, None)
+            current_val = self.main_window.global_variables.get(f"env.{key}")
             menu = RoundMenu(parent=self.parent_panel)
             menu.addAction(Action(FluentIcon.COPY, "复制为表达式", parent=self.parent_panel,
                                   triggered=lambda: self.copy_as_expression("env", key)))

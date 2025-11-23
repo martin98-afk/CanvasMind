@@ -825,14 +825,73 @@ class CanvasPage(QWidget):
             backdrop_node.model.set_property("loop_nums", 3)
 
     def close_current_canvas(self):
+        # 1. 停止并断开所有定时器
+        self._auto_save_timer.stop()
+        self._auto_save_timer.deleteLater()
+        if hasattr(self.var_explorer, 'auto_refresh_timer'):
+            self.var_explorer.auto_refresh_timer.stop()
+            self.var_explorer.auto_refresh_timer.deleteLater()
 
-        self._stop_auto_save_timer()
-        self.var_explorer.auto_refresh_timer.stop()
+        # 2. 停止并清理 IPython 内核
         self.ipython_console.stop_kernel()
-        self.console_dialog.destroy()
-        self.var_explorer.destroy()
+        self.var_explorer.set_kernel_manager(None)  # 解绑引用
+        self.console_dialog.setParent(None)
+        self.console_dialog.deleteLater()
+
+        # 3. 停止并清理调度器
+        if self._scheduler:
+            self._scheduler.cancel()
+            # 尝试断开所有信号（若支持）
+            try:
+                self._scheduler.disconnect()
+            except Exception:
+                pass
+            self._scheduler.setParent(None)
+            self._scheduler.deleteLater()
+            self._scheduler = None
+
+        # 4. 清理推荐任务
+        if self._current_recommendation_task:
+            # 虽然 QThreadPool 无法取消，但可标记忽略结果
+            self._current_recommendation_task = None
+
+        # 5. 移除事件过滤器
+        self.canvas_widget.removeEventFilter(self)
+
+        # 6. 清理 graph 信号连接（若可能）
+        try:
+            self.graph.node_created.disconnect(self.on_node_created)
+            self.graph.port_connected.disconnect(self._on_port_connected)
+            self.graph.viewer().node_selection_changed.disconnect(self.on_selection_changed)
+        except Exception:
+            pass
+
+        # 7. 清理属性面板等子组件
+        self.property_panel.setParent(None)
+        self.nav_panel.setParent(None)
+
+        # 2. 清理动态导入的模块（关键！）
+        import sys
+        modules_to_remove = []
+        for full_path in self.component_map:
+            # 假设你的 scan_components 使用了类似命名
+            safe_name = full_path.replace("/", "_").replace(" ", "_")
+            module_name = f"dynamic.{safe_name}"
+            if module_name in sys.modules:
+                modules_to_remove.append(module_name)
+        for mod in modules_to_remove:
+            del sys.modules[mod]
+        factory = self.graph._node_factory
+        for node_type in list(factory.nodes.keys()):
+            if node_type.startswith("dynamic.") or node_type.startswith("control_flow."):
+                factory.nodes.pop(node_type, None)
+        # 3. 彻底清理节点
+        self.graph.clear_session()
+        self.graph.deleteLater()
+        # 8. 发射信号 & 移除自身
         self.canvas_deleted.emit()
         self.parent.removeInterface(self)
+        self.deleteLater()  # 关键：触发 Qt 对象销毁
 
     def create_name_label(self):
         self.name_container = QWidget(self.canvas_widget)
