@@ -189,24 +189,13 @@ class CanvasPage(QWidget):
         )
         # 优化：直接连接到 set_node_status_by_id
         scheduler.node_status_changed.connect(self.set_node_status_by_id)
-        scheduler.property_changed.connect(self.update_node_property)
+        scheduler.property_changed.connect(self.property_panel.update_properties)
         return scheduler
 
     def set_node_status_by_id(self, node_id, status):
         node = self._get_node_by_id_cached(node_id)
         if node:
-            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, status))
-
-    def update_node_property(self, node_id):
-        selected_nodes = self.graph.selected_nodes()
-        backdrop = None
-        for node in selected_nodes:
-            if isinstance(node, ControlFlowBackdrop):
-                backdrop = node
-                break
-        node = self._get_node_by_id_cached(node_id)
-        if selected_nodes and node == backdrop:
-            QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
+            self.set_node_status(node, status)
 
     def _connect_scheduler_signals(self):
         """连接调度器信号到 UI 回调"""
@@ -227,18 +216,35 @@ class CanvasPage(QWidget):
             nodes = self.property_panel.get_current_execution_order()
             self._scheduler.run_full(nodes=nodes, sort=False)
             self._scheduler.node_started.connect(
-                lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes))
+                lambda : QtCore.QTimer.singleShot(
+                    50, self.property_panel.node_list_panel_widget.update_node_list_content
+                )
+            )
+            self._scheduler.backdrop_finished.connect(
+                lambda: QtCore.QTimer.singleShot(
+                    50, lambda: self.property_panel.update_properties(nodes)
+                )
             )
             self._scheduler.node_finished.connect(
-                lambda: QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes))
+                lambda: QtCore.QTimer.singleShot(
+                    50, self.property_panel.node_list_panel_widget.update_node_list_content
+                )
             )
             self._scheduler.finished.connect(
-                lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes))
+                lambda: QtCore.QTimer.singleShot(
+                    50, self.property_panel.node_list_panel_widget.update_node_list_content
+                )
             )
             self._scheduler.error.connect(
-                lambda : QtCore.QTimer.singleShot(50, lambda: self.property_panel.update_properties(nodes))
+                lambda: QtCore.QTimer.singleShot(
+                    50, self.property_panel.node_list_panel_widget.update_node_list_content
+                )
             )
-            self.property_panel.reset_current_components()
+            self._scheduler.cancelled.connect(
+                lambda: QtCore.QTimer.singleShot(
+                    50, self.property_panel.node_list_panel_widget.update_node_list_content
+                )
+            )
         else:
             self._scheduler.run_full(nodes=self.graph.selected_nodes())
 
@@ -831,6 +837,8 @@ class CanvasPage(QWidget):
         if hasattr(self.var_explorer, 'auto_refresh_timer'):
             self.var_explorer.auto_refresh_timer.stop()
             self.var_explorer.auto_refresh_timer.deleteLater()
+            self.var_explorer.kernel_check_timer.stop()
+            self.var_explorer.kernel_check_timer.deleteLater()
 
         # 2. 停止并清理 IPython 内核
         self.ipython_console.stop_kernel()
@@ -881,10 +889,21 @@ class CanvasPage(QWidget):
                 modules_to_remove.append(module_name)
         for mod in modules_to_remove:
             del sys.modules[mod]
-        factory = self.graph._node_factory
-        for node_type in list(factory.nodes.keys()):
-            if node_type.startswith("dynamic.") or node_type.startswith("control_flow."):
-                factory.nodes.pop(node_type, None)
+        # ===== 7. 销毁 UI 控件（确保 parent=None）=====
+        for widget in [
+            self.console_dialog,
+            self.var_explorer,
+            self.property_panel,
+            self.nav_panel,
+            self.buttons_container,
+            self.name_container,
+            self.env_selector_container,
+            self.nodes_container,
+            getattr(self, 'console_container', None),
+        ]:
+            if widget:
+                widget.setParent(None)
+                widget.deleteLater()
         # 3. 彻底清理节点
         self.graph.clear_session()
         self.graph.deleteLater()

@@ -1,10 +1,10 @@
 {
   "version": "1.0",
-  "graph_name": "react智能体_copy",
+  "graph_name": "获取当前时间",
   "inputs": {},
   "outputs": {
     "output1": {
-      "node_id": "0x1edc2796d40",
+      "node_id": "0x249d4a783a0",
       "output_name": "output1",
       "format": "TEXT"
     }

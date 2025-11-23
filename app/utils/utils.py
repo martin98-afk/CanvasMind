@@ -447,6 +447,24 @@ def draw_special_outputport(painter, rect, info):
     painter.restore()
 
 
+def _safe_equal(a, b):
+    """Safely compare two values that may include numpy arrays."""
+    if a is b:
+        return True
+    if type(a) != type(b):
+        return False
+    try:
+        if a == b:
+            return True
+    except (ValueError, TypeError):
+        pass
+
+    if isinstance(a, np.ndarray) or isinstance(b, np.ndarray):
+        return np.array_equal(a, b)
+
+    return False
+
+
 def _evaluate_value_recursively(value, expr_engine):
     """
     递归处理任意结构的值，对字符串执行表达式求值。

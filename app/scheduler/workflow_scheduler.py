@@ -28,8 +28,10 @@ class WorkflowScheduler(QObject):
     node_error = pyqtSignal(str)
     finished = pyqtSignal()
     error = pyqtSignal(str)
+    cancelled = pyqtSignal()
+    backdrop_finished = pyqtSignal()
     node_status_changed = pyqtSignal(str, str)  # node_id, status
-    property_changed = pyqtSignal(str)
+    property_changed = pyqtSignal(object)
 
     def __init__(
             self,
@@ -50,6 +52,19 @@ class WorkflowScheduler(QObject):
         self.get_python_exe = get_python_exe
         self.kernel_manager = kernel_manager
         self._executor = None
+
+    def register_global_variable(self, nodes):
+        for node in nodes:
+            if node.has_property("global_variable"):
+                node.set_property("global_variable", self.global_variables.serialize())
+            else:
+                node.model.add_property("global_variable", self.global_variables.serialize())
+
+    def unregister_global_variable(self, nodes):
+        nodes = [nodes] if not isinstance(nodes, list) else nodes
+        for node in nodes:
+            if node.has_property("global_variable"):
+                node.set_property("global_variable", None)
 
     def set_node_status(self, node, status):
         self.node_status_changed.emit(node.id, status)
@@ -185,13 +200,6 @@ class WorkflowScheduler(QObject):
         dfs(node)
         return result
 
-    def register_global_variable(self, nodes):
-        for node in nodes:
-            if node.has_property("global_variable"):
-                node.set_property("global_variable", self.global_variables.serialize())
-            else:
-                node.model.add_property("global_variable", self.global_variables.serialize())
-
     def _execute_nodes(self, nodes: List):
         """启动执行：先解锁所有节点，再执行 active 节点"""
         try:
@@ -216,6 +224,7 @@ class WorkflowScheduler(QObject):
             )
             self._executor.component_map = self.component_map
             self._executor.signals.node_started.connect(self.node_started)
+            self._executor.signals.backdrop_finished.connect(self.backdrop_finished)
             self._executor.signals.node_finished.connect(self.node_finished)
             self._executor.signals.node_error.connect(self.node_error)
             self._executor.signals.finished.connect(self._on_finished)
@@ -248,7 +257,7 @@ class WorkflowScheduler(QObject):
                 raise ValueError(f"循环体 {backdrop.name()} 缺少输入/输出代理节点")
 
             backdrop.model.set_property("current_index", 0)
-            self.property_changed.emit(backdrop.id)
+            self.property_changed.emit(backdrop)
 
             # 根据循环模式执行
             if backdrop.TYPE == "iterate":
@@ -287,7 +296,7 @@ class WorkflowScheduler(QObject):
             # 收集输出
             outputs = self._collect_outputs(output_proxy)
             backdrop.model.set_property("current_index", index + 1)
-            self.property_changed.emit(backdrop.id)
+            self.property_changed.emit(backdrop)
             results.extend(outputs if isinstance(outputs, list) else [outputs])
 
         return results
@@ -325,7 +334,7 @@ class WorkflowScheduler(QObject):
             outputs = self._collect_outputs(output_proxy)
             input_data = outputs
             backdrop.model.set_property("current_index", index + 1)
-            self.property_changed.emit(backdrop.id)
+            self.property_changed.emit(backdrop)
 
             if index < loop_nums - 1:  # 不是最后一次迭代
                 input_data = outputs
@@ -356,7 +365,7 @@ class WorkflowScheduler(QObject):
 
             input_data = outputs
             backdrop.model.set_property("current_index", index + 1)
-            self.property_changed.emit(backdrop.id)
+            self.property_changed.emit(backdrop)
 
         return outputs
 
@@ -385,7 +394,7 @@ class WorkflowScheduler(QObject):
             outputs = self._collect_outputs(output_proxy)
             input_data = outputs
             backdrop.model.set_property("current_index", index + 1)
-            self.property_changed.emit(backdrop.id)
+            self.property_changed.emit(backdrop)
 
         return outputs
 
@@ -393,59 +402,63 @@ class WorkflowScheduler(QObject):
         """执行循环体内部节点，并收集输出结果"""
         # 注册全局变量
         self.register_global_variable(execute_nodes)
-        internal_outputs = {}  # 收集内部节点的输出
-        for node in execute_nodes:
-            self.set_node_status(node, NodeStatus.NODE_STATUS_PENDING)
-        for node in execute_nodes:
-            comp_cls = self.component_map.get(node.FULL_PATH)
-            if check_cancel():
-                return internal_outputs  # 提前返回收集到的结果
-            if node.get_property("disabled"):
-                # 跳过禁用节点，标记为 skipped（不影响下游）
-                self.set_node_status(node, NodeStatus.NODE_STATUS_UNRUN)
-                # 不发出 started/finished 信号（或可选发出 skipped 信号）
-                continue
-            self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
-            self.property_changed.emit(backdrop.id)
+        try:
+            internal_outputs = {}  # 收集内部节点的输出
+            for node in execute_nodes:
+                self.set_node_status(node, NodeStatus.NODE_STATUS_PENDING)
+            for node in execute_nodes:
+                comp_cls = self.component_map.get(node.FULL_PATH)
+                if check_cancel():
+                    return internal_outputs  # 提前返回收集到的结果
+                if node.get_property("disabled"):
+                    # 跳过禁用节点，标记为 skipped（不影响下游）
+                    self.set_node_status(node, NodeStatus.NODE_STATUS_UNRUN)
+                    # 不发出 started/finished 信号（或可选发出 skipped 信号）
+                    continue
+                self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
+                self.property_changed.emit(backdrop)
 
-            try:
-                if self.parent.config.canvas_run_mode.value == "ipython运行":
-                    results = node.execute_sync(
-                        comp_cls, kernel_manager=self.kernel_manager,
-                        python_executable=self.get_python_exe(), check_cancel=check_cancel
-                    )
-                else:
-                    results = node.execute_sync(
-                        comp_cls, python_executable=self.get_python_exe(), check_cancel=check_cancel
-                    )
-                if results is not None:
-                    # 如果结果不为 None， 且其中有含自动更新或者自动累计的变量，则发送变量更新信号
-                    for port_name, result in results.items():
-                        node_name = re.sub(r"\s+", "_", node.name())
-                        if f"{node_name}_{port_name}" in self.global_variables.node_vars and \
-                                self.global_variables.node_vars[
-                                    f"{node_name}_{port_name}"].update_policy != "固定":
-                            self.update_node_variable(
-                                f"{node_name}_{port_name}", result,
-                                self.global_variables.node_vars[f"{node_name}_{port_name}"].update_policy
-                            )
-                self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
-                self.property_changed.emit(backdrop.id)
+                try:
+                    if self.parent.config.canvas_run_mode.value == "ipython运行":
+                        results = node.execute_sync(
+                            comp_cls, kernel_manager=self.kernel_manager,
+                            python_executable=self.get_python_exe(), check_cancel=check_cancel
+                        )
+                    else:
+                        results = node.execute_sync(
+                            comp_cls, python_executable=self.get_python_exe(), check_cancel=check_cancel
+                        )
+                    if results is not None:
+                        # 如果结果不为 None， 且其中有含自动更新或者自动累计的变量，则发送变量更新信号
+                        for port_name, result in results.items():
+                            node_name = re.sub(r"\s+", "_", node.name())
+                            if f"{node_name}_{port_name}" in self.global_variables.node_vars and \
+                                    self.global_variables.node_vars[
+                                        f"{node_name}_{port_name}"].update_policy != "固定":
+                                self.update_node_variable(
+                                    f"{node_name}_{port_name}", result,
+                                    self.global_variables.node_vars[f"{node_name}_{port_name}"].update_policy
+                                )
+                    self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
+                    self.property_changed.emit(backdrop)
 
-                # 收集该节点的输出
-                if hasattr(node, '_output_values'):
-                    # 使用节点名称作为前缀，避免冲突
-                    node_name = re.sub(r'\s+', '_', node.name())
-                    node_prefix = f"node_vars_{node_name}"
-                    for output_name, output_value in node._output_values.items():
-                        # 使用 "节点名_输出端口名" 作为变量名
-                        var_name = f"{node_prefix}_{output_name}"
-                        internal_outputs[var_name] = output_value
+                    # 收集该节点的输出
+                    if hasattr(node, '_output_values'):
+                        # 使用节点名称作为前缀，避免冲突
+                        node_name = re.sub(r'\s+', '_', node.name())
+                        node_prefix = f"node_vars_{node_name}"
+                        for output_name, output_value in node._output_values.items():
+                            # 使用 "节点名_输出端口名" 作为变量名
+                            var_name = f"{node_prefix}_{output_name}"
+                            internal_outputs[var_name] = output_value
 
-            except Exception as e:
-                self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
-                self.property_changed.emit(backdrop.id)
-                raise e
+                except Exception as e:
+                    self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
+                    self.property_changed.emit(backdrop)
+                    raise e
+        finally:
+            self.unregister_global_variable(execute_nodes)
+
         return internal_outputs
 
     def _collect_outputs(self, output_proxy):
@@ -507,6 +520,7 @@ class WorkflowScheduler(QObject):
         """取消当前执行"""
         if self._executor:
             self._executor.cancel()
+            self.cancelled.emit()
 
     def _on_finished(self, _=None):
         self.finished.emit()

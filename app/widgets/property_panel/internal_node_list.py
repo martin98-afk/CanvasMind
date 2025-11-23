@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QListWidgetItem
+from loguru import logger
 from qfluentwidgets import ListWidget
 
 
@@ -26,19 +27,32 @@ class InternalNodeList(ListWidget):
 
     def update_content(self, new_status_list, new_name_list):
         """更新列表内容而不重建UI"""
-        if len(new_status_list) != self.count() or len(new_name_list) != self.count():
-            # 如果数量不同，需要重建
-            self._rebuild_items(new_status_list, new_name_list)
+        if len(new_status_list) != len(new_name_list):
+            logger.warning("Status list and name list length mismatch")
             return
+        try:
+            current_count = self.count()
 
-        # 更新现有项的文本和状态
-        for i in range(self.count()):
-            item = self.item(i)
-            if item:
-                widget = self.itemWidget(item)
-                if widget and hasattr(widget, 'setText'):
-                    # 假设widget有setText方法来更新内容
-                    widget.setText(f"{new_status_list[i]} {new_name_list[i]}")
+            if len(new_status_list) != current_count:
+                # 数量变化，重建列表（保持简洁）
+                self.clear()
+                if not new_name_list:
+                    self.addItem(QListWidgetItem("暂无内部节点"))
+                else:
+                    for status, name in zip(new_status_list, new_name_list):
+                        status_text = self.STATUS_TEXT_MAP.get(status, "⚪ 未知")
+                        item_text = f"{status_text} - {name}"
+                        self.addItem(QListWidgetItem(item_text))
+            else:
+                # 数量相同，逐项更新文本
+                for i in range(current_count):
+                    status = new_status_list[i]
+                    name = new_name_list[i]
+                    status_text = self.STATUS_TEXT_MAP.get(status, "⚪ 未知")
+                    item_text = f"{status_text} - {name}"
+                    self.item(i).setText(item_text)
+        except:
+            logger.warning("Error updating internal node list")
 
     def update_item_status(self, index, new_status):
         """更新特定项的状态"""
