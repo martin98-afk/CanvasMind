@@ -67,10 +67,10 @@ class CanvasUISetUp:
         self.console_btn.setToolTip("显示/隐藏调试控制台")
         self.console_btn.clicked.connect(self.parent.console_manager.toggle)
         env_layout.addWidget(self.console_btn)
-        self.export_btn = TransparentToolButton(FluentIcon.SAVE, parent=self.parent.canvas_widget)
-        self.export_btn.setToolTip("导出工作流")
-        self.export_btn.clicked.connect(self.parent._save_via_dialog)
-        env_layout.addWidget(self.export_btn)
+        self.save_btn = TransparentToolButton(FluentIcon.SAVE, parent=self.parent.canvas_widget)
+        self.save_btn.setToolTip("保存工作流")
+        self.save_btn.clicked.connect(self.parent.save_full_workflow)
+        env_layout.addWidget(self.save_btn)
         self.export_model_btn = TransparentToolButton(FluentIcon.SHARE, parent=self.parent.canvas_widget)
         self.export_model_btn.setToolTip("导出选中节点为独立模型")
         self.export_model_btn.clicked.connect(self.parent.export_selected_nodes_as_project)
@@ -198,7 +198,6 @@ class CanvasUISetUp:
             return
         # 计算 layout 所需高度
         self.nodes_container.adjustSize()  # ← 关键：让容器按内容自适应高度
-        width = self.nodes_container.width()
         height = self.nodes_container.height()
         # 垂直居中（可调）
         y = max(50, (self.parent.canvas_widget.height() - height) // 2)

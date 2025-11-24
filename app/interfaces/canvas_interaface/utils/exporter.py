@@ -5,27 +5,31 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
+from PyQt5.QtCore import Qt, QRectF
+from PyQt5.QtGui import QImage, QPainter
+
+from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.templates.readme_template import DETAILED_README
 from app.utils.config import Settings
-from app.utils.utils import serialize_for_json, topological_sort
+from app.utils.utils import serialize_for_json, topological_sort, resource_path
 from app.widgets.dialog_widget.project_export_dialog import ProjectExportFlowDialog
 from .logger import get_logger
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
 
 logger = get_logger("Exporter")
 
-class Exporter:
-    def __init__(self, parent, component_map, file_map, property_panel):
+class CanvasExporter:
+    def __init__(self, parent, component_map, file_map, execution_order=None):
         self.parent = parent
         self.component_map = component_map
         self.file_map = file_map
-        self.property_panel = property_panel
+        self.execution_order = execution_order
         self.config = Settings.get_instance()
 
     def export_selected_nodes_as_project(self):
         try:
             nodes_to_export = self.parent.graph.selected_nodes() or self.parent.graph.all_nodes()
-            execution_order = self.property_panel.get_current_execution_order() or topological_sort(nodes_to_export)
+            execution_order = self.execution_order or topological_sort(nodes_to_export)
 
             if not nodes_to_export:
                 MessageManager.warning("导出失败", "选中的节点无效（只有分组节点）！", self.parent)
@@ -34,9 +38,6 @@ class Exporter:
             # 收集候选输入/输出
             candidate_inputs = self._collect_inputs(nodes_to_export)
             candidate_outputs = self._collect_outputs(nodes_to_export)
-
-            # 构建初始 project_spec
-            initial_project_spec = {"version": "1.0", "graph_name": self.parent.workflow_name, "inputs": {}, "outputs": {}}
 
             # 构建依赖
             used_components = {node.FULL_PATH for node in nodes_to_export}
@@ -152,7 +153,6 @@ class Exporter:
             # 保存文件
             (export_path / "model.workflow.json").write_text(
                 json.dumps(serialize_for_json({
-                    "version": "1.0",
                     "graph": {"nodes": new_nodes_data, "connections": new_conns},
                     "runtime": {
                         "environment": self.parent.env_combo.currentData(),
@@ -164,18 +164,22 @@ class Exporter:
                         "column_select": {f"{n.FULL_PATH}||{n.name()}": getattr(n, 'column_select', {}) for n in nodes_to_export},
                         "global_variable": self.parent.global_variables.serialize()
                     }
-                }), ensure_ascii=False, indent=2)
+                }), ensure_ascii=False, indent=2),
+                encoding="utf-8"
             )
 
-            (export_path / "project_spec.json").write_text(json.dumps(project_spec, ensure_ascii=False, indent=2))
-            (export_path / "requirements.txt").write_text(final_requirements)
-            (export_path / "README.md").write_text(final_readme)
+            (export_path / "project_spec.json").write_text(
+                json.dumps(project_spec, ensure_ascii=False, indent=2),
+                encoding="utf-8"
+            )
+            (export_path / "requirements.txt").write_text(final_requirements, encoding="utf-8")
+            (export_path / "README.md").write_text(final_readme, encoding="utf-8")
 
             # 复制 runner
-            runner_src = Path(__file__).parent.parent.parent / "runner"
+            runner_src = Path(resource_path("app")) / "runner"
             if runner_src.exists():
                 shutil.copytree(str(runner_src), str(export_path / "runner"), dirs_exist_ok=True)
-            base_src = Path(__file__).parent.parent.parent / "components" / "base.py"
+            base_src = Path(resource_path("app")) / "components" / "base.py"
             if base_src.exists():
                 shutil.copy(str(base_src), str(components_dir / "base.py"))
             for file in ["run.py", "scan_components.py", "api_server.py"]:
@@ -275,7 +279,7 @@ class Exporter:
                 dst = inputs_dir / p.name
                 if not dst.exists():
                     shutil.copy2(p, dst)
-                return ("inputs" / p.name).as_posix()
+                return (Path("inputs") / p.name).as_posix()
         elif isinstance(value, dict):
             return {k: self._process_value_for_export(v, inputs_dir) for k, v in value.items()}
         elif isinstance(value, list):
@@ -299,17 +303,28 @@ class Exporter:
         return inputs
 
     def _generate_selected_nodes_thumbnail(self, export_path: Path):
+        """为选中的节点生成缩略图并保存到 export_path 下（如 preview.png）"""
         try:
             selected = self.parent.graph.selected_nodes()
             if not selected:
                 return
             scene = self.parent.graph.viewer().scene()
-            rect = scene.itemsBoundingRect()
+            rect = QRectF()
             for node in selected:
-                if node.view.sceneBoundingRect().isValid():
-                    rect = rect.united(node.view.sceneBoundingRect())
+                item_rect = node.view.sceneBoundingRect()
+                rect = rect.united(item_rect)
+            if rect.isEmpty():
+                return
+            # 扩展边距
             rect.adjust(-25, -25, 25, 25)
-            image = scene.render_to_image(rect)
+            # 创建图像
+            image = QImage(rect.size().toSize(), QImage.Format_ARGB32)
+            image.fill(Qt.white)
+            painter = QPainter(image)
+            # 渲染选中区域
+            scene.render(painter, target=QRectF(image.rect()), source=rect)
+            painter.end()
+            # 保存为 preview.png
             preview_path = export_path / "preview.png"
             image.save(str(preview_path), "PNG")
             logger.info(f"✅ 子图预览图已保存: {preview_path}")

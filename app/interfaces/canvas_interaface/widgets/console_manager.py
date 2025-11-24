@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QHBoxLayout, QWidget
 
+from app.interfaces.canvas_interaface.constants import CONSOLE_HEIGHT, CONSOLE_SPLITTER_SIZES
+from app.interfaces.canvas_interaface.utils.logger import get_logger
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.ipython_console.ipython_console import EmbeddedIPythonConsole
 from app.widgets.ipython_console.variable_explorer import VariableExplorerWidget
-from app.interfaces.canvas_interaface.constants import CONSOLE_HEIGHT
-from app.interfaces.canvas_interaface.utils.logger import get_logger
 
 logger = get_logger("ConsoleManager")
 
@@ -28,7 +28,7 @@ class ConsoleManager:
         splitter = ModernSplitter(Qt.Horizontal)
         splitter.addWidget(self.var_explorer)
         splitter.addWidget(self.ipython_console)
-        splitter.setSizes([400, 400])
+        splitter.setSizes(CONSOLE_SPLITTER_SIZES)
         console_layout.addWidget(splitter)
         self.console_container.setFixedHeight(CONSOLE_HEIGHT)
         self._update_position()

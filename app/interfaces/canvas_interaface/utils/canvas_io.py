@@ -23,8 +23,6 @@ class CanvasIO(QObject):
         self.global_variables = global_variables
         self.parent = parent
         self.node_status = parent.node_status
-        self.file_path = parent.file_path
-        self.workflow_name = parent.workflow_name
 
     def save_full_workflow(self, file_path, show_info=True):
         graph_data = self.graph.serialize_session()
@@ -72,7 +70,7 @@ class CanvasIO(QObject):
     def _on_thumbnail_generated(self, png_path):
         if png_path:
             logger.info(f"✅ 预览图已保存: {png_path}")
-            self.canvas_saved.emit(self.parent.file_path)
+            self.parent.canvas_saved.emit(self.parent.file_path)
 
     def load_full_workflow(self, file_path):
         self.workflow_loader = WorkflowLoader(file_path, self.graph, self.parent.node_type_map)
@@ -152,8 +150,8 @@ class CanvasIO(QObject):
 
         self.parent._node_id_cache = {node.id: node for node in self.graph.all_nodes()}
         self.parent._node_id_cache_valid = True
-        QTimer.singleShot(0, self.parent.create_name_label)
-        QTimer.singleShot(0, self.parent._delayed_fit_view)
+        self.parent.ui_manager.create_name_label()
+        self.parent._delayed_fit_view()
         MessageManager.success("加载成功", "工作流加载成功！", self.parent)
 
         # 更新路径

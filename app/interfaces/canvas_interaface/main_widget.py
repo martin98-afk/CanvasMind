@@ -1,43 +1,29 @@
 # -*- coding: utf-8 -*-
-import json
-import os
-import pathlib
-import shutil
 import traceback
-import uuid
-from datetime import datetime
 from pathlib import Path
 
-from NodeGraphQt import BackdropNode, BaseNode
+from NodeGraphQt import BaseNode
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QTimer, QThreadPool
-from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QWidget, QProgressDialog, QApplication
+from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool
+from PyQt5.QtWidgets import QWidget
 from loguru import logger
 
-from app.components.base import PropertyType, GlobalVariableContext
+from app.components.base import GlobalVariableContext
 from app.interfaces.canvas_interaface.utils.auto_saver import AutoSaver
+from app.interfaces.canvas_interaface.utils.canvas_io import CanvasIO
 from app.interfaces.canvas_interaface.utils.canvas_runner import CanvasRunner
+from app.interfaces.canvas_interaface.utils.exporter import CanvasExporter
+from app.interfaces.canvas_interaface.utils.node_operations import NodeOperations
 from app.interfaces.canvas_interaface.utils.quick_component_manager import QuickComponentManager
 from app.interfaces.canvas_interaface.widgets.console_manager import ConsoleManager
 from app.interfaces.canvas_interaface.widgets.environment_manager import EnvironmentManager
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
 from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
-from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
-from app.nodes.branch_node import create_branch_node
-from app.nodes.dynamic_code_node import create_dynamic_code_node
-from app.nodes.execute_node import create_node_class
-from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
-from app.nodes.status_node import NodeStatus, StatusNode
-from app.scan_components import scan_components
-from app.scheduler.node_recommendation_engine import RecommendationTask
-from app.templates.readme_template import DETAILED_README
+from app.nodes.backdrop_node import ControlFlowBackdrop
+from app.nodes.status_node import NodeStatus
 from app.utils.config import Settings
-from app.utils.threading_utils import ThumbnailGenerator
-from app.utils.utils import serialize_for_json, deserialize_from_json, topological_sort
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
-from app.widgets.dialog_widget.project_export_dialog import ProjectExportFlowDialog
 
 
 class CanvasPage(QWidget):
@@ -55,17 +41,15 @@ class CanvasPage(QWidget):
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
         self.config = Settings.get_instance()
         # 初始化状态存储数据分析/因子分析
-        self.node_status = {}  # {node_id: status}
-        self.node_type_map = {}
-        self._registered_nodes = []
-        self._node_flyout = None
-        self._clipboard_data = None
-        self._scheduler = None  # ← 新增：调度器引用
-        self._selection_update_pending = False
-        self._current_recommendation_task = None  # 用于取消旧任务（可选）
-        self._node_id_cache = {}  # 缓存：node_id -> node_object
-        self._node_id_cache_valid = False  # 标记缓存是否有效
 
+
+        self._node_flyout = None
+        self._selection_update_pending = False
+
+        # 线程池
+        self.thread_pool = QThreadPool.globalInstance()
+        # 全局变量
+        self.global_variables = GlobalVariableContext()
         # 初始化 NodeGraph
         self.graph = CustomNodeGraph(viewer=CustomNodeViewer())
         self.canvas_widget = self.graph.viewer()
@@ -75,44 +59,45 @@ class CanvasPage(QWidget):
         self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
         self.canvas_widget.dropEvent = self.canvas_drop_event
         self.canvas_widget.installEventFilter(self)
-        self.graph.node_created.connect(self.on_node_created)
-        self.graph.port_connected.connect(self._on_port_connected)
-        self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
+        # ========== 注册工具 ====================
+        # --- 节点操作 ---
+        self.node_operations = NodeOperations(self, self.graph, self.manager.recommendation_engine, self.thread_pool)
         # 注册节点
-        self.register_components()
-        # 快捷组件工具管理
+        self.node_operations.register_components()
+        # --- 快捷组件工具管理 ---
         self.quick_manager = QuickComponentManager(
             parent_widget=self,
             component_map=self.component_map
         )
-
         # --- 自动保存相关 ---
         self._auto_saver = AutoSaver(self, self.file_path, self.config)
-
         # --- 连接ipython console ---
         self.console_manager = ConsoleManager(self)
-
         # --- 环境管理 ---
         self.environment_manager = EnvironmentManager(self)
-
+        # --- 画布io管理 ---
+        self.canvas_io = CanvasIO(
+            self.graph,
+            self.environment_manager,
+            self.global_variables,
+            self
+        )
         # --- 画布运行管理 ---
         self.canvas_runner = CanvasRunner(
             self.console_manager.ipython_console,
             self.environment_manager.get_current_python_exe,
             self
         )
-
-        # 线程池
-        self.thread_pool = QThreadPool.globalInstance()
-
-        # 全局变量
-        self.global_variables = GlobalVariableContext()
+        #=======================================
 
         # 初始化ui
         self.ui_manager = CanvasUISetUp(self)
         self.ui_manager.setup_ui()
         self._setup_context_menus()
         # 连接ui信号
+        self.graph.node_created.connect(self.node_operations.on_node_created)
+        self.graph.port_connected.connect(self._on_port_connected)
+        self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
         self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
         self._connect_runner_signals()
         self.console_manager.connect_kernel(self.environment_manager.get_current_python_exe())
@@ -130,6 +115,22 @@ class CanvasPage(QWidget):
     def stop_btn(self):
         return self.ui_manager.stop_btn
 
+    @property
+    def node_status(self):
+        return self.node_operations.node_status
+
+    @property
+    def node_type_map(self):
+        return self.node_operations.node_type_map
+
+    @property
+    def registered_nodes(self):
+        return self.node_operations._registered_nodes
+
+    @property
+    def component_map(self):
+        return self.node_operations.component_map
+
     def get_current_python_exe(self):
         return self.environment_manager.get_current_python_exe()
 
@@ -139,77 +140,70 @@ class CanvasPage(QWidget):
     def switch_to_parent(self):
         self.parent.switchTo(self.parent.workflow_manager)
 
-    # --- 节点注册 ---
-    def _register_builtin_components(self):
-        # 迭代节点
-        code_node = create_dynamic_code_node(self)
-        code_node.__name__ = "DYNAMIC_CODE"
-        self.graph.register_node(code_node)
+    def export_selected_nodes_as_project(self):
+        CanvasExporter(
+            self,
+            self.component_map,
+            self.file_map,
+            self.property_panel.get_current_execution_order(),
+        ).export_selected_nodes_as_project()
 
-        self.node_type_map[code_node.FULL_PATH] = f"dynamic.{code_node.__name__}"
-        # 迭代节点
-        iterate_node = ControlFlowIterateNode
-        iterate_node.__name__ = "ControlFlowIterateNode"
-        self.graph.register_node(iterate_node)
-        self.node_type_map[iterate_node.FULL_PATH] = f"control_flow.ControlFlowIterateNode"
-        # 循环节点
-        loop_node = ControlFlowLoopNode
-        loop_node.__name__ = "ControlFlowLoopNode"
-        self.graph.register_node(loop_node)
-        self.node_type_map[loop_node.FULL_PATH] = f"control_flow.{loop_node.__name__}"
-        # 输入端口节点
-        input_port_node = CustomPortInputNode
-        input_port_node.__name__ = "ControlFlowInputPort"
-        self.graph.register_node(input_port_node)
-        # 输出端口节点
-        output_port_node = CustomPortOutputNode
-        output_port_node.__name__ = "ControlFlowOutputPort"
-        self.graph.register_node(output_port_node)
-        # 注册分支节点
-        branch_node = create_branch_node(self)
-        branch_node.__name__ = "ControlFlowBranchNode"
-        self.graph.register_node(branch_node)
-        self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
+    def save_full_workflow(self, file_path=None, show_info=True):
+        if not isinstance(file_path, str) or not isinstance(file_path, Path):
+            if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
+                file_path = self.file_path
+            else:
+                file_path = (self.file_path.parent if self.file_path else Path("../app/interfaces")) / f"{self.workflow_name}.workflow.json"
+        self.canvas_io.save_full_workflow(file_path, show_info)
+        self.file_path = file_path
+
+    def load_full_workflow(self, file_path=None):
+        self.canvas_io.load_full_workflow(file_path)
+
+    def create_next_node(self, key, icon_path=None):
+        self.node_operations.create_next_node(key, icon_path)
+
+    def create_backdrop_node(self, key):
+        self.node_operations.create_backdrop_node(key)
 
     def register_components(self):
-        self._registered_nodes.extend(list(self.graph.registered_nodes()))
-        self.graph._node_factory.clear_registered_nodes()
-        self.graph._context_menu = {}
-        self.graph._register_context_menu()
-        self.component_map, self.file_map = scan_components()
-        # 重建推荐索引
-        self.manager.recommendation_engine._recommendation_cache.clear()
-        self.manager.recommendation_engine._build_index(self.component_map)  # 重建索引
-        self._register_builtin_components()
-        # 普通节点
+        self.node_operations.register_components()
+
+    def _setup_context_menus(self):
+        graph_menu = self.graph.get_context_menu('graph')
+        graph_menu.add_command('运行工作流', self.canvas_runner.run_workflow, 'Ctrl+R')
+        graph_menu.add_command('保存工作流', self.save_full_workflow, 'Ctrl+S')
+        graph_menu.add_separator()
+        graph_menu.add_command('撤销', self._undo, 'Ctrl+Z')
+        graph_menu.add_command('重做', self._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
+        graph_menu.add_command('自动布局', self._auto_layout_selected, 'Ctrl+L')
+        edit_menu = graph_menu.add_menu('编辑')
+        edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
+        edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
+        edit_menu.add_command(
+            '删除选中', lambda graph: (
+                self.node_operations.delete_selected_nodes(graph), self.property_panel.update_properties(None)
+            ), 'Del'
+        )
         nodes_menu = self.graph.get_context_menu('nodes')
-        for full_path, comp_cls in self.component_map.items():
-            safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
-            node_class = create_node_class(comp_cls, full_path, self.file_map.get(full_path), self)
-            node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
-            node_class.__name__ = f"StatusDynamicNode_{safe_name}"
-            self.graph.register_node(node_class)
-            self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
-            if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
-                nodes_menu.add_command('运行此节点', lambda graph, node: self.canvas_runner.run_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('运行到此节点', lambda graph, node: self.canvas_runner.run_to(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.canvas_runner.run_from(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_separator()
-                nodes_menu.add_command('调试模式', lambda graph, node: node._toggle_debug_mode(),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
+        for special_node in [
+            "dynamic.DYNAMIC_CODE", "control_flow.ControlFlowIterateNode",
+            "control_flow.ControlFlowLoopNode", "control_flow.ControlFlowBranchNode"
+        ]:
+            nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
+                                   node_type=special_node)
+            nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
+                                   node_type=special_node)
+            nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
+                                   node_type=special_node)
+            if special_node == "dynamic.DYNAMIC_CODE":
+                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(), node_type=special_node)
+            nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
+                                   node_type=special_node)
 
     # --- 信号绑定 ---
     def set_node_status_by_id(self, node_id, status):
-        node = self._get_node_by_id_cached(node_id)
+        node = self.node_operations._get_node_by_id_cached(node_id)
         if node:
             self.set_node_status(node, status)
 
@@ -224,7 +218,7 @@ class CanvasPage(QWidget):
         self.stop_btn.hide()
 
     def on_node_error_simple(self, node_id):
-        node = self._get_node_by_id_cached(node_id)
+        node = self.node_operations._get_node_by_id_cached(node_id)
         if node:
             node._output_values = {}
             MessageManager.error('错误', f'节点 "{node.name()}" 执行失败！', self)
@@ -248,7 +242,7 @@ class CanvasPage(QWidget):
         MessageManager.error("错误", f"工作流执行失败! {msg}", self)
 
     def on_node_started_simple(self, node_id):
-        node = self._get_node_by_id_cached(node_id)
+        node = self.node_operations._get_node_by_id_cached(node_id)
         if node:
             # 直接调用 set_node_status，恢复即时更新
             QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING))
@@ -296,154 +290,14 @@ class CanvasPage(QWidget):
             self.canvas_widget._cursor_text.setVisible(True)
         if event.modifiers() == QtCore.Qt.ControlModifier:
             if event.key() == QtCore.Qt.Key_C:
-                self._copy_selected_nodes()
+                self.node_operations._copy_selected_nodes()
             elif event.key() == QtCore.Qt.Key_V:
-                self._paste_nodes()
+                self.node_operations._paste_nodes()
 
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
             self.ui_manager.update_position()
         return super().eventFilter(obj, event)
-
-    def create_next_node(self, key, icon_path=None):
-        """按钮节点通用创建方法"""
-        selected_nodes = self.graph.selected_nodes()
-        try:
-            node = self.graph.create_node(key)
-        except:
-            node_type = self.node_type_map.get(key)
-            node = self.graph.create_node(node_type)
-
-        QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
-        if isinstance(icon_path, str):
-            node.set_icon(icon_path)
-        if selected_nodes:
-            node_x = selected_nodes[0].x_pos()
-            node_y = selected_nodes[0].y_pos()
-            node.set_pos(node_x + selected_nodes[0].view.width + 100, node_y)
-        else:
-            # 获取当前视图中心的世界坐标
-            viewer = self.graph.viewer()
-            # 获取视口中心（widget 坐标）
-            viewport_center = viewer.viewport().rect().center()
-            # 转换为场景坐标（scene coordinates）
-            scene_center = viewer.mapToScene(viewport_center)
-            node.set_pos(scene_center.x(), scene_center.y())
-
-    def create_backdrop_node(self, key):
-        selected_nodes = self.graph.selected_nodes()
-        input_port_node = None
-        output_port_node = None
-        other_nodes = []
-        # Step 1: 分离已有的 Input/Output Port 和其他节点
-        for node in selected_nodes:
-            if node.type_ == "control_flow.ControlFlowInputPort":
-                input_port_node = node
-            elif node.type_ == "control_flow.ControlFlowOutputPort":
-                output_port_node = node
-            elif isinstance(node, ControlFlowBackdrop):
-                MessageManager.error("当前版本无法进行循环迭代嵌套操作！", "", self)
-                return
-            else:
-                other_nodes.append(node)
-        # Step 2: 获取参考位置（用于无选中节点时）
-        viewer = self.graph.viewer()
-        viewport_center = viewer.viewport().rect().center()
-        scene_center = viewer.mapToScene(viewport_center)
-        center_x, center_y = scene_center.x(), scene_center.y()
-        # Step 3: 如果没有选中任何节点，创建一个默认的"空"结构
-        if not selected_nodes:
-            # 创建 Input 和 Output Port，围绕视图中心布局
-            input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
-            output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-            input_port_node.set_pos(center_x - 500, center_y - input_port_node.view.height)
-            output_port_node.set_pos(center_x + 500, center_y + output_port_node.view.height + 200)
-            nodes_to_wrap = [input_port_node, output_port_node]
-        else:
-            # Step 4: 有选中节点时，按原逻辑处理
-            unconnected_inputs = []
-            unconnected_outputs = []
-            for node in other_nodes:
-                for input_port in node.input_ports():
-                    if not input_port.connected_ports():
-                        unconnected_inputs.append((node, input_port))
-                for output_port in node.output_ports():
-                    if not output_port.connected_ports():
-                        unconnected_outputs.append((node, output_port))
-            # 创建缺失的 Input Port
-            if not input_port_node:
-                input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
-                if other_nodes:
-                    min_x = min(n.x_pos() for n in other_nodes)
-                    avg_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
-                    input_port_node.set_pos(min_x - 300, avg_y - input_port_node.view.height / 2)
-                else:
-                    input_port_node.set_pos(center_x - 250, center_y - input_port_node.view.height / 2)
-            # 创建缺失的 Output Port
-            if not output_port_node:
-                output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-                if other_nodes:
-                    max_x = max(n.x_pos() + n.view.width for n in other_nodes)
-                    avg_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
-                    output_port_node.set_pos(max_x + 150, avg_y - output_port_node.view.height / 2)
-                else:
-                    output_port_node.set_pos(center_x + 250, center_y - output_port_node.view.height / 2)
-            nodes_to_wrap = other_nodes + [input_port_node, output_port_node]
-        # Step 5: 创建 Backdrop 并包裹
-        if not nodes_to_wrap:
-            MessageManager.warning("创建失败", "没有可包裹的节点！", self)
-            return
-        backdrop_node = self.graph.create_node(f"control_flow.{key}")
-        backdrop_node.wrap_nodes(nodes_to_wrap)
-        # 将nodes_to_wrap和backdropnode都选中
-        [node.set_selected(True) for node in nodes_to_wrap]
-        QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(backdrop_node))
-        # Step 6: 特定配置
-        if key == "ControlFlowIterateNode":
-            backdrop_node.model.set_property("loop_nums", 3)
-
-    def close_current_canvas(self):
-        # 1. 停止并断开所有定时器
-        self._auto_saver.stop()
-        self.console_manager.shutdown()
-
-        # 4. 清理推荐任务
-        if self._current_recommendation_task:
-            # 虽然 QThreadPool 无法取消，但可标记忽略结果
-            self._current_recommendation_task = None
-
-        # 5. 移除事件过滤器
-        self.canvas_widget.removeEventFilter(self)
-
-        # 6. 清理 graph 信号连接（若可能）
-        try:
-            self.graph.node_created.disconnect(self.on_node_created)
-            self.graph.port_connected.disconnect(self._on_port_connected)
-            self.graph.viewer().node_selection_changed.disconnect(self.on_selection_changed)
-        except Exception:
-            pass
-
-        # 7. 清理属性面板等子组件
-        self.property_panel.setParent(None)
-        self.nav_panel.setParent(None)
-
-        # 2. 清理动态导入的模块（关键！）
-        import sys
-        modules_to_remove = []
-        for full_path in self.component_map:
-            # 假设你的 scan_components 使用了类似命名
-            safe_name = full_path.replace("/", "_").replace(" ", "_")
-            module_name = f"dynamic.{safe_name}"
-            if module_name in sys.modules:
-                modules_to_remove.append(module_name)
-        for mod in modules_to_remove:
-            del sys.modules[mod]
-        # ===== 7. 销毁 UI 控件（确保 parent=None）=====
-        self.graph.deleteLater()
-        # 8. 发射信号 & 移除自身
-        self.canvas_deleted.emit()
-        self.parent.removeInterface(self)
-        self.deleteLater()  # 关键：触发 Qt 对象销毁
 
     def center_to(self, node):
         self.graph.clear_selection()
@@ -458,383 +312,6 @@ class CanvasPage(QWidget):
             event.accept()
         else:
             event.ignore()
-
-    def export_selected_nodes_as_project(self):
-        """导出选中节点为独立项目（使用整合的多步骤对话框）"""
-        try:
-            nodes_to_export = (self.graph.selected_nodes() or self.graph.all_nodes())
-            execution_order = self.property_panel.get_current_execution_order() or topological_sort(nodes_to_export)
-
-            # runtime_data (这部分可能需要在流程结束后，根据用户最终选择的输入进行更新)
-            # 暂时保留，但注意最终的 runtime_data 可能需要根据用户的选择动态调整
-            runtime_data = {
-                "environment": self.env_combo.currentData(),
-                "environment_exe": self.get_current_python_exe(),
-                "execution_order": [(node.id, node.name()) for node in execution_order],
-                "node_id2stable_key": {},
-                "node_states": {},
-                "node_outputs": {},
-                "column_select": {},
-                "global_variable": self.global_variables.serialize()
-            }
-
-            if not nodes_to_export:
-                MessageManager.warning("导出失败", "选中的节点无效（只有分组节点）！", self)
-                return
-
-            nodes_to_export.sort(key=lambda node: (node.pos()[0], node.pos()[1]))
-
-            # === 收集所有候选输入项 ===
-            candidate_inputs = []
-            for node in nodes_to_export:
-                node_name = node.name()
-                comp_cls = self.component_map.get(node.FULL_PATH)
-                if comp_cls is None:
-                    continue
-
-                # 组件参数（超参数）
-                editable_params = node.model.custom_properties
-                for param_name, param_value in editable_params.items():
-                    if param_name not in comp_cls.properties:
-                        continue
-                    prop_def = comp_cls.properties.get(param_name)
-                    candidate_inputs.append({
-                        "type": "组件超参数",
-                        "node_id": node.id,
-                        "node_name": node_name,
-                        "param_name": param_name,
-                        "current_value": param_value,
-                        "display_name": f"{node_name} → {param_name}",
-                        "format": getattr(prop_def, 'type', PropertyType.TEXT).name if prop_def else "TEXT"
-                    })
-                    if prop_def.type == PropertyType.RANGE:
-                        candidate_inputs[-1].update({
-                            "min": float(prop_def.min),
-                            "max": float(prop_def.max),
-                            "step": float(prop_def.step)
-                        })
-                    elif prop_def.type == PropertyType.DYNAMICFORM and prop_def.schema:
-                        candidate_inputs[-1]["schema"] = {
-                            key: {
-                                "type": getattr(value, 'type', PropertyType.TEXT).name if value else "TEXT"
-                            }
-                            for key, value in prop_def.schema.items()
-                        }
-
-                # 输入端口
-                for port in node.input_ports():
-                    port_name = port.name()
-                    # 获取端口类型（ArgumentType）
-                    port_type = "TEXT"
-                    if comp_cls and hasattr(comp_cls, 'inputs'):
-                        for inp in comp_cls.inputs:
-                            if inp.name == port_name:
-                                port_type = inp.type.name
-                                break
-                    if port.multi_connection():
-                        port_type = f"ARRAY[{port_type}]"
-                    connected = port.connected_ports()
-                    current_val = None
-                    if connected and len(connected) == 1:
-                        upstream_out = connected[0]
-                        upstream_node = upstream_out.node()
-                        value = upstream_node._output_values.get(upstream_out.name())
-                        if value is not None:
-                            current_val = value
-                        else:
-                            current_val = None
-                    elif len(connected) > 1:
-                        current_val = [
-                            upstream_out.node()._output_values.get(upstream_out.name())
-                            if upstream_out.node()._output_values.get(upstream_out.name()) is not None else None
-                            for upstream_out in connected
-                        ]
-                    else:
-                        current_val = getattr(node, '_input_values', {}).get(port_name, None)
-
-                    candidate_inputs.append({
-                        "type": "组件输入",
-                        "node_id": node.id,
-                        "node_name": node_name,
-                        "port_name": port_name,
-                        "current_value": current_val,
-                        "display_name": f"{port_name} → {node_name}",
-                        "format": port_type
-                    })
-
-            # === 收集所有候选输出项 ===
-            candidate_outputs = []
-            for node in nodes_to_export:
-                node_name = node.name()
-                comp_cls = self.component_map.get(node.FULL_PATH)
-                outputs = getattr(node, '_output_values', {})
-                for out_name, out_val in outputs.items():
-                    out_format = "TEXT"
-                    if comp_cls and hasattr(comp_cls, 'outputs'):
-                        for out in comp_cls.outputs:
-                            if out.name == out_name:
-                                out_format = out.type.name
-                                break
-                    candidate_outputs.append({
-                        "type": "组件输出",
-                        "node_id": node.id,
-                        "node_name": node_name,
-                        "output_name": out_name,
-                        "sample_value": str(out_val)[:50] + "..." if len(str(out_val)) > 50 else str(out_val),
-                        "display_name": f"{node_name} → {out_name}",
-                        "format": out_format
-                    })
-
-            # === 弹出整合的流程对话框 ===
-            # 从当前画布状态构建初始的 project_spec
-            initial_project_spec = serialize_for_json(
-                {"version": "1.0", "graph_name": self.workflow_name, "inputs": {}, "outputs": {}}
-            )
-            # 构建依赖和 README 的初始内容
-            used_components = set()
-            for node in nodes_to_export:
-                used_components.add(node.FULL_PATH)
-            requirements = set()
-            for full_path in used_components:
-                comp_cls = self.component_map.get(full_path)
-                if comp_cls:
-                    req_str = getattr(comp_cls, 'requirements', '')
-                    if req_str:
-                        for pkg in req_str.split(','):
-                            pkg = pkg.strip()
-                            if pkg:
-                                requirements.add(pkg)
-            default_pkgs = self.config.default_packages.value
-            requirements.update(default_pkgs)
-
-            project_name_placeholder = self.workflow_name
-            original_canvas = getattr(self, 'workflow_name', '未知画布')
-            export_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            # 生成初始 README
-            initial_readme = DETAILED_README.format(
-                project_name_placeholder=project_name_placeholder,
-                original_canvas=original_canvas,
-                export_time=export_time,
-                input_desc="- 请在后续步骤中选择输入接口",
-                output_desc="- 请在后续步骤中选择输出接口",
-                component_names=["- " + os.path.basename(fp).replace('.py', '') for fp in used_components],
-                conn_count=len(self.graph.serialize_session()["connections"])  # 这是整个画布的连接数，不是导出部分的
-            )
-
-            flow_dialog = ProjectExportFlowDialog(
-                candidate_items=candidate_inputs + candidate_outputs,  # 或者分别传递，需要在对话框中区分
-                parent=self,
-                # current_selected_inputs={}, # 如果有上次保存的状态
-                # current_selected_outputs={},
-                project_name=project_name_placeholder,
-                requirements='\n'.join(sorted(requirements)) if requirements else "# 无依赖",
-                readme=initial_readme
-            )
-
-            if not flow_dialog.exec():
-                logger.info("用户取消了项目导出流程")
-                return
-
-            # === 获取用户最终选择 ===
-            selected_input_items = flow_dialog.get_selected_inputs()
-            selected_output_items = flow_dialog.get_selected_outputs()
-            project_name = flow_dialog.get_project_name()
-            final_readme = flow_dialog.get_readme_content()
-            final_requirements = flow_dialog.get_requirements()
-
-            if not project_name:
-                MessageManager.warning("导出失败", "项目名不能为空！", self)
-                return
-
-            # === 构建 project_spec.json ===
-            project_spec = serialize_for_json(
-                {"version": "1.0", "graph_name": project_name, "inputs": {}, "outputs": {}}
-            )
-            for item in selected_input_items:
-                key = item.get("custom_key", f"input_{len(project_spec['inputs'])}")
-                project_spec["inputs"][key] = item
-            for item in selected_output_items:
-                key = item.get("custom_key", f"output_{len(project_spec['outputs'])}")
-                project_spec["outputs"][key] = {
-                    "node_id": item["node_id"],
-                    "output_name": item["output_name"],
-                    "format": item["format"]
-                }
-
-            # === 开始导出流程 ===
-            export_path = pathlib.Path(self.config.project_paths.value[0]) / project_name
-            export_path.mkdir(parents=True, exist_ok=True)
-
-            # 创建目录
-            components_dir = export_path / "components"
-            inputs_dir = export_path / "inputs"
-            components_dir.mkdir(parents=True, exist_ok=True)
-            inputs_dir.mkdir(parents=True, exist_ok=True)
-
-            # 复制组件代码
-            component_path_map = {}
-            for full_path in used_components:
-                if full_path in self.file_map:
-                    src_path = Path(self.file_map[full_path])
-                    if src_path.exists():
-                        try:
-                            base_dir = src_path.parent.parent
-                            if base_dir in src_path.parents:
-                                src_rel_path = src_path.relative_to(base_dir)
-                            else:
-                                src_rel_path = src_path.name
-                        except ValueError:
-                            src_rel_path = src_path.name
-                        dst_path = components_dir / src_rel_path
-                        dst_path.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copy2(src_path, dst_path)
-                        rel_to_project = ("components" / src_rel_path).as_posix()
-                        component_path_map[str(src_path)] = rel_to_project
-
-            # --- 辅助函数：处理值以适应导出 ---
-            def _process_value_for_export(value, inputs_dir: Path):
-                if isinstance(value, str):
-                    file_path = Path(value)
-                    if file_path.is_file():
-                        logger.info(f"处理文件路径: {file_path}")
-                        try:
-                            filename = file_path.name
-                            dst_path = inputs_dir / filename
-                            if not dst_path.exists():
-                                shutil.copy2(file_path, dst_path)
-                            return (Path("inputs") / filename).as_posix()
-                        except Exception as e:
-                            logger.error(f"警告：无法复制文件 {value}: {e}")
-                            return value
-                elif isinstance(value, dict):
-                    return {k: _process_value_for_export(v, inputs_dir) for k, v in value.items()}
-                elif isinstance(value, list):
-                    return [_process_value_for_export(v, inputs_dir) for v in value]
-                return value
-
-            # 构建节点数据
-            new_nodes_data = {}
-            for node in nodes_to_export:
-                editable_params = node.model.custom_properties
-                # 动态执行代码直接添加可执行代码
-                if node.FULL_PATH.startswith("代码执行/"):
-                    editable_params["run_script"] = node.format_code()
-
-                exported_params = {
-                    param_name: _process_value_for_export(param_value, inputs_dir)
-                    for param_name, param_value in editable_params.items()
-                }
-
-                current_inputs = {}
-                for port in node.input_ports():
-                    port_name = port.name()
-                    connected = port.connected_ports()
-                    if connected and len(connected) == 1:
-                        upstream_out = connected[0]
-                        upstream_node = upstream_out.node()
-                        value = upstream_node._output_values.get(upstream_out.name())
-                        if value is not None:
-                            current_inputs[port_name] = _process_value_for_export(value, inputs_dir)
-                        else:
-                            current_inputs[port_name] = None
-                    elif len(connected) > 1:
-                        current_inputs[port_name] = [
-                            _process_value_for_export(
-                                upstream_out.node()._output_values.get(upstream_out.name()), inputs_dir
-                            )
-                            if upstream_out.node()._output_values.get(upstream_out.name()) is not None else None
-                            for upstream_out in connected
-                        ]
-                    else:
-                        current_val = getattr(node, '_input_values', {}).get(port_name, None)
-                        current_inputs[port_name] = _process_value_for_export(current_val, inputs_dir)
-
-                node_data = {
-                    "name": node.name(),
-                    "type_": node.type_,
-                    "pos": node.pos(),
-                    "input_ports_multi": {port.name(): port.model.multi_connection for port in node.input_ports()},
-                    "custom": {
-                        "FULL_PATH": node.FULL_PATH,
-                        "FILE_PATH": component_path_map.get(self.file_map.get(node.FULL_PATH, ""), ""),
-                        "params": exported_params,
-                        "input_values": serialize_for_json(current_inputs)
-                    }
-                }
-                if isinstance(node, ControlFlowBackdrop):
-                    node_data["custom"] = node_data["custom"] | {
-                        "internal_nodes": [node.id for node in node.nodes()]
-                    }
-                new_nodes_data[node.id] = node_data
-
-            # 构建连接
-            original_connections = self.graph.serialize_session()["connections"]
-            new_connections = []
-            node_ids_set = {node.id for node in nodes_to_export}
-            for conn in original_connections:
-                out_id, out_port = conn["out"]
-                in_id, in_port = conn["in"]
-                if out_id in node_ids_set and in_id in node_ids_set:
-                    new_connections.append({"out": [out_id, out_port], "in": [in_id, in_port]})
-
-            # 更新 runtime_data
-            for node in nodes_to_export:
-                full_path = getattr(node, 'FULL_PATH', 'unknown')
-                node_name = node.name()
-                stable_key = f"{full_path}||{node_name}"
-                runtime_data["node_id2stable_key"][node.id] = stable_key
-                runtime_data["node_states"][stable_key] = self.node_status.get(node.id, "unrun")
-                runtime_data["node_outputs"][stable_key] = serialize_for_json(getattr(node, '_output_values', {}))
-                runtime_data["column_select"][stable_key] = getattr(node, 'column_select', {})
-
-            # 保存文件
-            graph_data = {
-                "nodes": new_nodes_data,
-                "connections": new_connections,
-                "grid": self.graph.serialize_session().get("grid", None)
-            }
-            project_data = serialize_for_json(
-                {
-                    "version": "1.0",
-                    "graph": graph_data,
-                    "runtime": runtime_data,
-                    "candidate_inputs": candidate_inputs,  # 可选：保留候选列表供参考
-                    "candidate_outputs": candidate_outputs  # 可选：保留候选列表供参考
-                }
-            )
-
-            (export_path / "model.workflow.json").write_text(
-                json.dumps(project_data, indent=2, ensure_ascii=False), encoding='utf-8'
-            )
-            (export_path / "project_spec.json").write_text(
-                json.dumps(project_spec, indent=2, ensure_ascii=False), encoding='utf-8'
-            )
-
-            # 保存 requirements 和 README（使用用户编辑后的内容）
-            (export_path / "requirements.txt").write_text(final_requirements, encoding='utf-8')
-            (export_path / "README.md").write_text(final_readme, encoding='utf-8')
-
-            # 复制 runner 等
-            current_dir = Path(__file__).parent
-            runner_src = current_dir / ".." / "runner"
-            if runner_src.exists():
-                shutil.copytree(str(runner_src), str(export_path / "runner"), dirs_exist_ok=True)
-            base_src = current_dir.parent / "components" / "base.py"
-            if base_src.exists():
-                shutil.copy(str(base_src), str(components_dir / "base.py"))
-
-            for file in ["run.py", "scan_components.py", "api_server.py"]:
-                src = export_path / "runner" / file
-                if src.exists():
-                    shutil.move(str(src), str(export_path / file))
-
-            self._generate_selected_nodes_thumbnail(export_path)
-            MessageManager.success("导出成功", f"模型项目已导出到:\n{export_path}", self)
-
-        except Exception as e:
-            import traceback
-            logger.error(traceback.format_exc())
-            MessageManager.error("导出失败", f"错误: {str(e)}", self)
 
     def canvas_drop_event(self, event):
         try:
@@ -910,26 +387,13 @@ class CanvasPage(QWidget):
         return None
 
     def on_node_finished_simple(self, node_id):
-        node = self._get_node_by_id_cached(node_id)
+        node = self.node_operations._get_node_by_id_cached(node_id)
         if node:
             # 直接调用 set_node_status，恢复即时更新
             QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS))
         # 优化：只在只选中该节点时更新其属性面板
         if node and node.selected() and len(self.graph.selected_nodes()) == 1:
             QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
-
-    def _get_node_by_id_cached(self, node_id):
-        """原始方法，保留用于兼容性"""
-        if node_id in self._node_id_cache:
-            return self._node_id_cache[node_id]
-        for node in self.graph.all_nodes():
-            if node.id == node_id:
-                return node
-        return None
-
-    def on_node_created(self, node):
-        self._node_id_cache[node.id] = node
-        self._request_recommendations(node)
 
     def _on_port_connected(self, input_port, output_port):
         in_node = input_port.node()
@@ -938,36 +402,6 @@ class CanvasPage(QWidget):
         dst_path = getattr(in_node, 'FULL_PATH', None)
         if src_path and dst_path:
             self.manager.recommendation_engine._stats_manager.record_connection(src_path, dst_path)
-
-    def _request_recommendations(self, node: BaseNode):
-        full_path = getattr(node, 'FULL_PATH', None)
-        if not full_path:
-            self.nav_view.clear_recommendations()
-            return
-
-        # 可选：取消上一个未完成的任务（避免堆积）
-        if self._current_recommendation_task:
-            # QThreadPool 不支持直接取消，但可忽略旧结果
-            pass
-
-        task = RecommendationTask(self.manager.recommendation_engine, full_path)
-        task.signals.finished.connect(self.nav_view.add_recommendations)
-        task.signals.error.connect(lambda msg: logger.error(f"推荐失败: {msg}"))
-        self.thread_pool.start(task)
-        self._current_recommendation_task = task
-
-    def _invalidate_node_cache(self):
-        """当节点被创建或删除时，标记缓存无效"""
-        self._node_id_cache_valid = False
-        self._node_id_cache.clear()  # 可选，清空以节省内存
-
-    def delete_node(self, node):
-        if node and node.id in self.node_status:
-            del self.node_status[node.id]
-        # 删除节点后，使缓存无效
-        self._invalidate_node_cache()
-        self.graph.delete_node(node)
-        self.property_panel.update_properties(None)
 
     def on_selection_changed(self, node_ids: list, prev_ids: list):
         if self._selection_update_pending:
@@ -1001,7 +435,7 @@ class CanvasPage(QWidget):
             elif isinstance(selected_nodes[0], BaseNode):
                 QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(selected_nodes[0]))
                 self.property_panel.reset_current_components()
-                self._request_recommendations(selected_nodes[0])
+                self.node_operations._request_recommendations(selected_nodes[0])
             # 展示全局变量面板
             else:
                 self.nav_view.clear_recommendations()
@@ -1012,190 +446,6 @@ class CanvasPage(QWidget):
             self.property_panel.reset_current_components()
             QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
 
-    # --- 画布IO操作 ---
-    def _save_via_dialog(self):
-        if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
-            file_path = self.file_path
-        else:
-            file_path = (self.file_path.parent if self.file_path else Path("../app/interfaces")) / f"{self.workflow_name}.workflow.json"
-        self.save_full_workflow(file_path)
-        self.file_path = file_path
-
-    def save_full_workflow(self, file_path, show_info=True):
-        graph_data = self.graph.serialize_session()
-        # 剔除节点中自定义全局变量，减少加载负担
-        for node, node_data in graph_data["nodes"].items():
-            node_data["custom"].pop("global_variable", None)
-        # 解析图节点数据类
-        runtime = {
-            "environment": self.env_combo.currentData(),
-            "environment_exe": self.get_current_python_exe(),
-            "node_id2stable_key": {},
-            "node_states": {},
-            "node_inputs": {},
-            "node_outputs": {},
-            "column_select": {},
-        }
-        for node in self.graph.all_nodes():
-            full_path = getattr(node, 'FULL_PATH', 'unknown')
-            node_name = node.name()
-            stable_key = f"{full_path}||{node_name}"
-            runtime["node_id2stable_key"][node.id] = stable_key
-            runtime["node_states"][stable_key] = self.node_status.get(node.id, "unrun")
-            runtime["node_inputs"][stable_key] = getattr(node, '_input_values', {})
-            runtime["node_outputs"][stable_key] = getattr(node, '_output_values', {})
-            runtime["column_select"][stable_key] = getattr(node, 'column_select', {})
-        full_data = {
-            "version": "1.0",
-            "graph": graph_data,
-            "runtime": runtime,
-            "global_variable": self.global_variables.serialize()
-        }
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(serialize_for_json(full_data), f, indent=2, ensure_ascii=False)
-        self._generate_canvas_thumbnail_async(file_path)
-        if show_info:
-            MessageManager.success("保存成功", "工作流保存成功！", self)
-
-    def _generate_selected_nodes_thumbnail(self, export_path: pathlib.Path):
-        """为选中的节点生成缩略图并保存到 export_path 下（如 preview.png）"""
-        try:
-            selected_nodes = self.graph.selected_nodes()
-            if not selected_nodes:
-                return  # 无选中节点，不生成
-            # 获取选中节点的包围盒
-            scene = self.graph.viewer().scene()
-            rect = QRectF()
-            for node in selected_nodes:
-                item_rect = node.view.sceneBoundingRect()
-                rect = rect.united(item_rect)
-            if rect.isEmpty():
-                return
-            # 扩展边距
-            rect.adjust(-25, -25, 25, 25)
-            # 创建图像
-            image = QImage(rect.size().toSize(), QImage.Format_ARGB32)
-            image.fill(Qt.white)
-            painter = QPainter(image)
-            # 渲染选中区域
-            scene.render(painter, target=QRectF(image.rect()), source=rect)
-            painter.end()
-            # 保存为 preview.png
-            preview_path = export_path / "preview.png"
-            image.save(str(preview_path), "PNG")
-            logger.info(f"✅ 子图预览图已保存: {preview_path}")
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            MessageManager.warning("预览图", f"生成失败: {str(e)}", self)
-
-    def _generate_canvas_thumbnail_async(self, workflow_path):
-        self.thumbnail_thread = ThumbnailGenerator(self.graph, workflow_path)
-        self.thumbnail_thread.finished.connect(self._on_thumbnail_generated)
-        self.thumbnail_thread.start()
-
-    def _on_thumbnail_generated(self, png_path):
-        if png_path:
-            logger.info(f"✅ 预览图已保存: {png_path}")
-            self.canvas_saved.emit(self.file_path)
-        else:
-            MessageManager.warning("预览图", "生成失败", self)
-
-    def load_full_workflow(self, file_path):
-        from app.utils.threading_utils import WorkflowLoader
-        self.workflow_loader = WorkflowLoader(file_path, self.graph, self.node_type_map)
-        self.workflow_loader.finished.connect(self._on_workflow_loaded)
-        self.workflow_loader.start()
-
-    def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data, global_variable):
-        try:
-            self.global_variables.deserialize(global_variable)
-            # === 1. 准备数据 ===
-            nodes_data = graph_data.get("nodes", {})
-            total_nodes = len(nodes_data)
-            if total_nodes == 0:
-                self.graph.deserialize_session(graph_data)
-                self._finish_loading(runtime_data, node_status_data)
-                return
-
-            # === 2. 创建进度对话框 ===
-            progress = QProgressDialog("正在加载节点...", "取消", 0, total_nodes, self)
-            progress.setWindowModality(Qt.WindowModal)
-            progress.setWindowTitle("加载中")
-            progress.setCancelButton(None)  # 禁用取消，避免状态不一致
-            progress.setAutoClose(True)
-            progress.setMinimumDuration(0)
-            progress.setValue(0)
-
-            # === 3. Monkey patch add_node ===
-            original_add_node = self.graph.add_node
-            count = [0]  # 使用 list 保持引用
-
-            def patched_add_node(node, pos=None, inherite_graph_style=True):
-                result = original_add_node(node, pos, False, False, inherite_graph_style)
-                count[0] += 1
-                progress.setValue(count[0])
-                QApplication.processEvents()  # 刷新 UI
-                return result
-
-            self.graph.add_node = patched_add_node
-
-            # === 4. 执行反序列化（使用 NodeGraphQt 原生逻辑）===
-            try:
-                self.graph.deserialize_session(graph_data)
-            finally:
-                # 恢复原始方法
-                self.graph.add_node = original_add_node
-                progress.close()
-            # === 5. 完成后续加载 ===
-            self._finish_loading(runtime_data, node_status_data)
-
-        except Exception as e:
-            logger.error(f"❌ 加载失败: {traceback.format_exc()}")
-            MessageManager.error("加载失败", f"工作流加载失败: {str(e)}", self)
-
-    def _finish_loading(self, runtime_data, node_status_data):
-        """加载完成后恢复状态"""
-        self.ui_manager._setup_pipeline_style()
-
-        # 环境
-        env = runtime_data.get("environment")
-        if env:
-            for i in range(self.env_combo.count()):
-                if self.env_combo.itemData(i) == env:
-                    self.env_combo.setCurrentIndex(i)
-                    break
-
-        # 节点状态（批量，无 UI 更新）
-        all_nodes = self.graph.all_nodes()
-        for node in all_nodes:
-            full_path = getattr(node, 'FULL_PATH', 'unknown')
-            stable_key = f"{full_path}||{node.name()}"
-            node_status = node_status_data.get(stable_key)
-            if node_status:
-                node._input_values = deserialize_from_json(node_status.get("node_inputs", {}))
-                node._output_values = deserialize_from_json(node_status.get("node_outputs", {}))
-                node.column_select = node_status.get("column_select", {})
-                custom_props = node_status.get("custom_property", {})
-                for key, value in custom_props.items():
-                    if not node.has_property(key):
-                        node.create_property(key, value)
-                    else:
-                        node.set_property(key, value)
-                status_str = node_status.get("node_states", "unrun") or "unrun"
-                status_enum = getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
-                self.node_status[node.id] = status_enum
-                if hasattr(node, 'status'):
-                    node.status = status_enum
-
-        # 缓存 & UI
-        self._node_id_cache = {node.id: node for node in self.graph.all_nodes()}
-        self._node_id_cache_valid = True
-
-        QTimer.singleShot(0, self.ui_manager.create_name_label)
-        QTimer.singleShot(0, self._delayed_fit_view)
-        MessageManager.success("加载成功", "工作流加载成功！", self)
-
     def _delayed_fit_view(self):
         self.graph._viewer.zoom_to_nodes(self.graph._viewer.all_nodes())
         self.property_panel.set_allowed_update(True)
@@ -1204,50 +454,6 @@ class CanvasPage(QWidget):
     def edit_node(self, node):
         self.parent.switchTo(self.parent.develop_page)
         self.parent.develop_page._load_component(node.component_class, node.FULL_PATH)
-
-    def _setup_context_menus(self):
-        graph_menu = self.graph.get_context_menu('graph')
-        graph_menu.add_command('运行工作流', self.canvas_runner.run_workflow, 'Ctrl+R')
-        graph_menu.add_command('保存工作流', self._save_via_dialog, 'Ctrl+S')
-        graph_menu.add_separator()
-        graph_menu.add_command('撤销', self._undo, 'Ctrl+Z')
-        graph_menu.add_command('重做', self._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
-        graph_menu.add_command('自动布局', self._auto_layout_selected, 'Ctrl+L')
-        edit_menu = graph_menu.add_menu('编辑')
-        edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
-        edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
-        edit_menu.add_command(
-            '删除选中', lambda graph: (
-                self.delete_selected_nodes(graph), self.property_panel.update_properties(None)
-            ), 'Del'
-        )
-        nodes_menu = self.graph.get_context_menu('nodes')
-        for special_node in [
-            "dynamic.DYNAMIC_CODE", "control_flow.ControlFlowIterateNode",
-            "control_flow.ControlFlowLoopNode", "control_flow.ControlFlowBranchNode"
-        ]:
-            nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
-                                   node_type=special_node)
-            nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
-                                   node_type=special_node)
-            nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
-                                   node_type=special_node)
-            if special_node == "dynamic.DYNAMIC_CODE":
-                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(), node_type=special_node)
-            nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                                   node_type=special_node)
-
-    def delete_selected_nodes(self, graph):
-        # 清除选中节点的输入输出端口连接线
-        for node in graph.selected_nodes():
-            if isinstance(node, BackdropNode):
-                for port in node.input_ports():
-                    port.clear_connections(push_undo=True, emit_signal=True)
-                for port in node.output_ports():
-                    port.clear_connections(push_undo=True, emit_signal=True)
-        graph.delete_nodes(graph.selected_nodes())
-        # 删除节点后，使缓存无效
-        self._invalidate_node_cache()
 
     def _undo(self):
         try:
@@ -1274,37 +480,41 @@ class CanvasPage(QWidget):
         else:
             self.graph.auto_layout_nodes(nodes=self.graph.all_nodes(), start_nodes=[node] if node else None)
 
-    def _copy_selected_nodes(self):
-        selected_nodes = self.graph.selected_nodes()
-        if not selected_nodes:
-            return
-        self._clipboard_data = self.graph.copy_nodes()
-        MessageManager.info("复制成功", f"已复制 {len(selected_nodes)} 个节点", self)
+    # --- 画布关闭逻辑 ---
+    def close_current_canvas(self):
+        # 1. 停止并断开所有定时器
+        self._auto_saver.stop()
+        self.console_manager.shutdown()
 
-    def _paste_nodes(self):
-        if not self._clipboard_data:
-            return
-        selected_nodes = self.graph.selected_nodes()
-        if selected_nodes:
-            avg_x = sum(n.pos()[0] for n in selected_nodes) / len(selected_nodes)
-            avg_y = sum(n.pos()[1] for n in selected_nodes) / len(selected_nodes)
-            offset = (50, 50)
-        else:
-            viewer = self.graph.viewer()
-            center = viewer.mapToScene(viewer.rect().center())
-            avg_x, avg_y = center.x(), center.y()
-            offset = (0, 0)
-        pasted_nodes = self.graph.paste_nodes(self._clipboard_data)
-        if pasted_nodes:
-            min_x = min(n.pos()[0] for n in pasted_nodes)
-            min_y = min(n.pos()[1] for n in pasted_nodes)
-            for node in pasted_nodes:
-                # 重新生成每个节点的persistent_id用以区分节点
-                node.set_property("persistent_id", str(uuid.uuid4()))
-                x, y = node.pos()
-                new_x = x - min_x + avg_x + offset[0]
-                new_y = y - min_y + avg_y + offset[1]
-                node.set_pos(new_x, new_y)
-            MessageManager.info("粘贴成功", f"已粘贴 {len(pasted_nodes)} 个节点", self)
-        # 粘贴节点后，使缓存无效
-        self._invalidate_node_cache()
+        # 5. 移除事件过滤器
+        self.canvas_widget.removeEventFilter(self)
+
+        # 6. 清理 graph 信号连接（若可能）
+        try:
+            self.graph.node_created.disconnect(self.on_node_created)
+            self.graph.port_connected.disconnect(self._on_port_connected)
+            self.graph.viewer().node_selection_changed.disconnect(self.on_selection_changed)
+        except Exception:
+            pass
+
+        # 7. 清理属性面板等子组件
+        self.property_panel.setParent(None)
+        self.nav_panel.setParent(None)
+
+        # 2. 清理动态导入的模块（关键！）
+        import sys
+        modules_to_remove = []
+        for full_path in self.component_map:
+            # 假设你的 scan_components 使用了类似命名
+            safe_name = full_path.replace("/", "_").replace(" ", "_")
+            module_name = f"dynamic.{safe_name}"
+            if module_name in sys.modules:
+                modules_to_remove.append(module_name)
+        for mod in modules_to_remove:
+            del sys.modules[mod]
+        # ===== 7. 销毁 UI 控件（确保 parent=None）=====
+        self.graph.deleteLater()
+        # 8. 发射信号 & 移除自身
+        self.canvas_deleted.emit()
+        self.parent.removeInterface(self)
+        self.deleteLater()  # 关键：触发 Qt 对象销毁
