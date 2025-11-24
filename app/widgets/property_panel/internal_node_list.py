@@ -10,7 +10,8 @@ class InternalNodeList(ListWidget):
         "success": "🟢 成功",
         "failed": "🔴 失败",
         "unrun": "⚪ 未运行",
-        "pending": "🔵 待运行"
+        "pending": "🔵 待运行",
+        "disabled": "⚫ 禁用"
     }
 
     def __init__(self, status_liist, node_name_list, parent):

@@ -73,7 +73,6 @@ class CodeEditorWidget(QWidget):
     def _setup_shortcuts(self):
         QShortcut(Qt.Key_F3, self.code_editor, activated=lambda: self._find_next(backward=False))
         QShortcut(Qt.SHIFT + Qt.Key_F3, self.code_editor, activated=lambda: self._find_next(backward=True))
-        QShortcut(Qt.CTRL + Qt.Key_F, self.code_editor, activated=lambda: self._toggle_find_panel(focus_replace=True))
         QShortcut(Qt.CTRL + Qt.Key_G, self.code_editor, activated=self._goto_line)
         QShortcut(Qt.CTRL + Qt.Key_D, self.code_editor, activated=self._duplicate_line)
 

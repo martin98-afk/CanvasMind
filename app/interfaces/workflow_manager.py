@@ -11,7 +11,7 @@ from qfluentwidgets import (
     PipsPager, PipsScrollButtonDisplayMode, ComboBox, CaptionLabel, SearchLineEdit, TransparentToggleToolButton
 )
 
-from app.interfaces.canvas_interface import CanvasPage
+from app.interfaces.canvas_interaface import CanvasPage
 from app.scheduler.node_recommendation_engine import NodeRecommendationEngine
 from app.utils.config import Settings
 from app.utils.utils import get_icon

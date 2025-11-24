@@ -31,19 +31,9 @@ class Component(BaseComponent):
     ]
     properties = {
         "model": PropertyDefinition(
-            type=PropertyType.TEXT,
-            default="qwen3-30b-a3b",
-            label="模型名称",
-        ),
-        "api_key": PropertyDefinition(
-            type=PropertyType.TEXT,
+            type=PropertyType.VARIABLE,
             default="",
-            label="API Key（本地模型可留空）",
-        ),
-        "base_url": PropertyDefinition(
-            type=PropertyType.TEXT,
-            default="http://168.168.10.110:20000",
-            label="API 基础地址（本地模型必填）",
+            label="模型参数",
         ),
         "system_prompt": PropertyDefinition(
             type=PropertyType.LONGTEXT,
@@ -84,6 +74,7 @@ class Component(BaseComponent):
                 ),
             }
         ),
+        
     }
     def run(self, params, inputs):
         import os
@@ -109,9 +100,14 @@ class Component(BaseComponent):
             except:
                 history = []
         # 获取参数
-        model = params.model
-        api_key = params.api_key
-        base_url = params.base_url.strip()
+        model_config_key = params.model
+        model_config = self.global_variable.get(model_config_key)
+        model_name = model_config.get("模型名称", "").strip()
+        api_url = model_config.get("API_URL", "").strip()
+        api_key = model_config.get("API_KEY", "").strip()
+        self.logger.info(f"使用模型：{model_name}")
+        self.logger.info(f"地址：{api_url}")
+        self.logger.info(f"api_key: {api_key}")
         system_prompt = params.system_prompt
         temperature = float(params.temperature)
         max_tokens = int(params.max_tokens)
@@ -129,20 +125,11 @@ class Component(BaseComponent):
             })
         else:
             messages.append({"role": "user", "content": processed_input})
-        self.logger.info(messages)
         # 处理API密钥
-        use_local = bool(base_url)
-        if use_local:
-            client = OpenAI(api_key=api_key or "ollama", base_url=base_url)
-        else:
-            if not api_key:
-                error_msg = "错误：未提供 API Key，且未设置本地 API 地址"
-                self.logger.error(error_msg)
-                return {
-                    "response": error_msg,
-                    "raw_output": {"error": "Missing API Key or base_url"}
-                }
-            client = OpenAI(api_key=api_key)
+        client = OpenAI(
+            api_key=api_key,
+            base_url=api_url
+        )
         # 解析额外模型配置信息
         extra_body = {}
         for item in params.model_params:
@@ -150,7 +137,7 @@ class Component(BaseComponent):
         try:
             response = client.chat.completions.create(
                 extra_body=extra_body,
-                model=model,
+                model=model_name,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
@@ -169,7 +156,7 @@ class Component(BaseComponent):
             return {
                 "response": reply,
                 "raw_output": raw_data,
-                "history": messages
+                "history": messages[1:]
             }
         except Exception as e:
             self.logger.error(f"模型调用失败: {str(e)}")

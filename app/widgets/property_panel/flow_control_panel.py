@@ -152,19 +152,10 @@ class FlowControlPanelWidget:
 
         if self._backdrop_internal_nodes_list:
             _, _, internal_nodes = node.get_nodes()
-            list_widget = self._backdrop_internal_nodes_list
-            for i in range(list_widget.count()):
-                item = list_widget.item(i)
-                if i < len(internal_nodes):
-                    n = internal_nodes[i]
-                    status = self.main_window.get_node_status(n)
-                    status_text = self._backdrop_internal_nodes_list.STATUS_TEXT_MAP.get(status, status)
-                    item.setText(f"{status_text} - {n.name()}")
-                else:
-                    item.setText("")
-            if len(internal_nodes) > list_widget.count():
-                if list_widget.count() != len(internal_nodes):
-                    return False
+            new_status_list = [self.main_window.get_node_status(n) for n in internal_nodes]
+            new_name_list = [n.name() for n in internal_nodes]
+            self._backdrop_internal_nodes_list.update_content(new_status_list, new_name_list)
+
         return True
 
     def _add_internal_nodes_section(self, node, layout):

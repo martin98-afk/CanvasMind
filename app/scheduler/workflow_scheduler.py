@@ -411,9 +411,6 @@ class WorkflowScheduler(QObject):
                 if check_cancel():
                     return internal_outputs  # 提前返回收集到的结果
                 if node.get_property("disabled"):
-                    # 跳过禁用节点，标记为 skipped（不影响下游）
-                    self.set_node_status(node, NodeStatus.NODE_STATUS_UNRUN)
-                    # 不发出 started/finished 信号（或可选发出 skipped 信号）
                     continue
                 self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
                 self.property_changed.emit(backdrop)

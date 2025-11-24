@@ -22,6 +22,10 @@ from qfluentwidgets import (
 )
 
 from app.components.base import PropertyType, GlobalVariableContext
+from app.interfaces.canvas_interaface.utils.auto_saver import AutoSaver
+from app.interfaces.canvas_interaface.utils.canvas_runner import CanvasRunner
+from app.interfaces.canvas_interaface.widgets.console_manager import ConsoleManager
+from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
 from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
 from app.nodes.branch_node import create_branch_node
 from app.nodes.dynamic_code_node import create_dynamic_code_node
@@ -33,7 +37,7 @@ from app.scan_components import scan_components
 from app.scheduler.node_recommendation_engine import RecommendationTask
 from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导入
 from app.utils.config import Settings
-from app.utils.quick_component_manager import QuickComponentManager
+from app.interfaces.canvas_interaface.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
 from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon, topological_sort
 from app.widgets.dialog_widget.project_export_dialog import ProjectExportFlowDialog
@@ -87,17 +91,7 @@ class CanvasPage(QWidget):
         self._current_recommendation_task = None  # 用于取消旧任务（可选）
         self._node_id_cache = {}  # 缓存：node_id -> node_object
         self._node_id_cache_valid = False  # 标记缓存是否有效
-        # --- 自动保存相关 ---
-        self._auto_save_timer = QTimer(self)
-        self._auto_save_timer.timeout.connect(self._auto_save_triggered)
-        self._auto_save_enabled = self.config.canvas_auto_save.value  # 从 config 获取
-        self._auto_save_interval = self.config.canvas_auto_save_interval.value * 1000  # 转换为毫秒
-        if self._auto_save_enabled:
-            logger.info(f"Canvas AutoSave enabled, interval: {self._auto_save_interval / 1000} seconds.")
-            self._start_auto_save_timer()
-        else:
-            logger.info("Canvas AutoSave disabled by config.")
-        # ---
+
         # 初始化 NodeGraph
         self.graph = CustomNodeGraph(viewer=CustomNodeViewer())
         self.graph.node_created.connect(self.on_node_created)
@@ -111,12 +105,27 @@ class CanvasPage(QWidget):
             component_map=self.component_map
         )
         self.quick_manager.quick_components_changed.connect(self._refresh_quick_buttons)
+
+        # --- 自动保存相关 ---
+        self._auto_saver = AutoSaver(self, self.file_path, self.config)
+
+        # --- 连接ipython console ---
+        self.console_manager = ConsoleManager(self)
+
+        # --- 画布运行管理 ---
+        self.canvas_runner = CanvasRunner(self.console_manager.ipython_console, self)
+
         # 线程池
         self.thread_pool = QThreadPool.globalInstance()
-        # 初始化ui
-        self._setup_ui()
+
         # 全局变量
         self.global_variables = GlobalVariableContext()
+
+        # 初始化ui
+        self._setup_ui()
+        # 连接ui信号
+        self._connect_runner_signals()
+        self.console_manager.connect_kernel()
 
     def _setup_ui(self):
         # 布局
@@ -147,7 +156,7 @@ class CanvasPage(QWidget):
         self.create_environment_selector()
         self.create_floating_buttons()
         self.create_floating_nodes()
-        self.create_console_panel()
+        self.console_manager.create_console_panel()
         # 启用画布拖拽
         self.canvas_widget.setAcceptDrops(True)
         self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
@@ -156,124 +165,63 @@ class CanvasPage(QWidget):
         # 右键菜单
         self._setup_context_menus()
 
-    def toggle_console_panel(self):
-        """切换 Console 面板显示/隐藏"""
-        if self.console_container.isVisible():
-            self.hide_console_panel()
-        else:
-            self.show_console_panel()
-
-    def show_console_panel(self):
-        """显示 Console 面板"""
-        self.console_container.show()
-        self.ipython_console.setFocus()
-        # 重新定位 Console 面板
-        self._update_console_position()
-
-    def hide_console_panel(self):
-        """隐藏 Console 面板"""
-        self.console_container.hide()
-        # 重新定位 Console 面板（隐藏到画布下方）
-        self._update_console_position()
-
-    def _create_scheduler(self):
-        """创建工作流调度器"""
-        scheduler = WorkflowScheduler(
-            graph=self.graph,
-            component_map=self.component_map,
-            get_node_status=self.get_node_status,
-            get_python_exe=self.get_current_python_exe,
-            kernel_manager=self.ipython_console,
-            global_variables=self.global_variables,
-            parent=self
-        )
-        # 优化：直接连接到 set_node_status_by_id
-        scheduler.node_status_changed.connect(self.set_node_status_by_id)
-        scheduler.property_changed.connect(self.property_panel.update_properties)
-        return scheduler
-
     def set_node_status_by_id(self, node_id, status):
         node = self._get_node_by_id_cached(node_id)
         if node:
             self.set_node_status(node, status)
 
-    def _connect_scheduler_signals(self):
-        """连接调度器信号到 UI 回调"""
-        # 优化：直接连接到具体处理方法，避免不必要的中间信号
-        self._scheduler.node_started.connect(self.on_node_started_simple)
-        self._scheduler.node_finished.connect(self.on_node_finished_simple)
-        self._scheduler.node_error.connect(self.on_node_error_simple)
-        self._scheduler.finished.connect(self._on_workflow_finished)
-        self._scheduler.error.connect(self._on_workflow_error)
+    def _on_workflow_started(self):
+        """开始执行"""
         self.run_btn.hide()
         self.stop_btn.show()
 
-    def run_workflow(self):
-        """执行所有选中节点的工作流"""
-        self._scheduler = self._create_scheduler()
-        self._connect_scheduler_signals()
-        if self.property_panel.get_current_execution_order():
-            nodes = self.property_panel.get_current_execution_order()
-            self._scheduler.run_full(nodes=nodes, sort=False)
-            self._scheduler.node_started.connect(
-                lambda : QtCore.QTimer.singleShot(
-                    50, self.property_panel.node_list_panel_widget.update_node_list_content
-                )
-            )
-            self._scheduler.backdrop_finished.connect(
-                lambda: QtCore.QTimer.singleShot(
-                    50, lambda: self.property_panel.update_properties(nodes)
-                )
-            )
-            self._scheduler.node_finished.connect(
-                lambda: QtCore.QTimer.singleShot(
-                    50, self.property_panel.node_list_panel_widget.update_node_list_content
-                )
-            )
-            self._scheduler.finished.connect(
-                lambda: QtCore.QTimer.singleShot(
-                    50, self.property_panel.node_list_panel_widget.update_node_list_content
-                )
-            )
-            self._scheduler.error.connect(
-                lambda: QtCore.QTimer.singleShot(
-                    50, self.property_panel.node_list_panel_widget.update_node_list_content
-                )
-            )
-            self._scheduler.cancelled.connect(
-                lambda: QtCore.QTimer.singleShot(
-                    50, self.property_panel.node_list_panel_widget.update_node_list_content
-                )
-            )
-        else:
-            self._scheduler.run_full(nodes=self.graph.selected_nodes())
-
-    def run_to_node(self, target_node):
-        """执行到目标节点"""
-        self._scheduler = self._create_scheduler()
-        self._connect_scheduler_signals()
-        self._scheduler.run_to(target_node)
-
-    def run_node(self, node):
-        """从起始节点开始执行"""
-        self._scheduler = self._create_scheduler()
-        self._connect_scheduler_signals()
-        self._scheduler.run(node)
-
-    def run_from_node(self, start_node):
-        """从起始节点开始执行"""
-        self._scheduler = self._create_scheduler()
-        self._connect_scheduler_signals()
-        self._scheduler.run_from(start_node)
-
-    def stop_workflow(self):
+    def _on_workflow_cancelled(self):
         """停止当前执行"""
-        if self._scheduler:
-            self._scheduler.cancel()
-            self.create_info("已停止", "正在终止任务...")
-            self.run_btn.show()
-            self.stop_btn.hide()
-            self._scheduler = None
+        self.run_btn.show()
+        self.stop_btn.hide()
+
+    def on_node_error_simple(self, node_id):
+        node = self._get_node_by_id_cached(node_id)
+        if node:
+            node._output_values = {}
+            MessageManager.error('错误', f'节点 "{node.name()}" 执行失败！', self)
+            # 直接调用 set_node_status，恢复即时更新
+            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED))
+
+        self.run_btn.show()
+        self.stop_btn.hide()
+        self._scheduler = None
+
+    def _on_workflow_finished(self):
+        self.run_btn.show()
+        self.stop_btn.hide()
+        self._scheduler = None
+        MessageManager.success("完成", "工作流执行完成!", self)
+
+    def _on_workflow_error(self, msg=""):
+        self._scheduler = None
+        self.run_btn.show()
+        self.stop_btn.hide()
+        MessageManager.error("错误", f"工作流执行失败! {msg}", self)
+
+    def on_node_started_simple(self, node_id):
+        node = self._get_node_by_id_cached(node_id)
+        if node:
+            # 直接调用 set_node_status，恢复即时更新
+            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING))
+
+    def _connect_runner_signals(self):
+        """连接调度器信号到 UI 回调"""
+        # 优化：直接连接到具体处理方法，避免不必要的中间信号
+        self.canvas_runner.workflow_started.connect(self._on_workflow_started)
+        self.canvas_runner.node_started.connect(self.on_node_started_simple)
+        self.canvas_runner.node_finished.connect(self.on_node_finished_simple)
+        self.canvas_runner.node_error.connect(self.on_node_error_simple)
+        self.canvas_runner.property_changed.connect(self.property_panel.update_properties)
+        self.canvas_runner.workflow_finished.connect(self._on_workflow_finished)
+        self.canvas_runner.workflow_error.connect(self._on_workflow_error)
+        self.canvas_runner.node_status_changed.connect(self.set_node_status_by_id)
+        self.canvas_runner.workflow_cancelled.connect(self._on_workflow_cancelled)
 
     def _canvas_key_press_event(self, event):
         super(NodeViewer, self.canvas_widget).keyPressEvent(event)
@@ -314,7 +262,7 @@ class CanvasPage(QWidget):
             self._update_nodes_container_position()
             self.buttons_container.move(self.graph.viewer().width() - 190, 5)
             self._position_name_container()
-            self._update_console_position()
+            self.console_manager._update_position()
         return super().eventFilter(obj, event)
 
     def create_floating_buttons(self):
@@ -326,16 +274,16 @@ class CanvasPage(QWidget):
         env_layout.setContentsMargins(0, 0, 0, 0)
         self.run_btn = TransparentToolButton(FluentIcon.PLAY, self)
         self.run_btn.setToolTip("运行工作流")
-        self.run_btn.clicked.connect(self.run_workflow)
+        self.run_btn.clicked.connect(self.canvas_runner.run_workflow)
         env_layout.addWidget(self.run_btn)
         self.stop_btn = TransparentToolButton(FluentIcon.PAUSE, self)
         self.stop_btn.setToolTip("停止运行")
-        self.stop_btn.clicked.connect(self.stop_workflow)
+        self.stop_btn.clicked.connect(self.canvas_runner.stop_workflow)
         self.stop_btn.hide()
         env_layout.addWidget(self.stop_btn)
         self.console_btn = TransparentToolButton(get_icon("console"), self.canvas_widget)
         self.console_btn.setToolTip("显示/隐藏调试控制台")
-        self.console_btn.clicked.connect(self.toggle_console_panel)
+        self.console_btn.clicked.connect(self.console_manager.toggle)
         env_layout.addWidget(self.console_btn)
         self.export_btn = TransparentToolButton(FluentIcon.SAVE, self)
         self.export_btn.setToolTip("导出工作流")
@@ -357,39 +305,6 @@ class CanvasPage(QWidget):
         env_layout.addStretch()
         self.buttons_container.setLayout(env_layout)
         self.buttons_container.show()
-
-    def create_console_panel(self):
-        """创建 Console 面板和切换按钮"""
-        self.ipython_console = EmbeddedIPythonConsole(self)
-        self.var_explorer = VariableExplorerWidget(parent=self, kernel_manager=None)  # 先不设置内核管理器)
-        self.console_dialog = IPythonConsoleDialog(self.ipython_console, self)
-        # --- 1. 创建 Console 容器面板 ---
-        self.console_container = QWidget(self.canvas_widget)
-        self.console_container.hide()  # 初始隐藏
-        self.console_container.setStyleSheet("background-color: #2d2d2d;")  # 深色背景，与你的偏好一致
-        # --- 2. 为 Console 容器创建布局 ---
-        console_layout = QHBoxLayout(self.console_container)
-        console_layout.setContentsMargins(0, 0, 0, 5)
-        console_layout.setSpacing(1)
-
-        splitter = ModernSplitter(Qt.Horizontal)
-        splitter.addWidget(self.var_explorer)
-        splitter.addWidget(self.ipython_console)
-        splitter.setSizes([400, 400])  # 变量浏览器较小，控制台较大
-
-        console_layout.addWidget(splitter)
-        # --- 5. 设置容器初始大小 ---
-        self.console_container.setFixedHeight(300)  # 可根据需要调整
-
-        # 初始位置和大小
-        self._update_console_position()
-
-        # --- 8. 安装事件过滤器 ---
-        self.canvas_widget.installEventFilter(self)
-
-        # --- 9. 显示按钮 ---
-        self.console_container.hide()  # 确保初始隐藏
-        QtCore.QTimer.singleShot(0, self.connect_ipython_kernel)
 
     def connect_ipython_kernel(self):
         current_python_exe = self.get_current_python_exe()
@@ -450,7 +365,7 @@ class CanvasPage(QWidget):
         self.env_changed.emit(
             str(self.parent.package_manager.mgr.get_python_exe(self.env_combo.currentData()))
         )
-        self.create_info("环境切换", f"当前运行环境: {current_text}")
+        MessageManager.info("环境切换", f"当前运行环境: {current_text}", self)
 
     def get_current_python_exe(self):
         current_data = self.env_combo.currentData()
@@ -458,7 +373,7 @@ class CanvasPage(QWidget):
             try:
                 return str(self.parent.package_manager.mgr.get_python_exe(current_data))
             except Exception as e:
-                self.create_failed_info("错误", f"获取环境 {current_data} 的Python路径失败: {str(e)}")
+                MessageManager.error("错误", f"获取环境 {current_data} 的Python路径失败: {str(e)}", self)
                 return None
         return None
 
@@ -513,11 +428,11 @@ class CanvasPage(QWidget):
             self.graph.register_node(node_class)
             self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
             if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
-                nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
+                nodes_menu.add_command('运行此节点', lambda graph, node: self.canvas_runner.run_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
+                nodes_menu.add_command('运行到此节点', lambda graph, node: self.canvas_runner.run_to(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
+                nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.canvas_runner.run_from(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
                                        node_type=f"dynamic.{node_class.__name__}")
@@ -528,31 +443,6 @@ class CanvasPage(QWidget):
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-
-    def create_minimap(self):
-        self.minimap = MinimapWidget(self)
-        QtCore.QTimer.singleShot(0, self._position_minimap)
-        self.graph.node_created.connect(self._on_graph_changed)
-        self.graph.nodes_deleted.connect(self._on_graph_changed)
-        self.graph.port_connected.connect(self._on_graph_changed)
-        self.graph.port_disconnected.connect(self._on_graph_changed)
-        self.canvas_widget.installEventFilter(self)
-        QtCore.QTimer.singleShot(500, self.minimap.show)
-
-    def _on_graph_changed(self):
-        QtCore.QTimer.singleShot(300, self.minimap.update_minimap)
-
-    def _position_minimap(self):
-        if not hasattr(self, 'minimap') or not self.minimap.isVisible():
-            return
-        cw = self.canvas_widget
-        if cw.width() <= 0 or cw.height() <= 0:
-            QtCore.QTimer.singleShot(5, self._position_minimap)
-            return
-        margin = 10
-        x = margin
-        y = cw.height() - self.minimap.height() - margin
-        self.minimap.move(x, y)
 
     def create_floating_nodes(self):
         self.nodes_container = QWidget(self.canvas_widget)
@@ -770,7 +660,7 @@ class CanvasPage(QWidget):
             elif node.type_ == "control_flow.ControlFlowOutputPort":
                 output_port_node = node
             elif isinstance(node, ControlFlowBackdrop):
-                self.create_failed_info("当前版本无法进行循环迭代嵌套操作！", content="")
+                MessageManager.error("当前版本无法进行循环迭代嵌套操作！", "", self)
                 return
             else:
                 other_nodes.append(node)
@@ -819,7 +709,7 @@ class CanvasPage(QWidget):
             nodes_to_wrap = other_nodes + [input_port_node, output_port_node]
         # Step 5: 创建 Backdrop 并包裹
         if not nodes_to_wrap:
-            self.create_warning_info("创建失败", "没有可包裹的节点！")
+            MessageManager.warning("创建失败", "没有可包裹的节点！", self)
             return
         backdrop_node = self.graph.create_node(f"control_flow.{key}")
         backdrop_node.wrap_nodes(nodes_to_wrap)
@@ -832,31 +722,8 @@ class CanvasPage(QWidget):
 
     def close_current_canvas(self):
         # 1. 停止并断开所有定时器
-        self._auto_save_timer.stop()
-        self._auto_save_timer.deleteLater()
-        if hasattr(self.var_explorer, 'auto_refresh_timer'):
-            self.var_explorer.auto_refresh_timer.stop()
-            self.var_explorer.auto_refresh_timer.deleteLater()
-            self.var_explorer.kernel_check_timer.stop()
-            self.var_explorer.kernel_check_timer.deleteLater()
-
-        # 2. 停止并清理 IPython 内核
-        self.ipython_console.stop_kernel()
-        self.var_explorer.set_kernel_manager(None)  # 解绑引用
-        self.console_dialog.setParent(None)
-        self.console_dialog.deleteLater()
-
-        # 3. 停止并清理调度器
-        if self._scheduler:
-            self._scheduler.cancel()
-            # 尝试断开所有信号（若支持）
-            try:
-                self._scheduler.disconnect()
-            except Exception:
-                pass
-            self._scheduler.setParent(None)
-            self._scheduler.deleteLater()
-            self._scheduler = None
+        self._auto_saver.stop()
+        self.console_manager.shutdown()
 
         # 4. 清理推荐任务
         if self._current_recommendation_task:
@@ -890,22 +757,6 @@ class CanvasPage(QWidget):
         for mod in modules_to_remove:
             del sys.modules[mod]
         # ===== 7. 销毁 UI 控件（确保 parent=None）=====
-        for widget in [
-            self.console_dialog,
-            self.var_explorer,
-            self.property_panel,
-            self.nav_panel,
-            self.buttons_container,
-            self.name_container,
-            self.env_selector_container,
-            self.nodes_container,
-            getattr(self, 'console_container', None),
-        ]:
-            if widget:
-                widget.setParent(None)
-                widget.deleteLater()
-        # 3. 彻底清理节点
-        self.graph.clear_session()
         self.graph.deleteLater()
         # 8. 发射信号 & 移除自身
         self.canvas_deleted.emit()
@@ -971,7 +822,7 @@ class CanvasPage(QWidget):
     def center_to(self, node):
         self.graph.clear_selection()
         if node not in self.graph.all_nodes():
-            self.create_warning_info("错误", "原节点不存在！")
+            MessageManager.warning("错误", "原节点不存在！", self)
             return
         node.set_selected(True)
         self.graph.fit_to_selection()
@@ -980,16 +831,9 @@ class CanvasPage(QWidget):
         if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
             file_path = self.file_path
         else:
-            file_path = (self.file_path.parent if self.file_path else Path(".")) / f"{self.workflow_name}.workflow.json"
+            file_path = (self.file_path.parent if self.file_path else Path("../app/interfaces")) / f"{self.workflow_name}.workflow.json"
         self.save_full_workflow(file_path)
         self.file_path = file_path
-
-    def _open_via_dialog(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "打开工作流", "", "工作流文件 (*.workflow.json)"
-        )
-        if file_path:
-            self.load_full_workflow(file_path)
 
     def canvas_drag_enter_event(self, event):
         if event.mimeData().hasText():
@@ -1017,7 +861,7 @@ class CanvasPage(QWidget):
             }
 
             if not nodes_to_export:
-                self.create_warning_info("导出失败", "选中的节点无效（只有分组节点）！")
+                MessageManager.warning("导出失败", "选中的节点无效（只有分组节点）！", self)
                 return
 
             nodes_to_export.sort(key=lambda node: (node.pos()[0], node.pos()[1]))
@@ -1181,7 +1025,7 @@ class CanvasPage(QWidget):
             final_requirements = flow_dialog.get_requirements()
 
             if not project_name:
-                self.create_warning_info("导出失败", "项目名不能为空！")
+                MessageManager.warning("导出失败", "项目名不能为空！", self)
                 return
 
             # === 构建 project_spec.json ===
@@ -1367,12 +1211,12 @@ class CanvasPage(QWidget):
                     shutil.move(str(src), str(export_path / file))
 
             self._generate_selected_nodes_thumbnail(export_path)
-            self.create_success_info("导出成功", f"模型项目已导出到:\n{export_path}")
+            MessageManager.success("导出成功", f"模型项目已导出到:\n{export_path}", self)
 
         except Exception as e:
             import traceback
             logger.error(traceback.format_exc())
-            self.create_failed_info("导出失败", f"错误: {str(e)}")
+            MessageManager.error("导出失败", f"错误: {str(e)}", self)
 
     def canvas_drop_event(self, event):
         try:
@@ -1404,36 +1248,6 @@ class CanvasPage(QWidget):
             node.status = status
         # 优化：只高亮目标节点相关的连接线
         self._highlight_node_connections(node, status)
-
-    def on_node_error_simple(self, node_id):
-        node = self._get_node_by_id_cached(node_id)
-        if node:
-            node._output_values = {}
-            self.create_failed_info('错误', f'节点 "{node.name()}" 执行失败！')
-            # 直接调用 set_node_status，恢复即时更新
-            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED))
-
-        self.run_btn.show()
-        self.stop_btn.hide()
-        self._scheduler = None
-
-    def _on_workflow_finished(self):
-        self.run_btn.show()
-        self.stop_btn.hide()
-        self._scheduler = None
-        self.create_success_info("完成", "工作流执行完成!")
-
-    def _on_workflow_error(self, msg=""):
-        self._scheduler = None
-        self.run_btn.show()
-        self.stop_btn.hide()
-        self.create_failed_info("错误", f"工作流执行失败! {msg}")
-
-    def on_node_started_simple(self, node_id):
-        node = self._get_node_by_id_cached(node_id)
-        if node:
-            # 直接调用 set_node_status，恢复即时更新
-            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING))
 
     def _highlight_node_connections(self, node, status):
         """优化的连接线高亮方法"""
@@ -1540,10 +1354,8 @@ class CanvasPage(QWidget):
     def on_selection_changed(self, node_ids: list, prev_ids: list):
         if self._selection_update_pending:
             return
-        if node_ids == prev_ids:
-            return
         self._selection_update_pending = True
-        QtCore.QTimer.singleShot(50, self._do_selection_update)
+        QtCore.QTimer.singleShot(0, self._do_selection_update)
 
     def _do_selection_update(self):
         self._selection_update_pending = False
@@ -1582,27 +1394,6 @@ class CanvasPage(QWidget):
             self.property_panel.reset_current_components()
             QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
 
-    def _start_auto_save_timer(self):
-        """启动自动保存定时器"""
-        if self._auto_save_enabled and self.file_path:  # 只有在启用且有文件路径时才启动
-            self._auto_save_timer.start(self._auto_save_interval)
-            logger.debug(f"AutoSave timer started for {self.file_path}, interval: {self._auto_save_interval / 1000}s")
-
-    def _stop_auto_save_timer(self):
-        """停止自动保存定时器"""
-        if self._auto_save_timer.isActive():
-            self._auto_save_timer.stop()
-            self.save_full_workflow(self.file_path)
-            logger.debug(f"AutoSave timer stopped for {self.file_path}")
-
-    def _auto_save_triggered(self):
-        """自动保存定时器触发的槽函数"""
-        if self.file_path:  # 确保有路径才保存
-            logger.info(f"AutoSave triggered for {self.file_path}")
-            self.save_full_workflow(self.file_path, show_info=False)  # 自动保存不显示信息条
-        else:
-            logger.warning("AutoSave triggered but no file path is set. Skipping auto-save.")
-
     def save_full_workflow(self, file_path, show_info=True):
         graph_data = self.graph.serialize_session()
         # 剔除节点中自定义全局变量，减少加载负担
@@ -1637,7 +1428,7 @@ class CanvasPage(QWidget):
             json.dump(serialize_for_json(full_data), f, indent=2, ensure_ascii=False)
         self._generate_canvas_thumbnail_async(file_path)
         if show_info:
-            self.create_success_info("保存成功", "工作流保存成功！")
+            MessageManager.success("保存成功", "工作流保存成功！", self)
 
     def _generate_selected_nodes_thumbnail(self, export_path: pathlib.Path):
         """为选中的节点生成缩略图并保存到 export_path 下（如 preview.png）"""
@@ -1669,7 +1460,7 @@ class CanvasPage(QWidget):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            self.create_warning_info("预览图", f"生成失败: {str(e)}")
+            MessageManager.warning("预览图", f"生成失败: {str(e)}", self)
 
     def _generate_canvas_thumbnail_async(self, workflow_path):
         self.thumbnail_thread = ThumbnailGenerator(self.graph, workflow_path)
@@ -1681,7 +1472,7 @@ class CanvasPage(QWidget):
             logger.info(f"✅ 预览图已保存: {png_path}")
             self.canvas_saved.emit(self.file_path)
         else:
-            self.create_warning_info("预览图", "生成失败")
+            MessageManager.warning("预览图", "生成失败", self)
 
     def load_full_workflow(self, file_path):
         from app.utils.threading_utils import WorkflowLoader
@@ -1734,7 +1525,7 @@ class CanvasPage(QWidget):
 
         except Exception as e:
             logger.error(f"❌ 加载失败: {traceback.format_exc()}")
-            self.create_failed_info("加载失败", f"工作流加载失败: {str(e)}")
+            MessageManager.error("加载失败", f"工作流加载失败: {str(e)}", self)
 
     def _finish_loading(self, runtime_data, node_status_data):
         """加载完成后恢复状态"""
@@ -1776,7 +1567,7 @@ class CanvasPage(QWidget):
 
         QTimer.singleShot(0, self.create_name_label)
         QTimer.singleShot(0, self._delayed_fit_view)
-        self.create_success_info("加载成功", "工作流加载成功！")
+        MessageManager.success("加载成功", "工作流加载成功！", self)
 
     def _delayed_fit_view(self):
         self.graph._viewer.zoom_to_nodes(self.graph._viewer.all_nodes())
@@ -1798,7 +1589,7 @@ class CanvasPage(QWidget):
 
     def _setup_context_menus(self):
         graph_menu = self.graph.get_context_menu('graph')
-        graph_menu.add_command('运行工作流', self.run_workflow, 'Ctrl+R')
+        graph_menu.add_command('运行工作流', self.canvas_runner.run_workflow, 'Ctrl+R')
         graph_menu.add_command('保存工作流', self._save_via_dialog, 'Ctrl+S')
         graph_menu.add_separator()
         graph_menu.add_command('撤销', self._undo, 'Ctrl+Z')
@@ -1845,7 +1636,7 @@ class CanvasPage(QWidget):
             if self.graph.undo_stack().canUndo():
                 self.graph.undo_stack().undo()
             else:
-                self.create_info("提示", "没有可撤销的操作")
+                MessageManager.info("提示", "没有可撤销的操作", self)
         except Exception as e:
             logger.warning(f"撤销失败: {e}")
 
@@ -1854,7 +1645,7 @@ class CanvasPage(QWidget):
             if self.graph.undo_stack().canRedo():
                 self.graph.undo_stack().redo()
             else:
-                self.create_info("提示", "没有可重做的操作")
+                MessageManager.info("提示", "没有可重做的操作", self)
         except Exception as e:
             logger.warning(f"重做失败: {e}")
 
@@ -1870,7 +1661,7 @@ class CanvasPage(QWidget):
         if not selected_nodes:
             return
         self._clipboard_data = self.graph.copy_nodes()
-        self.create_info("复制成功", f"已复制 {len(selected_nodes)} 个节点")
+        MessageManager.info("复制成功", f"已复制 {len(selected_nodes)} 个节点", self)
 
     def _paste_nodes(self):
         if not self._clipboard_data:
@@ -1896,57 +1687,6 @@ class CanvasPage(QWidget):
                 new_x = x - min_x + avg_x + offset[0]
                 new_y = y - min_y + avg_y + offset[1]
                 node.set_pos(new_x, new_y)
-            self.create_info("粘贴成功", f"已粘贴 {len(pasted_nodes)} 个节点")
+            MessageManager.info("粘贴成功", f"已粘贴 {len(pasted_nodes)} 个节点", self)
         # 粘贴节点后，使缓存无效
         self._invalidate_node_cache()
-
-    def create_success_info(self, title, content):
-        InfoBar.success(
-            title=title,
-            content=content,
-            orient=Qt.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.TOP_RIGHT,
-            duration=2000,
-            parent=self
-        )
-
-    def create_failed_info(self, title, content):
-        InfoBar.error(
-            title=title,
-            content=content,
-            orient=Qt.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.TOP_RIGHT,
-            duration=2000,
-            parent=self
-        )
-
-    def create_warning_info(self, title, content):
-        InfoBar.warning(
-            title=title,
-            content=content,
-            orient=Qt.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.TOP_RIGHT,
-            duration=2000,
-            parent=self
-        )
-
-    def create_info(self, title, content):
-        InfoBar.info(
-            title=title,
-            content=content,
-            orient=Qt.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.TOP_RIGHT,
-            duration=2000,
-            parent=self
-        )
-
-    def closeEvent(self, event):
-        """窗口关闭事件，停止自动保存定时器"""
-        self._stop_auto_save_timer()
-        self.ipython_console.stop_kernel()
-        self.console_dialog.hide()
-        super().closeEvent(event)

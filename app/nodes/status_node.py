@@ -14,7 +14,7 @@ class NodeStatus:
     NODE_STATUS_RUNNING = "running"  # 运行中
     NODE_STATUS_SUCCESS = "success"  # 运行成功
     NODE_STATUS_FAILED = "failed"  # 运行失败
-
+    NODE_STATUS_DISABLED = "disabled"  # 节点被禁用
 
 # ----------------------------
 # 自定义节点类（支持状态显示）- 淡色版本
@@ -38,7 +38,7 @@ class StatusNode(BasicNodeWithGlobalProperty):
 
     def _update_status_color(self):
         """根据状态更新节点颜色（使用淡色）"""
-        if self._status == NodeStatus.NODE_STATUS_UNRUN:
+        if self._status == NodeStatus.NODE_STATUS_UNRUN or self._status == NodeStatus.NODE_STATUS_DISABLED:
             # 恢复原始颜色
             self.set_color(*self._original_color)
         elif self._status == NodeStatus.NODE_STATUS_RUNNING:

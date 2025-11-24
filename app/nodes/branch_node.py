@@ -3,7 +3,7 @@ from PyQt5 import QtCore
 
 from app.components.base import PropertyType, GlobalVariableContext
 from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
-from app.nodes.status_node import StatusNode
+from app.nodes.status_node import StatusNode, NodeStatus
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import resource_path, draw_square_port
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
@@ -429,6 +429,7 @@ def create_branch_node(parent_window):
                     node.set_disabled(False)
                 else:
                     node.set_disabled(True)
+                    parent_window.set_node_status(node, NodeStatus.NODE_STATUS_DISABLED)
                     # 清空输出值
                     if hasattr(node, '_output_values'):
                         node._output_values = {}

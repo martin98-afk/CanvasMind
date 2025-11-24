@@ -20,6 +20,9 @@ from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.dialog_widget.excel_viewer import ExcelViewer
 
 
+STR_MAX_SHOW_LENGTH = 400
+
+
 def _resolve_json_content(obj, arg_type):
     """
     根据 arg_type 解析 JSON 内容。
@@ -110,10 +113,10 @@ def _get_formatted_type_and_value(obj, arg_type=None):
                 return f"(Number) {str(obj)}"
         elif arg_type == ArgumentType.TEXT:
             if isinstance(obj, str):
-                if len(obj) <= 50:
+                if len(obj) <= STR_MAX_SHOW_LENGTH:
                     return f"(str) '{obj}'"
                 else:
-                    return f"(str) '{obj[:200]}...‘"
+                    return f"(str) '{obj[:STR_MAX_SHOW_LENGTH]}...‘"
             else:
                 return f"(str) '{str(obj)}'"
 
@@ -132,7 +135,10 @@ def _get_formatted_type_and_value(obj, arg_type=None):
             else:
                 return f"(File) '{os.path.basename(obj)}'"
         else:
-            return f"(str) '{obj[:200]}...'"
+            if len(obj) <= STR_MAX_SHOW_LENGTH:
+                return f"(str) '{obj}'"
+            else:
+                return f"(str) '{obj[:STR_MAX_SHOW_LENGTH]}...'"
     elif isinstance(obj, (int, float)):
         return f"({type(obj).__name__}) {obj}"
     elif isinstance(obj, np.number):
@@ -168,7 +174,7 @@ def _get_formatted_type_and_value(obj, arg_type=None):
         return f"({type(obj).__name__}) {str(obj)}"
 
 
-def get_simple_repr(obj, max_len=200):
+def get_simple_repr(obj, max_len=STR_MAX_SHOW_LENGTH):
     """获取对象的简单字符串表示，用于格式化输出，避免过长."""
     s = str(obj)
     if len(s) > max_len:
