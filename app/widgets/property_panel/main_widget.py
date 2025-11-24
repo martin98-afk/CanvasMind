@@ -254,7 +254,6 @@ class PropertyPanel(SimpleCardWidget):
         """构建全局变量面板"""
         if self._global_panel_built:
             return
-        print("构建全局变量面板")
         # 委托给 GlobalPanelWidget
         if not hasattr(self, 'global_panel_widget') or not self.global_panel_widget:
             self.global_panel_widget = GlobalPanelWidget(self.main_window, self, self.global_vbox)

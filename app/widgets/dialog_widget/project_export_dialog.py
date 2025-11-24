@@ -147,6 +147,15 @@ class InputSelectionDialog(QWidget):  # 继承 QWidget
         segmented_widget.addItem("params", "组件参数")
         segmented_widget.setCurrentItem("ports")
         layout.addWidget(segmented_widget)
+        btn_layout = QHBoxLayout()
+        select_all = PushButton('全选')
+        deselect_all = PushButton('全不选')
+        select_all.clicked.connect(lambda: self._set_all_checked(True))
+        deselect_all.clicked.connect(lambda: self._set_all_checked(False))
+        btn_layout.addWidget(select_all)
+        btn_layout.addWidget(deselect_all)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
 
         self.scroll_ports = self._create_grouped_scroll(input_groups, is_input=True)
         self.scroll_params = self._create_grouped_scroll(param_groups, is_input=True)
@@ -178,16 +187,6 @@ class InputSelectionDialog(QWidget):  # 继承 QWidget
         if not groups:
             layout.addWidget(StrongBodyLabel("暂无项目"))
         else:
-            btn_layout = QHBoxLayout()
-            select_all = PushButton('全选')
-            deselect_all = PushButton('全不选')
-            select_all.clicked.connect(lambda: self._set_all_checked(True))
-            deselect_all.clicked.connect(lambda: self._set_all_checked(False))
-            btn_layout.addWidget(select_all)
-            btn_layout.addWidget(deselect_all)
-            btn_layout.addStretch()
-            layout.addLayout(btn_layout)
-
             for (node_id, node_name), items in groups.items():
                 card = CardWidget()
                 card_layout = VBoxLayout(card)
@@ -275,6 +274,15 @@ class OutputSelectionDialog(QWidget):  # 继承 QWidget
         layout = VBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
+        btn_layout = QHBoxLayout()
+        select_all = PushButton('全选')
+        deselect_all = PushButton('全不选')
+        select_all.clicked.connect(lambda: self._set_all_checked(True))
+        deselect_all.clicked.connect(lambda: self._set_all_checked(False))
+        btn_layout.addWidget(select_all)
+        btn_layout.addWidget(deselect_all)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
 
         groups = defaultdict(list)
         for item in candidate_items:
@@ -294,16 +302,6 @@ class OutputSelectionDialog(QWidget):  # 继承 QWidget
         if not groups:
             inner_layout.addWidget(StrongBodyLabel("暂无输出"))
         else:
-            btn_layout = QHBoxLayout()
-            select_all = PushButton('全选')
-            deselect_all = PushButton('全不选')
-            select_all.clicked.connect(lambda: self._set_all_checked(True))
-            deselect_all.clicked.connect(lambda: self._set_all_checked(False))
-            btn_layout.addWidget(select_all)
-            btn_layout.addWidget(deselect_all)
-            btn_layout.addStretch()
-            inner_layout.addLayout(btn_layout)
-
             for (node_id, node_name), items in groups.items():
                 card = CardWidget()
                 card_layout = VBoxLayout(card)

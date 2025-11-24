@@ -117,7 +117,7 @@ def compute_folding_from_ast(code: str):
             current_tree[start:end+1] = (start, end) # 存储 (start, end) 作为数据
             folding_levels[start] = 1 # 简单层级，实际层级需更复杂算法
             folding_nesting[start] = [] # 简单嵌套关系，实际嵌套需更复杂算法
-        logger.info(f"[Folding] AST found {len(folding_regions)} regions.")
+        logger.debug(f"[Folding] AST found {len(folding_regions)} regions.")
         return current_tree, root, folding_regions, folding_nesting, folding_levels, folding_status
     except SyntaxError as e:
         # AST 解析失败（语法错误）
@@ -532,7 +532,7 @@ class CompletionWorker(QObject):
             if added_to_path and original_path is not None:
                 sys.path[:] = original_path  # 恢复原始路径
             elapsed = time.time() - start_time
-            logger.info(f"[Jedi] Completion took {elapsed:.3f}s for {len(completions)} items")
+            logger.debug(f"[Jedi] Completion took {elapsed:.3f}s for {len(completions)} items")
             self.completion_ready.emit(completions)
         except Exception as e:
             # 确保在出错时也恢复路径
@@ -635,7 +635,7 @@ class JediCodeEditor(CodeEditor):
                 with open(Path("app/components/base.py"), "r", encoding="utf-8") as f:
                     JediCodeEditor._BASE_CODE_CACHE = f.read()
             except Exception as e:
-                logger.info(f"[Jedi] Failed to load base.py: {e}")
+                logger.debug(f"[Jedi] Failed to load base.py: {e}")
                 JediCodeEditor._BASE_CODE_CACHE = ""
         self.python_exe_path = python_exe_path
         self.popup_offset = popup_offset
@@ -921,16 +921,16 @@ class JediCodeEditor(CodeEditor):
         folding_info = compute_folding_from_ast(code)
         if folding_info:
             self.folding_panel.update_folding(folding_info)
-            logger.info(f"[Folding] Updated folding structure. Regions: {len(folding_info[2])}")
+            logger.debug(f"[Folding] Updated folding structure. Regions: {len(folding_info[2])}")
         else:
             # 如果计算失败，清空折叠信息
             self.folding_panel.update_folding(None)
-            logger.info(f"[Folding] Cleared folding structure due to error or empty code.")
+            logger.debug(f"[Folding] Cleared folding structure due to error or empty code.")
 
     def _on_fold_trigger_changed(self, block: QTextBlock, collapsed: bool):
         """当折叠触发器被点击时，更新状态"""
         line_number = block.blockNumber()
-        logger.info(
+        logger.debug(
             f"[Folding] Trigger on line {line_number + 1} changed to {'collapsed' if collapsed else 'expanded'}")
 
     def _create_fullscreen_button(self, type="放大"):
@@ -991,19 +991,19 @@ class JediCodeEditor(CodeEditor):
             site_packages = os.path.join(python_dir, "Lib", "site-packages")
             if os.path.isdir(site_packages):
                 self._target_site_packages = site_packages
-                logger.info(f"[Jedi] Target site-packages: {site_packages}")
+                logger.debug(f"[Jedi] Target site-packages: {site_packages}")
             else:
                 self._target_site_packages = None
-                logger.info(f"[Jedi] Warning: site-packages not found at {site_packages}")
+                logger.debug(f"[Jedi] Warning: site-packages not found at {site_packages}")
         else:
             # 如果没有提供exe路径，尝试使用当前Python环境的site-packages
             import site
             if site.getsitepackages():
                 self._target_site_packages = site.getsitepackages()[0]
-                logger.info(f"[Jedi] Using current Python's site-packages: {self._target_site_packages}")
+                logger.debug(f"[Jedi] Using current Python's site-packages: {self._target_site_packages}")
             else:
                 self._target_site_packages = None
-                logger.info(f"[Jedi] Warning: Could not determine site-packages path")
+                logger.debug(f"[Jedi] Warning: Could not determine site-packages path")
 
     def add_custom_completions(self, words):
         """添加自定义补全"""
@@ -1015,7 +1015,7 @@ class JediCodeEditor(CodeEditor):
         """定期衰减补全使用计数"""
         current_time = time.time()
         if current_time - self._last_decay_time > self.usage_decay_interval:
-            logger.info(f"[Usage] Decaying usage counts.")
+            logger.debug(f"[Usage] Decaying usage counts.")
             for name in list(self.completion_usage.keys()):
                 last_time, count = self.completion_usage[name]
                 # 计算时间衰减因子 (基于上次使用时间)
@@ -1633,7 +1633,7 @@ class JediCodeEditor(CodeEditor):
 
     def _on_completion_error(self, error_msg: str):
         """处理补全错误"""
-        logger.info(f"[Jedi] Completion error: {error_msg}")
+        logger.debug(f"[Jedi] Completion error: {error_msg}")
         self.popup.hide()
         self._popup_timeout_timer.stop()  # 停止超时计时器
 
@@ -1641,7 +1641,7 @@ class JediCodeEditor(CodeEditor):
         """补全框超时回调"""
         if self.popup.isVisible():
             self.popup.hide()
-            logger.info("[Jedi] Popup closed due to timeout.")
+            logger.debug("[Jedi] Popup closed due to timeout.")
 
     def _on_item_hovered(self, item):
         """当鼠标悬停在补全项上时显示docstring"""

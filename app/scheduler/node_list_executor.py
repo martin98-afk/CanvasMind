@@ -60,10 +60,6 @@ class NodeListExecutor(QRunnable):
 
                 # ✅ 关键：检查节点是否被禁用
                 if node.get_property("disabled"):
-                    # 跳过禁用节点，标记为 skipped（不影响下游）
-                    if self.scheduler:
-                        self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_UNRUN)
-                    # 不发出 started/finished 信号（或可选发出 skipped 信号）
                     continue
 
                 # 执行正常节点

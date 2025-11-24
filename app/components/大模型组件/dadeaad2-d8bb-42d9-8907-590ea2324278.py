@@ -19,13 +19,13 @@ class Component(BaseComponent):
     name = "文档内容提取"
     category = "大模型组件"
     description = ""
-    requirements = "pdfplumber,pandas,python-docx,pptx"
+    requirements = "pandas,pptx,pdfplumber,python-docx"
 
     inputs = [
-        PortDefinition(name="file_path", label="文档路径", type=ArgumentType.UPLOAD),
+        PortDefinition(name="file_path", label="文档路径", type=ArgumentType.UPLOAD, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="text", label="提取的文本", type=ArgumentType.JSON),
+        PortDefinition(name="text", label="提取的文本", type=ArgumentType.TEXT),
         PortDefinition(name="metadata", label="文档元信息", type=ArgumentType.JSON),
     ]
 
@@ -137,7 +137,7 @@ class Component(BaseComponent):
             text = "\n".join(line.strip() for line in text.splitlines() if line.strip())
 
             return {
-                "text": {"doc": text},
+                "text": text,
                 "metadata": metadata
             }
 

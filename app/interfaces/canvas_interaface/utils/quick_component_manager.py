@@ -3,7 +3,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from pathlib import Path
 
 from app.utils.utils import resource_path
-from app.widgets.dialog_widget.add_quick_component_dialog import AddQuickComponentDialog
+from app.interfaces.canvas_interaface.widgets.add_quick_component_dialog import AddQuickComponentDialog
 from app.utils.config import Settings  # ← 你的 Settings 是 QConfig
 
 
