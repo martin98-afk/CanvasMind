@@ -125,6 +125,18 @@ class CanvasPage(QWidget):
     def component_map(self):
         return self.node_operations.component_map
 
+    @property
+    def file_map(self):
+        return self.node_operations.file_map
+
+    @property
+    def property_panel(self):
+        return self.ui_manager.property_panel
+
+    @property
+    def nav_view(self):
+        return self.ui_manager.nav_view
+
     def run_from(self, node):
         self.canvas_runner.run_from(node)
 
@@ -133,6 +145,9 @@ class CanvasPage(QWidget):
 
     def run_node(self, node):
         self.canvas_runner.run_node(node)
+
+    def delete_node(self, node):
+        self.node_operations.delete_node(node)
 
     def get_current_python_exe(self):
         return self.environment_manager.get_current_python_exe()
@@ -195,9 +210,9 @@ class CanvasPage(QWidget):
         ]:
             nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
                                    node_type=special_node)
-            nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
+            nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to(node),
                                    node_type=special_node)
-            nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
+            nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from(node),
                                    node_type=special_node)
             if special_node == "dynamic.DYNAMIC_CODE":
                 nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(), node_type=special_node)

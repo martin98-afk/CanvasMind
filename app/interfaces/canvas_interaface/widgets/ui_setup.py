@@ -17,22 +17,25 @@ from ..constants import BUTTONS_CONTAINER_X_OFFSET, DEFAULT_SPLITTER_SIZES, PIPE
 class CanvasUISetUp:
     def __init__(self, parent):
         self.parent = parent
+        self.nav_view = None
+        self.property_panel = None
+        self.nodes_container = None
 
     # --- ui构建 --- 
     def setup_ui(self):
         # 布局
         self._setup_pipeline_style()
         # 节点拖拽树
-        self.parent.nav_panel = DraggableTreePanel(self.parent)
-        self.parent.nav_view =  self.parent.nav_panel.tree
+        self.nav_panel = DraggableTreePanel(self.parent)
+        self.nav_view =  self.nav_panel.tree
         # 属性面板
-        self.parent.property_panel = PropertyPanel(self.parent)
+        self.property_panel = PropertyPanel(self.parent)
 
         main_layout = QHBoxLayout(self.parent)
         splitter = ModernSplitter(Qt.Horizontal)
-        splitter.addWidget(self.parent.nav_panel)
+        splitter.addWidget(self.nav_panel)
         splitter.addWidget(self.parent.canvas_widget)
-        splitter.addWidget(self.parent.property_panel)
+        splitter.addWidget(self.property_panel)
         splitter.setSizes(DEFAULT_SPLITTER_SIZES)  # 画布初始分配更大空间
 
         # 设置分割器的拉伸因子，确保画布区域优先扩展
