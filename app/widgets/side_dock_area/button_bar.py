@@ -1,8 +1,21 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTabWidget
 from qfluentwidgets import TransparentToolButton
 
 from app.widgets.side_dock_area.registry import SideDockRegistry
+
+
+class DraggableTabWidget(QTabWidget):
+    def __init__(self, dock_area, position="top"):
+        super().__init__()
+        self.dock_area = dock_area
+        self.position = position
+        self.setMovable(True)
+        self.setTabsClosable(False)
+
+    def tabRemoved(self, index):
+        if self.count() == 0 and self.position == "bottom":
+            self.dock_area.hide_bottom()
 
 
 class SideDockButtonBar(QWidget):
