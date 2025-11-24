@@ -40,12 +40,6 @@ class CanvasPage(QWidget):
         self.workflow_name = object_name.stem.split(".")[0] if object_name else "未命名工作流"
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
         self.config = Settings.get_instance()
-        # 初始化状态存储数据分析/因子分析
-
-
-        self._node_flyout = None
-        self._selection_update_pending = False
-
         # 线程池
         self.thread_pool = QThreadPool.globalInstance()
         # 全局变量
@@ -130,6 +124,15 @@ class CanvasPage(QWidget):
     @property
     def component_map(self):
         return self.node_operations.component_map
+
+    def run_from(self, node):
+        self.canvas_runner.run_from(node)
+
+    def run_to(self, node):
+        self.canvas_runner.run_to(node)
+
+    def run_node(self, node):
+        self.canvas_runner.run_node(node)
 
     def get_current_python_exe(self):
         return self.environment_manager.get_current_python_exe()
@@ -260,6 +263,7 @@ class CanvasPage(QWidget):
         self.canvas_runner.node_status_changed.connect(self.set_node_status_by_id)
         self.canvas_runner.workflow_cancelled.connect(self._on_workflow_cancelled)
 
+    # --- 画布按键信号 ---
     def _canvas_key_press_event(self, event):
         super(NodeViewer, self.canvas_widget).keyPressEvent(event)
         self.canvas_widget.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
@@ -403,14 +407,7 @@ class CanvasPage(QWidget):
         if src_path and dst_path:
             self.manager.recommendation_engine._stats_manager.record_connection(src_path, dst_path)
 
-    def on_selection_changed(self, node_ids: list, prev_ids: list):
-        if self._selection_update_pending:
-            return
-        self._selection_update_pending = True
-        QtCore.QTimer.singleShot(0, self._do_selection_update)
-
-    def _do_selection_update(self):
-        self._selection_update_pending = False
+    def on_selection_changed(self):
         selected_nodes = self.graph.selected_nodes()
         # 原有属性面板逻辑
         if selected_nodes:

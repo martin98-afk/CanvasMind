@@ -4,20 +4,6 @@ from enum import Enum
 from NodeGraphQt.constants import PipeLayoutEnum, ViewerEnum
 
 
-class CanvasGridStyle(str, Enum):
-    LINES = "线网格"
-    DOTS = "点网格"
-    NONE = "无网格"
-
-class CanvasPipeStyle(str, Enum):
-    ANGLED = "折线"
-    CURVED = "曲线"
-    STRAIGHT = "直线"
-
-class CanvasDirection(int, Enum):
-    HORIZONTAL = 0
-    VERTICAL = 1
-
 # UI constants
 MAX_VISIBLE_QUICK_BUTTONS = 7
 CONSOLE_HEIGHT = 300
