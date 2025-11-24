@@ -32,10 +32,8 @@ class ConsoleManager:
         console_layout.addWidget(splitter)
         self.console_container.setFixedHeight(CONSOLE_HEIGHT)
         self._update_position()
-        QTimer.singleShot(0, self.connect_kernel)
 
-    def connect_kernel(self):
-        python_exe = self.parent.get_current_python_exe()
+    def connect_kernel(self, python_exe):
         if python_exe:
             if self.ipython_console.kernel_manager.python_exe_path != python_exe or \
                not self.ipython_console.kernel_manager.get_kernel_info().get("is_alive"):

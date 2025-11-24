@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from enum import Enum
 
+from NodeGraphQt.constants import PipeLayoutEnum, ViewerEnum
+
+
 class CanvasGridStyle(str, Enum):
     LINES = "线网格"
     DOTS = "点网格"
@@ -23,14 +26,14 @@ BUTTONS_CONTAINER_X_OFFSET = 190
 NAME_LABEL_HEIGHT = 30
 ENV_SELECTOR_HEIGHT = 30
 PIPELINE_STYLE = {
-    "折线": 0,
-    "曲线": 2,
-    "直线": 3,
+    "折线": PipeLayoutEnum.ANGLE.value,
+    "曲线": PipeLayoutEnum.CURVED.value,
+    "直线": PipeLayoutEnum.STRAIGHT.value,
 }
 GRID_STYLE = {
-    "线网格": 1,
-    "点网格": 2,
-    "无网格": 0,
+    "线网格": ViewerEnum.GRID_DISPLAY_LINES.value,
+    "点网格": ViewerEnum.GRID_DISPLAY_DOTS.value,
+    "无网格": ViewerEnum.GRID_DISPLAY_NONE.value,
 }
 PIPELINE_DIRECTION = {
     "水平": 0,

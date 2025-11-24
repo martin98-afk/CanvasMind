@@ -9,46 +9,35 @@ from datetime import datetime
 from pathlib import Path
 
 from NodeGraphQt import BackdropNode, BaseNode
-from NodeGraphQt.constants import PipeLayoutEnum, ViewerEnum
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QSize, QTimer, QPoint, QThreadPool
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QTimer, QThreadPool
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QProgressDialog, QApplication
+from PyQt5.QtWidgets import QWidget, QProgressDialog, QApplication
 from loguru import logger
-from qfluentwidgets import (
-    InfoBar,
-    InfoBarPosition, FluentIcon, ComboBox, LineEdit, RoundMenu, Action, TransparentToolButton
-)
 
 from app.components.base import PropertyType, GlobalVariableContext
 from app.interfaces.canvas_interaface.utils.auto_saver import AutoSaver
 from app.interfaces.canvas_interaface.utils.canvas_runner import CanvasRunner
+from app.interfaces.canvas_interaface.utils.quick_component_manager import QuickComponentManager
 from app.interfaces.canvas_interaface.widgets.console_manager import ConsoleManager
+from app.interfaces.canvas_interaface.widgets.environment_manager import EnvironmentManager
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
+from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
 from app.nodes.backdrop_node import ControlFlowIterateNode, ControlFlowLoopNode, ControlFlowBackdrop
 from app.nodes.branch_node import create_branch_node
 from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortOutputNode, CustomPortInputNode
 from app.nodes.status_node import NodeStatus, StatusNode
-from app.templates.readme_template import DETAILED_README
 from app.scan_components import scan_components
 from app.scheduler.node_recommendation_engine import RecommendationTask
-from app.scheduler.workflow_scheduler import WorkflowScheduler  # ← 新增导入
+from app.templates.readme_template import DETAILED_README
 from app.utils.config import Settings
-from app.interfaces.canvas_interaface.utils.quick_component_manager import QuickComponentManager
 from app.utils.threading_utils import ThumbnailGenerator
-from app.utils.utils import serialize_for_json, deserialize_from_json, get_icon, topological_sort
-from app.widgets.dialog_widget.project_export_dialog import ProjectExportFlowDialog
-from app.widgets.ipython_console.ipython_console import EmbeddedIPythonConsole
-from app.widgets.basic_widget.splitter import ModernSplitter
-from app.widgets.ipython_console.variable_explorer import VariableExplorerWidget
+from app.utils.utils import serialize_for_json, deserialize_from_json, topological_sort
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
-from app.widgets.dialog_widget.ipython_dialog import IPythonConsoleDialog
-from app.widgets.minimap_widget import MinimapWidget
-from app.widgets.property_panel import PropertyPanel
-from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
+from app.widgets.dialog_widget.project_export_dialog import ProjectExportFlowDialog
 
 
 class CanvasPage(QWidget):
@@ -56,21 +45,6 @@ class CanvasPage(QWidget):
     canvas_saved = pyqtSignal(Path)
     global_variables_changed = pyqtSignal(str, str, str)
     env_changed = pyqtSignal(str)
-
-    PIPELINE_STYLE = {
-        "折线": PipeLayoutEnum.ANGLE.value,
-        "曲线": PipeLayoutEnum.CURVED.value,
-        "直线": PipeLayoutEnum.STRAIGHT.value,
-    }
-    GRID_STYLE = {
-        "线网格": ViewerEnum.GRID_DISPLAY_LINES.value,
-        "点网格": ViewerEnum.GRID_DISPLAY_DOTS.value,
-        "无网格": ViewerEnum.GRID_DISPLAY_NONE.value,
-    }
-    PIPELINE_DIRECTION = {
-        "水平": 0,
-        "垂直": 1
-    }
 
     def __init__(self, parent=None, object_name: Path = None, manager=None):
         super().__init__()
@@ -94,6 +68,13 @@ class CanvasPage(QWidget):
 
         # 初始化 NodeGraph
         self.graph = CustomNodeGraph(viewer=CustomNodeViewer())
+        self.canvas_widget = self.graph.viewer()
+        self.canvas_widget.keyPressEvent = self._canvas_key_press_event
+        # 启用画布拖拽
+        self.canvas_widget.setAcceptDrops(True)
+        self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
+        self.canvas_widget.dropEvent = self.canvas_drop_event
+        self.canvas_widget.installEventFilter(self)
         self.graph.node_created.connect(self.on_node_created)
         self.graph.port_connected.connect(self._on_port_connected)
         self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
@@ -104,7 +85,6 @@ class CanvasPage(QWidget):
             parent_widget=self,
             component_map=self.component_map
         )
-        self.quick_manager.quick_components_changed.connect(self._refresh_quick_buttons)
 
         # --- 自动保存相关 ---
         self._auto_saver = AutoSaver(self, self.file_path, self.config)
@@ -112,8 +92,15 @@ class CanvasPage(QWidget):
         # --- 连接ipython console ---
         self.console_manager = ConsoleManager(self)
 
+        # --- 环境管理 ---
+        self.environment_manager = EnvironmentManager(self)
+
         # --- 画布运行管理 ---
-        self.canvas_runner = CanvasRunner(self.console_manager.ipython_console, self)
+        self.canvas_runner = CanvasRunner(
+            self.console_manager.ipython_console,
+            self.environment_manager.get_current_python_exe,
+            self
+        )
 
         # 线程池
         self.thread_pool = QThreadPool.globalInstance()
@@ -122,49 +109,105 @@ class CanvasPage(QWidget):
         self.global_variables = GlobalVariableContext()
 
         # 初始化ui
-        self._setup_ui()
-        # 连接ui信号
-        self._connect_runner_signals()
-        self.console_manager.connect_kernel()
-
-    def _setup_ui(self):
-        # 布局
-        self._setup_pipeline_style()
-        # 画布控件
-        self.canvas_widget = self.graph.viewer()
-        self.canvas_widget.keyPressEvent = self._canvas_key_press_event
-        # 节点拖拽树
-        self.nav_panel = DraggableTreePanel(self)
-        self.nav_view = self.nav_panel.tree
-        # 属性面板
-        self.property_panel = PropertyPanel(self)
-
-        main_layout = QHBoxLayout(self)
-        splitter = ModernSplitter(Qt.Horizontal)
-        splitter.addWidget(self.nav_panel)
-        splitter.addWidget(self.canvas_widget)
-        splitter.addWidget(self.property_panel)
-        splitter.setSizes([150, 800, 150])  # 画布初始分配更大空间
-
-        # 设置分割器的拉伸因子，确保画布区域优先扩展
-        splitter.setStretchFactor(0, 0)  # 左侧导航不拉伸
-        splitter.setStretchFactor(1, 1)  # 中间画布拉伸（主要区域）
-        splitter.setStretchFactor(2, 0)  # 右侧属性不拉伸
-        main_layout.addWidget(splitter)
-
-        # 创建悬浮按钮和环境选择
-        self.create_environment_selector()
-        self.create_floating_buttons()
-        self.create_floating_nodes()
-        self.console_manager.create_console_panel()
-        # 启用画布拖拽
-        self.canvas_widget.setAcceptDrops(True)
-        self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
-        self.canvas_widget.dropEvent = self.canvas_drop_event
-        self.canvas_widget.installEventFilter(self)
-        # 右键菜单
+        self.ui_manager = CanvasUISetUp(self)
+        self.ui_manager.setup_ui()
         self._setup_context_menus()
+        # 连接ui信号
+        self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
+        self._connect_runner_signals()
+        self.console_manager.connect_kernel(self.environment_manager.get_current_python_exe())
 
+    # 代理方法
+    @property
+    def env_combo(self):
+        return self.environment_manager.env_combo
+
+    @property
+    def run_btn(self):
+        return self.ui_manager.run_btn
+
+    @property
+    def stop_btn(self):
+        return self.ui_manager.stop_btn
+
+    def get_current_python_exe(self):
+        return self.environment_manager.get_current_python_exe()
+
+    def _setup_pipeline_style(self):
+        return self.ui_manager._setup_pipeline_style()
+
+    def switch_to_parent(self):
+        self.parent.switchTo(self.parent.workflow_manager)
+
+    # --- 节点注册 ---
+    def _register_builtin_components(self):
+        # 迭代节点
+        code_node = create_dynamic_code_node(self)
+        code_node.__name__ = "DYNAMIC_CODE"
+        self.graph.register_node(code_node)
+
+        self.node_type_map[code_node.FULL_PATH] = f"dynamic.{code_node.__name__}"
+        # 迭代节点
+        iterate_node = ControlFlowIterateNode
+        iterate_node.__name__ = "ControlFlowIterateNode"
+        self.graph.register_node(iterate_node)
+        self.node_type_map[iterate_node.FULL_PATH] = f"control_flow.ControlFlowIterateNode"
+        # 循环节点
+        loop_node = ControlFlowLoopNode
+        loop_node.__name__ = "ControlFlowLoopNode"
+        self.graph.register_node(loop_node)
+        self.node_type_map[loop_node.FULL_PATH] = f"control_flow.{loop_node.__name__}"
+        # 输入端口节点
+        input_port_node = CustomPortInputNode
+        input_port_node.__name__ = "ControlFlowInputPort"
+        self.graph.register_node(input_port_node)
+        # 输出端口节点
+        output_port_node = CustomPortOutputNode
+        output_port_node.__name__ = "ControlFlowOutputPort"
+        self.graph.register_node(output_port_node)
+        # 注册分支节点
+        branch_node = create_branch_node(self)
+        branch_node.__name__ = "ControlFlowBranchNode"
+        self.graph.register_node(branch_node)
+        self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
+
+    def register_components(self):
+        self._registered_nodes.extend(list(self.graph.registered_nodes()))
+        self.graph._node_factory.clear_registered_nodes()
+        self.graph._context_menu = {}
+        self.graph._register_context_menu()
+        self.component_map, self.file_map = scan_components()
+        # 重建推荐索引
+        self.manager.recommendation_engine._recommendation_cache.clear()
+        self.manager.recommendation_engine._build_index(self.component_map)  # 重建索引
+        self._register_builtin_components()
+        # 普通节点
+        nodes_menu = self.graph.get_context_menu('nodes')
+        for full_path, comp_cls in self.component_map.items():
+            safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
+            node_class = create_node_class(comp_cls, full_path, self.file_map.get(full_path), self)
+            node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
+            node_class.__name__ = f"StatusDynamicNode_{safe_name}"
+            self.graph.register_node(node_class)
+            self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
+            if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
+                nodes_menu.add_command('运行此节点', lambda graph, node: self.canvas_runner.run_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('运行到此节点', lambda graph, node: self.canvas_runner.run_to(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.canvas_runner.run_from(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_separator()
+                nodes_menu.add_command('调试模式', lambda graph, node: node._toggle_debug_mode(),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
+                                       node_type=f"dynamic.{node_class.__name__}")
+
+    # --- 信号绑定 ---
     def set_node_status_by_id(self, node_id, status):
         node = self._get_node_by_id_cached(node_id)
         if node:
@@ -259,369 +302,8 @@ class CanvasPage(QWidget):
 
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:
-            self._update_nodes_container_position()
-            self.buttons_container.move(self.graph.viewer().width() - 190, 5)
-            self._position_name_container()
-            self.console_manager._update_position()
+            self.ui_manager.update_position()
         return super().eventFilter(obj, event)
-
-    def create_floating_buttons(self):
-        self.buttons_container = QWidget(self.graph.viewer())
-        self.buttons_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.buttons_container.move(self.graph.viewer().width() - 190, 5)
-        env_layout = QHBoxLayout(self.buttons_container)
-        env_layout.setSpacing(2)
-        env_layout.setContentsMargins(0, 0, 0, 0)
-        self.run_btn = TransparentToolButton(FluentIcon.PLAY, self)
-        self.run_btn.setToolTip("运行工作流")
-        self.run_btn.clicked.connect(self.canvas_runner.run_workflow)
-        env_layout.addWidget(self.run_btn)
-        self.stop_btn = TransparentToolButton(FluentIcon.PAUSE, self)
-        self.stop_btn.setToolTip("停止运行")
-        self.stop_btn.clicked.connect(self.canvas_runner.stop_workflow)
-        self.stop_btn.hide()
-        env_layout.addWidget(self.stop_btn)
-        self.console_btn = TransparentToolButton(get_icon("console"), self.canvas_widget)
-        self.console_btn.setToolTip("显示/隐藏调试控制台")
-        self.console_btn.clicked.connect(self.console_manager.toggle)
-        env_layout.addWidget(self.console_btn)
-        self.export_btn = TransparentToolButton(FluentIcon.SAVE, self)
-        self.export_btn.setToolTip("导出工作流")
-        self.export_btn.clicked.connect(self._save_via_dialog)
-        env_layout.addWidget(self.export_btn)
-        self.export_model_btn = TransparentToolButton(FluentIcon.SHARE, self)
-        self.export_model_btn.setToolTip("导出选中节点为独立模型")
-        self.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
-        env_layout.addWidget(self.export_model_btn)
-        self.close_btn = TransparentToolButton(FluentIcon.CLOSE, self)
-        self.close_btn.setToolTip("关闭当前画布")
-        self.close_btn.clicked.connect(
-            lambda: (
-                self.parent.switchTo(self.parent.workflow_manager),
-                QtCore.QTimer.singleShot(300, self.close_current_canvas)
-            )
-        )
-        env_layout.addWidget(self.close_btn)
-        env_layout.addStretch()
-        self.buttons_container.setLayout(env_layout)
-        self.buttons_container.show()
-
-    def connect_ipython_kernel(self):
-        current_python_exe = self.get_current_python_exe()
-        if current_python_exe is not None and (
-                self.ipython_console.kernel_manager.python_exe_path != current_python_exe or
-                not self.ipython_console.kernel_manager.get_kernel_info().get("is_alive")):
-            self.ipython_console.kernel_manager.shutdown_kernel()
-            if not self.ipython_console.start_kernel(self.get_current_python_exe()):
-                raise RuntimeError("无法启动 IPython 内核")
-            self.var_explorer.set_kernel_manager(self.ipython_console.kernel_manager)
-            self.var_explorer.start_auto_refresh()
-
-    def _update_console_position(self):
-        """更新 Console 面板的位置和大小"""
-        if not hasattr(self, 'console_container') or not hasattr(self, 'canvas_widget'):
-            return
-
-        canvas_width = self.canvas_widget.width()
-        canvas_height = self.canvas_widget.height()
-
-        if self.console_container.isVisible():
-            # Console 显示时，定位在 Canvas 底部
-            console_height = self.console_container.height()
-            self.console_container.setGeometry(40, canvas_height - console_height, canvas_width - 80, console_height)
-
-    def create_environment_selector(self):
-        self.env_selector_container = QWidget(self.graph.viewer())
-        self.env_selector_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.env_selector_container.move(0, 5)
-        env_layout = QHBoxLayout(self.env_selector_container)
-        env_layout.setSpacing(5)
-        env_layout.setContentsMargins(0, 0, 0, 0)
-        env_label = TransparentToolButton(self)
-        env_label.setText("环境:")
-        env_label.setFixedSize(50, 30)
-        self.env_combo = ComboBox(self.env_selector_container)
-        self.env_combo.setFixedWidth(140)
-        self.load_env_combos()
-        self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
-        if hasattr(self.parent, 'package_manager'):
-            self.parent.package_manager.env_changed.connect(self.load_env_combos)
-        env_layout.addWidget(env_label)
-        env_layout.addWidget(self.env_combo)
-        env_layout.addStretch()
-        self.env_selector_container.setLayout(env_layout)
-        self.env_selector_container.show()
-
-    def load_env_combos(self):
-        self.env_combo.clear()
-        if hasattr(self.parent, 'package_manager') and self.parent.package_manager:
-            envs = self.parent.package_manager.mgr.list_envs()
-            for env in envs:
-                self.env_combo.addItem(env, userData=env)
-
-    def on_environment_changed(self):
-        current_text = self.env_combo.currentText()
-        QtCore.QTimer.singleShot(0, self.connect_ipython_kernel)
-        self.env_changed.emit(
-            str(self.parent.package_manager.mgr.get_python_exe(self.env_combo.currentData()))
-        )
-        MessageManager.info("环境切换", f"当前运行环境: {current_text}", self)
-
-    def get_current_python_exe(self):
-        current_data = self.env_combo.currentData()
-        if hasattr(self.parent, 'package_manager') and self.parent.package_manager and current_data:
-            try:
-                return str(self.parent.package_manager.mgr.get_python_exe(current_data))
-            except Exception as e:
-                MessageManager.error("错误", f"获取环境 {current_data} 的Python路径失败: {str(e)}", self)
-                return None
-        return None
-
-    def _register_builtin_components(self):
-        # 迭代节点
-        code_node = create_dynamic_code_node(self)
-        code_node.__name__ = "DYNAMIC_CODE"
-        self.graph.register_node(code_node)
-
-        self.node_type_map[code_node.FULL_PATH] = f"dynamic.{code_node.__name__}"
-        # 迭代节点
-        iterate_node = ControlFlowIterateNode
-        iterate_node.__name__ = "ControlFlowIterateNode"
-        self.graph.register_node(iterate_node)
-        self.node_type_map[iterate_node.FULL_PATH] = f"control_flow.ControlFlowIterateNode"
-        # 循环节点
-        loop_node = ControlFlowLoopNode
-        loop_node.__name__ = "ControlFlowLoopNode"
-        self.graph.register_node(loop_node)
-        self.node_type_map[loop_node.FULL_PATH] = f"control_flow.{loop_node.__name__}"
-        # 输入端口节点
-        input_port_node = CustomPortInputNode
-        input_port_node.__name__ = "ControlFlowInputPort"
-        self.graph.register_node(input_port_node)
-        # 输出端口节点
-        output_port_node = CustomPortOutputNode
-        output_port_node.__name__ = "ControlFlowOutputPort"
-        self.graph.register_node(output_port_node)
-        # 注册分支节点
-        branch_node = create_branch_node(self)
-        branch_node.__name__ = "ControlFlowBranchNode"
-        self.graph.register_node(branch_node)
-        self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
-
-    def register_components(self):
-        self._registered_nodes.extend(list(self.graph.registered_nodes()))
-        self.graph._node_factory.clear_registered_nodes()
-        self.graph._context_menu = {}
-        self.graph._register_context_menu()
-        self.component_map, self.file_map = scan_components()
-        # 重建推荐索引
-        self.manager.recommendation_engine._recommendation_cache.clear()
-        self.manager.recommendation_engine._build_index(self.component_map)  # 重建索引
-        self._register_builtin_components()
-        # 普通节点
-        nodes_menu = self.graph.get_context_menu('nodes')
-        for full_path, comp_cls in self.component_map.items():
-            safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
-            node_class = create_node_class(comp_cls, full_path, self.file_map.get(full_path), self)
-            node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
-            node_class.__name__ = f"StatusDynamicNode_{safe_name}"
-            self.graph.register_node(node_class)
-            self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
-            if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
-                nodes_menu.add_command('运行此节点', lambda graph, node: self.canvas_runner.run_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('运行到此节点', lambda graph, node: self.canvas_runner.run_to(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.canvas_runner.run_from(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_separator()
-                nodes_menu.add_command('调试模式', lambda graph, node: node._toggle_debug_mode(),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-
-    def create_floating_nodes(self):
-        self.nodes_container = QWidget(self.canvas_widget)
-        self.nodes_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self._update_nodes_container_position()
-        self.node_layout = QVBoxLayout(self.nodes_container)
-        self.node_layout.setSpacing(3)
-        self.node_layout.setContentsMargins(0, 0, 0, 0)
-
-        # === 固定控制流按钮 ===
-        self.iterate_node = TransparentToolButton(get_icon("更新"), self)
-        self.iterate_node.setIconSize(QSize(20, 20))
-        self.iterate_node.setToolTip("创建迭代")
-        self.iterate_node.clicked.connect(
-            lambda: self.create_backdrop_node("ControlFlowIterateNode")
-        )
-        self.node_layout.addWidget(self.iterate_node)
-
-        self.loop_node = TransparentToolButton(get_icon("无限"), self)
-        self.loop_node.setIconSize(QSize(20, 20))
-        self.loop_node.setToolTip("创建循环")
-        self.loop_node.clicked.connect(lambda: self.create_backdrop_node("ControlFlowLoopNode"))
-        self.node_layout.addWidget(self.loop_node)
-
-        self.branch_node = TransparentToolButton(get_icon("条件分支"), self)
-        self.branch_node.setIconSize(QSize(20, 20))
-        self.branch_node.setToolTip("创建分支")
-        self.branch_node.clicked.connect(lambda: self.create_next_node("control_flow.ControlFlowBranchNode"))
-        self.node_layout.addWidget(self.branch_node)
-
-        self.code_node = TransparentToolButton(get_icon("代码执行"), self)
-        self.code_node.setIconSize(QSize(20, 20))
-        self.code_node.setToolTip("创建代码编辑")
-        self.code_node.clicked.connect(lambda: self.create_next_node("dynamic.DYNAMIC_CODE"))
-        self.node_layout.addWidget(self.code_node)
-
-        self.tool_node = TransparentToolButton(get_icon("工具"), self)
-        self.tool_node.setIconSize(QSize(20, 20))
-        self.tool_node.setToolTip("创建工具调用")
-        self.tool_node.clicked.connect(
-            lambda: self.create_next_node("dynamic.StatusDynamicNode_大模型组件_工具调用", icon_path="icons/工具.svg")
-        )
-        self.node_layout.addWidget(self.tool_node)
-
-        # === 分隔线 ===
-        from PyQt5.QtWidgets import QFrame
-        self.separator = QFrame()
-        self.separator.setFrameShape(QFrame.HLine)
-        self.separator.setStyleSheet("color: #555;")
-        self.node_layout.addWidget(self.separator)
-
-        # === 可显示的快捷按钮容器 ===
-        self.visible_quick_container = QWidget(self.nodes_container)  # 用于存放可见的快捷按钮
-        self.visible_quick_layout = QVBoxLayout(self.visible_quick_container)
-        self.visible_quick_layout.setSpacing(3)
-        self.visible_quick_layout.setContentsMargins(0, 0, 0, 0)  # 调整边距
-        self.node_layout.addWidget(self.visible_quick_container)
-
-        # === "更多"按钮及其菜单 ===
-        self.more_quick_button = TransparentToolButton(FluentIcon.MORE, self)  # 使用 FluentIcon.MORE 或自定义图标
-        self.more_quick_button.setIconSize(QSize(20, 20))
-        self.more_quick_button.setToolTip("更多快捷组件")
-        self.more_quick_menu = RoundMenu(parent=self)  # 使用 qfluentwidgets 的菜单
-        self.more_quick_button.clicked.connect(self._show_more_quick_menu)
-
-        # 添加 "更多" 按钮到布局
-        self.node_layout.addWidget(self.more_quick_button)
-
-        # === 原来的 "+" 按钮（始终在最后）===
-        self.add_quick_btn = TransparentToolButton(FluentIcon.ADD, self)
-        self.add_quick_btn.setIconSize(QSize(20, 20))
-        self.add_quick_btn.setToolTip("添加快捷组件")
-        self.add_quick_btn.clicked.connect(self.quick_manager.open_add_dialog)
-        self.node_layout.addWidget(self.add_quick_btn)
-
-        self.nodes_container.setLayout(self.node_layout)
-        self.nodes_container.show()
-
-        # 初次加载快捷组件
-        self._refresh_quick_buttons()
-
-    def _show_more_quick_menu(self):
-        """显示“更多”按钮的菜单"""
-        # Clear the menu first
-        self.more_quick_menu.clear()
-        # Add actions for hidden quick components
-        for full_path, icon_path in self._hidden_quick_components:
-            comp_name = os.path.basename(full_path).replace('.py', '')
-            if icon_path and os.path.exists(icon_path):
-                icon = QtGui.QIcon(icon_path)
-            elif icon_path.startswith("builtin:\\"):
-                icon_name = icon_path.split("\\")[-1]
-                icon = FluentIcon[icon_name]
-            else:
-                icon = FluentIcon.APPLICATION
-            action = Action(
-                icon, f"创建 {comp_name}",
-                triggered=lambda _, fp=full_path, ip=icon_path: self.create_next_node(fp, ip)
-            )
-            action.setProperty("full_path", full_path)
-            self.more_quick_menu.addAction(action)
-        # Show the menu
-        self.more_quick_menu.exec_(self.more_quick_button.mapToGlobal(QPoint(0, self.more_quick_button.height())))
-
-    def _update_nodes_container_position(self):
-        if not hasattr(self, 'nodes_container') or not self.canvas_widget:
-            return
-        # 计算 layout 所需高度
-        self.nodes_container.adjustSize()  # ← 关键：让容器按内容自适应高度
-        width = self.nodes_container.width()
-        height = self.nodes_container.height()
-        # 垂直居中（可调）
-        y = max(50, (self.canvas_widget.height() - height) // 2)
-        self.nodes_container.move(0, y)
-
-    def _refresh_quick_buttons(self):
-        MAX_VISIBLE_QUICK_BUTTONS = 7
-
-        all_quick_components = self.quick_manager.get_quick_components()
-        num_quick = len(all_quick_components)
-
-        # --- 清理现有按钮 ---
-        # 清除可见容器中的按钮
-        while self.visible_quick_layout.count():
-            item = self.visible_quick_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
-        # 清空菜单
-        self.more_quick_menu.clear()
-        # 重置隐藏列表
-        self._hidden_quick_components = []
-
-        # --- 重新分配按钮 ---
-        for i, qc in enumerate(all_quick_components):
-            full_path = qc["full_path"]
-            comp_name = os.path.basename(full_path).replace('.py', '')
-            icon_path = qc.get("icon_path")
-
-            if i > MAX_VISIBLE_QUICK_BUTTONS:
-                self._hidden_quick_components.append((qc["full_path"], qc.get("icon_path")))
-                self.more_quick_button.show()
-            else:
-
-                if icon_path and os.path.exists(icon_path):
-                    icon = QtGui.QIcon(icon_path)
-                elif icon_path.startswith("builtin:\\"):
-                    icon_name = icon_path.split("\\")[-1]
-                    icon = FluentIcon[icon_name]
-                    icon_path = f":/qfluentwidgets/images/icons/{FluentIcon[icon_name].value}_white.svg"
-                else:
-                    icon = FluentIcon.APPLICATION
-                    icon_path = f":/qfluentwidgets/images/icons/{FluentIcon.APPLICATION.value}_white.svg"
-
-                btn = TransparentToolButton(icon, self)
-                btn.setIconSize(QSize(20, 20))
-                btn.setToolTip(f"创建 {comp_name}")
-                btn.setProperty("full_path", full_path)
-                btn.clicked.connect(lambda _, ip=icon_path, fp=full_path: self.create_next_node(fp, ip))
-
-                # 右键菜单：删除
-                btn.setContextMenuPolicy(Qt.CustomContextMenu)
-                btn.customContextMenuRequested.connect(
-                    lambda pos, b=btn, fp=full_path: self._show_quick_button_menu(b, fp, pos)
-                )
-                self.visible_quick_layout.addWidget(btn)
-
-        # 如果没有隐藏的组件，隐藏“更多”按钮
-        if not self._hidden_quick_components:
-            self.more_quick_button.hide()
-
-        QtCore.QTimer.singleShot(0, self._update_nodes_container_position)
-
-    def _show_quick_button_menu(self, button, full_path, pos):
-        menu = RoundMenu()
-        menu.addAction(
-            Action("从快捷栏移除", triggered=lambda: self.quick_manager.remove_component(full_path))
-        )
-        menu.exec_(button.mapToGlobal(pos))
 
     def create_next_node(self, key, icon_path=None):
         """按钮节点通用创建方法"""
@@ -763,62 +445,6 @@ class CanvasPage(QWidget):
         self.parent.removeInterface(self)
         self.deleteLater()  # 关键：触发 Qt 对象销毁
 
-    def create_name_label(self):
-        self.name_container = QWidget(self.canvas_widget)
-        self.name_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        name_label = LineEdit(self.name_container)
-        # 设置透明背景
-        name_label.setStyleSheet("""
-            LineEdit {
-                background: transparent;
-                border: none;
-                padding: 2px 4px;
-                color: white; /* 或你主题对应的文字颜色 */
-                font-size: 18px;
-                font-weight: bold;
-            }
-        """)
-        name_label.setText(self.workflow_name)
-        name_label.textChanged.connect(self.update_workflow_name)
-        self._update_name_label_width(name_label)
-        name_layout = QHBoxLayout(self.name_container)
-        name_layout.setContentsMargins(0, 0, 0, 0)
-        name_layout.setSpacing(5)
-        name_layout.addWidget(name_label)
-        name_layout.addStretch()
-        self.name_container.setLayout(name_layout)
-        QtCore.QTimer.singleShot(0, self._position_name_container)
-        self.name_container.show()
-
-    def _update_name_label_width(self, line_edit):
-        text = line_edit.text() or " "
-        font_metrics = line_edit.fontMetrics()
-        text_width = font_metrics.horizontalAdvance(text)
-        padding = 24
-        total_width = text_width + padding
-        line_edit.setFixedWidth(max(total_width, 80))
-        self.name_container.setFixedWidth(line_edit.width())
-
-    def _position_name_container(self):
-        if not hasattr(self, 'name_container') or not self.name_container.isVisible():
-            return
-        if not hasattr(self, 'canvas_widget') or self.canvas_widget.width() <= 0:
-            return
-        name_edit = self.name_container.findChild(LineEdit)
-        if not name_edit:
-            return
-        self._update_name_label_width(name_edit)
-        container_width = self.name_container.width()
-        x = max(0, (self.canvas_widget.width() - container_width) // 2)
-        self.name_container.move(x, 0)
-
-    def update_workflow_name(self, text):
-        self.workflow_name = text
-        name_edit = self.name_container.findChild(LineEdit)
-        if name_edit:
-            self._update_name_label_width(name_edit)
-            QtCore.QTimer.singleShot(0, self._position_name_container)
-
     def center_to(self, node):
         self.graph.clear_selection()
         if node not in self.graph.all_nodes():
@@ -826,14 +452,6 @@ class CanvasPage(QWidget):
             return
         node.set_selected(True)
         self.graph.fit_to_selection()
-
-    def _save_via_dialog(self):
-        if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
-            file_path = self.file_path
-        else:
-            file_path = (self.file_path.parent if self.file_path else Path("../app/interfaces")) / f"{self.workflow_name}.workflow.json"
-        self.save_full_workflow(file_path)
-        self.file_path = file_path
 
     def canvas_drag_enter_event(self, event):
         if event.mimeData().hasText():
@@ -1394,6 +1012,15 @@ class CanvasPage(QWidget):
             self.property_panel.reset_current_components()
             QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
 
+    # --- 画布IO操作 ---
+    def _save_via_dialog(self):
+        if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
+            file_path = self.file_path
+        else:
+            file_path = (self.file_path.parent if self.file_path else Path("../app/interfaces")) / f"{self.workflow_name}.workflow.json"
+        self.save_full_workflow(file_path)
+        self.file_path = file_path
+
     def save_full_workflow(self, file_path, show_info=True):
         graph_data = self.graph.serialize_session()
         # 剔除节点中自定义全局变量，减少加载负担
@@ -1529,7 +1156,7 @@ class CanvasPage(QWidget):
 
     def _finish_loading(self, runtime_data, node_status_data):
         """加载完成后恢复状态"""
-        self._setup_pipeline_style()
+        self.ui_manager._setup_pipeline_style()
 
         # 环境
         env = runtime_data.get("environment")
@@ -1565,7 +1192,7 @@ class CanvasPage(QWidget):
         self._node_id_cache = {node.id: node for node in self.graph.all_nodes()}
         self._node_id_cache_valid = True
 
-        QTimer.singleShot(0, self.create_name_label)
+        QTimer.singleShot(0, self.ui_manager.create_name_label)
         QTimer.singleShot(0, self._delayed_fit_view)
         MessageManager.success("加载成功", "工作流加载成功！", self)
 
@@ -1577,15 +1204,6 @@ class CanvasPage(QWidget):
     def edit_node(self, node):
         self.parent.switchTo(self.parent.develop_page)
         self.parent.develop_page._load_component(node.component_class, node.FULL_PATH)
-
-    def _setup_pipeline_style(self):
-        self.graph.set_grid_mode(self.GRID_STYLE.get(self.config.canvas_grid_mode.value))
-        self.graph.set_pipe_style(
-            self.PIPELINE_STYLE.get(self.config.canvas_pipelayout.value)
-        )
-        self.graph.set_layout_direction(
-            self.PIPELINE_DIRECTION.get(self.config.canvas_direction.value)
-        )
 
     def _setup_context_menus(self):
         graph_menu = self.graph.get_context_menu('graph')

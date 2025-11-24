@@ -27,7 +27,7 @@ class EnvironmentManager:
         self.env_combo = ComboBox(container)
         self.env_combo.setFixedWidth(140)
         self.load_env_combos()
-        self.env_combo.currentIndexChanged.connect(self.parent.on_environment_changed)
+        self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
 
         layout.addWidget(label)
         layout.addWidget(self.env_combo)

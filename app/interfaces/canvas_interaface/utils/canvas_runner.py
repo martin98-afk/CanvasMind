@@ -15,10 +15,11 @@ class CanvasRunner(QObject):
     node_status_changed = pyqtSignal(str, object)  # node_id, status
     property_changed = pyqtSignal(object)  # for property panel
 
-    def __init__(self, ipython_kernel, parent=None):
+    def __init__(self, ipython_kernel, get_python_exe, parent=None):
         super().__init__(parent)
         self._scheduler = None
         self.ipython_kernel = ipython_kernel
+        self.get_python_exe = get_python_exe
         self.parent = parent
 
     def _create_scheduler(self):
@@ -28,7 +29,7 @@ class CanvasRunner(QObject):
             graph=self.parent.graph,
             component_map=self.parent.component_map,
             get_node_status=self.parent.get_node_status,
-            get_python_exe=self.parent.get_current_python_exe,
+            get_python_exe=self.get_python_exe,
             kernel_manager=self.ipython_kernel,
             global_variables=self.parent.global_variables,
             parent=self.parent,
