@@ -88,14 +88,14 @@ class LowCodeWindow(FluentWindow):
         self.addSubInterface(
             self.setting_card, FluentIcon.SETTING, '系统设置', NavigationItemPosition.BOTTOM
         )
-        QtCore.QTimer.singleShot(1000, self.finish_splash_screen)
+        QtCore.QTimer.singleShot(500, self.finish_splash_screen)
 
     def finish_splash_screen(self):
         self.splashScreen.finish()
         self.resize(self.window_width, self.window_height)
         self.move(self.w // 2 - self.width() // 2, self.h // 2 - self.height() // 2)
         if self.config.auto_check_update.value:
-            QtCore.QTimer.singleShot(1000, self.updater.check_update)
+            QtCore.QTimer.singleShot(500, self.updater.check_update)
 
     def setup_log_viwer(self):
         if not hasattr(self, 'log_viewer'):

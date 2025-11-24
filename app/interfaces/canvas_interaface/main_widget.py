@@ -83,7 +83,6 @@ class CanvasPage(QWidget):
             self
         )
         #=======================================
-
         # 初始化ui
         self.ui_manager = CanvasUISetUp(self)
         self.ui_manager.setup_ui()
