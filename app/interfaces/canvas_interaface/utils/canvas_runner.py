@@ -42,12 +42,12 @@ class CanvasRunner(QObject):
         """执行所有选中节点的工作流"""
         self._scheduler = self._create_scheduler()
         self._connect_signals(self._scheduler)
-        if self.parent.property_panel.get_current_execution_order():
-            nodes = self.parent.property_panel.get_current_execution_order()
+        nodes = self.parent.property_panel.get_current_execution_order()
+        if nodes:
             self._scheduler.run_full(nodes=nodes, sort=False)
             self._scheduler.node_started.connect(
                 lambda : QtCore.QTimer.singleShot(
-                    50, self.parent.property_panel.node_list_panel_widget.update_node_list_content
+                    50, self.parent.property_panel.update_node_list_content
                 )
             )
             self._scheduler.backdrop_finished.connect(
@@ -57,22 +57,22 @@ class CanvasRunner(QObject):
             )
             self._scheduler.node_finished.connect(
                 lambda: QtCore.QTimer.singleShot(
-                    50, self.parent.property_panel.node_list_panel_widget.update_node_list_content
+                    50, self.parent.property_panel.update_node_list_content
                 )
             )
             self._scheduler.finished.connect(
                 lambda: QtCore.QTimer.singleShot(
-                    50, self.parent.property_panel.node_list_panel_widget.update_node_list_content
+                    50, self.parent.property_panel.update_node_list_content
                 )
             )
             self._scheduler.error.connect(
                 lambda: QtCore.QTimer.singleShot(
-                    50, self.parent.property_panel.node_list_panel_widget.update_node_list_content
+                    50, self.parent.property_panel.update_node_list_content
                 )
             )
             self._scheduler.cancelled.connect(
                 lambda: QtCore.QTimer.singleShot(
-                    50, self.parent.property_panel.node_list_panel_widget.update_node_list_content
+                    50, self.parent.property_panel.update_node_list_content
                 )
             )
         else:

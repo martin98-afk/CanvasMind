@@ -297,7 +297,7 @@ class WorkflowScheduler(QObject):
             outputs = self._collect_outputs(output_proxy)
             backdrop.model.set_property("current_index", index + 1)
             self.property_changed.emit(backdrop)
-            results.extend(outputs if isinstance(outputs, list) else [outputs])
+            results.append(outputs)
 
         return results
 

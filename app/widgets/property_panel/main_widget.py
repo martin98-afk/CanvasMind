@@ -163,7 +163,7 @@ class PropertyPanel(SimpleCardWidget):
         """核心更新方法，根据节点类型选择对应的子面板进行更新"""
         if not self._allowed_update:
             return
-
+        print("更新面板内容")
         is_backdrop_change = (
                 node is not None
                 and node is self.current_node

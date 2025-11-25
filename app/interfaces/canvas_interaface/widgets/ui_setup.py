@@ -9,6 +9,7 @@ from qtpy import QtGui, QtCore
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.property_panel import PropertyPanel
+from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 from ..constants import BUTTONS_CONTAINER_X_OFFSET, DEFAULT_SPLITTER_SIZES, PIPELINE_STYLE, PIPELINE_DIRECTION, \
     MAX_VISIBLE_QUICK_BUTTONS, GRID_STYLE
@@ -29,13 +30,15 @@ class CanvasUISetUp:
         self.nav_panel = DraggableTreePanel(self.parent)
         self.nav_view =  self.nav_panel.tree
         # 属性面板
-        self.property_panel = PropertyPanel(self.parent)
+        self.side_dock_area = SideDockArea(self.parent)
+        self.property_panel = self.side_dock_area.get_tool_instance("属性面板")
+        # self.property_panel = PropertyPanel(self.parent)
 
         main_layout = QHBoxLayout(self.parent)
         splitter = ModernSplitter(Qt.Horizontal)
         splitter.addWidget(self.nav_panel)
         splitter.addWidget(self.parent.canvas_widget)
-        splitter.addWidget(self.property_panel)
+        splitter.addWidget(self.side_dock_area)
         splitter.setSizes(DEFAULT_SPLITTER_SIZES)  # 画布初始分配更大空间
 
         # 设置分割器的拉伸因子，确保画布区域优先扩展

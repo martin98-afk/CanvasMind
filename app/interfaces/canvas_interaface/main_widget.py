@@ -177,6 +177,9 @@ class CanvasPage(QWidget):
     def load_full_workflow(self, file_path=None):
         self.canvas_io.load_full_workflow(file_path)
 
+    def create_name_label(self):
+        self.ui_manager.create_name_label()
+
     def create_next_node(self, key, icon_path=None):
         self.node_operations.create_next_node(key, icon_path)
 
@@ -507,10 +510,6 @@ class CanvasPage(QWidget):
             self.graph.viewer().node_selection_changed.disconnect(self.on_selection_changed)
         except Exception:
             pass
-
-        # 7. 清理属性面板等子组件
-        self.property_panel.setParent(None)
-        self.nav_panel.setParent(None)
 
         # 2. 清理动态导入的模块（关键！）
         import sys
