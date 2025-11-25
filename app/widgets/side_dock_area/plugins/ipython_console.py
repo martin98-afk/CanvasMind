@@ -11,10 +11,15 @@ class IPythonConsoleToolWindow(ToolWindow):
     default_position = DockPosition.BOTTOM  # 放在底部
 
     def setup_ui(self):
+        self.setMinimumHeight(400)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self.console = EmbeddedIPythonConsole(self.canvas_page)
         layout.addWidget(self.console)
+
+    @property
+    def kernel_manager(self):
+        return self.console.get_kernel_manager()
 
     def start_kernel(self, python_exe: str):
         return self.console.start_kernel(python_exe)
@@ -22,8 +27,8 @@ class IPythonConsoleToolWindow(ToolWindow):
     def stop_kernel(self):
         self.console.stop_kernel()
 
-    def execute(self, code: str):
-        self.console.execute(code)
+    def execute_code(self, code: str, hidden: bool= False):
+        self.console.execute_code(code, hidden)
 
     def set_focus(self):
         self.console.setFocus()

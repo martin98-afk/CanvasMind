@@ -16,7 +16,6 @@ from app.interfaces.canvas_interaface.utils.canvas_runner import CanvasRunner
 from app.interfaces.canvas_interaface.utils.exporter import CanvasExporter
 from app.interfaces.canvas_interaface.utils.node_operations import NodeOperations
 from app.interfaces.canvas_interaface.utils.quick_component_manager import QuickComponentManager
-from app.interfaces.canvas_interaface.widgets.console_manager import ConsoleManager
 from app.interfaces.canvas_interaface.widgets.environment_manager import EnvironmentManager
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
 from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
@@ -62,8 +61,6 @@ class CanvasPage(QWidget):
         self.quick_manager = QuickComponentManager(self, self.component_map)
         # --- 自动保存相关 ---
         self._auto_saver = AutoSaver(self, self.file_path, self.config)
-        # --- 连接ipython console ---
-        self.console_manager = ConsoleManager(self)
         # --- 环境管理 ---
         self.environment_manager = EnvironmentManager(self)
         # --- 画布io管理 ---
@@ -82,13 +79,16 @@ class CanvasPage(QWidget):
         self.ui_manager = CanvasUISetUp(self)
         self.ui_manager.setup_ui()
         self._setup_context_menus()
+        # 连接ipython控制台
+        self.connect_kernel(self.environment_manager.get_current_python_exe())
+
+        self.env_changed.connect(self.connect_kernel)
         # 连接ui信号
         self.graph.node_created.connect(self.node_operations.on_node_created)
         self.graph.port_connected.connect(self._on_port_connected)
         self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
         self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
         self._connect_runner_signals()
-        self.console_manager.connect_kernel(self.environment_manager.get_current_python_exe())
 
     # 代理方法
     @property
@@ -133,7 +133,22 @@ class CanvasPage(QWidget):
 
     @property
     def ipython_kernel(self):
-        return self.console_manager.ipython_console
+        return self.ui_manager.ipython_console
+
+    @property
+    def var_explorer(self):
+        return self.ui_manager.variable_explorer
+
+    def connect_kernel(self, python_exe):
+        if python_exe:
+            if self.ipython_kernel.kernel_manager.python_exe_path != python_exe or \
+               not self.ipython_kernel.kernel_manager.get_kernel_info().get("is_alive"):
+                self.ipython_kernel.kernel_manager.shutdown_kernel()
+                if self.ipython_kernel.start_kernel(python_exe):
+                    self.var_explorer.set_kernel_manager(self.ipython_kernel.kernel_manager)
+                    self.var_explorer.start_auto_refresh()
+                else:
+                    logger.error("Failed to start IPython kernel")
 
     def run_from(self, node):
         self.canvas_runner.run_from(node)
@@ -500,7 +515,7 @@ class CanvasPage(QWidget):
     def close_current_canvas(self):
         # 1. 停止并断开所有定时器
         self._auto_saver.stop()
-        self.console_manager.shutdown()
+        self.ipython_console.stop_kernel()
 
         # 5. 移除事件过滤器
         self.canvas_widget.removeEventFilter(self)

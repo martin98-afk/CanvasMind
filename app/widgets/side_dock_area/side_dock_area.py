@@ -3,11 +3,11 @@ from typing import Type, Optional, Dict
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QStackedWidget, QHBoxLayout, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QStackedWidget, QHBoxLayout
 
 from .button_bar import RightToolPanel
 from .plugins.ipython_console import IPythonConsoleToolWindow
-from .plugins.property_panel.api import PropertyToolWindow
+from app.widgets.side_dock_area.plugins.property_panel import PropertyToolWindow
 from .plugins.variable_explorer import VariableExplorerToolWindow
 from .registry import SideDockRegistry
 from .tool_window import DockPosition, ToolWindow

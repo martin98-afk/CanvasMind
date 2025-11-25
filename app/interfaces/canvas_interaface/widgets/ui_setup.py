@@ -3,12 +3,11 @@ import os
 
 from PyQt5.QtCore import Qt, QSize, QPoint
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
-from qfluentwidgets import TransparentToolButton, FluentIcon, RoundMenu, Action, ComboBox, LineEdit
+from qfluentwidgets import TransparentToolButton, FluentIcon, RoundMenu, Action, LineEdit
 from qtpy import QtGui, QtCore
 
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
-from app.widgets.property_panel import PropertyPanel
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 from ..constants import BUTTONS_CONTAINER_X_OFFSET, DEFAULT_SPLITTER_SIZES, PIPELINE_STYLE, PIPELINE_DIRECTION, \
@@ -32,6 +31,8 @@ class CanvasUISetUp:
         # 属性面板
         self.side_dock_area = SideDockArea(self.parent)
         self.property_panel = self.side_dock_area.get_tool_instance("属性面板")
+        self.ipython_console = self.side_dock_area.get_tool_instance("IPython 控制台")
+        self.variable_explorer = self.side_dock_area.get_tool_instance("变量浏览器")
 
         main_layout = QHBoxLayout(self.parent)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -51,7 +52,6 @@ class CanvasUISetUp:
         self.parent.environment_manager.create_environment_selector()
         self.create_floating_buttons()
         self.create_floating_nodes()
-        self.parent.console_manager.create_console_panel()
 
     def create_floating_buttons(self):
         self.buttons_container = QWidget(self.parent.graph.viewer())
@@ -69,10 +69,6 @@ class CanvasUISetUp:
         self.stop_btn.clicked.connect(self.parent.canvas_runner.stop_workflow)
         self.stop_btn.hide()
         env_layout.addWidget(self.stop_btn)
-        self.console_btn = TransparentToolButton(get_icon("console"), parent=self.parent.canvas_widget)
-        self.console_btn.setToolTip("显示/隐藏调试控制台")
-        self.console_btn.clicked.connect(self.parent.console_manager.toggle)
-        env_layout.addWidget(self.console_btn)
         self.save_btn = TransparentToolButton(FluentIcon.SAVE, parent=self.parent.canvas_widget)
         self.save_btn.setToolTip("保存工作流")
         self.save_btn.clicked.connect(self.parent.save_full_workflow)
@@ -326,7 +322,6 @@ class CanvasUISetUp:
         self.buttons_container.move(self.parent.graph.viewer().width() - BUTTONS_CONTAINER_X_OFFSET, 5)
         if hasattr(self, "name_container"):
             self._position_name_container()
-        self.parent.console_manager._update_position()
 
     def _setup_pipeline_style(self):
         self.parent.graph.set_grid_mode(GRID_STYLE.get(self.parent.config.canvas_grid_mode.value))
