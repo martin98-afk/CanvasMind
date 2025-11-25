@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-from typing import Dict, Type
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QFrame, QStackedWidget, QSplitter
-)
 from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import (
+    QVBoxLayout, QFrame
+)
 from qfluentwidgets import NavigationToolButton, FluentIcon as FIF, isDarkTheme
 
 from app.widgets.side_dock_area.tool_window import ToolWindow
@@ -28,15 +27,28 @@ class ToggleNavigationButton(NavigationToolButton):
         super().mouseReleaseEvent(e)
 
     def paintEvent(self, e):
+        # 先绘制默认样式
         super().paintEvent(e)
+
         if self._checked:
             from PyQt5.QtGui import QPainter, QColor
+            from PyQt5.QtCore import Qt
             painter = QPainter(self)
-            painter.setRenderHints(painter.Antialiasing)
+            painter.setRenderHints(painter.Antialiasing | painter.Antialiasing)
+
+            # 1. 左边绘制蓝色竖线（建议宽度为3~4像素）
+            line_width = 3
             painter.setPen(Qt.NoPen)
-            color = QColor(255, 255, 255, 80) if isDarkTheme() else QColor(0, 0, 0, 80)
-            painter.setBrush(color)
-            painter.drawRect(0, self.height() - 2, self.width(), 2)
+            blue_color = QColor("#0078d4")  # Fluent Design 蓝色，也可替换为你喜欢的色值
+            painter.setBrush(blue_color)
+            painter.drawRect(0, 0, line_width, self.height())
+
+            # 2. 可选：轻微改变按钮背景色（例如加一层半透明覆盖）
+            # 如果你希望按钮整体颜色有变化，可以叠加一层浅色/深色透明层
+            overlay_color = QColor(0, 120, 212, 20) if not isDarkTheme() else QColor(0, 120, 212, 30)
+            painter.setBrush(overlay_color)
+            painter.setPen(Qt.NoPen)
+            painter.drawRect(0, 0, self.width(), self.height())
 
 
 class RightToolPanel(QFrame):
