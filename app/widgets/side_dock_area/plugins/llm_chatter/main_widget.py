@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any, List
 from PyQt5.QtCore import Qt, QObject, QTimer
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QListWidget, QAbstractItemView, QLabel, \
-    QApplication
+    QApplication, QWidget
 from qfluentwidgets import (
     TextEdit, PrimaryPushButton, setFont, ComboBox, CheckBox, FluentIcon, ToolButton, BodyLabel, ListWidget
 )
@@ -109,9 +109,11 @@ class OpenAIChatToolWindow(ToolWindow):
         layout.addLayout(session_bar_layout)
 
         # ========== 聊天内容区域 (使用 QListWidget) ==========
+        chat_list_container = QWidget(self)
+        chat_list_layout = QVBoxLayout(chat_list_container)
+        chat_list_layout.setContentsMargins(0, 0, 0, 0)
         self.chat_list = ListWidget(self)
         self.chat_list.setResizeMode(ListWidget.Adjust)  # ✅ 必须！
-        self.chat_list.setSpacing(8)
         self.chat_list.setFrameShape(QListWidget.NoFrame)
         self.chat_list.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.chat_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -120,8 +122,8 @@ class OpenAIChatToolWindow(ToolWindow):
         self.chat_list.verticalScrollBar().rangeChanged.connect(
             lambda: self.chat_list.scrollToBottom()
         )
-
-        layout.addWidget(self.chat_list, 1)
+        chat_list_layout.addWidget(self.chat_list)
+        layout.addWidget(chat_list_container, 1)
 
         # ========== 底部状态栏 (可选) ==========
         status_layout = QHBoxLayout()
@@ -210,7 +212,7 @@ class OpenAIChatToolWindow(ToolWindow):
         if not session:
             return
 
-        for msg in session.messages:
+        for i, msg in enumerate(session.messages):
             # 创建卡片
             card = MessageCard(
                 role=msg["role"],
@@ -218,10 +220,10 @@ class OpenAIChatToolWindow(ToolWindow):
                 timestamp=datetime.now().strftime('%H:%M')  # 实际应用中应存储真实时间戳
             )
             # 连接卡片的信号
-            card.deleteRequested.connect(lambda: self._delete_message(card))
+            card.deleteRequested.connect(lambda: self._delete_message(i))
             card.copyRequested.connect(self._copy_text)
             if msg["role"] == "assistant":
-                card.regenerateRequested.connect(lambda: self._regenerate_message(card))
+                card.regenerateRequested.connect(lambda: self._regenerate_message(i))
 
             # 添加到列表
             item = QListWidgetItem()
@@ -235,7 +237,7 @@ class OpenAIChatToolWindow(ToolWindow):
     def _append_user_message(self, content: str):
         """添加一条用户消息到列表"""
         card = MessageCard(role="user", content=content)
-        card.deleteRequested.connect(lambda: self._delete_message(card))
+        card.deleteRequested.connect(lambda: self._delete_message(self.chat_list.count()-1))
         card.copyRequested.connect(self._copy_text)
 
         item = QListWidgetItem()
@@ -249,9 +251,9 @@ class OpenAIChatToolWindow(ToolWindow):
     def _append_assistant_message(self, content: str) -> MessageCard:
         """添加一条助手消息，并返回其卡片对象，以便后续流式更新"""
         card = MessageCard(role="assistant", content=content)
-        card.deleteRequested.connect(lambda: self._delete_message(card))
+        card.deleteRequested.connect(lambda: self._delete_message(self.chat_list.count()-1))
         card.copyRequested.connect(self._copy_text)
-        card.regenerateRequested.connect(lambda: self._regenerate_message(card))
+        card.regenerateRequested.connect(lambda: self._regenerate_message(self.chat_list.count()-1))
 
         item = QListWidgetItem()
         item.setSizeHint(card.sizeHint())
@@ -280,9 +282,8 @@ class OpenAIChatToolWindow(ToolWindow):
         # 更新列表项的大小提示，以适应内容变化
         item.setSizeHint(card.sizeHint())
 
-    def _delete_message(self, card: MessageCard):
+    def _delete_message(self, row: int):
         """删除指定的消息卡片"""
-        row = self.chat_list.indexFromItemWidget(card).row()
         self.chat_list.takeItem(row)
 
         # 同时从会话历史中移除
@@ -297,9 +298,8 @@ class OpenAIChatToolWindow(ToolWindow):
         clipboard = QApplication.clipboard()
         clipboard.setText(text)
 
-    def _regenerate_message(self, card: MessageCard):
+    def _regenerate_message(self, row:int):
         """重新生成这条助手消息"""
-        row = self.chat_list.indexFromItemWidget(card).row()
         session = self.session_manager.get_current_session()
         if not session or row < 0 or row >= len(session.messages):
             return

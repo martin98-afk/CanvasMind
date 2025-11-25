@@ -2,7 +2,7 @@
 from typing import Type, Optional, Dict
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QWidget, QStackedWidget, QHBoxLayout
 
 from .button_bar import RightToolPanel
@@ -20,6 +20,20 @@ SideDockRegistry.register(IPythonConsoleToolWindow.name, IPythonConsoleToolWindo
 SideDockRegistry.register(VariableExplorerToolWindow.name, VariableExplorerToolWindow)
 
 
+class AdaptiveStackedWidget(QStackedWidget):
+    def sizeHint(self) -> QSize:
+        current = self.currentWidget()
+        if current:
+            return current.sizeHint()
+        return super().sizeHint()
+
+    def minimumSizeHint(self) -> QSize:
+        current = self.currentWidget()
+        if current:
+            return current.minimumSizeHint()
+        return super().minimumSizeHint()
+
+
 class SideDockArea(QWidget):
     def __init__(self, canvas_page):
         super().__init__()
@@ -30,8 +44,8 @@ class SideDockArea(QWidget):
         main_layout.setSpacing(0)
         # 内容区
         self.splitter = ModernSplitter(Qt.Vertical)
-        self.top_stack = QStackedWidget()
-        self.bottom_stack = QStackedWidget()
+        self.top_stack = AdaptiveStackedWidget()
+        self.bottom_stack = AdaptiveStackedWidget()
         # 初始隐藏
         self.top_stack.hide()
         self.bottom_stack.hide()

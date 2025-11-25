@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy
 )
 from qfluentwidgets import (
-    FluentIcon, ToolTipFilter, ToolButton, CardWidget, TextBrowser
+    FluentIcon, ToolTipFilter, ToolButton, CardWidget
 )
 
 
@@ -37,11 +37,13 @@ class MessageCard(CardWidget):
         avatar_label.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {avatar_color};")
         avatar_label.setFixedSize(28, 28)
         avatar_label.setAlignment(Qt.AlignCenter)
+
         name = "用户" if self.role == "user" else "大模型助手"
         name_label = QLabel(name, self)
         name_label.setStyleSheet("font-size: 15px; font-weight: bold; color: white;")
         top_layout.addWidget(avatar_label)
         top_layout.addWidget(name_label)
+
         if self.role == "assistant":
             time_label = QLabel(self.timestamp, self)
             time_label.setStyleSheet("font-size: 12px; color: #AAAAAA;")
@@ -49,7 +51,7 @@ class MessageCard(CardWidget):
 
         top_layout.addStretch()
 
-        # 按钮（右上角）
+        # 按钮容器（右上角）
         button_container = QWidget(self)
         button_layout = QHBoxLayout(button_container)
         button_layout.setContentsMargins(0, 0, 0, 0)
@@ -77,19 +79,28 @@ class MessageCard(CardWidget):
 
         top_layout.addWidget(button_container)
 
-        # TextBrowser - 关键设置
-        self.content_textbrowser = TextBrowser(self)
-        self.content_textbrowser.setReadOnly(True)
-        self.content_textbrowser.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.content_textbrowser.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.content_textbrowser.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
-        self.content_textbrowser.setMaximumHeight(16777215)
-        self.content_textbrowser.setMinimumHeight(1)
-        self.content_textbrowser.setText(content)
-        main_layout.addLayout(top_layout)
-        main_layout.addWidget(self.content_textbrowser, 1)
+        # 使用 QLabel 替代 TextBrowser（支持自动高度）
+        self.content_label = QLabel(self)
+        self.content_label.setText(content)
+        self.content_label.setWordWrap(True)
+        self.content_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.content_label.setTextFormat(Qt.PlainText)  # 避免 HTML 干扰
+        self.content_label.setStyleSheet("""
+            QLabel {
+                font-size: 14px;
+                color: white;
+                background: transparent;
+                border: none;
+                padding: 4px 0;
+            }
+        """)
+        self.content_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
+        self.content_label.setMinimumHeight(1)
 
-        # 卡片样式
+        main_layout.addLayout(top_layout)
+        main_layout.addWidget(self.content_label)
+
+        # 卡片背景色
         bg_color = "#2A2A2A" if self.role == "user" else "#1E1E1E"
         self.setStyleSheet(f"""
             CardWidget {{
@@ -99,6 +110,31 @@ class MessageCard(CardWidget):
             }}
         """)
 
+        # 初始刷新高度
+        self._update_height()
+
+    def _update_height(self):
+        """强制更新 QLabel 高度以适配内容"""
+        self.content_label.adjustSize()
+        # 触发布局重排
+        self.updateGeometry()
+        if self.parent():
+            self.parent().updateGeometry()
+
     def update_content(self, new_content: str):
         self.content = new_content
-        self.content_textbrowser.setText(new_content)
+        self.content_label.setText(new_content)
+        # 延迟刷新高度，确保文本测量准确（尤其流式）
+        QTimer.singleShot(0, self._update_height)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # 关键：将内容标签的最大宽度限制为当前卡片的宽度（减去边距）
+        if hasattr(self, 'content_label'):
+            margin = 24  # 根据你的 setContentsMargins(12, 10, 12, 10) => 左右共 24
+            max_width = self.width() - margin
+            if max_width > 0:
+                self.content_label.setMaximumWidth(max_width)
+                # 强制重新计算高度
+                self.content_label.adjustSize()
+                self.updateGeometry()
