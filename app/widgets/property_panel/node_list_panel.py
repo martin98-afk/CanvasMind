@@ -95,7 +95,6 @@ class NodeListPanelWidget:
         """
         if not self._component_nodes_list:
             return
-
         for list_key, node_list in self._component_nodes_list.items():
             if list_key not in self._column_list_widgets:
                 continue

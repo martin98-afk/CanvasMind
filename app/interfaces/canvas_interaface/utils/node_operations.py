@@ -81,18 +81,18 @@ class NodeOperations:
             self.graph.register_node(node_class)
             self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
             if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
-                nodes_menu.add_command('运行此节点', lambda graph, node: self.canvas_runner.run_node(node),
+                nodes_menu.add_command('运行此节点', lambda graph, node: self.parent.run_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('运行到此节点', lambda graph, node: self.canvas_runner.run_to(node),
+                nodes_menu.add_command('运行到此节点', lambda graph, node: self.parent.run_to(node),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.canvas_runner.run_from(node),
+                nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.parent.run_from(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_separator()
                 nodes_menu.add_command('调试模式', lambda graph, node: node._toggle_debug_mode(),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
+                nodes_menu.add_command('编辑组件', lambda graph, node: self.parent.edit_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")

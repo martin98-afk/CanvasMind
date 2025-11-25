@@ -16,7 +16,6 @@ from app.interfaces.canvas_interaface.utils.canvas_runner import CanvasRunner
 from app.interfaces.canvas_interaface.utils.exporter import CanvasExporter
 from app.interfaces.canvas_interaface.utils.node_operations import NodeOperations
 from app.interfaces.canvas_interaface.utils.quick_component_manager import QuickComponentManager
-from app.interfaces.canvas_interaface.widgets.console_manager import ConsoleManager
 from app.interfaces.canvas_interaface.widgets.environment_manager import EnvironmentManager
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
 from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
@@ -40,18 +39,12 @@ class CanvasPage(QWidget):
         self.workflow_name = object_name.stem.split(".")[0] if object_name else "未命名工作流"
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
         self.config = Settings.get_instance()
-        # 初始化状态存储数据分析/因子分析
-
-
-        self._node_flyout = None
-        self._selection_update_pending = False
-
         # 线程池
         self.thread_pool = QThreadPool.globalInstance()
         # 全局变量
         self.global_variables = GlobalVariableContext()
         # 初始化 NodeGraph
-        self.graph = CustomNodeGraph(viewer=CustomNodeViewer())
+        self.graph = CustomNodeGraph(viewer=CustomNodeViewer(), parent=self)
         self.canvas_widget = self.graph.viewer()
         self.canvas_widget.keyPressEvent = self._canvas_key_press_event
         # 启用画布拖拽
@@ -65,14 +58,9 @@ class CanvasPage(QWidget):
         # 注册节点
         self.node_operations.register_components()
         # --- 快捷组件工具管理 ---
-        self.quick_manager = QuickComponentManager(
-            parent_widget=self,
-            component_map=self.component_map
-        )
+        self.quick_manager = QuickComponentManager(self, self.component_map)
         # --- 自动保存相关 ---
         self._auto_saver = AutoSaver(self, self.file_path, self.config)
-        # --- 连接ipython console ---
-        self.console_manager = ConsoleManager(self)
         # --- 环境管理 ---
         self.environment_manager = EnvironmentManager(self)
         # --- 画布io管理 ---
@@ -84,23 +72,23 @@ class CanvasPage(QWidget):
         )
         # --- 画布运行管理 ---
         self.canvas_runner = CanvasRunner(
-            self.console_manager.ipython_console,
-            self.environment_manager.get_current_python_exe,
-            self
+            self.environment_manager.get_current_python_exe, self
         )
         #=======================================
-
         # 初始化ui
         self.ui_manager = CanvasUISetUp(self)
         self.ui_manager.setup_ui()
         self._setup_context_menus()
+        # 连接ipython控制台
+        self.connect_kernel(self.environment_manager.get_current_python_exe())
+
+        self.env_changed.connect(self.connect_kernel)
         # 连接ui信号
         self.graph.node_created.connect(self.node_operations.on_node_created)
         self.graph.port_connected.connect(self._on_port_connected)
         self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
         self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
         self._connect_runner_signals()
-        self.console_manager.connect_kernel(self.environment_manager.get_current_python_exe())
 
     # 代理方法
     @property
@@ -131,6 +119,49 @@ class CanvasPage(QWidget):
     def component_map(self):
         return self.node_operations.component_map
 
+    @property
+    def file_map(self):
+        return self.node_operations.file_map
+
+    @property
+    def property_panel(self):
+        return self.ui_manager.property_panel
+
+    @property
+    def nav_view(self):
+        return self.ui_manager.nav_view
+
+    @property
+    def ipython_kernel(self):
+        return self.ui_manager.ipython_console
+
+    @property
+    def var_explorer(self):
+        return self.ui_manager.variable_explorer
+
+    def connect_kernel(self, python_exe):
+        if python_exe:
+            if self.ipython_kernel.kernel_manager.python_exe_path != python_exe or \
+               not self.ipython_kernel.kernel_manager.get_kernel_info().get("is_alive"):
+                self.ipython_kernel.kernel_manager.shutdown_kernel()
+                if self.ipython_kernel.start_kernel(python_exe):
+                    self.var_explorer.set_kernel_manager(self.ipython_kernel.kernel_manager)
+                    self.var_explorer.start_auto_refresh()
+                else:
+                    logger.error("Failed to start IPython kernel")
+
+    def run_from(self, node):
+        self.canvas_runner.run_from(node)
+
+    def run_to(self, node):
+        self.canvas_runner.run_to(node)
+
+    def run_node(self, node):
+        self.canvas_runner.run_node(node)
+
+    def delete_node(self, node):
+        self.node_operations.delete_node(node)
+
     def get_current_python_exe(self):
         return self.environment_manager.get_current_python_exe()
 
@@ -159,6 +190,9 @@ class CanvasPage(QWidget):
 
     def load_full_workflow(self, file_path=None):
         self.canvas_io.load_full_workflow(file_path)
+
+    def create_name_label(self):
+        self.ui_manager.create_name_label()
 
     def create_next_node(self, key, icon_path=None):
         self.node_operations.create_next_node(key, icon_path)
@@ -192,9 +226,9 @@ class CanvasPage(QWidget):
         ]:
             nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
                                    node_type=special_node)
-            nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to_node(node),
+            nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to(node),
                                    node_type=special_node)
-            nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from_node(node),
+            nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from(node),
                                    node_type=special_node)
             if special_node == "dynamic.DYNAMIC_CODE":
                 nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(), node_type=special_node)
@@ -254,12 +288,16 @@ class CanvasPage(QWidget):
         self.canvas_runner.node_started.connect(self.on_node_started_simple)
         self.canvas_runner.node_finished.connect(self.on_node_finished_simple)
         self.canvas_runner.node_error.connect(self.on_node_error_simple)
-        self.canvas_runner.property_changed.connect(self.property_panel.update_properties)
         self.canvas_runner.workflow_finished.connect(self._on_workflow_finished)
         self.canvas_runner.workflow_error.connect(self._on_workflow_error)
         self.canvas_runner.node_status_changed.connect(self.set_node_status_by_id)
         self.canvas_runner.workflow_cancelled.connect(self._on_workflow_cancelled)
 
+        # 面板刷新信号
+        self.canvas_runner.property_changed.connect(self.property_panel.update_properties)
+        self.canvas_runner.node_vars_changed.connect(self.property_panel.refresh_node_vars_page)
+
+    # --- 画布按键信号 ---
     def _canvas_key_press_event(self, event):
         super(NodeViewer, self.canvas_widget).keyPressEvent(event)
         self.canvas_widget.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
@@ -403,14 +441,7 @@ class CanvasPage(QWidget):
         if src_path and dst_path:
             self.manager.recommendation_engine._stats_manager.record_connection(src_path, dst_path)
 
-    def on_selection_changed(self, node_ids: list, prev_ids: list):
-        if self._selection_update_pending:
-            return
-        self._selection_update_pending = True
-        QtCore.QTimer.singleShot(0, self._do_selection_update)
-
-    def _do_selection_update(self):
-        self._selection_update_pending = False
+    def on_selection_changed(self):
         selected_nodes = self.graph.selected_nodes()
         # 原有属性面板逻辑
         if selected_nodes:
@@ -484,7 +515,7 @@ class CanvasPage(QWidget):
     def close_current_canvas(self):
         # 1. 停止并断开所有定时器
         self._auto_saver.stop()
-        self.console_manager.shutdown()
+        self.ipython_console.stop_kernel()
 
         # 5. 移除事件过滤器
         self.canvas_widget.removeEventFilter(self)
@@ -496,10 +527,6 @@ class CanvasPage(QWidget):
             self.graph.viewer().node_selection_changed.disconnect(self.on_selection_changed)
         except Exception:
             pass
-
-        # 7. 清理属性面板等子组件
-        self.property_panel.setParent(None)
-        self.nav_panel.setParent(None)
 
         # 2. 清理动态导入的模块（关键！）
         import sys

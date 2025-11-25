@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QPlainTextEdit, QApplication, QDesktopWidget
 from loguru import logger
 from qfluentwidgets import FluentWindow, Theme, setTheme, NavigationItemPosition, SplashScreen, FluentIcon
 
-from app.interfaces.component_developer import ComponentDeveloperWidget
+from app.interfaces.component_developer import ComponentDeveloperPage
 from app.interfaces.exported_project_interface import ExportedProjectsPage
 from app.interfaces.home_interface import HomeInterface
 from app.interfaces.package_manager_interface import EnvManagerUI
@@ -45,7 +45,7 @@ class LowCodeWindow(FluentWindow):
         # 创建主界面页面
         self.workflow_manager = WorkflowCanvasGalleryPage(self)
         self.package_manager = EnvManagerUI(self)
-        self.develop_page = ComponentDeveloperWidget(self)
+        self.develop_page = ComponentDeveloperPage(self)
         self.project_manager = ExportedProjectsPage(self)
         self.home_interface = HomeInterface(self)
 
@@ -88,14 +88,14 @@ class LowCodeWindow(FluentWindow):
         self.addSubInterface(
             self.setting_card, FluentIcon.SETTING, '系统设置', NavigationItemPosition.BOTTOM
         )
-        QtCore.QTimer.singleShot(1000, self.finish_splash_screen)
+        QtCore.QTimer.singleShot(500, self.finish_splash_screen)
 
     def finish_splash_screen(self):
         self.splashScreen.finish()
         self.resize(self.window_width, self.window_height)
         self.move(self.w // 2 - self.width() // 2, self.h // 2 - self.height() // 2)
         if self.config.auto_check_update.value:
-            QtCore.QTimer.singleShot(1000, self.updater.check_update)
+            QtCore.QTimer.singleShot(500, self.updater.check_update)
 
     def setup_log_viwer(self):
         if not hasattr(self, 'log_viewer'):

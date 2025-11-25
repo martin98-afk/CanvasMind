@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+from pypinyin import lazy_pinyin
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QKeyEvent, QFont, QSyntaxHighlighter, QTextCharFormat, QColor, QPalette, QCursor
@@ -232,12 +233,19 @@ class VariableCompletionTextEdit(TextEdit):
                 self.popup.setCurrentRow(min(self.popup.count() - 1, self.popup.currentRow() + 1))
                 return
 
-        # 其他字符：若在变量上下文中，继续补全
-        super().keyPressEvent(event)
-        if self._is_in_variable_context():
-            self._input_timer.start(50)
-        elif self.popup.isVisible():
-            self.popup.hide()
+        # 关键修改：处理中文和其他字符输入，包括拼音匹配
+        key_text = event.text()
+        # 如果是可打印字符（包括中文、英文、数字等），且在变量上下文中
+        if key_text and self._is_in_variable_context():
+            super().keyPressEvent(event)
+            self._input_timer.start(50)  # 延迟触发补全更新
+        else:
+            # 其他情况正常处理
+            super().keyPressEvent(event)
+            if self._is_in_variable_context():
+                self._input_timer.start(50)
+            elif self.popup.isVisible():
+                self.popup.hide()
 
     def _trigger_completion_if_needed(self):
         """在UI更新后检查是否需要触发补全"""
@@ -311,14 +319,48 @@ class VariableCompletionTextEdit(TextEdit):
 
         prefix = self._get_variable_prefix()
         all_vars = self.get_variable_list_func()
-        filtered = [v for v in all_vars if v.lower().startswith(prefix.lower())]
+
+        # 修改过滤逻辑以支持中文和拼音匹配
+        if prefix:  # 如果有前缀，则进行匹配
+            filtered = []
+            for var in all_vars:
+                # 英文/数字前缀匹配
+                if var.lower().startswith(prefix.lower()):
+                    filtered.append((var, 1))  # (变量名, 匹配优先级)
+                # 中文拼音匹配
+                elif prefix.isalpha():  # 如果输入的是字母，尝试拼音匹配
+                    var_pinyin = ''.join(lazy_pinyin(var)).lower()
+                    if var_pinyin.startswith(prefix.lower()):
+                        filtered.append((var, 2))  # 拼音匹配优先级稍低
+                    # 或者支持拼音的包含匹配
+                    elif prefix.lower() in var_pinyin:
+                        filtered.append((var, 3))  # 包含匹配优先级更低
+                # 中文字符匹配
+                elif any('\u4e00' <= char <= '\u9fff' for char in prefix):  # 包含中文
+                    if var.startswith(prefix):
+                        filtered.append((var, 1))
+                    elif prefix in var:
+                        filtered.append((var, 3))
+        else:  # 如果没有前缀，则显示所有变量
+            filtered = [(var, 0) for var in all_vars]
 
         if not filtered:
             self.popup.hide()
             return
 
+        # 按优先级排序，相同优先级保持原有顺序
+        filtered.sort(key=lambda x: x[1])
+
+        # 去重并保持顺序
+        seen = set()
+        unique_filtered = []
+        for var, priority in filtered:
+            if var not in seen:
+                seen.add(var)
+                unique_filtered.append(var)
+
         self.popup.clear()
-        for var in filtered:
+        for var in unique_filtered:
             self.popup.addItem(var)
 
         if not self.popup.isVisible():
@@ -485,12 +527,19 @@ class VariableCompletionLineEdit(LineEdit):
                     self.popup.setCurrentRow(current_row + 1)
                 return
 
-        # 其他字符：若在变量上下文中，继续补全
-        super().keyPressEvent(event)
-        if self._is_in_variable_context():
-            self._input_timer.start(50)
-        elif self.popup.isVisible():
-            self.popup.hide()
+        # 关键修改：处理中文和其他字符输入，包括拼音匹配
+        key_text = event.text()
+        # 如果是可打印字符（包括中文、英文、数字等），且在变量上下文中
+        if key_text and self._is_in_variable_context():
+            super().keyPressEvent(event)
+            self._input_timer.start(50)  # 延迟触发补全更新
+        else:
+            # 其他情况正常处理
+            super().keyPressEvent(event)
+            if self._is_in_variable_context():
+                self._input_timer.start(50)
+            elif self.popup.isVisible():
+                self.popup.hide()
 
     def _trigger_completion_if_needed(self):
         """在UI更新后检查是否需要触发补全"""
@@ -546,14 +595,48 @@ class VariableCompletionLineEdit(LineEdit):
 
         prefix = self._get_variable_prefix()
         all_vars = self.get_variable_list_func()
-        filtered = [v for v in all_vars if v.lower().startswith(prefix.lower())]
+
+        # 修改过滤逻辑以支持中文和拼音匹配
+        if prefix:  # 如果有前缀，则进行匹配
+            filtered = []
+            for var in all_vars:
+                # 英文/数字前缀匹配
+                if var.lower().startswith(prefix.lower()):
+                    filtered.append((var, 1))  # (变量名, 匹配优先级)
+                # 中文拼音匹配
+                elif prefix.isalpha():  # 如果输入的是字母，尝试拼音匹配
+                    var_pinyin = ''.join(lazy_pinyin(var)).lower()
+                    if var_pinyin.startswith(prefix.lower()):
+                        filtered.append((var, 2))  # 拼音匹配优先级稍低
+                    # 或者支持拼音的包含匹配
+                    elif prefix.lower() in var_pinyin:
+                        filtered.append((var, 3))  # 包含匹配优先级更低
+                # 中文字符匹配
+                elif any('\u4e00' <= char <= '\u9fff' for char in prefix):  # 包含中文
+                    if var.startswith(prefix):
+                        filtered.append((var, 1))
+                    elif prefix in var:
+                        filtered.append((var, 3))
+        else:  # 如果没有前缀，则显示所有变量
+            filtered = [(var, 0) for var in all_vars]
 
         if not filtered:
             self.popup.hide()
             return
 
+        # 按优先级排序，相同优先级保持原有顺序
+        filtered.sort(key=lambda x: x[1])
+
+        # 去重并保持顺序
+        seen = set()
+        unique_filtered = []
+        for var, priority in filtered:
+            if var not in seen:
+                seen.add(var)
+                unique_filtered.append(var)
+
         self.popup.clear()
-        for var in filtered:
+        for var in unique_filtered:
             self.popup.addItem(var)
 
         if not self.popup.isVisible():

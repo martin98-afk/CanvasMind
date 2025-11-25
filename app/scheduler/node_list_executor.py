@@ -31,6 +31,7 @@ class NodeListExecutor(QRunnable):
         main_window,
         nodes: List,
         python_exe: Optional[str] = None,
+        kernel_manager: Optional[Any] = None,
         scheduler: Optional[Any] = None,
     ):
         super().__init__()
@@ -41,8 +42,7 @@ class NodeListExecutor(QRunnable):
         self._is_cancelled = False
         self.component_map = {}
         self.scheduler = scheduler
-        self.kernel_manager = scheduler.kernel_manager if scheduler else None
-        self.run_mode = main_window.config.canvas_run_mode.value
+        self.kernel_manager = kernel_manager
 
     def cancel(self):
         self._is_cancelled = True
@@ -68,7 +68,7 @@ class NodeListExecutor(QRunnable):
                 try:
                     if getattr(node, "execute_sync", None) is not None:
                         comp_cls = self.component_map.get(getattr(node, "FULL_PATH", None))
-                        if self.run_mode == "ipython运行":
+                        if self.main_window.config.canvas_run_mode.value == "ipython运行":
                             results = node.execute_sync(
                                 comp_cls,
                                 python_executable=self.python_exe,
