@@ -29,6 +29,12 @@ class SideDockArea(QWidget):
         self.splitter = ModernSplitter(Qt.Vertical)
         self.top_stack = QStackedWidget()
         self.bottom_stack = QStackedWidget()
+        # 初始隐藏
+        self.top_stack.hide()
+        self.bottom_stack.hide()
+        self._top_visible = False
+        self._bottom_visible = False
+
         self.splitter.addWidget(self.top_stack)
         self.splitter.addWidget(self.bottom_stack)
 
@@ -40,11 +46,9 @@ class SideDockArea(QWidget):
         self.tool_panel.bottomToolChecked.connect(self._show_bottom_tool)
         self.tool_panel.bottomToolUnchecked.connect(self._hide_bottom_tool)
 
-        main_layout.addWidget(self.splitter, 1)  # 占主要空间
-        main_layout.addWidget(self.tool_panel, 0)  # 不拉伸，靠右
-        # 初始隐藏
-        self.top_stack.hide()
-        self.bottom_stack.hide()
+        main_layout.addWidget(self.splitter)  # 占主要空间
+        main_layout.addWidget(self.tool_panel)  # 不拉伸，靠右
+
         self._load_plugins()
 
     def _show_top_tool(self, tool_name):
@@ -54,10 +58,12 @@ class SideDockArea(QWidget):
             idx = self.top_stack.addWidget(view)
         self.top_stack.setCurrentIndex(idx)
         self.top_stack.show()
+        self._top_visible = True
         self._update_splitter()
 
     def _hide_top_tool(self, tool_name):
         self.top_stack.hide()
+        self._top_visible = False
         self._update_splitter()
 
     def _show_bottom_tool(self, tool_name):
@@ -67,20 +73,22 @@ class SideDockArea(QWidget):
             idx = self.bottom_stack.addWidget(view)
         self.bottom_stack.setCurrentIndex(idx)
         self.bottom_stack.show()
+        self._bottom_visible = True
         self._update_splitter()
 
     def _hide_bottom_tool(self, tool_name):
         self.bottom_stack.hide()
+        self._bottom_visible = False
         self._update_splitter()
 
     def _update_splitter(self):
-        top_vis = self.top_stack.isVisible()
-        bot_vis = self.bottom_stack.isVisible()
-        if top_vis and bot_vis:
+        content_visible = self._top_visible or self._bottom_visible
+
+        if self._top_visible and self._bottom_visible:
             self.splitter.setSizes([1, 1])
-        elif top_vis:
+        elif self._top_visible:
             self.splitter.setSizes([1, 0])
-        elif bot_vis:
+        else:
             self.splitter.setSizes([0, 1])
 
     def _load_plugins(self):
@@ -104,9 +112,12 @@ class SideDockArea(QWidget):
     def _get_or_create_instance(self, cls: Type[ToolWindow]) -> ToolWindow:
         """根据 singleton 策略获取或创建实例"""
         name = cls.name
-        if name not in self._instances:
-            self._instances[name] = cls(self.canvas_page)
-        return self._instances[name]
+        if cls.singleton:
+            if name not in self._instances:
+                self._instances[name] = cls(self.canvas_page)
+            return self._instances[name]
+        else:
+            return cls(self.canvas_page)
 
     def get_tool_instance(self, name: str) -> Optional[ToolWindow]:
         """外部可通过 name 获取面板实例，用于信号连接等"""

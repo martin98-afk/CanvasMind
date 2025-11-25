@@ -29,8 +29,6 @@ class PropertyPanel(SimpleCardWidget):
     def __init__(self, main_window, parent=None):
         super().__init__(parent)
         self.main_window = main_window
-        self.setMinimumWidth(280)
-
         # === 全局变量缓存 (可能仍需在主控件维护) ===
         self._custom_var_cards = {}
         self._node_var_cards = {}

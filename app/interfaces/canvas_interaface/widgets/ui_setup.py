@@ -32,14 +32,14 @@ class CanvasUISetUp:
         # 属性面板
         self.side_dock_area = SideDockArea(self.parent)
         self.property_panel = self.side_dock_area.get_tool_instance("属性面板")
-        # self.property_panel = PropertyPanel(self.parent)
 
         main_layout = QHBoxLayout(self.parent)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         splitter = ModernSplitter(Qt.Horizontal)
         splitter.addWidget(self.nav_panel)
         splitter.addWidget(self.parent.canvas_widget)
         splitter.addWidget(self.side_dock_area)
-        splitter.setSizes(DEFAULT_SPLITTER_SIZES)  # 画布初始分配更大空间
+        splitter.setSizes(DEFAULT_SPLITTER_SIZES)
 
         # 设置分割器的拉伸因子，确保画布区域优先扩展
         splitter.setStretchFactor(0, 0)  # 左侧导航不拉伸
