@@ -274,11 +274,14 @@ class CanvasPage(QWidget):
         self.canvas_runner.node_started.connect(self.on_node_started_simple)
         self.canvas_runner.node_finished.connect(self.on_node_finished_simple)
         self.canvas_runner.node_error.connect(self.on_node_error_simple)
-        self.canvas_runner.property_changed.connect(self.property_panel.update_properties)
         self.canvas_runner.workflow_finished.connect(self._on_workflow_finished)
         self.canvas_runner.workflow_error.connect(self._on_workflow_error)
         self.canvas_runner.node_status_changed.connect(self.set_node_status_by_id)
         self.canvas_runner.workflow_cancelled.connect(self._on_workflow_cancelled)
+
+        # 面板刷新信号
+        self.canvas_runner.property_changed.connect(self.property_panel.update_properties)
+        self.canvas_runner.node_vars_changed.connect(self.property_panel.refresh_node_vars_page)
 
     # --- 画布按键信号 ---
     def _canvas_key_press_event(self, event):

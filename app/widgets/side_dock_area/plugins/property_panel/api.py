@@ -25,10 +25,13 @@ class PropertyToolWindow(ToolWindow):
         self.property_panel.set_allowed_update(allowed)
 
     def get_current_execution_order(self):
-        self.property_panel.get_current_execution_order()
+        return self.property_panel.get_current_execution_order()
 
     def reset_current_components(self):
         self.property_panel.reset_current_components()
 
     def update_node_list_content(self):
         self.property_panel.node_list_panel_widget.update_node_list_content()
+
+    def refresh_node_vars_page(self):
+        self.property_panel._refresh_node_vars_page()

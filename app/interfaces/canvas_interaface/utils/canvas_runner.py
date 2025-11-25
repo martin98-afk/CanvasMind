@@ -14,6 +14,7 @@ class CanvasRunner(QObject):
     workflow_cancelled = pyqtSignal()
     node_status_changed = pyqtSignal(str, object)  # node_id, status
     property_changed = pyqtSignal(object)  # for property panel
+    node_vars_changed = pyqtSignal()
 
     def __init__(self, ipython_kernel, get_python_exe, parent=None):
         super().__init__(parent)
@@ -107,6 +108,7 @@ class CanvasRunner(QObject):
         scheduler.node_error.connect(self.node_error.emit)
         scheduler.finished.connect(self.workflow_finished.emit)
         scheduler.error.connect(self.workflow_error.emit)
+        scheduler.node_vars_changed.connect(self.node_vars_changed.emit)
 
     def stop_workflow(self):
         if self._scheduler:

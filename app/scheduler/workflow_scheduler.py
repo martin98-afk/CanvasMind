@@ -32,6 +32,7 @@ class WorkflowScheduler(QObject):
     backdrop_finished = pyqtSignal()
     node_status_changed = pyqtSignal(str, str)  # node_id, status
     property_changed = pyqtSignal(object)
+    node_vars_changed = pyqtSignal()
 
     def __init__(
             self,
@@ -107,7 +108,7 @@ class WorkflowScheduler(QObject):
                 # 捕获其他任何可能的异常，记录警告并覆盖
                 logger.error(f"追加变量 '{name}' 时发生未知错误: {e}. 将覆盖旧值。")
                 node_var_obj.value = value
-        QtCore.QTimer.singleShot(0, self.parent.property_panel._refresh_node_vars_page)
+        self.node_vars_changed.emit()
 
     def get_executable_nodes(self, nodes=[]):
         """获取所有顶层可执行节点（排除循环内部节点）"""
