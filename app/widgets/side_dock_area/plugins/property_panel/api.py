@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QVBoxLayout
-from qfluentwidgets import FluentIcon
+
+from app.utils.utils import get_icon
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 from app.widgets.property_panel import PropertyPanel  # ← 复用你现有的 PropertyPanel
 
 
 class PropertyToolWindow(ToolWindow):
     name = "属性面板"
-    icon = FluentIcon.SAVE
+    icon = get_icon("属性面板")
     default_position = DockPosition.TOP  # ← 默认放在顶部
 
     def setup_ui(self):

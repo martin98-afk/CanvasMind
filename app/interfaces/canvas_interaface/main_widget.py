@@ -45,7 +45,7 @@ class CanvasPage(QWidget):
         # 全局变量
         self.global_variables = GlobalVariableContext()
         # 初始化 NodeGraph
-        self.graph = CustomNodeGraph(viewer=CustomNodeViewer())
+        self.graph = CustomNodeGraph(viewer=CustomNodeViewer(), parent=self)
         self.canvas_widget = self.graph.viewer()
         self.canvas_widget.keyPressEvent = self._canvas_key_press_event
         # 启用画布拖拽
@@ -59,10 +59,7 @@ class CanvasPage(QWidget):
         # 注册节点
         self.node_operations.register_components()
         # --- 快捷组件工具管理 ---
-        self.quick_manager = QuickComponentManager(
-            parent_widget=self,
-            component_map=self.component_map
-        )
+        self.quick_manager = QuickComponentManager(self, self.component_map)
         # --- 自动保存相关 ---
         self._auto_saver = AutoSaver(self, self.file_path, self.config)
         # --- 连接ipython console ---
@@ -78,9 +75,7 @@ class CanvasPage(QWidget):
         )
         # --- 画布运行管理 ---
         self.canvas_runner = CanvasRunner(
-            self.console_manager.ipython_console,
-            self.environment_manager.get_current_python_exe,
-            self
+            self.environment_manager.get_current_python_exe, self
         )
         #=======================================
         # 初始化ui
@@ -135,6 +130,10 @@ class CanvasPage(QWidget):
     @property
     def nav_view(self):
         return self.ui_manager.nav_view
+
+    @property
+    def ipython_kernel(self):
+        return self.console_manager.ipython_console
 
     def run_from(self, node):
         self.canvas_runner.run_from(node)

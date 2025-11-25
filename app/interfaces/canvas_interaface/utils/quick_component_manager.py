@@ -10,9 +10,9 @@ from app.utils.config import Settings  # ← 你的 Settings 是 QConfig
 class QuickComponentManager(QObject):
     quick_components_changed = pyqtSignal()
 
-    def __init__(self, parent_widget, component_map):
-        super().__init__(parent_widget)
-        self.parent = parent_widget
+    def __init__(self, parent, component_map):
+        super().__init__(parent)
+        self.parent = parent
         self.component_map = component_map
         self.ICONS_DIR = Path(resource_path("icons"))
         self.config = Settings.get_instance()  # 单例

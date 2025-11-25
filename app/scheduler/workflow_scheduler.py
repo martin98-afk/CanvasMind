@@ -221,6 +221,7 @@ class WorkflowScheduler(QObject):
                 main_window=self.parent,
                 nodes=nodes,  # 传入拓扑序
                 python_exe=self.get_python_exe(),
+                kernel_manager=self.kernel_manager,
                 scheduler=self
             )
             self._executor.component_map = self.component_map

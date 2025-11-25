@@ -1,20 +1,21 @@
 # -*- coding: utf-8 -*-
 from typing import Type, Optional, Dict
 
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QStackedWidget, QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QStackedWidget, QHBoxLayout, QVBoxLayout
 
 from .button_bar import RightToolPanel
+from .plugins.ipython_console import IPythonConsoleToolWindow
 from .plugins.property_panel.api import PropertyToolWindow
-from .plugins.test1 import LogWindow
-from .plugins.test2 import VariableWindow
+from .plugins.variable_explorer import VariableExplorerToolWindow
 from .registry import SideDockRegistry
 from .tool_window import DockPosition, ToolWindow
 from ..basic_widget.splitter import ModernSplitter
 
 SideDockRegistry.register(PropertyToolWindow.name, PropertyToolWindow)
-SideDockRegistry.register(VariableWindow.name, VariableWindow)
-SideDockRegistry.register(LogWindow.name, LogWindow)
+SideDockRegistry.register(IPythonConsoleToolWindow.name, IPythonConsoleToolWindow)
+SideDockRegistry.register(VariableExplorerToolWindow.name, VariableExplorerToolWindow)
 
 
 class SideDockArea(QWidget):
@@ -24,7 +25,7 @@ class SideDockArea(QWidget):
         self._instances: Dict[str, ToolWindow] = {}
         main_layout = QHBoxLayout(self)  # ← 水平布局：[ 内容区 | 按钮栏 ]
         main_layout.setContentsMargins(0, 0, 0, 0)
-
+        main_layout.setSpacing(0)
         # 内容区
         self.splitter = ModernSplitter(Qt.Vertical)
         self.top_stack = QStackedWidget()
@@ -37,7 +38,6 @@ class SideDockArea(QWidget):
 
         self.splitter.addWidget(self.top_stack)
         self.splitter.addWidget(self.bottom_stack)
-
         # 工具面板
         self.tool_panel = RightToolPanel(canvas_page, self)
 
@@ -82,8 +82,7 @@ class SideDockArea(QWidget):
         self._update_splitter()
 
     def _update_splitter(self):
-        content_visible = self._top_visible or self._bottom_visible
-
+        self.content_visible = self._top_visible or self._bottom_visible
         if self._top_visible and self._bottom_visible:
             self.splitter.setSizes([1, 1])
         elif self._top_visible:
@@ -105,7 +104,7 @@ class SideDockArea(QWidget):
         if top_classes:
             first_cls = top_classes[0]
             # 触发“选中”逻辑：手动调用显示 + 按钮置为 checked
-            self._show_top_tool(first_cls.name)
+            QtCore.QTimer.singleShot(100, lambda: self._show_top_tool(first_cls.name))
             # 同时让对应按钮进入 checked 状态（视觉同步）
             self.tool_panel._set_top_button_checked(first_cls)
 
