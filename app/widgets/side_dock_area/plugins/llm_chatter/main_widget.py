@@ -10,7 +10,7 @@ from qfluentwidgets import (
     TextEdit, PrimaryPushButton, setFont, ComboBox, CheckBox, FluentIcon, ToolButton, BodyLabel, ListWidget
 )
 
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, serialize_for_json
 from app.widgets.side_dock_area.plugins.llm_chatter.chat_session import SessionManager
 from app.widgets.side_dock_area.plugins.llm_chatter.message_card import MessageCard
 from app.widgets.side_dock_area.plugins.llm_chatter.worker import OpenAIChatWorker
@@ -49,6 +49,18 @@ class OpenAIChatToolWindow(ToolWindow):
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(4)
 
+        # 模型选择
+        model_layout = QHBoxLayout()
+        model_layout.addWidget(BodyLabel("模型：", self))
+        self.model_combo = ComboBox(self)
+        self._load_model_configs()
+        setFont(self.model_combo, 12)
+        model_layout.addWidget(self.model_combo, 1)
+        left_layout.addLayout(model_layout)
+        # 分隔线
+        separator = QLabel("|", self)
+        separator.setStyleSheet("color: #666666;")
+        left_layout.addWidget(separator)
         # 标题 (模仿通义灵码)
         title_label = QLabel("智能会话", self)
         setFont(title_label, 12, QFont.Bold)
@@ -111,6 +123,28 @@ class OpenAIChatToolWindow(ToolWindow):
 
         layout.addWidget(self.chat_list, 1)
 
+        # ========== 底部状态栏 (可选) ==========
+        status_layout = QHBoxLayout()
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setSpacing(4)
+
+        # 上下文选项
+        context_layout = QHBoxLayout()
+        self.code_context_cb = CheckBox("注入当前画布", self)
+        self.vars_context_cb = CheckBox("注入全局变量", self)
+        self.code_context_cb.setChecked(True)
+        context_layout.addWidget(self.code_context_cb)
+        context_layout.addWidget(self.vars_context_cb)
+        context_layout.addStretch()
+
+        status_layout.addLayout(context_layout)
+        status_layout.addStretch()
+        # 发送按钮
+        self.send_btn = PrimaryPushButton("发送", self)
+        self.send_btn.clicked.connect(self._on_send_clicked)
+        status_layout.addWidget(self.send_btn)
+        layout.addLayout(status_layout)
+
         # ========== 输入区域 ==========
         input_layout = QHBoxLayout()
         input_layout.setContentsMargins(0, 0, 0, 0)
@@ -122,42 +156,9 @@ class OpenAIChatToolWindow(ToolWindow):
         self.input_area.setMaximumHeight(150)
         setFont(self.input_area, 12)
         self.input_area.installEventFilter(self)
-
-        # 发送按钮
-        self.send_btn = PrimaryPushButton("发送", self)
-        self.send_btn.clicked.connect(self._on_send_clicked)
-
         input_layout.addWidget(self.input_area, 1)
-        input_layout.addWidget(self.send_btn)
 
         layout.addLayout(input_layout)
-
-        # ========== 底部状态栏 (可选) ==========
-        status_layout = QHBoxLayout()
-        status_layout.setContentsMargins(0, 0, 0, 0)
-        status_layout.setSpacing(4)
-
-        # 模型选择
-        model_layout = QHBoxLayout()
-        model_layout.addWidget(BodyLabel("模型：", self))
-        self.model_combo = ComboBox(self)
-        self._load_model_configs()
-        setFont(self.model_combo, 12)
-        model_layout.addWidget(self.model_combo, 1)
-
-        # 上下文选项
-        context_layout = QHBoxLayout()
-        self.code_context_cb = CheckBox("注入当前代码", self)
-        self.vars_context_cb = CheckBox("注入全局变量", self)
-        self.code_context_cb.setChecked(True)
-        context_layout.addWidget(self.code_context_cb)
-        context_layout.addWidget(self.vars_context_cb)
-        context_layout.addStretch()
-
-        status_layout.addLayout(model_layout)
-        status_layout.addLayout(context_layout)
-
-        layout.addLayout(status_layout)
 
         # ========== 连接信号 ==========
         self.session_combo.currentIndexChanged.connect(self._on_session_changed)
@@ -372,26 +373,17 @@ class OpenAIChatToolWindow(ToolWindow):
         if self.code_context_cb.isChecked():
             try:
                 # 尝试从 canvas_page 获取当前编辑器选中文本或全文
-                editor = getattr(self.canvas_page, 'current_editor', None)
-                if editor and hasattr(editor, 'textCursor'):
-                    cursor = editor.textCursor()
-                    if cursor.hasSelection():
-                        code = cursor.selectedText()
-                        enhanced = f"[当前选中代码]\n{code}\n\n---\n{user_input}"
-                    else:
-                        # 或者获取全文（谨慎，可能太长）
-                        # full_code = editor.toPlainText()
-                        # enhanced = f"[当前文件代码]\n{full_code[:2000]}...\n\n---\n{user_input}"
-                        pass
+                graph_data = self.canvas_page.graph.serialize_session()
+                enhanced = f"[当前画布信息]\n{serialize_for_json(graph_data)}\n\n---"
             except Exception:
                 pass
 
         # 注入全局变量
         if self.vars_context_cb.isChecked():
             try:
-                custom_vars = self.canvas_page.global_variables.custom
+                global_var = self.canvas_page.global_variables.to_dict()
                 var_reprs = []
-                for name, var_obj in custom_vars.items():
+                for name, var_obj in global_var.items():
                     if hasattr(var_obj, 'value'):
                         var_reprs.append(f"{name} = {repr(var_obj.value)[:100]}")
                 if var_reprs:
@@ -400,7 +392,7 @@ class OpenAIChatToolWindow(ToolWindow):
             except Exception:
                 pass
 
-        return enhanced
+        return enhanced + f"\n{user_input}"
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
         """流式接收内容片段，累积并更新指定卡片"""

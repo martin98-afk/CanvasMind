@@ -515,7 +515,7 @@ class CanvasPage(QWidget):
     def close_current_canvas(self):
         # 1. 停止并断开所有定时器
         self._auto_saver.stop()
-        self.ipython_console.stop_kernel()
+        self.ipython_kernel.stop_kernel()
 
         # 5. 移除事件过滤器
         self.canvas_widget.removeEventFilter(self)
