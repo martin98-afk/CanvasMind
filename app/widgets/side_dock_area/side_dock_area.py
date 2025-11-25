@@ -8,12 +8,14 @@ from PyQt5.QtWidgets import QWidget, QStackedWidget, QHBoxLayout
 from .button_bar import RightToolPanel
 from .plugins.ipython_console import IPythonConsoleToolWindow
 from app.widgets.side_dock_area.plugins.property_panel import PropertyToolWindow
+from .plugins.llm_chatter.main_widget import OpenAIChatToolWindow
 from .plugins.variable_explorer import VariableExplorerToolWindow
 from .registry import SideDockRegistry
 from .tool_window import DockPosition, ToolWindow
 from ..basic_widget.splitter import ModernSplitter
 
 SideDockRegistry.register(PropertyToolWindow.name, PropertyToolWindow)
+SideDockRegistry.register(OpenAIChatToolWindow.name, OpenAIChatToolWindow)
 SideDockRegistry.register(IPythonConsoleToolWindow.name, IPythonConsoleToolWindow)
 SideDockRegistry.register(VariableExplorerToolWindow.name, VariableExplorerToolWindow)
 
