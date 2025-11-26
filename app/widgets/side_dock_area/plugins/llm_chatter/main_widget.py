@@ -203,6 +203,7 @@ class OpenAIChatToolWindow(ToolWindow):
         for i, msg in enumerate(session.messages):
             # 创建卡片
             card = MessageCard(
+                parent=self,
                 role=msg["role"],
                 content=msg["content"],
                 timestamp=datetime.now().strftime('%H:%M')  # 实际应用中应存储真实时间戳
@@ -224,7 +225,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _append_user_message(self, content: str):
         """添加一条用户消息到列表"""
-        card = MessageCard(role="user", content=content)
+        card = MessageCard(parent=self, role="user", content=content)
         card.deleteRequested.connect(lambda: self._delete_message(self.chat_list.count() - 1))
         card.copyRequested.connect(self._copy_text)
 
@@ -238,7 +239,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _append_assistant_message(self, content: str = "") -> MessageCard:
         """添加一条助手消息，并返回其卡片对象，以便后续流式更新"""
-        card = MessageCard(role="assistant", content=content)
+        card = MessageCard(parent=self, role="assistant", content=content)
         card.deleteRequested.connect(lambda: self._delete_message(self.chat_list.count() - 1))
         card.copyRequested.connect(self._copy_text)
         card.regenerateRequested.connect(lambda: self._regenerate_message(self.chat_list.count() - 1))

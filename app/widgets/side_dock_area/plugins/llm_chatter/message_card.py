@@ -28,7 +28,7 @@ class StreamingTextEdit(QTextEdit):
                 selection-background-color: #4A4A4A;
             }
         """)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.setMinimumHeight(20)
         self._document = self.document()
         self._width_locked = False
@@ -92,6 +92,7 @@ class MessageCard(CardWidget):
 
     def __init__(self, role: str, content: str, timestamp: str = None, parent=None):
         super().__init__(parent)
+        self.parent = parent
         self.role = role
         self.timestamp = timestamp or datetime.now().strftime('%H:%M')
         self.setup_ui(content)
@@ -102,7 +103,7 @@ class MessageCard(CardWidget):
         main_layout.setSpacing(2)
 
         top_layout = QHBoxLayout()
-        top_layout.setSpacing(10)
+        top_layout.setSpacing(0)
 
         # Avatar
         avatar_label = QLabel(self)
@@ -162,7 +163,7 @@ class MessageCard(CardWidget):
         if content:
             self.content_widget.append_chunk(content)
 
-        main_layout.addWidget(self.content_widget)
+        main_layout.addWidget(self.content_widget, 0)
 
         # Card background
         bg_color = "#2A2A2A" if self.role == "user" else "#1E1E1E"
@@ -178,8 +179,8 @@ class MessageCard(CardWidget):
         self._update_content_width()
 
     def _update_content_width(self):
-        margin = 24  # 与 setContentsMargins(5,5,5,5) 对应（左右共 10，保守取 24）
-        content_width = max(100, self.width() - margin)
+        margin = 70  # 与 setContentsMargins(5,5,5,5) 对应（左右共 10，保守取 24）
+        content_width = max(100, self.parent.width() - margin)
         self.content_widget.setFixedWidth(content_width)
 
     def update_content(self, new_content: str):
