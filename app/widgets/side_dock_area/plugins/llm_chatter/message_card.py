@@ -60,8 +60,8 @@ class MessageCard(CardWidget):
         if self.role == "assistant":
             for icon, tooltip, slot in [
                 (FluentIcon.COPY, "复制", lambda: self.copyRequested.emit(self.content)),
-                (FluentIcon.SYNC, "重新生成", self.regenerateRequested),
-                (FluentIcon.DELETE, "删除", self.deleteRequested),
+                (FluentIcon.SYNC, "重新生成", self.regenerateRequested.emit),
+                (FluentIcon.DELETE, "删除", self.deleteRequested.emit),
             ]:
                 btn = ToolButton(icon, self)
                 btn.setToolTip(tooltip)

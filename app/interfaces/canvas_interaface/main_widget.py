@@ -179,6 +179,12 @@ class CanvasPage(QWidget):
             self.property_panel.get_current_execution_order(),
         ).export_selected_nodes_as_project()
 
+    def extract_graph_info(self):
+        if len(self.graph.selected_nodes()) > 0:
+            return self.canvas_io.extract_graph_info(self.graph.selected_nodes())
+        else:
+            return self.canvas_io.extract_graph_info()
+
     def save_full_workflow(self, file_path=None, show_info=True):
         if not isinstance(file_path, str) or not isinstance(file_path, Path):
             if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import json
+import traceback
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
@@ -6,6 +8,7 @@ from PyQt5.QtCore import Qt, QObject, QTimer
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QListWidget, QAbstractItemView, QLabel, \
     QApplication, QWidget
+from loguru import logger
 from qfluentwidgets import (
     TextEdit, PrimaryPushButton, setFont, ComboBox, CheckBox, FluentIcon, ToolButton, BodyLabel, ListWidget
 )
@@ -237,7 +240,7 @@ class OpenAIChatToolWindow(ToolWindow):
     def _append_user_message(self, content: str):
         """添加一条用户消息到列表"""
         card = MessageCard(role="user", content=content)
-        card.deleteRequested.connect(lambda: self._delete_message(self.chat_list.count()-1))
+        card.deleteRequested.connect(lambda: self._delete_message(self.chat_list.count() - 1))
         card.copyRequested.connect(self._copy_text)
 
         item = QListWidgetItem()
@@ -251,9 +254,9 @@ class OpenAIChatToolWindow(ToolWindow):
     def _append_assistant_message(self, content: str) -> MessageCard:
         """添加一条助手消息，并返回其卡片对象，以便后续流式更新"""
         card = MessageCard(role="assistant", content=content)
-        card.deleteRequested.connect(lambda: self._delete_message(self.chat_list.count()-1))
+        card.deleteRequested.connect(lambda: self._delete_message(self.chat_list.count() - 1))
         card.copyRequested.connect(self._copy_text)
-        card.regenerateRequested.connect(lambda: self._regenerate_message(self.chat_list.count()-1))
+        card.regenerateRequested.connect(lambda: self._regenerate_message(self.chat_list.count() - 1))
 
         item = QListWidgetItem()
         item.setSizeHint(card.sizeHint())
@@ -298,7 +301,7 @@ class OpenAIChatToolWindow(ToolWindow):
         clipboard = QApplication.clipboard()
         clipboard.setText(text)
 
-    def _regenerate_message(self, row:int):
+    def _regenerate_message(self, row: int):
         """重新生成这条助手消息"""
         session = self.session_manager.get_current_session()
         if not session or row < 0 or row >= len(session.messages):
@@ -373,10 +376,12 @@ class OpenAIChatToolWindow(ToolWindow):
         if self.code_context_cb.isChecked():
             try:
                 # 尝试从 canvas_page 获取当前编辑器选中文本或全文
-                graph_data = self.canvas_page.graph.serialize_session()
-                enhanced = f"[当前画布信息]\n{serialize_for_json(graph_data)}\n\n---"
+                graph_data = self.canvas_page.extract_graph_info()
+                enhanced = (
+                    f"[当前画布信息]\n{json.dumps(graph_data, indent=2, ensure_ascii=False)}\n---\n\n"
+                ) + enhanced
             except Exception:
-                pass
+                logger.warning(f"获取画布信息失败: {traceback.format_exc()}")
 
         # 注入全局变量
         if self.vars_context_cb.isChecked():
@@ -390,9 +395,8 @@ class OpenAIChatToolWindow(ToolWindow):
                     var_text = "\n".join(var_reprs)
                     enhanced = f"[全局变量]\n{var_text}\n\n---\n{enhanced}"
             except Exception:
-                pass
-
-        return enhanced + f"\n{user_input}"
+                logger.warning(f"获取全局变量失败: {traceback.format_exc()}")
+        return enhanced
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
         """流式接收内容片段，累积并更新指定卡片"""
