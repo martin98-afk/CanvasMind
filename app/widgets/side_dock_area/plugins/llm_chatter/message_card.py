@@ -9,6 +9,30 @@ from qfluentwidgets import (
 )
 
 
+class StreamingLabel(QLabel):
+    def __init__(self, parent=None, update_interval_ms=30):
+        super().__init__(parent)
+        self.setText("")
+        self.setWordWrap(True)
+        self.setTextFormat(Qt.PlainText)
+
+        self._buffer = []  # 临时缓存 incoming chunks
+        self._timer = QTimer(self)
+        self._timer.setInterval(update_interval_ms)  # 如 30ms ~ 60ms
+        self._timer.timeout.connect(self._flush_buffer)
+
+    def append_chunk(self, chunk: str):
+        if not self._timer.isActive():
+            self._timer.start()
+        self._buffer.append(chunk)
+
+    def _flush_buffer(self):
+        if self._buffer:
+            text = self.text() + "".join(self._buffer)
+            self.setText(text)
+            self._buffer.clear()
+
+
 class MessageCard(CardWidget):
     deleteRequested = pyqtSignal()
     copyRequested = pyqtSignal(str)
@@ -23,8 +47,8 @@ class MessageCard(CardWidget):
 
     def setup_ui(self, content: str):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(12, 10, 12, 10)
-        main_layout.setSpacing(6)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(2)
 
         top_layout = QHBoxLayout()
         top_layout.setSpacing(10)
@@ -80,7 +104,7 @@ class MessageCard(CardWidget):
         top_layout.addWidget(button_container)
 
         # 使用 QLabel 替代 TextBrowser（支持自动高度）
-        self.content_label = QLabel(self)
+        self.content_label = StreamingLabel(self)
         self.content_label.setText(content)
         self.content_label.setWordWrap(True)
         self.content_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -98,7 +122,7 @@ class MessageCard(CardWidget):
         self.content_label.setMinimumHeight(1)
 
         main_layout.addLayout(top_layout)
-        main_layout.addWidget(self.content_label)
+        main_layout.addWidget(self.content_label, 1)
 
         # 卡片背景色
         bg_color = "#2A2A2A" if self.role == "user" else "#1E1E1E"
@@ -122,8 +146,7 @@ class MessageCard(CardWidget):
             self.parent().updateGeometry()
 
     def update_content(self, new_content: str):
-        self.content = new_content
-        self.content_label.setText(new_content)
+        self.content_label.append_chunk(new_content)
         # 延迟刷新高度，确保文本测量准确（尤其流式）
         QTimer.singleShot(0, self._update_height)
 

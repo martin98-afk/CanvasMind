@@ -51,6 +51,7 @@ class SideDockArea(QWidget):
         self.bottom_stack.hide()
         self._top_visible = False
         self._bottom_visible = False
+        self.last_content_visible = False
 
         self.splitter.addWidget(self.top_stack)
         self.splitter.addWidget(self.bottom_stack)
@@ -97,12 +98,17 @@ class SideDockArea(QWidget):
         self._update_splitter()
 
     def _update_splitter(self):
-        self.content_visible = self._top_visible or self._bottom_visible
-        if not self.content_visible:
+        # 如果上次更新时没有内容，现在有内容了需要更新splitter,如果上次有内容，这次没有了也需要更新
+        if self.last_content_visible and not (self._top_visible or self._bottom_visible):
             self.splitter.setSizes([0, 0])
             self.canvas_page.ui_manager.hide_splitter()
+            self.last_content_visible = False
+
             return
-        self.canvas_page.ui_manager.show_splitter()
+        elif not self.last_content_visible and (self._top_visible or self._bottom_visible):
+            self.last_content_visible = True
+            self.canvas_page.ui_manager.show_splitter()
+
         if self._top_visible and self._bottom_visible:
             self.splitter.setSizes([1, 1])
         elif self._top_visible:
@@ -125,6 +131,7 @@ class SideDockArea(QWidget):
             first_cls = top_classes[0]
             # 触发“选中”逻辑：手动调用显示 + 按钮置为 checked
             QtCore.QTimer.singleShot(100, lambda: self._show_top_tool(first_cls.name))
+            self.last_content_visible = True
             # 同时让对应按钮进入 checked 状态（视觉同步）
             self.tool_panel._set_top_button_checked(first_cls)
 

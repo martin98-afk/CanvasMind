@@ -2,9 +2,9 @@
 import json
 import traceback
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
-from PyQt5.QtCore import Qt, QObject, QTimer
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QListWidget, QAbstractItemView, QLabel, \
     QApplication, QWidget
@@ -13,7 +13,7 @@ from qfluentwidgets import (
     TextEdit, PrimaryPushButton, setFont, ComboBox, CheckBox, FluentIcon, ToolButton, BodyLabel, ListWidget
 )
 
-from app.utils.utils import get_icon, serialize_for_json
+from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.chat_session import SessionManager
 from app.widgets.side_dock_area.plugins.llm_chatter.message_card import MessageCard
 from app.widgets.side_dock_area.plugins.llm_chatter.worker import OpenAIChatWorker
@@ -365,7 +365,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._worker = OpenAIChatWorker(messages=messages, llm_config=llm_config)
         self._worker.content_received.connect(lambda c: self._on_content_received(c, assistant_card))
         self._worker.error_occurred.connect(lambda e: self._on_error(e, assistant_card))
-        self._worker.finished.connect(lambda: self._on_worker_finished(assistant_card))
+        # self._worker.finished.connect(lambda: self._on_worker_finished(assistant_card))
         self._worker.start()
 
     def _get_enhanced_input(self, user_input: str) -> str:
@@ -400,12 +400,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
         """流式接收内容片段，累积并更新指定卡片"""
-        # 获取或初始化该卡片的累积内容
-        current_buffer = self._assistant_card_content_buffer.get(assistant_card, "")
         # 将新片段追加到累积内容中
-        new_buffer = current_buffer + content_piece
-        # 更新字典中的缓冲区
-        self._assistant_card_content_buffer[assistant_card] = new_buffer
+        new_buffer = content_piece
         # 更新卡片显示
         self._update_assistant_message(assistant_card, new_buffer)
 
@@ -413,16 +409,16 @@ class OpenAIChatToolWindow(ToolWindow):
         """处理错误，更新指定卡片"""
         self._update_assistant_message(assistant_card, f"[错误] {error_msg}")
 
-    def _on_worker_finished(self, assistant_card: MessageCard):
-        """任务完成，保存最终结果到会话历史"""
-        if self._worker and self._worker.full_response:
-            session = self.session_manager.get_current_session()
-            if session:
-                # 替换最后一条消息 (即我们刚刚创建的助手消息)
-                session.messages[-1] = {"role": "assistant", "content": self._worker.full_response}
-                # 更新卡片显示 (使用 Worker 提供的完整内容，更可靠)
-                self._update_assistant_message(assistant_card, self._worker.full_response)
-
-        # 清理该卡片的累积缓冲区
-        if assistant_card in self._assistant_card_content_buffer:
-            del self._assistant_card_content_buffer[assistant_card]
+    # def _on_worker_finished(self, assistant_card: MessageCard):
+    #     """任务完成，保存最终结果到会话历史"""
+    #     if self._worker and self._worker.full_response:
+    #         session = self.session_manager.get_current_session()
+    #         if session:
+    #             # 替换最后一条消息 (即我们刚刚创建的助手消息)
+    #             session.messages[-1] = {"role": "assistant", "content": self._worker.full_response}
+    #             # 更新卡片显示 (使用 Worker 提供的完整内容，更可靠)
+    #             self._update_assistant_message(assistant_card, self._worker.full_response)
+    #
+    #     # 清理该卡片的累积缓冲区
+    #     if assistant_card in self._assistant_card_content_buffer:
+    #         del self._assistant_card_content_buffer[assistant_card]
