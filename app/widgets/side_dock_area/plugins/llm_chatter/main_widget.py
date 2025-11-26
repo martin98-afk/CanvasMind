@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 import json
-import traceback
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Callable, List, Tuple
 
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QListWidget, QAbstractItemView, QLabel, \
     QApplication, QWidget
-from loguru import logger
 from qfluentwidgets import (
-    TextEdit, PrimaryPushButton, setFont, ComboBox, CheckBox, FluentIcon, ToolButton, BodyLabel, ListWidget
+    TextEdit, setFont, ComboBox, FluentIcon, ToolButton, BodyLabel, ListWidget,
+    InfoBar, InfoBarPosition, TransparentPushButton
 )
 
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.chat_session import SessionManager
+from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextSelector
 from app.widgets.side_dock_area.plugins.llm_chatter.message_card import MessageCard
 from app.widgets.side_dock_area.plugins.llm_chatter.worker import OpenAIChatWorker
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
@@ -28,6 +28,7 @@ class OpenAIChatToolWindow(ToolWindow):
     default_position = DockPosition.TOP
     session_manager = SessionManager()
     _valid_configs: Dict[str, Dict[str, Any]] = {}
+    context_items: List[Tuple[str, str, Callable[[], Dict[str, Any]]]] = None  # 上下文项列表
 
     def __init__(self, canvas_page):
         super().__init__(canvas_page)
@@ -35,23 +36,28 @@ class OpenAIChatToolWindow(ToolWindow):
         self._worker: Optional[OpenAIChatWorker] = None
         self._is_streaming = False
         self.session_manager.create_new_session()  # 初始化第一个会话
+        # 新增：用于存储当前选中的上下文项
+        self._selected_context_items = set()
 
     def setup_ui(self):
+        self.context_items = [
+            ("@graph", "当前画布", self.canvas_page.extract_graph_info),
+            ("@vars", "全局变量", self.canvas_page.global_variables.to_dict),
+            ("@comps", "组件信息", self.canvas_page.get_component_info)
+        ]
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
+        layout.setSpacing(0)
 
-        # ========== 顶部会话管理栏 ==========
+        # ========== 顶部会话管理栏 ========== （保持不变）
         session_bar_layout = QHBoxLayout()
         session_bar_layout.setContentsMargins(0, 0, 0, 0)
         session_bar_layout.setSpacing(4)
 
-        # 左侧：标题和会话选择
         left_layout = QHBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(4)
 
-        # 模型选择
         model_layout = QHBoxLayout()
         model_layout.addWidget(BodyLabel("模型：", self))
         self.model_combo = ComboBox(self)
@@ -59,27 +65,24 @@ class OpenAIChatToolWindow(ToolWindow):
         setFont(self.model_combo, 12)
         model_layout.addWidget(self.model_combo, 1)
         left_layout.addLayout(model_layout)
-        # 分隔线
+
         separator = QLabel("|", self)
         separator.setStyleSheet("color: #666666;")
         left_layout.addWidget(separator)
-        # 标题 (模仿通义灵码)
+
         title_label = QLabel("智能会话", self)
         setFont(title_label, 12, QFont.Bold)
         title_label.setStyleSheet("color: #ffffff;")
         left_layout.addWidget(title_label)
 
-        # 分隔线
         separator = QLabel("|", self)
         separator.setStyleSheet("color: #666666;")
         left_layout.addWidget(separator)
 
-        # 会话下拉框
         self.session_combo = ComboBox(self)
         self.refresh_session_combo()
         self.session_combo.currentIndexChanged.connect(self._on_session_changed)
 
-        # 新建会话按钮
         self.new_session_btn = ToolButton(FluentIcon.ADD, self)
         self.new_session_btn.setToolTip("新建对话")
         self.new_session_btn.clicked.connect(self._create_new_session)
@@ -87,19 +90,16 @@ class OpenAIChatToolWindow(ToolWindow):
         left_layout.addWidget(self.session_combo)
         left_layout.addWidget(self.new_session_btn)
 
-        # 右侧：用户信息和设置
         right_layout = QHBoxLayout()
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(8)
 
-        # 用户信息 (示例)
         user_label = QLabel("用户", self)
         user_label.setStyleSheet("color: #ffffff;")
-        user_label.setPixmap(get_icon("用户").pixmap(16, 16))  # 假设你有一个用户图标
+        user_label.setPixmap(get_icon("用户").pixmap(16, 16))
         user_label.setAlignment(Qt.AlignVCenter)
         right_layout.addWidget(user_label)
 
-        # 更多选项按钮 (如设置、帮助等)
         more_btn = ToolButton(FluentIcon.SETTING, self)
         more_btn.setToolTip("设置")
         right_layout.addWidget(more_btn)
@@ -107,66 +107,52 @@ class OpenAIChatToolWindow(ToolWindow):
         session_bar_layout.addLayout(left_layout)
         session_bar_layout.addStretch()
         session_bar_layout.addLayout(right_layout)
-
         layout.addLayout(session_bar_layout)
 
-        # ========== 聊天内容区域 (使用 QListWidget) ==========
+        # ========== 聊天内容区域 ========== （保持不变）
         chat_list_container = QWidget(self)
         chat_list_layout = QVBoxLayout(chat_list_container)
         chat_list_layout.setContentsMargins(10, 10, 10, 10)
         self.chat_list = ListWidget(self)
-        self.chat_list.setResizeMode(ListWidget.Adjust)  # ✅ 必须！
+        self.chat_list.setResizeMode(ListWidget.Adjust)
         self.chat_list.setFrameShape(QListWidget.NoFrame)
         self.chat_list.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.chat_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.chat_list.setSelectionMode(QAbstractItemView.NoSelection)
-        # 启用自动滚动到末尾
-        self.chat_list.verticalScrollBar().rangeChanged.connect(
-            lambda: self.chat_list.scrollToBottom()
-        )
+        self.chat_list.verticalScrollBar().rangeChanged.connect(lambda: self.chat_list.scrollToBottom())
         chat_list_layout.addWidget(self.chat_list)
         layout.addWidget(chat_list_container, 1)
 
-        # ========== 底部状态栏 (可选) ==========
+        # ========== 中间状态栏（使用 ContextSelector）==========
         status_layout = QHBoxLayout()
         status_layout.setContentsMargins(0, 0, 0, 0)
         status_layout.setSpacing(4)
 
-        # 上下文选项
-        context_layout = QHBoxLayout()
-        self.code_context_cb = CheckBox("注入当前画布", self)
-        self.vars_context_cb = CheckBox("注入全局变量", self)
-        self.code_context_cb.setChecked(True)
-        context_layout.addWidget(self.code_context_cb)
-        context_layout.addWidget(self.vars_context_cb)
-        context_layout.addStretch()
-
-        status_layout.addLayout(context_layout)
+        # 替换为独立的上下文选择器
+        self.context_selector = ContextSelector(self.context_items, self)
+        status_layout.addWidget(self.context_selector)
         status_layout.addStretch()
-        # 发送按钮
-        self.send_btn = PrimaryPushButton("发送", self)
+
+        # 发送/停止按钮
+        self.send_btn = TransparentPushButton(icon=FluentIcon.SEND, text="发送", parent=self)
         self.send_btn.clicked.connect(self._on_send_clicked)
         status_layout.addWidget(self.send_btn)
         layout.addLayout(status_layout)
 
-        # ========== 输入区域 ==========
+        # ========== 输入区域 ========== （保持不变）
         input_layout = QHBoxLayout()
         input_layout.setContentsMargins(0, 0, 0, 0)
         input_layout.setSpacing(4)
-
-        # 输入框
         self.input_area = TextEdit(self)
         self.input_area.setPlaceholderText("继续提问或 \"/\"新开会话")
         self.input_area.setMaximumHeight(150)
         setFont(self.input_area, 12)
         self.input_area.installEventFilter(self)
         input_layout.addWidget(self.input_area, 1)
-
         layout.addLayout(input_layout)
 
         # ========== 连接信号 ==========
         self.session_combo.currentIndexChanged.connect(self._on_session_changed)
-        self.input_area.installEventFilter(self)
 
     def _load_model_configs(self):
         self._valid_configs.clear()
@@ -271,8 +257,6 @@ class OpenAIChatToolWindow(ToolWindow):
         """更新指定助手消息卡片的内容"""
         card.update_content(new_content)
         # 找到卡片对应的列表项
-        item = self.chat_list.itemAt(card.pos())  # 这个方法在某些复杂布局下可能不准确
-        # 更可靠的获取方式：
         for i in range(self.chat_list.count()):
             if self.chat_list.itemWidget(self.chat_list.item(i)) is card:
                 item = self.chat_list.item(i)
@@ -329,72 +313,93 @@ class OpenAIChatToolWindow(ToolWindow):
         if not session:
             return
 
-        # 记录原始输入
         session.add_user_message(content=user_text)
-        # 显示用户消息
         self._append_user_message(user_text)
-
         self.input_area.clear()
-        # 创建一个占位的助手消息卡片，用于流式更新
         assistant_card = self._append_assistant_message()
 
-        # 获取模型配置
         selected_name = self.model_combo.currentText()
         llm_config = self._valid_configs.get(selected_name)
         if not llm_config:
             self._update_assistant_message(assistant_card, "[错误] 模型配置无效")
             return
 
-        # 构建完整 messages
         messages = []
-
         system_prompt = llm_config.get("系统提示", "").strip()
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
 
-        # 添加历史（但用原始 user 输入，非增强版，避免污染历史）
-        for msg in session.messages[:-1]:  # 最后一条是刚加的 user 消息
+        for msg in session.messages[:-1]:
             messages.append(msg)
 
-        # 增强输入
+        # ✅ 关键修改：从 context_selector 获取选中项
         enhanced_input = self._get_enhanced_input(user_text)
         messages.append({"role": "user", "content": enhanced_input})
 
-        # 启动 Worker
         self._worker = OpenAIChatWorker(messages=messages, llm_config=llm_config)
         self._worker.content_received.connect(lambda c: self._on_content_received(c, assistant_card))
         self._worker.error_occurred.connect(lambda e: self._on_error(e, assistant_card))
+        self._worker.finished.connect(self._on_worker_finished)
         self._worker.start()
 
+        self._toggle_send_stop(True)
+
     def _get_enhanced_input(self, user_input: str) -> str:
-        """根据勾选项增强用户输入"""
-        enhanced = user_input
+        """使用 context_selector 获取选中项"""
+        selected = self.context_selector.get_selected_keys()
+        context_info_list = []
+        for context_key, context_name, context_func in self.context_items:
+            if context_key in selected:
+                context_info = context_func()
+                # 对context_info进行格式化处理
+                if isinstance(context_info, (dict, list, tuple, set)):
+                    context_info = json.dumps(context_info, indent=2, ensure_ascii=False)
 
-        # 注入当前代码（假设 canvas_page 有 active_editor 或类似）
-        if self.code_context_cb.isChecked():
-            try:
-                # 尝试从 canvas_page 获取当前编辑器选中文本或全文
-                graph_data = self.canvas_page.extract_graph_info()
-                enhanced = (
-                    f"[当前画布信息]\n{json.dumps(graph_data, indent=2, ensure_ascii=False)}\n---\n\n"
-                ) + enhanced
-            except Exception:
-                logger.warning(f"获取画布信息失败: {traceback.format_exc()}")
+                context_info_list.append(f"[{context_name}信息]:\n{context_info}\n---\n")
+        enhanced = "\n".join(context_info_list) + user_input
 
-        # 注入全局变量
-        if self.vars_context_cb.isChecked():
-            try:
-                global_var = self.canvas_page.global_variables.to_dict()
-                var_reprs = []
-                for name, var_obj in global_var.items():
-                    if hasattr(var_obj, 'value'):
-                        var_reprs.append(f"{name} = {repr(var_obj.value)[:100]}")
-                if var_reprs:
-                    var_text = "\n".join(var_reprs)
-                    enhanced = f"[全局变量]\n{var_text}\n\n---\n{enhanced}"
-            except Exception:
-                logger.warning(f"获取全局变量失败: {traceback.format_exc()}")
         return enhanced
+
+    def _on_worker_finished(self):
+        """工作线程结束时调用"""
+        self._toggle_send_stop(False)
+
+    def _toggle_send_stop(self, is_sending: bool):
+        """根据是否正在发送来切换按钮文本和状态"""
+        if is_sending:
+            self.send_btn.setText("停止")
+            self.send_btn.setIcon(FluentIcon.PAUSE)
+            self.send_btn.clicked.disconnect(self._on_send_clicked)
+            self.send_btn.clicked.connect(self._on_stop_clicked)
+            # 禁用输入框和模型选择，防止干扰
+            self.input_area.setDisabled(True)
+            self.model_combo.setDisabled(True)
+        else:
+            self.send_btn.setText("发送")
+            self.send_btn.setIcon(FluentIcon.SEND)
+            self.send_btn.clicked.disconnect(self._on_stop_clicked)
+            self.send_btn.clicked.connect(self._on_send_clicked)
+            self.input_area.setDisabled(False)
+            self.model_combo.setDisabled(False)
+
+    def _on_stop_clicked(self):
+        """停止按钮被点击时调用"""
+        if self._worker and self._worker.isRunning():
+            self._worker.cancel()  # 强制终止线程
+            # 清理资源
+            self._worker = None
+            # 切换回发送状态
+            self._toggle_send_stop(False)
+            # 给用户一个提示
+            InfoBar.warning(
+                title='已中止',
+                content="问答请求已被手动中止。",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=2000,
+                parent=self
+            )
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
         """流式接收内容片段，累积并更新指定卡片"""

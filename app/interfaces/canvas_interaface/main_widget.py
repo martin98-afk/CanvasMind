@@ -194,6 +194,19 @@ class CanvasPage(QWidget):
         self.canvas_io.save_full_workflow(file_path, show_info)
         self.file_path = file_path
 
+    def get_component_info(self):
+        """获取当前组件列表信息，用于大模型分析"""
+        return [
+            {
+                "名称": value.name,
+                "描述": value.description,
+                "输入": [{"名称": item.label, "类型": item.type.value} for item in value.inputs],
+                "输出": [{"名称": item.label, "类型": item.type.value} for item in value.outputs],
+                "属性": [{"名称": item.label, "默认": item.default, "类型": item.type.value} for key, item in value.properties.items()],
+            }
+            for key, value in self.component_map.items()
+        ]
+
     def load_full_workflow(self, file_path=None):
         self.canvas_io.load_full_workflow(file_path)
 

@@ -16,6 +16,13 @@ class OpenAIChatWorker(QThread):
         self.messages = messages
         self.llm_config = llm_config
         self.full_response = ""
+        self._is_cancelled = False
+
+    def cancel(self):
+        self._is_cancelled = True
+
+    def _check_cancel(self) -> bool:
+        return self._is_cancelled
 
     def run(self):
         try:
@@ -40,6 +47,8 @@ class OpenAIChatWorker(QThread):
 
             self.full_response = ""
             for chunk in stream:
+                if self._is_cancelled:
+                    return
                 if chunk.choices and chunk.choices[0].delta.content is not None:
                     content = chunk.choices[0].delta.content
                     self.full_response += content
