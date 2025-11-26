@@ -11,7 +11,7 @@ from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
 from ..constants import BUTTONS_CONTAINER_X_OFFSET, DEFAULT_SPLITTER_SIZES, PIPELINE_STYLE, PIPELINE_DIRECTION, \
-    MAX_VISIBLE_QUICK_BUTTONS, GRID_STYLE
+    MAX_VISIBLE_QUICK_BUTTONS, GRID_STYLE, HIDE_SPLITTER_SIZES
 
 
 class CanvasUISetUp:
@@ -36,22 +36,36 @@ class CanvasUISetUp:
 
         main_layout = QHBoxLayout(self.parent)
         main_layout.setContentsMargins(0, 0, 0, 0)
-        splitter = ModernSplitter(Qt.Horizontal)
-        splitter.addWidget(self.nav_panel)
-        splitter.addWidget(self.parent.canvas_widget)
-        splitter.addWidget(self.side_dock_area)
-        splitter.setSizes(DEFAULT_SPLITTER_SIZES)
+        main_layout.setSpacing(0)
+        self.splitter = ModernSplitter(Qt.Horizontal)
+        self.splitter.addWidget(self.nav_panel)
+        self.splitter.addWidget(self.parent.canvas_widget)
+        self.splitter.addWidget(self.side_dock_area)
+        self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
 
         # 设置分割器的拉伸因子，确保画布区域优先扩展
-        splitter.setStretchFactor(0, 0)  # 左侧导航不拉伸
-        splitter.setStretchFactor(1, 1)  # 中间画布拉伸（主要区域）
-        splitter.setStretchFactor(2, 0)  # 右侧属性不拉伸
-        main_layout.addWidget(splitter)
+        self.splitter.setStretchFactor(0, 0)  # 左侧导航不拉伸
+        self.splitter.setStretchFactor(1, 1)  # 中间画布拉伸（主要区域）
+        self.splitter.setStretchFactor(2, 0)  # 右侧属性不拉伸
+        main_layout.addWidget(self.splitter)
+        main_layout.addWidget(self.side_dock_area.tool_panel)
 
         # 创建悬浮按钮和环境选择
         self.parent.environment_manager.create_environment_selector()
         self.create_floating_buttons()
         self.create_floating_nodes()
+
+    def hide_splitter(self):
+        """强制 splitter 回到默认尺寸，无视用户拖动历史"""
+        self.splitter.setSizes(HIDE_SPLITTER_SIZES)
+        # 可选：刷新布局
+        self.splitter.update()
+
+    def show_splitter(self):
+        """强制 splitter 恢复到默认尺寸"""
+        self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
+        # 可选：刷新布局
+        self.splitter.update()
 
     def create_floating_buttons(self):
         self.buttons_container = QWidget(self.parent.graph.viewer())

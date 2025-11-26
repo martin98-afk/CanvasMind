@@ -3,6 +3,7 @@ PARAMETER_TEMPLATE = {
         "模型名称": "gpt-4",
         "API_URL": "https://api.openai.com/v1/chat/completions",
         "API_KEY": "",
+        "是否思考": True,
         "温度": 0.7,
         "最大Token": 2048,
         "系统提示": ""

@@ -112,7 +112,6 @@ class ComponentTreeWidget(TreeWidget):
         filtered.sort(key=lambda x: (x['category'], x['name']))
 
         # 构建树结构
-        # 按类别分组
         categories = {}
         for comp in filtered:
             category = comp['category']

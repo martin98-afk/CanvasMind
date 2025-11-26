@@ -179,6 +179,12 @@ class CanvasPage(QWidget):
             self.property_panel.get_current_execution_order(),
         ).export_selected_nodes_as_project()
 
+    def extract_graph_info(self):
+        if len(self.graph.selected_nodes()) > 0:
+            return self.canvas_io.extract_graph_info(self.graph.selected_nodes())
+        else:
+            return self.canvas_io.extract_graph_info()
+
     def save_full_workflow(self, file_path=None, show_info=True):
         if not isinstance(file_path, str) or not isinstance(file_path, Path):
             if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
@@ -187,6 +193,19 @@ class CanvasPage(QWidget):
                 file_path = (self.file_path.parent if self.file_path else Path("../app/interfaces")) / f"{self.workflow_name}.workflow.json"
         self.canvas_io.save_full_workflow(file_path, show_info)
         self.file_path = file_path
+
+    def get_component_info(self):
+        """获取当前组件列表信息，用于大模型分析"""
+        return [
+            {
+                "名称": value.name,
+                "描述": value.description,
+                "输入": [{"名称": item.label, "类型": item.type.value} for item in value.inputs],
+                "输出": [{"名称": item.label, "类型": item.type.value} for item in value.outputs],
+                "属性": [{"名称": item.label, "默认": item.default, "类型": item.type.value} for key, item in value.properties.items()],
+            }
+            for key, value in self.component_map.items()
+        ]
 
     def load_full_workflow(self, file_path=None):
         self.canvas_io.load_full_workflow(file_path)
@@ -515,7 +534,7 @@ class CanvasPage(QWidget):
     def close_current_canvas(self):
         # 1. 停止并断开所有定时器
         self._auto_saver.stop()
-        self.ipython_console.stop_kernel()
+        self.ipython_kernel.stop_kernel()
 
         # 5. 移除事件过滤器
         self.canvas_widget.removeEventFilter(self)

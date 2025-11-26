@@ -13,6 +13,7 @@ class VariableExplorerToolWindow(ToolWindow):
     default_position = DockPosition.TOP  # 放在顶部
 
     def setup_ui(self):
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self.explorer = VariableExplorerWidget(parent=self.canvas_page, kernel_manager=None)

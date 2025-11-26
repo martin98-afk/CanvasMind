@@ -51,7 +51,7 @@ class SettingInterface(ScrollArea):
             text="检查更新",
             icon=FluentIcon.INFO,
             title="关于",
-            content=f"© 版权所有 2025 martin-afk. 当前版本：{self.cfg.current_version.value}",
+            content=f"© 版权所有 2025 martin-afk. 当前版本：{self.cfg.current_version}",
             parent=self.versionGroup
         )
         self.info_card.clicked.connect(self.parent.updater.check_update)

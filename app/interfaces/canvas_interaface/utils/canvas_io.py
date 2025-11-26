@@ -157,3 +157,40 @@ class CanvasIO(QObject):
         # 更新路径
         self.parent.file_path = Path(file_path)
         self.parent.workflow_name = self.parent.file_path.stem.split(".")[0]
+
+    def extract_graph_info(self, nodes=None):
+        """过滤掉session data中的复杂信息，用于给大模型感知并分析当前画布的信息, 如果不传总结全图信息，如果选择节点信息"""
+        if nodes is None:
+            nodes = self.graph.all_nodes()
+        # 创建节点名和id的映射表
+        graph_info = {}
+        # 处理节点信息
+        for node in nodes:
+            custom_props = node.model._custom_prop.copy()
+            custom_props.pop("persistent_id")
+            input_port_infos = []
+            for port in node.input_ports():
+                port_info = {"名称": port.name(), "是否为多输入": port.model.multi_connection, "端口类型": port.model.type_}
+                connected = port.connected_ports()
+                for upstream in connected:
+                    port_info.update(
+                        {"上游节点名": upstream.node().name(), "上游端口名": upstream.name()}
+                    )
+                input_port_infos.append(port_info)
+            output_port_infos = []
+            for port in node.output_ports():
+                port_info = {"名称": port.name(), "端口类型": port.model.type_}
+                connected = port.connected_ports()
+                for downstream in connected:
+                    port_info.update(
+                        {"下游节点名": downstream.node().name(), "下游端口名": downstream.name()}
+                    )
+                output_port_infos.append(port_info)
+
+            graph_info[node.name()] = {
+                "输入端口": input_port_infos,
+                "输出端口": output_port_infos,
+                "节点属性": custom_props
+            }
+
+        return graph_info

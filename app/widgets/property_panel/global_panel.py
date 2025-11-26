@@ -10,7 +10,7 @@ from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SegmentedWidget, \
     FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
     TransparentDropDownToolButton, SubtitleLabel, BodyLabel, LineEdit, \
-    ToggleToolButton, SearchLineEdit, SmoothScrollArea
+    ToggleToolButton, SearchLineEdit, SmoothScrollArea, StrongBodyLabel
 from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleCardWidget
 
 from app.templates.global_custom_var_template import PARAMETER_TEMPLATE
@@ -602,7 +602,7 @@ class GlobalPanelWidget:
 
         # 节点标题
         node_title_layout = QHBoxLayout()
-        node_title = BodyLabel(node_name)
+        node_title = StrongBodyLabel(node_name)
         node_title_layout.addWidget(node_title)
 
         group_layout.addLayout(node_title_layout)

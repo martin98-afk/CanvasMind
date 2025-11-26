@@ -26,7 +26,7 @@ class UpdateChecker(QWidget):
         self.platform = self.cfg.patch_platform.value
         self.repo = self.cfg.github_repo.value
         self.token = self.cfg.github_token.value
-        self.current_version = self.cfg.current_version.value
+        self.current_version = self.cfg.current_version
         self.progress_dialog = None
         self.download_thread = None
         self.update_zip_path = None  # 记录 ZIP 路径
