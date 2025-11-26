@@ -47,7 +47,7 @@ class MessageCard(CardWidget):
 
     def setup_ui(self, content: str):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(2)
 
         top_layout = QHBoxLayout()

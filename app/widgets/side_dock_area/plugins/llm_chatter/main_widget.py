@@ -35,7 +35,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self._worker: Optional[OpenAIChatWorker] = None
         self._is_streaming = False
         self.session_manager.create_new_session()  # 初始化第一个会话
-        self._assistant_card_content_buffer: Dict[MessageCard, str] = {}
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -114,7 +113,7 @@ class OpenAIChatToolWindow(ToolWindow):
         # ========== 聊天内容区域 (使用 QListWidget) ==========
         chat_list_container = QWidget(self)
         chat_list_layout = QVBoxLayout(chat_list_container)
-        chat_list_layout.setContentsMargins(0, 0, 0, 0)
+        chat_list_layout.setContentsMargins(10, 10, 10, 10)
         self.chat_list = ListWidget(self)
         self.chat_list.setResizeMode(ListWidget.Adjust)  # ✅ 必须！
         self.chat_list.setFrameShape(QListWidget.NoFrame)
@@ -251,7 +250,7 @@ class OpenAIChatToolWindow(ToolWindow):
         # 滚动到底部
         QTimer.singleShot(0, self.chat_list.scrollToBottom)
 
-    def _append_assistant_message(self, content: str) -> MessageCard:
+    def _append_assistant_message(self, content: str = "") -> MessageCard:
         """添加一条助手消息，并返回其卡片对象，以便后续流式更新"""
         card = MessageCard(role="assistant", content=content)
         card.deleteRequested.connect(lambda: self._delete_message(self.chat_list.count() - 1))
@@ -337,7 +336,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self.input_area.clear()
         # 创建一个占位的助手消息卡片，用于流式更新
-        assistant_card = self._append_assistant_message("思考中...")
+        assistant_card = self._append_assistant_message()
 
         # 获取模型配置
         selected_name = self.model_combo.currentText()
@@ -365,7 +364,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self._worker = OpenAIChatWorker(messages=messages, llm_config=llm_config)
         self._worker.content_received.connect(lambda c: self._on_content_received(c, assistant_card))
         self._worker.error_occurred.connect(lambda e: self._on_error(e, assistant_card))
-        # self._worker.finished.connect(lambda: self._on_worker_finished(assistant_card))
         self._worker.start()
 
     def _get_enhanced_input(self, user_input: str) -> str:
@@ -408,17 +406,3 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_error(self, error_msg: str, assistant_card: MessageCard):
         """处理错误，更新指定卡片"""
         self._update_assistant_message(assistant_card, f"[错误] {error_msg}")
-
-    # def _on_worker_finished(self, assistant_card: MessageCard):
-    #     """任务完成，保存最终结果到会话历史"""
-    #     if self._worker and self._worker.full_response:
-    #         session = self.session_manager.get_current_session()
-    #         if session:
-    #             # 替换最后一条消息 (即我们刚刚创建的助手消息)
-    #             session.messages[-1] = {"role": "assistant", "content": self._worker.full_response}
-    #             # 更新卡片显示 (使用 Worker 提供的完整内容，更可靠)
-    #             self._update_assistant_message(assistant_card, self._worker.full_response)
-    #
-    #     # 清理该卡片的累积缓冲区
-    #     if assistant_card in self._assistant_card_content_buffer:
-    #         del self._assistant_card_content_buffer[assistant_card]
