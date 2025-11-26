@@ -11,7 +11,7 @@ class IPythonConsoleToolWindow(ToolWindow):
     default_position = DockPosition.BOTTOM  # 放在底部
 
     def setup_ui(self):
-        self.setMinimumWidth(200)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self.console = EmbeddedIPythonConsole(self.canvas_page)

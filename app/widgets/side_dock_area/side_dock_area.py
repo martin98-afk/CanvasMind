@@ -25,13 +25,13 @@ class AdaptiveStackedWidget(QStackedWidget):
         current = self.currentWidget()
         if current:
             return current.sizeHint()
-        return super().sizeHint()
+        return QSize(0, 0)
 
     def minimumSizeHint(self) -> QSize:
         current = self.currentWidget()
         if current:
             return current.minimumSizeHint()
-        return super().minimumSizeHint()
+        return QSize(0, 0)
 
 
 class SideDockArea(QWidget):
@@ -63,7 +63,6 @@ class SideDockArea(QWidget):
         self.tool_panel.bottomToolUnchecked.connect(self._hide_bottom_tool)
 
         main_layout.addWidget(self.splitter)  # 占主要空间
-        main_layout.addWidget(self.tool_panel)  # 不拉伸，靠右
 
         self._load_plugins()
 
@@ -99,6 +98,11 @@ class SideDockArea(QWidget):
 
     def _update_splitter(self):
         self.content_visible = self._top_visible or self._bottom_visible
+        if not self.content_visible:
+            self.splitter.setSizes([0, 0])
+            self.canvas_page.ui_manager.hide_splitter()
+            return
+        self.canvas_page.ui_manager.show_splitter()
         if self._top_visible and self._bottom_visible:
             self.splitter.setSizes([1, 1])
         elif self._top_visible:

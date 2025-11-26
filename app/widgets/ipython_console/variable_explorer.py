@@ -193,10 +193,10 @@ class VariableExplorerWidget(QWidget):
 
     def __init__(self, parent=None, kernel_manager=None):
         super().__init__(parent)
+        self.setMinimumWidth(300)
         self.kernel_manager = kernel_manager
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
-
 
         # 创建变量浏览器核心
         self.core = VariableExplorerCore(kernel_manager)

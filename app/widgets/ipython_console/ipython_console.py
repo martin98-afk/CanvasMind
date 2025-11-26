@@ -56,6 +56,7 @@ class EmbeddedIPythonConsole(QWidget):
 
     def __init__(self, parent=None, package_manager=None):
         super().__init__(parent)
+        self.setMinimumWidth(300)
         self.package_manager = package_manager
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(0)
