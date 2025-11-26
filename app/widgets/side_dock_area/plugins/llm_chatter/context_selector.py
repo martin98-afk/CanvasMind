@@ -197,8 +197,13 @@ class ContextSelector(QWidget):
         self._on_popup_selection_changed(selected)
 
     def _show_popup(self):
-        pos = self.dropdown_btn.mapToGlobal(QPoint(0, self.dropdown_btn.height()))
-        self.popup.show_at(pos)
+        btn_global_pos = self.dropdown_btn.mapToGlobal(QPoint(0, 0))
+        popup_height = self.popup.sizeHint().height()
+
+        # 将弹窗底部对齐到按钮顶部（即弹窗在按钮上方）
+        popup_top_left = QPoint(btn_global_pos.x(), btn_global_pos.y() - popup_height)
+
+        self.popup.show_at(popup_top_left)
 
     def _update_tags(self):
         # 清空现有标签

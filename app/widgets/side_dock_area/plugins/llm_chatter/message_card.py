@@ -90,14 +90,14 @@ class MessageCard(CardWidget):
     copyRequested = pyqtSignal(str)
     regenerateRequested = pyqtSignal()
 
-    def __init__(self, role: str, content: str, timestamp: str = None, parent=None):
+    def __init__(self, role: str, timestamp: str = None, parent=None):
         super().__init__(parent)
         self.parent = parent
         self.role = role
         self.timestamp = timestamp or datetime.now().strftime('%H:%M')
-        self.setup_ui(content)
+        self.setup_ui()
 
-    def setup_ui(self, content: str):
+    def setup_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(2)
@@ -160,9 +160,6 @@ class MessageCard(CardWidget):
 
         # Content widget
         self.content_widget = StreamingTextEdit(self)
-        if content:
-            self.content_widget.append_chunk(content)
-
         main_layout.addWidget(self.content_widget, 0)
 
         # Card background

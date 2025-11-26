@@ -10,6 +10,8 @@
 
 A modern low-code visual programming platform built on **NodeGraphQt** and **qfluentwidgets**, supporting drag-and-drop component orchestration, asynchronous execution, file operations, loop control, and one-click export of workflows into standalone runnable projects—enabling seamless transition from development to deployment.
 
+<img src="images/画布大模型对话示意图.gif" width="100%" height="100%"><br>
+
 ## 🌟 Key Features
 
 ### 🎨 Modern UI

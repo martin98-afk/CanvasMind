@@ -166,7 +166,7 @@ class CanvasIO(QObject):
         graph_info = {}
         # 处理节点信息
         for node in nodes:
-            custom_props = node.model._custom_prop
+            custom_props = node.model._custom_prop.copy()
             custom_props.pop("persistent_id")
             input_port_infos = []
             for port in node.input_ports():

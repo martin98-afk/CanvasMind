@@ -39,7 +39,7 @@ class SessionManager(QObject):
     def create_new_session(self) -> ChatSession:
         session = ChatSession()
         self.sessions.append(session)
-        self.current_index = len(self.sessions) - 1
+        self.current_index = 0
         return session
 
     def get_current_session(self) -> Optional[ChatSession]:

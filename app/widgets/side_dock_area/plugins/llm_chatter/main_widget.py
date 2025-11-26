@@ -5,11 +5,10 @@ from typing import Optional, Dict, Any, Callable, List, Tuple
 
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QListWidget, QAbstractItemView, QLabel, \
-    QApplication, QWidget
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QApplication, QWidget
 from qfluentwidgets import (
-    TextEdit, setFont, ComboBox, FluentIcon, ToolButton, BodyLabel, ListWidget,
-    InfoBar, InfoBarPosition, TransparentPushButton
+    TextEdit, setFont, ComboBox, FluentIcon, ToolButton, TransparentPushButton,
+    SingleDirectionScrollArea, InfoBar, InfoBarPosition
 )
 
 from app.utils.utils import get_icon
@@ -20,7 +19,6 @@ from app.widgets.side_dock_area.plugins.llm_chatter.worker import OpenAIChatWork
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 
-# ------------------ 主插件窗口 ------------------
 class OpenAIChatToolWindow(ToolWindow):
     name = "大模型对话"
     icon = get_icon("大模型")
@@ -28,16 +26,16 @@ class OpenAIChatToolWindow(ToolWindow):
     default_position = DockPosition.TOP
     session_manager = SessionManager()
     _valid_configs: Dict[str, Dict[str, Any]] = {}
-    context_items: List[Tuple[str, str, Callable[[], Dict[str, Any]]]] = None  # 上下文项列表
+    context_items: List[Tuple[str, str, Callable[[], Dict[str, Any]]]] = None
 
     def __init__(self, canvas_page):
         super().__init__(canvas_page)
         self.canvas_page = canvas_page
         self._worker: Optional[OpenAIChatWorker] = None
         self._is_streaming = False
-        self.session_manager.create_new_session()  # 初始化第一个会话
-        # 新增：用于存储当前选中的上下文项
+        self.session_manager.create_new_session()
         self._selected_context_items = set()
+        self.canvas_page.global_variables_changed.connect(self._load_model_configs)
 
     def setup_ui(self):
         self.context_items = [
@@ -49,9 +47,9 @@ class OpenAIChatToolWindow(ToolWindow):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(0)
 
-        # ========== 顶部会话管理栏 ========== （保持不变）
+        # ========== 顶部会话管理栏 ==========
         session_bar_layout = QHBoxLayout()
-        session_bar_layout.setContentsMargins(0, 0, 0, 0)
+        session_bar_layout.setContentsMargins(0, 0, 0, 5)
         session_bar_layout.setSpacing(4)
 
         left_layout = QHBoxLayout()
@@ -59,7 +57,10 @@ class OpenAIChatToolWindow(ToolWindow):
         left_layout.setSpacing(4)
 
         model_layout = QHBoxLayout()
-        model_layout.addWidget(BodyLabel("模型：", self))
+        model_label = QLabel("模型：", self)
+        setFont(model_label, 12, QFont.Bold)
+        model_label.setStyleSheet("color: #ffffff;")
+        model_layout.addWidget(model_label)
         self.model_combo = ComboBox(self)
         self._load_model_configs()
         setFont(self.model_combo, 12)
@@ -109,44 +110,44 @@ class OpenAIChatToolWindow(ToolWindow):
         session_bar_layout.addLayout(right_layout)
         layout.addLayout(session_bar_layout)
 
-        # ========== 聊天内容区域 ========== （保持不变）
-        chat_list_container = QWidget(self)
-        chat_list_layout = QVBoxLayout(chat_list_container)
-        chat_list_layout.setContentsMargins(10, 10, 10, 10)
-        self.chat_list = ListWidget(self)
-        self.chat_list.setResizeMode(ListWidget.Adjust)
-        self.chat_list.setFrameShape(QListWidget.NoFrame)
-        self.chat_list.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.chat_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.chat_list.setSelectionMode(QAbstractItemView.NoSelection)
-        self.chat_list.verticalScrollBar().rangeChanged.connect(lambda: self.chat_list.scrollToBottom())
-        chat_list_layout.addWidget(self.chat_list)
-        layout.addWidget(chat_list_container, 1)
+        # ========== 聊天内容区域（使用 SingleDirectionScrollArea）==========
+        self.chat_scroll_area = SingleDirectionScrollArea(self)
+        # 透明背景
+        self.chat_scroll_area.setStyleSheet("background-color: transparent; border: none;")
+        self.chat_scroll_area.setWidgetResizable(True)
+        self.chat_scroll_area.setViewportMargins(0, 0, 0, 0)
+
+        self.chat_container = QWidget()
+        self.chat_layout = QVBoxLayout(self.chat_container)
+        self.chat_layout.setContentsMargins(0, 0, 0, 0)
+        self.chat_layout.setSpacing(4)
+        self.chat_layout.setAlignment(Qt.AlignBottom)  # 关键：防止垂直拉伸
+        self.chat_scroll_area.setWidget(self.chat_container)
+
+        layout.addWidget(self.chat_scroll_area, 1)
 
         # ========== 中间状态栏（使用 ContextSelector）==========
         status_layout = QHBoxLayout()
         status_layout.setContentsMargins(0, 0, 0, 0)
         status_layout.setSpacing(4)
 
-        # 替换为独立的上下文选择器
         self.context_selector = ContextSelector(self.context_items, self)
         status_layout.addWidget(self.context_selector)
         status_layout.addStretch()
 
-        # 发送/停止按钮
         self.send_btn = TransparentPushButton(icon=FluentIcon.SEND, text="发送", parent=self)
         self.send_btn.clicked.connect(self._on_send_clicked)
         status_layout.addWidget(self.send_btn)
         layout.addLayout(status_layout)
 
-        # ========== 输入区域 ========== （保持不变）
+        # ========== 输入区域 ==========
         input_layout = QHBoxLayout()
         input_layout.setContentsMargins(0, 0, 0, 0)
         input_layout.setSpacing(4)
         self.input_area = TextEdit(self)
         self.input_area.setPlaceholderText("继续提问或 \"/\"新开会话")
-        self.input_area.setMaximumHeight(150)
-        setFont(self.input_area, 12)
+        self.input_area.setMaximumHeight(100)
+        setFont(self.input_area, 15)
         self.input_area.installEventFilter(self)
         input_layout.addWidget(self.input_area, 1)
         layout.addLayout(input_layout)
@@ -166,6 +167,7 @@ class OpenAIChatToolWindow(ToolWindow):
                         self._valid_configs[config_name] = val
             if self._valid_configs:
                 self.model_combo.addItems(list(self._valid_configs.keys()))
+                self.model_combo.setDisabled(False)
             else:
                 self.model_combo.addItem("无有效配置")
                 self.model_combo.setDisabled(True)
@@ -183,142 +185,140 @@ class OpenAIChatToolWindow(ToolWindow):
         self.session_combo.addItems(self.session_manager.get_session_names())
         self.session_combo.setCurrentIndex(self.session_manager.current_index)
 
-    def _clear_current_session(self):
-        session = self.session_manager.get_current_session()
-        if session:
-            session.messages.clear()
+    def _on_session_changed(self, index: int):
+        if index >= 0:
+            self.session_manager.switch_to_session(index)
             self._display_current_session()
 
-    def _on_session_changed(self, index: int):
-        self.session_manager.switch_to_session(index)
-        self._display_current_session()
-
     def _display_current_session(self):
-        """清空列表并重新加载当前会话的所有消息"""
-        self.chat_list.clear()
+        """清空布局并重新加载当前会话的所有消息"""
+        while self.chat_layout.count():
+            item = self.chat_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
         session = self.session_manager.get_current_session()
         if not session:
             return
 
-        for i, msg in enumerate(session.messages):
-            # 创建卡片
+        for msg in session.messages:
             card = MessageCard(
                 parent=self,
                 role=msg["role"],
-                content=msg["content"],
-                timestamp=datetime.now().strftime('%H:%M')  # 实际应用中应存储真实时间戳
+                timestamp=msg.get("timestamp", datetime.now().strftime('%H:%M'))
             )
-            # 连接卡片的信号
-            card.deleteRequested.connect(lambda: self._delete_message(i))
+            card.update_content(msg["content"])
+            card.deleteRequested.connect(lambda c=card: self._delete_message(c))
             card.copyRequested.connect(self._copy_text)
             if msg["role"] == "assistant":
-                card.regenerateRequested.connect(lambda: self._regenerate_message(i))
+                card.regenerateRequested.connect(lambda c=card: self._regenerate_message(c))
 
-            # 添加到列表
-            item = QListWidgetItem()
-            item.setSizeHint(card.sizeHint())
-            self.chat_list.addItem(item)
-            self.chat_list.setItemWidget(item, card)
+            self.chat_layout.addWidget(card)
 
-        # 确保滚动到底部
-        QTimer.singleShot(0, self.chat_list.scrollToBottom)
+        self._scroll_to_bottom()
 
     def _append_user_message(self, content: str):
-        """添加一条用户消息到列表"""
-        card = MessageCard(parent=self, role="user", content=content)
-        card.deleteRequested.connect(lambda: self._delete_message(self.chat_list.count() - 1))
+        card = MessageCard(parent=self, role="user")
+        card.update_content(content)
+        card.deleteRequested.connect(lambda: self._delete_message(card))
         card.copyRequested.connect(self._copy_text)
+        self.chat_layout.addWidget(card)
+        self._scroll_to_bottom()
 
-        item = QListWidgetItem()
-        item.setSizeHint(card.sizeHint())
-        self.chat_list.addItem(item)
-        self.chat_list.setItemWidget(item, card)
-
-        # 滚动到底部
-        QTimer.singleShot(0, self.chat_list.scrollToBottom)
-
-    def _append_assistant_message(self, content: str = "") -> MessageCard:
-        """添加一条助手消息，并返回其卡片对象，以便后续流式更新"""
-        card = MessageCard(parent=self, role="assistant", content=content)
-        card.deleteRequested.connect(lambda: self._delete_message(self.chat_list.count() - 1))
+    def _append_assistant_message(self) -> MessageCard:
+        card = MessageCard(parent=self, role="assistant")
+        card.deleteRequested.connect(lambda: self._delete_message(card))
         card.copyRequested.connect(self._copy_text)
-        card.regenerateRequested.connect(lambda: self._regenerate_message(self.chat_list.count() - 1))
-
-        item = QListWidgetItem()
-        item.setSizeHint(card.sizeHint())
-        self.chat_list.addItem(item)
-        self.chat_list.setItemWidget(item, card)
-
-        # 滚动到底部
-        QTimer.singleShot(0, self.chat_list.scrollToBottom)
-
+        card.regenerateRequested.connect(lambda: self._regenerate_message(card))
+        self.chat_layout.addWidget(card)
+        self._scroll_to_bottom()
         return card
 
     def _update_assistant_message(self, card: MessageCard, new_content: str):
-        """更新指定助手消息卡片的内容"""
         card.update_content(new_content)
-        # 找到卡片对应的列表项
-        for i in range(self.chat_list.count()):
-            if self.chat_list.itemWidget(self.chat_list.item(i)) is card:
-                item = self.chat_list.item(i)
-                break
+        if self._is_streaming:
+            self._scroll_to_bottom()
+
+    def _delete_message(self, card_or_index):
+        if isinstance(card_or_index, MessageCard):
+            card = card_or_index
+            # 从布局中移除
+            for i in range(self.chat_layout.count()):
+                if self.chat_layout.itemAt(i).widget() is card:
+                    self._remove_message_at_index(i)
+                    return
         else:
-            # 如果没找到，说明卡片可能已被删除或不在列表中
-            return
+            self._remove_message_at_index(card_or_index)
 
-        # 更新列表项的大小提示，以适应内容变化
-        item.setSizeHint(card.sizeHint())
+    def _remove_message_at_index(self, index: int):
+        if 0 <= index < self.chat_layout.count():
+            item = self.chat_layout.itemAt(index)
+            if item and item.widget():
+                widget = item.widget()
+                self.chat_layout.removeWidget(widget)
+                widget.deleteLater()
 
-    def _delete_message(self, row: int):
-        """删除指定的消息卡片"""
-        self.chat_list.takeItem(row)
+            session = self.session_manager.get_current_session()
+            if session and 0 <= index < len(session.messages):
+                session.messages.pop(index)
 
-        # 同时从会话历史中移除
-        session = self.session_manager.get_current_session()
-        if session and 0 <= row < len(session.messages):
-            session.messages.pop(row)
-            # 重新显示整个会话，以保证索引一致
-            self._display_current_session()
-
-    def _copy_text(self, text: str):
-        """复制文本到剪贴板"""
-        clipboard = QApplication.clipboard()
-        clipboard.setText(text)
-
-    def _regenerate_message(self, row: int):
-        """重新生成这条助手消息"""
-        session = self.session_manager.get_current_session()
-        if not session or row < 0 or row >= len(session.messages):
-            return
-
-        # 找到对应的用户消息 (通常是前一条)
-        user_msg_index = row - 1
-        if user_msg_index < 0 or session.messages[user_msg_index]["role"] != "user":
-            return
-
-        user_input = session.messages[user_msg_index]["content"]
-        # 删除旧的助手消息
-        session.messages.pop(row)
-        # 从列表中移除卡片
-        self.chat_list.takeItem(row)
-
-        # 重新发送请求
-        self._send_message_with_enhanced_input(user_input)
-
-    def _on_send_clicked(self):
-        user_text = self.input_area.toPlainText().strip()
-        if not user_text:
-            return
-
+    def _regenerate_message(self, card: MessageCard):
         session = self.session_manager.get_current_session()
         if not session:
             return
 
-        session.add_user_message(content=user_text)
-        self._append_user_message(user_text)
-        self.input_area.clear()
-        assistant_card = self._append_assistant_message()
+        # 找到该卡片的索引
+        card_index = -1
+        for i in range(self.chat_layout.count()):
+            if self.chat_layout.itemAt(i).widget() is card:
+                card_index = i
+                break
+        if card_index <= 0:
+            return
 
+        prev_widget = self.chat_layout.itemAt(card_index - 1).widget()
+        if not isinstance(prev_widget, MessageCard) or prev_widget.role != "user":
+            return
+
+        user_input = prev_widget.content_widget.get_plain_text()
+
+        # 删除当前助手消息
+        self._delete_message(card)
+
+        # 重新发送
+        self._on_send_clicked(user_input)
+
+    def _copy_text(self, text: str):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(text)
+
+    def _scroll_to_bottom(self):
+        QTimer.singleShot(10, lambda: self.chat_scroll_area.verticalScrollBar().setValue(
+            self.chat_scroll_area.verticalScrollBar().maximum()
+        ))
+
+    def _get_enhanced_input(self, user_input: str) -> str:
+        selected = self.context_selector.get_selected_keys()
+        context_info_list = []
+        for context_key, context_name, context_func in self.context_items:
+            if context_key in selected:
+                context_info = context_func()
+                if isinstance(context_info, (dict, list, tuple, set)):
+                    context_info = json.dumps(context_info, indent=2, ensure_ascii=False)
+                context_info_list.append(f"[{context_name}信息]:\n{context_info}\n---\n")
+        return "\n".join(context_info_list) + user_input
+
+    def _on_send_clicked(self, user_text: str = ""):
+        session = self.session_manager.get_current_session()
+        if not user_text:
+            user_text = self.input_area.toPlainText().strip()
+            if not user_text:
+                return
+            session.add_user_message(content=user_text)
+            self.input_area.clear()
+            self._append_user_message(user_text)
+
+        assistant_card = self._append_assistant_message()
         selected_name = self.model_combo.currentText()
         llm_config = self._valid_configs.get(selected_name)
         if not llm_config:
@@ -333,65 +333,58 @@ class OpenAIChatToolWindow(ToolWindow):
         for msg in session.messages[:-1]:
             messages.append(msg)
 
-        # ✅ 关键修改：从 context_selector 获取选中项
         enhanced_input = self._get_enhanced_input(user_text)
         messages.append({"role": "user", "content": enhanced_input})
 
+        self._is_streaming = True
         self._worker = OpenAIChatWorker(messages=messages, llm_config=llm_config)
         self._worker.content_received.connect(lambda c: self._on_content_received(c, assistant_card))
         self._worker.error_occurred.connect(lambda e: self._on_error(e, assistant_card))
-        self._worker.finished.connect(self._on_worker_finished)
+        self._worker.finished_with_content.connect(self._on_worker_finished)
         self._worker.start()
 
         self._toggle_send_stop(True)
 
-    def _get_enhanced_input(self, user_input: str) -> str:
-        """使用 context_selector 获取选中项"""
-        selected = self.context_selector.get_selected_keys()
-        context_info_list = []
-        for context_key, context_name, context_func in self.context_items:
-            if context_key in selected:
-                context_info = context_func()
-                # 对context_info进行格式化处理
-                if isinstance(context_info, (dict, list, tuple, set)):
-                    context_info = json.dumps(context_info, indent=2, ensure_ascii=False)
-
-                context_info_list.append(f"[{context_name}信息]:\n{context_info}\n---\n")
-        enhanced = "\n".join(context_info_list) + user_input
-
-        return enhanced
-
-    def _on_worker_finished(self):
-        """工作线程结束时调用"""
+    def _on_error(self, error: str, card: MessageCard):
+        self._is_streaming = False
         self._toggle_send_stop(False)
+        self._update_assistant_message(card, error)
+
+    def _on_worker_finished(self, response: str):
+        self._is_streaming = False
+        self._toggle_send_stop(False)
+        session = self.session_manager.get_current_session()
+        if session:
+            session.add_assistant_message(content=response)
 
     def _toggle_send_stop(self, is_sending: bool):
-        """根据是否正在发送来切换按钮文本和状态"""
         if is_sending:
             self.send_btn.setText("停止")
             self.send_btn.setIcon(FluentIcon.PAUSE)
-            self.send_btn.clicked.disconnect(self._on_send_clicked)
+            try:
+                self.send_btn.clicked.disconnect()
+            except TypeError:
+                pass
             self.send_btn.clicked.connect(self._on_stop_clicked)
-            # 禁用输入框和模型选择，防止干扰
             self.input_area.setDisabled(True)
             self.model_combo.setDisabled(True)
         else:
             self.send_btn.setText("发送")
             self.send_btn.setIcon(FluentIcon.SEND)
-            self.send_btn.clicked.disconnect(self._on_stop_clicked)
+            try:
+                self.send_btn.clicked.disconnect()
+            except TypeError:
+                pass
             self.send_btn.clicked.connect(self._on_send_clicked)
             self.input_area.setDisabled(False)
             self.model_combo.setDisabled(False)
 
     def _on_stop_clicked(self):
-        """停止按钮被点击时调用"""
         if self._worker and self._worker.isRunning():
-            self._worker.cancel()  # 强制终止线程
-            # 清理资源
+            self._worker.cancel()
             self._worker = None
-            # 切换回发送状态
+            self._is_streaming = False
             self._toggle_send_stop(False)
-            # 给用户一个提示
             InfoBar.warning(
                 title='已中止',
                 content="问答请求已被手动中止。",
@@ -403,12 +396,4 @@ class OpenAIChatToolWindow(ToolWindow):
             )
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
-        """流式接收内容片段，累积并更新指定卡片"""
-        # 将新片段追加到累积内容中
-        new_buffer = content_piece
-        # 更新卡片显示
-        self._update_assistant_message(assistant_card, new_buffer)
-
-    def _on_error(self, error_msg: str, assistant_card: MessageCard):
-        """处理错误，更新指定卡片"""
-        self._update_assistant_message(assistant_card, f"[错误] {error_msg}")
+        self._update_assistant_message(assistant_card, content_piece)
