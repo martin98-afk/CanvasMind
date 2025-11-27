@@ -216,12 +216,15 @@ class ContextSelector(QWidget):
         main_layout.addWidget(self.tags_container)
         main_layout.addStretch(1)
 
-        # 创建 popup（此时 self._context_items 已有值）
-        self.popup = ContextSelectorPopup(self._context_items, parent=self)
-        self.popup.selectionChanged.connect(self._on_popup_selection_changed)
-        self.popup.set_selection(self._selected_keys)
-
         self._update_tags()
+
+    @property
+    def selected_keys(self):
+        return self._selected_keys.copy()
+
+    @property
+    def context_items(self):
+        return self._context_items
 
     def _refresh_context_items(self):
         """从全局注册表加载最新上下文项"""
@@ -313,6 +316,3 @@ class ContextSelector(QWidget):
             # 通知 popup 更新（虽然 popup 可能没打开，但状态要一致）
             self.popup.selected_keys = self._selected_keys.copy()
             self.popup._update_checkboxes_from_selection()
-
-    def get_selected_keys(self) -> set:
-        return self._selected_keys.copy()

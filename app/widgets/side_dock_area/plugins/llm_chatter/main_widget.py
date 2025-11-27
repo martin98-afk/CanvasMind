@@ -28,7 +28,6 @@ class OpenAIChatToolWindow(ToolWindow):
     default_position = DockPosition.TOP
     session_manager = SessionManager()
     _valid_configs: Dict[str, Dict[str, Any]] = {}
-    context_items: List[Tuple[str, str, Callable[[], Dict[str, Any]]]] = None
     history_manager = None
     _in_history_mode = False
     _current_history_index: Optional[int] = None
@@ -68,9 +67,6 @@ class OpenAIChatToolWindow(ToolWindow):
         setFont(self.model_combo, 12)
         left_layout.addWidget(self.model_combo, 1)
 
-        separator = QLabel("|", self)
-        separator.setStyleSheet("color: #666666;")
-        left_layout.addWidget(separator)
         # 右侧保持不变
         right_layout = QHBoxLayout()
         # --- 新增：+ 新建对话 和 历史对话按钮 ---
@@ -83,9 +79,6 @@ class OpenAIChatToolWindow(ToolWindow):
 
         right_layout.addWidget(self.new_session_btn)
         right_layout.addWidget(self.history_btn)
-
-        more_btn = ToolButton(FluentIcon.SETTING, self)
-        right_layout.addWidget(more_btn)
 
         session_bar_layout.addLayout(left_layout)
         session_bar_layout.addStretch()
@@ -175,6 +168,7 @@ class OpenAIChatToolWindow(ToolWindow):
                 timestamp=msg.get("timestamp", datetime.now().strftime('%H:%M'))
             )
             card.update_content(msg["content"])
+            card.finish_streaming()
             card.deleteRequested.connect(lambda c=card: self._delete_message(c))
             card.copyRequested.connect(self._copy_text)
             if msg["role"] == "assistant":
@@ -196,9 +190,11 @@ class OpenAIChatToolWindow(ToolWindow):
             if not self.history_manager:
                 self._initialize_history_manager()
             self._in_history_mode = True
+            self.chat_layout.setAlignment(Qt.AlignTop)  # 关键：防止垂直拉伸
             self._display_history_sessions()
         else:
             self._in_history_mode = False
+            self.chat_layout.setAlignment(Qt.AlignBottom)  # 关键：防止垂直拉伸
             self._display_current_session()
 
     def _display_history_sessions(self):
@@ -266,6 +262,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self.session_manager.set_session_from_messages(messages)
         self._current_history_index = index  # 关键：标记当前正在编辑哪个历史
         self._in_history_mode = False
+        self.chat_layout.setAlignment(Qt.AlignBottom)  # 关键：防止垂直拉伸
         self.history_btn.setChecked(False)
         self._display_current_session()
 
@@ -371,9 +368,9 @@ class OpenAIChatToolWindow(ToolWindow):
         ))
 
     def _get_enhanced_input(self, user_input: str) -> str:
-        selected = self.context_selector.get_selected_keys()
+        selected = self.context_selector.selected_keys
         context_info_list = []
-        for context_key, context_name, context_func in self.context_items:
+        for context_key, context_name, context_func in self.context_selector.context_items:
             if context_key in selected:
                 context_info = context_func()
                 if isinstance(context_info, (dict, list, tuple, set)):
@@ -443,6 +440,8 @@ class OpenAIChatToolWindow(ToolWindow):
             # 正在续聊某个历史会话 → 更新它
             self.history_manager.update_session(self._current_history_index, session.messages)
         else:
+            if self.history_manager is None:
+                return
             # 全新会话 → 新增一条历史记录（首次保存）
             self.history_manager.save_session(session.messages)
             # 保存后，自动绑定到新历史索引（避免重复保存）

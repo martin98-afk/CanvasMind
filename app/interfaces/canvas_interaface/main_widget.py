@@ -143,10 +143,6 @@ class CanvasPage(QWidget):
     def var_explorer(self):
         return self.ui_manager.variable_explorer
 
-    @property
-    def llm_chatter(self):
-        return self.ui_manager.llm_chatter
-
     def inject_llm_contexts(self):
         ContextRegistry.register("@graph", "当前画布", self.extract_graph_info)
         ContextRegistry.register("@vars", "全局变量", self.global_variables.to_dict)
