@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QApplication, QWid
 from qfluentwidgets import (
     TextEdit, setFont, ComboBox, FluentIcon, ToolButton, TransparentPushButton,
     SingleDirectionScrollArea, InfoBar, InfoBarPosition, CardWidget, BodyLabel, CaptionLabel, TransparentToolButton,
-    ToggleToolButton
+    ToggleToolButton, TransparentToggleToolButton
 )
 
 from app.utils.utils import get_icon
@@ -43,6 +43,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._create_new_session()
 
     def setup_ui(self):
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(0)
@@ -65,15 +66,15 @@ class OpenAIChatToolWindow(ToolWindow):
         self.model_combo = ComboBox(self)
         self._load_model_configs()
         setFont(self.model_combo, 12)
-        left_layout.addWidget(self.model_combo, 1)
-
+        left_layout.addWidget(self.model_combo)
+        left_layout.addStretch()
         # 右侧保持不变
         right_layout = QHBoxLayout()
         # --- 新增：+ 新建对话 和 历史对话按钮 ---
-        self.new_session_btn = ToolButton(FluentIcon.ADD, self)
+        self.new_session_btn = TransparentToolButton(FluentIcon.ADD, self)
         self.new_session_btn.setToolTip("新建对话")
         self.new_session_btn.clicked.connect(self._create_new_session)
-        self.history_btn = ToggleToolButton(FluentIcon.HISTORY, self)
+        self.history_btn = TransparentToggleToolButton(FluentIcon.HISTORY, self)
         self.history_btn.setToolTip("历史对话")
         self.history_btn.toggled.connect(self._toggle_history_mode)
 
@@ -87,6 +88,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         # ========== 聊天内容区域（使用 SingleDirectionScrollArea）==========
         self.chat_scroll_area = SingleDirectionScrollArea(self)
+        self.chat_scroll_area.setMinimumWidth(400)
         # 透明背景
         self.chat_scroll_area.setStyleSheet("background-color: transparent; border: none;")
         self.chat_scroll_area.setWidgetResizable(True)
@@ -198,7 +200,6 @@ class OpenAIChatToolWindow(ToolWindow):
             self._display_current_session()
 
     def _display_history_sessions(self):
-        """清空并显示历史对话卡片"""
         self._clear_chat_area()
 
         history_list = self.history_manager.get_history_list()
@@ -209,16 +210,35 @@ class OpenAIChatToolWindow(ToolWindow):
             self.chat_layout.addWidget(placeholder)
             return
 
-        for idx, session in enumerate(history_list):
-            card = self._create_history_card(session['title'], session['last_time'], idx)
+        # 倒序显示（最新在上）
+        reversed_history = list(enumerate(history_list[::-1]))  # (display_idx, session)
+        for display_idx, session in reversed_history:
+            title = session['title']
+            last_time = session['last_time']
+
+            # 计算原始索引：因为 reversed，原始索引 = total - 1 - display_idx
+            original_index = len(history_list) - 1 - display_idx
+
+            is_current = (self._current_history_index is not None and
+                          self._current_history_index == original_index)
+
+            card = self._create_history_card(title, last_time, original_index, is_current=is_current)
             self.chat_layout.addWidget(card)
 
         self._scroll_to_bottom()
 
-    def _create_history_card(self, title: str, last_time: str, index: int) -> QWidget:
+    def _create_history_card(self, title: str, last_time: str, index: int, is_current: bool = False) -> QWidget:
         card = CardWidget(self)
         card.setFixedHeight(60)
-        card.setStyleSheet("background-color: #2d2d2d; border-radius: 6px; padding: 8px;")
+
+        # 默认样式
+        base_style = "background-color: #2d2d2d; border-radius: 6px; padding: 8px;"
+        if is_current:
+            # 橙色高亮（可按你偏好调整）
+            card.setStyleSheet("background-color: #ff6f00; border-radius: 6px; padding: 8px; color: white;")
+        else:
+            card.setStyleSheet(base_style)
+
         card.setCursor(Qt.PointingHandCursor)
 
         layout = QHBoxLayout(card)
@@ -227,7 +247,12 @@ class OpenAIChatToolWindow(ToolWindow):
         info_layout = QHBoxLayout()
         title_label = BodyLabel(title, card)
         time_label = CaptionLabel(last_time, card)
-        time_label.setStyleSheet("color: #aaa;")
+        if is_current:
+            title_label.setStyleSheet("color: white; font-weight: bold;")
+            time_label.setStyleSheet("color: rgba(255,255,255,0.8);")
+        else:
+            time_label.setStyleSheet("color: #aaa;")
+
         info_layout.addWidget(title_label)
         info_layout.addWidget(time_label)
         info_layout.addStretch()
@@ -240,7 +265,6 @@ class OpenAIChatToolWindow(ToolWindow):
         layout.addStretch()
         layout.addWidget(delete_btn)
 
-        # 点击卡片加载对话
         card.mousePressEvent = lambda e, i=index: self._load_history_session(i)
 
         return card
@@ -269,6 +293,7 @@ class OpenAIChatToolWindow(ToolWindow):
     def _append_user_message(self, content: str):
         card = MessageCard(parent=self, role="user")
         card.update_content(content)
+        card.finish_streaming()
         card.deleteRequested.connect(lambda: self._delete_message(card))
         card.copyRequested.connect(self._copy_text)
         self.chat_layout.addWidget(card)
@@ -410,7 +435,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._worker = OpenAIChatWorker(messages=messages, llm_config=llm_config)
         self._worker.content_received.connect(lambda c: self._on_content_received(c, assistant_card))
         self._worker.error_occurred.connect(lambda e: self._on_error(e, assistant_card))
-        self._worker.finished_with_content.connect(self._on_worker_finished)
+        self._worker.finished_with_content.connect(lambda r: self._on_worker_finished(r, assistant_card))
         self._worker.start()
 
         self._toggle_send_stop(True)
@@ -418,11 +443,12 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_error(self, error: str, card: MessageCard):
         self._is_streaming = False
         self._toggle_send_stop(False)
-        self._update_assistant_message(card, error)
-        self._auto_save_current_session()
+        # self._update_assistant_message(card, error)
+        # self._auto_save_current_session()
 
-    def _on_worker_finished(self, response: str):
+    def _on_worker_finished(self, response: str, card: MessageCard):
         self._is_streaming = False
+        card.finish_streaming()
         self._toggle_send_stop(False)
         session = self.session_manager.get_current_session()
         if session:
