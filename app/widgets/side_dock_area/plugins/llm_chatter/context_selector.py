@@ -14,6 +14,7 @@ from qfluentwidgets import (
 class ContextRegistry:
     _instance = None
     _contexts: Dict[str, Callable[[], Tuple[str, Any, Callable]]] = {}
+    _executors: Dict[str, Callable[[Any], None]] = {}
 
     def __new__(cls):
         if cls._instance is None:
@@ -21,13 +22,22 @@ class ContextRegistry:
         return cls._instance
 
     @classmethod
-    def register(cls, key: str, provider: Callable[[], Tuple[str, Any, Callable]]):
+    def register(cls, key: str, provider: Callable[[], Tuple[str, Any, Callable], ], excutor: Callable[[Any], None]):
         """
         注册一个上下文项
         :param key: 唯一标识，如 "@graph"
         :param provider: 无参函数，返回 (显示名称, 上下文数据, 双击回调函数)
         """
         cls._contexts[key] = provider
+        cls._executors[key] = excutor
+
+    @classmethod
+    def get_executor(cls, key: str) -> Callable[[Any], None]:
+        return cls._executors[key]
+
+    @classmethod
+    def get_provider(cls, key: str) -> Callable[[], Tuple[str, Any, Callable]]:
+        return cls._contexts[key]
 
     @classmethod
     def unregister(cls, key: str):
@@ -224,7 +234,7 @@ class ContextSelector(QWidget):
         """获取格式化后的上下文文本"""
         return self._context_cache.get(key, ("", "", lambda: None))[1]
 
-    def get_callback_by_key(self, key: str) -> Callable:
+    def get_callback_params_by_key(self, key: str) -> Callable:
         """获取回调函数（可直接调用）"""
         return self._context_cache.get(key, ("", "", lambda: None))[2]
 
@@ -257,9 +267,9 @@ class ContextSelector(QWidget):
         for context_key, context_func in self._context_items:
             if context_key in self._selected_keys:
                 try:
-                    name, context_data, callback = context_func()
+                    name, context_data, callback_params = context_func()
                 except Exception as e:
-                    name, context_data, callback = "错误", f"[加载失败: {e}]", lambda: None
+                    name, context_data, callback_params = "错误", f"[加载失败: {e}]", lambda: None
 
                 if isinstance(context_data, (dict, list, tuple, set)):
                     context_str = json.dumps(context_data, indent=2, ensure_ascii=False)
@@ -267,7 +277,7 @@ class ContextSelector(QWidget):
                     context_str = str(context_data)
 
                 formatted_text = f"[{name}信息]:\n{context_str}\n---\n"
-                self._context_cache[context_key] = (name, formatted_text, callback)
+                self._context_cache[context_key] = (name, formatted_text, callback_params)
 
     def _update_tags(self):
         self._refresh_context_cache()
@@ -326,9 +336,10 @@ class ContextSelector(QWidget):
 
     def _on_tag_double_clicked(self, key: str):
         """双击标签时，直接调用其回调函数"""
-        callback = self.get_callback_by_key(key)
+        callback = ContextRegistry.get_executor(key)
+        params = self.get_callback_params_by_key(key)
         if callable(callback):
             try:
-                callback()
+                callback(params)
             except Exception as e:
                 print(f"[ContextSelector] 双击回调出错: {e}")

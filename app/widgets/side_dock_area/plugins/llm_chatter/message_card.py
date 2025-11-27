@@ -11,6 +11,8 @@ from qfluentwidgets import (
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
+from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
+
 # 可复用的 Markdown 实例
 _md_instance = None
 
@@ -253,11 +255,11 @@ class MessageCard(CardWidget):
     copyRequested = pyqtSignal(str)
     regenerateRequested = pyqtSignal()
 
-    def __init__(self, role: str, timestamp: str = None, parent=None, tags: dict = None):
+    def __init__(self, role: str, timestamp: str = None, parent=None, tag_params: dict = None):
         super().__init__(parent)
         self.parent = parent
         self.role = role
-        self.context_tags = tags
+        self.context_tags = tag_params
         self.timestamp = timestamp or datetime.now().strftime('%H:%M')
         self.setup_ui()
 
@@ -337,9 +339,9 @@ class MessageCard(CardWidget):
             tags_layout.setContentsMargins(0, 0, 0, 0)
             tags_layout.setSpacing(4)
 
-            for key, (name, context, callback) in self.context_tags.items():
+            for key, (name, content, callback_params) in self.context_tags.items():
                 tag = TagWidget(key, name)
-                tag.doubleClicked.connect(callback)  # 👈 新增连接
+                tag.doubleClicked.connect(lambda: ContextRegistry.get_executor(key)(callback_params))  # 👈 新增连接
 
                 tags_layout.addWidget(tag)
             tags_layout.addStretch()

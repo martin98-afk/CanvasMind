@@ -39,6 +39,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._is_streaming = False
         self.session_manager.create_new_session()
         self.canvas_page.global_variables_changed.connect(self._load_model_configs)
+        self._initialize_history_manager()
         self._create_new_session()
 
     def setup_ui(self):
@@ -149,7 +150,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _create_new_session(self):
         # 不再自动保存当前会话！因为“新建”意味着丢弃当前内容
-        self.session_manager.create_new_session()
+        session = self.session_manager.create_new_session()
         self._current_history_index = None  # 新建 = 脱离历史
         self.history_btn.setChecked(False)
         self._clear_chat_area()
@@ -165,7 +166,8 @@ class OpenAIChatToolWindow(ToolWindow):
             card = MessageCard(
                 parent=self,
                 role=msg["role"],
-                timestamp=msg.get("timestamp", datetime.now().strftime('%H:%M'))
+                timestamp=msg.get("timestamp", datetime.now().strftime('%H:%M')),
+                tag_params=msg.get("params", {})
             )
             card.update_content(msg["content"])
             card.finish_streaming()
@@ -187,8 +189,6 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _toggle_history_mode(self, enabled: bool):
         if enabled:
-            if not self.history_manager:
-                self._initialize_history_manager()
             self._in_history_mode = True
             self.chat_layout.setAlignment(Qt.AlignTop)  # 关键：防止垂直拉伸
             self._display_history_sessions()
@@ -289,7 +289,10 @@ class OpenAIChatToolWindow(ToolWindow):
         self._display_current_session()
 
     def _append_user_message(self, content: str):
-        card = MessageCard(parent=self, role="user", tags=self.context_selector.context)
+        card = MessageCard(
+            parent=self, role="user",
+            tag_params={key: value for key, value in self.context_selector.context.items()}
+        )
         card.update_content(content)
         card.finish_streaming()
         card.deleteRequested.connect(lambda: self._delete_message(card))
@@ -369,15 +372,13 @@ class OpenAIChatToolWindow(ToolWindow):
         if card_index <= 0:
             return
 
-        prev_widget = self.chat_layout.itemAt(card_index - 1).widget()
-        if not isinstance(prev_widget, MessageCard) or prev_widget.role != "user":
-            return
-
-        user_input = prev_widget.content_widget.get_plain_text()
-
+        # 重构当时的用户输入
+        user_input = session.messages[card_index - 1]["content"]
+        params = session.messages[card_index - 1]["params"]
+        if params:
+            user_input = "\n".join([value[1] for value in params.values()])
         # 删除当前助手消息
         self._delete_message(card)
-
         # 重新发送
         self._on_send_clicked(user_input)
 
@@ -396,9 +397,14 @@ class OpenAIChatToolWindow(ToolWindow):
             user_text = self.input_area.toPlainText().strip()
             if not user_text:
                 return
-            session.add_user_message(content=user_text)
+            session.add_user_message(
+                content=user_text, params={key: value for key, value in self.context_selector.context.items()}
+            )
             self.input_area.clear()
             self._append_user_message(user_text)
+            enhanced_input = self.context_selector.get_all_context() + user_text
+        else:
+            enhanced_input = user_text
 
         assistant_card = self._append_assistant_message()
         selected_name = self.model_combo.currentText()
@@ -415,7 +421,6 @@ class OpenAIChatToolWindow(ToolWindow):
         for msg in session.messages[:-1]:
             messages.append(msg)
 
-        enhanced_input = self.context_selector.get_all_context() + user_text
         messages.append({"role": "user", "content": enhanced_input})
 
         self._is_streaming = True
@@ -451,8 +456,6 @@ class OpenAIChatToolWindow(ToolWindow):
             # 正在续聊某个历史会话 → 更新它
             self.history_manager.update_session(self._current_history_index, session.messages)
         else:
-            if self.history_manager is None:
-                return
             # 全新会话 → 新增一条历史记录（首次保存）
             self.history_manager.save_session(session.messages)
             # 保存后，自动绑定到新历史索引（避免重复保存）

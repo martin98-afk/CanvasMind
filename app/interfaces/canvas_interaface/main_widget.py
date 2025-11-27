@@ -144,9 +144,13 @@ class CanvasPage(QWidget):
         return self.ui_manager.variable_explorer
 
     def inject_llm_contexts(self):
-        ContextRegistry.register("画布节点", self.extract_graph_info)
-        ContextRegistry.register("全局变量", self.extract_var_info)
-        ContextRegistry.register("组件信息", self.get_component_info)
+
+        ContextRegistry.register("画布节点", self.extract_graph_info, self.select_node_by_name)
+        ContextRegistry.register("全局变量", self.extract_var_info, lambda: None)
+        ContextRegistry.register("组件信息", self.get_component_info, lambda: None)
+
+    def select_node_by_name(self, name_list):
+        return self.node_operations.select_nodes_by_name(name_list)
 
     def connect_kernel(self, python_exe):
         if python_exe:
@@ -191,19 +195,16 @@ class CanvasPage(QWidget):
     def extract_graph_info(self):
         selected_nodes = self.graph.selected_nodes()
         if len(selected_nodes) > 0:
-            def select_graph_nodes(nodes):
-                self.graph.clear_selection()
-                [node.set_selected(True) for node in nodes]
             return (
                 f"画布选中节点 {len(selected_nodes)} 个",
                 self.canvas_io.extract_graph_info(self.graph.selected_nodes()),
-                lambda: select_graph_nodes(selected_nodes)
+                [node.name() for node in selected_nodes]
             )
         else:
-            return f"当前画布所有节点", self.canvas_io.extract_graph_info(), lambda: None
+            return f"当前画布所有节点", self.canvas_io.extract_graph_info(), None
 
     def extract_var_info(self):
-        return "全局变量", self.global_variables.to_dict(), lambda: None
+        return "全局变量", self.global_variables.to_dict(), None
 
     def save_full_workflow(self, file_path=None, show_info=True):
         if not isinstance(file_path, str) or not isinstance(file_path, Path):

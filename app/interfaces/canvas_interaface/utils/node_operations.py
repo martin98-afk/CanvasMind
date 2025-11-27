@@ -268,3 +268,9 @@ class NodeOperations:
             if node.id == node_id:
                 return node
         return None
+
+    def select_nodes_by_name(self, names):
+        for name in names:
+            node = self.graph.get_node_by_name(name)
+            if node:
+                node.set_selected(True)
