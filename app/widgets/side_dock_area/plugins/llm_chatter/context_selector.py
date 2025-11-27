@@ -1,13 +1,52 @@
 # -*- coding: utf-8 -*-
-from typing import List, Tuple
+
+from typing import Callable, Dict, Tuple, List
 
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QSize
 from PyQt5.QtGui import QScreen
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QApplication, QWidget, QFrame, QLabel, QSizePolicy
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QApplication, QWidget, QFrame, QSizePolicy
 from qfluentwidgets import (
-    FluentIcon, PushButton, CheckBox, isDarkTheme, TransparentToolButton,
+    FluentIcon, CheckBox, TransparentToolButton,
     CardWidget, CaptionLabel, BodyLabel
 )
+
+
+class ContextRegistry:
+    _instance = None
+    _contexts: Dict[str, Tuple[str, Callable[[], dict]]] = {}
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    @classmethod
+    def register(cls, key: str, name: str, provider: Callable[[], dict]):
+        """
+        注册一个上下文项
+        :param key: 唯一标识，如 "@graph"
+        :param name: 显示名称，如 "当前画布"
+        :param provider: 无参函数，返回上下文数据（dict）
+        """
+        cls._contexts[key] = (name, provider)
+
+    @classmethod
+    def unregister(cls, key: str):
+        cls._contexts.pop(key, None)
+
+    @classmethod
+    def get_all_items(cls) -> List[Tuple[str, str, Callable[[], dict]]]:
+        """
+        返回 [(key, name, provider), ...]
+        """
+        return [
+            (key, name, provider)
+            for key, (name, provider) in cls._contexts.items()
+        ]
+
+    @classmethod
+    def clear(cls):
+        cls._contexts.clear()
 
 
 # ==================== 【新增】单个上下文标签卡片 ====================
@@ -151,14 +190,14 @@ class ContextSelectorPopup(QWidget):
 class ContextSelector(QWidget):
     selectionChanged = pyqtSignal(set)
 
-    def __init__(self, context_items: List, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self._selected_keys = set()  # 初始为空
+        self._selected_keys = set()
 
-        self._context_items = context_items
-        self._item_map = {key: text for key, text, _ in self._context_items}
+        # 不再接收 context_items！
+        self._refresh_context_items()  # 从注册表加载
 
-        # ===== 先构建完整 UI（确保 tags_layout 存在）=====
+        # ===== 构建 UI =====
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -174,17 +213,21 @@ class ContextSelector(QWidget):
         self.tags_layout.setSpacing(4)
 
         main_layout.addWidget(self.dropdown_btn)
-        main_layout.addWidget(self.tags_container)  # stretch=1，占据剩余空间
+        main_layout.addWidget(self.tags_container)
         main_layout.addStretch(1)
 
-        # ===== 再创建 popup 并连接信号 =====
+        # 创建 popup（此时 self._context_items 已有值）
         self.popup = ContextSelectorPopup(self._context_items, parent=self)
         self.popup.selectionChanged.connect(self._on_popup_selection_changed)
-
-        # 初始化 popup 状态（现在 self 已完全初始化）
         self.popup.set_selection(self._selected_keys)
 
-        self._update_tags()  # 安全调用
+        self._update_tags()
+
+    def _refresh_context_items(self):
+        """从全局注册表加载最新上下文项"""
+        items = ContextRegistry.get_all_items()
+        self._context_items = items
+        self._item_map = {key: name for key, name, _ in items}
 
     def _on_popup_selection_changed(self, selected: set):
         self._selected_keys = selected
@@ -197,12 +240,23 @@ class ContextSelector(QWidget):
         self._on_popup_selection_changed(selected)
 
     def _show_popup(self):
+        # 每次点击都从注册表获取最新上下文，重建 popup
+        self._refresh_context_items()
+
+        # 销毁旧 popup（如有）
+        if hasattr(self, 'popup') and self.popup:
+            self.popup.close()
+            self.popup.deleteLater()
+
+        # 创建新 popup
+        self.popup = ContextSelectorPopup(self._context_items, parent=self)
+        self.popup.selectionChanged.connect(self._on_popup_selection_changed)
+        self.popup.set_selection(self._selected_keys)
+
+        # 显示
         btn_global_pos = self.dropdown_btn.mapToGlobal(QPoint(0, 0))
         popup_height = self.popup.sizeHint().height()
-
-        # 将弹窗底部对齐到按钮顶部（即弹窗在按钮上方）
         popup_top_left = QPoint(btn_global_pos.x(), btn_global_pos.y() - popup_height)
-
         self.popup.show_at(popup_top_left)
 
     def _update_tags(self):

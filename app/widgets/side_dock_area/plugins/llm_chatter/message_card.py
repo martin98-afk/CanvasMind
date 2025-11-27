@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
 )
 from markdown import Markdown
 from qfluentwidgets import (
-    FluentIcon, ToolTipFilter, ToolButton, CardWidget
+    FluentIcon, ToolTipFilter, ToolButton, CardWidget, TransparentToolButton
 )
 # 可复用的 Markdown 实例
 _md_instance = None
@@ -210,22 +210,25 @@ class MessageCard(CardWidget):
         if self.role == "assistant":
             for icon, tooltip, slot in [
                 (FluentIcon.COPY, "复制", lambda: self.copyRequested.emit(self.content_widget.get_plain_text())),
-                (FluentIcon.SYNC, "重新生成", self.regenerateRequested.emit),
-                (FluentIcon.DELETE, "删除", self.deleteRequested.emit),
+                (FluentIcon.SYNC, "重新生成", self.regenerateRequested.emit)
             ]:
-                btn = ToolButton(icon, self)
+                btn = TransparentToolButton(icon, self)
                 btn.setToolTip(tooltip)
                 btn.clicked.connect(slot)
                 btn.setFixedSize(24, 24)
                 btn.installEventFilter(ToolTipFilter(btn))
                 button_layout.addWidget(btn)
         else:
-            copy_btn = ToolButton(FluentIcon.COPY, self)
-            copy_btn.setToolTip("复制")
-            copy_btn.clicked.connect(lambda: self.copyRequested.emit(self.content_widget.get_plain_text()))
-            copy_btn.setFixedSize(24, 24)
-            copy_btn.installEventFilter(ToolTipFilter(copy_btn))
-            button_layout.addWidget(copy_btn)
+            for icon, tooltip, slot in [
+                (FluentIcon.COPY, "复制", lambda: self.copyRequested.emit(self.content_widget.get_plain_text())),
+                (FluentIcon.DELETE, "删除", self.deleteRequested.emit),
+            ]:
+                btn = TransparentToolButton(icon, self)
+                btn.setToolTip(tooltip)
+                btn.clicked.connect(slot)
+                btn.setFixedSize(24, 24)
+                btn.installEventFilter(ToolTipFilter(btn))
+                button_layout.addWidget(btn)
 
         top_layout.addWidget(button_container)
         main_layout.addLayout(top_layout)

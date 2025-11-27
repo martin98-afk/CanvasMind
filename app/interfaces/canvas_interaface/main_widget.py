@@ -23,6 +23,7 @@ from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.status_node import NodeStatus
 from app.utils.config import Settings
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
+from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
 
 
 class CanvasPage(QWidget):
@@ -78,6 +79,9 @@ class CanvasPage(QWidget):
         # 初始化ui
         self.ui_manager = CanvasUISetUp(self)
         self.ui_manager.setup_ui()
+        # 注册大模型画布上下文
+        self.inject_llm_contexts()
+        # 注册右键菜单
         self._setup_context_menus()
         # 连接ipython控制台
         self.connect_kernel(self.environment_manager.get_current_python_exe())
@@ -138,6 +142,15 @@ class CanvasPage(QWidget):
     @property
     def var_explorer(self):
         return self.ui_manager.variable_explorer
+
+    @property
+    def llm_chatter(self):
+        return self.ui_manager.llm_chatter
+
+    def inject_llm_contexts(self):
+        ContextRegistry.register("@graph", "当前画布", self.extract_graph_info)
+        ContextRegistry.register("@vars", "全局变量", self.global_variables.to_dict)
+        ContextRegistry.register("@comps", "组件信息", self.get_component_info)
 
     def connect_kernel(self, python_exe):
         if python_exe:
