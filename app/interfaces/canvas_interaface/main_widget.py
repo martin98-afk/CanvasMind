@@ -86,8 +86,8 @@ class CanvasPage(QWidget):
         # 连接ipython控制台
         self.connect_kernel(self.environment_manager.get_current_python_exe())
 
-        self.env_changed.connect(self.connect_kernel)
         # 连接ui信号
+        self.env_changed.connect(self.connect_kernel)
         self.graph.node_created.connect(self.node_operations.on_node_created)
         self.graph.port_connected.connect(self._on_port_connected)
         self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
@@ -143,8 +143,12 @@ class CanvasPage(QWidget):
     def var_explorer(self):
         return self.ui_manager.variable_explorer
 
-    def inject_llm_contexts(self):
+    @property
+    def selected_categories(self):
+        return self.ui_manager.nav_view._selected_categories
 
+    def inject_llm_contexts(self):
+        """注册大模型上下文菜单，会出现在右边大模型对话框的上下文上拉框中"""
         ContextRegistry.register("画布节点", self.extract_graph_info, self.select_node_by_name)
         ContextRegistry.register("全局变量", self.extract_var_info, lambda: None)
         ContextRegistry.register("组件信息", self.get_component_info, lambda: None)
@@ -217,18 +221,22 @@ class CanvasPage(QWidget):
 
     def get_component_info(self):
         """获取当前组件列表信息，用于大模型分析"""
-        component_info =[
-            {
-                "名称": value.name,
-                "描述": value.description,
-                "输入": [{"名称": item.label, "类型": item.type.value} for item in value.inputs],
-                "输出": [{"名称": item.label, "类型": item.type.value} for item in value.outputs],
-                "属性": [{"名称": item.label, "默认": item.default, "类型": item.type.value} for key, item in
-                         value.properties.items()],
-            }
-            for key, value in self.component_map.items()
-        ]
-        return f"{len(component_info)}x 组件", component_info, lambda: None
+        selected_components = {
+            key: value
+            for key, value in self.component_map.items() if value.category in self.selected_categories
+        }
+        component_info = "\n".join(
+            [
+                f"名称：{value.name}\n"
+                f"类别：{value.category}"
+                f"描述：{value.description}\n"
+                f"输入：\n{';'.join([f'名称：{item.label}, 类型：{item.type.value}' for item in value.inputs])}\n"
+                f"输出：\n{';'.join([f'名称：{item.label}, 类型：{item.type.value}' for item in value.outputs])}\n"
+                f"属性：\n{';'.join([f'名称：{item.label}, 类型：{item.type.value} 默认：{item.default}' for key, item in value.properties.items()])}\n"
+                for key, value in selected_components.items()
+            ]
+        )
+        return f"{len(selected_components)}x 组件", component_info, None
 
     def load_full_workflow(self, file_path=None):
         self.canvas_io.load_full_workflow(file_path)

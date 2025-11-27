@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import traceback
 from typing import Callable, Dict, Tuple, List, Any
 
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QSize
@@ -269,7 +270,8 @@ class ContextSelector(QWidget):
                 try:
                     name, context_data, callback_params = context_func()
                 except Exception as e:
-                    name, context_data, callback_params = "错误", f"[加载失败: {e}]", lambda: None
+                    logger.error(traceback.format_exc())
+                    name, context_data, callback_params = "错误", f"[加载失败: {e}]", None
 
                 if isinstance(context_data, (dict, list, tuple, set)):
                     context_str = json.dumps(context_data, indent=2, ensure_ascii=False)

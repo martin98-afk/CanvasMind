@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
-import json
 from datetime import datetime
-from typing import Optional, Dict, Any, Callable, List, Tuple
+from typing import Optional, Dict, Any
 
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QApplication, QWidget
 from qfluentwidgets import (
-    TextEdit, setFont, ComboBox, FluentIcon, ToolButton, TransparentPushButton,
+    TextEdit, setFont, ComboBox, FluentIcon, TransparentPushButton,
     SingleDirectionScrollArea, InfoBar, InfoBarPosition, CardWidget, BodyLabel, CaptionLabel, TransparentToolButton,
-    ToggleToolButton, TransparentToggleToolButton
+    TransparentToggleToolButton
 )
 
 from app.utils.utils import get_icon
@@ -227,7 +226,6 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _create_history_card(self, title: str, last_time: str, index: int, is_current: bool = False) -> QWidget:
         card = CardWidget(self)
-        card.setFixedHeight(60)
 
         # 默认样式
         base_style = "background-color: #2d2d2d; border-radius: 6px; padding: 8px;"
@@ -243,7 +241,8 @@ class OpenAIChatToolWindow(ToolWindow):
         layout.setContentsMargins(8, 4, 8, 4)
 
         info_layout = QHBoxLayout()
-        title_label = BodyLabel(title, card)
+        title_label = CaptionLabel(title[:200], card)
+        title_label.setWordWrap(True)
         time_label = CaptionLabel(last_time, card)
         if is_current:
             title_label.setStyleSheet("color: white; font-weight: bold;")
@@ -252,7 +251,6 @@ class OpenAIChatToolWindow(ToolWindow):
             time_label.setStyleSheet("color: #aaa;")
 
         info_layout.addWidget(title_label)
-        info_layout.addWidget(time_label)
         info_layout.addStretch()
 
         delete_btn = TransparentToolButton(FluentIcon.DELETE, card)
@@ -261,6 +259,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         layout.addLayout(info_layout)
         layout.addStretch()
+        layout.addWidget(time_label)
         layout.addWidget(delete_btn)
 
         card.mousePressEvent = lambda e, i=index: self._load_history_session(i)
