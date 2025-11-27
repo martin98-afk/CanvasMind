@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import json
 from typing import Callable, Dict, Tuple, List
 
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QSize
@@ -13,7 +13,7 @@ from qfluentwidgets import (
 
 class ContextRegistry:
     _instance = None
-    _contexts: Dict[str, Tuple[str, Callable[[], dict]]] = {}
+    _contexts: Dict[str, Callable[[], dict]] = {}
 
     def __new__(cls):
         if cls._instance is None:
@@ -21,27 +21,26 @@ class ContextRegistry:
         return cls._instance
 
     @classmethod
-    def register(cls, key: str, name: str, provider: Callable[[], dict]):
+    def register(cls, key: str, provider: Callable[[], dict]):
         """
         注册一个上下文项
         :param key: 唯一标识，如 "@graph"
-        :param name: 显示名称，如 "当前画布"
         :param provider: 无参函数，返回上下文数据（dict）
         """
-        cls._contexts[key] = (name, provider)
+        cls._contexts[key] = provider
 
     @classmethod
     def unregister(cls, key: str):
         cls._contexts.pop(key, None)
 
     @classmethod
-    def get_all_items(cls) -> List[Tuple[str, str, Callable[[], dict]]]:
+    def get_all_items(cls) -> List[Tuple[str, Callable[[], dict]]]:
         """
         返回 [(key, name, provider), ...]
         """
         return [
-            (key, name, provider)
-            for key, (name, provider) in cls._contexts.items()
+            (key, provider)
+            for key, provider in cls._contexts.items()
         ]
 
     @classmethod
@@ -120,8 +119,8 @@ class ContextSelectorPopup(QWidget):
         layout.addWidget(title_label)
 
         # 复选框列表
-        for key, label, _ in self.context_items:
-            cb = CheckBox(label, self)
+        for key, _ in self.context_items:
+            cb = CheckBox(key, self)
             cb.stateChanged.connect(lambda state, k=key: self._on_item_toggled(k, state))
             self.checkboxes.append(cb)
             layout.addWidget(cb)
@@ -160,7 +159,7 @@ class ContextSelectorPopup(QWidget):
 
     def _update_checkboxes_from_selection(self):
         """根据 selected_keys 更新所有 CheckBox 状态"""
-        for cb, (key, _, _) in zip(self.checkboxes, self.context_items):
+        for cb, (key, _) in zip(self.checkboxes, self.context_items):
             cb.setChecked(key in self.selected_keys)
 
     def show_at(self, pos: QPoint):
@@ -189,11 +188,11 @@ class ContextSelectorPopup(QWidget):
 # ==================== 【改造】上下文选择器（带标签卡片） ====================
 class ContextSelector(QWidget):
     selectionChanged = pyqtSignal(set)
+    _context_text: dict[str, list[str]] = {}
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._selected_keys = set()
-
         # 不再接收 context_items！
         self._refresh_context_items()  # 从注册表加载
 
@@ -226,11 +225,14 @@ class ContextSelector(QWidget):
     def context_items(self):
         return self._context_items
 
+    @property
+    def context(self):
+        return self._context_text
+
     def _refresh_context_items(self):
         """从全局注册表加载最新上下文项"""
         items = ContextRegistry.get_all_items()
         self._context_items = items
-        self._item_map = {key: name for key, name, _ in items}
 
     def _on_popup_selection_changed(self, selected: set):
         self._selected_keys = selected
@@ -263,6 +265,7 @@ class ContextSelector(QWidget):
         self.popup.show_at(popup_top_left)
 
     def _update_tags(self):
+        self._refresh_context()
         # 清空现有标签
         while self.tags_layout.count():
             child = self.tags_layout.takeAt(0)
@@ -284,7 +287,7 @@ class ContextSelector(QWidget):
         row_width = 0
 
         for key in sorted(self._selected_keys):
-            text = self._item_map.get(key, key)
+            text = self._context_text.get(key, '')[0]
             tag = TagWidget(key, text)
             tag.closed.connect(self._on_tag_closed)
 
@@ -316,3 +319,13 @@ class ContextSelector(QWidget):
             # 通知 popup 更新（虽然 popup 可能没打开，但状态要一致）
             self.popup.selected_keys = self._selected_keys.copy()
             self.popup._update_checkboxes_from_selection()
+
+    def _refresh_context(self):
+        selected = self._selected_keys
+        self._context_text = {}
+        for context_key, context_func in self._context_items:
+            if context_key in selected:
+                name, context_info, callback_func = context_func()
+                if isinstance(context_info, (dict, list, tuple, set)):
+                    context_info = json.dumps(context_info, indent=2, ensure_ascii=False)
+                self._context_text[context_key] = [name, f"[{name}信息]:\n{context_info}\n---\n"]

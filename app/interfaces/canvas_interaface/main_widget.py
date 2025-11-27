@@ -144,9 +144,9 @@ class CanvasPage(QWidget):
         return self.ui_manager.variable_explorer
 
     def inject_llm_contexts(self):
-        ContextRegistry.register("@graph", "当前画布", self.extract_graph_info)
-        ContextRegistry.register("@vars", "全局变量", self.global_variables.to_dict)
-        ContextRegistry.register("@comps", "组件信息", self.get_component_info)
+        ContextRegistry.register("画布节点", self.extract_graph_info)
+        ContextRegistry.register("全局变量", self.extract_var_info)
+        ContextRegistry.register("组件信息", self.get_component_info)
 
     def connect_kernel(self, python_exe):
         if python_exe:
@@ -189,10 +189,21 @@ class CanvasPage(QWidget):
         ).export_selected_nodes_as_project()
 
     def extract_graph_info(self):
-        if len(self.graph.selected_nodes()) > 0:
-            return self.canvas_io.extract_graph_info(self.graph.selected_nodes())
+        selected_nodes = self.graph.selected_nodes()
+        if len(selected_nodes) > 0:
+            def select_graph_nodes(nodes):
+                self.graph.clear_selection()
+                [node.set_selected(True) for node in nodes]
+            return (
+                f"画布选中节点 {len(selected_nodes)} 个",
+                self.canvas_io.extract_graph_info(self.graph.selected_nodes()),
+                lambda: select_graph_nodes(selected_nodes)
+            )
         else:
-            return self.canvas_io.extract_graph_info()
+            return f"当前画布所有节点", self.canvas_io.extract_graph_info(), lambda: None
+
+    def extract_var_info(self):
+        return "全局便里昂", self.global_variables.to_dict(), lambda: None
 
     def save_full_workflow(self, file_path=None, show_info=True):
         if not isinstance(file_path, str) or not isinstance(file_path, Path):
@@ -205,16 +216,18 @@ class CanvasPage(QWidget):
 
     def get_component_info(self):
         """获取当前组件列表信息，用于大模型分析"""
-        return [
+        component_info =[
             {
                 "名称": value.name,
                 "描述": value.description,
                 "输入": [{"名称": item.label, "类型": item.type.value} for item in value.inputs],
                 "输出": [{"名称": item.label, "类型": item.type.value} for item in value.outputs],
-                "属性": [{"名称": item.label, "默认": item.default, "类型": item.type.value} for key, item in value.properties.items()],
+                "属性": [{"名称": item.label, "默认": item.default, "类型": item.type.value} for key, item in
+                         value.properties.items()],
             }
             for key, value in self.component_map.items()
         ]
+        return f"{len(component_info)}x 组件", component_info, lambda: None
 
     def load_full_workflow(self, file_path=None):
         self.canvas_io.load_full_workflow(file_path)

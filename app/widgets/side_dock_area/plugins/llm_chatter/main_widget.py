@@ -38,7 +38,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self._worker: Optional[OpenAIChatWorker] = None
         self._is_streaming = False
         self.session_manager.create_new_session()
-        self._selected_context_items = set()
         self.canvas_page.global_variables_changed.connect(self._load_model_configs)
         self._create_new_session()
 
@@ -392,17 +391,6 @@ class OpenAIChatToolWindow(ToolWindow):
             self.chat_scroll_area.verticalScrollBar().maximum()
         ))
 
-    def _get_enhanced_input(self, user_input: str) -> str:
-        selected = self.context_selector.selected_keys
-        context_info_list = []
-        for context_key, context_name, context_func in self.context_selector.context_items:
-            if context_key in selected:
-                context_info = context_func()
-                if isinstance(context_info, (dict, list, tuple, set)):
-                    context_info = json.dumps(context_info, indent=2, ensure_ascii=False)
-                context_info_list.append(f"[{context_name}信息]:\n{context_info}\n---\n")
-        return "\n".join(context_info_list) + user_input
-
     def _on_send_clicked(self, user_text: str = ""):
         session = self.session_manager.get_current_session()
         if not user_text:
@@ -428,7 +416,8 @@ class OpenAIChatToolWindow(ToolWindow):
         for msg in session.messages[:-1]:
             messages.append(msg)
 
-        enhanced_input = self._get_enhanced_input(user_text)
+        contexts = self.context_selector.context
+        enhanced_input = "\n".join([context[1] for context in contexts.values()]) + "\n" + user_text
         messages.append({"role": "user", "content": enhanced_input})
 
         self._is_streaming = True
@@ -443,8 +432,6 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_error(self, error: str, card: MessageCard):
         self._is_streaming = False
         self._toggle_send_stop(False)
-        # self._update_assistant_message(card, error)
-        # self._auto_save_current_session()
 
     def _on_worker_finished(self, response: str, card: MessageCard):
         self._is_streaming = False
