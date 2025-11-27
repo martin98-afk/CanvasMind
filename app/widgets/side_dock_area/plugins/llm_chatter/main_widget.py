@@ -471,6 +471,7 @@ class OpenAIChatToolWindow(ToolWindow):
             self.send_btn.clicked.connect(self._on_stop_clicked)
             self.input_area.setDisabled(True)
             self.model_combo.setDisabled(True)
+            self.history_btn.setDisabled(True)
         else:
             self.send_btn.setText("发送")
             self.send_btn.setIcon(FluentIcon.SEND)
@@ -481,6 +482,7 @@ class OpenAIChatToolWindow(ToolWindow):
             self.send_btn.clicked.connect(self._on_send_clicked)
             self.input_area.setDisabled(False)
             self.model_combo.setDisabled(False)
+            self.history_btn.setDisabled(False)
 
     def _on_stop_clicked(self):
         if self._worker and self._worker.isRunning():

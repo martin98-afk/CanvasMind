@@ -341,7 +341,9 @@ class MessageCard(CardWidget):
 
             for key, (name, content, callback_params) in self.context_tags.items():
                 tag = TagWidget(key, name)
-                tag.doubleClicked.connect(lambda: ContextRegistry.get_executor(key)(callback_params))  # 👈 新增连接
+                tag.doubleClicked.connect(
+                    lambda k=key, cp=callback_params: ContextRegistry.get_executor(k)(cp)
+                )
 
                 tags_layout.addWidget(tag)
             tags_layout.addStretch()
