@@ -43,6 +43,9 @@ class OpenAIChatWorker(QThread):
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=True,
+                extra_body={
+                    "enable_thinking": {"enable_thinking": enable_thinking}
+                }
             )
 
             self.full_response = ""
