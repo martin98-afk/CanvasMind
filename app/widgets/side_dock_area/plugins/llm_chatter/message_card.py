@@ -3,11 +3,13 @@ from datetime import datetime
 import re
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtWidgets import QTextEdit, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy
 from markdown import Markdown
 from qfluentwidgets import (
-    FluentIcon, ToolTipFilter, TransparentToolButton, CardWidget
+    FluentIcon, ToolTipFilter, TransparentToolButton, CardWidget, CaptionLabel
 )
+from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 # 可复用的 Markdown 实例
 _md_instance = None
@@ -221,15 +223,41 @@ class StreamingTextEdit(QTextEdit):
             self._schedule_height_update()
 
 
+class TagWidget(CardWidget):
+    closed = pyqtSignal(str)      # 发出 key
+    doubleClicked = pyqtSignal(str)  # 新增：双击信号
+
+    def __init__(self, key: str, text: str, parent=None):
+        super().__init__(parent)
+        self.key = key
+        self.setFixedHeight(24)
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.setCursor(Qt.PointingHandCursor)  # 提示可交互
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(6, 0, 6, 0)
+        layout.setSpacing(6)
+
+        self.label = CaptionLabel(text, self)
+
+        layout.addWidget(self.label)
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent):
+        if event.button() == Qt.LeftButton:
+            self.doubleClicked.emit(self.key)
+        super().mouseDoubleClickEvent(event)
+
+
 class MessageCard(CardWidget):
     deleteRequested = pyqtSignal()
     copyRequested = pyqtSignal(str)
     regenerateRequested = pyqtSignal()
 
-    def __init__(self, role: str, timestamp: str = None, parent=None):
+    def __init__(self, role: str, timestamp: str = None, parent=None, tags: dict = None):
         super().__init__(parent)
         self.parent = parent
         self.role = role
+        self.context_tags = tags
         self.timestamp = timestamp or datetime.now().strftime('%H:%M')
         self.setup_ui()
 
@@ -300,6 +328,26 @@ class MessageCard(CardWidget):
 
         top_layout.addWidget(button_container)
         main_layout.addLayout(top_layout)
+        main_layout.addWidget(CardSeparator(self))
+        if self.role == "user" and self.context_tags:
+
+            tags_container = QWidget(self)
+            tags_container.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
+            tags_layout = QHBoxLayout(tags_container)
+            tags_layout.setContentsMargins(0, 0, 0, 0)
+            tags_layout.setSpacing(4)
+
+            for key, (name, context, callback) in self.context_tags.items():
+                tag = TagWidget(key, name)
+                tag.doubleClicked.connect(callback)  # 👈 新增连接
+
+                tags_layout.addWidget(tag)
+            tags_layout.addStretch()
+            tags_container.setVisible(True)
+            tags_container.adjustSize()
+
+            main_layout.addWidget(tags_container)
+            main_layout.addWidget(CardSeparator(self))
 
         self.content_widget = StreamingTextEdit(self)
         main_layout.addWidget(self.content_widget)

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
-from typing import Callable, Dict, Tuple, List
+from typing import Callable, Dict, Tuple, List, Any
 
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QSize
-from PyQt5.QtGui import QScreen
+from PyQt5.QtGui import QScreen, QMouseEvent
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QApplication, QWidget, QFrame, QSizePolicy
 from qfluentwidgets import (
     FluentIcon, CheckBox, TransparentToolButton,
@@ -13,7 +13,7 @@ from qfluentwidgets import (
 
 class ContextRegistry:
     _instance = None
-    _contexts: Dict[str, Callable[[], dict]] = {}
+    _contexts: Dict[str, Callable[[], Tuple[str, Any, Callable]]] = {}
 
     def __new__(cls):
         if cls._instance is None:
@@ -21,11 +21,11 @@ class ContextRegistry:
         return cls._instance
 
     @classmethod
-    def register(cls, key: str, provider: Callable[[], dict]):
+    def register(cls, key: str, provider: Callable[[], Tuple[str, Any, Callable]]):
         """
         注册一个上下文项
         :param key: 唯一标识，如 "@graph"
-        :param provider: 无参函数，返回上下文数据（dict）
+        :param provider: 无参函数，返回 (显示名称, 上下文数据, 双击回调函数)
         """
         cls._contexts[key] = provider
 
@@ -34,10 +34,7 @@ class ContextRegistry:
         cls._contexts.pop(key, None)
 
     @classmethod
-    def get_all_items(cls) -> List[Tuple[str, Callable[[], dict]]]:
-        """
-        返回 [(key, name, provider), ...]
-        """
+    def get_all_items(cls) -> List[Tuple[str, Callable[[], Tuple[str, Any, Callable]]]]:
         return [
             (key, provider)
             for key, provider in cls._contexts.items()
@@ -48,25 +45,23 @@ class ContextRegistry:
         cls._contexts.clear()
 
 
-# ==================== 【新增】单个上下文标签卡片 ====================
+# ==================== 【改进】单个上下文标签卡片 ====================
 class TagWidget(CardWidget):
-    """单个上下文标签，带关闭按钮"""
-    closed = pyqtSignal(str)  # 发出 key
+    closed = pyqtSignal(str)      # 发出 key
+    doubleClicked = pyqtSignal(str)  # 新增：双击信号
 
     def __init__(self, key: str, text: str, parent=None):
         super().__init__(parent)
         self.key = key
         self.setFixedHeight(24)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.setCursor(Qt.PointingHandCursor)  # 提示可交互
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(6, 0, 6, 0)
         layout.setSpacing(6)
 
-        # 文本标签
         self.label = CaptionLabel(text, self)
-
-        # 关闭按钮
         self.close_btn = TransparentToolButton(FluentIcon.CLOSE, self)
         self.close_btn.setFixedSize(16, 16)
         self.close_btn.setIconSize(QSize(12, 12))
@@ -76,25 +71,29 @@ class TagWidget(CardWidget):
         layout.addWidget(self.close_btn)
         layout.addStretch()
 
+    def mouseDoubleClickEvent(self, event: QMouseEvent):
+        if event.button() == Qt.LeftButton:
+            self.doubleClicked.emit(self.key)
+        super().mouseDoubleClickEvent(event)
 
-# ==================== 【新增】上下文选择 Popup ====================
+
+# ==================== 【Popup 保持不变，仅微调类型注解】 ====================
 class ContextSelectorPopup(QWidget):
     selectionChanged = pyqtSignal(set)
 
-    def __init__(self, context_items: List[Tuple[str, str]], parent=None):
+    def __init__(self, context_items: List[Tuple[str, Callable]], parent=None):
         super().__init__(parent)
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
         self.context_items = context_items
-        self.selected_keys = set()  # 👈 默认为空，不默认全选！
+        self.selected_keys = set()
         self.checkboxes = []
-        self.parent_widget = parent  # 保留，但谨慎使用
+        self.parent_widget = parent
 
         self._setup_ui()
 
     def set_selection(self, selected_keys: set):
-        """外部主动设置选中项，用于初始化同步"""
         self.selected_keys = selected_keys.copy()
         self._update_checkboxes_from_selection()
 
@@ -114,22 +113,18 @@ class ContextSelectorPopup(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
 
-        # 添加标题
-        title_label = BodyLabel("选择上下文", self)
+        title_label = BodyLabel("选择上下文信息：", self)
         layout.addWidget(title_label)
 
-        # 复选框列表
         for key, _ in self.context_items:
             cb = CheckBox(key, self)
             cb.stateChanged.connect(lambda state, k=key: self._on_item_toggled(k, state))
             self.checkboxes.append(cb)
             layout.addWidget(cb)
 
-        # 设置最小宽度
         main_frame.setMinimumWidth(180)
         main_frame.adjustSize()
 
-        # 添加到窗口
         window_layout = QVBoxLayout(self)
         window_layout.setContentsMargins(0, 0, 0, 0)
         window_layout.addWidget(main_frame)
@@ -147,56 +142,53 @@ class ContextSelectorPopup(QWidget):
         self.selected_keys = {key for key, _ in self.context_items}
         self._update_checkboxes_from_selection()
         self.selectionChanged.emit(self.selected_keys.copy())
-        if self.parent_widget and hasattr(self.parent_widget, '_on_context_selection_changed'):
+        if self.parent_widget:
             self.parent_widget._on_context_selection_changed(self.selected_keys.copy())
 
     def _select_none(self):
         self.selected_keys.clear()
         self._update_checkboxes_from_selection()
         self.selectionChanged.emit(self.selected_keys.copy())
-        if self.parent_widget and hasattr(self.parent_widget, '_on_context_selection_changed'):
+        if self.parent_widget:
             self.parent_widget._on_context_selection_changed(self.selected_keys.copy())
 
     def _update_checkboxes_from_selection(self):
-        """根据 selected_keys 更新所有 CheckBox 状态"""
         for cb, (key, _) in zip(self.checkboxes, self.context_items):
             cb.setChecked(key in self.selected_keys)
 
     def show_at(self, pos: QPoint):
-        """在指定位置显示弹窗，并自动调整不超出屏幕"""
         self.adjustSize()
         screen: QScreen = QApplication.primaryScreen()
         screen_rect = screen.availableGeometry()
 
-        # 计算弹窗应显示的位置
         popup_rect = self.rect()
         x = pos.x()
         y = pos.y()
 
-        # 防止超出右边界
         if x + popup_rect.width() > screen_rect.right():
             x = screen_rect.right() - popup_rect.width()
-        # 防止超出下边界
         if y + popup_rect.height() > screen_rect.bottom():
-            y = pos.y() - popup_rect.height()  # 尝试向上弹出
+            y = pos.y() - popup_rect.height()
 
         self.move(x, y)
         self.show()
         self.setFocus()
 
 
-# ==================== 【改造】上下文选择器（带标签卡片） ====================
+# ==================== 【核心改造】ContextSelector ====================
 class ContextSelector(QWidget):
     selectionChanged = pyqtSignal(set)
-    _context_text: dict[str, list[str]] = {}
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.parent = parent
         self._selected_keys = set()
-        # 不再接收 context_items！
-        self._refresh_context_items()  # 从注册表加载
+        self._context_items: List[Tuple[str, Callable]] = []
+        self._context_cache: Dict[str, Tuple[str, str, Callable]] = {}  # key -> (name, formatted_text, callback)
 
-        # ===== 构建 UI =====
+        self._refresh_context_items()
+
+        # ===== UI =====
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -222,51 +214,64 @@ class ContextSelector(QWidget):
         return self._selected_keys.copy()
 
     @property
-    def context_items(self):
-        return self._context_items
-
-    @property
     def context(self):
-        return self._context_text
+        return self._context_cache
+
+    def get_all_context(self):
+        return "\n".join([context[1] for context in self._context_cache.values()]) + "\n"
+
+    def get_context_by_key(self, key: str) -> str:
+        """获取格式化后的上下文文本"""
+        return self._context_cache.get(key, ("", "", lambda: None))[1]
+
+    def get_callback_by_key(self, key: str) -> Callable:
+        """获取回调函数（可直接调用）"""
+        return self._context_cache.get(key, ("", "", lambda: None))[2]
 
     def _refresh_context_items(self):
-        """从全局注册表加载最新上下文项"""
-        items = ContextRegistry.get_all_items()
-        self._context_items = items
+        self._context_items = ContextRegistry.get_all_items()
 
     def _on_popup_selection_changed(self, selected: set):
         self._selected_keys = selected
         self._update_tags()
         self.selectionChanged.emit(selected.copy())
 
-    def _on_context_selection_changed(self, selected: set):
-        # 注意：这个方法现在仅在 popup 打开后用户操作时被调用
-        # 但我们依然通过 selectionChanged 信号统一处理，所以可以简化
-        self._on_popup_selection_changed(selected)
-
     def _show_popup(self):
-        # 每次点击都从注册表获取最新上下文，重建 popup
         self._refresh_context_items()
-
-        # 销毁旧 popup（如有）
         if hasattr(self, 'popup') and self.popup:
             self.popup.close()
             self.popup.deleteLater()
 
-        # 创建新 popup
         self.popup = ContextSelectorPopup(self._context_items, parent=self)
         self.popup.selectionChanged.connect(self._on_popup_selection_changed)
         self.popup.set_selection(self._selected_keys)
 
-        # 显示
         btn_global_pos = self.dropdown_btn.mapToGlobal(QPoint(0, 0))
         popup_height = self.popup.sizeHint().height()
         popup_top_left = QPoint(btn_global_pos.x(), btn_global_pos.y() - popup_height)
         self.popup.show_at(popup_top_left)
 
+    def _refresh_context_cache(self):
+        """预加载所有选中项的 (name, text, callback) 到缓存"""
+        self._context_cache.clear()
+        for context_key, context_func in self._context_items:
+            if context_key in self._selected_keys:
+                try:
+                    name, context_data, callback = context_func()
+                except Exception as e:
+                    name, context_data, callback = "错误", f"[加载失败: {e}]", lambda: None
+
+                if isinstance(context_data, (dict, list, tuple, set)):
+                    context_str = json.dumps(context_data, indent=2, ensure_ascii=False)
+                else:
+                    context_str = str(context_data)
+
+                formatted_text = f"[{name}信息]:\n{context_str}\n---\n"
+                self._context_cache[context_key] = (name, formatted_text, callback)
+
     def _update_tags(self):
-        self._refresh_context()
-        # 清空现有标签
+        self._refresh_context_cache()
+
         while self.tags_layout.count():
             child = self.tags_layout.takeAt(0)
             if child.widget():
@@ -276,20 +281,20 @@ class ContextSelector(QWidget):
             self.tags_container.setVisible(False)
             return
 
-        # 创建水平行容器
         current_row_layout = QHBoxLayout()
         current_row_layout.setContentsMargins(0, 0, 0, 0)
         current_row_layout.setSpacing(6)
         current_row_widget = QWidget()
         current_row_widget.setLayout(current_row_layout)
 
-        max_row_width = 300
+        max_row_width = self.parent.width() - 100
         row_width = 0
 
         for key in sorted(self._selected_keys):
-            text = self._context_text.get(key, '')[0]
-            tag = TagWidget(key, text)
+            name = self._context_cache.get(key, ("未知", "", lambda: None))[0]
+            tag = TagWidget(key, name)
             tag.closed.connect(self._on_tag_closed)
+            tag.doubleClicked.connect(self._on_tag_double_clicked)  # 👈 新增连接
 
             tag_width = tag.sizeHint().width()
             if row_width + tag_width > max_row_width and row_width > 0:
@@ -311,21 +316,19 @@ class ContextSelector(QWidget):
         self.tags_container.adjustSize()
 
     def _on_tag_closed(self, key: str):
-        """点击标签关闭按钮时调用"""
         if key in self._selected_keys:
             self._selected_keys.discard(key)
             self._update_tags()
             self.selectionChanged.emit(self._selected_keys.copy())
-            # 通知 popup 更新（虽然 popup 可能没打开，但状态要一致）
-            self.popup.selected_keys = self._selected_keys.copy()
-            self.popup._update_checkboxes_from_selection()
+            if hasattr(self, 'popup') and self.popup:
+                self.popup.selected_keys = self._selected_keys.copy()
+                self.popup._update_checkboxes_from_selection()
 
-    def _refresh_context(self):
-        selected = self._selected_keys
-        self._context_text = {}
-        for context_key, context_func in self._context_items:
-            if context_key in selected:
-                name, context_info, callback_func = context_func()
-                if isinstance(context_info, (dict, list, tuple, set)):
-                    context_info = json.dumps(context_info, indent=2, ensure_ascii=False)
-                self._context_text[context_key] = [name, f"[{name}信息]:\n{context_info}\n---\n"]
+    def _on_tag_double_clicked(self, key: str):
+        """双击标签时，直接调用其回调函数"""
+        callback = self.get_callback_by_key(key)
+        if callable(callback):
+            try:
+                callback()
+            except Exception as e:
+                print(f"[ContextSelector] 双击回调出错: {e}")

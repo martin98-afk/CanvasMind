@@ -203,7 +203,7 @@ class CanvasPage(QWidget):
             return f"当前画布所有节点", self.canvas_io.extract_graph_info(), lambda: None
 
     def extract_var_info(self):
-        return "全局便里昂", self.global_variables.to_dict(), lambda: None
+        return "全局变量", self.global_variables.to_dict(), lambda: None
 
     def save_full_workflow(self, file_path=None, show_info=True):
         if not isinstance(file_path, str) or not isinstance(file_path, Path):

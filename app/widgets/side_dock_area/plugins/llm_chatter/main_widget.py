@@ -108,8 +108,7 @@ class OpenAIChatToolWindow(ToolWindow):
         status_layout.setSpacing(4)
 
         self.context_selector = ContextSelector(self)
-        status_layout.addWidget(self.context_selector)
-        status_layout.addStretch()
+        status_layout.addWidget(self.context_selector, 1)
 
         self.send_btn = TransparentPushButton(icon=FluentIcon.SEND, text="发送", parent=self)
         self.send_btn.clicked.connect(self._on_send_clicked)
@@ -290,7 +289,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._display_current_session()
 
     def _append_user_message(self, content: str):
-        card = MessageCard(parent=self, role="user")
+        card = MessageCard(parent=self, role="user", tags=self.context_selector.context)
         card.update_content(content)
         card.finish_streaming()
         card.deleteRequested.connect(lambda: self._delete_message(card))
@@ -416,8 +415,7 @@ class OpenAIChatToolWindow(ToolWindow):
         for msg in session.messages[:-1]:
             messages.append(msg)
 
-        contexts = self.context_selector.context
-        enhanced_input = "\n".join([context[1] for context in contexts.values()]) + "\n" + user_text
+        enhanced_input = self.context_selector.get_all_context() + user_text
         messages.append({"role": "user", "content": enhanced_input})
 
         self._is_streaming = True
