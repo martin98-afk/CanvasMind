@@ -154,6 +154,8 @@ class CanvasPage(QWidget):
         ContextRegistry.register("组件信息", self.get_component_info, lambda: None)
 
     def select_node_by_name(self, name_list):
+        if name_list is None:
+            return
         return self.node_operations.select_nodes_by_name(name_list)
 
     def connect_kernel(self, python_exe):
