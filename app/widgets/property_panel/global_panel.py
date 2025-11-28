@@ -310,6 +310,7 @@ class GlobalPanelWidget:
     def build_ui(self):
         """构建全局变量UI"""
         if self._built:
+            self._refresh_content()
             return
 
         title = SubtitleLabel("🌍 全局变量")
@@ -338,6 +339,12 @@ class GlobalPanelWidget:
         self.parent_layout.addLayout(segment_layout)
         self.parent_layout.addWidget(self.global_stacked)
         self._built = True
+
+    def _refresh_content(self):
+        """仅刷新所有页面的内容，不重建控件结构"""
+        self._refresh_custom_vars_page()
+        self._refresh_node_vars_page()
+        self._refresh_env_page()
 
     def on_global_variables_changed(self, var_type: str, var_name: str, action: str):
         """
@@ -497,7 +504,6 @@ class GlobalPanelWidget:
             return
 
         # 获取当前所有自定义变量
-        current_custom = set(global_vars.custom.keys()) if hasattr(global_vars, 'custom') else set()
         existing_custom = set(self._custom_var_cards.keys())
 
         # 分类当前变量

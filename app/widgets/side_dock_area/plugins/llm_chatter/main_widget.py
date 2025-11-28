@@ -25,7 +25,7 @@ class OpenAIChatToolWindow(ToolWindow):
     name = "大模型对话"
     icon = get_icon("大模型")
     singleton = True
-    default_position = DockPosition.TOP
+    default_position = DockPosition.BOTTOM
     session_manager = SessionManager()
     _valid_configs: Dict[str, Dict[str, Any]] = {}
     history_manager = None

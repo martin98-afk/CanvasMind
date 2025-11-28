@@ -33,7 +33,7 @@ class BaseMenu(QtWidgets.QMenu):
                 'height': '14px',
             },
             'QMenu::item': {
-                'padding': '5px 10px 5px 5px',
+                'padding': '5px 10px 5px 10px',
                 'background-color': 'transparent',
             },
             'QMenu::item:selected': {
