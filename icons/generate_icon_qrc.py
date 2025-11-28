@@ -51,7 +51,7 @@ def generate_icons_qrc(
     print(f"✅ 生成 {len(icon_map)} 个图标资源")
     print(f"📄 .qrc 文件: {qrc_path}")
     print(f"🗺️  映射文件: {output_map}")
-    print("🔧 请运行: pyrcc5 resources/icons.qrc -o resources/icons_rc.py")
+    print("🔧 请运行: pyrcc5 icons/icons.qrc -o app/utils/icons_rc.py")
 
 
 if __name__ == "__main__":

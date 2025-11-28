@@ -83,10 +83,11 @@ class CanvasPage(QWidget):
         self.inject_llm_contexts()
         # 注册右键菜单
         self._setup_context_menus()
+        # 连接ui信号
+        self.load_env_combos()
+        self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
         # 连接ipython控制台
         self.connect_kernel(self.environment_manager.get_current_python_exe())
-
-        # 连接ui信号
         self.env_changed.connect(self.connect_kernel)
         self.graph.node_created.connect(self.node_operations.on_node_created)
         self.graph.port_connected.connect(self._on_port_connected)
@@ -99,7 +100,7 @@ class CanvasPage(QWidget):
     # 代理方法
     @property
     def env_combo(self):
-        return self.environment_manager.env_combo
+        return self.ui_manager.env_combo
 
     @property
     def run_btn(self):
@@ -148,6 +149,12 @@ class CanvasPage(QWidget):
     @property
     def selected_categories(self):
         return self.ui_manager.nav_view._selected_categories
+
+    def load_env_combos(self):
+        self.environment_manager.load_env_combos()
+
+    def on_environment_changed(self):
+        self.environment_manager.on_environment_changed()
 
     def inject_llm_contexts(self):
         """注册大模型上下文菜单，会出现在右边大模型对话框的上下文上拉框中"""
@@ -570,21 +577,7 @@ class CanvasPage(QWidget):
         # 1. 停止并断开所有定时器
         self._auto_saver.stop()
         self.ipython_kernel.stop_kernel()
-
-        # 5. 移除事件过滤器
-        self.canvas_widget.removeEventFilter(self)
-
-        # 2. 清理动态导入的模块（关键！）
-        import sys
-        modules_to_remove = []
-        for full_path in self.component_map:
-            # 假设你的 scan_components 使用了类似命名
-            safe_name = full_path.replace("/", "_").replace(" ", "_")
-            module_name = f"dynamic.{safe_name}"
-            if module_name in sys.modules:
-                modules_to_remove.append(module_name)
-        for mod in modules_to_remove:
-            del sys.modules[mod]
+        self.ui_manager.side_dock_area.deleteLater()
         # ===== 7. 销毁 UI 控件（确保 parent=None）=====
         self.graph.deleteLater()
         # 8. 发射信号 & 移除自身

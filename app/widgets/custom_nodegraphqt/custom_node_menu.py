@@ -1,10 +1,88 @@
 from distutils.version import LooseVersion
 
 from NodeGraphQt import NodeGraphMenu, NodeGraphCommand
+from NodeGraphQt.constants import ViewerEnum
 from NodeGraphQt.errors import NodeMenuError
-from NodeGraphQt.widgets.actions import BaseMenu, NodeAction
+from NodeGraphQt.widgets.actions import NodeAction
+from PyQt5 import QtWidgets
 from Qt import QtCore
 from qtpy import QtGui
+
+
+class BaseMenu(QtWidgets.QMenu):
+
+    def __init__(self, *args, **kwargs):
+        super(BaseMenu, self).__init__(*args, **kwargs)
+        # text_color = self.palette().text().color().getRgb()
+        text_color = tuple(map(lambda i, j: i - j, (255, 255, 255),
+                               ViewerEnum.BACKGROUND_COLOR.value))
+        selected_color = self.palette().highlight().color().getRgb()
+        style_dict = {
+            'QMenu': {
+                'color': 'rgb({0},{1},{2})'.format(*text_color),
+                'background-color': 'rgb({0},{1},{2})'.format(
+                    *ViewerEnum.BACKGROUND_COLOR.value
+                ),
+                'border': '1px solid rgba({0},{1},{2},30)'.format(*text_color),
+                'border-radius': '3px',
+            },
+            'QMenu::icon': {
+                'left': '4px',  # ← 图标距离菜单项左侧 4px
+                'top': '0px',  # ← 垂直居中微调
+                'width': '14px',
+                'height': '14px',
+            },
+            'QMenu::item': {
+                'padding': '5px 10px 5px 5px',
+                'background-color': 'transparent',
+            },
+            'QMenu::item:selected': {
+                'color': 'rgb({0},{1},{2})'.format(*text_color),
+                'background-color': 'rgba({0},{1},{2},200)'
+                                    .format(*selected_color),
+            },
+            'QMenu::item:disabled': {
+                'color': 'rgba({0},{1},{2},60)'.format(*text_color),
+                'background-color': 'rgba({0},{1},{2},200)'
+                .format(*ViewerEnum.BACKGROUND_COLOR.value),
+            },
+            'QMenu::separator': {
+                'height': '1px',
+                'background': 'rgba({0},{1},{2}, 50)'.format(*text_color),
+                'margin': '4px 8px',
+            }
+        }
+        stylesheet = ''
+        for css_class, css in style_dict.items():
+            style = '{} {{\n'.format(css_class)
+            for elm_name, elm_val in css.items():
+                style += '  {}:{};\n'.format(elm_name, elm_val)
+            style += '}\n'
+            stylesheet += style
+        self.setStyleSheet(stylesheet)
+        self.node_class = None
+        self.graph = None
+
+    def get_menu(self, name, node_id=None):
+        for action in self.actions():
+            menu = action.menu()
+            if not menu:
+                continue
+            if menu.title() == name:
+                return menu
+            if node_id and menu.node_class:
+                node = menu.graph.get_node_by_id(node_id)
+                if isinstance(node, menu.node_class):
+                    return menu
+
+    def get_menus(self, node_class):
+        menus = []
+        for action in self.actions():
+            menu = action.menu()
+            if menu.node_class:
+                if issubclass(menu.node_class, node_class):
+                    menus.append(menu)
+        return menus
 
 
 class CustomNodesMenu(NodeGraphMenu):

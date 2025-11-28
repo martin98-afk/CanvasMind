@@ -90,7 +90,7 @@ class NodeOperations:
                 nodes_menu.add_command('从此节点运行', lambda graph, node: self.parent.run_from(node),
                                        node_type=f"dynamic.{node_class.__name__}", icon=get_icon("从此处运行"))
                 nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
-                                       node_type=f"dynamic.{node_class.__name__}")
+                                       node_type=f"dynamic.{node_class.__name__}", icon=get_icon("系统运行日志"))
                 nodes_menu.add_separator(node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('调试模式', lambda graph, node: node._toggle_debug_mode(),
                                        node_type=f"dynamic.{node_class.__name__}", icon=get_icon("调试"))

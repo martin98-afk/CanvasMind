@@ -14,7 +14,6 @@ class QuickComponentManager(QObject):
         super().__init__(parent)
         self.parent = parent
         self.component_map = component_map
-        self.ICONS_DIR = Path(resource_path("icons"))
         self.config = Settings.get_instance()  # 单例
 
     def get_quick_components(self):
@@ -25,7 +24,7 @@ class QuickComponentManager(QObject):
         self.quick_components_changed.emit()
 
     def open_add_dialog(self):
-        dialog = AddQuickComponentDialog(self.parent, self.component_map, self.ICONS_DIR)
+        dialog = AddQuickComponentDialog(self.parent, self.component_map)
         if dialog.exec():
             if dialog.validate():
                 new_list = self.get_quick_components() + [{

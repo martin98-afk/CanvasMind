@@ -434,6 +434,8 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         self._output_values = {self._outputs[0].name(): value}
 
     def get_output_value(self, name):
+        if self._output_values is None:
+            return None
         return self._output_values.get(name)
 
     def get_input(self, port):

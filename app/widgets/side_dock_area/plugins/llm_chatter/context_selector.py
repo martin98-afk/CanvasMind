@@ -320,7 +320,7 @@ class ContextSelector(QWidget):
             name = self._context_cache.get(key, ("未知", "", lambda: None))[0]
             tag = TagWidget(key, name)
             tag.closed.connect(self._on_tag_closed)
-            tag.doubleClicked.connect(self._on_tag_double_clicked)  # 👈 新增连接
+            tag.doubleClicked.connect(self._on_tag_double_clicked)
 
             tag_width = tag.sizeHint().width()
             if row_width + tag_width > max_row_width and row_width > 0:

@@ -142,7 +142,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self.history_btn.setChecked(False)
         self._clear_chat_area()
         welcom_card = create_welcome_card(self)
-        QTimer.singleShot(10, lambda: self.chat_layout.addWidget(welcom_card))
+        QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcom_card))
 
     def _display_current_session(self):
         """清空布局并重新加载当前会话的所有消息"""
