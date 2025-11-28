@@ -353,7 +353,7 @@ class MessageCard(CardWidget):
         button_layout = QHBoxLayout(button_container)
         button_layout.setContentsMargins(0, 0, 0, 0)
         button_layout.setSpacing(4)
-
+        # 增加卡片按钮，欢迎卡片没有按钮
         if self.role == "assistant":
             btn_specs = [
                 (FluentIcon.COPY, "复制", lambda: self.copyRequested.emit(self.content_widget.get_plain_text())),
@@ -364,6 +364,8 @@ class MessageCard(CardWidget):
                 (FluentIcon.COPY, "复制", lambda: self.copyRequested.emit(self.content_widget.get_plain_text())),
                 (FluentIcon.DELETE, "删除", self.deleteRequested.emit),
             ]
+        else:
+            btn_specs = []
 
         for icon, tooltip, slot in btn_specs:
             btn = TransparentToolButton(icon, self)
@@ -376,7 +378,7 @@ class MessageCard(CardWidget):
         top_layout.addWidget(button_container)
         main_layout.addLayout(top_layout)
         main_layout.addWidget(CardSeparator(self))
-
+        # 增加引用上下文的标签
         if self.role == "user" and self.context_tags:
             tags_container = QWidget(self)
             tags_container.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)

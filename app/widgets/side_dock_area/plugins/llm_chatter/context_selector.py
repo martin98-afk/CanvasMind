@@ -218,6 +218,11 @@ class ContextSelector(QWidget):
         main_layout.addWidget(self.tags_container)
         main_layout.addStretch(1)
 
+        self.refresh_btn = TransparentToolButton(FluentIcon.SYNC, self)
+        self.refresh_btn.setFixedSize(24, 24)
+        self.refresh_btn.clicked.connect(self._update_tags)
+        main_layout.addWidget(self.refresh_btn)
+
         self._update_tags()
 
     @property
@@ -229,7 +234,16 @@ class ContextSelector(QWidget):
         return self._context_cache
 
     def get_all_context(self):
-        return "===== 上下文信息开始 =====" + "\n".join([context[1] for context in self._context_cache.values()]) + "\n" + "===== 上下文信息结束 =====\n\n"
+        context = ("===== 画布上下文信息开始 =====\n\n" +
+                   "\n".join([context[1] for context in self._context_cache.values()]) +
+                   "\n===== 上下文信息结束 =====\n\n") if self._context_cache else ""
+        return f"""# 角色
+你是低代码画布助手，主要工作：辅助分析画布内容、解答节点问题、帮忙推荐节点、设计画布流程；
+
+{context}
+
+请根据上下文信息，给出用户问题一个完整的回复。\n\n
+"""
 
     def get_context_by_key(self, key: str) -> str:
         """获取格式化后的上下文文本"""

@@ -1,6 +1,6 @@
 import json
 
-from NodeGraphQt import NodeGraph, BaseNode
+from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu
 from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
@@ -12,6 +12,7 @@ from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
 from qtpy import QtGui, QtCore, QtWidgets
 
+from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomLivePipeItem, CustomPipeItem
 
 
@@ -375,8 +376,6 @@ class CustomNodeViewer(NodeViewer):
             prev_ids = [n.id for n in self._prev_selection_nodes if not n.selected]
             nodes, _ = self.selected_items()
             node_ids = [n.id for n in nodes if n not in self._prev_selection_nodes]
-
-            # 只有当有变化时才发射信号（可选进一步优化）
             self.node_selection_changed.emit(node_ids, prev_ids)
         # 更新 _prev_selection_nodes（无论是否平移）
         self._prev_selection_nodes = [n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)]
@@ -385,6 +384,22 @@ class CustomNodeViewer(NodeViewer):
 
 
 class CustomNodeGraph(NodeGraph):
+
+    def __init__(self, parent, **kwargs):
+        super(CustomNodeGraph, self).__init__(parent, **kwargs)
+        self._register_context_menu()
+
+    def _register_context_menu(self):
+        """
+        Register the default context menus.
+        """
+        if not self._viewer:
+            return
+        menus = self._viewer.context_menus()
+        if menus.get('graph'):
+            self._context_menu['graph'] = NodeGraphMenu(self, menus['graph'])
+        if menus.get('nodes'):
+            self._context_menu['nodes'] = CustomNodesMenu(self, menus['nodes'])
 
     def _deserialize(self, data, relative_pos=False, pos=None, adjust_graph_style=True):
         """

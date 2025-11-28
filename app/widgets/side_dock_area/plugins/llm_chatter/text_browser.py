@@ -11,7 +11,7 @@ class SendableTextEdit(TextEdit):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setPlaceholderText("继续提问...")
+        self.setPlaceholderText("enter 发送信息, shift+enter 换行")
         self.setAcceptRichText(False)
         self.setLineWrapMode(TextEdit.WidgetWidth)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -21,6 +21,17 @@ class SendableTextEdit(TextEdit):
         self.send_btn.setToolTip("发送（Enter）")
         self.send_btn.clicked.connect(self._on_send_click)
         self._position_send_button()
+        self.send_btn.setDisabled(True)
+        # 监听文本变化，控制按钮显隐
+        self.textChanged.connect(self._on_text_changed)
+        self._position_send_button()
+
+    def _on_text_changed(self):
+        has_text = bool(self.toPlainText().strip())
+        if has_text:
+            self.send_btn.setDisabled(False)
+        else:
+            self.send_btn.setDisabled(True)
 
     def _on_send_click(self):
         """发送按钮点击事件"""

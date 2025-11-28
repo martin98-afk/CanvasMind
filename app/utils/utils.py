@@ -22,6 +22,7 @@ from PyQt5.QtGui import QIcon
 from loguru import logger
 from qfluentwidgets import FluentIcon
 
+from app.utils.icon_name_map import ICON_NAME_TO_FILE
 
 # ANSI 颜色代码映射
 ANSI_COLOR_MAP = {
@@ -42,6 +43,7 @@ ANSI_COLOR_MAP = {
     '96': '#8be9fd',  # 亮青
     '97': '#ffffff',  # 亮白
 }
+_ICON_CACHE = {}   # 缓存图标名 → QIcon 实例
 
 
 def ansi_to_html(text):
@@ -122,23 +124,40 @@ def get_port_node(port):
     return node() if callable(node) else node
 
 
-def get_icon(icon_name):
-    icons = {}
-    relative_path = "icons"
-    try:
-        for name in os.listdir(resource_path(relative_path)):
-            if name.endswith(".png"):
-                icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
-            elif name.endswith(".svg"):
-                icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
-            elif name.endswith(".ico"):
-                icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
-            elif name.endswith(".jpg"):
-                icons[name[:-4]] = os.path.join(resource_path(relative_path), name)
+def get_icon(icon_name: str) -> QIcon:
+    """
+    从 Qt 资源系统加载图标（高性能、无磁盘 I/O）
 
-        return QIcon(icons.get(icon_name, "icons/icon_unknown.png"))
-    except:
-        return FluentIcon.APPLICATION
+    Args:
+        icon_name: 图标名（不含扩展名），如 "copy"
+
+    Returns:
+        QIcon 实例
+    """
+    if icon_name in _ICON_CACHE:
+        return _ICON_CACHE[icon_name]
+
+    # 1. 从映射表中找真实文件名
+    filename = ICON_NAME_TO_FILE.get(icon_name)
+    if filename:
+        resource_path = f":/icons/{filename}"
+        icon = QIcon(resource_path)
+        # 可选：再做一次 null 检查（虽然理论上不会错）
+        if not icon.isNull():
+            _ICON_CACHE[icon_name] = icon
+            return icon
+
+    # 2. fallback 到 FluentIcon
+    try:
+        from qfluentwidgets import FluentIcon
+        icon = FluentIcon.APPLICATION.icon()
+        _ICON_CACHE[icon_name] = icon
+        return icon
+    except Exception:
+        pass
+
+    # 3. 最终 fallback
+    return QIcon()
 
 
 def serialize_for_json(obj, large_list_threshold=1000):

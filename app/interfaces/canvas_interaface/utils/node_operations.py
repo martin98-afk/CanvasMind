@@ -2,6 +2,7 @@
 import uuid
 
 from PyQt5.QtCore import QTimer
+from qfluentwidgets import FluentIcon
 
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
 from app.nodes.backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
@@ -11,6 +12,7 @@ from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.status_node import StatusNode
 from app.scan_components import scan_components
+from app.utils.utils import get_icon
 from .logger import get_logger
 
 logger = get_logger("NodeOperations")
@@ -82,16 +84,16 @@ class NodeOperations:
             self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
             if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
                 nodes_menu.add_command('运行此节点', lambda graph, node: self.parent.run_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
+                                       node_type=f"dynamic.{node_class.__name__}", icon=get_icon("运行"))
                 nodes_menu.add_command('运行到此节点', lambda graph, node: self.parent.run_to(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.parent.run_from(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
+                                       node_type=f"dynamic.{node_class.__name__}", icon=get_icon("运行到此处"))
+                nodes_menu.add_command('从此节点运行', lambda graph, node: self.parent.run_from(node),
+                                       node_type=f"dynamic.{node_class.__name__}", icon=get_icon("从此处运行"))
                 nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
                                        node_type=f"dynamic.{node_class.__name__}")
-                nodes_menu.add_separator()
+                nodes_menu.add_separator(node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('调试模式', lambda graph, node: node._toggle_debug_mode(),
-                                       node_type=f"dynamic.{node_class.__name__}")
+                                       node_type=f"dynamic.{node_class.__name__}", icon=get_icon("调试"))
                 nodes_menu.add_command('编辑组件', lambda graph, node: self.parent.edit_node(node),
                                        node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),

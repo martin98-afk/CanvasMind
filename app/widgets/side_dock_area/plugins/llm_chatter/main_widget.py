@@ -109,7 +109,6 @@ class OpenAIChatToolWindow(ToolWindow):
 
         # ========== 输入区域 ==========
         self.input_area = SendableTextEdit(self)  # ← 使用自定义 TextEdit
-        self.input_area.setPlaceholderText("enter 发送信息; shift+enter 换行")
         self.input_area.setMaximumHeight(80)
         setFont(self.input_area, 15)
         self.input_area.sendMessageRequested.connect(self._on_send_clicked)
@@ -143,7 +142,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self.history_btn.setChecked(False)
         self._clear_chat_area()
         welcom_card = create_welcome_card(self)
-        self.chat_layout.addWidget(welcom_card)
+        QTimer.singleShot(10, lambda: self.chat_layout.addWidget(welcom_card))
 
     def _display_current_session(self):
         """清空布局并重新加载当前会话的所有消息"""
