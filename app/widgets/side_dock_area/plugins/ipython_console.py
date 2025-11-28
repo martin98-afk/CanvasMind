@@ -6,7 +6,7 @@ from app.widgets.ipython_console.ipython_console import EmbeddedIPythonConsole
 
 class IPythonConsoleToolWindow(ToolWindow):
     name = "IPython 控制台"
-    icon = get_icon("console")
+    icon = get_icon("ipython")
     singleton = True
     default_position = DockPosition.BOTTOM  # 放在底部
 

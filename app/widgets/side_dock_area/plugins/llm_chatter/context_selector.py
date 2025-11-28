@@ -229,7 +229,7 @@ class ContextSelector(QWidget):
         return self._context_cache
 
     def get_all_context(self):
-        return "\n".join([context[1] for context in self._context_cache.values()]) + "\n"
+        return "===== 上下文信息开始 =====" + "\n".join([context[1] for context in self._context_cache.values()]) + "\n" + "===== 上下文信息结束 =====\n\n"
 
     def get_context_by_key(self, key: str) -> str:
         """获取格式化后的上下文文本"""
@@ -278,7 +278,7 @@ class ContextSelector(QWidget):
                 else:
                     context_str = str(context_data)
 
-                formatted_text = f"[{name}信息]:\n{context_str}\n---\n"
+                formatted_text = f"# {name}信息:\n{context_str}\n\n"
                 self._context_cache[context_key] = (name, formatted_text, callback_params)
 
     def _update_tags(self):

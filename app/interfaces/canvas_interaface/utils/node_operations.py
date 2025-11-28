@@ -270,7 +270,11 @@ class NodeOperations:
         return None
 
     def select_nodes_by_name(self, names):
+        if not isinstance(names, (list, tuple)):
+            names = [names]
+        self.graph.clear_selection()
         for name in names:
             node = self.graph.get_node_by_name(name)
             if node:
                 node.set_selected(True)
+        self.graph.fit_to_selection()

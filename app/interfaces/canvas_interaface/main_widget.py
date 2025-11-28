@@ -202,7 +202,7 @@ class CanvasPage(QWidget):
         selected_nodes = self.graph.selected_nodes()
         if len(selected_nodes) > 0:
             return (
-                f"画布选中节点 {len(selected_nodes)} 个",
+                f"画布选中节点 {len(selected_nodes)} 个" if len(selected_nodes) > 1 else f"节点: {selected_nodes[0].name()}",
                 self.canvas_io.extract_graph_info(self.graph.selected_nodes()),
                 [node.name() for node in selected_nodes]
             )

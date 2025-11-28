@@ -159,38 +159,67 @@ class CanvasIO(QObject):
         self.parent.workflow_name = self.parent.file_path.stem.split(".")[0]
 
     def extract_graph_info(self, nodes=None):
-        """过滤掉session data中的复杂信息，用于给大模型感知并分析当前画布的信息, 如果不传总结全图信息，如果选择节点信息"""
+        """过滤掉 session data 中的复杂/内部信息，生成面向大模型的结构化画布描述。
+        若 nodes 为 None，总结整张画布；否则仅总结指定节点及其连接上下文。
+        """
         if nodes is None:
             nodes = self.graph.all_nodes()
-        # 创建节点名和id的映射表
-        graph_info = {}
-        # 处理节点信息
-        for node in nodes:
-            custom_props = node.model._custom_prop.copy()
-            custom_props.pop("persistent_id")
-            input_port_infos = []
-            for port in node.input_ports():
-                port_info = {"名称": port.name(), "是否为多输入": port.model.multi_connection, "端口类型": port.model.type_}
-                connected = port.connected_ports()
-                for upstream in connected:
-                    port_info.update(
-                        {"上游节点名": upstream.node().name(), "上游端口名": upstream.name()}
-                    )
-                input_port_infos.append(port_info)
-            output_port_infos = []
-            for port in node.output_ports():
-                port_info = {"名称": port.name(), "端口类型": port.model.type_}
-                connected = port.connected_ports()
-                for downstream in connected:
-                    port_info.update(
-                        {"下游节点名": downstream.node().name(), "下游端口名": downstream.name()}
-                    )
-                output_port_infos.append(port_info)
 
-            graph_info[node.name()] = {
-                "输入端口": input_port_infos,
-                "输出端口": output_port_infos,
-                "节点属性": custom_props
+        # 按拓扑顺序或用户顺序组织节点（这里按原顺序）
+        graph_desc_parts = []
+
+        for node in nodes:
+            name = node.name()
+            node_type = getattr(node.model, "node_type", "未知类型")  # 建议你节点有 type 字段
+            custom_props = {
+                k: v for k, v in node.model._custom_prop.items()
+                if k not in {"persistent_id", "temp_data", "cache", "global_variable", "debug_code"}  # 可扩展过滤
             }
 
-        return graph_info
+            # 输入端口：聚合连接信息
+            inputs = []
+            for port in node.input_ports():
+                conn_desc = []
+                for upstream in port.connected_ports():
+                    conn_desc.append(f"[{upstream.node().name()}](画布节点) → {upstream.name()}")
+                if conn_only := ", ".join(conn_desc):
+                    inputs.append(f"- **{port.name()}** ({port.model.type_}) ← {conn_only}")
+                else:
+                    inputs.append(f"- **{port.name()}** ({port.model.type_}) ← 无连接")
+
+            # 输出端口
+            outputs = []
+            for port in node.output_ports():
+                conn_desc = []
+                for downstream in port.connected_ports():
+                    conn_desc.append(f"[{downstream.node().name()}](画布节点) ← {downstream.name()}")
+                if conn_only := ", ".join(conn_desc):
+                    outputs.append(f"- **{port.name()}** ({port.model.type_}) → {conn_only}")
+                else:
+                    outputs.append(f"- **{port.name()}** ({port.model.type_}) → 无连接")
+
+            # 构建节点描述块
+            node_block = f"""### [{name}](画布节点)
+- **类型**: {node_type}
+- **属性**: {custom_props if custom_props else "无"}
+- **输入**:
+{"; ".join(inputs) if inputs else "  无输入端口"}
+- **输出**:
+{"; ".join(outputs) if outputs else "  无输出端口"}
+    """
+            graph_desc_parts.append(node_block)
+
+        final_desc = """## 画布结构说明
+以下描述了当前画布中各节点的类型、配置属性及其数据流连接关系。
+- [节点名称](画布节点) 代表引用的原画布节点名
+- 箭头 `←` 表示数据来源，`→` 表示数据去向。
+- 端口类型（如 `str`, `DataFrame`, `image_base64`）用于提示数据格。
+
+## 节点详情
+    """
+        final_desc += "\n".join(graph_desc_parts)
+        # + """\n\n## 回复语法规范
+        # - 当回答中需要使用任何已有节点名时，请使用 `[节点名称](画布节点)` 语法, (画布节点)是当前工具名称，属于固定前缀，节点名放到后前面中括号中。
+        # - 除此之外已有节点名绝对不能单独以文本形式输出\n\n"""
+
+        return final_desc
