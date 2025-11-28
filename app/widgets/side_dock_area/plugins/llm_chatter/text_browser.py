@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QKeyEvent
 from qfluentwidgets import FluentIcon
 from qfluentwidgets import TextEdit, TransparentToolButton
+from qtpy import QtCore
 
 
 class SendableTextEdit(TextEdit):
@@ -36,6 +37,7 @@ class SendableTextEdit(TextEdit):
     def _on_send_click(self):
         """发送按钮点击事件"""
         self.send_btn.setIcon(FluentIcon.PAUSE)
+        QtCore.QTimer.singleShot(100, lambda: self.send_btn.setDisabled(False))
         self.send_btn.clicked.disconnect()
         self.send_btn.clicked.connect(self._on_stop_click)
         self.sendMessageRequested.emit()

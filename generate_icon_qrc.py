@@ -4,7 +4,7 @@ import json
 
 
 def generate_icons_qrc(
-        icons_dir="./",
+        icons_dir="./icons",
         output_qrc="./icons.qrc",
         output_map="./icon_name_map.py"
 ):
