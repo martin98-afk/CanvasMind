@@ -90,7 +90,9 @@ class CanvasPage(QWidget):
         self.env_changed.connect(self.connect_kernel)
         self.graph.node_created.connect(self.node_operations.on_node_created)
         self.graph.port_connected.connect(self._on_port_connected)
-        self.graph.viewer().node_selection_changed.connect(self.on_selection_changed)
+        self.graph.viewer().node_selection_changed.connect(
+            lambda: QtCore.QTimer.singleShot(0, self.on_selection_changed)
+        )
         self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
         self._connect_runner_signals()
 
@@ -202,7 +204,7 @@ class CanvasPage(QWidget):
         selected_nodes = self.graph.selected_nodes()
         if len(selected_nodes) > 0:
             return (
-                f"画布选中节点 {len(selected_nodes)} 个",
+                f"画布选中节点 {len(selected_nodes)} 个" if len(selected_nodes) > 1 else f"节点: {selected_nodes[0].name()}",
                 self.canvas_io.extract_graph_info(self.graph.selected_nodes()),
                 [node.name() for node in selected_nodes]
             )
@@ -518,7 +520,7 @@ class CanvasPage(QWidget):
             elif isinstance(selected_nodes[0], BaseNode):
                 QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(selected_nodes[0]))
                 self.property_panel.reset_current_components()
-                self.node_operations._request_recommendations(selected_nodes[0])
+                QtCore.QTimer.singleShot(0, lambda: self.node_operations._request_recommendations(selected_nodes[0]))
             # 展示全局变量面板
             else:
                 self.nav_view.clear_recommendations()
@@ -571,14 +573,6 @@ class CanvasPage(QWidget):
 
         # 5. 移除事件过滤器
         self.canvas_widget.removeEventFilter(self)
-
-        # 6. 清理 graph 信号连接（若可能）
-        try:
-            self.graph.node_created.disconnect(self.on_node_created)
-            self.graph.port_connected.disconnect(self._on_port_connected)
-            self.graph.viewer().node_selection_changed.disconnect(self.on_selection_changed)
-        except Exception:
-            pass
 
         # 2. 清理动态导入的模块（关键！）
         import sys

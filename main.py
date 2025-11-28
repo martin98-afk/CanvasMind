@@ -6,6 +6,7 @@ import matplotlib
 import qtconsole.client
 warnings.filterwarnings("ignore")
 
+from app.utils import icons_rc
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication
 

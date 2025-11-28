@@ -15,7 +15,8 @@ from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.chat_session import SessionManager
 from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextSelector
 from app.widgets.side_dock_area.plugins.llm_chatter.history_manager import HistoryManager
-from app.widgets.side_dock_area.plugins.llm_chatter.message_card import MessageCard
+from app.widgets.side_dock_area.plugins.llm_chatter.message_card import MessageCard, create_welcome_card
+from app.widgets.side_dock_area.plugins.llm_chatter.text_browser import SendableTextEdit
 from app.widgets.side_dock_area.plugins.llm_chatter.worker import OpenAIChatWorker
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
@@ -45,11 +46,11 @@ class OpenAIChatToolWindow(ToolWindow):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(0)
+        layout.setSpacing(5)
 
         # ========== 顶部会话管理栏 ==========
         session_bar_layout = QHBoxLayout()
-        session_bar_layout.setContentsMargins(0, 0, 0, 5)
+        session_bar_layout.setContentsMargins(0, 0, 0, 0)
         session_bar_layout.setSpacing(4)
 
         # 左侧：模型 + 分隔符 + 标题
@@ -96,36 +97,23 @@ class OpenAIChatToolWindow(ToolWindow):
         self.chat_container = QWidget()
         self.chat_layout = QVBoxLayout(self.chat_container)
         self.chat_layout.setContentsMargins(0, 0, 0, 0)
-        self.chat_layout.setSpacing(4)
+        self.chat_layout.setSpacing(5)
         self.chat_layout.setAlignment(Qt.AlignBottom)  # 关键：防止垂直拉伸
         self.chat_scroll_area.setWidget(self.chat_container)
 
         layout.addWidget(self.chat_scroll_area, 1)
 
         # ========== 中间状态栏（使用 ContextSelector）==========
-        status_layout = QHBoxLayout()
-        status_layout.setContentsMargins(0, 0, 0, 0)
-        status_layout.setSpacing(4)
-
         self.context_selector = ContextSelector(self)
-        status_layout.addWidget(self.context_selector, 1)
-
-        self.send_btn = TransparentPushButton(icon=FluentIcon.SEND, text="发送", parent=self)
-        self.send_btn.clicked.connect(self._on_send_clicked)
-        status_layout.addWidget(self.send_btn)
-        layout.addLayout(status_layout)
+        layout.addWidget(self.context_selector)
 
         # ========== 输入区域 ==========
-        input_layout = QHBoxLayout()
-        input_layout.setContentsMargins(0, 0, 0, 0)
-        input_layout.setSpacing(4)
-        self.input_area = TextEdit(self)
-        self.input_area.setPlaceholderText("继续提问或 \"/\"新开会话")
-        self.input_area.setMaximumHeight(100)
+        self.input_area = SendableTextEdit(self)  # ← 使用自定义 TextEdit
+        self.input_area.setMaximumHeight(80)
         setFont(self.input_area, 15)
-        self.input_area.installEventFilter(self)
-        input_layout.addWidget(self.input_area, 1)
-        layout.addLayout(input_layout)
+        self.input_area.sendMessageRequested.connect(self._on_send_clicked)
+        self.input_area.stopMessageRequested.connect(self._on_stop_clicked)
+        layout.addWidget(self.input_area)
 
     def _load_model_configs(self):
         self._valid_configs.clear()
@@ -153,6 +141,8 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_history_index = None  # 新建 = 脱离历史
         self.history_btn.setChecked(False)
         self._clear_chat_area()
+        welcom_card = create_welcome_card(self)
+        QTimer.singleShot(10, lambda: self.chat_layout.addWidget(welcom_card))
 
     def _display_current_session(self):
         """清空布局并重新加载当前会话的所有消息"""
@@ -240,7 +230,6 @@ class OpenAIChatToolWindow(ToolWindow):
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 4, 8, 4)
 
-        info_layout = QHBoxLayout()
         title_label = CaptionLabel(title[:200], card)
         title_label.setWordWrap(True)
         time_label = CaptionLabel(last_time, card)
@@ -250,14 +239,11 @@ class OpenAIChatToolWindow(ToolWindow):
         else:
             time_label.setStyleSheet("color: #aaa;")
 
-        info_layout.addWidget(title_label)
-        info_layout.addStretch()
-
         delete_btn = TransparentToolButton(FluentIcon.DELETE, card)
         delete_btn.setFixedSize(24, 24)
         delete_btn.clicked.connect(lambda _, i=index: self._delete_history_session(i))
 
-        layout.addLayout(info_layout)
+        layout.addWidget(title_label, 1, Qt.AlignLeft)
         layout.addStretch()
         layout.addWidget(time_label)
         layout.addWidget(delete_btn)
@@ -379,6 +365,7 @@ class OpenAIChatToolWindow(ToolWindow):
         # 删除当前助手消息
         self._delete_message(card)
         # 重新发送
+        self.input_area._on_send_click()
         self._on_send_clicked(user_input)
 
     def _copy_text(self, text: str):
@@ -438,6 +425,7 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_worker_finished(self, response: str, card: MessageCard):
         self._is_streaming = False
         card.finish_streaming()
+        self.input_area._on_stop_click()
         self._toggle_send_stop(False)
         session = self.session_manager.get_current_session()
         if session:
@@ -462,25 +450,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _toggle_send_stop(self, is_sending: bool):
         if is_sending:
-            self.send_btn.setText("停止")
-            self.send_btn.setIcon(FluentIcon.PAUSE)
-            try:
-                self.send_btn.clicked.disconnect()
-            except TypeError:
-                pass
-            self.send_btn.clicked.connect(self._on_stop_clicked)
-            self.input_area.setDisabled(True)
             self.model_combo.setDisabled(True)
             self.history_btn.setDisabled(True)
         else:
-            self.send_btn.setText("发送")
-            self.send_btn.setIcon(FluentIcon.SEND)
-            try:
-                self.send_btn.clicked.disconnect()
-            except TypeError:
-                pass
-            self.send_btn.clicked.connect(self._on_send_clicked)
-            self.input_area.setDisabled(False)
             self.model_combo.setDisabled(False)
             self.history_btn.setDisabled(False)
 
