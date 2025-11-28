@@ -359,7 +359,7 @@ class MessageCard(CardWidget):
                 (FluentIcon.COPY, "复制", lambda: self.copyRequested.emit(self.content_widget.get_plain_text())),
                 (FluentIcon.SYNC, "重新生成", self.regenerateRequested.emit)
             ]
-        else:
+        elif self.role == "user":
             btn_specs = [
                 (FluentIcon.COPY, "复制", lambda: self.copyRequested.emit(self.content_widget.get_plain_text())),
                 (FluentIcon.DELETE, "删除", self.deleteRequested.emit),
@@ -432,3 +432,31 @@ class MessageCard(CardWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._update_content_width()
+
+
+def create_welcome_card(parent=None) -> MessageCard:
+    """生成一个说明当前大模型功能的欢迎卡片"""
+    # 欢迎语 Markdown 内容（支持你已实现的 <think>、context 链接、表格、代码块等）
+    welcome_md = """\
+你好！我是你的大模型助手，当前支持以下功能：
+
+- ✅ **多模态输入**：支持通过 Base64 传递图像，启用视觉识别能力。
+- ✅ **流式对话**：逐字生成，响应流畅，类似 ChatGPT 的体验。
+- ✅ **上下文增强**：可插入画布节点、组件信息、全局变量等上下文（点击下方 `[...]` 选择）。
+- ✅ **结构化输出**：支持 Markdown 表格、代码块、列表等格式。
+- ✅ **上下文联动**：点击 `[变量名](key)` 可直接在画布中定位或操作对应节点。
+- ✅ **深色主题 & 流畅交互**：界面适配 Fluent Design，支持停止生成、复制、重试等操作。
+
+你可以随时：
+- 输入文本开始对话；
+- 点击输入框旁的 ➕ 按钮添加上下文；
+- 在生成过程中点击“停止”中断响应。
+
+祝你使用愉快！✨
+"""
+
+    # 创建助手角色的欢迎卡片
+    card = MessageCard(role="system", timestamp="就绪", parent=parent)
+    card.update_content(welcome_md)
+    card.finish_streaming()  # 立即渲染，不流式
+    return card

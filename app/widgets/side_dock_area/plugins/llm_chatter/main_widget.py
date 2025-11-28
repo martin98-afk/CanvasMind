@@ -15,7 +15,7 @@ from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.chat_session import SessionManager
 from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextSelector
 from app.widgets.side_dock_area.plugins.llm_chatter.history_manager import HistoryManager
-from app.widgets.side_dock_area.plugins.llm_chatter.message_card import MessageCard
+from app.widgets.side_dock_area.plugins.llm_chatter.message_card import MessageCard, create_welcome_card
 from app.widgets.side_dock_area.plugins.llm_chatter.text_browser import SendableTextEdit
 from app.widgets.side_dock_area.plugins.llm_chatter.worker import OpenAIChatWorker
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
@@ -142,6 +142,8 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_history_index = None  # 新建 = 脱离历史
         self.history_btn.setChecked(False)
         self._clear_chat_area()
+        welcom_card = create_welcome_card(self)
+        self.chat_layout.addWidget(welcom_card)
 
     def _display_current_session(self):
         """清空布局并重新加载当前会话的所有消息"""
@@ -229,7 +231,6 @@ class OpenAIChatToolWindow(ToolWindow):
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 4, 8, 4)
 
-        info_layout = QHBoxLayout()
         title_label = CaptionLabel(title[:200], card)
         title_label.setWordWrap(True)
         time_label = CaptionLabel(last_time, card)
@@ -239,14 +240,11 @@ class OpenAIChatToolWindow(ToolWindow):
         else:
             time_label.setStyleSheet("color: #aaa;")
 
-        info_layout.addWidget(title_label)
-        info_layout.addStretch()
-
         delete_btn = TransparentToolButton(FluentIcon.DELETE, card)
         delete_btn.setFixedSize(24, 24)
         delete_btn.clicked.connect(lambda _, i=index: self._delete_history_session(i))
 
-        layout.addLayout(info_layout)
+        layout.addWidget(title_label, 1, Qt.AlignLeft)
         layout.addStretch()
         layout.addWidget(time_label)
         layout.addWidget(delete_btn)

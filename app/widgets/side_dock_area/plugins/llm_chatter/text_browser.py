@@ -15,14 +15,11 @@ class SendableTextEdit(TextEdit):
         self.setAcceptRichText(False)
         self.setLineWrapMode(TextEdit.WidgetWidth)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
         # 创建内嵌发送按钮
         self.send_btn = TransparentToolButton(FluentIcon.SEND, self)
         self.send_btn.setFixedSize(28, 28)
         self.send_btn.setToolTip("发送（Enter）")
         self.send_btn.clicked.connect(self._on_send_click)
-
-        # 监听文本变化，控制按钮显隐
         self._position_send_button()
 
     def _on_send_click(self):
@@ -57,7 +54,7 @@ class SendableTextEdit(TextEdit):
             if event.modifiers() & Qt.ShiftModifier:
                 super().keyPressEvent(event)  # 换行
             else:
-                self.sendMessageRequested.emit()
+                self._on_send_click()
                 event.accept()
         else:
             super().keyPressEvent(event)
