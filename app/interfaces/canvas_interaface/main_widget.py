@@ -6,6 +6,7 @@ from NodeGraphQt import BaseNode
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget
 from loguru import logger
 
@@ -22,6 +23,7 @@ from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.status_node import NodeStatus
 from app.utils.config import Settings
+from app.utils.utils import get_icon
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
 
@@ -75,7 +77,7 @@ class CanvasPage(QWidget):
         self.canvas_runner = CanvasRunner(
             self.environment_manager.get_current_python_exe, self
         )
-        #=======================================
+        # =======================================
         # 初始化ui
         self.ui_manager = CanvasUISetUp(self)
         self.ui_manager.setup_ui()
@@ -83,10 +85,11 @@ class CanvasPage(QWidget):
         self.inject_llm_contexts()
         # 注册右键菜单
         self._setup_context_menus()
+        # 连接ui信号
+        self.load_env_combos()
+        self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
         # 连接ipython控制台
         self.connect_kernel(self.environment_manager.get_current_python_exe())
-
-        # 连接ui信号
         self.env_changed.connect(self.connect_kernel)
         self.graph.node_created.connect(self.node_operations.on_node_created)
         self.graph.port_connected.connect(self._on_port_connected)
@@ -99,7 +102,7 @@ class CanvasPage(QWidget):
     # 代理方法
     @property
     def env_combo(self):
-        return self.environment_manager.env_combo
+        return self.ui_manager.env_combo
 
     @property
     def run_btn(self):
@@ -149,6 +152,12 @@ class CanvasPage(QWidget):
     def selected_categories(self):
         return self.ui_manager.nav_view._selected_categories
 
+    def load_env_combos(self):
+        self.environment_manager.load_env_combos()
+
+    def on_environment_changed(self):
+        self.environment_manager.on_environment_changed()
+
     def inject_llm_contexts(self):
         """注册大模型上下文菜单，会出现在右边大模型对话框的上下文上拉框中"""
         ContextRegistry.register("画布节点", self.extract_graph_info, self.select_node_by_name)
@@ -163,7 +172,7 @@ class CanvasPage(QWidget):
     def connect_kernel(self, python_exe):
         if python_exe:
             if self.ipython_kernel.kernel_manager.python_exe_path != python_exe or \
-               not self.ipython_kernel.kernel_manager.get_kernel_info().get("is_alive"):
+                    not self.ipython_kernel.kernel_manager.get_kernel_info().get("is_alive"):
                 self.ipython_kernel.kernel_manager.shutdown_kernel()
                 if self.ipython_kernel.start_kernel(python_exe):
                     self.var_explorer.set_kernel_manager(self.ipython_kernel.kernel_manager)
@@ -204,7 +213,8 @@ class CanvasPage(QWidget):
         selected_nodes = self.graph.selected_nodes()
         if len(selected_nodes) > 0:
             return (
-                f"画布选中节点 {len(selected_nodes)} 个" if len(selected_nodes) > 1 else f"节点: {selected_nodes[0].name()}",
+                f"画布选中节点 {len(selected_nodes)} 个" if len(
+                    selected_nodes) > 1 else f"节点: {selected_nodes[0].name()}",
                 self.canvas_io.extract_graph_info(self.graph.selected_nodes()),
                 [node.name() for node in selected_nodes]
             )
@@ -219,7 +229,8 @@ class CanvasPage(QWidget):
             if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
                 file_path = self.file_path
             else:
-                file_path = (self.file_path.parent if self.file_path else Path("../app/interfaces")) / f"{self.workflow_name}.workflow.json"
+                file_path = (self.file_path.parent if self.file_path else Path(
+                    "../app/interfaces")) / f"{self.workflow_name}.workflow.json"
         self.canvas_io.save_full_workflow(file_path, show_info)
         self.file_path = file_path
 
@@ -279,15 +290,21 @@ class CanvasPage(QWidget):
             "control_flow.ControlFlowLoopNode", "control_flow.ControlFlowBranchNode"
         ]:
             nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
-                                   node_type=special_node)
+                                   node_type=special_node, icon=get_icon("运行"))
             nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to(node),
-                                   node_type=special_node)
+                                   node_type=special_node, icon=get_icon("运行到此处"))
             nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from(node),
-                                   node_type=special_node)
+                                   node_type=special_node, icon=get_icon("从此处运行"))
             if special_node == "dynamic.DYNAMIC_CODE":
-                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(), node_type=special_node)
-            nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                                   node_type=special_node)
+                nodes_menu.add_command(
+                    '查看节点日志', lambda graph, node: node.show_logs(),
+                    node_type=special_node, icon=get_icon("系统运行日志")
+                )
+            nodes_menu.add_separator(node_type=special_node)
+            nodes_menu.add_command(
+                '删除节点', lambda graph, node: self.delete_node(node),
+                node_type=special_node, icon=QIcon(f":/qfluentwidgets/images/icons/Delete_white.svg")
+            )
 
     # --- 信号绑定 ---
     def set_node_status_by_id(self, node_id, status):
@@ -570,21 +587,7 @@ class CanvasPage(QWidget):
         # 1. 停止并断开所有定时器
         self._auto_saver.stop()
         self.ipython_kernel.stop_kernel()
-
-        # 5. 移除事件过滤器
-        self.canvas_widget.removeEventFilter(self)
-
-        # 2. 清理动态导入的模块（关键！）
-        import sys
-        modules_to_remove = []
-        for full_path in self.component_map:
-            # 假设你的 scan_components 使用了类似命名
-            safe_name = full_path.replace("/", "_").replace(" ", "_")
-            module_name = f"dynamic.{safe_name}"
-            if module_name in sys.modules:
-                modules_to_remove.append(module_name)
-        for mod in modules_to_remove:
-            del sys.modules[mod]
+        self.ui_manager.side_dock_area.deleteLater()
         # ===== 7. 销毁 UI 控件（确保 parent=None）=====
         self.graph.deleteLater()
         # 8. 发射信号 & 移除自身

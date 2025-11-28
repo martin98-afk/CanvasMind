@@ -30,7 +30,7 @@ class WelcomeBannerWidget(QWidget):
         super().__init__(parent)
         self.setFixedHeight(350)
         # 加载背景图片
-        self.bannerPixmap = QPixmap(resource_path('./icons/banner.png'))
+        self.bannerPixmap = QPixmap(':/icons/banner.png')
 
         # 主布局
         self.vLayout = QVBoxLayout(self)

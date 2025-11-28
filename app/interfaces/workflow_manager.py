@@ -17,9 +17,19 @@ from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.card_widget.workflow_card import WorkflowCard
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
+from app.widgets.side_dock_area.plugins.ipython_console import IPythonConsoleToolWindow
+from app.widgets.side_dock_area.plugins.llm_chatter.main_widget import OpenAIChatToolWindow
+from app.widgets.side_dock_area.plugins.property_panel import PropertyToolWindow
+from app.widgets.side_dock_area.plugins.variable_explorer import VariableExplorerToolWindow
+from app.widgets.side_dock_area.registry import SideDockRegistry
+
 
 class WorkflowFileInfoScanner(QThread):
     scan_finished = pyqtSignal(list, dict)
+    SideDockRegistry.register("运行画布", PropertyToolWindow.name, PropertyToolWindow)
+    SideDockRegistry.register("运行画布", OpenAIChatToolWindow.name, OpenAIChatToolWindow)
+    SideDockRegistry.register("运行画布", VariableExplorerToolWindow.name, VariableExplorerToolWindow)
+    SideDockRegistry.register("运行画布", IPythonConsoleToolWindow.name, IPythonConsoleToolWindow)
 
     def __init__(self, workflow_dir: List[Path]):
         super().__init__()

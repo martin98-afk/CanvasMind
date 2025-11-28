@@ -4,29 +4,56 @@ import uuid
 from pathlib import Path
 from enum import Enum
 
-from PyQt5.QtCore import Qt, QSize, QEasingCurve, QTimer
+from PyQt5 import QtCore
+from PyQt5.QtCore import Qt, QSize, QTimer
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy, QWidget, QLabel, QListWidgetItem
 )
-from qfluentwidgets import InfoBar, InfoBarPosition, TransparentPushButton, PushButton
+from qfluentwidgets import InfoBar, InfoBarPosition, PushButton
 from qfluentwidgets import (
-    MessageBoxBase, SubtitleLabel, ListWidget, FluentIcon, BodyLabel, SearchLineEdit, ToggleToolButton, ScrollArea,
-    FlowLayout
+    MessageBoxBase, SubtitleLabel, ListWidget, FluentIcon, BodyLabel, SearchLineEdit,
+    ToggleToolButton, ScrollArea, FlowLayout
 )
+
+from app.utils.icon_name_map import ICON_NAME_TO_FILE
+
+
+class LazyIconLoader:
+    """懒加载图标管理器"""
+
+    def __init__(self):
+        self.builtin_icons_cache = None
+        self.builtin_icons_loaded = False
+
+    def get_builtin_icons(self):
+        """懒加载内置图标"""
+        if not self.builtin_icons_loaded:
+            self.builtin_icons_cache = []
+            for icon_enum in FluentIcon:
+                if isinstance(icon_enum, Enum):
+                    self.builtin_icons_cache.append({
+                        "icon": icon_enum.icon(),
+                        "name": icon_enum.name,
+                        "path": f"builtin:\\{icon_enum.name}",
+                        "is_builtin": True
+                    })
+            self.builtin_icons_loaded = True
+        return self.builtin_icons_cache
 
 
 class AddQuickComponentDialog(MessageBoxBase):
-    def __init__(self, parent, component_map, icons_dir: Path):
+    def __init__(self, parent, component_map):
         super().__init__(parent)
         self.home = parent
         self.component_map = component_map
-        self.icons_dir = icons_dir
-        self.icons_dir.mkdir(exist_ok=True)
         self.selected_full_path = None
-        self.selected_icon_path = ""  # 空字符串表示"无图标"
+        self.selected_icon_path = ""
 
         self.widget.setMinimumSize(960, 600)
+
+        # 添加懒加载管理器
+        self.icon_loader = LazyIconLoader()
 
         self.titleLabel = SubtitleLabel('添加快捷组件', self)
         self.viewLayout.addWidget(self.titleLabel)
@@ -98,8 +125,10 @@ class AddQuickComponentDialog(MessageBoxBase):
         self.all_icon_items = []  # [{icon, name, path, is_builtin}, ...]
         self.visible_icon_items = []  # 当前显示的图标项目
         self.icon_widgets = []  # 当前显示的图标widgets
+        self.icon_buttons = {}  # 按钮到路径的映射，用于快速查找
 
-        self.load_and_display_icons()
+        # 延迟加载图标，避免初始化时卡顿
+        QTimer.singleShot(0, self.load_and_display_icons)  # 延迟100ms加载
 
         main_layout.addWidget(left_frame, 1)
         main_layout.addWidget(right_frame, 2)
@@ -124,6 +153,7 @@ class AddQuickComponentDialog(MessageBoxBase):
         self.all_icon_items.clear()
         self.visible_icon_items.clear()
         self.icon_widgets.clear()
+        self.icon_buttons.clear()
 
         # 1. "无图标"
         self.all_icon_items.append({
@@ -134,41 +164,41 @@ class AddQuickComponentDialog(MessageBoxBase):
         })
 
         # 2. 自定义图标（来自 icons_dir）
-        icon_files = []
-        for ext in ['*.png', '*.jpg', '*.jpeg', '*.svg']:
-            icon_files.extend(self.icons_dir.glob(ext))
-        icon_files = sorted(icon_files)
-
-        for p in icon_files:
+        icon_files = [(name, f":/icons/{icon}") for name, icon in ICON_NAME_TO_FILE.items()]
+        for i, (name, p) in enumerate(icon_files):
             pixmap = QPixmap(str(p)).scaled(96, 96, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             icon = QIcon(pixmap)
-            name = p.stem
             self.all_icon_items.append({
                 "icon": icon,
                 "name": name,
-                "path": str(p.resolve()),
+                "path": p,
                 "is_builtin": False
             })
 
-        # 3. 所有内置 FluentIcon
-        for icon_enum in FluentIcon:
-            if isinstance(icon_enum, Enum):
-                self.all_icon_items.append({
-                    "icon": icon_enum.icon(),
-                    "name": icon_enum.name,
-                    "path": f"builtin:\\{icon_enum.name}",
-                    "is_builtin": True
-                })
+        # 3. 所有内置 FluentIcon - 使用懒加载
+        builtin_icons = self.icon_loader.get_builtin_icons()
+        self.all_icon_items.extend(builtin_icons)
 
         # 显示所有图标
         self._refresh_icon_display(self.all_icon_items)
 
     def _clear_icon_layout(self):
         """清空图标布局"""
+        # 清理按钮映射
+        self.icon_buttons.clear()
+
+        # 清理现有widgets
+        for widget in self.icon_widgets:
+            widget.setParent(None)  # 先断开父子关系
+            widget.deleteLater()
+
+        self.icon_widgets.clear()
+
+        # 清空布局中的所有项
         while self.flow_layout.count():
             child = self.flow_layout.takeAt(0)
-            child.deleteLater()
-        self.icon_widgets.clear()
+            if child.widget():
+                child.widget().deleteLater()
 
     def _create_icon_widget(self, icon, name, path):
         """创建单个图标widget"""
@@ -182,7 +212,8 @@ class AddQuickComponentDialog(MessageBoxBase):
         btn.setFixedSize(110, 110)
         btn.setIconSize(QSize(96, 96))
         btn.setToolTip(name)
-        btn.clicked.connect(lambda _, b=btn, p=path: self.on_icon_selected(b, p))
+        btn.setProperty('icon_path', path)  # 使用属性存储路径，避免闭包
+        btn.clicked.connect(self._on_icon_clicked)
         item_layout.addWidget(btn, alignment=Qt.AlignCenter)
 
         label = QLabel(name)
@@ -192,12 +223,28 @@ class AddQuickComponentDialog(MessageBoxBase):
         label.setStyleSheet("font-size: 10pt; color: #666;")
         item_layout.addWidget(label)
 
+        # 存储按钮引用
+        self.icon_buttons[btn] = path
+
         return item_widget
+
+    def _on_icon_clicked(self):
+        """图标按钮点击事件"""
+        sender = self.sender()
+        if sender in self.icon_buttons:
+            path = self.icon_buttons[sender]
+            self.selected_icon_path = path
+            # 更新按钮状态 - 只有选中的按钮为checked
+            for btn in self.icon_buttons.keys():
+                btn.setChecked(btn == sender)
 
     def _refresh_icon_display(self, items_to_show):
         """根据过滤结果重新构建界面"""
         # 清空当前布局
         self._clear_icon_layout()
+
+        # 临时禁用布局动画以提高性能
+        self.flow_layout.setContentsMargins(0, 0, 0, 0)
 
         # 创建并添加显示的图标
         for item in items_to_show:
@@ -208,20 +255,8 @@ class AddQuickComponentDialog(MessageBoxBase):
         # 更新可见图标列表
         self.visible_icon_items = items_to_show
 
-    def on_icon_selected(self, clicked_btn, path):
-        self.selected_icon_path = path
-        # 更新按钮状态
-        for i, item in enumerate(self.visible_icon_items):
-            widget = self.icon_widgets[i]
-            btn = self._get_button_from_widget(widget)
-            if btn:
-                btn.setChecked(btn == clicked_btn)
-
-    def _get_button_from_widget(self, widget):
-        """从widget中获取按钮"""
-        for child in widget.findChildren(ToggleToolButton):
-            return child
-        return None
+        # 恢复边距
+        self.flow_layout.setContentsMargins(30, 30, 30, 30)
 
     def filter_components(self, text):
         for i in range(self.comp_list.count()):
@@ -232,7 +267,7 @@ class AddQuickComponentDialog(MessageBoxBase):
         """图标搜索框文本改变时触发（防抖）"""
         # 重置计时器，延迟执行搜索
         self.icon_search_timer.stop()
-        self.icon_search_timer.start(200)  # 300ms防抖
+        self.icon_search_timer.start(300)  # 300ms防抖
 
     def _perform_icon_search(self):
         """执行图标搜索"""
@@ -243,11 +278,11 @@ class AddQuickComponentDialog(MessageBoxBase):
             self._refresh_icon_display(self.all_icon_items)
             return
 
-        # 过滤匹配的图标
-        filtered_items = []
-        for item in self.all_icon_items:
-            if search_text in item["name"].lower():
-                filtered_items.append(item)
+        # 过滤匹配的图标 - 优化搜索逻辑
+        filtered_items = [
+            item for item in self.all_icon_items
+            if search_text in item["name"].lower()
+        ]
 
         # 重新显示过滤后的图标
         self._refresh_icon_display(filtered_items)
@@ -265,7 +300,7 @@ class AddQuickComponentDialog(MessageBoxBase):
             dst = self.icons_dir / new_name
             shutil.copy2(file_path, dst)
             # 重新加载图标列表
-            self.load_and_display_icons()
+            QtCore.QTimer.singleShot(0, self.load_and_display_icons)
             # 恢复之前的搜索状态
             if self.icon_search.text():
                 self._perform_icon_search()

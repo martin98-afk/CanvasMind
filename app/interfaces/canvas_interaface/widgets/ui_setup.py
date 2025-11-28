@@ -3,7 +3,7 @@ import os
 
 from PyQt5.QtCore import Qt, QSize, QPoint
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
-from qfluentwidgets import TransparentToolButton, FluentIcon, RoundMenu, Action, LineEdit
+from qfluentwidgets import TransparentToolButton, FluentIcon, RoundMenu, Action, LineEdit, ComboBox
 from qtpy import QtGui, QtCore
 
 from app.utils.utils import get_icon
@@ -29,7 +29,7 @@ class CanvasUISetUp:
         self.nav_panel = DraggableTreePanel(self.parent)
         self.nav_view =  self.nav_panel.tree
         # 属性面板
-        self.side_dock_area = SideDockArea(self.parent)
+        self.side_dock_area = SideDockArea(self.parent, "运行画布")
         self.property_panel = self.side_dock_area.get_tool_instance("属性面板")
         self.ipython_console = self.side_dock_area.get_tool_instance("IPython 控制台")
         self.variable_explorer = self.side_dock_area.get_tool_instance("变量浏览器")
@@ -51,7 +51,7 @@ class CanvasUISetUp:
         main_layout.addWidget(self.side_dock_area.tool_panel)
 
         # 创建悬浮按钮和环境选择
-        self.parent.environment_manager.create_environment_selector()
+        self.create_environment_selector()
         self.create_floating_buttons()
         self.create_floating_nodes()
 
@@ -67,42 +67,65 @@ class CanvasUISetUp:
         # 可选：刷新布局
         self.splitter.update()
 
+    def create_environment_selector(self):
+        container = QWidget(self.parent.canvas_widget)
+        container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        container.move(0, 5)
+        layout = QHBoxLayout(container)
+        layout.setSpacing(5)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        label = TransparentToolButton()
+        label.setText("环境:")
+        label.setFixedSize(50, 30)
+
+        self.env_combo = ComboBox(container)
+        self.env_combo.setFixedWidth(120)
+
+        layout.addWidget(label)
+        layout.addWidget(self.env_combo)
+        layout.addStretch()
+        container.setLayout(layout)
+        container.show()
+
     def create_floating_buttons(self):
         self.buttons_container = QWidget(self.parent.graph.viewer())
         self.buttons_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.buttons_container.move(self.parent.graph.viewer().width() - BUTTONS_CONTAINER_X_OFFSET, 5)
+        self.buttons_container.move(self.parent.graph.viewer().width() - BUTTONS_CONTAINER_X_OFFSET, 0)
         env_layout = QHBoxLayout(self.buttons_container)
-        env_layout.setSpacing(2)
+        env_layout.setSpacing(0)
         env_layout.setContentsMargins(0, 0, 0, 0)
         self.run_btn = TransparentToolButton(FluentIcon.PLAY, parent=self.parent.canvas_widget)
         self.run_btn.setToolTip("运行工作流")
-        self.run_btn.clicked.connect(self.parent.canvas_runner.run_workflow)
         env_layout.addWidget(self.run_btn)
         self.stop_btn = TransparentToolButton(FluentIcon.PAUSE, parent=self.parent.canvas_widget)
         self.stop_btn.setToolTip("停止运行")
-        self.stop_btn.clicked.connect(self.parent.canvas_runner.stop_workflow)
         self.stop_btn.hide()
         env_layout.addWidget(self.stop_btn)
         self.save_btn = TransparentToolButton(FluentIcon.SAVE, parent=self.parent.canvas_widget)
         self.save_btn.setToolTip("保存工作流")
-        self.save_btn.clicked.connect(self.parent.save_full_workflow)
         env_layout.addWidget(self.save_btn)
         self.export_model_btn = TransparentToolButton(FluentIcon.SHARE, parent=self.parent.canvas_widget)
         self.export_model_btn.setToolTip("导出选中节点为独立模型")
-        self.export_model_btn.clicked.connect(self.parent.export_selected_nodes_as_project)
         env_layout.addWidget(self.export_model_btn)
         self.close_btn = TransparentToolButton(FluentIcon.CLOSE, parent=self.parent.canvas_widget)
         self.close_btn.setToolTip("关闭当前画布")
-        self.close_btn.clicked.connect(
-            lambda: (
-                self.parent.switch_to_parent(),
-                QtCore.QTimer.singleShot(300, self.parent.close_current_canvas)
-            )
-        )
         env_layout.addWidget(self.close_btn)
         env_layout.addStretch()
         self.buttons_container.setLayout(env_layout)
         self.buttons_container.show()
+
+        # 连接信号
+        self.run_btn.clicked.connect(self.parent.canvas_runner.run_workflow)
+        self.stop_btn.clicked.connect(self.parent.canvas_runner.stop_workflow)
+        self.save_btn.clicked.connect(self.parent.save_full_workflow)
+        self.export_model_btn.clicked.connect(self.parent.export_selected_nodes_as_project)
+        self.close_btn.clicked.connect(
+            lambda: (
+                self.parent.switch_to_parent(),
+                QtCore.QTimer.singleShot(0, self.parent.close_current_canvas)
+            )
+        )
 
     def create_floating_nodes(self):
         self.nodes_container = QWidget(self.parent.canvas_widget)
@@ -114,7 +137,7 @@ class CanvasUISetUp:
 
         # === 固定控制流按钮 ===
         self.iterate_node = TransparentToolButton(get_icon("更新"), parent=self.parent.canvas_widget)
-        self.iterate_node.setIconSize(QSize(20, 20))
+        self.iterate_node.setIconSize(QSize(18, 18))
         self.iterate_node.setToolTip("创建迭代")
         self.iterate_node.clicked.connect(
             lambda: self.parent.create_backdrop_node("ControlFlowIterateNode")
@@ -122,25 +145,25 @@ class CanvasUISetUp:
         self.node_layout.addWidget(self.iterate_node)
 
         self.loop_node = TransparentToolButton(get_icon("无限"), parent=self.parent.canvas_widget)
-        self.loop_node.setIconSize(QSize(20, 20))
+        self.loop_node.setIconSize(QSize(18, 18))
         self.loop_node.setToolTip("创建循环")
         self.loop_node.clicked.connect(lambda: self.parent.create_backdrop_node("ControlFlowLoopNode"))
         self.node_layout.addWidget(self.loop_node)
 
         self.branch_node = TransparentToolButton(get_icon("条件分支"), parent=self.parent.canvas_widget)
-        self.branch_node.setIconSize(QSize(20, 20))
+        self.branch_node.setIconSize(QSize(18, 18))
         self.branch_node.setToolTip("创建分支")
         self.branch_node.clicked.connect(lambda: self.parent.create_next_node("control_flow.ControlFlowBranchNode"))
         self.node_layout.addWidget(self.branch_node)
 
         self.code_node = TransparentToolButton(get_icon("代码执行"), parent=self.parent.canvas_widget)
-        self.code_node.setIconSize(QSize(20, 20))
+        self.code_node.setIconSize(QSize(18, 18))
         self.code_node.setToolTip("创建代码编辑")
         self.code_node.clicked.connect(lambda: self.parent.create_next_node("dynamic.DYNAMIC_CODE"))
         self.node_layout.addWidget(self.code_node)
 
         self.tool_node = TransparentToolButton(get_icon("工具"), parent=self.parent.canvas_widget)
-        self.tool_node.setIconSize(QSize(20, 20))
+        self.tool_node.setIconSize(QSize(18, 18))
         self.tool_node.setToolTip("创建工具调用")
         self.tool_node.clicked.connect(
             lambda: self.parent.create_next_node("dynamic.StatusDynamicNode_大模型组件_工具调用",
@@ -164,7 +187,7 @@ class CanvasUISetUp:
 
         # === "更多"按钮及其菜单 ===
         self.more_quick_button = TransparentToolButton(FluentIcon.MORE, parent=self.parent.canvas_widget)  # 使用 FluentIcon.MORE 或自定义图标
-        self.more_quick_button.setIconSize(QSize(20, 20))
+        self.more_quick_button.setIconSize(QSize(18, 18))
         self.more_quick_button.setToolTip("更多快捷组件")
         self.more_quick_menu = RoundMenu(parent=self.parent.canvas_widget)  # 使用 qfluentwidgets 的菜单
         self.more_quick_button.clicked.connect(self._show_more_quick_menu)
@@ -174,7 +197,7 @@ class CanvasUISetUp:
 
         # === 原来的 "+" 按钮（始终在最后）===
         self.add_quick_btn = TransparentToolButton(FluentIcon.ADD, parent=self.parent.canvas_widget)
-        self.add_quick_btn.setIconSize(QSize(20, 20))
+        self.add_quick_btn.setIconSize(QSize(18, 18))
         self.add_quick_btn.setToolTip("添加快捷组件")
         self.add_quick_btn.clicked.connect(self.parent.quick_manager.open_add_dialog)
         self.node_layout.addWidget(self.add_quick_btn)
@@ -255,7 +278,7 @@ class CanvasUISetUp:
                     icon_path = f":/qfluentwidgets/images/icons/{FluentIcon.APPLICATION.value}_white.svg"
 
                 btn = TransparentToolButton(icon, parent=self.parent.canvas_widget)
-                btn.setIconSize(QSize(20, 20))
+                btn.setIconSize(QSize(18, 18))
                 btn.setToolTip(f"创建 {comp_name}")
                 btn.setProperty("full_path", full_path)
                 btn.clicked.connect(lambda _, ip=icon_path, fp=full_path: self.parent.create_next_node(fp, ip))

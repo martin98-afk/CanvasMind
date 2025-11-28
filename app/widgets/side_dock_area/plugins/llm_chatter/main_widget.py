@@ -25,7 +25,7 @@ class OpenAIChatToolWindow(ToolWindow):
     name = "大模型对话"
     icon = get_icon("大模型")
     singleton = True
-    default_position = DockPosition.TOP
+    default_position = DockPosition.BOTTOM
     session_manager = SessionManager()
     _valid_configs: Dict[str, Dict[str, Any]] = {}
     history_manager = None
@@ -141,8 +141,8 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_history_index = None  # 新建 = 脱离历史
         self.history_btn.setChecked(False)
         self._clear_chat_area()
-        welcom_card = create_welcome_card(self)
-        QTimer.singleShot(10, lambda: self.chat_layout.addWidget(welcom_card))
+        self.welcome_card = create_welcome_card(self)
+        QTimer.singleShot(300, lambda: self.chat_layout.addWidget(self.welcome_card))
 
     def _display_current_session(self):
         """清空布局并重新加载当前会话的所有消息"""
@@ -378,6 +378,11 @@ class OpenAIChatToolWindow(ToolWindow):
         ))
 
     def _on_send_clicked(self, user_text: str = ""):
+        # 去除欢迎卡片
+        if self.welcome_card:
+            self.chat_layout.removeWidget(self.welcome_card)
+            self.welcome_card.deleteLater()
+            self.welcome_card = None
         session = self.session_manager.get_current_session()
         if not user_text:
             user_text = self.input_area.toPlainText().strip()

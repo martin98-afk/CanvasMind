@@ -6,18 +6,9 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QWidget, QStackedWidget, QHBoxLayout
 
 from .button_bar import RightToolPanel
-from .plugins.ipython_console import IPythonConsoleToolWindow
-from app.widgets.side_dock_area.plugins.property_panel import PropertyToolWindow
-from .plugins.llm_chatter.main_widget import OpenAIChatToolWindow
-from .plugins.variable_explorer import VariableExplorerToolWindow
 from .registry import SideDockRegistry
 from .tool_window import DockPosition, ToolWindow
 from ..basic_widget.splitter import ModernSplitter
-
-SideDockRegistry.register(PropertyToolWindow.name, PropertyToolWindow)
-SideDockRegistry.register(OpenAIChatToolWindow.name, OpenAIChatToolWindow)
-SideDockRegistry.register(IPythonConsoleToolWindow.name, IPythonConsoleToolWindow)
-SideDockRegistry.register(VariableExplorerToolWindow.name, VariableExplorerToolWindow)
 
 
 class AdaptiveStackedWidget(QStackedWidget):
@@ -35,9 +26,10 @@ class AdaptiveStackedWidget(QStackedWidget):
 
 
 class SideDockArea(QWidget):
-    def __init__(self, canvas_page):
+    def __init__(self, page, context_id):
         super().__init__()
-        self.canvas_page = canvas_page
+        self.page = page
+        self.context_id = context_id
         self._instances: Dict[str, ToolWindow] = {}
         main_layout = QHBoxLayout(self)  # ← 水平布局：[ 内容区 | 按钮栏 ]
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -56,7 +48,7 @@ class SideDockArea(QWidget):
         self.splitter.addWidget(self.top_stack)
         self.splitter.addWidget(self.bottom_stack)
         # 工具面板
-        self.tool_panel = RightToolPanel(canvas_page, self)
+        self.tool_panel = RightToolPanel(page, self)
 
         self.tool_panel.topToolChecked.connect(self._show_top_tool)
         self.tool_panel.topToolUnchecked.connect(self._hide_top_tool)
@@ -65,7 +57,7 @@ class SideDockArea(QWidget):
 
         main_layout.addWidget(self.splitter)  # 占主要空间
 
-        self._load_plugins()
+        self._load_plugins(context_id)
 
     def _show_top_tool(self, tool_name):
         view = self.get_tool_instance(tool_name)
@@ -101,13 +93,13 @@ class SideDockArea(QWidget):
         # 如果上次更新时没有内容，现在有内容了需要更新splitter,如果上次有内容，这次没有了也需要更新
         if self.last_content_visible and not (self._top_visible or self._bottom_visible):
             self.splitter.setSizes([0, 0])
-            self.canvas_page.ui_manager.hide_splitter()
+            self.page.ui_manager.hide_splitter()
             self.last_content_visible = False
 
             return
         elif not self.last_content_visible and (self._top_visible or self._bottom_visible):
             self.last_content_visible = True
-            self.canvas_page.ui_manager.show_splitter()
+            self.page.ui_manager.show_splitter()
 
         if self._top_visible and self._bottom_visible:
             self.splitter.setSizes([1, 1])
@@ -116,10 +108,10 @@ class SideDockArea(QWidget):
         else:
             self.splitter.setSizes([0, 1])
 
-    def _load_plugins(self):
+    def _load_plugins(self, context_id):
         """自动按注册时的 default_position 添加到对应区域，并默认选中第一个 TOP 插件"""
         top_classes = []
-        for name, entry in SideDockRegistry.get_all().items():
+        for name, entry in SideDockRegistry.get_all(context_id).items():
             if entry.position == DockPosition.TOP:
                 self.tool_panel.add_to_top(entry.cls)
                 top_classes.append(entry.cls)
@@ -140,14 +132,14 @@ class SideDockArea(QWidget):
         name = cls.name
         if cls.singleton:
             if name not in self._instances:
-                self._instances[name] = cls(self.canvas_page)
+                self._instances[name] = cls(self.page)
             return self._instances[name]
         else:
-            return cls(self.canvas_page)
+            return cls(self.page)
 
     def get_tool_instance(self, name: str) -> Optional[ToolWindow]:
         """外部可通过 name 获取面板实例，用于信号连接等"""
-        entry = SideDockRegistry._entries.get(name)
+        entry = SideDockRegistry._registries.get(self.context_id).get(name)
         if entry is None:
             return None
         return self._get_or_create_instance(entry.cls)

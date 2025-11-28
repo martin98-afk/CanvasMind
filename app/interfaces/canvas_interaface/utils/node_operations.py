@@ -2,7 +2,7 @@
 import uuid
 
 from PyQt5.QtCore import QTimer
-from qfluentwidgets import FluentIcon
+from PyQt5.QtGui import QIcon
 
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
 from app.nodes.backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
@@ -89,15 +89,18 @@ class NodeOperations:
                                        node_type=f"dynamic.{node_class.__name__}", icon=get_icon("运行到此处"))
                 nodes_menu.add_command('从此节点运行', lambda graph, node: self.parent.run_from(node),
                                        node_type=f"dynamic.{node_class.__name__}", icon=get_icon("从此处运行"))
-                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
-                                       node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_separator(node_type=f"dynamic.{node_class.__name__}")
+                nodes_menu.add_command('查看节点日志', lambda graph, node: node.show_logs(),
+                                       node_type=f"dynamic.{node_class.__name__}", icon=get_icon("系统运行日志"))
                 nodes_menu.add_command('调试模式', lambda graph, node: node._toggle_debug_mode(),
                                        node_type=f"dynamic.{node_class.__name__}", icon=get_icon("调试"))
                 nodes_menu.add_command('编辑组件', lambda graph, node: self.parent.edit_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
+                                       node_type=f"dynamic.{node_class.__name__}",
+                                       icon=QIcon(f":/qfluentwidgets/images/icons/Edit_white.svg"))
+                nodes_menu.add_separator(node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
-                                       node_type=f"dynamic.{node_class.__name__}")
+                                       node_type=f"dynamic.{node_class.__name__}",
+                                       icon=QIcon(f":/qfluentwidgets/images/icons/Delete_white.svg"))
 
     def on_node_created(self, node):
         self._node_id_cache[node.id] = node
