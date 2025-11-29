@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 
 from PyQt5.QtCore import Qt, QMimeData, QRectF, QPoint
 from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont, QPainterPath, QFontMetrics
-from PyQt5.QtWidgets import QTreeWidgetItem, QWidget, QVBoxLayout, QHBoxLayout, QMenu, QCheckBox, QFrame
+from PyQt5.QtWidgets import QTreeWidgetItem, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QFrame
 from qfluentwidgets import FluentIcon as FIF, TransparentToggleToolButton, RoundMenu, Action
-from qfluentwidgets import TreeWidget, SearchLineEdit, FluentStyleSheet, ToggleToolButton, PushButton, \
+from qfluentwidgets import TreeWidget, SearchLineEdit, FluentStyleSheet, PushButton, \
     DropDownPushButton
 
 from app.widgets.basic_widget.style_sheet import StyleSheet

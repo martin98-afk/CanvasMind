@@ -17,7 +17,7 @@ from qfluentwidgets import (
     TreeWidget, RoundMenu, Action, InfoBar, InfoBarPosition, MessageBox
 )
 
-from app.scan_components import scan_components
+from app.scan_components import scan_components, ComponentScanner
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.new_component_dialog import NewComponentDialog
 from app.widgets.tree_widget.draggable_component_tree import CategoryFilterDialog
@@ -76,7 +76,7 @@ class ComponentTreeWidget(TreeWidget):
     def refresh_components(self):
         """刷新组件树"""
         try:
-            component_map, file_map = scan_components()
+            component_map, file_map = ComponentScanner().refresh()
             self.load_components(component_map, file_map)
         except Exception as e:
             self._show_error(f"刷新组件失败: {e}")

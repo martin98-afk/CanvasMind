@@ -279,8 +279,7 @@ class ComponentDeveloperPage(QWidget):
     def _load_existing_components(self):
         """加载现有组件"""
         try:
-            component_map, file_map = scan_components()
-            self.component_tree.load_components(component_map, file_map)
+            self.component_tree.refresh_components()
         except Exception as e:
             import traceback
             traceback.print_exc()

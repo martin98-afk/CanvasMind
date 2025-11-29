@@ -13,6 +13,7 @@ from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
 from app.interfaces.workflow_manager import WorkflowCanvasGalleryPage
+from app.scan_components import ComponentScanner
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.logger_dialog import QTextEditLogger
@@ -53,12 +54,17 @@ class LowCodeWindow(FluentWindow):
         self.package_manager.mgr.install_miniconda()
         # 添加主界面页面
         self.addSubInterface(self.home_interface, FluentIcon.HOME, '首页')
-        workflow_interface = self.addSubInterface(self.workflow_manager, get_icon("画布管理"), '画布管理')
-        workflow_interface.clicked.connect(self.workflow_manager._schedule_refresh)
         devp_interface = self.addSubInterface(self.develop_page, get_icon("组件"), '组件管理')
         devp_interface.clicked.connect(
             lambda: self.develop_page.code_editor.code_editor.set_jedi_environment(
                 self.package_manager.get_current_python_exe()
+            )
+        )
+        workflow_interface = self.addSubInterface(self.workflow_manager, get_icon("画布管理"), '画布管理')
+        workflow_interface.clicked.connect(
+            lambda: (
+                self.workflow_manager._schedule_refresh(),
+                self.workflow_manager.build_recommendation_engine()
             )
         )
         project_interface = self.addSubInterface(self.project_manager, get_icon("项目"), '项目管理')
