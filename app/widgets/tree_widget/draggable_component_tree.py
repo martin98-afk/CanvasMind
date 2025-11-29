@@ -80,8 +80,6 @@ class DraggableTreePanel(QWidget):
         # 创建类别筛选对话框
         self.category_filter_dialog = CategoryFilterDialog(sorted(categories), self)
         self.category_filter_dialog.categories_changed.connect(self._on_categories_changed)
-        # 设置默认全选
-        self.tree._selected_categories = set(categories)
 
     def _show_category_dialog(self):
         """显示类别筛选对话框"""

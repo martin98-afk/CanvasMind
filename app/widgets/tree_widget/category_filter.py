@@ -17,7 +17,7 @@ class CategoryFilterDialog(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
 
         self.categories = categories
-        self.selected_categories = set(categories)  # 默认全选
+        self.selected_categories = set()  # 默认全选
         self.checkboxes = []
         self._setup_ui()
 
@@ -47,7 +47,7 @@ class CategoryFilterDialog(QWidget):
         # 复选框列表
         for category in self.categories:
             checkbox = QCheckBox(category)
-            checkbox.setChecked(True)
+            checkbox.setChecked(False)
             checkbox.stateChanged.connect(lambda state, cat=category: self._on_category_toggled(cat, state))
             self.checkboxes.append(checkbox)
             layout.addWidget(checkbox)

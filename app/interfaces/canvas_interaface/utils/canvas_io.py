@@ -37,6 +37,7 @@ class CanvasIO(QObject):
             "node_inputs": {},
             "node_outputs": {},
             "column_select": {},
+            "node_version": {},
         }
 
         for node in self.graph.all_nodes():
@@ -47,6 +48,7 @@ class CanvasIO(QObject):
             runtime["node_inputs"][stable_key] = getattr(node, '_input_values', {})
             runtime["node_outputs"][stable_key] = getattr(node, '_output_values', {})
             runtime["column_select"][stable_key] = getattr(node, 'column_select', {})
+            runtime["node_version"][stable_key] = getattr(node, '_version', "V1")
 
         full_data = {
             "version": "1.0",
