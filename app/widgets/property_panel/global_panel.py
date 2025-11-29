@@ -317,7 +317,7 @@ class GlobalPanelWidget:
         self.parent_layout.addWidget(title)
 
         segment_layout = QHBoxLayout(self.parent_panel)
-        segment_layout.setContentsMargins(5, 5, 5, 5)
+        segment_layout.setContentsMargins(5, 5, 5, 0)
         self.global_segmented = SegmentedWidget(self.parent_panel)
         self.global_segmented.addItem('env', '环境变量')
         self.global_segmented.addItem('node', '节点变量')
@@ -415,7 +415,7 @@ class GlobalPanelWidget:
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(0)
 
         title = TransparentPushButton(text="自定义变量 (custom)", icon=get_icon("自定义变量"), parent=self.parent_panel)
         layout.addWidget(title)
@@ -434,17 +434,17 @@ class GlobalPanelWidget:
         self.custom_container = QWidget()
         self.custom_container.setStyleSheet("background: transparent; border: none;")
         self.custom_layout = QVBoxLayout(self.custom_container)
-        self.custom_layout.setContentsMargins(5, 5, 5, 5)
+        self.custom_layout.setContentsMargins(5, 2, 5, 5)
 
         self.custom_params_container = QWidget()  # 参数组容器
         self.custom_params_layout = QVBoxLayout(self.custom_params_container)
         self.custom_params_layout.setContentsMargins(0, 0, 0, 0)
-        self.custom_params_layout.setSpacing(6)
+        self.custom_params_layout.setSpacing(3)
 
         self.custom_kvs_container = QWidget()  # KV变量容器
         self.custom_kvs_layout = QVBoxLayout(self.custom_kvs_container)
         self.custom_kvs_layout.setContentsMargins(0, 0, 0, 0)
-        self.custom_kvs_layout.setSpacing(6)
+        self.custom_kvs_layout.setSpacing(3)
 
         # 添加容器到主布局
         self.custom_layout.addWidget(self.custom_params_container)

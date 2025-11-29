@@ -85,7 +85,7 @@ class CanvasIO(QObject):
             total_nodes = len(nodes_data)
             if total_nodes == 0:
                 self.graph.deserialize_session(graph_data)
-                self._finish_loading(runtime_data, node_status_data)
+                self._finish_loading(runtime_data, node_status_data, file_path)
                 return
 
             progress = QProgressDialog("正在加载节点...", "取消", 0, total_nodes, self.parent)

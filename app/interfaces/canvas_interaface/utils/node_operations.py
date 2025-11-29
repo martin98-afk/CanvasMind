@@ -11,7 +11,7 @@ from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.status_node import StatusNode
-from app.scan_components import scan_components
+from app.scan_components import ComponentScanner
 from app.utils.utils import get_icon
 from .logger import get_logger
 
@@ -68,16 +68,13 @@ class NodeOperations:
         self.graph._node_factory.clear_registered_nodes()
         self.graph._context_menu = {}
         self.graph._register_context_menu()
-        self.component_map, self.file_map = scan_components()
-        # 重建推荐索引
-        self.recommendation_engine._recommendation_cache.clear()
-        self.recommendation_engine._build_index(self.component_map)  # 重建索引
         self._register_builtin_components()
+        component_map, file_map = ComponentScanner().get_components()
         # 普通节点
         nodes_menu = self.graph.get_context_menu('nodes')
-        for full_path, comp_cls in self.component_map.items():
+        for full_path, comp_cls in component_map.items():
             safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
-            node_class = create_node_class(comp_cls, full_path, self.file_map.get(full_path), self.parent)
+            node_class = create_node_class(comp_cls, full_path, file_map.get(full_path), self.parent)
             node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
             node_class.__name__ = f"StatusDynamicNode_{safe_name}"
             self.graph.register_node(node_class)

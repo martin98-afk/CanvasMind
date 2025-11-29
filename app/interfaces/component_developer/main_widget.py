@@ -24,7 +24,8 @@ from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentTyp
 from app.interfaces.component_developer.component_history_manager import ComponentHistoryManager
 from app.interfaces.component_developer.port_editory_widget import PortEditorWidget
 from app.interfaces.component_developer.property_editory_widget import PropertyEditorWidget
-from app.scan_components import scan_components, resource_path
+from app.interfaces.component_developer.message_manager import MessageManager
+from app.scan_components import resource_path
 from app.templates.component_templates import default_templates
 from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon
@@ -279,8 +280,7 @@ class ComponentDeveloperPage(QWidget):
     def _load_existing_components(self):
         """加载现有组件"""
         try:
-            component_map, file_map = scan_components()
-            self.component_tree.load_components(component_map, file_map)
+            self.component_tree.refresh_components()
         except Exception as e:
             import traceback
             traceback.print_exc()

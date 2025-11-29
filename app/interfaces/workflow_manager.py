@@ -12,6 +12,7 @@ from qfluentwidgets import (
 )
 
 from app.interfaces.canvas_interaface import CanvasPage
+from app.scan_components import ComponentScanner
 from app.scheduler.node_recommendation_engine import NodeRecommendationEngine
 from app.utils.config import Settings
 from app.utils.utils import get_icon
@@ -107,6 +108,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self._wheel_threshold = 100  # 毫秒，防止滚轮事件过于频繁
 
         self._setup_ui()
+        self.build_recommendation_engine()
         self.load_workflows()
 
     def _get_workflow_dir(self):
@@ -234,6 +236,12 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
         # 将事件传递给父类处理
         return super().eventFilter(obj, event)
+
+    def build_recommendation_engine(self):
+        component_map, _ = ComponentScanner().get_components()
+        # 重建推荐索引
+        self.recommendation_engine._recommendation_cache.clear()
+        self.recommendation_engine._build_index(component_map)  # 重建索引
 
     def _on_sort_order_changed(self):
         """切换排序方向时更新图标并刷新"""

@@ -22,6 +22,7 @@ from app.interfaces.canvas_interaface.widgets.message_manager import MessageMana
 from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.status_node import NodeStatus
+from app.scan_components import ComponentScanner
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
@@ -59,7 +60,7 @@ class CanvasPage(QWidget):
         # --- 节点操作 ---
         self.node_operations = NodeOperations(self, self.graph, self.manager.recommendation_engine, self.thread_pool)
         # 注册节点
-        self.node_operations.register_components()
+        QtCore.QTimer.singleShot(10, self.node_operations.register_components)
         # --- 快捷组件工具管理 ---
         self.quick_manager = QuickComponentManager(self, self.component_map)
         # --- 自动保存相关 ---
@@ -126,11 +127,13 @@ class CanvasPage(QWidget):
 
     @property
     def component_map(self):
-        return self.node_operations.component_map
+        component_map, _ = ComponentScanner().get_components()
+        return component_map
 
     @property
     def file_map(self):
-        return self.node_operations.file_map
+        _, file_map = ComponentScanner().get_components()
+        return file_map
 
     @property
     def property_panel(self):
@@ -587,7 +590,8 @@ class CanvasPage(QWidget):
         # 1. 停止并断开所有定时器
         self._auto_saver.stop()
         self.ipython_kernel.stop_kernel()
-        self.ui_manager.side_dock_area.deleteLater()
+        self.var_explorer.stop_auto_refresh()
+        self.ui_manager.destroy_all()
         # ===== 7. 销毁 UI 控件（确保 parent=None）=====
         self.graph.deleteLater()
         # 8. 发射信号 & 移除自身
