@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import traceback
+from loguru import logger
 from typing import Callable, Dict, Tuple, List, Any
 
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QSize

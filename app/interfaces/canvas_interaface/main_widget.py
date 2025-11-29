@@ -50,6 +50,8 @@ class CanvasPage(QWidget):
         # 初始化 NodeGraph
         self.graph = CustomNodeGraph(viewer=CustomNodeViewer(), parent=self)
         self.canvas_widget = self.graph.viewer()
+        # 去除边框
+        self.canvas_widget.setStyleSheet("QWidget {border: none;}")
         self.canvas_widget.keyPressEvent = self._canvas_key_press_event
         # 启用画布拖拽
         self.canvas_widget.setAcceptDrops(True)
@@ -154,6 +156,15 @@ class CanvasPage(QWidget):
     @property
     def selected_categories(self):
         return self.ui_manager.nav_view._selected_categories
+
+    def _on_global_variables_changed(self, *args):
+        self.property_panel._on_global_variables_changed(*args)
+
+    def show_splitter(self):
+        self.ui_manager.show_splitter()
+
+    def hide_splitter(self):
+        self.ui_manager.hide_splitter()
 
     def load_env_combos(self):
         self.environment_manager.load_env_combos()

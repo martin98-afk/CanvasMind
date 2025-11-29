@@ -15,8 +15,11 @@ class PropertyToolWindow(ToolWindow):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         # 直接嵌入你现有的 PropertyPanel！
-        self.property_panel = PropertyPanel(self.canvas_page, self.canvas_page)
+        self.property_panel = PropertyPanel(self.homepage, self.homepage)
         layout.addWidget(self.property_panel)
+
+    def _on_global_variables_changed(self, *args):
+        self.property_panel._on_global_variables_changed(*args)
 
     # --- 工具对外暴露的方法 ---
     def update_properties(self, node, node_changed=False):

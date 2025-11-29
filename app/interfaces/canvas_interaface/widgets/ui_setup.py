@@ -33,7 +33,6 @@ class CanvasUISetUp:
         self.property_panel = self.side_dock_area.get_tool_instance("属性面板")
         self.ipython_console = self.side_dock_area.get_tool_instance("IPython 控制台")
         self.variable_explorer = self.side_dock_area.get_tool_instance("变量浏览器")
-
         main_layout = QHBoxLayout(self.parent)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -58,13 +57,11 @@ class CanvasUISetUp:
     def hide_splitter(self):
         """强制 splitter 回到默认尺寸，无视用户拖动历史"""
         self.splitter.setSizes(HIDE_SPLITTER_SIZES)
-        # 可选：刷新布局
         self.splitter.update()
 
     def show_splitter(self):
         """强制 splitter 恢复到默认尺寸"""
         self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
-        # 可选：刷新布局
         self.splitter.update()
 
     def create_environment_selector(self):

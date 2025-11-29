@@ -15,9 +15,9 @@ class ToolWindow(QWidget):
     singleton = True
     default_position: DockPosition = DockPosition.HIDDEN  # 默认不自动显示
 
-    def __init__(self, canvas_page):
+    def __init__(self, page):
         super().__init__()
-        self.canvas_page = canvas_page
+        self.homepage = page
         self.setup_ui()
 
     def setup_ui(self):

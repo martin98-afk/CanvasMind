@@ -362,10 +362,6 @@ class ComponentTreePanel(QWidget):
         self.category_filter_dialog = CategoryFilterDialog(sorted(categories), self)
         self.category_filter_dialog.categories_changed.connect(self._on_categories_changed)
 
-        # 默认全选
-        self.tree._selected_categories = set(categories)
-        self.tree.show_selected_category()
-
     def _show_category_dialog(self):
         if self.category_filter_dialog:
             pos = self.category_button.mapToGlobal(QPoint(-10, self.category_button.height() - 10))

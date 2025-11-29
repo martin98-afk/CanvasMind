@@ -6,15 +6,17 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QApplication, QWidget
 from qfluentwidgets import (
-    TextEdit, setFont, ComboBox, FluentIcon, TransparentPushButton,
-    SingleDirectionScrollArea, InfoBar, InfoBarPosition, CardWidget, BodyLabel, CaptionLabel, TransparentToolButton,
+    setFont, ComboBox, FluentIcon, SingleDirectionScrollArea, InfoBar, InfoBarPosition, CardWidget, CaptionLabel,
+    TransparentToolButton,
     TransparentToggleToolButton
 )
 
+from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.chat_session import SessionManager
 from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextSelector
 from app.widgets.side_dock_area.plugins.llm_chatter.history_manager import HistoryManager
+from app.widgets.side_dock_area.plugins.llm_chatter.llm_config_popup import LLMConfigPopup
 from app.widgets.side_dock_area.plugins.llm_chatter.message_card import MessageCard, create_welcome_card
 from app.widgets.side_dock_area.plugins.llm_chatter.text_browser import SendableTextEdit
 from app.widgets.side_dock_area.plugins.llm_chatter.worker import OpenAIChatWorker
@@ -31,19 +33,20 @@ class OpenAIChatToolWindow(ToolWindow):
     history_manager = None
     _in_history_mode = False
     _current_history_index: Optional[int] = None
+    _settings_popup = None  # 懒加载
 
-    def __init__(self, canvas_page):
-        super().__init__(canvas_page)
-        self.canvas_page = canvas_page
+    def __init__(self, homepage):
+        super().__init__(homepage)
+        self.homepage = homepage
         self._worker: Optional[OpenAIChatWorker] = None
         self._is_streaming = False
         self.session_manager.create_new_session()
-        self.canvas_page.global_variables_changed.connect(self._load_model_configs)
+        if hasattr(self.homepage, "global_variables_changed"):
+            self.homepage.global_variables_changed.connect(self._load_model_configs)
         self._initialize_history_manager()
         self._create_new_session()
 
     def setup_ui(self):
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(5)
@@ -77,9 +80,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self.history_btn = TransparentToggleToolButton(FluentIcon.HISTORY, self)
         self.history_btn.setToolTip("历史对话")
         self.history_btn.toggled.connect(self._toggle_history_mode)
-
+        self.settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
+        self.settings_btn.setToolTip("模型设置")
+        self.settings_btn.clicked.connect(self._open_settings_popup)
         right_layout.addWidget(self.new_session_btn)
         right_layout.addWidget(self.history_btn)
+        right_layout.addWidget(self.settings_btn)
 
         session_bar_layout.addLayout(left_layout)
         session_bar_layout.addStretch()
@@ -115,25 +121,86 @@ class OpenAIChatToolWindow(ToolWindow):
         self.input_area.stopMessageRequested.connect(self._on_stop_clicked)
         layout.addWidget(self.input_area)
 
+    def _open_settings_popup(self):
+        # 懒加载 popup
+        if self._settings_popup is None:
+            self._settings_popup = LLMConfigPopup(title=self.model_combo.currentText(), parent=self)
+            self._settings_popup.configApplied.connect(self._on_config_applied)
+
+        # 准备初始配置
+        current_name = self.model_combo.currentText()
+        if current_name in self._valid_configs:
+            config = self._valid_configs[current_name].copy()
+        else:
+            setting = Settings.get_instance()
+            config = {
+                "模型名称": setting.llm_model.value,
+                "API_KEY": setting.llm_api_key.value,
+                "API_URL": setting.llm_api_base.value,
+                "MaxTokens": setting.llm_max_tokens.value,
+                "Temperature": setting.llm_temperature.value,
+            }
+
+        self._settings_popup.set_config(config)
+        # 在设置按钮下方弹出
+        self._settings_popup.show_at(self.settings_btn)
+
+    def _on_config_applied(self, new_config: dict):
+        current_name = self.model_combo.currentText()
+        if hasattr(self.homepage, 'global_variables') and current_name in self.homepage.global_variables.custom:
+            # 更新现有配置
+            self.homepage.global_variables.custom[current_name].value = new_config
+            self.homepage._on_global_variables_changed("custom", current_name, "update")
+            self._load_model_configs()
+            idx = self.model_combo.findText(current_name)
+            if idx >= 0:
+                self.model_combo.setCurrentIndex(idx)
+            InfoBar.success("已更新", "配置已保存并应用。", parent=self, duration=1500)
+        else:
+            setting = Settings.get_instance()
+            # 更新 cfg 默认配置并持久化
+            setting.set(setting.llm_model, new_config["模型名称"])
+            setting.set(setting.llm_api_key, new_config["API_KEY"])
+            setting.set(setting.llm_api_base, new_config["API_URL"])
+            setting.set(setting.llm_max_tokens, new_config["MaxTokens"])
+            setting.set(setting.llm_temperature, new_config["Temperature"])
+            setting.save_config()
+            InfoBar.success("默认配置已更新", "已保存到系统配置。", parent=self, duration=1500)
+
+        self._load_model_configs()
+
     def _load_model_configs(self):
         self._valid_configs.clear()
         self.model_combo.clear()
+
+        # 1. 尝试加载用户自定义配置
         try:
-            custom_vars = self.canvas_page.global_variables.custom
-            for config_name, var_obj in custom_vars.items():
-                if hasattr(var_obj, 'value') and isinstance(var_obj.value, dict):
-                    val = var_obj.value
-                    if {"API_URL", "API_KEY", "模型名称"}.issubset(val.keys()):
-                        self._valid_configs[config_name] = val
-            if self._valid_configs:
-                self.model_combo.addItems(list(self._valid_configs.keys()))
-                self.model_combo.setDisabled(False)
-            else:
-                self.model_combo.addItem("无有效配置")
-                self.model_combo.setDisabled(True)
+            custom_vars = getattr(self.homepage, 'global_variables', None)
+            if custom_vars and hasattr(custom_vars, 'custom'):
+                for config_name, var_obj in custom_vars.custom.items():
+                    if hasattr(var_obj, 'value') and isinstance(var_obj.value, dict):
+                        val = var_obj.value
+                        if {"API_URL", "API_KEY", "模型名称"}.issubset(val.keys()):
+                            self._valid_configs[config_name] = val
+            self.model_combo.addItems(list(self._valid_configs.keys()))
+            self.model_combo.setDisabled(False)
         except Exception as e:
-            self.model_combo.addItem(f"加载失败: {e}")
-            self.model_combo.setDisabled(True)
+            pass
+
+        # 2. 如果没有自定义配置，使用 cfg 默认配置作为兜底
+        if not self._valid_configs:
+            setting = Settings.get_instance()
+            default_config = {
+                "模型名称": setting.llm_model.value,
+                "API_KEY": setting.llm_api_key.value,
+                "API_URL": setting.llm_api_base.value,
+                "MaxTokens": setting.llm_max_tokens.value,
+                "Temperature": setting.llm_temperature.value,
+            }
+            self._valid_configs["默认配置"] = default_config
+            self.model_combo.addItem("默认配置")
+            self.model_combo.setDisabled(True)  # 保持可选
+            return
 
     def _create_new_session(self):
         # 不再自动保存当前会话！因为“新建”意味着丢弃当前内容
@@ -171,7 +238,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
     # 历史对话管理
     def _initialize_history_manager(self):
-        canvas_name = getattr(self.canvas_page, 'workflow_name', 'default')
+        canvas_name = getattr(self.homepage, 'workflow_name', 'default')
         if not canvas_name:
             canvas_name = 'default'
         self.history_manager = HistoryManager(canvas_name)

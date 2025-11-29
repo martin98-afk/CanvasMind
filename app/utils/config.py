@@ -126,3 +126,10 @@ class Settings(QConfig):
         ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi", "asteval", "wcwidth", "pyarrow", "ipykernel", "matplotlib"],
         ListValidator()
     )
+
+    # ========== 新增：大模型对话默认配置 ==========
+    llm_model = ConfigItem("LLM", "Model", "qwen/qwen3-30b-a3b-2507")
+    llm_api_key = ConfigItem("LLM", "APIKey", "")
+    llm_api_base = ConfigItem("LLM", "APIBase", "http://127.0.0.1:1234/v1")
+    llm_max_tokens = ConfigItem("LLM", "MaxTokens", 2048, RangeValidator(1024, 4096))
+    llm_temperature = ConfigItem("LLM", "Temperature", 0.7, RangeValidator(0, 1))

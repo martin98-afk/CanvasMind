@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "大模型对话测试"
     category = "大模型组件"
     description = "调用大语言模型（支持 OpenAI 或本地兼容 API 的模型）"
-    requirements = "Pillow,openai"
+    requirements = "openai,Pillow"
     inputs = [
         PortDefinition(name="input_data", label="输入数据", type=ArgumentType.TEXT),
         PortDefinition(name="history", label="对话历史", type=ArgumentType.JSON),

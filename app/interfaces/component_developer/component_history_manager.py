@@ -76,3 +76,31 @@ class ComponentHistoryManager:
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logger.error(f"加载历史记录文件失败: {e}")
             return []
+
+    @staticmethod
+    def save_new_version(comp_cls, new_code: str):
+        history_file = getattr(comp_cls, "_history_file", None)
+        if not history_file or not history_file.exists():
+            return
+
+        with open(history_file, "r", encoding="utf-8") as f:
+            records = json.load(f)
+
+        # 生成新版本号
+        last_ver = records[-1]["version"]
+        if last_ver.startswith("V") and last_ver[1:].isdigit():
+            next_ver = f"V{int(last_ver[1:]) + 1}"
+        else:
+            next_ver = f"V{len(records) + 1}"
+
+        new_record = {
+            "version": next_ver,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "component_name": comp_cls.name,
+            "category": comp_cls.category,
+            "code": new_code
+        }
+        records.append(new_record)
+
+        with open(history_file, "w", encoding="utf-8") as f:
+            json.dump(records, f, ensure_ascii=False, indent=2)

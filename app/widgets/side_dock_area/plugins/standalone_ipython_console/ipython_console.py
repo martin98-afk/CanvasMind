@@ -14,7 +14,7 @@ class IPythonConsoleToolWindow(ToolWindow):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.console = EmbeddedIPythonConsole(self.canvas_page)
+        self.console = EmbeddedIPythonConsole(self.homepage)
         layout.addWidget(self.console)
 
     @property

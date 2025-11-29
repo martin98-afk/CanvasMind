@@ -43,6 +43,7 @@ class CodeEditorWidget(QWidget):
 
         # 查找替换面板
         self.find_replace = FindReplace(self, True)
+        self.find_replace.hide()
         StyleSheet.FIND_REPLACE.apply(self.find_replace)
         self.main_layout.addWidget(self.find_replace)
 
