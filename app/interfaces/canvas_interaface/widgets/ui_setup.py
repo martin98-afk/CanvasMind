@@ -33,7 +33,6 @@ class CanvasUISetUp:
         self.property_panel = self.side_dock_area.get_tool_instance("属性面板")
         self.ipython_console = self.side_dock_area.get_tool_instance("IPython 控制台")
         self.variable_explorer = self.side_dock_area.get_tool_instance("变量浏览器")
-
         main_layout = QHBoxLayout(self.parent)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)

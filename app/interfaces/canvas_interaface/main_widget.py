@@ -157,6 +157,9 @@ class CanvasPage(QWidget):
     def selected_categories(self):
         return self.ui_manager.nav_view._selected_categories
 
+    def _on_global_variables_changed(self, *args):
+        self.property_panel._on_global_variables_changed(*args)
+
     def show_splitter(self):
         self.ui_manager.show_splitter()
 

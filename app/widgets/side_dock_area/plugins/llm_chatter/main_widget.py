@@ -124,7 +124,7 @@ class OpenAIChatToolWindow(ToolWindow):
     def _open_settings_popup(self):
         # 懒加载 popup
         if self._settings_popup is None:
-            self._settings_popup = LLMConfigPopup(self)
+            self._settings_popup = LLMConfigPopup(title=self.model_combo.currentText(), parent=self)
             self._settings_popup.configApplied.connect(self._on_config_applied)
 
         # 准备初始配置
@@ -150,6 +150,7 @@ class OpenAIChatToolWindow(ToolWindow):
         if hasattr(self.homepage, 'global_variables') and current_name in self.homepage.global_variables.custom:
             # 更新现有配置
             self.homepage.global_variables.custom[current_name].value = new_config
+            self.homepage._on_global_variables_changed("custom", current_name, "update")
             self._load_model_configs()
             idx = self.model_combo.findText(current_name)
             if idx >= 0:

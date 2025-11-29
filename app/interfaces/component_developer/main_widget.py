@@ -13,21 +13,21 @@ from PyQt5.QtWidgets import (
 from loguru import logger
 from qfluentwidgets import (
     BodyLabel, MessageBox, FluentIcon, TransparentToolButton,
-    SegmentedWidget, TransparentDropDownToolButton, Action, RoundMenu
+    TransparentDropDownToolButton, Action, RoundMenu
 )
-from qfluentwidgets.window.stacked_widget import StackedWidget
 
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, ConnectionType
 from app.interfaces.component_developer.component_history_manager import ComponentHistoryManager
 from app.interfaces.component_developer.constants import *
 from app.interfaces.component_developer.message_manager import MessageManager
 from app.scan_components import resource_path
-from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from app.templates.component_templates import default_templates
 from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.code_editor.code_editer import CodeEditorWidget
+from app.widgets.side_dock_area.side_dock_area import SideDockArea
+from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
 from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
 
 
@@ -50,6 +50,9 @@ class ComponentDeveloperPage(QWidget):
         self._analysis_timer.timeout.connect(self._analyze_code_for_requirements)
         # --- 添加一个标志，防止循环更新 ---
         self._updating_requirements_from_analysis = False
+        # 注册大模型对话上下文
+        ContextRegistry.register("当前代码", self.extract_current_code, lambda *args, **kwargs: None)
+        ContextRegistry.register("当前选中区域", self.extract_selected_code, lambda *args, **kwargs: None)
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -147,6 +150,39 @@ class ComponentDeveloperPage(QWidget):
         self.description_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.requirements_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
+
+    def extract_current_code(self) -> str:
+        """返回带组件名称和完整代码的上下文字符串"""
+        name = self.name_edit.text().strip() or "未命名组件"
+        code = self.code_editor.get_code()
+        if not code.strip():
+            return f"{name} 全部代码", "代码为空", None
+        return f"{name} 全部代码", code, None
+
+    def extract_selected_code(self) -> str:
+        """返回带组件名称、行号范围和选中代码的上下文字符串"""
+        name = self.name_edit.text().strip() or "未命名组件"
+        editor = self.code_editor.code_editor  # 假设这是 QPlainTextEdit 或类似
+        cursor = editor.textCursor()
+
+        if cursor.hasSelection():
+            # 获取选中范围的起始/结束行号（从1开始）
+            start_line = cursor.selectionStart()
+            end_line = cursor.selectionEnd()
+            doc = editor.document()
+            start_block = doc.findBlock(start_line)
+            end_block = doc.findBlock(end_line - 1)  # selectionEnd 是下一个字符位置
+            start_line_num = start_block.blockNumber() + 1
+            end_line_num = end_block.blockNumber() + 1
+
+            selected_text = cursor.selectedText().replace('\u2029', '\n')  # PyQt5 用 \u2029 表示换行
+            return f"{name} {start_line_num}~{end_line_num}行代码", selected_text, None
+        else:
+            # 未选中则返回完整代码（与 extract_current_code_for_llm 一致）
+            code = self.code_editor.get_code()
+            if not code.strip():
+                return f"{name} 全部代码", "代码为空", None
+            return f"{name} 全部代码", code, None
 
     def _switch_template(self, template_name, template_code):
         """根据选择的模板名称和代码更新编辑器"""

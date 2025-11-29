@@ -6,14 +6,15 @@ from PyQt5.QtWidgets import (
 )
 from qfluentwidgets import (
     BodyLabel, LineEdit, Slider, SpinBox, PrimaryPushButton,
-    PushButton
+    PushButton, CaptionLabel
 )
 
 class LLMConfigPopup(QWidget):
     configApplied = pyqtSignal(dict)  # 发送确认后的配置
 
-    def __init__(self, parent=None):
+    def __init__(self, title="大模型配置", parent=None):
         super().__init__(parent)
+        self.title = title
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.config = {}
@@ -40,32 +41,32 @@ class LLMConfigPopup(QWidget):
         layout.setSpacing(5)
 
         # 标题
-        title = BodyLabel("大模型设置", self)
+        title = BodyLabel(self.title, self)
         title.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
-        layout.addWidget(title)
+        layout.addWidget(title, 0, Qt.AlignHCenter)
 
         # 模型名称
         self.model_edit = LineEdit(self)
         self.model_edit.setMinimumWidth(280)
         self.model_edit.setPlaceholderText("例如：qwen/qwen3-30b")
-        layout.addWidget(BodyLabel("模型名称：", self))
+        layout.addWidget(CaptionLabel("模型名称：", self))
         layout.addWidget(self.model_edit)
 
         # API Key
         self.api_key_edit = LineEdit(self)
         self.api_key_edit.setPlaceholderText("sk-xxxx")
         self.api_key_edit.setEchoMode(QLineEdit.Password)
-        layout.addWidget(BodyLabel("API Key：", self))
+        layout.addWidget(CaptionLabel("API Key：", self))
         layout.addWidget(self.api_key_edit)
 
         # API Base
         self.api_base_edit = LineEdit(self)
         self.api_base_edit.setPlaceholderText("http://127.0.0.1:1234/v1")
-        layout.addWidget(BodyLabel("API Base：", self))
+        layout.addWidget(CaptionLabel("API Base：", self))
         layout.addWidget(self.api_base_edit)
 
         # Max Tokens
-        layout.addWidget(BodyLabel("Max Tokens：", self))
+        layout.addWidget(CaptionLabel("Max Tokens：", self))
         self.max_tokens_spin = SpinBox(self)
         self.max_tokens_spin.setRange(1024, 409600)
         layout.addWidget(self.max_tokens_spin)

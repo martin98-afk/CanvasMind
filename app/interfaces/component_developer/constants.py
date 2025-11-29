@@ -9,7 +9,7 @@ from app.widgets.side_dock_area.tool_window import DockPosition
 SideDockRegistry.register("组件开发", ComponentInfoWindow.name, ComponentInfoWindow, DockPosition.TOP)
 SideDockRegistry.register("组件开发", MultiConsoleToolWindow.name, MultiConsoleToolWindow, DockPosition.TOP)
 SideDockRegistry.register("组件开发", ComponentHistoryToolWindow.name, ComponentHistoryToolWindow, DockPosition.TOP)
-SideDockRegistry.register("组件开发", OpenAIChatToolWindow.name, OpenAIChatToolWindow, DockPosition.BOTTOM)
+SideDockRegistry.register("组件开发", OpenAIChatToolWindow.name, OpenAIChatToolWindow, DockPosition.TOP)
 
 
 MODULE_TO_PACKAGE_MAP = {
