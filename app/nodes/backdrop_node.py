@@ -82,9 +82,14 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         QtCore.QTimer.singleShot(0, self._setup_auto_management)
 
     def _setup_auto_management(self):
-        """监听场景变化"""
         if not self.graph:
             return
+
+        # 连接 view 销毁信号
+        try:
+            self.view.destroyed.connect(self._on_view_destroyed)
+        except AttributeError:
+            pass  # 某些版本可能没有 destroyed 信号
 
         scene = self.graph.scene()
         if scene and not hasattr(self, '_scene_connected'):
@@ -94,8 +99,13 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
             except (TypeError, RuntimeError):
                 pass
 
-        # 初始调整（无延迟）
         self._perform_auto_resize_with_undo()
+
+    def _on_view_destroyed(self):
+        """清理所有 pending timers"""
+        for timer in self._pending_nodes.values():
+            timer.stop()
+        self._pending_nodes.clear()
 
     def _on_scene_changed(self, region=None):
         """场景变化时动态管理节点归属"""
@@ -174,7 +184,16 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         return False
 
     def _confirm_node_inclusion(self, node_id):
-        """延迟确认：节点确实要加入"""
+        # 首先检查当前 backdrop 是否还存活（view 是否有效）
+        try:
+            _ = self.view.scenePos()  # 触发 RuntimeError 如果已销毁
+        except RuntimeError:
+            # Backdrop 已被删除，清理并退出
+            if node_id in self._pending_nodes:
+                self._pending_nodes[node_id].stop()
+                del self._pending_nodes[node_id]
+            return
+
         if node_id in self._pending_nodes:
             del self._pending_nodes[node_id]
 
@@ -182,7 +201,6 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         if not node:
             return
 
-        # 再次检查是否仍显著在内
         if self._is_node_significantly_inside(node, self._overlap_threshold):
             self._perform_auto_resize_with_undo()
 
@@ -249,8 +267,12 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
     # ──────────────── 几何辅助方法 ────────────────
 
     def _get_backdrop_scene_rect(self):
-        pos = self.view.scenePos()
-        return QtCore.QRectF(pos.x(), pos.y(), self.view.width, self.view.height)
+        try:
+            pos = self.view.scenePos()
+            return QtCore.QRectF(pos.x(), pos.y(), self.view.width, self.view.height)
+        except RuntimeError:
+            # C++ 对象已删除
+            return QtCore.QRectF()
 
     def _get_node_scene_rect(self, node):
         pos = node.view.scenePos()
