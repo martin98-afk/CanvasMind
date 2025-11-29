@@ -4,6 +4,8 @@ import re
 import shutil
 import textwrap
 import uuid
+import json
+import traceback
 from pathlib import Path
 
 from PyQt5.QtCore import Qt, QTimer, QSize
@@ -16,6 +18,7 @@ from qfluentwidgets import (
     TransparentDropDownToolButton, Action, RoundMenu
 )
 
+from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, ConnectionType
 from app.interfaces.component_developer.component_history_manager import ComponentHistoryManager
 from app.interfaces.component_developer.constants import *
@@ -43,7 +46,6 @@ class ComponentDeveloperPage(QWidget):
         self._current_component_code = ""  # 存储当前加载的代码
         self._setup_ui()
         self._connect_signals()
-        self._load_existing_components()
         # --- 添加一个定时器用于延迟分析 ---
         self._analysis_timer = QTimer()
         self._analysis_timer.setSingleShot(True)
@@ -195,7 +197,6 @@ class ComponentDeveloperPage(QWidget):
         try:
             self.component_tree.refresh_components()
         except Exception as e:
-            import traceback
             traceback.print_exc()
             MessageManager.error(f"加载组件失败: {e}", "", self)
 
@@ -217,6 +218,7 @@ class ComponentDeveloperPage(QWidget):
             start = len(COMPONENT_IMPORT_CODE.split("\n")) - 1
             return ''.join(source_lines[start:])
         except Exception as e:
+            traceback.print_exc()
             logger.warning(f"AST extraction failed for {file_path}:{class_name} - {e}")
         return ""
 
@@ -279,11 +281,74 @@ class ComponentDeveloperPage(QWidget):
                 self._load_history_list(self._current_component_file)
             else:
                 self.history_table.setRowCount(0)  # 如果没有文件路径，清空历史列表
+            # 加载节点在画布中的使用记录
+            if full_path:
+                usage_records = ComponentUsageTracker().get_usage(full_path)
+                # 转为 UI 所需格式
+                usage_list = [
+                    {
+                        "canvas_name": str(rec.canvas_path.stem).split(".workflow")[0],
+                        "canvas_path": rec.canvas_path,
+                        "node_name": rec.node_name,
+                        "version": rec.version
+                    }
+                    for rec in usage_records
+                ]
+                # 发送给你的历史工具窗口
+                history_tool = self.side_dock_area.get_tool_instance("组件历史管理")
+                history_tool.strategy_changed.connect(self._on_usage_strategy_changed)
+                if history_tool:
+                    history_tool.update_usage_table(usage_list)
             # --- 新增结束 ---
+        except Exception as e:
+            traceback.print_exc()
+            MessageManager.error(f"加载组件失败: {str(e)}", "", self)
+
+    def _on_usage_strategy_changed(self, canvas_path: str, node_name: str, strategy: str):
+        """处理使用策略变更"""
+        try:
+            canvas_file = Path(canvas_path)
+            # 1. 加载画布文件
+            with open(canvas_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            # 2. 找到对应节点
+            nodes = data.get("graph", {}).get("nodes", {})
+            target_node_id = None
+            for node_id, node_data in nodes.items():
+                if node_data.get("name") == node_name:
+                    # 更精确：用 full_path + node_name 判断（避免重名）
+                    stable_key = data.get("runtime", {}).get("node_id2stable_key", {}).get(node_id, "")
+                    full_path = stable_key.split("||")[0] if "||" in stable_key else ""
+                    target_node_id = node_id
+                    break
+
+            if not target_node_id:
+                MessageManager.warning("未找到对应节点", "", self)
+                return
+
+            # 3. 确定新版本
+            if strategy == "同步":
+                # 获取当前组件最新版本
+                comp_map, _ = ComponentScanner().get_components()
+                comp_cls = comp_map.get(full_path)
+                new_version = getattr(comp_cls, "_version", "latest")
+            else:
+                new_version = strategy  # 如 "V2"
+
+            # 4. 更新节点 custom.version
+            nodes[target_node_id].setdefault("custom", {})["version"] = new_version
+
+            # 5. 保存回文件
+            with open(canvas_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+
+            MessageManager.success(f"已更新 {node_name} 的版本策略为 {new_version}", "", self)
+
         except Exception as e:
             import traceback
             traceback.print_exc()
-            MessageManager.error(f"加载组件失败: {str(e)}", "", self)
+            MessageManager.error(f"更新策略失败: {e}", "", self)
 
     def _create_new_component(self, component_info):
         """创建新组件"""
@@ -624,7 +689,6 @@ except:
             return '\n'.join(new_lines)
         except Exception as e:
             print(f"_update_properties_in_code error: {e}")
-            import traceback
             traceback.print_exc()
             return code
 

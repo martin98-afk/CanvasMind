@@ -170,6 +170,9 @@ class OpenAIChatToolWindow(ToolWindow):
         self._load_model_configs()
 
     def _load_model_configs(self):
+        # 保存当前选中的模型名（如果有的话）
+        current_text = self.model_combo.currentText() if self.model_combo.count() > 0 else ""
+
         self._valid_configs.clear()
         self.model_combo.clear()
 
@@ -182,12 +185,13 @@ class OpenAIChatToolWindow(ToolWindow):
                         val = var_obj.value
                         if {"API_URL", "API_KEY", "模型名称"}.issubset(val.keys()):
                             self._valid_configs[config_name] = val
-            self.model_combo.addItems(list(self._valid_configs.keys()))
+            model_names = list(self._valid_configs.keys())
+            self.model_combo.addItems(model_names)
             self.model_combo.setDisabled(False)
         except Exception as e:
             pass
 
-        # 2. 如果没有自定义配置，使用 cfg 默认配置作为兜底
+        # 2. 如果没有自定义配置，使用默认配置
         if not self._valid_configs:
             setting = Settings.get_instance()
             default_config = {
@@ -199,8 +203,18 @@ class OpenAIChatToolWindow(ToolWindow):
             }
             self._valid_configs["默认配置"] = default_config
             self.model_combo.addItem("默认配置")
-            self.model_combo.setDisabled(True)  # 保持可选
-            return
+            self.model_combo.setDisabled(False)  # 允许选择，哪怕只有一个
+            model_names = ["默认配置"]
+
+        # === 关键：恢复之前选中的模型名 ===
+        if current_text in self._valid_configs:
+            idx = self.model_combo.findText(current_text)
+            if idx >= 0:
+                self.model_combo.setCurrentIndex(idx)
+        else:
+            # 如果之前选中的项不存在了，可以选第一个或保持空白（但 ComboBox 至少要有一个）
+            if self.model_combo.count() > 0:
+                self.model_combo.setCurrentIndex(0)
 
     def _create_new_session(self):
         # 不再自动保存当前会话！因为“新建”意味着丢弃当前内容
