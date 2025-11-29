@@ -13,7 +13,7 @@ from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
 from app.interfaces.workflow_manager import WorkflowCanvasGalleryPage
-from app.scan_components import ComponentScanner
+from app.scan_components import ComponentUsageTracker
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.logger_dialog import QTextEditLogger
@@ -39,6 +39,8 @@ class LowCodeWindow(FluentWindow):
         self.splashScreen.setIconSize(QSize(400, 400))
         self.splashScreen.setFixedSize(500, 500)
         self.show()
+        # 监听画布节点使用统计
+        ComponentUsageTracker()
         self.config = Settings.get_instance()
         self.config.save()
         # 初始化日志查看器

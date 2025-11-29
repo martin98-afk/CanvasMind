@@ -28,7 +28,7 @@ class ComponentInfoWindow(ToolWindow):
         info_layout.setContentsMargins(0, 0, 0, 0)
         # --- 基本信息卡片 ---
         basic_info_widget = SimpleCardWidget()
-        basic_info_widget.setMinimumWidth(450)
+        basic_info_widget.setMinimumWidth(550)
         # 使用水平布局来并排放置信息和依赖
         basic_info_h_layout = QHBoxLayout(basic_info_widget)
         basic_info_h_layout.setContentsMargins(0, 0, 0, 0)  # 设置整体边距

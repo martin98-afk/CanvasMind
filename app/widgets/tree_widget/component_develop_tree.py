@@ -353,10 +353,9 @@ class ComponentTreePanel(QWidget):
 
     def _init_components_and_categories(self):
         """初始化组件和类别（仅一次）"""
-        scanner = ComponentScanner()
-        comp_map, file_map = scanner.get_components()  # 使用缓存，不强制刷新
+        comp_map, file_map = ComponentScanner().get_components()  # 使用缓存，不强制刷新
         self.tree.set_components(comp_map, file_map)
-
+        self.tree.show_selected_category()  # 👈 保留筛选状态
         # 提取类别
         categories = {getattr(cls, 'category', 'General') for cls in comp_map.values()}
         self.category_filter_dialog = CategoryFilterDialog(sorted(categories), self)

@@ -116,7 +116,10 @@ class CustomBaseNode(BaseNode):
         else:
             if hasattr(self.view, name):
                 setattr(self.view, name, value)
-            self.model.set_property(name, value)
+            try:
+                self.model.set_property(name, value)
+            except:
+                self.model.add_property(name, value)
 
         # redraw the node for custom properties.
         if self.model.is_custom_property(name):

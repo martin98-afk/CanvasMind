@@ -12,7 +12,8 @@ from PyQt5.QtWidgets import QFileDialog
 from loguru import logger
 
 # --- 其他原有导入 ---
-from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext
+from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext, \
+    COMPONENT_IMPORT_CODE, resource_path
 from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
@@ -77,23 +78,22 @@ def _install_requirements(python_executable, requirements_str, logger=logger):
             logger.error(f"❌ 安装 {pkg} 异常: {e}")
 
 
-def create_node_class(component_class, full_path, file_path, parent_window=None):
+def create_node_class(full_path, file_path, parent_window=None):
     """返回一个高性能、支持独立环境执行的动态节点类"""
 
     class DynamicNode(CustomBaseNode, BasicNodeWithGlobalProperty):
         __identifier__ = 'dynamic'
-        NODE_NAME = component_class.name
+        NODE_NAME = parent_window.component_map[full_path].name
         FULL_PATH = full_path
         FILE_PATH = file_path  # 现在 FILE_PATH 是真实的组件文件路径
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
+            self.set_property("version", "latest")
             self.parent_window = parent_window
             self.model.add_property("debug_code", {})
-            self.component_class = component_class
-            self.component_class.path = full_path
-            if hasattr(component_class, "icon"):
-                self.set_icon(component_class.icon)
+            if hasattr(parent_window.component_map[full_path], "icon"):
+                self.set_icon(parent_window.component_map[full_path].icon)
             
             # --- 调试模式新增 ---
             self._debug_enabled = False
@@ -103,7 +103,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
             # === 动态生成属性 ===
             self._generate_parms_widget()
-            for port_name, label, connection in component_class.get_inputs():
+            for port_name, label, connection in parent_window.component_map[full_path].get_inputs():
                 if connection == ConnectionType.SINGLE:
                     self.add_input(port_name)
                 else:
@@ -111,7 +111,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             QtCore.QTimer.singleShot(0, self.build_outputs)
 
         def build_outputs(self):
-            for port_name, label in component_class.get_outputs():
+            for port_name, label in parent_window.component_map[full_path].get_outputs():
                 self.delete_output(port_name)
                 name = re.sub(r'\s+', '_', self.name())
                 if f"{name}_{port_name}" in parent_window.global_variables.node_vars:
@@ -122,7 +122,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
         def refresh_node_outports(self):
             self.set_port_deletion_allowed(True)
             # 2. 记录当前所有输出端口的连线状态：{port_name: [connected_downstream_ports]}
-            expected_names = [port_name for port_name, _ in component_class.get_outputs()]
+            expected_names = [port_name for port_name, _ in parent_window.component_map[full_path].get_outputs()]
             current_connections = {}
             for port in self.output_ports():
                 connected = port.connected_ports()
@@ -164,30 +164,14 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
         def _enable_debug_mode(self):
             """启用调试模式，添加代码编辑器"""
-            if self._debug_widget is not None:
-                # 已经存在，直接返回或刷新内容
-                self._refresh_debug_code_content()
-                return
-
-            try:
-                # 读取当前组件文件的代码
-                with open(self.FILE_PATH, 'r', encoding='utf-8') as f:
-                    initial_code = f.read()
-            except FileNotFoundError:
-                logger.warning(f"组件文件 {self.FILE_PATH} 未找到，无法加载调试代码。")
-                initial_code = f"# 文件未找到: {self.FILE_PATH}\n"
-            except Exception as e:
-                logger.error(f"读取组件文件 {self.FILE_PATH} 失败: {e}")
-                initial_code = f"# 读取文件失败: {e}\n"
-
-            self._debug_code_content = initial_code
+            self.current_code = self.get_current_code()
 
             # 创建代码编辑器控件
             self._debug_widget = CodeEditorWidgetWrapper(
                 parent=self.view,
                 name="debug_code",
                 label="调试代码编辑器",
-                default=self._debug_code_content,
+                default=self.current_code,
                 window=parent_window,
                 width=600, height=400
             )
@@ -215,33 +199,15 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                 self._debug_widget = None
                 logger.info(f"节点 {self.NODE_NAME} ({self.id}) 禁用调试模式。")
 
-        def _refresh_debug_code_content(self):
-            """刷新调试代码编辑器中的内容"""
-            if self._debug_widget:
-                try:
-                    with open(self.FILE_PATH, 'r', encoding='utf-8') as f:
-                        current_code = f.read()
-                    self._debug_code_content = current_code
-                    logger.info(f"刷新了节点 {self.NODE_NAME} 的调试代码编辑器内容。")
-                except Exception as e:
-                    logger.error(f"刷新节点 {self.NODE_NAME} 调试代码内容失败: {e}")
-
         def _save_debug_code(self, code_text):
             """保存调试编辑器中的代码到本地文件"""
-            if code_text != self._debug_code_content:
-                try:
-                    # 将编辑器中的内容写入原始文件
-                    with open(self.FILE_PATH, 'w', encoding='utf-8') as f:
-                        f.write(code_text)
-                    self._debug_code_content = code_text
-                    logger.info(f"已将调试代码保存到 {self.FILE_PATH}")
-                except Exception as e:
-                    logger.error(f"保存调试代码到 {self.FILE_PATH} 失败: {e}")
+            if code_text != self.current_code:
+                self.current_code = code_text
 
         def _generate_parms_widget(self):
             """生成节点属性配置控件"""
             # 生成其他组件属性控件
-            for i, (prop_name, prop_def) in enumerate(component_class.get_properties().items()):
+            for i, (prop_name, prop_def) in enumerate(parent_window.component_map[full_path].get_properties().items()):
                 prop_type = prop_def.get("type", PropertyType.TEXT)
                 default = prop_def.get("default", "")
                 label = prop_def.get("label", prop_name)
@@ -256,7 +222,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         self.add_custom_widget(
                             ComboBoxWidgetWrapper(
                                 parent=self.view, name=prop_name, label=label, items=choices,
-                                z_value=len(component_class.get_properties()) - i
+                                z_value=len(parent_window.component_map[full_path].get_properties()) - i
                             ),
                             tab="properties"
                         )
@@ -306,7 +272,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                         label=label,
                         schema=processed_schema,
                         window=parent_window,
-                        z_value=len(component_class.get_properties()) - i
+                        z_value=len(parent_window.component_map[full_path].get_properties()) - i
                     )
                     self.add_custom_widget(widget, tab='Properties')
                 elif prop_type == PropertyType.VARIABLE:  # 新增类型
@@ -316,7 +282,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
                             name=prop_name,
                             label=label,
                             main_window=parent_window,  # 传入 main_window 引用
-                            z_value=len(component_class.get_properties()) - i
+                            z_value=len(parent_window.component_map[full_path].get_properties()) - i
                         ),
                         tab="properties"
                     )
@@ -380,6 +346,26 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
         def remove_property(self, name):
             self.model._custom_prop[name] = None
+
+        def set_version(self, version):
+            self.model.set_property("version", version)
+
+        def get_current_code(self):
+            # 获取当前版本的代码
+            current_version = self.get_property("version")
+            if current_version == "latest":
+                with open(self.FILE_PATH, 'r', encoding='utf-8') as f:
+                    current_code = f.read()
+            else:
+                current_code = None
+                for version_file in parent_window.component_map[full_path]._history_file:
+                    if version_file["version"] == current_version:
+                        current_code = COMPONENT_IMPORT_CODE + version_file["code"]
+                        break
+                if current_code is None:
+                    raise Exception("Cannot find component code for version: {}".format(current_version))
+
+            return current_code
 
         def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None, max_retries=1):
             """
@@ -481,7 +467,9 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             run_dir = PERSISTENT_TEMP_ROOT / run_id
             shutil.rmtree(run_dir, ignore_errors=True)
             run_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(resource_path("app/components/base.py"), str(run_dir / "base.py"))
             temp_script_path = run_dir / "exec_script.py"
+            temp_component_path = run_dir / "component.py"
             params_path = run_dir / "params.pkl"
             result_path = run_dir / "result.pkl"
             error_path = run_dir / "error.pkl"
@@ -491,12 +479,24 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             # 保存参数
             with open(params_path, 'wb') as f:
                 pickle.dump((params, inputs, global_variable), f)
+            if self._debug_widget is not None:
+                # debug 模式 直接使用当前编辑器代码
+                with open(temp_component_path, 'w', encoding='utf-8') as f:
+                    f.write(self.current_code)
+            else:
+                current_version = self.get_property("version")
+                if current_version == parent_window.component_map[full_path]._version or current_version == "latest":
+                    temp_component_path = self.FILE_PATH
+                else:
+                    component_code = self.get_current_code()
+                    with open(temp_component_path, 'w', encoding='utf-8') as f:
+                        f.write(component_code)
 
             # 生成执行脚本
             # 注意：这里仍然使用原始的 FILE_PATH，执行的是保存后的代码
             script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
                 class_name=comp_obj.__name__,
-                file_path=self.FILE_PATH,  # 使用原始文件路径
+                file_path=temp_component_path,  # 使用历史版本文件
                 params_path=params_path,
                 result_path=result_path,
                 error_path=error_path,
@@ -749,7 +749,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
 
                 # 判断是否为 ImportError 且可重试
                 if retry_count == 0 and _is_import_error(proc, error_path):
-                    _install_requirements(python_executable, requirements_str, component_class.logger)
+                    _install_requirements(python_executable, requirements_str, parent_window.component_map[full_path].logger)
                     retry_count += 1
                     continue
                 else:
@@ -759,7 +759,7 @@ def create_node_class(component_class, full_path, file_path, parent_window=None)
             if os.path.exists(result_path):
                 with open(result_path, 'rb') as f:
                     output = pickle.load(f)
-                component_class.logger.success("✅ 节点在独立环境执行完成")
+                parent_window.component_map[full_path].logger.success("✅ 节点在独立环境执行完成")
                 for port in comp_obj.outputs:
                     if port.type != ArgumentType.UPLOAD:
                         self.set_output_value(port.name, output.get(port.name))

@@ -22,6 +22,7 @@ class Component(BaseComponent):
     requirements = ""
     inputs = [
         PortDefinition(name="input1", label="输入1", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="input2", label="输入2", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="output1", label="输出1", type=ArgumentType.TEXT),

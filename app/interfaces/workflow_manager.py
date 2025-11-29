@@ -27,10 +27,6 @@ from app.widgets.side_dock_area.registry import SideDockRegistry
 
 class WorkflowFileInfoScanner(QThread):
     scan_finished = pyqtSignal(list, dict)
-    SideDockRegistry.register("运行画布", PropertyToolWindow.name, PropertyToolWindow)
-    SideDockRegistry.register("运行画布", OpenAIChatToolWindow.name, OpenAIChatToolWindow)
-    SideDockRegistry.register("运行画布", VariableExplorerToolWindow.name, VariableExplorerToolWindow)
-    SideDockRegistry.register("运行画布", IPythonConsoleToolWindow.name, IPythonConsoleToolWindow)
 
     def __init__(self, workflow_dir: List[Path]):
         super().__init__()
@@ -81,6 +77,10 @@ class WorkflowFileInfoScanner(QThread):
 
 class WorkflowCanvasGalleryPage(QWidget, QObject):
     scan_finished = pyqtSignal(list, dict)
+    SideDockRegistry.register("运行画布", PropertyToolWindow.name, PropertyToolWindow)
+    SideDockRegistry.register("运行画布", OpenAIChatToolWindow.name, OpenAIChatToolWindow)
+    SideDockRegistry.register("运行画布", VariableExplorerToolWindow.name, VariableExplorerToolWindow)
+    SideDockRegistry.register("运行画布", IPythonConsoleToolWindow.name, IPythonConsoleToolWindow)
 
     def __init__(self, parent=None):
         super().__init__(parent)

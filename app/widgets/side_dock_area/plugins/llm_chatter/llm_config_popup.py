@@ -37,8 +37,8 @@ class LLMConfigPopup(QWidget):
         """)
 
         layout = QVBoxLayout(self.main_frame)
-        layout.setContentsMargins(6, 6, 6, 6)
-        layout.setSpacing(5)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(3)
 
         # 标题
         title = BodyLabel(self.title, self)
