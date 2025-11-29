@@ -389,7 +389,7 @@ class MessageCard(CardWidget):
             for key, (name, content, callback_params) in self.context_tags.items():
                 tag = TagWidget(key, name)
                 tag.doubleClicked.connect(
-                    lambda k=key, cp=callback_params: ContextRegistry.get_executor(k)(cp)
+                    lambda k=key, cp=callback_params: self.parent.homepage.context_register.get_executor(k)(cp)
                 )
                 tags_layout.addWidget(tag)
             tags_layout.addStretch()
@@ -427,7 +427,7 @@ class MessageCard(CardWidget):
         print(f"点击了 {tool_key}")
         if tool_key in self.context_tags:
             name, content, callback_params = self.context_tags[tool_key]
-            executor = ContextRegistry.get_executor(tool_key)
+            executor = self.parent.homepage.context_register.get_executor(tool_key)
             if executor:
                 executor(callback_params)
 

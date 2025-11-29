@@ -5,8 +5,8 @@ import json
 
 def generate_icons_qrc(
         icons_dir="./icons",
-        output_qrc="./icons.qrc",
-        output_map="./icon_name_map.py"
+        output_qrc="./icons/icons.qrc",
+        output_map="app/utils/icon_name_map.py"
 ):
     extensions = {'.png', '.svg', '.ico', '.jpg', '.jpeg', '.gif'}
     icons_path = Path(icons_dir)
@@ -56,3 +56,5 @@ def generate_icons_qrc(
 
 if __name__ == "__main__":
     generate_icons_qrc()
+    # 执行 pyrcc5 icons/icons.qrc -o app/utils/icons_rc.py
+    os.system("pyrcc5 icons/icons.qrc -o app/utils/icons_rc.py")

@@ -34,7 +34,7 @@ class LowCodeWindow(FluentWindow):
         desktop = QApplication.desktop().availableGeometry()
         self.w, self.h = desktop.width(), desktop.height()
         self.move(self.w // 2 - self.width() // 2, self.h // 2 - self.height() // 2)
-        self.splashScreen = SplashScreen(self.windowIcon(), self)
+        self.splashScreen = SplashScreen(get_icon("logo"), self)
         self.splashScreen.titleBar.hide()
         self.splashScreen.setIconSize(QSize(400, 400))
         self.splashScreen.setFixedSize(500, 500)

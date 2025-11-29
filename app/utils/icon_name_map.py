@@ -12,6 +12,8 @@ ICON_NAME_TO_FILE = {
     "KMeans": "KMeans.svg",
     "list": "list.svg",
     "location": "location.svg",
+    "logo": "logo.png",
+    "logo2": "logo2.png",
     "logo3": "logo3.png",
     "ls": "ls.svg",
     "Miniconda": "Miniconda.svg",

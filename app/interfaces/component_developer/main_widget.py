@@ -50,9 +50,9 @@ class ComponentDeveloperPage(QWidget):
         self._analysis_timer.timeout.connect(self._analyze_code_for_requirements)
         # --- 添加一个标志，防止循环更新 ---
         self._updating_requirements_from_analysis = False
-        # 注册大模型对话上下文
-        ContextRegistry.register("当前代码", self.extract_current_code, lambda *args, **kwargs: None)
-        ContextRegistry.register("当前选中区域", self.extract_selected_code, lambda *args, **kwargs: None)
+        self.context_register = ContextRegistry()
+        self.context_register.register("当前代码", self.extract_current_code, lambda *args, **kwargs: None)
+        self.context_register.register("当前选中区域", self.extract_selected_code, lambda *args, **kwargs: None)
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
