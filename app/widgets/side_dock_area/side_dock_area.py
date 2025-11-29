@@ -65,7 +65,7 @@ class SideDockArea(QWidget):
         if view is None:
             return
         self.tool_panel.set_checked(tool_name)
-        if view.default_position == DockPosition.TOP:
+        if hasattr(view, "position") and view.position == DockPosition.TOP:
             self._show_top_tool(tool_name)
         else:
             self._show_bottom_tool(tool_name)

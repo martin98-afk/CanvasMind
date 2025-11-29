@@ -121,12 +121,21 @@ class RightToolPanel(QFrame):
         self._bottom_buttons[tool.name] = btn
         self._tool_by_button[btn] = tool
 
-    def set_checked(self, tool_name):
-        """手动将某个工具设为 checked（用于默认选中）"""
+    def set_checked(self, tool_name: str):
         if tool_name in self._bottom_buttons:
-            self._bottom_buttons[tool_name].setChecked(True)
-        elif tool_name in self._tool_by_button:
-            self._set_top_button_checked(self._tool_by_button[tool_name])
+            btn = self._bottom_buttons[tool_name]
+            if not btn.isChecked():
+                btn.setChecked(True)  # 先设为 True
+                # 手动触发点击逻辑（避免重复 emit）
+                tool = self._tool_by_button[btn]
+                self._on_bottom_clicked(btn, tool)
+        else:
+            for btn, tool in self._tool_by_button.items():
+                if btn in self._top_buttons and tool.name == tool_name:
+                    if not btn.isChecked():
+                        btn.setChecked(True)
+                        self._on_top_clicked(btn, tool)
+                    break
 
     def _on_top_clicked(self, btn, tool_cls):
         if btn.isChecked():

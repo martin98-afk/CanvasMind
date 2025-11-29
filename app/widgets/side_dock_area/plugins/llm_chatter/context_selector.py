@@ -14,47 +14,42 @@ from qfluentwidgets import (
 
 
 class ContextRegistry:
-    _instance = None
-    _contexts: Dict[str, Callable[[], Tuple[str, Any, Callable]]] = {}
-    _executors: Dict[str, Callable[[Any], None]] = {}
+    # 注意：不再有 _instance，也不再是单例
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+    def __init__(self):
+        # 每个实例都有独立的上下文和执行器字典
+        self._contexts: Dict[str, Callable[[], Tuple[str, Any, Callable]]] = {}
+        self._executors: Dict[str, Callable[[Any], None]] = {}
 
-    @classmethod
-    def register(cls, key: str, provider: Callable[[], Tuple[str, Any, Callable], ], excutor: Callable[[Any], None]):
+    def register(self, key: str, provider: Callable[[], Tuple[str, Any, Callable]], executor: Callable[[Any], None]):
         """
         注册一个上下文项
         :param key: 唯一标识，如 "@graph"
         :param provider: 无参函数，返回 (显示名称, 上下文数据, 双击回调函数)
+        :param executor: 执行函数，接收上下文数据
         """
-        cls._contexts[key] = provider
-        cls._executors[key] = excutor
+        self._contexts[key] = provider
+        self._executors[key] = executor
 
-    @classmethod
-    def get_executor(cls, key: str) -> Callable[[Any], None]:
-        return cls._executors[key]
+    def get_executor(self, key: str) -> Callable[[Any], None]:
+        return self._executors[key]
 
-    @classmethod
-    def get_provider(cls, key: str) -> Callable[[], Tuple[str, Any, Callable]]:
-        return cls._contexts[key]
+    def get_provider(self, key: str) -> Callable[[], Tuple[str, Any, Callable]]:
+        return self._contexts[key]
 
-    @classmethod
-    def unregister(cls, key: str):
-        cls._contexts.pop(key, None)
+    def unregister(self, key: str):
+        self._contexts.pop(key, None)
+        self._executors.pop(key, None)
 
-    @classmethod
-    def get_all_items(cls) -> List[Tuple[str, Callable[[], Tuple[str, Any, Callable]]]]:
+    def get_all_items(self) -> List[Tuple[str, Callable[[], Tuple[str, Any, Callable]]]]:
         return [
             (key, provider)
-            for key, provider in cls._contexts.items()
+            for key, provider in self._contexts.items()
         ]
 
-    @classmethod
-    def clear(cls):
-        cls._contexts.clear()
+    def clear(self):
+        self._contexts.clear()
+        self._executors.clear()
 
 
 # ==================== 【改进】单个上下文标签卡片 ====================
@@ -255,7 +250,7 @@ class ContextSelector(QWidget):
         return self._context_cache.get(key, ("", "", lambda: None))[2]
 
     def _refresh_context_items(self):
-        self._context_items = ContextRegistry.get_all_items()
+        self._context_items = self.parent.homepage.context_register.get_all_items()
 
     def _on_popup_selection_changed(self, selected: set):
         self._selected_keys = selected
@@ -353,7 +348,7 @@ class ContextSelector(QWidget):
 
     def _on_tag_double_clicked(self, key: str):
         """双击标签时，直接调用其回调函数"""
-        callback = ContextRegistry.get_executor(key)
+        callback = self.parent.homepage.context_register.get_executor(key)
         params = self.get_callback_params_by_key(key)
         if callable(callback):
             try:

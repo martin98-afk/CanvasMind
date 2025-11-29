@@ -26,7 +26,7 @@ class SideDockRegistry:
         if position is None:
             position = window_class.default_position
         else:
-            window_class.default_position = position
+            window_class.position = position
         entries[name] = DockEntry(window_class, position)
 
     @classmethod

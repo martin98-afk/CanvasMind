@@ -174,9 +174,10 @@ class CanvasPage(QWidget):
 
     def inject_llm_contexts(self):
         """注册大模型上下文菜单，会出现在右边大模型对话框的上下文上拉框中"""
-        ContextRegistry.register("画布节点", self.extract_graph_info, self.select_node_by_name)
-        ContextRegistry.register("全局变量", self.extract_var_info, lambda *args, **kwargs: None)
-        ContextRegistry.register("组件信息", self.get_component_info, lambda *args, **kwargs: None)
+        self.context_register = ContextRegistry()
+        self.context_register.register("画布节点", self.extract_graph_info, self.select_node_by_name)
+        self.context_register.register("全局变量", self.extract_var_info, lambda *args, **kwargs: None)
+        self.context_register.register("组件信息", self.get_component_info, lambda *args, **kwargs: None)
 
     def select_node_by_name(self, name_list):
         if name_list is None:
