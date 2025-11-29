@@ -58,13 +58,11 @@ class CanvasUISetUp:
     def hide_splitter(self):
         """强制 splitter 回到默认尺寸，无视用户拖动历史"""
         self.splitter.setSizes(HIDE_SPLITTER_SIZES)
-        # 可选：刷新布局
         self.splitter.update()
 
     def show_splitter(self):
         """强制 splitter 恢复到默认尺寸"""
         self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
-        # 可选：刷新布局
         self.splitter.update()
 
     def create_environment_selector(self):

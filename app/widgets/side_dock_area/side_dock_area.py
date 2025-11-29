@@ -59,6 +59,17 @@ class SideDockArea(QWidget):
 
         self._load_plugins(context_id)
 
+    def switch_to(self, tool_name):
+        """切换到指定工具面板"""
+        view = self.get_tool_instance(tool_name)
+        if view is None:
+            return
+        self.tool_panel.set_checked(tool_name)
+        if view.default_position == DockPosition.TOP:
+            self._show_top_tool(tool_name)
+        else:
+            self._show_bottom_tool(tool_name)
+
     def _show_top_tool(self, tool_name):
         view = self.get_tool_instance(tool_name)
         idx = self.top_stack.indexOf(view)
@@ -93,13 +104,13 @@ class SideDockArea(QWidget):
         # 如果上次更新时没有内容，现在有内容了需要更新splitter,如果上次有内容，这次没有了也需要更新
         if self.last_content_visible and not (self._top_visible or self._bottom_visible):
             self.splitter.setSizes([0, 0])
-            self.page.ui_manager.hide_splitter()
+            self.page.hide_splitter()
             self.last_content_visible = False
 
             return
         elif not self.last_content_visible and (self._top_visible or self._bottom_visible):
             self.last_content_visible = True
-            self.page.ui_manager.show_splitter()
+            self.page.show_splitter()
 
         if self._top_visible and self._bottom_visible:
             self.splitter.setSizes([1, 1])

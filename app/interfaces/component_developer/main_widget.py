@@ -7,71 +7,37 @@ import uuid
 from pathlib import Path
 
 from PyQt5.QtCore import Qt, QTimer, QSize
-from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView,
-    QFormLayout, QTableWidget
+    QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem
 )
 from loguru import logger
 from qfluentwidgets import (
-    CardWidget, BodyLabel, LineEdit, TableWidget, MessageBox, FluentIcon, TextEdit, TransparentToolButton,
-    SegmentedWidget, TransparentDropDownToolButton, Action, RoundMenu,
-    SimpleCardWidget
+    BodyLabel, MessageBox, FluentIcon, TransparentToolButton,
+    SegmentedWidget, TransparentDropDownToolButton, Action, RoundMenu
 )
 from qfluentwidgets.window.stacked_widget import StackedWidget
 
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, ConnectionType
 from app.interfaces.component_developer.component_history_manager import ComponentHistoryManager
-from app.interfaces.component_developer.port_editory_widget import PortEditorWidget
-from app.interfaces.component_developer.property_editory_widget import PropertyEditorWidget
+from app.interfaces.component_developer.constants import *
 from app.interfaces.component_developer.message_manager import MessageManager
 from app.scan_components import resource_path
+from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from app.templates.component_templates import default_templates
 from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.code_editor.code_editer import CodeEditorWidget
-from app.widgets.ipython_console.ipython_console import IPythonConsoleManager  # 假设更新后的类名
-from app.widgets.ipython_console.variable_explorer import VariableExplorerWidget
 from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
 
 
 class ComponentDeveloperPage(QWidget):
     """组件开发主界面"""
-    MODULE_TO_PACKAGE_MAP = {
-        # 机器学习 / 计算机视觉
-        'sklearn': 'scikit-learn',
-        'skimage': 'scikit-image',
-        'cv2': 'opencv-python',
-        # 图像处理
-        'PIL': 'Pillow',  # from PIL import Image
-        # Web 解析
-        'bs4': 'beautifulsoup4',
-        # 配置与序列化
-        'yaml': 'PyYAML',
-        'dateutil': 'python-dateutil',  # from dateutil.parser import ...
-        'jwt': 'PyJWT',  # import jwt
-        # 加密
-        'Crypto': 'pycryptodome',  # 注意：不是 pycrypto
-        # 'Cryptodome': 'pycryptodomex',  # 如果用这个变体才需要
-        # 串口通信
-        'serial': 'pyserial',
-        # Markdown 渲染
-        'markdown': 'Markdown',  # 包名首字母大写
-        # 文档解析
-        'docx': 'python-docx',
-        # Faker 数据生成
-        'faker': 'Faker',  # 包名大写
-        # 类型提示（可选）
-        'typing_extensions': 'typing-extensions',  # 模块名下划线，包名中划线
-        # TOML（第三方库）
-        'tomli': 'tomli',
-        'tomli_w': 'tomli-w',
-    }
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.home = parent
+        self.package_manager = self.home.package_manager
         self.setObjectName("ComponentDeveloperWidget")
         self._current_component_file = None
         self._current_component_code = ""  # 存储当前加载的代码
@@ -89,18 +55,18 @@ class ComponentDeveloperPage(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         # 左侧：组件树和开发区域
-        main_splitter = ModernSplitter(Qt.Horizontal)
+        self.splitter = ModernSplitter(Qt.Horizontal)
         # --- 修改：左侧：组件树 ---
         self.component_tree_panel = ComponentTreePanel(self)
         self.component_tree = self.component_tree_panel.tree  # 保留对 tree 的直接引用（如果已有代码依赖）
-        main_splitter.addWidget(self.component_tree_panel)  # 将新的左侧容器添加到    主分割器
+        self.splitter.addWidget(self.component_tree_panel)  # 将新的左侧容器添加到    主分割器
         # --- 修改结束 ---
         # 代码编辑框
         code_widget = QWidget(self)
         code_layout = QVBoxLayout(code_widget)
         code_layout.setContentsMargins(0, 0, 0, 0)
         # 代码编辑器
-        self.code_editor = CodeEditorWidget(self, self.home.package_manager.get_current_python_exe())
+        self.code_editor = CodeEditorWidget(self, self.package_manager.get_current_python_exe())
         # 保存按钮
         save_layout = QHBoxLayout()
         code_btn = TransparentToolButton(get_icon("代码执行"), parent=self)
@@ -130,118 +96,40 @@ class ComponentDeveloperPage(QWidget):
         save_layout.addWidget(cancel_btn)
         code_layout.addLayout(save_layout)
         code_layout.addWidget(self.code_editor, stretch=1)
-        main_splitter.addWidget(code_widget)
+        self.splitter.addWidget(code_widget)
 
         # 右侧：组件属性
-        right_widgets = QWidget(self)
-        vBoxLayout = QVBoxLayout(right_widgets)
-        vBoxLayout.setContentsMargins(3, 3, 3, 3)
-        vBoxLayout.setSpacing(3)  # 可选：移除组件之间的间距（如果不需要）
-
-        self.pivot = SegmentedWidget(self)
-        self.stackedWidget = StackedWidget(self)
-        self.stackedWidget.setAnimationEnabled(False)
-        # 组件属性
-        info_interface = QWidget()
-        info_layout = QVBoxLayout(info_interface)
-        info_layout.setContentsMargins(0, 0, 0, 0)
-        # --- 基本信息卡片 ---
-        basic_info_widget = SimpleCardWidget()
-        # 使用水平布局来并排放置信息和依赖
-        basic_info_h_layout = QHBoxLayout(basic_info_widget)
-        basic_info_h_layout.setContentsMargins(0, 0, 0, 0)  # 设置整体边距
-        # 左侧：名称、分类、描述
-        left_form_widget = QWidget(self)  # 容器用于左侧表单
-        left_form_layout = QFormLayout(left_form_widget)
-        self.name_edit = LineEdit()
-        self.category_edit = LineEdit()
-        self.description_edit = LineEdit()
-        left_form_layout.addRow(BodyLabel("组件基本信息:"))
-        left_form_layout.addRow(BodyLabel("组件名称:"), self.name_edit)
-        left_form_layout.addRow(BodyLabel("组件分类:"), self.category_edit)
-        left_form_layout.addRow(BodyLabel("组件描述:"), self.description_edit)
-        # 右侧：依赖 requirements
-        right_req_widget = QWidget(self)  # 容器用于右侧依赖
-        right_req_layout = QVBoxLayout(right_req_widget)  # 垂直布局放标签和编辑器
-        right_req_layout.addWidget(BodyLabel("组件依赖:"))  # 标签
-        self.requirements_edit = TextEdit()  # 使用 qfluentwidgets 的 TextEdit
-        self.requirements_edit.setFixedHeight(115)  # 设置固定高度，或使用 setMaximumHeight
-        right_req_layout.addWidget(self.requirements_edit)  # 编辑器
-        # 将左右两个容器添加到水平布局
-        basic_info_h_layout.addWidget(left_form_widget)
-        basic_info_h_layout.addWidget(right_req_widget)
-        # 设置拉伸因子，让左侧稍微窄一些，右侧稍微宽一些，或者相等
-        basic_info_h_layout.setStretch(0, 1)  # 左侧 (信息)
-        basic_info_h_layout.setStretch(1, 1)  # 右侧 (依赖)
-        info_layout.addWidget(basic_info_widget)
-        # 端口编辑器（上下布局）
-        port_splitter = ModernSplitter(Qt.Horizontal)
-        # 输入输出端口编辑器
-        self.input_port_editor = PortEditorWidget("input")
-        self.output_port_editor = PortEditorWidget("output")
-        port_splitter.addWidget(self.input_port_editor)
-        port_splitter.addWidget(self.output_port_editor)
-        port_splitter.setSizes([200, 100])  # 初始大小
-        info_layout.addWidget(port_splitter, stretch=1)
-        # 属性编辑器
-        self.property_editor = PropertyEditorWidget(self)
-        info_layout.addWidget(self.property_editor, stretch=1)
-        self.addSubInterface(info_interface, "component_info", "组件属性", get_icon("配置"))
-
-        # --- Debug 区域：包含 CollectionEditor 和 IPython Console --
-        # 创建中央部件
-        central_widget = QWidget(self)
-        central_layout = QVBoxLayout(central_widget)
-        central_layout.setContentsMargins(0, 0, 0, 0)
-        # 创建变量浏览器
-        self.var_explorer = VariableExplorerWidget(
-            parent=self, kernel_manager=None  # 先不设置内核管理器
-        )
-        # 创建Console管理器
-        self.console_manager = IPythonConsoleManager(
-            parent=self, package_manager=self.home.package_manager, var_explorer=self.var_explorer
-        )
-
-        # 创建垂直分割器
-        splitter = ModernSplitter(Qt.Vertical)
-        splitter.addWidget(self.var_explorer)
-        splitter.addWidget(self.console_manager)
-        splitter.setSizes([300, 400])  # 变量浏览器较小，控制台较大
-
-        central_layout.addWidget(splitter)
-        self.addSubInterface(central_widget, "debug_interface", "组件调试", get_icon("调试"))
-
-        # --- 新增：历史记录卡片 ---
-        self.history_card = CardWidget(self)
-        history_card_layout = QVBoxLayout(self.history_card)
-        history_card_layout.setContentsMargins(10, 10, 10, 10)  # 设置内边距
-        history_label = BodyLabel("编辑历史:")
-        self.history_table = TableWidget(self)
-        self.history_table.setColumnCount(2)  # 只显示版本和时间
-        self.history_table.setHorizontalHeaderLabels(["版本", "保存时间"])
-        self.history_table.verticalHeader().hide()
-        self.history_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.history_table.setSelectionBehavior(QTableWidget.SelectItems)
-        self.history_table.setSelectionMode(QTableWidget.ContiguousSelection)
-        # 设置版本列宽度自适应内容，时间列拉伸填充
-        self.history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 版本列
-        self.history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)  # 时间列
-        # 连接双击信号
+        self.side_dock_area = SideDockArea(self, "组件开发")
+        self.component_info = self.side_dock_area.get_tool_instance("组件属性面板")
+        self.name_edit = self.component_info.name_edit  # Fixed expression
+        self.category_edit = self.component_info.category_edit  # Fixed expression
+        self.description_edit = self.component_info.description_edit  # Fixed expression
+        self.requirements_edit = self.component_info.requirements_edit  # Fixed expression
+        self.input_port_editor = self.component_info.input_port_editor
+        self.output_port_editor = self.component_info.output_port_editor
+        self.property_editor = self.component_info.property_editor
+        self.console_manager = self.side_dock_area.get_tool_instance("多终端调试面板").console_manager
+        self.history_table = self.side_dock_area.get_tool_instance("组件历史管理").history_table
         self.history_table.itemDoubleClicked.connect(self._load_history_code)
-        history_card_layout.addWidget(history_label)
-        history_card_layout.addWidget(self.history_table)
-        self.addSubInterface(self.history_card, "history_card", "组件历史", FluentIcon.HISTORY)
-        self.pivot.setCurrentItem("component_info")
-        vBoxLayout.addWidget(self.pivot)
-        vBoxLayout.addWidget(self.stackedWidget, 1)
-        main_splitter.addWidget(right_widgets)
+        self.splitter.addWidget(self.side_dock_area)
         # 先设置 stretch，让左侧可收缩
-        main_splitter.setStretchFactor(0, 0)  # 左侧不拉伸
-        main_splitter.setStretchFactor(1, 1)  # 中间拉伸
-        main_splitter.setStretchFactor(2, 1)  # 右侧拉伸
+        self.splitter.setStretchFactor(0, 0)  # 左侧不拉伸
+        self.splitter.setStretchFactor(1, 1)  # 中间拉伸
+        self.splitter.setStretchFactor(2, 0)  # 右侧拉伸
         # 再设置一个“合理但小”的初始尺寸（避免 10 太小被忽略）
-        main_splitter.setSizes([50, 450, 450])  # 50 比 10 更可能生效
-        layout.addWidget(main_splitter)
+        self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)  # 50 比 10 更可能生效
+        layout.addWidget(self.splitter)
+        layout.addWidget(self.side_dock_area.tool_panel)
+        
+    def hide_splitter(self):
+        """强制 splitter 回到默认尺寸，无视用户拖动历史"""
+        self.splitter.setSizes(HIDE_SPLITTER_SIZES)
+        self.splitter.update()
+
+    def show_splitter(self):
+        """强制 splitter 恢复到默认尺寸"""
+        self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
+        self.splitter.update()
 
     def _connect_signals(self):
         """连接信号"""
@@ -265,17 +153,6 @@ class ComponentDeveloperPage(QWidget):
         self.code_editor.replace_text_preserving_view(template_code)
         self._current_component_code = template_code
         MessageManager.success(f"已切换到模板: {template_name}", "", self)
-
-    def addSubInterface(self, widget, objectName: str, text: str, icon: QIcon):
-        widget.setObjectName(objectName)
-        self.stackedWidget.addWidget(widget)
-        # 使用全局唯一的 objectName 作为路由键
-        self.pivot.addItem(
-            routeKey=objectName,
-            text=text,
-            onClick=lambda: self.stackedWidget.setCurrentWidget(widget),
-            icon=icon
-        )
 
     def _load_existing_components(self):
         """加载现有组件"""
@@ -410,8 +287,7 @@ class ComponentDeveloperPage(QWidget):
 
     def _run_component_code(self):
         """运行当前编辑器中的组件代码"""
-        self.pivot.setCurrentItem("debug_interface")
-        self.stackedWidget.setCurrentIndex(1)
+        self.side_dock_area.switch_to("多终端调试面板")
         local_import = """# -*- coding: utf-8 -*-
 try:
     from app.components.base import *
@@ -768,34 +644,9 @@ except:
                 if node.module:
                     imported_modules.add(node.module.split('.')[0])
 
-        builtin_modules = set(
-            ['__future__', 'abc', 'aifc', 'argparse', 'array', 'ast', 'asynchat', 'asyncio', 'asyncore', 'atexit',
-             'audioop', 'base64', 'bdb', 'binascii', 'binhex', 'bisect', 'builtins', 'bz2', 'cProfile', 'calendar',
-             'cgi', 'cgitb', 'chunk', 'cmath', 'cmd', 'code', 'codecs', 'codeop', 'collections', 'colorsys',
-             'compileall', 'concurrent', 'configparser', 'contextlib', 'contextvars', 'copy', 'copyreg', 'crypt', 'csv',
-             'ctypes', 'curses', 'dataclasses', 'datetime', 'dbm', 'decimal', 'difflib', 'dis', 'distutils', 'doctest',
-             'email', 'encodings', 'ensurepip', 'enum', 'errno', 'faulthandler', 'fcntl', 'filecmp', 'fileinput',
-             'fnmatch', 'formatter', 'fractions', 'ftplib', 'functools', 'gc', 'getopt', 'getpass', 'gettext', 'glob',
-             'graphlib', 'grp', 'gzip', 'hashlib', 'heapq', 'hmac', 'html', 'http', 'idlelib', 'imaplib', 'imghdr',
-             'imp', 'importlib', 'inspect', 'io', 'ipaddress', 'itertools', 'json', 'keyword', 'lib2to3', 'linecache',
-             'locale', 'logging', 'lzma', 'mailbox', 'mailcap', 'marshal', 'math', 'mimetypes', 'mmap', 'modulefinder',
-             'msilib', 'msvcrt', 'multiprocessing', 'netrc', 'nis', 'nntplib', 'ntpath', 'numbers', 'operator',
-             'optparse', 'os', 'ossaudiodev', 'parser', 'pathlib', 'pdb', 'pickle', 'pickletools', 'pipes', 'pkgutil',
-             'platform', 'plistlib', 'poplib', 'posix', 'posixpath', 'pprint', 'profile', 'pstats', 'pty', 'pwd',
-             'py_compile', 'pyclbr', 'pydoc', 'queue', 'quopri', 'random', 're', 'readline', 'reprlib', 'resource',
-             'rlcompleter', 'runpy', 'sched', 'secrets', 'select', 'selectors', 'shelve', 'shlex', 'shutil', 'signal',
-             'site', 'smtpd', 'smtplib', 'sndhdr', 'socket', 'socketserver', 'spwd', 'sqlite3', 'sre', 'sre_compile',
-             'sre_constants', 'sre_parse', 'ssl', 'stat', 'statistics', 'string', 'stringprep', 'struct', 'subprocess',
-             'sunau', 'symbol', 'symtable', 'sys', 'sysconfig', 'syslog', 'tabnanny', 'tarfile', 'telnetlib',
-             'tempfile', 'termios', 'test', 'textwrap', 'threading', 'time', 'timeit', 'tkinter', 'token', 'tokenize',
-             'trace', 'traceback', 'tracemalloc', 'tty', 'turtle', 'turtledemo', 'types', 'typing', 'unicodedata',
-             'unittest', 'urllib', 'uu', 'uuid', 'venv', 'warnings', 'wave', 'weakref', 'webbrowser', 'winreg',
-             'winsound', 'wsgiref', 'xdrlib', 'xml', 'xmlrpc', 'zipapp', 'zipfile', 'zipimport', 'zlib', 'zoneinfo']
-        )
-
-        external_packages = imported_modules - builtin_modules
+        external_packages = imported_modules - BUILTIN_MODULES
         resolved_packages = {
-            self.MODULE_TO_PACKAGE_MAP.get(mod, mod)
+            MODULE_TO_PACKAGE_MAP.get(mod, mod)
             for mod in external_packages
         }
 
@@ -947,7 +798,7 @@ except:
             self.history_table.insertRow(row)
             # 版本号单元格现在不可编辑
             version_item = QTableWidgetItem(history['version'])
-            # version_item.setFlags(version_item.flags() | Qt.ItemIsEditable) # 移除可编辑标志
+            version_item.setFlags(version_item.flags() | Qt.ItemIsEditable) # 移除可编辑标志
             self.history_table.setItem(row, 0, version_item)
             # 时间单元格现在也不可编辑
             timestamp_item = QTableWidgetItem(history['timestamp'])
