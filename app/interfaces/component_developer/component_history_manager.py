@@ -1,39 +1,11 @@
 # -*- coding: utf-8 -*-
-import ast
 import datetime
 import json
-import re
-import shutil
-import textwrap
-import uuid
+
 from pathlib import Path
-
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QSize
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView,
-    QFormLayout, QDialog, QTableWidget
-)
 from loguru import logger
-from qfluentwidgets import (
-    CardWidget, BodyLabel, LineEdit, PushButton,
-    TableWidget, ComboBox, InfoBar, InfoBarPosition, MessageBox, FluentIcon, TextEdit, MessageBoxBase, SubtitleLabel,
-    DoubleSpinBox, TransparentToolButton, SegmentedWidget, TransparentDropDownToolButton, Action, RoundMenu,
-    SimpleCardWidget
-)
-from qfluentwidgets.window.stacked_widget import StackedWidget
 
-from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, PropertyDefinition, ConnectionType
-from app.scan_components import scan_components
-from app.templates.component_templates import default_templates
-from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
-from app.utils.utils import get_icon, canvas_file_dump_path
-from app.widgets.ipython_console.ipython_console import IPythonConsoleManager  # 假设更新后的类名
-from app.widgets.basic_widget.splitter import ModernSplitter
-from app.widgets.ipython_console.variable_explorer import VariableExplorerWidget
-from app.widgets.code_editor.code_editer import CodeEditorWidget
-from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
-from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
+from app.utils.utils import canvas_file_dump_path
 
 
 # --- 组件历史版本记录 ---
