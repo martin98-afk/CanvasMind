@@ -368,3 +368,67 @@ class CanvasUISetUp:
         self.parent.graph.set_layout_direction(
             PIPELINE_DIRECTION.get(self.parent.config.canvas_direction.value)
         )
+
+    def destroy_all(self):
+        """彻底销毁 UI 所有动态创建的内容，防止内存泄漏"""
+        try:
+            # 1. 断开 splitter 信号（如有）
+            if hasattr(self, 'splitter') and self.splitter:
+                self.splitter.blockSignals(True)
+                self.splitter.setParent(None)
+                self.splitter.deleteLater()
+                self.splitter = None
+
+            # 2. 销毁 nav_panel（组件树）
+            if hasattr(self, 'nav_panel') and self.nav_panel:
+                self.nav_panel.setParent(None)
+                self.nav_panel.deleteLater()
+                self.nav_panel = None
+                self.nav_view = None
+
+            # 3. 销毁 side_dock_area（属性面板等）
+            if hasattr(self, 'side_dock_area') and self.side_dock_area:
+                self.side_dock_area.setParent(None)
+                self.side_dock_area.deleteLater()
+                self.side_dock_area = None
+                self.property_panel = None
+                self.ipython_console = None
+                self.variable_explorer = None
+
+            # 4. 销毁悬浮按钮容器
+            if hasattr(self, 'buttons_container') and self.buttons_container:
+                self.buttons_container.setParent(None)
+                self.buttons_container.deleteLater()
+                self.buttons_container = None
+                self.run_btn = None
+                self.stop_btn = None
+                self.save_btn = None
+                self.export_model_btn = None
+                self.close_btn = None
+
+            # 5. 销毁快捷节点容器
+            if hasattr(self, 'nodes_container') and self.nodes_container:
+                self.nodes_container.setParent(None)
+                self.nodes_container.deleteLater()
+                self.nodes_container = None
+
+            # 6. 销毁名称标签
+            if hasattr(self, 'name_container') and self.name_container:
+                self.name_container.setParent(None)
+                self.name_container.deleteLater()
+                self.name_container = None
+
+            # 7. 销毁环境选择器
+            if hasattr(self, 'env_combo') and self.env_combo:
+                container = self.env_combo.parent()
+                if container:
+                    container.setParent(None)
+                    container.deleteLater()
+                self.env_combo = None
+
+            # 8. 断开 parent 引用（谨慎！确保 parent 不依赖这些）
+            self.parent = None
+
+        except Exception as e:
+            from loguru import logger
+            logger.warning(f"CanvasUISetUp.destroy_all() 遇到异常（可忽略）: {e}")

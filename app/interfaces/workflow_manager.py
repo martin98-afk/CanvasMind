@@ -12,7 +12,7 @@ from qfluentwidgets import (
 )
 
 from app.interfaces.canvas_interaface import CanvasPage
-from app.scan_components import scan_components, cleanup_dynamic_modules, ComponentScanner
+from app.scan_components import ComponentScanner
 from app.scheduler.node_recommendation_engine import NodeRecommendationEngine
 from app.utils.config import Settings
 from app.utils.utils import get_icon
