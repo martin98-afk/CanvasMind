@@ -813,7 +813,7 @@ except:
         return lines, package_lines
 
     def _save_component(self, delete_original_file: bool = True):
-        """保存组件"""
+        """保存组件（带 AST 语法校验）"""
         try:
             # 验证基本信息
             name = self.name_edit.text().strip()
@@ -821,26 +821,43 @@ except:
             if not name or not category:
                 MessageManager.warning("请输入组件名称和分类！", "", self)
                 return
-            # 生成组件代码
+
+            # 获取当前代码
             code = self.code_editor.get_code()
             if not code.strip():
                 MessageManager.warning("请输入组件代码！", "", self)
                 return
-            # 保存到文件，传入原始文件路径
 
+            # ✅ 新增：AST 语法校验
+            try:
+                ast.parse(code)
+            except SyntaxError as e:
+                # 提取错误信息（行号、错误描述）
+                error_msg = f"代码第 {e.lineno} 行：{e.msg}"
+                MessageManager.error(f"代码存在语法错误，无法保存！\n{error_msg}", "语法错误", self)
+                return  # ⛔ 阻止保存
+            except Exception as e:
+                # 其他 AST 错误（理论上不会发生）
+                MessageManager.error(f"代码解析失败：{e}", "解析错误", self)
+                return
+
+            # 保存到文件
             self._save_component_to_file(category, name, code, self._current_component_file, delete_original_file)
-            # --- 新增：保存历史记录 (不添加 COMPONENT_IMPORT_CODE) ---
+
+            # 保存历史记录
             if self._current_component_file:
-                # 直接使用编辑器中的代码，不修改
                 ComponentHistoryManager.save_history(self._current_component_file, name, code)
-                self._load_history_list(self._current_component_file)  # 保存后刷新历史列表
-            # --- 新增结束 ---
+                self._load_history_list(self._current_component_file)
+
             # 刷新组件树
             self.component_tree.refresh_components()
             MessageManager.success("组件保存成功！", "", self)
+
             # 重新加载当前组件
             self._load_component_filepath(self._current_component_file)
+
         except Exception as e:
+            traceback.print_exc()
             MessageManager.error(f"保存组件失败: {str(e)}", "", self)
 
     def _save_component_to_file(self, category, name, code, original_file_path=None, delete_original_file=True):
