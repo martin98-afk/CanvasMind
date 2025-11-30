@@ -68,8 +68,8 @@ class ComponentUsageTracker:
                 break
             for change_type, file_path in changes:
                 path = Path(file_path)
-                print(path)
-                if path.suffix == ".workflow.json":
+                logger.info(f"文件变化: {path} {change_type}")
+                if path.suffix == ".json":
                     if change_type in (Change.added, Change.modified):
                         await self._update_index(path)
                     elif change_type == Change.deleted:
@@ -96,6 +96,7 @@ class ComponentUsageTracker:
                 node_name = node_data.get("name", "Unknown")
                 stable_key = stable_key_map.get(node_id, "")
                 full_path = stable_key.split("||")[0] if "||" in stable_key else ""
+                logger.info(f"加载组件: {full_path} {node_name} {version}")
                 if not full_path:
                     continue
 
