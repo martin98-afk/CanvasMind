@@ -74,7 +74,6 @@ class Component(BaseComponent):
                 ),
             }
         ),
-        
     }
     def run(self, params, inputs):
         import os
