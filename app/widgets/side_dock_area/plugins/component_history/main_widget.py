@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QVBoxLayout, QTableWidget, QHeaderView, QTableWidgetItem
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtWidgets import QVBoxLayout, QTableWidget, QHeaderView, QTableWidgetItem, QWidget
 from qfluentwidgets import (
     FluentIcon, BodyLabel, TableWidget, ComboBox
 )
+
+from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 
@@ -20,21 +22,32 @@ class ComponentHistoryToolWindow(ToolWindow):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(12)
-
+        splitter = ModernSplitter(Qt.Vertical)
         # === 编辑历史 ===
-        history_label = BodyLabel("编辑历史:")
+        history_container = QWidget(self)
+        history_layout = QVBoxLayout(history_container)
+        history_layout.setContentsMargins(0, 0, 0, 0)
+
+        history_label = BodyLabel("组件版本记录:")
+        # 替换原来的 history_table 设置
         self._history_table = TableWidget(self)
-        self._history_table.setColumnCount(2)
-        self._history_table.setHorizontalHeaderLabels(["版本", "保存时间"])
+        self._history_table.setColumnCount(3)
+        self._history_table.setHorizontalHeaderLabels(["版本", "保存时间", "说明"])
         self._history_table.verticalHeader().hide()
-        self._history_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        # ✅ 允许对“说明”列编辑，其他列只读
+        self._history_table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.SelectedClicked)
         self._history_table.setSelectionBehavior(QTableWidget.SelectItems)
-        self._history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self._history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        layout.addWidget(history_label)
-        layout.addWidget(self._history_table)
+        header = self._history_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.Stretch)  # 说明列自适应
+        history_layout.addWidget(history_label)
+        history_layout.addWidget(self._history_table)
 
         # === 组件使用情况 ===
+        usage_container = QWidget(self)
+        usage_layout = QVBoxLayout(usage_container)
+        usage_layout.setContentsMargins(0, 0, 0, 0)
         usage_label = BodyLabel("组件使用情况:")
         self._usage_table = TableWidget(self)
         self._usage_table.setColumnCount(3)  # 画布、节点、版本策略
@@ -44,10 +57,15 @@ class ComponentHistoryToolWindow(ToolWindow):
         self._usage_table.setSelectionBehavior(QTableWidget.SelectRows)
         header = self._usage_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        layout.addWidget(usage_label)
-        layout.addWidget(self._usage_table)
+        usage_layout.addWidget(usage_label)
+        usage_layout.addWidget(self._usage_table)
+
+        splitter.addWidget(history_container)
+        splitter.addWidget(usage_container)
+        splitter.setSizes([300, 400])  # 变量浏览器较小，控制台较大
+        layout.addWidget(splitter)
 
     @property
     def history_table(self):
@@ -67,20 +85,12 @@ class ComponentHistoryToolWindow(ToolWindow):
         return versions
 
     def update_usage_table(self, usage_records):
-        """
-        更新使用情况表格
-        :param usage_records: List[dict]，每个含 keys: canvas_name, node_name, version
-        """
+        self._current_usage_records = usage_records  # ✅ 保存引用供 combo 回调更新
         self._usage_table.setRowCount(len(usage_records))
-        all_versions = self.get_all_versions()
-        strategy_options = ["同步"] + all_versions  # 同步 + 所有历史版本
 
         for row, record in enumerate(usage_records):
-            # 画布
             self._usage_table.setItem(row, 0, QTableWidgetItem(record.get("canvas_name", "")))
-            # 节点
             self._usage_table.setItem(row, 1, QTableWidgetItem(record.get("node_name", "")))
-            # 版本策略下拉框
             combo = self._setup_strategy_combo(row, record)
             self._usage_table.setCellWidget(row, 2, combo)
 
@@ -93,13 +103,20 @@ class ComponentHistoryToolWindow(ToolWindow):
 
     def _setup_strategy_combo(self, row, record):
         combo = ComboBox(self)
+        combo.setMinimumWidth(80)
         all_versions = ["同步"] + self.get_all_versions()
         combo.addItems(all_versions)
         current = record.get("version", "同步")
         combo.setCurrentText(current if current in all_versions else "同步")
 
+        # ✅ 用 row 作为 key，不依赖闭包引用 record
         def on_change(text):
-            canvas_path = record["canvas_path"]  # 确保 record 中有 canvas_path（Path 对象）
+            # 动态从 usage_records 中更新
+            usage_records = getattr(self, '_current_usage_records', [])
+            if 0 <= row < len(usage_records):
+                usage_records[row]["version"] = text  # ✅ 实时更新！
+
+            canvas_path = record["canvas_path"]
             node_name = record["node_name"]
             self.strategy_changed.emit(str(canvas_path), node_name, text)
 

@@ -9,7 +9,7 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Set
-
+from watchfiles import watch, Change
 from PyQt5.QtCore import QThread, pyqtSignal, QEasingCurve, Qt, QTimer, QSize
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QDialog, QTextEdit, QLabel, QFileDialog, QHBoxLayout, QFrame
@@ -27,6 +27,35 @@ from app.utils.service_manager import SERVICE_MANAGER
 from app.utils.utils import ansi_to_html, get_icon
 from app.widgets.card_widget.project_card import ProjectCard
 from app.widgets.dialog_widget.project_export_dialog import ProjectExportFlowDialog
+
+
+# --- 新增：Watchfiles 监听线程 ---
+class WatchfilesThread(QThread):
+    projects_changed = pyqtSignal(list)  # [(change_type, path_str), ...]
+
+    def __init__(self, watch_dirs: List[Path], parent=None):
+        super().__init__(parent)
+        self.watch_dirs = [str(p.resolve()) for p in watch_dirs]
+        self._stop = False
+
+    def run(self):
+        try:
+            for changes in watch(*self.watch_dirs, stop_event=None):
+                if self._stop:
+                    break
+                # 只关注 model.workflow.json
+                filtered = []
+                for change_type, path in changes:
+                    if os.path.basename(path) in ("model.workflow.json", "preview.png"):
+                        print(f"[Watchfiles] {change_type}: {path}")
+                        filtered.append((change_type, path))
+                if filtered:
+                    self.projects_changed.emit(filtered)
+        except Exception as e:
+            logger.error(f"Watchfiles error: {e}")
+
+    def stop(self):
+        self._stop = True
 
 
 class ProjectRunnerThread(QThread):
@@ -72,7 +101,6 @@ class ProjectRunnerThread(QThread):
         except Exception as e:
             self.error.emit(traceback.format_exc())
 
-
 class ExportedProjectsPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -83,7 +111,7 @@ class ExportedProjectsPage(QWidget):
         self._is_loading = False
         self._filter_text = ""
         self.page_size = 12
-        self.fixed_card_count = 1  # 只有“导入项目”
+        self.fixed_card_count = 1
         self.current_page = 0
         self.total_pages = 1
         self.all_project_paths: List[str] = []
@@ -95,7 +123,7 @@ class ExportedProjectsPage(QWidget):
         self._refresh_pending = False
 
         self._setup_ui()
-        QTimer.singleShot(50, self.load_projects)
+        QTimer.singleShot(50, self._initial_load_and_start_watch)
 
     def _get_default_export_dir(self):
         default_dir = []
@@ -177,7 +205,6 @@ class ExportedProjectsPage(QWidget):
     def _calculate_cards_per_page(self) -> int:
         if not self.scroll_area or self.scroll_area.viewport().width() <= 0:
             return 12
-
         card_width = 400
         if self._card_map:
             sample_card = next(iter(self._card_map.values()))
@@ -185,37 +212,112 @@ class ExportedProjectsPage(QWidget):
                 card_width = sample_card.width()
         elif self._fixed_cards and self._fixed_cards[0].width() > 50:
             card_width = self._fixed_cards[0].width()
-
         margins = self.flow_layout.contentsMargins()
         spacing = self.flow_layout.horizontalSpacing()
         available_width = self.scroll_area.viewport().width() - margins.left() - margins.right()
-
         if available_width <= card_width:
             cards_per_row = 1
         else:
             cards_per_row = max(1, int((available_width + spacing) / (card_width + spacing)))
-
         return cards_per_row * 3
 
-    def _schedule_refresh(self):
-        if not hasattr(self, '_refresh_timer'):
-            self._refresh_timer = QTimer(self)
-            self._refresh_timer.setSingleShot(True)
-            self._refresh_timer.timeout.connect(self._load_projects_safe)
-        self._refresh_timer.start(150)
+    # --- 新增：初始加载 + 启动监听 ---
+    def _initial_load_and_start_watch(self):
+        self.load_projects()
+        self._start_watching()
 
-    def _load_projects_safe(self):
-        if not self._refresh_pending:
-            self._refresh_pending = True
-            self.load_projects()
-            self._refresh_pending = False
+    def _start_watching(self):
+        watch_dirs = self._get_default_export_dir()
+        self._watch_thread = WatchfilesThread(watch_dirs, self)
+        self._watch_thread.projects_changed.connect(self._on_projects_file_changed)
+        self._watch_thread.start()
 
+    def _on_projects_file_changed(self, changes: List[tuple]):
+        if not hasattr(self, '_watch_debounce_timer'):
+            self._watch_debounce_timer = QTimer(self)
+            self._watch_debounce_timer.setSingleShot(True)
+            self._watch_debounce_timer.timeout.connect(self._apply_watch_changes)
+            self._pending_watch_changes = []
+        self._pending_watch_changes.extend(changes)
+        self._watch_debounce_timer.start(300)
+
+    def _apply_watch_changes(self):
+        if not self._pending_watch_changes:
+            return
+        changes = self._pending_watch_changes.copy()
+        self._pending_watch_changes.clear()
+
+        # 用于记录哪些项目需要刷新（去重）
+        projects_to_refresh = set()
+        projects_to_remove = set()
+
+        for change_type, path in changes:
+            filename = os.path.basename(path)
+            project_dir = os.path.dirname(path)
+
+            if filename == "model.workflow.json":
+                if change_type == Change.deleted:
+                    projects_to_remove.add(project_dir)
+                else:
+                    if os.path.exists(path):
+                        projects_to_refresh.add(project_dir)
+            elif filename == "preview.png":
+                # preview.png 变化只影响刷新，不影响项目存在性
+                if os.path.exists(project_dir):  # 确保项目还存在
+                    projects_to_refresh.add(project_dir)
+        print(projects_to_refresh)
+        # 删除项目（仅由 workflow.json deleted 触发）
+        for proj in projects_to_remove:
+            self._known_projects.discard(proj)
+            self._project_info_map.pop(proj, None)
+            if proj in self._card_map:
+                card = self._card_map[proj]
+                self.flow_layout.removeWidget(card)
+                card.hide()
+                card.deleteLater()
+                del self._card_map[proj]
+
+        # 新增/刷新项目
+        for proj in projects_to_refresh:
+            # 如果是新项目（由 workflow.json 新增触发）
+            if proj not in self._known_projects:
+                if (Path(proj) / "model.workflow.json").exists():
+                    self._known_projects.add(proj)
+                    try:
+                        stat = Path(proj).stat()
+                        self._project_info_map[proj] = {
+                            'ctime_ts': stat.st_ctime,
+                            'ctime': datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M"),
+                        }
+                    except Exception:
+                        self._project_info_map[proj] = {'ctime_ts': 0, 'ctime': '未知'}
+
+                    # 创建新卡片
+                    try:
+                        card = ProjectCard(proj, self)
+                        card.run_btn.clicked.connect(lambda _, p=proj: self._run_project(p))
+                        card.edit_btn.clicked.connect(lambda _, p=proj: self._edit_project(p))
+                        card.service_btn.clicked.connect(lambda _, p=proj: self._toggle_service(p))
+                        card.view_log_btn.clicked.connect(lambda _, p=proj: self._view_project_log(p))
+                        card.delete_btn.clicked.connect(lambda _, p=proj: self._delete_project(p))
+                        card.hide()
+                        self._card_map[proj] = card
+                    except Exception:
+                        traceback.print_exc()
+                else:
+                    continue  # 不是有效项目，跳过
+
+            # 无论新旧，只要在 projects_to_refresh 中，就刷新
+            if proj in self._card_map:
+                self._card_map[proj].refresh()
+
+        self._apply_sort_and_filter_and_refresh()
+
+    # --- 原有逻辑：首次全量扫描 ---
     def load_projects(self):
         if self._is_loading:
             return
-
         self._is_loading = True
-        # 后台扫描（可选，这里简化为直接扫描）
         QTimer.singleShot(10, self._scan_projects)
 
     def _scan_projects(self):
@@ -235,16 +337,13 @@ class ExportedProjectsPage(QWidget):
                         }
                     except Exception:
                         project_info_map[str(item_path)] = {'ctime_ts': 0, 'ctime': '未知'}
-
         self._on_scan_finished(project_dirs, project_info_map)
 
     def _on_scan_finished(self, project_dirs: List[str], project_info_map: dict):
         self._is_loading = False
-
         self._project_info_map = project_info_map
         self._known_projects = set(project_dirs)
 
-        # 创建缺失的卡片
         for proj_path in project_dirs:
             if proj_path not in self._card_map:
                 try:
@@ -257,10 +356,8 @@ class ExportedProjectsPage(QWidget):
                     card.hide()
                     self._card_map[proj_path] = card
                 except Exception:
-                    import traceback
                     traceback.print_exc()
 
-        # 创建固定卡片
         if not self._fixed_cards:
             self._fixed_cards = [self._create_import_card()]
             for card in self._fixed_cards:
@@ -271,28 +368,23 @@ class ExportedProjectsPage(QWidget):
 
     def _create_import_card(self):
         from qfluentwidgets import FluentIcon
-
         import_card = CardWidget()
         import_card.setBorderRadius(12)
         import_card.setFixedSize(400, 330)
         layout = QVBoxLayout(import_card)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-
         icon = FluentIcon.FOLDER_ADD.icon()
         icon_label = QLabel()
         icon_label.setPixmap(icon.pixmap(64, 64))
         icon_label.setAlignment(Qt.AlignCenter)
-
         text_label = BodyLabel("导入项目")
         text_label.setAlignment(Qt.AlignCenter)
-
         layout.addStretch()
         layout.addWidget(icon_label)
         layout.addSpacing(40)
         layout.addWidget(text_label)
         layout.addStretch()
-
         import_card.mousePressEvent = lambda e: self.import_projects()
         import_card.setCursor(Qt.PointingHandCursor)
         return import_card
@@ -307,25 +399,21 @@ class ExportedProjectsPage(QWidget):
 
     def _show_page(self, page_index: int):
         self.current_page = page_index
-
         for card in self._fixed_cards:
             card.hide()
         for card in self._card_map.values():
             card.hide()
-
         while self.flow_layout.count():
             self.flow_layout.takeAt(0)
-
         if page_index == 0:
             for card in self._fixed_cards:
                 self.flow_layout.addWidget(card)
                 card.show()
-
             workflow_slots = self.page_size - self.fixed_card_count
             workflow_to_show = self.all_project_paths[:workflow_slots]
             for proj_path in workflow_to_show:
                 card = self._card_map.get(proj_path)
-                if card is not None:
+                if card:
                     self.flow_layout.addWidget(card)
                     card.show()
         else:
@@ -335,10 +423,9 @@ class ExportedProjectsPage(QWidget):
             workflow_to_show = self.all_project_paths[start:end]
             for proj_path in workflow_to_show:
                 card = self._card_map.get(proj_path)
-                if card is not None:
+                if card:
                     self.flow_layout.addWidget(card)
                     card.show()
-
         self.scroll_widget.adjustSize()
 
     def _on_page_changed(self, index: int):
@@ -364,32 +451,25 @@ class ExportedProjectsPage(QWidget):
     def _apply_sort_and_filter_and_refresh(self):
         if self._is_loading:
             return
-
         if not self._known_projects:
             self.all_project_paths = []
         else:
-            field_index = self.sort_field_combo.currentIndex()  # 0: ctime, 1: name
+            field_index = self.sort_field_combo.currentIndex()
             is_ascending = self.sort_order_button.isChecked()
-
             project_with_info = []
             for proj_path in self._known_projects:
                 info = self._project_info_map.get(proj_path, {})
                 ctime_ts = info.get('ctime_ts', 0)
                 name = Path(proj_path).name
-
                 if self._filter_text and self._filter_text not in name.lower():
                     continue
-
                 project_with_info.append((proj_path, ctime_ts, name))
-
-            if field_index == 0:  # 创建时间
+            if field_index == 0:
                 key_func = lambda x: x[1]
-            else:  # 名称
+            else:
                 key_func = lambda x: x[2].lower()
-
             project_with_info.sort(key=key_func, reverse=not is_ascending)
             self.all_project_paths = [item[0] for item in project_with_info]
-
         self.page_size = self._calculate_cards_per_page()
         total_projects = len(self.all_project_paths)
         if total_projects == 0:
@@ -404,7 +484,6 @@ class ExportedProjectsPage(QWidget):
                     self.total_pages = 1
                 else:
                     self.total_pages = 1 + ((remaining + self.page_size - 1) // self.page_size)
-
         self.pips_pager.setPageNumber(self.total_pages)
         target_page = min(self.current_page, self.total_pages - 1)
         self._show_page(target_page)
@@ -421,6 +500,19 @@ class ExportedProjectsPage(QWidget):
             self.page_size = new_page_size
             self._apply_sort_and_filter_and_refresh()
 
+    def _schedule_refresh(self):
+        if not hasattr(self, '_refresh_timer'):
+            self._refresh_timer = QTimer(self)
+            self._refresh_timer.setSingleShot(True)
+            self._refresh_timer.timeout.connect(self._load_projects_safe)
+        self._refresh_timer.start(150)
+
+    def _load_projects_safe(self):
+        if not self._refresh_pending:
+            self._refresh_pending = True
+            self.load_projects()
+            self._refresh_pending = False
+
     # ================== 业务逻辑 ==================
 
     def import_projects(self):
@@ -429,23 +521,20 @@ class ExportedProjectsPage(QWidget):
         )
         if not folder_path:
             return
-
         src_path = Path(folder_path)
         if not src_path.is_dir() or not (src_path / "model.workflow.json").exists():
             self.create_error_info("无效选择", "请选择包含 model.workflow.json 的项目文件夹")
             return
-
         base_name = src_path.name or "imported_project"
         dest_path = self.export_dir[0] / base_name
         counter = 1
         while dest_path.exists():
             dest_path = self.export_dir[0] / f"{base_name}_{counter}"
             counter += 1
-
         try:
             shutil.copytree(src_path, dest_path)
             self.create_success_info("导入成功", f"项目 “{dest_path.name}” 已导入")
-            self._schedule_refresh()
+            # 不再手动刷新，watchfiles 会自动捕获
         except Exception as e:
             self.create_error_info("导入失败", str(e))
 
@@ -749,3 +838,9 @@ class ExportedProjectsPage(QWidget):
 
     def create_error_info(self, title, content):
         InfoBar.error(title, content, parent=self, duration=3000)
+
+    def closeEvent(self, event):
+        if hasattr(self, '_watch_thread'):
+            self._watch_thread.stop()
+            self._watch_thread.wait()
+        super().closeEvent(event)

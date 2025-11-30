@@ -4,6 +4,7 @@ import json
 
 from pathlib import Path
 from loguru import logger
+from packaging.version import Version
 
 from app.utils.utils import canvas_file_dump_path
 
@@ -24,13 +25,17 @@ class ComponentHistoryManager:
                 (component_file_path.name + ComponentHistoryManager.HISTORY_FILE_SUFFIX))
 
     @staticmethod
-    def save_history(component_file_path: Path, component_name: str, code: str):
-        """保存当前代码到历史记录，如果与上一版本相同则不保存"""
+    def save_history(
+            component_file_path: Path,
+            component_name: str,
+            code: str,
+            current_signature: dict = None
+    ):
         history_file_path = ComponentHistoryManager.get_history_file_path(component_file_path)
-
         if not history_file_path:
             logger.error(f"无法为 {component_file_path} 生成历史记录文件路径")
             return
+
         histories = []
         if history_file_path.exists():
             try:
@@ -38,31 +43,51 @@ class ComponentHistoryManager:
                     histories = json.load(f)
             except (FileNotFoundError, json.JSONDecodeError) as e:
                 logger.error(f"读取历史记录文件失败: {e}")
-        # 检查当前代码是否与最近一次保存的代码相同
-        if histories and histories[-1].get('code') == code:
-            logger.info("代码未改变，跳过保存历史记录。")
-            return  # 如果代码相同，直接返回，不保存新版本
-        # 生成版本号 (V + 递增数字)
-        version_numbers = [int(h['version'][1:]) for h in histories if
-                           h['version'].startswith('V') and h['version'][1:].isdigit()]
-        next_version_num = max(version_numbers) + 1 if version_numbers else 1
-        version = f"V{next_version_num}"
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        history_entry = {
+
+        # 初始版本
+        if not histories:
+            version = "0.0.0"
+            logger.info(f"首次保存组件 {component_name}，版本: {version}")
+        else:
+            last = histories[-1]
+            if last.get("code") == code:
+                logger.info("代码未改变，跳过保存历史记录。")
+                return
+
+            last_sig = last.get("signature", {})
+            is_interface_changed = (current_signature != last_sig)
+
+            try:
+                last_ver = Version(last["version"])
+            except:
+                last_ver = Version("0.0.0")
+
+            if is_interface_changed:
+                version = f"{last_ver.major + 1}.0.0"
+            else:
+                version = f"{last_ver.major}.{last_ver.minor}.{last_ver.micro + 1}"
+
+        # 构建新记录
+        new_entry = {
             "version": version,
-            "timestamp": timestamp,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "component_name": component_name,
-            "code": code  # 存储原始代码，不添加 COMPONENT_IMPORT_CODE
+            "code": code,
+            "signature": current_signature or {},
+            "description": "初始版本" if not histories else "无"
         }
-        histories.append(history_entry)
-        # 限制历史记录数量 (例如，只保留最近10条)
-        max_histories = 10
-        histories = histories[-max_histories:]
+        histories.append(new_entry)
+
+        # 保留最近 20 条（避免丢失大版本）
+        histories = histories[-20:]
+
         try:
             with open(history_file_path, 'w', encoding='utf-8') as f:
                 json.dump(histories, f, ensure_ascii=False, indent=4)
         except Exception as e:
-            logger.error(f"保存历史记录文件失败: {e}")
+            logger.error(f"保存历史记录失败: {e}")
+
+        return version
 
     @staticmethod
     def load_histories(component_file_path: Path) -> list:

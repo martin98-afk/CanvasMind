@@ -19,6 +19,7 @@ from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleC
 
 from app.components.base import ArgumentType
 from app.utils.utils import get_icon, canvas_file_dump_path
+from app.widgets.property_panel.variable_detailed_popup import VariableDetailPopup
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
 
 
@@ -368,7 +369,15 @@ class PortWidget(QWidget):
         tree_widget = VariableTreeWidget(filtered_data, port_type, parent=self.main_window)
         browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
         browse_btn.setFixedSize(QSize(26, 20))
-        browse_btn.clicked.connect(tree_widget.show_detail)
+        self._detail_popup = None
+
+        def show_variable_detail():
+            if self._detail_popup is None:
+                self._detail_popup = VariableDetailPopup(parent=self)
+            self._detail_popup.set_data(filtered_data, title="变量详情")
+            self._detail_popup.show_at_left_of(browse_btn)
+
+        browse_btn.clicked.connect(show_variable_detail)
         title_layout.addWidget(browse_btn)
         card_layout.addLayout(title_layout)
         card_layout.addWidget(CardSeparator(info_card))

@@ -244,13 +244,13 @@ class GlobalVariableContext(BaseModel):
     def get_vars(self, extra_keys: List[str] = []):
         all_vars = []
         env_vars = self.env.get_all_env_vars()
-        for key in sorted(env_vars.keys()):
-            all_vars.append(f"env.{key}")
-        for key in sorted(self.custom.keys()):
-            all_vars.append(f"custom.{key}")
         for key in sorted(self.node_vars.keys()):
             all_vars.append(f"node_vars.{key}")
-        return all_vars + extra_keys
+        for key in sorted(self.custom.keys()):
+            all_vars.append(f"custom.{key}")
+        for key in sorted(env_vars.keys()):
+            all_vars.append(f"env.{key}")
+        return extra_keys + all_vars
 
     def to_dict(self) -> Dict[str, Any]:
         """兼容旧逻辑：返回扁平字典（仅 custom 变量）"""
@@ -624,7 +624,7 @@ class DataHandler:
                     except (ValueError, SyntaxError):
                         # ast.literal_eval 也失败了
                         self.logger.warning(f"Python字面量解析也失败: {type(data)} {data[:100]}...")
-                        raise ComponentError(f"JSON 输入格式错误或文件不存在: {type(data)} {data}", "JSON_PARSE_ERROR")
+                        return data
         else:
             raise ComponentError(f"不支持的 JSON 输入类型: {type(data)}", "JSON_TYPE_ERROR")
 

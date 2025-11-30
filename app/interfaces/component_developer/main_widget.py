@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import ast
+import json
 import re
 import shutil
 import textwrap
-import uuid
-import json
 import traceback
+import uuid
 from pathlib import Path
 
 from PyQt5.QtCore import Qt, QTimer, QSize
@@ -18,19 +18,19 @@ from qfluentwidgets import (
     TransparentDropDownToolButton, Action, RoundMenu
 )
 
-from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, ConnectionType
 from app.interfaces.component_developer.component_history_manager import ComponentHistoryManager
 from app.interfaces.component_developer.constants import *
 from app.interfaces.component_developer.message_manager import MessageManager
+from app.scan_components import ComponentUsageTracker
 from app.scan_components import resource_path
 from app.templates.component_templates import default_templates
 from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.code_editor.code_editer import CodeEditorWidget
-from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
+from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
 
 
@@ -152,6 +152,7 @@ class ComponentDeveloperPage(QWidget):
         self.description_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.requirements_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
+        self.history_table.itemChanged.connect(self._on_history_description_changed)
 
     def extract_current_code(self) -> str:
         """返回带组件名称和完整代码的上下文字符串"""
@@ -226,6 +227,8 @@ class ComponentDeveloperPage(QWidget):
         """根据文件路径重载组件"""
         file_map = {value: key for key, value in self.component_tree._file_map.items()}
         full_path = file_map.get(component_path)
+        print(full_path)
+        QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
         self._load_component(self.component_tree._components[full_path], full_path)
 
     def _load_component(self, component, full_path=None):
@@ -281,28 +284,38 @@ class ComponentDeveloperPage(QWidget):
                 self._load_history_list(self._current_component_file)
             else:
                 self.history_table.setRowCount(0)  # 如果没有文件路径，清空历史列表
-            # 加载节点在画布中的使用记录
-            if full_path:
-                usage_records = ComponentUsageTracker().get_usage(full_path)
-                # 转为 UI 所需格式
-                usage_list = [
-                    {
-                        "canvas_name": str(rec.canvas_path.stem).split(".workflow")[0],
-                        "canvas_path": rec.canvas_path,
-                        "node_name": rec.node_name,
-                        "version": rec.version
-                    }
-                    for rec in usage_records
-                ]
-                # 发送给你的历史工具窗口
-                history_tool = self.side_dock_area.get_tool_instance("组件历史管理")
-                history_tool.strategy_changed.connect(self._on_usage_strategy_changed)
-                if history_tool:
-                    history_tool.update_usage_table(usage_list)
             # --- 新增结束 ---
+            QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
         except Exception as e:
             traceback.print_exc()
             MessageManager.error(f"加载组件失败: {str(e)}", "", self)
+
+    def update_usage_table(self, full_path):
+        if full_path:
+            usage_records = ComponentUsageTracker().get_usage(full_path)
+            usage_list = [
+                {
+                    "canvas_name": str(rec.canvas_path.stem).split(".workflow")[0],
+                    "canvas_path": rec.canvas_path,
+                    "node_name": rec.node_name,
+                    "version": rec.version
+                }
+                for rec in usage_records
+            ]
+            history_tool = self.side_dock_area.get_tool_instance("组件历史管理")
+
+            # ✅ 关键修复：断开旧连接，避免重复绑定
+            try:
+                history_tool.strategy_changed.disconnect(self._on_usage_strategy_changed)
+            except TypeError:
+                # 未连接过，忽略
+                pass
+
+            # 再连接
+            history_tool.strategy_changed.connect(self._on_usage_strategy_changed)
+
+            if history_tool:
+                history_tool.update_usage_table(usage_list)
 
     def _on_usage_strategy_changed(self, canvas_path: str, node_name: str, strategy: str):
         """处理使用策略变更"""
@@ -329,10 +342,7 @@ class ComponentDeveloperPage(QWidget):
 
             # 3. 确定新版本
             if strategy == "同步":
-                # 获取当前组件最新版本
-                comp_map, _ = ComponentScanner().get_components()
-                comp_cls = comp_map.get(full_path)
-                new_version = getattr(comp_cls, "_version", "latest")
+                new_version = "latest"
             else:
                 new_version = strategy  # 如 "V2"
 
@@ -813,7 +823,7 @@ except:
         return lines, package_lines
 
     def _save_component(self, delete_original_file: bool = True):
-        """保存组件"""
+        """保存组件（带 AST 语法校验）"""
         try:
             # 验证基本信息
             name = self.name_edit.text().strip()
@@ -821,26 +831,54 @@ except:
             if not name or not category:
                 MessageManager.warning("请输入组件名称和分类！", "", self)
                 return
-            # 生成组件代码
+
+            # 获取当前代码
             code = self.code_editor.get_code()
             if not code.strip():
                 MessageManager.warning("请输入组件代码！", "", self)
                 return
-            # 保存到文件，传入原始文件路径
 
+            # ✅ 新增：AST 语法校验
+            try:
+                ast.parse(code)
+            except SyntaxError as e:
+                # 提取错误信息（行号、错误描述）
+                error_msg = f"代码第 {e.lineno} 行：{e.msg}"
+                MessageManager.error(f"代码存在语法错误，无法保存！\n{error_msg}", "语法错误", self)
+                return  # ⛔ 阻止保存
+            except Exception as e:
+                # 其他 AST 错误（理论上不会发生）
+                MessageManager.error(f"代码解析失败：{e}", "解析错误", self)
+                return
+
+            # 保存到文件
             self._save_component_to_file(category, name, code, self._current_component_file, delete_original_file)
-            # --- 新增：保存历史记录 (不添加 COMPONENT_IMPORT_CODE) ---
+
+            # 保存历史记录
             if self._current_component_file:
-                # 直接使用编辑器中的代码，不修改
-                ComponentHistoryManager.save_history(self._current_component_file, name, code)
-                self._load_history_list(self._current_component_file)  # 保存后刷新历史列表
-            # --- 新增结束 ---
+                # ✅ 构建当前接口签名
+                current_signature = {
+                    "inputs": self.input_port_editor.get_ports(),
+                    "outputs": self.output_port_editor.get_ports(),
+                    "properties": self.property_editor.get_properties(),
+                }
+                ComponentHistoryManager.save_history(
+                    component_file_path=self._current_component_file,
+                    component_name=name,
+                    code=code,
+                    current_signature=current_signature
+                )
+                self._load_history_list(self._current_component_file)
+
             # 刷新组件树
             self.component_tree.refresh_components()
             MessageManager.success("组件保存成功！", "", self)
+
             # 重新加载当前组件
             self._load_component_filepath(self._current_component_file)
+
         except Exception as e:
+            traceback.print_exc()
             MessageManager.error(f"保存组件失败: {str(e)}", "", self)
 
     def _save_component_to_file(self, category, name, code, original_file_path=None, delete_original_file=True):
@@ -889,21 +927,27 @@ except:
 
     # --- 新增：加载历史记录列表 ---
     def _load_history_list(self, component_file_path: Path):
-        """加载并显示指定组件的历史记录列表"""
         self.history_table.setRowCount(0)
         histories = ComponentHistoryManager.load_histories(component_file_path)
-        # 反向排序，最新的在上面
         for history in reversed(histories):
             row = self.history_table.rowCount()
             self.history_table.insertRow(row)
-            # 版本号单元格现在不可编辑
+
+            # 版本（只读）
             version_item = QTableWidgetItem(history['version'])
-            version_item.setFlags(version_item.flags() | Qt.ItemIsEditable) # 移除可编辑标志
+            version_item.setFlags(version_item.flags() & ~Qt.ItemIsEditable)
             self.history_table.setItem(row, 0, version_item)
-            # 时间单元格现在也不可编辑
-            timestamp_item = QTableWidgetItem(history['timestamp'])
-            # timestamp_item.setFlags(timestamp_item.flags() | Qt.ItemIsEditable) # 移除可编辑标志
-            self.history_table.setItem(row, 1, timestamp_item)
+
+            # 时间（只读）
+            time_item = QTableWidgetItem(history['timestamp'])
+            time_item.setFlags(time_item.flags() & ~Qt.ItemIsEditable)
+            self.history_table.setItem(row, 1, time_item)
+
+            # ✅ 说明（可编辑）
+            desc = history.get('description', '')  # 默认空
+            desc_item = QTableWidgetItem(desc)
+            # 保持可编辑（默认 flags 包含 ItemIsEditable）
+            self.history_table.setItem(row, 2, desc_item)
 
     def _load_history_code(self, item):
         """从历史记录列表项加载代码"""
@@ -915,10 +959,37 @@ except:
                 if history_data and 'code' in history_data:
                     code = history_data['code']
                     self.code_editor.replace_text_preserving_view(code)
-                    print(f"已加载历史版本: {history_data['version']} - {history_data['timestamp']}")
+                    logger.info(f"已加载历史版本: {history_data['version']} - {history_data['timestamp']}")
                 else:
-                    print("历史记录数据不完整，无法加载代码。")
+                    logger.error("历史记录数据不完整，无法加载代码。")
             else:
-                print("无效的历史记录行。")
+                logger.error("无效的历史记录行。")
         else:
-            print("当前没有加载的组件文件，无法加载历史代码。")
+            logger.error("当前没有加载的组件文件，无法加载历史代码。")
+
+    def _on_history_description_changed(self, item):
+        """当历史记录的“说明”列被编辑时保存"""
+        if not self._current_component_file:
+            return
+
+        # 只处理第 2 列（说明列）
+        if item.column() != 2:
+            return
+
+        row = item.row()
+        new_desc = item.text()
+
+        # 获取历史记录（注意：表格是 reversed 的）
+        histories = ComponentHistoryManager.load_histories(self._current_component_file)
+        real_index = len(histories) - 1 - row  # 转换为原始索引
+        if 0 <= real_index < len(histories):
+            histories[real_index]['description'] = new_desc
+            # 保存回文件
+            history_file = ComponentHistoryManager.get_history_file_path(self._current_component_file)
+            try:
+                with open(history_file, 'w', encoding='utf-8') as f:
+                    json.dump(histories, f, ensure_ascii=False, indent=4)
+                logger.info(f"已更新版本 {histories[real_index]['version']} 的说明")
+            except Exception as e:
+                logger.error(f"保存说明失败: {e}")
+                MessageManager.error("保存说明失败", str(e), self)
