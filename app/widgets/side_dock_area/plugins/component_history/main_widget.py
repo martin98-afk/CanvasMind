@@ -67,20 +67,12 @@ class ComponentHistoryToolWindow(ToolWindow):
         return versions
 
     def update_usage_table(self, usage_records):
-        """
-        更新使用情况表格
-        :param usage_records: List[dict]，每个含 keys: canvas_name, node_name, version
-        """
+        self._current_usage_records = usage_records  # ✅ 保存引用供 combo 回调更新
         self._usage_table.setRowCount(len(usage_records))
-        all_versions = self.get_all_versions()
-        strategy_options = ["同步"] + all_versions  # 同步 + 所有历史版本
 
         for row, record in enumerate(usage_records):
-            # 画布
             self._usage_table.setItem(row, 0, QTableWidgetItem(record.get("canvas_name", "")))
-            # 节点
             self._usage_table.setItem(row, 1, QTableWidgetItem(record.get("node_name", "")))
-            # 版本策略下拉框
             combo = self._setup_strategy_combo(row, record)
             self._usage_table.setCellWidget(row, 2, combo)
 
@@ -98,8 +90,14 @@ class ComponentHistoryToolWindow(ToolWindow):
         current = record.get("version", "同步")
         combo.setCurrentText(current if current in all_versions else "同步")
 
+        # ✅ 用 row 作为 key，不依赖闭包引用 record
         def on_change(text):
-            canvas_path = record["canvas_path"]  # 确保 record 中有 canvas_path（Path 对象）
+            # 动态从 usage_records 中更新
+            usage_records = getattr(self, '_current_usage_records', [])
+            if 0 <= row < len(usage_records):
+                usage_records[row]["version"] = text  # ✅ 实时更新！
+
+            canvas_path = record["canvas_path"]
             node_name = record["node_name"]
             self.strategy_changed.emit(str(canvas_path), node_name, text)
 

@@ -226,6 +226,8 @@ class ComponentDeveloperPage(QWidget):
         """根据文件路径重载组件"""
         file_map = {value: key for key, value in self.component_tree._file_map.items()}
         full_path = file_map.get(component_path)
+        print(full_path)
+        QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
         self._load_component(self.component_tree._components[full_path], full_path)
 
     def _load_component(self, component, full_path=None):
@@ -281,28 +283,38 @@ class ComponentDeveloperPage(QWidget):
                 self._load_history_list(self._current_component_file)
             else:
                 self.history_table.setRowCount(0)  # 如果没有文件路径，清空历史列表
-            # 加载节点在画布中的使用记录
-            if full_path:
-                usage_records = ComponentUsageTracker().get_usage(full_path)
-                # 转为 UI 所需格式
-                usage_list = [
-                    {
-                        "canvas_name": str(rec.canvas_path.stem).split(".workflow")[0],
-                        "canvas_path": rec.canvas_path,
-                        "node_name": rec.node_name,
-                        "version": rec.version
-                    }
-                    for rec in usage_records
-                ]
-                # 发送给你的历史工具窗口
-                history_tool = self.side_dock_area.get_tool_instance("组件历史管理")
-                history_tool.strategy_changed.connect(self._on_usage_strategy_changed)
-                if history_tool:
-                    history_tool.update_usage_table(usage_list)
             # --- 新增结束 ---
+            QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
         except Exception as e:
             traceback.print_exc()
             MessageManager.error(f"加载组件失败: {str(e)}", "", self)
+
+    def update_usage_table(self, full_path):
+        if full_path:
+            usage_records = ComponentUsageTracker().get_usage(full_path)
+            usage_list = [
+                {
+                    "canvas_name": str(rec.canvas_path.stem).split(".workflow")[0],
+                    "canvas_path": rec.canvas_path,
+                    "node_name": rec.node_name,
+                    "version": rec.version
+                }
+                for rec in usage_records
+            ]
+            history_tool = self.side_dock_area.get_tool_instance("组件历史管理")
+
+            # ✅ 关键修复：断开旧连接，避免重复绑定
+            try:
+                history_tool.strategy_changed.disconnect(self._on_usage_strategy_changed)
+            except TypeError:
+                # 未连接过，忽略
+                pass
+
+            # 再连接
+            history_tool.strategy_changed.connect(self._on_usage_strategy_changed)
+
+            if history_tool:
+                history_tool.update_usage_table(usage_list)
 
     def _on_usage_strategy_changed(self, canvas_path: str, node_name: str, strategy: str):
         """处理使用策略变更"""
@@ -329,10 +341,7 @@ class ComponentDeveloperPage(QWidget):
 
             # 3. 确定新版本
             if strategy == "同步":
-                # 获取当前组件最新版本
-                comp_map, _ = ComponentScanner().get_components()
-                comp_cls = comp_map.get(full_path)
-                new_version = getattr(comp_cls, "_version", "latest")
+                new_version = "latest"
             else:
                 new_version = strategy  # 如 "V2"
 
@@ -932,10 +941,10 @@ except:
                 if history_data and 'code' in history_data:
                     code = history_data['code']
                     self.code_editor.replace_text_preserving_view(code)
-                    print(f"已加载历史版本: {history_data['version']} - {history_data['timestamp']}")
+                    logger.info(f"已加载历史版本: {history_data['version']} - {history_data['timestamp']}")
                 else:
-                    print("历史记录数据不完整，无法加载代码。")
+                    logger.error("历史记录数据不完整，无法加载代码。")
             else:
-                print("无效的历史记录行。")
+                logger.error("无效的历史记录行。")
         else:
-            print("当前没有加载的组件文件，无法加载历史代码。")
+            logger.error("当前没有加载的组件文件，无法加载历史代码。")

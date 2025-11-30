@@ -67,9 +67,9 @@ class ComponentUsageTracker:
             if not self._running:
                 break
             for change_type, file_path in changes:
-                path = Path(file_path)
+                path = Path(file_path).resolve()  # ← 统一为绝对路径
                 logger.info(f"文件变化: {path} {change_type}")
-                if path.suffix == ".json":
+                if path.suffix == ".json":  # 或更严格：path.name.endswith(".workflow.json")
                     if change_type in (Change.added, Change.modified):
                         await self._update_index(path)
                     elif change_type == Change.deleted:
@@ -78,9 +78,11 @@ class ComponentUsageTracker:
     async def _rebuild_index(self):
         self._index.clear()
         for canvas in CANVAS_DIR.rglob("*.workflow.json"):
-            await self._update_index(canvas)
+            await self._update_index(canvas.resolve())  # ← 统一为绝对路径
 
     async def _update_index(self, canvas_path: Path):
+        # ✅ 统一为绝对路径（防御性）
+        canvas_path = canvas_path.resolve()
         try:
             with open(canvas_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -88,7 +90,7 @@ class ComponentUsageTracker:
             runtime = data.get("runtime", {})
             stable_key_map = runtime.get("node_id2stable_key", {})
 
-            # 清理该画布旧记录
+            # 清理该画布旧记录（用绝对路径）
             await self._remove_canvas(canvas_path)
 
             for node_id, node_data in nodes.items():
@@ -101,12 +103,16 @@ class ComponentUsageTracker:
 
                 if full_path not in self._index:
                     self._index[full_path] = []
+                # 存储绝对路径
                 self._index[full_path].append(UsageRecord(canvas_path, node_name, version))
         except Exception as e:
             logger.warning(f"解析画布失败 {canvas_path}: {e}")
 
     async def _remove_canvas(self, canvas_path: Path):
+        # ✅ 统一为绝对路径
+        canvas_path = canvas_path.resolve()
         for records in self._index.values():
+            # 使用 Path.resolve() 后，== 可正确比较同一文件
             records[:] = [r for r in records if r.canvas_path != canvas_path]
 
     def get_usage(self, full_path: str) -> List[UsageRecord]:
