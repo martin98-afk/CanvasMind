@@ -36,8 +36,8 @@ class CanvasExporter:
                 return
 
             # 收集候选输入/输出
-            candidate_inputs = self._collect_inputs(nodes_to_export)
-            candidate_outputs = self._collect_outputs(nodes_to_export)
+            candidate_inputs = self._collect_inputs(execution_order)
+            candidate_outputs = self._collect_outputs(execution_order)
 
             # 构建依赖
             used_components = {node.FULL_PATH for node in nodes_to_export}

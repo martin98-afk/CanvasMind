@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import ast
+import json
 import re
 import shutil
 import textwrap
-import uuid
-import json
 import traceback
+import uuid
 from pathlib import Path
 
 from PyQt5.QtCore import Qt, QTimer, QSize
@@ -18,19 +18,19 @@ from qfluentwidgets import (
     TransparentDropDownToolButton, Action, RoundMenu
 )
 
-from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, ConnectionType
 from app.interfaces.component_developer.component_history_manager import ComponentHistoryManager
 from app.interfaces.component_developer.constants import *
 from app.interfaces.component_developer.message_manager import MessageManager
+from app.scan_components import ComponentUsageTracker
 from app.scan_components import resource_path
 from app.templates.component_templates import default_templates
 from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.code_editor.code_editer import CodeEditorWidget
-from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
+from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
 
 
@@ -152,6 +152,7 @@ class ComponentDeveloperPage(QWidget):
         self.description_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.requirements_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
+        self.history_table.itemChanged.connect(self._on_history_description_changed)
 
     def extract_current_code(self) -> str:
         """返回带组件名称和完整代码的上下文字符串"""
@@ -855,7 +856,18 @@ except:
 
             # 保存历史记录
             if self._current_component_file:
-                ComponentHistoryManager.save_history(self._current_component_file, name, code)
+                # ✅ 构建当前接口签名
+                current_signature = {
+                    "inputs": self.input_port_editor.get_ports(),
+                    "outputs": self.output_port_editor.get_ports(),
+                    "properties": self.property_editor.get_properties(),
+                }
+                ComponentHistoryManager.save_history(
+                    component_file_path=self._current_component_file,
+                    component_name=name,
+                    code=code,
+                    current_signature=current_signature
+                )
                 self._load_history_list(self._current_component_file)
 
             # 刷新组件树
@@ -915,21 +927,27 @@ except:
 
     # --- 新增：加载历史记录列表 ---
     def _load_history_list(self, component_file_path: Path):
-        """加载并显示指定组件的历史记录列表"""
         self.history_table.setRowCount(0)
         histories = ComponentHistoryManager.load_histories(component_file_path)
-        # 反向排序，最新的在上面
         for history in reversed(histories):
             row = self.history_table.rowCount()
             self.history_table.insertRow(row)
-            # 版本号单元格现在不可编辑
+
+            # 版本（只读）
             version_item = QTableWidgetItem(history['version'])
-            version_item.setFlags(version_item.flags() | Qt.ItemIsEditable) # 移除可编辑标志
+            version_item.setFlags(version_item.flags() & ~Qt.ItemIsEditable)
             self.history_table.setItem(row, 0, version_item)
-            # 时间单元格现在也不可编辑
-            timestamp_item = QTableWidgetItem(history['timestamp'])
-            # timestamp_item.setFlags(timestamp_item.flags() | Qt.ItemIsEditable) # 移除可编辑标志
-            self.history_table.setItem(row, 1, timestamp_item)
+
+            # 时间（只读）
+            time_item = QTableWidgetItem(history['timestamp'])
+            time_item.setFlags(time_item.flags() & ~Qt.ItemIsEditable)
+            self.history_table.setItem(row, 1, time_item)
+
+            # ✅ 说明（可编辑）
+            desc = history.get('description', '')  # 默认空
+            desc_item = QTableWidgetItem(desc)
+            # 保持可编辑（默认 flags 包含 ItemIsEditable）
+            self.history_table.setItem(row, 2, desc_item)
 
     def _load_history_code(self, item):
         """从历史记录列表项加载代码"""
@@ -948,3 +966,30 @@ except:
                 logger.error("无效的历史记录行。")
         else:
             logger.error("当前没有加载的组件文件，无法加载历史代码。")
+
+    def _on_history_description_changed(self, item):
+        """当历史记录的“说明”列被编辑时保存"""
+        if not self._current_component_file:
+            return
+
+        # 只处理第 2 列（说明列）
+        if item.column() != 2:
+            return
+
+        row = item.row()
+        new_desc = item.text()
+
+        # 获取历史记录（注意：表格是 reversed 的）
+        histories = ComponentHistoryManager.load_histories(self._current_component_file)
+        real_index = len(histories) - 1 - row  # 转换为原始索引
+        if 0 <= real_index < len(histories):
+            histories[real_index]['description'] = new_desc
+            # 保存回文件
+            history_file = ComponentHistoryManager.get_history_file_path(self._current_component_file)
+            try:
+                with open(history_file, 'w', encoding='utf-8') as f:
+                    json.dump(histories, f, ensure_ascii=False, indent=4)
+                logger.info(f"已更新版本 {histories[real_index]['version']} 的说明")
+            except Exception as e:
+                logger.error(f"保存说明失败: {e}")
+                MessageManager.error("保存说明失败", str(e), self)

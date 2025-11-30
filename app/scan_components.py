@@ -294,7 +294,10 @@ class ComponentScanner:
         # 若代码为空，跳过
         if not code.strip():
             raise ValueError("组件代码为空")
-
+        # 剔除类前导入
+        source_lines = code.splitlines(keepends=True)
+        start = len(COMPONENT_IMPORT_CODE.split("\n")) - 1
+        code = ''.join(source_lines[start:])
         # 创建唯一模块名
         unique_id = f"{hash(code)}_{py_file.stem}"
         module_name = f"dynamic_component_{unique_id}"
@@ -327,9 +330,8 @@ class ComponentScanner:
             histories = ComponentHistoryManager.load_histories(py_file)
             if not histories:
                 component_name = getattr(comp_cls, 'name')
-                ComponentHistoryManager.save_history(py_file, component_name, code)
-                version = "V1"
-                logger.info(f"✅ 自动创建 V1 历史: {py_file.name}")
+                version =ComponentHistoryManager.save_history(py_file, component_name, code)
+                logger.info(f"✅ 自动创建历史版本: {py_file.name} {version }")
             else:
                 version = histories[-1]["version"]
 

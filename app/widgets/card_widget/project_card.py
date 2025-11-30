@@ -5,13 +5,11 @@ import subprocess
 from datetime import datetime
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QGuiApplication
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout
-from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+from PyQt5.QtGui import QFont, QGuiApplication, QPixmap
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QGraphicsDropShadowEffect
 from qfluentwidgets import (
     CardWidget, BodyLabel, PrimaryPushButton,
-    ToolButton, FluentIcon, InfoBar,
-    ImageLabel
+    ToolButton, FluentIcon, InfoBar, ImageLabel
 )
 
 from app.utils.service_manager import SERVICE_MANAGER
@@ -41,15 +39,13 @@ class ClickableLabel(BodyLabel):
 class ProjectCard(CardWidget):
     def __init__(self, project_path, parent=None):
         super().__init__(parent)
-        self.project_path = project_path
-        self.project_name = os.path.basename(project_path)
-        self.home = parent  # 用于回调
+        self.project_path = os.path.abspath(project_path)
+        self.project_name = os.path.basename(self.project_path)
+        self.home = parent
         self._setup_ui()
-        # ✅ 点击卡片任意位置 = 打开文件夹
         self.setCursor(Qt.PointingHandCursor)
 
     def _setup_ui(self):
-        # 保留固定尺寸（项目卡片通常更大）
         self.setFixedSize(400, 330)
         self.setBorderRadius(12)
 
@@ -62,7 +58,7 @@ class ProjectCard(CardWidget):
             QLabel.projectMetaVal { color: #333; }
         """)
 
-        # 项目名称
+        # 项目名称（固定）
         self.name_label = BodyLabel(self.project_name)
         self.name_label.setFont(QFont("Microsoft YaHei", 14, QFont.DemiBold))
         self.name_label.setAlignment(Qt.AlignCenter)
@@ -70,32 +66,17 @@ class ProjectCard(CardWidget):
         self.name_label.setObjectName("ProjectCardTitle")
         main_layout.addWidget(self.name_label)
 
-        # 预览图
-        preview_path = os.path.join(self.project_path, "preview.png")
-        if os.path.exists(preview_path):
-            self.image_label = ImageLabel(preview_path, self)
-            self.image_label.setFixedSize(340, 150)
-            self.image_label.setBorderRadius(8, 8, 8, 8)
-        else:
-            self.image_label = BodyLabel("无预览图")
-            self.image_label.setFixedSize(300, 150)
-            self.image_label.setAlignment(Qt.AlignCenter)
-            self.image_label.setStyleSheet("""
-                color: #999;
-                background-color: #fafafa;
-                border-radius: 8px;
-                border: 1px dashed #e0e0e0;
-                font-size: 12px;
-            """)
-        main_layout.addWidget(self.image_label, 0, Qt.AlignCenter)
+        # 预览图（可刷新）
+        self.image_label = None
+        self._create_or_update_preview()
 
-        # 元信息
+        # 元信息（可刷新）
         self.meta_grid = QGridLayout()
         self.meta_grid.setSpacing(6)
-        self._populate_meta_grid()
         main_layout.addLayout(self.meta_grid)
+        self._populate_meta_grid()
 
-        # 服务状态
+        # 服务状态（可刷新）
         self.status_label = ClickableLabel(parent=self)
         self.status_label.setFont(QFont("Microsoft YaHei", 10))
         self.status_label.setVisible(False)
@@ -103,17 +84,15 @@ class ProjectCard(CardWidget):
 
         main_layout.addStretch()
 
-        # === 按钮区域（移除“打开文件夹”按钮）===
+        # 按钮区（固定）
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
 
-        # 主按钮
         self.run_btn = PrimaryPushButton("运行", self, FluentIcon.PLAY)
         self.service_btn = PrimaryPushButton("上线", self, FluentIcon.LINK)
         self.request_btn = PrimaryPushButton("请求", self, FluentIcon.SEND)
         self.request_btn.setEnabled(False)
 
-        # 工具按钮（移除 open_folder_btn）
         self.edit_btn = ToolButton(FluentIcon.EDIT, self)
         self.view_log_btn = ToolButton(FluentIcon.VIEW, self)
         self.delete_btn = ToolButton(FluentIcon.DELETE, self)
@@ -136,18 +115,17 @@ class ProjectCard(CardWidget):
         right_box.setSpacing(8)
         right_box.addWidget(self.edit_btn)
         right_box.addWidget(self.view_log_btn)
-        right_box.addWidget(self.delete_btn)  # ✅ 不再有 open_folder_btn
+        right_box.addWidget(self.delete_btn)
 
         btn_layout.addLayout(left_box)
         btn_layout.addStretch()
         btn_layout.addLayout(right_box)
-
         main_layout.addLayout(btn_layout)
 
         self._update_service_button()
         self.request_btn.clicked.connect(self._open_request_dialog)
 
-        # 悬浮阴影
+        # 阴影
         self._shadow = QGraphicsDropShadowEffect(self)
         self._shadow.setBlurRadius(22)
         self._shadow.setXOffset(0)
@@ -155,30 +133,50 @@ class ProjectCard(CardWidget):
         self._shadow.setColor(Qt.black)
         self.setGraphicsEffect(None)
 
-    def enterEvent(self, event):
-        try:
-            self.setGraphicsEffect(self._shadow)
-        except Exception:
-            pass
-        super().enterEvent(event)
+    def _create_or_update_preview(self):
+        """创建或更新预览图控件"""
+        preview_path = os.path.join(self.project_path, "preview.png")
+        has_preview = os.path.exists(preview_path)
+        # === 彻底移除旧的 image_label（无论类型）===
+        if self.image_label:
+            # 从布局中移除
+            main_layout = self.layout()
+            main_layout.removeWidget(self.image_label)
+            # 立即删除
+            self.image_label.deleteLater()
+            self.image_label = None
 
-    def leaveEvent(self, event):
-        try:
-            self.setGraphicsEffect(None)
-        except Exception:
-            pass
-        super().leaveEvent(event)
+        # === 创建新控件 ===
+        if has_preview:
+            self.image_label = ImageLabel(preview_path, self)
+            self.image_label.setFixedSize(340, 150)
+            self.image_label.setBorderRadius(8, 8, 8, 8)
+        else:
+            self.image_label = BodyLabel("无预览图")
+            self.image_label.setFixedSize(300, 150)
+            self.image_label.setAlignment(Qt.AlignCenter)
+            self.image_label.setStyleSheet("""
+                color: #999;
+                background-color: #fafafa;
+                border-radius: 8px;
+                border: 1px dashed #e0e0e0;
+                font-size: 12px;
+            """)
+
+        # 插入到 name_label 下方（索引 1）
+        main_layout = self.layout()
+        main_layout.insertWidget(1, self.image_label, 0, Qt.AlignCenter)
+
+    def _clear_meta_grid(self):
+        while self.meta_grid.count():
+            child = self.meta_grid.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
 
     def _populate_meta_grid(self):
-        def add_row(r, key, val):
-            k = BodyLabel(key)
-            k.setProperty("class", "projectMetaKey")
-            v = BodyLabel(val)
-            v.setProperty("class", "projectMetaVal")
-            self.meta_grid.addWidget(k, r, 0)
-            self.meta_grid.addWidget(v, r, 1)
-
+        self._clear_meta_grid()
         row = 0
+
         spec_file = os.path.join(self.project_path, "project_spec.json")
         if os.path.exists(spec_file):
             try:
@@ -186,14 +184,16 @@ class ProjectCard(CardWidget):
                     spec = json.load(f)
                     original = spec.get("original_canvas") or spec.get("graph_name")
                     if original and original not in ("unknown", ""):
-                        add_row(row, "来自", original); row += 1
+                        self._add_meta_row(row, "来自", original)
+                        row += 1
             except Exception:
                 pass
 
         try:
             stat = os.stat(self.project_path)
             create_time = datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d")
-            add_row(row, "创建", create_time); row += 1
+            self._add_meta_row(row, "创建", create_time)
+            row += 1
         except Exception:
             pass
 
@@ -206,9 +206,18 @@ class ProjectCard(CardWidget):
                         deps = ", ".join(packages[:3])
                         if len(packages) > 3:
                             deps += f" +{len(packages) - 3}"
-                        add_row(row, "依赖", deps); row += 1
+                        self._add_meta_row(row, "依赖", deps)
+                        row += 1
             except Exception:
                 pass
+
+    def _add_meta_row(self, row, key, val):
+        k = BodyLabel(key)
+        k.setProperty("class", "projectMetaKey")
+        v = BodyLabel(val)
+        v.setProperty("class", "projectMetaVal")
+        self.meta_grid.addWidget(k, row, 0)
+        self.meta_grid.addWidget(v, row, 1)
 
     def _update_service_button(self):
         if SERVICE_MANAGER.is_running(self.project_path):
@@ -246,7 +255,17 @@ class ProjectCard(CardWidget):
             self.run_btn.setIcon(FluentIcon.PLAY)
             self.run_btn.setEnabled(True)
 
-    # ✅ 点击卡片任意位置 = 打开项目文件夹
+    # ✅ ===== 新增：增量刷新接口 =====
+    def refresh(self):
+        """被 watchfiles 事件调用，刷新卡片内容"""
+        # 1. 更新预览图
+        self._create_or_update_preview()
+        # 2. 更新元信息
+        self._populate_meta_grid()
+        # 3. 更新服务状态按钮
+        self._update_service_button()
+
+    # ✅ 点击卡片打开文件夹
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self._open_project_folder()
@@ -260,5 +279,4 @@ class ProjectCard(CardWidget):
                 subprocess.call(['xdg-open', self.project_path])
         except Exception as e:
             if self.home:
-                from qfluentwidgets import InfoBar
                 InfoBar.error("打开失败", str(e), parent=self.home)
