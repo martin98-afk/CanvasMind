@@ -1,7 +1,8 @@
 # log_tool_window.py
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QLabel, QHBoxLayout
-from qfluentwidgets import BodyLabel, SingleDirectionScrollArea, SubtitleLabel, TransparentToolButton, FluentIcon
+from qfluentwidgets import BodyLabel, SingleDirectionScrollArea, SubtitleLabel, TransparentToolButton, FluentIcon, \
+    StrongBodyLabel
 
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.component_log.collapsible_card import CollapsibleLogCard
@@ -20,7 +21,7 @@ class LogToolWindow(ToolWindow):
         title_container = QWidget(self)
         title_layout = QHBoxLayout(title_container)
         title_layout.setContentsMargins(3, 3, 3, 3)
-        self.title_label = SubtitleLabel("节点运行日志:")
+        self.title_label = StrongBodyLabel("节点运行日志:")
         title_layout.addWidget(self.title_label)
         # 清空按钮
         self.clear_button = TransparentToolButton(FluentIcon.DELETE, self)
@@ -34,11 +35,11 @@ class LogToolWindow(ToolWindow):
         self.chat_scroll_area.setMinimumWidth(400)
         self.chat_scroll_area.setStyleSheet("background-color: transparent; border: none;")
         self.chat_scroll_area.setWidgetResizable(True)
-        self.chat_scroll_area.setViewportMargins(0, 0, 0, 0)
+        self.chat_scroll_area.setViewportMargins(0, 0, 10, 0)
 
         self.chat_container = QWidget()
         self.chat_layout = QVBoxLayout(self.chat_container)
-        self.chat_layout.setContentsMargins(0, 0, 0, 0)
+        self.chat_layout.setContentsMargins(5, 5, 5, 5)
         self.chat_layout.setSpacing(5)
         self.chat_layout.addStretch()  # ← 关键：顶部 stretch
         self.chat_layout.setAlignment(Qt.AlignBottom)
@@ -78,6 +79,7 @@ class LogToolWindow(ToolWindow):
             self._enforce_max_runs()
 
         self.run_cards[run_id].append_colored_log(line)
+        QTimer.singleShot(10, self._scroll_to_bottom)
 
     def _enforce_max_runs(self):
         while len(self.run_cards) > self.MAX_RUNS:

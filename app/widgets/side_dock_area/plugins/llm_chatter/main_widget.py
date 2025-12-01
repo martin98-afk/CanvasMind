@@ -34,6 +34,7 @@ class OpenAIChatToolWindow(ToolWindow):
     _in_history_mode = False
     _current_history_index: Optional[int] = None
     _settings_popup = None  # 懒加载
+    _system_prompt = ""
 
     def __init__(self, homepage):
         super().__init__(homepage)
@@ -98,11 +99,11 @@ class OpenAIChatToolWindow(ToolWindow):
         # 透明背景
         self.chat_scroll_area.setStyleSheet("background-color: transparent; border: none;")
         self.chat_scroll_area.setWidgetResizable(True)
-        self.chat_scroll_area.setViewportMargins(0, 0, 0, 0)
+        self.chat_scroll_area.setViewportMargins(0, 0, 10, 0)
 
         self.chat_container = QWidget()
         self.chat_layout = QVBoxLayout(self.chat_container)
-        self.chat_layout.setContentsMargins(0, 0, 0, 0)
+        self.chat_layout.setContentsMargins(3, 3, 3, 3)
         self.chat_layout.setSpacing(5)
         self.chat_layout.setAlignment(Qt.AlignBottom)  # 关键：防止垂直拉伸
         self.chat_scroll_area.setWidget(self.chat_container)
@@ -120,6 +121,9 @@ class OpenAIChatToolWindow(ToolWindow):
         self.input_area.sendMessageRequested.connect(self._on_send_clicked)
         self.input_area.stopMessageRequested.connect(self._on_stop_clicked)
         layout.addWidget(self.input_area)
+
+    def set_system_prompt(self, prompt):
+        self._system_prompt = prompt
 
     def _open_settings_popup(self):
         # 懒加载 popup
@@ -486,7 +490,7 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         messages = []
-        system_prompt = llm_config.get("系统提示", "").strip()
+        system_prompt = self._system_prompt + llm_config.get("系统提示", "").strip()
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
 

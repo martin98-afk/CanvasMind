@@ -44,6 +44,9 @@ class ComponentDeveloperPage(QWidget):
         self.setObjectName("ComponentDeveloperWidget")
         self._current_component_file = None
         self._current_component_code = ""  # 存储当前加载的代码
+        self.context_register = ContextRegistry()
+        self.context_register.register("当前代码", self.extract_current_code, lambda *args, **kwargs: None)
+        self.context_register.register("当前选中区域", self.extract_selected_code, lambda *args, **kwargs: None)
         self._setup_ui()
         self._connect_signals()
         # --- 添加一个定时器用于延迟分析 ---
@@ -52,9 +55,6 @@ class ComponentDeveloperPage(QWidget):
         self._analysis_timer.timeout.connect(self._analyze_code_for_requirements)
         # --- 添加一个标志，防止循环更新 ---
         self._updating_requirements_from_analysis = False
-        self.context_register = ContextRegistry()
-        self.context_register.register("当前代码", self.extract_current_code, lambda *args, **kwargs: None)
-        self.context_register.register("当前选中区域", self.extract_selected_code, lambda *args, **kwargs: None)
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -115,6 +115,8 @@ class ComponentDeveloperPage(QWidget):
         self.property_editor = self.component_info.property_editor
         self.console_manager = self.side_dock_area.get_tool_instance("多终端调试面板").console_manager
         self.history_table = self.side_dock_area.get_tool_instance("组件历史管理").history_table
+        self.llm_chatter = self.side_dock_area.get_tool_instance("大模型对话")
+        self.llm_chatter.set_system_prompt(LLM_CODE_CONTEXT)
         self.history_table.itemDoubleClicked.connect(self._load_history_code)
         self.splitter.addWidget(self.side_dock_area)
         # 先设置 stretch，让左侧可收缩

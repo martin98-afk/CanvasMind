@@ -68,5 +68,16 @@ BUILTIN_MODULES = set(
      'winsound', 'wsgiref', 'xdrlib', 'xml', 'xmlrpc', 'zipapp', 'zipfile', 'zipimport', 'zlib', 'zoneinfo']
 )
 
+LLM_CODE_CONTEXT = '''下面是组件输入、输出、属性端口定义代码，在组件中调用这些参数通过  参数类型.参数名 即可，所有参数均使用pydantic做了解析，全局变量使用 self.global_variable.变量名 直接在run里面就可以进行调用，不需要定义到property里：
+## 组件输入输出参数定义代码（不需要在生成代码里包含）
+1. **所有参数均通过 pydantic 解析**，在 `run` 方法中：
+   - **属性参数**（在 `properties` 中定义）通过 `params.属性名` 访问；
+   - 若属性是 `DYNAMICFORM` 类型，则 `params.属性名` 是一个包含多个字段的 **命名元组（或模型实例）列表**，每个字段可通过点号访问（如 `item.role`, `item.content`）；
+   - **输入端口数据** 通过 `inputs` 字典访问，键为 `PortDefinition.name`（如 `inputs["history"]`）；
+   - **全局变量**（如 `model_name`、`api_key` 等）通过 `self.global_variable.变量名` 直接读取，**无需在 `properties` 中声明**；
+   - **输出必须是一个字典**，键为 `outputs` 中定义的 `name`，值为实际数据。
+
+'''
+
 DEFAULT_SPLITTER_SIZES = [50, 450, 450]
 HIDE_SPLITTER_SIZES = [50, 450, 0]
