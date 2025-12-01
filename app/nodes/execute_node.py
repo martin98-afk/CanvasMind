@@ -168,7 +168,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
             # 创建代码编辑器控件
             self._debug_widget = CodeEditorWidgetWrapper(
-                parent=self.view,
+                parent=parent_window,
                 name="debug_code",
                 label="调试代码编辑器",
                 default=self.current_code,
@@ -298,35 +298,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                             window=parent_window
                         ), tab='Properties'
                     )
-
-        def _select_file(self, prop_name):
-            current_path = self.get_property(prop_name)
-            directory = os.path.dirname(current_path) if current_path else ""
-            file_filter = self.model.properties.get(f"{prop_name}_file_filter", "All Files (*)")
-            # 添加creationflags参数以防止出现白色控制台窗口
-            path, _ = QFileDialog.getOpenFileName(
-                None, "选择文件", directory, file_filter
-            )
-            if path:
-                self.set_property(prop_name, path)
-
-        def _select_folder(self, prop_name):
-            current_path = self.get_property(prop_name)
-            directory = current_path if current_path else ""
-            # 添加creationflags参数以防止出现白色控制台窗口
-            path = QFileDialog.getExistingDirectory(None, "选择文件夹", directory)
-            if path:
-                self.set_property(prop_name, path)
-
-        def _select_csv(self, prop_name):
-            current_path = self.get_property(prop_name)
-            directory = os.path.dirname(current_path) if current_path else ""
-            # 添加creationflags参数以防止出现白色控制台窗口
-            path, _ = QFileDialog.getOpenFileName(
-                None, "选择CSV文件", directory, "CSV Files (*.csv)"
-            )
-            if path:
-                self.set_property(prop_name, path)
 
         def _add_custom_widget(self, widget, widget_type=None, tab=None):
             # widget_type = widget_type or NodePropWidgetEnum.HIDDEN.value
@@ -544,7 +515,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             # 轮询结果文件
             start_time = time.time()
             timeout = 300  # 5分钟
-            last_log_pos = os.path.getsize(log_file_path)
+            last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
 
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
