@@ -509,7 +509,7 @@ def create_dynamic_code_node(parent_window=None):
             # 轮询结果（与 subprocess 一致）
             start_time = time.time()
             timeout = 300
-            last_log_pos = 0
+            last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
 
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
@@ -587,7 +587,7 @@ def create_dynamic_code_node(parent_window=None):
             start_time = time.time()
             timeout = 300
             cancelled = False
-            last_log_pos = 0
+            last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
 
             while proc.poll() is None:
                 if check_cancel and check_cancel():

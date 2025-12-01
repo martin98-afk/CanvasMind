@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 import re
-from collections import deque, defaultdict
 from typing import List, Dict, Any, Optional, Callable
 
 from NodeGraphQt import BackdropNode
-from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, pyqtSignal
 from loguru import logger
 
@@ -224,6 +222,8 @@ class WorkflowScheduler(QObject):
                 kernel_manager=self.kernel_manager,
                 scheduler=self
             )
+            self._executor.signals.log_start.connect(self.parent.log_window.start_run)
+            self._executor.signals.log_message.connect(self.parent.log_window.push_log)
             self._executor.component_map = self.component_map
             self._executor.signals.node_started.connect(self.node_started)
             self._executor.signals.backdrop_finished.connect(self.backdrop_finished)

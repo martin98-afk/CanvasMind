@@ -544,7 +544,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             # 轮询结果文件
             start_time = time.time()
             timeout = 300  # 5分钟
-            last_log_pos = 0
+            last_log_pos = os.path.getsize(log_file_path)
 
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
@@ -553,7 +553,6 @@ def create_node_class(full_path, file_path, parent_window=None):
 
                 if time.time() - start_time > timeout:
                     raise Exception("❌ 节点执行超时（5分钟）")
-
                 # 实时日志轮询
                 try:
                     if os.path.exists(log_file_path):
@@ -611,7 +610,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
                         # 再次轮询结果
                         start_time = time.time()
-                        last_log_pos = 0  # 重置日志位置
+                        last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
 
                         while not (result_path.exists() or error_path.exists()):
                             if check_cancel and check_cancel():
@@ -694,7 +693,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 start_time = time.time()
                 timeout = 300  # 5分钟
                 cancelled = False
-                last_log_pos = 0
+                last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
                 while proc.poll() is None:
                     # 检查取消
                     if check_cancel and check_cancel():

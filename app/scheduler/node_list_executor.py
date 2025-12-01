@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import datetime
 import re
 import time
 import traceback
@@ -19,6 +20,8 @@ class WorkerSignals(QObject):
     node_finished = pyqtSignal(str)
     node_error = pyqtSignal(str)
     backdrop_finished = pyqtSignal()
+    log_start = pyqtSignal(str)  # run_id
+    log_message = pyqtSignal(str, str)  # run_id, line
 
 class NodeListExecutor(QRunnable):
     """
@@ -67,6 +70,10 @@ class NodeListExecutor(QRunnable):
 
                 try:
                     if getattr(node, "execute_sync", None) is not None:
+                        run_id = f"{node.name()} 执行时间： {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                        node._current_run_id = run_id
+                        node.executor = self  # 确保节点能访问 scheduler
+                        self.signals.log_start.emit(run_id)
                         comp_cls = self.component_map.get(getattr(node, "FULL_PATH", None))
                         if self.main_window.config.canvas_run_mode.value == "ipython运行":
                             results = node.execute_sync(
@@ -128,3 +135,7 @@ class NodeListExecutor(QRunnable):
                 self.signals.error.emit("执行被用户取消")
         finally:
             QTimer.singleShot(100, lambda: self.scheduler.unregister_global_variable(self.nodes))
+
+    def push_log_message(self, run_id: str, line: str):
+        """供节点调用，线程安全地推送日志"""
+        self.signals.log_message.emit(run_id, line)
