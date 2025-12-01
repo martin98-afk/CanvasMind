@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x29dda5ee860": {
+      "0x277817d1840": {
         "type_": "dynamic.StatusDynamicNode_数据集成_长文本输入",
         "icon": null,
         "name": "长文本输入",
@@ -34,7 +34,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 490.36,
         "height": 101.10000000000001,
@@ -55,11 +55,12 @@
         ],
         "custom": {
           "persistent_id": "fc046404-4453-4714-8bfc-6b80ed3b52be",
+          "version": "latest",
           "debug_code": {},
           "input_text": "获取当前时间"
         }
       },
-      "0x29dd0a065f0": {
+      "0x277817d1ff0": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\dist\\main\\_internal\\icons/代码执行.svg",
         "name": "代码编辑 1",
@@ -82,7 +83,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 836.2800000000001,
         "height": 805.65,
@@ -126,7 +127,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    import json\n    from pathlib import Path\n    input_data: list[str] = inputs.input\n    results = []\n    for path in input_data:\n        if not (Path(path) / \"project_spec.json\").exists():\n            continue\n        with open(Path(path) / \"project_spec.json\", \"r\", encoding=\"utf-8\") as f:\n            project_spec = json.loads(f.read())\n            project_input = project_spec[\"inputs\"]\n            format = \"\" if len(project_input) > 0 else \"无参数\"\n            for i, (inp, info) in enumerate(project_input.items()):\n                format += f\"参数{i+1}：{inp}\\n参数格式：{info['format']}\\n参数参考样例输入：{info['current_value']}\\n所属组件名：{info['node_name']}\\n组件参数类型：{info['type']}\\n\\n\"\n            results.append(f\"工具名称：{str(Path(path).resolve())} \\n输入格式：{format}\")\n    return {\n        \"output\": results\n    }"
         }
       },
-      "0x29dda573430": {
+      "0x2778b9b9f60": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装",
@@ -149,7 +150,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 398.36,
         "height": 101.10000000000001,
@@ -162,11 +163,12 @@
         "subgraph_session": {},
         "custom": {
           "persistent_id": "0bee4fd7-2dc6-4d6a-86fc-5a39cab749e8",
+          "version": "latest",
           "debug_code": {},
           "prop_0": "input"
         }
       },
-      "0x29dd06d9ae0": {
+      "0x2778b9ba230": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "工具调用结果回写",
@@ -189,7 +191,7 @@
           180
         ],
         "disabled": true,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 551.08,
         "height": 101.10000000000001,
@@ -216,11 +218,12 @@
         ],
         "custom": {
           "persistent_id": "31c0d5b6-66ab-4c8a-96e8-42bd423762ee",
+          "version": "latest",
           "debug_code": null,
           "template": "工具调用结果：\n$input.条件分支_branch[0]$\n\n用户问题：\n$node_vars.长文本输入_output$"
         }
       },
-      "0x29dd0887be0": {
+      "0x2778b9b91e0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_移除思考过程",
         "icon": null,
         "name": "移除思考过程",
@@ -243,7 +246,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 446.20000000000005,
         "height": 143.10000000000002,
@@ -275,12 +278,13 @@
         ],
         "custom": {
           "persistent_id": "20487951-31a2-481b-a8d5-6bcb53bfd40e",
+          "version": "latest",
           "debug_code": {},
           "remove_empty_lines": true,
           "keep_inner_if_no_outer": true
         }
       },
-      "0x29dd0884340": {
+      "0x2778b935480": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_工具调用",
         "icon": null,
         "name": "工具调用",
@@ -303,7 +307,7 @@
           180
         ],
         "disabled": true,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 168.36,
         "height": 82.2,
@@ -340,10 +344,11 @@
         ],
         "custom": {
           "persistent_id": "c92c541f-f69b-4cab-b9dd-7678b5c0dbb3",
+          "version": "latest",
           "debug_code": null
         }
       },
-      "0x29dd08848e0": {
+      "0x2778b9b9360": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_JSON文本包装",
         "icon": null,
         "name": "JSON文本包装 3",
@@ -366,7 +371,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 420.44,
         "height": 101.10000000000001,
@@ -393,11 +398,12 @@
         ],
         "custom": {
           "persistent_id": "57870f2f-308b-42c4-993a-7a639daa8c4f",
+          "version": "latest",
           "debug_code": {},
           "prop_0": "answer"
         }
       },
-      "0x29dda413280": {
+      "0x2778b937e80": {
         "type_": "dynamic.StatusDynamicNode_数据集成_获取全局变量",
         "icon": null,
         "name": "获取大模型历史对话",
@@ -420,7 +426,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 506.92,
         "height": 99.0,
@@ -441,11 +447,12 @@
         ],
         "custom": {
           "persistent_id": "8d115879-b622-4c6f-8430-908cd3934304",
+          "version": "latest",
           "debug_code": {},
           "prop1": "node_vars.大模型对话测试_history"
         }
       },
-      "0x29dda412da0": {
+      "0x2778b937b80": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码编辑 2",
@@ -468,7 +475,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 836.2800000000001,
         "height": 805.65,
@@ -512,7 +519,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    input_data: list = inputs.input\n    return {\n        \"output\": \"\\n\\n\".join(input_data)\n    }"
         }
       },
-      "0x29dda508cd0": {
+      "0x27785d44490": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型输出解析",
         "icon": null,
         "name": "大模型输出解析",
@@ -535,7 +542,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 359.72,
         "height": 152.55,
@@ -548,12 +555,13 @@
         "subgraph_session": {},
         "custom": {
           "persistent_id": "3120ac1c-49f8-45d3-acbe-c771c673beb0",
+          "version": "latest",
           "debug_code": {},
           "strict": false,
           "type": "json"
         }
       },
-      "0x29dd08856c0": {
+      "0x2777eff0370": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码编辑",
@@ -576,7 +584,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 814.2,
         "height": 864.45,
@@ -630,7 +638,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 目标文件夹\n    return: 文件地址里列表（key=输出端口名）\n    \"\"\"\n    from pathlib import Path\n    path = Path(inputs.input)\n    projects = [str(p) for p in path.iterdir()]\n    self.logger.info(projects)\n    return {\n        \"output\": projects\n    }"
         }
       },
-      "0x29dda49edd0": {
+      "0x27785da8cd0": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "提取最终答案",
@@ -653,10 +661,10 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 394.68,
-        "height": 102.15,
+        "height": 101.10000000000001,
         "pos": [
           3206.1824391428636,
           478.86999604767266
@@ -666,11 +674,12 @@
         "subgraph_session": {},
         "custom": {
           "persistent_id": "5aa60e34-f9da-4b1c-8bc9-035e565ddd8f",
+          "version": "latest",
           "debug_code": {},
           "prop1": "$input.input1[\"answer\"]$"
         }
       },
-      "0x29dd092b970": {
+      "0x27785da8f40": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "工具名提取",
@@ -693,7 +702,7 @@
           180
         ],
         "disabled": true,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 374.44,
         "height": 101.10000000000001,
@@ -706,11 +715,12 @@
         "subgraph_session": {},
         "custom": {
           "persistent_id": "3a7ada7f-cc45-41b0-a7ea-e937ae1997d4",
+          "version": "latest",
           "debug_code": {},
           "prop1": "$input.input1[\"tool_name\"]$"
         }
       },
-      "0x29dd08198a0": {
+      "0x2778b935930": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_JSON筛选",
         "icon": null,
         "name": "工具输入提取",
@@ -733,7 +743,7 @@
           180
         ],
         "disabled": true,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 394.68,
         "height": 101.10000000000001,
@@ -746,11 +756,12 @@
         "subgraph_session": {},
         "custom": {
           "persistent_id": "38f2bf5a-f1cc-4821-8997-43fd479c45b9",
+          "version": "latest",
           "debug_code": {},
           "prop1": "$input.input1[\"tool_input\"]$"
         }
       },
-      "0x29dda49e8f0": {
+      "0x2778b934760": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": "D:\\work\\WorkFlowGUI\\icons\\list.svg",
         "name": "错误处理",
@@ -773,7 +784,7 @@
           180
         ],
         "disabled": true,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 470.12,
         "height": 101.10000000000001,
@@ -786,11 +797,12 @@
         "subgraph_session": {},
         "custom": {
           "persistent_id": "6ebf8707-3011-46a8-b159-78238762ffb5",
+          "version": "latest",
           "debug_code": {},
           "template": "生成的步骤json信息错误，步骤信息必须为严格的json格式，且包含next_step信息\n且 next_step 内容必须为：调用工具 或 总结答案 其一\n\n当前生成的错误步骤json信息：\n\n$input.variables$\n\n根据历史对话反思错误，生成正确的步骤信息。"
         }
       },
-      "0x29dda49c220": {
+      "0x2778b9341c0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "工具执行错误反馈",
@@ -813,7 +825,7 @@
           180
         ],
         "disabled": true,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 551.08,
         "height": 101.10000000000001,
@@ -840,11 +852,12 @@
         ],
         "custom": {
           "persistent_id": "1783f7fe-0bdc-43f1-84d0-41e058ada397",
+          "version": "latest",
           "debug_code": {},
           "template": "工具调用报错根据执行日志修复请求参数：\n$input.条件分支_else[1]$\n\n用户问题：\n$node_vars.长文本输入_output$"
         }
       },
-      "0x29dda49e200": {
+      "0x2778b934fd0": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码42",
@@ -867,7 +880,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 795.8000000000001,
         "height": 923.25,
@@ -930,7 +943,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    # 在这里编写你的组件逻辑\n    input_data = inputs.input if inputs else None\n    param1 = inputs.input_1\n    # 处理逻辑\n    result = f\"处理结果: {input_data} + {param1}\"\n    return {\n        \"output\": result,\n        \"output_1\": result\n    }"
         }
       },
-      "0x29dd08e86a0": {
+      "0x27785e1c670": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话测试",
         "icon": null,
         "name": "大模型对话测试",
@@ -953,7 +966,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 530.84,
         "height": 417.15000000000003,
@@ -966,6 +979,7 @@
         "subgraph_session": {},
         "custom": {
           "persistent_id": "516a48bb-c76f-4694-b0ce-9574a970e6b7",
+          "version": "latest",
           "debug_code": null,
           "model": "custom.公司模型",
           "system_prompt": "# 智能体工作流程指令\n\n你是一个专业的AI助手，能够根据用户指令自动拆分步骤、调用工具并处理多轮交互。请严格遵循以下流程：\n\n1. **任务理解**\n- 解析用户指令，明确核心需求\n- 识别需要调用的工具集合（已知工具列表见下方）\n\n2. **步骤分解**\n- 将问题拆解为逻辑顺序的子任务\n- 每个子任务需包含：\n  - 预期目标\n  - 需要调用的工具名称\n  - 参数生成逻辑\n\n3. **工具调用规范**\n- 当需要调用工具时，输出以下JSON结构：\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"完整的工具名称\",\n    \"tool_input\": 工具输入参数,\n}\n```\n- 严格使用用户提供的工具参数列表中的工具名称定义和参数格式，如果工具名是路径，生成时需要包含完整的路径名称\n- 参数值需要根据用户的问题以及上下文关系生成\n\n4. **多轮交互流程**\n- 每次工具调用后暂停输出，等待执行结果\n- 接收工具返回结果后，继续处理后续步骤\n- 最终答案需整合所有工具调用结果\n- 当需要总结最终答案时，输出以下JSON结构：\n```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"根据工具调用过程整理结果，最终回答用户问题。\"\n}\n```\n\n5. **工具列表**\n参数的参考输入仅供参考，具体参数内容根据用户问题生成：\n$node_vars.代码编辑_2_output$\n\n6. **输出格式要求**\n- 首轮输出：分解步骤列表\n- 工具调用时：仅输出JSON结构\n- 接收结果后：继续生成后续步骤\n- 最终答案：自然语言总结\n- 没有匹配的工具时：直接返回错误\n- 交互次数大于等于5时：不再调用工具，直接输出最终答案\n- 如果没有可用工具，或者工具列表为空，直接给出最终结果\n\n7. **示例交互**\n用户: \"帮我查找北京的天气并规划出行路线\"\n智能体生成步骤一：\n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"天气查询工具\",\n    \"tool_input\": {\"parameters\": { \"location\": \"北京\"}},\n}\n```\n工具调用结果：下雨\n\n智能体生成步骤二: \n```json\n{\n    \"next_step\": \"调用工具\",\n    \"tool_name\": \"路线规划工具\",\n    \"tool_input\": {\"parameters\": {\"start\": \"天安门\", \"end\": \"故宫\"}},\n}\n```\n工具调用结果：天安门-》朝天宫，20分钟，朝天宫-》故宫，1小时。\n\n最终答案示例：\n```json\n{\n    \"next_step\": \"总结答案\",\n    \"answer\": \"第一步，天气查询结果为下雨，建议您携带雨具。第二步，查询天安门到故宫的路线，推荐路线结果：从天安门到故宫，预计步行1小时20分钟，途经朝天宫\"\n}\n```\n\n8. **错误处理**\n工具调用失败会返回失败日志，详细分析错误原因，结合错误原因、用户问题以及现有工具设计工具调用。",
@@ -975,7 +989,7 @@
           "model_params": []
         }
       },
-      "0x29dd08ea1a0": {
+      "0x27785e1c280": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -998,7 +1012,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 153.0,
         "height": 60,
@@ -1013,7 +1027,7 @@
           "persistent_id": "7837e4b9-dd80-4028-b64f-9266b25965e2"
         }
       },
-      "0x29dd0849960": {
+      "0x27789870100": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -1036,7 +1050,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 153.0,
         "height": 60,
@@ -1051,7 +1065,7 @@
           "persistent_id": "4cf84646-541e-48e3-a776-64381d6ea1a9"
         }
       },
-      "0x29dd08e8250": {
+      "0x2778b8fe050": {
         "type_": "control_flow.ControlFlowLoopNode",
         "icon": null,
         "name": "循环控制流区域",
@@ -1074,7 +1088,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 5309.40844164473,
         "height": 730.4547847106728,
@@ -1095,7 +1109,7 @@
           "loop_mode": "condition"
         }
       },
-      "0x29dda50b160": {
+      "0x2778b8fe5f0": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\CanvasMind\\./icons/条件分支.png",
         "name": "条件分支 1",
@@ -1118,7 +1132,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 580.52,
         "height": 330.0,
@@ -1169,7 +1183,7 @@
           "execute_all_matches": false
         }
       },
-      "0x29dd0aeb2b0": {
+      "0x2778b8ff790": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\CanvasMind\\./icons/条件分支.png",
         "name": "条件分支",
@@ -1192,7 +1206,7 @@
           180
         ],
         "disabled": true,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 558.44,
         "height": 271.20000000000005,
@@ -1238,241 +1252,231 @@
     "connections": [
       {
         "out": [
-          "0x29dda5ee860",
+          "0x277817d1840",
           "output"
         ],
         "in": [
-          "0x29dda573430",
+          "0x2778b9b9f60",
           "input1"
         ]
       },
       {
         "in": [
-          "0x29dd0a065f0",
+          "0x277817d1ff0",
           "input"
         ],
         "out": [
-          "0x29dd08856c0",
+          "0x2777eff0370",
           "output"
         ]
       },
       {
         "out": [
-          "0x29dd0a065f0",
+          "0x277817d1ff0",
           "output"
         ],
         "in": [
-          "0x29dda412da0",
+          "0x2778b937b80",
           "input"
         ]
       },
       {
         "out": [
-          "0x29dda573430",
+          "0x2778b9b9f60",
           "output1"
         ],
         "in": [
-          "0x29dd08e8250",
+          "0x2778b8fe050",
           "inputs"
         ]
       },
       {
-        "in": [
-          "0x29dd06d9ae0",
-          "variables"
-        ],
         "out": [
-          "0x29dd0aeb2b0",
-          "branch"
-        ]
-      },
-      {
-        "out": [
-          "0x29dd06d9ae0",
+          "0x2778b9ba230",
           "prompt"
         ],
         "in": [
-          "0x29dd0849960",
+          "0x27789870100",
           "input"
         ]
       },
       {
         "in": [
-          "0x29dd0887be0",
+          "0x2778b9b91e0",
           "raw_text"
         ],
         "out": [
-          "0x29dd08e86a0",
+          "0x27785e1c670",
           "response"
         ]
       },
       {
         "out": [
-          "0x29dd0887be0",
+          "0x2778b9b91e0",
           "cleaned_text"
         ],
         "in": [
-          "0x29dda508cd0",
+          "0x27785d44490",
           "llm_output"
         ]
       },
       {
         "in": [
-          "0x29dd0884340",
+          "0x2778b935480",
           "project_name"
         ],
         "out": [
-          "0x29dd092b970",
+          "0x27785da8f40",
           "output1"
         ]
       },
       {
         "in": [
-          "0x29dd0884340",
+          "0x2778b935480",
           "input"
         ],
         "out": [
-          "0x29dd08198a0",
+          "0x2778b935930",
           "output1"
         ]
       },
       {
         "out": [
-          "0x29dd0884340",
+          "0x2778b935480",
           "result"
         ],
         "in": [
-          "0x29dd0aeb2b0",
+          "0x2778b8ff790",
           "input"
         ]
       },
       {
         "out": [
-          "0x29dd0884340",
+          "0x2778b935480",
           "log"
         ],
         "in": [
-          "0x29dd0aeb2b0",
+          "0x2778b8ff790",
           "input"
         ]
       },
       {
         "in": [
-          "0x29dd08848e0",
+          "0x2778b9b9360",
           "input1"
         ],
         "out": [
-          "0x29dd08e8250",
+          "0x2778b8fe050",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x29dda413280",
+          "0x2778b937e80",
           "output1"
         ],
         "in": [
-          "0x29dd08e86a0",
+          "0x27785e1c670",
           "history"
         ]
       },
       {
         "out": [
-          "0x29dda508cd0",
+          "0x27785d44490",
           "parsed_json"
         ],
         "in": [
-          "0x29dda50b160",
+          "0x2778b8fe5f0",
           "input"
         ]
       },
       {
         "in": [
-          "0x29dda49edd0",
+          "0x27785da8cd0",
           "input1"
         ],
         "out": [
-          "0x29dda50b160",
+          "0x2778b8fe5f0",
           "branch"
         ]
       },
       {
         "out": [
-          "0x29dda49edd0",
+          "0x27785da8cd0",
           "output1"
         ],
         "in": [
-          "0x29dd0849960",
+          "0x27789870100",
           "input"
         ]
       },
       {
         "in": [
-          "0x29dd092b970",
+          "0x27785da8f40",
           "input1"
         ],
         "out": [
-          "0x29dda50b160",
+          "0x2778b8fe5f0",
           "branch_1"
         ]
       },
       {
         "in": [
-          "0x29dd08198a0",
+          "0x2778b935930",
           "input1"
         ],
         "out": [
-          "0x29dda50b160",
+          "0x2778b8fe5f0",
           "branch_1"
         ]
       },
       {
         "in": [
-          "0x29dda49e8f0",
+          "0x2778b934760",
           "variables"
         ],
         "out": [
-          "0x29dda50b160",
+          "0x2778b8fe5f0",
           "else"
         ]
       },
       {
         "out": [
-          "0x29dda49e8f0",
+          "0x2778b934760",
           "prompt"
         ],
         "in": [
-          "0x29dd0849960",
+          "0x27789870100",
           "input"
         ]
       },
       {
         "in": [
-          "0x29dda49c220",
+          "0x2778b9341c0",
           "variables"
         ],
         "out": [
-          "0x29dd0aeb2b0",
+          "0x2778b8ff790",
           "else"
         ]
       },
       {
         "out": [
-          "0x29dda49c220",
+          "0x2778b9341c0",
           "prompt"
         ],
         "in": [
-          "0x29dd0849960",
+          "0x27789870100",
           "input"
         ]
       },
       {
         "in": [
-          "0x29dd08e86a0",
+          "0x27785e1c670",
           "input_data"
         ],
         "out": [
-          "0x29dd08ea1a0",
+          "0x27785e1c280",
           "output"
         ]
       }
@@ -1482,29 +1486,29 @@
     "environment": "3.12",
     "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.12\\python.exe",
     "node_id2stable_key": {
-      "0x29dda5ee860": "数据集成/长文本输入||长文本输入",
-      "0x29dd0a065f0": "代码执行/代码编辑||代码编辑 1",
-      "0x29dda573430": "大模型组件/JSON文本包装||JSON文本包装",
-      "0x29dd06d9ae0": "大模型组件/提示词模板||工具调用结果回写",
-      "0x29dd0887be0": "大模型组件/移除思考过程||移除思考过程",
-      "0x29dd0884340": "大模型组件/工具调用||工具调用",
-      "0x29dd08848e0": "大模型组件/JSON文本包装||JSON文本包装 3",
-      "0x29dda413280": "数据集成/获取全局变量||获取大模型历史对话",
-      "0x29dda412da0": "代码执行/代码编辑||代码编辑 2",
-      "0x29dda508cd0": "大模型组件/大模型输出解析||大模型输出解析",
-      "0x29dd08856c0": "代码执行/代码编辑||代码编辑",
-      "0x29dda49edd0": "数据预处理/JSON筛选||提取最终答案",
-      "0x29dd092b970": "数据预处理/JSON筛选||工具名提取",
-      "0x29dd08198a0": "数据预处理/JSON筛选||工具输入提取",
-      "0x29dda49e8f0": "大模型组件/提示词模板||错误处理",
-      "0x29dda49c220": "大模型组件/提示词模板||工具执行错误反馈",
-      "0x29dda49e200": "代码执行/代码编辑||代码42",
-      "0x29dd08e86a0": "大模型组件/大模型对话测试||大模型对话测试",
-      "0x29dd08ea1a0": "控制流/输入端口||输入端口",
-      "0x29dd0849960": "控制流/输出端口||输出端口",
-      "0x29dd08e8250": "控制流/循环控制流区域||循环控制流区域",
-      "0x29dda50b160": "控制流/条件分支||条件分支 1",
-      "0x29dd0aeb2b0": "控制流/条件分支||条件分支"
+      "0x277817d1840": "数据集成/长文本输入||长文本输入",
+      "0x277817d1ff0": "代码执行/代码编辑||代码编辑 1",
+      "0x2778b9b9f60": "大模型组件/JSON文本包装||JSON文本包装",
+      "0x2778b9ba230": "大模型组件/提示词模板||工具调用结果回写",
+      "0x2778b9b91e0": "大模型组件/移除思考过程||移除思考过程",
+      "0x2778b935480": "大模型组件/工具调用||工具调用",
+      "0x2778b9b9360": "大模型组件/JSON文本包装||JSON文本包装 3",
+      "0x2778b937e80": "数据集成/获取全局变量||获取大模型历史对话",
+      "0x2778b937b80": "代码执行/代码编辑||代码编辑 2",
+      "0x27785d44490": "大模型组件/大模型输出解析||大模型输出解析",
+      "0x2777eff0370": "代码执行/代码编辑||代码编辑",
+      "0x27785da8cd0": "数据预处理/JSON筛选||提取最终答案",
+      "0x27785da8f40": "数据预处理/JSON筛选||工具名提取",
+      "0x2778b935930": "数据预处理/JSON筛选||工具输入提取",
+      "0x2778b934760": "大模型组件/提示词模板||错误处理",
+      "0x2778b9341c0": "大模型组件/提示词模板||工具执行错误反馈",
+      "0x2778b934fd0": "代码执行/代码编辑||代码42",
+      "0x27785e1c670": "大模型组件/大模型对话测试||大模型对话测试",
+      "0x27785e1c280": "控制流/输入端口||输入端口",
+      "0x27789870100": "控制流/输出端口||输出端口",
+      "0x2778b8fe050": "控制流/循环控制流区域||循环控制流区域",
+      "0x2778b8fe5f0": "控制流/条件分支||条件分支 1",
+      "0x2778b8ff790": "控制流/条件分支||条件分支"
     },
     "node_states": {
       "数据集成/长文本输入||长文本输入": "success",
@@ -1525,8 +1529,8 @@
       "大模型组件/提示词模板||工具执行错误反馈": "disabled",
       "代码执行/代码编辑||代码42": "success",
       "大模型组件/大模型对话测试||大模型对话测试": "success",
-      "控制流/输入端口||输入端口": "pending",
-      "控制流/输出端口||输出端口": "pending",
+      "控制流/输入端口||输入端口": "unrun",
+      "控制流/输出端口||输出端口": "unrun",
       "控制流/循环控制流区域||循环控制流区域": "success",
       "控制流/条件分支||条件分支 1": "success",
       "控制流/条件分支||条件分支": "disabled"
@@ -1693,9 +1697,7 @@
           }
         ]
       },
-      "控制流/输入端口||输入端口": {
-        "output": "工具调用结果：\n{'output1': '2025-11-24 01:53:36.977986'}\n\n用户问题：\n获取当前时间"
-      },
+      "控制流/输入端口||输入端口": {},
       "控制流/输出端口||输出端口": {},
       "控制流/循环控制流区域||循环控制流区域": {
         "outputs": "当前时间是：2025-11-24 01:53:36.977986"
@@ -1784,11 +1786,10 @@
       "公司模型": {
         "value": {
           "模型名称": "qwen3-30b-a3b",
-          "API_URL": "http://168.168.10.110:20000",
           "API_KEY": "",
-          "温度": 0.2,
-          "最大Token": 8149,
-          "系统提示": ""
+          "API_URL": "http://168.168.10.110:20000",
+          "MaxTokens": 20480,
+          "Temperature": 0.23
         },
         "description": null,
         "read_only": false

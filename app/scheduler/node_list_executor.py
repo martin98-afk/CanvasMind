@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import datetime
 import re
 import time
 import traceback
@@ -9,6 +10,73 @@ from loguru import logger
 
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.status_node import NodeStatus
+from app.scheduler.backdrop_executor import BackdropExecutor
+
+
+def execute_node(
+        node,
+        component_map,
+        python_exe,
+        kernel_manager,
+        scheduler,
+        check_cancel_func,
+        log_start_func,
+        log_message_func,
+        run_id_prefix="",
+):
+    """
+    执行单个节点（普通节点或 backdrop 内部节点）
+    不依赖 QRunnable，纯逻辑执行
+    """
+    from app.nodes.backdrop_node import ControlFlowBackdrop
+
+    if isinstance(node, ControlFlowBackdrop):
+        raise ValueError("Backdrop 应由 BackdropExecutor 处理，不应在此执行")
+
+    # 跳过 disabled 节点
+    if node.get_property("disabled"):
+        return None
+
+    comp_cls = component_map.get(getattr(node, "FULL_PATH", None))
+
+    # 生成 run_id
+    run_id = f"{run_id_prefix}{node.name()} @ {datetime.datetime.now().strftime('%H:%M:%S')}"
+    node._current_run_id = run_id
+    node._log_message_emitter = log_message_func
+    log_start_func(run_id)
+
+    try:
+        if scheduler.parent.config.canvas_run_mode.value == "ipython运行":
+            results = node.execute_sync(
+                comp_cls,
+                python_executable=python_exe,
+                check_cancel=check_cancel_func,
+                kernel_manager=kernel_manager
+            )
+        else:
+            results = node.execute_sync(
+                comp_cls,
+                python_executable=python_exe,
+                check_cancel=check_cancel_func
+            )
+
+        # 变量自动更新
+        if results is not None:
+            for port_name, result in results.items():
+                node_name = re.sub(r"\s+", "_", node.name())
+                var_key = f"{node_name}_{port_name}"
+                var_obj = scheduler.global_variables.node_vars.get(var_key)
+                if var_obj and var_obj.update_policy != "固定":
+                    scheduler.update_node_variable(var_key, result, var_obj.update_policy)
+
+        return results
+
+    except Exception as e:
+        logger.error(f"节点 {node.name()} 执行失败: {e}")
+        logger.error(traceback.format_exc())
+        if scheduler:
+            scheduler.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
+        raise
 
 
 class WorkerSignals(QObject):
@@ -19,6 +87,8 @@ class WorkerSignals(QObject):
     node_finished = pyqtSignal(str)
     node_error = pyqtSignal(str)
     backdrop_finished = pyqtSignal()
+    log_start = pyqtSignal(str)  # run_id
+    log_message = pyqtSignal(str, str)  # run_id, line
 
 class NodeListExecutor(QRunnable):
     """
@@ -67,37 +137,38 @@ class NodeListExecutor(QRunnable):
 
                 try:
                     if getattr(node, "execute_sync", None) is not None:
-                        comp_cls = self.component_map.get(getattr(node, "FULL_PATH", None))
-                        if self.main_window.config.canvas_run_mode.value == "ipython运行":
-                            results = node.execute_sync(
-                                comp_cls,
-                                python_executable=self.python_exe,
-                                check_cancel=self._check_cancel,
-                                kernel_manager=self.kernel_manager
-                            )
-                        else:
-                            results = node.execute_sync(
-                                comp_cls,
-                                python_executable=self.python_exe,
-                                check_cancel=self._check_cancel
-                            )
-                        if results is not None:
-                            # 如果结果不为 None， 且其中有含自动更新或者自动累计的变量，则发送变量更新信号
-                            for port_name, result in results.items():
-                                node_name = re.sub(r"\s+", "_", node.name())
-                                if f"{node_name}_{port_name}" in self.scheduler.global_variables.node_vars and \
-                                    self.scheduler.global_variables.node_vars[f"{node_name}_{port_name}"].update_policy!="固定":
-                                    self.scheduler.update_node_variable(
-                                        f"{node_name}_{port_name}", result,
-                                        self.scheduler.global_variables.node_vars[f"{node_name}_{port_name}"].update_policy
-                                    )
+                        execute_node(
+                            node=node,
+                            component_map=self.component_map,
+                            python_exe=self.python_exe,
+                            kernel_manager=self.kernel_manager,
+                            scheduler=self.scheduler,
+                            check_cancel_func=self._check_cancel,
+                            log_start_func=self.signals.log_start.emit,
+                            log_message_func=self.signals.log_message.emit,
+                            run_id_prefix=""  # 主流程不加前缀
+                        )
                     elif isinstance(node, ControlFlowBackdrop):
-                        if self.scheduler:
-                            self.scheduler._execute_backdrop_sync(
-                                node,
-                                check_cancel=self._check_cancel
-                            )
+                        # 创建 BackdropExecutor 并同步执行（在当前工作线程）
+                        backdrop_executor = BackdropExecutor(
+                            backdrop=node,
+                            scheduler=self.scheduler,
+                            component_map=self.component_map,
+                            python_exe=self.python_exe,
+                            kernel_manager=self.kernel_manager,
+                            global_variables=self.scheduler.global_variables
+                        )
+                        # 连接日志信号
+                        backdrop_executor.log_start.connect(self.signals.log_start)
+                        backdrop_executor.log_message.connect(self.signals.log_message)
+
+                        try:
+                            backdrop_executor.execute()
                             self.signals.backdrop_finished.emit()
+                        except Exception as e:
+                            logger.error(f"Backdrop {node.name()} 执行异常: {e}")
+                            self.signals.node_error.emit(node.id)
+                            return
                     else:
                         pass
 
@@ -128,3 +199,7 @@ class NodeListExecutor(QRunnable):
                 self.signals.error.emit("执行被用户取消")
         finally:
             QTimer.singleShot(100, lambda: self.scheduler.unregister_global_variable(self.nodes))
+
+    def push_log_message(self, run_id: str, line: str):
+        """供节点调用，线程安全地推送日志"""
+        self.signals.log_message.emit(run_id, line)

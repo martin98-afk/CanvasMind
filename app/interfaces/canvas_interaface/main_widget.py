@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 import traceback
-from pathlib import Path
 
-from NodeGraphQt import BaseNode
+from pathlib import Path
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool
@@ -21,6 +20,7 @@ from app.interfaces.canvas_interaface.widgets.environment_manager import Environ
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
 from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
 from app.nodes.backdrop_node import ControlFlowBackdrop
+from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
 from app.utils.config import Settings
@@ -156,6 +156,10 @@ class CanvasPage(QWidget):
     @property
     def selected_categories(self):
         return self.ui_manager.nav_view._selected_categories
+
+    @property
+    def log_window(self):
+        return self.ui_manager.log_window
 
     def _on_global_variables_changed(self, *args):
         self.property_panel._on_global_variables_changed(*args)
@@ -549,7 +553,7 @@ class CanvasPage(QWidget):
                 top_level_nodes = [n for n in selected_nodes if n not in backdrop_internal_nodes]
                 QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(top_level_nodes))
             # 展示单独节点面板
-            elif isinstance(selected_nodes[0], BaseNode):
+            elif isinstance(selected_nodes[0], BasicNodeWithGlobalProperty):
                 QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(selected_nodes[0]))
                 self.property_panel.reset_current_components()
                 QtCore.QTimer.singleShot(0, lambda: self.node_operations._request_recommendations(selected_nodes[0]))
