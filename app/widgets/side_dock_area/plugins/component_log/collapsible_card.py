@@ -45,7 +45,7 @@ class CollapsibleLogCard(CardWidget):
 
         # 日志内容（使用 QTextEdit 以便格式化）
         self.log_text = TextEdit(self)
-        self.log_text.setStyleSheet("background: transparent; border: none;")
+        self.log_text.setStyleSheet("background: transparent; border: none; color: white;")
         self.log_text.setReadOnly(True)
         self.log_text.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.log_text.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -128,3 +128,7 @@ class CollapsibleLogCard(CardWidget):
         if self.is_current_running:
             vsb = self.log_text.verticalScrollBar()
             vsb.setValue(vsb.maximum())
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._adjust_height()

@@ -168,7 +168,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
             # 创建代码编辑器控件
             self._debug_widget = CodeEditorWidgetWrapper(
-                parent=parent_window,
+                parent=self.view,
                 name="debug_code",
                 label="调试代码编辑器",
                 default=self.current_code,
@@ -438,7 +438,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             run_dir = PERSISTENT_TEMP_ROOT / run_id
             shutil.rmtree(run_dir, ignore_errors=True)
             run_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(resource_path("app/components/base.py"), str(run_dir / "base.py"))
+            shutil.copyfile(resource_path("app/components/base.py"), str(run_dir.parent / "base.py"))
             temp_script_path = run_dir / "exec_script.py"
             temp_component_path = run_dir / "component.py"
             params_path = run_dir / "params.pkl"
@@ -452,6 +452,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                 pickle.dump((params, inputs, global_variable), f)
             if self._debug_widget is not None:
                 # debug 模式 直接使用当前编辑器代码
+                print(temp_component_path)
+                print(os.listdir(run_dir))
                 with open(temp_component_path, 'w', encoding='utf-8') as f:
                     f.write(self.current_code)
             else:

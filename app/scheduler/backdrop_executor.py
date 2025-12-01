@@ -1,4 +1,4 @@
-# backdrop_executor.py 或放在 node_list_executor.py 中
+# backdrop_executor.py
 import datetime
 import re
 import traceback
@@ -7,74 +7,9 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from loguru import logger
 
 from app.nodes.status_node import NodeStatus
+from app.scheduler.execute_single_node import execute_node
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import get_port_node
-
-
-def execute_node(
-        node,
-        component_map,
-        python_exe,
-        kernel_manager,
-        scheduler,
-        check_cancel_func,
-        log_start_func,
-        log_message_func,
-        run_id_prefix="",
-):
-    """
-    执行单个节点（普通节点或 backdrop 内部节点）
-    不依赖 QRunnable，纯逻辑执行
-    """
-    from app.nodes.backdrop_node import ControlFlowBackdrop
-
-    if isinstance(node, ControlFlowBackdrop):
-        raise ValueError("Backdrop 应由 BackdropExecutor 处理，不应在此执行")
-
-    # 跳过 disabled 节点
-    if node.get_property("disabled"):
-        return None
-
-    comp_cls = component_map.get(getattr(node, "FULL_PATH", None))
-
-    # 生成 run_id
-    run_id = f"{run_id_prefix}{node.name()} @ {datetime.datetime.now().strftime('%H:%M:%S')}"
-    node._current_run_id = run_id
-    node._log_message_emitter = log_message_func
-    log_start_func(run_id)
-
-    try:
-        if scheduler.parent.config.canvas_run_mode.value == "ipython运行":
-            results = node.execute_sync(
-                comp_cls,
-                python_executable=python_exe,
-                check_cancel=check_cancel_func,
-                kernel_manager=kernel_manager
-            )
-        else:
-            results = node.execute_sync(
-                comp_cls,
-                python_executable=python_exe,
-                check_cancel=check_cancel_func
-            )
-
-        # 变量自动更新
-        if results is not None:
-            for port_name, result in results.items():
-                node_name = re.sub(r"\s+", "_", node.name())
-                var_key = f"{node_name}_{port_name}"
-                var_obj = scheduler.global_variables.node_vars.get(var_key)
-                if var_obj and var_obj.update_policy != "固定":
-                    scheduler.update_node_variable(var_key, result, var_obj.update_policy)
-
-        return results
-
-    except Exception as e:
-        logger.error(f"节点 {node.name()} 执行失败: {e}")
-        logger.error(traceback.format_exc())
-        if scheduler:
-            scheduler.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
-        raise
 
 
 class BackdropExecutor(QObject):
@@ -237,7 +172,7 @@ class BackdropExecutor(QObject):
             self.scheduler.property_changed.emit(self.backdrop)
             try:
                 # 使用统一 execute_node
-                results = execute_node(
+                execute_node(
                     node=node,
                     component_map=self.component_map,
                     python_exe=self.python_exe,
