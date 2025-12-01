@@ -193,9 +193,9 @@ class BasicNodeWithGlobalProperty(NodeObject):
             self._realtime_logs += message
 
             # ✅ 通过 scheduler 推送日志（线程安全）
-            if hasattr(self, 'executor') and self.executor and hasattr(self, '_current_run_id'):
+            if hasattr(self, '_log_message_emitter'):
                 # 注意：这里假设你已将 run_id 存在 _current_run_id
-                self.executor.push_log_message(self._current_run_id, message)
+                self._log_message_emitter(self._current_run_id, message)
 
             # 兼容旧弹窗（如果需要）
             if hasattr(self, 'log_capture') and self.log_capture and self.log_capture.log_window:
