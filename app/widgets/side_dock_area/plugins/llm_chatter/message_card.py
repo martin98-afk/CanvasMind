@@ -4,11 +4,12 @@ import re
 from datetime import datetime
 from html import escape
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl, QSize, QRegularExpression
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl
+from PyQt5.QtGui import QWheelEvent
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QSizePolicy, QScrollArea, QApplication
+    QSizePolicy, QApplication
 )
 from markdown import Markdown
 from qfluentwidgets import (
@@ -76,6 +77,8 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
                         -webkit-user-select: none !important;
                         color: #666 !important;
                         padding-right: 12px !important;
+                        border-right: 1px solid #444444 !important;
+                        margin-right: 8px !important;
                     }
                 '''
             )
@@ -386,7 +389,7 @@ class CodeWebViewer(QWebEngineView):
         </html>
         """
         self.setHtml(full_html, QUrl(""))
-        QTimer.singleShot(150, self._request_content_height)
+        QTimer.singleShot(100, self._request_content_height)
 
     def _request_content_height(self):
         self.page().runJavaScript("reportHeight();")
@@ -424,6 +427,20 @@ class CodeWebViewer(QWebEngineView):
         super().resizeEvent(event)
         # 宽度变化时，重新计算高度
         QTimer.singleShot(100, self._request_content_height)
+
+    def wheelEvent(self, event: QWheelEvent):
+        # 获取滚动条（向上找 QScrollArea）
+        scroll_area = self.parent().parent.chat_scroll_area
+        if scroll_area:
+            vbar = scroll_area.verticalScrollBar()
+            if vbar and vbar.minimum() != vbar.maximum():
+                # 让外部 ScrollArea 滚动
+                delta = event.angleDelta().y()
+                vbar.setValue(vbar.value() - delta // 2)
+                event.accept()  # 标记事件已处理
+                return
+
+        super().wheelEvent(event)
 
 
 # ======== MessageCard（适配 WebViewer）========
@@ -594,6 +611,20 @@ class MessageCard(CardWidget):
 
     def finish_streaming(self):
         self.content_widget.finish_streaming()
+
+    def wheelEvent(self, event: QWheelEvent):
+        # 获取滚动条（向上找 QScrollArea）
+        scroll_area = self.parent.chat_scroll_area
+        if scroll_area:
+            vbar = scroll_area.verticalScrollBar()
+            if vbar and vbar.minimum() != vbar.maximum():
+                # 让外部 ScrollArea 滚动
+                delta = event.angleDelta().y()
+                vbar.setValue(vbar.value() - delta // 2)
+                event.accept()  # 标记事件已处理
+                return
+
+        super().wheelEvent(event)
 
 
 def create_welcome_card(parent=None) -> MessageCard:
