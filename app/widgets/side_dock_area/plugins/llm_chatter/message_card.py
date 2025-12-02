@@ -206,9 +206,13 @@ class ConsoleMonitorPage(QWebEnginePage):
 
     def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
         msg = message.strip()
-        if msg.startswith("pywebview_copy:"):
-            text = msg[len("pywebview_copy:"):]
-            self.copyRequested.emit(text)
+        if msg.startswith("pywebview_copy_b64:"):
+            b64_str = msg[len("pywebview_copy_b64:"):]
+            try:
+                text = base64.b64decode(b64_str).decode('utf-8')
+                self.copyRequested.emit(text)
+            except Exception:
+                pass  # 安静失败
         elif msg.startswith("pywebview_height:"):
             try:
                 h = int(msg[len("pywebview_height:"):])
@@ -341,10 +345,10 @@ class CodeWebViewer(QWebEngineView):
                         // 优先尝试标准 API
                         if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {{
                             navigator.clipboard.writeText(text).catch(() => {{
-                                console.log('pywebview_copy:' + text);
+                                console.log('pywebview_copy_b64:' + b64);
                             }});
                         }} else {{
-                            console.log('pywebview_copy:' + text);
+                            console.log('pywebview_copy_b64:' + b64);
                         }}
                     }}
                 }});
@@ -404,6 +408,11 @@ class CodeWebViewer(QWebEngineView):
             self.contextLinkClicked.emit(url.host())
             return False
         return True
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # 宽度变化时，重新计算高度
+        QTimer.singleShot(100, self._request_content_height)
 
 
 # ======== MessageCard（适配 WebViewer）========
