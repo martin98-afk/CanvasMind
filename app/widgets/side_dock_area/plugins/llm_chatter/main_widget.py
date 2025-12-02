@@ -448,11 +448,12 @@ class OpenAIChatToolWindow(ToolWindow):
         user_input = session.messages[card_index - 1]["content"]
         params = session.messages[card_index - 1]["params"]
         if params:
-            user_input = "\n".join([value[1] for value in params.values()])
+            user_input = "\n".join([value[1] for value in params.values()]) + "\n\n" + user_input
         # 删除当前助手消息
         self._delete_message(card)
         # 重新发送
         self.input_area._on_send_click()
+        print("重新发送：", user_input)
         self._on_send_clicked(user_input)
 
     def _copy_text(self, text: str):

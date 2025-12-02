@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
 from markdown import Markdown
 from qfluentwidgets import (
     FluentIcon, ToolTipFilter, TransparentToolButton,
-    CardWidget, CaptionLabel
+    CardWidget, CaptionLabel, InfoBar, InfoBarPosition
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
@@ -60,6 +60,7 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
             from pygments.formatters import HtmlFormatter
 
             lexer = get_lexer_by_name(lang, stripall=False) if lang else TextLexer()
+            # 关键：禁用行号可选 + 增加行号样式
             formatter = HtmlFormatter(
                 style='dracula',
                 linenos='inline',
@@ -67,17 +68,30 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
                 prestyles=(
                     'margin:0; padding:0; background:#1E1E1E; '
                     'font-family: Consolas, monospace; font-size:13px; line-height:1.5; color:#D4D4D4;'
-                )
+                ),
+                # 注入行号不可选样式
+                cssstyles='''
+                    .highlight .lineno {
+                        user-select: none !important;
+                        -webkit-user-select: none !important;
+                        color: #666 !important;
+                        padding-right: 12px !important;
+                    }
+                '''
             )
             highlighted = highlight(copy_text, lexer, formatter)
         except Exception:
             lines = copy_text.splitlines() or [""]
             max_line = len(str(len(lines)))
+            # 确保回退模式的行号也不可选
             numbered = "\n".join(
-                f'<span style="color:#666; padding-right:12px; user-select:none;">{str(i + 1).rjust(max_line)}</span>{escape(line)}'
+                f'<span style="color:#666; padding-right:12px; user-select:none; -webkit-user-select:none;">{str(i + 1).rjust(max_line)}</span>{escape(line)}'
                 for i, line in enumerate(lines)
             )
             highlighted = f'<pre style="margin:0; padding:0; background:#1E1E1E; font-family:monospace;">{numbered}</pre>'
+
+        # 调整代码容器的 padding，避开语言标签
+        code_container_padding = "12px" if not lang else "28px 12px 12px 12px"  # 上 padding 增加
 
         return f'''
 <div style="
@@ -91,7 +105,7 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
     font-family: Consolas, monospace;
     font-size: 13px;
 ">
-    {f'<div style="position:absolute; top:6px; left:8px; background:#333; color:#FFA500; padding:1px 6px; border-radius:3px; font-size:11px; z-index:10;">{lang}</div>' if lang else ''}
+    {f'<div style="position:absolute; top:6px; left:8px; background:#333; color:#FFA500; padding:1px 6px; border-radius:3px; font-size:11px; z-index:10; pointer-events:none;">{lang}</div>' if lang else ''}
 
     <button type="button" data-copy="{b64_copy}" style="
         position: absolute;
@@ -110,16 +124,13 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
         z-index: 10;
     " onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">📋</button>
 
-    <div style="padding: 12px;">
+    <div style="padding: {code_container_padding};">
         {highlighted}
     </div>
 </div>
 '''
-
-    # 使用非贪婪匹配，支持跨行
     pattern = r'<pre><code(?:\s+class="([^"]*)")?>(.*?)</code></pre>'
     return re.sub(pattern, replacer, html, flags=re.DOTALL)
-
 
 # ======== 辅助函数（保持不变）========
 def _sanitize_incomplete_markdown(md_text: str) -> str:
@@ -555,6 +566,14 @@ class MessageCard(CardWidget):
 
     def _on_internal_copy(self, text: str):
         QApplication.clipboard().setText(text)
+        InfoBar.success(
+            title='已复制',
+            content='代码已复制到剪贴板',
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=2000,
+            parent=self.parent
+        )
 
     def _on_context_link_clicked(self, tool_key: str):
         if tool_key in self.context_tags:
