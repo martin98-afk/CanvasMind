@@ -1,18 +1,101 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
 import re
+import base64
+from html import escape
+from typing import Optional
+
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QMouseEvent, QTextCursor
-from PyQt5.QtWidgets import QTextEdit, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy, QTextBrowser
+from PyQt5.QtWidgets import (
+    QTextEdit, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QSizePolicy, QTextBrowser, QApplication
+)
 from markdown import Markdown
 from qfluentwidgets import (
-    FluentIcon, ToolTipFilter, TransparentToolButton, CardWidget, CaptionLabel, TextBrowser
+    FluentIcon, ToolTipFilter, TransparentToolButton,
+    CardWidget, CaptionLabel, InfoBar, InfoBarPosition
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
-from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
+# 可选：如果你的项目有 ContextRegistry，保留；否则注释
+try:
+    from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
+except ImportError:
+    ContextRegistry = None
 
-# 可复用的 Markdown 实例
+# ======== Pygments 支持 ========
+try:
+    from pygments import highlight
+    from pygments.lexers import get_lexer_by_name, TextLexer
+    from pygments.formatters import HtmlFormatter
+    from pygments.styles import get_style_by_name
+
+    PYGMENTS_AVAILABLE = True
+except ImportError:
+    PYGMENTS_AVAILABLE = False
+
+
+def _highlight_code_with_line_numbers(code: str, lang: str = "") -> str:
+    """生成带行号的高亮代码，确保行号与代码垂直对齐"""
+    if not PYGMENTS_AVAILABLE:
+        # 备用：手动加行号（无高亮）
+        lines = code.splitlines()
+        max_line = len(str(len(lines)))
+        numbered = "\n".join(
+            f'<span class="lineno">{str(i + 1).rjust(max_line)}</span> {escape(line)}'
+            for i, line in enumerate(lines)
+        )
+        return f'<pre style="margin:0; padding:12px 12px 12px 50px; background:#1E1E1E; color:#D4D4D4; font-family:monospace; line-height:1.5;">{numbered}</pre>'
+
+    try:
+        if lang:
+            lexer = get_lexer_by_name(lang, stripall=False)  # 👈 关键：stripall=False 保留空行
+        else:
+            lexer = TextLexer()
+
+        # 使用 dracula 主题，内联 CSS
+        formatter = HtmlFormatter(
+            style='dracula',
+            linenos='table',  # 👈 关键：使用 table 模式确保对齐
+            cssclass='codehilite',
+            noclasses=False,
+            prestyles=(
+                'margin:0; padding:12px; background:#1E1E1E; '
+                'font-family: "Consolas", "Courier New", monospace; '
+                'font-size:13px; line-height:1.5; color:#D4D4D4;'
+            ),
+            linenostart=1,
+            linenospecial=0,
+        )
+
+        highlighted = highlight(code, lexer, formatter)
+
+        # 确保所有行号容器使用等宽字体 + 右对齐
+        highlighted = highlighted.replace(
+            '<table',
+            '<table style="border-collapse: collapse; width: 100%; margin:0; padding:0;"'
+        ).replace(
+            '<td class="linenos"',
+            '<td class="linenos" style="vertical-align: top; padding:0 8px 0 0; text-align: right; user-select: none;"'
+        ).replace(
+            '<td class="code"',
+            '<td class="code" style="vertical-align: top; padding:0; width:100%;"'
+        )
+
+        return highlighted
+
+    except Exception as e:
+        # 回退到无高亮但有行号
+        lines = code.splitlines() or [""]
+        max_line = len(str(len(lines)))
+        numbered = "\n".join(
+            f'<span style="color:#666; padding-right:8px; user-select:none;">{str(i + 1).rjust(max_line)}</span>{escape(line)}'
+            for i, line in enumerate(lines)
+        )
+        return f'<pre style="margin:0; padding:12px 12px 12px 50px; background:#1E1E1E; color:#D4D4D4; font-family:monospace; line-height:1.5;">{numbered}</pre>'
+
+# ======== Markdown 实例 ========
 _md_instance = None
 
 
@@ -26,8 +109,78 @@ def get_markdown_instance():
     return _md_instance
 
 
+# ======== 代码块增强：高亮 + 行号 + 复制按钮 ========
+def _wrap_code_blocks_with_copy_button(html: str) -> str:
+    """包裹代码块：复制按钮绝对定位到右上角，语言标签在左上角"""
+
+    def replacer(match):
+        lang = (match.group(1) or "").replace("language-", "").strip()
+        code_content_raw = match.group(2) or ""
+
+        # 用于复制的原始文本
+        try:
+            copy_text = code_content_raw.replace("&lt;", "<") \
+                                        .replace("&gt;", ">") \
+                                        .replace("&amp;", "&") \
+                                        .replace("&#39;", "'") \
+                                        .replace("&quot;", '"')
+        except:
+            copy_text = code_content_raw
+
+        b64_copy = base64.b64encode(copy_text.encode('utf-8')).decode('ascii')
+        copy_link = f'copy://code/{b64_copy}'
+
+        # 生成高亮内容
+        highlighted_html = _highlight_code_with_line_numbers(code_content_raw, lang)
+
+        # 👇 关键：使用绝对定位，按钮在代码块右上角
+        container = f'''
+<div style="
+    position: relative;
+    margin: 12px 0;
+    background: #1E1E1E;
+    border: 1px solid #3A3F47;
+    border-radius: 8px;
+    overflow: hidden;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+">
+    <!-- 语言标签（左上角） -->
+    {f'<div style="position:absolute; top:8px; left:12px; background:#333; color:#FFA500; padding:2px 6px; border-radius:4px; font-size:11px; z-index:5;">{lang}</div>' if lang else ''}
+
+    <!-- 复制按钮（右上角） -->
+    <a href="{copy_link}" style="
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        background: rgba(51, 51, 51, 0.85);
+        color: #FFA500;
+        padding: 2px 8px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 12px;
+        cursor: pointer;
+        z-index: 10;
+        transition: background 0.2s;
+    " onmouseenter="this.style.background='rgba(51,51,51,1)'" onmouseleave="this.style.background='rgba(51,51,51,0.85)'">
+        📋 复制
+    </a>
+
+    <!-- 代码内容（带行号） -->
+    <div style="padding: 0; margin-top: {24 if lang else 8}px;">
+        {highlighted_html}
+    </div>
+</div>
+'''
+        return container
+
+    pattern = r'<pre><code(?:\s+class="([^"]*)")?>(.*?)</code></pre>'
+    return re.sub(pattern, replacer, html, flags=re.DOTALL)
+
+
+# ======== 原有辅助函数（保持不变）========
 def _sanitize_incomplete_markdown(md_text: str) -> str:
-    """简化容错：仅处理代码块和换行"""
     if not md_text.strip():
         return md_text
     if md_text.count('```') % 2 == 1:
@@ -37,31 +190,6 @@ def _sanitize_incomplete_markdown(md_text: str) -> str:
     return md_text
 
 
-def _inject_think_cards(md_text: str) -> str:
-    """支持闭合和未闭合的 <think> 标签"""
-    parts = []
-    i = 0
-    pattern_start = "<think>"
-    pattern_end = "</think>"
-    while i < len(md_text):
-        start_idx = md_text.find(pattern_start, i)
-        if start_idx == -1:
-            parts.append(md_text[i:])
-            break
-
-        parts.append(md_text[i:start_idx])
-        end_idx = md_text.find(pattern_end, start_idx + len(pattern_start))
-        if end_idx != -1:
-            content = md_text[start_idx + len(pattern_start):end_idx]
-            parts.append(_render_think_block(content, completed=True))
-            i = end_idx + len(pattern_end)
-        else:
-            content = md_text[start_idx + len(pattern_start):]
-            parts.append(_render_think_block(content, completed=False))
-            i = len(md_text)
-    return ''.join(parts)
-
-
 def _render_think_block(content: str, completed: bool = True) -> str:
     content = (content.replace("&", "&amp;")
                .replace("<", "&lt;")
@@ -69,13 +197,14 @@ def _render_think_block(content: str, completed: bool = True) -> str:
                .replace('"', "&quot;"))
     status_text = "💡 思考开始" if completed else "🧠 正在思考..."
     end_text = "💡 思考结束" if completed else ""
+    style = '"margin-top: 8px; color: #FFA500; font-weight: bold;"'
     return f'''
 <details style="
-    margin: 10px 0;
+    margin: 12px 0;
     background: #252D38;
     border: 1px solid #3A3F47;
-    border-radius: 6px;
-    padding: 10px;
+    border-radius: 8px;
+    padding: 12px;
     font-size: 13px;
     color: #CCCCCC;
 ">
@@ -86,23 +215,36 @@ def _render_think_block(content: str, completed: bool = True) -> str:
         list-style: none;
         outline: none;
     ">{status_text}</summary>
-    <div style="margin-top: 6px; white-space: pre-wrap;">{content}</div>
-    <div>
-    <summary style="
-        cursor: pointer;
-        color: #FFA500;
-        font-weight: bold;
-        list-style: none;
-        outline: none;
-    ">{end_text}</summary>
-    <div>
+    <div style="margin-top: 8px; white-space: pre-wrap;">{content}</div>
+    {"<div style=" + style + ">" + end_text + "</div>" if end_text else ""}
 </details>
 '''
 
 
-def _inject_context_links(md_text: str, allowed_keys) -> str:
-    """将 [显示名](key) 转为可点击链接，仅当 key 在 allowed_keys 中"""
+def _inject_think_cards(md_text: str) -> str:
+    parts = []
+    i = 0
+    while i < len(md_text):
+        start_idx = md_text.find("  <think>  ", i)  # 兼容可能的空格
+        if start_idx == -1:
+            start_idx = md_text.find("<think>", i)
+        if start_idx == -1:
+            parts.append(md_text[i:])
+            break
+        parts.append(md_text[i:start_idx])
+        end_idx = md_text.find("</think>", start_idx + len("<think>"))
+        if end_idx != -1:
+            content = md_text[start_idx + len("<think>"):end_idx]
+            parts.append(_render_think_block(content, completed=True))
+            i = end_idx + len("</think>")
+        else:
+            content = md_text[start_idx + len("<think>"):]
+            parts.append(_render_think_block(content, completed=False))
+            i = len(md_text)
+    return ''.join(parts)
 
+
+def _inject_context_links(md_text: str, allowed_keys) -> str:
     def replacer(match):
         display_name = match.group(1)
         tool_key = match.group(2)
@@ -114,7 +256,8 @@ def _inject_context_links(md_text: str, allowed_keys) -> str:
     return re.sub(r'\[([^\[\]]+?)\]\(([^)\s]+)\)', replacer, md_text)
 
 
-class StreamingTextEdit(QTextBrowser):  # 👈 关键：继承 QTextBrowser
+# ======== 核心：StreamingTextEdit ========
+class StreamingTextEdit(QTextBrowser):
     contextLinkClicked = pyqtSignal(str)
 
     def __init__(self, parent=None):
@@ -144,22 +287,13 @@ class StreamingTextEdit(QTextBrowser):  # 👈 关键：继承 QTextBrowser
             a.context-link:hover {
                 color: #FFD700;
             }
-            /* details 样式 ... */
-            details {
-                margin: 10px 0;
-                background: #252D38;
-                border: 1px solid #3A3F47;
-                border-radius: 6px;
-                padding: 10px;
-            }
-            summary {
-                color: #FFA500;
-                font-weight: bold;
-                cursor: pointer;
-                outline: none;
-            }
-            summary::-webkit-details-marker {
-                display: none;
+            /* 行号用户不可选 */
+            .linenos {
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                pointer-events: none;
             }
         """)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
@@ -170,14 +304,13 @@ class StreamingTextEdit(QTextBrowser):  # 👈 关键：继承 QTextBrowser
         self._streaming = True
         self._html_timer = None
         self._allowed_context_keys = set()
-        self._current_html = ""  # 缓存 HTML（备用）
+        self._current_html = ""
 
         self.anchorClicked.connect(self._on_anchor_clicked)
 
-    # ✅ 关键：拦截 setSource，防止清空
     def setSource(self, url: QUrl):
-        if url.toString().startswith("context://"):
-            return  # 不加载，不请空
+        if url.toString().startswith(("context://", "copy://")):
+            return
         super().setSource(url)
 
     def set_allowed_context_keys(self, keys):
@@ -195,6 +328,7 @@ class StreamingTextEdit(QTextBrowser):  # 👈 关键：继承 QTextBrowser
                 md = get_markdown_instance()
                 md.reset()
                 html = md.convert(processed_md)
+                html = _wrap_code_blocks_with_copy_button(html)
             except Exception:
                 html = (self._markdown_text
                         .replace('&', '&amp;')
@@ -215,14 +349,20 @@ class StreamingTextEdit(QTextBrowser):  # 👈 关键：继承 QTextBrowser
         if href.startswith("context://"):
             tool_key = href[len("context://"):]
             self.contextLinkClicked.emit(tool_key)
-
-    def setFixedWidth(self, w):
-        if w <= 1:
-            return
-        super().setFixedWidth(w)
-        self._width_locked = True
-        if not self._streaming:
-            self._schedule_height_update()
+        elif href.startswith("copy://code/"):
+            b64_content = href[len("copy://code/"):]
+            try:
+                code_text = base64.b64decode(b64_content).decode('utf-8')
+                clipboard = QApplication.clipboard()
+                clipboard.setText(code_text)
+                InfoBar.success(
+                    title="已复制",
+                    content="代码已复制到剪贴板",
+                    duration=1500,
+                    parent=self.parentWidget() or self
+                )
+            except Exception:
+                pass
 
     def append_chunk(self, text: str):
         if not text:
@@ -248,6 +388,14 @@ class StreamingTextEdit(QTextBrowser):  # 👈 关键：继承 QTextBrowser
 
     def get_plain_text(self) -> str:
         return self._markdown_text
+
+    def setFixedWidth(self, w):
+        if w <= 1:
+            return
+        super().setFixedWidth(w)
+        self._width_locked = True
+        if not self._streaming:
+            self._schedule_height_update()
 
     def _schedule_height_update(self):
         if not self._pending_update:

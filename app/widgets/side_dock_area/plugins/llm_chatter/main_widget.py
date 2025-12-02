@@ -35,6 +35,7 @@ class OpenAIChatToolWindow(ToolWindow):
     _current_history_index: Optional[int] = None
     _settings_popup = None  # 懒加载
     _system_prompt = ""
+    _is_welcome = False
 
     def __init__(self, homepage):
         super().__init__(homepage)
@@ -221,13 +222,14 @@ class OpenAIChatToolWindow(ToolWindow):
                 self.model_combo.setCurrentIndex(0)
 
     def _create_new_session(self):
-        # 不再自动保存当前会话！因为“新建”意味着丢弃当前内容
         session = self.session_manager.create_new_session()
-        self._current_history_index = None  # 新建 = 脱离历史
+        self._current_history_index = None
         self.history_btn.setChecked(False)
         self._clear_chat_area()
-        self.welcome_card = create_welcome_card(self)
-        QTimer.singleShot(300, lambda: self.chat_layout.addWidget(self.welcome_card))
+        # 创建欢迎卡片并标记
+        welcome_card = create_welcome_card(self)
+        welcome_card._is_welcome = True  # ← 关键标记
+        QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcome_card))
 
     def _display_current_session(self):
         """清空布局并重新加载当前会话的所有消息"""
@@ -463,18 +465,27 @@ class OpenAIChatToolWindow(ToolWindow):
         ))
 
     def _on_send_clicked(self, user_text: str = ""):
-        # 去除欢迎卡片
-        if self.welcome_card:
-            self.chat_layout.removeWidget(self.welcome_card)
-            self.welcome_card.deleteLater()
-            self.welcome_card = None
+        # === 安全移除欢迎卡片（动态查找）===
+        welcome_card = None
+        for i in range(self.chat_layout.count()):
+            widget = self.chat_layout.itemAt(i).widget()
+            if isinstance(widget, MessageCard) and getattr(widget, '_is_welcome', False):
+                welcome_card = widget
+                break
+
+        if welcome_card is not None:
+            self.chat_layout.removeWidget(welcome_card)
+            welcome_card.deleteLater()
+
+        # === 原有发送逻辑 ===
         session = self.session_manager.get_current_session()
         if not user_text:
             user_text = self.input_area.toPlainText().strip()
             if not user_text:
                 return
             session.add_user_message(
-                content=user_text, params={key: value for key, value in self.context_selector.context.items()}
+                content=user_text,
+                params={key: value for key, value in self.context_selector.context.items()}
             )
             self.input_area.clear()
             self._append_user_message(user_text)
