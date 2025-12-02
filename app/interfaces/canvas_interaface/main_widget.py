@@ -150,10 +150,6 @@ class CanvasPage(QWidget):
         return self.ui_manager.ipython_console
 
     @property
-    def var_explorer(self):
-        return self.ui_manager.variable_explorer
-
-    @property
     def selected_categories(self):
         return self.ui_manager.nav_view._selected_categories
 
@@ -193,11 +189,7 @@ class CanvasPage(QWidget):
             if self.ipython_kernel.kernel_manager.python_exe_path != python_exe or \
                     not self.ipython_kernel.kernel_manager.get_kernel_info().get("is_alive"):
                 self.ipython_kernel.kernel_manager.shutdown_kernel()
-                if self.ipython_kernel.start_kernel(python_exe):
-                    self.var_explorer.set_kernel_manager(self.ipython_kernel.kernel_manager)
-                    self.var_explorer.start_auto_refresh()
-                else:
-                    logger.error("Failed to start IPython kernel")
+                self.ipython_kernel.start_kernel(python_exe)
 
     def run_from(self, node):
         self.canvas_runner.run_from(node)
@@ -606,7 +598,6 @@ class CanvasPage(QWidget):
         # 1. 停止并断开所有定时器
         self._auto_saver.stop()
         self.ipython_kernel.stop_kernel()
-        self.var_explorer.stop_auto_refresh()
         self.ui_manager.destroy_all()
         # ===== 7. 销毁 UI 控件（确保 parent=None）=====
         self.graph.deleteLater()

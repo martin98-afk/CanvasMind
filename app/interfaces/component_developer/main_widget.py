@@ -113,7 +113,6 @@ class ComponentDeveloperPage(QWidget):
         self.input_port_editor = self.component_info.input_port_editor
         self.output_port_editor = self.component_info.output_port_editor
         self.property_editor = self.component_info.property_editor
-        self.console_manager = self.side_dock_area.get_tool_instance("多终端调试面板").console_manager
         self.history_table = self.side_dock_area.get_tool_instance("组件历史管理").history_table
         self.llm_chatter = self.side_dock_area.get_tool_instance("大模型对话")
         self.llm_chatter.set_system_prompt(LLM_CODE_CONTEXT)
@@ -411,7 +410,7 @@ except:
         if not current_code.strip():
             MessageManager.warning("代码编辑器为空，无法运行！", "", self)
             return
-        current_console = self.console_manager.get_current_console()
+        current_console = self.side_dock_area.get_tool_instance("多终端调试面板").get_current_console()
         if current_console:
             current_console.execute_code(current_code)
         else:

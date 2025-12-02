@@ -32,7 +32,7 @@ class CollapsibleLogCard(CardWidget):
         self.title_label = StrongBodyLabel(run_id)
         self.title_label.setStyleSheet("color: #FFA500;")
 
-        self.toggle_button = TransparentToolButton(get_icon("放大"), self)
+        self.toggle_button = TransparentToolButton(get_icon("expand_all"), self)
         self.toggle_button.setFixedSize(20, 20)
         self._update_toggle_text()
 
@@ -69,11 +69,23 @@ class CollapsibleLogCard(CardWidget):
         total_height = int(document_height + margin.top())
         self.log_text.setFixedHeight(max(total_height, 0))  # 最小高度 40
 
+    def expand(self):
+        """外部调用：展开卡片"""
+        self.is_collapsed = False
+        self.log_text.setVisible(True)
+        self.toggle_button.setIcon(get_icon("collapse_all"))
+
+    def collapse(self):
+        """外部调用：折叠卡片"""
+        self.is_collapsed = True
+        self.log_text.setVisible(False)
+        self.toggle_button.setIcon(get_icon("expand_all"))
+
     def _update_toggle_text(self):
         if self.is_collapsed:
-            self.toggle_button.setIcon(get_icon("放大"))
+            self.toggle_button.setIcon(get_icon("expand_all"))
         else:
-            self.toggle_button.setIcon(get_icon("缩小"))
+            self.toggle_button.setIcon(get_icon("collapse_all"))
 
     def toggle(self):
         self.is_collapsed = not self.is_collapsed

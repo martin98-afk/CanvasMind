@@ -154,3 +154,42 @@ class SideDockArea(QWidget):
         if entry is None:
             return None
         return self._get_or_create_instance(entry.cls)
+
+    def cleanup(self):
+        """释放所有资源，清空内存"""
+        # 1. 断开信号连接（防止 lambda 或槽函数持有引用）
+        try:
+            self.tool_panel.topToolChecked.disconnect(self._show_top_tool)
+            self.tool_panel.topToolUnchecked.disconnect(self._hide_top_tool)
+            self.tool_panel.bottomToolChecked.disconnect(self._show_bottom_tool)
+            self.tool_panel.bottomToolUnchecked.disconnect(self._hide_bottom_tool)
+        except TypeError:
+            pass  # 已断开或未连接
+
+        # 2. 删除所有 ToolWindow 实例（调用它们的 cleanup 如果有）
+        for name, instance in self._instances.items():
+            if hasattr(instance, 'cleanup'):
+                instance.cleanup()
+            # 强制删除其所有子控件
+            instance.setParent(None)
+            instance.deleteLater()
+        self._instances.clear()
+
+        # 3. 清空 stacked widgets 中的所有 widget
+        def clear_stacked(stack: QStackedWidget):
+            while stack.count():
+                widget = stack.widget(0)
+                stack.removeWidget(widget)
+                widget.setParent(None)
+                widget.deleteLater()
+
+        clear_stacked(self.top_stack)
+        clear_stacked(self.bottom_stack)
+
+        # 4. 清理 splitter
+        self.splitter.setParent(None)
+        self.splitter.deleteLater()
+
+        # 5. 清理 tool_panel
+        self.tool_panel.setParent(None)
+        self.tool_panel.deleteLater()

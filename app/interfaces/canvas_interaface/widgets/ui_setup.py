@@ -32,7 +32,6 @@ class CanvasUISetUp:
         self.side_dock_area = SideDockArea(self.parent, "运行画布")
         self.property_panel = self.side_dock_area.get_tool_instance("属性面板")
         self.ipython_console = self.side_dock_area.get_tool_instance("IPython 控制台")
-        self.variable_explorer = self.side_dock_area.get_tool_instance("变量浏览器")
         self.log_window = self.side_dock_area.get_tool_instance("模型日志")
         main_layout = QHBoxLayout(self.parent)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -386,12 +385,12 @@ class CanvasUISetUp:
 
             # 3. 销毁 side_dock_area（属性面板等）
             if hasattr(self, 'side_dock_area') and self.side_dock_area:
+                self.side_dock_area.cleanup()
                 self.side_dock_area.setParent(None)
                 self.side_dock_area.deleteLater()
                 self.side_dock_area = None
                 self.property_panel = None
                 self.ipython_console = None
-                self.variable_explorer = None
 
             # 4. 销毁悬浮按钮容器
             if hasattr(self, 'buttons_container') and self.buttons_container:

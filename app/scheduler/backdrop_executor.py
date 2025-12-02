@@ -69,7 +69,7 @@ class BackdropExecutor(QObject):
                 raise ValueError(f"不支持的 Backdrop 类型: {loop_type}")
 
             self.scheduler.set_node_status(self.backdrop, NodeStatus.NODE_STATUS_SUCCESS)
-            self.finished.emit(self.backdrop.id, results)
+            self.backdrop.set_output_value(results)
 
         except Exception as e:
             logger.error(f"Backdrop {self.backdrop.name()} 执行失败: {e}")
