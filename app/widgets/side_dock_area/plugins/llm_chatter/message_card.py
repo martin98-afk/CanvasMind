@@ -55,83 +55,109 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
 
         b64_copy = base64.b64encode(copy_text.encode('utf-8')).decode('ascii')
 
+        # —————— 关键：我们自己生成表格，不依赖 Pygments 行号 ——————
         try:
             from pygments import highlight
             from pygments.lexers import get_lexer_by_name, TextLexer
             from pygments.formatters import HtmlFormatter
 
             lexer = get_lexer_by_name(lang, stripall=False) if lang else TextLexer()
-            # 关键：禁用行号可选 + 增加行号样式
+            # 注意：这里禁用 linenos！我们自己加
             formatter = HtmlFormatter(
                 style='dracula',
-                linenos='inline',
-                cssclass='highlight',
-                prestyles=(
-                    'margin:0; padding:0; background:#1E1E1E; '
-                    'font-family: Consolas, monospace; font-size:13px; line-height:1.5; color:#D4D4D4;'
-                ),
-                # 注入行号不可选样式
-                cssstyles='''
-                    .highlight .lineno {
-                        user-select: none !important;
-                        -webkit-user-select: none !important;
-                        color: #666 !important;
-                        padding-right: 12px !important;
-                        border-right: 1px solid #444444 !important;
-                        margin-right: 8px !important;
-                    }
-                '''
+                linenos=False,  # ← 关键：关闭 Pygments 行号
+                cssclass='code-block',
+                prestyles='margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;'
             )
-            highlighted = highlight(copy_text, lexer, formatter)
+            highlighted_code = highlight(copy_text, lexer, formatter)
         except Exception:
-            lines = copy_text.splitlines() or [""]
-            max_line = len(str(len(lines)))
-            # 确保回退模式的行号也不可选
-            numbered = "\n".join(
-                f'<span style="color:#666; padding-right:12px; user-select:none; -webkit-user-select:none;">{str(i + 1).rjust(max_line)}</span>{escape(line)}'
-                for i, line in enumerate(lines)
-            )
-            highlighted = f'<pre style="margin:0; padding:0; background:#1E1E1E; font-family:monospace;">{numbered}</pre>'
+            # fallback：直接 escape
+            highlighted_code = f'<pre style="margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;">{escape(copy_text)}</pre>'
 
-        # 调整代码容器的 padding，避开语言标签
-        code_container_padding = "12px" if not lang else "28px 12px 12px 12px"  # 上 padding 增加
+        # —————— 手动构造带行号的表格 ——————
+        lines = copy_text.splitlines() or [""]
+        # 生成行号列
+        max_line = len(str(len(lines)))
+        line_numbers_html = "\n".join(
+            f'<td class="lineno" data-line="{i + 1}">{str(i + 1).rjust(max_line)}</td>'
+            for i in range(len(lines))
+        )
+        # 代码列（从 highlighted_code 中提取内容）
+        # Pygments 输出如：<div class="code-block"><pre>...</pre></div>
+        # 我们提取 <pre> 内容，并按行拆分
+        try:
+            # 尝试从 Pygments 结果提取代码行
+            import re as preg
+            pre_match = preg.search(r'<pre[^>]*>(.*?)</pre>', highlighted_code, preg.DOTALL)
+            if pre_match:
+                inner_html = pre_match.group(1)
+                code_lines = inner_html.split('\n')
+                # 确保行数一致
+                if len(code_lines) < len(lines):
+                    code_lines.extend([''] * (len(lines) - len(code_lines)))
+            else:
+                code_lines = [escape(line) for line in lines]
+        except:
+            code_lines = [escape(line) for line in lines]
+
+        code_lines_html = "\n".join(
+            f'<td class="code-line">{line}</td>' for line in code_lines
+        )
+
+        # 构造表格
+        table_rows = "\n".join(
+            f'<tr>{line_numbers_html.splitlines()[i]}{code_lines_html.splitlines()[i]}</tr>'
+            for i in range(len(lines))
+        )
+
+        table_html = f'''
+        <table class="code-table">
+            <tbody>
+                {table_rows}
+            </tbody>
+        </table>
+        '''
+
+        # —————— 外层容器 ——————
+        code_container_padding = "10px" if not lang else "28px 10px 10px 10px"
 
         return f'''
-<div style="
-    position: relative;
-    margin: 16px 0;
-    background: #1E1E1E;
-    border: 1px solid #3A3F47;
-    border-radius: 6px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    font-family: Consolas, monospace;
-    font-size: 13px;
-">
-    {f'<div style="position:absolute; top:6px; left:8px; background:#333; color:#FFA500; padding:1px 6px; border-radius:3px; font-size:11px; z-index:10; pointer-events:none;">{lang}</div>' if lang else ''}
+    <div style="
+        position: relative;
+        margin: 16px 0;
+        background: #1E1E1E;
+        border: 1px solid #3A3F47;
+        border-radius: 6px;
+        overflow-x: auto;   /* 只在这里启用横向滚动 */
+        overflow-y: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        font-family: Consolas, monospace;
+        font-size: 13px;
+    ">
+        {f'<div style="position:absolute; top:6px; left:8px; background:#333; color:#FFA500; padding:1px 6px; border-radius:3px; font-size:11px; z-index:10; pointer-events:none;">{lang}</div>' if lang else ''}
 
-    <button type="button" data-copy="{b64_copy}" style="
-        position: absolute;
-        top: 6px;
-        right: 6px;
-        background: rgba(51,51,51,0.9);
-        color: #FFA500;
-        padding: 1px 5px;
-        border-radius: 3px;
-        text-decoration: none;
-        font-size: 11px;
-        cursor: pointer;
-        opacity: 0.8;
-        border: none;
-        outline: none;
-        z-index: 10;
-    " onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">📋</button>
+        <button type="button" data-copy="{b64_copy}" style="
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(51,51,51,0.9);
+            color: #FFA500;
+            padding: 1px 5px;
+            border-radius: 3px;
+            text-decoration: none;
+            font-size: 11px;
+            cursor: pointer;
+            opacity: 0.8;
+            border: none;
+            outline: none;
+            z-index: 10;
+        " onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">📋</button>
 
-    <div style="padding: {code_container_padding};">
-        {highlighted}
+        <div style="padding: {code_container_padding};">
+            {table_html}
+        </div>
     </div>
-</div>
-'''
+    '''
     pattern = r'<pre><code(?:\s+class="([^"]*)")?>(.*?)</code></pre>'
     return re.sub(pattern, replacer, html, flags=re.DOTALL)
 
@@ -345,6 +371,73 @@ class CodeWebViewer(QWebEngineView):
                 }}
                 button[data-copy] {{
                     z-index: 10;
+                }}
+                .code-table {{
+                    border-collapse: collapse;
+                    width: auto;
+                    min-width: 100%;
+                    white-space: nowrap;
+                    margin: 0;
+                    font-family: Consolas, monospace;
+                    font-size: 13px;
+                    color: #D4D4D4;
+                }}
+                .code-table td {{
+                    padding: 0;
+                    vertical-align: top;
+                    border: none;
+                }}
+                .code-table .lineno {{
+                    user-select: none;
+                    -webkit-user-select: none;
+                    color: #666 !important;
+                    padding-right: 12px !important;
+                    border-right: 1px solid #444444 !important;
+                    text-align: right;
+                    white-space: nowrap;
+                    min-width: 2.2em;
+                }}
+                .code-table .code-line {{
+                    white-space: pre;
+                    padding-left: 8px;
+                    background: transparent !important;
+                }}
+                .highlight {{
+                    display: block !important;
+                    overflow-x: auto !important;
+                    overflow-y: hidden !important;
+                    white-space: nowrap !important;  /* 作用于整个 table */
+                }}
+                .highlight .lineno {{
+                    user-select: none !important;
+                    -webkit-user-select: none !important;
+                    color: #666 !important;
+                    padding-right: 12px !important;
+                    border-right: 1px solid #444444 !important;
+                    margin-right: 8px !important;
+                    white-space: nowrap !important;
+                    text-align: right !important;
+                    /* 关键：防止被压缩 */
+                    min-width: 2em !important;
+                    width: auto !important;
+                }}
+                .highlight .code {{
+                    padding-left: 8px !important;
+                }}
+                .highlight {{
+                    overflow-x: auto;
+                    scrollbar-width: thin; /* Firefox */
+                    scrollbar-color: #555 #2a2a2a; /* thumb / track */
+                }}
+                .highlight::-webkit-scrollbar {{
+                    height: 8px;
+                }}
+                .highlight::-webkit-scrollbar-thumb {{
+                    background: #555;
+                    border-radius: 4px;
+                }}
+                .highlight::-webkit-scrollbar-track {{
+                    background: #2a2a2a;
                 }}
             </style>
         </head>
