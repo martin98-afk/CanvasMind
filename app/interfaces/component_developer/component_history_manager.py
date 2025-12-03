@@ -84,6 +84,7 @@ class ComponentHistoryManager:
         try:
             with open(history_file_path, 'w', encoding='utf-8') as f:
                 json.dump(histories, f, ensure_ascii=False, indent=4)
+                logger.info(f"保存组件 {component_name} 历史记录成功，版本: {version}")
         except Exception as e:
             logger.error(f"保存历史记录失败: {e}")
 

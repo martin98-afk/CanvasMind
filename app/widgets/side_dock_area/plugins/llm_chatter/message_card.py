@@ -390,6 +390,7 @@ class CodeWebViewer(QWebEngineView):
                 }}
                 .code-table .lineno {{
                     user-select: none;
+                    width: 35px !important;          /* ← 固定宽度 */
                     -webkit-user-select: none;
                     color: #666 !important;
                     padding-right: 4px !important;

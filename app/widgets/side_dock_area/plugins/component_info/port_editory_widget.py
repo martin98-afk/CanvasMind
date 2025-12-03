@@ -79,7 +79,7 @@ class PortEditorWidget(SimpleCardWidget):
                 self.table.removeRow(row)
             self.ports_changed.emit()
 
-    def get_ports(self):
+    def get_ports(self, serialize=False):
         ports = []
         for row in range(self.table.rowCount()):
             name_item = self.table.item(row, 0)
@@ -94,6 +94,10 @@ class PortEditorWidget(SimpleCardWidget):
                 connection = raw_vals[conn_widget.currentIndex()]
             else:
                 connection = ConnectionType.SINGLE
+            if serialize:
+                port_type = port_type.value
+                connection = connection.value
+
             ports.append({
                 "name": name_item.text(),
                 "label": label_item.text(),

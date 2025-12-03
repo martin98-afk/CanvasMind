@@ -88,7 +88,7 @@ class Component(BaseComponent):
                 negate = cond.get("取反", "")
                 const_val = const_str
                 self.logger.info(const_val)
-                # self.logger.info(var_val)
+                self.logger.info(var_val)
                 
                 # 执行比较
                 try:
@@ -121,7 +121,7 @@ class Component(BaseComponent):
                 final_result = all(results)
             else:  # "or"
                 final_result = any(results)
-
+        self.logger.info("test")
         # 整体取反
         if bool(params.get("整体取反", False)):
             final_result = not final_result

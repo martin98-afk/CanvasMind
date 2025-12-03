@@ -199,7 +199,7 @@ class ComponentDeveloperPage(QWidget):
         try:
             self.component_tree.refresh_components()
         except Exception as e:
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             MessageManager.error(f"加载组件失败: {e}", "", self)
 
     def _on_component_created(self, component_info):
@@ -220,7 +220,7 @@ class ComponentDeveloperPage(QWidget):
             start = len(COMPONENT_IMPORT_CODE.split("\n")) - 1
             return ''.join(source_lines[start:])
         except Exception as e:
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             logger.warning(f"AST extraction failed for {file_path}:{class_name} - {e}")
         return ""
 
@@ -288,7 +288,7 @@ class ComponentDeveloperPage(QWidget):
             # --- 新增结束 ---
             QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
         except Exception as e:
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             MessageManager.error(f"加载组件失败: {str(e)}", "", self)
 
     def update_usage_table(self, full_path):
@@ -358,7 +358,7 @@ class ComponentDeveloperPage(QWidget):
 
         except Exception as e:
             import traceback
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             MessageManager.error(f"更新策略失败: {e}", "", self)
 
     def _create_new_component(self, component_info):
@@ -699,8 +699,8 @@ except:
                         break
             return '\n'.join(new_lines)
         except Exception as e:
-            print(f"_update_properties_in_code error: {e}")
-            traceback.print_exc()
+            logger.error(f"_update_properties_in_code error: {e}")
+            logger.error(traceback.format_exc())
             return code
 
     def _update_basic_info_in_code(self, code, name, category, description, requirements):
@@ -743,7 +743,7 @@ except:
         try:
             tree = ast.parse(code)
         except SyntaxError:
-            print("代码语法错误，无法分析依赖。")
+            logger.error("代码语法错误，无法分析依赖。")
             return
 
         imported_modules = set()
@@ -859,9 +859,9 @@ except:
             if self._current_component_file:
                 # ✅ 构建当前接口签名
                 current_signature = {
-                    "inputs": self.input_port_editor.get_ports(),
-                    "outputs": self.output_port_editor.get_ports(),
-                    "properties": self.property_editor.get_properties(),
+                    "inputs": self.input_port_editor.get_ports(serialize=True),
+                    "outputs": self.output_port_editor.get_ports(serialize=True),
+                    "properties": self.property_editor.get_properties(serialize=True),
                 }
                 ComponentHistoryManager.save_history(
                     component_file_path=self._current_component_file,
@@ -879,7 +879,7 @@ except:
             self._load_component_filepath(self._current_component_file)
 
         except Exception as e:
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             MessageManager.error(f"保存组件失败: {str(e)}", "", self)
 
     def _save_component_to_file(self, category, name, code, original_file_path=None, delete_original_file=True):

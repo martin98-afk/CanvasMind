@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
-import pathlib
-base_path = pathlib.Path(__file__).parent.parent / "base.py"
+from pathlib import Path
+base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -93,7 +93,7 @@ class Component(BaseComponent):
         import json
         from openai import OpenAI
 
-        self.logger.info(params)
+        # self.logger.info(params)
         # 获取输入
         user_input = inputs.user_input.strip()
         history = inputs.history if inputs.history else []
