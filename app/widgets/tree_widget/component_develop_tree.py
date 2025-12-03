@@ -25,7 +25,7 @@ from app.widgets.tree_widget.category_filter import CategoryFilterDialog
 
 class ComponentTreeWidget(TreeWidget):
     """组件树控件 - 支持右键菜单、搜索、快捷键、类别筛选"""
-    component_selected = pyqtSignal(object, str)
+    component_selected = pyqtSignal(str)
     component_created = pyqtSignal(dict)
     component_pasted = pyqtSignal()
 
@@ -208,12 +208,8 @@ class ComponentTreeWidget(TreeWidget):
         if not item:
             return
         full_path = item.data(0, Qt.UserRole + 1)
-        comp_cls = self._components.get(full_path)
-        if comp_cls:
-            self.set_current_editing_component(full_path)
-            self.component_selected.emit(comp_cls, full_path)
-        else:
-            self._show_warning("组件类定义丢失，请刷新组件树。")
+        self.set_current_editing_component(full_path)
+        self.component_selected.emit(full_path)
 
     def _create_new_component(self):
         category = ""

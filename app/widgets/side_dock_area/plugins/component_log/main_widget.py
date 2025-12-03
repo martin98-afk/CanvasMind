@@ -1,7 +1,8 @@
 # log_tool_window.py
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QLabel, QHBoxLayout
-from qfluentwidgets import BodyLabel, SingleDirectionScrollArea, SubtitleLabel, TransparentToolButton, FluentIcon
+from qfluentwidgets import BodyLabel, SingleDirectionScrollArea, SubtitleLabel, TransparentToolButton, FluentIcon, \
+    StrongBodyLabel
 
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.component_log.collapsible_card import CollapsibleLogCard
@@ -20,25 +21,40 @@ class LogToolWindow(ToolWindow):
         title_container = QWidget(self)
         title_layout = QHBoxLayout(title_container)
         title_layout.setContentsMargins(3, 3, 3, 3)
-        self.title_label = SubtitleLabel("节点运行日志:")
+        title_layout.setSpacing(3)
+        self.title_label = StrongBodyLabel("节点运行日志:")
         title_layout.addWidget(self.title_label)
+        title_layout.addStretch()
+        # 折叠展开按钮
+        self.expand_button = TransparentToolButton(get_icon("expand_all"), self)
+        self.expand_button.setFixedSize(24, 24)
+        self.expand_button.setToolTip("展开所有日志")
+        self.expand_button.clicked.connect(self._expand_all)
+        title_layout.addWidget(self.expand_button)
+        self.collapse_button = TransparentToolButton(get_icon("collapse_all"), self)
+        self.collapse_button.setFixedSize(24, 24)
+        self.collapse_button.setToolTip("折叠所有日志")
+        self.collapse_button.clicked.connect(self._collapse_all)
+        title_layout.addWidget(self.collapse_button)
         # 清空按钮
         self.clear_button = TransparentToolButton(FluentIcon.DELETE, self)
+        self.clear_button.setFixedSize(24, 24)
         self.clear_button.setToolTip("清空记录")
-        self.clear_button.clicked.connect(self.clear_logs)
-        title_layout.addStretch()
+        self.clear_button.clicked.connect(self._clear_logs)
+
         title_layout.addWidget(self.clear_button)
         layout.addWidget(title_container)
         # 日志滚动区域
         self.chat_scroll_area = SingleDirectionScrollArea(self)
+        self.chat_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.chat_scroll_area.setMinimumWidth(400)
         self.chat_scroll_area.setStyleSheet("background-color: transparent; border: none;")
         self.chat_scroll_area.setWidgetResizable(True)
-        self.chat_scroll_area.setViewportMargins(0, 0, 0, 0)
+        self.chat_scroll_area.setViewportMargins(0, 0, 10, 0)
 
         self.chat_container = QWidget()
         self.chat_layout = QVBoxLayout(self.chat_container)
-        self.chat_layout.setContentsMargins(0, 0, 0, 0)
+        self.chat_layout.setContentsMargins(5, 5, 5, 5)
         self.chat_layout.setSpacing(5)
         self.chat_layout.addStretch()  # ← 关键：顶部 stretch
         self.chat_layout.setAlignment(Qt.AlignBottom)
@@ -78,6 +94,7 @@ class LogToolWindow(ToolWindow):
             self._enforce_max_runs()
 
         self.run_cards[run_id].append_colored_log(line)
+        QTimer.singleShot(10, self._scroll_to_bottom)
 
     def _enforce_max_runs(self):
         while len(self.run_cards) > self.MAX_RUNS:
@@ -90,7 +107,15 @@ class LogToolWindow(ToolWindow):
             self.chat_scroll_area.verticalScrollBar().maximum()
         ))
 
-    def clear_logs(self):
+    def _expand_all(self):
+        for run_id, card in self.run_cards.items():
+            card.expand()
+
+    def _collapse_all(self):
+        for run_id, card in self.run_cards.items():
+            card.collapse()
+
+    def _clear_logs(self):
         for run_id, card in self.run_cards.items():
             card.deleteLater()
         self.run_cards.clear()

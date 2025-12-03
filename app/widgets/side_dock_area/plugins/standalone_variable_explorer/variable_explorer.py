@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QVBoxLayout
 
 from app.utils.utils import get_icon
@@ -11,6 +12,11 @@ class VariableExplorerToolWindow(ToolWindow):
     icon = get_icon("变量")
     singleton = True
     default_position = DockPosition.TOP  # 放在顶部
+
+    def __init__(self, page):
+        super().__init__(page)
+        self.explorer.set_kernel_manager(page.ipython_kernel.kernel_manager)
+        QTimer.singleShot(100, self.explorer.start_auto_refresh)
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -29,3 +35,6 @@ class VariableExplorerToolWindow(ToolWindow):
 
     def refresh(self):
         self.explorer.refresh()
+
+    def cleanup(self):
+        self.stop_auto_refresh()

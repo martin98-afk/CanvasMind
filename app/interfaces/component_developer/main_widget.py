@@ -44,6 +44,9 @@ class ComponentDeveloperPage(QWidget):
         self.setObjectName("ComponentDeveloperWidget")
         self._current_component_file = None
         self._current_component_code = ""  # 存储当前加载的代码
+        self.context_register = ContextRegistry()
+        self.context_register.register("当前代码", self.extract_current_code, lambda *args, **kwargs: None)
+        self.context_register.register("当前选中区域", self.extract_selected_code, lambda *args, **kwargs: None)
         self._setup_ui()
         self._connect_signals()
         # --- 添加一个定时器用于延迟分析 ---
@@ -52,9 +55,6 @@ class ComponentDeveloperPage(QWidget):
         self._analysis_timer.timeout.connect(self._analyze_code_for_requirements)
         # --- 添加一个标志，防止循环更新 ---
         self._updating_requirements_from_analysis = False
-        self.context_register = ContextRegistry()
-        self.context_register.register("当前代码", self.extract_current_code, lambda *args, **kwargs: None)
-        self.context_register.register("当前选中区域", self.extract_selected_code, lambda *args, **kwargs: None)
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -113,8 +113,9 @@ class ComponentDeveloperPage(QWidget):
         self.input_port_editor = self.component_info.input_port_editor
         self.output_port_editor = self.component_info.output_port_editor
         self.property_editor = self.component_info.property_editor
-        self.console_manager = self.side_dock_area.get_tool_instance("多终端调试面板").console_manager
         self.history_table = self.side_dock_area.get_tool_instance("组件历史管理").history_table
+        self.llm_chatter = self.side_dock_area.get_tool_instance("大模型对话")
+        self.llm_chatter.set_system_prompt(LLM_CODE_CONTEXT)
         self.history_table.itemDoubleClicked.connect(self._load_history_code)
         self.splitter.addWidget(self.side_dock_area)
         # 先设置 stretch，让左侧可收缩
@@ -198,7 +199,7 @@ class ComponentDeveloperPage(QWidget):
         try:
             self.component_tree.refresh_components()
         except Exception as e:
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             MessageManager.error(f"加载组件失败: {e}", "", self)
 
     def _on_component_created(self, component_info):
@@ -219,7 +220,7 @@ class ComponentDeveloperPage(QWidget):
             start = len(COMPONENT_IMPORT_CODE.split("\n")) - 1
             return ''.join(source_lines[start:])
         except Exception as e:
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             logger.warning(f"AST extraction failed for {file_path}:{class_name} - {e}")
         return ""
 
@@ -227,14 +228,14 @@ class ComponentDeveloperPage(QWidget):
         """根据文件路径重载组件"""
         file_map = {value: key for key, value in self.component_tree._file_map.items()}
         full_path = file_map.get(component_path)
-        print(full_path)
         QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
-        self._load_component(self.component_tree._components[full_path], full_path)
+        self._load_component(full_path)
 
-    def _load_component(self, component, full_path=None):
+    def _load_component(self, full_path=None):
         """加载组件到编辑器"""
         try:
             self.component_tree.set_current_editing_component(full_path)
+            component = self.component_tree._components[full_path]
             # 基本信息
             self.name_edit.setText(getattr(component, 'name', ''))
             self.category_edit.setText(getattr(component, 'category', ''))
@@ -287,7 +288,7 @@ class ComponentDeveloperPage(QWidget):
             # --- 新增结束 ---
             QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
         except Exception as e:
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             MessageManager.error(f"加载组件失败: {str(e)}", "", self)
 
     def update_usage_table(self, full_path):
@@ -357,7 +358,7 @@ class ComponentDeveloperPage(QWidget):
 
         except Exception as e:
             import traceback
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             MessageManager.error(f"更新策略失败: {e}", "", self)
 
     def _create_new_component(self, component_info):
@@ -409,7 +410,7 @@ except:
         if not current_code.strip():
             MessageManager.warning("代码编辑器为空，无法运行！", "", self)
             return
-        current_console = self.console_manager.get_current_console()
+        current_console = self.side_dock_area.get_tool_instance("多终端调试面板").get_current_console()
         if current_console:
             current_console.execute_code(current_code)
         else:
@@ -698,8 +699,8 @@ except:
                         break
             return '\n'.join(new_lines)
         except Exception as e:
-            print(f"_update_properties_in_code error: {e}")
-            traceback.print_exc()
+            logger.error(f"_update_properties_in_code error: {e}")
+            logger.error(traceback.format_exc())
             return code
 
     def _update_basic_info_in_code(self, code, name, category, description, requirements):
@@ -742,7 +743,7 @@ except:
         try:
             tree = ast.parse(code)
         except SyntaxError:
-            print("代码语法错误，无法分析依赖。")
+            logger.error("代码语法错误，无法分析依赖。")
             return
 
         imported_modules = set()
@@ -858,9 +859,9 @@ except:
             if self._current_component_file:
                 # ✅ 构建当前接口签名
                 current_signature = {
-                    "inputs": self.input_port_editor.get_ports(),
-                    "outputs": self.output_port_editor.get_ports(),
-                    "properties": self.property_editor.get_properties(),
+                    "inputs": self.input_port_editor.get_ports(serialize=True),
+                    "outputs": self.output_port_editor.get_ports(serialize=True),
+                    "properties": self.property_editor.get_properties(serialize=True),
                 }
                 ComponentHistoryManager.save_history(
                     component_file_path=self._current_component_file,
@@ -878,7 +879,7 @@ except:
             self._load_component_filepath(self._current_component_file)
 
         except Exception as e:
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             MessageManager.error(f"保存组件失败: {str(e)}", "", self)
 
     def _save_component_to_file(self, category, name, code, original_file_path=None, delete_original_file=True):

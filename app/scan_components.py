@@ -331,7 +331,6 @@ class ComponentScanner:
             if not histories:
                 component_name = getattr(comp_cls, 'name')
                 version =ComponentHistoryManager.save_history(py_file, component_name, code)
-                logger.info(f"✅ 自动创建历史版本: {py_file.name} {version }")
             else:
                 version = histories[-1]["version"]
 
@@ -350,6 +349,3 @@ class ComponentScanner:
 
         comp_map[full_path] = comp_cls
         file_map[full_path] = py_file
-
-        status = "✅ 加载成功" if not is_fallback else f"✅ 回退到 {version}"
-        logger.info(f"{status}: {full_path} ({py_file.name})")

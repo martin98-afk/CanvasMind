@@ -11,6 +11,13 @@ class ChatSession:
     def get_context_messages(self) -> List[Dict[str, str]]:
         return self.messages.copy()
 
+    def add_system_message(self, content: str):
+        self.messages.append({
+            "role": "system",
+            "content": content,
+            "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+
     def add_assistant_message(self, content: str):
         self.messages.append({
             "role": "assistant",

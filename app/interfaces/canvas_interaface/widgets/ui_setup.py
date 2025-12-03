@@ -4,6 +4,7 @@ import os
 from PyQt5.QtCore import Qt, QSize, QPoint
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
 from qfluentwidgets import TransparentToolButton, FluentIcon, RoundMenu, Action, LineEdit, ComboBox
+from qfluentwidgets.components.widgets.card_widget import CardSeparator
 from qtpy import QtGui, QtCore
 
 from app.utils.utils import get_icon
@@ -32,7 +33,6 @@ class CanvasUISetUp:
         self.side_dock_area = SideDockArea(self.parent, "运行画布")
         self.property_panel = self.side_dock_area.get_tool_instance("属性面板")
         self.ipython_console = self.side_dock_area.get_tool_instance("IPython 控制台")
-        self.variable_explorer = self.side_dock_area.get_tool_instance("变量浏览器")
         self.log_window = self.side_dock_area.get_tool_instance("模型日志")
         main_layout = QHBoxLayout(self.parent)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -171,10 +171,7 @@ class CanvasUISetUp:
 
         # === 分隔线 ===
         from PyQt5.QtWidgets import QFrame
-        self.separator = QFrame()
-        self.separator.setFrameShape(QFrame.HLine)
-        self.separator.setStyleSheet("color: #555;")
-        self.node_layout.addWidget(self.separator)
+        self.node_layout.addWidget(CardSeparator(self.nodes_container))
 
         # === 可显示的快捷按钮容器 ===
         self.visible_quick_container = QWidget(self.nodes_container)  # 用于存放可见的快捷按钮
@@ -213,7 +210,7 @@ class CanvasUISetUp:
         # Add actions for hidden quick components
         for full_path, icon_path in self._hidden_quick_components:
             comp_name = os.path.basename(full_path).replace('.py', '')
-            if icon_path and os.path.exists(icon_path):
+            if icon_path:
                 icon = QtGui.QIcon(icon_path)
             elif icon_path.startswith("builtin:\\"):
                 icon_name = icon_path.split("\\")[-1]
@@ -265,7 +262,7 @@ class CanvasUISetUp:
                 self.more_quick_button.show()
             else:
 
-                if icon_path and os.path.exists(icon_path):
+                if icon_path:
                     icon = QtGui.QIcon(icon_path)
                 elif icon_path.startswith("builtin:\\"):
                     icon_name = icon_path.split("\\")[-1]
@@ -386,12 +383,12 @@ class CanvasUISetUp:
 
             # 3. 销毁 side_dock_area（属性面板等）
             if hasattr(self, 'side_dock_area') and self.side_dock_area:
+                self.side_dock_area.cleanup()
                 self.side_dock_area.setParent(None)
                 self.side_dock_area.deleteLater()
                 self.side_dock_area = None
                 self.property_panel = None
                 self.ipython_console = None
-                self.variable_explorer = None
 
             # 4. 销毁悬浮按钮容器
             if hasattr(self, 'buttons_container') and self.buttons_container:

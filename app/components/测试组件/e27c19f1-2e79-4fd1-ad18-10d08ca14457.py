@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
-import pathlib
-base_path = pathlib.Path(__file__).parent.parent / "base.py"
+from pathlib import Path
+base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -23,13 +23,11 @@ class Component(BaseComponent):
     
     # 固定三个变量输入（可扩展）
     inputs = [
-        PortDefinition(name="var1", label="变量1", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="var2", label="变量2", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="var3", label="变量3", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="var1", label="变量1", type=ArgumentType.TEXT, connection=ConnectionType.MULTIPLE),
     ]
     
     outputs = [
-        PortDefinition(name="output", label="判断结果", type=ArgumentType.TORCHMODEL),
+        PortDefinition(name="output", label="判断结果", type=ArgumentType.BOOL),
     ]
     
     properties = {
@@ -113,21 +111,17 @@ class Component(BaseComponent):
                 except Exception as e:
                     raise RuntimeError(f"条件计算出错: {e}")
 
-                # 单条件取反
-                self.logger.info(bool(negate))
                 if negate == "not":
                     res = not res
 
                 results.append(res)
-                
-            self.logger.info(results)
             # 组合所有条件
             combine_mode = params.get("组合方式", "and")
             if combine_mode == "and":
                 final_result = all(results)
             else:  # "or"
                 final_result = any(results)
-
+        self.logger.info("test")
         # 整体取反
         if bool(params.get("整体取反", False)):
             final_result = not final_result

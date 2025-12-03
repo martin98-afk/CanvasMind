@@ -299,35 +299,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                         ), tab='Properties'
                     )
 
-        def _select_file(self, prop_name):
-            current_path = self.get_property(prop_name)
-            directory = os.path.dirname(current_path) if current_path else ""
-            file_filter = self.model.properties.get(f"{prop_name}_file_filter", "All Files (*)")
-            # 添加creationflags参数以防止出现白色控制台窗口
-            path, _ = QFileDialog.getOpenFileName(
-                None, "选择文件", directory, file_filter
-            )
-            if path:
-                self.set_property(prop_name, path)
-
-        def _select_folder(self, prop_name):
-            current_path = self.get_property(prop_name)
-            directory = current_path if current_path else ""
-            # 添加creationflags参数以防止出现白色控制台窗口
-            path = QFileDialog.getExistingDirectory(None, "选择文件夹", directory)
-            if path:
-                self.set_property(prop_name, path)
-
-        def _select_csv(self, prop_name):
-            current_path = self.get_property(prop_name)
-            directory = os.path.dirname(current_path) if current_path else ""
-            # 添加creationflags参数以防止出现白色控制台窗口
-            path, _ = QFileDialog.getOpenFileName(
-                None, "选择CSV文件", directory, "CSV Files (*.csv)"
-            )
-            if path:
-                self.set_property(prop_name, path)
-
         def _add_custom_widget(self, widget, widget_type=None, tab=None):
             # widget_type = widget_type or NodePropWidgetEnum.HIDDEN.value
             self.set_property(widget.get_name(), widget.get_value())
@@ -467,7 +438,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             run_dir = PERSISTENT_TEMP_ROOT / run_id
             shutil.rmtree(run_dir, ignore_errors=True)
             run_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(resource_path("app/components/base.py"), str(run_dir / "base.py"))
+            shutil.copyfile(resource_path("app/components/base.py"), str(run_dir.parent / "base.py"))
             temp_script_path = run_dir / "exec_script.py"
             temp_component_path = run_dir / "component.py"
             params_path = run_dir / "params.pkl"
@@ -481,6 +452,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                 pickle.dump((params, inputs, global_variable), f)
             if self._debug_widget is not None:
                 # debug 模式 直接使用当前编辑器代码
+                print(temp_component_path)
+                print(os.listdir(run_dir))
                 with open(temp_component_path, 'w', encoding='utf-8') as f:
                     f.write(self.current_code)
             else:
@@ -544,7 +517,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             # 轮询结果文件
             start_time = time.time()
             timeout = 300  # 5分钟
-            last_log_pos = os.path.getsize(log_file_path)
+            last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
 
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():

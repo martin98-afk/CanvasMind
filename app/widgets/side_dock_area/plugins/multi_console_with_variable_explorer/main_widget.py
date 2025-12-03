@@ -37,6 +37,13 @@ class MultiConsoleToolWindow(ToolWindow):
 
         central_layout.addWidget(splitter)
 
+    def get_current_console(self):
+        """
+        获取当前激活的Console
+        :return:
+        """
+        return self._console_manager.get_current_console()
+
     @property
     def var_explorer(self):
         return self._var_explorer

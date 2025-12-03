@@ -22,3 +22,6 @@ class ToolWindow(QWidget):
 
     def setup_ui(self):
         raise NotImplementedError
+
+    def cleanup(self):
+        pass

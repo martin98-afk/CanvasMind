@@ -258,7 +258,7 @@ class PropertyEditorWidget(SimpleCardWidget):
             traceback.print_exc()
             InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
 
-    def get_properties(self):
+    def get_properties(self, serialize=False):
         """获取属性数据（支持 DYNAMICFORM）"""
         properties = {}
         for row in range(self.table.rowCount()):
@@ -288,6 +288,9 @@ class PropertyEditorWidget(SimpleCardWidget):
                 # 从内部存储读取 schema
                 if prop_name in self._dynamic_form_schemas:
                     prop_dict["schema"] = self._dynamic_form_schemas[prop_name]
+            if serialize:
+                prop_dict["type"] = prop_type.value
+                prop_dict = {key: value for key, value in prop_dict.items() if key in ["type", "name", "value"]}
             properties[prop_name] = prop_dict
         return properties
 
