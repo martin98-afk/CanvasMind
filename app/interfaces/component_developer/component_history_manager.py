@@ -22,7 +22,7 @@ class ComponentHistoryManager:
         if not component_file_path or not component_file_path.suffix == '.py':
             return None
         return (ComponentHistoryManager.HISTORY_DIR /
-                (component_file_path.name + ComponentHistoryManager.HISTORY_FILE_SUFFIX))
+                (component_file_path.stem + ComponentHistoryManager.HISTORY_FILE_SUFFIX))
 
     @staticmethod
     def save_history(

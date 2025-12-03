@@ -228,9 +228,8 @@ class ComponentDeveloperPage(QWidget):
         """根据文件路径重载组件"""
         file_map = {value: key for key, value in self.component_tree._file_map.items()}
         full_path = file_map.get(component_path)
-        print(full_path)
         QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
-        self._load_component(self.component_tree._components[full_path], full_path)
+        self._load_component(full_path)
 
     def _load_component(self, full_path=None):
         """加载组件到编辑器"""

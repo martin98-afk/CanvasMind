@@ -88,7 +88,7 @@ class Component(BaseComponent):
                 negate = cond.get("取反", "")
                 const_val = const_str
                 self.logger.info(const_val)
-                self.logger.info(var_val)
+                # self.logger.info(var_val)
                 
                 # 执行比较
                 try:
@@ -111,14 +111,10 @@ class Component(BaseComponent):
                 except Exception as e:
                     raise RuntimeError(f"条件计算出错: {e}")
 
-                # 单条件取反
-                self.logger.info(bool(negate))
                 if negate == "not":
                     res = not res
 
                 results.append(res)
-                
-            self.logger.info(results)
             # 组合所有条件
             combine_mode = params.get("组合方式", "and")
             if combine_mode == "and":
