@@ -453,7 +453,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self._delete_message(card)
         # 重新发送
         self.input_area._on_send_click()
-        print("重新发送：", user_input)
         self._on_send_clicked(user_input)
 
     def _copy_text(self, text: str):

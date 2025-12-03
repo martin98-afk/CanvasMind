@@ -646,7 +646,7 @@ def create_welcome_card(parent=None) -> MessageCard:
 祝你使用愉快！✨
 """
 
-    card = MessageCard(role="assistant", timestamp="就绪", parent=parent)
+    card = MessageCard(role="welcome", timestamp="就绪", parent=parent)
     card.update_content(welcome_md)
     card.finish_streaming()
     return card

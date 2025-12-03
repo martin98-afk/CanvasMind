@@ -208,12 +208,8 @@ class ComponentTreeWidget(TreeWidget):
         if not item:
             return
         full_path = item.data(0, Qt.UserRole + 1)
-        comp_cls = self._components.get(full_path)
-        if comp_cls:
-            self.set_current_editing_component(full_path)
-            self.component_selected.emit(comp_cls, full_path)
-        else:
-            self._show_warning("组件类定义丢失，请刷新组件树。")
+        self.set_current_editing_component(full_path)
+        self.component_selected.emit(full_path)
 
     def _create_new_component(self):
         category = ""

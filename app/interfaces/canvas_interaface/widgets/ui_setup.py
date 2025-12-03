@@ -4,6 +4,7 @@ import os
 from PyQt5.QtCore import Qt, QSize, QPoint
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
 from qfluentwidgets import TransparentToolButton, FluentIcon, RoundMenu, Action, LineEdit, ComboBox
+from qfluentwidgets.components.widgets.card_widget import CardSeparator
 from qtpy import QtGui, QtCore
 
 from app.utils.utils import get_icon
@@ -170,10 +171,7 @@ class CanvasUISetUp:
 
         # === 分隔线 ===
         from PyQt5.QtWidgets import QFrame
-        self.separator = QFrame()
-        self.separator.setFrameShape(QFrame.HLine)
-        self.separator.setStyleSheet("color: #555;")
-        self.node_layout.addWidget(self.separator)
+        self.node_layout.addWidget(CardSeparator(self.nodes_container))
 
         # === 可显示的快捷按钮容器 ===
         self.visible_quick_container = QWidget(self.nodes_container)  # 用于存放可见的快捷按钮
@@ -212,7 +210,7 @@ class CanvasUISetUp:
         # Add actions for hidden quick components
         for full_path, icon_path in self._hidden_quick_components:
             comp_name = os.path.basename(full_path).replace('.py', '')
-            if icon_path and os.path.exists(icon_path):
+            if icon_path:
                 icon = QtGui.QIcon(icon_path)
             elif icon_path.startswith("builtin:\\"):
                 icon_name = icon_path.split("\\")[-1]
@@ -264,7 +262,7 @@ class CanvasUISetUp:
                 self.more_quick_button.show()
             else:
 
-                if icon_path and os.path.exists(icon_path):
+                if icon_path:
                     icon = QtGui.QIcon(icon_path)
                 elif icon_path.startswith("builtin:\\"):
                     icon_name = icon_path.split("\\")[-1]

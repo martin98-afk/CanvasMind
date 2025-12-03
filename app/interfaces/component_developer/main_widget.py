@@ -232,10 +232,11 @@ class ComponentDeveloperPage(QWidget):
         QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
         self._load_component(self.component_tree._components[full_path], full_path)
 
-    def _load_component(self, component, full_path=None):
+    def _load_component(self, full_path=None):
         """加载组件到编辑器"""
         try:
             self.component_tree.set_current_editing_component(full_path)
+            component = self.component_tree._components[full_path]
             # 基本信息
             self.name_edit.setText(getattr(component, 'name', ''))
             self.category_edit.setText(getattr(component, 'category', ''))

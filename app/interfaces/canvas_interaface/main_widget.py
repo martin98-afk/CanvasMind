@@ -566,7 +566,7 @@ class CanvasPage(QWidget):
 
     def edit_node(self, node):
         self.parent.switchTo(self.parent.develop_page)
-        self.parent.develop_page._load_component(node.component_class, node.FULL_PATH)
+        self.parent.develop_page._load_component(node.FULL_PATH)
 
     def _undo(self):
         try:
