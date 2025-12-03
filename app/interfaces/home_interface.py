@@ -6,7 +6,7 @@ from typing import List, Dict
 import json
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QPainter, QPainterPath, QLinearGradient, QColor, QBrush, QPixmap, QFont, QFontMetrics
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QSizePolicy
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QSizePolicy, QOpenGLWidget
 from qfluentwidgets import (
     ScrollArea, FluentIcon, isDarkTheme, FlowLayout, MessageBox,
     PrimaryPushButton, PushButton, ComboBox, LineEdit, CardWidget,
@@ -385,6 +385,7 @@ class HomeInterface(ScrollArea):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.home = parent
+        self.setViewport(QOpenGLWidget())
         self.workflow_manager = parent.workflow_manager
         # 注意：这里假设 parent.package_manager 指向的是包含 envCombo 和 env_changed 信号的组件管理页面
         self.package_manager = parent.package_manager
