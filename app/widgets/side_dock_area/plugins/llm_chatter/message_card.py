@@ -66,6 +66,7 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
             formatter = HtmlFormatter(
                 style='dracula',
                 linenos=False,  # ← 关键：关闭 Pygments 行号
+                noclasses=True,
                 cssclass='code-block',
                 prestyles='margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;'
             )
@@ -391,7 +392,7 @@ class CodeWebViewer(QWebEngineView):
                     user-select: none;
                     -webkit-user-select: none;
                     color: #666 !important;
-                    padding-right: 12px !important;
+                    padding-right: 4px !important;
                     border-right: 1px solid #444444 !important;
                     text-align: right;
                     white-space: nowrap;
@@ -407,19 +408,6 @@ class CodeWebViewer(QWebEngineView):
                     overflow-x: auto !important;
                     overflow-y: hidden !important;
                     white-space: nowrap !important;  /* 作用于整个 table */
-                }}
-                .highlight .lineno {{
-                    user-select: none !important;
-                    -webkit-user-select: none !important;
-                    color: #666 !important;
-                    padding-right: 12px !important;
-                    border-right: 1px solid #444444 !important;
-                    margin-right: 8px !important;
-                    white-space: nowrap !important;
-                    text-align: right !important;
-                    /* 关键：防止被压缩 */
-                    min-width: 2em !important;
-                    width: auto !important;
                 }}
                 .highlight .code {{
                     padding-left: 8px !important;
