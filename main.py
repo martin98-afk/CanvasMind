@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 
 from app.utils import icons_rc
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QStyleFactory
 
 from app.main_window import LowCodeWindow
 
@@ -30,6 +30,8 @@ if __name__ == '__main__':
     enable_dpi_scale()
     # 创建应用
     app = QApplication(sys.argv)
+    app.setStyle(QStyleFactory.create("Fusion"))
+    QApplication.setAttribute(Qt.AA_UseOpenGLES);
     # 创建并显示主窗口
     try:
         window = LowCodeWindow()

@@ -390,7 +390,7 @@ class CodeWebViewer(QWebEngineView):
                 }}
                 .code-table .lineno {{
                     user-select: none;
-                    width: 35px !important;          /* ← 固定宽度 */
+                    width: 28px !important;          /* ← 固定宽度 */
                     -webkit-user-select: none;
                     color: #666 !important;
                     padding-right: 4px !important;
@@ -404,29 +404,20 @@ class CodeWebViewer(QWebEngineView):
                     padding-left: 8px;
                     background: transparent !important;
                 }}
-                .highlight {{
-                    display: block !important;
-                    overflow-x: auto !important;
-                    overflow-y: hidden !important;
-                    white-space: nowrap !important;  /* 作用于整个 table */
+                [style*="overflow-x: auto"]::-webkit-scrollbar {{
+                    height: 10px;
                 }}
-                .highlight .code {{
-                    padding-left: 8px !important;
+                [style*="overflow-x: auto"]::-webkit-scrollbar-track {{
+                    background: #252526;
+                    border-radius: 5px;
                 }}
-                .highlight {{
-                    overflow-x: auto;
-                    scrollbar-width: thin; /* Firefox */
-                    scrollbar-color: #555 #2a2a2a; /* thumb / track */
+                [style*="overflow-x: auto"]::-webkit-scrollbar-thumb {{
+                    background: #454545;
+                    border-radius: 5px;
+                    border: 1px solid #3c3c3c;
                 }}
-                .highlight::-webkit-scrollbar {{
-                    height: 8px;
-                }}
-                .highlight::-webkit-scrollbar-thumb {{
-                    background: #555;
-                    border-radius: 4px;
-                }}
-                .highlight::-webkit-scrollbar-track {{
-                    background: #2a2a2a;
+                [style*="overflow-x: auto"]::-webkit-scrollbar-thumb:hover {{
+                    background: #5a5a5a;
                 }}
             </style>
         </head>

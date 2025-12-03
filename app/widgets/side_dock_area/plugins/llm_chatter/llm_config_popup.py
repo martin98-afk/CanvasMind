@@ -183,6 +183,7 @@ class LLMConfigPopup(QWidget):
             return widget
         else:
             widget = LineEdit(self)
+            widget.setMinimumWidth(280)
             widget.setText(str(value) if value else "")
             return widget
 
