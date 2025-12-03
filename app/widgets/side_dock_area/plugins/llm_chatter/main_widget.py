@@ -142,8 +142,9 @@ class OpenAIChatToolWindow(ToolWindow):
                 "模型名称": setting.llm_model.value,
                 "API_KEY": setting.llm_api_key.value,
                 "API_URL": setting.llm_api_base.value,
-                "MaxTokens": setting.llm_max_tokens.value,
-                "Temperature": setting.llm_temperature.value,
+                "最大Token": setting.llm_max_tokens.value,
+                "温度": setting.llm_temperature.value,
+                "是否思考": setting.llm_enable_thinking.value,
             }
 
         self._settings_popup.set_config(config)
@@ -152,7 +153,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_config_applied(self, new_config: dict):
         current_name = self.model_combo.currentText()
-        if hasattr(self.homepage, 'global_variables') and current_name in self.homepage.global_variables.custom:
+        if current_name != "系统默认配置":
             # 更新现有配置
             self.homepage.global_variables.custom[current_name].value = new_config
             self.homepage._on_global_variables_changed("custom", current_name, "update")
@@ -167,12 +168,12 @@ class OpenAIChatToolWindow(ToolWindow):
             setting.set(setting.llm_model, new_config["模型名称"])
             setting.set(setting.llm_api_key, new_config["API_KEY"])
             setting.set(setting.llm_api_base, new_config["API_URL"])
-            setting.set(setting.llm_max_tokens, new_config["MaxTokens"])
-            setting.set(setting.llm_temperature, new_config["Temperature"])
+            setting.set(setting.llm_max_tokens, new_config["最大Token"])
+            setting.set(setting.llm_temperature, new_config["温度"])
+            setting.set(setting.llm_enable_thinking, new_config["是否思考"])
             setting.save_config()
-            InfoBar.success("默认配置已更新", "已保存到系统配置。", parent=self, duration=1500)
-
-        self._load_model_configs()
+            self._load_model_configs()
+            InfoBar.success("系统默认配置已更新", "已保存到系统配置。", parent=self, duration=1500)
 
     def _load_model_configs(self):
         # 保存当前选中的模型名（如果有的话）
@@ -180,7 +181,20 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._valid_configs.clear()
         self.model_combo.clear()
-
+        # 系统默认配置
+        setting = Settings.get_instance()
+        default_config = {
+            "模型名称": setting.llm_model.value,
+            "API_KEY": setting.llm_api_key.value,
+            "API_URL": setting.llm_api_base.value,
+            "最大Token": setting.llm_max_tokens.value,
+            "温度": setting.llm_temperature.value,
+            "是否思考": setting.llm_enable_thinking.value,
+        }
+        self._valid_configs["系统默认配置"] = default_config
+        self.model_combo.addItem("系统默认配置")
+        self.model_combo.setDisabled(False)  # 允许选择，哪怕只有一个
+        model_names = ["系统默认配置"]
         # 1. 尝试加载用户自定义配置
         try:
             custom_vars = getattr(self.homepage, 'global_variables', None)
@@ -190,26 +204,11 @@ class OpenAIChatToolWindow(ToolWindow):
                         val = var_obj.value
                         if {"API_URL", "API_KEY", "模型名称"}.issubset(val.keys()):
                             self._valid_configs[config_name] = val
-            model_names = list(self._valid_configs.keys())
+            model_names.extend(list(self._valid_configs.keys()))
             self.model_combo.addItems(model_names)
             self.model_combo.setDisabled(False)
         except Exception as e:
             pass
-
-        # 2. 如果没有自定义配置，使用默认配置
-        if not self._valid_configs:
-            setting = Settings.get_instance()
-            default_config = {
-                "模型名称": setting.llm_model.value,
-                "API_KEY": setting.llm_api_key.value,
-                "API_URL": setting.llm_api_base.value,
-                "MaxTokens": setting.llm_max_tokens.value,
-                "Temperature": setting.llm_temperature.value,
-            }
-            self._valid_configs["默认配置"] = default_config
-            self.model_combo.addItem("默认配置")
-            self.model_combo.setDisabled(False)  # 允许选择，哪怕只有一个
-            model_names = ["默认配置"]
 
         # === 关键：恢复之前选中的模型名 ===
         if current_text in self._valid_configs:
