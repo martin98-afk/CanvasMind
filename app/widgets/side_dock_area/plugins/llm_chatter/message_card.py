@@ -27,17 +27,51 @@ except ImportError:
 
 # ======== Markdown 实例 ========
 _md_instance = None
+ACTION_COLOR_MAP = {
+    "jump":   "#FFA500",   # 橙色
+    "create": "#9370DB",   # 皇家蓝
+    "edit":   "#32CD32",   # 石灰绿（示例）
+    "delete": "#FF6347",   # 番茄红（示例）
+    "view":   "#4169E1",   # 中紫色（示例）
+    # 未来新增类型直接在这里加
+}
+DEFAULT_COLOR = "#888888"  # 未知类型兜底色
 
 
 def get_markdown_instance():
     global _md_instance
     if _md_instance is None:
         _md_instance = Markdown(
-            extensions=['fenced_code', 'nl2br', 'tables', 'extra', 'smarty'],
+            extensions=['fenced_code', 'nl2br', 'tables'],
             output_format='html5',
             safe=False
         )
     return _md_instance
+
+
+def _unwrap_code_blocks_with_context_links(md_text: str) -> str:
+    """
+    如果代码块（```...```）内部包含 [xxx](yyy) 格式的上下文链接，
+    则移除 ``` 包裹，使其作为普通 Markdown 段落渲染，
+    从而让 [xxx](yyy) 能被正常转换为 context-tag。
+    """
+    def replacer(match):
+        lang_part = match.group(1) or ""
+        code_content = match.group(2)
+        # 检查是否包含 [xxx](yyy) 模式（允许有空格）
+        if re.search(r'\[[^\[\]]+\]\([^)\s]+\)', code_content) and lang_part in ("text"):
+            # 包含上下文链接 → 返回未包裹的原始内容（保留语言标识？不保留）
+            return code_content
+        else:
+            # 不包含 → 保留原样
+            if lang_part:
+                return f'```{lang_part}\n{code_content}```'
+            else:
+                return f'```\n{code_content}```'
+
+    # 匹配所有 ```...``` 代码块（包括带语言和不带语言的）
+    pattern = re.compile(r'```(\w*)\n(.*?)```', re.DOTALL)
+    return pattern.sub(replacer, md_text)
 
 
 # ======== Web 专用：代码块增强（使用 Pygments + 完整 CSS）========
@@ -265,23 +299,22 @@ def _inject_context_links(md_text: str) -> str:
     """
     def replacer(match):
         content = match.group(1)  # 如 "数据加载器"
-        action = match.group(2)   # 如 "jump:node_102"
+        action = match.group(2)   # 如 "jump"
 
         # 安全编码，防止 XSS 或 JS 注入
         import urllib.parse
         encoded_content = urllib.parse.quote(content, safe='')
         encoded_action = urllib.parse.quote(action, safe='')
-
-        # 返回一个带 data 属性的 span，样式由 CSS 控制
         return (
             f'<span class="context-tag" '
+            f'data-type="{action}" '
             f'data-content="{encoded_content}" '
             f'data-action="{encoded_action}">'
             f'{escape(content)}'
             f'</span>'
         )
 
-    return re.sub(r'\[([^\[\]]+?)\]\(([^)\s]+)\)', replacer, md_text)
+    return re.sub(r'`*\[([^\[\]]+?)\]\(([^)\s]+)\)`*', replacer, md_text)
 
 # ======== 自定义 WebEnginePage：监听 console.log ========
 class ConsoleMonitorPage(QWebEnginePage):
@@ -356,10 +389,37 @@ class CodeWebViewer(QWebEngineView):
         self.contentHeightChanged.emit(height)
 
     def _render(self):
+
+        def _generate_context_tag_css():
+            css_rules = []
+            for act_type, color in ACTION_COLOR_MAP.items():
+                css_rules.append(
+                    f'.context-tag[data-type="{act_type}"] {{ '
+                    f'background: {color}20; '  # 20 = 12.5% 透明度（十六进制后加 20）
+                    f'border-color: {color}; '
+                    f'color: {color}; '
+                    f'}}\n'
+                    f'.context-tag[data-type="{act_type}"]:hover {{ '
+                    f'background: {color}40; '  # 40 ≈ 25% 透明度
+                    f'border-color: {color}aa; '  # 加亮一点
+                    f'transform: translateY(-1px); '
+                    f'}}'
+                )
+            # 默认兜底
+            css_rules.append(
+                f'.context-tag[data-type="other"], .context-tag:not([data-type]) {{ '
+                f'background: {DEFAULT_COLOR}20; '
+                f'border-color: {DEFAULT_COLOR}; '
+                f'color: {DEFAULT_COLOR}; '
+                f'}}'
+            )
+            return "\n".join(css_rules)
+
         if not self._markdown_text.strip():
             html_body = ""
         else:
             safe_md = _sanitize_incomplete_markdown(self._markdown_text)
+            safe_md = _unwrap_code_blocks_with_context_links(safe_md)
             safe_md = _inject_context_links(safe_md)
             processed_md = _inject_think_cards(safe_md, completed=self._completed)
 
@@ -401,16 +461,17 @@ class CodeWebViewer(QWebEngineView):
                     display: inline-block;
                     padding: 2px 6px;
                     margin: 0 2px;
-                    background: rgba(255, 165, 0, 0.15);
-                    border: 1px solid #FFA500;
+                    border: 1px solid;
                     border-radius: 4px;
-                    color: #FFA500;
                     font-size: 13px;
                     font-weight: 500;
                     cursor: pointer;
                     user-select: none;
                     transition: all 0.2s ease;
+                    /* 基础样式，具体颜色由 data-type 覆盖 */
                 }}
+                /* 动态生成的类型专属样式 */
+                {_generate_context_tag_css()}
                 .context-tag:hover {{
                     background: rgba(255, 165, 0, 0.3);
                     border-color: #FFB733;
@@ -797,7 +858,10 @@ def create_welcome_card(parent=None) -> MessageCard:
 - ✅ **流式对话**：逐字生成，响应流畅，类似 ChatGPT 的体验。
 - ✅ **上下文增强**：可插入画布节点、组件信息、全局变量等上下文（点击下方 `+` 选择）。
 - ✅ **结构化输出**：支持 Markdown 表格、代码块、列表等格式。
-- ✅ **上下文联动**：点击 [节点名](key) 可直接触发上下文交互逻辑。
+- ✅ **上下文联动**：点击 [名称](key) 可直接触发上下文交互逻辑。
+  - 当前联动逻辑有：
+    - 画布节点跳转：[节点名](jump) 点击跳转到对应节点
+    - 组件创建：[组件名](create) 点击在画布创建对应组件
 - ✅ **深色主题 & 流畅交互**：界面适配 Fluent Design，支持停止生成、复制、重试等操作。
 
 你可以随时：

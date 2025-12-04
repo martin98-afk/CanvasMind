@@ -1,4 +1,4 @@
-from app.interfaces.canvas_interaface.constants import LLM_GRAPH_CONTEXT_NORMS
+from app.interfaces.canvas_interaface.constants import LLM_GRAPH_CONTEXT_NORMS, NODE_CREATE_CONTEXT_NORMS
 from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
 from app.interfaces.canvas_interaface.utils.canvas_io import CanvasIO
 from app.scan_components import ComponentScanner
@@ -54,6 +54,7 @@ class LLMContextProvider:
         return "全局变量", self.global_variables.to_dict(), None
 
     def get_component_info(self):
+        response = "# 组件上下文引用规范\n{NODE_CREATE_CONTEXT_NORMS}\n\n# 组件上下文信息\n{component_info}"""
         selected_categories = self.ui_manager.nav_view._selected_categories
         component_map, _ = ComponentScanner().get_components()
         selected_components = {
@@ -72,4 +73,8 @@ class LLMContextProvider:
                 for key, value in selected_components.items()
             ]
         )
-        return f"{len(selected_components)}x 组件", component_info, None
+        return (
+            f"{len(selected_components)}x 组件",
+            response.format(NODE_CREATE_CONTEXT_NORMS=NODE_CREATE_CONTEXT_NORMS, component_info=component_info),
+            None
+        )

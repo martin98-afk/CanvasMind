@@ -191,9 +191,8 @@ class CanvasPage(QWidget):
         """
         if action.startswith("jump"):
             self.select_node_by_name(content)
-        elif action.startswith("generate"):
-            pass
-            # self.homepage.create_component_from_id(comp_id)
+        elif action.startswith("create"):
+            self.node_operations.create_next_node_using_name(content)
         elif action == "inspect":
             pass
             # self.homepage.show_variable_inspector("var_input")
