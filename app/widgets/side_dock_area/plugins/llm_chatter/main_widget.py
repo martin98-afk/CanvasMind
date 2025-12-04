@@ -549,7 +549,7 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_worker_finished(self, response: str, card: MessageCard):
         self._is_streaming = False
         card.finish_streaming()
-        self.input_area._on_stop_click()
+        self.input_area.toggle_send_button(True)
         self._toggle_send_stop(False)
         session = self.session_manager.get_current_session()
         if session:
@@ -581,6 +581,7 @@ class OpenAIChatToolWindow(ToolWindow):
             self.history_btn.setDisabled(False)
 
     def _on_stop_clicked(self):
+        print("停止按钮点击")
         if self._worker and self._worker.isRunning():
             self._worker.cancel()
             self._worker = None  # 可选：等待线程真正结束（避免 race condition）
