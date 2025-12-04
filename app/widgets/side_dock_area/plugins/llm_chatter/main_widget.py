@@ -255,7 +255,6 @@ class OpenAIChatToolWindow(ToolWindow):
             card.deleteRequested.connect(lambda c=card: self._delete_message(c))
             card.actionRequested.connect(self._on_code_action)
             if msg["role"] == "assistant":
-                card.actionRequested.connect(self._on_code_action)
                 card.regenerateRequested.connect(lambda c=card: self._regenerate_message(c))
                 if hasattr(self.homepage, "on_context_action"):
                     card.contextActionRequested.connect(self.homepage.on_context_action)

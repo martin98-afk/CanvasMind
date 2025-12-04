@@ -724,7 +724,9 @@ class MessageCard(SimpleCardWidget):
         self.content_widget = CodeWebViewer(self)
         self.content_widget.contextActionRequested.connect(self.contextActionRequested.emit)
         self.content_widget.contentHeightChanged.connect(self._on_content_height_changed)
-        self.content_widget.codeActionRequested.connect(self._on_code_action)
+        self.content_widget.codeActionRequested.connect(
+            lambda code, action: QTimer.singleShot(200, lambda: self._on_code_action(code, action))
+        )
         main_layout.addWidget(self.content_widget)
         main_layout.addWidget(CardSeparator(self))
 
@@ -750,11 +752,9 @@ class MessageCard(SimpleCardWidget):
             self.actionRequested.emit(code, action)
 
         elif action == "insert":
-            InfoBar.info("插入", "代码已准备插入", parent=self.parent)
             self.actionRequested.emit(code, action)
 
         elif action == "create":
-            InfoBar.info("新建", "组件模板已生成", parent=self.parent)
             self.actionRequested.emit(code, action)
 
     def _on_context_link_clicked(self, tool_key: str):
