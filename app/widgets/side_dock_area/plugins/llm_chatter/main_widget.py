@@ -252,7 +252,7 @@ class OpenAIChatToolWindow(ToolWindow):
             card.update_content(msg["content"])
             card.finish_streaming()
             card.deleteRequested.connect(lambda c=card: self._delete_message(c))
-            card.copyRequested.connect(self._copy_text)
+            card.actionRequested.connect(self._on_code_action)
             if msg["role"] == "assistant":
                 card.regenerateRequested.connect(lambda c=card: self._regenerate_message(c))
 
@@ -372,13 +372,13 @@ class OpenAIChatToolWindow(ToolWindow):
         card.update_content(content)
         card.finish_streaming()
         card.deleteRequested.connect(lambda: self._delete_message(card))
-        card.copyRequested.connect(self._copy_text)
+        card.actionRequested.connect(self._on_code_action)
         self.chat_layout.addWidget(card)
         self._scroll_to_bottom()
 
     def _append_assistant_message(self) -> MessageCard:
         card = MessageCard(parent=self, role="assistant")
-        card.copyRequested.connect(self._copy_text)
+        card.actionRequested.connect(self._on_code_action)
         card.regenerateRequested.connect(lambda: self._regenerate_message(card))
         self.chat_layout.addWidget(card)
         self._scroll_to_bottom()
@@ -459,9 +459,15 @@ class OpenAIChatToolWindow(ToolWindow):
         self.input_area._on_send_click()
         self._on_send_clicked(user_input)
 
-    def _copy_text(self, text: str):
-        clipboard = QApplication.clipboard()
-        clipboard.setText(text)
+    def _on_code_action(self, code: str, action: str="copy"):
+        """统一处理代码块操作：插入、新建、复制等"""
+        if action == "insert":
+            self.insertResponse.emit(code)  # 如果需要向上转发
+        elif action == "create":
+            self.createResponse.emit(code)
+        elif action == "copy":
+            clipboard = QApplication.clipboard()
+            clipboard.setText(code)
 
     def _scroll_to_bottom(self):
         QTimer.singleShot(10, lambda: self.chat_scroll_area.verticalScrollBar().setValue(

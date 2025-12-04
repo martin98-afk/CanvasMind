@@ -256,12 +256,41 @@ def _inject_think_cards(md_text: str, completed: bool = True) -> str:
     return ''.join(parts)
 
 
-def _inject_context_links(md_text: str, allowed_keys) -> str:
+def _inject_context_links(md_text: str, context_map):
+    """
+    context_map: {
+        "key1": {
+            "name": "变量名",
+            "content": "实际值或节点ID",
+            "type": "node",  # ← 新增 type
+            "action": "jump" # ← 新增默认操作（可选）
+        },
+        ...
+    }
+    """
     def replacer(match):
         display_name = match.group(1)
         tool_key = match.group(2)
-        if tool_key in allowed_keys:
-            return f'<a href="context://{tool_key}" class="context-link">[{display_name}]({tool_key})</a>'
+        if tool_key in context_map:
+            meta = context_map[tool_key]
+            context_type = meta.get("type", "unknown")
+            context_content = meta.get("content", tool_key)
+            suggested_action = meta.get("action", "jump")
+
+            # 安全编码三个字段（支持 Unicode）
+            import urllib.parse
+            encoded_type = urllib.parse.quote(context_type)
+            encoded_content = urllib.parse.quote(str(context_content))
+            encoded_action = urllib.parse.quote(suggested_action)
+
+            return (
+                f'<a href="context://{tool_key}" '
+                f'class="context-link" '
+                f'data-context-type="{encoded_type}" '
+                f'data-context-content="{encoded_content}" '
+                f'data-context-action="{encoded_action}">'
+                f'[{display_name}]({tool_key})</a>'
+            )
         else:
             return match.group(0)
 
@@ -270,13 +299,8 @@ def _inject_context_links(md_text: str, allowed_keys) -> str:
 
 # ======== 自定义 WebEnginePage：监听 console.log ========
 class ConsoleMonitorPage(QWebEnginePage):
-    copyRequested = pyqtSignal(str)
-    insertCodeRequested = pyqtSignal(str)
-    createComponentRequested = pyqtSignal(str)
+    codeActionRequested = pyqtSignal(str, str)  # (code: str, action: str)
     heightReported = pyqtSignal(int)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
 
     def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
         msg = message.strip()
@@ -286,12 +310,7 @@ class ConsoleMonitorPage(QWebEnginePage):
                 action, b64_str = parts
                 try:
                     text = base64.b64decode(b64_str).decode('utf-8')
-                    if action == "copy":
-                        self.copyRequested.emit(text)
-                    elif action == "insert":
-                        self.insertCodeRequested.emit(text)
-                    elif action == "create":
-                        self.createComponentRequested.emit(text)
+                    self.codeActionRequested.emit(text, action)
                 except Exception:
                     pass
         elif msg.startswith("pywebview_height:"):
@@ -306,9 +325,7 @@ class ConsoleMonitorPage(QWebEnginePage):
 class CodeWebViewer(QWebEngineView):
     contextLinkClicked = pyqtSignal(str)
     contentHeightChanged = pyqtSignal(int)
-    copyRequested = pyqtSignal(str)
-    insertCodeRequested = pyqtSignal(str)
-    createComponentRequested = pyqtSignal(str)
+    codeActionRequested = pyqtSignal(str, str)  # (code, action)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -329,9 +346,7 @@ class CodeWebViewer(QWebEngineView):
         self.setMinimumHeight(1)
 
         # 连接信号
-        self._page.copyRequested.connect(self.copyRequested)
-        self._page.insertCodeRequested.connect(self.insertCodeRequested)
-        self._page.createComponentRequested.connect(self.createComponentRequested)
+        self._page.codeActionRequested.connect(self.codeActionRequested)
         self._page.heightReported.connect(self._on_js_height_reported)
 
         self.loadFinished.connect(self._on_load_finished)
@@ -483,7 +498,19 @@ class CodeWebViewer(QWebEngineView):
                         }}
                     }}
                 }});
-            
+                document.addEventListener('click', function(e) {{
+                    const link = e.target.closest('a.context-link');
+                    if (link) {{
+                        e.preventDefault();
+                        const type = link.getAttribute('data-context-type') || '';
+                        const content = link.getAttribute('data-context-content') || '';
+                        const action = link.getAttribute('data-context-action') || 'jump';
+                        // 安全拼接并编码（避免字段内含 : 或 \n）
+                        const payload = type + '\x01' + content + '\x01' + action;
+                        const b64 = btoa(unescape(encodeURIComponent(payload)));
+                        console.log('pywebview_action:context_triple:' + b64);
+                    }}
+                }});
                 function reportHeight() {{
                     const h = document.body.scrollHeight;
                     console.log('pywebview_height:' + h);
@@ -584,10 +611,8 @@ class TagWidget(CardWidget):
 
 class MessageCard(SimpleCardWidget):
     deleteRequested = pyqtSignal()
-    copyRequested = pyqtSignal(str)
     regenerateRequested = pyqtSignal()
-    insertResponse = pyqtSignal(str)
-    createResponse = pyqtSignal(str)
+    actionRequested = pyqtSignal(str, str)  # (code, action)
 
     def __init__(self, role: str, timestamp: str = None, parent=None, tag_params: dict = None):
         super().__init__(parent)
@@ -644,12 +669,12 @@ class MessageCard(SimpleCardWidget):
 
         if self.role == "assistant":
             btn_specs = [
-                (FluentIcon.COPY, "复制", lambda: self.copyRequested.emit(self.content_widget.get_plain_text())),
+                (FluentIcon.COPY, "复制", lambda: self.actionRequested.emit(self.content_widget.get_plain_text(), "copy")),
                 (FluentIcon.SYNC, "重新生成", self.regenerateRequested.emit)
             ]
         elif self.role == "user":
             btn_specs = [
-                (FluentIcon.COPY, "复制", lambda: self.copyRequested.emit(self.content_widget.get_plain_text())),
+                (FluentIcon.COPY, "复制", lambda: self.actionRequested.emit(self.content_widget.get_plain_text(), "copy")),
                 (FluentIcon.DELETE, "删除", self.deleteRequested.emit),
             ]
         else:
@@ -687,9 +712,7 @@ class MessageCard(SimpleCardWidget):
         self.content_widget.set_allowed_context_keys(allowed_keys)
         self.content_widget.contextLinkClicked.connect(self._on_context_link_clicked)
         self.content_widget.contentHeightChanged.connect(self._on_content_height_changed)
-        self.content_widget.copyRequested.connect(self._on_internal_copy)
-        self.content_widget.insertCodeRequested.connect(self._on_insert_code)
-        self.content_widget.createComponentRequested.connect(self._on_create_component)
+        self.content_widget.codeActionRequested.connect(self._on_code_action)
         main_layout.addWidget(self.content_widget)
         main_layout.addWidget(CardSeparator(self))
 
@@ -701,24 +724,26 @@ class MessageCard(SimpleCardWidget):
             }}
         """)
 
-    def _on_internal_copy(self, text: str):
-        QApplication.clipboard().setText(text)
-        InfoBar.success(
-            title='已复制',
-            content='代码已复制到剪贴板',
-            isClosable=True,
-            position=InfoBarPosition.TOP_RIGHT,
-            duration=2000,
-            parent=self.parent
-        )
+    def _on_code_action(self, code: str, action: str):
+        if action == "copy":
+            QApplication.clipboard().setText(code)
+            InfoBar.success(
+                title='已复制',
+                content='代码已复制到剪贴板',
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=2000,
+                parent=self.parent
+            )
+            self.actionRequested.emit(code, action)
 
-    def _on_insert_code(self, code: str):
-        # TODO: 实现插入逻辑（如插入到编辑器）
-        InfoBar.info("插入", "代码已准备插入", parent=self.parent)
+        elif action == "insert":
+            InfoBar.info("插入", "代码已准备插入", parent=self.parent)
+            self.actionRequested.emit(code, action)
 
-    def _on_create_component(self, code: str):
-        # TODO: 实现新建组件逻辑
-        InfoBar.info("新建", "组件模板已生成", parent=self.parent)
+        elif action == "create":
+            InfoBar.info("新建", "组件模板已生成", parent=self.parent)
+            self.actionRequested.emit(code, action)
 
     def _on_context_link_clicked(self, tool_key: str):
         if tool_key in self.context_tags:

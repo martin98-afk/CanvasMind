@@ -116,6 +116,8 @@ class ComponentDeveloperPage(QWidget):
         self.history_table = self.side_dock_area.get_tool_instance("组件历史管理").history_table
         self.llm_chatter = self.side_dock_area.get_tool_instance("大模型对话")
         self.llm_chatter.set_system_prompt(LLM_CODE_CONTEXT)
+        self.llm_chatter.insertResponse.connect(self._handle_insert_code_from_llm)
+        self.llm_chatter.createResponse.connect(self._handle_create_component_from_llm)
         self.history_table.itemDoubleClicked.connect(self._load_history_code)
         self.splitter.addWidget(self.side_dock_area)
         # 先设置 stretch，让左侧可收缩
@@ -187,6 +189,80 @@ class ComponentDeveloperPage(QWidget):
             if not code.strip():
                 return f"{name} 全部代码", "代码为空", None
             return f"{name} 全部代码", code, None
+
+    def _handle_insert_code_from_llm(self, code: str):
+        """处理从 LLM 插件来的“插入代码”请求"""
+        editor = self.code_editor.code_editor
+        cursor = editor.textCursor()
+        if cursor.hasSelection():
+            cursor.insertText(code)
+        else:
+            cursor.insertText(code)
+        editor.setTextCursor(cursor)
+        MessageManager.success("已插入代码", "", self)
+
+    def _extract_component_info_from_code_str(self, code: str):
+        """从完整组件代码中提取 name/category/description/requirements"""
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return {
+                "name": "未命名组件",
+                "category": "数据处理",
+                "description": "来自大模型生成的组件",
+                "requirements": ""
+            }
+
+        info = {
+            "name": "未命名组件",
+            "category": "数据处理",
+            "description": "来自大模型生成的组件",
+            "requirements": ""
+        }
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        if target.id == "name" and isinstance(node.value, ast.Constant):
+                            info["name"] = str(node.value.value)
+                        elif target.id == "category" and isinstance(node.value, ast.Constant):
+                            info["category"] = str(node.value.value)
+                        elif target.id == "description" and isinstance(node.value, ast.Constant):
+                            info["description"] = str(node.value.value)
+                        elif target.id == "requirements" and isinstance(node.value, ast.Constant):
+                            info["requirements"] = str(node.value.value)
+        return info
+
+    def _handle_create_component_from_llm(self, code: str):
+        """从大模型代码自动创建新组件"""
+        if not code.strip():
+            MessageManager.warning("代码为空，无法创建组件", "", self)
+            return
+        self.code_editor.set_code(code)
+
+        # 1. 提取基本信息
+        info = self._extract_component_info_from_code_str(code)
+
+        # 2. 创建新组件（清空 UI）
+        self._create_new_component(info)
+
+        # 3. 替换代码为大模型给的完整代码
+        self.code_editor.suspend_sync()
+        try:
+            self.code_editor.replace_text_preserving_view(code.strip())
+            self._current_component_code = code.strip()
+            # 不再调用 _sync_basic_info_to_code（因为代码已完整）
+        finally:
+            self.code_editor.resume_sync()
+
+        # 4. 自动保存（带 AST 校验）
+        try:
+            self._save_component(delete_original_file=False)
+            self.side_dock_area.switch_to("组件属性面板")
+            MessageManager.success(f"已创建并保存组件：{info['name']}", "", self)
+        except Exception as e:
+            MessageManager.error(f"保存失败：{str(e)}", "请检查代码语法", self)
 
     def _switch_template(self, template_name, template_code):
         """根据选择的模板名称和代码更新编辑器"""
