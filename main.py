@@ -30,6 +30,8 @@ if __name__ == '__main__':
     enable_dpi_scale()
     # 创建应用
     app = QApplication(sys.argv)
+    # 启用fusion样式
+    app.setStyle("Fusion")
     # 创建并显示主窗口
     try:
         window = LowCodeWindow()

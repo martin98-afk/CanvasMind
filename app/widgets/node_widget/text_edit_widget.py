@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-from NodeGraphQt import NodeBaseWidget
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
-from qfluentwidgets import LineEdit, TextEdit
 
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit, VariableCompletionLineEdit
 from app.widgets.node_widget.base import CustomNodeBaseWidget

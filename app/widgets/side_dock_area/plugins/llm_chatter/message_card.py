@@ -16,7 +16,7 @@ from qfluentwidgets import (
     FluentIcon, ToolTipFilter, TransparentToolButton,
     CardWidget, CaptionLabel, InfoBar, InfoBarPosition
 )
-from qfluentwidgets.components.widgets.card_widget import CardSeparator
+from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleCardWidget
 
 # 可选：如果你的项目有 ContextRegistry，保留；否则注释
 try:
@@ -577,8 +577,12 @@ class TagWidget(CardWidget):
         self.label = CaptionLabel(text, self)
         layout.addWidget(self.label)
 
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.doubleClicked.emit(self.key)
+        super().mouseDoubleClickEvent(event)
 
-class MessageCard(CardWidget):
+class MessageCard(SimpleCardWidget):
     deleteRequested = pyqtSignal()
     copyRequested = pyqtSignal(str)
     regenerateRequested = pyqtSignal()
@@ -672,10 +676,7 @@ class MessageCard(CardWidget):
 
             for key, (name, content, callback_params) in self.context_tags.items():
                 tag = TagWidget(key, name)
-                if self.parent and hasattr(self.parent, 'homepage'):
-                    tag.doubleClicked.connect(
-                        lambda k=key, cp=callback_params: self.parent.homepage.context_register.get_executor(k)(cp)
-                    )
+                tag.doubleClicked.connect(lambda k=key: self._on_context_link_clicked(k))
                 tags_layout.addWidget(tag)
             tags_layout.addStretch()
             main_layout.addWidget(tags_container)
@@ -722,10 +723,12 @@ class MessageCard(CardWidget):
     def _on_context_link_clicked(self, tool_key: str):
         if tool_key in self.context_tags:
             name, content, callback_params = self.context_tags[tool_key]
-            if self.parent and hasattr(self.parent, 'homepage'):
-                executor = self.parent.homepage.context_register.get_executor(tool_key)
-                if executor:
-                    executor(callback_params)
+            print(callback_params)
+            executor = self.parent.homepage.context_register.get_executor(tool_key)
+            print(executor)
+            print(tool_key)
+            if executor:
+                executor(callback_params)
 
     def _on_content_height_changed(self, height):
         # 强制更新自身尺寸
