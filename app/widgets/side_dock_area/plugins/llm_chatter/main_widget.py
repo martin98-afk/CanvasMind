@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Optional, Dict, Any
 
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QApplication, QWidget
 from qfluentwidgets import (
@@ -18,7 +18,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import Cont
 from app.widgets.side_dock_area.plugins.llm_chatter.history_manager import HistoryManager
 from app.widgets.side_dock_area.plugins.llm_chatter.llm_config_popup import LLMConfigPopup
 from app.widgets.side_dock_area.plugins.llm_chatter.message_card import MessageCard, create_welcome_card
-from app.widgets.side_dock_area.plugins.llm_chatter.text_browser import SendableTextEdit
+from app.widgets.side_dock_area.plugins.llm_chatter.bottom_input_area import SendableTextEdit
 from app.widgets.side_dock_area.plugins.llm_chatter.worker import OpenAIChatWorker
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
@@ -36,6 +36,8 @@ class OpenAIChatToolWindow(ToolWindow):
     _settings_popup = None  # 懒加载
     _system_prompt = ""
     _is_welcome = False
+    insertResponse = pyqtSignal(str)
+    createResponse = pyqtSignal(str)
 
     def __init__(self, homepage):
         super().__init__(homepage)
@@ -129,7 +131,7 @@ class OpenAIChatToolWindow(ToolWindow):
     def _open_settings_popup(self):
         # 懒加载 popup
         if self._settings_popup is None:
-            self._settings_popup = LLMConfigPopup(title=self.model_combo.currentText(), parent=self)
+            self._settings_popup = LLMConfigPopup(parent=self)
             self._settings_popup.configApplied.connect(self._on_config_applied)
 
         # 准备初始配置
@@ -147,7 +149,7 @@ class OpenAIChatToolWindow(ToolWindow):
                 "是否思考": setting.llm_enable_thinking.value,
             }
 
-        self._settings_popup.set_config(config)
+        self._settings_popup.set_config(self.model_combo.currentText(), config)
         # 在设置按钮下方弹出
         self._settings_popup.show_at(self.settings_btn)
 
@@ -176,12 +178,11 @@ class OpenAIChatToolWindow(ToolWindow):
             InfoBar.success("系统默认配置已更新", "已保存到系统配置。", parent=self, duration=1500)
 
     def _load_model_configs(self):
-        # 保存当前选中的模型名（如果有的话）
         current_text = self.model_combo.currentText() if self.model_combo.count() > 0 else ""
 
         self._valid_configs.clear()
         self.model_combo.clear()
-        # 系统默认配置
+
         setting = Settings.get_instance()
         default_config = {
             "模型名称": setting.llm_model.value,
@@ -192,10 +193,11 @@ class OpenAIChatToolWindow(ToolWindow):
             "是否思考": setting.llm_enable_thinking.value,
         }
         self._valid_configs["系统默认配置"] = default_config
-        self.model_combo.addItem("系统默认配置")
-        self.model_combo.setDisabled(False)  # 允许选择，哪怕只有一个
-        model_names = ["系统默认配置"]
-        # 1. 尝试加载用户自定义配置
+
+        # 收集所有模型名称（系统 + 自定义）
+        all_model_names = ["系统默认配置"]
+
+        # 加载用户自定义配置
         try:
             custom_vars = getattr(self.homepage, 'global_variables', None)
             if custom_vars and hasattr(custom_vars, 'custom'):
@@ -203,22 +205,25 @@ class OpenAIChatToolWindow(ToolWindow):
                     if hasattr(var_obj, 'value') and isinstance(var_obj.value, dict):
                         val = var_obj.value
                         if {"API_URL", "API_KEY", "模型名称"}.issubset(val.keys()):
-                            self._valid_configs[config_name] = val
-            model_names.extend(list(self._valid_configs.keys()))
-            self.model_combo.addItems(model_names)
-            self.model_combo.setDisabled(False)
+                            # 避免自定义配置名与“系统默认配置”冲突
+                            if config_name != "系统默认配置":
+                                self._valid_configs[config_name] = val
+                                all_model_names.append(config_name)
         except Exception as e:
-            pass
+            # 建议至少打印错误
+            print(f"[ERROR] 加载自定义模型配置失败: {e}")
 
-        # === 关键：恢复之前选中的模型名 ===
+        # ✅ 关键：一次性添加所有模型名
+        self.model_combo.addItems(all_model_names)
+        self.model_combo.setDisabled(len(all_model_names) == 0)
+
+        # 恢复之前选中的项
         if current_text in self._valid_configs:
             idx = self.model_combo.findText(current_text)
             if idx >= 0:
                 self.model_combo.setCurrentIndex(idx)
-        else:
-            # 如果之前选中的项不存在了，可以选第一个或保持空白（但 ComboBox 至少要有一个）
-            if self.model_combo.count() > 0:
-                self.model_combo.setCurrentIndex(0)
+        elif self.model_combo.count() > 0:
+            self.model_combo.setCurrentIndex(0)
 
     def _create_new_session(self):
         session = self.session_manager.create_new_session()
@@ -464,6 +469,10 @@ class OpenAIChatToolWindow(ToolWindow):
         ))
 
     def _on_send_clicked(self, user_text: str = ""):
+        # === 防止重复发送：自动中止当前请求 ===
+        if self._is_streaming:
+            self._on_stop_clicked()  # 安全中止当前 worker
+
         # === 安全移除欢迎卡片（动态查找）===
         welcome_card = None
         for i in range(self.chat_layout.count()):
@@ -476,7 +485,7 @@ class OpenAIChatToolWindow(ToolWindow):
             self.chat_layout.removeWidget(welcome_card)
             welcome_card.deleteLater()
 
-        # === 原有发送逻辑 ===
+        # === 原有发送逻辑继续 ===
         session = self.session_manager.get_current_session()
         if not user_text:
             user_text = self.input_area.toPlainText().strip()
@@ -559,18 +568,19 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_stop_clicked(self):
         if self._worker and self._worker.isRunning():
             self._worker.cancel()
-            self._worker = None
-            self._is_streaming = False
-            self._toggle_send_stop(False)
-            InfoBar.warning(
-                title='已中止',
-                content="问答请求已被手动中止。",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP_RIGHT,
-                duration=2000,
-                parent=self
-            )
+            self._worker.wait()  # 可选：等待线程真正结束（避免 race condition）
+        self._worker = None
+        self._is_streaming = False
+        self._toggle_send_stop(False)
+        InfoBar.warning(
+            title='已中止',
+            content="问答请求已被手动中止。",
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=2000,
+            parent=self
+        )
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
         self._update_assistant_message(assistant_card, content_piece)

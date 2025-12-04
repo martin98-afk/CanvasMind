@@ -62,38 +62,30 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
             from pygments.formatters import HtmlFormatter
 
             lexer = get_lexer_by_name(lang, stripall=False) if lang else TextLexer()
-            # 注意：这里禁用 linenos！我们自己加
             formatter = HtmlFormatter(
                 style='dracula',
-                linenos=False,  # ← 关键：关闭 Pygments 行号
+                linenos=False,
                 noclasses=True,
                 cssclass='code-block',
                 prestyles='margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;'
             )
             highlighted_code = highlight(copy_text, lexer, formatter)
         except Exception:
-            # fallback：直接 escape
             highlighted_code = f'<pre style="margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;">{escape(copy_text)}</pre>'
 
         # —————— 手动构造带行号的表格 ——————
         lines = copy_text.splitlines() or [""]
-        # 生成行号列
         max_line = len(str(len(lines)))
         line_numbers_html = "\n".join(
             f'<td class="lineno" data-line="{i + 1}">{str(i + 1).rjust(max_line)}</td>'
             for i in range(len(lines))
         )
-        # 代码列（从 highlighted_code 中提取内容）
-        # Pygments 输出如：<div class="code-block"><pre>...</pre></div>
-        # 我们提取 <pre> 内容，并按行拆分
         try:
-            # 尝试从 Pygments 结果提取代码行
             import re as preg
             pre_match = preg.search(r'<pre[^>]*>(.*?)</pre>', highlighted_code, preg.DOTALL)
             if pre_match:
                 inner_html = pre_match.group(1)
                 code_lines = inner_html.split('\n')
-                # 确保行数一致
                 if len(code_lines) < len(lines):
                     code_lines.extend([''] * (len(lines) - len(code_lines)))
             else:
@@ -101,11 +93,7 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
         except:
             code_lines = [escape(line) for line in lines]
 
-        code_lines_html = "\n".join(
-            f'<td class="code-line">{line}</td>' for line in code_lines
-        )
-
-        # 构造表格
+        code_lines_html = "\n".join(f'<td class="code-line">{line}</td>' for line in code_lines)
         table_rows = "\n".join(
             f'<tr>{line_numbers_html.splitlines()[i]}{code_lines_html.splitlines()[i]}</tr>'
             for i in range(len(lines))
@@ -119,46 +107,89 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
         </table>
         '''
 
-        # —————— 外层容器 ——————
-        code_container_padding = "10px" if not lang else "28px 10px 10px 10px"
-
         return f'''
-    <div style="
-        position: relative;
-        margin: 16px 0;
-        background: #1E1E1E;
-        border: 1px solid #3A3F47;
-        border-radius: 6px;
-        overflow-x: auto;   /* 只在这里启用横向滚动 */
-        overflow-y: hidden;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        font-family: Consolas, monospace;
-        font-size: 13px;
-    ">
-        {f'<div style="position:absolute; top:6px; left:8px; background:#333; color:#FFA500; padding:1px 6px; border-radius:3px; font-size:11px; z-index:10; pointer-events:none;">{lang}</div>' if lang else ''}
+        <div style="
+            position: relative;
+            margin: 16px 0;
+            background: #1E1E1E;
+            border: 1px solid #3A3F47;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            font-family: Consolas, monospace;
+            font-size: 13px;
+        ">
+            <!-- 顶部工具栏区域（固定，不滚动） -->
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 6px 8px;
+                height: 28px;
+                background: rgba(30,30,30,0.8);
+                border-bottom: 1px solid #333;
+            ">
+                <!-- 左侧：语言标签 -->
+                {f'<span style="color: #FFA500; font-size: 13px; font-weight: bold;">{lang}</span>' if lang else '<span style="color: #888;">Plain Text</span>'}
 
-        <button type="button" data-copy="{b64_copy}" style="
-            position: absolute;
-            top: 6px;
-            right: 6px;
-            background: rgba(51,51,51,0.9);
-            color: #FFA500;
-            padding: 1px 5px;
-            border-radius: 3px;
-            text-decoration: none;
-            font-size: 11px;
-            cursor: pointer;
-            opacity: 0.8;
-            border: none;
-            outline: none;
-            z-index: 10;
-        " onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">📋</button>
+                <!-- 右侧：按钮组 -->
+                <div style="display: flex; gap: 15px; align-items: center; padding-right: 4px;">
+                    <button type="button" data-action="insert" data-copy="{b64_copy}" style="
+                        width: 28px;
+                        height: 28px;
+                        background: transparent;
+                        border: none;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0;
+                        border-radius: 4px;
+                    " title="插入代码">
+                        <img src="qrc:/icons/插入.svg" style="width:20px; height:20px; pointer-events: none;" />
+                    </button>
+                    <button type="button" data-action="create" data-copy="{b64_copy}" style="
+                        width: 28px;
+                        height: 28px;
+                        background: transparent;
+                        border: none;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0;
+                        border-radius: 4px;
+                    " title="新建组件">
+                        <img src="qrc:/icons/新建.svg" style="width:20px; height:20px; pointer-events: none;" />
+                    </button>
+                    <button type="button" data-action="copy" data-copy="{b64_copy}" style="
+                        width: 28px;
+                        height: 28px;
+                        background: transparent;
+                        border: none;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0;
+                        border-radius: 4px;
+                    " title="复制代码">
+                        <img src="qrc:/icons/复制.svg" style="width:20px; height:20px; pointer-events: none;" />
+                    </button>
+                </div>
+            </div>
 
-        <div style="padding: {code_container_padding};">
-            {table_html}
+            <!-- 可横向滚动的代码区域（仅此处滚动） -->
+            <div style="
+                padding: 8px 10px;
+                overflow-x: auto;
+                overflow-y: hidden;
+                scrollbar-width: thin;
+                -ms-overflow-style: -ms-autohiding-scrollbar;
+            ">
+                {table_html}
+            </div>
         </div>
-    </div>
-    '''
+        '''
     pattern = r'<pre><code(?:\s+class="([^"]*)")?>(.*?)</code></pre>'
     return re.sub(pattern, replacer, html, flags=re.DOTALL)
 
@@ -240,6 +271,8 @@ def _inject_context_links(md_text: str, allowed_keys) -> str:
 # ======== 自定义 WebEnginePage：监听 console.log ========
 class ConsoleMonitorPage(QWebEnginePage):
     copyRequested = pyqtSignal(str)
+    insertCodeRequested = pyqtSignal(str)
+    createComponentRequested = pyqtSignal(str)
     heightReported = pyqtSignal(int)
 
     def __init__(self, parent=None):
@@ -247,20 +280,26 @@ class ConsoleMonitorPage(QWebEnginePage):
 
     def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
         msg = message.strip()
-        if msg.startswith("pywebview_copy_b64:"):
-            b64_str = msg[len("pywebview_copy_b64:"):]
-            try:
-                text = base64.b64decode(b64_str).decode('utf-8')
-                self.copyRequested.emit(text)
-            except Exception:
-                pass  # 安静失败
+        if msg.startswith("pywebview_action:"):
+            parts = msg[len("pywebview_action:"):].split(":", 1)
+            if len(parts) == 2:
+                action, b64_str = parts
+                try:
+                    text = base64.b64decode(b64_str).decode('utf-8')
+                    if action == "copy":
+                        self.copyRequested.emit(text)
+                    elif action == "insert":
+                        self.insertCodeRequested.emit(text)
+                    elif action == "create":
+                        self.createComponentRequested.emit(text)
+                except Exception:
+                    pass
         elif msg.startswith("pywebview_height:"):
             try:
                 h = int(msg[len("pywebview_height:"):])
                 self.heightReported.emit(h)
             except ValueError:
                 pass
-        # else: 静默其他日志
 
 
 # ======== 核心：CodeWebViewer（基于 QWebEngineView）========
@@ -268,6 +307,8 @@ class CodeWebViewer(QWebEngineView):
     contextLinkClicked = pyqtSignal(str)
     contentHeightChanged = pyqtSignal(int)
     copyRequested = pyqtSignal(str)
+    insertCodeRequested = pyqtSignal(str)
+    createComponentRequested = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -289,6 +330,8 @@ class CodeWebViewer(QWebEngineView):
 
         # 连接信号
         self._page.copyRequested.connect(self.copyRequested)
+        self._page.insertCodeRequested.connect(self.insertCodeRequested)
+        self._page.createComponentRequested.connect(self.createComponentRequested)
         self._page.heightReported.connect(self._on_js_height_reported)
 
         self.loadFinished.connect(self._on_load_finished)
@@ -425,35 +468,34 @@ class CodeWebViewer(QWebEngineView):
             {html_body}
             <script>
                 document.addEventListener('click', function(e) {{
-                    if (e.target.matches('button[data-copy]')) {{
+                    const btn = e.target.closest('button[data-action]');
+                    if (btn) {{
                         e.preventDefault();
-                        const b64 = e.target.getAttribute('data-copy');
+                        const action = btn.getAttribute('data-action');
+                        const b64 = btn.getAttribute('data-copy');
                         const text = atob(b64);
-                        // 优先尝试标准 API
-                        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {{
+                        if (navigator.clipboard && action === 'copy') {{
                             navigator.clipboard.writeText(text).catch(() => {{
-                                console.log('pywebview_copy_b64:' + b64);
+                                console.log('pywebview_action:copy:' + b64);
                             }});
                         }} else {{
-                            console.log('pywebview_copy_b64:' + b64);
+                            console.log('pywebview_action:' + action + ':' + b64);
                         }}
                     }}
                 }});
-
+            
                 function reportHeight() {{
                     const h = document.body.scrollHeight;
                     console.log('pywebview_height:' + h);
                 }}
-
+            
                 document.addEventListener('DOMContentLoaded', function() {{
                     setTimeout(reportHeight, 100);
-
                     document.querySelectorAll('details.think-block').forEach(el => {{
                         el.addEventListener('toggle', () => setTimeout(reportHeight, 20));
                     }});
                 }});
-
-                // 暴露接口（备用）
+            
                 window.pywebview = {{
                     reportHeight: reportHeight
                 }};
@@ -540,6 +582,8 @@ class MessageCard(CardWidget):
     deleteRequested = pyqtSignal()
     copyRequested = pyqtSignal(str)
     regenerateRequested = pyqtSignal()
+    insertResponse = pyqtSignal(str)
+    createResponse = pyqtSignal(str)
 
     def __init__(self, role: str, timestamp: str = None, parent=None, tag_params: dict = None):
         super().__init__(parent)
@@ -643,6 +687,8 @@ class MessageCard(CardWidget):
         self.content_widget.contextLinkClicked.connect(self._on_context_link_clicked)
         self.content_widget.contentHeightChanged.connect(self._on_content_height_changed)
         self.content_widget.copyRequested.connect(self._on_internal_copy)
+        self.content_widget.insertCodeRequested.connect(self._on_insert_code)
+        self.content_widget.createComponentRequested.connect(self._on_create_component)
         main_layout.addWidget(self.content_widget)
         main_layout.addWidget(CardSeparator(self))
 
@@ -664,6 +710,14 @@ class MessageCard(CardWidget):
             duration=2000,
             parent=self.parent
         )
+
+    def _on_insert_code(self, code: str):
+        # TODO: 实现插入逻辑（如插入到编辑器）
+        InfoBar.info("插入", "代码已准备插入", parent=self.parent)
+
+    def _on_create_component(self, code: str):
+        # TODO: 实现新建组件逻辑
+        InfoBar.info("新建", "组件模板已生成", parent=self.parent)
 
     def _on_context_link_clicked(self, tool_key: str):
         if tool_key in self.context_tags:
@@ -704,7 +758,6 @@ def create_welcome_card(parent=None) -> MessageCard:
     welcome_md = """\
 你好！我是你的大模型助手，当前支持以下功能：
 
-- ✅ **多模态输入**：支持通过 Base64 传递图像，启用视觉识别能力。
 - ✅ **流式对话**：逐字生成，响应流畅，类似 ChatGPT 的体验。
 - ✅ **上下文增强**：可插入画布节点、组件信息、全局变量等上下文（点击下方 `[...]` 选择）。
 - ✅ **结构化输出**：支持 Markdown 表格、代码块、列表等格式。
@@ -713,7 +766,7 @@ def create_welcome_card(parent=None) -> MessageCard:
 
 你可以随时：
 - 输入文本开始对话；
-- 点击输入框旁的 ➕ 按钮添加上下文；
+- 点击输入框左上角的 ➕ 按钮添加上下文；
 - 在生成过程中点击“停止”中断响应。
 
 祝你使用愉快！✨

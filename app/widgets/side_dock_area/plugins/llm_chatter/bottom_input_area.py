@@ -37,6 +37,7 @@ class SendableTextEdit(TextEdit):
     def _on_send_click(self):
         """发送按钮点击事件"""
         self.send_btn.setIcon(FluentIcon.PAUSE)
+        self.send_btn.setToolTip("停止")
         QtCore.QTimer.singleShot(100, lambda: self.send_btn.setDisabled(False))
         self.send_btn.clicked.disconnect()
         self.send_btn.clicked.connect(self._on_stop_click)
@@ -45,6 +46,7 @@ class SendableTextEdit(TextEdit):
     def _on_stop_click(self):
         """停止按钮点击事件"""
         self.send_btn.setIcon(FluentIcon.SEND)
+        self.send_btn.setToolTip("发送（Enter）")
         self.send_btn.clicked.disconnect()
         self.send_btn.clicked.connect(self._on_send_click)
         self.stopMessageRequested.emit()

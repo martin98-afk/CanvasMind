@@ -215,6 +215,7 @@ class ContextSelector(QWidget):
         main_layout.addStretch(1)
 
         self.refresh_btn = TransparentToolButton(FluentIcon.SYNC, self)
+        self.refresh_btn.setToolTip("刷新上下文")
         self.refresh_btn.setFixedSize(24, 24)
         self.refresh_btn.clicked.connect(self._update_tags)
         main_layout.addWidget(self.refresh_btn)
