@@ -44,7 +44,8 @@ class OpenAIChatWorker(QThread):
                 max_tokens=max_tokens,
                 stream=True,
                 extra_body={
-                    "enable_thinking": {"enable_thinking": enable_thinking}
+                    "enable_thinking": enable_thinking,
+                    "chat_template_kwargs": {"enable_thinking": enable_thinking}
                 }
             )
 

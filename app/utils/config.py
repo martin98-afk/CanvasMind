@@ -133,3 +133,4 @@ class Settings(QConfig):
     llm_api_base = ConfigItem("LLM", "APIBase", "http://127.0.0.1:1234/v1")
     llm_max_tokens = ConfigItem("LLM", "MaxTokens", 2048, RangeValidator(1024, 40960))
     llm_temperature = ConfigItem("LLM", "Temperature", 0.7, RangeValidator(0, 1))
+    llm_enable_thinking = ConfigItem("LLM", "EnableThinking", True, BoolValidator())

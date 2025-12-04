@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class Component(BaseComponent):
     name = "逻辑判断"
-    category = "测试组件"
+    category = "逻辑控制"
     description = ""
     requirements = ""
     

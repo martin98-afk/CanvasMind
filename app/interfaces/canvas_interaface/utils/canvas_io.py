@@ -181,7 +181,7 @@ class CanvasIO(QObject):
             for port in node.input_ports():
                 conn_desc = []
                 for upstream in port.connected_ports():
-                    conn_desc.append(f"[{upstream.node().name()}](画布节点) → {upstream.name()}")
+                    conn_desc.append(f"[{upstream.node().name()}](jump) → {upstream.name()}")
                 if conn_only := ", ".join(conn_desc):
                     inputs.append(f"- **{port.name()}** ({port.model.type_}) ← {conn_only}")
                 else:
@@ -192,14 +192,14 @@ class CanvasIO(QObject):
             for port in node.output_ports():
                 conn_desc = []
                 for downstream in port.connected_ports():
-                    conn_desc.append(f"[{downstream.node().name()}](画布节点) ← {downstream.name()}")
+                    conn_desc.append(f"[{downstream.node().name()}](jump) ← {downstream.name()}")
                 if conn_only := ", ".join(conn_desc):
                     outputs.append(f"- **{port.name()}** ({port.model.type_}) → {conn_only}")
                 else:
                     outputs.append(f"- **{port.name()}** ({port.model.type_}) → 无连接")
 
             # 构建节点描述块
-            node_block = f"""### [{name}](画布节点)
+            node_block = f"""### [{name}](jump)
 - **类型**: {node_type}
 - **属性**: {custom_props if custom_props else "无"}
 - **输入**:
@@ -211,7 +211,7 @@ class CanvasIO(QObject):
 
         final_desc = """## 画布结构说明
 以下描述了当前画布中各节点的类型、配置属性及其数据流连接关系。
-- [节点名称](画布节点) 代表引用的原画布节点名
+- [节点名称](jump) 代表引用的原画布存在的 节点名
 - 箭头 `←` 表示数据来源，`→` 表示数据去向。
 - 端口类型（如 `str`, `DataFrame`, `image_base64`）用于提示数据格。
 

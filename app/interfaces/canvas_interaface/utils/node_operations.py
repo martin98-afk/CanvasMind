@@ -25,6 +25,7 @@ class NodeOperations:
         self.thread_pool = thread_pool
         self.node_status = {}  # {node_id: status}
         self.node_type_map = {}
+        self.name2type = {}
         self._node_id_cache = {}  # 缓存：node_id -> node_object
         self._registered_nodes = []
         self._node_id_cache_valid = False  # 标记缓存是否有效
@@ -79,6 +80,7 @@ class NodeOperations:
             node_class.__name__ = f"StatusDynamicNode_{safe_name}"
             self.graph.register_node(node_class)
             self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
+            self.name2type[comp_cls.name] = f"dynamic.{node_class.__name__}"
             if f"dynamic.{node_class.__name__}" not in self._registered_nodes:
                 nodes_menu.add_command('运行此节点', lambda graph, node: self.parent.run_node(node),
                                        node_type=f"dynamic.{node_class.__name__}", icon=get_icon("运行"))
@@ -102,6 +104,12 @@ class NodeOperations:
     def on_node_created(self, node):
         self._node_id_cache[node.id] = node
         self._request_recommendations(node)
+
+    def create_next_node_using_name(self, name):
+        if name in self.name2type:
+            return self.create_next_node(self.name2type.get(name))
+        else:
+            MessageManager.error("错误", "未找到该组件！", self.parent)
 
     def create_next_node(self, key, icon_path=None):
         selected_nodes = self.graph.selected_nodes()

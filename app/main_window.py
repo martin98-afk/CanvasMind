@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore
-from PyQt5.QtCore import QSize
+from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QPlainTextEdit, QApplication, QDesktopWidget
 from loguru import logger
@@ -22,6 +22,7 @@ from app.widgets.dialog_widget.logger_dialog import QTextEditLogger
 class LowCodeWindow(FluentWindow):
     def __init__(self):
         super().__init__()
+        self.setAttribute(Qt.WA_TranslucentBackground)
         setTheme(Theme.DARK)
         self.setWindowIcon(get_icon("logo3"))
         self.setWindowTitle("Canvas Mind")

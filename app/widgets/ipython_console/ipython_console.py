@@ -76,6 +76,8 @@ class EmbeddedIPythonConsole(QWidget):
         self.layout.addWidget(commandBar)
         # 控制台
         self.console = RichJupyterWidget()
+        # 透明背景
+        self.console.setStyleSheet("background-color: transparent;")
         self.console.set_default_style(colors='linux')
         self.console.banner = "IPython Console (Embedded)\n"
         self.layout.addWidget(self.console)
