@@ -33,8 +33,9 @@ def get_markdown_instance():
     global _md_instance
     if _md_instance is None:
         _md_instance = Markdown(
-            extensions=['fenced_code', 'nl2br', 'tables'],
-            output_format='html5'
+            extensions=['fenced_code', 'nl2br', 'tables', 'extra', 'smarty'],
+            output_format='html5',
+            safe=False
         )
     return _md_instance
 
@@ -794,9 +795,9 @@ def create_welcome_card(parent=None) -> MessageCard:
 你好！我是你的大模型助手，当前支持以下功能：
 
 - ✅ **流式对话**：逐字生成，响应流畅，类似 ChatGPT 的体验。
-- ✅ **上下文增强**：可插入画布节点、组件信息、全局变量等上下文（点击下方 `[...]` 选择）。
+- ✅ **上下文增强**：可插入画布节点、组件信息、全局变量等上下文（点击下方 `+` 选择）。
 - ✅ **结构化输出**：支持 Markdown 表格、代码块、列表等格式。
-- ✅ **上下文联动**：点击 `[变量名](key)` 可直接在画布中定位或操作对应节点。
+- ✅ **上下文联动**：点击 [节点名](key) 可直接触发上下文交互逻辑。
 - ✅ **深色主题 & 流畅交互**：界面适配 Fluent Design，支持停止生成、复制、重试等操作。
 
 你可以随时：

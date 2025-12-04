@@ -584,7 +584,7 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_stop_clicked(self):
         if self._worker and self._worker.isRunning():
             self._worker.cancel()
-            self._worker.wait()  # 可选：等待线程真正结束（避免 race condition）
+            self._worker = None  # 可选：等待线程真正结束（避免 race condition）
         self._worker = None
         self._is_streaming = False
         self._toggle_send_stop(False)

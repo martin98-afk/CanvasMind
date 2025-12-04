@@ -7,6 +7,7 @@ from qfluentwidgets import (
     BodyLabel, LineEdit, Slider, SpinBox, PrimaryPushButton,
     PushButton, CaptionLabel, SwitchButton
 )
+from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 from app.widgets.side_dock_area.plugins.llm_chatter.constants import PARAM_UI_MAP, PARAM_RANGE_MAP
 
@@ -67,7 +68,7 @@ class LLMConfigPopup(QWidget):
         title_label = BodyLabel(title, self)
         title_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
         self.layout.addWidget(title_label, 0, Qt.AlignHCenter)
-
+        self.layout.addWidget(CardSeparator(self))
         # 强制字段
         required_fields = {
             "模型名称": ("model_name", "line"),
@@ -101,6 +102,7 @@ class LLMConfigPopup(QWidget):
             self._widgets[key] = (label, widget)
 
         # 重建按钮区（每次都新建，避免引用问题）
+        self.layout.addWidget(CardSeparator(self))
         self.btn_layout = QHBoxLayout()
         self.apply_btn = PrimaryPushButton("应用", self)
         self.cancel_btn = PushButton("取消", self)
