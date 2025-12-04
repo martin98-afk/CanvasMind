@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import QWidget
 from loguru import logger
 
 from app.components.base import GlobalVariableContext
+from app.interfaces.canvas_interaface.llm_context import LLMContextProvider
 from app.interfaces.canvas_interaface.utils.auto_saver import AutoSaver
 from app.interfaces.canvas_interaface.utils.canvas_io import CanvasIO
 from app.interfaces.canvas_interaface.utils.canvas_runner import CanvasRunner
@@ -85,7 +86,14 @@ class CanvasPage(QWidget):
         self.ui_manager = CanvasUISetUp(self)
         self.ui_manager.setup_ui()
         # 注册大模型画布上下文
-        self.inject_llm_contexts()
+        self.llm_context_provider = LLMContextProvider(
+            graph=self.graph,
+            global_variables=self.global_variables,
+            canvas_io=self.canvas_io,
+            ui_manager=self.ui_manager,
+            node_operations=self.node_operations,
+            select_node_callback=self.select_node_by_name
+        )
         # 注册右键菜单
         self._setup_context_menus()
         # 连接ui信号
@@ -103,6 +111,10 @@ class CanvasPage(QWidget):
         self._connect_runner_signals()
 
     # 代理方法
+    @property
+    def context_register(self):
+        return self.llm_context_provider.context_register
+
     @property
     def env_combo(self):
         return self.ui_manager.env_combo
@@ -172,12 +184,19 @@ class CanvasPage(QWidget):
     def on_environment_changed(self):
         self.environment_manager.on_environment_changed()
 
-    def inject_llm_contexts(self):
-        """注册大模型上下文菜单，会出现在右边大模型对话框的上下文上拉框中"""
-        self.context_register = ContextRegistry()
-        self.context_register.register("画布节点", self.extract_graph_info, self.select_node_by_name)
-        self.context_register.register("全局变量", self.extract_var_info, lambda *args, **kwargs: None)
-        self.context_register.register("组件信息", self.get_component_info, lambda *args, **kwargs: None)
+    def on_context_action(self, content: str, action: str):
+        """
+        content: "数据加载器"
+        action: "jump:node_102"
+        """
+        if action.startswith("jump"):
+            self.select_node_by_name(content)
+        elif action.startswith("generate"):
+            pass
+            # self.homepage.create_component_from_id(comp_id)
+        elif action == "inspect":
+            pass
+            # self.homepage.show_variable_inspector("var_input")
 
     def select_node_by_name(self, name_list):
         if name_list is None:
@@ -220,21 +239,6 @@ class CanvasPage(QWidget):
             self.property_panel.get_current_execution_order(),
         ).export_selected_nodes_as_project()
 
-    def extract_graph_info(self):
-        selected_nodes = self.graph.selected_nodes()
-        if len(selected_nodes) > 0:
-            return (
-                f"画布选中节点 {len(selected_nodes)} 个" if len(
-                    selected_nodes) > 1 else f"节点: {selected_nodes[0].name()}",
-                self.canvas_io.extract_graph_info(self.graph.selected_nodes()),
-                [node.name() for node in selected_nodes]
-            )
-        else:
-            return f"当前画布所有节点", self.canvas_io.extract_graph_info(), None
-
-    def extract_var_info(self):
-        return "全局变量", self.global_variables.to_dict(), None
-
     def save_full_workflow(self, file_path=None, show_info=True):
         if not isinstance(file_path, str) or not isinstance(file_path, Path):
             if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
@@ -244,25 +248,6 @@ class CanvasPage(QWidget):
                     "../app/interfaces")) / f"{self.workflow_name}.workflow.json"
         self.canvas_io.save_full_workflow(file_path, show_info)
         self.file_path = file_path
-
-    def get_component_info(self):
-        """获取当前组件列表信息，用于大模型分析"""
-        selected_components = {
-            key: value
-            for key, value in self.component_map.items() if value.category in self.selected_categories
-        }
-        component_info = "\n".join(
-            [
-                f"名称：{value.name}\n"
-                f"类别：{value.category}"
-                f"描述：{value.description}\n"
-                f"输入：\n{';'.join([f'名称：{item.label}, 类型：{item.type.value}' for item in value.inputs])}\n"
-                f"输出：\n{';'.join([f'名称：{item.label}, 类型：{item.type.value}' for item in value.outputs])}\n"
-                f"属性：\n{';'.join([f'名称：{item.label}, 类型：{item.type.value} 默认：{item.default}' for key, item in value.properties.items()])}\n"
-                for key, value in selected_components.items()
-            ]
-        )
-        return f"{len(selected_components)}x 组件", component_info, None
 
     def load_full_workflow(self, file_path=None):
         self.canvas_io.load_full_workflow(file_path)

@@ -38,6 +38,7 @@ class OpenAIChatToolWindow(ToolWindow):
     _is_welcome = False
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
+    contextActionRequested = pyqtSignal(str, str)
 
     def __init__(self, homepage):
         super().__init__(homepage)
@@ -254,7 +255,12 @@ class OpenAIChatToolWindow(ToolWindow):
             card.deleteRequested.connect(lambda c=card: self._delete_message(c))
             card.actionRequested.connect(self._on_code_action)
             if msg["role"] == "assistant":
+                card.actionRequested.connect(self._on_code_action)
                 card.regenerateRequested.connect(lambda c=card: self._regenerate_message(c))
+                if hasattr(self.homepage, "on_context_action"):
+                    card.contextActionRequested.connect(self.homepage.on_context_action)
+                else:
+                    card.contextActionRequested.connect(self.contextActionRequested.emit)
 
             self.chat_layout.addWidget(card)
 
@@ -380,6 +386,10 @@ class OpenAIChatToolWindow(ToolWindow):
         card = MessageCard(parent=self, role="assistant")
         card.actionRequested.connect(self._on_code_action)
         card.regenerateRequested.connect(lambda: self._regenerate_message(card))
+        if hasattr(self.homepage, "on_context_action"):
+            card.contextActionRequested.connect(self.homepage.on_context_action)
+        else:
+            card.contextActionRequested.connect(self.contextActionRequested.emit)
         self.chat_layout.addWidget(card)
         self._scroll_to_bottom()
         return card

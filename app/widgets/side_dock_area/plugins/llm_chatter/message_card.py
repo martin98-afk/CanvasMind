@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import base64
 import re
+import urllib
 from datetime import datetime
 from html import escape
 
@@ -256,60 +257,55 @@ def _inject_think_cards(md_text: str, completed: bool = True) -> str:
     return ''.join(parts)
 
 
-def _inject_context_links(md_text: str, context_map):
+def _inject_context_links(md_text: str) -> str:
     """
-    context_map: {
-        "key1": {
-            "name": "变量名",
-            "content": "实际值或节点ID",
-            "type": "node",  # ← 新增 type
-            "action": "jump" # ← 新增默认操作（可选）
-        },
-        ...
-    }
+    将 [content](action) 转为可点击的 <span class="context-tag"> 标签
+    不再使用 <a>，避免链接行为和渲染异常
     """
     def replacer(match):
-        display_name = match.group(1)
-        tool_key = match.group(2)
-        if tool_key in context_map:
-            meta = context_map[tool_key]
-            context_type = meta.get("type", "unknown")
-            context_content = meta.get("content", tool_key)
-            suggested_action = meta.get("action", "jump")
+        content = match.group(1)  # 如 "数据加载器"
+        action = match.group(2)   # 如 "jump:node_102"
 
-            # 安全编码三个字段（支持 Unicode）
-            import urllib.parse
-            encoded_type = urllib.parse.quote(context_type)
-            encoded_content = urllib.parse.quote(str(context_content))
-            encoded_action = urllib.parse.quote(suggested_action)
+        # 安全编码，防止 XSS 或 JS 注入
+        import urllib.parse
+        encoded_content = urllib.parse.quote(content, safe='')
+        encoded_action = urllib.parse.quote(action, safe='')
 
-            return (
-                f'<a href="context://{tool_key}" '
-                f'class="context-link" '
-                f'data-context-type="{encoded_type}" '
-                f'data-context-content="{encoded_content}" '
-                f'data-context-action="{encoded_action}">'
-                f'[{display_name}]({tool_key})</a>'
-            )
-        else:
-            return match.group(0)
+        # 返回一个带 data 属性的 span，样式由 CSS 控制
+        return (
+            f'<span class="context-tag" '
+            f'data-content="{encoded_content}" '
+            f'data-action="{encoded_action}">'
+            f'{escape(content)}'
+            f'</span>'
+        )
 
     return re.sub(r'\[([^\[\]]+?)\]\(([^)\s]+)\)', replacer, md_text)
-
 
 # ======== 自定义 WebEnginePage：监听 console.log ========
 class ConsoleMonitorPage(QWebEnginePage):
     codeActionRequested = pyqtSignal(str, str)  # (code: str, action: str)
+    contextActionRequested = pyqtSignal(str, str)  # (type, content, action)
     heightReported = pyqtSignal(int)
 
     def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
         msg = message.strip()
         if msg.startswith("pywebview_action:"):
-            parts = msg[len("pywebview_action:"):].split(":", 1)
-            if len(parts) == 2:
-                action, b64_str = parts
+            if msg.startswith("pywebview_action:context|||"):
                 try:
-                    text = base64.b64decode(b64_str).decode('utf-8')
+                    parts = msg.split("|||")
+                    if len(parts) == 3:
+                        _, raw_content, raw_action = parts
+                        content = urllib.parse.unquote(raw_content)
+                        action = urllib.parse.unquote(raw_action)
+                        self.contextActionRequested.emit(content, action)
+                except Exception:
+                    pass
+            elif msg.count(":") == 2:
+                # 处理 copy/insert/create 等旧格式
+                _, action, b64_payload = msg.split(":")
+                try:
+                    text = base64.b64decode(b64_payload).decode('utf-8')
                     self.codeActionRequested.emit(text, action)
                 except Exception:
                     pass
@@ -323,15 +319,14 @@ class ConsoleMonitorPage(QWebEnginePage):
 
 # ======== 核心：CodeWebViewer（基于 QWebEngineView）========
 class CodeWebViewer(QWebEngineView):
-    contextLinkClicked = pyqtSignal(str)
     contentHeightChanged = pyqtSignal(int)
     codeActionRequested = pyqtSignal(str, str)  # (code, action)
+    contextActionRequested = pyqtSignal(str, str)  # (type, content, action)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._markdown_text = ""
         self._streaming = True
-        self._allowed_keys = set()
         self._html_timer = None
         self._completed = False
 
@@ -346,7 +341,8 @@ class CodeWebViewer(QWebEngineView):
         self.setMinimumHeight(1)
 
         # 连接信号
-        self._page.codeActionRequested.connect(self.codeActionRequested)
+        self._page.codeActionRequested.connect(self.codeActionRequested.emit)
+        self._page.contextActionRequested.connect(self.contextActionRequested.emit)
         self._page.heightReported.connect(self._on_js_height_reported)
 
         self.loadFinished.connect(self._on_load_finished)
@@ -358,15 +354,12 @@ class CodeWebViewer(QWebEngineView):
     def _on_js_height_reported(self, height: int):
         self.contentHeightChanged.emit(height)
 
-    def set_allowed_context_keys(self, keys):
-        self._allowed_keys = set(keys or [])
-
     def _render(self):
         if not self._markdown_text.strip():
             html_body = ""
         else:
             safe_md = _sanitize_incomplete_markdown(self._markdown_text)
-            safe_md = _inject_context_links(safe_md, self._allowed_keys)
+            safe_md = _inject_context_links(safe_md)
             processed_md = _inject_think_cards(safe_md, completed=self._completed)
 
             try:
@@ -403,10 +396,24 @@ class CodeWebViewer(QWebEngineView):
                     max-width: 100%;
                     overflow-wrap: break-word;
                 }}
-                a.context-link {{
+                .context-tag {{
+                    display: inline-block;
+                    padding: 2px 6px;
+                    margin: 0 2px;
+                    background: rgba(255, 165, 0, 0.15);
+                    border: 1px solid #FFA500;
+                    border-radius: 4px;
                     color: #FFA500;
-                    text-decoration: underline;
+                    font-size: 13px;
+                    font-weight: 500;
                     cursor: pointer;
+                    user-select: none;
+                    transition: all 0.2s ease;
+                }}
+                .context-tag:hover {{
+                    background: rgba(255, 165, 0, 0.3);
+                    border-color: #FFB733;
+                    transform: translateY(-1px);
                 }}
                 pre, code {{
                     white-space: pre-wrap;
@@ -499,16 +506,14 @@ class CodeWebViewer(QWebEngineView):
                     }}
                 }});
                 document.addEventListener('click', function(e) {{
-                    const link = e.target.closest('a.context-link');
-                    if (link) {{
+                    const tag = e.target.closest('.context-tag');
+                    if (tag) {{
                         e.preventDefault();
-                        const type = link.getAttribute('data-context-type') || '';
-                        const content = link.getAttribute('data-context-content') || '';
-                        const action = link.getAttribute('data-context-action') || 'jump';
-                        // 安全拼接并编码（避免字段内含 : 或 \n）
-                        const payload = type + '\x01' + content + '\x01' + action;
-                        const b64 = btoa(unescape(encodeURIComponent(payload)));
-                        console.log('pywebview_action:context_triple:' + b64);
+                        const content = tag.getAttribute('data-content');
+                        const action = tag.getAttribute('data-action');
+                        if (content && action) {{
+                            console.log('pywebview_action:context|||' + content + '|||' + action);
+                        }}
                     }}
                 }});
                 function reportHeight() {{
@@ -613,6 +618,7 @@ class MessageCard(SimpleCardWidget):
     deleteRequested = pyqtSignal()
     regenerateRequested = pyqtSignal()
     actionRequested = pyqtSignal(str, str)  # (code, action)
+    contextActionRequested = pyqtSignal(str, str)
 
     def __init__(self, role: str, timestamp: str = None, parent=None, tag_params: dict = None):
         super().__init__(parent)
@@ -708,9 +714,7 @@ class MessageCard(SimpleCardWidget):
             main_layout.addWidget(CardSeparator(self))
 
         self.content_widget = CodeWebViewer(self)
-        allowed_keys = list(self.context_tags.keys())
-        self.content_widget.set_allowed_context_keys(allowed_keys)
-        self.content_widget.contextLinkClicked.connect(self._on_context_link_clicked)
+        self.content_widget.contextActionRequested.connect(self.contextActionRequested.emit)
         self.content_widget.contentHeightChanged.connect(self._on_content_height_changed)
         self.content_widget.codeActionRequested.connect(self._on_code_action)
         main_layout.addWidget(self.content_widget)
@@ -748,10 +752,7 @@ class MessageCard(SimpleCardWidget):
     def _on_context_link_clicked(self, tool_key: str):
         if tool_key in self.context_tags:
             name, content, callback_params = self.context_tags[tool_key]
-            print(callback_params)
             executor = self.parent.homepage.context_register.get_executor(tool_key)
-            print(executor)
-            print(tool_key)
             if executor:
                 executor(callback_params)
 

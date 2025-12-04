@@ -21,6 +21,7 @@ from qfluentwidgets import (
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, ConnectionType
 from app.interfaces.component_developer.component_history_manager import ComponentHistoryManager
 from app.interfaces.component_developer.constants import *
+from app.interfaces.component_developer.llm_context import LLMContextProvider
 from app.interfaces.component_developer.message_manager import MessageManager
 from app.scan_components import ComponentUsageTracker
 from app.scan_components import resource_path
@@ -44,9 +45,7 @@ class ComponentDeveloperPage(QWidget):
         self.setObjectName("ComponentDeveloperWidget")
         self._current_component_file = None
         self._current_component_code = ""  # 存储当前加载的代码
-        self.context_register = ContextRegistry()
-        self.context_register.register("当前代码", self.extract_current_code, lambda *args, **kwargs: None)
-        self.context_register.register("当前选中区域", self.extract_selected_code, lambda *args, **kwargs: None)
+        self.llm_context_provider = LLMContextProvider(self)
         self._setup_ui()
         self._connect_signals()
         # --- 添加一个定时器用于延迟分析 ---
@@ -55,6 +54,10 @@ class ComponentDeveloperPage(QWidget):
         self._analysis_timer.timeout.connect(self._analyze_code_for_requirements)
         # --- 添加一个标志，防止循环更新 ---
         self._updating_requirements_from_analysis = False
+
+    @property
+    def context_register(self):
+        return self.llm_context_provider.context_register
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -115,7 +118,7 @@ class ComponentDeveloperPage(QWidget):
         self.property_editor = self.component_info.property_editor
         self.history_table = self.side_dock_area.get_tool_instance("组件历史管理").history_table
         self.llm_chatter = self.side_dock_area.get_tool_instance("大模型对话")
-        self.llm_chatter.set_system_prompt(LLM_CODE_CONTEXT)
+        self.llm_chatter.set_system_prompt(self.llm_context_provider.system_prompt)
         self.llm_chatter.insertResponse.connect(self._handle_insert_code_from_llm)
         self.llm_chatter.createResponse.connect(self._handle_create_component_from_llm)
         self.history_table.itemDoubleClicked.connect(self._load_history_code)
@@ -156,39 +159,6 @@ class ComponentDeveloperPage(QWidget):
         self.requirements_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
         self.history_table.itemChanged.connect(self._on_history_description_changed)
-
-    def extract_current_code(self) -> str:
-        """返回带组件名称和完整代码的上下文字符串"""
-        name = self.name_edit.text().strip() or "未命名组件"
-        code = self.code_editor.get_code()
-        if not code.strip():
-            return f"{name} 全部代码", "代码为空", None
-        return f"{name} 全部代码", code, None
-
-    def extract_selected_code(self) -> str:
-        """返回带组件名称、行号范围和选中代码的上下文字符串"""
-        name = self.name_edit.text().strip() or "未命名组件"
-        editor = self.code_editor.code_editor  # 假设这是 QPlainTextEdit 或类似
-        cursor = editor.textCursor()
-
-        if cursor.hasSelection():
-            # 获取选中范围的起始/结束行号（从1开始）
-            start_line = cursor.selectionStart()
-            end_line = cursor.selectionEnd()
-            doc = editor.document()
-            start_block = doc.findBlock(start_line)
-            end_block = doc.findBlock(end_line - 1)  # selectionEnd 是下一个字符位置
-            start_line_num = start_block.blockNumber() + 1
-            end_line_num = end_block.blockNumber() + 1
-
-            selected_text = cursor.selectedText().replace('\u2029', '\n')  # PyQt5 用 \u2029 表示换行
-            return f"{name} {start_line_num}~{end_line_num}行代码", selected_text, None
-        else:
-            # 未选中则返回完整代码（与 extract_current_code_for_llm 一致）
-            code = self.code_editor.get_code()
-            if not code.strip():
-                return f"{name} 全部代码", "代码为空", None
-            return f"{name} 全部代码", code, None
 
     def _handle_insert_code_from_llm(self, code: str):
         """处理从 LLM 插件来的“插入代码”请求"""
