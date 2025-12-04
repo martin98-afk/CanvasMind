@@ -329,7 +329,7 @@ class CodeWebViewer(QWebEngineView):
         self._streaming = True
         self._html_timer = None
         self._completed = False
-
+        self._resize_timer = None  # 用于 debounce 的定时器
         # 使用自定义 Page 以捕获 console.log
         self._page = ConsoleMonitorPage(self)
         self.setPage(self._page)
@@ -572,8 +572,15 @@ class CodeWebViewer(QWebEngineView):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        # 宽度变化时，重新计算高度
-        QTimer.singleShot(100, self._request_content_height)
+        # 取消之前的定时器（关键！实现 debounce）
+        if self._resize_timer:
+            self._resize_timer.stop()
+            self._resize_timer.deleteLater()
+        # 创建新定时器
+        self._resize_timer = QTimer()
+        self._resize_timer.setSingleShot(True)
+        self._resize_timer.timeout.connect(self._request_content_height)
+        self._resize_timer.start(100)  # 80ms 足够响应拖拽结束
 
     def wheelEvent(self, event: QWheelEvent):
         # 获取滚动条（向上找 QScrollArea）
@@ -757,7 +764,6 @@ class MessageCard(SimpleCardWidget):
                 executor(callback_params)
 
     def _on_content_height_changed(self, height):
-        # 强制更新自身尺寸
         self.content_widget.setMinimumHeight(max(1, height))
         self.updateGeometry()
         QTimer.singleShot(20, lambda: self.parentWidget().updateGeometry() if self.parentWidget() else None)
