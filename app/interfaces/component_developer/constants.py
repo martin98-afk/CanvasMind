@@ -100,7 +100,35 @@ LLM_CODE_CONTEXT = '''你是一个 **CanvasMind 组件开发专家**，以下是
    - `default`：**字符串形式**的默认值；
    - `label`：中文标签；
    - 按类型补充字段（`choices`、`min/max/step`、`schema` 等）；
->
+8. 端口类型(ArgumentType)目前支持：
+TEXT = "文本"
+INT = "整数"
+FLOAT = "浮点数"
+BOOL = "布尔值"
+ARRAY = "列表"
+CSV = "csv"
+JSON = "json"
+EXCEL = "excel"
+FILE = "文件"
+UPLOAD = "上传"
+SKLEARNMODEL = "sklearn模型"
+TORCHMODEL = "torch模型"
+IMAGE = "图片"
+9. 属性类型(PropertyType)目前支持:
+TEXT = "文本"
+MULTILINE = "多行文本"
+LONGTEXT = "长文本"
+INT = "整数"
+FLOAT = "浮点数"
+RANGE = "范围"
+BOOL = "复选框"
+CHOICE = "下拉框"
+VARIABLE = "全局变量"
+DYNAMICFORM = "动态表单"
+10. 输入端口连接类型(ConnectionType)支持:
+SINGLE = "单输入"
+MULTIPLE = "多输入"
+   
 #### 三、**run 方法规范**
 - **所有 import 语句必须写在 `run` 函数内部**；
 - 参数访问方式：
@@ -111,7 +139,7 @@ LLM_CODE_CONTEXT = '''你是一个 **CanvasMind 组件开发专家**，以下是
 - 异常处理：
   - 使用 `self.logger.error()` 记录；
   - 无法恢复的错误应 `raise`（框架会捕获）；
->
+
 #### 四、**调试块要求（必须包含）**
 在类定义**之后**，添加以下格式的调试入口：
 ```python
@@ -133,7 +161,7 @@ if __name__ == "__main__":
 - **`params` 和 `inputs` 必须提供合法示例值**，能通过 Pydantic 校验；
 - 示例值应尽量**贴近真实使用场景**（如 TEXT 用字符串，INT 用数字等）；
 - 不要省略 `global_vars={}`（即使为空）；
->
+
 #### 五、**禁止内容**
 - 不要包含 `PortDefinition`、`PropertyType`、`ArgumentType`、`ConnectionType` 等类型定义；
 - 不要在文件顶部写 `import`（除了 `COMPONENT_IMPORT_CODE`，但通常不需要）；

@@ -774,7 +774,7 @@ class MessageCard(SimpleCardWidget):
             tags_layout.setContentsMargins(0, 0, 0, 0)
             tags_layout.setSpacing(4)
 
-            for key, (name, content, callback_params) in self.context_tags.items():
+            for key, (name, content, callback_params, is_image) in self.context_tags.items():
                 tag = TagWidget(key, name)
                 tag.doubleClicked.connect(lambda k=key: self._on_context_link_clicked(k))
                 tags_layout.addWidget(tag)
@@ -820,7 +820,7 @@ class MessageCard(SimpleCardWidget):
 
     def _on_context_link_clicked(self, tool_key: str):
         if tool_key in self.context_tags:
-            name, content, callback_params = self.context_tags[tool_key]
+            name, content, callback_params, is_image = self.context_tags[tool_key]
             executor = self.parent.homepage.context_register.get_executor(tool_key)
             if executor:
                 executor(callback_params)

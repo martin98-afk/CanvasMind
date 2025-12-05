@@ -191,7 +191,7 @@ class ContextSelector(QWidget):
         self.parent = parent
         self._selected_keys = set()
         self._context_items: List[Tuple[str, Callable]] = []
-        self._context_cache: Dict[str, Tuple[str, str, Callable]] = {}  # key -> (name, formatted_text, callback)
+        self._context_cache: Dict[str, Tuple[str, str, Callable], bool] = {}  # key -> (name, formatted_text, callback)
 
         self._refresh_context_items()
 
@@ -230,9 +230,38 @@ class ContextSelector(QWidget):
     def context(self):
         return self._context_cache
 
-    def get_all_context(self):
+    def get_multimodal_context_items(self) -> List[Dict[str, Any]]:
+        """
+        返回可用于多模态大模型的上下文项列表。
+        每项为 dict，可能包含 'text' 或 'image_url'
+        """
+        items = []
+        for key in sorted(self._selected_keys):
+            if key not in self._context_cache:
+                continue
+            name, _, actual_data, is_image = self._context_cache[key]
+            if is_image:
+                # 多模态图片格式
+                if "text" in actual_data:
+                    items.append({
+                        "type": "text",
+                        "text": f"# {name}信息:\n{actual_data['text']}"
+                    })
+                items.append({
+                    "type": "image_url",
+                    "image_url": {"url": actual_data["url"]}  # {"url": "data:image/..."}
+                })
+            else:
+                # 文本
+                items.append({
+                    "type": "text",
+                    "text": f"# {name}信息:\n{actual_data}"
+                })
+        return items
+
+    def get_text_context(self):
         context = ("===== 画布上下文信息开始 =====\n\n" +
-                   "\n".join([context[1] for context in self._context_cache.values()]) +
+                   "\n".join([context[1] for context in self._context_cache.values() if not context[3]]) +
                    "\n===== 上下文信息结束 =====\n\n") if self._context_cache else ""
         return f"""# 角色
 你是低代码画布助手，主要工作：辅助分析画布内容、解答节点问题、帮忙推荐节点、设计画布流程；
@@ -274,7 +303,6 @@ class ContextSelector(QWidget):
         self.popup.show_at(popup_top_left)
 
     def _refresh_context_cache(self):
-        """预加载所有选中项的 (name, text, callback) 到缓存"""
         self._context_cache.clear()
         for context_key, context_func in self._context_items:
             if context_key in self._selected_keys:
@@ -284,13 +312,30 @@ class ContextSelector(QWidget):
                     logger.error(traceback.format_exc())
                     name, context_data, callback_params = "错误", f"[加载失败: {e}]", None
 
-                if isinstance(context_data, (dict, list, tuple, set)):
-                    context_str = json.dumps(context_data, indent=2, ensure_ascii=False)
-                else:
-                    context_str = str(context_data)
+                # ✅ 关键：保留原始数据结构，不做强制字符串化
+                # 判断是否是图片 dict
+                is_image = (
+                        isinstance(context_data, dict) and
+                        "url" in context_data and
+                        isinstance(context_data["url"], str) and
+                        context_data["url"].startswith("data:image/")
+                )
 
-                formatted_text = f"# {name}信息:\n{context_str}\n\n"
-                self._context_cache[context_key] = (name, formatted_text, callback_params)
+                if is_image:
+                    # 是多模态图片，保留为 dict
+                    formatted_text = f"# {name}（图片）\n\n"
+                    actual_data = context_data  # 保留 dict
+                else:
+                    # 普通文本：转为字符串
+                    if isinstance(context_data, (dict, list, tuple, set)):
+                        context_str = json.dumps(context_data, indent=2, ensure_ascii=False)
+                    else:
+                        context_str = str(context_data)
+                    formatted_text = f"# {name}信息:\n{context_str}\n\n"
+                    actual_data = context_str  # 文本上下文用字符串
+
+                # 缓存：(name, formatted_text_for_display, actual_data_for_llm, is_image)
+                self._context_cache[context_key] = (name, formatted_text, actual_data, is_image)
 
     def _update_tags(self):
         self._refresh_context_cache()

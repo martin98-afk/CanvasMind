@@ -92,7 +92,8 @@ class CanvasPage(QWidget):
             canvas_io=self.canvas_io,
             ui_manager=self.ui_manager,
             node_operations=self.node_operations,
-            select_node_callback=self.select_node_by_name
+            select_node_callback=self.select_node_by_name,
+            parent=self
         )
         # 注册右键菜单
         self._setup_context_menus()
