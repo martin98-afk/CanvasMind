@@ -239,23 +239,23 @@ class ContextSelector(QWidget):
         for key in sorted(self._selected_keys):
             if key not in self._context_cache:
                 continue
-            name, _, actual_data, is_image = self._context_cache[key]
+            name, context, _, is_image = self._context_cache[key]
             if is_image:
                 # 多模态图片格式
-                if "text" in actual_data:
+                if "text" in context:
                     items.append({
                         "type": "text",
-                        "text": f"# {name}信息:\n{actual_data['text']}"
+                        "text": f"# {name}信息:\n{context['text']}"
                     })
                 items.append({
                     "type": "image_url",
-                    "image_url": {"url": actual_data["url"]}  # {"url": "data:image/..."}
+                    "image_url": {"url": context["url"]}  # {"url": "data:image/..."}
                 })
             else:
                 # 文本
                 items.append({
                     "type": "text",
-                    "text": f"# {name}信息:\n{actual_data}"
+                    "text": f"# {name}信息:\n{context}"
                 })
         return items
 
@@ -321,21 +321,15 @@ class ContextSelector(QWidget):
                         context_data["url"].startswith("data:image/")
                 )
 
-                if is_image:
-                    # 是多模态图片，保留为 dict
-                    formatted_text = f"# {name}（图片）\n\n"
-                    actual_data = context_data  # 保留 dict
-                else:
+                if not is_image:
                     # 普通文本：转为字符串
                     if isinstance(context_data, (dict, list, tuple, set)):
                         context_str = json.dumps(context_data, indent=2, ensure_ascii=False)
                     else:
                         context_str = str(context_data)
-                    formatted_text = f"# {name}信息:\n{context_str}\n\n"
-                    actual_data = context_str  # 文本上下文用字符串
+                    context_data = f"# {name}信息:\n{context_str}\n\n"
 
-                # 缓存：(name, formatted_text_for_display, actual_data_for_llm, is_image)
-                self._context_cache[context_key] = (name, formatted_text, actual_data, is_image)
+                self._context_cache[context_key] = (name, context_data, callback_params, is_image)
 
     def _update_tags(self):
         self._refresh_context_cache()

@@ -188,7 +188,7 @@ class LLMContextProvider:
         image_base64 = base64.b64encode(image_data).decode("utf-8")
 
         return (
-            "画布当前选中节点截图",
+            f"画布当前{len(nodes)}个节点截图",
             {"url": f"data:image/png;base64,{image_base64}", "text": LLM_GRAPH_CONTEXT_NORMS},
             [node.name() for node in nodes]
         )
