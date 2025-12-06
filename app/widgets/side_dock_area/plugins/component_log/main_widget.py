@@ -1,7 +1,7 @@
 # log_tool_window.py
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QLabel, QHBoxLayout
-from qfluentwidgets import BodyLabel, SingleDirectionScrollArea, SubtitleLabel, TransparentToolButton, FluentIcon, \
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout
+from qfluentwidgets import SingleDirectionScrollArea, TransparentToolButton, FluentIcon, \
     StrongBodyLabel
 
 from app.utils.utils import get_icon
@@ -14,6 +14,7 @@ class LogToolWindow(ToolWindow):
     icon = get_icon("运行记录")
     default_position = DockPosition.BOTTOM
     MAX_RUNS = 50
+    cardDoubleClicked = pyqtSignal(str)
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -77,6 +78,7 @@ class LogToolWindow(ToolWindow):
         # 创建新卡片
         if run_id not in self.run_cards:
             card = CollapsibleLogCard(run_id, parent=self.chat_container)
+            card.doubleClicked.connect(lambda id=run_id: self.cardDoubleClicked.emit(id.split("@")[0].strip()))
             self.run_cards[run_id] = card
             self.chat_layout.addWidget(card)  # ← 直接加到 chat_layout
             QTimer.singleShot(10, self._scroll_to_bottom)
@@ -89,12 +91,16 @@ class LogToolWindow(ToolWindow):
         if run_id not in self.run_cards:
             # 容错：自动创建（但最好先 start_run）
             card = CollapsibleLogCard(run_id, parent=self.chat_container)
+            card.doubleClicked.connect(lambda id=run_id: self.cardDoubleClicked.emit(id.split("@")[0].strip()))
             self.run_cards[run_id] = card
             self.chat_layout.addWidget(card)
             self._enforce_max_runs()
 
         self.run_cards[run_id].append_colored_log(line)
         QTimer.singleShot(10, self._scroll_to_bottom)
+
+    def on_error(self, run_id: str):
+        self.run_cards[run_id].mark_as_error()
 
     def _enforce_max_runs(self):
         while len(self.run_cards) > self.MAX_RUNS:
@@ -118,6 +124,8 @@ class LogToolWindow(ToolWindow):
     def _clear_logs(self):
         for run_id, card in self.run_cards.items():
             card.deleteLater()
+        while self.chat_layout.count():
+            self.chat_layout.takeAt(0).widget().deleteLater()
         self.run_cards.clear()
         self.chat_layout.addStretch()
         self.current_run_id = None

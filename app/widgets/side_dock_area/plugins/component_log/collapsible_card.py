@@ -1,7 +1,7 @@
 # collapsible_log_card.py （更新版）
 import re
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor
 from qfluentwidgets import CardWidget, BodyLabel, TextEdit, ToolButton, TransparentToolButton, StrongBodyLabel
@@ -11,6 +11,7 @@ from app.utils.utils import get_icon
 
 class CollapsibleLogCard(CardWidget):
     # 颜色规则（与你原 LogMessageBox 一致）
+    doubleClicked = pyqtSignal(str)  # 传出 run_id
     LEVEL_COLORS = {
         'DEBUG': '#808080',
         'INFO': '#9cdcfe',
@@ -62,12 +63,17 @@ class CollapsibleLogCard(CardWidget):
         self.log_text.setVisible(True)  # 你已经写了，很好
         self.is_collapsed = False  # 也设为 False
 
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.doubleClicked.emit(self.run_id)
+        super().mouseDoubleClickEvent(event)
+
     def _adjust_height(self):
         """根据内容自动调整高度"""
         document_height = self.log_text.document().size().height()
         margin = self.log_text.contentsMargins()
         total_height = int(document_height + margin.top())
-        self.log_text.setFixedHeight(max(total_height, 0))  # 最小高度 40
+        QTimer.singleShot(10, lambda: self.log_text.setFixedHeight(max(total_height, 0)))  # 最小高度 40
 
     def expand(self):
         """外部调用：展开卡片"""
@@ -96,15 +102,21 @@ class CollapsibleLogCard(CardWidget):
         """外部调用：设置是否为当前运行卡片"""
         self.is_current_running = is_running
         if is_running:
+            self.setStyleSheet("background-color: #2b2b2b; border: 2px solid #FFA500; border-radius: 4px;")
             # 自动展开 + 滚动到底
             self.is_collapsed = False
             self.log_text.setVisible(True)
             self._update_toggle_text()
         else:
+            self.setStyleSheet("background-color: #2b2b2b; border: 1px solid #444; border-radius: 4px;")
             # 自动折叠
             self.is_collapsed = True
             self.log_text.setVisible(False)
             self._update_toggle_text()
+
+    def mark_as_error(self):
+        """标记卡片为错误状态（红框）"""
+        self.setStyleSheet("background-color: #2b2b2b; border: 2px solid #f44747; border-radius: 4px;")
 
     def append_colored_log(self, text: str):
         """处理多行日志文本"""

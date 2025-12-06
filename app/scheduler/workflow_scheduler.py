@@ -222,6 +222,7 @@ class WorkflowScheduler(QObject):
             )
             self._executor.signals.log_start.connect(self.parent.log_window.start_run)
             self._executor.signals.log_message.connect(self.parent.log_window.push_log)
+            self._executor.signals.log_error.connect(self.parent.log_window.on_error)
             self._executor.component_map = self.component_map
             self._executor.signals.node_started.connect(self.node_started)
             self._executor.signals.backdrop_finished.connect(self.backdrop_finished)
