@@ -495,7 +495,6 @@ class OpenAIChatToolWindow(ToolWindow):
             if isinstance(widget, MessageCard) and getattr(widget, '_is_welcome', False):
                 welcome_card = widget
                 break
-
         if welcome_card is not None:
             self.chat_layout.removeWidget(welcome_card)
             welcome_card.deleteLater()
@@ -512,26 +511,48 @@ class OpenAIChatToolWindow(ToolWindow):
             )
             self.input_area.clear()
             self._append_user_message(user_text)
-            enhanced_input = self.context_selector.get_all_context() + user_text
-        else:
-            enhanced_input = user_text
 
-        assistant_card = self._append_assistant_message()
         selected_name = self.model_combo.currentText()
         llm_config = self._valid_configs.get(selected_name)
+        assistant_card = self._append_assistant_message()
         if not llm_config:
             self._update_assistant_message(assistant_card, "[错误] 模型配置无效")
             return
 
+        # 构建系统消息
         messages = []
-        system_prompt = self._system_prompt + llm_config.get("系统提示", "").strip()
+        system_prompt = (self._system_prompt + llm_config.get("系统提示", "").strip()).strip()
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
 
+        # 添加历史消息（注意：历史消息必须是纯文本，不能含 image_url）
         for msg in session.messages[:-1]:
-            messages.append(msg)
+            # 历史消息只保留文本，丢弃图片（或你也可设计历史支持图片，但需更复杂处理）
+            if isinstance(msg["content"], list):
+                # 如果历史中已有多模态，只取 text 部分（简化处理）
+                text_parts = [item["text"] for item in msg["content"] if item["type"] == "text"]
+                content = "\n".join(text_parts)
+            else:
+                content = msg["content"]
+            messages.append({"role": msg["role"], "content": content})
 
-        messages.append({"role": "user", "content": enhanced_input})
+        # 当前用户消息：多模态
+        model_name = llm_config.get("模型名称", "")
+        supports_vision = any(
+            m in model_name.lower() for m in ["4o", "4-turbo", "gpt-4-v", "vision", "vl", "glm-4v", "qwen-vl"])
+
+        if supports_vision:
+            context_items = self.context_selector.get_multimodal_context_items()
+            user_content_list = []
+            for item in context_items:
+                user_content_list.append(item)
+            user_content_list.append({"type": "text", "text": user_text})
+            # 使用多模态格式
+            messages.append({"role": "user", "content": user_content_list})
+        else:
+            # 回退到纯文本
+            context_text = self.context_selector.get_text_context()
+            messages.append({"role": "user", "content": context_text + "\n\n" + user_text})
 
         self._is_streaming = True
         self._worker = OpenAIChatWorker(messages=messages, llm_config=llm_config)
@@ -543,13 +564,15 @@ class OpenAIChatToolWindow(ToolWindow):
         self._toggle_send_stop(True)
 
     def _on_error(self, error: str, card: MessageCard):
+        card.update_content(error)
         self._is_streaming = False
         self._toggle_send_stop(False)
+        self.input_area.toggle_send_button(True)
 
     def _on_worker_finished(self, response: str, card: MessageCard):
         self._is_streaming = False
         card.finish_streaming()
-        self.input_area._on_stop_click()
+        self.input_area.toggle_send_button(True)
         self._toggle_send_stop(False)
         session = self.session_manager.get_current_session()
         if session:

@@ -44,6 +44,7 @@ class CanvasPage(QWidget):
         self.workflow_name = object_name.stem.split(".")[0] if object_name else "未命名工作流"
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
         self.config = Settings.get_instance()
+        self._pending_property_update = None
         # 线程池
         self.thread_pool = QThreadPool.globalInstance()
         # 全局变量
@@ -92,7 +93,8 @@ class CanvasPage(QWidget):
             canvas_io=self.canvas_io,
             ui_manager=self.ui_manager,
             node_operations=self.node_operations,
-            select_node_callback=self.select_node_by_name
+            select_node_callback=self.select_node_by_name,
+            parent=self
         )
         # 注册右键菜单
         self._setup_context_menus()
@@ -107,6 +109,7 @@ class CanvasPage(QWidget):
         self.graph.viewer().node_selection_changed.connect(
             lambda: QtCore.QTimer.singleShot(0, self.on_selection_changed)
         )
+        self.ui_manager.log_window.cardDoubleClicked.connect(self.node_operations.select_nodes_by_name)
         self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
         self._connect_runner_signals()
 
@@ -300,6 +303,16 @@ class CanvasPage(QWidget):
                 '删除节点', lambda graph, node: self.delete_node(node),
                 node_type=special_node, icon=QIcon(f":/qfluentwidgets/images/icons/Delete_white.svg")
             )
+
+    def _schedule_property_update(self, nodes):
+        if self._pending_property_update:
+            self._pending_property_update.stop()
+        self._pending_property_update = QtCore.QTimer()
+        self._pending_property_update.setSingleShot(True)
+        self._pending_property_update.timeout.connect(
+            lambda: self.property_panel.update_properties(nodes)
+        )
+        self._pending_property_update.start(10)  # 10ms 防抖
 
     # --- 信号绑定 ---
     def set_node_status_by_id(self, node_id, status):
@@ -520,28 +533,28 @@ class CanvasPage(QWidget):
                     only_backdrop = all(n in internal_nodes for n in selected_nodes if n != node)
                     if only_backdrop:
                         self.nav_view.clear_recommendations()
-                        QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
+                        self._schedule_property_update(node)
                         self.property_panel.reset_current_components()
                         return
             # 展示选中节点列表
             if len(selected_nodes) > 1:
                 # 过滤掉在backdrop内部的节点，只保留顶层节点（包括backdrop本身）
                 top_level_nodes = [n for n in selected_nodes if n not in backdrop_internal_nodes]
-                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(top_level_nodes))
+                self._schedule_property_update(top_level_nodes)
             # 展示单独节点面板
             elif isinstance(selected_nodes[0], BasicNodeWithGlobalProperty):
-                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(selected_nodes[0]))
+                self._schedule_property_update(selected_nodes[0])
                 self.property_panel.reset_current_components()
                 QtCore.QTimer.singleShot(0, lambda: self.node_operations._request_recommendations(selected_nodes[0]))
             # 展示全局变量面板
             else:
                 self.nav_view.clear_recommendations()
                 self.property_panel.reset_current_components()
-                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
+                self._schedule_property_update(None)
         else:
             self.nav_view.clear_recommendations()
             self.property_panel.reset_current_components()
-            QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(None))
+            self._schedule_property_update(None)
 
     def _delayed_fit_view(self):
         self.graph._viewer.zoom_to_nodes(self.graph._viewer.all_nodes())

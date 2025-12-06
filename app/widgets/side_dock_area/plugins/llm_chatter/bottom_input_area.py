@@ -34,21 +34,28 @@ class SendableTextEdit(TextEdit):
         else:
             self.send_btn.setDisabled(True)
 
+    def toggle_send_button(self, enable: bool):
+        """启用/禁用发送按钮"""
+        if enable:
+            self.send_btn.setIcon(FluentIcon.SEND)
+            self.send_btn.setToolTip("发送（Enter）")
+            self.send_btn.clicked.disconnect()
+            self.send_btn.clicked.connect(self._on_send_click)
+        else:
+            self.send_btn.setIcon(FluentIcon.PAUSE)
+            self.send_btn.setToolTip("停止")
+            QtCore.QTimer.singleShot(100, lambda: self.send_btn.setDisabled(False))
+            self.send_btn.clicked.disconnect()
+            self.send_btn.clicked.connect(self._on_stop_click)
+
     def _on_send_click(self):
         """发送按钮点击事件"""
-        self.send_btn.setIcon(FluentIcon.PAUSE)
-        self.send_btn.setToolTip("停止")
-        QtCore.QTimer.singleShot(100, lambda: self.send_btn.setDisabled(False))
-        self.send_btn.clicked.disconnect()
-        self.send_btn.clicked.connect(self._on_stop_click)
+        self.toggle_send_button(False)
         self.sendMessageRequested.emit()
 
     def _on_stop_click(self):
         """停止按钮点击事件"""
-        self.send_btn.setIcon(FluentIcon.SEND)
-        self.send_btn.setToolTip("发送（Enter）")
-        self.send_btn.clicked.disconnect()
-        self.send_btn.clicked.connect(self._on_send_click)
+        self.toggle_send_button(True)
         self.stopMessageRequested.emit()
 
     def resizeEvent(self, event):

@@ -22,6 +22,7 @@ class WorkerSignals(QObject):
     backdrop_finished = pyqtSignal()
     log_start = pyqtSignal(str)  # run_id
     log_message = pyqtSignal(str, str)  # run_id, line
+    log_error = pyqtSignal(str)
 
 class NodeListExecutor(QRunnable):
     """
@@ -79,6 +80,7 @@ class NodeListExecutor(QRunnable):
                             check_cancel_func=self._check_cancel,
                             log_start_func=self.signals.log_start.emit,
                             log_message_func=self.signals.log_message.emit,
+                            log_error_func=self.signals.log_error.emit,
                             run_id_prefix=""  # 主流程不加前缀
                         )
                     elif isinstance(node, ControlFlowBackdrop):

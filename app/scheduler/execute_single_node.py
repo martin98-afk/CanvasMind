@@ -17,6 +17,7 @@ def execute_node(
         check_cancel_func,
         log_start_func,
         log_message_func,
+        log_error_func,
         run_id_prefix="",
 ):
     """
@@ -69,6 +70,7 @@ def execute_node(
     except Exception as e:
         logger.error(f"节点 {node.name()} 执行失败: {e}")
         logger.error(traceback.format_exc())
+        log_error_func(run_id)
         if scheduler:
             scheduler.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
         raise
