@@ -89,8 +89,8 @@ class LogToolWindow(ToolWindow):
 
     def push_log(self, run_id: str, line: str):
         if run_id not in self.run_cards:
-            # 容错：自动创建（但最好先 start_run）
-            card = CollapsibleLogCard(run_id, parent=self.chat_container)
+            # 容错：自动创建（但最好先 start_run）系统日志，标题淡蓝色
+            card = CollapsibleLogCard(run_id, title_color="color: #4A90E2;", parent=self.chat_container)
             card.doubleClicked.connect(lambda id=run_id: self.cardDoubleClicked.emit(id.split("@")[0].strip()))
             self.run_cards[run_id] = card
             self.chat_layout.addWidget(card)

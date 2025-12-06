@@ -23,7 +23,7 @@ class CollapsibleLogCard(CardWidget):
         'SUCCESS': '#32cd32',
     }
 
-    def __init__(self, run_id: str, parent=None):
+    def __init__(self, run_id: str, title_color="color: #FFA500;", parent=None):
         super().__init__(parent)
         self.run_id = run_id
         self.is_collapsed = True  # 默认折叠
@@ -31,7 +31,7 @@ class CollapsibleLogCard(CardWidget):
         self.setStyleSheet("background-color: #2b2b2b; border: 1px solid #444; border-radius: 4px;")
         # 标题
         self.title_label = StrongBodyLabel(run_id)
-        self.title_label.setStyleSheet("color: #FFA500;")
+        self.title_label.setStyleSheet(title_color)
 
         self.toggle_button = TransparentToolButton(get_icon("expand_all"), self)
         self.toggle_button.setFixedSize(20, 20)

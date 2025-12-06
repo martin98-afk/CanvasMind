@@ -1,8 +1,4 @@
-from app.interfaces.canvas_interaface.constants import LLM_GRAPH_CONTEXT_NORMS
-from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
-from app.interfaces.canvas_interaface.utils.canvas_io import CanvasIO
 from app.interfaces.component_developer.constants import LLM_CODE_CONTEXT
-from app.scan_components import ComponentScanner
 from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
 
 
