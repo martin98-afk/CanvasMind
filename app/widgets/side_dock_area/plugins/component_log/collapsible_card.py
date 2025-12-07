@@ -34,7 +34,7 @@ class CollapsibleLogCard(CardWidget):
         # === 新增：计时器相关 ===
         self._elapsed_timer = QElapsedTimer()  # 用于高精度计时
         self.timer_label = BodyLabel("0.00 s")
-        self.timer_label.setStyleSheet("color: #FFA500; font-size: 10px; background: transparent; border: none;")
+        self.timer_label.setStyleSheet("color: #FFA500; font-size: 13px; background: transparent; border: none;")
         self.timer_label.setFixedWidth(60)  # 宽一点容纳 "99.99 秒"
         self.timer_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
