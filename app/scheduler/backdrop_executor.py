@@ -21,6 +21,8 @@ class BackdropExecutor(QObject):
     error = pyqtSignal(str)
     log_start = pyqtSignal(str)
     log_message = pyqtSignal(str, str)
+    log_error = pyqtSignal(str)
+    log_finished = pyqtSignal(str)
 
     def __init__(
         self,
@@ -181,6 +183,8 @@ class BackdropExecutor(QObject):
                     check_cancel_func=self._check_cancel,
                     log_start_func=self.log_start.emit,
                     log_message_func=self.log_message.emit,
+                    log_error_func=self.log_error.emit,
+                    log_finish_func=self.log_finished.emit,
                     run_id_prefix=f"[{self.backdrop.name()}:{iteration_tag}] "
                 )
                 self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)

@@ -107,7 +107,9 @@ class NodeOperations:
 
     def create_next_node_using_name(self, name):
         if name in self.name2type:
-            return self.create_next_node(self.name2type.get(name))
+            node = self.create_next_node(self.name2type.get(name))
+            node.set_selected(True)
+            self.graph.fit_to_selection()
         else:
             MessageManager.error("错误", "未找到该组件！", self.parent)
 
@@ -130,6 +132,8 @@ class NodeOperations:
             viewport_center = viewer.viewport().rect().center()
             scene_center = viewer.mapToScene(viewport_center)
             node.set_pos(scene_center.x(), scene_center.y())
+
+        return node
 
     def create_backdrop_node(self, key):
         selected_nodes = self.graph.selected_nodes()
