@@ -19,32 +19,14 @@ class Component(BaseComponent):
     name = "YOLO 关键点检测训练"
     category = "模型训练"
     description = "使用 YOLOv8 关键点检测模型进行训练，输入为标准 YOLO 数据集目录（含 train/val 图像与标签）"
-    requirements = "torch,Pillow,ultralytics"
+    requirements = "torch,ultralytics,Pillow"
     inputs = [
-        PortDefinition(
-            name="dataset_dir",
-            label="数据集目录",
-            type=ArgumentType.FILE,
-            connection=ConnectionType.SINGLE
-        ),
+        PortDefinition(name="dataset_dir", label="数据集目录", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(
-            name="trained_model",
-            label="训练好的模型",
-            type=ArgumentType.TORCHMODEL
-        ),
-        PortDefinition(
-            name="metrics",
-            label="训练指标",
-            type=ArgumentType.TEXT
-        ),
-        PortDefinition(
-            name="validation_images",
-            label="验证图像（含预测结果）",
-            type=ArgumentType.IMAGE,
-            connection=ConnectionType.SINGLE
-        ),
+        PortDefinition(name="model.pt", label="训练好的模型", type=ArgumentType.FILE),
+        PortDefinition(name="metrics", label="训练指标", type=ArgumentType.TEXT),
+        PortDefinition(name="validation_images", label="验证图像（含预测结果）", type=ArgumentType.IMAGE),
     ]
     properties = {
         "model_name": PropertyDefinition(
@@ -169,30 +151,48 @@ class Component(BaseComponent):
                 project=Path(params.save_dir).parent,
                 name=Path(params.save_dir).name
             )
+        # 构建模型路径
         except Exception as e:
             self.logger.error(f"模型训练失败: {str(e)}")
             raise
+            
+        # 8. 训练完成后，动态查找最新保存的模型目录
+        project_dir = Path(params.save_dir).parent
+        if not project_dir.exists():
+            raise RuntimeError("训练项目目录不存在！")
+        # 获取所有以 name 开头的子目录（如 pose, pose1, pose2...）
+        pose_dirs = []
+        for item in project_dir.iterdir():
+            if item.is_dir() and item.name.startswith(Path(params.save_dir).name):
+                pose_dirs.append(item)
+        if not pose_dirs:
+            raise RuntimeError(f"未找到训练输出目录，预期在 {project_dir} 下以 {Path(params.save_dir).name} 开头的目录")
+        # 按创建时间排序，取最新的
+        latest_dir = max(pose_dirs, key=lambda x: x.stat().st_ctime)
 
-        # 8. 获取训练结果
-        trained_model_path = Path(params.save_dir) / "best.pt"
+        # 构建模型路径
+        trained_model_path = latest_dir / "weights" / "best.pt"
         if not trained_model_path.exists():
-            raise RuntimeError("模型训练完成但未生成最佳模型文件！")
-
+            raise RuntimeError(f"未找到最佳模型文件：{trained_model_path}")
         # 9. 读取验证图像（ultralytics 会生成 val_batch*.jpg）
-        val_images_dir = Path(params.save_dir) / "val_batch"
-        val_images = []
-        if val_images_dir.exists():
-            for img_path in val_images_dir.iterdir():
-                if img_path.suffix.lower() in [".jpg", ".jpeg", ".png"]:
-                    img = Image.open(img_path)
-                    val_images.append(img)
-
+        img_path = latest_dir / "val_batch0_pred.jpg"
+        if img_path.exists():
+            img = Image.open(img_path)
+        else:
+            img = None
         # 10. 返回结果
+        # 获取 mAP@0.5 值
+        mAP_05 = results.results_dict.get('metrics/mAP_0.5')
+        # 安全格式化
+        if isinstance(mAP_05, (int, float)):
+            metrics_str = f"训练完成，最终 mAP@0.5: {mAP_05:.4f}"
+        else:
+            metrics_str = "训练完成，最终 mAP@0.5: N/A"
         return {
-            "trained_model": model,  # 可直接用于推理
-            "metrics": f"训练完成，最终 mAP@0.5: {results.results_dict.get('metrics/mAP_0.5', 'N/A'):.4f}",
+            "model.pt": model,
+            "metrics": metrics_str,
             "model_path": str(trained_model_path),
-            "val_images": val_images  # 返回验证图像列表
+            "validation_images": img
         }
 
 if __name__ == "__main__":
