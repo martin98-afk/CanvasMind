@@ -1,10 +1,10 @@
 # collapsible_log_card.py （更新版）
 import re
 
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QTime, QElapsedTimer
-from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QElapsedTimer
 from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor
-from qfluentwidgets import CardWidget, BodyLabel, TextEdit, ToolButton, TransparentToolButton, StrongBodyLabel
+from PyQt5.QtWidgets import *
+from qfluentwidgets import CardWidget, BodyLabel, TextEdit, TransparentToolButton, StrongBodyLabel
 
 from app.utils.utils import get_icon
 
@@ -44,6 +44,7 @@ class CollapsibleLogCard(CardWidget):
 
         # 标题
         self.title_label = StrongBodyLabel(run_id)
+        self.title_label.setWordWrap(True)
         self.title_label.setStyleSheet(title_color+"background:transparent;border:none;")
 
         self.toggle_button = TransparentToolButton(get_icon("expand_all"), self)
