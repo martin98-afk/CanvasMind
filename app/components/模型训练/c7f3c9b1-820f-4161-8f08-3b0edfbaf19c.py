@@ -18,18 +18,33 @@ ConnectionType = base_module.ConnectionType
 class Component(BaseComponent):
     name = "YOLO 关键点检测训练"
     category = "模型训练"
-    description = "使用 YOLOv8 关键点检测模型进行训练，支持自定义数据集与关键点标注"
-    requirements = "Pillow,torch,ultralytics"
+    description = "使用 YOLOv8 关键点检测模型进行训练，输入为标准 YOLO 数据集目录（含 train/val 图像与标签）"
+    requirements = "torch,Pillow,ultralytics"
     inputs = [
-        PortDefinition(name="train_images", label="训练图像", type=ArgumentType.FILE),
-        PortDefinition(name="train_labels", label="训练标签", type=ArgumentType.FILE),
-        PortDefinition(name="val_images", label="验证图像", type=ArgumentType.FILE),
-        PortDefinition(name="val_labels", label="验证标签", type=ArgumentType.FILE),
+        PortDefinition(
+            name="dataset_dir",
+            label="数据集目录",
+            type=ArgumentType.FILE,
+            connection=ConnectionType.SINGLE
+        ),
     ]
     outputs = [
-        PortDefinition(name="trained_model", label="训练好的模型", type=ArgumentType.TORCHMODEL),
-        PortDefinition(name="metrics", label="训练指标", type=ArgumentType.TEXT),
-        PortDefinition(name="model_path", label="模型保存路径", type=ArgumentType.TEXT),
+        PortDefinition(
+            name="trained_model",
+            label="训练好的模型",
+            type=ArgumentType.TORCHMODEL
+        ),
+        PortDefinition(
+            name="metrics",
+            label="训练指标",
+            type=ArgumentType.TEXT
+        ),
+        PortDefinition(
+            name="validation_images",
+            label="验证图像（含预测结果）",
+            type=ArgumentType.IMAGE,
+            connection=ConnectionType.SINGLE
+        ),
     ]
     properties = {
         "model_name": PropertyDefinition(
@@ -79,110 +94,107 @@ class Component(BaseComponent):
     def run(self, params, inputs=None):
         """
         执行 YOLO 关键点检测训练流程
+        输入：标准 YOLO 数据集目录（train/images, train/labels, val/images, val/labels）
+        输出：训练模型、指标、验证图像（含预测结果）
         """
         import os
+        import zipfile
         import tempfile
         from pathlib import Path
         from ultralytics import YOLO
         from PIL import Image
         import torch
 
-        # 1. 检查输入
-        train_images = inputs.train_images
-        train_labels = inputs.train_labels
-        val_images = inputs.val_images
-        val_labels = inputs.val_labels
+        # 1. 获取输入数据集路径（ZIP 文件）
+        dataset_zip = inputs.dataset_dir
+        if not dataset_zip:
+            raise ValueError("必须提供数据集文件（ZIP 或目录）！")
 
-        if not train_images or not train_labels:
-            raise ValueError("必须提供训练图像和标签！")
+        # 2. 解压数据集到临时目录
+        zip_path = Path(dataset_zip)
+        data_dir = zip_path.parent
 
-        # 2. 创建临时数据集目录
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            data_dir = Path(tmp_dir) / "data"
-            data_dir.mkdir(parents=True)
+        # 如果是 ZIP 文件，解压
+        if zip_path.suffix.lower() == ".zip":
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(data_dir)
+        else:
+            # 假设是目录，直接复制
+            if not zip_path.is_dir():
+                raise ValueError("输入必须是 ZIP 文件或包含 train/val 的目录")
+            # 复制目录内容
+            for item in zip_path.iterdir():
+                if item.is_dir():
+                    (data_dir / item.name).mkdir(parents=True)
+                    for file in item.iterdir():
+                        file.rename(data_dir / item.name / file.name)
+                else:
+                    item.rename(data_dir / item.name)
 
-            # 3. 保存图像和标签到临时目录（模拟 YOLO 数据格式）
-            # 创建 images/train 和 labels/train
-            train_img_dir = data_dir / "images" / "train"
-            train_lbl_dir = data_dir / "labels" / "train"
-            val_img_dir = data_dir / "images" / "val"
-            val_lbl_dir = data_dir / "labels" / "val"
+        # 3. 检查数据目录结构
+        train_img_dir = data_dir / "dataset" / "train" / "images"
+        train_lbl_dir = data_dir / "dataset" / "train" / "labels"
+        val_img_dir = data_dir / "dataset" / "valid" / "images"
+        val_lbl_dir = data_dir / "dataset" / "valid" / "labels"
+        self.logger.info(train_img_dir)
 
-            train_img_dir.mkdir(parents=True)
-            train_lbl_dir.mkdir(parents=True)
-            val_img_dir.mkdir(parents=True)
-            val_lbl_dir.mkdir(parents=True)
+        if not train_img_dir.exists() or not train_lbl_dir.exists():
+            raise ValueError("训练数据目录结构不正确，需包含 train/images 和 train/labels")
+        if not val_img_dir.exists() or not val_lbl_dir.exists():
+            raise ValueError("验证数据目录结构不正确，需包含 val/images 和 val/labels")
 
-            # 保存训练图像
-            for i, img_data in enumerate(train_images):
-                img_path = train_img_dir / f"train_{i}.jpg"
-                Image.fromarray(img_data).save(img_path)
+        # 4. 构建 data.yaml
+        data_yaml = data_dir / "dataset" / "data.yaml"
 
-            # 保存训练标签（假设为文本格式，如：0 0.5 0.5 0.1 0.1 ...）
-            for i, label_text in enumerate(train_labels):
-                lbl_path = train_lbl_dir / f"train_{i}.txt"
-                with open(lbl_path, "w") as f:
-                    f.write(label_text)
+        # 5. 加载模型
+        model_name = params.model_name
+        model = YOLO(model_name)
 
-            # 保存验证图像和标签
-            for i, img_data in enumerate(val_images):
-                img_path = val_img_dir / f"val_{i}.jpg"
-                Image.fromarray(img_data).save(img_path)
+        # 6. 设置设备
+        device = params.device
+        if device == "cuda" and not torch.cuda.is_available():
+            self.logger.warning("CUDA 不可用，自动切换为 CPU")
+            device = "cpu"
 
-            for i, label_text in enumerate(val_labels):
-                lbl_path = val_lbl_dir / f"val_{i}.txt"
-                with open(lbl_path, "w") as f:
-                    f.write(label_text)
+        # 7. 开始训练
+        try:
+            results = model.train(
+                data=str(data_yaml),
+                epochs=params.epochs,
+                imgsz=params.img_size,
+                batch=params.batch_size,
+                device=device,
+                save=True,
+                save_period=10,
+                project=Path(params.save_dir).parent,
+                name=Path(params.save_dir).name
+            )
+        except Exception as e:
+            self.logger.error(f"模型训练失败: {str(e)}")
+            raise
 
-            # 4. 构建数据配置文件
-            data_yaml = data_dir / "data.yaml"
-            with open(data_yaml, "w") as f:
-                f.write(f"""
-train: {str(train_img_dir.parent)}
-val: {str(val_img_dir.parent)}
+        # 8. 获取训练结果
+        trained_model_path = Path(params.save_dir) / "best.pt"
+        if not trained_model_path.exists():
+            raise RuntimeError("模型训练完成但未生成最佳模型文件！")
 
-nc: 1  # 类别数（关键点检测通常为1类，可扩展）
-names: ["person"]
-                """)
+        # 9. 读取验证图像（ultralytics 会生成 val_batch*.jpg）
+        val_images_dir = Path(params.save_dir) / "val_batch"
+        val_images = []
+        if val_images_dir.exists():
+            for img_path in val_images_dir.iterdir():
+                if img_path.suffix.lower() in [".jpg", ".jpeg", ".png"]:
+                    img = Image.open(img_path)
+                    val_images.append(img)
 
-            # 5. 加载模型
-            model_name = params.model_name
-            model = YOLO(model_name)
+        # 10. 返回结果
+        return {
+            "trained_model": model,  # 可直接用于推理
+            "metrics": f"训练完成，最终 mAP@0.5: {results.results_dict.get('metrics/mAP_0.5', 'N/A'):.4f}",
+            "model_path": str(trained_model_path),
+            "val_images": val_images  # 返回验证图像列表
+        }
 
-            # 6. 设置设备
-            device = params.device
-            if device == "cuda" and not torch.cuda.is_available():
-                self.logger.warning("CUDA 不可用，自动切换为 CPU")
-                device = "cpu"
-
-            # 7. 开始训练
-            try:
-                results = model.train(
-                    data=str(data_yaml),
-                    epochs=params.epochs,
-                    imgsz=params.img_size,
-                    batch=params.batch_size,
-                    device=device,
-                    save=True,
-                    save_period=10,
-                    project=Path(params.save_dir).parent
-                )
-            except Exception as e:
-                self.logger.error(f"模型训练失败: {str(e)}")
-                raise
-
-            # 8. 获取训练结果
-            trained_model_path = Path(params.save_dir) / "best.pt"
-            if not trained_model_path.exists():
-                raise RuntimeError("模型训练完成但未生成最佳模型文件！")
-
-            # 9. 返回结果
-            return {
-                "trained_model": model,  # 可直接用于推理
-                "metrics": f"训练完成，最终 mAP@0.5: {results.results_dict.get('metrics/mAP_0.5', 'N/A'):.4f}",
-                "model_path": str(trained_model_path)
-            }
-        
 if __name__ == "__main__":
     import warnings
     warnings.filterwarnings("ignore")
@@ -197,10 +209,7 @@ if __name__ == "__main__":
             "save_dir": "./test_runs/pose"
         },
         inputs={
-            "train_images": [Image.new("RGB", (640, 480)).tobytes() for _ in range(2)],
-            "train_labels": ["0 0.5 0.5 0.1 0.1 0.2 0.2" for _ in range(2)],
-            "val_images": [Image.new("RGB", (640, 480)).tobytes() for _ in range(1)],
-            "val_labels": ["0 0.5 0.5 0.1 0.1" for _ in range(1)]
+            "dataset": "dummy.zip"  # 模拟标准 YOLO 格式 zip 包
         },
         global_vars={},
         node_id="test_node",

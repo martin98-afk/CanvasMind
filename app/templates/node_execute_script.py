@@ -4,8 +4,50 @@ import os
 import pickle
 import importlib.util
 import traceback
+import warnings
+warnings.filterwarnings("ignore")
 from pathlib import Path
 from loguru import logger
+
+# ==================== 输出重定向 ====================
+class StreamToLogger:
+    def __init__(self, logger_func, node_id):
+        self.logger_func = logger_func
+        self.node_id = node_id
+        self.line_buffer = ""
+
+    def write(self, buf):
+        # 处理不完整的行（避免中途截断）
+        self.line_buffer += buf
+        while "\\n" in self.line_buffer:
+            line, self.line_buffer = self.line_buffer.split("\\n", 1)
+            if line.strip():  # 忽略纯空行（可选）
+                self.logger_func(f"[STDOUT] {{line}}")
+
+    def flush(self):
+        # 处理最后未换行的输出（非严格必要，但更健壮）
+        if self.line_buffer.strip():
+            self.logger_func(f"[STDOUT] {{self.line_buffer}}")
+            self.line_buffer = ""
+
+# 同理处理 stderr（可复用，但用不同前缀）
+class StreamToErrorLogger:
+    def __init__(self, logger_func, node_id):
+        self.logger_func = logger_func
+        self.node_id = node_id
+        self.line_buffer = ""
+
+    def write(self, buf):
+        self.line_buffer += buf
+        while "\\n" in self.line_buffer:
+            line, self.line_buffer = self.line_buffer.split("\\n", 1)
+            if line.strip():
+                self.logger_func(f"[STDERR] {{line}}")
+
+    def flush(self):
+        if self.line_buffer.strip():
+            self.logger_func(f"[STDERR] {{self.line_buffer}}")
+            self.line_buffer = ""
 
 # ==================== 配置 ====================
 logger.remove()  # 禁用默认 handler
@@ -41,6 +83,10 @@ if __name__ == "__main__":
         retention=3
     )
     node_logger = logger.bind(node_id=NODE_ID)
+
+    # === 重定向 stdout/stderr 到日志 ===
+    sys.stdout = StreamToLogger(node_logger.info, NODE_ID)
+    sys.stderr = StreamToErrorLogger(node_logger.error, NODE_ID)
 
     try:
         # === 1. 加载组件类（不变）===

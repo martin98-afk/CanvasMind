@@ -452,8 +452,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                 pickle.dump((params, inputs, global_variable), f)
             if self._debug_widget is not None:
                 # debug 模式 直接使用当前编辑器代码
-                print(temp_component_path)
-                print(os.listdir(run_dir))
                 with open(temp_component_path, 'w', encoding='utf-8') as f:
                     f.write(self.current_code)
             else:

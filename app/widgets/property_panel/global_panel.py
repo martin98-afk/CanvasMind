@@ -5,16 +5,16 @@ import re
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QStackedWidget, QApplication, \
-    QListWidgetItem, QSizePolicy
+    QListWidgetItem
 from loguru import logger
-from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SegmentedWidget, \
+from qfluentwidgets import CardWidget, PushButton, ListWidget, SegmentedWidget, \
     FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
     TransparentDropDownToolButton, SubtitleLabel, BodyLabel, LineEdit, \
-    ToggleToolButton, SearchLineEdit, SmoothScrollArea, StrongBodyLabel
+    ToggleToolButton, SearchLineEdit, StrongBodyLabel
 from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleCardWidget
 
 from app.templates.global_custom_var_template import PARAMETER_TEMPLATE
-from app.utils.utils import get_icon, serialize_for_json
+from app.utils.utils import get_icon
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.dialog_widget.step_messageboxbase import StepMessageBoxBase
 from app.widgets.tree_widget.variable_tree import VariableTreeWidget
@@ -1157,8 +1157,12 @@ class GlobalPanelWidget:
                     self._handle_global_variable_change("custom", new_name, "add")
                 else:
                     self._handle_global_variable_change("custom", new_name, "update")
-
-                InfoBar.success("已更新", f"参数组 {new_name}", parent=self.main_window)
+                # 如果用户选择了保存为模板
+                if dialog.should_save_as_template():
+                    self.parameter_group_templates[new_name] = parameters.copy()
+                    InfoBar.success("已更新", f"参数组 {new_name} 已保存为模板", parent=self.main_window)
+                else:
+                    InfoBar.success("已更新", f"参数组 {new_name}", parent=self.main_window)
 
     def edit_env_variable(self, key: str, current_value):
         dialog = CustomTwoInputDialog(

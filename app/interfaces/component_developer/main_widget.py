@@ -653,29 +653,77 @@ except:
     def _update_basic_info_in_code(self, code, name, category, description, requirements):
         try:
             lines = code.split('\n')
+            # Step 1: 用 AST 找出需要替换的行号
+            try:
+                tree = ast.parse(code)
+            except SyntaxError:
+                # AST 失败时回退到原始逻辑（但加日志）
+                logger.warning("AST parse failed in _update_basic_info_in_code, fallback to regex")
+                return self._fallback_update_basic_info(code, name, category, description, requirements)
+
+            # 找到第一个 class 定义
+            target_class = None
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef):
+                    target_class = node
+                    break
+            if not target_class:
+                return code
+
+            # 收集要替换的字段及其行号
+            line_map = {}  # {lineno: new_value_str}
+            basic_fields = {"name", "category", "description", "requirements"}
+            for stmt in target_class.body:
+                if isinstance(stmt, ast.Assign):
+                    for target in stmt.targets:
+                        if isinstance(target, ast.Name) and target.id in basic_fields:
+                            # 只记录第一个出现的（AST 顺序保证）
+                            if target.id not in line_map:
+                                value_str = None
+                                if target.id == "name":
+                                    value_str = f'    name = "{name}"'
+                                elif target.id == "category":
+                                    value_str = f'    category = "{category}"'
+                                elif target.id == "description":
+                                    value_str = f'    description = "{description}"'
+                                elif target.id == "requirements":
+                                    value_str = f'    requirements = "{requirements}"'
+                                if value_str is not None:
+                                    line_map[stmt.lineno] = value_str
+
+            # Step 2: 重建代码，只替换指定行
             new_lines = []
-            found_requirements = False
-            for line in lines:
-                if re.search(r'^\s*name\s*=\s*', line):
-                    new_lines.append(f'    name = "{name}"')
-                elif re.search(r'^\s*category\s*=\s*', line):
-                    new_lines.append(f'    category = "{category}"')
-                elif re.search(r'^\s*description\s*=\s*', line):
-                    new_lines.append(f'    description = "{description}"')
-                elif re.search(r'^\s*requirements\s*=\s*', line):
-                    new_lines.append(f'    requirements = "{requirements}"')
-                    found_requirements = True
+            for i, line in enumerate(lines, start=1):  # lineno 从 1 开始
+                if i in line_map:
+                    new_lines.append(line_map[i])
                 else:
                     new_lines.append(line)
 
-            if not found_requirements and requirements:
-                # 插入在 description 之后
-                for i, line in enumerate(new_lines):
-                    if re.search(r'^\s*description\s*=\s*', line):
-                        new_lines.insert(i + 1, f'    requirements = "{requirements}"')
-                        break
+            # Step 3: 如果某个字段缺失，插入到 class 头部（在 class 行后）
+            # 先收集缺失字段
+            existing_fields = set(line_map.values())
+            missing = []
+            if not any('name = ' in v for v in existing_fields):
+                missing.append(f'    name = "{name}"')
+            if not any('category = ' in v for v in existing_fields):
+                missing.append(f'    category = "{category}"')
+            if not any('description = ' in v for v in existing_fields):
+                missing.append(f'    description = "{description}"')
+            if requirements and not any('requirements = ' in v for v in existing_fields):
+                missing.append(f'    requirements = "{requirements}"')
+
+            if missing:
+                # 找到 class 行号
+                class_lineno = target_class.lineno
+                # 在 class 行后插入
+                insert_pos = class_lineno  # 因为 new_lines 索引从 0，lineno 从 1
+                new_lines = new_lines[:insert_pos] + missing + new_lines[insert_pos:]
+
             return '\n'.join(new_lines)
-        except:
+
+        except Exception as e:
+            logger.error(f"Error in _update_basic_info_in_code: {e}")
+            logger.error(traceback.format_exc())
             return code
 
     def _on_code_text_changed(self):
