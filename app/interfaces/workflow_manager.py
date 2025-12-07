@@ -78,6 +78,7 @@ class WorkflowFileInfoScanner(QThread):
 
 class WorkflowCanvasGalleryPage(QWidget, QObject):
     scan_finished = pyqtSignal(list, dict)
+    component_code_changed = pyqtSignal(str, str)
     # 上方控件
     SideDockRegistry.register("运行画布", PropertyToolWindow.name, PropertyToolWindow)
     SideDockRegistry.register("运行画布", VariableExplorerToolWindow.name, VariableExplorerToolWindow)
@@ -506,6 +507,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
+            canvas_page.component_code_changed.connect(self.component_code_changed.emit)
             canvas_interface = self.parent_window.addSubInterface(
                 canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self
             )
@@ -545,6 +547,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                     self._schedule_refresh()
                 )
             )
+            canvas_page.component_code_changed.connect(self.component_code_changed.emit)
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
             canvas_interface = self.parent_window.addSubInterface(
                 canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)

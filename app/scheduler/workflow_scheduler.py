@@ -50,19 +50,6 @@ class WorkflowScheduler(QObject):
         self.kernel_manager = kernel_manager
         self._executor = None
 
-    def register_global_variable(self, nodes):
-        for node in nodes:
-            if node.has_property("global_variable"):
-                node.set_property("global_variable", self.global_variables.serialize())
-            else:
-                node.model.add_property("global_variable", self.global_variables.serialize())
-
-    def unregister_global_variable(self, nodes):
-        nodes = [nodes] if not isinstance(nodes, list) else nodes
-        for node in nodes:
-            if node.has_property("global_variable"):
-                node.set_property("global_variable", None)
-
     def set_node_status(self, node, status):
         self.node_status_changed.emit(node.id, status)
 
@@ -211,7 +198,6 @@ class WorkflowScheduler(QObject):
             if nodes is None:
                 self.error.emit("检测到循环依赖")
                 return
-            self.register_global_variable(nodes)
             # 启动执行器
             self._executor = NodeListExecutor(
                 main_window=self.parent,

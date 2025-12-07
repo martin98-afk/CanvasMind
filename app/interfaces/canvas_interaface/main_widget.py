@@ -35,6 +35,7 @@ class CanvasPage(QWidget):
     canvas_saved = pyqtSignal(Path)
     global_variables_changed = pyqtSignal(str, str, str)
     env_changed = pyqtSignal(str)
+    component_code_changed = pyqtSignal(str, str) # 组件文件地址、更新代码
 
     def __init__(self, parent=None, object_name: Path = None, manager=None):
         super().__init__()

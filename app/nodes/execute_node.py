@@ -8,8 +8,9 @@ import subprocess
 import time
 
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtWidgets import QFileDialog, QDialog
 from loguru import logger
+from qfluentwidgets import Dialog, MessageBox
 
 # --- 其他原有导入 ---
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext, \
@@ -173,7 +174,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 label="调试代码编辑器",
                 default=self.current_code,
                 window=parent_window,
-                width=600, height=400
+                width=700, height=400
             )
             # 连接信号，实现编辑时保存
             self._debug_widget.valueChanged.connect(self._save_debug_code)
@@ -184,14 +185,32 @@ def create_node_class(full_path, file_path, parent_window=None):
             logger.info(f"节点 {self.NODE_NAME} ({self.id}) 启用调试模式。")
 
         def _disable_debug_mode(self):
-            """禁用调试模式，移除代码编辑器"""
+            """禁用调试模式，移除代码编辑器，并在代码变更时提示保存（qfluentwidgets 风格）"""
             if self._debug_widget is not None:
-                # 断开信号连接（可选，但推荐）
+                current_editor_code = self._debug_widget.get_value()
+                original_code = self.get_current_code()
+
+                if current_editor_code != original_code:
+                    # 创建对话框内容
+                    title = "保存修改"
+                    content = "调试代码已修改，是否保存到原组件？"
+
+                    # 使用 qfluentwidgets.Dialog
+                    w = MessageBox(title, content, self.parent_window)
+                    w.yesButton.setText("保存")
+                    w.cancelButton.setText("不保存")
+
+                    # 设置按钮样式（可选，qfluentwidgets 默认已适配深色）
+                    if w.exec():  # 用户点击“保存”
+                        if self.parent_window and hasattr(self.parent_window, 'component_code_changed'):
+                            self.parent_window.component_code_changed.emit(self.FULL_PATH, current_editor_code)
+
+                # 清理控件
                 try:
                     self._debug_widget.valueChanged.disconnect(self._save_debug_code)
                 except TypeError:
-                    pass  # 可能未连接
-                # 从节点移除控件
+                    pass
+
                 self.remove_property("debug_code")
                 self.view.remove_widget(self._debug_widget)
                 self.view.draw_node()
@@ -452,8 +471,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                 pickle.dump((params, inputs, global_variable), f)
             if self._debug_widget is not None:
                 # debug 模式 直接使用当前编辑器代码
-                print(temp_component_path)
-                print(os.listdir(run_dir))
                 with open(temp_component_path, 'w', encoding='utf-8') as f:
                     f.write(self.current_code)
             else:

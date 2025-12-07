@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
-    QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLineEdit, QSpacerItem, QSizePolicy, QApplication
+    QWidget, QFrame, QVBoxLayout, QHBoxLayout, QApplication
 )
 from qfluentwidgets import (
     BodyLabel, LineEdit, Slider, SpinBox, PrimaryPushButton,
-    PushButton, CaptionLabel, SwitchButton
+    PushButton, SwitchButton, PasswordLineEdit
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
@@ -132,8 +132,7 @@ class LLMConfigPopup(QWidget):
     def _create_widget(self, key, ui_type: str, value):
         """根据类型创建控件"""
         if ui_type == "password":
-            widget = LineEdit(self)
-            widget.setEchoMode(QLineEdit.Password)
+            widget = PasswordLineEdit(self)
             widget.setText(str(value) if value else "")
             return widget
         elif ui_type == "slider":

@@ -52,7 +52,8 @@ class LowCodeWindow(FluentWindow):
         self.develop_page = ComponentDeveloperPage(self)
         self.project_manager = ExportedProjectsPage(self)
         self.home_interface = HomeInterface(self)
-
+        # 连接画布之间的信号
+        self.workflow_manager.component_code_changed.connect(self.develop_page.save_component_by_full_path)
         # 自动安装miniconda环境
         self.package_manager.mgr.install_miniconda()
         # 添加主界面页面
@@ -70,6 +71,7 @@ class LowCodeWindow(FluentWindow):
                 self.package_manager.get_current_python_exe()
             )
         )
+
         project_interface = self.addSubInterface(self.project_manager, get_icon("项目"), '项目管理')
         project_interface.clicked.connect(self.project_manager.load_projects)
         package_interface = self.addSubInterface(self.package_manager, get_icon("工具包"), '环境管理')

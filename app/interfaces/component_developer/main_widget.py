@@ -7,6 +7,7 @@ import textwrap
 import traceback
 import uuid
 from pathlib import Path
+
 from PyQt5.QtCore import Qt, QTimer, QSize
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem
@@ -16,6 +17,7 @@ from qfluentwidgets import (
     BodyLabel, MessageBox, FluentIcon, TransparentToolButton,
     TransparentDropDownToolButton, Action, RoundMenu
 )
+
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, ConnectionType
 from app.interfaces.component_developer.component_history_manager import ComponentHistoryManager
 from app.interfaces.component_developer.constants import *
@@ -28,7 +30,6 @@ from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.code_editor.code_editer import CodeEditorWidget
-from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
 
@@ -653,29 +654,77 @@ except:
     def _update_basic_info_in_code(self, code, name, category, description, requirements):
         try:
             lines = code.split('\n')
+            # Step 1: 用 AST 找出需要替换的行号
+            try:
+                tree = ast.parse(code)
+            except SyntaxError:
+                # AST 失败时回退到原始逻辑（但加日志）
+                logger.warning("AST parse failed in _update_basic_info_in_code, fallback to regex")
+                return self._fallback_update_basic_info(code, name, category, description, requirements)
+
+            # 找到第一个 class 定义
+            target_class = None
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef):
+                    target_class = node
+                    break
+            if not target_class:
+                return code
+
+            # 收集要替换的字段及其行号
+            line_map = {}  # {lineno: new_value_str}
+            basic_fields = {"name", "category", "description", "requirements"}
+            for stmt in target_class.body:
+                if isinstance(stmt, ast.Assign):
+                    for target in stmt.targets:
+                        if isinstance(target, ast.Name) and target.id in basic_fields:
+                            # 只记录第一个出现的（AST 顺序保证）
+                            if target.id not in line_map:
+                                value_str = None
+                                if target.id == "name":
+                                    value_str = f'    name = "{name}"'
+                                elif target.id == "category":
+                                    value_str = f'    category = "{category}"'
+                                elif target.id == "description":
+                                    value_str = f'    description = "{description}"'
+                                elif target.id == "requirements":
+                                    value_str = f'    requirements = "{requirements}"'
+                                if value_str is not None:
+                                    line_map[stmt.lineno] = value_str
+
+            # Step 2: 重建代码，只替换指定行
             new_lines = []
-            found_requirements = False
-            for line in lines:
-                if re.search(r'^\s*name\s*=\s*', line):
-                    new_lines.append(f'    name = "{name}"')
-                elif re.search(r'^\s*category\s*=\s*', line):
-                    new_lines.append(f'    category = "{category}"')
-                elif re.search(r'^\s*description\s*=\s*', line):
-                    new_lines.append(f'    description = "{description}"')
-                elif re.search(r'^\s*requirements\s*=\s*', line):
-                    new_lines.append(f'    requirements = "{requirements}"')
-                    found_requirements = True
+            for i, line in enumerate(lines, start=1):  # lineno 从 1 开始
+                if i in line_map:
+                    new_lines.append(line_map[i])
                 else:
                     new_lines.append(line)
 
-            if not found_requirements and requirements:
-                # 插入在 description 之后
-                for i, line in enumerate(new_lines):
-                    if re.search(r'^\s*description\s*=\s*', line):
-                        new_lines.insert(i + 1, f'    requirements = "{requirements}"')
-                        break
+            # Step 3: 如果某个字段缺失，插入到 class 头部（在 class 行后）
+            # 先收集缺失字段
+            existing_fields = set(line_map.values())
+            missing = []
+            if not any('name = ' in v for v in existing_fields):
+                missing.append(f'    name = "{name}"')
+            if not any('category = ' in v for v in existing_fields):
+                missing.append(f'    category = "{category}"')
+            if not any('description = ' in v for v in existing_fields):
+                missing.append(f'    description = "{description}"')
+            if requirements and not any('requirements = ' in v for v in existing_fields):
+                missing.append(f'    requirements = "{requirements}"')
+
+            if missing:
+                # 找到 class 行号
+                class_lineno = target_class.lineno
+                # 在 class 行后插入
+                insert_pos = class_lineno  # 因为 new_lines 索引从 0，lineno 从 1
+                new_lines = new_lines[:insert_pos] + missing + new_lines[insert_pos:]
+
             return '\n'.join(new_lines)
-        except:
+
+        except Exception as e:
+            logger.error(f"Error in _update_basic_info_in_code: {e}")
+            logger.error(traceback.format_exc())
             return code
 
     def _on_code_text_changed(self):
@@ -819,6 +868,93 @@ except:
             MessageManager.error(f"保存组件失败: {str(e)}", "", self)
         finally:
             self._saving = False
+
+    def save_component_by_full_path(self, full_path: str, new_code: str):
+        """
+        根据 full_path 和新代码保存组件（供外部调用，如节点调试结束）
+        """
+        try:
+            # 1. 从 component_tree 获取组件对象
+            if full_path not in self.component_tree._components:
+                MessageManager.error("组件不存在，无法保存", "", self)
+                return
+
+            comp_obj = self.component_tree._components[full_path]
+            name = getattr(comp_obj, 'name', '未命名组件')
+            category = getattr(comp_obj, 'category', '数据处理')
+            source_file = getattr(comp_obj, '_source_file', None)
+
+            if not source_file or not Path(source_file).exists():
+                MessageManager.error("组件源文件不存在，无法保存", "", self)
+                return
+
+            # 2. 用 AST 检查代码语法
+            try:
+                ast.parse(new_code)
+            except SyntaxError as e:
+                error_msg = f"代码第 {e.lineno} 行：{e.msg}"
+                MessageManager.error(f"代码存在语法错误，无法保存！\n{error_msg}", "语法错误", self)
+                return
+
+            # 3. 保存到原文件
+            source_file = Path(source_file)
+            final_code = new_code
+            with open(source_file, 'w', encoding='utf-8') as f:
+                f.write(final_code)
+
+            # 4. 保存历史版本
+            current_signature = {
+                "inputs": getattr(comp_obj, 'inputs', []),
+                "outputs": getattr(comp_obj, 'outputs', []),
+                "properties": getattr(comp_obj, 'properties', {}),
+            }
+
+            # 序列化为可存储格式（与 ComponentHistoryManager 兼容）
+            def serialize_port(p):
+                return {
+                    "name": p.name,
+                    "label": p.label,
+                    "type": p.type.name if hasattr(p.type, 'name') else str(p.type),
+                    "connection": getattr(p, 'connection', ConnectionType.SINGLE).name
+                } if hasattr(p, 'name') else p
+
+            def serialize_property(prop_dict):
+                if isinstance(prop_dict, dict):
+                    return prop_dict
+                # 如果是 PropertyDefinition 对象
+                return {
+                    "type": prop_dict.type.name,
+                    "default": prop_dict.default,
+                    "label": prop_dict.label,
+                    "choices": getattr(prop_dict, 'choices', []),
+                    "min": getattr(prop_dict, 'min', 0),
+                    "max": getattr(prop_dict, 'max', 100),
+                    "step": getattr(prop_dict, 'step', 1),
+                    "schema": getattr(prop_dict, 'schema', {}),
+                }
+
+            sig = {
+                "inputs": [serialize_port(p) for p in current_signature["inputs"]],
+                "outputs": [{"name": p.name, "label": p.label, "type": p.type.name} for p in
+                            current_signature["outputs"]],
+                "properties": {k: serialize_property(v) for k, v in current_signature["properties"].items()}
+            }
+
+            ComponentHistoryManager.save_history(
+                component_file_path=source_file,
+                component_name=name,
+                code=new_code,
+                current_signature=sig
+            )
+
+            # 5. 刷新 UI
+            self.component_tree.refresh_components()
+            self._load_component_filepath(source_file)
+            MessageManager.success(f"组件已保存：{name}", "", self)
+
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            MessageManager.error(f"保存失败: {str(e)}", "", self)
 
     def _save_component_to_file(self, category, name, code, original_file_path=None, delete_original_file=True):
         components_dir = Path(resource_path("app")) / "components" / category

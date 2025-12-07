@@ -33,5 +33,4 @@ class Component(BaseComponent):
     }
 
     def run(self, params, inputs=None):
-
         return {"text": params.input}
