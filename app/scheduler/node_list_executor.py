@@ -78,6 +78,7 @@ class NodeListExecutor(QRunnable):
                             python_exe=self.python_exe,
                             kernel_manager=self.kernel_manager,
                             scheduler=self.scheduler,
+                            global_variable=self.scheduler.global_variables,
                             check_cancel_func=self._check_cancel,
                             log_start_func=self.signals.log_start.emit,
                             log_message_func=self.signals.log_message.emit,

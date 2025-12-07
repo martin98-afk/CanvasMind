@@ -180,6 +180,7 @@ class BackdropExecutor(QObject):
                     python_exe=self.python_exe,
                     kernel_manager=self.kernel_manager,
                     scheduler=self.scheduler,
+                    global_variable=self.global_variables,
                     check_cancel_func=self._check_cancel,
                     log_start_func=self.log_start.emit,
                     log_message_func=self.log_message.emit,

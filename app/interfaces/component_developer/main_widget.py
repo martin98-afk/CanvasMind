@@ -7,6 +7,7 @@ import textwrap
 import traceback
 import uuid
 from pathlib import Path
+
 from PyQt5.QtCore import Qt, QTimer, QSize
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem
@@ -16,6 +17,7 @@ from qfluentwidgets import (
     BodyLabel, MessageBox, FluentIcon, TransparentToolButton,
     TransparentDropDownToolButton, Action, RoundMenu
 )
+
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, ConnectionType
 from app.interfaces.component_developer.component_history_manager import ComponentHistoryManager
 from app.interfaces.component_developer.constants import *
@@ -28,7 +30,6 @@ from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.code_editor.code_editer import CodeEditorWidget
-from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
 
@@ -867,6 +868,93 @@ except:
             MessageManager.error(f"保存组件失败: {str(e)}", "", self)
         finally:
             self._saving = False
+
+    def save_component_by_full_path(self, full_path: str, new_code: str):
+        """
+        根据 full_path 和新代码保存组件（供外部调用，如节点调试结束）
+        """
+        try:
+            # 1. 从 component_tree 获取组件对象
+            if full_path not in self.component_tree._components:
+                MessageManager.error("组件不存在，无法保存", "", self)
+                return
+
+            comp_obj = self.component_tree._components[full_path]
+            name = getattr(comp_obj, 'name', '未命名组件')
+            category = getattr(comp_obj, 'category', '数据处理')
+            source_file = getattr(comp_obj, '_source_file', None)
+
+            if not source_file or not Path(source_file).exists():
+                MessageManager.error("组件源文件不存在，无法保存", "", self)
+                return
+
+            # 2. 用 AST 检查代码语法
+            try:
+                ast.parse(new_code)
+            except SyntaxError as e:
+                error_msg = f"代码第 {e.lineno} 行：{e.msg}"
+                MessageManager.error(f"代码存在语法错误，无法保存！\n{error_msg}", "语法错误", self)
+                return
+
+            # 3. 保存到原文件
+            source_file = Path(source_file)
+            final_code = new_code
+            with open(source_file, 'w', encoding='utf-8') as f:
+                f.write(final_code)
+
+            # 4. 保存历史版本
+            current_signature = {
+                "inputs": getattr(comp_obj, 'inputs', []),
+                "outputs": getattr(comp_obj, 'outputs', []),
+                "properties": getattr(comp_obj, 'properties', {}),
+            }
+
+            # 序列化为可存储格式（与 ComponentHistoryManager 兼容）
+            def serialize_port(p):
+                return {
+                    "name": p.name,
+                    "label": p.label,
+                    "type": p.type.name if hasattr(p.type, 'name') else str(p.type),
+                    "connection": getattr(p, 'connection', ConnectionType.SINGLE).name
+                } if hasattr(p, 'name') else p
+
+            def serialize_property(prop_dict):
+                if isinstance(prop_dict, dict):
+                    return prop_dict
+                # 如果是 PropertyDefinition 对象
+                return {
+                    "type": prop_dict.type.name,
+                    "default": prop_dict.default,
+                    "label": prop_dict.label,
+                    "choices": getattr(prop_dict, 'choices', []),
+                    "min": getattr(prop_dict, 'min', 0),
+                    "max": getattr(prop_dict, 'max', 100),
+                    "step": getattr(prop_dict, 'step', 1),
+                    "schema": getattr(prop_dict, 'schema', {}),
+                }
+
+            sig = {
+                "inputs": [serialize_port(p) for p in current_signature["inputs"]],
+                "outputs": [{"name": p.name, "label": p.label, "type": p.type.name} for p in
+                            current_signature["outputs"]],
+                "properties": {k: serialize_property(v) for k, v in current_signature["properties"].items()}
+            }
+
+            ComponentHistoryManager.save_history(
+                component_file_path=source_file,
+                component_name=name,
+                code=new_code,
+                current_signature=sig
+            )
+
+            # 5. 刷新 UI
+            self.component_tree.refresh_components()
+            self._load_component_filepath(source_file)
+            MessageManager.success(f"组件已保存：{name}", "", self)
+
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            MessageManager.error(f"保存失败: {str(e)}", "", self)
 
     def _save_component_to_file(self, category, name, code, original_file_path=None, delete_original_file=True):
         components_dir = Path(resource_path("app")) / "components" / category
