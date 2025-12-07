@@ -1,70 +1,110 @@
+<!-- README.md -->
 <p align="center">
   <img width="50%" align="center" src="icons/logo.png" alt="logo">
 </p>
 
 <div align="center">
-  <h1>Visual Programming Workflow Development Tool</h1>
-  
-  [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md)| [📘 使用手册](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/)
+  <h1>CanvasMind — Visual Programming Platform for Algorithm & AI Workflow Development</h1>
+
+  [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md) | [📘 Documentation](https://canvasmind-sphinx-build.readthedocs.io/en/latest/)
 </div>
 
-A modern low-code visual programming platform built on **NodeGraphQt** and **qfluentwidgets**, supporting drag-and-drop component orchestration, asynchronous execution, file operations, loop control, and one-click export of workflows into standalone runnable projects—enabling seamless transition from development to deployment.
+<div align="center">
 
+![Low-Code Platform](https://img.shields.io/badge/Python-3.8%2B-blue)
+![NodeGraphQt](https://img.shields.io/badge/NodeGraphQt-v0.3%2B-orange)
+![qfluentwidgets](https://img.shields.io/badge/qfluentwidgets-v1.0%2B-green)
 
+</div>
 
-<img src="images/画布大模型对话示意图.gif" width="100%" height="100%"><br>
+A modern low-code visual programming platform built on **NodeGraphQt** and **qfluentwidgets**, supporting drag-and-drop component orchestration, asynchronous execution, file operations, control flow logic, and one-click export of workflows into standalone, executable projects—enabling seamless transition from development to deployment.
+
+<img src="images/宣传图.png" width="100%" height="100%"><br>
+
+---
+
+## 🌟 Why Choose CanvasMind?
+
+| Traditional Low-Code Tools | CanvasMind |
+|---------------------------|-----------|
+| Static component assembly | **Dynamic expressions + global variables** drive parameters |
+| Only serial execution | Full **conditional branching, iteration, and loops** |
+| No custom logic | **Embedded code editor** for writing Python components freely |
+| Execution = endpoint | **One-click export** to standalone projects (API, CLI, Docker) |
+| AI disconnected from canvas | **Deep LLM integration**: yellow jump / purple create buttons for canvas-aware intelligent completion |
+
+---
 
 ## 🌟 Key Features
 
 ### 🎨 Modern UI
-- **Fluent Design** – Powered by qfluentwidgets  
-- **Dark Theme** – Eye-friendly dark mode  
+- **Fluent Design** – Built with `qfluentwidgets` for a polished, native look  
+- **Dark Theme** – Eye-friendly dark mode by default  
 - **Responsive Layout** – Adapts to various screen sizes  
 
 ### 🧩 Visual Programming
-- **Drag-and-Drop Nodes** – Create nodes by dragging from the component panel  
-- **Dataflow Connections** – Connect nodes to define data dependencies  
-- **Backdrop Grouping** – Visually group related nodes using Backdrop  
-- **Context Menus** – Full right-click operations  
+- **Drag-and-Drop Nodes** – Drag components from the panel onto the canvas  
+- **Dataflow Connections** – Connect output and input ports to define dependencies  
+- **Backdrop Grouping** – Visually group related nodes using Backdrop nodes  
+- **Context Menus** – Full right-click menu for node operations  
+
+### 🧠 Intelligent Node Recommendation ✨
+- **Type-Aware Suggestions** – Automatically match compatible downstream components based on output port types  
+- **Multi-Port Grouping** – Recommendations grouped by source port for clarity  
+- **Visual Differentiation** – Color-coded suggestions per port type  
+- **Cross-Canvas Learning** – Tracks component connection frequency to improve recommendations over time  
+
+### 🤖 LLM-Canvas Context Integration (✅ Implemented)
+- **Yellow Jump Buttons**: When the LLM references an existing node, a yellow `[Node Name](jump)` button appears—click to instantly navigate to that node on the canvas.  
+- **Purple Create Buttons**: When recommending a new capability, a purple `[Component Name](create)` button is generated—click to instantiate the component from your library and auto-connect it.  
+- **Multimodal Context Injection**: Automatically passes node JSON, variable states, and base64-encoded images to the LLM for precise, actionable suggestions.  
+- **Canvas-Aware Completion**: Supports simultaneous references to multiple existing nodes (yellow) and recommendations for missing components (purple), enabling end-to-end workflow completion.  
 
 ### ⚡ Asynchronous Execution Engine
-- **Non-Blocking Execution** – Uses QThreadPool to prevent UI freezing  
-- **Real-Time Status** – Node states shown via colors (running/success/failure/idle)  
-- **Topological Sorting** – Automatically executes nodes in correct dependency order  
+- **Non-Blocking Execution** – Uses `QThreadPool` to keep the UI responsive  
+- **Real-Time Status Visualization** – Node states shown via color (idle / running / success / failure)  
+- **Topological Scheduling** – Automatically resolves dependencies and executes in correct order  
+- **Efficient Serialization** – Uses `pickle` and `pyarrow` for fast data passing and storage  
 
-### 🔁 Advanced Control Flow ✨ (New)
-- **Conditional Branch** – Dynamically enable/disable branches using expressions (`if/else` logic)  
-- **Iterate** – Loop over lists/arrays, executing sub-flows per element  
+### 🔁 Advanced Control Flow ✨
+- **Conditional Branching** – Enable/disable branches based on `$...$` expressions (`if/else` logic)  
+- **Iteration** – Loop over lists or arrays, executing subgraphs per element  
 - **Loop Control** – Fixed-count or condition-driven loops  
-- **Dynamic Skipping** – Entire downstream subgraphs of inactive branches are skipped  
-- **Expression-Driven** – Conditions and loop counts support `$...$` dynamic expressions  
+- **Dynamic Subgraph Skipping** – Entire downstream subgraphs of inactive branches are skipped for efficiency  
+- **Expression-Driven Logic** – Branch conditions, loop counts, etc., support dynamic expressions  
 
 ### 🌐 Global Variables & Expression System ✨
-- **Structured Scopes** – Three variable scopes: `env` (environment), `custom`, and `node_vars` (node outputs); env vars injected at runtime  
-- **Dynamic Expressions** – Use `$expr$` syntax to reference/combine variables (e.g., `$env_user_id$`, `$custom_threshold * 2$`)  
-- **Real-Time Evaluation** – Expressions parsed before execution; supports nested dicts/lists  
-- **Secure Sandbox** – Safe execution via `asteval`; `contextmanager` ensures isolation between components  
-- **Integrated in UI** – Select variables or enter expressions directly in property panels  
+- **Structured Scopes** – Three variable scopes: `env` (environment), `custom` (user-defined), and `node_vars` (node outputs)  
+- **Dynamic Expressions** – Use `$env_user_id$` or `$custom_threshold * 2$` in any parameter field  
+- **Runtime Evaluation** – Expressions resolved before execution, with support for nested dicts/lists  
+- **Secure Sandbox** – Powered by `asteval`; prevents unsafe operations and isolates environments via `contextmanager`  
+- **UI Integration** – Select variables or type expressions directly in component property panels  
 
-### ✅ **Dynamic Code Components**  
-- **Freeform Coding** – Write full Python logic (including `run()` and helper functions) inside nodes  
-- **Dynamic Ports** – Add/remove input/output ports via form; bind global vars as defaults  
-- **Full Integration** – Reuse global vars, expressions, auto-dependency install, logging, and status visualization  
-- **Safe Execution** – Runs in isolated subprocess with timeout, error capture, and retry  
-- **Dev-Friendly Editor** – Professional code editor with dark theme, syntax highlighting, autocomplete, folding, and error hints  
+### ✅ Dynamic Code Components
+- **Full Python Logic** – Write complete `run()` methods and helper functions inside nodes  
+- **Dynamic Ports** – Add/remove input/output ports via UI; bind global variables as defaults  
+- **Full Feature Integration** – Leverages global variables, expressions, auto-dependency install, logging, and status visualization  
+- **Safe Execution** – Runs in isolated subprocesses with timeout control, error capture, and retry support  
+- **Developer-Friendly Editor** – Professional code editor with dark theme, syntax highlighting, intelligent autocomplete, folding, and error diagnostics  
 
 ### 📊 Node Management
-- **Auto-Loading** – Scans `components/` directory to load components dynamically  
-- **Pydantic Schema** – Define inputs/outputs/properties using Pydantic models  
-- **Per-Node Logging** – Each node stores its own execution logs  
-- **Persistence** – Import/export entire workflows  
-- **Dependency Management** – Components declare `requirements`; missing packages auto-installed at runtime  
+- **Dynamic Loading** – Auto-scans `components/` directory and loads new components  
+- **Pydantic Schemas** – Define inputs, outputs, and properties using Pydantic models  
+- **Per-Node Logging** – Each node maintains its own execution log  
+- **State Persistence** – Save/load entire workflows  
+- **Auto Dependency Resolution** – Components declare `requirements`; missing packages are auto-installed at runtime  
 
 ### 📦 Model Export & Standalone Deployment ✨
-- **Subgraph Export** – Select any node group and export as a standalone project  
-- **Train/Infer Separation** – Export only inference flow with trained model files  
-- **Self-Contained** – Generated project runs without the main app  
-- **Cross-Environment** – Auto-generates `requirements.txt`; supports servers, Docker, CLI (no GUI needed)  
+- **Subgraph Export** – Select any group of nodes and export as a self-contained project  
+- **Train/Inference Separation** – Export only inference logic with trained models bundled  
+- **Zero-Dependency Runtime** – Generated project runs independently—no CanvasMind required  
+- **Multi-Environment Support** – Auto-generated `requirements.txt` enables deployment to servers, Docker, or CLI environments  
+
+### 🛠️ Exported Project Tool Integration
+- **Direct Invocation** – Canvas can call exported project scripts by name and retrieve results  
+- **Parameter Passing** – Node properties define tool-call parameters, passed automatically at runtime  
+- **Full Logging** – Detailed logs of tool execution are captured and returned for debugging  
+- **LLM Function Calling Ready** – Standardized tool name, input/output schema, and examples for seamless LLM integration  
 
 ---
 
@@ -79,7 +119,7 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 pip install -r requirements.txt
 ```
 
-### Run the App
+### Run the Application
 ```bash
 python main.py
 ```
@@ -99,84 +139,78 @@ pyinstaller --onedir --windowed --add-data "app;app" --add-data "icons;icons" -i
 
 ```python
 # components/data/my_component.py
-class Component(BaseComponent):
-    name = ""
-    category = ""
-    description = ""
-    requirements = ""
-    inputs = [
-    ]
-    outputs = [
-    ]
-    properties = {
-    }
+class MyComponent(BaseComponent):
+    name = "My Processor"
+    category = "Data"
+    description = "Example component"
+    requirements = "pandas>=1.3.0"
+    inputs = [{"name": "input_data", "type": "TEXT"}]
+    outputs = [{"name": "output_data", "type": "TEXT"}]
+    properties = {"param1": {"type": "TEXT", "default": "hello"}}
 
     def run(self, params, inputs=None):
         """
-        params: node properties (from UI)
-        inputs: upstream inputs (key = input port name)
+        params: node properties from UI
+        inputs: upstream data (key = input port name)
         return: output data (key = output port name)
         """
         input_data = inputs.get("input_data") if inputs else None
         param1 = params.get("param1", "default_value")
         result = f"Processed: {input_data} + {param1}"
-        return {
-            "output_data": result
-        }
+        return {"output_data": result}
 ```
 
-2. **Auto-Loaded** – Components are scanned and added to the panel automatically  
-3. **Auto Dependency Install** – If a component fails due to missing packages, the system installs from its `requirements` and retries  
+2. **Auto-Loading** – Components are automatically scanned and added to the panel  
+3. **Auto Dependency Install** – If a component fails due to missing packages, CanvasMind installs them from the `requirements` field and retries  
 
-### Port Parameter Types
+### Supported Port Types
 
-| Type            | Description         | Example              |
-|-----------------|---------------------|----------------------|
-| `TEXT`          | Text input          | String parameter     |
-| `LONGTEXT`      | Long text input     | Multi-line string    |
-| `INT`           | Integer             | Numeric parameter    |
-| `FLOAT`         | Float               | Decimal number       |
-| `BOOL`          | Boolean             | Toggle switch        |
-| `CSV`           | CSV list data       | Predefined options   |
-| `JSON`          | JSON structure      | Dynamic list data    |
-| `EXCEL`         | Excel list data     | Numeric range        |
-| `FILE`          | File path           | Local file           |
-| `UPLOAD`        | Document upload     | User-uploaded file   |
-| `SKLEARNMODEL`  | Scikit-learn model  | Trained model object |
-| `TORCHMODEL`    | PyTorch model       | Neural network       |
-| `IMAGE`         | Image data          | Image tensor/array   |
+| Type              | Description         | Example                   |
+|-------------------|---------------------|---------------------------|
+| `TEXT`            | Text input          | String parameters         |
+| `LONGTEXT`        | Long text input     | Multi-line strings        |
+| `INT`             | Integer             | Numeric values            |
+| `FLOAT`           | Floating point      | Decimal numbers           |
+| `BOOL`            | Boolean             | Toggle switches           |
+| `CSV`             | CSV list data       | Column selections         |
+| `JSON`            | JSON structure      | Dynamic nested data       |
+| `EXCEL`           | Excel data          | Cell ranges               |
+| `FILE`            | File path           | Local file reference      |
+| `UPLOAD`          | Document upload     | User-uploaded files       |
+| `SKLEARNMODEL`    | Scikit-learn model  | Trained `.pkl` models     |
+| `TORCHMODEL`      | PyTorch model       | `.pt` or `.pth` models    |
+| `IMAGE`           | Image data          | Base64 or file paths      |
 
-### Property Parameter Types
+### Supported Property Types
 
-| Type            | Description         | Example              |
-|-----------------|---------------------|----------------------|
-| `TEXT`          | Text input          | String               |
-| `LONGTEXT`      | Long text           | Multi-line           |
-| `INT`           | Integer             | Number               |
-| `FLOAT`         | Float               | Decimal              |
-| `BOOL`          | Boolean             | Checkbox             |
-| `CHOICE`        | Dropdown            | Predefined options   |
-| `DYNAMICFORM`   | Dynamic form        | Variable-length list |
-| `RANGE`         | Numeric range       | Min/max values       |
+| Type             | Description        | Example                   |
+|------------------|--------------------|---------------------------|
+| `TEXT`           | Text input         | Short strings             |
+| `LONGTEXT`       | Long text input    | Code snippets, prompts    |
+| `INT` / `FLOAT`  | Numeric input      | Thresholds, counts        |
+| `BOOL`           | Toggle             | Enable/disable flags      |
+| `CHOICE`         | Dropdown           | Predefined options        |
+| `DYNAMICFORM`    | Dynamic form       | Variable-length lists     |
+| `RANGE`          | Numeric range      | Min/max sliders           |
 
 ---
 
-## 🎮 Canvas User Guide
+## 🎮 Canvas Usage Guide
 
 ### Basic Operations
 1. **Create Node** – Drag from left panel to canvas  
 2. **Connect Nodes** – Drag from output port to input port  
-3. **Run Node** – Right-click → "Run this node"  
-4. **View Logs** – Right-click → "View node logs"  
+3. **Run Node** – Right-click → “Run This Node”  
+4. **View Logs** – Right-click → “View Node Logs”  
 
 ### Advanced Features
-1. **Loop Execution** – Use Loop Controller + Backdrop  
-2. **File Operations** – Click file picker in property panel  
-3. **Workflow Management** – Save/load via top-left buttons  
-4. **Node Grouping** – Select nodes → right-click → "Create Backdrop"  
-5. **Dependency Handling** – Auto-install on failure using `requirements`  
+- **Loops** – Use Loop/Iterate nodes with Backdrop for structured iteration  
+- **File Handling** – Click file picker in property panel  
+- **Workflow Management** – Save/load via top-left buttons  
+- **Node Grouping** – Select multiple nodes → right-click → “Create Backdrop”  
+- **Dependency Management** – Failed components auto-install missing `requirements`  
 
-### Shortcuts
+### Keyboard Shortcuts
 - `Ctrl+R` – Run workflow  
 - `Ctrl+S` – Save workflow  
 - `Ctrl+O` – Load workflow  
@@ -185,188 +219,121 @@ class Component(BaseComponent):
 
 ---
 
-## 🛠️ Canvas Development Notes
+## 🛠️ Development Notes
 
-### Node Status
+### Node Status Colors
 - **Idle** – Gray border  
 - **Running** – Blue border  
 - **Success** – Green border  
 - **Failed** – Red border  
 
-### Connection Status
-- **Idle** – Yellow line  
-- **Input Running** – Blue line  
-- **Output Running** – Green line  
+### Connection Line Colors
+- **Idle** – Yellow  
+- **Input Active** – Blue  
+- **Output Active** – Green  
 
 ### Logging System
-- Per-node log storage  
-- Auto timestamp  
-- Uses **Loguru** – components log via `self.logger`  
-- Captures `print()` output automatically  
+- Each node has independent logs with timestamps  
+- Powered by **Loguru** – use `self.logger` in components  
+- All `print()` output is automatically captured  
 
-### Data Flow
+### Dataflow
 - Inputs auto-populated from upstream outputs  
 - Outputs stored by port name  
-- Supports multi-input/multi-output  
+- Full multi-input/multi-output support  
 
 ---
 
 ## 📥 Model Export (Standalone Deployment)
 
 ### Core Value
-**Export any subgraph as a standalone runnable project** – deploy to any Python environment without the main app!
+Export **any subgraph as a self-contained project** that runs in any Python environment—no CanvasMind required.
 
 ### Use Cases
-- **Train/Infer Split** – Export only inference with model files  
-- **Model Sharing** – Share full workflow with teammates  
-- **Production Deployment** – Deploy to servers or Docker  
-- **Offline Execution** – Run in headless environments  
+- **Train/Inference Split** – Export only inference logic with models bundled  
+- **Team Sharing** – Share full workflows as runnable projects  
+- **Production Deployment** – Run on servers or in Docker  
+- **Offline Execution** – CLI-only environments  
 
 ### Export Features
-✅ **Smart Dependency Analysis** – Copies required component code  
-✅ **Path Rewriting** – Model/data files copied & paths made relative  
-✅ **Column Selection Preserved** – CSV column configs retained  
-✅ **Environment Isolation** – Auto-generates `requirements.txt`  
-✅ **Ready-to-Run** – Includes full execution script  
+✅ **Smart Dependency Analysis** – Copies only necessary component code  
+✅ **Path Rewriting** – Model/data files copied and converted to relative paths  
+✅ **Column Selection Preserved** – CSV column config fully retained  
+✅ **Environment Isolation** – Auto-generated `requirements.txt`  
+✅ **Ready-to-Run** – Includes `run.py` and `api_server.py`  
 
 ### Export Steps
-1. **Select Nodes** – Choose nodes on canvas (multi-select supported)  
-2. **Click Export** – Top-left **"Export Model"** button (📤 icon)  
-3. **Choose Directory** – System creates project folder  
-4. **Run Project** – In export dir:
+1. **Select Nodes** – Choose any nodes on canvas (multi-select supported)  
+2. **Click Export** – Top-left **“Export Model”** button (📤 icon)  
+3. **Choose Directory** – Project folder auto-generated  
+4. **Run Externally**:
 
 ```bash
+# Install dependencies
 pip install -r requirements.txt
+
+# Run model
 python run.py
 ```
 
 ### Exported Project Structure
 ```
 model_xxxxxxxx/
-├── model.workflow.json    # Workflow definition (nodes, connections, column selections)
-├── preject_spec.json      # Input/output schema
-├── preview.png            # Canvas preview at export time
-├── REAMDME.md             # Project info
-├── requirements.txt       # Auto-detected dependencies
-├── run.py                 # One-click runner
-├── api_server.py          # Microservice server
-├── scan_components.py     # Component scanner
+├── model.workflow.json    # Full workflow definition (nodes, connections, column selections)
+├── project_spec.json      # Input/output schema
+├── preview.png            # Canvas preview snapshot
+├── README.md              # Project overview
+├── requirements.txt       # Auto-analyzed dependencies
+├── run.py                 # CLI entrypoint
+├── api_server.py          # FastAPI microservice
+├── scan_components.py     # Component loader
 ├── runner/
 │   ├── component_executor.py
 │   └── workflow_runner.py
-├── components/
+├── components/            # Original component code (preserved structure)
 │   ├── base.py
 │   └── your_components/
-└── inputs/                # Model/data files
+└── inputs/                # Bundled models/data files
 ```
 
 ---
 
-## Roadmap
+## 🔮 Roadmap
 
-~~1. **Debug Mode**~~  
-~~- Step-by-step execution~~  
-~~- Breakpoints~~  
-~~- Variable watcher~~  
+### 1. **Enhanced Code Editor**
+- Integrate **LSP (Language Server Protocol)** to replace Jedi-based static completion
 
 ### 2. **Remote Execution**
-- Submit workflows to **remote servers / Kubernetes / Ray**  
-- Local: orchestration only; execution on cluster  
-- Ideal for LLMs and big data  
+- Submit workflows to **remote servers / Kubernetes / Ray clusters**  
+- Local = orchestration only; execution = distributed  
+- Ideal for LLMs and big data workloads
 
-~~3. **Variable & Expression System**~~  
-~~- Global variables (`{{global.input}}`)~~  
-~~- Expressions (`{{node1.output * 2}}`)~~  
-~~- Expression input mode in UI (like Dify)~~  
-
-### 4. **Parallel Execution**
-- Parallelize independent nodes  
-- GPU resource scheduling (e.g., assign PyTorch models to different GPUs)  
+### 3. **Parallel Execution**
+- **Problem**: Current execution is serial → underutilizes CPU/GPU  
+- **Solution**:
+  - Parallel execution of independent nodes  
+  - GPU-aware scheduling (e.g., assign PyTorch models to specific devices)
 
 ---
 
-## Feature Status
+## 📊 Feature Status (✅ Implemented | ⏳ Planned)
 
-## Feature Implementation Status
-
-- [x] Component Management  
-- [x] Component Development  
-- [ ] Supported Component Types  
-  - [x] Basic Components  
-  - [x] Multi-Input Components  
-  - [x] Backdrop Node Integration  
-  - [x] Input/Output Node Integration  
-  - [ ] Circle Node Integration  
-- [x] Automatic Dependency Management (`requirements`)  
-- [x] Prebuilt Logic Control Components  
-  - [x] Logical Judgment  
-  - [x] Conditional Branching  
-  - [x] Loop  
-  - [x] Iteration  
-- [x] Component Debugging  
-- [x] Component Parameters  
-  - [x] CSV Parameters  
-    - [x] CSV Parameter Info Preview  
-    - [x] CSV Column Selection  
-    - [x] CSV Data Preview  
-    - [ ] CSV Data Analysis  
-  - [x] EXCEL Parameters  
-  - [x] SKLEARN Parameters  
-  - [x] Torch Parameters  
-  - [x] NUMPY Parameters  
-  - [x] IMAGE Parameters  
-  - [x] JSON Parameters  
-  - [x] TEXT Parameters  
-    - [x] Text Data Preview  
-  - [x] FILE Parameters  
-- [x] Input Port Validation  
-- [x] Component Execution  
-  - [x] Real-Time Node Status Color Updates  
-  - [x] Real-Time Connection Status Updates  
-- [x] Component Logging  
-  - [x] Real-Time Log Reading & Saving  
-  - [ ] Persistent Log Storage  
-- [x] Output Node Preview  
-- [x] Output Variable Download  
-- [x] Component Grouping  
-- [x] Component Preview  
-  - [x] Node Drag-and-Drop Preview  
-- [x] Model Management  
-  - [x] Canvas Preview Image  
-- [x] Model Execution  
-  - [x] Runtime Environment Switching  
-  - [x] Three Execution Modes  
-  - [x] Global Variable System  
-- [x] Canvas Export  
-  - [x] Workflow Canvas Saving  
-  - [x] Model Output Result Saving  
-  - [x] Canvas Preview Image Saving  
-- [x] Canvas Import  
-  - [x] Workflow Canvas Loading  
-  - [x] Model Output Result Loading  
-- [x] Model Export  
-  - [x] Export Standalone Model Project  
-  - [x] Project Preview Image Saving  
-  - [x] Automatic Dependency Detection  
-  - [x] Exported Project Runnability Validation  
-  - [x] Auto-Wrapped API Endpoint  
-  - [ ] Auto-Generated API Documentation  
-  - [x] API Input/Output Node Definition  
-- [ ] Exported Project Editing  
-- [x] Runtime Environment Control  
-  - [x] Package Install / Force Reinstall / Update / Uninstall  
-  - [x] Component Package Synchronization  
-  - [x] Multi-Environment Management  
-  - [x] Environment Switching  
-  - [x] Tool Package List Information  
-  - [x] Real-Time Installation Logs  
-- [x] Tool Configuration
+- ✅ Visual canvas (NodeGraphQt)  
+- ✅ Control flow: conditionals, loops, iteration  
+- ✅ Global variables + expression system  
+- ✅ Dynamic code components (embedded editor)  
+- ✅ Intelligent node recommendations  
+- ✅ One-click export (CLI + API)  
+- ✅ Multi-environment management  
+- ✅ **LLM context integration (yellow jump / purple create buttons)**  
+- ⏳ Code-to-canvas auto-creation (from editor → new node)  
+- ⏳ Parallel & remote execution  
 
 ---
 
 ## 🤝 Contributing
 
-1. Fork the repo  
+1. Fork the repository  
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)  
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)  
 4. Push to the branch (`git push origin feature/AmazingFeature`)  
@@ -376,12 +343,12 @@ model_xxxxxxxx/
 
 ## 📄 License
 
-This project is licensed under [GPLv3](LICENSE).
+This project is licensed under the [GPLv3 License](LICENSE).
 
 ---
 
 ## 🙏 Acknowledgements
 
 - [NodeGraphQt](https://github.com/jchanvfx/NodeGraphQt) – Node graph framework  
-- [qfluentwidgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets) – Fluent Design widgets  
-- [Loguru](https://github.com/Delgan/loguru) – Python logging made enjoyable
+- [PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets) – Fluent Design UI library  
+- [Loguru](https://github.com/Delgan/loguru) – Elegant Python logging

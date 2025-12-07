@@ -23,6 +23,7 @@ class WorkerSignals(QObject):
     log_start = pyqtSignal(str)  # run_id
     log_message = pyqtSignal(str, str)  # run_id, line
     log_error = pyqtSignal(str)
+    log_finished = pyqtSignal(str)
 
 class NodeListExecutor(QRunnable):
     """
@@ -81,6 +82,7 @@ class NodeListExecutor(QRunnable):
                             log_start_func=self.signals.log_start.emit,
                             log_message_func=self.signals.log_message.emit,
                             log_error_func=self.signals.log_error.emit,
+                            log_finish_func=self.signals.log_finished.emit,
                             run_id_prefix=""  # 主流程不加前缀
                         )
                     elif isinstance(node, ControlFlowBackdrop):
@@ -96,6 +98,8 @@ class NodeListExecutor(QRunnable):
                         # 连接日志信号
                         backdrop_executor.log_start.connect(self.signals.log_start)
                         backdrop_executor.log_message.connect(self.signals.log_message)
+                        backdrop_executor.log_error.connect(self.signals.log_error)
+                        backdrop_executor.log_finished.connect(self.signals.log_finished)
 
                         try:
                             backdrop_executor.execute()

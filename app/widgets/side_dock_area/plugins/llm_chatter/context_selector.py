@@ -12,6 +12,8 @@ from qfluentwidgets import (
     CardWidget, CaptionLabel, BodyLabel
 )
 
+from app.utils.utils import serialize_for_json
+
 
 class ContextRegistry:
     # 注意：不再有 _instance，也不再是单例
@@ -324,7 +326,7 @@ class ContextSelector(QWidget):
                 if not is_image:
                     # 普通文本：转为字符串
                     if isinstance(context_data, (dict, list, tuple, set)):
-                        context_str = json.dumps(context_data, indent=2, ensure_ascii=False)
+                        context_str = serialize_for_json(context_data)
                     else:
                         context_str = str(context_data)
                     context_data = f"# {name}信息:\n{context_str}\n\n"

@@ -1,7 +1,7 @@
 # collapsible_log_card.py （更新版）
 import re
 
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QTime, QElapsedTimer
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor
 from qfluentwidgets import CardWidget, BodyLabel, TextEdit, ToolButton, TransparentToolButton, StrongBodyLabel
@@ -26,25 +26,39 @@ class CollapsibleLogCard(CardWidget):
     def __init__(self, run_id: str, title_color="color: #FFA500;", parent=None):
         super().__init__(parent)
         self.run_id = run_id
-        self.is_collapsed = True  # 默认折叠
-        self.is_current_running = False  # 是否是当前运行卡片
+        self.is_collapsed = False
+        self.is_current_running = False
+
         self.setStyleSheet("background-color: #2b2b2b; border: 1px solid #444; border-radius: 4px;")
+
+        # === 新增：计时器相关 ===
+        self._elapsed_timer = QElapsedTimer()  # 用于高精度计时
+        self.timer_label = BodyLabel("0.00 s")
+        self.timer_label.setStyleSheet("color: #FFA500; font-size: 13px; background: transparent; border: none;")
+        self.timer_label.setFixedWidth(60)  # 宽一点容纳 "99.99 秒"
+        self.timer_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        self._update_timer = QTimer(self)
+        self._update_timer.timeout.connect(self._update_timer_display)
+        self._update_timer.setInterval(100)  # 每100ms更新一次，足够流畅且性能好
+
         # 标题
         self.title_label = StrongBodyLabel(run_id)
-        self.title_label.setStyleSheet(title_color)
+        self.title_label.setStyleSheet(title_color+"background:transparent;border:none;")
 
         self.toggle_button = TransparentToolButton(get_icon("expand_all"), self)
         self.toggle_button.setFixedSize(20, 20)
         self._update_toggle_text()
-
         self.toggle_button.clicked.connect(self.toggle)
 
+        # === 修改标题布局：加入计时器 ===
         title_layout = QHBoxLayout()
         title_layout.addWidget(self.title_label)
         title_layout.addStretch()
+        title_layout.addWidget(self.timer_label)  # <-- 新增：计时器在 toggle 左边
         title_layout.addWidget(self.toggle_button)
 
-        # 日志内容（使用 QTextEdit 以便格式化）
+        # 日志内容（保持不变）
         self.log_text = TextEdit(self)
         self.log_text.setStyleSheet("background: transparent; border: none; color: white;")
         self.log_text.setReadOnly(True)
@@ -54,14 +68,14 @@ class CollapsibleLogCard(CardWidget):
         self.log_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.log_text.textChanged.connect(self._adjust_height)
         self.log_text.setLineWrapMode(QTextEdit.WidgetWidth)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.addLayout(title_layout)
         layout.addWidget(self.log_text)
 
-        # 默认折叠（但如果是当前运行，会在外部设为展开）
-        self.log_text.setVisible(True)  # 你已经写了，很好
-        self.is_collapsed = False  # 也设为 False
+        # 默认展开（符合你注释逻辑）
+        self.log_text.setVisible(True)
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -70,9 +84,10 @@ class CollapsibleLogCard(CardWidget):
 
     def _adjust_height(self):
         """根据内容自动调整高度"""
-        document_height = self.log_text.document().size().height()
-        margin = self.log_text.contentsMargins()
-        total_height = int(document_height + margin.top())
+        doc = self.log_text.document()
+        layout = doc.documentLayout()
+        height = layout.documentSize().height()
+        total_height = int(height)
         QTimer.singleShot(10, lambda: self.log_text.setFixedHeight(max(total_height, 0)))  # 最小高度 40
 
     def expand(self):
@@ -99,24 +114,38 @@ class CollapsibleLogCard(CardWidget):
         self._update_toggle_text()
 
     def set_current_running(self, is_running: bool):
-        """外部调用：设置是否为当前运行卡片"""
+        if self.is_current_running == is_running:
+            return
+
         self.is_current_running = is_running
+
         if is_running:
             self.setStyleSheet("background-color: #2b2b2b; border: 2px solid #FFA500; border-radius: 4px;")
-            # 自动展开 + 滚动到底
             self.is_collapsed = False
             self.log_text.setVisible(True)
             self._update_toggle_text()
+            # 启动高精度计时
+            self._elapsed_timer.start()
+            self._update_timer.start()
+            self.timer_label.show()
         else:
             self.setStyleSheet("background-color: #2b2b2b; border: 1px solid #444; border-radius: 4px;")
-            # 自动折叠
             self.is_collapsed = True
             self.log_text.setVisible(False)
             self._update_toggle_text()
+            self._update_timer.stop()
+
+    def _update_timer_display(self):
+        elapsed_ms = self._elapsed_timer.elapsed()  # 毫秒
+        elapsed_sec = elapsed_ms / 1000.0
+        self.timer_label.setText(f"{elapsed_sec:.2f} s")
 
     def mark_as_error(self):
-        """标记卡片为错误状态（红框）"""
+        self._update_timer.stop()  # 停止刷新
         self.setStyleSheet("background-color: #2b2b2b; border: 2px solid #f44747; border-radius: 4px;")
+        self.log_text.setVisible(True)
+        self.is_collapsed = False
+        self._update_toggle_text()
 
     def append_colored_log(self, text: str):
         """处理多行日志文本"""

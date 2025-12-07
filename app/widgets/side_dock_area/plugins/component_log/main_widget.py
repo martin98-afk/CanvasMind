@@ -72,7 +72,6 @@ class LogToolWindow(ToolWindow):
 
         # 折叠上一个
         if self.current_run_id and self.current_run_id in self.run_cards:
-            self.run_cards[self.current_run_id].set_current_running(False)
             self.current_run_id = None
 
         # 创建新卡片
@@ -99,7 +98,11 @@ class LogToolWindow(ToolWindow):
         self.run_cards[run_id].append_colored_log(line)
         QTimer.singleShot(10, self._scroll_to_bottom)
 
+    def on_finished(self, run_id: str):
+        self.run_cards[self.current_run_id].set_current_running(False)
+
     def on_error(self, run_id: str):
+        self.run_cards[self.current_run_id].set_current_running(False)
         self.run_cards[run_id].mark_as_error()
 
     def _enforce_max_runs(self):
@@ -125,6 +128,8 @@ class LogToolWindow(ToolWindow):
         for run_id, card in self.run_cards.items():
             card.deleteLater()
         while self.chat_layout.count():
+            if self.chat_layout.takeAt(0) is None:
+                break
             self.chat_layout.takeAt(0).widget().deleteLater()
         self.run_cards.clear()
         self.chat_layout.addStretch()

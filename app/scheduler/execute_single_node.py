@@ -18,6 +18,7 @@ def execute_node(
         log_start_func,
         log_message_func,
         log_error_func,
+        log_finish_func,
         run_id_prefix="",
 ):
     """
@@ -39,22 +40,18 @@ def execute_node(
     run_id = f"{run_id_prefix}{node.name()} @ {datetime.datetime.now().strftime('%H:%M:%S')}"
     node._current_run_id = run_id
     node._log_message_emitter = log_message_func
+    # 发送运行开始信号
     log_start_func(run_id)
 
     try:
-        if scheduler.parent.config.canvas_run_mode.value == "ipython运行":
-            results = node.execute_sync(
-                comp_cls,
-                python_executable=python_exe,
-                check_cancel=check_cancel_func,
-                kernel_manager=kernel_manager
-            )
-        else:
-            results = node.execute_sync(
-                comp_cls,
-                python_executable=python_exe,
-                check_cancel=check_cancel_func
-            )
+        # 根据运行模式选择执行方式
+        run_mode = scheduler.parent.config.canvas_run_mode.value
+        results = node.execute_sync(
+            comp_cls,
+            python_executable=python_exe,
+            check_cancel=check_cancel_func,
+            kernel_manager=kernel_manager if run_mode == "ipython运行" else None
+        )
 
         # 变量自动更新
         if results is not None:
@@ -64,6 +61,8 @@ def execute_node(
                 var_obj = scheduler.global_variables.node_vars.get(var_key)
                 if var_obj and var_obj.update_policy != "固定":
                     scheduler.update_node_variable(var_key, result, var_obj.update_policy)
+        # 发送运行完成信号
+        log_finish_func(run_id)
 
         return results
 
