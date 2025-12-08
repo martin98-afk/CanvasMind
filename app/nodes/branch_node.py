@@ -126,7 +126,7 @@ def create_branch_node(parent_window):
                 base = port_name
                 counter = 1
                 while port_name in used_names:
-                    port_name = f"{base}_{counter}"
+                    port_name = f"{base}{counter}"
                     counter += 1
                 used_names.add(port_name)
                 expected_names.append(port_name)
@@ -166,7 +166,7 @@ def create_branch_node(parent_window):
                             continue
 
             # 6. 将生成的端口名称同步回表单（仅在名称发生变化时）
-            self._sync_names_to_form(conditions, name_mapping)
+            # self._sync_names_to_form(conditions, name_mapping)
             if self.selected():
                 QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
 

@@ -61,6 +61,10 @@ class CollapsibleLogCard(CardWidget):
 
         # 日志内容（保持不变）
         self.log_text = TextEdit(self)
+        font = self.log_text.font()
+        font.setFamily("Consolas")  # 或 "Courier New", "Fira Code", "JetBrains Mono"
+        font.setPointSize(10)
+        self.log_text.setFont(font)
         self.log_text.setStyleSheet("background: transparent; border: none; color: white;")
         self.log_text.setReadOnly(True)
         self.log_text.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -149,39 +153,43 @@ class CollapsibleLogCard(CardWidget):
         self._update_toggle_text()
 
     def append_colored_log(self, text: str):
-        """处理多行日志文本"""
         if not text or not text.strip():
             return
+
+        # 先获取当前 HTML 内容（避免覆盖）
+        current_html = self.log_text.toHtml()
+        if not current_html.startswith('<!DOCTYPE HTML'):
+            current_html = ""
+
         lines = text.splitlines(keepends=True)
+        new_html_lines = []
+
         for line in lines:
-            if not line.strip():
-                self._append_single_line("\n")
-            else:
-                self._append_single_line(line)
+            # 检测日志级别
+            color_hex = "#ffffff"
+            line_for_check = line.replace('&nbsp;', ' ')
+            for level, col in self.LEVEL_COLORS.items():
+                if re.search(rf'\b{level}\b', line_for_check, re.IGNORECASE):
+                    color_hex = col
+                    break
 
-    def _append_single_line(self, line: str):
-        """处理单行日志"""
-        if not line.endswith('\n'):
-            line += '\n'
+            # 转义 HTML 特殊字符（防止 XSS 或解析错误）
+            escaped_line = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            # 用 <pre> + color
+            html_line = f'<pre style="color:{color_hex}; margin:0; padding:0;">{escaped_line}</pre>'
+            new_html_lines.append(html_line)
 
-        cursor = self.log_text.textCursor()
-        cursor.movePosition(QTextCursor.End)
+        # 拼接 HTML
+        full_html = current_html + "\n".join(new_html_lines)
 
-        char_format = QTextCharFormat()
-        line_for_check = line.replace('&nbsp;', ' ')
-        detected_level = "INFO"
-        for level, color_hex in self.LEVEL_COLORS.items():
-            if re.search(rf'\b{level}\b', line_for_check, re.IGNORECASE):
-                detected_level = level.upper()
-                char_format.setForeground(QColor(color_hex))
-                break
+        # 禁用自动换行（<pre> 默认不换行，但你可以控制）
+        self.log_text.setHtml(full_html)
 
-        cursor.setCharFormat(char_format)
-        cursor.insertText(line)
-
+        # 保持滚动到底（如果正在运行）
         if self.is_current_running:
-            vsb = self.log_text.verticalScrollBar()
-            vsb.setValue(vsb.maximum())
+            self.log_text.verticalScrollBar().setValue(
+                self.log_text.verticalScrollBar().maximum()
+            )
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

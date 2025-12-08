@@ -303,11 +303,6 @@ class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
         widget.valueChanged.connect(self.on_value_changed)
 
     def _update_node(self):
-        if self.node and self.node.view:
-            # 先触发布局更新
-            self.node.view.draw_node()
-            # 再强制重绘整个节点区域
-            self.node.view.update()
         if self.node.graph is not None:
             self.node.graph.viewer().force_update()
 

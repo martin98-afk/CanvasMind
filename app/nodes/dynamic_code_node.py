@@ -63,14 +63,23 @@ def create_dynamic_code_node(parent_window=None):
             super().__init__(CustomNodeItem)
             self.parent_window = parent_window
             self._view.set_align("center")
-            self.set_icon(resource_path("icons/代码执行.svg"))  # 可选
-            # 允许动态删除端口
+            self.set_icon(resource_path("icons/代码执行.svg"))
             self.model.port_deletion_allowed = True
 
-            # 初始化属性控件（含 code 编辑器）
+            # 定时器：分离 input / output / property update
+            self._input_sync_timer = QtCore.QTimer()
+            self._input_sync_timer.setSingleShot(True)
+            self._input_sync_timer.timeout.connect(self._sync_inputs_ports)
+
+            self._output_sync_timer = QtCore.QTimer()
+            self._output_sync_timer.setSingleShot(True)
+            self._output_sync_timer.timeout.connect(self._sync_outputs_ports)
+
+            self._property_update_timer = QtCore.QTimer()
+            self._property_update_timer.setSingleShot(True)
+            self._property_update_timer.timeout.connect(self._deferred_property_update)
+
             self._init_properties()
-            self._sync_timer = None
-            # 延迟绑定端口同步（避免初始化时 widget 未就绪）
             self._setup_port_sync()
 
         def _setup_port_sync(self):
@@ -82,22 +91,15 @@ def create_dynamic_code_node(parent_window=None):
             self._sync_outputs_ports()
 
         def _on_inputs_changed(self):
-            if self._sync_timer:
-                self._sync_timer.stop()
-                self._sync_timer.deleteLater()
-            self._sync_timer = QtCore.QTimer()
-            self._sync_timer.setSingleShot(True)
-            self._sync_timer.timeout.connect(self._sync_inputs_ports)
-            self._sync_timer.start(400)
+            self._input_sync_timer.start(100)
 
         def _on_outputs_changed(self):
-            if self._sync_timer:
-                self._sync_timer.stop()
-                self._sync_timer.deleteLater()
-            self._sync_timer = QtCore.QTimer()
-            self._sync_timer.setSingleShot(True)
-            self._sync_timer.timeout.connect(self._sync_outputs_ports)
-            self._sync_timer.start(400)
+            self._output_sync_timer.start(100)
+
+        def _deferred_property_update(self):
+            """防抖后的属性面板更新"""
+            if self.parent_window and hasattr(self.parent_window, 'property_panel'):
+                self.parent_window.property_panel.update_properties(self)
 
         def _init_properties(self):
             """初始化条件列表和 else 开关（只创建 widget，不绑定逻辑）"""
@@ -222,12 +224,12 @@ def create_dynamic_code_node(parent_window=None):
             used_names = set()
             name_mapping = {}  # {原始索引: 最终端口名}
             for i, item in enumerate(input_configs):
-                raw_name = item.get("name", f"input_{i}").strip() or f"input_{i}"
+                raw_name = item.get("name", f"input{i}").strip() or f"input{i}"
                 port_name = self._sanitize_port_name(raw_name)
                 base = port_name
                 counter = 1
                 while port_name in used_names:
-                    port_name = f"{base}_{counter}"
+                    port_name = f"{base}{counter}"
                     counter += 1
                 used_names.add(port_name)
                 expected_names.append(port_name)
@@ -260,9 +262,8 @@ def create_dynamic_code_node(parent_window=None):
                                 upstream_port.connect_to(new_port, push_undo=False, emit_signal=False)
                         except Exception:
                             continue
-            self._sync_names_to_form(input_configs, name_mapping, "input")
             if self.selected():
-                QtCore.QTimer.singleShot(200, lambda: parent_window.property_panel.update_properties(self))
+                self._property_update_timer.start(500)
 
         def _sync_outputs_ports(self):
             """同步输出端口：严格按表单顺序重建，仅当端口名未变时恢复连线"""
@@ -273,12 +274,12 @@ def create_dynamic_code_node(parent_window=None):
             used_names = set()
             name_mapping = {}  # {原始索引: 最终端口名}
             for i, item in enumerate(output_configs):
-                raw_name = item.get("name", f"output_{i}").strip() or f"output_{i}"
+                raw_name = item.get("name", f"output{i}").strip() or f"output{i}"
                 port_name = self._sanitize_port_name(raw_name)
                 base = port_name
                 counter = 1
                 while port_name in used_names:
-                    port_name = f"{base}_{counter}"
+                    port_name = f"{base}{counter}"
                     counter += 1
                 used_names.add(port_name)
                 expected_names.append(port_name)
@@ -316,9 +317,8 @@ def create_dynamic_code_node(parent_window=None):
                         except Exception:
                             continue
 
-            self._sync_names_to_form(output_configs, name_mapping, "output")
             if self.selected():
-                QtCore.QTimer.singleShot(200, lambda: parent_window.property_panel.update_properties(self))
+                self._property_update_timer.start(500)
 
         def _sync_names_to_form(self, ports, name_mapping, type="input"):
             """将生成的端口名称同步回表单"""
@@ -359,6 +359,15 @@ def create_dynamic_code_node(parent_window=None):
                     widget.valueChanged.connect(self._on_inputs_changed)
                 else:
                     widget.valueChanged.connect(self._on_outputs_changed)
+
+        def __del__(self):
+            # 注意：__del__ 在 PyQt 中不一定可靠，但可加强保障
+            if hasattr(self, '_input_sync_timer'):
+                self._input_sync_timer.stop()
+            if hasattr(self, '_output_sync_timer'):
+                self._output_sync_timer.stop()
+            if hasattr(self, '_property_update_timer'):
+                self._property_update_timer.stop()
 
         def format_code(self):
             # === 1. 收集参数（不变）===

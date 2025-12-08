@@ -7,68 +7,90 @@ import traceback
 import warnings
 warnings.filterwarnings("ignore")
 from pathlib import Path
-from loguru import logger
 
-# ==================== 输出重定向（干净输出，无前缀） ====================
+# ==================== 全局日志写入函数（保序核心） ====================
+LOG_FILE_PATH = r"{log_file_path}"
+NODE_ID = "{node_id}"
+
+def write_log_message(message: str, level: str = "INFO", is_raw: bool = False):
+    """
+    统一日志写入点，保证顺序。
+    - is_raw=True: 来自 print / stdout / stderr → 无前缀
+    - is_raw=False: 来自 logger → 带前缀
+    """
+    import datetime
+    if is_raw:
+        line = message
+    else:
+        # 模拟 loguru 的格式：[时间] 函数-行号 级别: message
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        line = f"{{now}} | {{level}}: {{message}}"
+    try:
+        with open(LOG_FILE_PATH, 'a', encoding='utf-8') as f:
+            f.write(line + '\\n')
+    except Exception:
+        pass  # 避免日志写入错误导致主程序崩溃
+
+
+# ==================== 重定向 stdout/stderr ====================
 class StreamToLogger:
-    def __init__(self, log_func):
-        self.log_func = log_func
+    def __init__(self, is_error=False):
+        self.is_error = is_error
         self.line_buffer = ""
 
     def write(self, buf):
+        if not buf:
+            return
         self.line_buffer += buf
         while "\\n" in self.line_buffer:
             line, self.line_buffer = self.line_buffer.split("\\n", 1)
             if line.strip():
-                self.log_func(line)
+                write_log_message(line, is_raw=True)
+        # 注意：非完整行暂不写入，等 flush 或下一行
 
     def flush(self):
         if self.line_buffer.strip():
-            self.log_func(self.line_buffer)
+            write_log_message(self.line_buffer.rstrip(), is_raw=True)
             self.line_buffer = ""
 
+    def isatty(self):
+        return False
 
-# ==================== 配置 ====================
-logger.remove()  # 移除默认 handler
+
+# ==================== 自定义 logger 代理 ====================
+class SimpleLogger:
+    def __init__(self, node_id):
+        self.node_id = node_id
+
+    def info(self, message):
+        write_log_message(str(message), level="INFO", is_raw=False)
+
+    def error(self, message):
+        write_log_message(str(message), level="ERROR", is_raw=False)
+
+    def success(self, message):
+        write_log_message(str(message), level="SUCCESS", is_raw=False)
+        
+    def debug(self, message):
+        write_log_message(str(message), level="DEBUG", is_raw=False)
+
+    def warning(self, message):
+        write_log_message(str(message), level="WARNING", is_raw=False)
 
 # ==================== 主执行逻辑 ====================
 if __name__ == "__main__":
     CLASS_NAME = "{class_name}"
     FILE_PATH = r"{file_path}"
-    LOG_FILE_PATH = r"{log_file_path}"
     RESULT_PATH = r"{result_path}"
     ERROR_PATH = r"{error_path}"
-    NODE_ID = "{node_id}"
+    PARAMS_PATH = r"{params_path}"
 
-    # --- 1. 结构化日志 handler（带时间、级别）---
-    structured_handler_id = logger.add(
-        LOG_FILE_PATH,
-        level="DEBUG",
-        format="[{{time:YYYY-MM-DD HH:mm:ss}}] {{function}}-{{line}} {{level}}: {{message}}",
-        encoding='utf-8',
-        filter=lambda record: record["extra"].get("node_id") == NODE_ID and not record["extra"].get("raw", False),
-        enqueue=True,
-        rotation="10 MB",
-        retention=3
-    )
-    node_logger = logger.bind(node_id=NODE_ID)  # 用于组件内部日志
+    # 重定向标准流
+    sys.stdout = StreamToLogger(is_error=False)
+    sys.stderr = StreamToLogger(is_error=True)
 
-    # --- 2. 原始输出 handler（无任何前缀）---
-    raw_handler_id = logger.add(
-        LOG_FILE_PATH,
-        level="DEBUG",
-        format="{{message}}",  # 关键：只输出 message
-        encoding='utf-8',
-        filter=lambda record: record["extra"].get("node_id") == NODE_ID and record["extra"].get("raw", True),
-        enqueue=True,
-        rotation="10 MB",
-        retention=3
-    )
-    raw_logger = logger.bind(node_id=NODE_ID, raw=True)  # 专用于 stdout/stderr
-
-    # --- 3. 重定向 stdout/stderr 到 raw_logger ---
-    sys.stdout = StreamToLogger(raw_logger.info)
-    sys.stderr = StreamToLogger(raw_logger.error)
+    # 创建组件可用的 logger（不使用 loguru！）
+    node_logger = SimpleLogger(NODE_ID)
 
     try:
         # === 加载组件类 ===
@@ -81,18 +103,18 @@ if __name__ == "__main__":
         if comp_class is None:
             raise AttributeError(f"模块中未找到类: {{CLASS_NAME}}")
 
-        # === 从参数文件加载 (params, inputs, global_variables) ===
-        PARAMS_PATH = r"{params_path}"
+        # === 加载参数 ===
         with open(PARAMS_PATH, 'rb') as f:
             loaded = pickle.load(f)
             if not isinstance(loaded, (tuple, list)) or len(loaded) != 3:
                 raise ValueError("参数文件格式错误：应为 (params, inputs, global_vars) 三元组")
             params, inputs, global_variables = loaded
+
         node_logger.info("从参数文件加载配置执行")
 
         # === 执行组件 ===
         comp_instance = comp_class()
-        comp_instance.logger = node_logger  # 组件内部可使用带前缀的 logger
+        comp_instance.logger = node_logger  # 注入自定义 logger
         node_logger.info("开始执行组件")
         output = comp_instance.execute(params, inputs, global_variables, NODE_ID)
 
@@ -112,7 +134,7 @@ if __name__ == "__main__":
         with open(ERROR_PATH, 'wb') as f:
             pickle.dump(error_info, f)
         node_logger.error(f"导入错误: {{e}}")
-        raw_logger.error(f"EXECUTION_IMPORT_ERROR: {{e}}")
+        sys.stderr.write(f"EXECUTION_IMPORT_ERROR: {{e}}\\n")
 
     except Exception as e:
         error_info = {{
@@ -124,5 +146,10 @@ if __name__ == "__main__":
         with open(ERROR_PATH, 'wb') as f:
             pickle.dump(error_info, f)
         node_logger.error(f"执行异常: {{e}}")
-        raw_logger.error(f"EXECUTION_ERROR: {{e}}")
+        sys.stderr.write(f"EXECUTION_ERROR: {{e}}\\n")
+
+    finally:
+        # 确保缓冲区 flush
+        sys.stdout.flush()
+        sys.stderr.flush()
 '''
