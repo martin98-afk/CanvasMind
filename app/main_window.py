@@ -95,6 +95,12 @@ class LowCodeWindow(FluentWindow):
         self.workflow_manager.component_code_changed.connect(
             self.develop_page.save_component_by_full_path
         )
+        self.workflow_manager.node_request_edit.connect(
+            lambda full_path: (
+                self.switchTo(self.develop_page),
+                self.develop_page._load_component(full_path)
+            )
+        )
     # endregion
 
     # region [4. 导航栏配置]

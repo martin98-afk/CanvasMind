@@ -198,7 +198,6 @@ class ComponentTreeWidget(TreeWidget):
         if not item:
             return
         full_path = item.data(0, Qt.UserRole + 1)
-        self.set_current_editing_component(full_path)
         self.component_selected.emit(full_path)
 
     def _create_new_component(self):

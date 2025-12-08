@@ -93,13 +93,16 @@ class NodeOperations:
                                        node_type=f"dynamic.{node_class.__name__}", icon=get_icon("系统运行日志"))
                 nodes_menu.add_command('调试模式', lambda graph, node: node._toggle_debug_mode(),
                                        node_type=f"dynamic.{node_class.__name__}", icon=get_icon("调试"))
-                nodes_menu.add_command('编辑组件', lambda graph, node: self.parent.edit_node(node),
+                nodes_menu.add_command('编辑组件', lambda graph, node: self.edit_node(node),
                                        node_type=f"dynamic.{node_class.__name__}",
                                        icon=QIcon(f":/qfluentwidgets/images/icons/Edit_white.svg"))
                 nodes_menu.add_separator(node_type=f"dynamic.{node_class.__name__}")
                 nodes_menu.add_command('删除节点', lambda graph, node: self.delete_node(node),
                                        node_type=f"dynamic.{node_class.__name__}",
                                        icon=QIcon(f":/qfluentwidgets/images/icons/Delete_white.svg"))
+
+    def edit_node(self, node):
+        self.parent.node_request_edit.emit(node.FULL_PATH)
 
     def on_node_created(self, node):
         self._node_id_cache[node.id] = node

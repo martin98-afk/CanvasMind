@@ -36,6 +36,7 @@ class CanvasPage(QWidget):
     global_variables_changed = pyqtSignal(str, str, str)
     env_changed = pyqtSignal(str)
     component_code_changed = pyqtSignal(str, str) # 组件文件地址、更新代码
+    node_request_edit = pyqtSignal(str)
 
     def __init__(self, parent=None, object_name: Path = None, manager=None):
         super().__init__()
@@ -561,10 +562,6 @@ class CanvasPage(QWidget):
         self.graph._viewer.zoom_to_nodes(self.graph._viewer.all_nodes())
         self.property_panel.set_allowed_update(True)
         self.property_panel.update_properties(None)
-
-    def edit_node(self, node):
-        self.parent.switchTo(self.parent.develop_page)
-        self.parent.develop_page._load_component(node.FULL_PATH)
 
     def _undo(self):
         try:
