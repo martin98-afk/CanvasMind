@@ -69,16 +69,14 @@ class LowCodeWindow(FluentWindow):
 
     # region [2. 核心服务初始化]
     def _init_services(self):
-        # 启动监听器（单例，副作用小）
+        # 初始化日志系统
+        self._setup_log_viewer()
+        # 启动监听器
         ComponentUsageTracker()
         ComponentScanner()
-
         # 加载配置
         self.config = Settings.get_instance()
         self.config.save()  # 确保默认配置落盘
-
-        # 初始化日志系统
-        self._setup_log_viewer()
     # endregion
 
     # region [3. 页面实例化（延迟创建，避免阻塞）]
