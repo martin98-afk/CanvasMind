@@ -10,6 +10,7 @@ import traceback
 from pathlib import Path
 from typing import Tuple, Dict, Type, Optional, List
 
+from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 from loguru import logger
 
 from app.components.base import COMPONENT_IMPORT_CODE
@@ -141,7 +142,10 @@ class ComponentScanner:
     _instance = None
     _cache: Optional[Tuple[Dict[str, Type], Dict[str, Path]]] = None
     _components_dir: Path = Path(resource_path("app/components"))
-    _file_mtime_map: Dict[Path, int]  # 记录每个 .py 文件的最后修改时间
+    _file_mtime_map: Dict[Path, int]
+    _refresh_pending: bool = False
+    _main_loop: Optional[asyncio.AbstractEventLoop] = None
+    _callbacks = []  # 存储外部注册的回调函数
 
     def __new__(cls):
         if cls._instance is None:
@@ -152,6 +156,82 @@ class ComponentScanner:
         if not hasattr(self, '_initialized'):
             self._initialized = True
             self._file_mtime_map = {}
+            self._refresh_pending = False
+            try:
+                self._main_loop = asyncio.get_running_loop()
+            except RuntimeError:
+                # 未在 asyncio loop 中运行（例如在 Qt 主线程）
+                self._main_loop = None
+            if HAS_WATCHFILES:
+                self._start_component_watcher()
+
+    @classmethod
+    def register_on_change(cls, callback):
+        """外部注册刷新回调（如 UI 刷新）"""
+        if callback not in cls._callbacks:
+            cls._callbacks.append(callback)
+
+    @classmethod
+    def unregister_on_change(cls, callback):
+        if callback in cls._callbacks:
+            cls._callbacks.remove(callback)
+
+    def _notify_change(self):
+        """内部通知所有监听者"""
+        for cb in self._callbacks:
+            try:
+                QTimer.singleShot(0, cb)
+            except Exception as e:
+                logger.error(f"Callback error: {e}")
+
+    def _start_component_watcher(self):
+        """启动组件代码监听器（后台线程）"""
+        def run():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self._watch_component_files())
+        threading.Thread(target=run, daemon=True, name="ComponentWatcher").start()
+
+    async def _watch_component_files(self):
+        """监听 app/components/ 下 .py 文件变更"""
+        comp_dir = self._components_dir.resolve()
+        if not comp_dir.exists():
+            logger.warning(f"组件目录不存在，跳过监听: {comp_dir}")
+            return
+
+        logger.info(f"✅ 开始监听组件代码变化: {comp_dir}")
+        async for changes in awatch(comp_dir, recursive=True):
+            need_refresh = False
+            for change_type, file_path in changes:
+                path = Path(file_path)
+                if path.suffix == ".py" and path.name not in ("__init__.py", "base.py"):
+                    logger.info(f"检测到组件代码变更 ({change_type.name}): {path}")
+                    need_refresh = True
+            if need_refresh:
+                # 安全地触发 refresh（避免高频调用）
+                self._schedule_refresh()
+
+    def _schedule_refresh(self):
+        """安排一次 refresh，确保只触发一次（去抖）"""
+        if self._refresh_pending:
+            return
+        self._refresh_pending = True
+
+        def do_refresh():
+            try:
+                self.refresh()
+            except Exception as e:
+                logger.error(f"组件重载失败: {e}")
+            finally:
+                self._refresh_pending = False
+
+        if self._main_loop and self._main_loop.is_running():
+            # 如果在 asyncio 环境中，交由主 loop 执行
+            self._main_loop.call_soon_threadsafe(do_refresh)
+        else:
+            # 否则在当前线程立即执行（适用于 Qt 等非 asyncio 主线程）
+            # 注意：此时需确保 refresh 是线程安全的（目前逻辑是只读/写私有状态，且单例）
+            do_refresh()
 
     def _clear_dynamic_modules(self):
         to_remove = [name for name in sys.modules if name.startswith("dynamic_component_")]
@@ -162,6 +242,12 @@ class ComponentScanner:
         if self._cache is None or force_reload:
             return self.refresh()
         return self._cache
+
+    def get_component(self, full_path: str):
+        return self._cache[0].get(full_path)
+
+    def get_file_maps(self):
+        return self._cache[1]
 
     def refresh(self) -> Tuple[Dict[str, Type], Dict[str, Path]]:
         if self._cache is None:
@@ -221,8 +307,8 @@ class ComponentScanner:
             except Exception as e:
                 traceback.print_exc()
                 logger.error(f"⚠️ 组件加载失败且无有效历史回退: {py_file} - {e}")
-
         self._cache = (comp_map, file_map)
+        self._notify_change()
         return self._cache
 
     def _scan_all_components(self) -> Tuple[Dict[str, Type], Dict[str, Path]]:
@@ -275,7 +361,6 @@ class ComponentScanner:
 
         try:
             py_file.write_text(fallback_code, encoding="utf-8")
-            # 用你的标准方法加载临时文件
             self._do_load_component_from_file(
                 py_file, fallback_code, comp_map, file_map, is_fallback=True, fallback_version=version
             )
@@ -291,20 +376,16 @@ class ComponentScanner:
         is_fallback: bool = False,
         fallback_version: str = ""
     ):
-        # 若代码为空，跳过
         if not code.strip():
             raise ValueError("组件代码为空")
-        # 剔除类前导入
         source_lines = code.splitlines(keepends=True)
         start = len(COMPONENT_IMPORT_CODE.split("\n")) - 1
         code = ''.join(source_lines[start:])
-        # 创建唯一模块名
         unique_id = f"{hash(code)}_{py_file.stem}"
         module_name = f"dynamic_component_{unique_id}"
         if module_name in sys.modules:
             del sys.modules[module_name]
 
-        # 创建模块
         spec = importlib.util.spec_from_file_location(module_name, py_file)
         if spec is None:
             raise RuntimeError("无法创建模块 spec")
@@ -312,7 +393,6 @@ class ComponentScanner:
         sys.modules[module_name] = module
         spec.loader.exec_module(module)
 
-        # 查找组件类
         comp_cls = None
         for name, obj in inspect.getmembers(module, inspect.isclass):
             if getattr(obj, 'category', ""):
@@ -322,29 +402,28 @@ class ComponentScanner:
         if comp_cls is None:
             raise ValueError("未找到有效组件类（缺少 category 属性）")
 
-        # 确定版本
         if is_fallback:
             version = fallback_version
         else:
-            # 保存历史（仅当是当前文件且未保存过）
             histories = ComponentHistoryManager.load_histories(py_file)
             if not histories:
-                component_name = getattr(comp_cls, 'name')
-                version =ComponentHistoryManager.save_history(py_file, component_name, code)
+                component_name = getattr(comp_cls, 'name', py_file.stem)
+                version = ComponentHistoryManager.save_history(py_file, component_name, code)
             else:
                 version = histories[-1]["version"]
 
-        # 注入元信息
         comp_cls._version = version
         comp_cls._source_file = py_file
         comp_cls._is_fallback = is_fallback
 
-        # 加载完整历史
         hist_path = ComponentHistoryManager.get_history_file_path(py_file)
-        with open(hist_path, 'r', encoding='utf-8') as f:
-            comp_cls._history_file = json.load(f)
+        if hist_path.exists():
+            with open(hist_path, 'r', encoding='utf-8') as f:
+                comp_cls._history_file = json.load(f)
+        else:
+            comp_cls._history_file = []
 
-        component_name = getattr(comp_cls, 'name')
+        component_name = getattr(comp_cls, 'name', py_file.stem)
         full_path = f"{comp_cls.category}/{component_name}"
 
         comp_map[full_path] = comp_cls

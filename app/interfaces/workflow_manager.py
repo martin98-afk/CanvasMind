@@ -514,7 +514,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             canvas_interface.clicked.connect(
                 lambda: (
                     canvas_page.register_components(),
-                    canvas_page.nav_view.refresh_components(),
                     canvas_page._setup_pipeline_style()
                 )
             )
@@ -554,7 +553,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             canvas_interface.clicked.connect(
                 lambda: (
                     canvas_page.register_components(),
-                    canvas_page.nav_view.refresh_components(),
                     canvas_page._setup_pipeline_style()
                 )
             )

@@ -27,7 +27,7 @@ class ComponentTreeWidget(TreeWidget):
     """组件树控件 - 支持右键菜单、搜索、快捷键、类别筛选"""
     component_selected = pyqtSignal(str)
     component_created = pyqtSignal(dict)
-    component_pasted = pyqtSignal()
+    component_pasted = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -43,10 +43,13 @@ class ComponentTreeWidget(TreeWidget):
         self._selected_categories = set()
         self.setFocusPolicy(Qt.StrongFocus)
 
-    def set_components(self, component_map: Dict[str, Any], file_map: Dict[str, Path]):
-        """设置组件数据（外部调用，不自动刷新 UI）"""
-        self._components = component_map
-        self._file_map = file_map
+    def refresh_components(self):
+        """刷新组件列表，并保持当前类别筛选状态"""
+        try:
+            self._components, self._file_map = ComponentScanner().get_components()
+            self.show_selected_category()  # 👈 保留筛选状态
+        except Exception as e:
+            self._show_error(f"刷新组件失败: {e}")
 
     def show_selected_category(self):
         """根据当前筛选条件构建树（统一入口）"""
@@ -56,11 +59,9 @@ class ComponentTreeWidget(TreeWidget):
         if not self._components:
             return
 
-        # 预构建分类 → 组件列表映射（避免多次遍历）
         category_to_comps = {}
         for full_path, comp_cls in self._components.items():
-            category = getattr(comp_cls, 'category', 'General')
-            name = getattr(comp_cls, 'name', comp_cls.__name__) or comp_cls.__name__
+            category, name = full_path.split("/")
             if not isinstance(name, str):
                 name = str(name)
 
@@ -77,7 +78,6 @@ class ComponentTreeWidget(TreeWidget):
             self.addTopLevelItem(cat_item)
             self._all_items.append(cat_item)
 
-            # 组件按名称排序
             comps = sorted(category_to_comps[category], key=lambda x: x[1])
             for full_path, name in comps:
                 comp_item = QTreeWidgetItem([name])
@@ -86,15 +86,6 @@ class ComponentTreeWidget(TreeWidget):
                 self._all_items.append(comp_item)
 
             cat_item.setExpanded(True)
-
-    def refresh_components(self):
-        """刷新组件列表，并保持当前类别筛选状态"""
-        try:
-            component_map, file_map = ComponentScanner().refresh()
-            self.set_components(component_map, file_map)
-            self.show_selected_category()  # 👈 保留筛选状态
-        except Exception as e:
-            self._show_error(f"刷新组件失败: {e}")
 
     def filter_items(self, keyword: str):
         """根据关键词过滤树节点（模糊匹配）"""
@@ -198,7 +189,6 @@ class ComponentTreeWidget(TreeWidget):
             menu.addAction(Action("🆕 新建组件", triggered=self._create_new_component))
             if self._copied_component:
                 menu.addAction(Action("📌 粘贴组件 (Ctrl+V)", triggered=self._paste_component))
-            menu.addAction(Action("🔄 刷新组件", triggered=self.refresh_components))
 
         if menu.actions():
             menu.exec_(self.viewport().mapToGlobal(position))
@@ -226,12 +216,25 @@ class ComponentTreeWidget(TreeWidget):
             self._show_warning("请先选中一个组件")
             return
         full_path = item.data(0, Qt.UserRole + 1)
-        comp_cls = self._components.get(full_path)
-        if comp_cls:
-            self._copied_component = copy.deepcopy(comp_cls)
-            self._show_success("组件已复制 (Ctrl+C)")
-        else:
+        orig_cls = self._components.get(full_path)
+        if not orig_cls:
             self._show_warning("无法复制该组件")
+            return
+
+        # ✅ 动态创建新类（不共享原类）
+        new_cls = type(
+            orig_cls.__name__,  # 类名
+            orig_cls.__bases__,  # 基类
+            dict(orig_cls.__dict__)  # 复制所有类属性（浅拷贝，但够用）
+        )
+
+        # ✅ 深拷贝可变属性（如 list/dict），避免共享
+        for attr_name, attr_value in orig_cls.__dict__.items():
+            if isinstance(attr_value, (list, dict)):
+                setattr(new_cls, attr_name, copy.deepcopy(attr_value))
+
+        self._copied_component = new_cls
+        self._show_success("组件已复制 (Ctrl+C)")
 
     def _paste_component(self):
         if not self._copied_component:
@@ -255,7 +258,7 @@ class ComponentTreeWidget(TreeWidget):
             self._copied_component.name = info["name"]
             self._copied_component.category = info["category"]
             self._copied_component.description = info.get("description", "")
-            self.component_pasted.emit()
+            self.component_pasted.emit(f"{info['category']}/{info['name']}")
 
     def _delete_component(self):
         item = self._get_selected_component_item()
@@ -275,7 +278,6 @@ class ComponentTreeWidget(TreeWidget):
             file_path = self._file_map.get(full_path)
             if file_path and Path(file_path).exists():
                 Path(file_path).unlink()
-                self.refresh_components()
                 self._show_success("组件删除成功！")
             else:
                 self._show_warning("组件文件不存在")
@@ -348,14 +350,16 @@ class ComponentTreePanel(QWidget):
         self.search_box.textChanged.connect(self.tree.filter_items)
 
     def _init_components_and_categories(self):
-        """初始化组件和类别（仅一次）"""
-        comp_map, file_map = ComponentScanner().get_components()  # 使用缓存，不强制刷新
-        self.tree.set_components(comp_map, file_map)
-        self.tree.show_selected_category()  # 👈 保留筛选状态
-        # 提取类别
-        categories = {getattr(cls, 'category', 'General') for cls in comp_map.values()}
+        self.tree.refresh_components()
+        ComponentScanner.register_on_change(self._on_scanner_updated)
+        categories = {getattr(cls, 'category', 'General') for cls in self.tree._components.values()}
         self.category_filter_dialog = CategoryFilterDialog(sorted(categories), self)
         self.category_filter_dialog.categories_changed.connect(self._on_categories_changed)
+
+    def _on_scanner_updated(self):
+        """当 ComponentScanner 自动重载后，同步更新树（保持筛选状态）"""
+        self.tree.refresh_components()
+        self.tree.expand_all_categories()
 
     def _show_category_dialog(self):
         if self.category_filter_dialog:
@@ -378,9 +382,6 @@ class ComponentTreePanel(QWidget):
     @property
     def component_pasted(self):
         return self.tree.component_pasted
-
-    def refresh_components(self):
-        self.tree.refresh_components()
 
     def set_current_editing_component(self, full_path: str):
         self.tree.set_current_editing_component(full_path)

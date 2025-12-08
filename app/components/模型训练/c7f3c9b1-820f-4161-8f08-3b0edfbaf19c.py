@@ -22,11 +22,11 @@ class Component(BaseComponent):
     requirements = "torch,ultralytics,Pillow"
     inputs = [
         PortDefinition(name="dataset_dir", label="数据集目录", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
+        PortDefinition(name="pre_model", label="预训练模型", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="model.pt", label="训练好的模型", type=ArgumentType.FILE),
-        PortDefinition(name="metrics", label="训练指标", type=ArgumentType.TEXT),
-        PortDefinition(name="validation_images", label="验证图像（含预测结果）", type=ArgumentType.IMAGE),
+        PortDefinition(name="validation_image", label="验证图像（含预测结果）", type=ArgumentType.IMAGE),
     ]
     properties = {
         "model_name": PropertyDefinition(
@@ -39,25 +39,16 @@ class Component(BaseComponent):
             type=PropertyType.INT,
             default=100,
             label="训练轮数",
-            min=1,
-            max=1000,
-            step=1
         ),
         "batch_size": PropertyDefinition(
             type=PropertyType.INT,
             default=16,
             label="批量大小",
-            min=1,
-            max=128,
-            step=1
         ),
         "img_size": PropertyDefinition(
             type=PropertyType.INT,
             default=640,
             label="图像尺寸",
-            min=320,
-            max=1280,
-            step=16
         ),
         "device": PropertyDefinition(
             type=PropertyType.CHOICE,
@@ -69,7 +60,11 @@ class Component(BaseComponent):
             type=PropertyType.TEXT,
             default="./runs/pose",
             label="模型保存路径",
-            help="训练结果将保存在此目录"
+        ),
+        "dataset_name": PropertyDefinition(
+            type=PropertyType.TEXT,
+            default="dataset",
+            label="数据集文件夹名",
         ),
     }
 
@@ -114,10 +109,10 @@ class Component(BaseComponent):
                     item.rename(data_dir / item.name)
 
         # 3. 检查数据目录结构
-        train_img_dir = data_dir / "dataset" / "train" / "images"
-        train_lbl_dir = data_dir / "dataset" / "train" / "labels"
-        val_img_dir = data_dir / "dataset" / "valid" / "images"
-        val_lbl_dir = data_dir / "dataset" / "valid" / "labels"
+        train_img_dir = data_dir / params.dataset_name / "train" / "images"
+        train_lbl_dir = data_dir / params.dataset_name / "train" / "labels"
+        val_img_dir = data_dir / params.dataset_name / "valid" / "images"
+        val_lbl_dir = data_dir / params.dataset_name / "valid" / "labels"
         self.logger.info(train_img_dir)
 
         if not train_img_dir.exists() or not train_lbl_dir.exists():
@@ -126,7 +121,7 @@ class Component(BaseComponent):
             raise ValueError("验证数据目录结构不正确，需包含 val/images 和 val/labels")
 
         # 4. 构建 data.yaml
-        data_yaml = data_dir / "dataset" / "data.yaml"
+        data_yaml = data_dir / params.dataset_name / "data.yaml"
 
         # 5. 加载模型
         model_name = params.model_name
@@ -183,15 +178,9 @@ class Component(BaseComponent):
         # 10. 返回结果
         # 获取 mAP@0.5 值
         mAP_05 = results.results_dict.get('metrics/mAP_0.5')
-        # 安全格式化
-        if isinstance(mAP_05, (int, float)):
-            metrics_str = f"训练完成，最终 mAP@0.5: {mAP_05:.4f}"
-        else:
-            metrics_str = "训练完成，最终 mAP@0.5: N/A"
+
         return {
             "model.pt": model,
-            "metrics": metrics_str,
-            "model_path": str(trained_model_path),
             "validation_images": img
         }
 
@@ -209,7 +198,7 @@ if __name__ == "__main__":
             "save_dir": "./test_runs/pose"
         },
         inputs={
-            "dataset": "dummy.zip"  # 模拟标准 YOLO 格式 zip 包
+            params.dataset_name: "dummy.zip"  # 模拟标准 YOLO 格式 zip 包
         },
         global_vars={},
         node_id="test_node",

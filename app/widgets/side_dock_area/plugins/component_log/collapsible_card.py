@@ -54,7 +54,7 @@ class CollapsibleLogCard(CardWidget):
 
         # === 修改标题布局：加入计时器 ===
         title_layout = QHBoxLayout()
-        title_layout.addWidget(self.title_label)
+        title_layout.addWidget(self.title_label, 1)
         title_layout.addStretch()
         title_layout.addWidget(self.timer_label)  # <-- 新增：计时器在 toggle 左边
         title_layout.addWidget(self.toggle_button)
@@ -71,7 +71,7 @@ class CollapsibleLogCard(CardWidget):
         self.log_text.setLineWrapMode(QTextEdit.WidgetWidth)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setContentsMargins(4, 4, 4, 4)
         layout.addLayout(title_layout)
         layout.addWidget(self.log_text)
 
