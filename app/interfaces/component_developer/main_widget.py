@@ -23,7 +23,7 @@ from app.interfaces.component_developer.component_history_manager import Compone
 from app.interfaces.component_developer.constants import *
 from app.interfaces.component_developer.llm_context import LLMContextProvider
 from app.interfaces.component_developer.message_manager import MessageManager
-from app.scan_components import ComponentUsageTracker
+from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.scan_components import resource_path
 from app.templates.component_templates import default_templates
 from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
@@ -221,19 +221,12 @@ class ComponentDeveloperPage(QWidget):
         self._current_component_code = template_code
         MessageManager.success(f"已切换到模板: {template_name}", "", self)
 
-    def _load_existing_components(self):
-        try:
-            self.component_tree.refresh_components()
-        except Exception as e:
-            logger.error(traceback.format_exc())
-            MessageManager.error(f"加载组件失败: {e}", "", self)
-
     def _on_component_created(self, component_info):
         self._create_new_component(component_info)
         self._save_component()
 
-    def _on_component_pasted(self):
-        self._load_component(self.component_tree._copied_component)
+    def _on_component_pasted(self, full_path):
+        self._load_component(full_path=full_path, component=self.component_tree._copied_component)
         self._save_component(delete_original_file=False)
 
     def extract_class_source_from_file(self, file_path: Path, class_name: str) -> str:
@@ -248,15 +241,16 @@ class ComponentDeveloperPage(QWidget):
         return ""
 
     def _load_component_filepath(self, component_path: Path):
-        file_map = {value: key for key, value in self.component_tree._file_map.items()}
-        full_path = file_map.get(component_path)
+        file_map = {value: key for key, value in ComponentScanner().get_file_maps().items()}
+        full_path = file_map.get(Path(component_path))
         QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
-        self._load_component(full_path)
+        QTimer.singleShot(300, lambda: self._load_component(full_path))
 
-    def _load_component(self, full_path=None):
+    def _load_component(self, full_path=None, component=None):
         try:
-            self.component_tree.set_current_editing_component(full_path)
-            component = self.component_tree._components[full_path]
+            if full_path is not None:
+                self._current_editing_component = full_path
+            component = component or ComponentScanner().get_component(full_path)
 
             self.name_edit.setText(getattr(component, 'name', ''))
             self.category_edit.setText(getattr(component, 'category', ''))
@@ -299,8 +293,7 @@ class ComponentDeveloperPage(QWidget):
                 self.code_editor.replace_text_preserving_view(template)
                 self._current_component_file = None
 
-            # ✅【关键修复】不再反向同步 UI → 代码（加载应以代码为准）
-            # self._sync_basic_info_to_code()
+            self._sync_basic_info_to_code()
 
             if self._current_component_file:
                 self._load_history_list(self._current_component_file)
@@ -859,10 +852,9 @@ except:
                     current_signature=current_signature
                 )
                 self._load_history_list(self._current_component_file)
+                QTimer.singleShot(1000, lambda: self._load_component_filepath(self._current_component_file))
 
-            self.component_tree.refresh_components()
             MessageManager.success("组件保存成功！", "", self)
-            self._load_component_filepath(self._current_component_file)
         except Exception as e:
             logger.error(traceback.format_exc())
             MessageManager.error(f"保存组件失败: {str(e)}", "", self)
@@ -947,9 +939,8 @@ except:
                 current_signature=sig
             )
 
-            # 5. 刷新 UI
-            self.component_tree.refresh_components()
-            self._load_component_filepath(source_file)
+            # 延迟等待watchfiles自动更新组件库
+            QTimer.singleShot(1000, lambda: self._load_component_filepath(source_file))
             MessageManager.success(f"组件已保存：{name}", "", self)
 
         except Exception as e:
@@ -1037,7 +1028,6 @@ except:
             try:
                 with open(history_file, 'w', encoding='utf-8') as f:
                     json.dump(histories, f, ensure_ascii=False, indent=4)
-                logger.info(f"已更新版本 {histories[real_index]['version']} 的说明")
             except Exception as e:
                 logger.error(f"保存说明失败: {e}")
                 MessageManager.error("保存说明失败", str(e), self)

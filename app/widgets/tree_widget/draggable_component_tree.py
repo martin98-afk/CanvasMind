@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import QTreeWidgetItem, QWidget, QVBoxLayout, QHBoxLayout
 from qfluentwidgets import FluentIcon as FIF, TransparentToggleToolButton, RoundMenu, Action
 from qfluentwidgets import TreeWidget, SearchLineEdit, FluentStyleSheet, DropDownPushButton
 
+from app.scan_components import ComponentScanner
 from app.widgets.tree_widget.category_filter import CategoryFilterDialog
 
 
@@ -118,13 +119,12 @@ class DraggableTreeWidget(TreeWidget):
         self._all_items = []  # 用于搜索
         self._usage_stats = self._load_usage_stats()  # 使用统计
         self._favorites = self._load_favorites()  # 收藏夹
-
         # 筛选状态
         self._show_time_sorted = False
         self._show_only_favorites = False
         self._selected_categories = set()  # 当前选中的类别
 
-        self.refresh_components()
+        self._init_components()
 
     def _load_usage_stats(self):
         stats_file = Path("./canvas_files/nodegraph_usage.json")
@@ -230,9 +230,9 @@ class DraggableTreeWidget(TreeWidget):
 
         # 获取所有组件
         all_components = []
-        for full_path, comp_cls in self.parent.component_map.items():
-            category = getattr(comp_cls, 'category', 'General')
-            name = getattr(comp_cls, 'name', comp_cls.__name__)
+        comp_map, file_map = ComponentScanner().get_components()
+        for full_path, comp_cls in comp_map.items():
+            category, name = full_path.split("/")
             if not isinstance(name, str):
                 name = comp_cls.NODE_NAME
 
@@ -350,9 +350,14 @@ class DraggableTreeWidget(TreeWidget):
             for cat_item in categories.values():
                 cat_item.setExpanded(True)
 
+    def _init_components(self):
+        self.build_filtered_tree()
+        ComponentScanner.register_on_change(self.refresh_components)
+
     def refresh_components(self):
         try:
             self.build_filtered_tree()
+
         except Exception as e:
             print(f"刷新组件失败: {e}")
 
@@ -376,7 +381,8 @@ class DraggableTreeWidget(TreeWidget):
             drag.exec_(Qt.CopyAction)
 
     def create_drag_preview(self, full_path):
-        comp_cls = self.parent.component_map.get(full_path)
+        comp_map, file_map = ComponentScanner().get_components()
+        comp_cls = comp_map.get(full_path)
         if not comp_cls or comp_cls.__name__.startswith("ControlFlow"):
             return self.get_default_preview(full_path)
 

@@ -597,6 +597,7 @@ class CanvasPage(QWidget):
         self._auto_saver.stop()
         self.ipython_kernel.stop_kernel()
         self.ui_manager.destroy_all()
+        ComponentScanner.unregister_on_change(self.nav_view.refresh_components)
         # ===== 7. 销毁 UI 控件（确保 parent=None）=====
         self.graph.deleteLater()
         # 8. 发射信号 & 移除自身
