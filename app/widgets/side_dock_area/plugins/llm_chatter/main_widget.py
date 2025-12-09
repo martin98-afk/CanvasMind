@@ -483,6 +483,24 @@ class OpenAIChatToolWindow(ToolWindow):
             self.chat_scroll_area.verticalScrollBar().maximum()
         ))
 
+    def send_preset_question(self, question: str):
+        """
+        从外部传入一个预制问题并自动开始生成回复。
+
+        Args:
+            question (str): 预设的用户提问内容
+        """
+        if not isinstance(question, str) or not question.strip():
+            return
+
+        # 如果处于历史模式，退出历史模式并回到当前会话
+        if self._in_history_mode:
+            self.history_btn.setChecked(False)
+            self._toggle_history_mode(False)
+
+        # 触发标准发送流程（复用已有逻辑）
+        self._on_send_clicked(user_text=question.strip())
+
     def _on_send_clicked(self, user_text: str = ""):
         # === 防止重复发送：自动中止当前请求 ===
         if self._is_streaming:

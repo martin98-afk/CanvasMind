@@ -186,10 +186,9 @@ class CollapsibleLogCard(CardWidget):
         self.log_text.setHtml(full_html)
 
         # 保持滚动到底（如果正在运行）
-        if self.is_current_running:
-            self.log_text.verticalScrollBar().setValue(
-                self.log_text.verticalScrollBar().maximum()
-            )
+        self.log_text.verticalScrollBar().setValue(
+            self.log_text.verticalScrollBar().maximum()
+        )
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

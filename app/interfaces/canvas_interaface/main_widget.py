@@ -27,7 +27,6 @@ from app.scan_components import ComponentScanner
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
-from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
 
 
 class CanvasPage(QWidget):
@@ -198,9 +197,11 @@ class CanvasPage(QWidget):
             self.select_node_by_name(content)
         elif action.startswith("create"):
             self.node_operations.create_next_node_using_name(content)
-        elif action == "inspect":
-            pass
-            # self.homepage.show_variable_inspector("var_input")
+        elif action.startswith("generate"):
+            question = f"""历史对话上下文：{self.ui_manager.llm_chatter.session_manager.get_current_session().messages}
+            你的任务是结合历史对啊信息生成这个 {content} 组件的代码"""
+            self.parent.switchTo(self.parent.develop_page)
+            self.parent.develop_page.llm_context_provider.send_preset_generate_llm_request(question)
 
     def select_node_by_name(self, name_list):
         if name_list is None:

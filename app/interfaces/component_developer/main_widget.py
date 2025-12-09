@@ -54,10 +54,6 @@ class ComponentDeveloperPage(QWidget):
         self._updating_requirements_from_analysis = False
         self._saving = False  # 防止重复保存
 
-    @property
-    def context_register(self):
-        return self.llm_context_provider.context_register
-
     def _setup_ui(self):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -133,6 +129,10 @@ class ComponentDeveloperPage(QWidget):
         self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
         layout.addWidget(self.splitter)
         layout.addWidget(self.side_dock_area.tool_panel)
+
+    @property
+    def context_register(self):
+        return self.llm_context_provider.context_register
 
     def hide_splitter(self):
         self.splitter.setSizes(HIDE_SPLITTER_SIZES)

@@ -19,7 +19,6 @@ class CanvasUISetUp:
     def __init__(self, parent):
         self.parent = parent
         self.nav_view = None
-        self.property_panel = None
         self.nodes_container = None
 
     # --- ui构建 --- 
@@ -31,9 +30,6 @@ class CanvasUISetUp:
         self.nav_view =  self.nav_panel.tree
         # 属性面板
         self.side_dock_area = SideDockArea(self.parent, "运行画布")
-        self.property_panel = self.side_dock_area.get_tool_instance("属性面板")
-        self.ipython_console = self.side_dock_area.get_tool_instance("IPython 控制台")
-        self.log_window = self.side_dock_area.get_tool_instance("模型日志")
         main_layout = QHBoxLayout(self.parent)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -54,6 +50,22 @@ class CanvasUISetUp:
         self.create_environment_selector()
         self.create_floating_buttons()
         self.create_floating_nodes()
+
+    @property
+    def property_panel(self):
+        return self.side_dock_area.get_tool_instance("属性面板")
+
+    @property
+    def llm_chatter(self):
+        return self.side_dock_area.get_tool_instance("大模型对话")
+
+    @property
+    def ipython_console(self):
+        return self.side_dock_area.get_tool_instance("IPython 控制台")
+
+    @property
+    def log_window(self):
+        return self.side_dock_area.get_tool_instance("模型日志")
 
     def hide_splitter(self):
         """强制 splitter 回到默认尺寸，无视用户拖动历史"""
@@ -387,7 +399,6 @@ class CanvasUISetUp:
                 self.side_dock_area.setParent(None)
                 self.side_dock_area.deleteLater()
                 self.side_dock_area = None
-                self.property_panel = None
                 self.ipython_console = None
 
             # 4. 销毁悬浮按钮容器
