@@ -194,6 +194,7 @@ class CanvasPage(QWidget):
         action: "jump:node_102"
         """
         if action.startswith("jump"):
+            content = content if not "," in content else content.split(",")
             self.select_node_by_name(content)
         elif action.startswith("create"):
             self.node_operations.create_next_node_using_name(content)

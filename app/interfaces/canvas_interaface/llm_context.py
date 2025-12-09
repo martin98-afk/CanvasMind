@@ -106,7 +106,7 @@ class LLMContextProvider:
         return final_desc
 
     def extract_graph_info(self):
-        response = "# 画布上下文引用规范\n{LLM_GRAPH_CONTEXT_NORMS}\n\n# 画布上下文信息\n{graph_info}"""
+        response = "# 画布上下文信息\n{graph_info}\n\n# 画布上下文引用规范\n{LLM_GRAPH_CONTEXT_NORMS}\n\n"""
         selected_nodes = self.graph.selected_nodes()
         if len(selected_nodes) > 0:
             graph_info = self._extract_graph_info(selected_nodes)
@@ -129,7 +129,7 @@ class LLMContextProvider:
         return "全局变量", self.global_variables.to_dict(), None
 
     def get_component_info(self):
-        response = "# 组件上下文引用规范\n{NODE_CREATE_CONTEXT_NORMS}\n\n# 组件上下文信息\n{component_info}"""
+        response = "# 组件上下文信息\n{component_info}\n\n# 组件上下文引用规范\n{NODE_CREATE_CONTEXT_NORMS}\n\n"""
         selected_categories = self.ui_manager.nav_view._selected_categories
         component_map, _ = ComponentScanner().get_components()
         selected_components = {
