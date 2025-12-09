@@ -492,12 +492,6 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._in_history_mode:
             self.history_btn.setChecked(False)
             self._toggle_history_mode(False)
-        session = self.session_manager.get_current_session()
-        session.add_user_message(
-            content=question.strip(),
-            params={key: value for key, value in self.context_selector.context.items()}
-        )
-        self._append_user_message(question.strip())
         # 触发标准发送流程（复用已有逻辑）
         self._on_send_clicked(user_text=question.strip())
 

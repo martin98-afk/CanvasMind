@@ -39,8 +39,8 @@ class LLMContextProvider:
         """注册所有支持的大模型上下文类型"""
         self.context_register.register("画布节点", self.extract_graph_info, self.select_node_by_name)
         self.context_register.register("画布节点图像", self.extract_graph_image, self.select_node_by_name)
-        self.context_register.register("全局变量", self.extract_var_info, lambda *args, **kwargs: None)
-        self.context_register.register("组件信息", self.get_component_info, lambda *args, **kwargs: None)
+        self.context_register.register("全局变量", self.extract_var_info, lambda *args, kwargs: None)
+        self.context_register.register("组件信息", self.get_component_info, lambda *args, kwargs: None)
 
     def _extract_graph_info(self, nodes=None):
         """过滤掉 session data 中的复杂/内部信息，生成面向大模型的结构化画布描述。
@@ -67,9 +67,9 @@ class LLMContextProvider:
                 for upstream in port.connected_ports():
                     conn_desc.append(f"[{upstream.node().name()}](jump) → {upstream.name()}")
                 if conn_only := ", ".join(conn_desc):
-                    inputs.append(f"- **{port.name()}** ({port.model.type_}) ← {conn_only}")
+                    inputs.append(f"- {port.name()} ({port.model.type_}) ← {conn_only}")
                 else:
-                    inputs.append(f"- **{port.name()}** ({port.model.type_}) ← 无连接")
+                    inputs.append(f"- {port.name()} ({port.model.type_}) ← 无连接")
 
             # 输出端口
             outputs = []
@@ -78,17 +78,17 @@ class LLMContextProvider:
                 for downstream in port.connected_ports():
                     conn_desc.append(f"[{downstream.node().name()}](jump) ← {downstream.name()}")
                 if conn_only := ", ".join(conn_desc):
-                    outputs.append(f"- **{port.name()}** ({port.model.type_}) → {conn_only}")
+                    outputs.append(f"- {port.name()} ({port.model.type_}) → {conn_only}")
                 else:
-                    outputs.append(f"- **{port.name()}** ({port.model.type_}) → 无连接")
+                    outputs.append(f"- {port.name()} ({port.model.type_}) → 无连接")
 
             # 构建节点描述块
             node_block = f"""### [{name}](jump)
-- **类型**: {node_type}
-- **属性**: {custom_props if custom_props else "无"}
-- **输入**:
+- 类型: {node_type}
+- 属性: {custom_props if custom_props else "无"}
+- 输入:
 {"; ".join(inputs) if inputs else "  无输入端口"}
-- **输出**:
+- 输出:
 {"; ".join(outputs) if outputs else "  无输出端口"}
     """
             graph_desc_parts.append(node_block)
@@ -100,7 +100,7 @@ class LLMContextProvider:
 - 端口类型（如 `str`, `DataFrame`, `image_base64`）用于提示数据格。
 
 ## 节点详情
-    """
+"""
         final_desc += "\n".join(graph_desc_parts)
 
         return final_desc
@@ -129,7 +129,7 @@ class LLMContextProvider:
         return "全局变量", self.global_variables.to_dict(), None
 
     def get_component_info(self):
-        response = "# 组件上下文信息\n{component_info}\n\n# 组件上下文引用规范\n{NODE_CREATE_CONTEXT_NORMS}\n\n"""
+        response = "# 组件上下文信息\n{component_info}\n\n# 组件上下文引用规范\n{NODE_CREATE_CONTEXT_NORMS}\n\n"
         selected_categories = self.ui_manager.nav_view._selected_categories
         component_map, _ = ComponentScanner().get_components()
         selected_components = {
@@ -137,17 +137,34 @@ class LLMContextProvider:
             for key, value in component_map.items()
             if value.category in selected_categories
         }
-        component_info = "\n".join(
-            [
-                f"名称：{value.name}\n"
-                f"类别：{value.category}\n"
-                f"描述：{value.description}\n"
-                f"输入：\n{';'.join([f'名称：{item.label}, 类型：{item.type.value}' for item in value.inputs])}\n"
-                f"输出：\n{';'.join([f'名称：{item.label}, 类型：{item.type.value}' for item in value.outputs])}\n"
-                f"属性：\n{';'.join([f'名称：{item.label}, 类型：{item.type.value} 默认：{item.default}' for key, item in value.properties.items()])}\n"
-                for key, value in selected_components.items()
-            ]
-        )
+
+        # 构建 Markdown 表格
+        rows = []
+        for value in selected_components.values():
+            inputs_str = "; ".join([f"{item.label} ({item.type.value})" for item in value.inputs]) or "无"
+            outputs_str = "; ".join([f"{item.label} ({item.type.value})" for item in value.outputs]) or "无"
+            props_str = "; ".join([
+                f"{item.label} ({item.type.value}, 默认: {item.default})"
+                for item in value.properties.values()
+            ]) or "无"
+
+            # 转义竖线和换行，避免破坏表格
+            name = value.name.replace("|", "\\|")
+            category = value.category.replace("|", "\\|")
+            description = value.description.replace("|", "\\|").replace("\n", " ")
+            inputs_str = inputs_str.replace("|", "\\|")
+            outputs_str = outputs_str.replace("|", "\\|")
+            props_str = props_str.replace("|", "\\|")
+
+            rows.append(f"| {name} | {category} | {description} | {inputs_str} | {outputs_str} | {props_str} |")
+
+        if rows:
+            header = "| 名称 | 类别 | 描述 | 输入 | 输出 | 属性 |"
+            separator = "|---|---|---|---|---|---|"
+            component_info = "\n".join([header, separator] + rows)
+        else:
+            component_info = "暂无组件"
+
         return (
             f"{len(selected_components)}x 组件",
             response.format(NODE_CREATE_CONTEXT_NORMS=NODE_CREATE_CONTEXT_NORMS, component_info=component_info),
