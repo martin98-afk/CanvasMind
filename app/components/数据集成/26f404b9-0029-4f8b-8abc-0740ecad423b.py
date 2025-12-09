@@ -16,10 +16,10 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "CSV 读取器"
+    name = "CSV读取器"
     category = "数据集成"
     description = "接收本地上传csv文件"
-    requirements = "pandas"
+    requirements = ""
     inputs = [
         PortDefinition(name="csv", label="csv文件", type=ArgumentType.UPLOAD, connection=ConnectionType.SINGLE),
     ]

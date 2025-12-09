@@ -234,7 +234,7 @@ class OpenAIChatToolWindow(ToolWindow):
         # 创建欢迎卡片并标记
         welcome_card = create_welcome_card(self)
         welcome_card._is_welcome = True  # ← 关键标记
-        welcome_card.contextActionRequested.connect(self.handle_welcome_ask)
+        welcome_card.contextActionRequested.connect(self.handle_recommended_question)
         QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcome_card))
 
     def _display_current_session(self):
@@ -376,7 +376,7 @@ class OpenAIChatToolWindow(ToolWindow):
         card = MessageCard(parent=self, role="assistant")
         card.actionRequested.connect(self._on_code_action)
         card.regenerateRequested.connect(lambda: self._regenerate_message(card))
-        card.contextActionRequested.connect(self.handle_welcome_ask)
+        card.contextActionRequested.connect(self.handle_recommended_question)
         if hasattr(self.homepage, "on_context_action"):
             card.contextActionRequested.connect(self.homepage.on_context_action)
         else:
@@ -474,8 +474,15 @@ class OpenAIChatToolWindow(ToolWindow):
             self.chat_scroll_area.verticalScrollBar().maximum()
         ))
 
-    def handle_welcome_ask(self, content: str, action: str):
+    def handle_recommended_question(self, content: str, action: str):
         if action == "ask":
+            session = self.session_manager.get_current_session()
+            session.add_user_message(
+                content=content,
+                params={key: value for key, value in self.context_selector.context.items()}
+            )
+            self.input_area.clear()
+            self._append_user_message(content)
             self.send_preset_question(content)
 
     def send_preset_question(self, question: str):
