@@ -9,7 +9,7 @@ from loguru import logger
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.status_node import NodeStatus
 from app.scheduler.backdrop_executor import BackdropExecutor
-from app.scheduler.execute_single_node import execute_node
+from app.scheduler.single_node_executor import execute_node
 
 
 class WorkerSignals(QObject):

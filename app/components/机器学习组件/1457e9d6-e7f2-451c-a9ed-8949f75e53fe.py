@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "LightGBM 模型训练"
     category = "机器学习组件"
     description = "使用 LightGBM 算法进行分类或回归"
-    requirements = "lightgbm, pandas"
+    requirements = "pandas,lightgbm,scikit-learn"
 
     inputs = [
         PortDefinition(name="features", label="特征数据", type=ArgumentType.CSV),

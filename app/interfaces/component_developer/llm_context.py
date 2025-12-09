@@ -47,3 +47,8 @@ class LLMContextProvider:
             if not code.strip():
                 return f"{name} 全部代码", "代码为空", None
             return f"{name} 全部代码", code, None
+
+    def send_preset_generate_llm_request(self, question):
+        # 右边栏切换到大模型
+        self.parent.side_dock_area.switch_to("大模型对话")
+        self.parent.llm_chatter.send_preset_question(question)

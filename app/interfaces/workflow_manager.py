@@ -79,6 +79,7 @@ class WorkflowFileInfoScanner(QThread):
 class WorkflowCanvasGalleryPage(QWidget, QObject):
     scan_finished = pyqtSignal(list, dict)
     component_code_changed = pyqtSignal(str, str)
+    node_request_edit = pyqtSignal(str)
     # 上方控件
     SideDockRegistry.register("运行画布", PropertyToolWindow.name, PropertyToolWindow)
     SideDockRegistry.register("运行画布", VariableExplorerToolWindow.name, VariableExplorerToolWindow)
@@ -507,7 +508,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
-            canvas_page.component_code_changed.connect(self.component_code_changed.emit)
+            canvas_page.component_code_changed.connect(self.component_code_changed.emit)    # 节点代码变更信号
+            canvas_page.node_request_edit.connect(self.node_request_edit.emit)              # 节点编辑请求信号
             canvas_interface = self.parent_window.addSubInterface(
                 canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self
             )
@@ -538,8 +540,11 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
+            canvas_page.create_name_label()
+            # 更新全局属性面板
             canvas_page.property_panel.set_allowed_update(True)
             canvas_page.property_panel.update_properties(None)
+            # 连接主界面信号
             canvas_page.canvas_deleted.connect(
                 lambda: (
                     self.opened_workflows.pop(file_path, None),
@@ -547,16 +552,18 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 )
             )
             canvas_page.component_code_changed.connect(self.component_code_changed.emit)
+            canvas_page.node_request_edit.connect(self.node_request_edit.emit)
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
+            # 添加到主界面
             canvas_interface = self.parent_window.addSubInterface(
                 canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
+            # 界面点击信号
             canvas_interface.clicked.connect(
                 lambda: (
                     canvas_page.register_components(),
                     canvas_page._setup_pipeline_style()
                 )
             )
-            canvas_page.create_name_label()
             self.opened_workflows[file_path] = canvas_page
 
         self.parent_window.switchTo(self.opened_workflows[file_path])

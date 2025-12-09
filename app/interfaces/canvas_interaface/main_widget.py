@@ -27,7 +27,6 @@ from app.scan_components import ComponentScanner
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
-from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
 
 
 class CanvasPage(QWidget):
@@ -36,6 +35,7 @@ class CanvasPage(QWidget):
     global_variables_changed = pyqtSignal(str, str, str)
     env_changed = pyqtSignal(str)
     component_code_changed = pyqtSignal(str, str) # 组件文件地址、更新代码
+    node_request_edit = pyqtSignal(str)
 
     def __init__(self, parent=None, object_name: Path = None, manager=None):
         super().__init__()
@@ -194,12 +194,15 @@ class CanvasPage(QWidget):
         action: "jump:node_102"
         """
         if action.startswith("jump"):
+            content = content if not "," in content else content.split(",")
             self.select_node_by_name(content)
         elif action.startswith("create"):
             self.node_operations.create_next_node_using_name(content)
-        elif action == "inspect":
-            pass
-            # self.homepage.show_variable_inspector("var_input")
+        elif action.startswith("generate"):
+            question = f"""历史对话上下文：{self.ui_manager.llm_chatter.session_manager.get_current_session().messages}
+            你的任务是结合历史对啊信息生成这个 {content} 组件的代码"""
+            self.parent.switchTo(self.parent.develop_page)
+            self.parent.develop_page.llm_context_provider.send_preset_generate_llm_request(question)
 
     def select_node_by_name(self, name_list):
         if name_list is None:
@@ -562,10 +565,6 @@ class CanvasPage(QWidget):
         self.property_panel.set_allowed_update(True)
         self.property_panel.update_properties(None)
 
-    def edit_node(self, node):
-        self.parent.switchTo(self.parent.develop_page)
-        self.parent.develop_page._load_component(node.FULL_PATH)
-
     def _undo(self):
         try:
             if self.graph.undo_stack().canUndo():
@@ -596,8 +595,8 @@ class CanvasPage(QWidget):
         # 1. 停止并断开所有定时器
         self._auto_saver.stop()
         self.ipython_kernel.stop_kernel()
-        self.ui_manager.destroy_all()
         ComponentScanner.unregister_on_change(self.nav_view.refresh_components)
+        self.ui_manager.destroy_all()
         # ===== 7. 销毁 UI 控件（确保 parent=None）=====
         self.graph.deleteLater()
         # 8. 发射信号 & 移除自身

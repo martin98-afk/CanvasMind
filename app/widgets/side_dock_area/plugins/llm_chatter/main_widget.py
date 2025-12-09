@@ -234,6 +234,7 @@ class OpenAIChatToolWindow(ToolWindow):
         # 创建欢迎卡片并标记
         welcome_card = create_welcome_card(self)
         welcome_card._is_welcome = True  # ← 关键标记
+        welcome_card.contextActionRequested.connect(self.handle_recommended_question)
         QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcome_card))
 
     def _display_current_session(self):
@@ -244,24 +245,13 @@ class OpenAIChatToolWindow(ToolWindow):
         if not session:
             return
         for msg in session.messages:
-            card = MessageCard(
-                parent=self,
-                role=msg["role"],
-                timestamp=msg.get("timestamp", datetime.now().strftime('%H:%M')),
-                tag_params=msg.get("params", {})
-            )
-            card.update_content(msg["content"])
-            card.finish_streaming()
-            card.deleteRequested.connect(lambda c=card: self._delete_message(c))
-            card.actionRequested.connect(self._on_code_action)
-            if msg["role"] == "assistant":
-                card.regenerateRequested.connect(lambda c=card: self._regenerate_message(c))
-                if hasattr(self.homepage, "on_context_action"):
-                    card.contextActionRequested.connect(self.homepage.on_context_action)
-                else:
-                    card.contextActionRequested.connect(self.contextActionRequested.emit)
-
-            self.chat_layout.addWidget(card)
+            if msg["role"] == "user":
+                self._append_user_message(msg["content"])
+            elif msg["role"] == "assistant":
+                card = self._append_assistant_message()
+                card.update_content(msg["content"])
+            else:
+                continue
 
         QTimer.singleShot(10, self._scroll_to_bottom)
 
@@ -380,11 +370,13 @@ class OpenAIChatToolWindow(ToolWindow):
         card.actionRequested.connect(self._on_code_action)
         self.chat_layout.addWidget(card)
         self._scroll_to_bottom()
+        return card
 
     def _append_assistant_message(self) -> MessageCard:
         card = MessageCard(parent=self, role="assistant")
         card.actionRequested.connect(self._on_code_action)
         card.regenerateRequested.connect(lambda: self._regenerate_message(card))
+        card.contextActionRequested.connect(self.handle_recommended_question)
         if hasattr(self.homepage, "on_context_action"):
             card.contextActionRequested.connect(self.homepage.on_context_action)
         else:
@@ -465,7 +457,6 @@ class OpenAIChatToolWindow(ToolWindow):
         # 删除当前助手消息
         self._delete_message(card)
         # 重新发送
-        self.input_area._on_send_click()
         self._on_send_clicked(user_input)
 
     def _on_code_action(self, code: str, action: str="copy"):
@@ -483,11 +474,39 @@ class OpenAIChatToolWindow(ToolWindow):
             self.chat_scroll_area.verticalScrollBar().maximum()
         ))
 
+    def handle_recommended_question(self, content: str, action: str):
+        if action == "ask":
+            session = self.session_manager.get_current_session()
+            session.add_user_message(
+                content=content,
+                params={key: value for key, value in self.context_selector.context.items()}
+            )
+            self.input_area.clear()
+            self._append_user_message(content)
+            self.send_preset_question(content)
+
+    def send_preset_question(self, question: str):
+        """
+        从外部传入一个预制问题并自动开始生成回复。
+
+        Args:
+            question (str): 预设的用户提问内容
+        """
+        if not isinstance(question, str) or not question.strip():
+            return
+
+        # 如果处于历史模式，退出历史模式并回到当前会话
+        if self._in_history_mode:
+            self.history_btn.setChecked(False)
+            self._toggle_history_mode(False)
+        # 触发标准发送流程（复用已有逻辑）
+        self._on_send_clicked(user_text=question.strip())
+
     def _on_send_clicked(self, user_text: str = ""):
         # === 防止重复发送：自动中止当前请求 ===
         if self._is_streaming:
             self._on_stop_clicked()  # 安全中止当前 worker
-
+        self.input_area.toggle_send_button(False)
         # === 安全移除欢迎卡片（动态查找）===
         welcome_card = None
         for i in range(self.chat_layout.count()):
@@ -552,7 +571,7 @@ class OpenAIChatToolWindow(ToolWindow):
         else:
             # 回退到纯文本
             context_text = self.context_selector.get_text_context()
-            messages.append({"role": "user", "content": context_text + "\n\n" + user_text})
+            messages.append({"role": "user", "content": context_text + user_text})
 
         self._is_streaming = True
         self._worker = OpenAIChatWorker(messages=messages, llm_config=llm_config)
@@ -610,6 +629,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._worker = None
         self._is_streaming = False
         self._toggle_send_stop(False)
+        self.input_area.toggle_send_button(True)
         InfoBar.warning(
             title='已中止',
             content="问答请求已被手动中止。",

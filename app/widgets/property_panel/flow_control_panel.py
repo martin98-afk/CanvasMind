@@ -44,6 +44,7 @@ class FlowControlPanelWidget:
             is_in_func=self.parent_panel._is_output_in_global_variable,
             parent=self.parent_panel  # 传递父控件
         )
+        self._port_widget.setMinimumHeight(180)
         self._port_widget.segmented_widget.currentItemChanged.connect(self._on_port_segment_changed)
 
     def build_ui(self, node, current_segment=None):

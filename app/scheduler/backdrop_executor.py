@@ -7,7 +7,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from loguru import logger
 
 from app.nodes.status_node import NodeStatus
-from app.scheduler.execute_single_node import execute_node
+from app.scheduler.single_node_executor import execute_node
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import get_port_node
 
