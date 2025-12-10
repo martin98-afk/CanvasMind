@@ -30,7 +30,7 @@ PARAMETER_TEMPLATE = {
         "允许的文件类型": "txt,pdf,png,jpg,jpeg,gif",
         "访问URL前缀": "https://yourdomain.com/files"
     },
-    "消息队列配置_RabbitMQ": {
+    "RabbitMQ消息队列配置": {
         "主机": "localhost",
         "端口": 5672,
         "用户名": "guest",
@@ -38,13 +38,13 @@ PARAMETER_TEMPLATE = {
         "虚拟主机": "/",
         "队列名称": "default_queue"
     },
-    "消息队列配置_Redis": {
+    "Redis消息队列配置": {
         "Redis主机": "localhost",
         "Redis端口": 6379,
         "Redis密码": "",
         "队列键名": "message_queue"
     },
-    "缓存配置_Redis": {
+    "Redis缓存配置": {
         "Redis主机": "localhost",
         "Redis端口": 6379,
         "Redis密码": "",
@@ -70,7 +70,7 @@ PARAMETER_TEMPLATE = {
         "格式": "JPEG", # 例如: JPEG, PNG, WEBP
         "是否压缩": True
     },
-    "机器学习模型配置_通用": {
+    "通用机器学习模型配置": {
         "模型路径": "/path/to/model.pkl",
         "特征列": ["feature1", "feature2"],
         "目标列": "target",
@@ -83,25 +83,25 @@ PARAMETER_TEMPLATE = {
         "限流策略": "sliding_window", # 例如: fixed_window, sliding_window, token_bucket
         "超出限制响应码": 429
     },
-    "数据源配置_CSV": {
+    "CSV据源配置": {
         "文件路径": "/path/to/data.csv",
         "分隔符": ",",
         "编码": "utf-8",
         "是否包含表头": True,
         "日期列": ["date_column"] # 指定需要解析为日期的列
     },
-    "数据源配置_Excel": {
+    "Excel数据源配置": {
         "文件路径": "/path/to/data.xlsx",
         "工作表名称": "Sheet1",
         "是否包含表头": True,
         "日期列": ["date_column"]
     },
-    "数据源配置_JSON": {
+    "JSON数据源配置": {
         "文件路径": "/path/to/data.json",
         "根级数据路径": "$.data", # 使用JSONPath
         "编码": "utf-8"
     },
-    "FTP/SFTP配置": {
+    "SFTP配置": {
         "主机": "ftp.example.com",
         "端口": 22, # SFTP通常用22, FTP用21
         "用户名": "username",
@@ -110,7 +110,7 @@ PARAMETER_TEMPLATE = {
         "本地路径": "/local/path/",
         "是否使用SFTP": True
     },
-    "搜索引擎配置_Elasticsearch": {
+    "Elasticsearch搜索引擎配置": {
         "主机": "localhost",
         "端口": 9200,
         "用户名": "",

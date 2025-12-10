@@ -57,15 +57,13 @@ class LLMContextProvider:
         ]
 
         for node in nodes:
-            name = node.name()
+            name = f"[{node.name()}](jump)"
             # ✅ 新增：原组件名称
             component_name = "/"
+            node_type = "未知"
             if hasattr(node, 'FULL_PATH'):
                 node_type = node.FULL_PATH.split("/")[0]
                 component_name = str(node.FULL_PATH.split("/")[1])
-            else:
-                node_type = node.__name__
-
             # 属性：过滤 + 格式化
             custom_props = {
                 k: v for k, v in node.model._custom_prop.items()
@@ -81,7 +79,8 @@ class LLMContextProvider:
             for port in node.input_ports():
                 conns = []
                 for upstream in port.connected_ports():
-                    conns.append(f"节点:{upstream.node().name()} 输出端口:{upstream.name()}")
+                    upstream_nodename = f"[{upstream.node().name()}](jump)"
+                    conns.append(f"节点:{upstream_nodename} 输出端口:{upstream.name()}")
                 if conns:
                     input_lines.append(f"{port.name()} ({port.model.type_}): {', '.join(conns)}")
                 else:
@@ -94,7 +93,8 @@ class LLMContextProvider:
                 conns = []
                 for downstream in port.connected_ports():
                     # ✅ 修复：这里必须用 downstream，不是 upstream！
-                    conns.append(f"节点:{downstream.node().name()} 输入端口:{downstream.name()}")
+                    downstream_nodename = f"[{downstream.node().name()}](jump)"
+                    conns.append(f"节点:{downstream_nodename} 输入端口:{downstream.name()}")
                 if conns:
                     output_lines.append(f"{port.name()} ({port.model.type_}): {', '.join(conns)}")
                 else:
@@ -107,7 +107,7 @@ class LLMContextProvider:
         return "\n".join(rows)
 
     def extract_graph_info(self):
-        response = "# 画布上下文信息\n{graph_info}\n\n# 画布上下文交互规范\n{LLM_GRAPH_CONTEXT_NORMS}\n\n"""
+        response = "# 画布上下文交互规范\n{LLM_GRAPH_CONTEXT_NORMS}\n\n# 画布上下文信息\n{graph_info}\n\n"""
         selected_nodes = self.graph.selected_nodes()
         if len(selected_nodes) > 0:
             graph_info = self._extract_graph_info(selected_nodes)
@@ -130,7 +130,7 @@ class LLMContextProvider:
         return "全局变量", self.global_variables.to_dict(), None
 
     def get_component_info(self):
-        response = "# 组件上下文信息\n{component_info}\n\n# 组件上下文交互规范\n{NODE_CREATE_CONTEXT_NORMS}\n\n"
+        response = "# 组件上下文交互规范\n{NODE_CREATE_CONTEXT_NORMS}\n\n# 组件上下文信息\n{component_info}\n\n"
         selected_categories = self.ui_manager.nav_view._selected_categories
         component_map, _ = ComponentScanner().get_components()
         selected_components = {

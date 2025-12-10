@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
-import pathlib
-base_path = pathlib.Path(__file__).parent.parent / "base.py"
+from pathlib import Path
+base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "逻辑回归训练"
     category = "模型训练"
     description = "组件开发生成组件"
-    requirements = "numpy,scikit-learn,matplotlib"
+    requirements = "scikit-learn"
     inputs = [
         PortDefinition(name="feature", label="特征", type=ArgumentType.CSV, connection=ConnectionType.SINGLE),
         PortDefinition(name="target", label="目标", type=ArgumentType.CSV, connection=ConnectionType.SINGLE),
@@ -76,7 +76,7 @@ class Component(BaseComponent):
             max_iter = int(params.max_iter)
 
             # 训练模型
-            model = LogisticRegression(solver=solver, max_iter=max_iter, multi_class='ovr')
+            model = LogisticRegression(solver=solver, max_iter=max_iter)
             model.fit(feature, target)
 
             # 预测示例（使用第一行数据）
