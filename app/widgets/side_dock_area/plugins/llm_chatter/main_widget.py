@@ -453,7 +453,7 @@ class OpenAIChatToolWindow(ToolWindow):
         user_input = session.messages[card_index - 1]["content"]
         params = session.messages[card_index - 1]["params"]
         if params:
-            user_input = "\n".join([value[1] for value in params.values()]) + "\n\n" + user_input
+            user_input = "\n".join([value[1] for value in params.values()]) + "\n\n" + user_input + "\n\n回复内容:\n"
         # 删除当前助手消息
         self._delete_message(card)
         # 重新发送
