@@ -33,8 +33,8 @@ class DraggableTreePanel(QWidget):
         control_layout = QHBoxLayout()
         control_layout.setSpacing(8)
 
-        # 类别选择按钮（点击弹出复选框）
-        self.category_button = DropDownPushButton(FIF.BOOK_SHELF, "组件类别", self)
+        # 类别选择按钮
+        self.category_button = DropDownPushButton(FIF.BOOK_SHELF, "类别", self)
         self.category_button.setToolTip("类别筛选")
         self.category_button.clicked.connect(self._show_category_dialog)
 
@@ -50,16 +50,24 @@ class DraggableTreePanel(QWidget):
         self.favorite_toggle.setToolTip("只显示收藏组件")
         self.favorite_toggle.toggled.connect(self._on_favorite_toggled)
 
+        # 搜索 toggle 按钮
+        self.search_toggle = TransparentToggleToolButton(FIF.SEARCH, self)
+        self.search_toggle.setFixedSize(22, 22)
+        self.search_toggle.setToolTip("搜索组件")
+        self.search_toggle.toggled.connect(self._on_search_toggled)
+
         control_layout.addWidget(self.category_button)
+        control_layout.addWidget(self.search_toggle)
         control_layout.addWidget(self.time_toggle)
         control_layout.addWidget(self.favorite_toggle)
 
-        # 第二行：搜索框
+        # 搜索框（默认隐藏）
         self.search_box = SearchLineEdit(self)
         self.search_box.setPlaceholderText("🔍 搜索组件...")
         self.search_box.setClearButtonEnabled(True)
         FluentStyleSheet.LINE_EDIT.apply(self.search_box)
         self.search_box.textChanged.connect(self._on_search_text_changed)
+        self.search_box.hide()  # 初始隐藏
 
         # 组件树
         self.tree = DraggableTreeWidget(self.parent_window)
@@ -71,6 +79,15 @@ class DraggableTreePanel(QWidget):
 
         # 初始化类别列表
         self._init_categories()
+
+    def _on_search_toggled(self, checked: bool):
+        if checked:
+            self.search_box.show()
+            self.search_box.setFocus()
+        else:
+            self.search_box.hide()
+            self.search_box.clear()  # 可选：清空搜索以重置过滤
+            self.tree.filter_items("")  # 重置过滤
 
     def _init_categories(self):
         """初始化类别列表"""

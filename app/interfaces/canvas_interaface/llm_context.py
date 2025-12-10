@@ -43,70 +43,71 @@ class LLMContextProvider:
         self.context_register.register("组件信息", self.get_component_info, lambda *args, kwargs: None)
 
     def _extract_graph_info(self, nodes=None):
-        """过滤掉 session data 中的复杂/内部信息，生成面向大模型的结构化画布描述。
-        若 nodes 为 None，总结整张画布；否则仅总结指定节点及其连接上下文。
-        """
+        """生成面向大模型的画布结构描述，以无箭头的 Markdown 表格形式呈现。"""
         if nodes is None:
             nodes = self.graph.all_nodes()
 
-        # 按拓扑顺序或用户顺序组织节点（这里按原顺序）
-        graph_desc_parts = []
+        rows = [
+            "## 画布结构说明",
+            "下表描述了画布中各节点的类型、原组件、配置属性、输入来源及输出去向。",
+            "- 端口格式为：`端口名 (数据类型)`。",
+            "",
+            "| 节点名称 | 类型 | 原组件名 | 属性 | 输入来源 | 输出去向 |",
+            "|----------|------|--------|------|----------|----------|"
+        ]
 
         for node in nodes:
-            name = node.name()
-            node_type = getattr(node.model, "node_type", "未知类型")  # 建议你节点有 type 字段
+            name = f"[{node.name()}](jump)"
+            # ✅ 新增：原组件名称
+            component_name = "/"
+            node_type = "未知"
+            if hasattr(node, 'FULL_PATH'):
+                node_type = node.FULL_PATH.split("/")[0]
+                component_name = str(node.FULL_PATH.split("/")[1])
+            # 属性：过滤 + 格式化
             custom_props = {
                 k: v for k, v in node.model._custom_prop.items()
-                if k not in {"persistent_id", "temp_data", "cache", "global_variable", "debug_code"}  # 可扩展过滤
+                if k not in {"persistent_id", "temp_data", "cache", "global_variable", "debug_code"}
             }
+            if custom_props:
+                props_str = "; ".join(f"{k}={repr(v) if isinstance(v, str) else v}" for k, v in custom_props.items())
+            else:
+                props_str = "/"
 
-            # 输入端口：聚合连接信息
-            inputs = []
+            # 输入来源：端口名 (类型): 节点:上游节点名 输出端口:端口名
+            input_lines = []
             for port in node.input_ports():
-                conn_desc = []
+                conns = []
                 for upstream in port.connected_ports():
-                    conn_desc.append(f"[{upstream.node().name()}](jump) → {upstream.name()}")
-                if conn_only := ", ".join(conn_desc):
-                    inputs.append(f"- {port.name()} ({port.model.type_}) ← {conn_only}")
+                    upstream_nodename = f"[{upstream.node().name()}](jump)"
+                    conns.append(f"节点:{upstream_nodename} 输出端口:{upstream.name()}")
+                if conns:
+                    input_lines.append(f"{port.name()} ({port.model.type_}): {', '.join(conns)}")
                 else:
-                    inputs.append(f"- {port.name()} ({port.model.type_}) ← 无连接")
+                    input_lines.append(f"{port.name()} ({port.model.type_}): /")
+            inputs_str = "<br>".join(input_lines) if input_lines else "/"
 
-            # 输出端口
-            outputs = []
+            # 输出去向：端口名 (类型): 节点:下游节点名 输入端口:端口名
+            output_lines = []
             for port in node.output_ports():
-                conn_desc = []
+                conns = []
                 for downstream in port.connected_ports():
-                    conn_desc.append(f"[{downstream.node().name()}](jump) ← {downstream.name()}")
-                if conn_only := ", ".join(conn_desc):
-                    outputs.append(f"- {port.name()} ({port.model.type_}) → {conn_only}")
+                    # ✅ 修复：这里必须用 downstream，不是 upstream！
+                    downstream_nodename = f"[{downstream.node().name()}](jump)"
+                    conns.append(f"节点:{downstream_nodename} 输入端口:{downstream.name()}")
+                if conns:
+                    output_lines.append(f"{port.name()} ({port.model.type_}): {', '.join(conns)}")
                 else:
-                    outputs.append(f"- {port.name()} ({port.model.type_}) → 无连接")
+                    output_lines.append(f"{port.name()} ({port.model.type_}): /")
+            outputs_str = "<br>".join(output_lines) if output_lines else "/"
 
-            # 构建节点描述块
-            node_block = f"""### [{name}](jump)
-- 类型: {node_type}
-- 属性: {custom_props if custom_props else "无"}
-- 输入:
-{"; ".join(inputs) if inputs else "  无输入端口"}
-- 输出:
-{"; ".join(outputs) if outputs else "  无输出端口"}
-    """
-            graph_desc_parts.append(node_block)
+            row = f"| {name} | {node_type} | {component_name} | {props_str} | {inputs_str} | {outputs_str} |"
+            rows.append(row)
 
-        final_desc = """## 画布结构说明
-以下描述了当前画布中各节点的类型、配置属性及其数据流连接关系。
-- [节点名称](jump) 代表引用的原画布存在的 节点名
-- 箭头 `←` 表示数据来源，`→` 表示数据去向。
-- 端口类型（如 `str`, `DataFrame`, `image_base64`）用于提示数据格。
-
-## 节点详情
-"""
-        final_desc += "\n".join(graph_desc_parts)
-
-        return final_desc
+        return "\n".join(rows)
 
     def extract_graph_info(self):
-        response = "# 画布上下文信息\n{graph_info}\n\n# 画布上下文引用规范\n{LLM_GRAPH_CONTEXT_NORMS}\n\n"""
+        response = "# 画布上下文交互规范\n{LLM_GRAPH_CONTEXT_NORMS}\n\n# 画布上下文信息\n{graph_info}\n\n"""
         selected_nodes = self.graph.selected_nodes()
         if len(selected_nodes) > 0:
             graph_info = self._extract_graph_info(selected_nodes)
@@ -129,7 +130,7 @@ class LLMContextProvider:
         return "全局变量", self.global_variables.to_dict(), None
 
     def get_component_info(self):
-        response = "# 组件上下文信息\n{component_info}\n\n# 组件上下文引用规范\n{NODE_CREATE_CONTEXT_NORMS}\n\n"
+        response = "# 组件上下文交互规范\n{NODE_CREATE_CONTEXT_NORMS}\n\n# 组件上下文信息\n{component_info}\n\n"
         selected_categories = self.ui_manager.nav_view._selected_categories
         component_map, _ = ComponentScanner().get_components()
         selected_components = {

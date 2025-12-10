@@ -4,7 +4,7 @@
 </p>
 
 <div align="center">
-  <h1>CanvasMind — Visual Programming Platform for Algorithm & AI Workflow Development</h1>
+  <h1>Visual Programming Platform for Algorithm & AI Workflow Development</h1>
 
   [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md) | [📘 Documentation](https://canvasmind-sphinx-build.readthedocs.io/en/latest/)
 </div>

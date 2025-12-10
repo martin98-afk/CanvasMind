@@ -21,7 +21,6 @@ class StepMessageBoxBase(MaskDialogBase):
                    如果为 None，则不使用步骤指示器。
         """
         super().__init__(parent=parent)
-
         # 按钮组
         self.buttonGroup = QFrame(self.widget)
         self.nextButton = PrimaryPushButton(self.tr('下一步'), self.buttonGroup)

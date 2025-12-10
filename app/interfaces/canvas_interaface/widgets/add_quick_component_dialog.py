@@ -1,9 +1,8 @@
 import os
 import shutil
 import uuid
-from pathlib import Path
-from enum import Enum
 
+from enum import Enum
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize, QTimer
 from PyQt5.QtGui import QPixmap, QIcon

@@ -328,7 +328,7 @@ class ComponentTreePanel(QWidget):
         self.jump_to_current_btn.setFixedSize(25, 32)
         self.jump_to_current_btn.clicked.connect(self.tree.jump_to_current_component)
 
-        top_layout.addWidget(self.category_button)
+        top_layout.addWidget(self.category_button, 1)
         top_layout.addStretch()
         top_layout.addWidget(self.jump_to_current_btn)
         top_layout.addWidget(self.expand_all_btn)

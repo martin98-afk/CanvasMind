@@ -588,7 +588,16 @@ class CodeWebViewer(QWebEngineView):
                         el.addEventListener('toggle', () => setTimeout(reportHeight, 20));
                     }});
                 }});
-            
+                if (window.ResizeObserver) {{
+                    const resizeObserver = new ResizeObserver(() => {{
+                        // 延迟一点，等 relayout 完成
+                        setTimeout(reportHeight, 30);
+                    }});
+                    resizeObserver.observe(document.body);
+                }} else {{
+                    // 降级：监听 window resize（不够精确，但兼容旧版）
+                    window.addEventListener('resize', () => setTimeout(reportHeight, 100));
+                }}
                 window.pywebview = {{
                     reportHeight: reportHeight
                 }};
