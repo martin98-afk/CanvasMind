@@ -48,9 +48,9 @@ def execute_node(
         return None
 
     comp_cls = component_map.get(getattr(node, "FULL_PATH", None))
-
+    run_id_prefix = ' @ ' + run_id_prefix if run_id_prefix else ''
     # 生成 run_id
-    run_id = f"{node.name()}{' @ ' + run_id_prefix} @ {datetime.datetime.now().strftime('%H:%M:%S')}"
+    run_id = f"{node.name()}{run_id_prefix} @ {datetime.datetime.now().strftime('%H:%M:%S')}"
     node._current_run_id = run_id
     node._log_message_emitter = log_message_func
     # 发送运行开始信号

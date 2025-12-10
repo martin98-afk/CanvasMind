@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QVBoxLayout
 
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
-from app.widgets.property_panel import PropertyPanel  # ← 复用你现有的 PropertyPanel
+from app.widgets.side_dock_area.plugins.property_panel import PropertyPanel
 
 
 class PropertyToolWindow(ToolWindow):

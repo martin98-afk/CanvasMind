@@ -10,7 +10,8 @@ from qtpy import QtGui, QtCore
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
-from app.widgets.tree_widget.draggable_component_tree import DraggableTreePanel
+from app.interfaces.canvas_interaface.widgets.draggable_component_tree import DraggableTreePanel
+from .canvas_left_panel import LeftPanel
 from ..constants import BUTTONS_CONTAINER_X_OFFSET, DEFAULT_SPLITTER_SIZES, PIPELINE_STYLE, PIPELINE_DIRECTION, \
     MAX_VISIBLE_QUICK_BUTTONS, GRID_STYLE, HIDE_SPLITTER_SIZES
 
@@ -26,8 +27,8 @@ class CanvasUISetUp:
         # 布局
         self._setup_pipeline_style()
         # 节点拖拽树
-        self.nav_panel = DraggableTreePanel(self.parent)
-        self.nav_view =  self.nav_panel.tree
+        self.nav_panel = LeftPanel(self.parent)
+        self.nav_view =  self.nav_panel.draggable_tree.tree
         # 属性面板
         self.side_dock_area = SideDockArea(self.parent, "运行画布")
         main_layout = QHBoxLayout(self.parent)
@@ -182,7 +183,6 @@ class CanvasUISetUp:
         self.node_layout.addWidget(self.tool_node)
 
         # === 分隔线 ===
-        from PyQt5.QtWidgets import QFrame
         self.node_layout.addWidget(CardSeparator(self.nodes_container))
 
         # === 可显示的快捷按钮容器 ===

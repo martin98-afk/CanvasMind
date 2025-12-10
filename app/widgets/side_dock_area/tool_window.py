@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from dataclasses import dataclass
 from enum import Enum
 from PyQt5.QtWidgets import QWidget
 
@@ -25,3 +26,11 @@ class ToolWindow(QWidget):
 
     def cleanup(self):
         pass
+
+
+@dataclass
+class DockItem:
+    name: str
+    widget: ToolWindow
+    position: DockPosition  # TOP or BOTTOM
+    order: int              # 在同 position 内的排序索引

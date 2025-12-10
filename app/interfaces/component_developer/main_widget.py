@@ -19,10 +19,10 @@ from qfluentwidgets import (
 )
 
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, ConnectionType
-from app.interfaces.component_developer.component_history_manager import ComponentHistoryManager
+from app.interfaces.component_developer.utils.component_history_manager import ComponentHistoryManager
 from app.interfaces.component_developer.constants import *
 from app.interfaces.component_developer.llm_context import LLMContextProvider
-from app.interfaces.component_developer.message_manager import MessageManager
+from app.interfaces.component_developer.utils.message_manager import MessageManager
 from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.scan_components import resource_path
 from app.templates.component_templates import default_templates
@@ -31,7 +31,7 @@ from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.code_editor.code_editer import CodeEditorWidget
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
-from app.widgets.tree_widget.component_develop_tree import ComponentTreePanel
+from app.interfaces.component_developer.widgets.component_develop_tree import ComponentTreePanel
 
 
 class ComponentDeveloperPage(QWidget):

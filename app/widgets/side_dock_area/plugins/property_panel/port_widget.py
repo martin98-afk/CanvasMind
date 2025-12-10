@@ -9,18 +9,17 @@ from pathlib import Path
 
 import pandas as pd
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QFrame, QListWidgetItem, QWidget, QFileDialog, QStackedWidget, \
-    QSpacerItem, QSizePolicy
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QWidget, QFileDialog, QStackedWidget
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SegmentedWidget, \
-    FluentIcon, InfoBar, TransparentToolButton, RoundMenu, Action, TransparentPushButton, CaptionLabel, \
-    PrimaryToolButton, ToolButton, ToggleToolButton, SmoothScrollArea
-from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleCardWidget, HeaderCardWidget
+    FluentIcon, InfoBar, TransparentToolButton, RoundMenu, Action, CaptionLabel, \
+    ToggleToolButton
+from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleCardWidget
 
 from app.components.base import ArgumentType
 from app.utils.utils import get_icon, canvas_file_dump_path
-from app.widgets.property_panel.variable_detailed_popup import VariableDetailPopup
-from app.widgets.tree_widget.variable_tree import VariableTreeWidget
+from app.widgets.side_dock_area.plugins.property_panel.variable_detailed_popup import VariableDetailPopup
+from app.widgets.side_dock_area.plugins.property_panel.variable_tree import VariableTreeWidget
 
 
 class PortWidget(QWidget):

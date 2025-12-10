@@ -9,13 +9,13 @@ from qfluentwidgets import SmoothScrollArea, TransparentDropDownToolButton, \
 
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
-from app.widgets.property_panel.flow_control_panel import FlowControlPanelWidget
-from app.widgets.property_panel.global_panel import GlobalPanelWidget
-from app.widgets.property_panel.node_list_panel import NodeListPanelWidget
-from app.widgets.property_panel.node_panel import NodePanelWidget
+from app.widgets.side_dock_area.plugins.property_panel.flow_control_panel import FlowControlPanelWidget
+from app.widgets.side_dock_area.plugins.property_panel.global_panel import GlobalPanelWidget
+from app.widgets.side_dock_area.plugins.property_panel.node_list_panel import NodeListPanelWidget
+from app.widgets.side_dock_area.plugins.property_panel.node_panel import NodePanelWidget
 
 
-class PropertyPanel(SimpleCardWidget):
+class PropertyPanel(QWidget):
     """
     主属性面板控件，负责协调和管理各个子面板模块。
     该控件现在主要负责：
