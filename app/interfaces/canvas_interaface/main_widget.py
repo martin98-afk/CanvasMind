@@ -199,8 +199,8 @@ class CanvasPage(QWidget):
         elif action.startswith("create"):
             self.node_operations.create_next_node_using_name(content)
         elif action.startswith("generate"):
-            question = f"""历史对话上下文：{self.ui_manager.llm_chatter.session_manager.get_current_session().messages}
-            你的任务是结合历史对啊信息生成这个 {content} 组件的代码"""
+            question = (f"历史对话上下文：{self.ui_manager.llm_chatter.session_manager.get_current_session().messages}\n\n"
+                        f"你的任务是结合历史对啊信息生成这个 {content} 组件的代码")
             self.parent.switchTo(self.parent.develop_page)
             self.parent.develop_page.llm_context_provider.send_preset_generate_llm_request(question)
 

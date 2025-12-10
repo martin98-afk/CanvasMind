@@ -304,7 +304,7 @@ class OpenAIChatToolWindow(ToolWindow):
         card = CardWidget(self)
 
         # 默认样式
-        base_style = "background-color: #2d2d2d; border-radius: 6px; padding: 8px;"
+        base_style = "background-color: #2d2d2d; border-radius: 6px; padding: 8px; background-color: transparent;"
         if is_current:
             # 橙色高亮（可按你偏好调整）
             card.setStyleSheet("background-color: #ff6f00; border-radius: 6px; padding: 8px; color: white;")
@@ -320,7 +320,7 @@ class OpenAIChatToolWindow(ToolWindow):
         title_label.setWordWrap(True)
         time_label = CaptionLabel(last_time, card)
         if is_current:
-            title_label.setStyleSheet("color: white; font-weight: bold;")
+            title_label.setStyleSheet("color: white; font-weight: bold; background-color: transparent;")
             time_label.setStyleSheet("color: rgba(255,255,255,0.8);")
         else:
             time_label.setStyleSheet("color: #aaa;")
@@ -329,7 +329,7 @@ class OpenAIChatToolWindow(ToolWindow):
         delete_btn.setFixedSize(24, 24)
         delete_btn.clicked.connect(lambda _, i=index: self._delete_history_session(i))
 
-        layout.addWidget(title_label, 1, Qt.AlignLeft)
+        layout.addWidget(title_label, 1)
         layout.addStretch()
         layout.addWidget(time_label)
         layout.addWidget(delete_btn)
