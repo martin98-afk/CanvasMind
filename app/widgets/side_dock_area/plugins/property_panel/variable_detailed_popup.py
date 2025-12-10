@@ -7,11 +7,11 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import (
     QWidget, QFrame, QVBoxLayout, QApplication, QHeaderView,
-    QTreeWidgetItem, QLabel, QScrollArea
+    QTreeWidgetItem, QLabel
 )
-from qfluentwidgets import TreeWidget, BodyLabel, TextEdit as FluentTextEdit, SmoothScrollArea
+from qfluentwidgets import TreeWidget, BodyLabel, TextEdit as FluentTextEdit
 
-from app.widgets.tree_widget.variable_tree import (
+from app.widgets.side_dock_area.plugins.property_panel.variable_tree import (
     _get_formatted_type_and_value, _is_pil_image, _is_image_file
 )
 

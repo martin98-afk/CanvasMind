@@ -641,7 +641,7 @@ class CodeWebViewer(QWebEngineView):
         self._resize_timer = QTimer()
         self._resize_timer.setSingleShot(True)
         self._resize_timer.timeout.connect(self._request_content_height)
-        self._resize_timer.start(100)  # 80ms 足够响应拖拽结束
+        self._resize_timer.start(10)  # 80ms 足够响应拖拽结束
 
     def wheelEvent(self, event: QWheelEvent):
         # 获取滚动条（向上找 QScrollArea）

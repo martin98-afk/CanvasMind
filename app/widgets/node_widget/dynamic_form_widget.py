@@ -304,7 +304,7 @@ class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
 
     def _update_node(self):
         if self.node.graph is not None:
-            self.node.graph.viewer().force_update()
+            QtCore.QTimer.singleShot(0, self.node.graph.viewer().force_update)
 
     def get_port_func(self):
         vars = [f"input.{port.name()}" for port in self.node.input_ports()]
@@ -320,9 +320,6 @@ class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
         return self.get_custom_widget().get_data()
 
     def set_value(self, value):
-        QtCore.QTimer.singleShot(0, lambda: self._delayed_set_value(value))
-
-    def _delayed_set_value(self, value):
         # 确保节点已加入 scene
         widget = self.get_custom_widget()
         if widget:

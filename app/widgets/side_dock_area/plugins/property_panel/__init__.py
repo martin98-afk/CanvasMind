@@ -1,4 +1,4 @@
 # -*- coding: utf-8 -*-
-from .main_widget import PropertyPanel
+from .property_panel import PropertyPanel
 
 __all__ = ['PropertyPanel']

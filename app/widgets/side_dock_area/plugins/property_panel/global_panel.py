@@ -17,7 +17,7 @@ from app.templates.global_custom_var_template import PARAMETER_TEMPLATE
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
 from app.widgets.dialog_widget.step_messageboxbase import StepMessageBoxBase
-from app.widgets.tree_widget.variable_tree import VariableTreeWidget
+from app.widgets.side_dock_area.plugins.property_panel.variable_tree import VariableTreeWidget
 
 
 class ParameterGroupDialog(StepMessageBoxBase):

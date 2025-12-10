@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QWidget, QSizePolicy
-from loguru import logger
-from qfluentwidgets import CardWidget, BodyLabel, ListWidget, \
-    FluentIcon, TransparentToolButton, SubtitleLabel, SmoothScrollArea
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget
+from qfluentwidgets import CardWidget, BodyLabel, FluentIcon, TransparentToolButton, SubtitleLabel
 
 from app.utils.utils import topological_sort
-from app.widgets.property_panel.internal_node_list import InternalNodeList
+from app.widgets.side_dock_area.plugins.property_panel.internal_node_list import InternalNodeList
 
 
 class NodeListPanelWidget:

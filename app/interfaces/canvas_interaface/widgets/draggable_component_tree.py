@@ -10,7 +10,7 @@ from qfluentwidgets import FluentIcon as FIF, TransparentToggleToolButton, Round
 from qfluentwidgets import TreeWidget, SearchLineEdit, FluentStyleSheet, DropDownPushButton
 
 from app.scan_components import ComponentScanner
-from app.widgets.tree_widget.category_filter import CategoryFilterDialog
+from app.widgets.category_filter import CategoryFilterDialog
 
 
 class DraggableTreePanel(QWidget):
@@ -18,6 +18,7 @@ class DraggableTreePanel(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("draggableTree")
         self.parent_window = parent
         self.category_filter_dialog = None
         self._setup_ui()

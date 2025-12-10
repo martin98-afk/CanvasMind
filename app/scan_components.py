@@ -10,11 +10,11 @@ import traceback
 from pathlib import Path
 from typing import Tuple, Dict, Type, Optional, List
 
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer
+from PyQt5.QtCore import QTimer
 from loguru import logger
 
 from app.components.base import COMPONENT_IMPORT_CODE
-from app.interfaces.component_developer.component_history_manager import ComponentHistoryManager
+from app.interfaces.component_developer.utils.component_history_manager import ComponentHistoryManager
 
 # --- 新增依赖 ---
 try:

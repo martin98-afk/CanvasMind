@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWidgets import QFrame, QSizePolicy
-from Qt import Qt
-from qfluentwidgets import BodyLabel, SubtitleLabel, SmoothScrollArea
+from PyQt5.QtWidgets import QFrame
+from qfluentwidgets import BodyLabel, SubtitleLabel
 
 # --- 导入新模块 ---
-from app.widgets.property_panel.port_widget import PortWidget
+from app.widgets.side_dock_area.plugins.property_panel.port_widget import PortWidget
 
 
 class NodePanelWidget:

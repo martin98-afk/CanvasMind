@@ -561,7 +561,7 @@ class DataHandler:
         if isinstance(data, (list, tuple)):
             try:
                 # 使用 dtype=object 提高兼容性（允许混合类型）
-                return np.array(data, dtype=object)
+                return np.array(data)
             except Exception as e:
                 self.logger.debug(f"输入 {input_name} 无法转为 np.ndarray，回退到 list: {e}")
                 return list(data)
@@ -571,7 +571,7 @@ class DataHandler:
                 parsed = ast.literal_eval(data)
                 if isinstance(parsed, (list, tuple)):
                     try:
-                        return np.array(parsed, dtype=object)
+                        return np.array(parsed)
                     except Exception as e:
                         self.logger.debug(f"字符串解析后无法转为 ndarray，回退到 list: {e}")
                         return list(parsed)
