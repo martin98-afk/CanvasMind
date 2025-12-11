@@ -11,13 +11,13 @@ class CategoryFilterDialog(QWidget):
     """类别筛选对话框，用作下拉弹窗"""
     categories_changed = pyqtSignal(set)
 
-    def __init__(self, categories, parent=None):
+    def __init__(self, categories, parent=None, selected_categories=None, direction="down"):
         super().__init__(parent)
-        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
-
+        self.direction = direction
         self.categories = categories
-        self.selected_categories = set()  # 默认全选
+        self.selected_categories = set() if selected_categories is None else selected_categories  # 默认全选
         self.checkboxes = []
         self._setup_ui()
 
@@ -47,7 +47,10 @@ class CategoryFilterDialog(QWidget):
         # 复选框列表
         for category in self.categories:
             checkbox = QCheckBox(category)
-            checkbox.setChecked(False)
+            if category in self.selected_categories:
+                checkbox.setChecked(True)
+            else:
+                checkbox.setChecked(False)
             checkbox.stateChanged.connect(lambda state, cat=category: self._on_category_toggled(cat, state))
             self.checkboxes.append(checkbox)
             layout.addWidget(checkbox)
@@ -82,5 +85,11 @@ class CategoryFilterDialog(QWidget):
         return self.selected_categories.copy()
 
     def show_at(self, pos):
-        self.move(pos)
+        self.adjustSize()
+        if self.direction == "down":
+            # 向下展开：弹窗在 pos 下方
+            self.move(pos)
+        else:
+            # 向上展开：弹窗在 pos 上方（需减去自身高度）
+            self.move(pos.x(), pos.y() - self.height())
         self.show()

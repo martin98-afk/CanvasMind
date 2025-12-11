@@ -26,33 +26,34 @@ class DraggableTreePanel(QWidget):
     def _setup_ui(self):
         self.setMinimumWidth(210)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(3, 8, 3, 8)
-        layout.setSpacing(8)
+        layout.setContentsMargins(3, 4, 3, 4)
+        layout.setSpacing(4)
 
         # 第一行：控制栏
         control_layout = QHBoxLayout()
-        control_layout.setSpacing(8)
+        control_layout.setSpacing(4)
 
         # 类别选择按钮
         self.category_button = DropDownPushButton(FIF.BOOK_SHELF, "类别", self)
+        self.category_button.setFixedHeight(28)
         self.category_button.setToolTip("类别筛选")
-        self.category_button.clicked.connect(self._show_category_dialog)
+        self.category_button.clicked.connect(lambda: self._show_category_dialog())
 
         # 时间排序按钮
         self.time_toggle = TransparentToggleToolButton(FIF.HISTORY, self)
-        self.time_toggle.setFixedSize(22, 22)
+        self.time_toggle.setFixedSize(24, 28)
         self.time_toggle.setToolTip("按最后使用时间排序")
         self.time_toggle.toggled.connect(self._on_time_toggled)
 
         # 收藏按钮
         self.favorite_toggle = TransparentToggleToolButton(FIF.EXPRESSIVE_INPUT_ENTRY, self)
-        self.favorite_toggle.setFixedSize(22, 22)
+        self.favorite_toggle.setFixedSize(24, 28)
         self.favorite_toggle.setToolTip("只显示收藏组件")
         self.favorite_toggle.toggled.connect(self._on_favorite_toggled)
 
         # 搜索 toggle 按钮
         self.search_toggle = TransparentToggleToolButton(FIF.SEARCH, self)
-        self.search_toggle.setFixedSize(22, 22)
+        self.search_toggle.setFixedSize(24, 28)
         self.search_toggle.setToolTip("搜索组件")
         self.search_toggle.toggled.connect(self._on_search_toggled)
 

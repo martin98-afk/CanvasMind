@@ -4,7 +4,7 @@ import traceback
 from pathlib import Path
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool
+from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget
 from loguru import logger
@@ -26,6 +26,7 @@ from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
 from app.utils.config import Settings
 from app.utils.utils import get_icon
+from app.widgets.category_filter import CategoryFilterDialog
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 
 
@@ -173,6 +174,17 @@ class CanvasPage(QWidget):
     def log_window(self):
         return self.ui_manager.log_window
 
+    def show_category_dialog(self, categories, tag):
+        print(categories)
+        all_categories = set()
+        for full_path, comp_cls in self.component_map.items():
+            category = getattr(comp_cls, 'category', 'General')
+            all_categories.add(category)
+        pos = tag.mapToGlobal(QPoint(0, 0))
+        category_filter_dialog = CategoryFilterDialog(sorted(all_categories), self, categories, "up")
+        category_filter_dialog.categories_changed.connect(self.ui_manager.nav_panel.draggable_tree._on_categories_changed)
+        category_filter_dialog.show_at(pos)
+
     def _on_global_variables_changed(self, *args):
         self.property_panel._on_global_variables_changed(*args)
 
@@ -204,7 +216,7 @@ class CanvasPage(QWidget):
             self.parent.switchTo(self.parent.develop_page)
             self.parent.develop_page.llm_context_provider.send_preset_generate_llm_request(question)
 
-    def select_node_by_name(self, name_list):
+    def select_node_by_name(self, name_list, *args):
         if name_list is None:
             return
         return self.node_operations.select_nodes_by_name(name_list)

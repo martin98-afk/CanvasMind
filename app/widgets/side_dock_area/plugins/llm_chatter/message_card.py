@@ -5,7 +5,7 @@ import urllib
 from datetime import datetime
 from html import escape
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl, QPoint
 from PyQt5.QtGui import QWheelEvent
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import (
@@ -784,7 +784,7 @@ class MessageCard(SimpleCardWidget):
 
             for key, (name, content, callback_params, is_image) in self.context_tags.items():
                 tag = TagWidget(key, name)
-                tag.doubleClicked.connect(lambda k=key: self._on_context_link_clicked(k))
+                tag.doubleClicked.connect(lambda k=key, t=tag: self._on_context_link_clicked(k, t))
                 tags_layout.addWidget(tag)
             tags_layout.addStretch()
             main_layout.addWidget(tags_container)
@@ -826,12 +826,12 @@ class MessageCard(SimpleCardWidget):
         elif action == "create":
             self.actionRequested.emit(code, action)
 
-    def _on_context_link_clicked(self, tool_key: str):
+    def _on_context_link_clicked(self, tool_key: str, tag: TagWidget):
         if tool_key in self.context_tags:
             name, content, callback_params, is_image = self.context_tags[tool_key]
             executor = self.parent.homepage.context_register.get_executor(tool_key)
             if executor:
-                executor(callback_params)
+                executor(callback_params, tag)
 
     def _on_content_height_changed(self, height):
         self.content_widget.setMinimumHeight(max(1, height))

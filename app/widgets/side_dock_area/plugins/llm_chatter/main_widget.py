@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-from datetime import datetime
-from typing import Optional, Dict, Any
+import re
+from loguru import logger
+from typing import Optional, Dict, Any, List
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QApplication, QWidget
 from qfluentwidgets import (
@@ -19,7 +20,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.history_manager import Histo
 from app.widgets.side_dock_area.plugins.llm_chatter.llm_config_popup import LLMConfigPopup
 from app.widgets.side_dock_area.plugins.llm_chatter.message_card import MessageCard, create_welcome_card
 from app.widgets.side_dock_area.plugins.llm_chatter.bottom_input_area import SendableTextEdit
-from app.widgets.side_dock_area.plugins.llm_chatter.worker import OpenAIChatWorker
+from app.widgets.side_dock_area.plugins.llm_chatter.worker import OpenAIChatWorker, TitleGenerationTask
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 
@@ -39,9 +40,11 @@ class OpenAIChatToolWindow(ToolWindow):
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
+    _gen_thread_pool = QThreadPool()
 
     def __init__(self, homepage):
         super().__init__(homepage)
+        self._gen_thread_pool.setMaxThreadCount(2)  # 限制并发，避免 API 限流
         self.homepage = homepage
         self._worker: Optional[OpenAIChatWorker] = None
         self._is_streaming = False
@@ -597,7 +600,8 @@ class OpenAIChatToolWindow(ToolWindow):
         if session:
             session.add_assistant_message(content=response)
             # ✅ 自动保存当前会话到历史
-            self._auto_save_current_session()
+            current_title = self._auto_save_current_session()
+            # self._generate_conversation_title(current_title, session.messages)
 
     def _auto_save_current_session(self):
         """根据当前状态决定保存方式"""
@@ -613,6 +617,8 @@ class OpenAIChatToolWindow(ToolWindow):
             self.history_manager.save_session(session.messages)
             # 保存后，自动绑定到新历史索引（避免重复保存）
             self._current_history_index = 0  # 因为 save_session 是 insert(0, ...)
+
+        return self.history_manager.get_current_title(self._current_history_index)
 
     def _toggle_send_stop(self, is_sending: bool):
         if is_sending:
@@ -642,3 +648,45 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
         self._update_assistant_message(assistant_card, content_piece)
+
+    # 对话标题总结
+    def _generate_conversation_title(self, current_title: str, messages: List[Dict]):
+        """异步请求大模型生成对话标题"""
+        if len(messages) < 2:
+            return
+
+        selected_name = self.model_combo.currentText()
+        llm_config = self._valid_configs.get(selected_name)
+        if not llm_config:
+            return
+
+        # 创建任务
+        task = TitleGenerationTask(
+            current_title=current_title,
+            messages_for_summary=messages,
+            llm_config=llm_config,
+            callback=self._on_title_generated  # 用于回调
+        )
+        self._gen_thread_pool.start(task)
+
+    def _on_title_generated(self, raw_output: str, error_msg: str = None):
+        """从模型输出中提取 ```title ... ``` 中的标题"""
+        if not raw_output:
+            return
+
+        # 正则匹配：支持跨行，非贪婪
+        match = re.search(r"```title\s*(.+?)\s*```", raw_output, re.DOTALL)
+        if match:
+            title = match.group(1).strip()
+            # 进一步清理：去除可能的引号、多余空格
+            title = title.strip("\"'“”‘’ \n\t")
+            # 限制长度（防止模型不听话）
+            if 1 <= len(title) <= 15:
+                if self._current_history_index is not None:
+                    self.history_manager.update_session_title(self._current_history_index, title)
+                    if self._in_history_mode:
+                        self._display_history_sessions()
+                return
+
+        # 若提取失败，可选择不更新（保持默认标题）
+        logger.error(f"[Title Gen] 未能从以下输出中提取标题:\n{raw_output}")

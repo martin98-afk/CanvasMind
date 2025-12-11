@@ -49,6 +49,16 @@ class HistoryManager:
         })
         self._save_to_disk()
 
+    def get_current_title(self, index: int) -> str:
+        if 0 <= index < len(self._history_sessions):
+            return self._history_sessions[index]['title']
+        return ''
+
+    def update_session_title(self, index: int, new_title: str):
+        if 0 <= index < len(self._history_sessions):
+            self._history_sessions[index]['title'] = new_title
+            self._save_to_disk()
+
     def _save_to_disk(self):
         with open(self.history_file, 'w', encoding='utf-8') as f:
             json.dump(self._history_sessions, f, ensure_ascii=False, indent=2)

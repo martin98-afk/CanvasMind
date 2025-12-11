@@ -1,17 +1,56 @@
 /* category_filter.qss */
+CategoryFilterDialog {
+    background-color: transparent; /* 主窗口透明，由内部 frame 控制背景 */
+}
+
 CategoryFilterDialog QFrame {
     background-color: #2D2D2D;
     border: 1px solid #4A4A4A;
     border-radius: 6px;
-    padding: 5px;
+    padding: 0; /* 改为 0，由内部精确控制间距 */
 }
 
+/* 滚动区域：确保背景一致 */
+CategoryFilterDialog QScrollArea {
+    background-color: transparent;
+    border: none;
+}
+
+CategoryFilterDialog QScrollArea > QWidget {
+    background-color: #2D2D2D;
+}
+
+/* 滚动条样式（深色适配） */
+CategoryFilterDialog QScrollBar:vertical {
+    background: #2D2D2D;
+    width: 10px;
+    margin: 0px;
+    border: none;
+}
+
+CategoryFilterDialog QScrollBar::handle:vertical {
+    background: #555555;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+CategoryFilterDialog QScrollBar::handle:vertical:hover {
+    background: #666666;
+}
+
+CategoryFilterDialog QScrollBar::add-line:vertical,
+CategoryFilterDialog QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+/* 按钮样式（保持不变，但建议微调 padding 对齐） */
 CategoryFilterDialog QPushButton {
     background-color: #4A4A4A;
     color: white;
     border: 1px solid #666666;
     border-radius: 4px;
     padding: 4px 8px;
+    min-height: 24px;
 }
 
 CategoryFilterDialog QPushButton:hover {
@@ -22,9 +61,11 @@ CategoryFilterDialog QPushButton:pressed {
     background-color: #3A3A3A;
 }
 
+/* 复选框样式（保持不变） */
 CategoryFilterDialog QCheckBox {
     color: white;
     spacing: 5px;
+    background-color: transparent;
 }
 
 CategoryFilterDialog QCheckBox::indicator {
