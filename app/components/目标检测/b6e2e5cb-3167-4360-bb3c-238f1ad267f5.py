@@ -19,22 +19,18 @@ class Component(BaseComponent):
     name = "YOLO目标检测及关键点检测"
     category = "目标检测"
     description = "使用YOLOv8模型进行目标检测和关键点检测"
-    requirements = "torch, torchvision, ultralytics, pillow"
+    requirements = "ultralytics,numpy,pillow"
     inputs = [
-        PortDefinition(name="input_image", label="输入图像", type=ArgumentType.IMAGE),
+        PortDefinition(name="input_image", label="输入图像", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="模型文件", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="detections", label="检测结果", type=ArgumentType.JSON),
         PortDefinition(name="keypoints", label="关键点信息", type=ArgumentType.JSON),
-        PortDefinition(name="model", label="模型", type=ArgumentType.TORCHMODEL),
+        PortDefinition(name="output_image", label="标注图像", type=ArgumentType.IMAGE),
+        PortDefinition(name="model.pt", label="模型", type=ArgumentType.FILE),
     ]
     properties = {
-        "model_name": PropertyDefinition(
-            type=PropertyType.CHOICE,
-            default="yolov8n",
-            label="YOLO模型",
-            choices=["yolov8n", "yolov8s", "yolov8m", "yolov8l", "yolov8x"]
-        ),
         "device": PropertyDefinition(
             type=PropertyType.CHOICE,
             default="cpu",
@@ -44,12 +40,12 @@ class Component(BaseComponent):
         "conf_threshold": PropertyDefinition(
             type=PropertyType.FLOAT,
             default=0.5,
-            label="置信度阈值"
+            label="置信度阈值",
         ),
         "iou_threshold": PropertyDefinition(
             type=PropertyType.FLOAT,
             default=0.7,
-            label="NMS IoU阈值"
+            label="NMS IoU阈值",
         ),
     }
 
@@ -65,9 +61,10 @@ class Component(BaseComponent):
         import numpy as np
         import io
         import base64
+        import cv2
 
         # 加载模型
-        self.load_model(params.model_name, params.device)
+        self.load_model(inputs.model, params.device)
 
         # 获取输入图像
         input_image = inputs.input_image
@@ -78,7 +75,6 @@ class Component(BaseComponent):
         if isinstance(input_image, str):
             # 如果是Base64字符串，转换为PIL图像
             from io import BytesIO
-            import base64
             image_data = base64.b64decode(input_image)
             input_image = Image.open(BytesIO(image_data))
 
@@ -88,8 +84,13 @@ class Component(BaseComponent):
         # 解析结果
         detections = []
         keypoints = []
+        annotated_image = None
 
         for result in results:
+            # 绘制标注图像
+            annotated_image = result.plot()
+
+            # 解析检测结果
             for box in result.boxes:
                 # 检测框信息
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
@@ -102,17 +103,41 @@ class Component(BaseComponent):
                     "class": cls,
                     "confidence": conf
                 })
-
-            for keypoint in result.keypoints:
-                # 关键点信息
-                points = keypoint.xy[0].tolist()
-                kps = {f"keypoint_{i}": [x, y] for i, (x, y) in enumerate(points)}
-                keypoints.append({
-                    "keypoints": kps
-                })
+            if result.keypoints is not None:
+                for keypoint in result.keypoints:
+                    # 关键点信息
+                    points = keypoint.xy[0].tolist()
+                    kps = {f"keypoint_{i}": [x, y] for i, (x, y) in enumerate(points)}
+                    keypoints.append({
+                        "keypoints": kps
+                    })
 
         return {
             "detections": detections,
             "keypoints": keypoints,
-            "model": self.model
+            "output_image": annotated_image,
+            "model.pt": self.model
         }
+
+
+if __name__ == "__main__":
+    import warnings
+    warnings.filterwarnings("ignore")
+    model = Component()
+    result = model.debug(
+        params={
+            "device": "cpu",
+            "conf_threshold": 0.5,
+            "iou_threshold": 0.7
+        },
+        inputs={
+            "input_image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASw...",
+            "model": "yolov8n.pt"
+        },
+        global_vars={},
+        node_id="test_node",
+        show_input_types=True,
+        show_output_types=True,
+        show_execution_time=True
+    )
+    print(result)
