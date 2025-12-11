@@ -344,6 +344,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             # 获取当前版本的代码
             current_version = self.get_property("version")
             if current_version == "latest":
+                print(self.FULL_PATH)
                 with open(self.FILE_PATH, 'r', encoding='utf-8') as f:
                     current_code = f.read()
             else:

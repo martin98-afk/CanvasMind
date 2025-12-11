@@ -437,13 +437,13 @@ class PortWidget(QWidget):
             return
         src_path = Path(file_path)
         if not src_path.exists():
-            InfoBar.error("文件不存在", f"所选文件 {file_path} 不存在", parent=self.parent())
+            InfoBar.error("文件不存在", f"所选文件 {file_path} 不存在", parent=self.main_window)
             return
-        upload_root = canvas_file_dump_path() / "uploads"
+        upload_root = canvas_file_dump_path() / "workflows" / self.main_window.workflow_name / self.node.persistent_id
         upload_root.mkdir(exist_ok=True, parents=True)
         safe_name = re.sub(r'[^\w\.-]', '_', src_path.stem)
         suffix = src_path.suffix
-        unique_name = f"{safe_name}_{self.node.persistent_id}{suffix}"
+        unique_name = f"{safe_name}{suffix}"
         dst_path = upload_root / unique_name
         try:
             import shutil
@@ -451,7 +451,7 @@ class PortWidget(QWidget):
             logger.info(f"已上传并复制文件: {src_path} -> {dst_path}")
         except Exception as e:
             logger.error(f"文件复制失败: {e}")
-            InfoBar.error("上传失败", f"无法复制文件：{e}", parent=self.parent())
+            InfoBar.error("上传失败", f"无法复制文件：{e}", parent=self.main_window)
             return
         self.node._output_values[port_name] = str(dst_path)
         InfoBar.success("上传成功", f"文件已保存至：{dst_path.name}", parent=self.main_window, duration=2000)
