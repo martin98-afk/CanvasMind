@@ -2,8 +2,61 @@
 import time
 from typing import Dict, List
 
+import openai
+from PyQt5.QtCore import QRunnable, pyqtSlot
 from PyQt5.QtCore import QThread, pyqtSignal
-from openai import OpenAI, APIError, Timeout, APIConnectionError, RateLimitError, BadRequestError, APITimeoutError
+from openai import OpenAI, APIError, APIConnectionError, RateLimitError, BadRequestError, APITimeoutError
+
+
+class TitleGenerationTask(QRunnable):
+    def __init__(self, current_title: str, messages_for_summary: list, llm_config: dict, callback):
+        super().__init__()
+        self.current_title = current_title
+        self.messages_for_summary = messages_for_summary
+        self.llm_config = llm_config
+        self.callback = callback  # 用于线程安全地回传结果到主线程（通过信号或直接调用）
+        self.setAutoDelete(True)
+
+    @pyqtSlot()
+    def run(self):
+        try:
+            # 构造 prompt（复用你的逻辑）
+            summary_text = ""
+            for msg in self.messages_for_summary[-4:]:
+                content = msg["content"]
+                if isinstance(content, list):
+                    texts = [item["text"] for item in content if item["type"] == "text"]
+                    content = "\n".join(texts)
+                role = "用户" if msg["role"] == "user" else "助手"
+                summary_text += f"{role}：{content}\n"
+
+            prompt = (
+                "你是一个对话标题生成器。请根据以下对话内容，生成一个不超过20个字的中文标题.\n"
+                f"对话内容：\n{summary_text}\n\n"
+                f"概括整个对话的核心主题。当前已有对话标题为：{self.current_title}\n\n"
+                "请严格按以下格式输出，不要包含任何其他文字、解释或标点：\n\n"
+                "```title\n你的标题\n```\n\n"
+                "标题内容为：\n"
+            )
+
+            # 调用 OpenAI API（同步调用，因为在线程中）
+            client = openai.OpenAI(
+                api_key=self.llm_config["API_KEY"],
+                base_url=self.llm_config["API_URL"]
+            )
+            resp = client.chat.completions.create(
+                model=self.llm_config["模型名称"],
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=500,
+                stream=False
+            )
+            raw_title = resp.choices[0].message.content.strip()
+            # 安全回传（QRunnable 不能直接 emit 信号，但可调用主线程的槽，前提是用 QObject）
+            self.callback(raw_title)
+        except Exception as e:
+            error_msg = f"[TitleGen Error] {str(e)}"
+            self.callback(None, error=error_msg)
 
 
 class OpenAIChatWorker(QThread):
@@ -11,12 +64,13 @@ class OpenAIChatWorker(QThread):
     error_occurred = pyqtSignal(str)
     finished_with_content = pyqtSignal(str)
 
-    def __init__(self, messages: List[Dict], llm_config: Dict):
+    def __init__(self, messages: List[Dict], llm_config: Dict, stream: bool = True):
         super().__init__()
         self.messages = messages
         self.llm_config = llm_config
         self.full_response = ""
         self._is_cancelled = False
+        self.stream = stream
 
     def cancel(self):
         self._is_cancelled = True
@@ -51,7 +105,7 @@ class OpenAIChatWorker(QThread):
                 "messages": self.messages,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
-                "stream": True,
+                "stream": self.stream,
             }
 
             # 仅对支持 thinking 的官方 API 才加 extra_body（避免第三方报错）
@@ -63,12 +117,12 @@ class OpenAIChatWorker(QThread):
                 }
 
             # 执行请求
-            stream = client.chat.completions.create(**req_kwargs)
+            response = client.chat.completions.create(**req_kwargs)
 
             self.full_response = ""
             last_chunk_time = time.time()
 
-            for chunk in stream:
+            for chunk in response:
                 if self._is_cancelled:
                     self.error_occurred.emit("[已取消] 用户手动中止请求")
                     return

@@ -364,7 +364,7 @@ class ContextSelector(QWidget):
             name = self._context_cache.get(key, ("未知", "", lambda: None))[0]
             tag = TagWidget(key, name)
             tag.closed.connect(self._on_tag_closed)
-            tag.doubleClicked.connect(self._on_tag_double_clicked)
+            tag.doubleClicked.connect(lambda k=key, t=tag: self._on_tag_double_clicked(k, t))
 
             tag_width = tag.sizeHint().width()
             if row_width + tag_width > max_row_width and row_width > 0:
@@ -394,12 +394,12 @@ class ContextSelector(QWidget):
                 self.popup.selected_keys = self._selected_keys.copy()
                 self.popup._update_checkboxes_from_selection()
 
-    def _on_tag_double_clicked(self, key: str):
+    def _on_tag_double_clicked(self, key: str, tag: TagWidget):
         """双击标签时，直接调用其回调函数"""
         callback = self.parent.homepage.context_register.get_executor(key)
         params = self.get_callback_params_by_key(key)
         if callable(callback):
             try:
-                callback(params)
+                callback(params, tag)
             except Exception as e:
                 print(f"[ContextSelector] 双击回调出错: {e}")

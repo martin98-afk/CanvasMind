@@ -757,7 +757,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                 with open(error_path, 'rb') as f:
                     error_info = pickle.load(f)
                 error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
-                print(error_msg)
                 self._log_message(self.persistent_id, error_msg)
                 raise Exception(error_info['traceback'])
             else:

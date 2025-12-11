@@ -37,10 +37,10 @@ class LLMContextProvider:
 
     def _register_contexts(self):
         """注册所有支持的大模型上下文类型"""
-        self.context_register.register("画布节点", self.extract_graph_info, self.select_node_by_name)
         self.context_register.register("画布节点图像", self.extract_graph_image, self.select_node_by_name)
-        self.context_register.register("全局变量", self.extract_var_info, lambda *args, kwargs: None)
-        self.context_register.register("组件信息", self.get_component_info, lambda *args, kwargs: None)
+        self.context_register.register("全局变量", self.extract_var_info, lambda *args: None)
+        self.context_register.register("画布节点", self.extract_graph_info, self.select_node_by_name)
+        self.context_register.register("组件信息", self.get_component_info, self.parent.show_category_dialog)
 
     def _extract_graph_info(self, nodes=None):
         """生成面向大模型的画布结构描述，以无箭头的 Markdown 表格形式呈现。"""
@@ -107,7 +107,7 @@ class LLMContextProvider:
         return "\n".join(rows)
 
     def extract_graph_info(self):
-        response = "# 画布上下文交互规范\n{LLM_GRAPH_CONTEXT_NORMS}\n\n# 画布上下文信息\n{graph_info}\n\n"""
+        response = "# 画布上下文信息\n{graph_info}\n\n# 画布上下文交互规范\n{LLM_GRAPH_CONTEXT_NORMS}\n\n"""
         selected_nodes = self.graph.selected_nodes()
         if len(selected_nodes) > 0:
             graph_info = self._extract_graph_info(selected_nodes)
@@ -130,7 +130,7 @@ class LLMContextProvider:
         return "全局变量", self.global_variables.to_dict(), None
 
     def get_component_info(self):
-        response = "# 组件上下文交互规范\n{NODE_CREATE_CONTEXT_NORMS}\n\n# 组件上下文信息\n{component_info}\n\n"
+        response = "# 组件上下文信息\n{component_info}\n\n# 组件上下文交互规范\n{NODE_CREATE_CONTEXT_NORMS}\n\n"
         selected_categories = self.ui_manager.nav_view._selected_categories
         component_map, _ = ComponentScanner().get_components()
         selected_components = {
@@ -169,7 +169,7 @@ class LLMContextProvider:
         return (
             f"{len(selected_components)}x 组件",
             response.format(NODE_CREATE_CONTEXT_NORMS=NODE_CREATE_CONTEXT_NORMS, component_info=component_info),
-            None
+            selected_categories
         )
 
     def extract_graph_image(self):
