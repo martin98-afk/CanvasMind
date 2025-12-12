@@ -22,6 +22,7 @@ from qfluentwidgets import (
     TransparentToggleToolButton
 )
 
+from app.mcp_server.mcp_adapter import McpWorkflowTool
 from app.utils.config import Settings
 from app.utils.service_manager import SERVICE_MANAGER
 from app.utils.utils import ansi_to_html, get_icon
@@ -76,26 +77,23 @@ class ProjectRunnerThread(QThread):
 
     def run(self):
         try:
-            result = subprocess.run(
-                [self.python_exe, "run.py"],
-                cwd=self.project_path,
-                capture_output=True,
-                text=True,
-                timeout=300,
-                encoding='utf-8',
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-            )
+            # 1. 构造测试输入（可从 UI 传入，或用默认值）
+            test_inputs = {}
+            spec_path = os.path.join(self.project_path, "project_spec.json")
+            if os.path.exists(spec_path):
+                with open(spec_path, 'r', encoding='utf-8') as f:
+                    spec = json.load(f)
+                for key, cfg in spec.get("inputs", {}).items():
+                    # 用 current_value 或默认值
+                    test_inputs[key] = cfg.get("current_value", "")
 
-            outputs = {}
-            output_file = os.path.join(self.project_path, "output.json")
-            if os.path.exists(output_file):
-                try:
-                    with open(output_file, 'r', encoding='utf-8') as f:
-                        outputs = json.load(f)
-                except Exception:
-                    pass
+            # 2. 执行 MCP 工具
+            tool = McpWorkflowTool(self.project_path)
+            outputs = tool.execute(test_inputs)
 
-            log_content = (result.stdout or "") + "\n" + (result.stderr or "")
+            # 3. 模拟日志（可选）
+            log_content = "✅ MCP 工具执行成功\n" + json.dumps(outputs, indent=2, ensure_ascii=False)
+
             self.finished.emit(outputs, log_content)
 
         except Exception as e:
@@ -265,7 +263,6 @@ class ExportedProjectsPage(QWidget):
                 # preview.png 变化只影响刷新，不影响项目存在性
                 if os.path.exists(project_dir):  # 确保项目还存在
                     projects_to_refresh.add(project_dir)
-        print(projects_to_refresh)
         # 删除项目（仅由 workflow.json deleted 触发）
         for proj in projects_to_remove:
             self._known_projects.discard(proj)

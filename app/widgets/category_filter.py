@@ -18,7 +18,7 @@ class CategoryFilterDialog(QWidget):
         super().__init__(parent)
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
         self.categories = categories
-        self.selected_categories = set(selected_categories or categories)
+        self.selected_categories = selected_categories or set()
         self.checkboxes = []
         self.max_visible = max_visible
         self._direction = direction

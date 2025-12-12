@@ -143,8 +143,10 @@ class McpWorkflowTool:
                 cmd,
                 cwd=self.project_dir,
                 capture_output=True,
-                text=False,  # 保持 bytes，避免编码问题
-                timeout=300  # 5分钟超时
+                text=True,
+                timeout=300,
+                encoding='utf-8',
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             )
 
             # 4. 检查子进程是否成功
