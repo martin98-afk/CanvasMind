@@ -15,7 +15,7 @@ from app.utils.utils import serialize_for_json
 class McpWorkflowTool:
     """MCP 工作流适配器，用于将 MCP 工作流转换为 runner 可用的格式"""
 
-    def __init__(self, project_dir: Path, python_executable: str = None):
+    def __init__(self, project_dir: Path, python_executable: str = ""):
         self.project_dir = Path(project_dir).resolve()
         spec_path = self.project_dir / "project_spec.json"
         if not spec_path.exists():
@@ -23,24 +23,26 @@ class McpWorkflowTool:
 
         with open(spec_path, 'r', encoding='utf-8') as f:
             self.spec = json.load(f)  # 注意：这里先不反序列化，只读原始 JSON
-
-        self.name = self.spec.get("metadata", {}).get("name", self.project_dir.name)
-        self.description = self.spec.get("metadata", {}).get("description", f"Exported workflow: {self.name}")
+        with open(self.project_dir / "model.workflow.json", 'r', encoding='utf-8') as f:
+            full_data = json.load(f)
+        runtime = full_data.get("runtime", {})
+        self.name = self.project_dir.name
+        self.description = f"低代码导出工作流: {self.spec.get('graph_name', self.project_dir.name)}"  # 或留空，MCP 允许无描述
 
         # 获取运行时 Python 路径
-        runtime = self.spec.get("runtime", {})
         self.python_executable = python_executable or runtime.get("environment_exe")
-
         if not Path(self.python_executable).exists():
             raise RuntimeError(f"Python executable not found: {self.python_executable}")
 
     def get_input_schema(self) -> Dict[str, Any]:
-        """生成 MCP 兼容的 JSON Schema（同前，略）"""
         properties = {}
-        required = []
+        required = []  # 注意：你的 spec 没有 required 字段，可默认非必填
+
         for key, cfg in self.spec.get("inputs", {}).items():
             fmt = cfg.get("format", "TEXT")
-            desc = cfg.get("description", "")
+            # 使用 display_name 作为描述，fallback 到 key
+            desc = cfg.get("display_name", key)
+
             if fmt in ["TEXT", "LONGTEXT", "JSON"]:
                 schema = {"type": "string", "description": desc}
             elif fmt == "INT":
@@ -52,21 +54,30 @@ class McpWorkflowTool:
             elif fmt in ["FILE", "IMAGE", "EXCEL", "UPLOAD"]:
                 schema = {
                     "type": "string",
-                    "format": "data-url",  # base64 or data URL
+                    "format": "data-url",
                     "description": desc
                 }
             elif fmt.startswith("ARRAY"):
-                inner_type = "string"
-                if "INT" in fmt: inner_type = "integer"
-                elif "FLOAT" in fmt: inner_type = "number"
-                elif "BOOL" in fmt: inner_type = "boolean"
-                schema = {"type": "array", "items": {"type": inner_type}, "description": desc}
+                # 你的 format 是 "ARRAY"，没有具体类型，保守用 string[]
+                schema = {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": desc
+                }
             else:
+                # 未知格式默认为 string
                 schema = {"type": "string", "description": desc}
 
-            if cfg.get("required", False):
-                required.append(key)
+            # 你的 spec 没有 required 字段，所以不加到 required 列表
+            # 如果未来支持，可加 cfg.get("required", False)
             properties[key] = schema
+
+        return {
+            "type": "object",
+            "properties": properties,
+            # 注意：required 可以为空列表，表示所有参数可选
+            "required": required
+        }
 
         return {"type": "object", "properties": properties, "required": required}
 

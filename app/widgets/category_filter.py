@@ -1,66 +1,126 @@
 # -*- coding: utf-8 -*-
 
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QFrame
-from qfluentwidgets import PushButton
-
-from app.widgets.basic_widget.style_sheet import StyleSheet
+from PyQt5.QtCore import Qt, pyqtSignal, QRect
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QApplication
+)
+from PyQt5.QtGui import QColor
+from qfluentwidgets import (
+    CardWidget, PrimaryPushButton, PushButton,
+    SmoothScrollArea, setFont, isDarkTheme, CheckBox, SimpleCardWidget
+)
 
 
 class CategoryFilterDialog(QWidget):
-    """类别筛选对话框，用作下拉弹窗"""
     categories_changed = pyqtSignal(set)
 
-    def __init__(self, categories, parent=None, selected_categories=None, direction="down"):
+    def __init__(self, categories, parent=None, selected_categories=None, direction="auto", max_visible=8):
         super().__init__(parent)
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.direction = direction
         self.categories = categories
-        self.selected_categories = set() if selected_categories is None else selected_categories  # 默认全选
+        self.selected_categories = set(selected_categories or categories)
         self.checkboxes = []
-        self._setup_ui()
+        self.max_visible = max_visible
+        self._direction = direction
 
-        # 应用样式表
-        StyleSheet.CATEGORY_FILTER.apply(self)
+        self._init_ui()
+        self._apply_dark_scroll_fix()
 
-    def _setup_ui(self):
-        # 主框架
-        main_frame = QFrame(self)
+    def _init_ui(self):
+        self.card = SimpleCardWidget(self)
+        self.card_layout = QVBoxLayout(self.card)
+        self.card_layout.setContentsMargins(12, 12, 12, 12)
+        self.card_layout.setSpacing(10)
 
-        layout = QVBoxLayout(main_frame)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(5)
-
-        # 全选/取消全选按钮
+        # 按钮
         button_layout = QHBoxLayout()
-        select_all_btn = PushButton("全选", self)
+        button_layout.setSpacing(8)
+
+        select_all_btn = PrimaryPushButton("全选", self)
+        select_all_btn.setMinimumWidth(80)
         select_all_btn.clicked.connect(self._select_all)
-        button_layout.addWidget(select_all_btn)
 
         select_none_btn = PushButton("取消全选", self)
+        select_none_btn.setMinimumWidth(80)
         select_none_btn.clicked.connect(self._select_none)
+
+        button_layout.addWidget(select_all_btn)
         button_layout.addWidget(select_none_btn)
+        button_layout.addStretch(1)
 
-        layout.addLayout(button_layout)
+        self.card_layout.addLayout(button_layout)
 
-        # 复选框列表
+        # 滚动区域
+        self.scroll_area = SmoothScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # 内容容器
+        self.content_widget = QWidget()
+        self.content_widget.setStyleSheet("border: none;")
+        self.content_layout = QVBoxLayout(self.content_widget)
+        self.content_layout.setContentsMargins(2, 2, 2, 2)  # 微调内边距
+        self.content_layout.setSpacing(6)
+
         for category in self.categories:
-            checkbox = QCheckBox(category)
-            if category in self.selected_categories:
-                checkbox.setChecked(True)
-            else:
-                checkbox.setChecked(False)
-            checkbox.stateChanged.connect(lambda state, cat=category: self._on_category_toggled(cat, state))
+            checkbox = CheckBox(category, self)
+            setFont(checkbox, 12)
+            checkbox.setChecked(category in self.selected_categories)
+            checkbox.stateChanged.connect(
+                lambda state, cat=category: self._on_category_toggled(cat, state)
+            )
             self.checkboxes.append(checkbox)
-            layout.addWidget(checkbox)
+            self.content_layout.addWidget(checkbox)
 
-        # 设置主框架大小
-        main_frame.resize(200, min(300, len(self.categories) * 30 + 60))
+        self.content_layout.addStretch(1)
+        self.scroll_area.setWidget(self.content_widget)
 
-        # 将主框架添加到窗口
+        # 动态高度
+        item_height = 28
+        visible_count = min(len(self.categories), self.max_visible)
+        scroll_height = visible_count * (item_height + 6) - 6
+        self.scroll_area.setFixedHeight(scroll_height)
+
+        self.card_layout.addWidget(self.scroll_area)
+
         main_layout = QVBoxLayout(self)
-        main_layout.addWidget(main_frame)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(self.card)
+
+    def _apply_dark_scroll_fix(self):
+        """关键：修复深色模式下滚动区域白色背景和滚动条问题"""
+        # 圆角
+        self.setStyleSheet(f"background-color: #2D2D2D; border-radius: 4px;")
+        self.content_widget.setStyleSheet(f"""
+            QWidget {{
+                background-color: #2D2D2D;
+                border: none;
+            }}
+        """)
+
+        # 2. 强制滚动区域 viewport 背景
+        viewport = self.scroll_area.viewport()
+        viewport.setStyleSheet(f"background-color: #2D2D2D; border: none;")
+
+        # 3. （可选）自定义滚动条样式（更保险）
+        self.scroll_area.setStyleSheet("""
+            SmoothScrollArea QScrollBar:vertical {
+                width: 10px;
+                background: transparent;
+            }
+            SmoothScrollArea QScrollBar::handle:vertical {
+                border-radius: 5px;
+                background: rgba(255, 255, 255, 0.2);
+                min-height: 30px;
+            }
+            SmoothScrollArea QScrollBar::handle:vertical:hover {
+                background: rgba(255, 255, 255, 0.3);
+            }
+            SmoothScrollArea QScrollBar::add-line:vertical,
+            SmoothScrollArea QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+        """)
 
     def _on_category_toggled(self, category, state):
         if state == Qt.Checked:
@@ -70,15 +130,15 @@ class CategoryFilterDialog(QWidget):
         self.categories_changed.emit(self.selected_categories)
 
     def _select_all(self):
-        for checkbox in self.checkboxes:
-            checkbox.setChecked(True)
+        for cb in self.checkboxes:
+            cb.setChecked(True)
         self.selected_categories = set(self.categories)
         self.categories_changed.emit(self.selected_categories)
 
     def _select_none(self):
-        for checkbox in self.checkboxes:
-            checkbox.setChecked(False)
-        self.selected_categories = set()
+        for cb in self.checkboxes:
+            cb.setChecked(False)
+        self.selected_categories.clear()
         self.categories_changed.emit(self.selected_categories)
 
     def get_selected_categories(self):
@@ -86,10 +146,18 @@ class CategoryFilterDialog(QWidget):
 
     def show_at(self, pos):
         self.adjustSize()
-        if self.direction == "down":
-            # 向下展开：弹窗在 pos 下方
-            self.move(pos)
+        screen = QApplication.primaryScreen().availableGeometry()
+        w, h = self.card.width(), self.card.height()
+        x = max(screen.left(), min(pos.x(), screen.right() - w))
+
+        if self._direction == "auto":
+            space_below = screen.bottom() - pos.y()
+            space_above = pos.y() - screen.top()
+            y = pos.y() if space_below >= h else (pos.y() - h if space_above >= h else max(screen.top(), pos.y()))
         else:
-            # 向上展开：弹窗在 pos 上方（需减去自身高度）
-            self.move(pos.x(), pos.y() - self.height())
+            y = pos.y() if self._direction == "down" else pos.y() - h
+        y = max(screen.top(), min(y, screen.bottom() - h))
+
+        self.move(x, y)
         self.show()
+        self.setFocus()

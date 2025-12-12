@@ -175,13 +175,12 @@ class CanvasPage(QWidget):
         return self.ui_manager.log_window
 
     def show_category_dialog(self, categories, tag):
-        print(categories)
         all_categories = set()
         for full_path, comp_cls in self.component_map.items():
             category = getattr(comp_cls, 'category', 'General')
             all_categories.add(category)
         pos = tag.mapToGlobal(QPoint(0, 0))
-        category_filter_dialog = CategoryFilterDialog(sorted(all_categories), self, categories, "up")
+        category_filter_dialog = CategoryFilterDialog(sorted(all_categories), self, categories, "auto")
         category_filter_dialog.categories_changed.connect(self.ui_manager.nav_panel.draggable_tree._on_categories_changed)
         category_filter_dialog.show_at(pos)
 

@@ -60,6 +60,7 @@ class HistoryManager:
             self._save_to_disk()
 
     def _save_to_disk(self):
+        print(self._history_sessions)
         with open(self.history_file, 'w', encoding='utf-8') as f:
             json.dump(self._history_sessions, f, ensure_ascii=False, indent=2)
 
