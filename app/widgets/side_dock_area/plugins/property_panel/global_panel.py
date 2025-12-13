@@ -588,14 +588,7 @@ class GlobalPanelWidget:
 
     def _extract_node_name(self, var_name: str):
         """从 var_name 提取节点名，与 locate_node_by_name 逻辑一致"""
-        parts = var_name.split("_")
-        if len(parts) == 2:
-            safe_node_name_candidate = parts[0]
-        else:
-            if re.match(r'\d+', parts[1]):
-                safe_node_name_candidate = "_".join(parts[:2])
-            else:
-                safe_node_name_candidate = parts[0]
+        safe_node_name_candidate = var_name.split("__")[0]
         original_name_candidate = re.sub(r'_(?=\d+$)', " ", safe_node_name_candidate)
         return original_name_candidate
 
@@ -813,17 +806,22 @@ class GlobalPanelWidget:
         toggle_btn.setText("收起" if not is_visible else "展开")
 
     def _create_variable_card(self, name: str, node_var_obj):
-        parts = name.split("_")
+        parts = name.split("__")
         if len(parts) == 2:
             node_name = parts[0]
             port_name = parts[1]
         else:
-            if re.match(r'\d+', parts[1]):
-                node_name = "_".join(parts[:2])
-                port_name = "_".join(parts[2:])
-            else:
+            parts = name.split("_")
+            if len(parts) == 2:
                 node_name = parts[0]
-                port_name = "_".join(parts[1:])
+                port_name = parts[1]
+            else:
+                if re.match(r'\d+', parts[1]):
+                    node_name = "_".join(parts[:2])
+                    port_name = "_".join(parts[2:])
+                else:
+                    node_name = parts[0]
+                    port_name = "_".join(parts[1:])
         node_name = re.sub(r'_(?=\d+$)', " ", node_name)
         card = SimpleCardWidget(self.parent_panel)
         layout = QVBoxLayout(card)
@@ -1246,7 +1244,7 @@ class GlobalPanelWidget:
             )
             return
         safe_node_name = re.sub(r'\s+', '_', node.name())
-        var_name = f"{safe_node_name}_{port_name}"
+        var_name = f"{safe_node_name}__{port_name}"
         main_window.global_variables.set_output(
             node_id=safe_node_name, output_name=port_name, output_value=value
         )
@@ -1272,10 +1270,10 @@ class GlobalPanelWidget:
             QtCore.QTimer.singleShot(100, node.refresh_node_outports)
         if hasattr(node, "_sync_outputs_ports"):
             QtCore.QTimer.singleShot(100, node._sync_outputs_ports)
-        self._handle_global_variable_change("node_vars", f"{safe_node_name}_{port_name}", "delete")
+        self._handle_global_variable_change("node_vars", f"{safe_node_name}__{port_name}", "delete")
         InfoBar.success(
             title="成功",
-            content=f"已删除全局变量：{safe_node_name}_{port_name}",
+            content=f"已删除全局变量：{safe_node_name}__{port_name}",
             parent=main_window,
             position=InfoBarPosition.TOP_RIGHT
         )

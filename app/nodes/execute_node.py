@@ -136,7 +136,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             # 4. 按 expected_names 顺序重建输出端口
             for name in expected_names:
                 node_name = re.sub(r'\s+', '_', self.name())
-                if f"{node_name}_{name}" in parent_window.global_variables.node_vars:
+                if f"{node_name}__{name}" in parent_window.global_variables.node_vars:
                     self.add_output(name, painter_func=draw_special_outputport)
                 else:
                     self.add_output(name)

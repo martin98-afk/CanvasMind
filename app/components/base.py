@@ -223,15 +223,15 @@ class GlobalVariableContext(BaseModel):
             self.custom[key].value = value
 
     def set_output(self, node_id: str, output_name: str, output_value: Any, policy: str="更新"):
-        self.node_vars[f"{node_id}_{output_name}"] = NodeVariable(
+        self.node_vars[f"{node_id}__{output_name}"] = NodeVariable(
             value=output_value, update_policy=policy
         )
 
     def delete_output(self, node_id: str, output_name: str):
-        self.node_vars.pop(f"{node_id}_{output_name}", None)
+        self.node_vars.pop(f"{node_id}__{output_name}", None)
 
     def is_output_in_node_vars(self, node_id: str, output_name: str):
-        return f"{node_id}_{output_name}" in self.node_vars
+        return f"{node_id}__{output_name}" in self.node_vars
 
     def clear_node_vars(self, name: str):
         if isinstance(self.node_vars[name].value, (list, dict, tuple, set)):

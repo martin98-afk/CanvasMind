@@ -72,7 +72,7 @@ def execute_node(
         if results is not None:
             for port_name, result in results.items():
                 node_name = re.sub(r"\s+", "_", node.name())
-                var_key = f"{node_name}_{port_name}"
+                var_key = f"{node_name}__{port_name}"
                 var_obj = scheduler.global_variables.node_vars.get(var_key)
                 if var_obj and var_obj.update_policy != "固定":
                     scheduler.update_node_variable(var_key, result, var_obj.update_policy)

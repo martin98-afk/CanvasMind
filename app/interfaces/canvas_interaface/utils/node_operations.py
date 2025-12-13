@@ -118,6 +118,7 @@ class NodeOperations:
 
     def create_next_node(self, key, icon_path=None):
         selected_nodes = self.graph.selected_nodes()
+        viewer = self.graph.viewer()
         try:
             node = self.graph.create_node(key)
         except Exception:
@@ -130,8 +131,9 @@ class NodeOperations:
             node_x = selected_nodes[0].x_pos()
             node_y = selected_nodes[0].y_pos()
             node.set_pos(node_x + selected_nodes[0].view.width + 100, node_y)
+            # 将视角移动到当前选择点+新建的点
+            viewer.zoom_to_nodes(selected_nodes + [node])
         else:
-            viewer = self.graph.viewer()
             viewport_center = viewer.viewport().rect().center()
             scene_center = viewer.mapToScene(viewport_center)
             node.set_pos(scene_center.x(), scene_center.y())
