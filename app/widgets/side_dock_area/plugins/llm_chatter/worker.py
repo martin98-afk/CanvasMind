@@ -64,19 +64,38 @@ class OpenAIChatWorker(QThread):
     error_occurred = pyqtSignal(str)
     finished_with_content = pyqtSignal(str)
 
-    def __init__(self, messages: List[Dict], llm_config: Dict, stream: bool = True):
+    def __init__(self, messages: List[Dict], llm_config: Dict, tools: List[Dict] = None, stream: bool = True):
         super().__init__()
         self.messages = messages
         self.llm_config = llm_config
+        self.tools = tools or []
+        self.stream = stream
         self.full_response = ""
         self._is_cancelled = False
-        self.stream = stream
 
     def cancel(self):
         self._is_cancelled = True
 
     def _check_cancel(self) -> bool:
         return self._is_cancelled
+
+    def _execute_mcp_tool(self, tool, tool_args: dict) -> dict:
+        """执行 MCP 工具并返回结果（结构化字典）"""
+        try:
+            result = tool.execute(tool_args)
+            return {
+                "type": "tool_result",
+                "tool_name": tool.name,
+                "result": result,
+                "error": None
+            }
+        except Exception as e:
+            return {
+                "type": "tool_error",
+                "tool_name": tool.name,
+                "result": None,
+                "error": str(e)
+            }
 
     def run(self):
         try:

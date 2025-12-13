@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
+from pathlib import Path
+
 from loguru import logger
 from typing import Optional, Dict, Any, List
 
@@ -12,6 +14,7 @@ from qfluentwidgets import (
     TransparentToggleToolButton
 )
 
+from app.mcp_server.stdio_server import GlobalMcpServer
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.chat_session import SessionManager
@@ -575,7 +578,14 @@ class OpenAIChatToolWindow(ToolWindow):
             messages.append({"role": "user", "content": context_text + user_text})
 
         self._is_streaming = True
-        self._worker = OpenAIChatWorker(messages=messages, llm_config=llm_config)
+        # 在 _on_send_clicked 中，构建 messages 之后、创建 worker 之前，加入：
+        available_tools = self._get_available_mcp_tools()  # ← 新方法
+
+        self._worker = OpenAIChatWorker(
+            messages=messages,
+            llm_config=llm_config,
+            tools=available_tools  # ← 传入 tools
+        )
         self._worker.content_received.connect(lambda c: self._on_content_received(c, assistant_card))
         self._worker.error_occurred.connect(lambda e: self._on_error(e, assistant_card))
         self._worker.finished_with_content.connect(lambda r: self._on_worker_finished(r, assistant_card))
@@ -688,3 +698,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
         # 若提取失败，可选择不更新（保持默认标题）
         logger.error(f"[Title Gen] 未能从以下输出中提取标题:\n{raw_output}")
+
+    def _get_available_mcp_tools(self) -> List[Dict]:
+        """从 MCP 服务器或注册表中获取当前可用的工具定义"""
+        exports_dir = Path(r"D:\work\CanvasMind\canvas_files\projects")
+        server = GlobalMcpServer(exports_dir)
+        return server.handle_initialize(None)

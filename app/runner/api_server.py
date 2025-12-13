@@ -15,10 +15,11 @@ from typing import Dict, Any, Optional, List
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from loguru import logger
 from pyarrow import feather
 from pydantic import BaseModel, create_model
+from starlette.responses import JSONResponse
 
 sys.path.append(str(Path(__file__).parent))
 from runner.workflow_runner import execute_workflow, deserialize_from_json
@@ -203,7 +204,7 @@ app = FastAPI(
 
 
 @app.post("/run", response_model=OutputModel)
-async def run_workflow(input: InputModel):
+async def run_workflow(request: Request, input: InputModel):
     try:
         external_inputs = {}
 

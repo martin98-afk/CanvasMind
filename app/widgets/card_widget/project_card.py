@@ -3,6 +3,7 @@ import os
 import json
 import subprocess
 from datetime import datetime
+from pathlib import Path
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QGuiApplication, QPixmap
@@ -39,8 +40,8 @@ class ClickableLabel(BodyLabel):
 class ProjectCard(CardWidget):
     def __init__(self, project_path, parent=None):
         super().__init__(parent)
-        self.project_path = os.path.abspath(project_path)
-        self.project_name = os.path.basename(self.project_path)
+        self.project_path = Path(project_path)
+        self.project_name = self.project_path.name
         self.home = parent
         self._setup_ui()
         self.setCursor(Qt.PointingHandCursor)
@@ -220,11 +221,11 @@ class ProjectCard(CardWidget):
         self.meta_grid.addWidget(v, row, 1)
 
     def _update_service_button(self):
-        if SERVICE_MANAGER.is_running(self.project_path):
+        if SERVICE_MANAGER.is_running(str(self.project_path)):
             self.service_btn.setText("下线")
             self.service_btn.setIcon(FluentIcon.PAUSE)
             self.request_btn.setEnabled(True)
-            url = SERVICE_MANAGER.get_url(self.project_path)
+            url = SERVICE_MANAGER.get_url(str(self.project_path))
             if url:
                 self.status_label.setText(url)
                 self.status_label.setVisible(True)
@@ -237,12 +238,12 @@ class ProjectCard(CardWidget):
             self.status_label.setVisible(False)
 
     def _open_request_dialog(self):
-        if not SERVICE_MANAGER.is_running(self.project_path):
+        if not SERVICE_MANAGER.is_running(str(self.project_path)):
             InfoBar.warning("服务未运行", "请先点击'上线'启动服务", parent=self.home)
             return
-        url = SERVICE_MANAGER.get_url(self.project_path)
+        url = SERVICE_MANAGER.get_url(str(self.project_path))
         if url:
-            dialog = ServiceRequestDialog(self.project_path, url, self.home)
+            dialog = ServiceRequestDialog(str(self.project_path), url, self.home)
             dialog.exec()
 
     def update_status(self, is_running=False):
