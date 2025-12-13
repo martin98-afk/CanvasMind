@@ -563,7 +563,7 @@ class GlobalPanelWidget:
         # 重构逻辑：按节点分组
         current_node_groups = {}
         for var_name in current_node_vars:
-            node_name = self._extract_node_name(var_name)  # 使用辅助函数提取节点名
+            node_name = self._extract_node_name(var_name, current_node_groups)  # 使用辅助函数提取节点名
             if node_name not in current_node_groups:
                 current_node_groups[node_name] = []
             current_node_groups[node_name].append((var_name, global_vars.node_vars[var_name]))
@@ -586,11 +586,32 @@ class GlobalPanelWidget:
             card.deleteLater()
         self._node_var_cards.clear()
 
-    def _extract_node_name(self, var_name: str):
-        """从 var_name 提取节点名，与 locate_node_by_name 逻辑一致"""
-        safe_node_name_candidate = var_name.split("__")[0]
-        original_name_candidate = re.sub(r'_(?=\d+$)', " ", safe_node_name_candidate)
-        return original_name_candidate
+    def _extract_node_name(self, var_name: str, current_node_groups: list) -> str:
+        """从 var_name（如 'Node_Name_123_port'）中还原出存在于 current_node_groups 中的原始节点名"""
+        # 第一步：去掉端口部分（取第一个 "__" 之前的部分，如果没有 "__" 则用整个字符串）
+        base = var_name.split("__")[0]
+
+        # 如果 base 本身就在组里，直接返回
+        if base in current_node_groups:
+            return base
+
+        # 否则，尝试从右向左逐步将下划线替换为空格（实际是“保留更多右侧片段”）
+        parts = base.split('_')
+        n = len(parts)
+
+        # 从最细粒度（全拆成空格）到最粗（保留所有下划线）尝试
+        for i in range(n - 1, 0, -1):  # i 是保留原始下划线的起始索引（右侧 i 个部分保持原样）
+            candidate = ' '.join(parts[:n - i]) + '_' + '_'.join(parts[n - i:]) if n - i > 0 else '_'.join(parts)
+            if candidate in current_node_groups:
+                return candidate
+
+        # 如果上面都失败，尝试直接用空格替换所有下划线
+        fallback = ' '.join(parts)
+        if fallback in current_node_groups:
+            return fallback
+
+        # 最终回退：返回原始 base（即使不在列表中）
+        return base
 
     def _create_node_group_card(self, node_name: str, node_var_items: list):
         """创建一个包含该节点所有端口变量的分组卡片"""
