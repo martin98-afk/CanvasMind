@@ -8,26 +8,29 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Set
 
-from PyQt5.QtCore import QEasingCurve, Qt, QTimer, QSize
+from PyQt5.QtCore import Qt, QTimer, QSize
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QDialog, QTextEdit, QFileDialog, QHBoxLayout, QFrame
 from loguru import logger
 from qfluentwidgets import (
     PrimaryPushButton,
     InfoBar,
-    MessageBox, StateToolTip, FlowLayout, BodyLabel, SmoothScrollArea,
-    PipsPager, PipsScrollButtonDisplayMode, ComboBox, CaptionLabel, SearchLineEdit,
+    MessageBox, StateToolTip, BodyLabel, SmoothScrollArea,
+    PipsPager, PipsScrollButtonDisplayMode, ComboBox, SearchLineEdit,
     TransparentToggleToolButton, SimpleCardWidget
 )
 from watchfiles import Change
 
-from app.interfaces.exported_project_interface.utils.threading_utils import WatchfilesThread, ProjectRunnerThread
+from app.interfaces.exported_project_interface.utils.threading_utils import (WatchfilesThread, ProjectRunnerThread)
 from app.interfaces.exported_project_interface.widgets.project_card import ProjectCard
-from app.interfaces.exported_project_interface.widgets.service_request_widget import ServiceRequestWidget
+from app.widgets.side_dock_area.plugins.service_request.main_widget import ServiceRequestWidget
 from app.utils.config import Settings
+from app.interfaces.exported_project_interface.constants import *
 from app.utils.service_manager import SERVICE_MANAGER
 from app.utils.utils import ansi_to_html, get_icon
+from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.dialog_widget.project_export_dialog import ProjectExportFlowDialog
+from app.widgets.side_dock_area.side_dock_area import SideDockArea
 
 
 class ExportedProjectsPage(QWidget):
@@ -39,7 +42,7 @@ class ExportedProjectsPage(QWidget):
         self.running_projects = {}
         self._is_loading = False
         self._filter_text = ""
-        self.page_size = 12
+        self.page_size = 10  # 每页10个项目
         self.current_page = 0
         self.total_pages = 1
         self.all_project_paths: List[str] = []
@@ -59,21 +62,15 @@ class ExportedProjectsPage(QWidget):
         return default_dir
 
     def _setup_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(20)
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        # === 主体：卡片 + 分页器 + 右侧详情面板 ===
-        self.main_layout = QHBoxLayout(self)
-        self.main_layout.setSpacing(20)
+        # === 顶部工具栏 ===
+        top_bar = QHBoxLayout()
+        top_bar.setSpacing(5)
+        top_bar.setContentsMargins(30, 10, 10, 10)
 
-        left_layout = QVBoxLayout(self)
-        # === 顶部：排序 + 搜索 + 导入按钮 ===
-        top_bar = QHBoxLayout(self)
-        top_bar.setSpacing(16)
-        top_bar.setContentsMargins(50, 0, 70, 0)
-
-        sort_label = CaptionLabel("排序字段：", self)
         self.sort_field_combo = ComboBox(self)
         self.sort_field_combo.addItems(["创建时间", "名称"])
         self.sort_field_combo.setCurrentIndex(0)
@@ -89,58 +86,86 @@ class ExportedProjectsPage(QWidget):
 
         self.search_line_edit = SearchLineEdit(self)
         self.search_line_edit.setPlaceholderText("搜索项目名称...")
-        self.search_line_edit.setFixedWidth(220)
+        self.search_line_edit.setFixedWidth(180)
         self.search_line_edit.textChanged.connect(self._on_search_changed)
 
-        self.import_btn = PrimaryPushButton("导入项目", self)
+        self.import_btn = PrimaryPushButton("导入", self)
         self.import_btn.clicked.connect(self.import_projects)
 
         top_bar.addWidget(self.search_line_edit)
-        top_bar.addStretch()
-        top_bar.addWidget(sort_label)
         top_bar.addWidget(self.sort_field_combo)
         top_bar.addWidget(self.sort_order_button)
         top_bar.addWidget(self.import_btn)
+        top_bar.addStretch(1)
+
+        # === 主体：Splitter 分割左右 ===
+        splitter = ModernSplitter(Qt.Horizontal)
+        splitter.setHandleWidth(8)
+        splitter.setStyleSheet("QSplitter::handle { background: #3c3c40; }")
+
+        # --- 左侧：项目列表 ---
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(0)
         left_layout.addLayout(top_bar)
-        self.scroll_area = SmoothScrollArea(self)
+
+        self.scroll_area = SmoothScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setStyleSheet("border: none; background-color: transparent;")
         self.scroll_area.setFrameShape(QFrame.NoFrame)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
         self.scroll_widget = QWidget()
         self.scroll_widget.setStyleSheet("background-color: transparent;")
-        self.flow_layout = FlowLayout(self.scroll_widget, needAni=True)
-        self.flow_layout.setAnimation(250, QEasingCurve.OutQuad)
-        self.flow_layout.setContentsMargins(30, 30, 30, 30)
-        self.flow_layout.setVerticalSpacing(20)
-        self.flow_layout.setHorizontalSpacing(30)
+        self.list_layout = QVBoxLayout(self.scroll_widget)
+        self.list_layout.setContentsMargins(20, 10, 20, 10)
+        self.list_layout.setSpacing(10)
         self.scroll_area.setWidget(self.scroll_widget)
+
         left_layout.addWidget(self.scroll_area, 1)
 
-        self.pips_pager = PipsPager(Qt.Vertical)
-        self.pips_pager.setPageNumber(1)
-        self.pips_pager.currentIndexChanged.connect(self._on_page_changed)
-        self.pips_pager.setNextButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
-        self.pips_pager.setPreviousButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
-        self.pips_pager.setFixedWidth(10)
-
-        self.detail_panel = SimpleCardWidget(self)
-        self.detail_panel.setFixedWidth(0)
-        self.detail_panel.setVisible(False)
+        # --- 右侧：详情面板 ---
+        self.side_dock_area = SideDockArea(self, "项目管理")
+        self.detail_panel = SimpleCardWidget()
+        self.detail_panel.setMinimumWidth(500)
         self.detail_layout = QVBoxLayout(self.detail_panel)
         self.detail_layout.setContentsMargins(20, 16, 20, 16)
         self.detail_layout.setSpacing(12)
 
-        self.main_layout.addLayout(left_layout, 1)
-        self.main_layout.addWidget(self.pips_pager, 0)
-        self.main_layout.addWidget(self.detail_panel, 0)
+        # --- 分页器（放在左侧底部）---
+        self.pips_pager = PipsPager(Qt.Horizontal)
+        self.pips_pager.setPageNumber(1)
+        self.pips_pager.currentIndexChanged.connect(self._on_page_changed)
+        self.pips_pager.setNextButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
+        self.pips_pager.setPreviousButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
+        self.pips_pager.setFixedHeight(30)
+        left_layout.addWidget(self.pips_pager)
 
-        main_layout.addLayout(self.main_layout)
+        splitter.addWidget(left_widget)
+        splitter.addWidget(self.side_dock_area)
+        splitter.setSizes([100, 700])  # 初始隐藏右侧
+
+        main_layout.addWidget(splitter)
+        main_layout.addWidget(self.side_dock_area.tool_panel)
+
+    @property
+    def context_register(self):
+        return self.llm_context_provider.context_register
+
+    def hide_splitter(self):
+        self.splitter.setSizes(HIDE_SPLITTER_SIZES)
+        self.splitter.update()
+
+    def show_splitter(self):
+        self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
+        self.splitter.update()
 
     def on_card_clicked(self, card: ProjectCard):
         self._current_detail_project = str(card.project_path)
 
+        # 清空旧内容
         while self.detail_layout.count():
             item = self.detail_layout.takeAt(0)
             if item.widget():
@@ -200,28 +225,7 @@ class ExportedProjectsPage(QWidget):
             hint.setStyleSheet("color: #ff9800;")
             self.detail_layout.addWidget(hint)
 
-        self.detail_layout.addStretch()
-        self.detail_panel.setFixedWidth(520)
-        self.detail_panel.setVisible(True)
-
-    def _calculate_cards_per_page(self) -> int:
-        if not self.scroll_area or self.scroll_area.viewport().width() <= 0:
-            return 12
-        card_width = 400
-        if self._card_map:
-            sample_card = next(iter(self._card_map.values()))
-            if sample_card.width() > 50:
-                card_width = sample_card.width()
-        margins = self.flow_layout.contentsMargins()
-        spacing = self.flow_layout.horizontalSpacing()
-        available_width = self.scroll_area.viewport().width() - margins.left() - margins.right()
-        if available_width <= card_width:
-            cards_per_row = 1
-        else:
-            cards_per_row = max(1, int((available_width + spacing) / (card_width + spacing)))
-        return cards_per_row * 3
-
-    # === 监听与加载 ===
+    # === 加载与监听 ===
     def _initial_load_and_start_watch(self):
         self.load_projects()
         self._start_watching()
@@ -266,7 +270,7 @@ class ExportedProjectsPage(QWidget):
             self._project_info_map.pop(proj, None)
             if proj in self._card_map:
                 card = self._card_map[proj]
-                self.flow_layout.removeWidget(card)
+                self.list_layout.removeWidget(card)
                 card.hide()
                 card.deleteLater()
                 del self._card_map[proj]
@@ -347,22 +351,23 @@ class ExportedProjectsPage(QWidget):
     def _ensure_all_cards_in_layout(self):
         for card in self._card_map.values():
             if card.parent() != self.scroll_widget:
-                self.flow_layout.addWidget(card)
+                self.list_layout.addWidget(card)
 
     def _show_page(self, page_index: int):
         self.current_page = page_index
         for card in self._card_map.values():
             card.hide()
-        while self.flow_layout.count():
-            self.flow_layout.takeAt(0)
+        while self.list_layout.count():
+            self.list_layout.takeAt(0)
+
         start = page_index * self.page_size
         end = start + self.page_size
         for proj_path in self.all_project_paths[start:end]:
             card = self._card_map.get(proj_path)
             if card:
-                self.flow_layout.addWidget(card)
+                self.list_layout.addWidget(card)
                 card.show()
-        self.scroll_widget.adjustSize()
+        self.list_layout.addStretch()
 
     def _on_page_changed(self, index: int):
         self._show_page(index)
@@ -401,23 +406,10 @@ class ExportedProjectsPage(QWidget):
         project_with_info.sort(key=key_func, reverse=not is_ascending)
         self.all_project_paths = [item[0] for item in project_with_info]
 
-        self.page_size = self._calculate_cards_per_page()
         total = len(self.all_project_paths)
         self.total_pages = max(1, (total + self.page_size - 1) // self.page_size)
         self.pips_pager.setPageNumber(self.total_pages)
         self._show_page(min(self.current_page, self.total_pages - 1))
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        QTimer.singleShot(100, self._on_resize)
-
-    def _on_resize(self):
-        if self._is_loading:
-            return
-        new_size = self._calculate_cards_per_page()
-        if new_size != self.page_size:
-            self.page_size = new_size
-            self._apply_sort_and_filter_and_refresh()
 
     # ================== 业务逻辑 ==================
     def import_projects(self):
@@ -640,7 +632,7 @@ class ExportedProjectsPage(QWidget):
                     time.sleep(0.5)
                 if project_path in self._card_map:
                     card = self._card_map[project_path]
-                    self.flow_layout.removeWidget(card)
+                    self.list_layout.removeWidget(card)
                     card.hide()
                     card.deleteLater()
                     del self._card_map[project_path]
