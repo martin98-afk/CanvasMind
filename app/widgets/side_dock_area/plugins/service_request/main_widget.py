@@ -220,7 +220,6 @@ class ServiceTestTool(ToolWindow):
         self.send_btn.setEnabled(False)
         self.send_btn.setText("请求中...")
         self.result_text.setPlaceholderText("正在发送请求...")
-
         worker = RequestWorker(self.service_url, payload)
         worker.signals.success.connect(self._on_request_success)
         worker.signals.error.connect(self._on_request_error)

@@ -44,7 +44,7 @@ class MicroserviceManager:
             raise FileNotFoundError("未找到微服务代码 (api_server.py)")
 
         port = find_available_port()
-        url = f"http://0.0.0.0:{port}/run"
+        url = f"http://127.0.0.1:{port}/run"
         log_file = os.path.join(project_path, "service.log")
 
         workflow_path = os.path.join(project_path, "model.workflow.json")
@@ -53,13 +53,17 @@ class MicroserviceManager:
             if not python_exe:
                 raise ValueError("未指定 Python 解释器路径")
 
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"  # ← 关键！强制 Python stdout 无缓冲
+
         cmd = [python_exe, "api_server.py", "--port", str(port)]
         with open(log_file, 'w', encoding='utf-8') as log_f:
             process = subprocess.Popen(
                 cmd,
                 cwd=project_path,
                 stdout=log_f,
-                stderr=subprocess.STDOUT,  # 合并 stderr 到 stdout
+                stderr=subprocess.STDOUT,
+                env=env,  # ← 传入 env
                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
                 encoding='utf-8'
             )
@@ -125,7 +129,7 @@ class MicroserviceManager:
 
     def _is_port_in_use(self, port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            return s.connect_ex(('0.0.0.0', port)) == 0
+            return s.connect_ex(('127.0.0.1', port)) == 0
 
     def stop_service(self, project_path: str):
         if project_path not in self.services:

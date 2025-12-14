@@ -436,6 +436,7 @@ class ExportedProjectsPage(QWidget):
                 self.create_success_info("服务已停止", "微服务已下线")
             else:
                 url = SERVICE_MANAGER.start_service(project_path)
+                print(url)
                 self.service_test_tool.refresh(project_path, url)
                 self.create_success_info("服务已启动", f"访问: {url}")
             self.project_logs_tool.refresh(project_path)
