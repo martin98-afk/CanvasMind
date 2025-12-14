@@ -3,7 +3,7 @@ import json
 import os
 
 from PyQt5.QtWidgets import QVBoxLayout
-from qfluentwidgets import BodyLabel, TextEdit
+from qfluentwidgets import BodyLabel, TextEdit, SubtitleLabel
 from spyder.plugins.variableexplorer.widgets.texteditor import TextEditor
 
 from app.utils.utils import get_icon
@@ -46,7 +46,7 @@ class ProjectInfoTool(ToolWindow):
                 canvas = spec.get('graph_name', '—')
             except:
                 pass
-        self.main_layout.addWidget(BodyLabel(f"来源画布：{canvas}"))
+        self.main_layout.addWidget(SubtitleLabel(f"项目名称：{canvas}"))
 
         # 端口
         inputs = outputs = []
@@ -73,7 +73,9 @@ class ProjectInfoTool(ToolWindow):
                         deps += f" +{len(pkgs) - 12}"
             except:
                 pass
-        self.main_layout.addWidget(BodyLabel(f"依赖包：{deps}"))
+        req_label = BodyLabel(f"依赖包：{deps}")
+        req_label.setWordWrap(True)
+        self.main_layout.addWidget(req_label)
         self.main_layout.addStretch()
         md_path = project_path / "README.md"
         if md_path.exists():
