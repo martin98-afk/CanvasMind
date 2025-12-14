@@ -17,7 +17,7 @@ CategoryFilterDialog QScrollArea {
 }
 
 CategoryFilterDialog QScrollArea > QWidget {
-    background-color: #2D2D2D;
+    background-color: transparent;
 }
 
 /* 滚动条样式（深色适配） */

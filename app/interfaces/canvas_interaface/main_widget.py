@@ -33,7 +33,7 @@ from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, Cus
 class CanvasPage(QWidget):
     canvas_deleted = pyqtSignal()
     canvas_saved = pyqtSignal(Path)
-    global_variables_changed = pyqtSignal(str, str, str)
+    global_variables_changed = pyqtSignal(str, str, str)  # 用于刷新组件中的变量下拉菜单
     env_changed = pyqtSignal(str)
     component_code_changed = pyqtSignal(str, str) # 组件文件地址、更新代码
     node_request_edit = pyqtSignal(str)
@@ -175,13 +175,12 @@ class CanvasPage(QWidget):
         return self.ui_manager.log_window
 
     def show_category_dialog(self, categories, tag):
-        print(categories)
         all_categories = set()
         for full_path, comp_cls in self.component_map.items():
             category = getattr(comp_cls, 'category', 'General')
             all_categories.add(category)
         pos = tag.mapToGlobal(QPoint(0, 0))
-        category_filter_dialog = CategoryFilterDialog(sorted(all_categories), self, categories, "up")
+        category_filter_dialog = CategoryFilterDialog(sorted(all_categories), self, categories, "auto")
         category_filter_dialog.categories_changed.connect(self.ui_manager.nav_panel.draggable_tree._on_categories_changed)
         category_filter_dialog.show_at(pos)
 

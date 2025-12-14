@@ -1,6 +1,0 @@
-INFO:     Started server process [32340]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-[32m2025-11-13 22:01:45.966[0m | [1mINFO    [0m | [36m__main__[0m:[36mrun_workflow[0m:[36m280[0m - [1m工作流执行成功，结果：{'output1': {'answer': '根据逻辑回归模型计算，输入数据 [-1, -2, -3, -4] 的预测结果为 [0]，表示该样本的类别预测值为 0。'}}[0m
-INFO:     127.0.0.1:51212 - "POST /run HTTP/1.1" 200 OK

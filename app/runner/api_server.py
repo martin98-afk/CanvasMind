@@ -15,10 +15,11 @@ from typing import Dict, Any, Optional, List
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from loguru import logger
 from pyarrow import feather
 from pydantic import BaseModel, create_model
+from starlette.responses import JSONResponse
 
 sys.path.append(str(Path(__file__).parent))
 from runner.workflow_runner import execute_workflow, deserialize_from_json
@@ -203,7 +204,7 @@ app = FastAPI(
 
 
 @app.post("/run", response_model=OutputModel)
-async def run_workflow(input: InputModel):
+async def run_workflow(request: Request, input: InputModel):
     try:
         external_inputs = {}
 
@@ -235,10 +236,25 @@ async def run_workflow(input: InputModel):
         while proc.poll() is None:
             time.sleep(1)
 
+        # 获取原始 outputs（dict）
         with open(Path(__file__).parent / "result.pkl", "rb") as f:
             outputs = pickle.load(f)
-        logger.info(f"工作流执行成功，结果：{outputs}")
-        return {"result": serialize_for_json(outputs)}
+
+        # 判断是否为 MCP 调用（通过 header 或 query param）
+        is_mcp = (
+                request.headers.get("x-mcp") == "true" or
+                "mcp" in str(request.url.query).lower()
+        )
+
+        if is_mcp:
+            # MCP 格式：content: [{type: "text", text: JSON字符串}]
+            result_str = json.dumps(serialize_for_json(outputs), ensure_ascii=False, default=str)
+            return JSONResponse({
+                "content": [{"type": "text", "text": result_str}]
+            })
+        else:
+            # 传统格式（兼容你现有的测试）
+            return {"result": serialize_for_json(outputs)}
 
     except Exception as e:
         logger.exception("工作流执行失败")

@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import (Qt, pyqtSignal, QRect, QRectF, QPoint)
 from PyQt5.QtWidgets import (
-    QVBoxLayout, QFrame
+    QFrame
 )
-from qfluentwidgets import NavigationToolButton, FluentIcon as FIF, isDarkTheme
+from PyQt5.QtWidgets import QVBoxLayout
+from qfluentwidgets import NavigationToolButton, FluentIcon as FIF, isDarkTheme, drawIcon
+from qfluentwidgets.common.color import autoFallbackThemeColor
 
 from app.widgets.side_dock_area.tool_window import ToolWindow
 
@@ -27,27 +29,75 @@ class ToggleNavigationButton(NavigationToolButton):
         super().mouseReleaseEvent(e)
 
     def paintEvent(self, e):
-        # 先绘制默认样式
-        super().paintEvent(e)
+        from PyQt5.QtGui import QColor, QPainter, QCursor
+        from PyQt5.QtCore import Qt, QRectF
+        from qfluentwidgets.common.icon import drawIcon
+        from qfluentwidgets import isDarkTheme
 
+        painter = QPainter(self)
+        painter.setRenderHints(QPainter.Antialiasing |
+                               QPainter.TextAntialiasing | QPainter.SmoothPixmapTransform)
+        painter.setPen(Qt.NoPen)
+
+        # --- 1. 设置基础透明度（仅用于背景/图标/文本）---
+        base_opacity = 1.0
+        if self.isPressed:
+            base_opacity = 0.7
+        elif not self.isEnabled():
+            base_opacity = 0.4
+        painter.setOpacity(base_opacity)
+
+        # --- 2. 绘制背景和指示器 ---
+        c = 255 if isDarkTheme() else 0
+        m = self._margins()
+        pl, pr = m.left(), m.right()
+        globalRect = QRect(self.mapToGlobal(QPoint()), self.size())
+
+        if self._canDrawIndicator():
+            painter.setBrush(QColor(c, c, c, 6 if self.isEnter else 10))
+            painter.drawRoundedRect(self.rect(), 5, 5)
+
+            # 指示器
+            painter.setBrush(autoFallbackThemeColor(self.lightIndicatorColor, self.darkIndicatorColor))
+            painter.drawRoundedRect(pl, 10, 3, 16, 1.5, 1.5)
+        elif self.isEnter and self.isEnabled() and globalRect.contains(QCursor.pos()):
+            painter.setBrush(QColor(c, c, c, 10))
+            painter.drawRoundedRect(self.rect(), 5, 5)
+
+        # --- 3. 绘制图标（增大尺寸）---
+        icon_size = 20
+        icon_y = (self.height() - icon_size) / 2
+        icon_x = 10 + pl
+        drawIcon(self._icon, painter, QRectF(icon_x, icon_y, icon_size, icon_size))
+
+        # --- 4. 绘制文本 ---
+        if not self.isCompacted:
+            painter.setFont(self.font())
+            painter.setPen(self.textColor())
+            left = 44 + pl if not self.icon().isNull() else pl + 16
+            painter.drawText(
+                QRectF(left, 0, self.width() - 13 - left - pr, self.height()),
+                Qt.AlignVCenter,
+                self.text()
+            )
+
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        # --- 5. 【关键】绘制选中状态（必须最后，且重置透明度）---
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         if self._checked:
-            from PyQt5.QtGui import QPainter, QColor
-            from PyQt5.QtCore import Qt
-            painter = QPainter(self)
-            painter.setRenderHints(painter.Antialiasing | painter.Antialiasing)
+            # 重置透明度为 1.0，确保选中效果不被削弱
+            painter.setOpacity(1.0)
 
-            # 1. 左边绘制蓝色竖线（建议宽度为3~4像素）
+            # 蓝色竖线（左侧）
             line_width = 3
-            painter.setPen(Qt.NoPen)
-            blue_color = QColor("#0078d4")  # Fluent Design 蓝色，也可替换为你喜欢的色值
+            blue_color = QColor("#0078d4")
             painter.setBrush(blue_color)
             painter.drawRect(0, 0, line_width, self.height())
 
-            # 2. 可选：轻微改变按钮背景色（例如加一层半透明覆盖）
-            # 如果你希望按钮整体颜色有变化，可以叠加一层浅色/深色透明层
-            overlay_color = QColor(0, 120, 212, 20) if not isDarkTheme() else QColor(0, 120, 212, 30)
+            # 半透明覆盖层
+            overlay_alpha = 20 if not isDarkTheme() else 30
+            overlay_color = QColor(0, 120, 212, overlay_alpha)
             painter.setBrush(overlay_color)
-            painter.setPen(Qt.NoPen)
             painter.drawRect(0, 0, self.width(), self.height())
 
 

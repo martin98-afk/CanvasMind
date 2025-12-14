@@ -288,7 +288,10 @@ class ContextSelector(QWidget):
         return self._context_cache.get(key, ("", "", lambda: None))[2]
 
     def _refresh_context_items(self):
-        self._context_items = self.parent.homepage.context_register.get_all_items()
+        if hasattr(self.parent.homepage, 'context_register'):
+            self._context_items = self.parent.homepage.context_register.get_all_items()
+        else:
+            self._context_items = []
 
     def _on_popup_selection_changed(self, selected: set):
         self._selected_keys = selected

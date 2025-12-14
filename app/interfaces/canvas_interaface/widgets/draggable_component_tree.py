@@ -6,6 +6,7 @@ from pathlib import Path
 from PyQt5.QtCore import Qt, QMimeData, QRectF, QPoint
 from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont, QPainterPath, QFontMetrics
 from PyQt5.QtWidgets import QTreeWidgetItem, QWidget, QVBoxLayout, QHBoxLayout
+from loguru import logger
 from qfluentwidgets import FluentIcon as FIF, TransparentToggleToolButton, RoundMenu, Action
 from qfluentwidgets import TreeWidget, SearchLineEdit, FluentStyleSheet, DropDownPushButton
 
@@ -98,14 +99,14 @@ class DraggableTreePanel(QWidget):
             categories.add(category)
 
         # 创建类别筛选对话框
-        self.category_filter_dialog = CategoryFilterDialog(sorted(categories), self)
+        self.category_filter_dialog = CategoryFilterDialog(sorted(categories), self.parent_window)
         self.category_filter_dialog.categories_changed.connect(self._on_categories_changed)
 
     def _show_category_dialog(self):
         """显示类别筛选对话框"""
         if self.category_filter_dialog:
             # 计算位置，让对话框出现在按钮下方
-            pos = self.category_button.mapToGlobal(QPoint(-10, self.category_button.height() - 10))
+            pos = self.category_button.mapToGlobal(QPoint(10, self.category_button.height()))
             self.category_filter_dialog.show_at(pos)
 
     def _on_categories_changed(self, selected_categories):
@@ -378,7 +379,7 @@ class DraggableTreeWidget(TreeWidget):
             self.build_filtered_tree()
 
         except Exception as e:
-            print(f"刷新组件失败: {e}")
+            logger.error(f"刷新组件失败: {e}")
 
     def startDrag(self, supportedActions):
         item = self.currentItem()
@@ -534,7 +535,7 @@ class DraggableTreeWidget(TreeWidget):
             return pixmap
 
         except Exception as e:
-            print(f"预览图渲染失败: {e}")
+            logger.error(f"预览图渲染失败: {e}")
             return self.get_default_preview(full_path)
 
     def get_default_preview(self, name):

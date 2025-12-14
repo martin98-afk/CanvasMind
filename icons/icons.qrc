@@ -1,6 +1,7 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
 <qresource prefix="/icons">
+    <file>API测试.svg</file>
     <file>Global.svg</file>
     <file>HTTP请求.svg</file>
     <file>KMeans.svg</file>

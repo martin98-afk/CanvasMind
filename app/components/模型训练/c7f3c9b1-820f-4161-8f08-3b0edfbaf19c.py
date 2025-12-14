@@ -181,7 +181,7 @@ class Component(BaseComponent):
 
         return {
             "model.pt": model,
-            "validation_images": img
+            "validation_image": img
         }
 
 if __name__ == "__main__":
