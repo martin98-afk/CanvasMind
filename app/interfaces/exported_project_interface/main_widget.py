@@ -23,7 +23,6 @@ from watchfiles import Change
 
 from app.interfaces.exported_project_interface.utils.threading_utils import (WatchfilesThread, ProjectRunnerThread)
 from app.interfaces.exported_project_interface.widgets.project_card import ProjectCard
-from app.widgets.side_dock_area.plugins.service_request.main_widget import ServiceRequestWidget
 from app.utils.config import Settings
 from app.interfaces.exported_project_interface.constants import *
 from app.utils.service_manager import SERVICE_MANAGER
@@ -128,6 +127,8 @@ class ExportedProjectsPage(QWidget):
 
         # --- 右侧：详情面板 ---
         self.side_dock_area = SideDockArea(self, "项目管理")
+        self.service_test_tool = self.side_dock_area.get_tool_instance("项目服务测试")
+        self.project_logs_tool = self.side_dock_area.get_tool_instance("项目日志")
         self.detail_panel = SimpleCardWidget()
         self.detail_panel.setMinimumWidth(500)
         self.detail_layout = QVBoxLayout(self.detail_panel)
@@ -211,19 +212,14 @@ class ExportedProjectsPage(QWidget):
             except:
                 pass
         self.detail_layout.addWidget(BodyLabel(f"依赖包：{deps}"))
-
-        # 微服务调试
+        # 刷新
         if SERVICE_MANAGER.is_running(str(project_path)):
             url = SERVICE_MANAGER.get_url(str(project_path))
-            if url:
-                request_widget = ServiceRequestWidget(str(project_path), url, self)
-                self.detail_layout.addWidget(request_widget, 1)
-            else:
-                self.detail_layout.addWidget(BodyLabel("服务地址不可用"))
+            self.service_test_tool.refresh(project_path, url)
+            self.project_logs_tool.refresh(project_path)
         else:
-            hint = BodyLabel("服务未上线，点击卡片上的“上线”按钮启动服务")
-            hint.setStyleSheet("color: #ff9800;")
-            self.detail_layout.addWidget(hint)
+            self.service_test_tool.refresh(project_path, None)
+            self.project_logs_tool.refresh(project_path)
 
     # === 加载与监听 ===
     def _initial_load_and_start_watch(self):
@@ -436,17 +432,17 @@ class ExportedProjectsPage(QWidget):
         try:
             if SERVICE_MANAGER.is_running(project_path):
                 SERVICE_MANAGER.stop_service(project_path)
+                self.service_test_tool.refresh(project_path, None)
                 self.create_success_info("服务已停止", "微服务已下线")
             else:
                 url = SERVICE_MANAGER.start_service(project_path)
+                self.service_test_tool.refresh(project_path, url)
                 self.create_success_info("服务已启动", f"访问: {url}")
+            self.project_logs_tool.refresh(project_path)
             card = self._card_map.get(project_path)
             if card:
                 card.refresh()
-            if (hasattr(self, '_current_detail_project') and
-                self._current_detail_project == project_path and
-                self.detail_panel.isVisible()):
-                self.on_card_clicked(card)
+
         except Exception as e:
             self.create_error_info("操作失败", str(e))
 

@@ -8,7 +8,7 @@ from PyQt5.QtGui import QFont, QGuiApplication
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel
 from qfluentwidgets import (
     CardWidget, BodyLabel, PrimaryPushButton,
-    ToolButton, FluentIcon, InfoBar, ImageLabel
+    ToolButton, FluentIcon, InfoBar, ImageLabel, TransparentToolButton
 )
 from app.utils.service_manager import SERVICE_MANAGER
 from app.widgets.dialog_widget.service_request_dialog import ServiceRequestDialog
@@ -96,15 +96,13 @@ class ProjectCard(CardWidget):
         btn_layout.setSpacing(10)
         self.run_btn = PrimaryPushButton("运行", self, FluentIcon.PLAY)
         self.service_btn = PrimaryPushButton("上线", self, FluentIcon.LINK)
-        self.request_btn = PrimaryPushButton("请求", self, FluentIcon.SEND)
-        self.request_btn.setEnabled(False)
-        self.edit_btn = ToolButton(FluentIcon.EDIT, self)
-        self.view_log_btn = ToolButton(FluentIcon.VIEW, self)
-        self.delete_btn = ToolButton(FluentIcon.DELETE, self)
+        self.edit_btn = TransparentToolButton(FluentIcon.EDIT, self)
+        self.view_log_btn = TransparentToolButton(FluentIcon.VIEW, self)
+        self.delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
         self.view_log_btn.setToolTip("查看日志")
         self.delete_btn.setToolTip("删除项目")
 
-        for btn in [self.run_btn, self.service_btn, self.request_btn]:
+        for btn in [self.run_btn, self.service_btn]:
             btn.setFixedHeight(28)
             btn.setFont(QFont("Microsoft YaHei", 9))
         for btn in [self.edit_btn, self.view_log_btn, self.delete_btn]:
@@ -113,7 +111,6 @@ class ProjectCard(CardWidget):
         left_box = QHBoxLayout()
         left_box.addWidget(self.run_btn)
         left_box.addWidget(self.service_btn)
-        left_box.addWidget(self.request_btn)
 
         right_box = QHBoxLayout()
         right_box.setSpacing(8)
@@ -127,7 +124,6 @@ class ProjectCard(CardWidget):
         main_layout.addLayout(btn_layout)
 
         self._update_service_button()
-        self.request_btn.clicked.connect(self._open_request_dialog)
         self.setCursor(Qt.PointingHandCursor)
 
     def _create_or_update_preview(self):
@@ -159,11 +155,9 @@ class ProjectCard(CardWidget):
         if is_running:
             self.service_btn.setText("下线")
             self.service_btn.setIcon(FluentIcon.PAUSE)
-            self.request_btn.setEnabled(True)
         else:
             self.service_btn.setText("上线")
             self.service_btn.setIcon(FluentIcon.LINK)
-            self.request_btn.setEnabled(False)
 
         self._load_status_info()
 
@@ -232,7 +226,7 @@ class ProjectCard(CardWidget):
         # 排除按钮区域，防止冲突
         clicked_widget = self.childAt(event.pos())
         buttons = {
-            self.run_btn, self.service_btn, self.request_btn,
+            self.run_btn, self.service_btn,
             self.edit_btn, self.view_log_btn, self.delete_btn,
             self.api_label, self.mcp_label
         }

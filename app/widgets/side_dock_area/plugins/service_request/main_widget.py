@@ -1,174 +1,74 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-
-import requests
-from PyQt5.QtCore import Qt, QObject, pyqtSignal, QThreadPool, QRunnable
-from PyQt5.QtWidgets import QFrame, QVBoxLayout, QWidget, QHBoxLayout, QFormLayout
+from PyQt5.QtCore import Qt, QThreadPool
+from PyQt5.QtWidgets import QFrame, QVBoxLayout, QWidget, QLabel
 from qfluentwidgets import (
     LineEdit, SpinBox, DoubleSpinBox, CheckBox,
     PrimaryPushButton, BodyLabel, StrongBodyLabel,
-    CardWidget, VBoxLayout, TextEdit, setFont, SmoothScrollArea, SimpleCardWidget
+    CardWidget, VBoxLayout, TextEdit, setFont, SmoothScrollArea
 )
 
-from app.utils.utils import get_icon
+from app.widgets.dialog_widget.service_request_dialog import RequestWorker
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.utils.utils import get_icon
 
 
 class ServiceTestTool(ToolWindow):
     name = "项目服务测试"
     icon = get_icon("API测试")
-    default_position = DockPosition.TOP  # ← 默认放在顶部
-    _name_edit = None
-    _category_edit = None
-    _description_edit = None
-    _requirements_edit = None
-    _input_port_editor = None
-    _output_port_editor = None
-    _property_editor = None
+    default_position = DockPosition.TOP
+    thread_pool = QThreadPool.globalInstance()
+    project_path = None
+    service_url = None
+    spec = {"inputs": {}}
+    input_widgets = {}
 
     def setup_ui(self):
-        info_layout = QVBoxLayout(self)
-        info_layout.setContentsMargins(0, 0, 0, 0)
-        # --- 基本信息卡片 ---
-        basic_info_widget = SimpleCardWidget()
-        basic_info_widget.setMinimumWidth(550)
-        # 使用水平布局来并排放置信息和依赖
-        basic_info_h_layout = QHBoxLayout(basic_info_widget)
-        basic_info_h_layout.setContentsMargins(0, 0, 0, 0)  # 设置整体边距
-        # 左侧：名称、分类、描述
-        left_form_widget = QWidget(self)  # 容器用于左侧表单
-        left_form_layout = QFormLayout(left_form_widget)
-        self._name_edit = LineEdit()
-        self._category_edit = LineEdit()
-        self._description_edit = LineEdit()
-        left_form_layout.addRow(BodyLabel("组件基本信息:"))
-        left_form_layout.addRow(BodyLabel("组件名称:"), self._name_edit)
-        left_form_layout.addRow(BodyLabel("组件分类:"), self._category_edit)
-        left_form_layout.addRow(BodyLabel("组件描述:"), self._description_edit)
-        # 右侧：依赖 requirements
-        right_req_widget = QWidget(self)  # 容器用于右侧依赖
-        right_req_layout = QVBoxLayout(right_req_widget)  # 垂直布局放标签和编辑器
-        right_req_layout.addWidget(BodyLabel("组件依赖:"))  # 标签
-        self._requirements_edit = TextEdit()  # 使用 qfluentwidgets 的 TextEdit
-        self._requirements_edit.setFixedHeight(115)  # 设置固定高度，或使用 setMaximumHeight
-        right_req_layout.addWidget(self._requirements_edit)  # 编辑器
-        # 将左右两个容器添加到水平布局
-        basic_info_h_layout.addWidget(left_form_widget)
-        basic_info_h_layout.addWidget(right_req_widget)
-        # 设置拉伸因子，让左侧稍微窄一些，右侧稍微宽一些，或者相等
-        basic_info_h_layout.setStretch(0, 1)  # 左侧 (信息)
-        basic_info_h_layout.setStretch(1, 1)  # 右侧 (依赖)
-        info_layout.addWidget(basic_info_widget)
-
-
-class RequestWorker(QRunnable):
-    def __init__(self, url, payload, timeout=30):
-        super().__init__()
-        self.url = url
-        self.payload = payload
-        self.timeout = timeout
-        self.signals = RequestSignals()
-
-    def run(self):
-        try:
-            response = requests.post(self.url, json=self.payload, timeout=self.timeout)
-            response.raise_for_status()
-            result = response.json()
-            self.signals.success.emit(result)
-        except Exception as e:
-            if isinstance(e, requests.exceptions.Timeout):
-                msg = "请求超时，请检查网络或服务状态。"
-            elif isinstance(e, requests.exceptions.ConnectionError):
-                msg = "无法连接到服务，请确认服务是否运行。"
-            elif isinstance(e, requests.exceptions.HTTPError):
-                msg = f"HTTP 错误: {e.response.status_code} - {e.response.reason}"
-            elif isinstance(e, ValueError):
-                msg = "服务返回了无效的 JSON 格式。"
-            else:
-                msg = f"未知错误: {str(e)}"
-            self.signals.error.emit(msg)
-
-
-class RequestSignals(QObject):
-    success = pyqtSignal(object)
-    error = pyqtSignal(str)
-
-
-class ServiceRequestWidget(QWidget):
-    def __init__(self, project_path, service_url, parent=None):
-        super().__init__(parent)
-        self.project_path = project_path
-        self.service_url = service_url
-        self.spec = self._load_spec()
-        self.input_widgets = {}
-        self.thread_pool = QThreadPool.globalInstance()
-        self._setup_ui()
-
-    def _load_spec(self):
-        spec_path = os.path.join(self.project_path, "project_spec.json")
-        try:
-            with open(spec_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            return {"inputs": {}}
-
-    def _setup_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(16)
 
-        splitter = ModernSplitter(Qt.Horizontal)
+        self.splitter = ModernSplitter(Qt.Horizontal)
+        main_layout.addWidget(self.splitter)
 
-        # === 左侧：参数 ===
-        left_frame = QFrame()
-        left_frame.setStyleSheet("border: none; background: transparent;")
-        left_layout = QVBoxLayout(left_frame)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(12)
+        # === 左侧：参数区域 ===
+        self.left_frame = QFrame()
+        self.left_frame.setStyleSheet("border: none; background: transparent;")
+        self.left_layout = QVBoxLayout(self.left_frame)
+        self.left_layout.setContentsMargins(0, 0, 0, 0)
+        self.left_layout.setSpacing(12)
 
-        param_title = StrongBodyLabel("请求参数")
-        setFont(param_title, 14)
-        left_layout.addWidget(param_title)
+        self.param_title = StrongBodyLabel("请求参数")
+        setFont(self.param_title, 14)
+        self.left_layout.addWidget(self.param_title)
 
-        scroll_area = SmoothScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("border: none; background: transparent;")
-        scroll_content = QWidget()
-        scroll_layout = VBoxLayout(scroll_content)
-        scroll_layout.setSpacing(12)
-        scroll_layout.setContentsMargins(0, 0, 0, 0)
-
-        inputs = self.spec.get("inputs", {})
-        if not inputs:
-            empty_label = BodyLabel("无输入参数")
-            empty_label.setAlignment(Qt.AlignCenter)
-            scroll_layout.addWidget(empty_label)
-        else:
-            for key, cfg in inputs.items():
-                card = self._create_param_card(key, cfg)
-                scroll_layout.addWidget(card)
-
-        scroll_layout.addStretch()
-        scroll_content.setLayout(scroll_layout)
-        scroll_area.setWidget(scroll_content)
-        left_layout.addWidget(scroll_area)
+        self.scroll_area = SmoothScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setStyleSheet("border: none; background: transparent;")
+        self.scroll_content = QWidget()
+        self.scroll_layout = VBoxLayout(self.scroll_content)
+        self.scroll_layout.setSpacing(12)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
+        self.scroll_content.setLayout(self.scroll_layout)
+        self.scroll_area.setWidget(self.scroll_content)
+        self.left_layout.addWidget(self.scroll_area)
 
         self.send_btn = PrimaryPushButton("发送请求")
         self.send_btn.setFixedHeight(36)
         self.send_btn.clicked.connect(self._send_request)
-        left_layout.addWidget(self.send_btn)
+        self.left_layout.addWidget(self.send_btn)
 
-        # === 右侧：结果 ===
-        right_frame = QFrame()
-        right_layout = QVBoxLayout(right_frame)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(12)
+        # === 右侧：结果区域 ===
+        self.right_frame = QFrame()
+        self.right_layout = QVBoxLayout(self.right_frame)
+        self.right_layout.setContentsMargins(0, 0, 0, 0)
+        self.right_layout.setSpacing(12)
 
-        result_title = StrongBodyLabel("响应结果")
-        setFont(result_title, 14)
-        right_layout.addWidget(result_title)
+        self.result_title = StrongBodyLabel("响应结果")
+        setFont(self.result_title, 14)
+        self.right_layout.addWidget(self.result_title)
 
         self.result_text = TextEdit()
         self.result_text.setReadOnly(True)
@@ -184,12 +84,41 @@ class ServiceRequestWidget(QWidget):
                 padding: 12px;
             }
         """)
-        right_layout.addWidget(self.result_text)
+        self.right_layout.addWidget(self.result_text)
 
-        splitter.addWidget(left_frame)
-        splitter.addWidget(right_frame)
-        splitter.setSizes([250, 250])  # 适应右侧窄面板
-        main_layout.addWidget(splitter)
+        self.splitter.addWidget(self.left_frame)
+        self.splitter.addWidget(self.right_frame)
+        self.splitter.setSizes([250, 250])
+
+        # 初始状态：未加载
+        self._show_offline_message()
+
+    def _load_spec(self, project_path):
+        spec_path = os.path.join(project_path, "project_spec.json")
+        try:
+            with open(spec_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {"inputs": {}}
+
+    def _clear_inputs(self):
+        """清空左侧参数区域"""
+        while self.scroll_layout.count():
+            item = self.scroll_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self.input_widgets.clear()
+
+    def _show_offline_message(self):
+        """显示服务未上线提示"""
+        self._clear_inputs()
+        self.send_btn.setEnabled(False)
+        hint = BodyLabel("项目微服务未上线")
+        hint.setStyleSheet("color: #ff9800;")
+        hint.setAlignment(Qt.AlignCenter)
+        self.scroll_layout.addWidget(hint)
+        self.result_text.setPlainText("")
+        self.result_text.setPlaceholderText("服务未上线，无法发送请求")
 
     def _create_param_card(self, key, cfg):
         card = CardWidget()
@@ -234,7 +163,41 @@ class ServiceRequestWidget(QWidget):
             le.setClearButtonEnabled(True)
             return le
 
+    def refresh(self, project_path, service_url=None):
+        """
+        刷新工具内容
+
+        Args:
+            project_path (str): 项目路径
+            service_url (str, optional): 服务地址。若为 None，显示未上线提示。
+        """
+        self.project_path = project_path
+        self.service_url = service_url
+
+        if service_url:
+            # 服务已上线：加载参数
+            self.spec = self._load_spec(project_path)
+            self._clear_inputs()
+            inputs = self.spec.get("inputs", {})
+            if not inputs:
+                empty_label = BodyLabel("无输入参数")
+                empty_label.setAlignment(Qt.AlignCenter)
+                self.scroll_layout.addWidget(empty_label)
+            else:
+                for key, cfg in inputs.items():
+                    card = self._create_param_card(key, cfg)
+                    self.scroll_layout.addWidget(card)
+            self.scroll_layout.addStretch()
+            self.send_btn.setEnabled(True)
+            self.result_text.setPlaceholderText("发送请求后，结果将显示在这里...")
+        else:
+            # 服务未上线
+            self._show_offline_message()
+
     def _send_request(self):
+        if not self.service_url:
+            return
+
         payload = {}
         for key, widget in self.input_widgets.items():
             if isinstance(widget, CheckBox):
@@ -248,7 +211,7 @@ class ServiceRequestWidget(QWidget):
                 elif text.startswith(('{', '[')):
                     try:
                         value = json.loads(text)
-                    except:
+                    except (ValueError, TypeError):
                         value = text
                 else:
                     value = text
@@ -267,7 +230,7 @@ class ServiceRequestWidget(QWidget):
         self._restore_button()
         try:
             formatted = json.dumps(result, indent=2, ensure_ascii=False)
-        except:
+        except (ValueError, TypeError):
             formatted = str(result)
         self.result_text.setPlainText(formatted)
 
