@@ -24,7 +24,7 @@ class ProjectExportFlowDialog(StepMessageBoxBase):
                  current_selected_outputs=None,
                  project_name="",
                  requirements="",
-                 readme=""):
+                 readme_func=""):
         # 定义步骤
         steps = [
             {"name": "select_inputs", "title": "选择输入参数(未选择参数将用当前参数固化)"},
@@ -37,7 +37,7 @@ class ProjectExportFlowDialog(StepMessageBoxBase):
         self.current_selected_outputs = current_selected_outputs or {}
         self.project_name = project_name
         self.requirements = requirements
-        self.readme = readme
+        self.readme_func = readme_func
 
         # --- 页面1: 输入选择 ---
         self.input_page = InputSelectionDialog(
@@ -61,8 +61,10 @@ class ProjectExportFlowDialog(StepMessageBoxBase):
         self.info_page = ProjectExportDialog(
             project_name=project_name,
             requirements=requirements,
-            readme=readme,
-            parent=self.widget
+            readme_func=readme_func,
+            parent=self.widget,
+            get_input_func = self.get_selected_inputs,
+            get_output_func = self.get_selected_outputs
         )
         self.add_page(self.info_page)
 
@@ -380,9 +382,13 @@ class OutputSelectionDialog(QWidget):  # 继承 QWidget
 class ProjectExportDialog(QWidget):  # 继承 QWidget
     """项目导出配置对话框：项目名 + requirements 预览 + README 编辑"""
 
-    def __init__(self, project_name: str = "", requirements: str = "", readme: str = "", parent=None):
+    def __init__(self, project_name: str = "", requirements: str = "", readme_func=None,
+                 parent=None, get_input_func=None, get_output_func=None):
         super().__init__(parent)
-
+        self.parent = parent
+        self.readme_func = readme_func
+        self.get_input_func = get_input_func
+        self.get_output_func = get_output_func
         layout = VBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
@@ -401,7 +407,6 @@ class ProjectExportDialog(QWidget):  # 继承 QWidget
         # 右侧：README 编辑
         self.readme_label = BodyLabel("项目说明 (README.md)")
         self.readme_edit = TextEdit()
-        self.readme_edit.setPlainText(readme)
 
         # 布局
         top_layout = VBoxLayout()
@@ -429,6 +434,16 @@ class ProjectExportDialog(QWidget):  # 继承 QWidget
 
         layout.addLayout(top_layout)
         layout.addWidget(splitter, stretch=1)
+
+    def update_readme_preview(self):
+        if self.readme_func:
+            self.readme_edit.setPlainText(
+                self.readme_func(self.get_input_func(), self.get_output_func())
+            )
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.update_readme_preview()
 
     def get_project_name(self):
         return self.project_name_edit.text().strip()

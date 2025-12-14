@@ -129,12 +129,7 @@ class ExportedProjectsPage(QWidget):
         self.side_dock_area = SideDockArea(self, "项目管理")
         self.service_test_tool = self.side_dock_area.get_tool_instance("项目服务测试")
         self.project_logs_tool = self.side_dock_area.get_tool_instance("项目日志")
-        self.detail_panel = SimpleCardWidget()
-        self.detail_panel.setMinimumWidth(500)
-        self.detail_layout = QVBoxLayout(self.detail_panel)
-        self.detail_layout.setContentsMargins(20, 16, 20, 16)
-        self.detail_layout.setSpacing(12)
-
+        self.project_info_tool = self.side_dock_area.get_tool_instance("项目基本信息")
         # --- 分页器（放在左侧底部）---
         self.pips_pager = PipsPager(Qt.Horizontal)
         self.pips_pager.setPageNumber(1)
@@ -165,53 +160,8 @@ class ExportedProjectsPage(QWidget):
 
     def on_card_clicked(self, card: ProjectCard):
         self._current_detail_project = str(card.project_path)
-
-        # 清空旧内容
-        while self.detail_layout.count():
-            item = self.detail_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
         project_path = card.project_path
-
-        # 来源画布
-        canvas = "—"
-        spec_path = project_path / "project_spec.json"
-        if spec_path.exists():
-            try:
-                with open(spec_path, 'r', encoding='utf-8') as f:
-                    spec = json.load(f)
-                canvas = spec.get('graph_name', '—')
-            except:
-                pass
-        self.detail_layout.addWidget(BodyLabel(f"来源画布：{canvas}"))
-
-        # 端口
-        inputs = outputs = []
-        if spec_path.exists():
-            try:
-                with open(spec_path, 'r', encoding='utf-8') as f:
-                    spec = json.load(f)
-                inputs = list(spec.get('inputs', {}).keys())
-                outputs = list(spec.get('outputs', {}).keys())
-            except:
-                pass
-        ports_text = f"输入：{', '.join(inputs) if inputs else '—'}；输出：{', '.join(outputs) if outputs else '—'}"
-        self.detail_layout.addWidget(BodyLabel(f"端口：{ports_text}"))
-
-        # 依赖
-        deps = "—"
-        req_path = project_path / "requirements.txt"
-        if req_path.exists():
-            try:
-                with open(req_path, 'r', encoding='utf-8') as f:
-                    pkgs = [line.strip() for line in f if line.strip() and not line.startswith('#')]
-                    deps = ", ".join(pkgs[:3])
-                    if len(pkgs) > 3:
-                        deps += f" +{len(pkgs)-3}"
-            except:
-                pass
-        self.detail_layout.addWidget(BodyLabel(f"依赖包：{deps}"))
+        self.project_info_tool.refresh(project_path)
         # 刷新
         if SERVICE_MANAGER.is_running(str(project_path)):
             url = SERVICE_MANAGER.get_url(str(project_path))
