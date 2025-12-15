@@ -333,7 +333,7 @@ class SampleModelCardView(SimpleCardWidget):
             print(f"复制示例文件失败: {e}")
 
 
-class ResourceLinkCardView(CardWidget):
+class ResourceLinkCardView(SimpleCardWidget):
     """ 资源链接区域，提供外部链接 """
 
     def __init__(self, title="资源与支持", parent=None):

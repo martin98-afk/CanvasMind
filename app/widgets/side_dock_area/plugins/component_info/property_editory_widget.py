@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView,
-    QFormLayout, QDialog
+    QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView,
+    QFormLayout, QDialog, QSizePolicy
 )
 from qfluentwidgets import (
-    BodyLabel, LineEdit, PushButton,
+    LineEdit, PushButton,
     TableWidget, ComboBox, InfoBar, FluentIcon, MessageBoxBase, SubtitleLabel,
     DoubleSpinBox, TransparentToolButton, SimpleCardWidget
 )
@@ -15,61 +15,50 @@ from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 
 
 class PropertyEditorWidget(SimpleCardWidget):
-    """属性编辑器 - 支持动态添加删除（已优化对齐）"""
-    properties_changed = pyqtSignal()  # 属性改变信号
+    """属性编辑器 - + 按钮在表头，删除按钮每行一个，对齐可靠"""
+    properties_changed = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        self._dynamic_form_schemas = {}  # 存储每个动态表单的 schema
+        self._dynamic_form_schemas = {}
         self._choice_configs = {}
         self._range_configs = {}
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
 
-        # === 属性表格 ===
+        # === 属性表格（5 列 + 删除）===
         self.table = TableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "选项"])
+        self.table.setColumnCount(6)  # ← 新增第 6 列：删除
+        self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "选项", "＋"])
         self.table.verticalHeader().hide()
-        # ✅ 统一行高：32px（Fluent Design 标准）
         self.table.verticalHeader().setDefaultSectionSize(32)
         self.table.verticalHeader().setMinimumSectionSize(32)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.itemChanged.connect(self._on_item_changed)
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)  # 最后一列不 stretch
 
-        # === 按钮栏 ===
-        button_layout = QHBoxLayout()
-        button_layout.addWidget(BodyLabel("参数设置:"))
-        add_btn = TransparentToolButton(FluentIcon.ADD, parent=self)
-        add_btn.setToolTip("添加参数")
-        add_btn.setFixedSize(25, 25)
-        add_btn.clicked.connect(lambda: self._add_property())
-        remove_btn = TransparentToolButton(FluentIcon.DELETE, parent=self)
-        remove_btn.setToolTip("删除添加参数")
-        remove_btn.setFixedSize(25, 25)
-        remove_btn.clicked.connect(self._remove_property)
-        button_layout.addWidget(add_btn)
-        button_layout.addWidget(remove_btn)
-        layout.addLayout(button_layout)
+        self.table.itemChanged.connect(self._on_item_changed)
+        self.table.horizontalHeader().sectionClicked.connect(self._on_header_clicked)  # ← 监听表头点击
+
         layout.addWidget(self.table)
 
+    def _on_header_clicked(self, logical_index):
+        """点击最后一列表头时触发添加"""
+        if logical_index == 5:  # 最后一列
+            self._add_property()
+
     def _on_item_changed(self, item):
-        """处理表格项改变事件"""
         row = self.table.row(item)
         col = item.column()
-
-        if col == 0:  # 属性名列被修改
+        if col == 0:  # 属性名列
             old_name = item.data(Qt.UserRole)
             new_name = item.text().strip()
-
             if old_name and old_name != new_name:
                 self._update_config_keys(old_name, new_name)
                 item.setData(Qt.UserRole, new_name)
-
         self.properties_changed.emit()
 
     def _update_config_keys(self, old_name, new_name):
-        """当属性名改变时，更新所有相关的配置字典"""
         if old_name in self._choice_configs:
             self._choice_configs[new_name] = self._choice_configs.pop(old_name)
         if old_name in self._range_configs:
@@ -77,64 +66,76 @@ class PropertyEditorWidget(SimpleCardWidget):
         if old_name in self._dynamic_form_schemas:
             self._dynamic_form_schemas[new_name] = self._dynamic_form_schemas.pop(old_name)
 
-    def _remove_property(self):
-        """删除选中属性"""
-        selected_ranges = self.table.selectedRanges()
-        if selected_ranges:
-            rows = []
-            for range_ in selected_ranges:
-                rows.extend(range(range_.topRow(), range_.bottomRow() + 1))
-            rows = sorted(set(rows), reverse=True)
-            for row in rows:
-                name_item = self.table.item(row, 0)
-                if name_item:
-                    prop_name = name_item.text()
-                    self._choice_configs.pop(prop_name, None)
-                    self._range_configs.pop(prop_name, None)
-                    self._dynamic_form_schemas.pop(prop_name, None)
-                self.table.removeRow(row)
+    def _remove_property_at(self, row: int):
+        """精准删除指定行"""
+        if 0 <= row < self.table.rowCount():
+            name_item = self.table.item(row, 0)
+            if name_item:
+                prop_name = name_item.text()
+                self._choice_configs.pop(prop_name, None)
+                self._range_configs.pop(prop_name, None)
+                self._dynamic_form_schemas.pop(prop_name, None)
+            self.table.removeRow(row)
             self.properties_changed.emit()
 
+    def _on_delete_button_clicked(self):
+        """通过 sender 反查行号"""
+        button = self.sender()
+        if not button:
+            return
+        for row in range(self.table.rowCount()):
+            cell_widget = self.table.cellWidget(row, 5)
+            if cell_widget is button:
+                self._remove_property_at(row)
+                return
+
     def _add_property(self, prop_name: str = None, prop_def: PropertyType = None):
-        """添加属性"""
         row = self.table.rowCount()
         self.table.insertRow(row)
 
-        # 属性名（垂直居中）
+        # 属性名
         name_item = QTableWidgetItem(prop_name if prop_name else f"prop{row + 1}")
         name_item.setData(Qt.UserRole, prop_name if prop_name else f"prop{row + 1}")
         name_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         self.table.setItem(row, 0, name_item)
 
-        # 标签（垂直居中）
+        # 标签
         label = getattr(prop_def, 'label', f"属性{row + 1}")
         label_item = QTableWidgetItem(label)
         label_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         self.table.setItem(row, 1, label_item)
 
-        # 类型下拉框
+        # 类型
         type_combo = ComboBox()
         type_combo.setStyleSheet("border: none;background: transparent; color: white;")
-        type_combo.setFixedHeight(28)  # ✅ 统一高度，不设样式
+        type_combo.setFixedHeight(28)
         for item in PropertyType:
             type_combo.addItem(item.value, userData=item)
         current_type = getattr(prop_def, 'type', PropertyType.TEXT)
         type_combo.setCurrentText(current_type.value)
         self.table.setCellWidget(row, 2, type_combo)
-        type_combo.currentTextChanged.connect(lambda text: self._on_type_changed(row))
+        type_combo.currentTextChanged.connect(lambda text, r=row: self._on_type_changed(r))
 
-        # 默认值（垂直居中）
+        # 默认值
         default_val = str(getattr(prop_def, 'default', ''))
         default_item = QTableWidgetItem(default_val)
         default_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         self.table.setItem(row, 3, default_item)
 
-        # 操作列
+        # 操作列（第4列）
         self._update_action_widget(row, current_type, prop_name)
 
+        # === 删除按钮（第5列）===
+        delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
+        delete_btn.setFixedSize(24, 24)
+        delete_btn.setToolTip("删除此属性")
+        delete_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        delete_btn.clicked.connect(self._on_delete_button_clicked)
+        self.table.setCellWidget(row, 5, delete_btn)  # ← 直接设为 cell widget
+
+        self.properties_changed.emit()
+
     def _update_action_widget(self, row, prop_type, prop_name=None):
-        """根据属性类型更新操作列"""
-        # 清理旧内容
         self.table.setItem(row, 4, None)
         self.table.setCellWidget(row, 4, None)
 
@@ -143,25 +144,21 @@ class PropertyEditorWidget(SimpleCardWidget):
             btn.setFixedHeight(28)
             btn.clicked.connect(lambda _, r=row: self._edit_choice(r))
             self.table.setCellWidget(row, 4, btn)
-
         elif prop_type == PropertyType.RANGE:
             btn = PushButton("配置范围")
             btn.setFixedHeight(28)
             btn.clicked.connect(lambda _, r=row: self._edit_range(r))
             self.table.setCellWidget(row, 4, btn)
-
         elif prop_type == PropertyType.LONGTEXT:
             btn = PushButton("编辑文本")
             btn.setFixedHeight(28)
             btn.clicked.connect(lambda _, r=row: self._edit_long_text(r))
             self.table.setCellWidget(row, 4, btn)
-
         elif prop_type == PropertyType.DYNAMICFORM:
             btn = PushButton("编辑表单")
             btn.setFixedHeight(28)
             btn.clicked.connect(lambda _, r=row: self._edit_dynamic_form(r))
             self.table.setCellWidget(row, 4, btn)
-
         else:
             options_item = QTableWidgetItem("")
             options_item.setFlags(options_item.flags() & ~Qt.ItemIsEditable)
@@ -169,7 +166,6 @@ class PropertyEditorWidget(SimpleCardWidget):
             self.table.setItem(row, 4, options_item)
 
     def _on_type_changed(self, row):
-        """类型下拉框改变时更新操作列"""
         type_widget = self.table.cellWidget(row, 2)
         if not type_widget:
             return
@@ -180,7 +176,6 @@ class PropertyEditorWidget(SimpleCardWidget):
         self.properties_changed.emit()
 
     def _edit_range(self, row):
-        """编辑范围参数"""
         try:
             name_item = self.table.item(row, 0)
             if not name_item or not name_item.text().strip():
@@ -205,7 +200,6 @@ class PropertyEditorWidget(SimpleCardWidget):
             InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
 
     def _edit_choice(self, row):
-        """编辑下拉选项"""
         try:
             name_item = self.table.item(row, 0)
             if not name_item or not name_item.text().strip():
@@ -225,7 +219,6 @@ class PropertyEditorWidget(SimpleCardWidget):
             InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
 
     def get_properties(self, serialize=False):
-        """获取属性数据"""
         properties = {}
         for row in range(self.table.rowCount()):
             name_item = self.table.item(row, 0)
@@ -257,7 +250,6 @@ class PropertyEditorWidget(SimpleCardWidget):
         return properties
 
     def set_properties(self, properties):
-        """设置属性数据"""
         self.table.setRowCount(0)
         self._dynamic_form_schemas.clear()
         self._range_configs.clear()
@@ -279,7 +271,6 @@ class PropertyEditorWidget(SimpleCardWidget):
             self._add_property(prop_name, prop_def)
 
     def _edit_dynamic_form(self, row):
-        """编辑动态表单结构"""
         try:
             name_item = self.table.item(row, 0)
             if not name_item or not name_item.text().strip():
@@ -299,7 +290,6 @@ class PropertyEditorWidget(SimpleCardWidget):
             InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
 
     def _edit_long_text(self, row):
-        """编辑长文本"""
         try:
             name_item = self.table.item(row, 0)
             if not name_item or not name_item.text().strip():
@@ -318,6 +308,8 @@ class PropertyEditorWidget(SimpleCardWidget):
             import traceback
             traceback.print_exc()
             InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
+
+
 
 
 # ==================== Dialogs ====================

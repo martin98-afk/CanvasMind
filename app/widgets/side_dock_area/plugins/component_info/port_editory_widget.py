@@ -1,48 +1,49 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal, Qt, QTimer
 from PyQt5.QtWidgets import (
-    QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView
+    QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView, QWidget, QSizePolicy
 )
 from qfluentwidgets import (
-    BodyLabel, TableWidget, ComboBox, FluentIcon, TransparentToolButton, SimpleCardWidget
+    TableWidget, ComboBox, FluentIcon, TransparentToolButton, SimpleCardWidget
 )
 
 from app.components.base import ArgumentType, ConnectionType
 
 
 class PortEditorWidget(SimpleCardWidget):
-    """端口编辑器 - 支持动态添加删除"""
+    """端口编辑器 - + 按钮作为最后一列表头文字，删除按钮每行一个"""
     ports_changed = pyqtSignal()
 
     def __init__(self, port_type="input", parent=None):
         super().__init__(parent)
         self.port_type = port_type
         layout = QVBoxLayout(self)
-        # 表格：增加第4列
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        col_count = 5 if port_type == "input" else 4
         self.table = TableWidget(self)
+
+        self.table.setColumnCount(col_count)
+
         if port_type == "input":
-            self.table.setColumnCount(4)
-            self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型", "连接方式"])
+            self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型", "连接方式", "＋"])
         else:
-            self.table.setColumnCount(3)
-            self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型"])
+            self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型", "＋"])
+
         self.table.verticalHeader().hide()
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(col_count - 1, QHeaderView.ResizeToContents)
+
+        # ← 关键：监听表头点击
+        self.table.horizontalHeader().sectionClicked.connect(self._on_header_clicked)
+
         self.table.itemChanged.connect(lambda item: self.ports_changed.emit())
-        button_layout = QHBoxLayout()
-        button_layout.addWidget(BodyLabel("输入端口:" if port_type == "input" else "输出端口:"))
-        add_btn = TransparentToolButton(FluentIcon.ADD, parent=self)
-        add_btn.setToolTip("添加参数")
-        add_btn.setFixedSize(25, 25)
-        add_btn.clicked.connect(lambda: self._add_port())
-        remove_btn = TransparentToolButton(FluentIcon.DELETE, parent=self)
-        remove_btn.setToolTip("删除添加参数")
-        remove_btn.setFixedSize(25, 25)
-        remove_btn.clicked.connect(self._remove_port)
-        button_layout.addWidget(add_btn)
-        button_layout.addWidget(remove_btn)
-        layout.addLayout(button_layout)
         layout.addWidget(self.table)
+
+    def _on_header_clicked(self, logical_index):
+        """点击最后一列表头时触发添加"""
+        if logical_index == self.table.columnCount() - 1:
+            self.add_port()
 
     def _add_port(self, port: dict = {}):
         row = self.table.rowCount()
@@ -52,7 +53,6 @@ class PortEditorWidget(SimpleCardWidget):
         label = port.get("label", f"输入{row + 1}" if self.port_type == "input" else f"输出{row + 1}")
         port_type = port.get("type", ArgumentType.TEXT)
 
-        # 设置文本项 + 垂直居中
         name_item = QTableWidgetItem(name)
         name_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         label_item = QTableWidgetItem(label)
@@ -61,40 +61,63 @@ class PortEditorWidget(SimpleCardWidget):
         self.table.setItem(row, 0, name_item)
         self.table.setItem(row, 1, label_item)
 
-        # 类型下拉框
         type_combo = ComboBox()
-        type_combo.setStyleSheet("border: none;background: transparent; color: white;")
-        type_combo.setFixedHeight(28)  # ✅ 统一高度
+        type_combo.setStyleSheet("border: none; background: transparent; color: white;")
+        type_combo.setFixedHeight(28)
         for item in ArgumentType:
             type_combo.addItem(item.value, userData=item)
         type_combo.setCurrentText(port_type.value)
         self.table.setCellWidget(row, 2, type_combo)
         type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
 
+        col_offset = 0
         if self.port_type == "input":
             connection = port.get("connection", ConnectionType.SINGLE)
             conn_combo = ComboBox()
-            conn_combo.setStyleSheet("border: none;background: transparent; color: white;")
-            conn_combo.setFixedHeight(28)  # ✅ 统一高度
+            conn_combo.setStyleSheet("border: none; background: transparent; color: white;")
+            conn_combo.setFixedHeight(28)
             conn_combo.addItems([ConnectionType.SINGLE.value, ConnectionType.MULTIPLE.value])
             conn_combo.setProperty("raw_values", [ConnectionType.SINGLE, ConnectionType.MULTIPLE])
             conn_combo.setCurrentIndex(0 if connection == ConnectionType.SINGLE else 1)
             self.table.setCellWidget(row, 3, conn_combo)
             conn_combo.currentIndexChanged.connect(lambda: self.ports_changed.emit())
+            col_offset = 1
 
-    def _remove_port(self):
-        selected_ranges = self.table.selectedRanges()
-        if selected_ranges:
-            rows = []
-            for range_ in selected_ranges:
-                rows.extend(range(range_.topRow(), range_.bottomRow() + 1))
-            rows = sorted(set(rows), reverse=True)
-            for row in rows:
-                self.table.removeRow(row)
+        # === 删除按钮：直接作为 cell widget，不包裹容器 ===
+        delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
+        delete_btn.setFixedSize(24, 24)
+        delete_btn.setToolTip("删除此端口")
+        delete_btn.clicked.connect(self._on_delete_button_clicked)
+
+        # 关键：设置按钮的 sizePolicy 为 Fixed，避免被 stretch
+        delete_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+        # 直接设为 cell widget（不再用 btn_container）
+        self.table.setCellWidget(row, 3 + col_offset, delete_btn)
+
+    def _on_delete_button_clicked(self):
+        """支持直接按钮（无容器）的删除"""
+        button = self.sender()
+        if not button:
+            return
+        # 遍历所有行，找到包含该按钮的行
+        for row in range(self.table.rowCount()):
+            cell_widget = self.table.cellWidget(row, self.table.columnCount() - 1)
+            if cell_widget is button:  # 直接比较按钮对象
+                self._remove_port_at(row)
+                return
+
+    def _remove_port_at(self, row: int):
+        if 0 <= row < self.table.rowCount():
+            self.table.removeRow(row)
             self.ports_changed.emit()
+
+    def add_port(self):
+        self._add_port()
 
     def get_ports(self, serialize=False):
         ports = []
+        col_offset = 1 if self.port_type == "input" else 0
         for row in range(self.table.rowCount()):
             name_item = self.table.item(row, 0)
             label_item = self.table.item(row, 1)
@@ -102,12 +125,14 @@ class PortEditorWidget(SimpleCardWidget):
                 continue
             type_widget = self.table.cellWidget(row, 2)
             port_type = type_widget.currentData() if type_widget else ArgumentType.TEXT
-            conn_widget = self.table.cellWidget(row, 3)
-            if conn_widget:
-                raw_vals = [ConnectionType.SINGLE, ConnectionType.MULTIPLE]
-                connection = raw_vals[conn_widget.currentIndex()]
-            else:
-                connection = ConnectionType.SINGLE
+
+            connection = ConnectionType.SINGLE
+            if self.port_type == "input":
+                conn_widget = self.table.cellWidget(row, 3)
+                if conn_widget:
+                    raw_vals = [ConnectionType.SINGLE, ConnectionType.MULTIPLE]
+                    connection = raw_vals[conn_widget.currentIndex()]
+
             if serialize:
                 port_type = port_type.value
                 connection = connection.value

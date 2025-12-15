@@ -31,33 +31,44 @@ class SideDockArea(QWidget):
         self.page = page
         self.context_id = context_id
         self._instances: Dict[str, ToolWindow] = {}
-        main_layout = QHBoxLayout(self)  # ← 水平布局：[ 内容区 | 按钮栏 ]
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-        # 内容区
-        self.splitter = ModernSplitter(Qt.Vertical)
-        self.top_stack = AdaptiveStackedWidget()
-        self.bottom_stack = AdaptiveStackedWidget()
-        # 初始隐藏
-        self.top_stack.hide()
-        self.bottom_stack.hide()
-        self._top_visible = False
-        self._bottom_visible = False
-        self.last_content_visible = False
 
-        self.splitter.addWidget(self.top_stack)
-        self.splitter.addWidget(self.bottom_stack)
-        # 工具面板
-        self.tool_panel = RightToolPanel(page, self)
+        # ✅【关键】禁止 UI 刷新
+        self.setUpdatesEnabled(False)
 
-        self.tool_panel.topToolChecked.connect(self._show_top_tool)
-        self.tool_panel.topToolUnchecked.connect(self._hide_top_tool)
-        self.tool_panel.bottomToolChecked.connect(self._show_bottom_tool)
-        self.tool_panel.bottomToolUnchecked.connect(self._hide_bottom_tool)
+        try:
+            main_layout = QHBoxLayout(self)
+            main_layout.setContentsMargins(0, 0, 0, 0)
+            main_layout.setSpacing(0)
 
-        main_layout.addWidget(self.splitter)  # 占主要空间
+            # 内容区
+            self.splitter = ModernSplitter(Qt.Vertical)
+            self.top_stack = AdaptiveStackedWidget()
+            self.bottom_stack = AdaptiveStackedWidget()
+            self.top_stack.hide()
+            self.bottom_stack.hide()
+            self._top_visible = False
+            self._bottom_visible = False
+            self.last_content_visible = False
 
-        self._load_plugins(context_id)
+            self.splitter.addWidget(self.top_stack)
+            self.splitter.addWidget(self.bottom_stack)
+
+            # 工具面板
+            self.tool_panel = RightToolPanel(page, self)
+            self.tool_panel.topToolChecked.connect(self._show_top_tool)
+            self.tool_panel.topToolUnchecked.connect(self._hide_top_tool)
+            self.tool_panel.bottomToolChecked.connect(self._show_bottom_tool)
+            self.tool_panel.bottomToolUnchecked.connect(self._hide_bottom_tool)
+
+            main_layout.addWidget(self.splitter)
+
+            # 加载插件（此时不会触发重绘）
+            self._load_plugins(context_id)
+
+        finally:
+            # ✅【关键】恢复刷新并强制重绘
+            self.setUpdatesEnabled(True)
+            self.update()  # 或 self.repaint()
 
     def switch_to(self, tool_name):
         """切换到指定工具面板"""
@@ -140,13 +151,19 @@ class SideDockArea(QWidget):
 
     def _get_or_create_instance(self, cls: Type[ToolWindow]) -> ToolWindow:
         """根据 singleton 策略获取或创建实例"""
-        name = cls.name
-        if cls.singleton:
-            if name not in self._instances:
-                self._instances[name] = cls(self.page)
-            return self._instances[name]
-        else:
-            return cls(self.page)
+        self.setUpdatesEnabled(False)
+
+        try:
+            name = cls.name
+            if cls.singleton:
+                if name not in self._instances:
+                    self._instances[name] = cls(self.page)
+                return self._instances[name]
+            else:
+                return cls(self.page)
+        finally:
+            self.setUpdatesEnabled(True)
+            self.update()
 
     def get_tool_instance(self, name: str) -> Optional[ToolWindow]:
         """外部可通过 name 获取面板实例，用于信号连接等"""

@@ -160,8 +160,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self.search_line_edit.setFixedWidth(220)
         self.search_line_edit.textChanged.connect(self._on_search_changed)
 
-        top_bar.addWidget(self.search_line_edit)
         top_bar.addStretch()
+        top_bar.addWidget(self.search_line_edit)
         top_bar.addWidget(sort_label)
         top_bar.addWidget(self.sort_field_combo)
         top_bar.addWidget(self.sort_order_button)
