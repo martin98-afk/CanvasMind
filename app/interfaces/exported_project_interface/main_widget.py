@@ -473,31 +473,39 @@ class ExportedProjectsPage(QWidget):
             with open(readme_path, 'r', encoding='utf-8') as f:
                 readme_content = f.read()
 
-        def generate_markdown(input: list, output: list):
+        def generate_markdown( input: list, output: list):
+            # 生成输入描述
             input_desc = ""
             for i, inp in enumerate(input):
-                input_desc += (f"- 参数{i + 1}：{inp['custom_key']}\n   "
-                               f"- 参数格式：{inp['format']}\n   "
-                               f"- 参数参考样例输入：{inp['current_value']}\n   "
-                               f"- 所属组件名：{inp['node_name']}\n   "
-                               f"- 组件参数类型：{inp['type']}\n\n")
+                input_desc += (
+                    f"- 参数{i + 1}：{inp['custom_key']}\n"
+                    f"   - 参数格式：{inp['format']}\n"
+                    f"   - 参数参考样例输入：{inp['current_value']}\n"
+                    f"   - 所属组件名：{inp['node_name']}\n"
+                    f"   - 组件参数类型：{inp['type']}\n\n"
+                )
+
+            # 生成输出描述
             output_desc = ""
             for i, out in enumerate(output):
-                output_desc += (f"- 输出{i + 1}：{out['custom_key']}\n   "
-                                f"- 输出格式：{out['format']}\n   "
-                                f"- 所属组件名：{out['node_name']}\n   "
-                                f"- 组件参数类型：{out['type']}\n\n")
-            # 2. 确保以换行结尾（避免格式错乱）
+                output_desc += (
+                    f"- 输出{i + 1}：{out['custom_key']}\n"
+                    f"   - 输出格式：{out['format']}\n"
+                    f"   - 所属组件名：{out['node_name']}\n"
+                    f"   - 组件参数类型：{out['type']}\n\n"
+                )
+
+            # 构造完整的区块（注意：这里只是普通字符串）
             input_block = f"## 🧩 输入接口\n\n{input_desc.rstrip()}\n\n---"
             output_block = f"## 📤 输出接口\n\n{output_desc.rstrip()}\n\n---"
 
-            # 3. 用正则替换输入区块：匹配从 "## 🧩 输入接口" 到下一个 "---" 或文件结束
+            # 定义正则模式（使用原始字符串）
             input_pattern = r"(?s)(##\s*🧩\s*输入接口\s*\n.*?)(?:\n---|$)"
-            updated_readme = re.sub(input_pattern, input_block, readme_content, count=1)
-
-            # 4. 用正则替换输出区块：匹配从 "## 📤 输出接口" 到下一个 "---" 或文件结束
             output_pattern = r"(?s)(##\s*📤\s*输出接口\s*\n.*?)(?:\n---|$)"
-            updated_readme = re.sub(output_pattern, output_block, updated_readme, count=1)
+
+            # 使用 lambda 避免 re.sub 解析 repl 中的反斜杠
+            updated_readme = re.sub(input_pattern, lambda m: input_block, readme_content, count=1)
+            updated_readme = re.sub(output_pattern, lambda m: output_block, updated_readme, count=1)
 
             return updated_readme
 

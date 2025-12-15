@@ -4,9 +4,10 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QFormLayout, QToolButton, QFrame, QSizePolicy, QApplication
 from qfluentwidgets import (
     LineEdit, BodyLabel, TextEdit,
-    FluentIcon, setFont
+    FluentIcon, setFont, EditableComboBox
 )
 
+from app.scan_components import ComponentScanner
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.component_info.port_editory_widget import PortEditorWidget
 from app.widgets.side_dock_area.plugins.component_info.property_editory_widget import PropertyEditorWidget
@@ -167,7 +168,10 @@ class ComponentInfoWindow(ToolWindow):
         form_widget = QWidget()
         form_layout = QFormLayout(form_widget)
         self._name_edit = LineEdit()
-        self._category_edit = LineEdit()
+        self._category_edit = EditableComboBox()
+        self._category_edit.setMaxVisibleItems(12)
+        ComponentScanner.register_on_change(self.refresh_category_combobox)
+        self.refresh_category_combobox()
         self._description_edit = TextEdit()  # 改为 TextEdit
         self._description_edit.setMaximumHeight(100)
         form_layout.addRow(BodyLabel("组件名称:"), self._name_edit)
@@ -202,6 +206,21 @@ class ComponentInfoWindow(ToolWindow):
 
         # 可选：添加 stretch 保证底部对齐
         main_layout.addStretch(1)
+
+    def refresh_category_combobox(self):
+        self._category_edit.clear()
+        compoent_map, _ = ComponentScanner().get_components()
+        categories = {getattr(cls, 'category', 'General') for cls in compoent_map.values()}
+        self._category_edit.addItems(categories)
+
+    def clear_all(self):
+        self.name_edit.clear()
+        self.refresh_category_combobox()
+        self.description_edit.clear()
+        self.requirements_edit.clear()
+        self.input_port_editor.set_ports([])
+        self.output_port_editor.set_ports([])
+        self.property_editor.set_properties({})
 
     @property
     def name_edit(self):
