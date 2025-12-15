@@ -12,6 +12,7 @@ from qfluentwidgets import (
 from watchfiles import watch, Change
 
 from app.utils.utils import ansi_to_html, get_icon
+from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 
@@ -37,7 +38,6 @@ class LogCardForTool(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
-
         # 标题
         title_label = StrongBodyLabel(self.title)
         setFont(title_label, 12)
@@ -130,16 +130,17 @@ class ProjectLogTool(ToolWindow):
         main_layout.setContentsMargins(12, 12, 12, 12)
         main_layout.setSpacing(16)
 
-        splitter = QHBoxLayout()
-        splitter.setSpacing(24)
+        splitter = ModernSplitter()
+        main_layout.addWidget(splitter)
 
         self.service_log_card = LogCardForTool("微服务日志 (service.log)")
         self.run_log_card = LogCardForTool("运行日志 (run.log)")
 
         splitter.addWidget(self.service_log_card)
         splitter.addWidget(self.run_log_card)
+        splitter.setSizes([250, 250])
 
-        main_layout.addLayout(splitter)
+        main_layout.addWidget(splitter)
 
         self.service_log_card.set_content("微服务未启动，无日志")
         self.run_log_card.set_content("尚未运行项目")

@@ -381,8 +381,8 @@ class ComponentDeveloperPage(QWidget):
         updated_code = self._update_basic_info_in_code(
             current_code,
             self.name_edit.text(),
-            self.category_edit.text(),
-            self.description_edit.text(),
+            self.category_edit.currentText(),
+            self.description_edit.toPlainText(),
             self.requirements_edit.toPlainText().replace("\n", ",")
         )
         if updated_code != current_code:
@@ -455,8 +455,8 @@ except:
             updated_code = self._update_basic_info_in_code(
                 current_code,
                 self.name_edit.text(),
-                self.category_edit.text(),
-                self.description_edit.text(),
+                self.category_edit.currentText(),
+                self.description_edit.toPlainText(),
                 self.requirements_edit.toPlainText().replace("\n", ",")
             )
             if updated_code != current_code:
@@ -817,7 +817,7 @@ except:
         self._saving = True
         try:
             name = self.name_edit.text().strip()
-            category = self.category_edit.text().strip()
+            category = self.category_edit.currentText().strip()
             if not name or not category:
                 MessageManager.warning("请输入组件名称和分类！", "", self)
                 return
@@ -971,13 +971,7 @@ except:
     def _cancel_edit(self):
         w = MessageBox("确认", "确定要取消编辑吗？未保存的更改将丢失。", self.window())
         if w.exec():
-            self.name_edit.clear()
-            self.category_edit.clear()
-            self.description_edit.clear()
-            self.requirements_edit.clear()
-            self.input_port_editor.set_ports([])
-            self.output_port_editor.set_ports([])
-            self.property_editor.set_properties({})
+            self.component_info.clear_all()
             self.code_editor.set_code(DEFAULT_NODE_TEMPLATE)
             self._current_component_file = None
             self.component_tree.set_current_editing_component(None)

@@ -5,11 +5,12 @@ from qfluentwidgets import SingleDirectionScrollArea, TransparentToolButton, Flu
     StrongBodyLabel
 
 from app.utils.utils import get_icon
-from app.widgets.side_dock_area.plugins.component_log.collapsible_card import CollapsibleLogCard
+from app.widgets.side_dock_area.plugins.canvas_node_log.collapsible_card import CollapsibleLogCard
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 
 class LogToolWindow(ToolWindow):
+    """画布节点运行日志工具窗口 (包含画布系统日志)"""
     name = "模型日志"
     icon = get_icon("运行记录")
     default_position = DockPosition.BOTTOM

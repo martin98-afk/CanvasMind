@@ -49,18 +49,35 @@ class CanvasExporter:
                     if req_str:
                         requirements.update(pkg.strip() for pkg in req_str.split(',') if pkg.strip())
             requirements.update(self.config.default_packages.value)
+            # 构造markdown输入、输出端口信息
+            def generate_markdown(input: list, output: list):
+                input_desc = ""
+                for i, inp in enumerate(input):
+                    input_desc += (f"- 参数{i + 1}：{inp['custom_key']}\n   "
+                                   f"- 参数格式：{inp['format']}\n   "
+                                   f"- 参数参考样例输入：{inp['current_value']}\n   "
+                                   f"- 所属组件名：{inp['node_name']}\n   "
+                                   f"- 组件参数类型：{inp['type']}\n\n")
+                output_desc = ""
+                for i, out in enumerate(output):
+                    output_desc += (f"- 输出{i + 1}：{out['custom_key']}\n   "
+                                    f"- 输出格式：{out['format']}\n   "
+                                    f"- 所属组件名：{out['node_name']}\n   "
+                                    f"- 组件参数类型：{out['type']}\n\n")
 
+                initial_readme = DETAILED_README.format(
+                    project_name_placeholder=self.parent.workflow_name,
+                    original_canvas=self.parent.workflow_name,
+                    export_time=export_time,
+                    input_desc=input_desc,
+                    output_desc=output_desc,
+                    component_names="\n".join(["- " + Path(fp).stem for fp in used_components]),
+                    conn_count=len(self.parent.graph.serialize_session().get("connections", []))
+                )
+                return initial_readme
             # README
             export_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            initial_readme = DETAILED_README.format(
-                project_name_placeholder=self.parent.workflow_name,
-                original_canvas=self.parent.workflow_name,
-                export_time=export_time,
-                input_desc="- 请在后续步骤中选择输入接口",
-                output_desc="- 请在后续步骤中选择输出接口",
-                component_names=["- " + Path(fp).stem for fp in used_components],
-                conn_count=len(self.parent.graph.serialize_session().get("connections", []))
-            )
+
 
             # 弹出流程对话框
             flow_dialog = ProjectExportFlowDialog(
@@ -68,7 +85,7 @@ class CanvasExporter:
                 parent=self.parent,
                 project_name=self.parent.workflow_name,
                 requirements='\n'.join(sorted(requirements)) if requirements else "# 无依赖",
-                readme=initial_readme
+                readme_func=generate_markdown
             )
 
             if not flow_dialog.exec():

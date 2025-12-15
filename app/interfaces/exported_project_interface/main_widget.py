@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+import re
 import shutil
 import time
 import traceback
@@ -129,12 +130,7 @@ class ExportedProjectsPage(QWidget):
         self.side_dock_area = SideDockArea(self, "项目管理")
         self.service_test_tool = self.side_dock_area.get_tool_instance("项目服务测试")
         self.project_logs_tool = self.side_dock_area.get_tool_instance("项目日志")
-        self.detail_panel = SimpleCardWidget()
-        self.detail_panel.setMinimumWidth(500)
-        self.detail_layout = QVBoxLayout(self.detail_panel)
-        self.detail_layout.setContentsMargins(20, 16, 20, 16)
-        self.detail_layout.setSpacing(12)
-
+        self.project_info_tool = self.side_dock_area.get_tool_instance("项目基本信息")
         # --- 分页器（放在左侧底部）---
         self.pips_pager = PipsPager(Qt.Horizontal)
         self.pips_pager.setPageNumber(1)
@@ -165,53 +161,8 @@ class ExportedProjectsPage(QWidget):
 
     def on_card_clicked(self, card: ProjectCard):
         self._current_detail_project = str(card.project_path)
-
-        # 清空旧内容
-        while self.detail_layout.count():
-            item = self.detail_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
         project_path = card.project_path
-
-        # 来源画布
-        canvas = "—"
-        spec_path = project_path / "project_spec.json"
-        if spec_path.exists():
-            try:
-                with open(spec_path, 'r', encoding='utf-8') as f:
-                    spec = json.load(f)
-                canvas = spec.get('graph_name', '—')
-            except:
-                pass
-        self.detail_layout.addWidget(BodyLabel(f"来源画布：{canvas}"))
-
-        # 端口
-        inputs = outputs = []
-        if spec_path.exists():
-            try:
-                with open(spec_path, 'r', encoding='utf-8') as f:
-                    spec = json.load(f)
-                inputs = list(spec.get('inputs', {}).keys())
-                outputs = list(spec.get('outputs', {}).keys())
-            except:
-                pass
-        ports_text = f"输入：{', '.join(inputs) if inputs else '—'}；输出：{', '.join(outputs) if outputs else '—'}"
-        self.detail_layout.addWidget(BodyLabel(f"端口：{ports_text}"))
-
-        # 依赖
-        deps = "—"
-        req_path = project_path / "requirements.txt"
-        if req_path.exists():
-            try:
-                with open(req_path, 'r', encoding='utf-8') as f:
-                    pkgs = [line.strip() for line in f if line.strip() and not line.startswith('#')]
-                    deps = ", ".join(pkgs[:3])
-                    if len(pkgs) > 3:
-                        deps += f" +{len(pkgs)-3}"
-            except:
-                pass
-        self.detail_layout.addWidget(BodyLabel(f"依赖包：{deps}"))
+        self.project_info_tool.refresh(project_path)
         # 刷新
         if SERVICE_MANAGER.is_running(str(project_path)):
             url = SERVICE_MANAGER.get_url(str(project_path))
@@ -522,6 +473,42 @@ class ExportedProjectsPage(QWidget):
             with open(readme_path, 'r', encoding='utf-8') as f:
                 readme_content = f.read()
 
+        def generate_markdown( input: list, output: list):
+            # 生成输入描述
+            input_desc = ""
+            for i, inp in enumerate(input):
+                input_desc += (
+                    f"- 参数{i + 1}：{inp['custom_key']}\n"
+                    f"   - 参数格式：{inp['format']}\n"
+                    f"   - 参数参考样例输入：{inp['current_value']}\n"
+                    f"   - 所属组件名：{inp['node_name']}\n"
+                    f"   - 组件参数类型：{inp['type']}\n\n"
+                )
+
+            # 生成输出描述
+            output_desc = ""
+            for i, out in enumerate(output):
+                output_desc += (
+                    f"- 输出{i + 1}：{out['custom_key']}\n"
+                    f"   - 输出格式：{out['format']}\n"
+                    f"   - 所属组件名：{out['node_name']}\n"
+                    f"   - 组件参数类型：{out['type']}\n\n"
+                )
+
+            # 构造完整的区块（注意：这里只是普通字符串）
+            input_block = f"## 🧩 输入接口\n\n{input_desc.rstrip()}\n\n---"
+            output_block = f"## 📤 输出接口\n\n{output_desc.rstrip()}\n\n---"
+
+            # 定义正则模式（使用原始字符串）
+            input_pattern = r"(?s)(##\s*🧩\s*输入接口\s*\n.*?)(?:\n---|$)"
+            output_pattern = r"(?s)(##\s*📤\s*输出接口\s*\n.*?)(?:\n---|$)"
+
+            # 使用 lambda 避免 re.sub 解析 repl 中的反斜杠
+            updated_readme = re.sub(input_pattern, lambda m: input_block, readme_content, count=1)
+            updated_readme = re.sub(output_pattern, lambda m: output_block, updated_readme, count=1)
+
+            return updated_readme
+
         candidate_items = workflow_data.get("candidate_inputs", []) + workflow_data.get("candidate_outputs", [])
         current_inputs = project_spec.get('inputs', {})
         current_outputs = project_spec.get('outputs', {})
@@ -534,7 +521,7 @@ class ExportedProjectsPage(QWidget):
             current_selected_outputs=current_outputs,
             project_name=project_name,
             requirements=requirements_content,
-            readme=readme_content
+            readme_func=generate_markdown
         )
         if flow_dialog.exec() == QDialog.Accepted:
             updated_inputs = {}

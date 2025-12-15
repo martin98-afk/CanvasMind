@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import (
     QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView
 )
@@ -47,21 +47,35 @@ class PortEditorWidget(SimpleCardWidget):
     def _add_port(self, port: dict = {}):
         row = self.table.rowCount()
         self.table.insertRow(row)
+
         name = port.get("name", f"input{row + 1}" if self.port_type == "input" else f"output{row + 1}")
         label = port.get("label", f"输入{row + 1}" if self.port_type == "input" else f"输出{row + 1}")
         port_type = port.get("type", ArgumentType.TEXT)
-        self.table.setItem(row, 0, QTableWidgetItem(name))
-        self.table.setItem(row, 1, QTableWidgetItem(label))
+
+        # 设置文本项 + 垂直居中
+        name_item = QTableWidgetItem(name)
+        name_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        label_item = QTableWidgetItem(label)
+        label_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+
+        self.table.setItem(row, 0, name_item)
+        self.table.setItem(row, 1, label_item)
+
+        # 类型下拉框
         type_combo = ComboBox()
-        type_combo.setMaxVisibleItems(6)
+        type_combo.setStyleSheet("border: none;background: transparent; color: white;")
+        type_combo.setFixedHeight(28)  # ✅ 统一高度
         for item in ArgumentType:
             type_combo.addItem(item.value, userData=item)
         type_combo.setCurrentText(port_type.value)
         self.table.setCellWidget(row, 2, type_combo)
         type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
+
         if self.port_type == "input":
             connection = port.get("connection", ConnectionType.SINGLE)
             conn_combo = ComboBox()
+            conn_combo.setStyleSheet("border: none;background: transparent; color: white;")
+            conn_combo.setFixedHeight(28)  # ✅ 统一高度
             conn_combo.addItems([ConnectionType.SINGLE.value, ConnectionType.MULTIPLE.value])
             conn_combo.setProperty("raw_values", [ConnectionType.SINGLE, ConnectionType.MULTIPLE])
             conn_combo.setCurrentIndex(0 if connection == ConnectionType.SINGLE else 1)

@@ -10,17 +10,25 @@ DETAILED_README = """# {project_name_placeholder}
 - **来源画布**: `{original_canvas}`
 - **导出时间**: `{export_time}`
 
+---
+
 ## 🧩 输入接口
 
 {input_desc}
+
+---
 
 ## 📤 输出接口
 
 {output_desc}
 
+---
+
 ## 🧱 包含组件
 
 {component_names}
+
+---
 
 ## ▶️ 使用方法
 1. 安装依赖: `pip install -r requirements.txt`

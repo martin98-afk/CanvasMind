@@ -115,7 +115,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             for port_name, label in parent_window.component_map[full_path].get_outputs():
                 self.delete_output(port_name)
                 name = re.sub(r'\s+', '_', self.name())
-                if f"{name}_{port_name}" in parent_window.global_variables.node_vars:
+                if f"{name}__{port_name}" in parent_window.global_variables.node_vars:
                     self.add_output(port_name, painter_func=draw_special_outputport)
                 else:
                     self.add_output(port_name)
