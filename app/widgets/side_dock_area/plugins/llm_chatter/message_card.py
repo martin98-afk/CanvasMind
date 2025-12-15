@@ -58,7 +58,8 @@ def _unwrap_code_blocks_with_context_links(md_text: str) -> str:
         lang_part = match.group(1) or ""
         code_content = match.group(2)
         # 检查是否包含 [xxx](yyy) 模式（允许有空格）
-        if re.search(r'\[[^\[\]]+\]\([^)\s]+\)', code_content) and lang_part in ("text"):
+        print(code_content)
+        if re.search(r'\[[^\[\]]+\]\([^)\s]+\)', code_content) and lang_part not in ("python"):
             # 包含上下文链接 → 返回未包裹的原始内容（保留语言标识？不保留）
             return code_content
         else:
