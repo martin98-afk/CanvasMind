@@ -456,7 +456,7 @@ except:
                 current_code,
                 self.name_edit.text(),
                 self.category_edit.text(),
-                self.description_edit.text(),
+                self.description_edit.toPlainText(),
                 self.requirements_edit.toPlainText().replace("\n", ",")
             )
             if updated_code != current_code:

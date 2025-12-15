@@ -24,6 +24,7 @@ class ProjectExportFlowDialog(StepMessageBoxBase):
                  current_selected_outputs=None,
                  project_name="",
                  requirements="",
+
                  readme_func=""):
         # 定义步骤
         steps = [

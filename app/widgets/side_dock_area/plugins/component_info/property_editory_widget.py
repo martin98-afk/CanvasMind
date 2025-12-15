@@ -117,6 +117,7 @@ class PropertyEditorWidget(SimpleCardWidget):
         self.table.setItem(row, 1, label_item)
         # 类型
         type_combo = ComboBox()
+        type_combo.setStyleSheet("border: none;background: transparent; color: white;")
         type_combo.setMaxVisibleItems(6)
         for item in PropertyType:
             type_combo.addItem(item.value, userData=item)

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+import re
 import shutil
 import time
 import traceback
@@ -472,6 +473,34 @@ class ExportedProjectsPage(QWidget):
             with open(readme_path, 'r', encoding='utf-8') as f:
                 readme_content = f.read()
 
+        def generate_markdown(input: list, output: list):
+            input_desc = ""
+            for i, inp in enumerate(input):
+                input_desc += (f"- 参数{i + 1}：{inp['custom_key']}\n   "
+                               f"- 参数格式：{inp['format']}\n   "
+                               f"- 参数参考样例输入：{inp['current_value']}\n   "
+                               f"- 所属组件名：{inp['node_name']}\n   "
+                               f"- 组件参数类型：{inp['type']}\n\n")
+            output_desc = ""
+            for i, out in enumerate(output):
+                output_desc += (f"- 输出{i + 1}：{out['custom_key']}\n   "
+                                f"- 输出格式：{out['format']}\n   "
+                                f"- 所属组件名：{out['node_name']}\n   "
+                                f"- 组件参数类型：{out['type']}\n\n")
+            # 2. 确保以换行结尾（避免格式错乱）
+            input_block = f"## 🧩 输入接口\n\n{input_desc.rstrip()}\n\n---"
+            output_block = f"## 📤 输出接口\n\n{output_desc.rstrip()}\n\n---"
+
+            # 3. 用正则替换输入区块：匹配从 "## 🧩 输入接口" 到下一个 "---" 或文件结束
+            input_pattern = r"(?s)(##\s*🧩\s*输入接口\s*\n.*?)(?:\n---|$)"
+            updated_readme = re.sub(input_pattern, input_block, readme_content, count=1)
+
+            # 4. 用正则替换输出区块：匹配从 "## 📤 输出接口" 到下一个 "---" 或文件结束
+            output_pattern = r"(?s)(##\s*📤\s*输出接口\s*\n.*?)(?:\n---|$)"
+            updated_readme = re.sub(output_pattern, output_block, updated_readme, count=1)
+
+            return updated_readme
+
         candidate_items = workflow_data.get("candidate_inputs", []) + workflow_data.get("candidate_outputs", [])
         current_inputs = project_spec.get('inputs', {})
         current_outputs = project_spec.get('outputs', {})
@@ -484,7 +513,7 @@ class ExportedProjectsPage(QWidget):
             current_selected_outputs=current_outputs,
             project_name=project_name,
             requirements=requirements_content,
-            readme=readme_content
+            readme_func=generate_markdown
         )
         if flow_dialog.exec() == QDialog.Accepted:
             updated_inputs = {}
