@@ -480,7 +480,7 @@ class ExportedProjectsPage(QWidget):
                 input_desc += (
                     f"- 参数{i + 1}：{inp['custom_key']}\n"
                     f"   - 参数格式：{inp['format']}\n"
-                    f"   - 参数参考样例输入：{inp['current_value']}\n"
+                    f"   - 参数参考样例输入：{str(inp['current_value'])[:200]}\n"
                     f"   - 所属组件名：{inp['node_name']}\n"
                     f"   - 组件参数类型：{inp['type']}\n\n"
                 )

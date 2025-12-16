@@ -54,14 +54,19 @@ class CanvasExporter:
                 input_desc = ""
                 for i, inp in enumerate(input):
                     input_desc += (f"- 参数{i + 1}：{inp['custom_key']}\n   "
+                                   f"- 参数描述：{inp.get('param_desc') or inp.get('port_desc')}\n   "
                                    f"- 参数格式：{inp['format']}\n   "
-                                   f"- 参数参考样例输入：{inp['current_value']}\n   "
+                                   f"- 参数格式描述：{inp['format_desc']}\n   "
+                                   f"- 参数参考样例输入：{str(inp['current_value'])[:200]}\n   "
                                    f"- 所属组件名：{inp['node_name']}\n   "
                                    f"- 组件参数类型：{inp['type']}\n\n")
                 output_desc = ""
                 for i, out in enumerate(output):
                     output_desc += (f"- 输出{i + 1}：{out['custom_key']}\n   "
+                                    
+                                    f"- 输出描述：{out.get('output_desc')}\n   "
                                     f"- 输出格式：{out['format']}\n   "
+                                    f"- 输出格式描述：{out['format_desc']}\n   "
                                     f"- 所属组件名：{out['node_name']}\n   "
                                     f"- 组件参数类型：{out['type']}\n\n")
 
@@ -229,9 +234,11 @@ class CanvasExporter:
                     "node_id": node.id,
                     "node_name": node.name(),
                     "param_name": prop_name,
+                    "param_desc": prop_def.label,
                     "current_value": val,
                     "display_name": f"{node.name()} → {prop_name}",
-                    "format": getattr(prop_def, 'type', None).name if prop_def else "TEXT"
+                    "format": getattr(prop_def, 'type', None).name if prop_def else "TEXT",
+                    "format_desc": prop_def.type.value if prop_def else "文本",
                 }
                 if prop_def.type.name == "RANGE":
                     item.update({"min": float(prop_def.min), "max": float(prop_def.max), "step": float(prop_def.step)})
@@ -241,11 +248,15 @@ class CanvasExporter:
             # 输入端口
             for port in node.input_ports():
                 port_name = port.name()
+                port_desc = ""
                 port_type = "TEXT"
+                port_type_desc = ""
                 if hasattr(cls, 'inputs'):
                     for inp in cls.inputs:
                         if inp.name == port_name:
                             port_type = inp.type.name
+                            port_type_desc = inp.type.value
+                            port_desc = inp.label
                             break
                 if port.multi_connection():
                     port_type = f"ARRAY[{port_type}]"
@@ -262,9 +273,11 @@ class CanvasExporter:
                     "node_id": node.id,
                     "node_name": node.name(),
                     "port_name": port_name,
+                    "port_desc": port_desc,
                     "current_value": val,
                     "display_name": f"{port_name} → {node.name()}",
-                    "format": port_type
+                    "format": port_type,
+                    "format_desc": port_type_desc
                 })
         return inputs
 
@@ -275,19 +288,25 @@ class CanvasExporter:
             cls = self.component_map.get(node.FULL_PATH)
             for out_name, out_val in outputs_dict.items():
                 out_type = "TEXT"
+                out_type_desc = ""
+                out_desc = ""
                 if hasattr(cls, 'outputs'):
                     for out in cls.outputs:
                         if out.name == out_name:
                             out_type = out.type.name
+                            out_type_desc = out.type.value
+                            out_desc = out.label
                             break
                 outputs.append({
                     "type": "组件输出",
                     "node_id": node.id,
                     "node_name": node.name(),
                     "output_name": out_name,
+                    "output_desc": out_desc,
                     "sample_value": str(out_val)[:50] + "..." if len(str(out_val)) > 50 else str(out_val),
                     "display_name": f"{node.name()} → {out_name}",
-                    "format": out_type
+                    "format": out_type,
+                    "format_desc": out_type_desc
                 })
         return outputs
 
