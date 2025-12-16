@@ -379,7 +379,6 @@ def create_branch_node(parent_window):
                     else:
                         evaluated_str = expr_engine.evaluate_template(expr, local_vars=input_vars)
                         result = bool(evaluated_str and evaluated_str.strip() and "[ExprError:" not in evaluated_str)
-
                     if result:
                         branch_name = self._sanitize_port_name(cond.get("name", "branch"))
                         activated_branches.append(branch_name)
@@ -392,7 +391,6 @@ def create_branch_node(parent_window):
 
             if not activated_branches and enable_else:
                 activated_branches = ["else"]
-
             # === 获取所有输出端口的下游节点 ===
             graph = self.graph
             if graph is None:

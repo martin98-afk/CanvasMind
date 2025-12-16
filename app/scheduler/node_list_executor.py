@@ -94,7 +94,8 @@ class NodeListExecutor(QRunnable):
                             component_map=self.component_map,
                             python_exe=self.python_exe,
                             kernel_manager=self.kernel_manager,
-                            global_variables=self.scheduler.global_variables
+                            global_variables=self.scheduler.global_variables,
+                            check_cancel_func=self._check_cancel  # ← 关键：传递取消检查函数
                         )
                         # 连接日志信号
                         backdrop_executor.log_start.connect(self.signals.log_start)

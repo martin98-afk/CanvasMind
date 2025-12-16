@@ -25,14 +25,15 @@ class BackdropExecutor(QObject):
     log_finished = pyqtSignal(str)
 
     def __init__(
-        self,
-        backdrop,
-        scheduler,
-        component_map,
-        python_exe,
-        kernel_manager,
-        global_variables,
-        parent=None
+            self,
+            backdrop,
+            scheduler,
+            component_map,
+            python_exe,
+            kernel_manager,
+            global_variables,
+            check_cancel_func,  # ← 新增参数
+            parent=None
     ):
         super().__init__(parent)
         self.backdrop = backdrop
@@ -41,13 +42,7 @@ class BackdropExecutor(QObject):
         self.python_exe = python_exe
         self.kernel_manager = kernel_manager
         self.global_variables = global_variables
-        self._is_cancelled = False
-
-    def cancel(self):
-        self._is_cancelled = True
-
-    def _check_cancel(self):
-        return self._is_cancelled
+        self._check_cancel = check_cancel_func  # ← 直接复用外部函数
 
     def execute(self):
         """在工作线程中调用（由 QRunnable 包装）"""

@@ -405,16 +405,16 @@ def create_node_class(full_path, file_path, parent_window=None):
                                 input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
                         else:
                             inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
+                            # 当前节点输入端口key
                             safe_key = f"input_{port_name}"
+                            input_vars[safe_key] = inputs_raw[port_name]
+                            safe_name = connected[0].node().name().replace(" ", "_")
+                            # 上游节点输出端口key
+                            safe_key = f"input_{safe_name}_{connected[0].name()}"
                             input_vars[safe_key] = inputs_raw[port_name]
                         if port_name in self.column_select:
                             inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
 
-                # === 构建 input_xxx 变量 ===
-                for k, v in inputs_raw.items():
-                    # 将 input.port_name 转为 input_port_name（避免点号）
-                    safe_key = f"input_{k}"
-                    input_vars[safe_key] = v
                 # === 创建表达式引擎（带全局变量）===
                 expr_engine = ExpressionEngine(global_vars_context=gv)
 
