@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "YOLO目标检测及关键点检测"
     category = "目标检测"
     description = "使用YOLOv8模型进行目标检测和关键点检测"
-    requirements = "ultralytics,numpy,pillow"
+    requirements = "pillow,opencv-python,numpy,ultralytics"
     inputs = [
         PortDefinition(name="input_image", label="输入图像", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
         PortDefinition(name="model", label="模型文件", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
@@ -28,7 +28,6 @@ class Component(BaseComponent):
         PortDefinition(name="detections", label="检测结果", type=ArgumentType.JSON),
         PortDefinition(name="keypoints", label="关键点信息", type=ArgumentType.JSON),
         PortDefinition(name="output_image", label="标注图像", type=ArgumentType.IMAGE),
-        PortDefinition(name="model.pt", label="模型", type=ArgumentType.FILE),
     ]
     properties = {
         "device": PropertyDefinition(
@@ -47,9 +46,14 @@ class Component(BaseComponent):
             default=0.7,
             label="NMS IoU阈值",
         ),
+        "task_name": PropertyDefinition(
+            type=PropertyType.TEXT,
+            default="pose",
+            label="任务类型",
+        ),
     }
 
-    def load_model(self, model_name: str, device: str):
+    def load_model(self, model_name: str, device: str, task_name: str):
         from ultralytics import YOLO
         self.model = YOLO(model_name)
         self.device = device
@@ -64,7 +68,7 @@ class Component(BaseComponent):
         import cv2
 
         # 加载模型
-        self.load_model(inputs.model, params.device)
+        self.load_model(inputs.model, params.device, params.task_name)
 
         # 获取输入图像
         input_image = inputs.input_image
@@ -115,8 +119,7 @@ class Component(BaseComponent):
         return {
             "detections": detections,
             "keypoints": keypoints,
-            "output_image": annotated_image,
-            "model.pt": self.model
+            "output_image": annotated_image
         }
 
 

@@ -19,10 +19,10 @@ class Component(BaseComponent):
     name = "YOLO 关键点检测训练"
     category = "模型训练"
     description = "使用 YOLOv8 关键点检测模型进行训练，输入为标准 YOLO 数据集目录（含 train/val 图像与标签）"
-    requirements = "torch,ultralytics,Pillow"
+    requirements = "torch,Pillow,ultralytics"
     inputs = [
         PortDefinition(name="dataset_dir", label="数据集目录", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
-        PortDefinition(name="pre_model", label="预训练模型", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="pre_model", label="预训练模型", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="model.pt", label="训练好的模型", type=ArgumentType.FILE),
@@ -42,7 +42,7 @@ class Component(BaseComponent):
         ),
         "batch_size": PropertyDefinition(
             type=PropertyType.INT,
-            default=16,
+            default=9,
             label="批量大小",
         ),
         "img_size": PropertyDefinition(
@@ -56,10 +56,10 @@ class Component(BaseComponent):
             label="运行设备",
             choices=["cpu", "cuda"]
         ),
-        "save_dir": PropertyDefinition(
+        "task_name": PropertyDefinition(
             type=PropertyType.TEXT,
-            default="./runs/pose",
-            label="模型保存路径",
+            default="pose",
+            label="任务类型",
         ),
         "dataset_name": PropertyDefinition(
             type=PropertyType.TEXT,
@@ -124,7 +124,7 @@ class Component(BaseComponent):
         data_yaml = data_dir / params.dataset_name / "data.yaml"
 
         # 5. 加载模型
-        model_name = params.model_name
+        model_name = inputs.pre_model or params.model_name
         model = YOLO(model_name)
 
         # 6. 设置设备
@@ -143,8 +143,8 @@ class Component(BaseComponent):
                 device=device,
                 save=True,
                 save_period=10,
-                project=Path(params.save_dir).parent,
-                name=Path(params.save_dir).name
+                project=Path("runs"),
+                name=params.task_name
             )
         # 构建模型路径
         except Exception as e:
@@ -152,13 +152,13 @@ class Component(BaseComponent):
             raise
             
         # 8. 训练完成后，动态查找最新保存的模型目录
-        project_dir = Path(params.save_dir).parent
+        project_dir = Path("runs")
         if not project_dir.exists():
             raise RuntimeError("训练项目目录不存在！")
         # 获取所有以 name 开头的子目录（如 pose, pose1, pose2...）
         pose_dirs = []
         for item in project_dir.iterdir():
-            if item.is_dir() and item.name.startswith(Path(params.save_dir).name):
+            if item.is_dir() and item.name.startswith(params.task_name):
                 pose_dirs.append(item)
         if not pose_dirs:
             raise RuntimeError(f"未找到训练输出目录，预期在 {project_dir} 下以 {Path(params.save_dir).name} 开头的目录")
@@ -175,12 +175,9 @@ class Component(BaseComponent):
             img = Image.open(img_path)
         else:
             img = None
-        # 10. 返回结果
-        # 获取 mAP@0.5 值
-        mAP_05 = results.results_dict.get('metrics/mAP_0.5')
 
         return {
-            "model.pt": model,
+            "model.pt": trained_model_path,
             "validation_image": img
         }
 

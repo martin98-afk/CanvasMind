@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import pyqtSignal, Qt, QTimer
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView, QWidget, QSizePolicy
 )
@@ -29,7 +30,15 @@ class PortEditorWidget(SimpleCardWidget):
             self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型", "连接方式", "＋"])
         else:
             self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型", "＋"])
+        font = QFont()
+        font.setPointSize(14)  # 或 16，根据需求调整
+        font.setBold(True)
 
+        for col in range(self.table.columnCount()):
+            item = self.table.horizontalHeaderItem(col)
+            if item and col == self.table.columnCount() - 1:  # 最后一列
+                item.setFont(font)
+                item.setTextAlignment(Qt.AlignCenter)
         self.table.verticalHeader().hide()
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(col_count - 1, QHeaderView.ResizeToContents)

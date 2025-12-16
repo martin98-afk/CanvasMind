@@ -477,23 +477,22 @@ class ExportedProjectsPage(QWidget):
             # 生成输入描述
             input_desc = ""
             for i, inp in enumerate(input):
-                input_desc += (
-                    f"- 参数{i + 1}：{inp['custom_key']}\n"
-                    f"   - 参数格式：{inp['format']}\n"
-                    f"   - 参数参考样例输入：{inp['current_value']}\n"
-                    f"   - 所属组件名：{inp['node_name']}\n"
-                    f"   - 组件参数类型：{inp['type']}\n\n"
-                )
-
-            # 生成输出描述
+                input_desc += (f"- 参数{i + 1}：{inp['custom_key']}\n   "
+                               f"- 参数描述：{inp.get('param_desc') or inp.get('port_desc')}\n   "
+                               f"- 参数格式：{inp['format']}\n   "
+                               f"- 参数格式描述：{inp['format_desc']}\n   "
+                               f"- 参数参考样例输入：{str(inp['current_value'])[:200]}\n   "
+                               f"- 所属组件名：{inp['node_name']}\n   "
+                               f"- 组件参数类型：{inp['type']}\n\n")
             output_desc = ""
             for i, out in enumerate(output):
-                output_desc += (
-                    f"- 输出{i + 1}：{out['custom_key']}\n"
-                    f"   - 输出格式：{out['format']}\n"
-                    f"   - 所属组件名：{out['node_name']}\n"
-                    f"   - 组件参数类型：{out['type']}\n\n"
-                )
+                output_desc += (f"- 输出{i + 1}：{out['custom_key']}\n   "
+
+                                f"- 输出描述：{out.get('output_desc')}\n   "
+                                f"- 输出格式：{out['format']}\n   "
+                                f"- 输出格式描述：{out['format_desc']}\n   "
+                                f"- 所属组件名：{out['node_name']}\n   "
+                                f"- 组件参数类型：{out['type']}\n\n")
 
             # 构造完整的区块（注意：这里只是普通字符串）
             input_block = f"## 🧩 输入接口\n\n{input_desc.rstrip()}\n\n---"

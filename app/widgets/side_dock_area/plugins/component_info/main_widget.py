@@ -229,14 +229,20 @@ class ComponentInfoWindow(ToolWindow):
         if not self._first_show:
             self._first_show = True
             # 可选：首次显示时展开基本信息卡
-            # QTimer.singleShot(100, lambda: self.basic_card.set_expanded(True))
+            QTimer.singleShot(100, lambda: self.basic_card.set_expanded(True))
+            QTimer.singleShot(100, lambda: self.input_card.set_expanded(True))
+            QTimer.singleShot(100, lambda: self.output_card.set_expanded(True))
+            QTimer.singleShot(100, lambda: self.prop_card.set_expanded(True))
         super().showEvent(event)
 
     def refresh_category_combobox(self):
+        current_category = self.category_edit.currentText()
         self._category_edit.clear()
         compoent_map, _ = ComponentScanner().get_components()
         categories = {getattr(cls, 'category', 'General') for cls in compoent_map.values()}
         self._category_edit.addItems(categories)
+        if current_category in categories:
+            self._category_edit.setCurrentText(current_category)
 
     def clear_all(self):
         self.name_edit.clear()

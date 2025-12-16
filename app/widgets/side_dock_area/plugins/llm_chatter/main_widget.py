@@ -40,6 +40,7 @@ class OpenAIChatToolWindow(ToolWindow):
     _settings_popup = None  # 懒加载
     _system_prompt = ""
     _is_welcome = False
+    _first_show = False
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
@@ -55,7 +56,13 @@ class OpenAIChatToolWindow(ToolWindow):
         if hasattr(self.homepage, "global_variables_changed"):
             self.homepage.global_variables_changed.connect(self._load_model_configs)
         self._initialize_history_manager()
-        self._create_new_session()
+
+    def showEvent(self, event):
+        if not self._first_show:
+            self._first_show = True
+            # 可选：首次显示时展开基本信息卡
+            QTimer.singleShot(100, lambda: self._create_new_session())
+        super().showEvent(event)
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
