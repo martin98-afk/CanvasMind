@@ -53,6 +53,10 @@ class ComponentDeveloperPage(QWidget):
         # --- 添加一个标志，防止循环更新 ---
         self._updating_requirements_from_analysis = False
         self._saving = False  # 防止重复保存
+        self._property_sync_timer = QTimer()
+        self._property_sync_timer.setSingleShot(True)
+        self._property_sync_timer.setInterval(300)  # 300ms 防抖
+        self._property_sync_timer.timeout.connect(self._sync_properties_to_code)
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -149,7 +153,7 @@ class ComponentDeveloperPage(QWidget):
 
         self.input_port_editor.ports_changed.connect(self._sync_ports_to_code)
         self.output_port_editor.ports_changed.connect(self._sync_ports_to_code)
-        self.property_editor.properties_changed.connect(self._sync_properties_to_code)
+        self.property_editor.properties_changed.connect(self._on_property_changed)
         self.code_editor.code_changed.connect(self._on_code_text_changed)
 
         self.name_edit.textChanged.connect(self._sync_basic_info_to_code)
@@ -158,6 +162,10 @@ class ComponentDeveloperPage(QWidget):
         self.requirements_edit.textChanged.connect(self._sync_basic_info_to_code)
         self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
         self.history_table.itemChanged.connect(self._on_history_description_changed)
+
+    def _on_property_changed(self):
+        # 防抖：连续变更时只在停顿后同步
+        self._property_sync_timer.start()
 
     def _handle_insert_code_from_llm(self, code: str):
         editor = self.code_editor.code_editor
