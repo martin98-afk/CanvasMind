@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView,
     QFormLayout, QDialog, QSizePolicy, QWidget, QSlider
@@ -31,6 +32,15 @@ class PropertyEditorWidget(SimpleCardWidget):
         self.table = TableWidget()
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "选项", "＋"])
+        font = QFont()
+        font.setPointSize(14)  # 或 16，根据需求调整
+        font.setBold(True)
+
+        for col in range(self.table.columnCount()):
+            item = self.table.horizontalHeaderItem(col)
+            if item and col == self.table.columnCount() - 1:  # 最后一列
+                item.setFont(font)
+                item.setTextAlignment(Qt.AlignCenter)
         self.table.verticalHeader().hide()
         self.table.verticalHeader().setDefaultSectionSize(32)
         self.table.verticalHeader().setMinimumSectionSize(32)

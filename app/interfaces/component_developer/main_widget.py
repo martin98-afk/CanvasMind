@@ -587,6 +587,12 @@ except:
                                         fv = str(float(field_default)) if field_default else "0.0"
                                     elif field_type == PropertyType.BOOL:
                                         fv = "True" if str(field_default).lower() in ("true", "1", "yes") else "False"
+                                    elif prop_type == PropertyType.LONGTEXT:
+                                        if field_default:
+                                            safe_text = field_default.replace('"""', '\\"\\"\\"')
+                                            fv = '"""' + textwrap.dedent(safe_text) + '"""'
+                                        else:
+                                            fv = '""""""'
                                     else:
                                         fv = f'"{field_default}"'
                                     new_lines.append(f'                    default={fv},')
