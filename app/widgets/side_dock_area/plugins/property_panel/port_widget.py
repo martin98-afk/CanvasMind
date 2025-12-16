@@ -396,7 +396,7 @@ class PortWidget(QWidget):
             menu.addAction(
                 Action(
                     FluentIcon.COPY, "复制为表达式", parent=self,
-                    triggered=lambda: self.copy_as_expression_func("node_vars", f"{self.node.name()}_{port_name}")
+                    triggered=lambda: self.copy_as_expression_func("node_vars", f"{self.node.name()}__{port_name}")
                 )
             )
             menu.exec_(info_card.mapToGlobal(pos))
