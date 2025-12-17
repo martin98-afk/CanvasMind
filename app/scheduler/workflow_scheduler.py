@@ -232,6 +232,21 @@ class WorkflowScheduler(QObject):
             self._executor.cancel()
             self.cancelled.emit()
 
+    def pause(self):
+        """暂停当前执行（可恢复）"""
+        if self._executor:
+            self._executor.pause()
+
+    def resume(self):
+        """继续当前执行（从暂停处恢复）"""
+        if self._executor:
+            self._executor.resume()
+
+    def is_paused(self) -> bool:
+        if self._executor and hasattr(self._executor, 'ctx'):
+            return self._executor.ctx.is_paused()
+        return False
+
     def _on_finished(self, _=None):
         self.finished.emit()
 

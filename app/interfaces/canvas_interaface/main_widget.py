@@ -377,6 +377,18 @@ class CanvasPage(QWidget):
 
     def _connect_runner_signals(self):
         """连接调度器信号到 UI 回调"""
+        # 画布上按钮信号
+        self.ui_manager.run_btn.clicked.connect(self.canvas_runner.run_workflow)
+        self.ui_manager.stop_btn.clicked.connect(self.canvas_runner.stop_workflow)
+        self.ui_manager.save_btn.clicked.connect(self.save_full_workflow)
+        self.ui_manager.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
+        self.ui_manager.close_btn.clicked.connect(
+            lambda: (
+                self.switch_to_parent(),
+                QtCore.QTimer.singleShot(0, self.close_current_canvas)
+            )
+        )
+
         # 优化：直接连接到具体处理方法，避免不必要的中间信号
         self.canvas_runner.workflow_started.connect(self._on_workflow_started)
         self.canvas_runner.node_started.connect(self.on_node_started_simple)

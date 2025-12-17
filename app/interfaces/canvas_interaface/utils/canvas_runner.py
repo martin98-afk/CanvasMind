@@ -12,8 +12,10 @@ class CanvasRunner(QObject):
     workflow_finished = pyqtSignal()
     workflow_error = pyqtSignal(str)
     workflow_cancelled = pyqtSignal()
-    node_status_changed = pyqtSignal(str, object)  # node_id, status
-    property_changed = pyqtSignal(object)  # for property panel
+    workflow_paused = pyqtSignal()  # ← 新增
+    workflow_resumed = pyqtSignal()  # ← 新增
+    node_status_changed = pyqtSignal(str, object)
+    property_changed = pyqtSignal(object)
     node_vars_changed = pyqtSignal()
 
     def __init__(self, get_python_exe, parent=None):
@@ -45,35 +47,19 @@ class CanvasRunner(QObject):
         nodes = self.parent.property_panel.get_current_execution_order()
         if nodes:
             self._scheduler.run_full(nodes=nodes, sort=False)
-            self._scheduler.node_started.connect(
-                lambda : QtCore.QTimer.singleShot(
-                    50, self.parent.property_panel.update_node_list_content
+            for sig in [
+                self._scheduler.node_started,
+                self._scheduler.node_finished,
+                self._scheduler.backdrop_finished,
+                self._scheduler.finished,
+                self._scheduler.error,
+                self._scheduler.cancelled,
+            ]:
+                sig.connect(
+                    lambda: QTimer.singleShot(50, self.parent.property_panel.update_node_list_content)
                 )
-            )
             self._scheduler.backdrop_finished.connect(
-                lambda: QtCore.QTimer.singleShot(
-                    50, lambda: self.parent.property_panel.update_properties(nodes)
-                )
-            )
-            self._scheduler.node_finished.connect(
-                lambda: QtCore.QTimer.singleShot(
-                    50, self.parent.property_panel.update_node_list_content
-                )
-            )
-            self._scheduler.finished.connect(
-                lambda: QtCore.QTimer.singleShot(
-                    50, self.parent.property_panel.update_node_list_content
-                )
-            )
-            self._scheduler.error.connect(
-                lambda: QtCore.QTimer.singleShot(
-                    50, self.parent.property_panel.update_node_list_content
-                )
-            )
-            self._scheduler.cancelled.connect(
-                lambda: QtCore.QTimer.singleShot(
-                    50, self.parent.property_panel.update_node_list_content
-                )
+                lambda: QTimer.singleShot(50, lambda: self.parent.property_panel.update_properties(nodes))
             )
         else:
             self._scheduler.run_full(nodes=self.parent.graph.selected_nodes())
@@ -114,3 +100,21 @@ class CanvasRunner(QObject):
             self._scheduler.cancel()
             self._scheduler = None
             self.workflow_cancelled.emit()
+
+    def pause_workflow(self):
+        """暂停执行（可恢复）"""
+        if self._scheduler and self._scheduler._current_executor:
+            self._scheduler._current_executor.pause()
+            self.workflow_paused.emit()
+
+    def resume_workflow(self):
+        """继续执行（从暂停处恢复）"""
+        if self._scheduler and self._scheduler._current_executor:
+            self._scheduler._current_executor.resume()
+            self.workflow_resumed.emit()
+
+    def is_paused(self) -> bool:
+        """查询当前是否处于暂停状态"""
+        if self._scheduler and self._scheduler._current_executor:
+            return self._scheduler._current_executor.ctx.is_paused()
+        return False

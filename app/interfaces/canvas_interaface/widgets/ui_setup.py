@@ -126,18 +126,6 @@ class CanvasUISetUp:
         self.buttons_container.setLayout(env_layout)
         self.buttons_container.show()
 
-        # 连接信号
-        self.run_btn.clicked.connect(self.parent.canvas_runner.run_workflow)
-        self.stop_btn.clicked.connect(self.parent.canvas_runner.stop_workflow)
-        self.save_btn.clicked.connect(self.parent.save_full_workflow)
-        self.export_model_btn.clicked.connect(self.parent.export_selected_nodes_as_project)
-        self.close_btn.clicked.connect(
-            lambda: (
-                self.parent.switch_to_parent(),
-                QtCore.QTimer.singleShot(0, self.parent.close_current_canvas)
-            )
-        )
-
     def create_floating_nodes(self):
         self.nodes_container = QWidget(self.parent.canvas_widget)
         self.nodes_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)

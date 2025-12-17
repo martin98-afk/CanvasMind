@@ -9,6 +9,7 @@ from loguru import logger
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.status_node import NodeStatus
 from app.scheduler.backdrop_executor import BackdropExecutor
+from app.scheduler.execution_context import ExecutionContext
 from app.scheduler.single_node_executor import execute_node
 
 
@@ -25,12 +26,8 @@ class WorkerSignals(QObject):
     log_error = pyqtSignal(str)
     log_finished = pyqtSignal(str)
 
-class NodeListExecutor(QRunnable):
-    """
-    异步执行节点列表的执行器
-    支持条件分支控制流：执行时跳过 disabled 节点
-    """
 
+class NodeListExecutor(QRunnable):
     def __init__(
         self,
         main_window,
@@ -44,23 +41,32 @@ class NodeListExecutor(QRunnable):
         self.main_window = main_window
         self.nodes = nodes
         self.python_exe = python_exe
-        self._is_cancelled = False
-        self.component_map = {}
         self.scheduler = scheduler
         self.kernel_manager = kernel_manager
+        self.ctx = ExecutionContext()  # ← 新增执行上下文
 
     def cancel(self):
-        self._is_cancelled = True
+        self.ctx.cancel()
+
+    def pause(self):
+        self.ctx.pause()
+
+    def resume(self):
+        self.ctx.resume()
 
     def _check_cancel(self) -> bool:
-        return self._is_cancelled
+        return self.ctx.check_cancel()
 
     def run(self):
         """在工作线程中执行节点列表，动态跳过 disabled 节点"""
         try:
             for node in self.nodes:
-                if self._is_cancelled:
+                if self.ctx.is_cancelled():
                     logger.info("执行被用户取消")
+                    return
+
+                self.ctx.wait_if_paused()  # ← 暂停检查点
+                if self.ctx.is_cancelled():
                     return
 
                 # ✅ 关键：检查节点是否被禁用
@@ -79,7 +85,7 @@ class NodeListExecutor(QRunnable):
                             kernel_manager=self.kernel_manager,
                             scheduler=self.scheduler,
                             global_variable=self.scheduler.global_variables,
-                            check_cancel_func=self._check_cancel,
+                            execution_context=self.ctx,
                             log_start_func=self.signals.log_start.emit,
                             log_message_func=self.signals.log_message.emit,
                             log_error_func=self.signals.log_error.emit,
@@ -95,7 +101,7 @@ class NodeListExecutor(QRunnable):
                             python_exe=self.python_exe,
                             kernel_manager=self.kernel_manager,
                             global_variables=self.scheduler.global_variables,
-                            check_cancel_func=self._check_cancel  # ← 关键：传递取消检查函数
+                            execution_context=self.ctx,  # ← 传递上下文
                         )
                         # 连接日志信号
                         backdrop_executor.log_start.connect(self.signals.log_start)
@@ -113,7 +119,7 @@ class NodeListExecutor(QRunnable):
                     else:
                         pass
 
-                    if self._is_cancelled:
+                    if self._check_cancel():
                         return
 
                     self.signals.node_finished.emit(node.id)
@@ -127,11 +133,11 @@ class NodeListExecutor(QRunnable):
                     return  # 出错停止（保持你原有逻辑）
 
             time.sleep(0.3)
-            if not self._is_cancelled:
+            if not self.ctx.is_cancelled():
                 self.signals.finished.emit("画布执行完毕")
 
         except Exception as e:
-            if not self._is_cancelled:
+            if not self.ctx.is_cancelled():
                 logger.error("执行器异常:")
                 logger.error(traceback.format_exc())
                 self.signals.error.emit(str(e))
