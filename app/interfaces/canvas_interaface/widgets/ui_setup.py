@@ -106,22 +106,37 @@ class CanvasUISetUp:
         env_layout = QHBoxLayout(self.buttons_container)
         env_layout.setSpacing(0)
         env_layout.setContentsMargins(0, 0, 0, 0)
+
+        # ▶️ 运行
         self.run_btn = TransparentToolButton(FluentIcon.PLAY, parent=self.parent.canvas_widget)
         self.run_btn.setToolTip("运行工作流")
         env_layout.addWidget(self.run_btn)
-        self.stop_btn = TransparentToolButton(FluentIcon.PAUSE, parent=self.parent.canvas_widget)
-        self.stop_btn.setToolTip("停止运行")
+
+        # ⏸️ 暂停 / ▶️ 继续
+        self.pause_btn = TransparentToolButton(FluentIcon.PAUSE, parent=self.parent.canvas_widget)
+        self.pause_btn.setToolTip("暂停工作流")
+        self.pause_btn.hide()
+        env_layout.addWidget(self.pause_btn)
+
+        # ⏹️ 停止（强制终止）
+        self.stop_btn = TransparentToolButton(get_icon("停止"), parent=self.parent.canvas_widget)
+        self.stop_btn.setToolTip("停止工作流")
         self.stop_btn.hide()
         env_layout.addWidget(self.stop_btn)
+
+        # 其他按钮
         self.save_btn = TransparentToolButton(FluentIcon.SAVE, parent=self.parent.canvas_widget)
         self.save_btn.setToolTip("保存工作流")
         env_layout.addWidget(self.save_btn)
+
         self.export_model_btn = TransparentToolButton(FluentIcon.SHARE, parent=self.parent.canvas_widget)
         self.export_model_btn.setToolTip("导出选中节点为独立模型")
         env_layout.addWidget(self.export_model_btn)
+
         self.close_btn = TransparentToolButton(FluentIcon.CLOSE, parent=self.parent.canvas_widget)
         self.close_btn.setToolTip("关闭当前画布")
         env_layout.addWidget(self.close_btn)
+
         env_layout.addStretch()
         self.buttons_container.setLayout(env_layout)
         self.buttons_container.show()

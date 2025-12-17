@@ -103,18 +103,18 @@ class CanvasRunner(QObject):
 
     def pause_workflow(self):
         """暂停执行（可恢复）"""
-        if self._scheduler and self._scheduler._current_executor:
-            self._scheduler._current_executor.pause()
+        if self._scheduler and self._scheduler._executor:
+            self._scheduler._executor.pause()
             self.workflow_paused.emit()
 
     def resume_workflow(self):
         """继续执行（从暂停处恢复）"""
-        if self._scheduler and self._scheduler._current_executor:
-            self._scheduler._current_executor.resume()
+        if self._scheduler and self._scheduler._executor:
+            self._scheduler._executor.resume()
             self.workflow_resumed.emit()
 
     def is_paused(self) -> bool:
         """查询当前是否处于暂停状态"""
-        if self._scheduler and self._scheduler._current_executor:
-            return self._scheduler._current_executor.ctx.is_paused()
+        if self._scheduler and self._scheduler._executor:
+            return self._scheduler._executor.ctx.is_paused()
         return False
