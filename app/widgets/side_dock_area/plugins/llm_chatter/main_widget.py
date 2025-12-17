@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+from datetime import datetime
 from pathlib import Path
 
 from loguru import logger
@@ -257,7 +258,11 @@ class OpenAIChatToolWindow(ToolWindow):
             return
         for msg in session.messages:
             if msg["role"] == "user":
-                self._append_user_message(msg["content"])
+                self._append_user_message(
+                    msg["content"],
+                    timestamp=msg.get("timestamp", datetime.now().strftime('%H:%M')),
+                    tag_params=msg.get("params", {})
+                )
             elif msg["role"] == "assistant":
                 card = self._append_assistant_message()
                 card.update_content(msg["content"])
@@ -370,10 +375,11 @@ class OpenAIChatToolWindow(ToolWindow):
         self.history_btn.setChecked(False)
         self._display_current_session()
 
-    def _append_user_message(self, content: str):
+    def _append_user_message(self, content: str, timestamp: str, tag_params: dict = None):
         card = MessageCard(
             parent=self, role="user",
-            tag_params={key: value for key, value in self.context_selector.context.items()}
+            timestamp=timestamp,
+            tag_params=tag_params or {key: value for key, value in self.context_selector.context.items()}
         )
         card.update_content(content)
         card.finish_streaming()
