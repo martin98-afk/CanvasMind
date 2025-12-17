@@ -58,7 +58,7 @@ class CollapsibleCard(QWidget):
         self.content_layout = QVBoxLayout(self.content_widget)
         self.content_widget.setMinimumHeight(0)
         self.content_widget.setMaximumHeight(0)  # 初始折叠
-        self.content_layout.setContentsMargins(10, 0, 10, 0)  # 避免 0 边距导致 layout 异常
+        self.content_layout.setContentsMargins(5, 0, 5, 0)  # 避免 0 边距导致 layout 异常
         self.content_widget.setVisible(False)
 
         # === 动画 ===
@@ -224,7 +224,6 @@ class ComponentInfoWindow(ToolWindow):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(self.scroll_area)
-        self.setMinimumWidth(480)
 
     def showEvent(self, event):
         if not self._first_show:

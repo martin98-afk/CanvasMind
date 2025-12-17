@@ -224,7 +224,7 @@ class OpenAIChatToolWindow(ToolWindow):
                                 all_model_names.append(config_name)
         except Exception as e:
             # 建议至少打印错误
-            print(f"[ERROR] 加载自定义模型配置失败: {e}")
+            logger.error(f"[ERROR] 加载自定义模型配置失败: {e}")
 
         # ✅ 关键：一次性添加所有模型名
         self.model_combo.addItems(all_model_names)
