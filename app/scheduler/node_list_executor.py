@@ -49,7 +49,7 @@ class NodeListExecutor(QRunnable):
         self.ctx.cancel()
 
     def pause(self):
-        self.ctx.pause()
+        self.ctx.pause()  # 设置暂停状态（用于 is_paused() 查询）
 
     def resume(self):
         self.ctx.resume()

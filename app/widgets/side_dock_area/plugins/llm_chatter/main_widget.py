@@ -375,7 +375,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self.history_btn.setChecked(False)
         self._display_current_session()
 
-    def _append_user_message(self, content: str, timestamp: str, tag_params: dict = None):
+    def _append_user_message(self, content: str, timestamp: str=None, tag_params: dict = None):
         card = MessageCard(
             parent=self, role="user",
             timestamp=timestamp,

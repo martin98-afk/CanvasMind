@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
-import pathlib
-base_path = pathlib.Path(__file__).parent.parent / "base.py"
+from pathlib import Path
+base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 class Component(BaseComponent):
     name = "工具调用"
     category = "大模型组件"
-    description = "将已导出的模型做为工具的形式进行调用，并获取运行结果"
+    description = "将已导出的模型项目作为工具调用，接收项目名称和输入数据，通过运行工作流脚本执行模型任务，返回结果和运行日志，输入为项目路径和JSON格式数据，输出为JSON格式结果和文本日志，无额外参数。"
     requirements = ""
     inputs = [
         PortDefinition(name="project_name", label="项目名称", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),

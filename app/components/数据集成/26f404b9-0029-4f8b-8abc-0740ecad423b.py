@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 class Component(BaseComponent):
     name = "CSV读取器"
     category = "数据集成"
-    description = "接收本地上传csv文件"
+    description = "CSV读取器需连接文档上传组件作为输入，将文件内容解析为结构化数据流输出，支持单个CSV文件上传输入，输出为CSV格式数据，无额外参数配置。"
     requirements = ""
     inputs = [
         PortDefinition(name="csv", label="csv文件", type=ArgumentType.UPLOAD, connection=ConnectionType.SINGLE),

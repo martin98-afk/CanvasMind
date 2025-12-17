@@ -513,7 +513,10 @@ class CanvasPage(QWidget):
     def set_node_status(self, node, status):
         self.node_status[node.id] = status
         if hasattr(node, 'status'):
-            node.status = status
+            try:
+                node.status = status
+            except:
+                pass
         # 优化：只高亮目标节点相关的连接线
         self._highlight_node_connections(node, status)
 
