@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
-import pathlib
-base_path = pathlib.Path(__file__).parent.parent / "base.py"
+from pathlib import Path
+base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 class Component(BaseComponent):
     name = "图像4通道转3通道"
     category = "数据预处理"
-    description = ""
+    description = "图像4通道转3通道组件用于将输入的4通道图像数据转换为3通道图像数据，输入为单个4通道图像文件，输出为3通道图像数据，无参数配置。"
     requirements = "numpy"
     inputs = [
         PortDefinition(name="input", label="端口1", type=ArgumentType.IMAGE),

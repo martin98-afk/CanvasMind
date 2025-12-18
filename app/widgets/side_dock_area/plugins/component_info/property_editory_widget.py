@@ -149,15 +149,28 @@ class PropertyEditorWidget(SimpleCardWidget):
             return str(widget.switch.isChecked())
         elif isinstance(widget, LineEdit):
             return widget.text()
-        elif hasattr(widget, 'slider'):
-            val = widget.slider.value()
-            float_val = val / widget.factor
-            if widget.max_dec > 0:
-                float_val = round(float_val, widget.max_dec)
-            return str(float_val)
+        elif hasattr(widget, 'slider') and hasattr(widget, 'value_edit'):
+            try:
+                return widget.value_edit.text()
+            except:
+                val = widget.slider.value()
+                float_val = val / widget.factor
+                if widget.max_dec > 0:
+                    float_val = round(float_val, widget.max_dec)
+                return str(float_val)
         else:
             item = self.table.item(row, 3)
             return item.text() if item else ""
+
+    def _adjust_line_edit_width(self, line_edit: LineEdit, max_width=120, min_width=50):
+        """根据文本内容调整 LineEdit 宽度"""
+        text = line_edit.text() or "0"
+        # 添加一点 padding（比如 10 像素）
+        fm = line_edit.fontMetrics()
+        text_width = fm.horizontalAdvance(text) + 10
+        # 限制在合理范围
+        width = max(min_width, min(max_width, text_width))
+        line_edit.setFixedWidth(width)
 
     def _update_default_value_widget(self, row: int, prop_type: PropertyType, prop_name: str = None, default_value=''):
         """根据类型设置默认值列的 widget"""
@@ -178,7 +191,6 @@ class PropertyEditorWidget(SimpleCardWidget):
             max_val = config.get('max', 100)
             step = config.get('step', 1)
 
-            # ---- 修正：正确计算小数位数 ----
             def _decimals(x):
                 s = str(x)
                 if '.' in s:
@@ -196,44 +208,75 @@ class PropertyEditorWidget(SimpleCardWidget):
             container = QWidget()
             layout = QHBoxLayout(container)
             layout.setContentsMargins(0, 0, 0, 0)
-            layout.setSpacing(0)
+            layout.setSpacing(6)
 
             slider = Slider(Qt.Horizontal)
             slider.setRange(int_min, int_max)
             slider.setSingleStep(int_step)
 
-            value_label = BodyLabel("0.00")
+            # 替换 BodyLabel 为 LineEdit
+            value_edit = LineEdit()
+            value_edit.setStyleSheet("color: white; background: transparent; border: 1px solid #555555;")
 
-            layout.addWidget(slider)
-            layout.addWidget(value_label)
+            layout.addWidget(slider, 1)
+            layout.addWidget(value_edit)
 
             # 初始化值
             try:
                 current_float = float(default_value) if default_value not in (None, '') else min_val
+                current_float = max(min_val, min(max_val, current_float))
                 current_int = int(round(current_float * factor))
-                current_int = max(int_min, min(int_max, current_int))
                 slider.setValue(current_int)
-                display_value = current_int / factor
-                # 格式化显示（保留原始小数位）
-                if max_dec > 0:
-                    display_str = f"{display_value:.{max_dec}f}"
-                else:
-                    display_str = str(int(display_value))
-                value_label.setText(display_str)
+                display_str = f"{current_float:.{max_dec}f}" if max_dec > 0 else str(int(current_float))
+                value_edit.setText(display_str)
             except (ValueError, TypeError):
                 slider.setValue(int_min)
-                value_label.setText(str(min_val))
+                display_str = f"{min_val:.{max_dec}f}" if max_dec > 0 else str(int(min_val))
+                value_edit.setText(display_str)
 
-            def on_slider_value_changed(val):
-                display_val = val / factor
+            self._adjust_line_edit_width(value_edit, max_width=100, min_width=40)
+
+            # 每次内容变化后也调整（连接信号）
+            value_edit.textChanged.connect(
+                lambda: self._adjust_line_edit_width(value_edit, max_width=100, min_width=40)
+            )
+
+            # Slider -> LineEdit
+            def on_slider_changed(val):
+                float_val = val / factor
                 if max_dec > 0:
-                    display_str = f"{display_val:.{max_dec}f}"
+                    display_str = f"{float_val:.{max_dec}f}"
                 else:
-                    display_str = str(int(display_val))
-                value_label.setText(display_str)
+                    display_str = str(int(float_val))
+                value_edit.setText(display_str)
                 self.properties_changed.emit()
 
-            slider.valueChanged.connect(on_slider_value_changed)
+            slider.valueChanged.connect(on_slider_changed)
+
+            # LineEdit -> Slider（带校验）
+            def on_line_edit_finished():
+                text = value_edit.text().strip()
+                if not text:
+                    return
+                try:
+                    user_val = float(text)
+                    # 限制在 [min_val, max_val]
+                    user_val = max(min_val, min(max_val, user_val))
+
+                    int_val = int(round(user_val * factor))
+                    slider.setValue(int_val)
+
+                    # 精确回写格式化值（防止用户输入 1.000001）
+                    display_str = f"{user_val:.{max_dec}f}" if max_dec > 0 else str(int(user_val))
+                    value_edit.setText(display_str)
+                    self.properties_changed.emit()
+                except ValueError:
+                    # 输入非法，恢复为当前 slider 对应值
+                    current_float = slider.value() / factor
+                    display_str = f"{current_float:.{max_dec}f}" if max_dec > 0 else str(int(current_float))
+                    value_edit.setText(display_str)
+
+            value_edit.editingFinished.connect(on_line_edit_finished)
 
             container.setFixedHeight(28)
             self.table.setCellWidget(row, 3, container)
@@ -242,6 +285,8 @@ class PropertyEditorWidget(SimpleCardWidget):
             container.slider = slider
             container.factor = factor
             container.max_dec = max_dec
+            container.value_edit = value_edit  # 便于将来扩展
+
         elif prop_type == PropertyType.BOOL:
             # 创建容器
             container = QWidget()

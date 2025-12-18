@@ -21,18 +21,18 @@ def unregister_global_variable(node):
 
 
 def execute_node(
-        node,
-        component_map,
-        python_exe,
-        kernel_manager,
-        scheduler,
-        global_variable,
-        check_cancel_func,
-        log_start_func,
-        log_message_func,
-        log_error_func,
-        log_finish_func,
-        run_id_prefix="",
+    node,
+    component_map,
+    python_exe,
+    kernel_manager,
+    scheduler,
+    global_variable,
+    execution_context,  # ← 新增
+    log_start_func,
+    log_message_func,
+    log_error_func,
+    log_finish_func,
+    run_id_prefix="",
 ):
     """
     执行单个节点（普通节点或 backdrop 内部节点）
@@ -63,7 +63,7 @@ def execute_node(
         results = node.execute_sync(
             comp_cls,
             python_executable=python_exe,
-            check_cancel=check_cancel_func,
+            check_cancel=execution_context.check_cancel,
             kernel_manager=kernel_manager if run_mode == "ipython运行" else None
         )
         unregister_global_variable(node)

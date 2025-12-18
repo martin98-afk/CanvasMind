@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget
 from loguru import logger
+from qfluentwidgets import FluentIcon
 
 from app.components.base import GlobalVariableContext
 from app.interfaces.canvas_interaface.llm_context import LLMContextProvider
@@ -131,6 +132,10 @@ class CanvasPage(QWidget):
     @property
     def stop_btn(self):
         return self.ui_manager.stop_btn
+
+    @property
+    def pause_btn(self):
+        return self.ui_manager.pause_btn
 
     @property
     def node_status(self):
@@ -335,15 +340,47 @@ class CanvasPage(QWidget):
         if node:
             self.set_node_status(node, status)
 
+    def _on_pause_resume_clicked(self):
+        if self.canvas_runner.is_paused():
+            self.canvas_runner.resume_workflow()
+        else:
+            self.canvas_runner.pause_workflow()
+
     def _on_workflow_started(self):
-        """开始执行"""
+        """开始执行：隐藏 run，显示 pause + stop"""
         self.run_btn.hide()
+        self.pause_btn.show()
         self.stop_btn.show()
+        self.pause_btn.setIcon(FluentIcon.PAUSE)
+        self.pause_btn.setToolTip("暂停工作流")
+
+    def _on_workflow_paused(self):
+        """进入暂停：pause 按钮变为 resume"""
+        self.pause_btn.setIcon(FluentIcon.PLAY)
+        self.pause_btn.setToolTip("继续工作流")
+
+    def _on_workflow_resumed(self):
+        """恢复执行：pause 按钮变回 pause"""
+        self.pause_btn.setIcon(FluentIcon.PAUSE)
+        self.pause_btn.setToolTip("暂停工作流")
 
     def _on_workflow_cancelled(self):
-        """停止当前执行"""
+        """停止/取消：恢复 run 按钮"""
         self.run_btn.show()
+        self.pause_btn.hide()
         self.stop_btn.hide()
+
+    def _on_workflow_finished(self):
+        self.run_btn.show()
+        self.pause_btn.hide()
+        self.stop_btn.hide()
+        MessageManager.success("完成", "工作流执行完成!", self)
+
+    def _on_workflow_error(self, msg=""):
+        self.run_btn.show()
+        self.pause_btn.hide()
+        self.stop_btn.hide()
+        MessageManager.error("错误", f"工作流执行失败! {msg}", self)
 
     def on_node_error_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)
@@ -357,18 +394,6 @@ class CanvasPage(QWidget):
         self.stop_btn.hide()
         self._scheduler = None
 
-    def _on_workflow_finished(self):
-        self.run_btn.show()
-        self.stop_btn.hide()
-        self._scheduler = None
-        MessageManager.success("完成", "工作流执行完成!", self)
-
-    def _on_workflow_error(self, msg=""):
-        self._scheduler = None
-        self.run_btn.show()
-        self.stop_btn.hide()
-        MessageManager.error("错误", f"工作流执行失败! {msg}", self)
-
     def on_node_started_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)
         if node:
@@ -377,15 +402,31 @@ class CanvasPage(QWidget):
 
     def _connect_runner_signals(self):
         """连接调度器信号到 UI 回调"""
-        # 优化：直接连接到具体处理方法，避免不必要的中间信号
+        # 画布上按钮信号
+        self.ui_manager.run_btn.clicked.connect(self.canvas_runner.run_workflow)
+        self.ui_manager.pause_btn.clicked.connect(self._on_pause_resume_clicked)  # 新增
+        self.ui_manager.stop_btn.clicked.connect(self.canvas_runner.stop_workflow)
+        self.ui_manager.save_btn.clicked.connect(self.save_full_workflow)
+        self.ui_manager.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
+        self.ui_manager.close_btn.clicked.connect(
+            lambda: (
+                self.switch_to_parent(),
+                QtCore.QTimer.singleShot(0, self.close_current_canvas)
+            )
+        )
+
+        # 状态信号
         self.canvas_runner.workflow_started.connect(self._on_workflow_started)
+        self.canvas_runner.workflow_paused.connect(self._on_workflow_paused)
+        self.canvas_runner.workflow_resumed.connect(self._on_workflow_resumed)
+        self.canvas_runner.workflow_cancelled.connect(self._on_workflow_cancelled)
+        self.canvas_runner.workflow_finished.connect(self._on_workflow_finished)
+        self.canvas_runner.workflow_error.connect(self._on_workflow_error)
+        # 节点信号
         self.canvas_runner.node_started.connect(self.on_node_started_simple)
         self.canvas_runner.node_finished.connect(self.on_node_finished_simple)
         self.canvas_runner.node_error.connect(self.on_node_error_simple)
-        self.canvas_runner.workflow_finished.connect(self._on_workflow_finished)
-        self.canvas_runner.workflow_error.connect(self._on_workflow_error)
         self.canvas_runner.node_status_changed.connect(self.set_node_status_by_id)
-        self.canvas_runner.workflow_cancelled.connect(self._on_workflow_cancelled)
 
         # 面板刷新信号
         self.canvas_runner.property_changed.connect(self.property_panel.update_properties)
@@ -472,7 +513,10 @@ class CanvasPage(QWidget):
     def set_node_status(self, node, status):
         self.node_status[node.id] = status
         if hasattr(node, 'status'):
-            node.status = status
+            try:
+                node.status = status
+            except:
+                pass
         # 优化：只高亮目标节点相关的连接线
         self._highlight_node_connections(node, status)
 

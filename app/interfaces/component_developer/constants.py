@@ -12,6 +12,12 @@ SideDockRegistry.register("组件开发", ComponentHistoryToolWindow.name, Compo
 SideDockRegistry.register("组件开发", OpenAIChatToolWindow.name, OpenAIChatToolWindow, DockPosition.TOP)
 
 
+class EditingSource:
+    NONE = 0
+    CODE = 1
+    UI = 2
+
+
 MODULE_TO_PACKAGE_MAP = {
     # 机器学习 / 计算机视觉
     'sklearn': 'scikit-learn',

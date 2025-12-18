@@ -9,7 +9,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from loguru import logger
 from watchfiles import watch
 
-from app.mcp_server.mcp_adapter import McpWorkflowTool
+from app.server_manager.mcp_server.mcp_adapter import McpWorkflowTool
 
 
 # --- 新增：Watchfiles 监听线程 ---

@@ -25,14 +25,15 @@ class BackdropExecutor(QObject):
     log_finished = pyqtSignal(str)
 
     def __init__(
-        self,
-        backdrop,
-        scheduler,
-        component_map,
-        python_exe,
-        kernel_manager,
-        global_variables,
-        parent=None
+            self,
+            backdrop,
+            scheduler,
+            component_map,
+            python_exe,
+            kernel_manager,
+            global_variables,
+            execution_context,  # ← 新增
+            parent=None
     ):
         super().__init__(parent)
         self.backdrop = backdrop
@@ -41,13 +42,7 @@ class BackdropExecutor(QObject):
         self.python_exe = python_exe
         self.kernel_manager = kernel_manager
         self.global_variables = global_variables
-        self._is_cancelled = False
-
-    def cancel(self):
-        self._is_cancelled = True
-
-    def _check_cancel(self):
-        return self._is_cancelled
+        self.ctx = execution_context  # ← 共享上下文
 
     def execute(self):
         """在工作线程中调用（由 QRunnable 包装）"""
@@ -95,7 +90,10 @@ class BackdropExecutor(QObject):
 
         results = []
         for idx, item in enumerate(input_data):
-            if self._check_cancel():
+            if self.ctx.is_cancelled():
+                break
+            self.ctx.wait_if_paused()  # ← 关键：支持暂停
+            if self.ctx.is_cancelled():
                 break
             input_proxy.set_output_value(item)
             internal_results = self._execute_subgraph(execute_nodes, f"iter_{idx}")
@@ -120,7 +118,10 @@ class BackdropExecutor(QObject):
         max_iter = self.backdrop.model.get_property("loop_nums")
         current = input_data
         for idx in range(max_iter):
-            if self._check_cancel():
+            if self.ctx.is_cancelled():
+                break
+            self.ctx.wait_if_paused()  # ← 关键：支持暂停
+            if self.ctx.is_cancelled():
                 break
             input_proxy.set_output_value(current)
             self._execute_subgraph(execute_nodes, f"count_{idx}")
@@ -134,7 +135,10 @@ class BackdropExecutor(QObject):
         condition = self.backdrop.model.get_property("loop_condition")
         current = input_data
         for idx in range(max_iter):
-            if self._check_cancel():
+            if self.ctx.is_cancelled():
+                break
+            self.ctx.wait_if_paused()  # ← 关键：支持暂停
+            if self.ctx.is_cancelled():
                 break
             input_proxy.set_output_value(current)
             internal_outputs = self._execute_subgraph(execute_nodes, f"cond_{idx}")
@@ -150,7 +154,10 @@ class BackdropExecutor(QObject):
         condition = self.backdrop.model.get_property("loop_condition")
         current = input_data
         for idx in range(max_iter):
-            if self._check_cancel():
+            if self.ctx.is_cancelled():
+                break
+            self.ctx.wait_if_paused()  # ← 关键：支持暂停
+            if self.ctx.is_cancelled():
                 break
             input_proxy.set_output_value(current)
             internal_outputs = self._execute_subgraph(execute_nodes, f"while_{idx}")
@@ -168,7 +175,10 @@ class BackdropExecutor(QObject):
             self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_PENDING)
 
         for node in nodes:
-            if self._check_cancel():
+            if self.ctx.is_cancelled():
+                break
+            self.ctx.wait_if_paused()  # ← 关键：支持暂停
+            if self.ctx.is_cancelled():
                 break
             self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
             self.scheduler.property_changed.emit(self.backdrop)
@@ -181,7 +191,7 @@ class BackdropExecutor(QObject):
                     kernel_manager=self.kernel_manager,
                     scheduler=self.scheduler,
                     global_variable=self.global_variables,
-                    check_cancel_func=self._check_cancel,
+                    execution_context=self.ctx,
                     log_start_func=self.log_start.emit,
                     log_message_func=self.log_message.emit,
                     log_error_func=self.log_error.emit,

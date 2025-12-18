@@ -2,6 +2,7 @@
 import base64
 import re
 import urllib
+import time
 from datetime import datetime
 from html import escape
 
@@ -28,11 +29,11 @@ except ImportError:
 # ======== Markdown 实例 ========
 _md_instance = None
 ACTION_COLOR_MAP = {
-    "jump":   "#FFA500",   # 橙色
-    "create": "#9370DB",   # 皇家蓝
-    "generate":   "#32CD32",   # 石灰绿
-    "ask": "#FF6347",   # 番茄红
-    "view":   "#4169E1",   # 中紫色
+    "jump": "#FFA500",  # 橙色
+    "create": "#9370DB",  # 皇家蓝
+    "generate": "#32CD32",  # 石灰绿
+    "ask": "#FF6347",  # 番茄红
+    "view": "#4169E1",  # 中紫色
 }
 DEFAULT_COLOR = "#888888"  # 未知类型兜底色
 
@@ -54,11 +55,11 @@ def _unwrap_code_blocks_with_context_links(md_text: str) -> str:
     则移除 ``` 包裹，使其作为普通 Markdown 段落渲染，
     从而让 [xxx](yyy) 能被正常转换为 context-tag。
     """
+
     def replacer(match):
         lang_part = match.group(1) or ""
         code_content = match.group(2)
         # 检查是否包含 [xxx](yyy) 模式（允许有空格）
-        print(code_content)
         if re.search(r'\[[^\[\]]+\]\([^)\s]+\)', code_content) and lang_part not in ("python"):
             # 包含上下文链接 → 返回未包裹的原始内容（保留语言标识？不保留）
             return code_content
@@ -149,8 +150,8 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
             margin: 16px 0;
             background: #1E1E1E;
             border: 1px solid #3A3F47;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.3);
             font-family: Consolas, monospace;
             font-size: 13px;
         ">
@@ -159,19 +160,20 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 6px 8px;
-                height: 28px;
-                background: rgba(30,30,30,0.8);
-                border-bottom: 1px solid #333;
+                padding: 6px 10px;
+                height: 30px;
+                background: rgba(28, 28, 28, 0.95);
+                border-bottom: 1px solid #2d2d2d;
+                border-radius: 10px 10px 0 0;
             ">
                 <!-- 左侧：语言标签 -->
                 {f'<span style="color: #FFA500; font-size: 13px; font-weight: bold;">{lang}</span>' if lang else '<span style="color: #888;">Plain Text</span>'}
 
                 <!-- 右侧：按钮组 -->
-                <div style="display: flex; gap: 15px; align-items: center; padding-right: 4px;">
-                    <button type="button" data-action="insert" data-copy="{b64_copy}" style="
-                        width: 28px;
-                        height: 28px;
+                <div style="display: flex; gap: 12px; align-items: center; padding-right: 4px;">
+                    <button type="button" data-action="insert" data-copy="{b64_copy}" class="code-btn" data-tooltip="插入代码" style="
+                        width: 30px;
+                        height: 30px;
                         background: transparent;
                         border: none;
                         cursor: pointer;
@@ -179,13 +181,13 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
                         align-items: center;
                         justify-content: center;
                         padding: 0;
-                        border-radius: 4px;
-                    " title="插入代码">
-                        <img src="qrc:/icons/插入.svg" style="width:20px; height:20px; pointer-events: none;" />
+                        border-radius: 6px;
+                    ">
+                        <img src="qrc:/icons/插入.svg" style="width:22px; height:22px; pointer-events: none;" />
                     </button>
-                    <button type="button" data-action="create" data-copy="{b64_copy}" style="
-                        width: 28px;
-                        height: 28px;
+                    <button type="button" data-action="create" data-copy="{b64_copy}" class="code-btn" data-tooltip="新建组件" style="
+                        width: 30px;
+                        height: 30px;
                         background: transparent;
                         border: none;
                         cursor: pointer;
@@ -193,13 +195,13 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
                         align-items: center;
                         justify-content: center;
                         padding: 0;
-                        border-radius: 4px;
-                    " title="新建组件">
-                        <img src="qrc:/icons/新建.svg" style="width:20px; height:20px; pointer-events: none;" />
+                        border-radius: 6px;
+                    ">
+                        <img src="qrc:/icons/新建.svg" style="width:22px; height:22px; pointer-events: none;" />
                     </button>
-                    <button type="button" data-action="copy" data-copy="{b64_copy}" style="
-                        width: 28px;
-                        height: 28px;
+                    <button type="button" data-action="copy" data-copy="{b64_copy}" class="code-btn" data-tooltip="复制代码" style="
+                        width: 30px;
+                        height: 30px;
                         background: transparent;
                         border: none;
                         cursor: pointer;
@@ -207,9 +209,9 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
                         align-items: center;
                         justify-content: center;
                         padding: 0;
-                        border-radius: 4px;
-                    " title="复制代码">
-                        <img src="qrc:/icons/复制.svg" style="width:20px; height:20px; pointer-events: none;" />
+                        border-radius: 6px;
+                    ">
+                        <img src="qrc:/icons/复制.svg" style="width:22px; height:22px; pointer-events: none;" />
                     </button>
                 </div>
             </div>
@@ -221,13 +223,16 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
                 overflow-y: hidden;
                 scrollbar-width: thin;
                 -ms-overflow-style: -ms-autohiding-scrollbar;
+                border-radius: 0 0 10px 10px;
             ">
                 {table_html}
             </div>
         </div>
         '''
+
     pattern = r'<pre><code(?:\s+class="([^"]*)")?>(.*?)</code></pre>'
     return re.sub(pattern, replacer, html, flags=re.DOTALL)
+
 
 # ======== 辅助函数（保持不变）========
 def _sanitize_incomplete_markdown(md_text: str) -> str:
@@ -275,7 +280,7 @@ def _inject_think_cards(md_text: str, completed: bool = True) -> str:
     parts = []
     i = 0
     while i < len(md_text):
-        start_idx = md_text.find("<think>", i)
+        start_idx = md_text.find("thinks>", i)
         if start_idx == -1:
             parts.append(md_text[i:])
             break
@@ -297,9 +302,10 @@ def _inject_context_links(md_text: str) -> str:
     将 [content](action) 转为可点击的 <span class="context-tag"> 标签
     不再使用 <a>，避免链接行为和渲染异常
     """
+
     def replacer(match):
         content = match.group(1)  # 如 "数据加载器"
-        action = match.group(2)   # 如 "jump"
+        action = match.group(2)  # 如 "jump"
 
         # 安全编码，防止 XSS 或 JS 注入
         import urllib.parse
@@ -315,6 +321,7 @@ def _inject_context_links(md_text: str) -> str:
         )
 
     return re.sub(r'`*\[([^\[\]]+?)\]\(([^)\s]+)\)`*', replacer, md_text)
+
 
 # ======== 自定义 WebEnginePage：监听 console.log ========
 class ConsoleMonitorPage(QWebEnginePage):
@@ -363,7 +370,9 @@ class CodeWebViewer(QWebEngineView):
         self._streaming = True
         self._html_timer = None
         self._completed = False
-        self._resize_timer = None  # 用于 debounce 的定时器
+        self._resize_timer = None
+        self._last_render_time = 0
+        self._min_render_interval = 100  # ms
         # 使用自定义 Page 以捕获 console.log
         self._page = ConsoleMonitorPage(self)
         self.setPage(self._page)
@@ -389,20 +398,23 @@ class CodeWebViewer(QWebEngineView):
         self.contentHeightChanged.emit(height)
 
     def _render(self):
+        self._last_render_time = time.time() * 1000
 
         def _generate_context_tag_css():
             css_rules = []
             for act_type, color in ACTION_COLOR_MAP.items():
                 css_rules.append(
                     f'.context-tag[data-type="{act_type}"] {{ '
-                    f'background: {color}20; '  # 20 = 12.5% 透明度（十六进制后加 20）
+                    f'background: {color}20; '
                     f'border-color: {color}; '
                     f'color: {color}; '
                     f'}}\n'
                     f'.context-tag[data-type="{act_type}"]:hover {{ '
-                    f'background: {color}40; '  # 40 ≈ 25% 透明度
-                    f'border-color: {color}aa; '  # 加亮一点
-                    f'transform: translateY(-1px); '
+                    f'background: {color}60; '
+                    f'border-color: {color}cc; '
+                    f'color: {color}ff; '
+                    f'transform: translateY(-1px) scale(1.02); '
+                    f'transition: all 0.15s ease; '
                     f'}}'
                 )
             # 默认兜底
@@ -468,15 +480,8 @@ class CodeWebViewer(QWebEngineView):
                     cursor: pointer;
                     user-select: none;
                     transition: all 0.2s ease;
-                    /* 基础样式，具体颜色由 data-type 覆盖 */
                 }}
-                /* 动态生成的类型专属样式 */
                 {_generate_context_tag_css()}
-                .context-tag:hover {{
-                    background: rgba(255, 165, 0, 0.3);
-                    border-color: #FFB733;
-                    transform: translateY(-1px);
-                }}
                 pre, code {{
                     white-space: pre-wrap;
                     word-break: break-all;
@@ -517,14 +522,15 @@ class CodeWebViewer(QWebEngineView):
                 }}
                 .code-table .lineno {{
                     user-select: none;
-                    width: 28px !important;          /* ← 固定宽度 */
+                    width: 32px !important;
                     -webkit-user-select: none;
-                    color: #666 !important;
-                    padding-right: 4px !important;
+                    color: #888 !important;
+                    padding-right: 6px !important;
                     border-right: 1px solid #444444 !important;
                     text-align: right;
                     white-space: nowrap;
-                    min-width: 2.2em;
+                    font-size: 12px;
+                    opacity: 0.85;
                 }}
                 .code-table .code-line {{
                     white-space: pre;
@@ -545,6 +551,46 @@ class CodeWebViewer(QWebEngineView):
                 }}
                 [style*="overflow-x: auto"]::-webkit-scrollbar-thumb:hover {{
                     background: #5a5a5a;
+                }}
+
+                /* 自定义代码按钮 Tooltip */
+                .code-btn {{
+                    position: relative;
+                }}
+                .code-btn:hover::after {{
+                    content: attr(data-tooltip);
+                    position: absolute;
+                    bottom: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #1a1a1a;
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    white-space: nowrap;
+                    z-index: 1000;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+                    margin-bottom: 4px;
+                }}
+                .code-btn:hover::before {{
+                    content: "";
+                    position: absolute;
+                    top: -6px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    border-width: 4px 4px 0;
+                    border-style: solid;
+                    border-color: #1a1a1a transparent transparent;
+                    z-index: 1001;
+                }}
+                .code-btn:hover {{
+                    background: rgba(255, 255, 255, 0.08);
+                    transform: translateY(-1px);
+                    transition: background 0.15s ease, transform 0.15s ease;
+                }}
+                .code-btn:active {{
+                    transform: translateY(0);
                 }}
             </style>
         </head>
@@ -578,11 +624,16 @@ class CodeWebViewer(QWebEngineView):
                         }}
                     }}
                 }});
+
+                let heightReportTimer = null;
                 function reportHeight() {{
-                    const h = document.body.scrollHeight;
-                    console.log('pywebview_height:' + h);
+                    if (heightReportTimer) clearTimeout(heightReportTimer);
+                    heightReportTimer = setTimeout(() => {{
+                        const h = document.body.scrollHeight;
+                        console.log('pywebview_height:' + h);
+                    }}, 30);
                 }}
-            
+
                 document.addEventListener('DOMContentLoaded', function() {{
                     setTimeout(reportHeight, 100);
                     document.querySelectorAll('details.think-block').forEach(el => {{
@@ -591,12 +642,10 @@ class CodeWebViewer(QWebEngineView):
                 }});
                 if (window.ResizeObserver) {{
                     const resizeObserver = new ResizeObserver(() => {{
-                        // 延迟一点，等 relayout 完成
                         setTimeout(reportHeight, 30);
                     }});
                     resizeObserver.observe(document.body);
                 }} else {{
-                    // 降级：监听 window resize（不够精确，但兼容旧版）
                     window.addEventListener('resize', () => setTimeout(reportHeight, 100));
                 }}
                 window.pywebview = {{
@@ -624,34 +673,26 @@ class CodeWebViewer(QWebEngineView):
         self._render()
 
     def _schedule_render(self):
+        now = time.time() * 1000
         if self._html_timer is None:
             self._html_timer = QTimer()
             self._html_timer.setSingleShot(True)
             self._html_timer.timeout.connect(self._render)
         if not self._html_timer.isActive():
-            self._html_timer.start(80)
+            delay = max(0, self._min_render_interval - (now - self._last_render_time))
+            self._html_timer.start(int(delay))
 
     def get_plain_text(self) -> str:
         return self._markdown_text
 
-    def _handle_navigation(self, url: QUrl, _type, _is_main_frame):
-        scheme = url.scheme()
-        if scheme == "context":
-            self.contextLinkClicked.emit(url.host())
-            return False
-        return True
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        # 取消之前的定时器（关键！实现 debounce）
         if self._resize_timer:
             self._resize_timer.stop()
-            self._resize_timer.deleteLater()
-        # 创建新定时器
         self._resize_timer = QTimer()
         self._resize_timer.setSingleShot(True)
         self._resize_timer.timeout.connect(self._request_content_height)
-        self._resize_timer.start(10)  # 80ms 足够响应拖拽结束
+        self._resize_timer.start(10)
 
     def wheelEvent(self, event: QWheelEvent):
         # 获取滚动条（向上找 QScrollArea）
@@ -666,6 +707,10 @@ class CodeWebViewer(QWebEngineView):
                 return
 
         super().wheelEvent(event)
+
+    def deleteLater(self):
+        self.page().deleteLater()
+        super().deleteLater()
 
 
 # ======== MessageCard（适配 WebViewer）========
@@ -692,25 +737,27 @@ class TagWidget(CardWidget):
             self.doubleClicked.emit(self.key)
         super().mouseDoubleClickEvent(event)
 
+
 class MessageCard(SimpleCardWidget):
     deleteRequested = pyqtSignal()
     regenerateRequested = pyqtSignal()
     actionRequested = pyqtSignal(str, str)  # (code, action)
     contextActionRequested = pyqtSignal(str, str)
 
-    def __init__(self, role: str, timestamp: str = None, parent=None, tag_params: dict = None):
+    def __init__(self, role: str, timestamp: str = None, parent=None, tag_params: dict = None, error: bool = False):
         super().__init__(parent)
         self.parent = parent
         self.role = role
         self.context_tags = tag_params or {}
         self.timestamp = timestamp or datetime.now().strftime('%H:%M')
+        self.error = error
         self.setup_ui()
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(2)
-        main_layout.setSizeConstraint(QVBoxLayout.SetMinAndMaxSize)  # 关键！
+        main_layout.setSizeConstraint(QVBoxLayout.SetMinAndMaxSize)
 
         top_layout = QHBoxLayout()
         top_layout.setSpacing(6)
@@ -721,12 +768,18 @@ class MessageCard(SimpleCardWidget):
             name = "用户"
             name_color = "#63B3ED"
             bg_color = "#2A2A2A"
+            border_color = "#4A5568"
         else:
             avatar_text = "🤖"
             avatar_color = "#FFA500"
             name = "大模型助手"
             name_color = "#FFA500"
             bg_color = "#1E293B"
+            border_color = "#334155"
+
+        if self.error:
+            border_color = "#ff4d4d"
+            bg_color = "#2a1f1f"
 
         avatar_label = QLabel(avatar_text, self)
         avatar_label.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {avatar_color};")
@@ -753,12 +806,14 @@ class MessageCard(SimpleCardWidget):
 
         if self.role == "assistant":
             btn_specs = [
-                (FluentIcon.COPY, "复制", lambda: self.actionRequested.emit(self.content_widget.get_plain_text(), "copy")),
+                (FluentIcon.COPY, "复制",
+                 lambda: self.actionRequested.emit(self.content_widget.get_plain_text(), "copy")),
                 (FluentIcon.SYNC, "重新生成", self.regenerateRequested.emit)
             ]
         elif self.role == "user":
             btn_specs = [
-                (FluentIcon.COPY, "复制", lambda: self.actionRequested.emit(self.content_widget.get_plain_text(), "copy")),
+                (FluentIcon.COPY, "复制",
+                 lambda: self.actionRequested.emit(self.content_widget.get_plain_text(), "copy")),
                 (FluentIcon.DELETE, "删除", self.deleteRequested.emit),
             ]
         else:
@@ -803,8 +858,8 @@ class MessageCard(SimpleCardWidget):
         self.setStyleSheet(f"""
             CardWidget {{
                 background-color: {bg_color};
-                border: 1px solid {'#4A5568' if self.role == 'user' else '#334155'};
-                border-radius: 8px;
+                border: 1px solid {border_color};
+                border-radius: 12px;
             }}
         """)
 
@@ -846,18 +901,21 @@ class MessageCard(SimpleCardWidget):
         self.content_widget.finish_streaming()
 
     def wheelEvent(self, event: QWheelEvent):
-        # 获取滚动条（向上找 QScrollArea）
-        scroll_area = self.parent.chat_scroll_area
-        if scroll_area:
-            vbar = scroll_area.verticalScrollBar()
-            if vbar and vbar.minimum() != vbar.maximum():
-                # 让外部 ScrollArea 滚动
-                delta = event.angleDelta().y()
-                vbar.setValue(vbar.value() - delta // 2)
-                event.accept()  # 标记事件已处理
-                return
-
+        try:
+            scroll_area = self.parent.chat_scroll_area
+            if scroll_area:
+                vbar = scroll_area.verticalScrollBar()
+                if vbar and vbar.minimum() != vbar.maximum() and event.angleDelta().y() != 0:
+                    vbar.setValue(vbar.value() - event.angleDelta().y() // 2)
+                    event.accept()
+                    return
+        except:
+            pass
         super().wheelEvent(event)
+
+    def closeEvent(self, event):
+        self.content_widget.deleteLater()
+        super().closeEvent(event)
 
 
 def create_welcome_card(parent=None) -> MessageCard:
@@ -865,10 +923,10 @@ def create_welcome_card(parent=None) -> MessageCard:
 ### 👋 你好！我是你的画布开发智能助手
 
 我已为你准备好以下能力，助你高效构建与调试画布：
-  
+
 - **🔗 上下文增强**  
   可动态插入画布节点、组件信息、全局变量等上下文（点击下方 `+` 选择插入）。
-  
+
 - **⚡ 上下文联动**  
   点击带链接的名称即可触发交互逻辑：
   - **跳转节点**：`[节点名](jump)` → 定位到画布中对应节点  
@@ -882,6 +940,7 @@ def create_welcome_card(parent=None) -> MessageCard:
 - [帮我分析当前画布功能是否合理？](ask)  
 - [结合组件库，帮我完善当前画布：列出需新增的组件，如有前置节点需说明具体位置，如何连接，参数如何设置；若组件库缺失，也请说明需生成的新组件。](ask)  
 - [帮我审查当前组件代码，指出潜在问题并提供优化建议。](ask)
+- [帮我的代码生成一句话描述，说明代码具体功能、输入形式、输出形式、参数形式, 纯文本，不要有换行和任何特殊字符。](ask)
 
 """
 

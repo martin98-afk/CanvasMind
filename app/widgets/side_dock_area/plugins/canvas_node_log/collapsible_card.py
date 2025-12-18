@@ -2,7 +2,7 @@
 import re
 
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QElapsedTimer
-from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor
+from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor, QTextBlockFormat, QTextOption
 from PyQt5.QtWidgets import *
 from qfluentwidgets import CardWidget, BodyLabel, TextEdit, TransparentToolButton, StrongBodyLabel
 
@@ -181,7 +181,6 @@ class CollapsibleLogCard(CardWidget):
 
         # 拼接 HTML
         full_html = current_html + "\n".join(new_html_lines)
-
         # 禁用自动换行（<pre> 默认不换行，但你可以控制）
         self.log_text.setHtml(full_html)
 

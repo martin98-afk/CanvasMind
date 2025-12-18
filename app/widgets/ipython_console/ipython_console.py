@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import TabBar, ComboBox, CommandBar, Action, FluentIcon
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
-from app.utils.ipython_kernel_manager import IPythonKernelManager
+from app.server_manager.ipython_server.ipython_kernel_manager import IPythonKernelManager
 from app.utils.utils import get_icon
 
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
-import pathlib
-base_path = pathlib.Path(__file__).parent.parent / "base.py"
+from pathlib import Path
+base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 class Component(BaseComponent):
     name = "MinMax归一化"
     category = "数据预处理"
-    description = ""
+    description = "MinMax归一化组件用于对输入的CSV格式数据进行最小最大值归一化处理，输入为单个CSV文件，输出为归一化后的CSV数据及对应的sklearn MinMaxScaler模型，无额外参数配置。"
     requirements = "pandas,scikit-learn"
     inputs = [
         PortDefinition(name="input", label="端口1", type=ArgumentType.CSV),

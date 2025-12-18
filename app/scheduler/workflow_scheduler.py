@@ -8,7 +8,7 @@ from loguru import logger
 from app.components.base import GlobalVariableContext
 from app.nodes.status_node import NodeStatus
 from app.scheduler.node_list_executor import NodeListExecutor
-from app.utils.ipython_kernel_manager import IPythonKernelManager
+from app.server_manager.ipython_server.ipython_kernel_manager import IPythonKernelManager
 from app.utils.utils import get_port_node, topological_sort
 
 
@@ -231,6 +231,21 @@ class WorkflowScheduler(QObject):
         if self._executor:
             self._executor.cancel()
             self.cancelled.emit()
+
+    def pause(self):
+        """暂停当前执行（可恢复）"""
+        if self._executor:
+            self._executor.pause()
+
+    def resume(self):
+        """继续当前执行（从暂停处恢复）"""
+        if self._executor:
+            self._executor.resume()
+
+    def is_paused(self) -> bool:
+        if self._executor and hasattr(self._executor, 'ctx'):
+            return self._executor.ctx.is_paused()
+        return False
 
     def _on_finished(self, _=None):
         self.finished.emit()

@@ -7,8 +7,7 @@ import textwrap
 import traceback
 import uuid
 from pathlib import Path
-
-from PyQt5.QtCore import Qt, QTimer, QSize
+from PyQt5.QtCore import Qt, QTimer, QSize, QEvent
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem
 )
@@ -17,7 +16,6 @@ from qfluentwidgets import (
     BodyLabel, MessageBox, FluentIcon, TransparentToolButton,
     TransparentDropDownToolButton, Action, RoundMenu
 )
-
 from app.components.base import COMPONENT_IMPORT_CODE, PropertyType, ArgumentType, ConnectionType
 from app.interfaces.component_developer.utils.component_history_manager import ComponentHistoryManager
 from app.interfaces.component_developer.constants import *
@@ -35,7 +33,7 @@ from app.interfaces.component_developer.widgets.component_develop_tree import Co
 
 
 class ComponentDeveloperPage(QWidget):
-    """组件开发主界面（已优化同步逻辑）"""
+    """组件开发主界面（已修复双向同步问题）"""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.home = parent
@@ -57,6 +55,11 @@ class ComponentDeveloperPage(QWidget):
         self._property_sync_timer.setSingleShot(True)
         self._property_sync_timer.setInterval(300)  # 300ms 防抖
         self._property_sync_timer.timeout.connect(self._sync_properties_to_code)
+        # 代码 → UI 同步防抖
+        self._code_to_ui_sync_timer = QTimer()
+        self._code_to_ui_sync_timer.setSingleShot(True)
+        self._code_to_ui_sync_timer.setInterval(300)
+        self._code_to_ui_sync_timer.timeout.connect(self._sync_code_to_ui)
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -66,21 +69,17 @@ class ComponentDeveloperPage(QWidget):
         self.component_tree_panel = ComponentTreePanel(self)
         self.component_tree = self.component_tree_panel.tree
         self.splitter.addWidget(self.component_tree_panel)
-
         # 代码编辑框
         code_widget = QWidget(self)
         code_layout = QVBoxLayout(code_widget)
         code_layout.setContentsMargins(0, 0, 0, 0)
-
         self.code_editor = CodeEditorWidget(self, self.package_manager.get_current_python_exe())
-
         save_layout = QHBoxLayout()
         code_btn = TransparentToolButton(get_icon("代码执行"), parent=self)
         code_btn.setIconSize(QSize(20, 25))
         code_btn.setFixedSize(20, 25)
         save_layout.addWidget(code_btn)
         save_layout.addWidget(BodyLabel("组件代码:"))
-
         template_dropdown = TransparentDropDownToolButton(FluentIcon.ALIGNMENT, parent=self)
         menu = RoundMenu(parent=template_dropdown)
         for template_name in default_templates.keys():
@@ -92,23 +91,18 @@ class ComponentDeveloperPage(QWidget):
         template_dropdown.setMenu(menu)
         save_layout.addWidget(template_dropdown)
         save_layout.addStretch()
-
         run_btn = TransparentToolButton(FluentIcon.PLAY, parent=self)
         run_btn.clicked.connect(self._run_component_code)
         save_layout.addWidget(run_btn)
-
         save_btn = TransparentToolButton(FluentIcon.SAVE, parent=self)
         save_btn.clicked.connect(lambda: self._save_component(True))
         cancel_btn = TransparentToolButton(FluentIcon.CLOSE, parent=self)
         cancel_btn.clicked.connect(self._cancel_edit)
-
         save_layout.addWidget(save_btn)
         save_layout.addWidget(cancel_btn)
         code_layout.addLayout(save_layout)
         code_layout.addWidget(self.code_editor, stretch=1)
-
         self.splitter.addWidget(code_widget)
-
         # 右侧：组件属性
         self.side_dock_area = SideDockArea(self, "组件开发")
         self.component_info = self.side_dock_area.get_tool_instance("组件属性面板")
@@ -126,7 +120,6 @@ class ComponentDeveloperPage(QWidget):
         self.llm_chatter.createResponse.connect(self._handle_create_component_from_llm)
         self.history_table.itemDoubleClicked.connect(self._load_history_code)
         self.splitter.addWidget(self.side_dock_area)
-
         self.splitter.setStretchFactor(0, 0)
         self.splitter.setStretchFactor(1, 1)
         self.splitter.setStretchFactor(2, 0)
@@ -150,18 +143,22 @@ class ComponentDeveloperPage(QWidget):
         self.component_tree.component_selected.connect(self._load_component)
         self.component_tree.component_created.connect(self._on_component_created)
         self.component_tree.component_pasted.connect(self._on_component_pasted)
-
         self.input_port_editor.ports_changed.connect(self._sync_ports_to_code)
         self.output_port_editor.ports_changed.connect(self._sync_ports_to_code)
         self.property_editor.properties_changed.connect(self._on_property_changed)
         self.code_editor.code_changed.connect(self._on_code_text_changed)
-
-        self.name_edit.textChanged.connect(self._sync_basic_info_to_code)
-        self.category_edit.textChanged.connect(self._sync_basic_info_to_code)
-        self.description_edit.textChanged.connect(self._sync_basic_info_to_code)
-        self.requirements_edit.textChanged.connect(self._sync_basic_info_to_code)
+        # ✅ 保留 UI → 代码 实时同步（但修复同步逻辑）
+        for widget in [self.name_edit, self.category_edit, self.description_edit, self.requirements_edit]:
+            widget.installEventFilter(self)
         self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
         self.history_table.itemChanged.connect(self._on_history_description_changed)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.FocusOut:
+            if obj in [self.name_edit, self.category_edit, self.description_edit, self.requirements_edit]:
+                # ✅ 用户结束编辑，立即同步到代码
+                self._sync_basic_info_to_code()
+        return super().eventFilter(obj, event)
 
     def _on_property_changed(self):
         # 防抖：连续变更时只在停顿后同步
@@ -175,34 +172,39 @@ class ComponentDeveloperPage(QWidget):
         MessageManager.success("已插入代码", "", self)
 
     def _extract_component_info_from_code_str(self, code: str):
+        """
+        从代码中提取组件基本信息。
+        如果 AST 解析失败或未找到有效字段，返回 None。
+        """
         try:
             tree = ast.parse(code)
         except SyntaxError:
-            return {
-                "name": "未命名组件",
-                "category": "数据处理",
-                "description": "来自大模型生成的组件",
-                "requirements": ""
-            }
-        info = {
-            "name": "未命名组件",
-            "category": "数据处理",
-            "description": "来自大模型生成的组件",
-            "requirements": ""
-        }
+            return None  # ✅ 不返回默认值
+
+        info = {}
+        found_any = False
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         if target.id == "name" and isinstance(node.value, ast.Constant):
                             info["name"] = str(node.value.value)
+                            found_any = True
                         elif target.id == "category" and isinstance(node.value, ast.Constant):
                             info["category"] = str(node.value.value)
+                            found_any = True
                         elif target.id == "description" and isinstance(node.value, ast.Constant):
                             info["description"] = str(node.value.value)
+                            found_any = True
                         elif target.id == "requirements" and isinstance(node.value, ast.Constant):
                             info["requirements"] = str(node.value.value)
-        return info
+                            found_any = True
+
+        # 只有至少找到一个字段，才认为有效
+        if found_any:
+            return info
+        else:
+            return None  # ✅ 未找到任何有效字段，也视为失败
 
     def _handle_create_component_from_llm(self, code: str):
         if not code.strip():
@@ -259,12 +261,10 @@ class ComponentDeveloperPage(QWidget):
             if full_path is not None:
                 self.component_tree.set_current_editing_component(full_path)
             component = component or ComponentScanner().get_component(full_path)
-
             self.name_edit.setText(getattr(component, 'name', ''))
             self.category_edit.setText(getattr(component, 'category', ''))
             self.description_edit.setText(getattr(component, 'description', ''))
             self.requirements_edit.setText(getattr(component, 'requirements', '').replace(',', '\n'))
-
             inputs = getattr(component, 'inputs', [])
             self.input_port_editor.set_ports([
                 {
@@ -275,16 +275,13 @@ class ComponentDeveloperPage(QWidget):
                 }
                 for port in inputs
             ])
-
             outputs = getattr(component, 'outputs', [])
             self.output_port_editor.set_ports([
                 {"name": port.name, "label": port.label, "type": getattr(port, 'type', 'text')}
                 for port in outputs
             ])
-
             properties = getattr(component, 'properties', {})
             self.property_editor.set_properties(properties)
-
             try:
                 source_file = getattr(component, '_source_file', None)
                 source_code = self.extract_class_source_from_file(source_file, component.__name__)
@@ -300,14 +297,11 @@ class ComponentDeveloperPage(QWidget):
                 self._current_component_code = template
                 self.code_editor.replace_text_preserving_view(template)
                 self._current_component_file = None
-
-            self._sync_basic_info_to_code()
-
+            # ⚠️ 不再调用 _sync_basic_info_to_code（会覆盖代码！）
             if self._current_component_file:
                 self._load_history_list(self._current_component_file)
             else:
                 self.history_table.setRowCount(0)
-
             QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
         except Exception as e:
             logger.error(traceback.format_exc())
@@ -339,7 +333,6 @@ class ComponentDeveloperPage(QWidget):
             canvas_file = Path(canvas_path)
             with open(canvas_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-
             nodes = data.get("graph", {}).get("nodes", {})
             target_node_id = None
             runtime = data.get("runtime", {})
@@ -350,14 +343,11 @@ class ComponentDeveloperPage(QWidget):
                     full_path = stable_key.split("||")[0] if "||" in stable_key else ""
                     target_node_id = node_id
                     break
-
             if not target_node_id:
                 MessageManager.warning("未找到对应节点", "", self)
                 return
-
             new_version = "latest" if strategy == "同步" else strategy
             nodes[target_node_id].setdefault("custom", {})["version"] = new_version
-
             with open(canvas_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             MessageManager.success(f"已更新 {node_name} 的版本策略为 {new_version}", "", self)
@@ -369,11 +359,9 @@ class ComponentDeveloperPage(QWidget):
         self.name_edit.setText(component_info["name"])
         self.category_edit.setText(component_info["category"])
         self.description_edit.setText(component_info["description"])
-
         self.input_port_editor.set_ports([])
         self.output_port_editor.set_ports([])
         self.property_editor.set_properties({})
-
         template = DEFAULT_NODE_TEMPLATE
         template = template.replace("我的组件", component_info["name"])
         template = template.replace("数据处理", component_info["category"])
@@ -381,24 +369,7 @@ class ComponentDeveloperPage(QWidget):
         self._current_component_code = template
         self.code_editor.replace_text_preserving_view(template)
         self._current_component_file = None
-
-        current_code = self.code_editor.get_code()
-        if not current_code.strip():
-            return
-
-        updated_code = self._update_basic_info_in_code(
-            current_code,
-            self.name_edit.text(),
-            self.category_edit.currentText(),
-            self.description_edit.toPlainText(),
-            self.requirements_edit.toPlainText().replace("\n", ",")
-        )
-        if updated_code != current_code:
-            self.code_editor.suspend_sync()
-            try:
-                self.code_editor.replace_text_preserving_view(updated_code)
-            finally:
-                self.code_editor.resume_sync()
+        # ⚠️ 不再在此处同步，避免覆盖
 
     def _run_component_code(self):
         self.side_dock_area.switch_to("多终端调试面板")
@@ -432,6 +403,7 @@ except:
                 self.code_editor.suspend_sync()
                 try:
                     self.code_editor.replace_text_preserving_view(updated_code)
+                    self._current_component_code = updated_code  # ✅ 关键：更新缓存
                 finally:
                     self.code_editor.resume_sync()
         except Exception as e:
@@ -450,6 +422,7 @@ except:
                 self.code_editor.suspend_sync()
                 try:
                     self.code_editor.replace_text_preserving_view(updated_code)
+                    self._current_component_code = updated_code  # ✅ 关键
                 finally:
                     self.code_editor.resume_sync()
         except Exception as e:
@@ -468,13 +441,11 @@ except:
                 self.requirements_edit.toPlainText().replace("\n", ",")
             )
             if updated_code != current_code:
-                self.code_editor.suspend_sync()
-                try:
-                    self.code_editor.replace_text_preserving_view(updated_code)
-                finally:
-                    self.code_editor.resume_sync()
+                # ✅ 直接替换，不 suspend_sync
+                self.code_editor.replace_text_preserving_view(updated_code)
+                self._current_component_code = updated_code
         except Exception as e:
-            print(f"同步基本信息到代码失败: {e}")
+            logger.error(f"同步基本信息失败: {e}")
 
     def _update_ports_in_code(self, code, input_ports, output_ports):
         lines = code.split('\n')
@@ -494,7 +465,6 @@ except:
                     )
                 new_lines.append("    ]")
                 inputs_replaced = True
-                # 跳过多行定义
                 bracket_count = line.count('[') - line.count(']')
                 j = i + 1
                 while j < len(lines) and bracket_count > 0:
@@ -518,8 +488,6 @@ except:
             else:
                 new_lines.append(line)
                 i += 1
-
-        # 插入缺失的 inputs/outputs
         if not inputs_replaced:
             for idx, l in enumerate(new_lines):
                 if l.strip().startswith('class '):
@@ -533,7 +501,6 @@ except:
                 elif l.strip().startswith('class '):
                     new_lines.insert(idx + 1, "    outputs = []")
                     break
-
         return '\n'.join(new_lines)
 
     def _update_properties_in_code(self, code, properties):
@@ -565,7 +532,6 @@ except:
                             min_val = getattr(prop_def, 'min', 0)
                             max_val = getattr(prop_def, 'max', 100)
                             step_val = getattr(prop_def, 'step', 1)
-
                         if prop_type == PropertyType.DYNAMICFORM:
                             new_lines.append(f'        "{prop_name}": PropertyDefinition(')
                             new_lines.append(f'            type=PropertyType.DYNAMICFORM,')
@@ -622,7 +588,6 @@ except:
                                     dv = '""""""'
                             else:
                                 dv = f'"{default_value}"'
-
                             new_lines.append(f'        "{prop_name}": PropertyDefinition(')
                             new_lines.append(f'            type=PropertyType.{prop_type.name},')
                             new_lines.append(f'            default={dv},')
@@ -646,7 +611,6 @@ except:
                 else:
                     new_lines.append(line)
                     i += 1
-
             if not properties_replaced:
                 for idx, l in enumerate(new_lines):
                     if l.strip().startswith('class '):
@@ -658,18 +622,28 @@ except:
             logger.error(traceback.format_exc())
             return code
 
+    def _find_triple_quote_end(self, lines, start_idx):
+        line = lines[start_idx]
+        if '"""' not in line:
+            return start_idx
+        if line.count('"""') >= 2:
+            return start_idx
+        i = start_idx + 1
+        while i < len(lines):
+            if '"""' in lines[i]:
+                return i
+            i += 1
+        return start_idx
+
     def _update_basic_info_in_code(self, code, name, category, description, requirements):
         try:
             lines = code.split('\n')
-            # Step 1: 用 AST 找出需要替换的行号
             try:
                 tree = ast.parse(code)
             except SyntaxError:
-                # AST 失败时回退到原始逻辑（但加日志）
                 logger.warning("AST parse failed in _update_basic_info_in_code, fallback to regex")
-                return self._fallback_update_basic_info(code, name, category, description, requirements)
+                return code
 
-            # 找到第一个 class 定义
             target_class = None
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef):
@@ -678,57 +652,58 @@ except:
             if not target_class:
                 return code
 
-            # 收集要替换的字段及其行号
-            line_map = {}  # {lineno: new_value_str}
+            replacements = []
             basic_fields = {"name", "category", "description", "requirements"}
             for stmt in target_class.body:
                 if isinstance(stmt, ast.Assign):
                     for target in stmt.targets:
                         if isinstance(target, ast.Name) and target.id in basic_fields:
-                            # 只记录第一个出现的（AST 顺序保证）
-                            if target.id not in line_map:
+                            start_line = stmt.lineno - 1  # 0-based index
+                            if target.id == "description":
+                                end_line = self._find_triple_quote_end(lines, start_line)
+                                if '\n' in description or '"""' in description or '"' in description or "'" in description:
+                                    safe_desc = description.replace('"""', '\\"\\"\\"')
+                                    new_content = [f'    description = """{safe_desc}"""']
+                                else:
+                                    new_content = [f'    description = "{description}"']
+                                replacements.append((start_line, end_line, new_content))
+                            else:
                                 value_str = None
                                 if target.id == "name":
                                     value_str = f'    name = "{name}"'
                                 elif target.id == "category":
                                     value_str = f'    category = "{category}"'
-                                elif target.id == "description":
-                                    value_str = f'    description = "{description}"'
                                 elif target.id == "requirements":
                                     value_str = f'    requirements = "{requirements}"'
                                 if value_str is not None:
-                                    line_map[stmt.lineno] = value_str
+                                    replacements.append((start_line, start_line, [value_str]))
 
-            # Step 2: 重建代码，只替换指定行
-            new_lines = []
-            for i, line in enumerate(lines, start=1):  # lineno 从 1 开始
-                if i in line_map:
-                    new_lines.append(line_map[i])
-                else:
-                    new_lines.append(line)
+            # 从后往前执行替换
+            new_lines = lines[:]
+            for start, end, new_content in sorted(replacements, reverse=True):
+                new_lines = new_lines[:start] + new_content + new_lines[end + 1:]
 
-            # Step 3: 如果某个字段缺失，插入到 class 头部（在 class 行后）
-            # 先收集缺失字段
-            existing_fields = set(line_map.values())
+            # 检查是否缺失字段（仅当完全不存在时才插入）
+            final_code = '\n'.join(new_lines)
             missing = []
-            if not any('name = ' in v for v in existing_fields):
+            if '    name = ' not in final_code:
                 missing.append(f'    name = "{name}"')
-            if not any('category = ' in v for v in existing_fields):
+            if '    category = ' not in final_code:
                 missing.append(f'    category = "{category}"')
-            if not any('description = ' in v for v in existing_fields):
-                missing.append(f'    description = "{description}"')
-            if requirements and not any('requirements = ' in v for v in existing_fields):
+            if '    description = ' not in final_code:
+                if '\n' in description or '"""' in description or '"' in description or "'" in description:
+                    safe_desc = description.replace('"""', '\\"\\"\\"')
+                    missing.append(f'    description = """{safe_desc}"""')
+                else:
+                    missing.append(f'    description = "{description}"')
+            if requirements and '    requirements = ' not in final_code:
                 missing.append(f'    requirements = "{requirements}"')
 
             if missing:
-                # 找到 class 行号
-                class_lineno = target_class.lineno
-                # 在 class 行后插入
-                insert_pos = class_lineno  # 因为 new_lines 索引从 0，lineno 从 1
-                new_lines = new_lines[:insert_pos] + missing + new_lines[insert_pos:]
+                class_lineno = target_class.lineno - 1  # 0-based
+                new_lines = new_lines[:class_lineno + 1] + missing + new_lines[class_lineno + 1:]
 
             return '\n'.join(new_lines)
-
         except Exception as e:
             logger.error(f"Error in _update_basic_info_in_code: {e}")
             logger.error(traceback.format_exc())
@@ -736,11 +711,49 @@ except:
 
     def _on_code_text_changed(self):
         current_text = self.code_editor.get_code()
-        # ✅【关键修复】避免自己同步的代码触发分析
-        if current_text == self._current_component_code:
-            return
+        # ✅ 不再依赖 _current_component_code 比较（防止粘贴相同内容不触发）
         if not self._updating_requirements_from_analysis:
             self._analysis_timer.start(2000)
+        # ✅ 触发代码 → UI 同步
+        self._code_to_ui_sync_timer.start()
+
+    def _sync_code_to_ui(self):
+        """从代码解析并更新 UI（安全、防崩溃）"""
+        code = self.code_editor.get_code()
+        if not code.strip():
+            return
+        try:
+            info = self._extract_component_info_from_code_str(code)
+            if info is None:
+                # ✅ AST 解析失败或无有效字段，不更新 UI
+                return
+
+            # 设置默认值（仅用于缺失字段，而不是整体失败）
+            name = info.get("name", "")
+            category = info.get("category", "")
+            description = info.get("description", "")
+            requirements = info.get("requirements", "")
+
+            # 临时阻断信号，防止循环
+            self.name_edit.blockSignals(True)
+            self.category_edit.blockSignals(True)
+            self.description_edit.blockSignals(True)
+            self.requirements_edit.blockSignals(True)
+
+            self.name_edit.setText(name)
+            self.category_edit.setText(category)
+            self.description_edit.setPlainText(description)
+            self.requirements_edit.setPlainText(requirements.replace(',', '\n'))
+
+            self.name_edit.blockSignals(False)
+            self.category_edit.blockSignals(False)
+            self.description_edit.blockSignals(False)
+            self.requirements_edit.blockSignals(False)
+
+            # ✅ 更新缓存
+            self._current_component_code = code
+        except Exception as e:
+            logger.warning(f"代码 → UI 同步失败: {e}")
 
     def _on_requirements_text_changed(self):
         self._analysis_timer.stop()
@@ -754,7 +767,6 @@ except:
         except SyntaxError:
             logger.error("代码语法错误，无法分析依赖。")
             return
-
         imported_modules = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -763,41 +775,26 @@ except:
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
                     imported_modules.add(node.module.split('.')[0])
-
         external_packages = imported_modules - BUILTIN_MODULES
         resolved_packages = {
             MODULE_TO_PACKAGE_MAP.get(mod, mod)
             for mod in external_packages
         }
-
         current_text = self.requirements_edit.toPlainText()
         if not current_text.strip() and not resolved_packages:
-            return  # 空代码 + 空依赖，无需更新
-
-        # 解析当前依赖
+            return
         other_lines, package_lines = self._parse_requirements_lines(current_text)
         current_pkg_names = set(package_lines.keys())
-
-        # 代码中需要的包（标准化）
         needed_pkgs = {pkg.lower() for pkg in resolved_packages}
-
-        # 要保留的包行：代码中仍需要的
         kept_package_lines = [
             package_lines[pkg] for pkg in needed_pkgs if pkg in package_lines
         ]
-        # 新增的包（无版本）
         new_pkgs = needed_pkgs - current_pkg_names
         new_package_lines = sorted([pkg for pkg in resolved_packages if pkg.lower() in new_pkgs])
-
-        # 重建内容：其他行 + 保留的包 + 新包
         all_lines = other_lines + kept_package_lines + new_package_lines
         updated_text = '\n'.join(all_lines)
-
-        # 避免无意义更新
         if updated_text == current_text:
             return
-
-        # 更新 UI（保留你的光标逻辑）
         if not self._updating_requirements_from_analysis:
             self._updating_requirements_from_analysis = True
             code_cursor = self.code_editor.code_editor.textCursor()
@@ -818,7 +815,6 @@ except:
             match = re.match(r'^([a-zA-Z0-9._-]+)', stripped)
             if match:
                 pkg_name = match.group(1).lower()
-                # ✅ 保留原始行
                 if pkg_name not in package_lines:
                     package_lines[pkg_name] = line
             else:
@@ -835,12 +831,10 @@ except:
             if not name or not category:
                 MessageManager.warning("请输入组件名称和分类！", "", self)
                 return
-
             code = self.code_editor.get_code()
             if not code.strip():
                 MessageManager.warning("请输入组件代码！", "", self)
                 return
-
             try:
                 ast.parse(code)
             except SyntaxError as e:
@@ -876,46 +870,32 @@ except:
             self._saving = False
 
     def save_component_by_full_path(self, full_path: str, new_code: str):
-        """
-        根据 full_path 和新代码保存组件（供外部调用，如节点调试结束）
-        """
         try:
-            # 1. 从 component_tree 获取组件对象
             if full_path not in self.component_tree._components:
                 MessageManager.error("组件不存在，无法保存", "", self)
                 return
-
             comp_obj = self.component_tree._components[full_path]
             name = getattr(comp_obj, 'name', '未命名组件')
             category = getattr(comp_obj, 'category', '数据处理')
             source_file = getattr(comp_obj, '_source_file', None)
-
             if not source_file or not Path(source_file).exists():
                 MessageManager.error("组件源文件不存在，无法保存", "", self)
                 return
-
-            # 2. 用 AST 检查代码语法
             try:
                 ast.parse(new_code)
             except SyntaxError as e:
                 error_msg = f"代码第 {e.lineno} 行：{e.msg}"
                 MessageManager.error(f"代码存在语法错误，无法保存！\n{error_msg}", "语法错误", self)
                 return
-
-            # 3. 保存到原文件
             source_file = Path(source_file)
             final_code = new_code
             with open(source_file, 'w', encoding='utf-8') as f:
                 f.write(final_code)
-
-            # 4. 保存历史版本
             current_signature = {
                 "inputs": getattr(comp_obj, 'inputs', []),
                 "outputs": getattr(comp_obj, 'outputs', []),
                 "properties": getattr(comp_obj, 'properties', {}),
             }
-
-            # 序列化为可存储格式（与 ComponentHistoryManager 兼容）
             def serialize_port(p):
                 return {
                     "name": p.name,
@@ -923,11 +903,9 @@ except:
                     "type": p.type.name if hasattr(p.type, 'name') else str(p.type),
                     "connection": getattr(p, 'connection', ConnectionType.SINGLE).name
                 } if hasattr(p, 'name') else p
-
             def serialize_property(prop_dict):
                 if isinstance(prop_dict, dict):
                     return prop_dict
-                # 如果是 PropertyDefinition 对象
                 return {
                     "type": prop_dict.type.name,
                     "default": prop_dict.default,
@@ -938,25 +916,19 @@ except:
                     "step": getattr(prop_dict, 'step', 1),
                     "schema": getattr(prop_dict, 'schema', {}),
                 }
-
             sig = {
                 "inputs": [serialize_port(p) for p in current_signature["inputs"]],
-                "outputs": [{"name": p.name, "label": p.label, "type": p.type.name} for p in
-                            current_signature["outputs"]],
+                "outputs": [{"name": p.name, "label": p.label, "type": p.type.name} for p in current_signature["outputs"]],
                 "properties": {k: serialize_property(v) for k, v in current_signature["properties"].items()}
             }
-
             ComponentHistoryManager.save_history(
                 component_file_path=source_file,
                 component_name=name,
                 code=new_code,
                 current_signature=sig
             )
-
-            # 延迟等待watchfiles自动更新组件库
             QTimer.singleShot(1000, lambda: self._load_component_filepath(source_file))
             MessageManager.success(f"组件已保存：{name}", "", self)
-
         except Exception as e:
             logger.error(traceback.format_exc())
             MessageManager.error(f"保存失败: {str(e)}", "", self)
@@ -964,7 +936,6 @@ except:
     def _save_component_to_file(self, category, name, code, original_file_path=None, delete_original_file=True):
         components_dir = Path(resource_path("app")) / "components" / category
         components_dir.mkdir(parents=True, exist_ok=True)
-
         if delete_original_file and original_file_path and (components_dir / original_file_path.name).exists():
             original_file_path.unlink()
             filepath = original_file_path
@@ -974,10 +945,8 @@ except:
         else:
             filename = f"{str(uuid.uuid4()).replace(' ', '_').lower()}.py"
             filepath = components_dir / filename
-
         if not code.startswith("try:"):
             code = COMPONENT_IMPORT_CODE + code
-
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(code)
         self._current_component_file = filepath

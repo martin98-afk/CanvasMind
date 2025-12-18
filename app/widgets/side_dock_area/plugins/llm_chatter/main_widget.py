@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+from datetime import datetime
 from pathlib import Path
 
 from loguru import logger
@@ -14,7 +15,7 @@ from qfluentwidgets import (
     TransparentToggleToolButton
 )
 
-from app.mcp_server.stdio_server import GlobalMcpServer
+from app.server_manager.mcp_server.stdio_server import GlobalMcpServer
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.chat_session import SessionManager
@@ -223,7 +224,7 @@ class OpenAIChatToolWindow(ToolWindow):
                                 all_model_names.append(config_name)
         except Exception as e:
             # 建议至少打印错误
-            print(f"[ERROR] 加载自定义模型配置失败: {e}")
+            logger.error(f"[ERROR] 加载自定义模型配置失败: {e}")
 
         # ✅ 关键：一次性添加所有模型名
         self.model_combo.addItems(all_model_names)
@@ -257,7 +258,11 @@ class OpenAIChatToolWindow(ToolWindow):
             return
         for msg in session.messages:
             if msg["role"] == "user":
-                self._append_user_message(msg["content"])
+                self._append_user_message(
+                    msg["content"],
+                    timestamp=msg.get("timestamp", datetime.now().strftime('%H:%M')),
+                    tag_params=msg.get("params", {})
+                )
             elif msg["role"] == "assistant":
                 card = self._append_assistant_message()
                 card.update_content(msg["content"])
@@ -370,10 +375,11 @@ class OpenAIChatToolWindow(ToolWindow):
         self.history_btn.setChecked(False)
         self._display_current_session()
 
-    def _append_user_message(self, content: str):
+    def _append_user_message(self, content: str, timestamp: str=None, tag_params: dict = None):
         card = MessageCard(
             parent=self, role="user",
-            tag_params={key: value for key, value in self.context_selector.context.items()}
+            timestamp=timestamp,
+            tag_params=tag_params or {key: value for key, value in self.context_selector.context.items()}
         )
         card.update_content(content)
         card.finish_streaming()

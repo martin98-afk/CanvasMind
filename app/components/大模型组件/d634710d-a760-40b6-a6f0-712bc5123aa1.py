@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
-import pathlib
-base_path = pathlib.Path(__file__).parent.parent / "base.py"
+from pathlib import Path
+base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -51,18 +51,18 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         prompt_template = """
-        ## 任务
-        你的任务是将用户输入的问题进行分类
-        
-        ## 类别名
-        {}
-        
-        ## 输出格式
-        只输出用户问题所属的类别名，如果不属于任何类别则返回 “错误”。
-        
-        ## 用户问题
-        {}
-        """.format(
+## 任务
+你的任务是将用户输入的问题进行分类
+
+## 类别名
+{}
+
+## 输出格式
+只输出用户问题所属的类别名，如果不属于任何类别则返回 “错误”。
+
+## 用户问题
+{}
+""".format(
             "\n".join([c.clas for c in params.classes]),
             inputs.input1
         )
