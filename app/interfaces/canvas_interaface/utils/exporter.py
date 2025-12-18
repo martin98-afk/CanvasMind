@@ -36,9 +36,11 @@ class CanvasExporter:
                 return
 
             # 收集候选输入/输出
+            print(len(execution_order))
             candidate_inputs = self._collect_inputs(execution_order)
+            print(len(execution_order))
             candidate_outputs = self._collect_outputs(execution_order)
-
+            print(candidate_outputs)
             # 构建依赖
             used_components = {node.FULL_PATH for node in nodes_to_export}
             requirements = set()
@@ -143,6 +145,7 @@ class CanvasExporter:
                     "type_": node.type_,
                     "pos": node.pos(),
                     "input_ports_multi": {p.name(): p.model.multi_connection for p in node.input_ports()},
+                    "output_ports": [p.name() for p in node.output_ports()],
                     "custom": {
                         "FULL_PATH": node.FULL_PATH,
                         "FILE_PATH": component_path_map.get(self.file_map.get(node.FULL_PATH, ""), ""),
@@ -284,9 +287,10 @@ class CanvasExporter:
     def _collect_outputs(self, nodes):
         outputs = []
         for node in nodes:
-            outputs_dict = getattr(node, '_output_values', {})
+            output_ports = node.model.outputs.keys()
+            # outputs_dict = getattr(node, '_output_values', {})
             cls = self.component_map.get(node.FULL_PATH)
-            for out_name, out_val in outputs_dict.items():
+            for out_name in output_ports:
                 out_type = "TEXT"
                 out_type_desc = ""
                 out_desc = ""
@@ -303,7 +307,7 @@ class CanvasExporter:
                     "node_name": node.name(),
                     "output_name": out_name,
                     "output_desc": out_desc,
-                    "sample_value": str(out_val)[:50] + "..." if len(str(out_val)) > 50 else str(out_val),
+                    # "sample_value": str(out_val)[:50] + "..." if len(str(out_val)) > 50 else str(out_val),
                     "display_name": f"{node.name()} → {out_name}",
                     "format": out_type,
                     "format_desc": out_type_desc

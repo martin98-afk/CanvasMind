@@ -663,7 +663,15 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             "internal_nodes": node_data["custom"].get("internal_nodes", []),
             "multi_input": node_data.get("input_ports_multi"),
             "is_branch_node": is_branch_node,
-            "conditions": node_data["custom"]["params"].get("conditions", []),
+            "output_ports": node_data.get("output_ports", []),
+            "conditions": [
+                {
+                    "expr": condition.get("expr", ""),
+                    "name": name
+                }
+                for name, condition in zip(
+                    node_data.get("output_ports", []), node_data["custom"]["params"].get("conditions", []))
+            ],
             "enable_else": node_data["custom"]["params"].get("enable_else", False),
             "execute_all_matches": node_data["custom"]["params"].get("execute_all_matches", False),
             "loop_mode": node_data["custom"]["params"].get("loop_mode", "count"),
@@ -671,7 +679,6 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             "loop_nums": node_data["custom"]["params"].get("loop_nums", 5),
             "max_iterations": node_data["custom"]["params"].get("max_iterations", 100),
             "global_variable": node_data["custom"]["params"].get("global_variable", {}),
-            "output_ports": [p["name"] for p in node_data.get("outputs", [])]  # 添加输出端口列表
         }
 
     if external_inputs and "inputs" in project_spec:

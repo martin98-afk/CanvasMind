@@ -106,7 +106,7 @@ def create_dynamic_code_node(parent_window=None):
             input_schema = {
                 "name": {
                     "type": PropertyType.TEXT.value,
-                    "default": "input",
+                    "default": "input{{id}}",
                     "label": "输入端口名称",
                 },"type": {
                     "type": PropertyType.CHOICE.value,
@@ -142,7 +142,7 @@ def create_dynamic_code_node(parent_window=None):
             output_schema = {
                 "name": {
                     "type": PropertyType.TEXT.value,
-                    "default": "output",
+                    "default": "output{{id}}",
                     "label": "输出端口名称",
                 }, "type": {
                     "type": PropertyType.CHOICE.value,
