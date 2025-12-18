@@ -15,7 +15,7 @@ from qfluentwidgets import (
     TransparentToggleToolButton
 )
 
-from app.mcp_server.stdio_server import GlobalMcpServer
+from app.server_manager.mcp_server.stdio_server import GlobalMcpServer
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.chat_session import SessionManager

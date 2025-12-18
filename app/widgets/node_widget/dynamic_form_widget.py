@@ -19,7 +19,7 @@ class FormFieldWidget(QtWidgets.QWidget):
     removed = QtCore.Signal(object)
     changed = QtCore.Signal()
 
-    def __init__(self, schema, home=None, parent=None, get_port_func=lambda: []):
+    def __init__(self, schema, home=None, parent=None, get_port_func=lambda: [], index=1):
         super().__init__(parent)  # parent 是 DynamicFormWidget（正确！）
         self.schema = schema
         self.home = home  # 用于弹窗的主窗口
@@ -33,6 +33,10 @@ class FormFieldWidget(QtWidgets.QWidget):
             label = defn.get("label", "")
             name = defn.get("name", "")
             default = defn.get("default", "")
+
+            if isinstance(default, str) and "{{id}}" in default:
+                default = default.replace("{{id}}", str(index))
+
             # 为这种布局创建一个包含标签和输入框的子布局
             sub_layout = QtWidgets.QVBoxLayout()
             sub_layout.setContentsMargins(0, 0, 0, 0)
@@ -202,9 +206,16 @@ class DynamicFormWidget(QtWidgets.QWidget):
         self.btn_add.clicked.connect(self.add_field)
 
     def add_field(self, data=None):
-        field = FormFieldWidget(self.schema, home=self.parent, parent=self, get_port_func=self.get_port_func)
+        index = len(self.field_widgets) + 1  # 序号从 1 开始
+        field = FormFieldWidget(
+            self.schema,
+            home=self.parent,
+            parent=self,
+            get_port_func=self.get_port_func,
+            index=index
+        )
         if data:
-            field.set_data(data)
+            field.set_data(data)  # 注意：回填时不替换 {{id}}，因为 data 是用户已保存的值
         field.removed.connect(self.remove_field)
         field.changed.connect(self._on_field_changed)
         self.field_widgets.append(field)

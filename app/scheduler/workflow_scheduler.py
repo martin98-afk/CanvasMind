@@ -8,7 +8,7 @@ from loguru import logger
 from app.components.base import GlobalVariableContext
 from app.nodes.status_node import NodeStatus
 from app.scheduler.node_list_executor import NodeListExecutor
-from app.utils.ipython_kernel_manager import IPythonKernelManager
+from app.server_manager.ipython_server.ipython_kernel_manager import IPythonKernelManager
 from app.utils.utils import get_port_node, topological_sort
 
 

@@ -66,7 +66,7 @@ def create_branch_node(parent_window):
                 },
                 "name": {
                     "type": PropertyType.TEXT.value,
-                    "default": "branch",
+                    "default": "branch{{id}}",
                     "label": "分支名称",
                 },
             }

@@ -16,9 +16,9 @@ from loguru import logger
 from qfluentwidgets import (
     PrimaryPushButton,
     InfoBar,
-    MessageBox, StateToolTip, BodyLabel, SmoothScrollArea,
+    MessageBox, StateToolTip, SmoothScrollArea,
     PipsPager, PipsScrollButtonDisplayMode, ComboBox, SearchLineEdit,
-    TransparentToggleToolButton, SimpleCardWidget
+    TransparentToggleToolButton
 )
 from watchfiles import Change
 
@@ -26,7 +26,7 @@ from app.interfaces.exported_project_interface.utils.threading_utils import (Wat
 from app.interfaces.exported_project_interface.widgets.project_card import ProjectCard
 from app.utils.config import Settings
 from app.interfaces.exported_project_interface.constants import *
-from app.utils.service_manager import SERVICE_MANAGER
+from app.server_manager.http_server.service_manager import SERVICE_MANAGER
 from app.utils.utils import ansi_to_html, get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.dialog_widget.project_export_dialog import ProjectExportFlowDialog

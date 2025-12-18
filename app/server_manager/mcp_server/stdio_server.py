@@ -1,4 +1,4 @@
-# mcp_server.py
+# server_manager.py
 import base64
 import io
 import json
@@ -308,6 +308,6 @@ class GlobalMcpServer:
 # ------------------ 启动 ------------------
 
 if __name__ == "__main__":
-    exports_dir = Path(r"D:\work\CanvasMind\canvas_files\projects")
+    exports_dir = Path(r"/canvas_files/projects")
     server = GlobalMcpServer(exports_dir)
     server.run_stdio()
