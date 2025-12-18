@@ -658,18 +658,28 @@ except:
             logger.error(traceback.format_exc())
             return code
 
+    def _find_multiline_string_end(self, lines, start_lineno):
+        line = lines[start_lineno]
+        if '"""' not in line:
+            return start_lineno
+        if line.count('"""') >= 2:
+            return start_lineno
+        i = start_lineno + 1
+        while i < len(lines):
+            if '"""' in lines[i]:
+                return i
+            i += 1
+        return start_lineno
+
     def _update_basic_info_in_code(self, code, name, category, description, requirements):
         try:
             lines = code.split('\n')
-            # Step 1: 用 AST 找出需要替换的行号
             try:
                 tree = ast.parse(code)
             except SyntaxError:
-                # AST 失败时回退到原始逻辑（但加日志）
                 logger.warning("AST parse failed in _update_basic_info_in_code, fallback to regex")
-                return self._fallback_update_basic_info(code, name, category, description, requirements)
+                return code
 
-            # 找到第一个 class 定义
             target_class = None
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef):
@@ -678,54 +688,59 @@ except:
             if not target_class:
                 return code
 
-            # 收集要替换的字段及其行号
-            line_map = {}  # {lineno: new_value_str}
+            # 先构建替换计划：[(start, end, new_lines), ...]
+            replacements = []
             basic_fields = {"name", "category", "description", "requirements"}
             for stmt in target_class.body:
                 if isinstance(stmt, ast.Assign):
                     for target in stmt.targets:
                         if isinstance(target, ast.Name) and target.id in basic_fields:
-                            # 只记录第一个出现的（AST 顺序保证）
-                            if target.id not in line_map:
+                            start_line = stmt.lineno - 1  # 转为 0-based
+                            if target.id == "description":
+                                # ✅ 特殊处理多行 description
+                                end_line = self._find_multiline_string_end(lines, start_line)
+                                # 构建新 description 行列表
+                                if '\n' in description or '"""' in description or '"' in description or "'" in description:
+                                    safe_desc = description.replace('"""', '\\"\\"\\"')
+                                    new_desc_lines = ['    description = """' + safe_desc + '"""']
+                                else:
+                                    new_desc_lines = [f'    description = "{description}"']
+                                replacements.append((start_line, end_line, new_desc_lines))
+                            else:
+                                # 其他字段：单行替换
                                 value_str = None
                                 if target.id == "name":
                                     value_str = f'    name = "{name}"'
                                 elif target.id == "category":
                                     value_str = f'    category = "{category}"'
-                                elif target.id == "description":
-                                    value_str = f'    description = "{description}"'
                                 elif target.id == "requirements":
                                     value_str = f'    requirements = "{requirements}"'
                                 if value_str is not None:
-                                    line_map[stmt.lineno] = value_str
+                                    replacements.append((start_line, start_line, [value_str]))
 
-            # Step 2: 重建代码，只替换指定行
-            new_lines = []
-            for i, line in enumerate(lines, start=1):  # lineno 从 1 开始
-                if i in line_map:
-                    new_lines.append(line_map[i])
-                else:
-                    new_lines.append(line)
+            # 执行替换（从后往前，避免行号偏移）
+            new_lines = lines[:]
+            for start, end, new_content in reversed(replacements):
+                new_lines = new_lines[:start] + new_content + new_lines[end + 1:]
 
-            # Step 3: 如果某个字段缺失，插入到 class 头部（在 class 行后）
-            # 先收集缺失字段
-            existing_fields = set(line_map.values())
+            # 插入缺失字段（在 class 行后）
+            existing_code = '\n'.join(new_lines)
             missing = []
-            if not any('name = ' in v for v in existing_fields):
+            if '    name = ' not in existing_code:
                 missing.append(f'    name = "{name}"')
-            if not any('category = ' in v for v in existing_fields):
+            if '    category = ' not in existing_code:
                 missing.append(f'    category = "{category}"')
-            if not any('description = ' in v for v in existing_fields):
-                missing.append(f'    description = "{description}"')
-            if requirements and not any('requirements = ' in v for v in existing_fields):
+            if '    description = ' not in existing_code:
+                if '\n' in description or '"""' in description or '"' in description or "'" in description:
+                    safe_desc = description.replace('"""', '\\"\\"\\"')
+                    missing.append(f'    description = """{safe_desc}"""')
+                else:
+                    missing.append(f'    description = "{description}"')
+            if requirements.strip() and '    requirements = ' not in existing_code:
                 missing.append(f'    requirements = "{requirements}"')
-
             if missing:
-                # 找到 class 行号
-                class_lineno = target_class.lineno
-                # 在 class 行后插入
-                insert_pos = class_lineno  # 因为 new_lines 索引从 0，lineno 从 1
-                new_lines = new_lines[:insert_pos] + missing + new_lines[insert_pos:]
+                class_lineno = target_class.lineno - 1  # 0-based
+                new_lines = new_lines[:class_lineno + 1] + missing + new_lines[class_lineno + 1:]
 
             return '\n'.join(new_lines)
 
