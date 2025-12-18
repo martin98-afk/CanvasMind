@@ -7,7 +7,7 @@ import textwrap
 import traceback
 import uuid
 from pathlib import Path
-from PyQt5.QtCore import Qt, QTimer, QSize
+from PyQt5.QtCore import Qt, QTimer, QSize, QEvent
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem
 )
@@ -55,7 +55,7 @@ class ComponentDeveloperPage(QWidget):
         self._property_sync_timer.setSingleShot(True)
         self._property_sync_timer.setInterval(300)  # 300ms 防抖
         self._property_sync_timer.timeout.connect(self._sync_properties_to_code)
-        # ✅ 新增：代码 → UI 同步防抖
+        # 代码 → UI 同步防抖
         self._code_to_ui_sync_timer = QTimer()
         self._code_to_ui_sync_timer.setSingleShot(True)
         self._code_to_ui_sync_timer.setInterval(300)
@@ -148,12 +148,17 @@ class ComponentDeveloperPage(QWidget):
         self.property_editor.properties_changed.connect(self._on_property_changed)
         self.code_editor.code_changed.connect(self._on_code_text_changed)
         # ✅ 保留 UI → 代码 实时同步（但修复同步逻辑）
-        self.name_edit.textChanged.connect(self._sync_basic_info_to_code)
-        self.category_edit.textChanged.connect(self._sync_basic_info_to_code)
-        self.description_edit.textChanged.connect(self._sync_basic_info_to_code)
-        self.requirements_edit.textChanged.connect(self._sync_basic_info_to_code)
+        for widget in [self.name_edit, self.category_edit, self.description_edit, self.requirements_edit]:
+            widget.installEventFilter(self)
         self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
         self.history_table.itemChanged.connect(self._on_history_description_changed)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.FocusOut:
+            if obj in [self.name_edit, self.category_edit, self.description_edit, self.requirements_edit]:
+                # ✅ 用户结束编辑，立即同步到代码
+                self._sync_basic_info_to_code()
+        return super().eventFilter(obj, event)
 
     def _on_property_changed(self):
         # 防抖：连续变更时只在停顿后同步
@@ -167,34 +172,39 @@ class ComponentDeveloperPage(QWidget):
         MessageManager.success("已插入代码", "", self)
 
     def _extract_component_info_from_code_str(self, code: str):
+        """
+        从代码中提取组件基本信息。
+        如果 AST 解析失败或未找到有效字段，返回 None。
+        """
         try:
             tree = ast.parse(code)
         except SyntaxError:
-            return {
-                "name": "未命名组件",
-                "category": "数据处理",
-                "description": "来自大模型生成的组件",
-                "requirements": ""
-            }
-        info = {
-            "name": "未命名组件",
-            "category": "数据处理",
-            "description": "来自大模型生成的组件",
-            "requirements": ""
-        }
+            return None  # ✅ 不返回默认值
+
+        info = {}
+        found_any = False
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         if target.id == "name" and isinstance(node.value, ast.Constant):
                             info["name"] = str(node.value.value)
+                            found_any = True
                         elif target.id == "category" and isinstance(node.value, ast.Constant):
                             info["category"] = str(node.value.value)
+                            found_any = True
                         elif target.id == "description" and isinstance(node.value, ast.Constant):
                             info["description"] = str(node.value.value)
+                            found_any = True
                         elif target.id == "requirements" and isinstance(node.value, ast.Constant):
                             info["requirements"] = str(node.value.value)
-        return info
+                            found_any = True
+
+        # 只有至少找到一个字段，才认为有效
+        if found_any:
+            return info
+        else:
+            return None  # ✅ 未找到任何有效字段，也视为失败
 
     def _handle_create_component_from_llm(self, code: str):
         if not code.strip():
@@ -431,14 +441,11 @@ except:
                 self.requirements_edit.toPlainText().replace("\n", ",")
             )
             if updated_code != current_code:
-                self.code_editor.suspend_sync()
-                try:
-                    self.code_editor.replace_text_preserving_view(updated_code)
-                    self._current_component_code = updated_code  # ✅ 关键
-                finally:
-                    self.code_editor.resume_sync()
+                # ✅ 直接替换，不 suspend_sync
+                self.code_editor.replace_text_preserving_view(updated_code)
+                self._current_component_code = updated_code
         except Exception as e:
-            print(f"同步基本信息到代码失败: {e}")
+            logger.error(f"同步基本信息失败: {e}")
 
     def _update_ports_in_code(self, code, input_ports, output_ports):
         lines = code.split('\n')
@@ -635,7 +642,7 @@ except:
                 tree = ast.parse(code)
             except SyntaxError:
                 logger.warning("AST parse failed in _update_basic_info_in_code, fallback to regex")
-                return self._fallback_update_basic_info(code, name, category, description, requirements)
+                return code
 
             target_class = None
             for node in ast.walk(tree):
@@ -717,19 +724,32 @@ except:
             return
         try:
             info = self._extract_component_info_from_code_str(code)
+            if info is None:
+                # ✅ AST 解析失败或无有效字段，不更新 UI
+                return
+
+            # 设置默认值（仅用于缺失字段，而不是整体失败）
+            name = info.get("name", "")
+            category = info.get("category", "")
+            description = info.get("description", "")
+            requirements = info.get("requirements", "")
+
             # 临时阻断信号，防止循环
             self.name_edit.blockSignals(True)
             self.category_edit.blockSignals(True)
             self.description_edit.blockSignals(True)
             self.requirements_edit.blockSignals(True)
-            self.name_edit.setText(info["name"])
-            self.category_edit.setText(info["category"])
-            self.description_edit.setPlainText(info["description"])
-            self.requirements_edit.setPlainText(info["requirements"].replace(',', '\n'))
+
+            self.name_edit.setText(name)
+            self.category_edit.setText(category)
+            self.description_edit.setPlainText(description)
+            self.requirements_edit.setPlainText(requirements.replace(',', '\n'))
+
             self.name_edit.blockSignals(False)
             self.category_edit.blockSignals(False)
             self.description_edit.blockSignals(False)
             self.requirements_edit.blockSignals(False)
+
             # ✅ 更新缓存
             self._current_component_code = code
         except Exception as e:

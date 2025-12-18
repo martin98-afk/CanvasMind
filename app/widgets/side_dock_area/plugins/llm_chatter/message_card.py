@@ -168,7 +168,7 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
 
                 <!-- 右侧：按钮组 -->
                 <div style="display: flex; gap: 15px; align-items: center; padding-right: 4px;">
-                    <button type="button" data-action="insert" data-copy="{b64_copy}" style="
+                    <button type="button" data-action="insert" data-copy="{b64_copy}" class="code-btn" data-tooltip="插入代码" style="
                         width: 28px;
                         height: 28px;
                         background: transparent;
@@ -179,10 +179,10 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
                         justify-content: center;
                         padding: 0;
                         border-radius: 4px;
-                    " title="插入代码">
+                    ">
                         <img src="qrc:/icons/插入.svg" style="width:20px; height:20px; pointer-events: none;" />
                     </button>
-                    <button type="button" data-action="create" data-copy="{b64_copy}" style="
+                    <button type="button" data-action="create" data-copy="{b64_copy}" class="code-btn" data-tooltip="新建组件" style="
                         width: 28px;
                         height: 28px;
                         background: transparent;
@@ -193,10 +193,10 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
                         justify-content: center;
                         padding: 0;
                         border-radius: 4px;
-                    " title="新建组件">
+                    ">
                         <img src="qrc:/icons/新建.svg" style="width:20px; height:20px; pointer-events: none;" />
                     </button>
-                    <button type="button" data-action="copy" data-copy="{b64_copy}" style="
+                    <button type="button" data-action="copy" data-copy="{b64_copy}" class="code-btn" data-tooltip="复制代码" style="
                         width: 28px;
                         height: 28px;
                         background: transparent;
@@ -207,7 +207,7 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
                         justify-content: center;
                         padding: 0;
                         border-radius: 4px;
-                    " title="复制代码">
+                    ">
                         <img src="qrc:/icons/复制.svg" style="width:20px; height:20px; pointer-events: none;" />
                     </button>
                 </div>
@@ -544,6 +544,37 @@ class CodeWebViewer(QWebEngineView):
                 }}
                 [style*="overflow-x: auto"]::-webkit-scrollbar-thumb:hover {{
                     background: #5a5a5a;
+                }}
+                 /* 自定义代码按钮 Tooltip */
+                .code-btn {{
+                    position: relative;
+                }}
+                .code-btn:hover::after {{
+                    content: attr(data-tooltip);
+                    position: absolute;
+                    bottom: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #1a1a1a;
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    white-space: nowrap;
+                    z-index: 1000;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+                    margin-bottom: 4px;
+                }}
+                .code-btn:hover::before {{
+                    content: "";
+                    position: absolute;
+                    top: -6px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    border-width: 4px 4px 0;
+                    border-style: solid;
+                    border-color: #1a1a1a transparent transparent;
+                    z-index: 1001;
                 }}
             </style>
         </head>
