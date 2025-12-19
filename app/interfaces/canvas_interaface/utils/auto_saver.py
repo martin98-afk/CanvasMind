@@ -15,6 +15,8 @@ class AutoSaver:
         self._timer.timeout.connect(self._auto_save)
         self.config.canvas_auto_save.valueChanged.connect(self._on_auto_save_changed)
         self.config.canvas_auto_save_interval.valueChanged.connect(self._on_auto_save_interval_changed)
+        if self._auto_save_enabled:
+            self.start()
 
     def _on_auto_save_changed(self, enabled):
         self._auto_save_enabled = enabled

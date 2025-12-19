@@ -239,6 +239,9 @@ class ComponentDeveloperPage(QWidget):
 
     def _on_component_pasted(self, full_path):
         self._load_component(full_path=full_path, component=self.component_tree._copied_component)
+        # 源码路径修改
+        source_file = f"{str(uuid.uuid4())}.py"
+        self._current_component_file = self._current_component_file.parent / source_file
         self._save_component(delete_original_file=False)
 
     def extract_class_source_from_file(self, file_path: Path, class_name: str) -> str:
