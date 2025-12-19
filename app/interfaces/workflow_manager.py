@@ -79,6 +79,8 @@ class WorkflowFileInfoScanner(QThread):
 class WorkflowCanvasGalleryPage(QWidget, QObject):
     scan_finished = pyqtSignal(list, dict)
     component_code_changed = pyqtSignal(str, str)
+    exported_projects_changed = pyqtSignal(str, str)
+    running_projects_changed = pyqtSignal(str, str)
     node_request_edit = pyqtSignal(str)
     # 上方控件
     SideDockRegistry.register("运行画布", PropertyToolWindow.name, PropertyToolWindow)

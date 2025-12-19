@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+from pathlib import Path
 
 from PyQt5.QtWidgets import QVBoxLayout
 from qfluentwidgets import BodyLabel, TextEdit, SubtitleLabel
@@ -29,6 +30,7 @@ class ProjectInfoTool(ToolWindow):
             return {"inputs": {}}
 
     def refresh(self, project_path):
+        project_path = Path(project_path) if isinstance(project_path, str) else project_path
         self.spec = self._load_spec(project_path)
         # 清空旧内容
         while self.main_layout.count():

@@ -12,7 +12,7 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidget
 from app.widgets.node_widget.longtext_dialog import LongTextWidget
 from app.widgets.node_widget.range_widget import RangeWidget
-from app.widgets.node_widget.variable_combo_widget import GlobalVarComboBoxWidget
+from app.widgets.node_widget.variable_combo_widget import VarComboBoxWidget
 
 
 class FormFieldWidget(QtWidgets.QWidget):
@@ -79,7 +79,7 @@ class FormFieldWidget(QtWidgets.QWidget):
 
             elif field_type == PropertyType.VARIABLE.name:
                 # VARIABLE 类型：检查是否支持 placeholder
-                widget = GlobalVarComboBoxWidget(main_window=home, parent=self)
+                widget = VarComboBoxWidget(main_window=home, type=default, parent=self)
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
                 input_row.addWidget(widget)

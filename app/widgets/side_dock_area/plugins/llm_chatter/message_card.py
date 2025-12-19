@@ -280,7 +280,7 @@ def _inject_think_cards(md_text: str, completed: bool = True) -> str:
     parts = []
     i = 0
     while i < len(md_text):
-        start_idx = md_text.find("thinks>", i)
+        start_idx = md_text.find("<think>", i)
         if start_idx == -1:
             parts.append(md_text[i:])
             break

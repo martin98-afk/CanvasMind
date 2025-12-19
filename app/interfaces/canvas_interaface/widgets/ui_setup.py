@@ -402,7 +402,6 @@ class CanvasUISetUp:
                 self.side_dock_area.setParent(None)
                 self.side_dock_area.deleteLater()
                 self.side_dock_area = None
-                self.ipython_console = None
 
             # 4. 销毁悬浮按钮容器
             if hasattr(self, 'buttons_container') and self.buttons_container:

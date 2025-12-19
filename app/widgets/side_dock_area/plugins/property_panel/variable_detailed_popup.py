@@ -3,13 +3,17 @@ import os
 
 import numpy as np
 import pandas as pd
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtGui import QPixmap, QImage, QFont, QCursor
 from PyQt5.QtWidgets import (
-    QWidget, QFrame, QVBoxLayout, QApplication, QHeaderView,
-    QTreeWidgetItem, QLabel
+    QWidget, QFrame, QVBoxLayout, QHBoxLayout, QApplication, QHeaderView,
+    QTreeWidgetItem, QLabel, QAbstractItemView
 )
-from qfluentwidgets import TreeWidget, BodyLabel, TextEdit as FluentTextEdit
+from qfluentwidgets import (
+    TreeWidget, BodyLabel, TextEdit as FluentTextEdit,
+    IconWidget, FluentIcon as FIF, isDarkTheme
+)
+
 
 from app.widgets.side_dock_area.plugins.property_panel.variable_tree import (
     _get_formatted_type_and_value, _is_pil_image, _is_image_file
@@ -22,54 +26,91 @@ class VariableDetailPopup(QWidget):
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self._setup_ui()
+        self.installEventFilter(self)
 
     def _setup_ui(self):
+        self.setFixedSize(580, 440)
         self.main_frame = QFrame(self)
         self.main_frame.setObjectName("popupFrame")
-        self.main_frame.setStyleSheet("""
-            QFrame#popupFrame {
-                background-color: #2d2d2d;
-                border: 1px solid #444;
-                border-radius: 8px;
-                padding: 12px;
-            }
-            QLabel, BodyLabel { color: white; }
-            QTextEdit, TreeWidget {
-                background-color: #333;
-                color: white;
-                border: 1px solid #444;
-                border-radius: 4px;
-                padding: 4px;
-            }
-            TreeWidget {
-                font-family: "Consolas", "Courier New", monospace;
-                font-size: 11px;
-                alternate-background-color: #3a3a3a;
-            }
-            QHeaderView::section {
-                background-color: #444;
-                color: white;
-                padding: 4px;
-                border: none;
-            }
-        """)
+        self._apply_stylesheet()
 
         self.layout = QVBoxLayout(self.main_frame)
         self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(6)
+        self.layout.setSpacing(8)
 
         # 内容容器（可切换）
         self.content_area = QWidget(self)
         self.content_area.setStyleSheet("background: transparent; border: none;")
         self.content_layout = QVBoxLayout(self.content_area)
         self.content_layout.setContentsMargins(0, 0, 0, 0)
-        self.content_layout.setSpacing(6)
+        self.content_layout.setSpacing(8)
 
         window_layout = QVBoxLayout(self)
         window_layout.setContentsMargins(0, 0, 0, 0)
         window_layout.addWidget(self.main_frame)
 
         self.layout.addWidget(self.content_area)
+
+    def _apply_stylesheet(self):
+        # 支持深色/浅色（虽然你偏好深色，但保留扩展性）
+        bg_color = "#252526" if isDarkTheme() else "#ffffff"
+        border_color = "#555" if isDarkTheme() else "#ccc"
+        text_color = "#d4d4d4" if isDarkTheme() else "#000000"
+        alt_bg = "#2a2d2e" if isDarkTheme() else "#f5f5f5"
+        header_bg = "#333337" if isDarkTheme() else "#e0e0e0"
+        header_text = "#cccccc" if isDarkTheme() else "#000000"
+        edit_bg = "#2d2d30" if isDarkTheme() else "#fafafa"
+        scrollbar_handle = "#555" if isDarkTheme() else "#aaa"
+        scrollbar_handle_hover = "#666" if isDarkTheme() else "#999"
+
+        self.main_frame.setStyleSheet(f"""
+            QFrame#popupFrame {{
+                background-color: {bg_color};
+                border: 1px solid {border_color};
+                border-radius: 10px;
+                padding: 14px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            }}
+            QLabel, BodyLabel {{
+                color: {text_color};
+                font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+            }}
+            QTextEdit, TreeWidget {{
+                background-color: {edit_bg};
+                color: {text_color};
+                border: 1px solid #3e3e42;
+                border-radius: 6px;
+                padding: 6px;
+                selection-background-color: #3794ff;
+                selection-color: white;
+            }}
+            TreeWidget {{
+                font-family: "Consolas", "Courier New", monospace;
+                font-size: 12px;
+                alternate-background-color: {alt_bg};
+            }}
+            QHeaderView::section {{
+                background-color: {header_bg};
+                color: {header_text};
+                padding: 6px;
+                border: none;
+                font-weight: bold;
+            }}
+            QScrollBar:vertical {{
+                background: #2a2a2e;
+                width: 10px;
+                margin: 2px 0 2px 0;
+                border-radius: 5px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {scrollbar_handle};
+                min-height: 20px;
+                border-radius: 5px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {scrollbar_handle_hover};
+            }}
+        """)
 
     def set_data(self, obj, title="变量详情"):
         # 清空旧内容
@@ -78,12 +119,26 @@ class VariableDetailPopup(QWidget):
             if child.widget():
                 child.widget().deleteLater()
 
-        # 标题
+        # === 标题区域（图标 + 标题 + 分隔线） ===
         title_label = BodyLabel(title, self)
-        title_label.setStyleSheet("color: #FFA500; font-weight: bold; font-size: 13px;")
-        self.content_layout.addWidget(title_label)
+        title_label.setStyleSheet("color: #FFA500; font-weight: bold; font-size: 14px; padding-left: 4px;")
+        icon = IconWidget(FIF.INFO, self)
+        icon.setFixedSize(16, 16)
+        icon.setStyleSheet("color: #FFA500;")
 
-        # 判断类型并展示
+        title_hbox = QHBoxLayout()
+        title_hbox.addWidget(icon)
+        title_hbox.addWidget(title_label)
+        title_hbox.addStretch()
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setStyleSheet("color: #444; margin-top: 6px; margin-bottom: 6px;")
+
+        self.content_layout.addLayout(title_hbox)
+        self.content_layout.addWidget(sep)
+
+        # === 内容区域 ===
         if self._is_image_like(obj):
             self._show_image(obj)
         elif self._is_text_like(obj):
@@ -94,15 +149,19 @@ class VariableDetailPopup(QWidget):
             tree.setHeaderLabels(["Key", "Value"])
             tree.setAlternatingRowColors(True)
             tree.setSortingEnabled(False)
-            tree.setMinimumSize(500, 300)
-            tree.header().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+            tree.setIndentation(16)
+            tree.setSelectionMode(QAbstractItemView.NoSelection)
+            tree.setMinimumSize(520, 320)
+            tree.header().setSectionResizeMode(0, QHeaderView.Interactive)
             tree.header().setSectionResizeMode(1, QHeaderView.Stretch)
+            tree.header().resizeSection(0, 200)
+            tree.header().setStretchLastSection(False)
 
             self._build_nested_tree(obj, tree.invisibleRootItem(), "root", is_root=True)
             tree.expandAll()
             self.content_layout.addWidget(tree)
 
-        self.main_frame.adjustSize()
+        self.setMaximumHeight(int(QApplication.primaryScreen().availableGeometry().height() * 0.7))
         self.adjustSize()
 
     def _is_image_like(self, obj):
@@ -123,7 +182,6 @@ class VariableDetailPopup(QWidget):
             pixmap = QPixmap(obj)
         elif _is_pil_image(obj):
             try:
-                from PIL import Image
                 img = obj
                 if img.mode not in ('RGB', 'RGBA'):
                     img = img.convert('RGBA' if 'A' in img.mode else 'RGB')
@@ -135,13 +193,15 @@ class VariableDetailPopup(QWidget):
                 pass
 
         if pixmap and not pixmap.isNull():
-            scaled = pixmap.scaled(500, 500, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            scaled = pixmap.scaled(500, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             img_label = QLabel()
             img_label.setPixmap(scaled)
             img_label.setAlignment(Qt.AlignCenter)
+            img_label.setStyleSheet("background: #1e1e1e; border-radius: 6px; padding: 8px;")
             self.content_layout.addWidget(img_label)
         else:
             label = BodyLabel("⚠️ 图像加载失败", self)
+            label.setStyleSheet("color: #ff6b6b;")
             self.content_layout.addWidget(label)
 
     def _show_text(self, obj):
@@ -158,8 +218,11 @@ class VariableDetailPopup(QWidget):
         text_edit = FluentTextEdit()
         text_edit.setPlainText(content)
         text_edit.setReadOnly(True)
-        text_edit.setMinimumHeight(200)
+        text_edit.setMinimumHeight(220)
         text_edit.setMaximumHeight(400)
+        text_edit.setFont(QFont("Consolas", 11))
+        text_edit.setLineWrapMode(FluentTextEdit.NoWrap)
+        text_edit.moveCursor(text_edit.textCursor().Start)
         self.content_layout.addWidget(text_edit)
 
     def _build_nested_tree(self, obj, parent_item, key, is_root=False, max_depth=10, current_depth=0):
@@ -208,7 +271,6 @@ class VariableDetailPopup(QWidget):
 
     def show_at_left_of(self, reference_widget: QWidget):
         self.adjustSize()
-        self.main_frame.adjustSize()
 
         ref_rect = reference_widget.rect()
         ref_global = reference_widget.mapToGlobal(ref_rect.topLeft())
@@ -231,3 +293,17 @@ class VariableDetailPopup(QWidget):
         self.move(x, y)
         self.show()
         self.setFocus()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(event)
+
+    def eventFilter(self, obj, event):
+        # 点击外部自动关闭（可选）
+        if event.type() == QEvent.MouseButtonPress:
+            if not self.geometry().contains(event.globalPos()):
+                self.close()
+                return True
+        return super().eventFilter(obj, event)

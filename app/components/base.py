@@ -398,7 +398,7 @@ class PropertyType(str, Enum):
     RANGE = "范围"
     BOOL = "复选框"
     CHOICE = "下拉框"
-    VARIABLE = "全局变量"
+    VARIABLE = "动态变量"
     DYNAMICFORM = "动态表单"
 
 

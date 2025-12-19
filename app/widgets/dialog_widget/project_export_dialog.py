@@ -5,7 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout as VBoxLayout, QHBoxLayout, QLabel
 from qfluentwidgets import (
     BodyLabel, TextEdit, InfoBar, CheckBox, ScrollArea, SubtitleLabel, StrongBodyLabel, CardWidget,
-    PushButton, SegmentedWidget, LineEdit
+    PushButton, SegmentedWidget, LineEdit, SmoothScrollArea
 )
 
 from app.widgets.basic_widget.splitter import ModernSplitter
@@ -33,6 +33,7 @@ class ProjectExportFlowDialog(StepMessageBoxBase):
             {"name": "project_info", "title": "项目信息"}
         ]
         super().__init__(parent=parent, steps=steps)
+        self.widget.setFixedSize(800, 700)
         self.candidate_items = candidate_items
         self.current_selected_inputs = current_selected_inputs or {}
         self.current_selected_outputs = current_selected_outputs or {}
@@ -163,8 +164,8 @@ class InputSelectionDialog(QWidget):  # 继承 QWidget
         self.scroll_ports = self._create_grouped_scroll(input_groups, is_input=True)
         self.scroll_params = self._create_grouped_scroll(param_groups, is_input=True)
 
-        layout.addWidget(self.scroll_ports)
-        layout.addWidget(self.scroll_params)
+        layout.addWidget(self.scroll_ports, 1)
+        layout.addWidget(self.scroll_params, 1)
         self.scroll_params.hide()
 
         segmented_widget.currentItemChanged.connect(
@@ -175,8 +176,7 @@ class InputSelectionDialog(QWidget):  # 继承 QWidget
         )
 
     def _create_grouped_scroll(self, groups, is_input=True):
-        from qfluentwidgets import ScrollArea
-        scroll_area = ScrollArea()
+        scroll_area = SmoothScrollArea()
         scroll_widget = QWidget()
         scroll_widget.setAttribute(Qt.WA_TranslucentBackground)
         scroll_area.setAttribute(Qt.WA_TranslucentBackground)
@@ -249,7 +249,6 @@ class InputSelectionDialog(QWidget):  # 继承 QWidget
         scroll_widget.setLayout(layout)
         scroll_area.setWidget(scroll_widget)
         scroll_area.setWidgetResizable(True)
-        scroll_area.setFixedSize(680, 420)
         return scroll_area
 
     def _set_all_checked(self, checked):
@@ -291,7 +290,7 @@ class OutputSelectionDialog(QWidget):  # 继承 QWidget
         for item in candidate_items:
             groups[(item["node_id"], item["node_name"])].append(item)
 
-        scroll_area = ScrollArea()
+        scroll_area = SmoothScrollArea()
         scroll_widget = QWidget()
         scroll_widget.setAttribute(Qt.WA_TranslucentBackground)
         scroll_area.setAttribute(Qt.WA_TranslucentBackground)
@@ -361,9 +360,8 @@ class OutputSelectionDialog(QWidget):  # 继承 QWidget
         scroll_widget.setLayout(inner_layout)
         scroll_area.setWidget(scroll_widget)
         scroll_area.setWidgetResizable(True)
-        scroll_area.setFixedSize(680, 420)
 
-        layout.addWidget(scroll_area)
+        layout.addWidget(scroll_area, 1)
 
     def _set_all_checked(self, checked):
         for cb, key_edit, _ in self.item_widgets:

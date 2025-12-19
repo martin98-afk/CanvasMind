@@ -75,17 +75,17 @@ class CanvasIO(QObject):
     def load_full_workflow(self, file_path):
         self.workflow_loader = WorkflowLoader(file_path, self.graph, self.parent.node_type_map)
         self.workflow_loader.finished.connect(
-            lambda gd, rd, ns, gv: self._on_workflow_loaded(gd, rd, ns, gv, file_path))
+            lambda gd, rd, ns, gv: self._on_workflow_loaded(gd, rd, ns, gv))
         self.workflow_loader.start()
 
-    def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data, global_variable, file_path):
+    def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data, global_variable):
         try:
             self.global_variables.deserialize(global_variable)
             nodes_data = graph_data.get("nodes", {})
             total_nodes = len(nodes_data)
             if total_nodes == 0:
                 self.graph.deserialize_session(graph_data)
-                self._finish_loading(runtime_data, node_status_data, file_path)
+                self._finish_loading(runtime_data, node_status_data)
                 return
 
             progress = QProgressDialog("正在加载节点...", "取消", 0, total_nodes, self.parent)
@@ -113,12 +113,12 @@ class CanvasIO(QObject):
                 self.graph.add_node = original_add_node
                 progress.close()
 
-            self._finish_loading(runtime_data, node_status_data, file_path)
+            self._finish_loading(runtime_data, node_status_data)
         except Exception as e:
             logger.error(f"❌ 加载失败: {traceback.format_exc()}")
             MessageManager.error("加载失败", f"工作流加载失败: {str(e)}", self.parent)
 
-    def _finish_loading(self, runtime_data, node_status_data, file_path):
+    def _finish_loading(self, runtime_data, node_status_data):
         self.parent._setup_pipeline_style()
 
         env = runtime_data.get("environment")
@@ -153,7 +153,3 @@ class CanvasIO(QObject):
         self.parent.ui_manager.create_name_label()
         self.parent._delayed_fit_view()
         MessageManager.success("加载成功", "工作流加载成功！", self.parent)
-
-        # 更新路径
-        self.parent.file_path = Path(file_path)
-        self.parent.workflow_name = self.parent.file_path.stem.split(".")[0]

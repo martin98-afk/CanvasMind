@@ -81,6 +81,7 @@ class ComponentDeveloperPage(QWidget):
         save_layout.addWidget(code_btn)
         save_layout.addWidget(BodyLabel("组件代码:"))
         template_dropdown = TransparentDropDownToolButton(FluentIcon.ALIGNMENT, parent=self)
+        self._current_template_code = DEFAULT_NODE_TEMPLATE
         menu = RoundMenu(parent=template_dropdown)
         for template_name in default_templates.keys():
             action = Action(
@@ -148,13 +149,16 @@ class ComponentDeveloperPage(QWidget):
         self.property_editor.properties_changed.connect(self._on_property_changed)
         self.code_editor.code_changed.connect(self._on_code_text_changed)
         # ✅ 保留 UI → 代码 实时同步（但修复同步逻辑）
+        self.code_editor.code_editor.installEventFilter(self)
         for widget in [self.name_edit, self.category_edit, self.description_edit, self.requirements_edit]:
             widget.installEventFilter(self)
-        self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
         self.history_table.itemChanged.connect(self._on_history_description_changed)
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.FocusOut:
+            if obj is self.code_editor.code_editor:
+                # 代码编辑器失去焦点，触发依赖分析
+                self._analysis_timer.start(300)  # 可设为短延迟，避免频繁触发
             if obj in [self.name_edit, self.category_edit, self.description_edit, self.requirements_edit]:
                 # ✅ 用户结束编辑，立即同步到代码
                 self._sync_basic_info_to_code()
@@ -227,6 +231,7 @@ class ComponentDeveloperPage(QWidget):
             MessageManager.error(f"保存失败：{str(e)}", "请检查代码语法", self)
 
     def _switch_template(self, template_name, template_code):
+        self._current_template_code = template_code
         self.code_editor.replace_text_preserving_view(template_code)
         self._current_component_code = template_code
         MessageManager.success(f"已切换到模板: {template_name}", "", self)
@@ -237,6 +242,9 @@ class ComponentDeveloperPage(QWidget):
 
     def _on_component_pasted(self, full_path):
         self._load_component(full_path=full_path, component=self.component_tree._copied_component)
+        # 源码路径修改
+        source_file = f"{str(uuid.uuid4())}.py"
+        self._current_component_file = self._current_component_file.parent / source_file
         self._save_component(delete_original_file=False)
 
     def extract_class_source_from_file(self, file_path: Path, class_name: str) -> str:
@@ -282,21 +290,21 @@ class ComponentDeveloperPage(QWidget):
             ])
             properties = getattr(component, 'properties', {})
             self.property_editor.set_properties(properties)
-            try:
-                source_file = getattr(component, '_source_file', None)
-                source_code = self.extract_class_source_from_file(source_file, component.__name__)
-                self._current_component_file = Path(source_file)
-                self._current_component_code = source_code
-                self.code_editor.set_code(source_code)
-            except:
-                template = DEFAULT_NODE_TEMPLATE
-                template = template.replace("Component", component.__name__)
-                template = template.replace("我的组件", getattr(component, 'name', ''))
-                template = template.replace("数据处理", getattr(component, 'category', ''))
-                template = template.replace("这是一个示例组件", getattr(component, 'description', ''))
-                self._current_component_code = template
-                self.code_editor.replace_text_preserving_view(template)
-                self._current_component_file = None
+
+            source_file = getattr(component, '_source_file', None)
+            source_code = self.extract_class_source_from_file(source_file, component.__name__)
+            source_code = self.apply_component_info_to_code(
+                source_code, {
+                    "name": getattr(component, 'name', ''),
+                    "category": getattr(component, 'category', ''),
+                    "description": getattr(component, 'description', ''),
+                    "requirements": getattr(component, 'requirements', '')
+                }
+            )
+            self._current_component_file = Path(source_file)
+            self._current_component_code = source_code
+            self.code_editor.set_code(source_code)
+
             # ⚠️ 不再调用 _sync_basic_info_to_code（会覆盖代码！）
             if self._current_component_file:
                 self._load_history_list(self._current_component_file)
@@ -355,6 +363,14 @@ class ComponentDeveloperPage(QWidget):
             logger.error(traceback.format_exc())
             MessageManager.error(f"更新策略失败: {e}", "", self)
 
+    def apply_component_info_to_code(self, code: str, component_info: dict) -> str:
+        """将 component_info 中的基本信息应用到代码中"""
+        name = component_info["name"]
+        category = component_info["category"]
+        description = component_info.get("description", "")
+        requirements = component_info.get("requirements", "")
+        return self._update_basic_info_in_code(code, name, category, description, requirements)
+
     def _create_new_component(self, component_info):
         self.name_edit.setText(component_info["name"])
         self.category_edit.setText(component_info["category"])
@@ -362,10 +378,7 @@ class ComponentDeveloperPage(QWidget):
         self.input_port_editor.set_ports([])
         self.output_port_editor.set_ports([])
         self.property_editor.set_properties({})
-        template = DEFAULT_NODE_TEMPLATE
-        template = template.replace("我的组件", component_info["name"])
-        template = template.replace("数据处理", component_info["category"])
-        template = template.replace("这是一个示例组件", component_info["description"])
+        template = self.apply_component_info_to_code(self._current_template_code, component_info)
         self._current_component_code = template
         self.code_editor.replace_text_preserving_view(template)
         self._current_component_file = None
@@ -711,9 +724,6 @@ except:
 
     def _on_code_text_changed(self):
         current_text = self.code_editor.get_code()
-        # ✅ 不再依赖 _current_component_code 比较（防止粘贴相同内容不触发）
-        if not self._updating_requirements_from_analysis:
-            self._analysis_timer.start(2000)
         # ✅ 触发代码 → UI 同步
         self._code_to_ui_sync_timer.start()
 
@@ -754,9 +764,6 @@ except:
             self._current_component_code = code
         except Exception as e:
             logger.warning(f"代码 → UI 同步失败: {e}")
-
-    def _on_requirements_text_changed(self):
-        self._analysis_timer.stop()
 
     def _analyze_code_for_requirements(self):
         code = self.code_editor.get_code()
@@ -800,9 +807,8 @@ except:
             code_cursor = self.code_editor.code_editor.textCursor()
             pos = code_cursor.position()
             self.requirements_edit.setPlainText(updated_text)
-            code_cursor.setPosition(pos + len(updated_text) - len(current_text))
-            self.code_editor.code_editor.setTextCursor(code_cursor)
             self._updating_requirements_from_analysis = False
+            self._sync_basic_info_to_code()
 
     def _parse_requirements_lines(self, text):
         lines = []
@@ -826,6 +832,7 @@ except:
             return
         self._saving = True
         try:
+            self._sync_basic_info_to_code()
             name = self.name_edit.text().strip()
             category = self.category_edit.currentText().strip()
             if not name or not category:

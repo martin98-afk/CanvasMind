@@ -116,7 +116,7 @@ def create_dynamic_code_node(parent_window=None):
                 },
                 "var": {
                     "type": PropertyType.VARIABLE.value,
-                    "default": "",
+                    "default": "全局变量",
                     "label": "默认变量选择",
                 }
             }

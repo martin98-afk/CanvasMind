@@ -34,7 +34,7 @@ from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, Cus
 class CanvasPage(QWidget):
     canvas_deleted = pyqtSignal()
     canvas_saved = pyqtSignal(Path)
-    global_variables_changed = pyqtSignal(str, str, str)  # 用于刷新组件中的变量下拉菜单
+    global_variables_changed = pyqtSignal(str, str)  # 用于刷新组件中的变量下拉菜单
     env_changed = pyqtSignal(str)
     component_code_changed = pyqtSignal(str, str) # 组件文件地址、更新代码
     node_request_edit = pyqtSignal(str)
@@ -71,7 +71,7 @@ class CanvasPage(QWidget):
         # --- 快捷组件工具管理 ---
         self.quick_manager = QuickComponentManager(self, self.component_map)
         # --- 自动保存相关 ---
-        self._auto_saver = AutoSaver(self, self.file_path, self.config)
+        self._auto_saver = AutoSaver(self, self.config)
         # --- 环境管理 ---
         self.environment_manager = EnvironmentManager(self)
         # --- 画布io管理 ---
@@ -117,6 +117,14 @@ class CanvasPage(QWidget):
         self._connect_runner_signals()
 
     # 代理方法
+    @property
+    def running_projects_changed(self):
+        return self.manager.running_projects_changed
+
+    @property
+    def exported_projects_changed(self):
+        return self.manager.exported_projects_changed
+
     @property
     def context_register(self):
         return self.llm_context_provider.context_register
@@ -261,15 +269,8 @@ class CanvasPage(QWidget):
             self.property_panel.get_current_execution_order(),
         ).export_selected_nodes_as_project()
 
-    def save_full_workflow(self, file_path=None, show_info=True):
-        if not isinstance(file_path, str) or not isinstance(file_path, Path):
-            if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
-                file_path = self.file_path
-            else:
-                file_path = (self.file_path.parent if self.file_path else Path(
-                    "../app/interfaces")) / f"{self.workflow_name}.workflow.json"
-        self.canvas_io.save_full_workflow(file_path, show_info)
-        self.file_path = file_path
+    def save_full_workflow(self, show_info=True):
+        self.canvas_io.save_full_workflow(self.file_path, show_info)
 
     def load_full_workflow(self, file_path=None):
         self.canvas_io.load_full_workflow(file_path)
