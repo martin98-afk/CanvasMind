@@ -1,0 +1,236 @@
+{
+  "version": "1.0",
+  "graph": {
+    "graph": {
+      "layout_direction": 0,
+      "acyclic": true,
+      "pipe_collision": false,
+      "pipe_slicing": true,
+      "pipe_style": 2,
+      "accept_connection_types": "{}",
+      "reject_connection_types": "{}"
+    },
+    "nodes": {
+      "0x17dc547a740": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
+        "icon": null,
+        "name": "文档上传",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 166.175,
+        "height": 69.6,
+        "pos": [
+          17.199254223036803,
+          322.0333900184546
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "d49dd3d4-aa3d-4656-acd6-df1369f083e4",
+          "version": "latest",
+          "debug_code": {}
+        }
+      },
+      "0x17dc547b040": {
+        "type_": "dynamic.StatusDynamicNode_大模型组件_长文档内容问答",
+        "icon": null,
+        "name": "长文档内容问答",
+        "color": [
+          80,
+          30,
+          30,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 501.25625,
+        "height": 171.45000000000002,
+        "pos": [
+          386.78623601243135,
+          383.7878930976063
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "f2f6bc5a-62c0-4517-becd-32d72dd8c70e",
+          "version": "latest",
+          "debug_code": {},
+          "token_per_chunk": 8000.0,
+          "model_config": "custom.大模型配置"
+        }
+      },
+      "0x17dc55317e0": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+        "icon": "D:\\work\\CanvasMind\\icons\\多轮对话.svg",
+        "name": "文本输入",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 444.01500000000004,
+        "height": 268.05,
+        "pos": [
+          -211.38317549516591,
+          593.6718971353598
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "4752fa96-5d50-4850-bf60-c807d4015df3",
+          "version": "latest",
+          "debug_code": {},
+          "input": "总结该文档内容"
+        }
+      }
+    },
+    "connections": [
+      {
+        "out": [
+          "0x17dc547a740",
+          "file"
+        ],
+        "in": [
+          "0x17dc547b040",
+          "file_text"
+        ]
+      },
+      {
+        "in": [
+          "0x17dc547b040",
+          "instruction"
+        ],
+        "out": [
+          "0x17dc55317e0",
+          "text"
+        ]
+      }
+    ]
+  },
+  "runtime": {
+    "environment": "3.12",
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.12\\python.exe",
+    "node_id2stable_key": {
+      "0x17dc547a740": "数据集成/文档上传||文档上传",
+      "0x17dc547b040": "大模型组件/长文档内容问答||长文档内容问答",
+      "0x17dc55317e0": "数据集成/文本输入||文本输入"
+    },
+    "node_states": {
+      "数据集成/文档上传||文档上传": "success",
+      "大模型组件/长文档内容问答||长文档内容问答": "failed",
+      "数据集成/文本输入||文本输入": "success"
+    },
+    "node_inputs": {
+      "数据集成/文档上传||文档上传": {},
+      "大模型组件/长文档内容问答||长文档内容问答": {},
+      "数据集成/文本输入||文本输入": {}
+    },
+    "node_outputs": {
+      "数据集成/文档上传||文档上传": {
+        "file": "canvas_files\\workflows\\大模型长文档问答\\d49dd3d4-aa3d-4656-acd6-df1369f083e4\\解析.json"
+      },
+      "大模型组件/长文档内容问答||长文档内容问答": {},
+      "数据集成/文本输入||文本输入": {
+        "text": "总结该文档内容"
+      }
+    },
+    "column_select": {
+      "数据集成/文档上传||文档上传": {},
+      "大模型组件/长文档内容问答||长文档内容问答": {},
+      "数据集成/文本输入||文本输入": {}
+    }
+  },
+  "global_variable": {
+    "env": {
+      "user_id": null,
+      "canvas_id": null,
+      "session_id": null,
+      "run_id": null,
+      "metadata": {
+        "TZ": "Asia/Shanghai",
+        "LANG": "en_US.UTF-8",
+        "LC_ALL": "en_US.UTF-8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "0",
+        "PYTHONPATH": ".",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONWARNINGS": "ignore"
+      }
+    },
+    "custom": {
+      "大模型配置": {
+        "value": {
+          "模型名称": "qwen/qwen3-30b-a3b-2507",
+          "API_URL": "http://127.0.0.1:1234/v1",
+          "API_KEY": "",
+          "是否思考": true,
+          "温度": 0.7,
+          "最大Token": 8395,
+          "系统提示": ""
+        },
+        "description": null,
+        "read_only": false
+      }
+    },
+    "custom_order": [
+      "大模型配置"
+    ],
+    "node_vars": {},
+    "node_vars_order": []
+  }
+}
