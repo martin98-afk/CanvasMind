@@ -149,13 +149,16 @@ class ComponentDeveloperPage(QWidget):
         self.property_editor.properties_changed.connect(self._on_property_changed)
         self.code_editor.code_changed.connect(self._on_code_text_changed)
         # ✅ 保留 UI → 代码 实时同步（但修复同步逻辑）
+        self.code_editor.code_editor.installEventFilter(self)
         for widget in [self.name_edit, self.category_edit, self.description_edit, self.requirements_edit]:
             widget.installEventFilter(self)
-        self.requirements_edit.textChanged.connect(self._on_requirements_text_changed)
         self.history_table.itemChanged.connect(self._on_history_description_changed)
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.FocusOut:
+            if obj is self.code_editor.code_editor:
+                # 代码编辑器失去焦点，触发依赖分析
+                self._analysis_timer.start(300)  # 可设为短延迟，避免频繁触发
             if obj in [self.name_edit, self.category_edit, self.description_edit, self.requirements_edit]:
                 # ✅ 用户结束编辑，立即同步到代码
                 self._sync_basic_info_to_code()
@@ -721,9 +724,6 @@ except:
 
     def _on_code_text_changed(self):
         current_text = self.code_editor.get_code()
-        # ✅ 不再依赖 _current_component_code 比较（防止粘贴相同内容不触发）
-        if not self._updating_requirements_from_analysis:
-            self._analysis_timer.start(2000)
         # ✅ 触发代码 → UI 同步
         self._code_to_ui_sync_timer.start()
 
@@ -764,9 +764,6 @@ except:
             self._current_component_code = code
         except Exception as e:
             logger.warning(f"代码 → UI 同步失败: {e}")
-
-    def _on_requirements_text_changed(self):
-        self._analysis_timer.stop()
 
     def _analyze_code_for_requirements(self):
         code = self.code_editor.get_code()
@@ -810,9 +807,8 @@ except:
             code_cursor = self.code_editor.code_editor.textCursor()
             pos = code_cursor.position()
             self.requirements_edit.setPlainText(updated_text)
-            code_cursor.setPosition(pos + len(updated_text) - len(current_text))
-            self.code_editor.code_editor.setTextCursor(code_cursor)
             self._updating_requirements_from_analysis = False
+            self._sync_basic_info_to_code()
 
     def _parse_requirements_lines(self, text):
         lines = []
@@ -836,6 +832,7 @@ except:
             return
         self._saving = True
         try:
+            self._sync_basic_info_to_code()
             name = self.name_edit.text().strip()
             category = self.category_edit.currentText().strip()
             if not name or not category:

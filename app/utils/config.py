@@ -61,7 +61,7 @@ class Settings(QConfig):
         if cls._instance:
             cls._instance.save()
     # 版本信息
-    current_version = "v0.2.0"
+    current_version = "v0.2.2"
 
     # 通用设置
     auto_check_update = ConfigItem("General", "AutoCheckUpdate", True, BoolValidator())
