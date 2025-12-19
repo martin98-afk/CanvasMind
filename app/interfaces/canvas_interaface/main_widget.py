@@ -71,7 +71,7 @@ class CanvasPage(QWidget):
         # --- 快捷组件工具管理 ---
         self.quick_manager = QuickComponentManager(self, self.component_map)
         # --- 自动保存相关 ---
-        self._auto_saver = AutoSaver(self, self.file_path, self.config)
+        self._auto_saver = AutoSaver(self, self.config)
         # --- 环境管理 ---
         self.environment_manager = EnvironmentManager(self)
         # --- 画布io管理 ---
@@ -269,15 +269,8 @@ class CanvasPage(QWidget):
             self.property_panel.get_current_execution_order(),
         ).export_selected_nodes_as_project()
 
-    def save_full_workflow(self, file_path=None, show_info=True):
-        if not isinstance(file_path, str) or not isinstance(file_path, Path):
-            if self.file_path and self.file_path.stem.split(".")[0] == self.workflow_name:
-                file_path = self.file_path
-            else:
-                file_path = (self.file_path.parent if self.file_path else Path(
-                    "../app/interfaces")) / f"{self.workflow_name}.workflow.json"
-        self.canvas_io.save_full_workflow(file_path, show_info)
-        self.file_path = file_path
+    def save_full_workflow(self, show_info=True):
+        self.canvas_io.save_full_workflow(self.file_path, show_info)
 
     def load_full_workflow(self, file_path=None):
         self.canvas_io.load_full_workflow(file_path)

@@ -38,8 +38,8 @@ class ClickableLabel(BodyLabel):
 class ProjectCard(CardWidget):
     def __init__(self, project_path, parent=None):
         super().__init__(parent)
-        self.project_path = Path(project_path)
-        self.project_name = self.project_path.name
+        self.project_path = project_path
+        self.project_name = Path(project_path).name
         self.home = parent
         self.api_dot = None
         self.mcp_dot = None
@@ -132,7 +132,7 @@ class ProjectCard(CardWidget):
             self.image_label.deleteLater()
             self.image_label = None
 
-        preview_path = self.project_path / "preview.png"
+        preview_path = Path(self.project_path) / "preview.png"
         if preview_path.exists():
             self.image_label = ImageLabel(str(preview_path), self)
             self.image_label.setFixedSize(340, 150)
@@ -151,7 +151,7 @@ class ProjectCard(CardWidget):
         self.layout().insertWidget(1, self.image_label, 0, Qt.AlignCenter)
 
     def _update_service_button(self):
-        is_running = SERVICE_MANAGER.is_running(str(self.project_path))
+        is_running = SERVICE_MANAGER.is_running(self.project_path)
         if is_running:
             self.service_btn.setText("下线")
             self.service_btn.setIcon(FluentIcon.PAUSE)
@@ -162,12 +162,12 @@ class ProjectCard(CardWidget):
         self._load_status_info()
 
     def _open_request_dialog(self):
-        if not SERVICE_MANAGER.is_running(str(self.project_path)):
+        if not SERVICE_MANAGER.is_running(self.project_path):
             InfoBar.warning("服务未运行", "请先点击'上线'启动服务", parent=self.home)
             return
-        url = SERVICE_MANAGER.get_url(str(self.project_path))
+        url = SERVICE_MANAGER.get_url(self.project_path)
         if url:
-            dialog = ServiceRequestDialog(str(self.project_path), url, self.home)
+            dialog = ServiceRequestDialog(self.project_path, url, self.home)
             dialog.exec()
 
     def update_status(self, is_running=False):
@@ -188,15 +188,15 @@ class ProjectCard(CardWidget):
 
     def _load_status_info(self):
         # --- API 服务 ---
-        if SERVICE_MANAGER.is_running(str(self.project_path)):
-            api_url = SERVICE_MANAGER.get_url(str(self.project_path)) or "API服务：运行中"
+        if SERVICE_MANAGER.is_running(self.project_path):
+            api_url = SERVICE_MANAGER.get_url(self.project_path) or "API服务：运行中"
             api_status = 'green'
         else:
             api_url = "API服务：未部署"
             api_status = 'gray'
 
         # --- MCP 工具 ---
-        mcp_path = self.project_path / "mcp.json"
+        mcp_path = Path(self.project_path) / "mcp.json"
         if mcp_path.exists():
             try:
                 with open(mcp_path, 'r', encoding='utf-8') as f:
@@ -244,7 +244,7 @@ class ProjectCard(CardWidget):
             if os.name == 'nt':
                 os.startfile(self.project_path)
             else:
-                subprocess.call(['xdg-open', str(self.project_path)])
+                subprocess.call(['xdg-open', self.project_path])
         except Exception as e:
             if self.home:
                 InfoBar.error("打开失败", str(e), parent=self.home)
