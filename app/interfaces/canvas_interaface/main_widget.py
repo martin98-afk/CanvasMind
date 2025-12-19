@@ -407,7 +407,7 @@ class CanvasPage(QWidget):
         self.ui_manager.run_btn.clicked.connect(self.canvas_runner.run_workflow)
         self.ui_manager.pause_btn.clicked.connect(self._on_pause_resume_clicked)  # 新增
         self.ui_manager.stop_btn.clicked.connect(self.canvas_runner.stop_workflow)
-        self.ui_manager.save_btn.clicked.connect(self.save_full_workflow)
+        self.ui_manager.save_btn.clicked.connect(lambda: self.save_full_workflow())
         self.ui_manager.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
         self.ui_manager.close_btn.clicked.connect(
             lambda: (

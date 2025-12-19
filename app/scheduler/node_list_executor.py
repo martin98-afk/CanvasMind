@@ -126,9 +126,9 @@ class NodeListExecutor(QRunnable):
 
                 except Exception as e:
                     logger.error(f"节点 {node.name()} 执行失败: {e}")
-                    logger.error(traceback.format_exc())
                     if self.scheduler:
                         self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
+                    self.signals.error.emit(f"节点 {node.name()} 执行失败")
                     self.signals.node_error.emit(node.id)
                     return  # 出错停止（保持你原有逻辑）
 
@@ -138,7 +138,6 @@ class NodeListExecutor(QRunnable):
 
         except Exception as e:
             if not self.ctx.is_cancelled():
-                logger.error("执行器异常:")
                 logger.error(traceback.format_exc())
                 self.signals.error.emit(str(e))
             else:
