@@ -362,7 +362,7 @@ class GlobalPanelWidget:
         """
         内部处理逻辑，根据 var_type, var_name, action 更新UI。
         """
-        self.main_window.global_variables_changed.emit(var_type, var_name, action)
+        self.main_window.global_variables_changed.emit(f"{var_type}.{var_name}", action)
         # 重新获取 global_vars 对象，以防信号处理延迟导致的数据不一致
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars:

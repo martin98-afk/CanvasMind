@@ -99,6 +99,12 @@ class LowCodeWindow(FluentWindow):
                 self.develop_page._load_component(full_path)
             )
         )
+        self.project_manager.exported_projects_changed.connect(
+            self.workflow_manager.exported_projects_changed.emit
+        )
+        self.project_manager.running_projects_changed.connect(
+            self.workflow_manager.running_projects_changed.emit
+        )
     # endregion
 
     # region [4. 导航栏配置]

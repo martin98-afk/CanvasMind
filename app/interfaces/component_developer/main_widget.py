@@ -81,6 +81,7 @@ class ComponentDeveloperPage(QWidget):
         save_layout.addWidget(code_btn)
         save_layout.addWidget(BodyLabel("组件代码:"))
         template_dropdown = TransparentDropDownToolButton(FluentIcon.ALIGNMENT, parent=self)
+        self._current_template_code = DEFAULT_NODE_TEMPLATE
         menu = RoundMenu(parent=template_dropdown)
         for template_name in default_templates.keys():
             action = Action(
@@ -227,6 +228,7 @@ class ComponentDeveloperPage(QWidget):
             MessageManager.error(f"保存失败：{str(e)}", "请检查代码语法", self)
 
     def _switch_template(self, template_name, template_code):
+        self._current_template_code = template_code
         self.code_editor.replace_text_preserving_view(template_code)
         self._current_component_code = template_code
         MessageManager.success(f"已切换到模板: {template_name}", "", self)
@@ -282,21 +284,21 @@ class ComponentDeveloperPage(QWidget):
             ])
             properties = getattr(component, 'properties', {})
             self.property_editor.set_properties(properties)
-            try:
-                source_file = getattr(component, '_source_file', None)
-                source_code = self.extract_class_source_from_file(source_file, component.__name__)
-                self._current_component_file = Path(source_file)
-                self._current_component_code = source_code
-                self.code_editor.set_code(source_code)
-            except:
-                template = DEFAULT_NODE_TEMPLATE
-                template = template.replace("Component", component.__name__)
-                template = template.replace("我的组件", getattr(component, 'name', ''))
-                template = template.replace("数据处理", getattr(component, 'category', ''))
-                template = template.replace("这是一个示例组件", getattr(component, 'description', ''))
-                self._current_component_code = template
-                self.code_editor.replace_text_preserving_view(template)
-                self._current_component_file = None
+
+            source_file = getattr(component, '_source_file', None)
+            source_code = self.extract_class_source_from_file(source_file, component.__name__)
+            source_code = self.apply_component_info_to_code(
+                source_code, {
+                    "name": getattr(component, 'name', ''),
+                    "category": getattr(component, 'category', ''),
+                    "description": getattr(component, 'description', ''),
+                    "requirements": getattr(component, 'requirements', '')
+                }
+            )
+            self._current_component_file = Path(source_file)
+            self._current_component_code = source_code
+            self.code_editor.set_code(source_code)
+
             # ⚠️ 不再调用 _sync_basic_info_to_code（会覆盖代码！）
             if self._current_component_file:
                 self._load_history_list(self._current_component_file)
@@ -355,6 +357,14 @@ class ComponentDeveloperPage(QWidget):
             logger.error(traceback.format_exc())
             MessageManager.error(f"更新策略失败: {e}", "", self)
 
+    def apply_component_info_to_code(self, code: str, component_info: dict) -> str:
+        """将 component_info 中的基本信息应用到代码中"""
+        name = component_info["name"]
+        category = component_info["category"]
+        description = component_info.get("description", "")
+        requirements = component_info.get("requirements", "")
+        return self._update_basic_info_in_code(code, name, category, description, requirements)
+
     def _create_new_component(self, component_info):
         self.name_edit.setText(component_info["name"])
         self.category_edit.setText(component_info["category"])
@@ -362,10 +372,7 @@ class ComponentDeveloperPage(QWidget):
         self.input_port_editor.set_ports([])
         self.output_port_editor.set_ports([])
         self.property_editor.set_properties({})
-        template = DEFAULT_NODE_TEMPLATE
-        template = template.replace("我的组件", component_info["name"])
-        template = template.replace("数据处理", component_info["category"])
-        template = template.replace("这是一个示例组件", component_info["description"])
+        template = self.apply_component_info_to_code(self._current_template_code, component_info)
         self._current_component_code = template
         self.code_editor.replace_text_preserving_view(template)
         self._current_component_file = None

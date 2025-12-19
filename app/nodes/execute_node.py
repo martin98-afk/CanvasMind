@@ -8,9 +8,8 @@ import subprocess
 import time
 
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QFileDialog, QDialog
 from loguru import logger
-from qfluentwidgets import Dialog, MessageBox
+from qfluentwidgets import MessageBox
 
 # --- 其他原有导入 ---
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext, \
@@ -29,7 +28,7 @@ from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 from app.widgets.node_widget.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.node_widget.range_widget import RangeWidgetWrapper
 from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
-from app.widgets.node_widget.variable_combo_widget import GlobalVarComboBoxWidgetWrapper
+from app.widgets.node_widget.variable_combo_widget import VarComboBoxWidgetWrapper
 
 PERSISTENT_TEMP_ROOT = (canvas_file_dump_path() / "run_scripts").resolve()
 PERSISTENT_TEMP_ROOT.mkdir(exist_ok=True, parents=True)
@@ -295,11 +294,13 @@ def create_node_class(full_path, file_path, parent_window=None):
                     )
                     self.add_custom_widget(widget, tab='Properties')
                 elif prop_type == PropertyType.VARIABLE:  # 新增类型
+                    default_val = prop_def.get("default")
                     self.add_custom_widget(
-                        GlobalVarComboBoxWidgetWrapper(
+                        VarComboBoxWidgetWrapper(
                             parent=self.view,
                             name=prop_name,
                             label=label,
+                            var_type=default_val or "全局变量",
                             main_window=parent_window,  # 传入 main_window 引用
                             z_value=len(parent_window.component_map[full_path].get_properties()) - i
                         ),

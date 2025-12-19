@@ -143,7 +143,7 @@ class PropertyEditorWidget(SimpleCardWidget):
 
     def _get_default_value_from_widget(self, row: int):
         widget = self.table.cellWidget(row, 3)
-        if isinstance(widget, EditableComboBox):
+        if isinstance(widget, EditableComboBox) or isinstance(widget, ComboBox):
             return widget.currentText()
         elif hasattr(widget, 'switch'):
             return str(widget.switch.isChecked())
@@ -182,6 +182,14 @@ class PropertyEditorWidget(SimpleCardWidget):
             combo.setStyleSheet("color: white; background: transparent; border: none;")
             choices = self._choice_configs.get(prop_name, [])
             combo.addItems(choices)
+            combo.setFixedHeight(28)
+            combo.currentTextChanged.connect(self.properties_changed.emit)
+            self.table.setCellWidget(row, 3, combo)
+        elif prop_type == PropertyType.VARIABLE:
+            # 使用原生 QComboBox（支持 setEditable）
+            combo = ComboBox()
+            combo.setStyleSheet("color: white; background: transparent; border: none;")
+            combo.addItems(["全局变量", "导出项目", "MCP工具", "HTTP服务"])
             combo.setFixedHeight(28)
             combo.currentTextChanged.connect(self.properties_changed.emit)
             self.table.setCellWidget(row, 3, combo)

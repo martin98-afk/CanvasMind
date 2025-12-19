@@ -34,7 +34,7 @@ from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, Cus
 class CanvasPage(QWidget):
     canvas_deleted = pyqtSignal()
     canvas_saved = pyqtSignal(Path)
-    global_variables_changed = pyqtSignal(str, str, str)  # 用于刷新组件中的变量下拉菜单
+    global_variables_changed = pyqtSignal(str, str)  # 用于刷新组件中的变量下拉菜单
     env_changed = pyqtSignal(str)
     component_code_changed = pyqtSignal(str, str) # 组件文件地址、更新代码
     node_request_edit = pyqtSignal(str)
@@ -117,6 +117,14 @@ class CanvasPage(QWidget):
         self._connect_runner_signals()
 
     # 代理方法
+    @property
+    def running_projects_changed(self):
+        return self.manager.running_projects_changed
+
+    @property
+    def exported_projects_changed(self):
+        return self.manager.exported_projects_changed
+
     @property
     def context_register(self):
         return self.llm_context_provider.context_register

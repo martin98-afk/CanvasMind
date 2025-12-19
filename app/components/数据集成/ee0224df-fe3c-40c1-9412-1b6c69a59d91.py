@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent / "base.py" if (Path(__file__).parent / "base.py").exists() else Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -28,7 +28,7 @@ class Component(BaseComponent):
     properties = {
         "prop1": PropertyDefinition(
             type=PropertyType.VARIABLE,
-            default="",
+            default="全局变量",
             label="属性1",
         ),
     }

@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Set
 
-from PyQt5.QtCore import Qt, QTimer, QSize
+from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QDialog, QTextEdit, QFileDialog, QHBoxLayout, QFrame
 from loguru import logger
@@ -34,6 +34,9 @@ from app.widgets.side_dock_area.side_dock_area import SideDockArea
 
 
 class ExportedProjectsPage(QWidget):
+    exported_projects_changed = pyqtSignal(str, str)  # (project_path, operation: 'add'/'delete'/'update')
+    running_projects_changed = pyqtSignal(str, str)  # (project_path, is_running: True/False)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("exported_projects_page")
@@ -214,6 +217,7 @@ class ExportedProjectsPage(QWidget):
 
         for proj in projects_to_remove:
             self._known_projects.discard(proj)
+            self.exported_projects_changed.emit(proj, 'delete')
             self._project_info_map.pop(proj, None)
             if proj in self._card_map:
                 card = self._card_map[proj]
@@ -226,6 +230,7 @@ class ExportedProjectsPage(QWidget):
             if proj not in self._known_projects:
                 if (Path(proj) / "model.workflow.json").exists():
                     self._known_projects.add(proj)
+                    self.exported_projects_changed.emit(proj, 'add')
                     try:
                         stat = Path(proj).stat()
                         self._project_info_map[proj] = {
@@ -384,10 +389,11 @@ class ExportedProjectsPage(QWidget):
             if SERVICE_MANAGER.is_running(project_path):
                 SERVICE_MANAGER.stop_service(project_path)
                 self.service_test_tool.refresh(project_path, None)
+                self.running_projects_changed.emit(project_path, "delete")
                 self.create_success_info("服务已停止", "微服务已下线")
             else:
                 url = SERVICE_MANAGER.start_service(project_path)
-                print(url)
+                self.running_projects_changed.emit(project_path, "add")
                 self.service_test_tool.refresh(project_path, url)
                 self.create_success_info("服务已启动", f"访问: {url}")
             self.project_logs_tool.refresh(project_path)
