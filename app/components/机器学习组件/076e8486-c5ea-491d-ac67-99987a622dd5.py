@@ -35,39 +35,27 @@ class Component(BaseComponent):
             type=PropertyType.INT,
             default=100,
             label="树的数量",
-            min=1,
-            max=1000,
-            step=10,
         ),
         "max_depth": PropertyDefinition(
             type=PropertyType.INT,
             default=5,
             label="最大深度",
-            min=1,
-            max=20,
-            step=1,
         ),
         "min_samples_split": PropertyDefinition(
             type=PropertyType.INT,
             default=2,
             label="分裂所需最小样本数",
-            min=2,
-            max=100,
-            step=1,
         ),
         "min_samples_leaf": PropertyDefinition(
             type=PropertyType.INT,
             default=1,
             label="叶节点最小样本数",
-            min=1,
-            max=50,
-            step=1,
         ),
         "max_features": PropertyDefinition(
             type=PropertyType.CHOICE,
-            default="sqrt",
+            default="log2",
             label="最大特征数",
-            choices=["sqrt", "log2", "auto", "None"],
+            choices=["sqrt", "log2", "auto", "None"]
         ),
         "random_state": PropertyDefinition(
             type=PropertyType.INT,
@@ -78,9 +66,6 @@ class Component(BaseComponent):
             type=PropertyType.INT,
             default=-1,
             label="并行任务数",
-            min=-1,
-            max=16,
-            step=1,
         ),
     }
 
