@@ -461,7 +461,7 @@ class PortDefinition(BaseModel):
     connection: ConnectionType = ConnectionType.SINGLE
 
 
-class ModelMixin:
+class ModelMixin(BaseModel):
     """为输入模型添加 .get() 和 [] 访问方法，兼容字典用法"""
 
     def get(self, key: str, default=None):

@@ -387,7 +387,6 @@ class CanvasPage(QWidget):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
-        MessageManager.error("错误", f"工作流执行失败! {msg}", self)
 
     def on_node_error_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)

@@ -33,8 +33,9 @@ class RangeWidget(QtWidgets.QWidget):
 
         # 数值显示
         self.value_edit = LineEdit()
-        self.value_edit.setFixedWidth(60)
         self.value_edit.setAlignment(QtCore.Qt.AlignCenter)
+        self.value_edit.setMinimumWidth(30)  # 防止过窄
+        self._update_line_edit_width(self.min_val)  # 初始宽度
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -48,12 +49,22 @@ class RangeWidget(QtWidgets.QWidget):
         self.slider.valueChanged.connect(self._on_slider_changed)
         self.value_edit.editingFinished.connect(self._on_text_changed)
 
+    def _update_line_edit_width(self, value):
+        """根据数值动态调整 LineEdit 宽度"""
+        text = f"{value:.1f}"
+        font_metrics = self.value_edit.fontMetrics()
+        text_width = font_metrics.horizontalAdvance(text)
+        # 添加左右内边距（例如 8px），避免文字紧贴边框
+        padding = 30
+        new_width = max(30, text_width + padding)
+        self.value_edit.setFixedWidth(new_width)
+
     def _on_slider_changed(self, slider_val):
         real_val = self.min_val + slider_val * self.step
         if not self.is_float:
             real_val = int(real_val)
         self.value_edit.setText(f"{real_val:.1f}")
-
+        self._update_line_edit_width(real_val)
         # 只设置内部值，不立即触发信号
         self._current_value = real_val
         # 启动防抖定时器
@@ -73,6 +84,7 @@ class RangeWidget(QtWidgets.QWidget):
             if not self.is_float:
                 val = int(val)
             self.value_edit.setText(f"{val:.1f}")
+            self._update_line_edit_width(val)
             self.slider.setValue(int((val - self.min_val) / self.step))
 
             # 设置内部值并立即触发（因为是手动输入完成）
@@ -80,6 +92,7 @@ class RangeWidget(QtWidgets.QWidget):
             self.valueChanged.emit(val)
         except ValueError:
             self.value_edit.setText(f"{self.min_val:.1f}")
+            self._update_line_edit_width(self.min_val)
 
     def _emit_value_changed(self):
         """防抖定时器触发的最终信号发射"""
@@ -98,6 +111,7 @@ class RangeWidget(QtWidgets.QWidget):
         if not self.is_float:
             real_val = int(real_val)
         self.value_edit.setText(f"{real_val:.1f}")
+        self._update_line_edit_width(real_val)
         self.slider.setValue(int(steps))
         # 设置内部值但不触发信号
         self._current_value = real_val
