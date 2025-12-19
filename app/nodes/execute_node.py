@@ -306,7 +306,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                         ),
                         tab="properties"
                     )
-                    self.set_property(prop_name, default)
+                    self.set_property(prop_name, "无")
                 else:
                     self.add_custom_widget(
                         TextWidgetWrapper(
