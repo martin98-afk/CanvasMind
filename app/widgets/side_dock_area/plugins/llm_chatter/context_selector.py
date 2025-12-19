@@ -193,7 +193,7 @@ class ContextSelector(QWidget):
         self.parent = parent
         self._selected_keys = set()
         self._context_items: List[Tuple[str, Callable]] = []
-        self._context_cache: Dict[str, Tuple[str, str, Callable], bool] = {}  # key -> (name, formatted_text, callback)
+        self._context_cache: Dict[str, Tuple[str, str, Callable, bool]] = {}  # key -> (name, formatted_text, callback)
 
         self._refresh_context_items()
 
@@ -265,15 +265,7 @@ class ContextSelector(QWidget):
         context = ("===== 画布上下文信息开始 =====\n\n" +
                    "\n".join([context[1] for context in self._context_cache.values() if not context[3]]) +
                    "\n===== 上下文信息结束 =====\n\n") if self._context_cache else ""
-        return f"""# 角色
-你是低代码画布助手，主要工作：辅助分析画布内容、解答节点问题、帮忙推荐节点、设计画布流程；
-
-## 追问推荐规范
-- 操作类型:推荐追问,当你认为下一步用户会问哪些问题时,严格按照以下格式引用:
-[问题描述](ask)
-- 规范：放到回复最后，如果用户问题不清晰可以尝试重新描述问题。
-
-{context}
+        return f"""{context}
 
 理解上下文信息，遵守上下文交互规范，并给出下面用户问题一个完整、调理清晰的语言进行回复，使用规范的markdown语法。\n\n
 

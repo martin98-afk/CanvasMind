@@ -510,8 +510,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
-            canvas_page.component_code_changed.connect(self.component_code_changed.emit)    # 节点代码变更信号
-            canvas_page.node_request_edit.connect(self.node_request_edit.emit)              # 节点编辑请求信号
             canvas_interface = self.parent_window.addSubInterface(
                 canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self
             )
@@ -553,8 +551,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                     self._schedule_refresh()
                 )
             )
-            canvas_page.component_code_changed.connect(self.component_code_changed.emit)
-            canvas_page.node_request_edit.connect(self.node_request_edit.emit)
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
             # 添加到主界面
             canvas_interface = self.parent_window.addSubInterface(

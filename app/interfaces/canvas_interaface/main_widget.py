@@ -36,8 +36,6 @@ class CanvasPage(QWidget):
     canvas_saved = pyqtSignal(Path)
     global_variables_changed = pyqtSignal(str, str)  # 用于刷新组件中的变量下拉菜单
     env_changed = pyqtSignal(str)
-    component_code_changed = pyqtSignal(str, str) # 组件文件地址、更新代码
-    node_request_edit = pyqtSignal(str)
 
     def __init__(self, parent=None, object_name: Path = None, manager=None):
         super().__init__()
@@ -124,6 +122,14 @@ class CanvasPage(QWidget):
     @property
     def exported_projects_changed(self):
         return self.manager.exported_projects_changed
+
+    @property
+    def component_code_changed(self):
+        return self.manager.component_code_changed
+
+    @property
+    def node_request_edit(self):
+        return self.manager.node_request_edit
 
     @property
     def context_register(self):
