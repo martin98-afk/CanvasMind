@@ -3,7 +3,7 @@ import os
 import json
 import uuid
 from pathlib import Path
-from PyQt5.QtCore import Qt, QSize, QPoint, QRectF
+from PyQt5.QtCore import Qt, QSize, QPoint, QRectF, QTimer
 from PyQt5.QtWidgets import QLabel, QWidget, QVBoxLayout, QSizePolicy, QHBoxLayout, QSpacerItem, QLayoutItem, QApplication
 from PyQt5.QtGui import QPixmap, QPainter, QImage
 from qfluentwidgets import (
@@ -55,7 +55,7 @@ class SubgraphTemplatePanel(QWidget):
         layout.addWidget(add_env_btn)
         layout.addWidget(scroll, 1)
 
-        self._refresh_content()
+        QTimer.singleShot(100, self._refresh_content)
         self._built = True
 
     def set_scroll(self, widget):

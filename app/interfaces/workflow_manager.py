@@ -109,8 +109,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self._fixed_cards: List[CardWidget] = []
         self._refresh_pending = False
         # 全局统计节点连接情况
-        self.recommendation_engine = NodeRecommendationEngine()  # 稍后在 register_components 后初始化
-
+        self.recommendation_engine = NodeRecommendationEngine()  # 稍后在
         # 滚轮事件优化相关
         self._last_wheel_time = 0
         self._wheel_threshold = 100  # 毫秒，防止滚轮事件过于频繁
@@ -510,15 +509,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
-            canvas_interface = self.parent_window.addSubInterface(
-                canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self
-            )
-            canvas_interface.clicked.connect(
-                lambda: (
-                    canvas_page.register_components(),
-                    canvas_page._setup_pipeline_style()
-                )
-            )
+            self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
             self.opened_workflows[file_path] = canvas_page
 
         self.parent_window.switchTo(self.opened_workflows[file_path])
@@ -553,15 +544,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
             # 添加到主界面
-            canvas_interface = self.parent_window.addSubInterface(
-                canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
-            # 界面点击信号
-            canvas_interface.clicked.connect(
-                lambda: (
-                    canvas_page.register_components(),
-                    canvas_page._setup_pipeline_style()
-                )
-            )
+            self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
             self.opened_workflows[file_path] = canvas_page
 
         self.parent_window.switchTo(self.opened_workflows[file_path])

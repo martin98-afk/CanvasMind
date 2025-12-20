@@ -119,8 +119,6 @@ class CanvasIO(QObject):
             MessageManager.error("加载失败", f"工作流加载失败: {str(e)}", self.parent)
 
     def _finish_loading(self, runtime_data, node_status_data):
-        self.parent._setup_pipeline_style()
-
         env = runtime_data.get("environment")
         if env:
             for i in range(self.env_manager.env_combo.count()):
@@ -150,6 +148,6 @@ class CanvasIO(QObject):
 
         self.parent._node_id_cache = {node.id: node for node in self.graph.all_nodes()}
         self.parent._node_id_cache_valid = True
-        self.parent.ui_manager.create_name_label()
+        self.parent.create_name_label()
         self.parent._delayed_fit_view()
         MessageManager.success("加载成功", "工作流加载成功！", self.parent)
