@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 class LongTextQA(BaseComponent):
     name = "长文档内容问答"
     category = "大模型组件"
-    description = ""
+    description = "根据长文本和用户指令，通过分片处理与大模型结合，实现对超长文档内容的精准问答；输入为长文本和自然语言指令，输出为结构化或摘要式回复，支持通过参数配置切片长度和大模型配置。"
     requirements = "httpx"
     inputs = [
         PortDefinition(name="file_text", label="长文本", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
@@ -178,11 +178,11 @@ class LongTextQA(BaseComponent):
         if total_tokens <= MAX_TOKENS_PER_CHUNK:
             # 无需分片
             prompt = f"""用户指令：{instruction}
-    
-    完整输入文本：
-    {text_wrap_marker(file_text)}
-    
-    请直接生成完整、可用的回复（如代码、摘要等），不要解释过程，不要包含前缀。"""
+
+完整输入文本：
+{text_wrap_marker(file_text)}
+
+请直接生成完整、可用的回复（如代码、摘要等），不要解释过程，不要包含前缀。"""
             final_output = call_llm(prompt)
             return {"output": final_output.strip()}
     
@@ -193,18 +193,18 @@ class LongTextQA(BaseComponent):
     
         for i, chunk in enumerate(chunks, 1):
             prompt = f"""你正在处理一个长文本的第 {i}/{total} 片。
-    用户原始指令：{instruction}
-    
-    当前文本片段：
-    {text_wrap_marker(chunk)}
-    
-    请仅基于此片段，提取与指令相关的结构化中间结果。
-    - 输出必须是纯 JSON 格式，无任何额外文本。
-    - 若无相关信息，返回 {{}}。
-    
-    示例（根据指令变化）：
-    {{"errors": [...], "variables": [...]}}
-    """
+用户原始指令：{instruction}
+
+当前文本片段：
+{text_wrap_marker(chunk)}
+
+请仅基于此片段，提取与指令相关的结构化中间结果。
+- 输出必须是纯 JSON 格式，无任何额外文本。
+- 若无相关信息，返回 {{}}。
+
+示例（根据指令变化）：
+{{"errors": ..., "summary_sections": [{{"title": ..., "content": ...}}], "answers": [...]}}
+"""
             try:
                 resp = call_llm(prompt)
                 result = json.loads(resp.strip())
@@ -215,16 +215,12 @@ class LongTextQA(BaseComponent):
         aggregated = aggregate_intermediate_results(intermediate_results)
     
         final_prompt = f"""用户指令：{instruction}
-    
-    已聚合的结构化信息：
-    {text_wrap_marker(json.dumps(aggregated, ensure_ascii=False, indent=2))}
-    
-    请基于以上信息，生成完整、可用的最终回复。
-    - 若需生成代码，使用 PyQt5 和 qfluentwidgets，支持深色主题。
-    - 确保代码可直接运行，包含必要 import。
-    - 不要包含任何解释性文字（如“以下是代码”）。
-    - 若指令不要求代码，则返回自然语言或结构化文本。
-    """
+
+已聚合的结构化信息：
+{text_wrap_marker(json.dumps(aggregated, ensure_ascii=False, indent=2))}
+
+请基于以上信息，生成完整、可用的最终回复。
+"""
         final_output = call_llm(final_prompt)
         return {"output": final_output.strip()}
 

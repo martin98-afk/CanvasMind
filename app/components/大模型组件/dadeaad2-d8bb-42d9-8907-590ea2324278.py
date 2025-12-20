@@ -130,7 +130,7 @@ class Component(BaseComponent):
             else:
                 # 尝试以文本方式读取
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                    text = f.read()[:10000]  # 限制长度
+                    text = f.read()  # 限制长度
                 metadata["warning"] = "不支持的格式，尝试以文本读取"
 
             # 清理多余空白
