@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1f447705cc0": {
+      "0x1f2dc36f520": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -39,8 +39,8 @@
         "width": 166.175,
         "height": 69.6,
         "pos": [
-          -535.3785554496355,
-          27.35677449604941
+          -538.5164674244354,
+          33.632598445649094
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -51,7 +51,7 @@
           "debug_code": {}
         }
       },
-      "0x1f447706590": {
+      "0x1f2dc36f6d0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_长文档内容问答",
         "icon": null,
         "name": "长文档内容问答",
@@ -74,13 +74,13 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 508.61625000000004,
         "height": 171.45000000000002,
         "pos": [
-          625.0213096301286,
-          353.00604440818614
+          621.8833976553287,
+          359.2818683577858
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -94,7 +94,7 @@
           "model_config": "custom.大模型配置"
         }
       },
-      "0x1f447731ed0": {
+      "0x1f2dc36ff40": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": "D:\\work\\CanvasMind\\icons\\多轮对话.svg",
         "name": "文本输入",
@@ -122,8 +122,8 @@
         "width": 444.01500000000004,
         "height": 268.05,
         "pos": [
-          -211.38317549516591,
-          593.6718971353598
+          -214.52108746996578,
+          599.9477210849595
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -135,7 +135,7 @@
           "input": "投标保证保函及保函发票事宜咨询电话是多少"
         }
       },
-      "0x1f4477324a0": {
+      "0x1f2dc3945b0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_文档内容提取",
         "icon": null,
         "name": "文档内容提取",
@@ -163,8 +163,8 @@
         "width": 548.7225,
         "height": 154.65,
         "pos": [
-          -100.74140563769367,
-          59.9783388196397
+          -103.87931761249342,
+          66.25416276923939
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -177,7 +177,7 @@
           "page_range": ""
         }
       },
-      "0x1f447732d40": {
+      "0x1f2dc394e80": {
         "type_": "dynamic.StatusDynamicNode_数据处理_智能文本分片器",
         "icon": null,
         "name": "智能文本分片器",
@@ -220,7 +220,7 @@
           "max_tokens": 5000.0
         }
       },
-      "0x1f447733af0": {
+      "0x1f2dc395c30": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话测试",
         "icon": null,
         "name": "大模型对话测试",
@@ -266,7 +266,7 @@
           "model_params": []
         }
       },
-      "0x1f4477551b0": {
+      "0x1f2dc397490": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "提示词模板",
@@ -307,7 +307,7 @@
           "template": "用户原始指令：$node_vars.文本输入__text$\n\n当前文本片段：\n$input.输入端口__output$\n\n请仅基于此片段，提取与指令相关的结构化中间结果。\n- 输出必须是纯 JSON 格式，无任何额外文本。\n- 若无相关信息，返回 {{}}。\n\n示例（根据指令变化）：\n{{\"errors\": ..., \"summary_sections\": [{{\"title\": ..., \"content\": ...}}], \"answers\": [...]}}"
         }
       },
-      "0x1f447755690": {
+      "0x1f2dc397850": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话测试",
         "icon": null,
         "name": "大模型对话测试 1",
@@ -353,7 +353,7 @@
           "model_params": []
         }
       },
-      "0x1f447756f50": {
+      "0x1f2dc3c0fa0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_提示词模板",
         "icon": null,
         "name": "提示词模板 1",
@@ -394,7 +394,7 @@
           "template": "用户指令：$node_vars.文本输入__text$\n\n已聚合的结构化信息：\n$input.迭代控制流区域__outputs$\n\n请基于以上信息，生成完整、可用的最终回复。"
         }
       },
-      "0x1f447757580": {
+      "0x1f2dc3c14e0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": "D:\\work\\CanvasMind\\icons\\多轮对话.svg",
         "name": "文本输入 1",
@@ -435,7 +435,7 @@
           "input": "{\"input\": \"根据文档总结合同金额计算公式\"}"
         }
       },
-      "0x1f447757c40": {
+      "0x1f2dc3c1cc0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_获取导出项目",
         "icon": null,
         "name": "获取导出项目",
@@ -476,7 +476,7 @@
           "prop1": "canvas_files/projects/长文档问答"
         }
       },
-      "0x1f447784040": {
+      "0x1f2dc3c2080": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_工具调用",
         "icon": "icons/工具.svg",
         "name": "工具调用",
@@ -516,7 +516,7 @@
           "debug_code": {}
         }
       },
-      "0x1f447784340": {
+      "0x1f2dc3c2380": {
         "type_": "dynamic.StatusDynamicNode_项目执行_获取项目结构",
         "icon": null,
         "name": "获取项目结构",
@@ -557,7 +557,7 @@
           "project": "canvas_files/projects/长文档问答"
         }
       },
-      "0x1f4477847c0": {
+      "0x1f2dc3c26b0": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_大模型对话测试",
         "icon": null,
         "name": "大模型对话测试 2",
@@ -603,7 +603,7 @@
           "model_params": []
         }
       },
-      "0x1f447785db0": {
+      "0x1f2dc3c3d60": {
         "type_": "dynamic.StatusDynamicNode_数据转换_合并数据",
         "icon": null,
         "name": "合并数据",
@@ -643,7 +643,7 @@
           "debug_code": {}
         }
       },
-      "0x1f447784be0": {
+      "0x1f2dc3c3f10": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": "D:\\work\\CanvasMind\\icons\\多轮对话.svg",
         "name": "文本输入 2",
@@ -666,7 +666,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 463.70875,
         "height": 268.05,
@@ -684,7 +684,7 @@
           "input": "我要调用工具查询根据文档总结合同金额计算公式，根据我的工具结构输出输入参数"
         }
       },
-      "0x1f4477865f0": {
+      "0x1f2c1780580": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -722,7 +722,7 @@
           "persistent_id": "8afe2624-5a79-4c30-90f8-b96cc53f1ed7"
         }
       },
-      "0x1f447786dd0": {
+      "0x1f2c17806a0": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -760,7 +760,7 @@
           "persistent_id": "ee310ccb-c490-43f5-bb23-17b2bbbc8277"
         }
       },
-      "0x1f447787280": {
+      "0x1f2c17807f0": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": "D:\\work\\CanvasMind\\./icons/更新.svg",
         "name": "迭代控制流区域",
@@ -808,151 +808,151 @@
     "connections": [
       {
         "out": [
-          "0x1f447705cc0",
+          "0x1f2dc36f520",
           "file"
         ],
         "in": [
-          "0x1f4477324a0",
+          "0x1f2dc3945b0",
           "file_path"
         ]
       },
       {
         "in": [
-          "0x1f447706590",
+          "0x1f2dc36f6d0",
           "file_text"
         ],
         "out": [
-          "0x1f4477324a0",
+          "0x1f2dc3945b0",
           "text"
         ]
       },
       {
         "in": [
-          "0x1f447706590",
+          "0x1f2dc36f6d0",
           "instruction"
         ],
         "out": [
-          "0x1f447731ed0",
+          "0x1f2dc36ff40",
           "text"
         ]
       },
       {
         "out": [
-          "0x1f4477324a0",
+          "0x1f2dc3945b0",
           "text"
         ],
         "in": [
-          "0x1f447732d40",
+          "0x1f2dc394e80",
           "text"
         ]
       },
       {
         "out": [
-          "0x1f447732d40",
+          "0x1f2dc394e80",
           "chunks"
         ],
         "in": [
-          "0x1f447787280",
+          "0x1f2c17807f0",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x1f447733af0",
+          "0x1f2dc395c30",
           "input_data"
         ],
         "out": [
-          "0x1f4477551b0",
+          "0x1f2dc397490",
           "prompt"
         ]
       },
       {
         "out": [
-          "0x1f447733af0",
+          "0x1f2dc395c30",
           "response"
         ],
         "in": [
-          "0x1f447786dd0",
+          "0x1f2c17806a0",
           "input"
         ]
       },
       {
         "in": [
-          "0x1f4477551b0",
+          "0x1f2dc397490",
           "variables"
         ],
         "out": [
-          "0x1f4477865f0",
+          "0x1f2c1780580",
           "output"
         ]
       },
       {
         "in": [
-          "0x1f447755690",
+          "0x1f2dc397850",
           "input_data"
         ],
         "out": [
-          "0x1f447756f50",
+          "0x1f2dc3c0fa0",
           "prompt"
         ]
       },
       {
         "in": [
-          "0x1f447756f50",
+          "0x1f2dc3c0fa0",
           "variables"
         ],
         "out": [
-          "0x1f447787280",
+          "0x1f2c17807f0",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x1f447757580",
+          "0x1f2dc3c14e0",
           "text"
         ],
         "in": [
-          "0x1f447784040",
+          "0x1f2dc3c2080",
           "input"
         ]
       },
       {
         "out": [
-          "0x1f447757c40",
+          "0x1f2dc3c1cc0",
           "output1"
         ],
         "in": [
-          "0x1f447784040",
+          "0x1f2dc3c2080",
           "project_name"
         ]
       },
       {
         "out": [
-          "0x1f447784340",
+          "0x1f2dc3c2380",
           "project_spec"
         ],
         "in": [
-          "0x1f447785db0",
+          "0x1f2dc3c3d60",
           "input1"
         ]
       },
       {
         "in": [
-          "0x1f4477847c0",
+          "0x1f2dc3c26b0",
           "input_data"
         ],
         "out": [
-          "0x1f447785db0",
+          "0x1f2dc3c3d60",
           "output1"
         ]
       },
       {
         "in": [
-          "0x1f447785db0",
+          "0x1f2dc3c3d60",
           "input1"
         ],
         "out": [
-          "0x1f447784be0",
+          "0x1f2dc3c3f10",
           "text"
         ]
       }
@@ -962,25 +962,25 @@
     "environment": "3.12",
     "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.12\\python.exe",
     "node_id2stable_key": {
-      "0x1f447705cc0": "数据集成/文档上传||文档上传",
-      "0x1f447706590": "大模型组件/长文档内容问答||长文档内容问答",
-      "0x1f447731ed0": "数据集成/文本输入||文本输入",
-      "0x1f4477324a0": "大模型组件/文档内容提取||文档内容提取",
-      "0x1f447732d40": "数据处理/智能文本分片器||智能文本分片器",
-      "0x1f447733af0": "大模型组件/大模型对话测试||大模型对话测试",
-      "0x1f4477551b0": "大模型组件/提示词模板||提示词模板",
-      "0x1f447755690": "大模型组件/大模型对话测试||大模型对话测试 1",
-      "0x1f447756f50": "大模型组件/提示词模板||提示词模板 1",
-      "0x1f447757580": "数据集成/文本输入||文本输入 1",
-      "0x1f447757c40": "数据集成/获取导出项目||获取导出项目",
-      "0x1f447784040": "大模型组件/工具调用||工具调用",
-      "0x1f447784340": "项目执行/获取项目结构||获取项目结构",
-      "0x1f4477847c0": "大模型组件/大模型对话测试||大模型对话测试 2",
-      "0x1f447785db0": "数据转换/合并数据||合并数据",
-      "0x1f447784be0": "数据集成/文本输入||文本输入 2",
-      "0x1f4477865f0": "控制流/输入端口||输入端口",
-      "0x1f447786dd0": "控制流/输出端口||输出端口",
-      "0x1f447787280": "控制流/迭代控制流区域||迭代控制流区域"
+      "0x1f2dc36f520": "数据集成/文档上传||文档上传",
+      "0x1f2dc36f6d0": "大模型组件/长文档内容问答||长文档内容问答",
+      "0x1f2dc36ff40": "数据集成/文本输入||文本输入",
+      "0x1f2dc3945b0": "大模型组件/文档内容提取||文档内容提取",
+      "0x1f2dc394e80": "数据处理/智能文本分片器||智能文本分片器",
+      "0x1f2dc395c30": "大模型组件/大模型对话测试||大模型对话测试",
+      "0x1f2dc397490": "大模型组件/提示词模板||提示词模板",
+      "0x1f2dc397850": "大模型组件/大模型对话测试||大模型对话测试 1",
+      "0x1f2dc3c0fa0": "大模型组件/提示词模板||提示词模板 1",
+      "0x1f2dc3c14e0": "数据集成/文本输入||文本输入 1",
+      "0x1f2dc3c1cc0": "数据集成/获取导出项目||获取导出项目",
+      "0x1f2dc3c2080": "大模型组件/工具调用||工具调用",
+      "0x1f2dc3c2380": "项目执行/获取项目结构||获取项目结构",
+      "0x1f2dc3c26b0": "大模型组件/大模型对话测试||大模型对话测试 2",
+      "0x1f2dc3c3d60": "数据转换/合并数据||合并数据",
+      "0x1f2dc3c3f10": "数据集成/文本输入||文本输入 2",
+      "0x1f2c1780580": "控制流/输入端口||输入端口",
+      "0x1f2c17806a0": "控制流/输出端口||输出端口",
+      "0x1f2c17807f0": "控制流/迭代控制流区域||迭代控制流区域"
     },
     "node_states": {
       "数据集成/文档上传||文档上传": "success",
@@ -1029,7 +1029,7 @@
         "file": "canvas_files\\workflows\\大模型长文档问答\\d49dd3d4-aa3d-4656-acd6-df1369f083e4\\解析.json"
       },
       "大模型组件/长文档内容问答||长文档内容问答": {
-        "output": "如需咨询投标保证保函及保函发票相关事宜，您可拨打以下联系电话：\n\n- 服务热线：400-6399580  \n- 业务联系人：13948539227\n\n建议您在工作时间拨打，以便获得及时有效的服务。"
+        "output": "投标保证保函及保函发票事宜的咨询电话为：400-6399580 或 13948539227。  \n该联系方式为中国华电集团电子商务平台统一客户服务电话，可为您解答相关问题。"
       },
       "数据集成/文本输入||文本输入": {
         "text": "投标保证保函及保函发票事宜咨询电话是多少"
