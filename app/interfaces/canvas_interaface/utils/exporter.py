@@ -56,7 +56,7 @@ class CanvasExporter:
                                    f"- 参数描述：{inp.get('param_desc') or inp.get('port_desc')}\n   "
                                    f"- 参数格式：{inp['format']}\n   "
                                    f"- 参数格式描述：{inp['format_desc']}\n   "
-                                   f"- 参数参考样例输入：{str(inp['current_value'])[:200]}\n   "
+                                   f"- 参数参考样例输入：{str(inp['current_value'])[:300]}\n   "
                                    f"- 所属组件名：{inp['node_name']}\n   "
                                    f"- 组件参数类型：{inp['type']}\n\n")
                 output_desc = ""
@@ -235,7 +235,7 @@ class CanvasExporter:
                     "node_name": node.name(),
                     "param_name": prop_name,
                     "param_desc": prop_def.label,
-                    "current_value": val,
+                    "current_value": str(val)[:300],
                     "display_name": f"{node.name()} → {prop_name}",
                     "format": getattr(prop_def, 'type', None).name if prop_def else "TEXT",
                     "format_desc": prop_def.type.value if prop_def else "文本",
@@ -274,7 +274,7 @@ class CanvasExporter:
                     "node_name": node.name(),
                     "port_name": port_name,
                     "port_desc": port_desc,
-                    "current_value": val,
+                    "current_value": str(val)[:300],
                     "display_name": f"{port_name} → {node.name()}",
                     "format": port_type,
                     "format_desc": port_type_desc

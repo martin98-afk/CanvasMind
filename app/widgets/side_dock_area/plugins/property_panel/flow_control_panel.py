@@ -265,7 +265,7 @@ class FlowControlPanelWidget:
             for n in internal_nodes:
                 name = re.sub(r'\s+', '_', n.name())
                 for port in n.output_ports():
-                    extra_keys.append(f"node_vars.{name}_{port.name()}")
+                    extra_keys.append(f"node_vars.{name}__{port.name()}")
             condition_edit = VariableCompletionTextEdit(
                 get_variable_list_func=lambda keys=extra_keys: global_vars.get_vars(keys),
                 parent=self.parent_panel
