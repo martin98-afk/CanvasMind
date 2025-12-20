@@ -53,6 +53,7 @@ class LongTextQA(BaseComponent):
         Returns:
             dict: {"output": "完整回复字符串"}，可包含代码、摘要、结构化文本等
         """
+        MAX_SUMMARY_ITEMS = 8
         import re
         import json
         from typing import List, Dict, Any
@@ -80,9 +81,8 @@ class LongTextQA(BaseComponent):
             return content
     
         def estimate_tokens(text: str) -> int:
-            # 粗略估算：中文 1 字 ≈ 2 tokens，英文 1 字 ≈ 1.3 tokens，保守取 len//2
-            return len(text) // 2
-    
+            return len(text) // 2  # 保守估计，实际可用 tiktoken 替换
+
         def text_wrap_marker(text: str) -> str:
             return f"--- BEGIN INPUT ---\n{text}\n--- END INPUT ---"
     
@@ -110,7 +110,7 @@ class LongTextQA(BaseComponent):
             paragraphs = re.split(r'(\n\s*\n)', text)
             chunks = []
             current_chunk = ""
-            overlap_chars = int(max_tokens * overlap_ratio * 2)  # 保守估计字符数
+            overlap_chars = int(max_tokens * overlap_ratio * 2)
     
             for para in paragraphs:
                 if not para.strip():
@@ -131,80 +131,91 @@ class LongTextQA(BaseComponent):
             if current_chunk:
                 chunks.append(current_chunk)
     
-            # 简单去重（避免重叠区重复）
             deduped = []
             for c in chunks:
                 if not deduped or c.strip() != deduped[-1].strip():
                     deduped.append(c)
             return deduped
     
-        def aggregate_intermediate_results(results: List[Dict]) -> Dict[str, Any]:
-            aggregated = {}
-            for res in results:
-                if not isinstance(res, dict):
-                    continue
-                for key, value in res.items():
-                    if isinstance(value, list):
-                        aggregated.setdefault(key, []).extend(value)
-                    elif isinstance(value, dict):
-                        if key not in aggregated:
-                            aggregated[key] = {}
-                        aggregated[key].update(value)
-                    else:
-                        if key not in aggregated:
-                            aggregated[key] = value
+        def _summarize_batch(results: List[Dict], instr: str) -> Dict:
+            """
+            将一批中间结果合并为一个结构化摘要。
+            输入：List[Dict]，输出：Dict（保持相同 schema）
+            """
+            # 构建 prompt
+            batch_json = json.dumps(results, ensure_ascii=False, indent=2)
+            prompt = f"""你正在合并一组与用户指令相关的中间分析结果。
+    用户原始指令：{instr}
     
-            # 去重 list
-            for key, val in aggregated.items():
-                if isinstance(val, list):
-                    try:
-                        aggregated[key] = list(dict.fromkeys(val))
-                    except TypeError:
-                        seen = set()
-                        unique = []
-                        for item in val:
-                            rep = str(item)
-                            if rep not in seen:
-                                seen.add(rep)
-                                unique.append(item)
-                        aggregated[key] = unique
-            return aggregated
+    中间结果列表（每个元素来自一个文本片段）：
+    {text_wrap_marker(batch_json)}
     
-        # ==================== 主逻辑 ====================
+    请将这些结果**结构化合并**为一个统一的 JSON 对象。
+    - 保留所有关键信息；
+    - 合并同类项（如 list 合并、去重）；
+    - 若为空，返回 {{}}；
+    - **只输出 JSON，不要任何额外文本**。
+    """
+            try:
+                resp = call_llm(prompt)
+                return json.loads(resp.strip())
+            except Exception:
+                return {}
     
-        MAX_TOKENS_PER_CHUNK = 10000  # 根据你的模型调整
+        def recursive_summarize(results: List[Dict], instr: str, max_items: int = MAX_SUMMARY_ITEMS) -> Dict:
+            """
+            递归聚合中间结果，避免一次性输入过大。
+            """
+            if len(results) <= max_items:
+                return _summarize_batch(results, instr)
+    
+            # 分组聚合
+            grouped = []
+            for i in range(0, len(results), max_items):
+                batch = results[i:i + max_items]
+                summary = _summarize_batch(batch, instr)
+                grouped.append(summary)
+    
+            # 递归处理上一层
+            return recursive_summarize(grouped, instr, max_items)
+    
+        # ============= 主逻辑 =============
+    
+        # 解析 instruction（支持 JSON 格式传 api_key）
+        try:
+            instr_obj = json.loads(instruction)
+            user_instruction = instr_obj.get("instruction", instruction)
+        except:
+            user_instruction = instruction
+    
         total_tokens = estimate_tokens(file_text)
+        if total_tokens <= params.token_per_chunk:
+            prompt = f"""用户指令：{user_instruction}
     
-        if total_tokens <= MAX_TOKENS_PER_CHUNK:
-            # 无需分片
-            prompt = f"""用户指令：{instruction}
-
-完整输入文本：
-{text_wrap_marker(file_text)}
-
-请直接生成完整、可用的回复（如代码、摘要等），不要解释过程，不要包含前缀。"""
+    完整输入文本：
+    {text_wrap_marker(file_text)}
+    
+    请直接生成完整、可用的回复（如解答、摘要等），不要解释过程，不要包含前缀。"""
             final_output = call_llm(prompt)
             return {"output": final_output.strip()}
     
-        # 需要分片
-        chunks = smart_split_text(file_text, MAX_TOKENS_PER_CHUNK)
+        # 分片处理
+        chunks = smart_split_text(file_text, params.token_per_chunk)
         intermediate_results = []
-        total = len(chunks)
     
         for i, chunk in enumerate(chunks, 1):
-            prompt = f"""你正在处理一个长文本的第 {i}/{total} 片。
-用户原始指令：{instruction}
-
-当前文本片段：
-{text_wrap_marker(chunk)}
-
-请仅基于此片段，提取与指令相关的结构化中间结果。
-- 输出必须是纯 JSON 格式，无任何额外文本。
-- 若无相关信息，返回 {{}}。
-
-示例（根据指令变化）：
-{{"errors": ..., "summary_sections": [{{"title": ..., "content": ...}}], "answers": [...]}}
-"""
+            prompt = f"""你正在处理一个长文本的第 {i}/{len(chunks)} 片。
+    用户原始指令：{user_instruction}
+    
+    当前文本片段：
+    {text_wrap_marker(chunk)}
+    
+    请仅基于此片段，提取与指令相关的结构化中间结果。
+    - 输出必须是纯 JSON 格式，无任何额外文本。
+    - 若无相关信息，返回 {{}}。
+    
+    示例（根据指令变化）：
+    {{"answers": [...], "contacts": [...], "summary": "..."}}"""
             try:
                 resp = call_llm(prompt)
                 result = json.loads(resp.strip())
@@ -212,15 +223,20 @@ class LongTextQA(BaseComponent):
             except Exception:
                 intermediate_results.append({})
     
-        aggregated = aggregate_intermediate_results(intermediate_results)
+        # 递归聚合（关键改进！）
+        if not intermediate_results:
+            return {"output": "未能从文档中提取相关信息。"}
     
-        final_prompt = f"""用户指令：{instruction}
-
-已聚合的结构化信息：
-{text_wrap_marker(json.dumps(aggregated, ensure_ascii=False, indent=2))}
-
-请基于以上信息，生成完整、可用的最终回复。
-"""
+        aggregated = recursive_summarize(intermediate_results, user_instruction, MAX_SUMMARY_ITEMS)
+    
+        # 最终生成
+        final_prompt = f"""用户指令：{user_instruction}
+    
+    已聚合的结构化信息：
+    {text_wrap_marker(json.dumps(aggregated, ensure_ascii=False, indent=2))}
+    
+    请基于以上信息，生成完整、可用的最终回复。
+    """
         final_output = call_llm(final_prompt)
         return {"output": final_output.strip()}
 
@@ -231,7 +247,7 @@ if __name__ == "__main__":
     model = LongTextQA()
     result = model.debug(
         params={"prop1": "test"},
-        inputs={"input1": "output"},
+        inputs={"file_text": "根据长文本和用户指令，通过分片处理与大模型结合，实现对超长文档内容的精准问答；输入为长文本和自然语言指令，输出为结构化或摘要式回复，支持通过参数配置切片长度和大模型配置。", "instruction": "总结文档内容"},
         node_id="测试模型",
         show_input_types = True,
         show_output_types = True,
