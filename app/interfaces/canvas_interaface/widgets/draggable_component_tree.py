@@ -376,7 +376,6 @@ class DraggableTreeWidget(TreeWidget):
     def refresh_components(self):
         try:
             self.build_filtered_tree()
-
         except Exception as e:
             logger.error(f"刷新组件失败: {e}")
 

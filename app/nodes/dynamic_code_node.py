@@ -483,7 +483,6 @@ def create_dynamic_code_node(parent_window=None):
                 )
                 with open(temp_script_path, 'w', encoding='utf-8') as f:
                     f.write(script_content)
-
                 # === 5. 执行 ===
                 if kernel_manager is not None:
                     return self._execute_dynamic_via_ipython(
