@@ -72,7 +72,7 @@ class TextWidgetWrapper(CustomNodeBaseWidget):
             connected_ports = port.connected_ports()
             for connected_port in connected_ports:
                 safe_name = connected_port.node().name().replace(" ", "_")
-                vars.append(f"input.{safe_name}_{connected_port.name()}")
+                vars.append(f"input.{safe_name}__{connected_port.name()}")
 
         return vars
 
