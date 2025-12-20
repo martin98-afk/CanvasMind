@@ -65,24 +65,20 @@ class WorkflowScheduler(QObject):
                 if isinstance(current_value, list):
                     if isinstance(value, list):
                         node_var_obj.value = current_value + value
-                        logger.debug(f"变量 '{name}' (list) 已追加列表: {value}")
                     else:
                         # 如果当前是列表，但新值不是列表，将新值作为一个元素追加
                         node_var_obj.value = current_value + [value]
-                        logger.debug(f"变量 '{name}' (list) 已追加单个元素: {value}")
                 # --- 处理字典 ---
                 elif isinstance(current_value, dict):
                     if isinstance(value, dict):
                         # 合并字典，新值会覆盖同名键的旧值
                         node_var_obj.value = {**current_value, **value}
-                        logger.debug(f"变量 '{name}' (dict) 已合并字典: {value}")
                     else:
                         logger.warning(f"无法将非字典值 {value} (type: {type(value)}) 追加到字典变量 '{name}'。")
                 # --- 其他类型 ---
                 else:
                     # 对于其他类型，尝试直接相加，如果失败则覆盖
                     node_var_obj.value = [current_value, value]
-                    logger.debug(f"变量 '{name}' (type: {type(current_value)}) 已尝试追加: {value}")
             except TypeError as e:
                 # 如果相加操作不支持（例如 list + int），则记录警告并覆盖
                 logger.warning(f"追加变量 '{name}' 失败: {e}. 将覆盖旧值。")

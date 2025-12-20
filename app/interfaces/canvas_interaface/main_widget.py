@@ -403,7 +403,8 @@ class CanvasPage(QWidget):
     def _connect_signals(self):
         """连接调度器信号到 UI 回调"""
         # 连接自动组件同步刷新信号
-        ComponentScanner.register_on_change(self.node_operations.register_components)
+        ComponentScanner.register_on_change(self.nav_view.refresh_components)
+        ComponentScanner.register_on_change(self.node_operations.register_components, False)
         # 画布上按钮信号
         self.ui_manager.run_btn.clicked.connect(self.canvas_runner.run_workflow)
         self.ui_manager.pause_btn.clicked.connect(self._on_pause_resume_clicked)  # 新增

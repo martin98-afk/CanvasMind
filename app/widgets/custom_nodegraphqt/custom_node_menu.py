@@ -105,6 +105,13 @@ class CustomNodesMenu(NodeGraphMenu):
         nodes_menu = node_graph.get_context_menu('nodes')
     """
 
+    def add_commands(self, commands):
+        for command in commands:
+            if len(command) == 1:
+                self.add_separator(**command)
+            else:
+                self.add_command(**command)
+
     def add_command(self, name, func=None, node_type=None, node_class=None,
                     shortcut=None, icon=None):
         """
