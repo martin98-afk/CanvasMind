@@ -39,13 +39,19 @@ class OpenAIChatToolWindow(ToolWindow):
     _in_history_mode = False
     _current_history_index: Optional[int] = None
     _settings_popup = None  # 懒加载
-    _system_prompt = ""
     _is_welcome = False
     _first_show = False
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
     _gen_thread_pool = QThreadPool()
+    _system_prompt = """# 角色
+你是低代码画布助手，主要工作：辅助分析画布内容、解答节点问题、帮忙推荐节点、设计画布流程；
+
+## 追问推荐规范
+- 操作类型:推荐追问,当你认为下一步用户会问哪些问题时,严格按照以下格式引用:
+[问题描述](ask)
+- 规范：放到回复最后，如果用户问题不清晰可以尝试重新描述问题。\n\n"""
 
     def __init__(self, homepage):
         super().__init__(homepage)
@@ -139,7 +145,7 @@ class OpenAIChatToolWindow(ToolWindow):
         layout.addWidget(self.input_area)
 
     def set_system_prompt(self, prompt):
-        self._system_prompt = prompt
+        self._system_prompt += prompt
 
     def _open_settings_popup(self):
         # 懒加载 popup
@@ -558,8 +564,7 @@ class OpenAIChatToolWindow(ToolWindow):
         # 构建系统消息
         messages = []
         system_prompt = (self._system_prompt + llm_config.get("系统提示", "").strip()).strip()
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "system", "content": system_prompt})
 
         # 添加历史消息（注意：历史消息必须是纯文本，不能含 image_url）
         for msg in session.messages[:-1]:
@@ -576,8 +581,8 @@ class OpenAIChatToolWindow(ToolWindow):
         model_name = llm_config.get("模型名称", "")
         supports_vision = any(
             m in model_name.lower() for m in ["4o", "4-turbo", "gpt-4-v", "vision", "vl", "glm-4v", "qwen-vl"])
-
-        if supports_vision:
+        has_image = any([item[-1] for item in self.context_selector._context_cache])
+        if supports_vision and has_image:
             context_items = self.context_selector.get_multimodal_context_items()
             user_content_list = []
             for item in context_items:

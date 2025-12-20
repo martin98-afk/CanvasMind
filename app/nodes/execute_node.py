@@ -402,7 +402,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                             input_vars[safe_key] = inputs_raw[port_name]
                             for upstream in connected:
                                 safe_name = upstream.node().name().replace(" ", "_")
-                                safe_key = f"input_{safe_name}_{upstream.name()}"
+                                safe_key = f"input_{safe_name}__{upstream.name()}"
                                 input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
                         else:
                             inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
@@ -411,7 +411,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                             input_vars[safe_key] = inputs_raw[port_name]
                             safe_name = connected[0].node().name().replace(" ", "_")
                             # 上游节点输出端口key
-                            safe_key = f"input_{safe_name}_{connected[0].name()}"
+                            safe_key = f"input_{safe_name}__{connected[0].name()}"
                             input_vars[safe_key] = inputs_raw[port_name]
                         if port_name in self.column_select:
                             inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)

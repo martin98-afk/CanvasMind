@@ -204,7 +204,7 @@ class BackdropExecutor(QObject):
                 if hasattr(node, '_output_values'):
                     node_name = re.sub(r'\s+', '_', node.name())
                     for port, val in node._output_values.items():
-                        results_map[f"node_vars_{node_name}_{port}"] = val
+                        results_map[f"node_vars_{node_name}__{port}"] = val
 
             except Exception as e:
                 self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)

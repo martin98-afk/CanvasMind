@@ -213,7 +213,7 @@ def create_branch_node(parent_window):
                     input_vars[safe_key] = inputs_raw[port_name]
                     for upstream in connected:
                         safe_name = upstream.node().name().replace(" ", "_")
-                        safe_key = f"input_{safe_name}_{upstream.name()}"
+                        safe_key = f"input_{safe_name}__{upstream.name()}"
                         input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
 
             expr_engine = ExpressionEngine(global_vars_context=gv)

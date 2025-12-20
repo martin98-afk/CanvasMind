@@ -146,6 +146,7 @@ class ComponentScanner:
     _refresh_pending: bool = False
     _main_loop: Optional[asyncio.AbstractEventLoop] = None
     _callbacks = []  # 存储外部注册的回调函数
+    _qtimers = []
 
     def __new__(cls):
         if cls._instance is None:
@@ -166,21 +167,27 @@ class ComponentScanner:
                 self._start_component_watcher()
 
     @classmethod
-    def register_on_change(cls, callback):
+    def register_on_change(cls, callback, qtimer=True):
         """外部注册刷新回调（如 UI 刷新）"""
         if callback not in cls._callbacks:
             cls._callbacks.append(callback)
+            cls._qtimers.append(qtimer)
 
     @classmethod
     def unregister_on_change(cls, callback):
         if callback in cls._callbacks:
+            cls._qtimers.pop(cls._callbacks.index(callback))
             cls._callbacks.remove(callback)
 
     def _notify_change(self):
         """内部通知所有监听者"""
         for cb in self._callbacks:
             try:
-                QTimer.singleShot(0, cb)
+                logger.info(f"Notify change: {cb}")
+                if self._qtimers[self._callbacks.index(cb)]:
+                    QTimer.singleShot(0, cb)
+                else:
+                    cb()
             except Exception as e:
                 logger.error(f"Callback error: {e}")
 
@@ -193,7 +200,7 @@ class ComponentScanner:
         threading.Thread(target=run, daemon=True, name="ComponentWatcher").start()
 
     async def _watch_component_files(self):
-        """监听 app/components/ 下 .py 文件变更"""
+        """监听 app/components/ 下 .py 文件变更，忽略 .temp 目录"""
         comp_dir = self._components_dir.resolve()
         if not comp_dir.exists():
             logger.warning(f"组件目录不存在，跳过监听: {comp_dir}")
@@ -204,11 +211,15 @@ class ComponentScanner:
             need_refresh = False
             for change_type, file_path in changes:
                 path = Path(file_path)
+
+                # 🚫 忽略路径中包含 '.temp' 的文件
+                if ".temp" in path.parts:
+                    continue
+
                 if path.suffix == ".py" and path.name not in ("__init__.py", "base.py"):
                     logger.info(f"检测到组件代码变更 ({change_type.name}): {path}")
                     need_refresh = True
             if need_refresh:
-                # 安全地触发 refresh（避免高频调用）
                 self._schedule_refresh()
 
     def _schedule_refresh(self):

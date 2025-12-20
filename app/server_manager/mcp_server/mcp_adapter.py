@@ -96,18 +96,21 @@ class McpWorkflowTool:
 
             if fmt in ["FILE", "IMAGE", "EXCEL", "UPLOAD"]:
                 if isinstance(value, str):
-                    if value.startswith("data:"):
-                        b64_part = value.split(",", 1)[1] if "," in value else value
+                    if Path(value).exists():
+                        tmp_path = value
                     else:
-                        b64_part = value
-                    binary_data = base64.b64decode(b64_part)
+                        if value.startswith("data:"):
+                            b64_part = value.split(",", 1)[1] if "," in value else value
+                        else:
+                            b64_part = value
+                        binary_data = base64.b64decode(b64_part)
+                        suffix = self._guess_suffix(fmt)
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                            tmp.write(binary_data)
+                            tmp_path = tmp.name
                 else:
                     raise ValueError(f"File input {key} must be base64 string")
 
-                suffix = self._guess_suffix(fmt)
-                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                    tmp.write(binary_data)
-                    tmp_path = tmp.name
                 external_inputs[key] = tmp_path
                 temp_files.append(tmp_path)  # 记录以便清理
             else:

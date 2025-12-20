@@ -372,7 +372,6 @@ class DraggableTreeWidget(TreeWidget):
 
     def _init_components(self):
         self.build_filtered_tree()
-        ComponentScanner.register_on_change(self.refresh_components)
 
     def refresh_components(self):
         try:
@@ -392,8 +391,6 @@ class DraggableTreeWidget(TreeWidget):
             mime_data = QMimeData()
             mime_data.setText(full_path)
             drag.setMimeData(mime_data)
-
-            preview = self.create_drag_preview(full_path)
             LOGIC_WIDTH, LOGIC_HEIGHT = 180, 120  # 和 create_drag_preview 中的 base 尺寸一致
             preview = self.create_drag_preview(full_path)
             drag.setPixmap(preview)

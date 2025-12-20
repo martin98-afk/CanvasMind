@@ -4,7 +4,7 @@ import traceback
 from pathlib import Path
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint
+from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint, QTimer
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget
 from loguru import logger
@@ -36,8 +36,6 @@ class CanvasPage(QWidget):
     canvas_saved = pyqtSignal(Path)
     global_variables_changed = pyqtSignal(str, str)  # 用于刷新组件中的变量下拉菜单
     env_changed = pyqtSignal(str)
-    component_code_changed = pyqtSignal(str, str) # 组件文件地址、更新代码
-    node_request_edit = pyqtSignal(str)
 
     def __init__(self, parent=None, object_name: Path = None, manager=None):
         super().__init__()
@@ -114,7 +112,7 @@ class CanvasPage(QWidget):
         )
         self.ui_manager.log_window.cardDoubleClicked.connect(self.node_operations.select_nodes_by_name)
         self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
-        self._connect_runner_signals()
+        self._connect_signals()
 
     # 代理方法
     @property
@@ -124,6 +122,14 @@ class CanvasPage(QWidget):
     @property
     def exported_projects_changed(self):
         return self.manager.exported_projects_changed
+
+    @property
+    def component_code_changed(self):
+        return self.manager.component_code_changed
+
+    @property
+    def node_request_edit(self):
+        return self.manager.node_request_edit
 
     @property
     def context_register(self):
@@ -255,9 +261,6 @@ class CanvasPage(QWidget):
     def get_current_python_exe(self):
         return self.environment_manager.get_current_python_exe()
 
-    def _setup_pipeline_style(self):
-        return self.ui_manager._setup_pipeline_style()
-
     def switch_to_parent(self):
         self.parent.switchTo(self.parent.workflow_manager)
 
@@ -283,9 +286,6 @@ class CanvasPage(QWidget):
 
     def create_backdrop_node(self, key):
         self.node_operations.create_backdrop_node(key)
-
-    def register_components(self):
-        self.node_operations.register_components()
 
     def _setup_context_menus(self):
         graph_menu = self.graph.get_context_menu('graph')
@@ -381,7 +381,6 @@ class CanvasPage(QWidget):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
-        MessageManager.error("错误", f"工作流执行失败! {msg}", self)
 
     def on_node_error_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)
@@ -401,13 +400,16 @@ class CanvasPage(QWidget):
             # 直接调用 set_node_status，恢复即时更新
             QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING))
 
-    def _connect_runner_signals(self):
+    def _connect_signals(self):
         """连接调度器信号到 UI 回调"""
+        # 连接自动组件同步刷新信号
+        ComponentScanner.register_on_change(self.nav_view.refresh_components)
+        ComponentScanner.register_on_change(self.node_operations.register_components, False)
         # 画布上按钮信号
         self.ui_manager.run_btn.clicked.connect(self.canvas_runner.run_workflow)
         self.ui_manager.pause_btn.clicked.connect(self._on_pause_resume_clicked)  # 新增
         self.ui_manager.stop_btn.clicked.connect(self.canvas_runner.stop_workflow)
-        self.ui_manager.save_btn.clicked.connect(self.save_full_workflow)
+        self.ui_manager.save_btn.clicked.connect(lambda: self.save_full_workflow())
         self.ui_manager.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
         self.ui_manager.close_btn.clicked.connect(
             lambda: (
@@ -428,10 +430,57 @@ class CanvasPage(QWidget):
         self.canvas_runner.node_finished.connect(self.on_node_finished_simple)
         self.canvas_runner.node_error.connect(self.on_node_error_simple)
         self.canvas_runner.node_status_changed.connect(self.set_node_status_by_id)
-
+        # 画布样式更改信号
+        self.config.canvas_grid_mode.valueChanged.connect(self.ui_manager._setup_pipeline_style)
+        self.config.canvas_pipelayout.valueChanged.connect(self.ui_manager._setup_pipeline_style)
+        self.config.canvas_direction.valueChanged.connect(self.ui_manager._setup_pipeline_style)
         # 面板刷新信号
         self.canvas_runner.property_changed.connect(self.property_panel.update_properties)
         self.canvas_runner.node_vars_changed.connect(self.property_panel.refresh_node_vars_page)
+
+    # 断开信号
+    def _disconnect_signals(self):
+        # 原有
+        ComponentScanner.unregister_on_change(self.node_operations.register_components)
+        ComponentScanner.unregister_on_change(self.nav_view.refresh_components)
+
+        # 新增：断开 UI 按钮信号
+        try:
+            self.ui_manager.run_btn.clicked.disconnect(self.canvas_runner.run_workflow)
+            self.ui_manager.pause_btn.clicked.disconnect(self._on_pause_resume_clicked)
+            self.ui_manager.stop_btn.clicked.disconnect(self.canvas_runner.stop_workflow)
+            self.ui_manager.save_btn.clicked.disconnect()
+            self.ui_manager.export_model_btn.clicked.disconnect()
+            self.ui_manager.close_btn.clicked.disconnect()
+        except TypeError:
+            pass  # 未连接则忽略
+
+        # 断开 Runner 信号
+        self.canvas_runner.workflow_started.disconnect(self._on_workflow_started)
+        self.canvas_runner.workflow_paused.disconnect(self._on_workflow_paused)
+        self.canvas_runner.workflow_resumed.disconnect(self._on_workflow_resumed)
+        self.canvas_runner.workflow_cancelled.disconnect(self._on_workflow_cancelled)
+        self.canvas_runner.workflow_finished.disconnect(self._on_workflow_finished)
+        self.canvas_runner.workflow_error.disconnect(self._on_workflow_error)
+        self.canvas_runner.node_started.disconnect(self.on_node_started_simple)
+        self.canvas_runner.node_finished.disconnect(self.on_node_finished_simple)
+        self.canvas_runner.node_error.disconnect(self.on_node_error_simple)
+        self.canvas_runner.node_status_changed.disconnect(self.set_node_status_by_id)
+        self.canvas_runner.property_changed.disconnect()
+        self.canvas_runner.node_vars_changed.disconnect()
+
+        # 断开配置信号
+        self.config.canvas_grid_mode.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
+        self.config.canvas_pipelayout.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
+        self.config.canvas_direction.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
+
+        # 断开环境/变量信号
+        try:
+            self.env_combo.currentIndexChanged.disconnect(self.on_environment_changed)
+            self.env_changed.disconnect(self.connect_kernel)
+            self.global_variables_changed.disconnect(self._on_global_variables_changed)
+        except TypeError:
+            pass
 
     # --- 画布按键信号 ---
     def _canvas_key_press_event(self, event):
@@ -619,7 +668,7 @@ class CanvasPage(QWidget):
     def _delayed_fit_view(self):
         self.graph._viewer.zoom_to_nodes(self.graph._viewer.all_nodes())
         self.property_panel.set_allowed_update(True)
-        self.property_panel.update_properties(None)
+        QTimer.singleShot(100, lambda: self.property_panel.update_properties(None))
 
     def _undo(self):
         try:
@@ -651,7 +700,7 @@ class CanvasPage(QWidget):
         # 1. 停止并断开所有定时器
         self._auto_saver.stop()
         self.ipython_kernel.stop_kernel()
-        ComponentScanner.unregister_on_change(self.nav_view.refresh_components)
+        self._disconnect_signals()
         self.ui_manager.destroy_all()
         # ===== 7. 销毁 UI 控件（确保 parent=None）=====
         self.graph.deleteLater()
