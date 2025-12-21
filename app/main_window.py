@@ -117,10 +117,9 @@ class LowCodeWindow(FluentWindow):
         )
         workflow_item.clicked.connect(self._on_workflow_clicked)
 
-        dev_item = self.addSubInterface(
+        self.addSubInterface(
             self.develop_page, get_icon("组件"), '组件管理'
         )
-        dev_item.clicked.connect(self._on_develop_clicked)
 
         project_item = self.addSubInterface(
             self.project_manager, get_icon("项目"), '项目管理'
@@ -165,10 +164,6 @@ class LowCodeWindow(FluentWindow):
     def _on_workflow_clicked(self):
         self.workflow_manager._schedule_refresh()
         self.workflow_manager.build_recommendation_engine()
-
-    def _on_develop_clicked(self):
-        python_exe = self.package_manager.get_current_python_exe()
-        self.develop_page.code_editor.code_editor.set_jedi_environment(python_exe)
 
     def _on_log_clicked(self):
         self.text_logger._clean_trailing_empty_lines()
