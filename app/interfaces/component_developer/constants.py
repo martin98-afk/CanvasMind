@@ -216,5 +216,5 @@ if __name__ == "__main__":
 请根据以上规范回答用户问题：
 '''
 
-DEFAULT_SPLITTER_SIZES = [50, 450, 450]
+DEFAULT_SPLITTER_SIZES = [50, 350, 450]
 HIDE_SPLITTER_SIZES = [50, 450, 0]

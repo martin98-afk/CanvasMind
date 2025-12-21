@@ -15,11 +15,6 @@ def register_global_variable(node, global_variable):
         node.model.add_property("global_variable", global_variable.serialize())
 
 
-def unregister_global_variable(node):
-    if node.has_property("global_variable"):
-        node.set_property("global_variable", None)
-
-
 def execute_node(
     node,
     component_map,
@@ -66,7 +61,6 @@ def execute_node(
             check_cancel=execution_context.check_cancel,
             kernel_manager=kernel_manager if run_mode == "ipython运行" else None
         )
-        unregister_global_variable(node)
 
         # 变量自动更新
         if results is not None:

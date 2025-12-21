@@ -303,14 +303,16 @@ class SampleModelCardView(SimpleCardWidget):
         StyleSheet.SAMPLE_CARD.apply(self)
         # 添加示例卡片
         examples = [
-            {"icon": get_icon("大模型"), "title": "自动组件生成", "content": "使用智能体自动生成组件",
+            {"icon": get_icon("大模型"), "title": "自动组件生成", "content": "使用智能体自动生成组件工作流",
              "key": "自动组件生成"},
             {"icon": get_icon("更新"), "title": "循环迭代样例", "content": "循环、迭代节点使用方法",
              "key": "循环、迭代样例模型"},
-            {"icon": get_icon("逻辑回归A"), "title": "机器学习样例", "content": "常见机器学习流程",
+            {"icon": get_icon("逻辑回归A"), "title": "机器学习样例", "content": "常见机器学习流程，模型训练、模型推理、文件压缩",
              "key": "机器学习算法样例模型"},
-            {"icon": get_icon("智能体"), "title": "React智能体", "content": "工具调用智能体样例",
+            {"icon": get_icon("智能体"), "title": "React智能体", "content": "工具调用智能体样例，通过导出项目作为mcp工具辅助问答",
              "key": "react智能体"},
+            {"icon": get_icon("HTTP请求"), "title": "http请求", "content": "http请求样例模型，包含请求体合并操作",
+             "key": "http请求样例模型"},
         ]
 
         for i, ex in enumerate(examples):

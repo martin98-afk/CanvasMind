@@ -39,12 +39,9 @@ class Component(BaseComponent):
     properties = {
         "seconds": PropertyDefinition(
             type=PropertyType.FLOAT,
+            default=5.0,
             label="等待时间（秒）",
-            default="5.0",
-            min=0.0,
-            max=3600.0,
-            step=0.1
-        )
+        ),
     }
 
     def run(self, params, inputs=None):
