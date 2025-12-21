@@ -111,7 +111,7 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.setFixedWidth(180)
                 widget.setPlaceholderText(label)
                 widget.textChanged.connect(self.changed)
-                widget.setText(default)
+                widget.setText(str(default))
                 self.fields[key] = widget
                 input_row.addWidget(widget)
 

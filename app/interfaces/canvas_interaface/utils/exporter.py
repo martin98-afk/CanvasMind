@@ -135,7 +135,10 @@ class CanvasExporter:
                 params = node.model.custom_properties
                 if node.FULL_PATH.startswith("代码执行/"):
                     params["run_script"] = node.format_code()
-                exported_params = {k: self._process_value_for_export(v, inputs_dir) for k, v in params.items()}
+                exported_params = {
+                    k: self._process_value_for_export(v, inputs_dir) for k, v in params.items()
+                    if k not in ("global_variable")
+                }
                 current_inputs = self._collect_node_inputs(node, inputs_dir)
                 node_data = {
                     "name": node.name(),
@@ -222,10 +225,10 @@ class CanvasExporter:
         inputs = []
         for node in nodes:
             cls = self.component_map.get(node.FULL_PATH)
-            if not cls:
-                continue
             # 超参数
             for prop_name, val in node.model.custom_properties.items():
+                if cls is None:
+                    continue
                 prop_def = cls.properties.get(prop_name)
                 if not prop_def:
                     continue
@@ -236,7 +239,7 @@ class CanvasExporter:
                     "param_name": prop_name,
                     "param_desc": prop_def.label,
                     "current_value": str(val)[:300],
-                    "display_name": f"{node.name()} → {prop_name}",
+                    "display_name": f"{prop_name}({prop_def.label})",
                     "format": getattr(prop_def, 'type', None).name if prop_def else "TEXT",
                     "format_desc": prop_def.type.value if prop_def else "文本",
                 }
@@ -246,17 +249,24 @@ class CanvasExporter:
                     item["schema"] = {k: {"type": v.type.name if v else "TEXT"} for k, v in prop_def.schema.items()}
                 inputs.append(item)
             # 输入端口
+            node.model.inputs.keys()
             for port in node.input_ports():
                 port_name = port.name()
                 port_desc = ""
                 port_type = "TEXT"
                 port_type_desc = ""
-                if hasattr(cls, 'inputs'):
+                if cls is not None and hasattr(cls, 'inputs'):
                     for inp in cls.inputs:
                         if inp.name == port_name:
                             port_type = inp.type.name
                             port_type_desc = inp.type.value
                             port_desc = inp.label
+                            break
+                elif node.FULL_PATH.startswith("代码执行/"):
+                    input_ports = node.model.custom_properties['input_ports']
+                    for inp in input_ports:
+                        if inp["name"] == port_name:
+                            port_type = inp["type"]
                             break
                 if port.multi_connection():
                     port_type = f"ARRAY[{port_type}]"
@@ -275,7 +285,7 @@ class CanvasExporter:
                     "port_name": port_name,
                     "port_desc": port_desc,
                     "current_value": str(val)[:300],
-                    "display_name": f"{port_name} → {node.name()}",
+                    "display_name": f"{port_name}" if not port_desc else f"{port_name}({port_desc})",
                     "format": port_type,
                     "format_desc": port_type_desc
                 })
@@ -285,7 +295,6 @@ class CanvasExporter:
         outputs = []
         for node in nodes:
             output_ports = node.model.outputs.keys()
-            # outputs_dict = getattr(node, '_output_values', {})
             cls = self.component_map.get(node.FULL_PATH)
             for out_name in output_ports:
                 out_type = "TEXT"
@@ -304,8 +313,7 @@ class CanvasExporter:
                     "node_name": node.name(),
                     "output_name": out_name,
                     "output_desc": out_desc,
-                    # "sample_value": str(out_val)[:50] + "..." if len(str(out_val)) > 50 else str(out_val),
-                    "display_name": f"{node.name()} → {out_name}",
+                    "display_name": f"{out_name}" if not out_desc else f"{out_name}({out_desc})",
                     "format": out_type,
                     "format_desc": out_type_desc
                 })
