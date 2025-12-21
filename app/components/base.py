@@ -695,6 +695,8 @@ class DataHandler:
             return dst
 
     def _process_multiple_inputs(self, input_name: str, input_values: List[Any], input_type: ArgumentType) -> List[Any]:
+        if input_values is None:
+            return []
         return [
             self.read_input_data(input_name, val, input_type)
             for val in input_values
