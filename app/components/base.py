@@ -5,6 +5,7 @@ import os
 import pickle
 import re
 import sys
+import traceback
 import uuid
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -1022,13 +1023,10 @@ class BaseComponent(ABC):
             return stored_result
 
         except ImportError as e:
-            self.logger.error(f"环境安装包缺失: {e}")
-            raise e
+            raise ComponentError(f"环境安装包缺失: {e}", "MISSING_DEPENDENCY")
 
         except Exception as e:
-            import traceback
-            error_msg = f"组件执行失败: {traceback.format_exc()}"
-            raise ComponentError(error_msg, "EXECUTION_ERROR")
+            raise ComponentError(f"组件执行失败: {traceback.format_exc()}", "EXECUTION_ERROR")
 
     # ---------------- 组件调试专用方法 ----------------
     def debug(self,
