@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
-# -*- coding: utf-8 -*-
 import ast
+import re
 import sys
 from typing import List, Tuple, Dict
 
 import parso
-from PyQt5.QtCore import Qt, QTimer, QSize, QRect
-from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter, QCursor, QTextCharFormat, QKeySequence
-from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle, QVBoxLayout, QShortcut
-from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QToolTip
+from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal, QObject, QRect, QEvent, QFileSystemWatcher
+from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter, QCursor, QTextBlock, QTextCharFormat, QKeySequence
+from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle, QVBoxLayout, QShortcut, QMainWindow, QWidget, QApplication, QToolTip
 from intervaltree import IntervalTree
 from loguru import logger
 from qfluentwidgets import TransparentToolButton
@@ -21,7 +20,7 @@ from app.server_manager.lsp_server.lsp_manager import LspClientManager
 from app.utils.utils import get_icon
 
 
-# --- 新增：使用 AST 计算折叠区域（保持不变）---
+# --- 使用 AST 计算折叠区域 ---
 def compute_folding_from_ast(code: str):
     try:
         tree = ast.parse(code)
@@ -81,45 +80,30 @@ def compute_folding_from_ast(code: str):
 
 
 class ParsoCodeAnalysis:
-    """
-    使用 parso 分析代码错误和警告。
-    """
     @staticmethod
     def run_parso_analysis(code):
-        """
-        运行 parso 分析代码。
-        返回一个包含错误和警告信息的列表。
-        每个元素是一个字典，包含 'row', 'column', 'type' (error/warning), 'message'。
-        parso.errors.Error 类包含 row, column, message, code 等属性。
-        """
         try:
-            # 解析代码，encoding 可以设为 None，parso 通常能处理
             grammar = parso.load_grammar()
-            module = grammar.parse(code, error_recovery=True) # error_recovery=True 是关键
+            module = grammar.parse(code, error_recovery=True)
             errors = grammar.iter_errors(module)
             messages = []
             for error in errors:
-                # Parso 的错误行号是 1-based
                 line_number = error.start_pos[0]
-                # Parso 的错误列号是 0-based，我们转换为 1-based 以保持一致性
                 column_number = error.start_pos[1] + 1
                 message_text = error.message
-                # Parso 通常报告语法错误，可以视为 error
                 msg_type = 'error'
                 messages.append({
                     'row': line_number,
-                    'column': column_number, # 提供列信息
+                    'column': column_number,
                     'type': msg_type,
                     'message': message_text
                 })
         except Exception as e:
-            # 如果 parso 解析本身出错（虽然不太可能），记录下来
             logger.error(f"[Parso] Unexpected error during analysis: {e}")
             messages = []
         return messages
 
 
-# --- 保留 CompletionItemDelegate（UI 不变）---
 class CompletionItemDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -270,9 +254,7 @@ class CompletionItemDelegate(QStyledItemDelegate):
         return QSize(size.width(), 40)
 
 
-# --- 新增：仅用 LSP 的补全请求 ---
 class JediCodeEditor(CodeEditor):
-    _BASE_CODE_CACHE = None
     def __init__(self, parent=None, code_parent=None, python_exe_path=None, popup_offset=2, dialog=None):
         super().__init__()
         self.python_exe_path = python_exe_path
@@ -285,6 +267,7 @@ class JediCodeEditor(CodeEditor):
             'print', 'input', 'open', 'range', 'enumerate', 'len', 'str', 'int', 'float',
             'list', 'dict', 'set', 'tuple', '__init__', '__name__', '__file__',
         ])
+
         # --- LSP 初始化 ---
         self.lsp_manager = LspClientManager(python_path=self.python_exe_path or sys.executable)
         self.lsp_manager.initialized.connect(self._on_lsp_initialized)
@@ -294,7 +277,7 @@ class JediCodeEditor(CodeEditor):
         self._lsp_ready = False
         self.textChanged.connect(self._on_text_changed_for_lsp)
 
-        # --- 补全弹窗（复用原有 UI）---
+        # --- 补全弹窗 ---
         self.popup = QListWidget()
         self.popup.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
         self.popup.setFocusPolicy(Qt.NoFocus)
@@ -307,6 +290,9 @@ class JediCodeEditor(CodeEditor):
                 border: 1px solid #32414B;
                 outline: 0;
                 padding: 4px;
+            }
+            QListWidget::item:selected {
+                background-color: #2A3B4D;
             }
             QScrollBar:vertical {
                 width: 8px;
@@ -352,7 +338,7 @@ class JediCodeEditor(CodeEditor):
             indent_guides=True,
             folding=True,
             intelligent_backspace=True,
-            automatic_completions=False,  # 关闭内置补全
+            automatic_completions=False,
             underline_errors=True,
             completions_hint=False,
             highlight_current_line=True,
@@ -371,7 +357,7 @@ class JediCodeEditor(CodeEditor):
         self.spyder_button.clicked.connect(self._open_in_spyder)
         self._update_button_position()
 
-        # --- 类型字符映射（用于 delegate）---
+        # --- 类型字符映射 ---
         self.type_chars = {
             'function': 'Ƒ',
             'method': 'ℳ',
@@ -442,15 +428,11 @@ class JediCodeEditor(CodeEditor):
         filtered_completions = []
         for label, kind, detail, doc in completions:
             kind_name = KIND_MAP.get(kind, 'unknown')
-            # 过滤掉无意义类型
             if kind_name in ('text', 'snippet', 'unit', 'value', 'color', 'file', 'reference'):
                 continue
-            # 统一变量类
             if kind_name in ('field', 'property', 'variable'):
                 kind_name = 'variable'
-            # 使用 insertText 或 label
-            insert_text = label  # 可扩展为 item.get('insertText', label)
-            filtered_completions.append((insert_text, kind_name, doc or '', detail or ''))
+            filtered_completions.append((label, kind_name, doc or '', detail or ''))
         current_prefix = self._get_completion_prefix()
         self._filter_and_show_completions(filtered_completions, current_prefix)
 
@@ -478,7 +460,7 @@ class JediCodeEditor(CodeEditor):
             except Exception as e:
                 logger.error(f"[LSP] Error processing diagnostic: {e}")
         if has_error:
-            self.sig_flags_changed.emit()  # 触发行号区重绘 + tooltip
+            self.sig_flags_changed.emit()
         if hasattr(self, 'linenumberarea'):
             self.linenumberarea.update()
 
@@ -494,7 +476,6 @@ class JediCodeEditor(CodeEditor):
             block = block.next()
 
     def add_custom_completions(self, words):
-        """添加自定义补全"""
         if isinstance(words, str):
             words = [words]
         self.custom_completions.update(words)
@@ -504,8 +485,8 @@ class JediCodeEditor(CodeEditor):
         if self._completing or not self._lsp_ready:
             return
         cursor = self.textCursor()
-        line = cursor.blockNumber()      # 0-based
-        col = cursor.columnNumber()      # 0-based
+        line = cursor.blockNumber()
+        col = cursor.columnNumber()
         self.lsp_manager.request_completion(line, col)
 
     def _filter_and_show_completions(self, completions: List[Tuple[str, str, str, str]], current_prefix: str):
@@ -518,7 +499,6 @@ class JediCodeEditor(CodeEditor):
             self.popup.hide()
             self._popup_timeout_timer.stop()
             return
-        # 排序（简化版，可复用原逻辑）
         def sort_key(item):
             name, type_name, _, _ = item
             exact = -1 if name.lower() == current_prefix.lower() else 0
@@ -547,7 +527,6 @@ class JediCodeEditor(CodeEditor):
             self._popup_timeout_timer.stop()
 
     def _on_popup_timeout(self):
-        """补全框超时回调"""
         if self.popup.isVisible():
             self.popup.hide()
 
@@ -575,9 +554,8 @@ class JediCodeEditor(CodeEditor):
         for i in range(self.popup.count()):
             item = self.popup.item(i)
             fm = self.popup.fontMetrics()
-            text_width = lambda s: fm.boundingRect(0, 0, 10000, 100, 0, s).width() if s else 0
-            name = item.text()
-            w = text_width(name) + 100
+            text_width = fm.boundingRect(0, 0, 10000, 100, 0, item.text()).width() if item.text() else 0
+            w = text_width + 100
             max_width = max(max_width, w)
         popup_width = min(max_width, self.screen().geometry().width() - 100)
         popup_width = max(popup_width, 500)
@@ -631,7 +609,122 @@ class JediCodeEditor(CodeEditor):
             if description:
                 QToolTip.showText(QCursor.pos(), description)
 
-    # ========== 其他保留功能（parso、折叠、spyder等）==========
+    # ========== 快捷键功能 ==========
+    def keyPressEvent(self, event):
+        # 处理补全弹窗键盘事件
+        if self.popup.isVisible():
+            key = event.key()
+            if key == Qt.Key_Tab or key == Qt.Key_Return:
+                self._apply_selected_completion()
+                event.accept()
+                return
+            elif key == Qt.Key_Up:
+                current = self.popup.currentRow()
+                self.popup.setCurrentRow(max(0, current - 1))
+                event.accept()
+                return
+            elif key == Qt.Key_Down:
+                current = self.popup.currentRow()
+                self.popup.setCurrentRow(min(self.popup.count() - 1, current + 1))
+                event.accept()
+                return
+            elif event.text() in '()[]{}.,;:!? ':
+                self.popup.hide()
+
+        # Shift + Enter: 智能换行
+        if event.modifiers() == Qt.ShiftModifier and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            cursor = self.textCursor()
+            current_line = cursor.block().text()
+            leading_spaces = len(current_line) - len(current_line.lstrip(' '))
+            indent = ' ' * leading_spaces
+            cursor.movePosition(QTextCursor.EndOfLine)
+            cursor.insertText('\n' + indent)
+            self.setTextCursor(cursor)
+            event.accept()
+            return
+
+        # Ctrl + /: 注释切换
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_Slash:
+            self._toggle_comment()
+            event.accept()
+            return
+
+        # 原有补全触发逻辑
+        super().keyPressEvent(event)
+        text = event.text()
+        if text == '.' or (text.isalnum() or text == '_'):
+            self._request_completions()
+        elif event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
+            if self._should_show_completion_on_delete():
+                self._request_completions()
+
+    def _toggle_comment(self):
+        cursor = self.textCursor()
+        doc = self.document()
+        start = cursor.selectionStart()
+        end = cursor.selectionEnd()
+
+        c1 = QTextCursor(doc)
+        c1.setPosition(start)
+        c1.movePosition(QTextCursor.StartOfLine)
+        start_line_pos = c1.position()
+
+        c2 = QTextCursor(doc)
+        c2.setPosition(end)
+        if c2.atBlockStart() and end > start:
+            c2.movePosition(QTextCursor.Left)
+        c2.movePosition(QTextCursor.EndOfLine)
+        end_line_pos = c2.position()
+
+        c1.setPosition(start_line_pos)
+        c1.setPosition(end_line_pos, QTextCursor.KeepAnchor)
+        lines = c1.selectedText().split('\u2029')
+
+        def is_commented(s):
+            return s.strip().startswith('#')
+        all_commented = all(not t.strip() or is_commented(t) for t in lines)
+
+        new_lines = []
+        if all_commented:
+            for t in lines:
+                if not t.strip():
+                    new_lines.append(t)
+                else:
+                    new_lines.append(re.sub(r'^(\s*)#\s?', r'\1', t))
+        else:
+            for t in lines:
+                if not t.strip():
+                    new_lines.append(t)
+                else:
+                    m = re.match(r'^(\s*)', t)
+                    indent = m.group(1) if m else ''
+                    new_lines.append(f"{indent}# {t[len(indent):]}")
+
+        cursor.beginEditBlock()
+        c1.insertText('\n'.join(new_lines))
+        cursor.endEditBlock()
+
+    def _should_show_completion_on_delete(self):
+        cursor = self.textCursor()
+        pos = cursor.position()
+        if pos <= 0:
+            return False
+        text = self.toPlainText()
+        prev_char = text[pos - 1]
+        return prev_char.isalnum() or prev_char == '_' or prev_char == '.'
+
+    def focusOutEvent(self, event):
+        self.popup.hide()
+        self._popup_timeout_timer.stop()
+        QToolTip.hideText()
+        super().focusOutEvent(event)
+
+    def __del__(self):
+        if self.lsp_manager:
+            self.lsp_manager.shutdown()
+            self.lsp_manager.wait()
+
+    # ========== 其他保留功能 ==========
     def _on_text_changed_for_parso(self):
         self._parso_timer.stop()
         self._parso_timer.start(800)
@@ -701,7 +794,6 @@ class JediCodeEditor(CodeEditor):
         else:
             self.folding_panel.update_folding(None)
 
-    # --- 按钮、快捷键、事件等（保留原逻辑）---
     def _create_fullscreen_button(self, type="放大"):
         self.fullscreen_button = TransparentToolButton(get_icon(type), parent=self)
         self.fullscreen_button.setIconSize(QSize(28, 28))
@@ -718,72 +810,24 @@ class JediCodeEditor(CodeEditor):
         self.spyder_button.move(x, y_bottom)
 
     def _open_in_spyder(self):
-        # 保留原逻辑（略，太长）
         pass
 
-    def keyPressEvent(self, event):
-        # --- 新增：处理补全弹窗键盘事件 ---
-        if self.popup.isVisible():
-            key = event.key()
-            if key == Qt.Key_Tab or key == Qt.Key_Return:
-                self._apply_selected_completion()
-                event.accept()
-                return
-            elif key == Qt.Key_Up:
-                current = self.popup.currentRow()
-                self.popup.setCurrentRow(max(0, current - 1))
-                event.accept()
-                return
-            elif key == Qt.Key_Down:
-                current = self.popup.currentRow()
-                self.popup.setCurrentRow(min(self.popup.count() - 1, current + 1))
-                event.accept()
-                return
-            elif event.text() in '()[]{}.,;:!? ':
-                # 输入符号自动关闭
-                self.popup.hide()
-        # --- 原有逻辑 ---
-        super().keyPressEvent(event)
-        text = event.text()
-        if text == '.' or (text.isalnum() or text == '_'):
-            self._request_completions()
-        elif event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
-            if self._should_show_completion_on_delete():
-                self._request_completions()
 
-    def _should_show_completion_on_delete(self):
-        cursor = self.textCursor()
-        pos = cursor.position()
-        if pos <= 0:
-            return False
-        text = self.toPlainText()
-        prev_char = text[pos - 1]
-        return prev_char.isalnum() or prev_char == '_' or prev_char == '.'
-
-    def focusOutEvent(self, event):
-        self.popup.hide()
-        self._popup_timeout_timer.stop()
-        QToolTip.hideText()
-        super().focusOutEvent(event)
-
-    def __del__(self):
-        if self.lsp_manager:
-            self.lsp_manager.shutdown()
-            self.lsp_manager.wait()
-
-# --- 主窗口（保持不变）---
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("LSP Code Editor (Jedi Removed)")
+        self.setWindowTitle("Professional LSP Code Editor")
         self.setStyleSheet("background-color: #333; color: white;")
         self.resize(800, 600)
         self.find_replace = FindReplace(self, True)
-        self.editor = JediCodeEditor()
-        example_code = """import os
-print(os.getcwd())
+        self.editor = JediCodeEditor(python_exe_path=r"D:\work\CanvasMind\.venv\Scripts\python.exe")
+        example_code = """import numpy as np
+a = np.array([1, 2, 3])
+# Try: a. then Ctrl+Space
 def hello():
     x = 10
+    if x > 5:
+        print("Greater")
     return x + 1"""
         self.editor.set_text(example_code)
         self.find_replace.set_editor(self.editor)
