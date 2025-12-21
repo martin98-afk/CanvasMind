@@ -1,41 +1,171 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QListWidgetItem
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QListWidgetItem, QFrame
+from PyQt5.QtCore import Qt, QMimeData, QTimer
+from PyQt5.QtGui import QDrag, QPainter, QColor
 from qfluentwidgets import (
     CardWidget, BodyLabel, SubtitleLabel,
-    TransparentToolButton, FluentIcon
+    TransparentToolButton, FluentIcon, InfoBar, InfoBarPosition
 )
 
 from app.utils.utils import topological_sort
 from app.widgets.side_dock_area.plugins.property_panel.internal_node_list import InternalNodeList
 
 
-class NodeListPanelWidget:
-    """处理节点列表（连通图）UI的子模块"""
+# ===== 新增：插入位置预览线 =====
+class InsertionIndicator(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(3)
+        self.setStyleSheet("background-color: #4A90E2; border-radius: 1px;")
+        self.hide()
 
+
+# ===== 优化后的可拖拽容器 =====
+class DraggableContainer(QWidget):
+    def __init__(self, panel_widget):
+        super().__init__()
+        self.panel_widget = panel_widget
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)  # 为插入线留空间
+        self.setAcceptDrops(True)
+        self.setAcceptDrops(True)
+
+        self.insert_line = InsertionIndicator(self)
+        self._current_target_index = -1
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasText() and event.mimeData().text().startswith("component_index:"):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if not (event.mimeData().hasText() and event.mimeData().text().startswith("component_index:")):
+            event.ignore()
+            return
+
+        layout = self.layout()
+        cards = []
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if item and item.widget() and isinstance(item.widget(), CardWidget):
+                cards.append(item.widget())
+
+        drop_y = event.pos().y()
+        insert_index = len(cards)  # 默认插在最后
+
+        if cards:
+            for i, card in enumerate(cards):
+                card_top = card.y()
+                card_center = card_top + card.height() / 2
+                if drop_y < card_center:
+                    insert_index = i
+                    break
+
+        self._show_insert_line_at(insert_index)
+        event.accept()
+
+    def dragLeaveEvent(self, event):
+        self.insert_line.hide()
+        self._current_target_index = -1
+        event.accept()
+
+    def dropEvent(self, event):
+        if not (event.mimeData().hasText() and event.mimeData().text().startswith("component_index:")):
+            return
+
+        try:
+            source_idx = int(event.mimeData().text().split(":")[1])
+        except (ValueError, IndexError):
+            return
+
+        layout = self.layout()
+        cards = []
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if item and item.widget() and isinstance(item.widget(), CardWidget):
+                cards.append(item.widget())
+
+        if not cards or source_idx < 0 or source_idx >= len(cards):
+            self.insert_line.hide()
+            self._current_target_index = -1
+            return
+
+        drop_y = event.pos().y()
+        target_index = len(cards)
+        for i, card in enumerate(cards):
+            if drop_y < card.y() + card.height() / 2:
+                target_index = i
+                break
+
+        if target_index == source_idx or (target_index == source_idx + 1):
+            self.insert_line.hide()
+            self._current_target_index = -1
+            return
+
+        # 更新数据模型
+        comp = self.panel_widget._current_components.pop(source_idx)
+        insert_idx = target_index if target_index <= source_idx else target_index - 1
+        self.panel_widget._current_components.insert(insert_idx, comp)
+
+        self.insert_line.hide()
+        self._current_target_index = -1
+
+        # 刷新 UI
+        self.panel_widget._refresh_ui_from_current_components()
+        InfoBar.info("已移动", "子连通图顺序已更新", duration=1200, parent=self.main_window)
+        event.accept()
+
+    def _show_insert_line_at(self, index):
+        if self._current_target_index == index:
+            return
+
+        layout = self.layout()
+        cards = []
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if item and item.widget() and isinstance(item.widget(), CardWidget):
+                cards.append(item.widget())
+
+        if index == 0:
+            y = 0
+        elif index >= len(cards):
+            y = cards[-1].y() + cards[-1].height() if cards else 0
+        else:
+            y = cards[index].y()
+
+        self.insert_line.move(0, y)
+        self.insert_line.resize(self.width(), 3)
+        self.insert_line.show()
+        self._current_target_index = index
+
+    def resizeEvent(self, event):
+        if self.insert_line.isVisible():
+            self.insert_line.resize(self.width(), 3)
+        super().resizeEvent(event)
+
+
+# ===== 主控件 =====
+class NodeListPanelWidget:
     def __init__(self, main_window, parent_panel, parent_layout):
         self.main_window = main_window
         self.parent_panel = parent_panel
         self.parent_layout = parent_layout
 
-        # 当前组件（用户可编辑的连通图列表）
-        self._current_components = []  # List[List[Node]]
-        self._user_execution_order = {}  # key: tuple(sorted node ids), value: ordered node list
+        self._current_components = []
+        self._user_execution_order = {}
 
-        # UI references
         self._component_cards = []
-        self._component_nodes_list = {}      # list_id -> node list
-        self._column_list_widgets = {}       # list_id -> InternalNodeList
-        self._selected_row_in_component = {}  # list_id -> selected row (optional, for UX hint)
+        self._component_nodes_list = {}
+        self._column_list_widgets = {}
+        self._selected_row_in_component = {}
 
-        # Top-level container
         self.nodes_card = None
 
     def build_ui(self, nodes):
-        """首次构建或重置为拓扑排序结果"""
         new_components = topological_sort(nodes, split_components=True) or []
-
-        # 尝试保留用户历史顺序中与新拓扑有交集的部分
         new_node_sets = [set(n.id for n in comp) for comp in new_components]
         current_user_order = self._user_execution_order.copy()
         final_components = []
@@ -49,20 +179,17 @@ class NodeListPanelWidget:
                 if i in processed_new_indices:
                     continue
                 if old_node_set & new_node_set:
-                    # 找到 old_ordered_nodes 中第一个出现在 new_node_set 的位置
                     for j, node in enumerate(old_ordered_nodes):
                         if node.id in new_node_set:
                             first_match_positions.append(j)
                             matched_indices.append(i)
                             break
             if matched_indices:
-                # 按 old 中出现顺序排序新组件
                 sorted_pairs = sorted(zip(first_match_positions, matched_indices))
                 for _, idx in sorted_pairs:
                     final_components.append(new_components[idx])
                     processed_new_indices.add(idx)
 
-        # 添加未匹配的新组件（保持拓扑顺序）
         for i, comp in enumerate(new_components):
             if i not in processed_new_indices:
                 final_components.append(comp)
@@ -71,44 +198,38 @@ class NodeListPanelWidget:
         self._refresh_ui_from_current_components()
 
     def _refresh_ui_from_current_components(self):
-        """根据 self._current_components 重建整个 UI"""
-        # 清空 parent_layout（移除标题和容器）
         while self.parent_layout.count():
             item = self.parent_layout.takeAt(0)
             w = item.widget()
             if w:
                 w.deleteLater()
 
-        # 重建标题
         title = SubtitleLabel("⏬ 连通图执行顺序")
         self.parent_layout.addWidget(title)
 
-        # 容器
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.nodes_card = QWidget(self.parent_panel)
-        nodes_layout = QVBoxLayout(self.nodes_card)
-        nodes_layout.setContentsMargins(10, 10, 10, 10)
+        self.nodes_card = DraggableContainer(self)
+        nodes_layout = self.nodes_card.layout()
+        nodes_layout.setSpacing(8)  # 与容器一致
 
-        # 重置内部映射
         self._component_cards = []
         self._component_nodes_list.clear()
         self._column_list_widgets.clear()
         self._selected_row_in_component.clear()
 
-        # 创建卡片
         for i, comp in enumerate(self._current_components):
-            card, _ = self._create_component_card(nodes_layout, i)
+            card = self._create_component_card(nodes_layout, i)
             self._component_cards.append(card)
 
         nodes_layout.addStretch(1)
-        scroll = self.parent_panel.set_scrollbar(self.nodes_card)
-        layout.addWidget(scroll, 1)
+
+        scroll_area = self.parent_panel.set_scrollbar(self.nodes_card)
+        layout.addWidget(scroll_area, 1)
         self.parent_layout.addWidget(widget)
 
-        # 更新用户执行顺序（用于下次 build_ui 时对齐）
         self._user_execution_order.clear()
         for comp in self._current_components:
             if comp:
@@ -123,37 +244,69 @@ class NodeListPanelWidget:
         comp_layout = QVBoxLayout(component_card)
         comp_layout.setContentsMargins(8, 8, 8, 8)
 
+        component_card._drag_start_pos = None
+        component_card._component_index = index
+
+        def card_mouse_press(event):
+            if event.button() == Qt.LeftButton:
+                component_card._drag_start_pos = event.pos()
+            event.accept()
+
+        def card_mouse_move(event):
+            if not (event.buttons() & Qt.LeftButton):
+                return
+            if component_card._drag_start_pos is None:
+                return
+            if (event.pos() - component_card._drag_start_pos).manhattanLength() < 5:
+                return
+
+            drag = QDrag(component_card)
+            mime = QMimeData()
+            mime.setText(f"component_index:{component_card._component_index}")
+            drag.setMimeData(mime)
+
+            # 创建半透明预览图
+            pixmap = component_card.grab()
+            ghost = pixmap.copy()
+            painter = QPainter(ghost)
+            painter.setCompositionMode(QPainter.CompositionMode_DestinationIn)
+            painter.fillRect(ghost.rect(), QColor(0, 0, 0, 120))
+            painter.end()
+            drag.setPixmap(ghost)
+            drag.setHotSpot(event.pos())
+
+            # ✅ 隐藏原卡片，避免视觉重叠
+            component_card.setVisible(False)
+            drag.exec_(Qt.MoveAction)
+            component_card.setVisible(True)  # 恢复
+
+        component_card.mousePressEvent = card_mouse_press
+        component_card.mouseMoveEvent = card_mouse_move
+        component_card.setMouseTracking(True)
+
         # Header
         header_layout = QHBoxLayout()
         title_label = BodyLabel(f"子连通图 {index + 1} ({len(topo_sorted)} 个节点)")
+        title_label.setToolTip("拖拽整个卡片可调整执行顺序")
+        title_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        # ✅ 关键：让标题不拦截鼠标事件
+        title_label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         header_layout.addWidget(title_label)
 
-        # 按钮
-        move_up_btn = TransparentToolButton(FluentIcon.UP)
-        move_up_btn.setToolTip("向上移动")
-        move_down_btn = TransparentToolButton(FluentIcon.DOWN)
-        move_down_btn.setToolTip("向下移动")
-        split_btn = TransparentToolButton(FluentIcon.CUT)  # 分割图标
-        split_btn.setToolTip("分割成两个连通图")
-
-        for btn in (move_up_btn, move_down_btn, split_btn):
-            btn.setFixedSize(24, 24)
-
-        move_up_btn.setEnabled(index > 0)
-        move_down_btn.setEnabled(index < len(self._current_components) - 1)
-
-        move_up_btn.clicked.connect(lambda _, idx=index: self._move_component(idx, -1))
-        move_down_btn.clicked.connect(lambda _, idx=index: self._move_component(idx, 1))
+        # 分割按钮
+        split_btn = TransparentToolButton(FluentIcon.CUT)
+        split_btn.setFixedSize(28, 28)
+        split_btn.setToolTip("在选中的节点之后分割\n（未选中则在中间分割）")
+        if len(topo_sorted) <= 1:
+            split_btn.hide()
         split_btn.clicked.connect(lambda _, idx=index: self._split_component_at_selection(idx))
 
         header_layout.addStretch(1)
-        header_layout.addWidget(move_up_btn)
-        header_layout.addWidget(move_down_btn)
         header_layout.addWidget(split_btn)
 
         comp_layout.addLayout(header_layout)
 
-        # 节点列表
+        # 节点列表（保持不变）
         list_id = f"component_{index}"
         self._component_nodes_list[list_id] = topo_sorted
 
@@ -163,7 +316,6 @@ class NodeListPanelWidget:
         node_list_widget = InternalNodeList(status_list, name_list, self.parent_panel)
         node_list_widget.setFixedHeight(max(40 * len(topo_sorted), 40))
 
-        # 双击定位
         def on_double_click(item):
             row = node_list_widget.row(item)
             if 0 <= row < len(topo_sorted):
@@ -176,20 +328,7 @@ class NodeListPanelWidget:
         self._column_list_widgets[list_id] = node_list_widget
 
         parent_layout.addWidget(component_card)
-        return component_card, topo_sorted
-
-    def _move_component(self, index, direction):
-        if len(self._current_components) <= 1:
-            return
-        if direction == -1 and index > 0:
-            self._current_components[index - 1], self._current_components[index] = \
-                self._current_components[index], self._current_components[index - 1]
-        elif direction == 1 and index < len(self._current_components) - 1:
-            self._current_components[index], self._current_components[index + 1] = \
-                self._current_components[index + 1], self._current_components[index]
-        else:
-            return
-        self._refresh_ui_from_current_components()
+        return component_card
 
     def _split_component_at_selection(self, index):
         if index >= len(self._current_components):
@@ -202,23 +341,27 @@ class NodeListPanelWidget:
         node_list_widget = self._column_list_widgets.get(list_id)
         if node_list_widget:
             selected_row = node_list_widget.get_current_selected_row()
-            # 分割点：在选中节点之后（选中第 i 行 → 分割点 = i+1）
             split_point = selected_row + 1 if selected_row >= 0 else len(comp) // 2
         else:
             split_point = len(comp) // 2
 
         if split_point <= 0 or split_point >= len(comp):
-            return  # 无效分割点
+            return
 
         part1 = comp[:split_point]
         part2 = comp[split_point:]
 
-        # 替换原组件为两个
         self._current_components[index:index + 1] = [part1, part2]
         self._refresh_ui_from_current_components()
 
+        InfoBar.info(
+            "已分割",
+            f"子连通图 {index + 1} 已分割为两个",
+            duration=1500,
+            parent=self.main_window
+        )
+
     def update_node_list_content(self):
-        """更新所有节点列表的状态文本"""
         if not self._component_nodes_list:
             return
         for list_id, node_list in self._component_nodes_list.items():
@@ -229,14 +372,11 @@ class NodeListPanelWidget:
                 widget.update_content(status_list, name_list)
 
     def get_current_order(self):
-        """返回当前执行顺序（平铺）"""
         result = []
         for comp in self._current_components:
             result.extend(comp)
         return result
 
     def reset_components(self):
-        """重置为自动拓扑排序（丢弃用户修改）"""
         self._current_components = []
         self._user_execution_order.clear()
-        # 注意：调用方需重新调用 build_ui(nodes)
