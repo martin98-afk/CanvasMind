@@ -1,73 +1,33 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import pyqtSignal, Qt, QTimer
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import (
-    QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView, QWidget, QSizePolicy
-)
-from qfluentwidgets import (
-    TableWidget, ComboBox, FluentIcon, TransparentToolButton, SimpleCardWidget
-)
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QSizePolicy, QTableWidgetItem
+from qfluentwidgets import ComboBox, TransparentToolButton, FluentIcon
 
 from app.components.base import ArgumentType, ConnectionType
+from app.widgets.side_dock_area.plugins.component_info.config_table import ConfigTableSpace
 
 
-class PortEditorWidget(SimpleCardWidget):
-    """端口编辑器 - + 按钮作为最后一列表头文字，删除按钮每行一个"""
-    ports_changed = pyqtSignal()
-
+class PortEditorWidget(ConfigTableSpace):
     def __init__(self, port_type="input", parent=None):
-        super().__init__(parent)
         self.port_type = port_type
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        labels = ["端口名称", "端口标签", "端口类型", "连接方式"] if port_type == "input" else ["端口名称", "端口标签", "端口类型"]
+        super().__init__(column_labels=labels, parent=parent)
 
-        col_count = 5 if port_type == "input" else 4
-        self.table = TableWidget(self)
+    def _generate_unique_key(self, base: str = "key") -> str:
+        base = "input" if self.port_type == "input" else "output"
+        existing = self._get_existing_keys()
+        if base not in existing:
+            return base
+        i = 1
+        while f"{base}{i}" in existing:
+            i += 1
+        return f"{base}{i}"
 
-        self.table.setColumnCount(col_count)
-
-        if port_type == "input":
-            self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型", "连接方式", "＋"])
-        else:
-            self.table.setHorizontalHeaderLabels(["端口名称", "端口标签", "端口类型", "＋"])
-        font = QFont()
-        font.setPointSize(14)  # 或 16，根据需求调整
-        font.setBold(True)
-
-        for col in range(self.table.columnCount()):
-            item = self.table.horizontalHeaderItem(col)
-            if item and col == self.table.columnCount() - 1:  # 最后一列
-                item.setFont(font)
-                item.setTextAlignment(Qt.AlignCenter)
-        self.table.verticalHeader().hide()
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(col_count - 1, QHeaderView.ResizeToContents)
-
-        # ← 关键：监听表头点击
-        self.table.horizontalHeader().sectionClicked.connect(self._on_header_clicked)
-
-        self.table.itemChanged.connect(lambda item: self.ports_changed.emit())
-        layout.addWidget(self.table)
-
-    def _on_header_clicked(self, logical_index):
-        """点击最后一列表头时触发添加"""
-        if logical_index == self.table.columnCount() - 1:
-            self.add_port()
-
-    def _add_port(self, port: dict = {}):
-        row = self.table.rowCount()
-        self.table.insertRow(row)
-
-        name = port.get("name", f"input{row + 1}" if self.port_type == "input" else f"output{row + 1}")
-        label = port.get("label", f"输入{row + 1}" if self.port_type == "input" else f"输出{row + 1}")
-        port_type = port.get("type", ArgumentType.TEXT)
-
-        name_item = QTableWidgetItem(name)
-        name_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+    def _fill_row_content(self, row: int):
+        # 构造 UI，但不连接信号（避免中间 emit）
+        label = f"输入{row + 1}" if self.port_type == "input" else f"输出{row + 1}"
         label_item = QTableWidgetItem(label)
         label_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-
-        self.table.setItem(row, 0, name_item)
         self.table.setItem(row, 1, label_item)
 
         type_combo = ComboBox()
@@ -75,86 +35,126 @@ class PortEditorWidget(SimpleCardWidget):
         type_combo.setFixedHeight(28)
         for item in ArgumentType:
             type_combo.addItem(item.value, userData=item)
-        type_combo.setCurrentText(port_type.value)
+        type_combo.setCurrentText(ArgumentType.TEXT.value)
         self.table.setCellWidget(row, 2, type_combo)
-        type_combo.currentTextChanged.connect(lambda: self.ports_changed.emit())
 
-        col_offset = 0
         if self.port_type == "input":
-            connection = port.get("connection", ConnectionType.SINGLE)
             conn_combo = ComboBox()
             conn_combo.setStyleSheet("border: none; background: transparent; color: white;")
             conn_combo.setFixedHeight(28)
             conn_combo.addItems([ConnectionType.SINGLE.value, ConnectionType.MULTIPLE.value])
             conn_combo.setProperty("raw_values", [ConnectionType.SINGLE, ConnectionType.MULTIPLE])
-            conn_combo.setCurrentIndex(0 if connection == ConnectionType.SINGLE else 1)
+            conn_combo.setCurrentIndex(0)
             self.table.setCellWidget(row, 3, conn_combo)
-            conn_combo.currentIndexChanged.connect(lambda: self.ports_changed.emit())
-            col_offset = 1
 
-        # === 删除按钮：直接作为 cell widget，不包裹容器 ===
+        # 构造完成后再连接信号
+        type_combo.currentTextChanged.connect(self.dataChanged.emit)
+        if self.port_type == "input":
+            conn_combo.currentIndexChanged.connect(self.dataChanged.emit)
+
+    def _add_row_with_data(self, row_data):
+        # 手动构造行（不走 _add_row）
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+
+        name = row_data.get("name", self._generate_unique_key())
+        name_item = QTableWidgetItem(name)
+        name_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        self.table.setItem(row, 0, name_item)
+
+        label = row_data.get("label", "")
+        label_item = QTableWidgetItem(label)
+        label_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        self.table.setItem(row, 1, label_item)
+
+        type_combo = ComboBox()
+        type_combo.setStyleSheet("border: none; background: transparent; color: white;")
+        type_combo.setFixedHeight(28)
+        for item in ArgumentType:
+            type_combo.addItem(item.value, userData=item)
+        port_type = row_data.get("type", ArgumentType.TEXT)
+        type_val = port_type.value if hasattr(port_type, 'value') else port_type
+        type_combo.setCurrentText(type_val)
+        self.table.setCellWidget(row, 2, type_combo)
+
+        if self.port_type == "input":
+            conn_combo = ComboBox()
+            conn_combo.setStyleSheet("border: none; background: transparent; color: white;")
+            conn_combo.setFixedHeight(28)
+            conn_combo.addItems([ConnectionType.SINGLE.value, ConnectionType.MULTIPLE.value])
+            conn_combo.setProperty("raw_values", [ConnectionType.SINGLE, ConnectionType.MULTIPLE])
+            connection = row_data.get("connection", ConnectionType.SINGLE)
+            idx = 0 if connection == ConnectionType.SINGLE else 1
+            conn_combo.setCurrentIndex(idx)
+            self.table.setCellWidget(row, 3, conn_combo)
+
         delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
         delete_btn.setFixedSize(24, 24)
         delete_btn.setToolTip("删除此端口")
-        delete_btn.clicked.connect(self._on_delete_button_clicked)
-
-        # 关键：设置按钮的 sizePolicy 为 Fixed，避免被 stretch
         delete_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        delete_btn.clicked.connect(self._on_delete_button_clicked)
+        self.table.setCellWidget(row, self.table.columnCount() - 1, delete_btn)
 
-        # 直接设为 cell widget（不再用 btn_container）
-        self.table.setCellWidget(row, 3 + col_offset, delete_btn)
+        # 连接信号（只 connect 一次）
+        type_combo.currentTextChanged.connect(self.dataChanged.emit)
+        if self.port_type == "input":
+            conn_combo.currentIndexChanged.connect(self.dataChanged.emit)
 
-    def _on_delete_button_clicked(self):
-        """支持直接按钮（无容器）的删除"""
-        button = self.sender()
-        if not button:
-            return
-        # 遍历所有行，找到包含该按钮的行
-        for row in range(self.table.rowCount()):
-            cell_widget = self.table.cellWidget(row, self.table.columnCount() - 1)
-            if cell_widget is button:  # 直接比较按钮对象
-                self._remove_port_at(row)
-                return
+        # 手动触发一次完整变更
+        self.dataChanged.emit()
 
-    def _remove_port_at(self, row: int):
-        if 0 <= row < self.table.rowCount():
-            self.table.removeRow(row)
-            self.ports_changed.emit()
-
-    def add_port(self):
-        self._add_port()
+    def _get_cell_value(self, row: int, col: int):
+        widget = self.table.cellWidget(row, col)
+        if widget is None:
+            item = self.table.item(row, col)
+            return item.text() if item else ""
+        if isinstance(widget, ComboBox):
+            if col == 2:  # 类型列
+                data = widget.currentData()
+                if data is not None:
+                    return data
+                # fallback: 通过文本反查枚举
+                text = widget.currentText()
+                for item in ArgumentType:
+                    if item.value == text:
+                        return item
+                return ArgumentType.TEXT
+            elif col == 3 and self.port_type == "input":
+                raw_vals = widget.property("raw_values")
+                if raw_vals:
+                    return raw_vals[widget.currentIndex()]
+                return ConnectionType.SINGLE
+        return ""
 
     def get_ports(self, serialize=False):
         ports = []
-        col_offset = 1 if self.port_type == "input" else 0
         for row in range(self.table.rowCount()):
-            name_item = self.table.item(row, 0)
-            label_item = self.table.item(row, 1)
-            if not (name_item and label_item):
-                continue
-            type_widget = self.table.cellWidget(row, 2)
-            port_type = type_widget.currentData() if type_widget else ArgumentType.TEXT
-
-            connection = ConnectionType.SINGLE
-            if self.port_type == "input":
-                conn_widget = self.table.cellWidget(row, 3)
-                if conn_widget:
-                    raw_vals = [ConnectionType.SINGLE, ConnectionType.MULTIPLE]
-                    connection = raw_vals[conn_widget.currentIndex()]
+            name = self.table.item(row, 0).text() if self.table.item(row, 0) else ""
+            label = self.table.item(row, 1).text() if self.table.item(row, 1) else ""
+            port_type = self._get_cell_value(row, 2)
+            connection = self._get_cell_value(row, 3) if self.port_type == "input" else ConnectionType.SINGLE
 
             if serialize:
-                port_type = port_type.value
-                connection = connection.value
+                # 确保 serialize 时是字符串
+                port_type = port_type.value if hasattr(port_type, 'value') else port_type
+                connection = connection.value if hasattr(connection, 'value') else connection
 
             ports.append({
-                "name": name_item.text(),
-                "label": label_item.text(),
-                "type": port_type,
-                "connection": connection
+                "name": name,
+                "label": label,
+                "type": port_type,    # ← 这里是 ArgumentType 枚举！
+                "connection": connection,
             })
         return ports
 
     def set_ports(self, ports):
         self.table.setRowCount(0)
         for port in ports:
-            self._add_port(port)
+            self._add_row_with_data(port)
+
+    @property
+    def ports_changed(self):
+        return self.dataChanged
+
+    def add_port(self):
+        self._add_row()

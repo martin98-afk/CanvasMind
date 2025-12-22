@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x20666a7d5d0": {
+      "0x25b16546fe0": {
         "type_": "dynamic.StatusDynamicNode_网络请求_HTTP_请求客户端",
         "icon": null,
         "name": "HTTP 请求客户端 1",
@@ -36,8 +36,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 621.5175,
-        "height": 562.0500000000001,
+        "width": 637.5600000000001,
+        "height": 564.15,
         "pos": [
           224.00619288774192,
           574.029025637416
@@ -49,7 +49,7 @@
           "persistent_id": "357e0fd4-b143-4065-a4bc-0194db99907c",
           "version": "latest",
           "debug_code": {},
-          "url": "http://127.0.0.1:1234/v1/chat/completions",
+          "url": "http://168.168.10.110:20000/chat/completions",
           "method": "POST",
           "timeout": "10",
           "verify_ssl": true,
@@ -59,7 +59,7 @@
           "params": []
         }
       },
-      "0x20666a7f970": {
+      "0x25b1657c250": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": "D:\\work\\CanvasMind\\icons\\多轮对话.svg",
         "name": "文本输入",
@@ -84,7 +84,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 444.01500000000004,
+        "width": 446.20000000000005,
         "height": 268.05,
         "pos": [
           -1514.3634185991295,
@@ -97,10 +97,10 @@
           "persistent_id": "dbcba99e-924b-413c-903a-0a55cad41de8",
           "version": "latest",
           "debug_code": {},
-          "input": "qwen/qwen3-30b-a3b-2507"
+          "input": "qwen3-30b-a3b"
         }
       },
-      "0x20666a7e230": {
+      "0x25b1657c880": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": "D:\\work\\CanvasMind\\icons\\多轮对话.svg",
         "name": "文本输入 2",
@@ -125,7 +125,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 463.70875,
+        "width": 468.28000000000003,
         "height": 268.05,
         "pos": [
           -1581.3302030087443,
@@ -141,7 +141,7 @@
           "input": "0.7"
         }
       },
-      "0x2066bddd9c0": {
+      "0x25b1657ce80": {
         "type_": "dynamic.StatusDynamicNode_大模型组件_构建多轮对话",
         "icon": null,
         "name": "构建多轮对话",
@@ -166,8 +166,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 548.7225,
-        "height": 293.25,
+        "width": 553.84,
+        "height": 294.3,
         "pos": [
           -1581.850329711911,
           446.5116998034222
@@ -195,7 +195,7 @@
           ]
         }
       },
-      "0x2066bddc4f0": {
+      "0x25b1657d270": {
         "type_": "dynamic.StatusDynamicNode_网络请求_JSON包装JSON",
         "icon": null,
         "name": "JSON包装JSON",
@@ -220,7 +220,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 392.89750000000004,
+        "width": 402.04,
         "height": 101.10000000000001,
         "pos": [
           -859.6636651427085,
@@ -236,7 +236,7 @@
           "prop_0": "messages"
         }
       },
-      "0x2067e030b80": {
+      "0x25b1657ed70": {
         "type_": "dynamic.StatusDynamicNode_网络请求_请求体合并",
         "icon": null,
         "name": "请求体合并",
@@ -259,9 +259,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 202.83125,
+        "width": 201.48000000000002,
         "height": 69.6,
         "pos": [
           -261.3203858698687,
@@ -276,7 +276,7 @@
           "debug_code": {}
         }
       },
-      "0x2067de853f0": {
+      "0x25b1657ef80": {
         "type_": "dynamic.StatusDynamicNode_网络请求_数值包装JSON",
         "icon": null,
         "name": "数值包装JSON",
@@ -301,7 +301,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 392.15000000000003,
+        "width": 398.36,
         "height": 101.10000000000001,
         "pos": [
           -862.7692690975653,
@@ -317,7 +317,7 @@
           "prop_0": "temperature"
         }
       },
-      "0x2067dbc54b0": {
+      "0x25b1657f4f0": {
         "type_": "dynamic.StatusDynamicNode_网络请求_文本包装JSON",
         "icon": null,
         "name": "文本包装JSON",
@@ -342,7 +342,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 392.15000000000003,
+        "width": 398.36,
         "height": 101.10000000000001,
         "pos": [
           -832.9586865629492,
@@ -358,7 +358,7 @@
           "prop_0": "model"
         }
       },
-      "0x2067dbc5de0": {
+      "0x25b1657faf0": {
         "type_": "dynamic.StatusDynamicNode_数据转换_文本转json",
         "icon": null,
         "name": "文本转json",
@@ -383,7 +383,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 186.61625,
+        "width": 192.28,
         "height": 69.6,
         "pos": [
           -659.7760465577321,
@@ -398,7 +398,7 @@
           "debug_code": {}
         }
       },
-      "0x2067deb7c10": {
+      "0x25b1657fca0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
         "icon": "D:\\work\\CanvasMind\\icons\\多轮对话.svg",
         "name": "文本输入 1",
@@ -423,7 +423,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 463.70875,
+        "width": 468.28000000000003,
         "height": 268.05,
         "pos": [
           -1314.5538567662961,
@@ -443,91 +443,91 @@
     "connections": [
       {
         "in": [
-          "0x20666a7d5d0",
+          "0x25b16546fe0",
           "request_body"
         ],
         "out": [
-          "0x2067e030b80",
+          "0x25b1657ed70",
           "request_bodies"
         ]
       },
       {
         "out": [
-          "0x20666a7f970",
+          "0x25b1657c250",
           "text"
         ],
         "in": [
-          "0x2067dbc54b0",
+          "0x25b1657f4f0",
           "input1"
         ]
       },
       {
         "out": [
-          "0x20666a7e230",
+          "0x25b1657c880",
           "text"
         ],
         "in": [
-          "0x2067de853f0",
+          "0x25b1657ef80",
           "input1"
         ]
       },
       {
         "out": [
-          "0x2066bddd9c0",
+          "0x25b1657ce80",
           "output1"
         ],
         "in": [
-          "0x2066bddc4f0",
+          "0x25b1657d270",
           "input1"
         ]
       },
       {
         "out": [
-          "0x2066bddc4f0",
+          "0x25b1657d270",
           "output1"
         ],
         "in": [
-          "0x2067e030b80",
+          "0x25b1657ed70",
           "request_body"
         ]
       },
       {
         "in": [
-          "0x2067e030b80",
+          "0x25b1657ed70",
           "request_body"
         ],
         "out": [
-          "0x2067de853f0",
+          "0x25b1657ef80",
           "output1"
         ]
       },
       {
         "in": [
-          "0x2067e030b80",
+          "0x25b1657ed70",
           "request_body"
         ],
         "out": [
-          "0x2067dbc54b0",
+          "0x25b1657f4f0",
           "output1"
         ]
       },
       {
         "in": [
-          "0x2067e030b80",
+          "0x25b1657ed70",
           "request_body"
         ],
         "out": [
-          "0x2067dbc5de0",
+          "0x25b1657faf0",
           "output"
         ]
       },
       {
         "in": [
-          "0x2067dbc5de0",
+          "0x25b1657faf0",
           "input"
         ],
         "out": [
-          "0x2067deb7c10",
+          "0x25b1657fca0",
           "text"
         ]
       }
@@ -535,18 +535,18 @@
   },
   "runtime": {
     "environment": "3.12",
-    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.12\\python.exe",
+    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.12\\python.exe",
     "node_id2stable_key": {
-      "0x20666a7d5d0": "网络请求/HTTP 请求客户端||HTTP 请求客户端 1",
-      "0x20666a7f970": "数据集成/文本输入||文本输入",
-      "0x20666a7e230": "数据集成/文本输入||文本输入 2",
-      "0x2066bddd9c0": "大模型组件/构建多轮对话||构建多轮对话",
-      "0x2066bddc4f0": "网络请求/JSON包装JSON||JSON包装JSON",
-      "0x2067e030b80": "网络请求/请求体合并||请求体合并",
-      "0x2067de853f0": "网络请求/数值包装JSON||数值包装JSON",
-      "0x2067dbc54b0": "网络请求/文本包装JSON||文本包装JSON",
-      "0x2067dbc5de0": "数据转换/文本转json||文本转json",
-      "0x2067deb7c10": "数据集成/文本输入||文本输入 1"
+      "0x25b16546fe0": "网络请求/HTTP 请求客户端||HTTP 请求客户端 1",
+      "0x25b1657c250": "数据集成/文本输入||文本输入",
+      "0x25b1657c880": "数据集成/文本输入||文本输入 2",
+      "0x25b1657ce80": "大模型组件/构建多轮对话||构建多轮对话",
+      "0x25b1657d270": "网络请求/JSON包装JSON||JSON包装JSON",
+      "0x25b1657ed70": "网络请求/请求体合并||请求体合并",
+      "0x25b1657ef80": "网络请求/数值包装JSON||数值包装JSON",
+      "0x25b1657f4f0": "网络请求/文本包装JSON||文本包装JSON",
+      "0x25b1657faf0": "数据转换/文本转json||文本转json",
+      "0x25b1657fca0": "数据集成/文本输入||文本输入 1"
     },
     "node_states": {
       "网络请求/HTTP 请求客户端||HTTP 请求客户端 1": "success",
@@ -574,21 +574,17 @@
     },
     "node_outputs": {
       "网络请求/HTTP 请求客户端||HTTP 请求客户端 1": {
-        "response": "{\n  \"id\": \"chatcmpl-gxzwvf43vgeut4b7bmkz2\",\n  \"object\": \"chat.completion\",\n  \"created\": 1766291739,\n  \"model\": \"qwen/qwen3-30b-a3b-2507\",\n  \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\": \"assistant\",\n        \"content\": \"你可以叫我小智哦~ 🌟 我是你的AI助手，随时准备帮你解决问题、提供帮助。有什么我可以帮你的吗？😊\",\n        \"tool_calls\": []\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 31,\n    \"completion_tokens\": 29,\n    \"total_tokens\": 60\n  },\n  \"stats\": {},\n  \"system_fingerprint\": \"qwen/qwen3-30b-a3b-2507\"\n}",
+        "response": "{\"id\":\"chatcmpl-4a2b6ec31de941a596304453f8ac8047\",\"object\":\"chat.completion\",\"created\":1766365024,\"model\":\"qwen3-30b-a3b\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"<think>\\n好的，用户问：“你叫什么名字”。首先，我需要确认用户的问题是什么。用户可能是在询问我的名字，或者可能有其他意图。根据我的设定，我应该保持友好和乐于助人，所以回答时要友好且提供有用的信息。\\n\\n接下来，我需要回忆我的名称。我的名字是通义千问，但用户可能更熟悉我的中文名“通义千问”或者英文名“Qwen”。不过，用户可能更希望得到一个更亲切的回答，比如直接告诉我我的名字，或者询问是否有其他称呼。\\n\\n另外，用户可能有潜在的需求，比如想测试我的反应，或者想继续对话。所以，除了直接回答名字外，还可以添加一些互动，比如询问用户是否需要帮助，或者继续对话。\\n\\n还要注意用户之前的历史对话，用户之前说“你是一个乐于助人的ai助手”，所以用户可能希望我保持这种态度，回答要友好且乐于助人。因此，在回答名字的同时，可以加上一些友好的问候或邀请进一步交流。\\n\\n最后，确保回答简洁明了，符合中文表达习惯，避免使用复杂句子，保持口语化。\\n</think>\\n\\n你好！我叫通义千问，也可以叫我Qwen。很高兴见到你！有什么我可以帮你的吗？ 😊\",\"refusal\":null,\"annotations\":null,\"audio\":null,\"function_call\":null,\"tool_calls\":[],\"reasoning_content\":null},\"logprobs\":null,\"finish_reason\":\"stop\",\"stop_reason\":null,\"token_ids\":null}],\"service_tier\":null,\"system_fingerprint\":null,\"usage\":{\"prompt_tokens\":31,\"total_tokens\":299,\"completion_tokens\":268,\"prompt_tokens_details\":null},\"prompt_logprobs\":null,\"prompt_token_ids\":null,\"kv_transfer_params\":null}",
         "status_code": 200,
         "headers": {
-          "content-length": "647",
-          "connection": "keep-alive",
-          "content-type": "application/json; charset=utf-8",
-          "date": "Sun, 21 Dec 2025 04:35:39 GMT",
-          "etag": "W/\"287-Voa8Q2QNG/nkJCPF7gHZ2DP1rXM\"",
-          "keep-alive": "timeout=4",
-          "proxy-connection": "keep-alive",
-          "x-powered-by": "Express"
+          "content-type": "application/json",
+          "date": "Mon, 22 Dec 2025 00:57:04 GMT",
+          "server": "Caddy, uvicorn",
+          "transfer-encoding": "chunked"
         }
       },
       "数据集成/文本输入||文本输入": {
-        "text": "qwen/qwen3-30b-a3b-2507"
+        "text": "qwen3-30b-a3b"
       },
       "数据集成/文本输入||文本输入 2": {
         "text": "0.7"
@@ -644,7 +640,7 @@
             }
           ],
           "temperature": 0.7,
-          "model": "qwen/qwen3-30b-a3b-2507",
+          "model": "qwen3-30b-a3b",
           "name": "Alice",
           "age": 25
         }
@@ -656,7 +652,7 @@
       },
       "网络请求/文本包装JSON||文本包装JSON": {
         "output1": {
-          "model": "qwen/qwen3-30b-a3b-2507"
+          "model": "qwen3-30b-a3b"
         }
       },
       "数据转换/文本转json||文本转json": {

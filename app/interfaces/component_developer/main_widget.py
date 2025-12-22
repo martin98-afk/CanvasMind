@@ -420,6 +420,7 @@ except:
                 finally:
                     self.code_editor.resume_sync()
         except Exception as e:
+            traceback.print_exc()
             MessageManager.error(f"同步端口到代码失败: {e}", "", self)
 
     def _sync_properties_to_code(self):
@@ -471,11 +472,12 @@ except:
             if (not inputs_replaced and re.search(r'^\s*inputs\s*=\s*\[', line)):
                 new_lines.append("    inputs = [")
                 for port in input_ports:
-                    new_lines.append(
-                        f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\", "
-                        f"type=ArgumentType.{port['type'].name}, "
-                        f"connection=ConnectionType.{port.get('connection', ConnectionType.SINGLE.value).name}),"
-                    )
+                    if isinstance(port["type"], ArgumentType):
+                        new_lines.append(
+                            f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\", "
+                            f"type=ArgumentType.{port['type'].name}, "
+                            f"connection=ConnectionType.{port.get('connection', ConnectionType.SINGLE.value).name}),"
+                        )
                 new_lines.append("    ]")
                 inputs_replaced = True
                 bracket_count = line.count('[') - line.count(']')
@@ -487,9 +489,11 @@ except:
             elif (not outputs_replaced and re.search(r'^\s*outputs\s*=\s*\[', line)):
                 new_lines.append("    outputs = [")
                 for port in output_ports:
-                    new_lines.append(
-                        f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\", type=ArgumentType.{port['type'].name}),"
-                    )
+                    if isinstance(port["type"], ArgumentType):
+                        new_lines.append(
+                            f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\","
+                            f" type=ArgumentType.{port['type'].name}),"
+                        )
                 new_lines.append("    ]")
                 outputs_replaced = True
                 bracket_count = line.count('[') - line.count(']')

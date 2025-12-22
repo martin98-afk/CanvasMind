@@ -1,60 +1,135 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
-    QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView,
-    QFormLayout, QDialog, QSizePolicy, QWidget, QSlider
+    QHBoxLayout, QTableWidgetItem, QHeaderView,
+    QFormLayout, QDialog, QSizePolicy, QWidget
 )
 from qfluentwidgets import (
     LineEdit, PushButton,
     TableWidget, ComboBox, InfoBar, FluentIcon, MessageBoxBase, SubtitleLabel,
-    DoubleSpinBox, TransparentToolButton, SimpleCardWidget, SwitchButton, EditableComboBox, Slider, BodyLabel
+    DoubleSpinBox, TransparentToolButton, SwitchButton, EditableComboBox, Slider
 )
 
 from app.components.base import PropertyType, PropertyDefinition
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
+from app.widgets.side_dock_area.plugins.component_info.config_table import ConfigTableSpace
 
 
-class PropertyEditorWidget(SimpleCardWidget):
-    """属性编辑器 - + 按钮在表头，删除按钮每行一个，对齐可靠"""
+class PropertyEditorWidget(ConfigTableSpace):
     properties_changed = pyqtSignal()
 
     def __init__(self, parent=None):
-        super().__init__(parent)
         self.parent = parent
         self._dynamic_form_schemas = {}
         self._choice_configs = {}
         self._range_configs = {}
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        # 6 列：属性名、标签、类型、默认值、选项、操作（删除由基类处理）
+        labels = ["属性名", "标签", "类型", "默认值", "选项"]
+        super().__init__(column_labels=labels, parent=parent)
 
-        # === 属性表格（6 列：5 内容 + 1 删除）===
-        self.table = TableWidget()
-        self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["属性名", "标签", "类型", "默认值", "选项", "＋"])
-        font = QFont()
-        font.setPointSize(14)  # 或 16，根据需求调整
-        font.setBold(True)
+        # 覆盖基类信号
+        self.dataChanged.connect(self.properties_changed)
 
-        for col in range(self.table.columnCount()):
-            item = self.table.horizontalHeaderItem(col)
-            if item and col == self.table.columnCount() - 1:  # 最后一列
-                item.setFont(font)
-                item.setTextAlignment(Qt.AlignCenter)
-        self.table.verticalHeader().hide()
-        self.table.verticalHeader().setDefaultSectionSize(32)
-        self.table.verticalHeader().setMinimumSectionSize(32)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        # 标志：抑制中间变更
+        self._batch_updating = False
 
-        self.table.itemChanged.connect(self._on_item_changed)
-        self.table.horizontalHeader().sectionClicked.connect(self._on_header_clicked)
+    def _generate_unique_key(self, base: str = "prop") -> str:
+        existing = self._get_existing_keys()
+        if base not in existing:
+            return base
+        i = 1
+        while f"{base}{i}" in existing:
+            i += 1
+        return f"{base}{i}"
 
-        layout.addWidget(self.table)
+    def _fill_row_content(self, row: int):
+        # 此方法用于 add_property() 无参数时
+        self._add_property_row(row, prop_name=f"prop{row + 1}")
 
-    def _on_header_clicked(self, logical_index):
-        if logical_index == 5:
-            self._add_property()
+    def _add_property_row(self, row: int, prop_name: str, prop_def=None):
+        # 第0列已在基类设置为 prop_name，我们覆盖它并加 UserRole
+        name_item = self.table.item(row, 0)
+        name_item.setText(prop_name)
+        name_item.setData(Qt.UserRole, prop_name)
+        name_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+
+        # 第1列：标签
+        label = getattr(prop_def, 'label', f"属性{row + 1}")
+        label_item = self.table.item(row, 1)
+        if label_item:
+            label_item.setText(label)
+        else:
+            label_item = QTableWidgetItem(label)
+            label_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+            self.table.setItem(row, 1, label_item)
+
+        # 第2列：类型 ComboBox
+        type_combo = ComboBox()
+        type_combo.setStyleSheet("border: none; background: transparent; color: white;")
+        type_combo.setFixedHeight(28)
+        for item in PropertyType:
+            type_combo.addItem(item.value, userData=item)
+        current_type = getattr(prop_def, 'type', PropertyType.TEXT)
+        type_combo.setCurrentText(current_type.value)
+        self.table.setCellWidget(row, 2, type_combo)
+        type_combo.currentTextChanged.connect(
+            lambda: self._on_type_changed(row)
+        )
+
+        # 第3列：默认值
+        default_val = getattr(prop_def, 'default', '')
+        self._update_default_value_widget(row, current_type, prop_name, default_val)
+
+        # 第4列：操作（配置按钮）
+        self._update_action_widget(row, current_type, prop_name)
+
+    def _add_property(self, prop_name: str = None, prop_def=None):
+        self._batch_updating = True
+
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+
+        # 第0列：名称（带 UserRole）
+        name = prop_name if prop_name else self._generate_unique_key()
+        name_item = QTableWidgetItem(name)
+        name_item.setData(Qt.UserRole, name)
+        name_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        self.table.setItem(row, 0, name_item)
+
+        # 构造其余列
+        self._add_property_row(row, name, prop_def)
+
+        # 删除按钮（由基类处理，但我们需重新设置，因为基类只放按钮）
+        delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
+        delete_btn.setFixedSize(24, 24)
+        delete_btn.setToolTip("删除此属性")
+        delete_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        delete_btn.clicked.connect(self._on_delete_button_clicked)
+        self.table.setCellWidget(row, self.table.columnCount() - 1, delete_btn)
+
+        self._batch_updating = False
+        self.properties_changed.emit()
+
+    def _on_delete_button_clicked(self):
+        btn = self.sender()
+        if not btn:
+            return
+        for row in range(self.table.rowCount()):
+            if self.table.cellWidget(row, self.table.columnCount() - 1) is btn:
+                name_item = self.table.item(row, 0)
+                if name_item:
+                    prop_name = name_item.text()
+                    self._choice_configs.pop(prop_name, None)
+                    self._range_configs.pop(prop_name, None)
+                    self._dynamic_form_schemas.pop(prop_name, None)
+                self.table.removeRow(row)
+                self.properties_changed.emit()
+                return
+
+    def _on_item_changed_guarded(self, item):
+        if self._batch_updating:
+            return
+        self._on_item_changed(item)
 
     def _on_item_changed(self, item):
         row = self.table.row(item)
@@ -75,72 +150,7 @@ class PropertyEditorWidget(SimpleCardWidget):
         if old_name in self._dynamic_form_schemas:
             self._dynamic_form_schemas[new_name] = self._dynamic_form_schemas.pop(old_name)
 
-    def _remove_property_at(self, row: int):
-        if 0 <= row < self.table.rowCount():
-            name_item = self.table.item(row, 0)
-            if name_item:
-                prop_name = name_item.text()
-                self._choice_configs.pop(prop_name, None)
-                self._range_configs.pop(prop_name, None)
-                self._dynamic_form_schemas.pop(prop_name, None)
-            self.table.removeRow(row)
-            self.properties_changed.emit()
-
-    def _on_delete_button_clicked(self):
-        button = self.sender()
-        if not button:
-            return
-        for row in range(self.table.rowCount()):
-            cell_widget = self.table.cellWidget(row, 5)
-            if cell_widget is button:
-                self._remove_property_at(row)
-                return
-
-    def _add_property(self, prop_name: str = None, prop_def: PropertyType = None):
-        row = self.table.rowCount()
-        self.table.insertRow(row)
-
-        # 属性名
-        name = prop_name if prop_name else f"prop{row + 1}"
-        name_item = QTableWidgetItem(name)
-        name_item.setData(Qt.UserRole, name)
-        name_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-        self.table.setItem(row, 0, name_item)
-
-        # 标签
-        label = getattr(prop_def, 'label', f"属性{row + 1}")
-        label_item = QTableWidgetItem(label)
-        label_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-        self.table.setItem(row, 1, label_item)
-
-        # 类型
-        type_combo = ComboBox()
-        type_combo.setStyleSheet("border: none; background: transparent; color: white;")
-        type_combo.setFixedHeight(28)
-        for item in PropertyType:
-            type_combo.addItem(item.value, userData=item)
-        current_type = getattr(prop_def, 'type', PropertyType.TEXT)
-        type_combo.setCurrentText(current_type.value)
-        self.table.setCellWidget(row, 2, type_combo)
-        type_combo.currentTextChanged.connect(lambda _, r=row: self._on_type_changed(r))
-
-        # 默认值列（关键改动：使用 widget）
-        default_val = getattr(prop_def, 'default', '')
-        self._update_default_value_widget(row, current_type, name, default_val)
-
-        # 操作列（第4列）
-        self._update_action_widget(row, current_type, name)
-
-        # 删除按钮（第5列）
-        delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
-        delete_btn.setFixedSize(24, 24)
-        delete_btn.setToolTip("删除此属性")
-        delete_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        delete_btn.clicked.connect(self._on_delete_button_clicked)
-        self.table.setCellWidget(row, 5, delete_btn)
-
-        self.properties_changed.emit()
-
+    # === 以下方法保持不变（从你原代码复制）===
     def _get_default_value_from_widget(self, row: int):
         widget = self.table.cellWidget(row, 3)
         if isinstance(widget, EditableComboBox) or isinstance(widget, ComboBox):
@@ -162,22 +172,17 @@ class PropertyEditorWidget(SimpleCardWidget):
             item = self.table.item(row, 3)
             return item.text() if item else ""
 
-    def _adjust_line_edit_width(self, line_edit: LineEdit, max_width=120, min_width=50):
-        """根据文本内容调整 LineEdit 宽度"""
+    def _adjust_line_edit_width(self, line_edit, max_width=120, min_width=50):
         text = line_edit.text() or "0"
-        # 添加一点 padding（比如 10 像素）
         fm = line_edit.fontMetrics()
         text_width = fm.horizontalAdvance(text) + 10
-        # 限制在合理范围
         width = max(min_width, min(max_width, text_width))
         line_edit.setFixedWidth(width)
 
     def _update_default_value_widget(self, row: int, prop_type: PropertyType, prop_name: str = None, default_value=''):
-        """根据类型设置默认值列的 widget"""
         self.table.setCellWidget(row, 3, None)
 
         if prop_type == PropertyType.CHOICE:
-            # 使用原生 QComboBox（支持 setEditable）
             combo = EditableComboBox()
             combo.setStyleSheet("color: white; background: transparent; border: none;")
             choices = self._choice_configs.get(prop_name, [])
@@ -187,12 +192,11 @@ class PropertyEditorWidget(SimpleCardWidget):
             combo.currentTextChanged.connect(self.properties_changed.emit)
             self.table.setCellWidget(row, 3, combo)
         elif prop_type == PropertyType.VARIABLE:
-            # 使用原生 QComboBox（支持 setEditable）
             combo = ComboBox()
+            combo.setFixedHeight(28)
             combo.setStyleSheet("color: white; background: transparent; border: none;")
             combo.addItems(["全局变量", "导出项目", "MCP工具", "HTTP服务"])
             combo.setCurrentText(default_value)
-            combo.setFixedHeight(28)
             combo.currentTextChanged.connect(self.properties_changed.emit)
             self.table.setCellWidget(row, 3, combo)
         elif prop_type == PropertyType.RANGE:
@@ -209,29 +213,21 @@ class PropertyEditorWidget(SimpleCardWidget):
 
             max_dec = max(_decimals(min_val), _decimals(max_val), _decimals(step))
             factor = 10 ** max_dec if max_dec > 0 else 1
-
             int_min = int(round(min_val * factor))
             int_max = int(round(max_val * factor))
             int_step = max(1, int(round(step * factor)))
 
-            # 容器
             container = QWidget()
             layout = QHBoxLayout(container)
             layout.setContentsMargins(0, 0, 0, 0)
             layout.setSpacing(6)
-
             slider = Slider(Qt.Horizontal)
             slider.setRange(int_min, int_max)
             slider.setSingleStep(int_step)
-
-            # 替换 BodyLabel 为 LineEdit
             value_edit = LineEdit()
             value_edit.setStyleSheet("color: white; background: transparent; border: 1px solid #555555;")
-
             layout.addWidget(slider, 1)
             layout.addWidget(value_edit)
-
-            # 初始化值
             try:
                 current_float = float(default_value) if default_value not in (None, '') else min_val
                 current_float = max(min_val, min(max_val, current_float))
@@ -245,86 +241,57 @@ class PropertyEditorWidget(SimpleCardWidget):
                 value_edit.setText(display_str)
 
             self._adjust_line_edit_width(value_edit, max_width=100, min_width=40)
-
-            # 每次内容变化后也调整（连接信号）
             value_edit.textChanged.connect(
                 lambda: self._adjust_line_edit_width(value_edit, max_width=100, min_width=40)
             )
 
-            # Slider -> LineEdit
             def on_slider_changed(val):
                 float_val = val / factor
-                if max_dec > 0:
-                    display_str = f"{float_val:.{max_dec}f}"
-                else:
-                    display_str = str(int(float_val))
+                display_str = f"{float_val:.{max_dec}f}" if max_dec > 0 else str(int(float_val))
                 value_edit.setText(display_str)
                 self.properties_changed.emit()
-
             slider.valueChanged.connect(on_slider_changed)
 
-            # LineEdit -> Slider（带校验）
             def on_line_edit_finished():
                 text = value_edit.text().strip()
                 if not text:
                     return
                 try:
                     user_val = float(text)
-                    # 限制在 [min_val, max_val]
                     user_val = max(min_val, min(max_val, user_val))
-
                     int_val = int(round(user_val * factor))
                     slider.setValue(int_val)
-
-                    # 精确回写格式化值（防止用户输入 1.000001）
                     display_str = f"{user_val:.{max_dec}f}" if max_dec > 0 else str(int(user_val))
                     value_edit.setText(display_str)
                     self.properties_changed.emit()
                 except ValueError:
-                    # 输入非法，恢复为当前 slider 对应值
                     current_float = slider.value() / factor
                     display_str = f"{current_float:.{max_dec}f}" if max_dec > 0 else str(int(current_float))
                     value_edit.setText(display_str)
-
             value_edit.editingFinished.connect(on_line_edit_finished)
 
             container.setFixedHeight(28)
             self.table.setCellWidget(row, 3, container)
-
-            # 保存元数据供读取
             container.slider = slider
             container.factor = factor
             container.max_dec = max_dec
-            container.value_edit = value_edit  # 便于将来扩展
-
+            container.value_edit = value_edit
         elif prop_type == PropertyType.BOOL:
-            # 创建容器
             container = QWidget()
             layout = QHBoxLayout(container)
             layout.setContentsMargins(0, 0, 0, 0)
             layout.setSpacing(0)
-
-            # 创建开关
             switch = SwitchButton(parent=container)
             switch._offText = switch.tr("False")
             switch._onText = switch.tr("True")
-            # 初始化状态
-            if isinstance(default_value, bool):
-                checked = default_value
-            else:
-                checked = str(default_value).lower() in ("true", "1", "yes", "on")
+            checked = default_value if isinstance(default_value, bool) else str(default_value).lower() in ("true", "1", "yes", "on")
             switch.setChecked(checked)
             switch.checkedChanged.connect(self.properties_changed.emit)
-
-            # 居中：左右加 stretch
             layout.addStretch()
             layout.addWidget(switch)
             layout.addStretch()
-
             container.setFixedHeight(28)
             self.table.setCellWidget(row, 3, container)
-
-            # 保存引用，便于后续读取
             container.switch = switch
         else:
             edit = LineEdit()
@@ -336,7 +303,6 @@ class PropertyEditorWidget(SimpleCardWidget):
 
     def _update_action_widget(self, row, prop_type, prop_name=None):
         self.table.setCellWidget(row, 4, None)
-
         if prop_type == PropertyType.CHOICE:
             btn = PushButton("配置选项")
             btn.setFixedHeight(28)
@@ -370,10 +336,7 @@ class PropertyEditorWidget(SimpleCardWidget):
         prop_type = type_widget.currentData() or PropertyType.TEXT
         name_item = self.table.item(row, 0)
         prop_name = name_item.text() if name_item else None
-
-        # 保存当前默认值，避免切换类型时丢失
         current_default = self._get_default_value_from_widget(row)
-
         self._update_action_widget(row, prop_type, prop_name)
         self._update_default_value_widget(row, prop_type, prop_name, current_default)
         self.properties_changed.emit()
@@ -395,7 +358,6 @@ class PropertyEditorWidget(SimpleCardWidget):
             if dialog.exec() == QDialog.Accepted:
                 new_values = dialog.get_values()
                 self._range_configs[prop_name] = new_values
-                # 更新默认值控件（如果当前行是 RANGE 类型）
                 if self.table.cellWidget(row, 2).currentData() == PropertyType.RANGE:
                     self._update_default_value_widget(row, PropertyType.RANGE, prop_name,
                                                       self._get_default_value_from_widget(row))
@@ -418,12 +380,50 @@ class PropertyEditorWidget(SimpleCardWidget):
             if dialog.exec() == QDialog.Accepted:
                 new_choices = dialog.get_choices()
                 self._choice_configs[prop_name] = new_choices
-                # 更新默认值控件（如果当前行是 CHOICE 类型）
                 if self.table.cellWidget(row, 2).currentData() == PropertyType.CHOICE:
                     self._update_default_value_widget(row, PropertyType.CHOICE, prop_name,
                                                       self._get_default_value_from_widget(row))
                 self.properties_changed.emit()
                 InfoBar.success("成功", f"已保存下拉选项: {prop_name}", parent=self.parent, duration=1500)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
+
+    def _edit_dynamic_form(self, row):
+        try:
+            name_item = self.table.item(row, 0)
+            if not name_item or not name_item.text().strip():
+                InfoBar.warning("警告", "请先填写属性名", parent=self.parent, duration=2000)
+                return
+            prop_name = name_item.text()
+            current_schema = self._dynamic_form_schemas.get(prop_name, {})
+            dialog = DynamicFormEditorDialog(current_schema, self.window())
+            if dialog.exec() == QDialog.Accepted:
+                new_schema = dialog.get_schema()
+                self._dynamic_form_schemas[prop_name] = new_schema
+                self.properties_changed.emit()
+                InfoBar.success("成功", f"已保存表单结构: {prop_name}", parent=self.parent, duration=1500)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
+
+    def _edit_long_text(self, row):
+        try:
+            name_item = self.table.item(row, 0)
+            if not name_item or not name_item.text().strip():
+                InfoBar.warning("警告", "请先填写属性名", parent=self.parent, duration=2000)
+                return
+            current_text = self._get_default_value_from_widget(row)
+            dialog = LongTextEditorDialog(current_text, self.window(), self.parent)
+            if dialog.exec() == QDialog.Accepted:
+                new_text = dialog.text_edit.toPlainText()
+                widget = self.table.cellWidget(row, 3)
+                if isinstance(widget, LineEdit):
+                    widget.setText(new_text)
+                self.properties_changed.emit()
+                InfoBar.success("成功", "长文本已更新", parent=self.parent, duration=1500)
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -480,46 +480,8 @@ class PropertyEditorWidget(SimpleCardWidget):
                 self._choice_configs[prop_name] = getattr(prop_def, 'choices', [])
             self._add_property(prop_name, prop_def)
 
-    def _edit_dynamic_form(self, row):
-        try:
-            name_item = self.table.item(row, 0)
-            if not name_item or not name_item.text().strip():
-                InfoBar.warning("警告", "请先填写属性名", parent=self.parent, duration=2000)
-                return
-            prop_name = name_item.text()
-            current_schema = self._dynamic_form_schemas.get(prop_name, {})
-            dialog = DynamicFormEditorDialog(current_schema, self.window())
-            if dialog.exec() == QDialog.Accepted:
-                new_schema = dialog.get_schema()
-                self._dynamic_form_schemas[prop_name] = new_schema
-                self.properties_changed.emit()
-                InfoBar.success("成功", f"已保存表单结构: {prop_name}", parent=self.parent, duration=1500)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
-
-    def _edit_long_text(self, row):
-        try:
-            name_item = self.table.item(row, 0)
-            if not name_item or not name_item.text().strip():
-                InfoBar.warning("警告", "请先填写属性名", parent=self.parent, duration=2000)
-                return
-            current_text = self._get_default_value_from_widget(row)
-            dialog = LongTextEditorDialog(current_text, self.window(), self.parent)
-            if dialog.exec() == QDialog.Accepted:
-                new_text = dialog.text_edit.toPlainText()
-                # 直接更新 widget（当前是 LineEdit）
-                widget = self.table.cellWidget(row, 3)
-                if isinstance(widget, LineEdit):
-                    widget.setText(new_text)
-                self.properties_changed.emit()
-                InfoBar.success("成功", "长文本已更新", parent=self.parent, duration=1500)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
-
+    def add_property(self):
+        self._add_property()
 
 # ==================== Dialogs ====================
 

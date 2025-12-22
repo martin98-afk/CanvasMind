@@ -401,6 +401,19 @@ class CustomNodeGraph(NodeGraph):
         if menus.get('nodes'):
             self._context_menu['nodes'] = CustomNodesMenu(self, menus['nodes'])
 
+    def _on_node_selected(self, node_id):
+        """
+        called when a node in the viewer is selected on left click.
+        (emits the node object when the node is clicked)
+
+        Args:
+            node_id (str): node id emitted by the viewer.
+        """
+        node = self.get_node_by_id(node_id)
+        if node is None:
+            return
+        self.node_selected.emit(node)
+
     def _deserialize(self, data, relative_pos=False, pos=None, adjust_graph_style=True):
         """
         deserialize node data.

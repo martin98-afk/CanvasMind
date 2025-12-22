@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import Optional
 from PyQt5.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, QTimer
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QTextOption
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QFormLayout, QToolButton, QFrame, QSizePolicy, QApplication
 from qfluentwidgets import (
     LineEdit, BodyLabel, TextEdit,
@@ -21,7 +21,7 @@ class CollapsibleCard(QWidget):
 
     def __init__(self, title: str, parent=None):
         super().__init__(parent)
-        self._is_expanded = False  # 默认折叠，避免初始化触发动画
+        self._is_expanded = False
 
         # === 标题按钮 ===
         self.toggle_button = QToolButton()
@@ -38,12 +38,12 @@ class CollapsibleCard(QWidget):
             QToolButton {
                 background: transparent;
                 border: none;
-                padding: 6px 8px;
+                padding: 6px 10px;
                 text-align: left;
                 color: #FFFFFF;
                 min-height: 24px;
                 max-height: 24px;
-                qproperty-iconSize: 16px 16px;
+                qproperty-iconSize: 20px 20px;
             }
             QToolButton:hover {
                 background: rgba(255, 255, 255, 12);
@@ -57,9 +57,17 @@ class CollapsibleCard(QWidget):
         self.content_widget = QFrame()
         self.content_layout = QVBoxLayout(self.content_widget)
         self.content_widget.setMinimumHeight(0)
-        self.content_widget.setMaximumHeight(0)  # 初始折叠
-        self.content_layout.setContentsMargins(5, 0, 5, 0)  # 避免 0 边距导致 layout 异常
+        self.content_widget.setMaximumHeight(0)
+        self.content_layout.setContentsMargins(4, 4, 4, 4)
         self.content_widget.setVisible(False)
+        # 轻微背景提升层次（仅深色下可见）
+        self.content_widget.setStyleSheet("""
+            QFrame {
+                background: rgba(255, 255, 255, 5);
+                border-radius: 6px;
+                margin-top: 4px;
+            }
+        """)
 
         # === 动画 ===
         self.animation = QPropertyAnimation(self.content_widget, b"maximumHeight")
@@ -90,27 +98,22 @@ class CollapsibleCard(QWidget):
             pass
 
         if self._is_expanded:
-            # 展开
             self.content_widget.setVisible(True)
 
             def _start_expand():
-                # 安全计算高度：仅在 widget 可见时才计算
                 if self.isVisible():
-                    # 先设为最大高度，让 layout 计算真实高度
                     self.content_widget.setMaximumHeight(16777215)
-                    QApplication.processEvents()  # 确保 layout 更新
+                    QApplication.processEvents()
                     content_height = self.content_widget.sizeHint().height()
                     if content_height <= 0:
                         content_height = 100
                 else:
-                    # 估算高度（避免触发布局）
                     content_height = 100
 
                 self.content_widget.setMaximumHeight(0)
                 self.animation.setStartValue(0)
                 self.animation.setEndValue(content_height)
                 self.animation.start()
-
                 self.animation.finished.connect(
                     lambda: self.content_widget.setMaximumHeight(16777215)
                 )
@@ -118,7 +121,6 @@ class CollapsibleCard(QWidget):
             QTimer.singleShot(0, _start_expand)
 
         else:
-            # 折叠
             current_height = self.content_widget.height()
             if current_height <= 0:
                 self.content_widget.setVisible(False)
@@ -127,7 +129,6 @@ class CollapsibleCard(QWidget):
             self.animation.setStartValue(current_height)
             self.animation.setEndValue(0)
             self.animation.start()
-
             self.animation.finished.connect(
                 lambda: self.content_widget.setVisible(False)
             )
@@ -160,79 +161,107 @@ class ComponentInfoWindow(ToolWindow):
     _property_editor = None
 
     def setup_ui(self):
-        """原 setup_ui 内容，现在作用于 content_layout"""
-        # === 使用 ScrollArea 包裹内容 ===
         self.scroll_area = SmoothScrollArea()
-        # 透明背景
         self.scroll_area.setStyleSheet("background: transparent;")
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setFrameShape(QFrame.NoFrame)  # 去掉边框
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
 
-        # 内容容器
         self.content_widget = QWidget()
         self.content_layout = QVBoxLayout(self.content_widget)
-        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.setContentsMargins(4, 14, 4, 4)
         self.content_layout.setSpacing(0)
-        # === 基本信息 ===
-        self.basic_card = CollapsibleCard("基本信息")
-        form_widget = QWidget()
-        form_layout = QFormLayout(form_widget)
-        self._name_edit = LineEdit()
-        self._category_edit = EditableComboBox()
-        self._category_edit.setMaxVisibleItems(12)
-        ComponentScanner.register_on_change(self.refresh_category_combobox)
-        self.refresh_category_combobox()
-        self._description_edit = TextEdit()
-        self._description_edit.setMaximumHeight(100)
-        form_layout.addRow(BodyLabel("组件名称:"), self._name_edit)
-        form_layout.addRow(BodyLabel("组件分类:"), self._category_edit)
-        form_layout.addRow(BodyLabel("组件描述:"), self._description_edit)
-        self.basic_card.add_widget(form_widget)
 
-        # === 依赖信息 ===
-        self.dep_card = CollapsibleCard("依赖信息")
-        self._requirements_edit = TextEdit()
-        self._requirements_edit.setMaximumHeight(120)
-        self.dep_card.add_widget(self._requirements_edit)
+        # 创建卡片
+        self.basic_card = self._create_basic_card()
+        self.dep_card = self._create_dependency_card()
+        self.input_card = self._create_input_card()
+        self.output_card = self._create_output_card()
+        self.prop_card = self._create_property_card()
 
-        # === 输入端口 ===
-        self.input_card = CollapsibleCard("输入端口")
-        self._input_port_editor = PortEditorWidget("input")
-        self.input_card.add_widget(self._input_port_editor)
-
-        # === 输出端口 ===
-        self.output_card = CollapsibleCard("输出端口")
-        self._output_port_editor = PortEditorWidget("output")
-        self.output_card.add_widget(self._output_port_editor)
-
-        # === 属性参数 ===
-        self.prop_card = CollapsibleCard("属性参数")
-        self._property_editor = PropertyEditorWidget(self)
-        self.prop_card.add_widget(self._property_editor)
-
-        # 添加到 content_layout
         for card in [self.basic_card, self.dep_card, self.input_card, self.output_card, self.prop_card]:
             self.content_layout.addWidget(card)
 
         self.content_layout.addStretch(1)
-        self.content_widget.setLayout(self.content_layout)
         self.scroll_area.setWidget(self.content_widget)
 
-        # 主布局
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(self.scroll_area)
 
+    def _create_basic_card(self):
+        card = CollapsibleCard("基本信息")
+        form_widget = QWidget()
+        form_layout = QFormLayout(form_widget)
+        form_layout.setLabelAlignment(Qt.AlignRight)
+        form_layout.setSpacing(4)
+        form_layout.setContentsMargins(0, 0, 0, 0)
+
+        self._name_edit = LineEdit()
+        self._name_edit.setPlaceholderText("请输入组件名称")
+
+        self._category_edit = EditableComboBox()
+        self._category_edit.setMaxVisibleItems(12)
+        self._category_edit.setToolTip("可输入新分类名称")
+        ComponentScanner.register_on_change(self.refresh_category_combobox)
+        self.refresh_category_combobox()
+
+        self._description_edit = TextEdit()
+        self._description_edit.setMaximumHeight(120)
+        self._description_edit.setPlaceholderText("请输入组件描述（支持换行）")
+        self._description_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
+        self._description_edit.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        # 统一字体层级
+        for label_text in ["组件名称:", "组件分类:", "组件描述:"]:
+            label = BodyLabel(label_text)
+            setFont(label, 12)
+            form_layout.addRow(label, None)
+
+        form_layout.setWidget(0, QFormLayout.FieldRole, self._name_edit)
+        form_layout.setWidget(1, QFormLayout.FieldRole, self._category_edit)
+        form_layout.setWidget(2, QFormLayout.FieldRole, self._description_edit)
+
+        card.add_widget(form_widget)
+        return card
+
+    def _create_dependency_card(self):
+        card = CollapsibleCard("依赖信息")
+        self._requirements_edit = TextEdit()
+        self._requirements_edit.setPlaceholderText("例如：requests>=2.25.0\nnumpy\n# 支持多行")
+        self._requirements_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
+        self._requirements_edit.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        card.add_widget(self._requirements_edit)
+        return card
+
+    def _create_input_card(self):
+        card = CollapsibleCard("输入端口")
+        self._input_port_editor = PortEditorWidget("input")
+        card.add_widget(self._input_port_editor)
+        return card
+
+    def _create_output_card(self):
+        card = CollapsibleCard("输出端口")
+        self._output_port_editor = PortEditorWidget("output")
+        card.add_widget(self._output_port_editor)
+        return card
+
+    def _create_property_card(self):
+        card = CollapsibleCard("属性参数")
+        self._property_editor = PropertyEditorWidget(self)
+        card.add_widget(self._property_editor)
+        return card
+
     def showEvent(self, event):
         if not self._first_show:
             self._first_show = True
-            # 可选：首次显示时展开基本信息卡
+            # 首次仅展开关键卡片
             QTimer.singleShot(100, lambda: self.basic_card.set_expanded(True))
             QTimer.singleShot(100, lambda: self.input_card.set_expanded(True))
             QTimer.singleShot(100, lambda: self.output_card.set_expanded(True))
             QTimer.singleShot(100, lambda: self.prop_card.set_expanded(True))
+            # 依赖和属性按需展开
         super().showEvent(event)
 
     def refresh_category_combobox(self):
@@ -240,18 +269,24 @@ class ComponentInfoWindow(ToolWindow):
         self._category_edit.clear()
         compoent_map, _ = ComponentScanner().get_components()
         categories = {getattr(cls, 'category', 'General') for cls in compoent_map.values()}
-        self._category_edit.addItems(categories)
+        self._category_edit.addItems(sorted(categories))
         if current_category in categories:
             self._category_edit.setCurrentText(current_category)
 
     def clear_all(self):
-        self.name_edit.clear()
+        if self._name_edit:
+            self._name_edit.clear()
         self.refresh_category_combobox()
-        self.description_edit.clear()
-        self.requirements_edit.clear()
-        self.input_port_editor.set_ports([])
-        self.output_port_editor.set_ports([])
-        self.property_editor.set_properties({})
+        if self._description_edit:
+            self._description_edit.clear()
+        if self._requirements_edit:
+            self._requirements_edit.clear()
+        if self._input_port_editor:
+            self._input_port_editor.set_ports([])
+        if self._output_port_editor:
+            self._output_port_editor.set_ports([])
+        if self._property_editor:
+            self._property_editor.set_properties({})
 
     @property
     def name_edit(self):
