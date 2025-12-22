@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
-import pathlib
-base_path = pathlib.Path(__file__).parent.parent / "base.py"
+from pathlib import Path
+base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -50,8 +50,8 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     model = Component()
     result = model.debug(
-        params={"prop1": "test"},
-        inputs={"input1": "output"},
+        params={"prop1": "$input.input1['test']$"},
+        inputs={"input1": {"test": "output"}},
         node_id="测试模型",
         show_input_types = True,
         show_output_types = True,

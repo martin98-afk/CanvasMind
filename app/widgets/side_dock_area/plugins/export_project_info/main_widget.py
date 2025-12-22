@@ -39,46 +39,14 @@ class ProjectInfoTool(ToolWindow):
                 item.widget().deleteLater()
 
         # 来源画布
-        canvas = "—"
         spec_path = project_path / "project_spec.json"
         if spec_path.exists():
             try:
                 with open(spec_path, 'r', encoding='utf-8') as f:
                     spec = json.load(f)
-                canvas = spec.get('graph_name', '—')
             except:
                 pass
-        self.main_layout.addWidget(SubtitleLabel(f"项目名称：{canvas}"))
 
-        # 端口
-        inputs = outputs = []
-        if spec_path.exists():
-            try:
-                with open(spec_path, 'r', encoding='utf-8') as f:
-                    spec = json.load(f)
-                inputs = list(spec.get('inputs', {}).keys())
-                outputs = list(spec.get('outputs', {}).keys())
-            except:
-                pass
-        ports_text = f"输入：{', '.join(inputs) if inputs else '—'}；输出：{', '.join(outputs) if outputs else '—'}"
-        self.main_layout.addWidget(BodyLabel(f"端口：{ports_text}"))
-
-        # 依赖
-        deps = "—"
-        req_path = project_path / "requirements.txt"
-        if req_path.exists():
-            try:
-                with open(req_path, 'r', encoding='utf-8') as f:
-                    pkgs = [line.strip() for line in f if line.strip() and not line.startswith('#')]
-                    deps = ", ".join(pkgs[:12])
-                    if len(pkgs) > 12:
-                        deps += f" +{len(pkgs) - 12}"
-            except:
-                pass
-        req_label = BodyLabel(f"依赖包：{deps}")
-        req_label.setWordWrap(True)
-        self.main_layout.addWidget(req_label)
-        self.main_layout.addStretch()
         md_path = project_path / "README.md"
         if md_path.exists():
             try:

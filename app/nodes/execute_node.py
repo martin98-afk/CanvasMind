@@ -647,13 +647,10 @@ def create_node_class(full_path, file_path, parent_window=None):
                             with open(error_path, 'rb') as f:
                                 error_info_retry = pickle.load(f)
                             error_msg = f"❌ 节点执行失败（重试后）: {error_info_retry['traceback']}"
-                            self._log_message(self.persistent_id, error_msg)
                             raise Exception(error_info_retry['traceback'])
                         else:
                             raise Exception("未知错误：未生成结果或错误文件（重试后）")
                 else:
-                    error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
-                    self._log_message(self.persistent_id, error_msg)
                     raise Exception(error_info['traceback'])
             else:
                 raise Exception("未知错误：未生成结果或错误文件")
@@ -758,12 +755,10 @@ def create_node_class(full_path, file_path, parent_window=None):
                 with open(error_path, 'rb') as f:
                     error_info = pickle.load(f)
                 error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
-                self._log_message(self.persistent_id, error_msg)
                 raise Exception(error_info['traceback'])
             else:
                 # 未生成结果或错误文件，视为未知异常
                 error_msg = "❌ 节点执行异常: 未知错误"
-                self._log_message(self.persistent_id, error_msg)
                 raise Exception("未知错误")
 
     return DynamicNode

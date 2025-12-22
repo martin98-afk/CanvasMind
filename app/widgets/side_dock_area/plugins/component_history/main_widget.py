@@ -104,6 +104,8 @@ class ComponentHistoryToolWindow(ToolWindow):
     def _setup_strategy_combo(self, row, record):
         combo = ComboBox(self)
         combo.setMinimumWidth(80)
+        combo.setFixedHeight(28)
+        combo.setStyleSheet("color: white; background: transparent; border: none;")
         all_versions = ["同步"] + self.get_all_versions()
         combo.addItems(all_versions)
         current = record.get("version", "同步")

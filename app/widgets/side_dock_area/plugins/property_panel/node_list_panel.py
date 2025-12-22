@@ -1,232 +1,248 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget
-from qfluentwidgets import CardWidget, BodyLabel, FluentIcon, TransparentToolButton, SubtitleLabel
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QListWidgetItem, QFrame
+from PyQt5.QtCore import Qt, QMimeData, QTimer
+from PyQt5.QtGui import QDrag, QPainter, QColor
+from qfluentwidgets import (
+    CardWidget, BodyLabel, SubtitleLabel,
+    TransparentToolButton, FluentIcon, InfoBar, InfoBarPosition
+)
 
 from app.utils.utils import topological_sort
+from app.widgets.side_dock_area.plugins.property_panel.draggable_container import DraggableContainer
 from app.widgets.side_dock_area.plugins.property_panel.internal_node_list import InternalNodeList
 
 
+# ===== 主控件 =====
 class NodeListPanelWidget:
-    """处理节点列表（连通图）UI的子模块"""
-
     def __init__(self, main_window, parent_panel, parent_layout):
         self.main_window = main_window
-        self.parent_panel = parent_panel # PropertyPanel 的实例
-        self.parent_layout = parent_layout # PropertyPanel 中的 node_vbox
+        self.parent_panel = parent_panel
+        self.parent_layout = parent_layout
 
-        # 存储当前组件列表和卡片引用
         self._current_components = []
+        self._user_execution_order = {}
+
         self._component_cards = []
         self._component_nodes_list = {}
-        self._user_execution_order = {}
         self._column_list_widgets = {}
-        self._text_edit_widgets = {}
+        self._selected_row_in_component = {}
+
+        self.nodes_card = None
 
     def build_ui(self, nodes):
-        """构建节点列表UI"""
-        new_components = topological_sort(nodes, split_components=True)
-        if new_components is None:
-            new_components = []
-
+        new_components = topological_sort(nodes, split_components=True) or []
         new_node_sets = [set(n.id for n in comp) for comp in new_components]
         current_user_order = self._user_execution_order.copy()
         final_components = []
         processed_new_indices = set()
 
         for old_key_node_ids, old_ordered_nodes in current_user_order.items():
-            topo_order = [n.id for n in old_ordered_nodes]
             old_node_set = set(old_key_node_ids)
-            overlaped_component_index = []
-            overlaped_id = []
+            matched_indices = []
+            first_match_positions = []
             for i, new_node_set in enumerate(new_node_sets):
                 if i in processed_new_indices:
                     continue
-                overlap = len(old_node_set & new_node_set)
-                if overlap > 0:
-                    for j, nid in enumerate(topo_order):
-                        if nid in new_node_set:
-                            overlaped_id.append(j)
-                            overlaped_component_index.append(i)
+                if old_node_set & new_node_set:
+                    for j, node in enumerate(old_ordered_nodes):
+                        if node.id in new_node_set:
+                            first_match_positions.append(j)
+                            matched_indices.append(i)
                             break
-            overlaped_component_index = [overlaped_component_index[k] for k in np.argsort(overlaped_id)]
-            if len(overlaped_component_index) > 0:
-                for matched_new_idx in overlaped_component_index:
-                    matched_new_component = new_components[matched_new_idx]
-                    processed_new_indices.add(matched_new_idx)
-                    final_components.append(matched_new_component)
+            if matched_indices:
+                sorted_pairs = sorted(zip(first_match_positions, matched_indices))
+                for _, idx in sorted_pairs:
+                    final_components.append(new_components[idx])
+                    processed_new_indices.add(idx)
 
         for i, comp in enumerate(new_components):
             if i not in processed_new_indices:
                 final_components.append(comp)
-        title = SubtitleLabel(f"⏬ 连通图执行顺序")
+
+        self._current_components = final_components
+        self._refresh_ui_from_current_components()
+
+    def _refresh_ui_from_current_components(self):
+        while self.parent_layout.count():
+            item = self.parent_layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+
+        title = SubtitleLabel("⏬ 连通图执行顺序")
         self.parent_layout.addWidget(title)
+
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.nodes_card = QWidget(self.parent_panel)
-        nodes_layout = QVBoxLayout(self.nodes_card)
-        nodes_layout.setContentsMargins(10, 10, 10, 10)
-        self._component_cards = []
-        final_ordered_components = []
-        for i in range(len(final_components)):
-            component_card, comp_order = self._create_component_card(nodes_layout, i, final_components)
-            final_ordered_components.append(comp_order)
-            self._component_cards.append(component_card)
 
-        self._current_components = final_ordered_components
+        self.nodes_card = DraggableContainer(self)
+        nodes_layout = self.nodes_card.layout()
+        nodes_layout.setSpacing(8)  # 与容器一致
+
+        self._component_cards = []
+        self._component_nodes_list.clear()
+        self._column_list_widgets.clear()
+        self._selected_row_in_component.clear()
+
+        for i, comp in enumerate(self._current_components):
+            card = self._create_component_card(nodes_layout, i)
+            self._component_cards.append(card)
+
         nodes_layout.addStretch(1)
-        scroll = self.parent_panel.set_scrollbar(self.nodes_card)
-        layout.addWidget(scroll, 1)
+
+        scroll_area = self.parent_panel.set_scrollbar(self.nodes_card)
+        layout.addWidget(scroll_area, 1)
         self.parent_layout.addWidget(widget)
 
-        updated_user_order = {}
-        for comp_nodes in final_ordered_components:
-            if comp_nodes:
-                node_ids = tuple(sorted(n.id for n in comp_nodes))
-                updated_user_order[node_ids] = comp_nodes.copy()
-        self._user_execution_order = updated_user_order
+        self._user_execution_order.clear()
+        for comp in self._current_components:
+            if comp:
+                key = tuple(sorted(n.id for n in comp))
+                self._user_execution_order[key] = comp.copy()
 
-    def update_node_list_content(self):
-        """
-        更新所有连通图卡片中的节点列表文字内容（状态 + 名称）
-        """
-        if not self._component_nodes_list:
-            return
-        for list_key, node_list in self._component_nodes_list.items():
-            if list_key not in self._column_list_widgets:
-                continue
-
-            list_widget = self._column_list_widgets[list_key]
-            status_list = [self.main_window.get_node_status(n) for n in node_list]
-            name_list = [n.name() for n in node_list]
-
-            list_widget.update_content(status_list, name_list)
-
-    def _create_component_card(self, parent_layout, index, components):
-        component = components[index]
-        topo_sorted_component = topological_sort(component, split_components=False)
-        if topo_sorted_component is None:
-            topo_sorted_component = component
+    def _create_component_card(self, parent_layout, index):
+        component = self._current_components[index]
+        topo_sorted = topological_sort(component, split_components=False) or component
 
         component_card = CardWidget(self.parent_panel)
-        component_layout = QVBoxLayout(component_card)
-        component_layout.setContentsMargins(8, 8, 8, 8)
+        comp_layout = QVBoxLayout(component_card)
+        comp_layout.setContentsMargins(8, 8, 8, 8)
 
+        component_card._drag_start_pos = None
+        component_card._component_index = index
+
+        def card_mouse_press(event):
+            if event.button() == Qt.LeftButton:
+                component_card._drag_start_pos = event.pos()
+            event.accept()
+
+        def card_mouse_move(event):
+            if not (event.buttons() & Qt.LeftButton):
+                return
+            if component_card._drag_start_pos is None:
+                return
+            if (event.pos() - component_card._drag_start_pos).manhattanLength() < 5:
+                return
+
+            drag = QDrag(component_card)
+            mime = QMimeData()
+            mime.setText(f"component_index:{component_card._component_index}")
+            drag.setMimeData(mime)
+
+            # 创建半透明预览图
+            pixmap = component_card.grab()
+            ghost = pixmap.copy()
+            painter = QPainter(ghost)
+            painter.setCompositionMode(QPainter.CompositionMode_DestinationIn)
+            painter.fillRect(ghost.rect(), QColor(0, 0, 0, 120))
+            painter.end()
+            drag.setPixmap(ghost)
+            drag.setHotSpot(event.pos())
+
+            # ✅ 隐藏原卡片，避免视觉重叠
+            component_card.setVisible(False)
+            drag.exec_(Qt.MoveAction)
+            component_card.setVisible(True)  # 恢复
+
+        component_card.mousePressEvent = card_mouse_press
+        component_card.mouseMoveEvent = card_mouse_move
+        component_card.setMouseTracking(True)
+
+        # Header
         header_layout = QHBoxLayout()
-        component_title = BodyLabel(f"子连通图 {index + 1} ({len(topo_sorted_component)} 个节点)")
-        header_layout.addWidget(component_title)
-        move_up_btn = TransparentToolButton(FluentIcon.UP)
-        move_down_btn = TransparentToolButton(FluentIcon.DOWN)
-        move_up_btn.setFixedSize(24, 24)
-        move_down_btn.setFixedSize(24, 24)
-        move_up_btn.clicked.connect(lambda _, idx=index: self._move_component(idx, -1))
-        move_down_btn.clicked.connect(lambda _, idx=index: self._move_component(idx, 1))
-        if index == 0:
-            move_up_btn.setEnabled(False)
-        if index == len(components) - 1:
-            move_down_btn.setEnabled(False)
-        header_layout.addWidget(move_up_btn)
-        header_layout.addWidget(move_down_btn)
-        component_layout.addLayout(header_layout)
+        title_label = BodyLabel(f"子连通图 {index + 1} ({len(topo_sorted)} 个节点)")
+        title_label.setToolTip("拖拽整个卡片可调整执行顺序")
+        title_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        # ✅ 关键：让标题不拦截鼠标事件
+        title_label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        header_layout.addWidget(title_label)
 
-        num_items = len(topo_sorted_component)
-        estimated_height_for_items = num_items * 40
-        total_estimated_height = estimated_height_for_items
+        # 分割按钮
+        split_btn = TransparentToolButton(FluentIcon.CUT)
+        split_btn.setFixedSize(28, 28)
+        split_btn.setToolTip("在选中的节点之后分割\n（未选中则在中间分割）")
+        if len(topo_sorted) <= 1:
+            split_btn.hide()
+        split_btn.clicked.connect(lambda _, idx=index: self._split_component_at_selection(idx))
 
-        list_identifier = f"component_{index}"
-        self._component_nodes_list[list_identifier] = topo_sorted_component
-        status_list = [self.main_window.get_node_status(n) for n in topo_sorted_component]
-        name_list = [n.name() for n in topo_sorted_component]
-        component_list = InternalNodeList(status_list, name_list, self.parent_panel)
-        self._column_list_widgets[list_identifier] = component_list
-        component_list.setFixedHeight(total_estimated_height)
+        header_layout.addStretch(1)
+        header_layout.addWidget(split_btn)
 
-        def on_item_double_clicked(item):
-            row = component_list.row(item)
-            if 0 <= row < len(topo_sorted_component):
-                node_to_center = topo_sorted_component[row]
-                self.main_window.canvas_widget.zoom_to_nodes([node_to_center._view])
+        comp_layout.addLayout(header_layout)
 
-        component_list.itemDoubleClicked.connect(on_item_double_clicked)
-        component_layout.addWidget(component_list)
+        # 节点列表（保持不变）
+        list_id = f"component_{index}"
+        self._component_nodes_list[list_id] = topo_sorted
+
+        status_list = [self.main_window.get_node_status(n) for n in topo_sorted]
+        name_list = [n.name() for n in topo_sorted]
+
+        node_list_widget = InternalNodeList(status_list, name_list, self.parent_panel)
+        node_list_widget.setFixedHeight(max(40 * len(topo_sorted), 40))
+
+        def on_double_click(item):
+            row = node_list_widget.row(item)
+            if 0 <= row < len(topo_sorted):
+                node = topo_sorted[row]
+                self.main_window.canvas_widget.zoom_to_nodes([node._view])
+
+        node_list_widget.itemDoubleClicked.connect(on_double_click)
+
+        comp_layout.addWidget(node_list_widget)
+        self._column_list_widgets[list_id] = node_list_widget
+
         parent_layout.addWidget(component_card)
-        return component_card, topo_sorted_component
+        return component_card
 
-    def _move_component(self, index, direction):
-        if not self._current_components or len(self._current_components) <= 1:
+    def _split_component_at_selection(self, index):
+        if index >= len(self._current_components):
             return
-        if direction == -1 and index > 0:
-            self._current_components[index], self._current_components[index - 1] = \
-                self._current_components[index - 1], self._current_components[index]
-            self._component_cards[index], self._component_cards[index - 1] = \
-                self._component_cards[index - 1], self._component_cards[index]
-        elif direction == 1 and index < len(self._current_components) - 1:
-            self._current_components[index], self._current_components[index + 1] = \
-                self._current_components[index + 1], self._current_components[index]
-            self._component_cards[index], self._component_cards[index + 1] = \
-                self._component_cards[index + 1], self._component_cards[index]
+        comp = self._current_components[index]
+        if len(comp) <= 1:
+            return
+
+        list_id = f"component_{index}"
+        node_list_widget = self._column_list_widgets.get(list_id)
+        if node_list_widget:
+            selected_row = node_list_widget.get_current_selected_row()
+            split_point = selected_row + 1 if selected_row >= 0 else len(comp) // 2
         else:
+            split_point = len(comp) // 2
+
+        if split_point <= 0 or split_point >= len(comp):
             return
-        self._rearrange_component_cards()
-        self._user_execution_order.clear()
-        for comp_nodes in self._current_components:
-            if comp_nodes:
-                node_ids = tuple(sorted(n.id for n in comp_nodes))
-                self._user_execution_order[node_ids] = comp_nodes.copy()
 
-    def _rearrange_component_cards(self):
-        nodes_layout = self.nodes_card.layout()
-        # 移除strech
-        nodes_layout.removeItem(nodes_layout.itemAt(nodes_layout.count() - 1))
-        for i in reversed(range(nodes_layout.count())):
-            if i > 0:
-                item = nodes_layout.itemAt(i)
-                if item.widget() and item.widget() != nodes_layout.itemAt(0).widget():
-                    nodes_layout.removeItem(item)
-        for i, component_card in enumerate(self._component_cards):
-            self._update_card_header(component_card, i)
-            nodes_layout.addWidget(component_card)
-        nodes_layout.addStretch(1)
+        part1 = comp[:split_point]
+        part2 = comp[split_point:]
 
-    def _update_card_header(self, component_card, new_index):
-        component_layout = component_card.layout()
-        header_layout = component_layout.itemAt(0).layout()
-        title_label = None
-        up_btn = None
-        down_btn = None
-        for i in range(header_layout.count()):
-            widget = header_layout.itemAt(i).widget()
-            if isinstance(widget, BodyLabel):
-                title_label = widget
-            elif isinstance(widget, TransparentToolButton):
-                if widget._icon == FluentIcon.UP:
-                    up_btn = widget
-                elif widget._icon == FluentIcon.DOWN:
-                    down_btn = widget
-        if title_label:
-            current_component = self._current_components[new_index]
-            title_label.setText(f"子联通图 {new_index + 1} ({len(current_component)} 个节点)")
-        if up_btn:
-            up_btn.setEnabled(new_index > 0)
-        if down_btn:
-            down_btn.setEnabled(new_index < len(self._current_components) - 1)
-        if up_btn:
-            up_btn.disconnect()
-            up_btn.clicked.connect(lambda _, idx=new_index: self._move_component(idx, -1))
-        if down_btn:
-            down_btn.disconnect()
-            down_btn.clicked.connect(lambda _, idx=new_index: self._move_component(idx, 1))
+        self._current_components[index:index + 1] = [part1, part2]
+        self._refresh_ui_from_current_components()
+
+        InfoBar.info(
+            "已分割",
+            f"子连通图 {index + 1} 已分割为两个",
+            duration=1500,
+            parent=self.main_window
+        )
+
+    def update_node_list_content(self):
+        if not self._component_nodes_list:
+            return
+        for list_id, node_list in self._component_nodes_list.items():
+            widget = self._column_list_widgets.get(list_id)
+            if widget:
+                status_list = [self.main_window.get_node_status(n) for n in node_list]
+                name_list = [n.name() for n in node_list]
+                widget.update_content(status_list, name_list)
 
     def get_current_order(self):
-        """获取当前排列的节点执行顺序"""
-        if not self._current_components:
-            return []
-        execution_order = []
-        for component in self._current_components:
-            execution_order.extend(component)
-        return execution_order
+        result = []
+        for comp in self._current_components:
+            result.extend(comp)
+        return result
 
     def reset_components(self):
-        """重置当前组件列表"""
         self._current_components = []
+        self._user_execution_order.clear()

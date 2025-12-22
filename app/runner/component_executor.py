@@ -43,7 +43,7 @@ def run_component_in_subprocess(
     temp_script_path.mkdir(parents=True, exist_ok=True)
     log_file_path = log_file_path or temp_script_path / "run.log"
 
-    if file_path == None and comp_class == "dynamic.DYNAMIC_CODE":
+    if file_path == None and comp_class.endswith("DYNAMIC_CODE"):
         CLASS_NAME = "DynamicComponent"
         component_code = params["run_script"]
         FILE_PATH = dir_path / "components" / "temp" / "run.py"

@@ -151,7 +151,7 @@ class HttpComponent(BaseComponent):
 
         # 返回结果
         return {
-            "response": response.text,
+            "response": response.json(),
             "status_code": response.status_code,
             "headers": dict(response.headers)
         }

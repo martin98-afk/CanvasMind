@@ -12,7 +12,7 @@ from qfluentwidgets import (
     CardWidget, CaptionLabel, BodyLabel
 )
 
-from app.utils.utils import serialize_for_json
+from app.utils.utils import serialize_for_json, get_icon
 
 
 class ContextRegistry:
@@ -202,9 +202,15 @@ class ContextSelector(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        self.dropdown_btn = TransparentToolButton(FluentIcon.ADD, self)
-        self.dropdown_btn.setFixedSize(24, 24)
+        self.dropdown_btn = TransparentToolButton(get_icon("回形针"), self)
+        self.dropdown_btn.setToolTip("添加上下文")
+        self.dropdown_btn.setFixedSize(26, 26)
         self.dropdown_btn.clicked.connect(self._show_popup)
+
+        self.refresh_btn = TransparentToolButton(get_icon("更新"), self)
+        self.refresh_btn.setToolTip("刷新上下文")
+        self.refresh_btn.setFixedSize(26, 26)
+        self.refresh_btn.clicked.connect(self._update_tags)
 
         self.tags_container = QWidget(self)
         self.tags_container.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
@@ -213,14 +219,8 @@ class ContextSelector(QWidget):
         self.tags_layout.setSpacing(4)
 
         main_layout.addWidget(self.dropdown_btn)
-        main_layout.addWidget(self.tags_container)
-        main_layout.addStretch(1)
-
-        self.refresh_btn = TransparentToolButton(FluentIcon.SYNC, self)
-        self.refresh_btn.setToolTip("刷新上下文")
-        self.refresh_btn.setFixedSize(24, 24)
-        self.refresh_btn.clicked.connect(self._update_tags)
         main_layout.addWidget(self.refresh_btn)
+        main_layout.addWidget(self.tags_container, 1)
 
         self._update_tags()
 

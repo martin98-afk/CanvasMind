@@ -311,7 +311,7 @@ class CustomNodeItem(NodeItem):
         if widget_width:
             # add additional width for node widget.
             width += widget_width
-        height *= 1.05
+        height *= 1.04
         width *= 0.92
         return width, height
 
