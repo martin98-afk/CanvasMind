@@ -7,7 +7,7 @@ from typing import List, Dict, Set
 from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal, QMutex, QMutexLocker, QSize, QEvent, QObject
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QFrame, QHBoxLayout
 from qfluentwidgets import (
-    FlowLayout, InfoBar, CardWidget, SmoothScrollArea,
+    FlowLayout, InfoBar, SmoothScrollArea,
     PipsPager, PipsScrollButtonDisplayMode, ComboBox, CaptionLabel, SearchLineEdit, TransparentToggleToolButton
 )
 
@@ -19,9 +19,9 @@ from app.utils.utils import get_icon
 from app.widgets.card_widget.workflow_card import WorkflowCard, ActionCard
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
 from app.widgets.side_dock_area.plugins.canvas_node_log.main_widget import LogToolWindow
+from app.widgets.side_dock_area.plugins.llm_chatter.main_widget import OpenAIChatToolWindow
 from app.widgets.side_dock_area.plugins.property_panel.main_widget import PropertyToolWindow
 from app.widgets.side_dock_area.plugins.standalone_ipython_console.ipython_console import IPythonConsoleToolWindow
-from app.widgets.side_dock_area.plugins.llm_chatter.main_widget import OpenAIChatToolWindow
 from app.widgets.side_dock_area.plugins.standalone_variable_explorer.variable_explorer import VariableExplorerToolWindow
 from app.widgets.side_dock_area.registry import SideDockRegistry
 
@@ -82,10 +82,10 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     exported_projects_changed = pyqtSignal(str, str)
     running_projects_changed = pyqtSignal(str, str)
     node_request_edit = pyqtSignal(str)
-    # 上方控件
+
+    # 注册侧边栏
     SideDockRegistry.register("运行画布", PropertyToolWindow.name, PropertyToolWindow)
     SideDockRegistry.register("运行画布", VariableExplorerToolWindow.name, VariableExplorerToolWindow)
-    # 下方控件
     SideDockRegistry.register("运行画布", OpenAIChatToolWindow.name, OpenAIChatToolWindow)
     SideDockRegistry.register("运行画布", IPythonConsoleToolWindow.name, IPythonConsoleToolWindow)
     SideDockRegistry.register("运行画布", LogToolWindow.name, LogToolWindow)
@@ -106,17 +106,21 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self._card_map: Dict[Path, WorkflowCard] = {}
         self._known_files: Set[Path] = set()
         self._file_info_map: Dict[str, dict] = {}
-        self._fixed_card: CardWidget = None
+        self._fixed_card: ActionCard = None
         self._refresh_pending = False
-        # 全局统计节点连接情况
-        self.recommendation_engine = NodeRecommendationEngine()  # 稍后在
-        # 滚轮事件优化相关
+        self.recommendation_engine = NodeRecommendationEngine()
         self._last_wheel_time = 0
-        self._wheel_threshold = 100  # 毫秒，防止滚轮事件过于频繁
+        self._wheel_threshold = 100
 
         self._setup_ui()
+        self._create_fixed_card()  # ✅ 关键：提前创建 ActionCard
         self.build_recommendation_engine()
         self.load_workflows()
+
+    def _create_fixed_card(self):
+        """立即创建固定操作卡片，不依赖扫描结果"""
+        if self._fixed_card is None:
+            self._fixed_card = ActionCard(parent=self)
 
     def _get_workflow_dir(self):
         wf_dirs = []
@@ -124,11 +128,9 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             path = Path(path)
             path.mkdir(parents=True, exist_ok=True)
             wf_dirs.append(path)
-
         return wf_dirs
 
     def get_recommendations_for_node(self, node_full_path: str):
-        """供 CanvasPage 调用的全局推荐接口"""
         if not self.recommendation_engine:
             return []
         return self.recommendation_engine.get_recommendations_sync(node_full_path)
@@ -150,9 +152,9 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self.sort_field_combo.currentIndexChanged.connect(self._on_sort_changed)
 
         self.sort_order_button = TransparentToggleToolButton(self)
-        self.sort_order_button.setIcon(get_icon("降序"))  # 默认降序
+        self.sort_order_button.setIcon(get_icon("降序"))
         self.sort_order_button.setIconSize(QSize(20, 20))
-        self.sort_order_button.setChecked(False)  # False = 降序
+        self.sort_order_button.setChecked(False)
         self.sort_order_button.setToolTip("点击切换排序方向")
         self.sort_order_button.clicked.connect(self._on_sort_order_changed)
 
@@ -177,10 +179,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self.scroll_area.setFrameShape(QFrame.NoFrame)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
-        # --- 新增：为 ScrollArea 的 viewport 安装事件过滤器 ---
         self.scroll_area.viewport().installEventFilter(self)
-        # ----------------------------------------------------
 
         self.scroll_widget = QWidget()
         self.scroll_widget.setStyleSheet("background-color: transparent;")
@@ -209,11 +208,9 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     def eventFilter(self, obj, event):
         if obj == self.scroll_area.viewport() and event.type() == QEvent.Wheel:
             from PyQt5.QtCore import QTime
-
-            # 防止滚轮事件过于频繁
             current_time = QTime.currentTime().msecsSinceStartOfDay()
             if current_time - self._last_wheel_time < self._wheel_threshold:
-                return True  # 消费事件，防止进一步处理
+                return True
             self._last_wheel_time = current_time
 
             scrollbar = self.scroll_area.verticalScrollBar()
@@ -221,37 +218,30 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             max_value = scrollbar.maximum()
             min_value = scrollbar.minimum()
 
-            # 检查是否滚动到底部且向下滚动，或者没有滚动条但向下滚动（当前页不是最后一页）
             if (current_value >= max_value - 5 and event.angleDelta().y() < 0) or \
-                    (max_value == 0 and event.angleDelta().y() < 0 and self.current_page < self.total_pages - 1):
+               (max_value == 0 and event.angleDelta().y() < 0 and self.current_page < self.total_pages - 1):
                 if self.current_page < self.total_pages - 1:
                     new_page_index = self.current_page + 1
-                    self.pips_pager.setCurrentIndex(new_page_index)  # 触发 _on_page_changed
-                    # 切换页面后，将滚动条置顶
+                    self.pips_pager.setCurrentIndex(new_page_index)
                     QTimer.singleShot(5, lambda: scrollbar.setValue(min_value))
                     return True
 
-            # 检查是否滚动到顶部且向上滚动，或者没有滚动条但向上滚动（当前页不是第一页）
             elif (current_value <= min_value + 5 and event.angleDelta().y() > 0) or \
-                    (max_value == 0 and event.angleDelta().y() > 0 and self.current_page > 0):
+                 (max_value == 0 and event.angleDelta().y() > 0 and self.current_page > 0):
                 if self.current_page > 0:
                     new_page_index = self.current_page - 1
-                    self.pips_pager.setCurrentIndex(new_page_index)  # 触发 _on_page_changed
-                    # 切换页面后，将滚动条置底
+                    self.pips_pager.setCurrentIndex(new_page_index)
                     QTimer.singleShot(5, lambda: scrollbar.setValue(scrollbar.maximum()))
                     return True
 
-        # 将事件传递给父类处理
         return super().eventFilter(obj, event)
 
     def build_recommendation_engine(self):
         component_map, _ = ComponentScanner().get_components()
-        # 重建推荐索引
         self.recommendation_engine._recommendation_cache.clear()
-        self.recommendation_engine._build_index(component_map)  # 重建索引
+        self.recommendation_engine._build_index(component_map)
 
     def _on_sort_order_changed(self):
-        """切换排序方向时更新图标并刷新"""
         is_ascending = self.sort_order_button.isChecked()
         if is_ascending:
             self.sort_order_button.setIcon(get_icon("升序"))
@@ -259,8 +249,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         else:
             self.sort_order_button.setIcon(get_icon("降序"))
             self.sort_order_button.setToolTip("当前：降序（点击切换为升序）")
-
-        self._on_sort_changed()  # 触发刷新
+        self._on_sort_changed()
 
     def _calculate_cards_per_page(self) -> int:
         if not self.scroll_area or self.scroll_area.viewport().width() <= 0:
@@ -271,8 +260,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             sample_card = next(iter(self._card_map.values()))
             if sample_card.width() > 50:
                 card_width = sample_card.width()
-        elif self._fixed_card and self._fixed_card[0].width() > 50:
-            card_width = self._fixed_card[0].width()
+        elif self._fixed_card and self._fixed_card.width() > 50:
+            card_width = self._fixed_card.width()
 
         margins = self.flow_layout.contentsMargins()
         spacing = self.flow_layout.horizontalSpacing()
@@ -326,13 +315,11 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         if hasattr(self, '_refresh_timer') and self._refresh_timer.isActive():
             return
 
-        # 记录旧的文件信息，用于比较是否有变化
         old_file_info_map = self._file_info_map.copy()
-
         self._file_info_map = file_info_map
         self._known_files = set(workflow_files)
 
-        # 创建缺失的卡片
+        # 创建缺失的普通卡片
         for wf_path in workflow_files:
             if wf_path not in self._card_map:
                 try:
@@ -343,32 +330,26 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                     import traceback
                     traceback.print_exc()
 
-        # 更新现有卡片的信息（如果文件信息有变化）
+        # 更新现有卡片
         for wf_path, card in self._card_map.items():
             old_info = old_file_info_map.get(str(wf_path))
             new_info = self._file_info_map.get(str(wf_path))
-
-            # 检查时间戳是否有变化（mtime_ts 或 ctime_ts）
             if old_info and new_info:
                 if (old_info.get('mtime_ts') != new_info.get('mtime_ts') or
                         old_info.get('ctime_ts') != new_info.get('ctime_ts')):
                     card.update_file_info(new_info)
-            elif new_info:  # 如果是新添加的卡片
+            elif new_info:
                 card.update_file_info(new_info)
 
-        # 创建固定卡片（仅一次）
-        if not self._fixed_card:
-            self._fixed_card = ActionCard(parent=self)
-            self._fixed_card.hide()
+        # ✅ 注意：_fixed_card 已在 __init__ 中创建，此处不再创建！
 
         self._ensure_all_cards_in_layout()
-
-        # 应用排序+过滤
         self._apply_sort_and_filter_and_refresh()
         self.scan_finished.emit(workflow_files, file_info_map)
 
     def _ensure_all_cards_in_layout(self):
-        if self._fixed_card.parent() != self.scroll_widget:
+        # 本方法实际已由 _show_page 完全控制，可保留也可移除
+        if self._fixed_card and self._fixed_card.parent() != self.scroll_widget:
             self.flow_layout.addWidget(self._fixed_card)
         for card in self._card_map.values():
             if card.parent() != self.scroll_widget:
@@ -377,10 +358,15 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     def _show_page(self, page_index: int):
         self.current_page = page_index
 
+        # 安全保障：确保 _fixed_card 存在
+        if self._fixed_card is None:
+            self._create_fixed_card()
+
         self._fixed_card.hide()
         for card in self._card_map.values():
             card.hide()
 
+        # 清空当前布局
         while self.flow_layout.count():
             self.flow_layout.takeAt(0)
 
@@ -416,7 +402,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self._apply_sort_and_filter_and_refresh()
 
     def _on_sort_changed(self, index=None):
-        """排序字段改变时刷新"""
         self._apply_sort_and_filter_and_refresh()
 
     def _apply_sort_and_filter_and_refresh(self):
@@ -426,8 +411,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         if not self._known_files:
             self.all_workflow_paths = []
         else:
-            # 获取排序字段和方向
-            field_index = self.sort_field_combo.currentIndex()  # 0: mtime, 1: ctime, 2: name
+            field_index = self.sort_field_combo.currentIndex()
             is_ascending = self.sort_order_button.isChecked()
 
             file_with_info = []
@@ -442,20 +426,17 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
                 file_with_info.append((wf_path, ctime_ts, mtime_ts, name))
 
-            # 根据字段选择排序 key
-            if field_index == 0:  # 修改时间
+            if field_index == 0:
                 key_func = lambda x: x[2]
-            elif field_index == 1:  # 创建时间
+            elif field_index == 1:
                 key_func = lambda x: x[1]
-            else:  # 名称
+            else:
                 key_func = lambda x: x[3].lower()
 
-            # 排序
             file_with_info.sort(key=key_func, reverse=not is_ascending)
-
             self.all_workflow_paths = [item[0] for item in file_with_info]
 
-        # 重新计算分页...
+        # 重新计算分页
         self.page_size = self._calculate_cards_per_page()
         total_workflow = len(self.all_workflow_paths)
         if total_workflow == 0:
@@ -482,7 +463,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     def _on_resize(self):
         if self._is_loading:
             return
-
         new_page_size = self._calculate_cards_per_page()
         if new_page_size != self.page_size:
             self.page_size = new_page_size
@@ -494,7 +474,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
             QTimer.singleShot(100, lambda: canvas_page.load_full_workflow(file_path))
-            # === 注入全局推荐系统 ===
             canvas_page.canvas_deleted.connect(
                 lambda: (
                     self.opened_workflows.pop(file_path, None),
@@ -525,10 +504,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
             canvas_page.create_name_label()
-            # 更新全局属性面板
             canvas_page.property_panel.set_allowed_update(True)
             canvas_page.property_panel.update_properties(None)
-            # 连接主界面信号
             canvas_page.canvas_deleted.connect(
                 lambda: (
                     self.opened_workflows.pop(file_path, None),
@@ -536,7 +513,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
-            # 添加到主界面
             self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
             self.opened_workflows[file_path] = canvas_page
 
@@ -604,36 +580,28 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             counter += 1
 
         try:
-            # 复制文件
             shutil.copy2(src_path, dest_path)
             if src_png.exists():
                 shutil.copy2(src_png, dest_png)
 
-            # 更新时间戳
             now = datetime.now().timestamp()
             os.utime(dest_path, (now, now))
             if dest_png.exists():
                 os.utime(dest_png, (now, now))
 
-            # 删除原文件
             src_path.unlink()
             if src_png.exists():
                 src_png.unlink()
 
-            # 关闭已打开的画布
             if src_path in self.opened_workflows:
                 self.parent_window.removeInterface(self.opened_workflows[src_path])
                 del self.opened_workflows[src_path]
 
-            # ✅ 关键：从布局中移除并销毁旧卡片
             if src_path in self._card_map:
                 old_card = self._card_map[src_path]
-                # 从布局中移除
                 self.flow_layout.removeWidget(old_card)
-                # 隐藏并安排销毁
                 old_card.hide()
                 old_card.deleteLater()
-                # 从缓存中删除
                 del self._card_map[src_path]
 
             InfoBar.success("重命名成功", f"已创建 {new_name}", parent=self)
@@ -695,15 +663,11 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 self.parent_window.removeInterface(self.opened_workflows[file_path])
                 del self.opened_workflows[file_path]
 
-            # ✅ 关键：从布局中移除并销毁旧卡片
             if file_path in self._card_map:
                 old_card = self._card_map[file_path]
-                # 从布局中移除
                 self.flow_layout.removeWidget(old_card)
-                # 隐藏并安排销毁
                 old_card.hide()
                 old_card.deleteLater()
-                # 从缓存中删除
                 del self._card_map[file_path]
 
             self._schedule_refresh()
@@ -711,9 +675,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             InfoBar.error("删除失败", str(e), parent=self)
 
     def _on_canvas_saved(self, workflow_path: Path):
-        # 立即更新文件信息，而不是等待下次扫描
         try:
-            # 更新文件信息缓存
             stat = workflow_path.stat()
             file_info = {
                 'ctime': datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M"),
@@ -723,17 +685,12 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 'ctime_ts': stat.st_ctime,
             }
             self._file_info_map[str(workflow_path)] = file_info
-
-            # 更新对应卡片的时间信息
             card = self._card_map.get(workflow_path)
             if card:
                 card.update_file_info(file_info)
-
         except Exception as e:
-            # 如果更新失败，记录错误但不影响其他功能
             print(f"更新卡片信息失败: {e}")
 
-        # 刷新预览
         card = self._card_map.get(workflow_path)
         if card and hasattr(card, 'refresh_preview'):
             card.refresh_preview()
