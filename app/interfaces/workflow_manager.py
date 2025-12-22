@@ -16,7 +16,7 @@ from app.scan_components import ComponentScanner
 from app.scheduler.node_recommendation_engine import NodeRecommendationEngine
 from app.utils.config import Settings
 from app.utils.utils import get_icon
-from app.widgets.card_widget.workflow_card import WorkflowCard
+from app.widgets.card_widget.workflow_card import WorkflowCard, ActionCard
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
 from app.widgets.side_dock_area.plugins.canvas_node_log.main_widget import LogToolWindow
 from app.widgets.side_dock_area.plugins.property_panel.main_widget import PropertyToolWindow
@@ -99,14 +99,14 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self._is_loading = False
         self._filter_text = ""
         self.page_size = 12
-        self.fixed_card_count = 2
+        self.fixed_card_count = 1
         self.current_page = 0
         self.total_pages = 1
         self.all_workflow_paths: List[Path] = []
         self._card_map: Dict[Path, WorkflowCard] = {}
         self._known_files: Set[Path] = set()
         self._file_info_map: Dict[str, dict] = {}
-        self._fixed_cards: List[CardWidget] = []
+        self._fixed_card: CardWidget = None
         self._refresh_pending = False
         # 全局统计节点连接情况
         self.recommendation_engine = NodeRecommendationEngine()  # 稍后在
@@ -271,8 +271,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             sample_card = next(iter(self._card_map.values()))
             if sample_card.width() > 50:
                 card_width = sample_card.width()
-        elif self._fixed_cards and self._fixed_cards[0].width() > 50:
-            card_width = self._fixed_cards[0].width()
+        elif self._fixed_card and self._fixed_card[0].width() > 50:
+            card_width = self._fixed_card[0].width()
 
         margins = self.flow_layout.contentsMargins()
         spacing = self.flow_layout.horizontalSpacing()
@@ -357,13 +357,9 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 card.update_file_info(new_info)
 
         # 创建固定卡片（仅一次）
-        if not self._fixed_cards:
-            self._fixed_cards = [
-                WorkflowCard(parent=self, type="create"),
-                WorkflowCard(parent=self, type="import")
-            ]
-            for card in self._fixed_cards:
-                card.hide()
+        if not self._fixed_card:
+            self._fixed_card = ActionCard(parent=self)
+            self._fixed_card.hide()
 
         self._ensure_all_cards_in_layout()
 
@@ -372,9 +368,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self.scan_finished.emit(workflow_files, file_info_map)
 
     def _ensure_all_cards_in_layout(self):
-        for card in self._fixed_cards:
-            if card.parent() != self.scroll_widget:
-                self.flow_layout.addWidget(card)
+        if self._fixed_card.parent() != self.scroll_widget:
+            self.flow_layout.addWidget(self._fixed_card)
         for card in self._card_map.values():
             if card.parent() != self.scroll_widget:
                 self.flow_layout.addWidget(card)
@@ -382,8 +377,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     def _show_page(self, page_index: int):
         self.current_page = page_index
 
-        for card in self._fixed_cards:
-            card.hide()
+        self._fixed_card.hide()
         for card in self._card_map.values():
             card.hide()
 
@@ -391,9 +385,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             self.flow_layout.takeAt(0)
 
         if page_index == 0:
-            for card in self._fixed_cards:
-                self.flow_layout.addWidget(card)
-                card.show()
+            self.flow_layout.addWidget(self._fixed_card)
+            self._fixed_card.show()
 
             workflow_slots = self.page_size - self.fixed_card_count
             workflow_to_show = self.all_workflow_paths[:workflow_slots]
