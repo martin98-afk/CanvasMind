@@ -332,15 +332,11 @@ class EnvironmentManager(QObject):
 
         self._start_process(cmd, self._current_log_callback, _on_finished)
 
-    def ensure_python_installed(self, version: str, log_callback=None) -> bool:
-        """
-        确保指定版本的 Python 已通过 uv 安装
-        返回: (是否成功, python_path)
-        """
+    def ensure_python_installed(self, version: str, log_callback=None):
+        """异步确保 Python 版本已安装"""
         if log_callback:
             log_callback(f"正在检查 Python {version} 是否已安装...")
 
-        # 先列出已安装的 Python
         try:
             kwargs = {}
             if platform.system() == "Windows":
@@ -353,75 +349,82 @@ class EnvironmentManager(QObject):
                 **kwargs
             )
             if result.returncode != 0:
-                if log_callback:
-                    log_callback(f"❌ 无法列出 Python: {result.stderr}")
-                return False
-        except FileNotFoundError:
-            if log_callback:
-                log_callback("❌ uv 未安装")
-            return False
+                raise RuntimeError(f"无法列出 Python: {result.stderr.strip()}")
         except Exception as e:
             if log_callback:
-                log_callback(f"❌ 检查 Python 时出错: {e}")
-            return False
+                log_callback(f"❌ 检查 Python 失败: {e}")
+            self.install_finished.emit("检查 Python 失败")
+            return
 
-        # 检查是否已有该版本（模糊匹配，如 3.12 匹配 3.12.3）
-        lines = result.stdout.strip().splitlines()
-        for line in lines:
+        # 检查是否已安装
+        for line in result.stdout.splitlines():
             if line.strip().startswith(version) and "installed" in line:
-                # 提取路径（最后一列）
-                parts = line.strip().split()
-                if parts:
-                    python_path = parts[-1]
-                    if log_callback:
-                        log_callback(f"✅ Python {version} 已安装: {python_path}")
-                    return True
+                if log_callback:
+                    log_callback(f"✅ Python {version} 已安装")
+                # 直接进入下一步
+                self._proceed_to_create_venv(version)
+                return
 
-        # 未安装，开始安装
+        # 需要安装
         if log_callback:
-            log_callback(f"正在安装 Python {version}（通过 uv）... 这可能需要几分钟")
+            log_callback(f"正在安装 Python {version}（通过 uv）...")
 
-        install_cmd = [get_uv_path(), "python", "install", version, "--no-progress"]
-        self._start_process(install_cmd, log_callback, self._dummy_finished)
-        self._process.waitForFinished(300_000)  # 最多等待 5 分钟
+        cmd = [get_uv_path(), "python", "install", version]
+        self._current_log_callback = log_callback
+        self._pending_python_version = version  # 记住要安装的版本
 
-        if self._process.exitCode() == 0:
-            if log_callback:
-                log_callback(f"✅ Python {version} 安装成功")
-            return True
+        self._start_process(cmd, log_callback, self._on_python_install_finished)
+
+    def _on_python_install_finished(self, exit_code, exit_status):
+        version = self._pending_python_version
+        if exit_code == 0:
+            if self._current_log_callback:
+                self._current_log_callback(f"✅ Python {version} 安装成功")
+            self._proceed_to_create_venv(version)
         else:
             stderr = self._process.readAllStandardError().data().decode("utf-8", errors="ignore")
-            if log_callback:
-                log_callback(f"❌ 安装 Python {version} 失败: {stderr}")
-            return False
+            if self._current_log_callback:
+                self._current_log_callback(f"❌ 安装 Python {version} 失败: {stderr}")
+            self.install_finished.emit(f"Python {version} 安装失败")
 
-    def _dummy_finished(self, ec, es):
-        pass  # 用于同步 wait
-
-    def create_env(self, python_version: str, env_name: str, log_callback=None):
-        """创建环境，自动安装所需 Python 版本"""
-        if not self.ensure_uv_installed(log_callback):
-            self.install_finished.emit("uv 未安装")
+    def _proceed_to_create_venv(self, python_version):
+        """Python 已就绪，创建 venv"""
+        if not self._pending_env_creation:
             return
-
-        if env_name in self.list_envs():
-            if log_callback:
-                log_callback(f"环境 {env_name} 已存在")
-            self.install_finished.emit("已存在")
-            return
-
-        # ✅ 关键：确保 Python 版本已安装
-        if not self.ensure_python_installed(python_version, log_callback):
-            self.install_finished.emit(f"Python {python_version} 安装失败")
-            return
-
+        version, env_name, log_callback = self._pending_env_creation
         env_path = self.ENV_DIR / env_name
         cmd = [get_uv_path(), "venv", str(env_path), "--python", python_version]
 
         if log_callback:
             log_callback(f"正在创建虚拟环境 {env_name} ...")
 
-        self._start_process(cmd, log_callback, self._on_create_env_finished, env_name)
+        self._current_log_callback = log_callback
+        self._process = QProcess(self)
+        self._process.setProcessChannelMode(QProcess.MergedChannels)
+        self._process.readyReadStandardOutput.connect(self._on_process_output)
+        if platform.system() == "Windows":
+            from PyQt5.QtCore import QProcessEnvironment
+            env = QProcessEnvironment.systemEnvironment()
+            self._process.setProcessEnvironment(env)
+        self._process.finished.connect(lambda ec, es: self._on_create_env_finished(ec, es, env_name))
+        self._process.start(cmd[0], cmd[1:])
+
+    # 修改 create_env：只启动流程，不等待
+    def create_env(self, python_version: str, env_name: str, log_callback=None):
+        if env_name in self.list_envs():
+            if log_callback:
+                log_callback(f"环境 {env_name} 已存在")
+            self.install_finished.emit("已存在")
+            return
+
+        if not self.ensure_uv_installed(log_callback):
+            self.install_finished.emit("uv 未安装")
+            return
+
+        # 记录待创建的环境
+        self._pending_env_creation = (python_version, env_name, log_callback)
+        # 启动 Python 检查/安装流程
+        self.ensure_python_installed(python_version, log_callback)
 
     def ensure_pip(self, python_exe: str, log_callback=None) -> bool:
         # uv pip 不依赖 pip，但某些包可能需要

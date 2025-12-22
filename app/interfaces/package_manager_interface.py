@@ -16,6 +16,7 @@ from qfluentwidgets import (
     FluentIcon, InfoBar, SearchLineEdit, TextEdit, PushButton, MessageBox, BodyLabel, StateToolTip
 )
 
+from app.utils.config import Settings
 from app.utils.env_operation import EnvironmentManager, get_uv_path
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.basic_widget.style_sheet import StyleSheet
@@ -272,7 +273,7 @@ class EnvManagerUI(QWidget):
             elif action == "更新":
                 cmd.extend(["install", "--upgrade"])
             elif action == "卸载":
-                cmd = [get_uv_path(), "pip", "uninstall", "-y"]
+                cmd = [get_uv_path(), "pip", "uninstall"]
             else:
                 return
 
@@ -345,7 +346,7 @@ class EnvManagerUI(QWidget):
             InfoBar.error("错误", "请选择环境", parent=self)
             return
         python_exe = str(self.mgr.get_python_exe(self.current_env))
-        cmd = [get_uv_path(), "pip", "uninstall", "-y", package_name, "--python", python_exe]
+        cmd = [get_uv_path(), "pip", "uninstall", package_name, "--python", python_exe]
         self.logEdit.append(f"> {self.current_env} :: uninstall {package_name}\n")
         self._start_process(cmd[0], cmd[1:])
 
@@ -415,7 +416,7 @@ class EnvManagerUI(QWidget):
 
     def create_env(self, window=None):
         # ✅ 改为通用 Python 版本列表（不再依赖 Miniconda）
-        available_versions = ["3.9", "3.10", "3.11", "3.12", "3.13"]  # 可扩展为动态获取
+        available_versions = Settings.get_instance().python_versions.value
 
         version_dialog = CustomComboDialog(
             "选择 Python 版本",
