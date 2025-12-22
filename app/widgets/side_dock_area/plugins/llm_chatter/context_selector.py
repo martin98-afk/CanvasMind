@@ -204,12 +204,12 @@ class ContextSelector(QWidget):
 
         self.dropdown_btn = TransparentToolButton(get_icon("回形针"), self)
         self.dropdown_btn.setToolTip("添加上下文")
-        self.dropdown_btn.setFixedSize(24, 24)
+        self.dropdown_btn.setFixedSize(26, 26)
         self.dropdown_btn.clicked.connect(self._show_popup)
 
         self.refresh_btn = TransparentToolButton(get_icon("更新"), self)
         self.refresh_btn.setToolTip("刷新上下文")
-        self.refresh_btn.setFixedSize(24, 24)
+        self.refresh_btn.setFixedSize(26, 26)
         self.refresh_btn.clicked.connect(self._update_tags)
 
         self.tags_container = QWidget(self)
