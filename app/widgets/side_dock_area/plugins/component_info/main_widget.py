@@ -32,18 +32,18 @@ class CollapsibleCard(QWidget):
         self.toggle_button.clicked.connect(self.toggle)
         setFont(self.toggle_button, 14, QFont.Weight.Bold)
         self.toggle_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.toggle_button.setMinimumHeight(24)
-        self.toggle_button.setMaximumHeight(24)
+        self.toggle_button.setMinimumHeight(20)
+        self.toggle_button.setMaximumHeight(20)
         self.toggle_button.setStyleSheet("""
             QToolButton {
                 background: transparent;
                 border: none;
-                padding: 6px 10px;
+                padding: 3px 3px;
                 text-align: left;
                 color: #FFFFFF;
-                min-height: 24px;
-                max-height: 24px;
-                qproperty-iconSize: 20px 20px;
+                min-height: 20px;
+                max-height: 20px;
+                qproperty-iconSize: 16px 16px;
             }
             QToolButton:hover {
                 background: rgba(255, 255, 255, 12);

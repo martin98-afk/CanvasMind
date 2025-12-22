@@ -62,9 +62,6 @@ class LowCodeWindow(FluentWindow):
         self.splashScreen.setIconSize(QSize(400, 400))
         self.splashScreen.setFixedSize(500, 500)
         self.show()
-
-        # 延迟初始化 heavy 操作（避免阻塞 UI）
-        QtCore.QTimer.singleShot(100, self._post_init_tasks)
     # endregion
 
     # region [2. 核心服务初始化]
@@ -151,13 +148,6 @@ class LowCodeWindow(FluentWindow):
             self.setting_card, FluentIcon.SETTING, '系统设置',
             position=NavigationItemPosition.BOTTOM
         )
-    # endregion
-
-    # region [5. 启动流程与闪屏]
-    def _post_init_tasks(self):
-        """启动后异步任务"""
-        # 自动安装 miniconda（非阻塞）
-        self.package_manager.mgr.install_miniconda()
     # endregion
 
     # region [6. 导航点击回调（解耦逻辑）]

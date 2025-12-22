@@ -6,16 +6,66 @@ from typing import Optional, Dict, Any
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QWidget, QLabel
-from qfluentwidgets import CardWidget, BodyLabel, FluentIcon, TransparentToolButton, ImageLabel
+from qfluentwidgets import CardWidget, BodyLabel, FluentIcon, TransparentToolButton, ImageLabel, PushButton, \
+    SimpleCardWidget
+from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
+from app.utils.utils import get_icon
+
+
+class ActionCard(SimpleCardWidget):
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.home = parent
+        self.setFixedSize(400, 330)
+        self.setBorderRadius(12)
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 30, 20, 30)
+        layout.setSpacing(20)
+
+        title = BodyLabel("创建画布")
+        title.setFont(QFont("Microsoft YaHei", 16, QFont.Bold))
+        title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title)
+        layout.addWidget(CardSeparator())
+        # 按钮布局
+        btn_container = QWidget(self)
+        btn_layout = QVBoxLayout(btn_container)
+        btn_layout.setSpacing(20)
+
+        # 新建按钮
+        create_btn = PushButton(text="新建画布", icon=FluentIcon.ADD, parent=self)
+        create_btn.clicked.connect(lambda: self.home.new_canvas())
+        create_btn.setIconSize(QSize(22, 22))
+        create_btn.setFont(QFont("Microsoft YaHei", 16, QFont.Bold))
+
+        # 导入按钮
+        import_btn = PushButton(text="导入画布", icon=get_icon("导入文件"), parent=self)
+        import_btn.clicked.connect(lambda: self.home.import_canvas())
+        import_btn.setIconSize(QSize(22, 22))
+        import_btn.setFont(QFont("Microsoft YaHei", 16, QFont.Bold))
+
+        # 可选：更多按钮（如模板等）
+        template_btn = PushButton(text="从模板创建", icon=get_icon("从模板创建"), parent=self)
+        template_btn.clicked.connect(lambda: self.home.import_canvas())
+        template_btn.setIconSize(QSize(22, 22))
+        template_btn.setFont(QFont("Microsoft YaHei", 16, QFont.Bold))
+
+        btn_layout.addWidget(create_btn)
+        btn_layout.addWidget(import_btn)
+        btn_layout.addWidget(template_btn)
+        layout.addWidget(btn_container, 1)
 
 class WorkflowCard(CardWidget):
     def __init__(
         self,
         file_path: Path = None,
         parent: Optional[QWidget] = None,
-        file_info: Optional[Dict[str, Any]] = None,
-        type: str = "normal"
+        file_info: Optional[Dict[str, Any]] = None
     ):
         super().__init__(parent)
         self.home = parent
@@ -26,61 +76,13 @@ class WorkflowCard(CardWidget):
         self._image_thread = None
 
         # 设置卡片尺寸范围
-        self.setMinimumSize(280, 300)
-        self.setMaximumSize(400, 400)
+        self.setFixedSize(400, 330)
         self.setBorderRadius(12)
 
-        if type == "normal":
-            self.workflow_name = file_path.stem.split(".")[0]
-            self._setup_ui()
-            # ✅ 点击卡片任意位置打开画布
-            self.setCursor(Qt.PointingHandCursor)
-        elif type == "create":
-            self.mousePressEvent = lambda e: self.home.new_canvas()
-            self.setCursor(Qt.PointingHandCursor)
-            self._setup_create_ui()
-        elif type == "import":
-            self.mousePressEvent = lambda e: self.home.import_canvas()
-            self.setCursor(Qt.PointingHandCursor)
-            self._setup_import_ui()
-
-    def _setup_create_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        icon = FluentIcon.ADD.icon()
-        plus_label = QLabel()
-        plus_label.setPixmap(icon.pixmap(64, 64))
-        plus_label.setAlignment(Qt.AlignCenter)
-
-        text_label = BodyLabel("新建画布")
-        text_label.setAlignment(Qt.AlignCenter)
-
-        layout.addStretch()
-        layout.addWidget(plus_label)
-        layout.addSpacing(40)
-        layout.addWidget(text_label)
-        layout.addStretch()
-
-    def _setup_import_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        icon = FluentIcon.FOLDER_ADD.icon()
-        icon_label = QLabel()
-        icon_label.setPixmap(icon.pixmap(64, 64))
-        icon_label.setAlignment(Qt.AlignCenter)
-
-        text_label = BodyLabel("导入画布")
-        text_label.setAlignment(Qt.AlignCenter)
-
-        layout.addStretch()
-        layout.addWidget(icon_label)
-        layout.addSpacing(40)
-        layout.addWidget(text_label)
-        layout.addStretch()
+        self.workflow_name = file_path.stem.split(".")[0]
+        self._setup_ui()
+        # ✅ 点击卡片任意位置打开画布
+        self.setCursor(Qt.PointingHandCursor)
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)

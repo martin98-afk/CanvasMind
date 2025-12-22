@@ -4,6 +4,8 @@ import sys
 import warnings
 import matplotlib
 import qtconsole.client
+from PyQt5.QtGui import QPalette, QColor
+
 warnings.filterwarnings("ignore")
 
 from app.utils import icons_rc
@@ -32,6 +34,18 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     # 启用fusion样式
     app.setStyle("Fusion")
+    tooltip_style = """
+    QToolTip {
+        color: white;
+        background-color: black;
+        border: none;
+        padding: 2px;
+        font-size: 12px;
+    }
+    """
+
+    # 如果你已有全局样式，合并进去
+    app.setStyleSheet(app.styleSheet() + tooltip_style)
     # 创建并显示主窗口
     try:
         window = LowCodeWindow()

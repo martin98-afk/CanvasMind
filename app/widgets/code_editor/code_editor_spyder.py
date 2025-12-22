@@ -987,8 +987,8 @@ class JediCodeEditor(CodeEditor):
     def set_jedi_environment(self, python_exe_path):
         """设置Jedi环境 (仅用于获取site-packages路径)"""
         if python_exe_path and os.path.exists(python_exe_path):
-            python_dir = os.path.dirname(os.path.abspath(python_exe_path))
-            site_packages = os.path.join(python_dir, "Lib", "site-packages")
+            python_dir = Path(os.path.abspath(python_exe_path)).parent.parent
+            site_packages = str(python_dir / "Lib" / "site-packages")
             if os.path.isdir(site_packages):
                 self._target_site_packages = site_packages
                 logger.debug(f"[Jedi] Target site-packages: {site_packages}")
