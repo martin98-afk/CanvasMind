@@ -102,8 +102,8 @@ class ConfigTableSpace(SimpleCardWidget):
     def _generate_unique_key(self, base: str = "key") -> str:
         existing = self._get_existing_keys()
         if base not in existing:
-            return base
-        i = 1
+            return f"{base}{1}"
+        i = 2
         while f"{base}{i}" in existing:
             i += 1
         return f"{base}{i}"

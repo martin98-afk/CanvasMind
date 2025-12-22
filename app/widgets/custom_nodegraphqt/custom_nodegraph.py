@@ -6,13 +6,12 @@ from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.pipe import PipeItem
 from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
-from NodeGraphQt.widgets.actions import BaseMenu
 from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
 from qtpy import QtGui, QtCore, QtWidgets
 
-from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu
+from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomLivePipeItem, CustomPipeItem
 
 

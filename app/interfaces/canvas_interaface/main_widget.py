@@ -97,8 +97,8 @@ class CanvasPage(QWidget):
             select_node_callback=self.select_node_by_name,
             parent=self
         )
-        # 注册右键菜单
-        self._setup_context_menus()
+        # 初始化右键菜单
+        self.node_operations.setup_context_menu()
         # 连接ui信号
         self.load_env_combos()
         self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
@@ -286,44 +286,6 @@ class CanvasPage(QWidget):
 
     def create_backdrop_node(self, key):
         self.node_operations.create_backdrop_node(key)
-
-    def _setup_context_menus(self):
-        graph_menu = self.graph.get_context_menu('graph')
-        graph_menu.add_command('运行工作流', self.canvas_runner.run_workflow, 'Ctrl+R')
-        graph_menu.add_command('保存工作流', self.save_full_workflow, 'Ctrl+S')
-        graph_menu.add_separator()
-        graph_menu.add_command('撤销', self._undo, 'Ctrl+Z')
-        graph_menu.add_command('重做', self._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
-        graph_menu.add_command('自动布局', self._auto_layout_selected, 'Ctrl+L')
-        edit_menu = graph_menu.add_menu('编辑')
-        edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
-        edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
-        edit_menu.add_command(
-            '删除选中', lambda graph: (
-                self.node_operations.delete_selected_nodes(graph), self.property_panel.update_properties(None)
-            ), 'Del'
-        )
-        nodes_menu = self.graph.get_context_menu('nodes')
-        for special_node in [
-            "dynamic.DYNAMIC_CODE", "control_flow.ControlFlowIterateNode",
-            "control_flow.ControlFlowLoopNode", "control_flow.ControlFlowBranchNode"
-        ]:
-            nodes_menu.add_command('运行此节点', lambda graph, node: self.run_node(node),
-                                   node_type=special_node, icon=get_icon("运行"))
-            nodes_menu.add_command('运行到此节点', lambda graph, node: self.run_to(node),
-                                   node_type=special_node, icon=get_icon("运行到此处"))
-            nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.run_from(node),
-                                   node_type=special_node, icon=get_icon("从此处运行"))
-            if special_node == "dynamic.DYNAMIC_CODE":
-                nodes_menu.add_command(
-                    '查看节点日志', lambda graph, node: node.show_logs(),
-                    node_type=special_node, icon=get_icon("系统运行日志")
-                )
-            nodes_menu.add_separator(node_type=special_node)
-            nodes_menu.add_command(
-                '删除节点', lambda graph, node: self.delete_node(node),
-                node_type=special_node, icon=QIcon(f":/qfluentwidgets/images/icons/Delete_white.svg")
-            )
 
     def _schedule_property_update(self, nodes):
         if self._pending_property_update:

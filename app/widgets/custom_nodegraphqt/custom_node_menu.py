@@ -1,9 +1,11 @@
+import fnmatch
+import re
 from distutils.version import LooseVersion
 
-from NodeGraphQt import NodeGraphMenu, NodeGraphCommand
+from NodeGraphQt import NodeGraphCommand, NodeGraphMenu
 from NodeGraphQt.constants import ViewerEnum
 from NodeGraphQt.errors import NodeMenuError
-from NodeGraphQt.widgets.actions import NodeAction
+from NodeGraphQt.widgets.actions import NodeAction, GraphAction
 from PyQt5 import QtWidgets
 from Qt import QtCore
 from qtpy import QtGui
@@ -64,16 +66,35 @@ class BaseMenu(QtWidgets.QMenu):
         self.graph = None
 
     def get_menu(self, name, node_id=None):
+        """
+        支持通配符匹配（如 "dynamic.*"）
+        """
         for action in self.actions():
             menu = action.menu()
             if not menu:
                 continue
-            if menu.title() == name:
+
+            menu_title = menu.title()
+
+            # 1. 精确匹配（兼容旧逻辑）
+            if menu_title == name:
                 return menu
-            if node_id and menu.node_class:
+
+            # 2. 通配符匹配（新增）
+            if fnmatch.fnmatch(name, menu_title):  # 注意：name 是 node_type, menu_title 是 pattern
+                return menu
+
+            # 3. 反向匹配：menu_title 是通配符，name 是具体 node_type
+            if '*' in menu_title and fnmatch.fnmatch(name, menu_title):
+                return menu
+
+            # 4. 如果传入 node_id，按类匹配（保留原逻辑）
+            if node_id and hasattr(menu, 'node_class') and menu.node_class:
                 node = menu.graph.get_node_by_id(node_id)
-                if isinstance(node, menu.node_class):
+                if node and isinstance(node, menu.node_class):
                     return menu
+
+        return None
 
     def get_menus(self, node_class):
         menus = []
@@ -150,7 +171,7 @@ class CustomNodesMenu(NodeGraphMenu):
 
         action = NodeAction(name, self._graph.viewer())
         action.graph = self._graph
-
+        action.setEnabled(True)
         # === 新增：设置图标 ===
         if icon is not None:
             if isinstance(icon, str):
@@ -180,7 +201,7 @@ class CustomNodesMenu(NodeGraphMenu):
         self._commands[name] = command
         self._items.append(command)
         return command
-    
+
     def add_separator(self, node_type):
         """
         Adds a separator to the menu.

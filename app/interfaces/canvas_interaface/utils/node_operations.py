@@ -1,7 +1,5 @@
 # /app/interfaces/canvas_interface/node_operations.py
 import uuid
-
-from NodeGraphQt import NodesMenu
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon
 
@@ -14,7 +12,6 @@ from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.status_node import StatusNode
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_icon
-from app.widgets.custom_nodegraphqt.custom_node_menu import BaseMenu
 from .logger import get_logger
 
 logger = get_logger("NodeOperations")
@@ -31,7 +28,6 @@ class NodeOperations:
         self._current_recommendation_task = None  # 用于取消旧任务（可选）
         self._node_id_cache = {}  # 缓存：node_id -> node_object
         self.node_status = {}  # {node_id: status}
-        self._registered_nodes = set()
 
     def _reset_registered(self):
         self.node_type_map = {}
@@ -71,16 +67,14 @@ class NodeOperations:
     def register_components(self):
         try:
             self._reset_registered()
-            [self._registered_nodes.add(node) for node in self.graph.registered_nodes()]
-            self.graph._context_menu = {}
-            self.graph._register_context_menu()
             self.graph._node_factory.clear_registered_nodes()
             self._register_builtin_components()
             component_map, file_map = ComponentScanner().get_components()
             node_class_names = []
             # 普通节点
             for full_path, comp_cls in component_map.items():
-                safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
+                safe_name = (full_path.replace("/", "_").replace(" ", "_").
+                             replace("-", "_"))
                 node_class = create_node_class(full_path, file_map.get(full_path), self.parent)
                 node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
                 node_class.__name__ = f"StatusDynamicNode_{safe_name}"
@@ -88,62 +82,104 @@ class NodeOperations:
                 self.graph.register_node(node_class)
                 self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
                 self.name2type[comp_cls.name] = f"dynamic.{node_class.__name__}"
-            self.setup_context_menu(node_class_names)
+
         except Exception as e:
             logger.exception("register_components 执行失败！")  # ← 关键
 
-    def setup_context_menu(self, node_class_names):
-        nodes_menu = self.graph.context_nodes_menu()
-        for node_class_name in node_class_names:
-            if f"dynamic.{node_class_name}" not in self._registered_nodes:
-                nodes_menu.add_commands(
-                    [
-                        {
-                            "name": "运行此节点",
-                            "func": lambda graph, node: self.parent.run_node(node),
-                            "node_type": f"dynamic.{node_class_name}",
-                            "icon": get_icon("运行"),
-                        },
-                        {
-                            "name": "运行到此节点",
-                            "func": lambda graph, node: self.parent.run_to(node),
-                            "node_type": f"dynamic.{node_class_name}",
-                            "icon": get_icon("运行到此处"),
-                        },
-                        {
-                            "name": "从此节点运行",
-                            "func": lambda graph, node: self.parent.run_from(node),
-                            "node_type": f"dynamic.{node_class_name}",
-                            "icon": get_icon("从此处运行"),
-                        },
-                        {"node_type": f"dynamic.{node_class_name}"},
-                        {
-                            "name": "查看节点日志",
-                            "func": lambda graph, node: node.show_logs(),
-                            "node_type": f"dynamic.{node_class_name}",
-                            "icon": get_icon("系统运行日志"),
-                        },
-                        {
-                            "name": "调试模式",
-                            "func": lambda graph, node: node._toggle_debug_mode(),
-                            "node_type": f"dynamic.{node_class_name}",
-                            "icon": get_icon("调试"),
-                        },
-                        {
-                            "name": "编辑组件",
-                            "func": lambda graph, node: self.edit_node(node),
-                            "node_type": f"dynamic.{node_class_name}",
-                            "icon": QIcon(f":/qfluentwidgets/images/icons/Edit_white.svg"),
-                        },
-                        {"node_type": f"dynamic.{node_class_name}"},
-                        {
-                            "name": "删除节点",
-                            "func": lambda graph, node: self.delete_node(node),
-                            "node_type": f"dynamic.{node_class_name}",
-                            "icon": QIcon(f":/qfluentwidgets/images/icons/Delete_white.svg")
-                        },
-                    ]
+    def setup_context_menu(self):
+        # 画布右键菜单注册
+        graph_menu = self.graph.get_context_menu('graph')
+        graph_menu.add_command('运行工作流', self.parent.canvas_runner.run_workflow, 'Ctrl+R')
+        graph_menu.add_command('保存工作流', self.parent.save_full_workflow, 'Ctrl+S')
+        graph_menu.add_separator()
+        graph_menu.add_command('撤销', self.parent._undo, 'Ctrl+Z')
+        graph_menu.add_command('重做', self.parent._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
+        graph_menu.add_command('自动布局', self.parent._auto_layout_selected, 'Ctrl+L')
+        edit_menu = graph_menu.add_menu('编辑')
+        edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
+        edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
+        edit_menu.add_command(
+            '删除选中', lambda graph: (
+                self.parent.node_operations.delete_selected_nodes(graph),
+                self.parent.property_panel.update_properties(None)
+            ), 'Del'
+        )
+        # 节点右键菜单注册
+        nodes_menu = self.graph.get_context_menu('nodes')
+        for special_node in [
+            "dynamic.DYNAMIC_CODE", "control_flow.ControlFlowIterateNode",
+            "control_flow.ControlFlowLoopNode", "control_flow.ControlFlowBranchNode"
+        ]:
+            nodes_menu.add_command('运行此节点', lambda graph, node: self.parent.run_node(node),
+                                   node_type=special_node, icon=get_icon("运行"))
+            nodes_menu.add_command('运行到此节点', lambda graph, node: self.parent.run_to(node),
+                                   node_type=special_node, icon=get_icon("运行到此处"))
+            nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.parent.run_from(node),
+                                   node_type=special_node, icon=get_icon("从此处运行"))
+            nodes_menu.add_separator(node_type=special_node)
+            if special_node == "dynamic.DYNAMIC_CODE":
+                nodes_menu.add_command(
+                    '固化为组件', lambda graph, node: node.show_logs(),
+                    node_type=special_node, icon=get_icon("系统运行日志")
                 )
+                nodes_menu.add_command(
+                    '查看节点日志', lambda graph, node: node.show_logs(),
+                    node_type=special_node, icon=get_icon("系统运行日志")
+                )
+            nodes_menu.add_separator(node_type=special_node)
+            nodes_menu.add_command(
+                '删除节点', lambda graph, node: self.delete_node(node),
+                node_type=special_node, icon=QIcon(f":/qfluentwidgets/images/icons/Delete_white.svg")
+            )
+
+        nodes_menu.add_commands(
+            [
+                {
+                    "name": "运行此节点",
+                    "func": lambda graph, node: self.parent.run_node(node),
+                    "node_type": f"dynamic.StatusDynamicNode_*",
+                    "icon": get_icon("运行"),
+                },
+                {
+                    "name": "运行到此节点",
+                    "func": lambda graph, node: self.parent.run_to(node),
+                    "node_type": f"dynamic.StatusDynamicNode_*",
+                    "icon": get_icon("运行到此处"),
+                },
+                {
+                    "name": "从此节点运行",
+                    "func": lambda graph, node: self.parent.run_from(node),
+                    "node_type": f"dynamic.StatusDynamicNode_*",
+                    "icon": get_icon("从此处运行"),
+                },
+                {"node_type": f"dynamic.StatusDynamicNode_*"},
+                {
+                    "name": "查看节点日志",
+                    "func": lambda graph, node: node.show_logs(),
+                    "node_type": f"dynamic.StatusDynamicNode_*",
+                    "icon": get_icon("系统运行日志"),
+                },
+                {
+                    "name": "调试模式",
+                    "func": lambda graph, node: node._toggle_debug_mode(),
+                    "node_type": f"dynamic.StatusDynamicNode_*",
+                    "icon": get_icon("调试"),
+                },
+                {
+                    "name": "编辑组件",
+                    "func": lambda graph, node: self.edit_node(node),
+                    "node_type": f"dynamic.StatusDynamicNode_*",
+                    "icon": QIcon(f":/qfluentwidgets/images/icons/Edit_white.svg"),
+                },
+                {"node_type": f"dynamic.StatusDynamicNode_*"},
+                {
+                    "name": "删除节点",
+                    "func": lambda graph, node: self.delete_node(node),
+                    "node_type": f"dynamic.StatusDynamicNode_*",
+                    "icon": QIcon(f":/qfluentwidgets/images/icons/Delete_white.svg")
+                },
+            ]
+        )
 
     def edit_node(self, node):
         self.parent.node_request_edit.emit(node.FULL_PATH)
