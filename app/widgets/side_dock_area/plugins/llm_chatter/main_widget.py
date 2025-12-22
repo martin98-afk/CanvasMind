@@ -85,14 +85,6 @@ class OpenAIChatToolWindow(ToolWindow):
         left_layout = QHBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(4)
-        self.new_session_btn = TransparentToolButton(FluentIcon.ADD, self)
-        self.new_session_btn.setToolTip("新建对话")
-        self.new_session_btn.clicked.connect(self._create_new_session)
-        self.history_btn = TransparentToggleToolButton(FluentIcon.HISTORY, self)
-        self.history_btn.setToolTip("历史对话")
-        self.history_btn.toggled.connect(self._toggle_history_mode)
-        left_layout.addWidget(self.new_session_btn)
-        left_layout.addWidget(self.history_btn)
         left_layout.addStretch()
         # 右侧保持不变
         right_layout = QHBoxLayout()
@@ -133,8 +125,23 @@ class OpenAIChatToolWindow(ToolWindow):
         layout.addWidget(self.chat_scroll_area, 1)
 
         # ========== 中间状态栏（使用 ContextSelector）==========
+        hlayout = QHBoxLayout()
+        hlayout.setContentsMargins(0, 0, 0, 0)
+        hlayout.setSpacing(0)
         self.context_selector = ContextSelector(self)
-        layout.addWidget(self.context_selector)
+        hlayout.addWidget(self.context_selector)
+        hlayout.addStretch(1)
+        self.new_session_btn = TransparentToolButton(FluentIcon.ADD, self)
+        self.new_session_btn.setFixedSize(24, 24)
+        self.new_session_btn.setToolTip("新建对话")
+        self.new_session_btn.clicked.connect(self._create_new_session)
+        self.history_btn = TransparentToggleToolButton(FluentIcon.HISTORY, self)
+        self.history_btn.setFixedSize(24, 24)
+        self.history_btn.setToolTip("历史对话")
+        self.history_btn.toggled.connect(self._toggle_history_mode)
+        hlayout.addWidget(self.history_btn)
+        hlayout.addWidget(self.new_session_btn)
+        layout.addLayout(hlayout)
 
         # ========== 输入区域 ==========
         self.input_area = SendableTextEdit(self)  # ← 使用自定义 TextEdit

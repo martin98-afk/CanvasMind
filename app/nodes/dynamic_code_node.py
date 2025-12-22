@@ -28,10 +28,7 @@ PERSISTENT_TEMP_ROOT = (canvas_file_dump_path() / "run_scripts").resolve()
 PERSISTENT_TEMP_ROOT.mkdir(exist_ok=True, parents=True)
 
 
-_TEMP_COMPONENT_TEMPLATE = '''# -*- coding: utf-8 -*-
-{import_code}
-
-class DynamicComponent(BaseComponent):
+_TEMP_COMPONENT_TEMPLATE = '''{import_code}class DynamicComponent(BaseComponent):
     name = "动态代码组件"
     category = "代码执行"
     description = "由用户动态生成的组件"
@@ -360,16 +357,11 @@ def create_dynamic_code_node(parent_window=None):
                 else:
                     widget.valueChanged.connect(self._on_outputs_changed)
 
-        def __del__(self):
-            # 注意：__del__ 在 PyQt 中不一定可靠，但可加强保障
-            if hasattr(self, '_input_sync_timer'):
-                self._input_sync_timer.stop()
-            if hasattr(self, '_output_sync_timer'):
-                self._output_sync_timer.stop()
-            if hasattr(self, '_property_update_timer'):
-                self._property_update_timer.stop()
+        def save_to_component(self):
+            parent_window.parent.develop_page.code_editor.set_code(self.format_code(add_import=False))
+            parent_window.parent.switchTo(parent_window.parent.develop_page)
 
-        def format_code(self):
+        def format_code(self, add_import=True):
             # === 1. 收集参数（不变）===
             user_code = self.get_property("code") or ""
             requirements = self.get_property("requirements") or ""
@@ -398,7 +390,7 @@ def create_dynamic_code_node(parent_window=None):
                 for line in user_code.splitlines()
             )
             temp_component_code = _TEMP_COMPONENT_TEMPLATE.format(
-                import_code=COMPONENT_IMPORT_CODE.strip(),
+                import_code=COMPONENT_IMPORT_CODE if add_import else "",
                 requirements=requirements,
                 inputs_list="\n".join(input_defs) if input_defs else "",
                 outputs_list="\n".join(output_defs) if output_defs else "",
@@ -657,5 +649,14 @@ def create_dynamic_code_node(parent_window=None):
                 raise Exception(error_info['error'])
             else:
                 raise Exception("未知错误")
+
+        def __del__(self):
+            # 注意：__del__ 在 PyQt 中不一定可靠，但可加强保障
+            if hasattr(self, '_input_sync_timer'):
+                self._input_sync_timer.stop()
+            if hasattr(self, '_output_sync_timer'):
+                self._output_sync_timer.stop()
+            if hasattr(self, '_property_update_timer'):
+                self._property_update_timer.stop()
 
     return DynamicCodeNode

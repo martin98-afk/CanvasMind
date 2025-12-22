@@ -119,8 +119,8 @@ class NodeOperations:
             nodes_menu.add_separator(node_type=special_node)
             if special_node == "dynamic.DYNAMIC_CODE":
                 nodes_menu.add_command(
-                    '固化为组件', lambda graph, node: node.show_logs(),
-                    node_type=special_node, icon=get_icon("系统运行日志")
+                    '固化为组件', lambda graph, node: node.save_to_component(),
+                    node_type=special_node, icon=get_icon("组件")
                 )
                 nodes_menu.add_command(
                     '查看节点日志', lambda graph, node: node.show_logs(),
