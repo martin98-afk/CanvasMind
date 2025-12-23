@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import ast
+import psutil
 import base64
 import json
 import os
@@ -20,7 +20,6 @@ from pathlib import Path
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtGui import QIcon
 from loguru import logger
-from qfluentwidgets import FluentIcon
 
 from app.utils.icon_name_map import ICON_NAME_TO_FILE
 
@@ -44,6 +43,18 @@ ANSI_COLOR_MAP = {
     '97': '#ffffff',  # 亮白
 }
 _ICON_CACHE = {}   # 缓存图标名 → QIcon 实例
+
+
+def kill_proc_tree(pid):
+    try:
+        parent = psutil.Process(pid)
+        children = parent.children(recursive=True)
+        for child in children:
+            child.kill()
+        parent.kill()
+        psutil.wait_procs(children + [parent], timeout=5)
+    except psutil.NoSuchProcess:
+        pass
 
 
 def ansi_to_html(text):

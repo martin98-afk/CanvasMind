@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x238d2614be0": {
+      "0x180e3a3dfc0": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传",
@@ -36,8 +36,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 166.175,
-        "height": 69.6,
+        "width": 168.36,
+        "height": 69.28,
         "pos": [
           124.59227714362635,
           258.20868945684924
@@ -51,7 +51,7 @@
           "debug_code": {}
         }
       },
-      "0x238abc7a800": {
+      "0x180e3a3e860": {
         "type_": "dynamic.StatusDynamicNode_模型训练_YOLO_关键点检测训练",
         "icon": null,
         "name": "YOLO 关键点检测训练",
@@ -76,8 +76,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 505.97125,
-        "height": 502.20000000000005,
+        "width": 528.08,
+        "height": 497.76,
         "pos": [
           576.5864365363188,
           332.94754063507776
@@ -94,12 +94,12 @@
           "batch_size": "16",
           "img_size": "640",
           "device": "cpu",
-          "task_name": "pose",
-          "dataset_name": "dataset",
+          "task_name": "detect",
+          "dataset_name": "object_detection_dataset",
           "save_dir": "./runs/pose"
         }
       },
-      "0x238ccc6a080": {
+      "0x180e3a675e0": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": "D:\\work\\CanvasMind\\icons/代码执行.svg",
         "name": "代码编辑",
@@ -124,8 +124,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 824.895,
-        "height": 819.3000000000001,
+        "width": 835.36,
+        "height": 813.9200000000001,
         "pos": [
           -197.36310496078454,
           874.7534228346633
@@ -166,7 +166,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    # 在这里编写你的组件逻辑\n    input_data = inputs.get(\"input_data\") if inputs else None\n    param1 = params.get(\"param1\", \"default_value\")\n    print(\"测试stdout输出\")\n    self.logger.info(\"测试logger输出\")\n    # 处理逻辑\n    result = f\"处理结果: {input_data} + {param1}\"\n    return {\n        \"output\": \"result\"\n    }"
         }
       },
-      "0x238cccdaf50": {
+      "0x180e3abd330": {
         "type_": "dynamic.StatusDynamicNode_数据集成_获取全局变量",
         "icon": null,
         "name": "获取全局变量",
@@ -191,11 +191,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 529.4025,
-        "height": 106.35000000000001,
+        "width": 539.12,
+        "height": 105.68,
         "pos": [
-          -123.59567679097711,
-          467.9299369920442
+          -181.10534638038,
+          634.7079788013126
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -207,7 +207,7 @@
           "prop1": "node_vars.YOLO_关键点检测训练__model.pt"
         }
       },
-      "0x238cccd9c30": {
+      "0x180e3abda80": {
         "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
         "icon": null,
         "name": "文档上传 1",
@@ -232,8 +232,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 185.86875,
-        "height": 69.6,
+        "width": 190.44,
+        "height": 69.28,
         "pos": [
           -507.91789131740825,
           -35.88517918476761
@@ -247,7 +247,7 @@
           "debug_code": {}
         }
       },
-      "0x238cccd9720": {
+      "0x180e3abe1d0": {
         "type_": "dynamic.StatusDynamicNode_目标检测_YOLO目标检测及关键点检测",
         "icon": null,
         "name": "YOLO目标检测及关键点检测 1",
@@ -272,8 +272,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 560.36625,
-        "height": 301.65000000000003,
+        "width": 587.88,
+        "height": 299.12,
         "pos": [
           1401.5158822616804,
           103.93737844806256
@@ -291,7 +291,7 @@
           "task_name": "pose"
         }
       },
-      "0x238cceac040": {
+      "0x180e3a8be50": {
         "type_": "dynamic.StatusDynamicNode_数据转换_文件转图片",
         "icon": null,
         "name": "文件转图片",
@@ -316,8 +316,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 185.86875,
-        "height": 69.6,
+        "width": 188.6,
+        "height": 69.28,
         "pos": [
           -204.94327785010728,
           -43.08165358824253
@@ -331,7 +331,7 @@
           "debug_code": {}
         }
       },
-      "0x238cce76aa0": {
+      "0x180e3a8bc70": {
         "type_": "dynamic.StatusDynamicNode_数据预处理_图像4通道转3通道",
         "icon": null,
         "name": "图像4通道转3通道",
@@ -356,8 +356,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 245.32375000000002,
-        "height": 69.6,
+        "width": 251.16000000000003,
+        "height": 69.28,
         "pos": [
           134.21330137252653,
           -37.6551483206804
@@ -371,7 +371,7 @@
           "debug_code": {}
         }
       },
-      "0x238cce77970": {
+      "0x180e3a8bac0": {
         "type_": "dynamic.StatusDynamicNode_数据转换_图片转base64编码",
         "icon": null,
         "name": "图片转base64编码",
@@ -396,8 +396,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 246.07125000000002,
-        "height": 69.6,
+        "width": 254.84,
+        "height": 69.28,
         "pos": [
           443.5241016235682,
           -33.907961440303595
@@ -411,7 +411,7 @@
           "debug_code": {}
         }
       },
-      "0x238ccff32b0": {
+      "0x180e3a8b8e0": {
         "type_": "dynamic.StatusDynamicNode_数据转换_Base64_转图片",
         "icon": null,
         "name": "Base64 转图片",
@@ -434,10 +434,10 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 216.34375,
-        "height": 69.6,
+        "width": 225.4,
+        "height": 69.28,
         "pos": [
           972.4308803929746,
           -81.0596379174246
@@ -450,105 +450,146 @@
           "version": "latest",
           "debug_code": {}
         }
+      },
+      "0x180f2e82dd0": {
+        "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
+        "icon": null,
+        "name": "文档上传 2",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 190.44,
+        "height": 69.28,
+        "pos": [
+          140.08647538998463,
+          460.6093138687668
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "378d2171-0148-4da4-9816-67f70f31a753",
+          "version": "latest",
+          "debug_code": {}
+        }
       }
     },
     "connections": [
       {
         "out": [
-          "0x238d2614be0",
+          "0x180e3a3dfc0",
           "file"
         ],
         "in": [
-          "0x238abc7a800",
+          "0x180e3a3e860",
           "dataset_dir"
         ]
       },
       {
         "in": [
-          "0x238abc7a800",
+          "0x180e3a3e860",
           "pre_model"
         ],
         "out": [
-          "0x238cccdaf50",
-          "output1"
+          "0x180f2e82dd0",
+          "file"
         ]
       },
       {
         "out": [
-          "0x238abc7a800",
+          "0x180e3a3e860",
           "model.pt"
         ],
         "in": [
-          "0x238cccd9720",
+          "0x180e3abe1d0",
           "model"
         ]
       },
       {
         "out": [
-          "0x238cccd9c30",
+          "0x180e3abda80",
           "file"
         ],
         "in": [
-          "0x238cceac040",
+          "0x180e3a8be50",
           "file"
         ]
       },
       {
         "in": [
-          "0x238cccd9720",
+          "0x180e3abe1d0",
           "input_image"
         ],
         "out": [
-          "0x238ccff32b0",
+          "0x180e3a8b8e0",
           "output1"
         ]
       },
       {
         "out": [
-          "0x238cceac040",
+          "0x180e3a8be50",
           "image"
         ],
         "in": [
-          "0x238cce76aa0",
+          "0x180e3a8bc70",
           "input"
         ]
       },
       {
         "out": [
-          "0x238cce76aa0",
+          "0x180e3a8bc70",
           "output"
         ],
         "in": [
-          "0x238cce77970",
+          "0x180e3a8bac0",
           "input1"
         ]
       },
       {
         "out": [
-          "0x238cce77970",
+          "0x180e3a8bac0",
           "output1"
         ],
         "in": [
-          "0x238ccff32b0",
+          "0x180e3a8b8e0",
           "input1"
         ]
       }
     ]
   },
   "runtime": {
-    "environment": "3.12",
-    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.12\\python.exe",
+    "environment": "3.14",
+    "environment_exe": "D:\\work\\WorkFlowGUI\\.venv\\3.14\\Scripts\\python.exe",
     "node_id2stable_key": {
-      "0x238d2614be0": "数据集成/文档上传||文档上传",
-      "0x238abc7a800": "模型训练/YOLO 关键点检测训练||YOLO 关键点检测训练",
-      "0x238ccc6a080": "代码执行/代码编辑||代码编辑",
-      "0x238cccdaf50": "数据集成/获取全局变量||获取全局变量",
-      "0x238cccd9c30": "数据集成/文档上传||文档上传 1",
-      "0x238cccd9720": "目标检测/YOLO目标检测及关键点检测||YOLO目标检测及关键点检测 1",
-      "0x238cceac040": "数据转换/文件转图片||文件转图片",
-      "0x238cce76aa0": "数据预处理/图像4通道转3通道||图像4通道转3通道",
-      "0x238cce77970": "数据转换/图片转base64编码||图片转base64编码",
-      "0x238ccff32b0": "数据转换/Base64 转图片||Base64 转图片"
+      "0x180e3a3dfc0": "数据集成/文档上传||文档上传",
+      "0x180e3a3e860": "模型训练/YOLO 关键点检测训练||YOLO 关键点检测训练",
+      "0x180e3a675e0": "代码执行/代码编辑||代码编辑",
+      "0x180e3abd330": "数据集成/获取全局变量||获取全局变量",
+      "0x180e3abda80": "数据集成/文档上传||文档上传 1",
+      "0x180e3abe1d0": "目标检测/YOLO目标检测及关键点检测||YOLO目标检测及关键点检测 1",
+      "0x180e3a8be50": "数据转换/文件转图片||文件转图片",
+      "0x180e3a8bc70": "数据预处理/图像4通道转3通道||图像4通道转3通道",
+      "0x180e3a8bac0": "数据转换/图片转base64编码||图片转base64编码",
+      "0x180e3a8b8e0": "数据转换/Base64 转图片||Base64 转图片",
+      "0x180f2e82dd0": "数据集成/文档上传||文档上传 2"
     },
     "node_states": {
       "数据集成/文档上传||文档上传": "success",
@@ -560,7 +601,8 @@
       "数据转换/文件转图片||文件转图片": "success",
       "数据预处理/图像4通道转3通道||图像4通道转3通道": "success",
       "数据转换/图片转base64编码||图片转base64编码": "success",
-      "数据转换/Base64 转图片||Base64 转图片": "success"
+      "数据转换/Base64 转图片||Base64 转图片": "success",
+      "数据集成/文档上传||文档上传 2": "unrun"
     },
     "node_inputs": {
       "数据集成/文档上传||文档上传": {},
@@ -572,11 +614,12 @@
       "数据转换/文件转图片||文件转图片": {},
       "数据预处理/图像4通道转3通道||图像4通道转3通道": {},
       "数据转换/图片转base64编码||图片转base64编码": {},
-      "数据转换/Base64 转图片||Base64 转图片": {}
+      "数据转换/Base64 转图片||Base64 转图片": {},
+      "数据集成/文档上传||文档上传 2": {}
     },
     "node_outputs": {
       "数据集成/文档上传||文档上传": {
-        "file": "canvas_files\\uploads\\object_detection_dataset_e5b76cdd-be1a-4f44-8454-f6deae1731db.zip"
+        "file": "canvas_files\\workflows\\目标检测训练\\e5b76cdd-be1a-4f44-8454-f6deae1731db\\object_detection_dataset.zip"
       },
       "模型训练/YOLO 关键点检测训练||YOLO 关键点检测训练": {
         "model": "D:\\work\\CanvasMind\\canvas_files\\node_results\\9a892591-8a0f-453c-b5a7-42fb5c6981c0\\model.dat",
@@ -670,6 +713,9 @@
       },
       "数据转换/Base64 转图片||Base64 转图片": {
         "output1": "D:\\work\\CanvasMind\\canvas_files\\node_results\\2ba0ed38-0fdd-47e8-ac52-e8dcba81582d\\image_2ba0ed38-0fdd-47e8-ac52-e8dcba81582d.png"
+      },
+      "数据集成/文档上传||文档上传 2": {
+        "file": "canvas_files\\workflows\\目标检测训练\\378d2171-0148-4da4-9816-67f70f31a753\\best.pt"
       }
     },
     "column_select": {
@@ -682,7 +728,8 @@
       "数据转换/文件转图片||文件转图片": {},
       "数据预处理/图像4通道转3通道||图像4通道转3通道": {},
       "数据转换/图片转base64编码||图片转base64编码": {},
-      "数据转换/Base64 转图片||Base64 转图片": {}
+      "数据转换/Base64 转图片||Base64 转图片": {},
+      "数据集成/文档上传||文档上传 2": {}
     }
   },
   "global_variable": {

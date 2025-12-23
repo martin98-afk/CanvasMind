@@ -18,7 +18,7 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import draw_square_port, draw_special_outputport, \
-    canvas_file_dump_path, _safe_load_pickle  # 假设 resource_path 也在 utils
+    canvas_file_dump_path, _safe_load_pickle, kill_proc_tree  # 假设 resource_path 也在 utils
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 # 导入代码编辑器组件
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
@@ -516,6 +516,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                         log_file_path, check_cancel, max_retries, requirements_str
                     )
             finally:
+                time.sleep(0.05)  # 小延迟释放文件句柄
                 shutil.rmtree(run_dir, ignore_errors=True)
 
         def _execute_via_ipython(
@@ -669,11 +670,14 @@ def create_node_class(full_path, file_path, parent_window=None):
                 kwargs = {}
                 if platform.system() == "Windows":
                     kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+                env = os.environ.copy()
+                env["UV_PYTHON"] = python_executable
                 proc = subprocess.Popen(
-                    [python_executable, temp_script_path],
+                    ["uv", "run", temp_script_path],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     encoding='utf-8',
+                    env=env,
                     **kwargs
                 )
 
@@ -685,11 +689,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 while proc.poll() is None:
                     # 检查取消
                     if check_cancel and check_cancel():
-                        proc.terminate()
-                        try:
-                            proc.wait(timeout=5)
-                        except subprocess.TimeoutExpired:
-                            proc.kill()
+                        kill_proc_tree(proc.pid)
                         cancelled = True
                         break
                     # 检查超时

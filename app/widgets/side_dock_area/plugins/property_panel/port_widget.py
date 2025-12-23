@@ -5,6 +5,8 @@ Port Widget Module
 """
 import os
 import re
+import shutil
+import traceback
 from pathlib import Path
 
 import pandas as pd
@@ -446,11 +448,19 @@ class PortWidget(QWidget):
         unique_name = f"{safe_name}{suffix}"
         dst_path = upload_root / unique_name
         try:
-            import shutil
             shutil.copy2(src_path, dst_path)
             logger.info(f"已上传并复制文件: {src_path} -> {dst_path}")
-        except Exception as e:
+        except PermissionError as e:
             logger.error(f"文件复制失败: {e}")
+            InfoBar.error("上传失败", f"无法复制文件：{e}", parent=self.main_window)
+            return
+        # 如果已存在或是同一个文件，则直接跳过
+        except FileExistsError:
+            InfoBar.error("上传未成功", f"已有同名文件", parent=self.main_window)
+        except shutil.SameFileError:
+            InfoBar.error("上传未成功", f"选择文件已上传", parent=self.main_window)
+        except Exception as e:
+            logger.error(f"文件复制失败: {traceback.format_exc()}")
             InfoBar.error("上传失败", f"无法复制文件：{e}", parent=self.main_window)
             return
         self.node._output_values[port_name] = str(dst_path)

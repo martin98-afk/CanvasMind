@@ -315,7 +315,6 @@ class EnvManagerUI(QWidget):
             return
 
         self.logEdit.append(f"> 执行命令: {' '.join(cmd)}\n")
-        print(cmd)
         self._start_process(cmd[0], cmd[1:])
 
     def _add_mirror_sources(self, cmd):
