@@ -231,7 +231,10 @@ class NodeListPanelWidget:
         if not self._component_nodes_list:
             return
         for list_id, node_list in self._component_nodes_list.items():
-            widget = self._column_list_widgets.get(list_id)
+            try:
+                widget = self._column_list_widgets.get(list_id)
+            except:
+                continue
             if widget:
                 status_list = [self.main_window.get_node_status(n) for n in node_list]
                 name_list = [n.name() for n in node_list]

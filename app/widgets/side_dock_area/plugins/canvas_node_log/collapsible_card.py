@@ -4,7 +4,7 @@ import re
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QElapsedTimer
 from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor, QTextBlockFormat, QTextOption
 from PyQt5.QtWidgets import *
-from qfluentwidgets import CardWidget, BodyLabel, TextEdit, TransparentToolButton, StrongBodyLabel
+from qfluentwidgets import CardWidget, BodyLabel, TextEdit, TransparentToolButton, StrongBodyLabel, FluentIcon
 
 from app.utils.utils import get_icon
 
@@ -21,6 +21,19 @@ class CollapsibleLogCard(CardWidget):
         'Error': '#f44747',
         'CRITICAL': '#f44747',
         'SUCCESS': '#32cd32',
+    }
+
+    STATUS_ICONS = {
+        "running": get_icon("运行中"),
+        "success": get_icon("成功"),
+        "error": get_icon("失败"),
+        "default": get_icon("系统通知")
+    }
+
+    # 折叠箭头图标
+    ARROW_ICONS = {
+        "collapsed": FluentIcon.CHEVRON_RIGHT_MED,   # ▶
+        "expanded": FluentIcon.CHEVRON_DOWN_MED   # ▼
     }
 
     def __init__(self, run_id: str, title_color="color: #FFA500;", parent=None):
@@ -42,22 +55,30 @@ class CollapsibleLogCard(CardWidget):
         self._update_timer.timeout.connect(self._update_timer_display)
         self._update_timer.setInterval(100)  # 每100ms更新一次，足够流畅且性能好
 
-        # 标题
-        self.title_label = StrongBodyLabel(run_id)
-        self.title_label.setWordWrap(True)
-        self.title_label.setStyleSheet(title_color+"background:transparent;border:none;")
-
-        self.toggle_button = TransparentToolButton(get_icon("expand_all"), self)
-        self.toggle_button.setFixedSize(20, 20)
+        # === 折叠箭头图标（左侧）===
+        self.toggle_button = TransparentToolButton(self.ARROW_ICONS["expanded"], self)
+        self.toggle_button.setFixedSize(16, 16)
+        self.toggle_button.setStyleSheet("background: transparent; border: none;")
         self._update_toggle_text()
         self.toggle_button.clicked.connect(self.toggle)
+        # === 标题 ===
+        self.title_label = StrongBodyLabel(run_id)
+        self.title_label.setWordWrap(True)
+        self.title_label.setStyleSheet(title_color + "background:transparent;border:none;")
 
-        # === 修改标题布局：加入计时器 ===
+        # === 状态按钮（右侧）===
+        self.status_button = TransparentToolButton(self.STATUS_ICONS["default"], self)
+        self.status_button.setFixedSize(20, 20)
+        # self.status_button.clicked.connect(self._on_status_click)
+
+        # === 标题布局 ===
         title_layout = QHBoxLayout()
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        title_layout.addWidget(self.toggle_button)
         title_layout.addWidget(self.title_label, 1)
         title_layout.addStretch()
         title_layout.addWidget(self.timer_label)  # <-- 新增：计时器在 toggle 左边
-        title_layout.addWidget(self.toggle_button)
+        title_layout.addWidget(self.status_button)
 
         # 日志内容（保持不变）
         self.log_text = TextEdit(self)
@@ -99,19 +120,19 @@ class CollapsibleLogCard(CardWidget):
         """外部调用：展开卡片"""
         self.is_collapsed = False
         self.log_text.setVisible(True)
-        self.toggle_button.setIcon(get_icon("collapse_all"))
+        self.toggle_button.setIcon(self.ARROW_ICONS["expanded"])
 
     def collapse(self):
         """外部调用：折叠卡片"""
         self.is_collapsed = True
         self.log_text.setVisible(False)
-        self.toggle_button.setIcon(get_icon("expand_all"))
+        self.toggle_button.setIcon(self.ARROW_ICONS["collapsed"])
 
     def _update_toggle_text(self):
         if self.is_collapsed:
-            self.toggle_button.setIcon(get_icon("expand_all"))
+            self.toggle_button.setIcon(self.ARROW_ICONS["collapsed"])
         else:
-            self.toggle_button.setIcon(get_icon("collapse_all"))
+            self.toggle_button.setIcon(self.ARROW_ICONS["expanded"])
 
     def toggle(self):
         self.is_collapsed = not self.is_collapsed
@@ -125,64 +146,70 @@ class CollapsibleLogCard(CardWidget):
         self.is_current_running = is_running
 
         if is_running:
-            self.setStyleSheet("background-color: #2b2b2b; border: 2px solid #FFA500; border-radius: 4px;")
-            self.is_collapsed = False
-            self.log_text.setVisible(True)
-            self._update_toggle_text()
-            # 启动高精度计时
+            self.set_status("running")
             self._elapsed_timer.start()
             self._update_timer.start()
             self.timer_label.show()
+            self.expand()
+            self._update_style(running=True)
         else:
-            self.setStyleSheet("background-color: #2b2b2b; border: 1px solid #444; border-radius: 4px;")
-            self.is_collapsed = True
-            self.log_text.setVisible(False)
-            self._update_toggle_text()
             self._update_timer.stop()
+            self._update_style(running=False)
 
-    def _update_timer_display(self):
-        elapsed_ms = self._elapsed_timer.elapsed()  # 毫秒
-        elapsed_sec = elapsed_ms / 1000.0
-        self.timer_label.setText(f"{elapsed_sec:.2f} s")
+    def set_status(self, status: str):
+        """设置状态图标：running / success / error / default"""
+        self.status = status
+        icon = self.STATUS_ICONS.get(status, self.STATUS_ICONS["default"])
+        self.status_button.setIcon(icon)
 
     def mark_as_error(self):
-        self._update_timer.stop()  # 停止刷新
-        self.setStyleSheet("background-color: #2b2b2b; border: 2px solid #f44747; border-radius: 4px;")
-        self.log_text.setVisible(True)
-        self.is_collapsed = False
-        self._update_toggle_text()
+        self.set_status("error")
+        self._update_timer.stop()
+        self._update_style(error=True)
+        self.expand()
+
+    def mark_as_success(self):
+        self.set_status("success")
+        self._update_style(success=True)
+        self.expand()
+
+    def _update_style(self, running=False, error=False, success=False):
+        if running:
+            border = "2px solid #FFA500"
+        elif error:
+            border = "2px solid #f44747"
+        else:
+            border = "1px solid #444"
+        radius = "6px" # if not self.is_nested else "4px"
+        bg = "#2b2b2b"
+        self.setStyleSheet(f"background-color: {bg}; border: {border}; border-radius: {radius};")
+
+    def _update_timer_display(self):
+        elapsed_sec = self._elapsed_timer.elapsed() / 1000.0
+        self.timer_label.setText(f"{elapsed_sec:.2f} s")
 
     def append_colored_log(self, text: str):
-        if not text or not text.strip():
+        if not text.strip():
             return
-
-        # 先获取当前 HTML 内容（避免覆盖）
-        current_html = self.log_text.toHtml()
-        if not current_html.startswith('<!DOCTYPE HTML'):
-            current_html = ""
-
         lines = text.splitlines(keepends=True)
         new_html_lines = []
-
         for line in lines:
-            # 检测日志级别
             color_hex = "#ffffff"
             line_for_check = line.replace('&nbsp;', ' ')
             for level, col in self.LEVEL_COLORS.items():
                 if re.search(rf'\b{level}\b', line_for_check, re.IGNORECASE):
                     color_hex = col
                     break
-
-            # 转义 HTML 特殊字符（防止 XSS 或解析错误）
             escaped_line = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            # 用 <pre> + color
             html_line = f'<pre style="color:{color_hex}; margin:0; padding:0;">{escaped_line}</pre>'
             new_html_lines.append(html_line)
-
-        # 拼接 HTML
+        current_html = self.log_text.toHtml()
+        if not current_html.startswith('<!DOCTYPE HTML'):
+            current_html = ""
         full_html = current_html + "\n".join(new_html_lines)
-        # 禁用自动换行（<pre> 默认不换行，但你可以控制）
         self.log_text.setHtml(full_html)
+        vsb = self.log_text.verticalScrollBar()
+        vsb.setValue(vsb.maximum())
 
         # 保持滚动到底（如果正在运行）
         self.log_text.verticalScrollBar().setValue(
