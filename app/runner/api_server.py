@@ -3,7 +3,6 @@ import argparse
 import base64
 import io
 import json
-import os
 import pickle
 import subprocess
 import sys
@@ -228,8 +227,6 @@ async def run_workflow(request: Request, input: InputModel):
             full_data = json.load(f)
         runtime_data = full_data.get("runtime", {})
         python_executable = runtime_data.get("environment_exe", sys.executable)
-        if not os.path.isabs(python_executable):
-            python_executable = str(Path(__file__).parent / python_executable)
         proc = subprocess.Popen(
             [python_executable, Path(__file__).parent / "runner" / "workflow_runner.py"],
             stdout=subprocess.DEVNULL,

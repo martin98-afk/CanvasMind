@@ -16,33 +16,33 @@ from qfluentwidgets import (
     FluentIcon, InfoBar, SearchLineEdit, TextEdit, PushButton, MessageBox, BodyLabel, StateToolTip
 )
 
-from app.utils.config import Settings
-from app.utils.env_operation import EnvironmentManager, get_uv_path
+from app.utils.env_operation import EnvironmentManager
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.dialog_widget.custom_messagebox import CustomComboDialog, CustomInputDialog
 
 
 class PackageListThread(QThread):
-    packages_loaded = pyqtSignal(str)
-    error_occurred = pyqtSignal(Exception)
+    packages_loaded = pyqtSignal(str)  # 成功时发送 stdout
+    error_occurred = pyqtSignal(Exception)  # 失败时发送异常
 
     def __init__(self, python_exe, parent=None):
         super().__init__(parent)
         self.python_exe = python_exe
 
     def run(self):
+
         kwargs = {}
         if platform.system() == "Windows":
             kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
 
         try:
             result = subprocess.run(
-                [get_uv_path(), "pip", "list", "--format=json", "--python", self.python_exe],
+                [self.python_exe, "-m", "pip", "list", "--format=json"],
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=15,
+                timeout=15,  # 可适当延长
                 **kwargs
             )
             self.packages_loaded.emit(result.stdout.strip())
@@ -63,7 +63,7 @@ class EnvManagerUI(QWidget):
         self.mgr = EnvironmentManager()
         self.process = None
         self.current_env = None
-        self.pkgs_data = []
+        self.pkgs_data = []  # 保存完整包列表数据
 
         # ---------- 顶部环境选择 ----------
         self.envCombo = ComboBox(self)
@@ -87,9 +87,10 @@ class EnvManagerUI(QWidget):
         topLayout.addWidget(self.deleteEnvBtn)
 
         # ---------- 第二行操作 ----------
+        # --- 修改：使用两个联动的下拉框 ---
         self.sourceCombo = ComboBox(self)
         self.sourceCombo.addItems(["在线", "本地"])
-        self.sourceCombo.currentIndexChanged.connect(self._update_action_combo)
+        self.sourceCombo.currentIndexChanged.connect(self._update_action_combo)  # 连接信号
 
         self.actionCombo = ComboBox(self)
 
@@ -97,9 +98,9 @@ class EnvManagerUI(QWidget):
         self.packageEdit.setPlaceholderText("输入包名或本地文件路径...")
 
         self.execBtn = PrimaryPushButton("执行", self, icon=FluentIcon.PLAY)
-        self.execBtn.clicked.connect(lambda: self.run_uv_command())
+        self.execBtn.clicked.connect(lambda: self.run_pip_command())
 
-        self._update_action_combo()
+        self._update_action_combo()  # 初始化 actionCombo 的内容
         # ------------------------------
 
         actionLayout = QHBoxLayout()
@@ -109,25 +110,28 @@ class EnvManagerUI(QWidget):
         actionLayout.addWidget(self.execBtn)
 
         # ---------- 包列表区域 ----------
+        # 搜索框放在包列表上方
         self.searchEdit = SearchLineEdit(self)
         self.searchEdit.setPlaceholderText("搜索已安装包...")
         self.searchEdit.textChanged.connect(self.on_search_text_changed)
-
+        self.searchEdit.searchSignal.connect(self.on_search_text_changed)
+        # 包列表表格
         self.packageTable = TableWidget(self)
         self.packageTable.setColumnCount(3)
         self.packageTable.setHorizontalHeaderLabels(["包名", "版本", "操作"])
 
+        # 设置列宽
         header = self.packageTable.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(0, QHeaderView.Stretch)  # 包名
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # 版本
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # 操作
         self.packageTable.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         packageLayout = QVBoxLayout()
         packageLayout.addLayout(topLayout)
-        packageLayout.addLayout(actionLayout)
-        packageLayout.addWidget(self.searchEdit)
-        packageLayout.addWidget(self.packageTable, stretch=1)
+        packageLayout.addLayout(actionLayout)  # 包含了 sourceCombo, actionCombo, packageEdit, execBtn
+        packageLayout.addWidget(self.searchEdit)  # 搜索框在列表上方
+        packageLayout.addWidget(self.packageTable, stretch=1)  # 列表填满剩余区域
 
         packageWidget = QWidget()
         packageWidget.setLayout(packageLayout)
@@ -136,14 +140,16 @@ class EnvManagerUI(QWidget):
         self.logEdit = TextEdit(self)
         self.logEdit.setReadOnly(True)
 
+        # 使用 QSplitter 让包列表和日志可拖拽分配空间
         splitter = ModernSplitter(Qt.Horizontal)
-        splitter.addWidget(packageWidget)
-        splitter.addWidget(self.logEdit)
+        splitter.addWidget(packageWidget)  # 左：搜索框 + 包列表
+        splitter.addWidget(self.logEdit)  # 右：日志
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 2)
 
+        # ---------- 总布局 ----------
         mainLayout = QVBoxLayout(self)
-        mainLayout.addWidget(splitter, stretch=1)
+        mainLayout.addWidget(splitter, stretch=1)  # 中间占满
         self.setLayout(mainLayout)
 
         if self.envCombo.count() > 0:
@@ -152,16 +158,20 @@ class EnvManagerUI(QWidget):
             self.logEdit.append("⚠️ 没有检测到任何环境，请点击\"新建环境\"创建。")
 
     def _update_action_combo(self):
+        """根据 sourceCombo 的选择更新 actionCombo 的内容"""
         current_source = self.sourceCombo.currentText()
         self.actionCombo.clear()
         if current_source == "在线":
             self.actionCombo.addItems(["安装", "强制重装", "更新", "卸载"])
+            # 清空 packageEdit 提示，因为它用于输入包名
             self.packageEdit.setPlaceholderText("输入包名，例如 numpy 或 numpy==1.24.0")
         elif current_source == "本地":
-            self.actionCombo.addItems(["离线", "联网"])
-            self.packageEdit.setPlaceholderText("选择本地 WHL 文件或输入路径...")
+            self.actionCombo.addItems(["离线", "联网"])  # 可根据需要调整选项
+            # 清空 packageEdit 提示，因为它将用于显示本地文件路径（或用户手动输入）
+            self.packageEdit.setPlaceholderText("选择本地包文件或输入路径...")
 
     def get_current_python_exe(self):
+        """获取当前环境 Python 的路径"""
         return self.mgr.get_python_exe(self.current_env)
 
     def refresh_env_list(self):
@@ -170,11 +180,15 @@ class EnvManagerUI(QWidget):
         self.envCombo.addItems(envs)
 
     def on_env_changed(self):
+        # Miniconda安装包下载链接（已去除多余空格）
+        self.mgr.refresh_env_config()
+        # 取消所有正在运行的摘要获取线程
         self.current_env = self.envCombo.currentText()
         if self.current_env:
             self.load_packages(self.current_env)
 
     def load_packages(self, env_name):
+        """启动线程获取包列表"""
         self.logEdit.append(f"[信息] 正在加载环境 {env_name} 的包列表...")
         try:
             python_exe = str(self.mgr.get_python_exe(env_name))
@@ -182,10 +196,12 @@ class EnvManagerUI(QWidget):
             self.logEdit.append(f"[错误] 获取 Python 路径失败: {e}")
             return
 
+        # 如果已有线程在运行，先终止（可选）
         if hasattr(self, '_pkg_thread') and self._pkg_thread.isRunning():
             self._pkg_thread.quit()
             self._pkg_thread.wait()
 
+        # 创建并启动新线程
         self._pkg_thread = PackageListThread(python_exe)
         self._pkg_thread.packages_loaded.connect(self.on_load_packages)
         self._pkg_thread.error_occurred.connect(self.on_load_packages_error)
@@ -193,11 +209,14 @@ class EnvManagerUI(QWidget):
 
     def on_load_packages(self, package_list):
         self.packageTable.setRowCount(0)
+        # 提取 JSON 部分（第一个 [ 到最后一个 ]）
         match = re.search(r"\[.*\]", package_list, re.S)
         if match:
             pkgs = json.loads(match.group(0))
         else:
             pkgs = []
+
+        # 保存完整数据，供搜索使用
         self.pkgs_data = pkgs
         self._repopulate_table(pkgs)
 
@@ -208,7 +227,12 @@ class EnvManagerUI(QWidget):
         self.logEdit.append(f"[错误] 获取包列表失败: {error_msg}")
 
     def _repopulate_table(self, pkgs):
+        """根据传入 pkgs 列表刷新表格（内部使用）"""
+        # 取消所有正在运行的摘要获取线程
         self.packageTable.setRowCount(0)
+        # 设置Python解释器路径
+        if self.current_env:
+            python_exe = str(self.mgr.get_python_exe(self.current_env))
         for row, pkg in enumerate(pkgs):
             name = pkg.get("name", "")
             version = pkg.get("version", "")
@@ -216,6 +240,7 @@ class EnvManagerUI(QWidget):
             self.packageTable.setItem(row, 0, QTableWidgetItem(name))
             self.packageTable.setItem(row, 1, QTableWidgetItem(version))
 
+            # 操作按钮：更新、卸载
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
             btn_layout.setContentsMargins(2, 2, 2, 2)
@@ -232,9 +257,11 @@ class EnvManagerUI(QWidget):
             btn_layout.addWidget(update_btn)
             btn_layout.addWidget(uninstall_btn)
             btn_layout.addStretch()
+
             self.packageTable.setCellWidget(row, 2, btn_widget)
 
     def on_search_text_changed(self, text):
+        """按搜索文本过滤已安装包"""
         text = text.strip().lower()
         if not text:
             filtered = self.pkgs_data
@@ -242,8 +269,8 @@ class EnvManagerUI(QWidget):
             filtered = [p for p in self.pkgs_data if text in p.get("name", "").lower()]
         self._repopulate_table(filtered)
 
-    # ✅ 核心：所有包操作使用 uv pip
-    def run_uv_command(self, action=None, package_input=None):
+    def run_pip_command(self, action=None, package_input=None):
+        """根据 sourceCombo 和 actionCombo 执行对应的 pip 命令"""
         if not self.current_env:
             InfoBar.error("错误", "请选择环境", parent=self)
             return
@@ -254,102 +281,142 @@ class EnvManagerUI(QWidget):
             InfoBar.error("错误", str(e), parent=self)
             return
 
-        # uv 不需要 ensure_pip，可直接跳过
+        if not self.mgr.ensure_pip(python_exe, log_callback=self.logEdit.append):
+            InfoBar.error("错误", "pip 安装失败", parent=self)
+            return
+
         source = self.sourceCombo.currentText() if action is None else "在线"
         action = self.actionCombo.currentText() if action is None else action
         package_input = self.packageEdit.text().strip() if package_input is None else package_input
-        package_list = package_input.split() if package_input else []
+        package_input = package_input.split(" ")
+        logger.info(f"[信息] 执行 pip {action} {package_input}")
 
         if source == "在线":
-            if not package_list:
+            # --- 在线安装逻辑 ---
+            if not package_input:
                 InfoBar.error("错误", "请输入包名", parent=self)
                 return
 
-            cmd = [get_uv_path(), "pip"]
             if action == "安装":
-                cmd.extend(["install"])
-            elif action == "强制重装":
-                cmd.extend(["install", "--reinstall"])  # uv 用 --reinstall
-            elif action == "更新":
-                cmd.extend(["install", "--upgrade"])
-            elif action == "卸载":
-                cmd = [get_uv_path(), "pip", "uninstall"]
-            else:
-                return
-
-            if action != "卸载":
+                cmd = ["-m", "pip", "install"]
                 self._add_mirror_sources(cmd)
-            cmd.extend(package_list)
-            cmd.extend(["--python", python_exe])
+                cmd.extend(package_input)
+            elif action == "强制重装":
+                cmd = ["-m", "pip", "install", "--force-reinstall"]
+                self._add_mirror_sources(cmd)
+                cmd.extend(package_input)
+            elif action == "更新":
+                cmd = ["-m", "pip", "install", "-U"]
+                self._add_mirror_sources(cmd)
+                cmd.extend(package_input)
+            elif action == "卸载":
+                cmd = ["-m", "pip", "uninstall", "-y"]
+                cmd.extend(package_input)
+                # 卸载命令不需要镜像源
+            else:
+                return  # 不应该发生
 
         elif source == "本地":
+            # --- 本地安装逻辑 ---
+            # 如果 packageEdit 为空，弹出文件选择对话框
             file_paths = []
-            if not package_list:
+            if not package_input:
                 file_paths, _ = QFileDialog.getOpenFileNames(
                     self,
                     "选择本地 WHL 包",
-                    "",
+                    "",  # 初始目录，可以设置为特定路径
                     "Python Wheels (*.whl);;All Files (*)"
                 )
                 if not file_paths:
+                    # 用户取消了选择
                     return
             else:
-                file_paths = package_list
+                # 如果 packageEdit 有内容，尝试解析为路径
+                # 这里可以扩展逻辑，例如支持多个路径（用分隔符分隔）
+                # 简单起见，假设它是一个路径
+                file_paths = [package_input]
 
-            valid_whl_paths = [p for p in file_paths if p.lower().endswith('.whl')]
-            invalid_paths = [p for p in file_paths if not p.lower().endswith('.whl')]
-            if invalid_paths:
-                InfoBar.warning("警告", f"跳过非 .whl 文件: {', '.join(invalid_paths)}", parent=self)
-            if not valid_whl_paths:
-                InfoBar.error("错误", "没有有效的 .whl 文件", parent=self)
-                return
+            if file_paths:
+                # 验证文件后缀
+                valid_whl_paths = [path for path in file_paths if path.lower().endswith('.whl')]
+                invalid_paths = [path for path in file_paths if not path.lower().endswith('.whl')]
 
-            cmd = [get_uv_path(), "pip", "install"]
-            if "离线" in action:
-                cmd.append("--no-index")
-            cmd.extend(valid_whl_paths)
-            self._add_mirror_sources(cmd)
-            cmd.extend(["--python", python_exe])
+                if invalid_paths:
+                    InfoBar.warning("警告", f"跳过非 .whl 文件: {', '.join(invalid_paths)}", parent=self)
+
+                if not valid_whl_paths:
+                    InfoBar.error("错误", "没有选择有效的 .whl 文件", parent=self)
+                    return
+
+                # 构建 pip install 命令
+                cmd = ["-m", "pip", "install"]
+                if "离线" in action.lower():  # 检查 action 是否包含 "no-index"
+                    cmd.append("--no-index")
+                cmd.extend(valid_whl_paths)
+
+                # 本地安装也支持镜像源（以防本地包依赖其他包）
+                self._add_mirror_sources(cmd)
 
         else:
-            return
+            return  # 不应该发生
 
-        self.logEdit.append(f"> 执行命令: {' '.join(cmd)}\n")
-        self._start_process(cmd[0], cmd[1:])
+        # 启动 QProcess 执行并实时输出
+        self._start_process(python_exe, cmd)
 
     def _add_mirror_sources(self, cmd):
+        """为pip命令添加镜像源参数"""
+        # 获取配置的镜像源列表
         mirrors = self.mgr.config.mirrors.value
-        if mirrors:
-            primary = mirrors[0]
-            cmd.extend(["--index-url", primary])
+
+        if mirrors:  # 如果镜像源列表不为空
+            # 使用第一个镜像源作为主索引
+            primary_mirror = mirrors[0]
+            cmd.extend(["-i", primary_mirror])
+
+            # 提取主机名并添加信任
             from urllib.parse import urlparse
-            parsed = urlparse(primary)
+            parsed = urlparse(primary_mirror)
             cmd.extend(["--trusted-host", parsed.hostname])
-            for mirror in mirrors[1:]:
-                cmd.extend(["--extra-index-url", mirror])
-                parsed = urlparse(mirror)
+
+            # 添加其他镜像源作为备用索引
+            for mirror_url in mirrors[1:]:
+                cmd.extend(["--extra-index-url", mirror_url])
+                parsed = urlparse(mirror_url)
                 cmd.extend(["--trusted-host", parsed.hostname])
 
     def on_update_package_clicked(self, package_name):
+        """行内更新按钮处理"""
+        # 相当于运行 `pip install -U package_name`
         if not self.current_env:
             InfoBar.error("错误", "请选择环境", parent=self)
             return
         python_exe = str(self.mgr.get_python_exe(self.current_env))
-        cmd = [get_uv_path(), "pip", "install", "--upgrade", package_name, "--python", python_exe]
+        if not self.mgr.ensure_pip(python_exe, log_callback=self.logEdit.append):
+            InfoBar.error("错误", "pip 安装失败", parent=self)
+            return
+        cmd = ["-m", "pip", "install", "-U", package_name]
+
+        # 添加镜像源配置
         self._add_mirror_sources(cmd)
+
         self.logEdit.append(f"> {self.current_env} :: update {package_name}\n")
-        self._start_process(cmd[0], cmd[1:])
+        self._start_process(python_exe, cmd)
 
     def on_uninstall_package_clicked(self, package_name):
+        """行内卸载按钮处理"""
         if not self.current_env:
             InfoBar.error("错误", "请选择环境", parent=self)
             return
         python_exe = str(self.mgr.get_python_exe(self.current_env))
-        cmd = [get_uv_path(), "pip", "uninstall", package_name, "--python", python_exe]
+        if not self.mgr.ensure_pip(python_exe, log_callback=self.logEdit.append):
+            InfoBar.error("错误", "pip 安装失败", parent=self)
+            return
+        cmd = ["-m", "pip", "uninstall", "-y", package_name]
         self.logEdit.append(f"> {self.current_env} :: uninstall {package_name}\n")
-        self._start_process(cmd[0], cmd[1:])
+        self._start_process(python_exe, cmd)  # 卸载命令不需要镜像源
 
     def delete_env(self):
+        """删除当前选中的环境"""
         if not self.current_env:
             InfoBar.error("错误", "请选择要删除的环境", parent=self)
             return
@@ -370,34 +437,47 @@ class EnvManagerUI(QWidget):
                         self.env_changed.emit()
                     )
                 )
+
                 if self.envCombo.count() > 0:
                     self.envCombo.setCurrentIndex(0)
                 else:
                     self.current_env = None
                     self.packageTable.setRowCount(0)
+
             except Exception as e:
                 InfoBar.error("错误", f"删除环境失败: {str(e)}", parent=self)
 
-    def _start_process(self, program, args):
+    def _start_process(self, python_exe, cmd):
+        """启动 QProcess（封装）"""
+        # 若已有进程正在运行，先终止它
         if self.process and self.process.state() != QProcess.NotRunning:
             try:
                 self.process.kill()
-                self.process.waitForFinished(3000)
+                self.process.waitForFinished(3000)  # 等待最多3秒让进程结束
             except Exception as e:
-                print(f"终止进程时出错: {e}")
+                print(f"终止进程时出错: {e}")  # 可选：记录错误
 
+        # 确保旧进程引用被清理
         self.process = QProcess(self)
         self.process.setProcessChannelMode(QProcess.MergedChannels)
+        # 连接实时输出
         self.process.readyReadStandardOutput.connect(self.on_ready_read)
         self.process.readyReadStandardError.connect(self.on_ready_read)
         self.process.finished.connect(self.on_finished)
-
+        # 设置进程属性以避免弹出窗口（Windows下）
+        import platform
         if platform.system() == "Windows":
-            from PyQt5.QtCore import QProcessEnvironment
-            env = QProcessEnvironment.systemEnvironment()
-            self.process.setProcessEnvironment(env)
+            # 在Windows下隐藏窗口
+            self.process.setProcessEnvironment(self._get_hidden_window_environment())
+        # start with executable and args
+        self.process.start(python_exe, cmd)
 
-        self.process.start(program, args)
+    def _get_hidden_window_environment(self):
+        """获取隐藏窗口的环境变量（Windows）"""
+        from PyQt5.QtCore import QProcessEnvironment
+        env = QProcessEnvironment.systemEnvironment()
+        # 在Windows下，设置一些环境变量来减少窗口显示
+        return env
 
     def on_ready_read(self):
         if not self.process:
@@ -410,22 +490,25 @@ class EnvManagerUI(QWidget):
 
     def on_finished(self):
         self.logEdit.append("\n[完成] 操作已结束。")
+        # 操作结束后刷新包列表
         if self.current_env:
+            # 添加一个小延迟，确保pip操作完全完成
             QTimer.singleShot(1000, lambda: self.load_packages(self.current_env))
 
     def create_env(self, window=None):
-        # ✅ 改为通用 Python 版本列表（不再依赖 Miniconda）
-        available_versions = Settings.get_instance().python_versions.value
-
+        """新建环境：选择版本和环境名"""
+        # 创建选择Python版本的对话框
         version_dialog = CustomComboDialog(
             "选择 Python 版本",
-            available_versions,
+            list(self.mgr.MINICONDA_URLS.keys()),
             0,
             window or self
         )
 
         if version_dialog.exec_():
             version = version_dialog.get_text()
+
+            # 创建输入环境名称的对话框
             env_name_dialog = CustomInputDialog(
                 f"输入环境名称（默认为 {version}）",
                 placeholder="请输入环境名称",
@@ -434,21 +517,23 @@ class EnvManagerUI(QWidget):
             )
 
             if env_name_dialog.exec_():
-                env_name = env_name_dialog.get_text().strip() or version
+                env_name = env_name_dialog.get_text().strip()
+
+                # 如果用户没有输入环境名，使用默认版本号
+                if not env_name.strip():
+                    env_name = version
+
                 try:
-                    self.mgr.create_env(version, env_name, log_callback=self.logEdit.append)
-                    state_tooltip = StateToolTip("正在创建环境", "请稍候...", window or self)
+                    self.mgr.download_and_install(version, env_name=env_name, log_callback=self.logEdit.append)
+                    state_tooltip = StateToolTip("正在安装环境", "请稍候...", window or self)
                     state_tooltip.move(self.home.width() - state_tooltip.width() - 40, 20)
                     state_tooltip.show()
                     self.mgr.install_finished.connect(
-                        lambda result: (
+                        lambda: (
                             state_tooltip.close(),
                             self.refresh_env_list(),
-                            InfoBar.success("成功", f"环境 {env_name} 已创建", parent=window or self)
-                            if "失败" not in result and "错误" not in result else
-                            InfoBar.error("错误", result, parent=window or self),
-                            self.envCombo.setCurrentText(env_name)
-                            if "失败" not in result and "错误" not in result else None,
+                            InfoBar.success("成功", f"环境 {env_name} 已创建", parent=window or self),
+                            self.envCombo.setCurrentText(env_name),
                             self.env_changed.emit()
                         )
                     )
@@ -458,15 +543,18 @@ class EnvManagerUI(QWidget):
                     InfoBar.error("错误", str(e), parent=window or self)
 
     def clone_env(self):
+        # 克隆环境
         envs = self.mgr.list_envs()
         if not envs:
             InfoBar.warning("警告", "没有可用的环境可供克隆", parent=self)
             return
 
+        # 创建选择源环境的对话框
         source_env_dialog = CustomComboDialog("选择要克隆的源环境", envs, 0, self)
         if source_env_dialog.exec_():
             source_env = source_env_dialog.get_text()
 
+            # 创建输入目标环境名的对话框
             target_env_dialog = CustomInputDialog(
                 f"输入新环境名称（基于 {source_env}）",
                 placeholder="请输入环境名称",
@@ -486,14 +574,11 @@ class EnvManagerUI(QWidget):
                     state_tooltip.move(self.home.width() - state_tooltip.width() - 30, 20)
                     state_tooltip.show()
                     self.mgr.install_finished.connect(
-                        lambda result: (
+                        lambda: (
                             state_tooltip.close(),
                             self.refresh_env_list(),
-                            InfoBar.success("成功", f"环境 {target_env} 已克隆", parent=self)
-                            if "失败" not in result and "错误" not in result else
-                            InfoBar.error("错误", result, parent=self),
-                            self.envCombo.setCurrentText(target_env)
-                            if "失败" not in result and "错误" not in result else None,
+                            InfoBar.success("成功", f"环境 {target_env} 已克隆", parent=self),
+                            self.envCombo.setCurrentText(target_env),
                             self.env_changed.emit()
                         )
                     )

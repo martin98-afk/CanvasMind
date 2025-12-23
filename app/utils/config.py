@@ -123,7 +123,7 @@ class Settings(QConfig):
     default_packages = ConfigItem(
         "Package",
         "DefaultPackages",
-        ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi", "asteval", "wcwidth", "pyarrow", "ipykernel", "matplotlib"],
+        ["pyzmq","loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi", "asteval", "wcwidth", "pyarrow", "ipykernel", "matplotlib"],
         ListValidator()
     )
     export_default_packages = ConfigItem(

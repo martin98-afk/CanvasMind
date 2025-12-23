@@ -53,9 +53,7 @@ class ProjectRunnerThread(QThread):
             raise FileNotFoundError(f"未找到 model.workflow.json: {workflow_path}")
         with open(workflow_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            # 如果不是绝对路径拼接项目地址
-            if not os.path.isabs(data.get("runtime", {}).get("environment_exe")):
-                self.python_exe = str(Path(project_path) / data.get("runtime", {}).get("environment_exe"))
+            self.python_exe = data.get("runtime", {}).get("environment_exe")
             if not self.python_exe:
                 raise ValueError("model.workflow.json 中未指定 environment_exe")
 
@@ -72,7 +70,7 @@ class ProjectRunnerThread(QThread):
                     test_inputs[key] = cfg.get("current_value", "")
 
             # 2. 执行 MCP 工具
-            tool = McpWorkflowTool(self.project_path, self.python_exe)
+            tool = McpWorkflowTool(self.project_path)
             outputs = tool.execute(test_inputs)
 
             # 3. 模拟日志（可选）

@@ -670,14 +670,11 @@ def create_node_class(full_path, file_path, parent_window=None):
                 kwargs = {}
                 if platform.system() == "Windows":
                     kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-                env = os.environ.copy()
-                env["UV_PYTHON"] = python_executable
                 proc = subprocess.Popen(
-                    ["uv", "run", temp_script_path],
+                    [python_executable, temp_script_path],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     encoding='utf-8',
-                    env=env,
                     **kwargs
                 )
 
