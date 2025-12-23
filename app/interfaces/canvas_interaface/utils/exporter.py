@@ -18,6 +18,7 @@ from app.interfaces.canvas_interaface.widgets.message_manager import MessageMana
 
 logger = get_logger("Exporter")
 
+
 class CanvasExporter:
     def __init__(self, parent, component_map, file_map, execution_order=None):
         self.parent = parent
@@ -48,6 +49,7 @@ class CanvasExporter:
                     if req_str:
                         requirements.update(pkg.strip() for pkg in req_str.split(',') if pkg.strip())
             requirements.update(self.config.default_packages.value)
+
             # 构造markdown输入、输出端口信息
             def generate_markdown(input: list, output: list):
                 input_desc = ""
@@ -62,7 +64,7 @@ class CanvasExporter:
                 output_desc = ""
                 for i, out in enumerate(output):
                     output_desc += (f"- 输出{i + 1}：{out['custom_key']}\n   "
-                                    
+
                                     f"- 输出描述：{out.get('output_desc')}\n   "
                                     f"- 输出格式：{out['format']}\n   "
                                     f"- 输出格式描述：{out['format_desc']}\n   "
@@ -79,9 +81,9 @@ class CanvasExporter:
                     conn_count=len(self.parent.graph.serialize_session().get("connections", []))
                 )
                 return initial_readme
+
             # README
             export_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
 
             # 弹出流程对话框
             flow_dialog = ProjectExportFlowDialog(
@@ -184,9 +186,13 @@ class CanvasExporter:
                         "environment_exe": self.parent.get_current_python_exe(),
                         "execution_order": [(n.id, n.name()) for n in execution_order],
                         "node_id2stable_key": {n.id: f"{n.FULL_PATH}||{n.name()}" for n in nodes_to_export},
-                        "node_states": {f"{n.FULL_PATH}||{n.name()}": self.parent.node_status.get(n.id, "unrun") for n in nodes_to_export},
-                        "node_outputs": {f"{n.FULL_PATH}||{n.name()}": serialize_for_json(getattr(n, '_output_values', {})) for n in nodes_to_export},
-                        "column_select": {f"{n.FULL_PATH}||{n.name()}": getattr(n, 'column_select', {}) for n in nodes_to_export},
+                        "node_states": {f"{n.FULL_PATH}||{n.name()}": self.parent.node_status.get(n.id, "unrun") for n
+                                        in nodes_to_export},
+                        "node_outputs": {
+                            f"{n.FULL_PATH}||{n.name()}": serialize_for_json(getattr(n, '_output_values', {})) for n in
+                            nodes_to_export},
+                        "column_select": {f"{n.FULL_PATH}||{n.name()}": getattr(n, 'column_select', {}) for n in
+                                          nodes_to_export},
                         "global_variable": self.parent.global_variables.serialize()
                     },
                     "candidate_inputs": candidate_inputs,  # 可选：保留候选列表供参考
@@ -343,7 +349,9 @@ class CanvasExporter:
                     val = connected[0].node()._output_values.get(connected[0].name())
                     inputs[port_name] = self._process_value_for_export(val, inputs_dir)
                 else:
-                    inputs[port_name] = [self._process_value_for_export(up.node()._output_values.get(up.name()), inputs_dir) for up in connected]
+                    inputs[port_name] = [
+                        self._process_value_for_export(up.node()._output_values.get(up.name()), inputs_dir) for up in
+                        connected]
             else:
                 val = getattr(node, '_input_values', {}).get(port_name, None)
                 inputs[port_name] = self._process_value_for_export(val, inputs_dir)

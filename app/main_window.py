@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QSize, Qt, QTimer
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QPlainTextEdit, QApplication, QDesktopWidget
 from loguru import logger
@@ -33,7 +33,7 @@ class LowCodeWindow(FluentWindow):
         self._init_services()
         self._init_pages()
         self._setup_navigation()
-        QtCore.QTimer.singleShot(500, self.finish_splash_screen)
+        QTimer.singleShot(5000, self.finish_splash_screen)
 
     # region [1. 窗口基础设置]
     def _init_window(self):

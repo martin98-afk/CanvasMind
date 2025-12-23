@@ -401,7 +401,6 @@ class ProjectExportDialog(QWidget):  # 继承 QWidget
         self.req_label = BodyLabel("依赖包 (requirements.txt)")
         self.req_edit = TextEdit()
         self.req_edit.setPlainText(requirements)
-        self.req_edit.setReadOnly(True)  # 只读
 
         # 右侧：README 编辑
         self.readme_label = BodyLabel("项目说明 (README.md)")

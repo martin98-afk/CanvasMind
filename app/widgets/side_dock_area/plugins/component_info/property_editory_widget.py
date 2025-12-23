@@ -7,7 +7,8 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import (
     LineEdit, PushButton,
     TableWidget, ComboBox, InfoBar, FluentIcon, MessageBoxBase, SubtitleLabel,
-    DoubleSpinBox, TransparentToolButton, SwitchButton, EditableComboBox, Slider
+    DoubleSpinBox, TransparentToolButton, SwitchButton, EditableComboBox, Slider, SpinBox, CompactSpinBox,
+    CompactDoubleSpinBox
 )
 
 from app.components.base import PropertyType, PropertyDefinition
@@ -153,8 +154,10 @@ class PropertyEditorWidget(ConfigTableSpace):
     # === 以下方法保持不变（从你原代码复制）===
     def _get_default_value_from_widget(self, row: int):
         widget = self.table.cellWidget(row, 3)
-        if isinstance(widget, EditableComboBox) or isinstance(widget, ComboBox):
+        if isinstance(widget, (EditableComboBox, ComboBox)):
             return widget.currentText()
+        elif isinstance(widget, (CompactSpinBox, CompactDoubleSpinBox)):
+            return str(widget.value())
         elif hasattr(widget, 'switch'):
             return str(widget.switch.isChecked())
         elif isinstance(widget, LineEdit):
@@ -181,7 +184,6 @@ class PropertyEditorWidget(ConfigTableSpace):
 
     def _update_default_value_widget(self, row: int, prop_type: PropertyType, prop_name: str = None, default_value=''):
         self.table.setCellWidget(row, 3, None)
-
         if prop_type == PropertyType.CHOICE:
             combo = EditableComboBox()
             combo.setStyleSheet("color: white; background: transparent; border: none;")
@@ -220,12 +222,13 @@ class PropertyEditorWidget(ConfigTableSpace):
             container = QWidget()
             layout = QHBoxLayout(container)
             layout.setContentsMargins(0, 0, 0, 0)
-            layout.setSpacing(6)
+            layout.setSpacing(0)
             slider = Slider(Qt.Horizontal)
             slider.setRange(int_min, int_max)
             slider.setSingleStep(int_step)
             value_edit = LineEdit()
-            value_edit.setStyleSheet("color: white; background: transparent; border: 1px solid #555555;")
+            value_edit.setFixedHeight(28)
+            value_edit.setStyleSheet("color: white; background: transparent; border: 1px solid #555555; border-radius: 4px")
             layout.addWidget(slider, 1)
             layout.addWidget(value_edit)
             try:
@@ -239,7 +242,8 @@ class PropertyEditorWidget(ConfigTableSpace):
                 slider.setValue(int_min)
                 display_str = f"{min_val:.{max_dec}f}" if max_dec > 0 else str(int(min_val))
                 value_edit.setText(display_str)
-
+            # 居中对齐
+            value_edit.setAlignment(Qt.AlignCenter)
             self._adjust_line_edit_width(value_edit, max_width=100, min_width=40)
             value_edit.textChanged.connect(
                 lambda: self._adjust_line_edit_width(value_edit, max_width=100, min_width=40)
@@ -293,6 +297,22 @@ class PropertyEditorWidget(ConfigTableSpace):
             container.setFixedHeight(28)
             self.table.setCellWidget(row, 3, container)
             container.switch = switch
+        elif prop_type == PropertyType.INT:
+            spinBox = CompactSpinBox()
+            spinBox.setFixedHeight(28)
+            spinBox.setStyleSheet("color: white; background: transparent; border: none;")
+            spinBox.setRange(-10000000, 10000000)
+            spinBox.setValue(int(float(default_value)) if default_value not in (None, '') else 0)
+            spinBox.valueChanged.connect(self.properties_changed.emit)
+            self.table.setCellWidget(row, 3, spinBox)
+        elif prop_type == PropertyType.FLOAT:
+            spinBox = CompactDoubleSpinBox()
+            spinBox.setFixedHeight(28)
+            spinBox.setStyleSheet("color: white; background: transparent; border: none;")
+            spinBox.setRange(-10000000, 10000000)
+            spinBox.setValue(float(default_value) if default_value not in (None, '') else 0.0)
+            spinBox.valueChanged.connect(self.properties_changed.emit)
+            self.table.setCellWidget(row, 3, spinBox)
         else:
             edit = LineEdit()
             edit.setStyleSheet("color: white; background: transparent; border: none;")

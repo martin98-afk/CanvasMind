@@ -3,6 +3,7 @@ import json
 import os
 import socket
 import subprocess
+from pathlib import Path
 from typing import Optional
 
 import psutil
@@ -50,6 +51,8 @@ class MicroserviceManager:
         workflow_path = os.path.join(project_path, "model.workflow.json")
         with open(workflow_path, 'r', encoding='utf-8') as f:
             python_exe = json.load(f).get("runtime", {}).get("environment_exe")
+            if not os.path.isabs(python_exe):
+                python_exe = str(Path(project_path) / python_exe)
             if not python_exe:
                 raise ValueError("未指定 Python 解释器路径")
 

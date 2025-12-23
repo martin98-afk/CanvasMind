@@ -12,7 +12,8 @@ from PyQt5 import QtCore
 from app.components.base import PropertyType, GlobalVariableContext, ArgumentType
 from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
 from app.scheduler.expression_engine import ExpressionEngine
-from app.utils.utils import resource_path, draw_special_outputport, canvas_file_dump_path, _safe_load_pickle
+from app.utils.utils import resource_path, draw_special_outputport, canvas_file_dump_path, _safe_load_pickle, \
+    kill_proc_tree
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
@@ -575,7 +576,6 @@ def create_dynamic_code_node(parent_window=None):
             kwargs = {}
             if platform.system() == "Windows":
                 kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-
             proc = subprocess.Popen(
                 [python_executable, temp_script_path],
                 stdout=subprocess.DEVNULL,
@@ -591,11 +591,7 @@ def create_dynamic_code_node(parent_window=None):
 
             while proc.poll() is None:
                 if check_cancel and check_cancel():
-                    proc.terminate()
-                    try:
-                        proc.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        proc.kill()
+                    kill_proc_tree(proc.pid)
                     cancelled = True
                     break
 

@@ -41,10 +41,12 @@
     <file>复制.svg</file>
     <file>多轮对话.svg</file>
     <file>大模型.svg</file>
+    <file>失败.svg</file>
     <file>安装包.svg</file>
     <file>导入.png</file>
     <file>导入文件.svg</file>
     <file>层次聚类.svg</file>
+    <file>展开.svg</file>
     <file>属性面板.svg</file>
     <file>工作流.png</file>
     <file>工具.svg</file>
@@ -52,6 +54,8 @@
     <file>广义回归.svg</file>
     <file>异常检测.svg</file>
     <file>惊叹号.svg</file>
+    <file>成功.svg</file>
+    <file>折叠.svg</file>
     <file>插入.svg</file>
     <file>放大.svg</file>
     <file>数据分析-流量分析.svg</file>
@@ -73,6 +77,7 @@
     <file>知识检索.svg</file>
     <file>知识问答.svg</file>
     <file>系统运行日志.png</file>
+    <file>系统通知.svg</file>
     <file>线性回归.svg</file>
     <file>组件.png</file>
     <file>缩小.svg</file>
@@ -81,6 +86,7 @@
     <file>节点变量.svg</file>
     <file>调试.svg</file>
     <file>运行.svg</file>
+    <file>运行中.svg</file>
     <file>运行到此处.svg</file>
     <file>运行记录.svg</file>
     <file>远程重启.svg</file>

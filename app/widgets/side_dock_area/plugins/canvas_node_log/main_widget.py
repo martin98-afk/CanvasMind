@@ -100,11 +100,14 @@ class LogToolWindow(ToolWindow):
         QTimer.singleShot(10, self._scroll_to_bottom)
 
     def on_finished(self, run_id: str):
-        self.run_cards[self.current_run_id].set_current_running(False)
+        if run_id in self.run_cards:
+            self.run_cards[run_id].set_current_running(False)
+            self.run_cards[run_id].mark_as_success()
 
     def on_error(self, run_id: str):
-        self.run_cards[self.current_run_id].set_current_running(False)
-        self.run_cards[run_id].mark_as_error()
+        if run_id in self.run_cards:
+            self.run_cards[run_id].set_current_running(False)
+            self.run_cards[run_id].mark_as_error()
 
     def _enforce_max_runs(self):
         while len(self.run_cards) > self.MAX_RUNS:

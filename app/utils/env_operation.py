@@ -3,47 +3,61 @@ import json
 import platform
 import re
 import shutil
-import subprocess
-import sys
+import traceback
 from pathlib import Path
 from urllib.parse import urlparse
 
-from PyQt5.QtCore import QObject, pyqtSignal, QProcess, QTimer
+from PyQt5.QtCore import QObject, pyqtSignal, QProcess, QTimer, QUrl
+from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
+from loguru import logger
 
 from app.utils.config import Settings
 
 
-def get_uv_path():
-    if getattr(sys, 'frozen', False):
-        # PyInstaller 打包模式
-        base_path = Path("_internal")  # 或 sys.executable.parent（见下方说明）
-        uv_path = base_path / "uv.exe"
-    else:
-        # 开发模式
-        uv_path = "uv"
-    return str(uv_path)
-
-
 class EnvironmentManager(QObject):
-    """使用 uv 管理 Python 虚拟环境和包（替代 Miniconda）"""
+    """使用Miniconda管理Python环境"""
 
+    # 信号
     log_signal = pyqtSignal(str)
-    install_finished = pyqtSignal(str)
+    install_finished = pyqtSignal(str)  # 传递结果或异常
+    miniconda_install_finished = pyqtSignal(object)
     remove_finished = pyqtSignal(object)
 
-    ENV_DIR = Path(__file__).parent.parent.parent / ".venv"
+    ENV_DIR = Path(__file__).parent.parent.parent / "envs"
     META_FILE = ENV_DIR / "environments.json"
 
     def __init__(self):
         super().__init__()
         self.config = Settings.get_instance()
+        self.refresh_env_config()
         self.ENV_DIR.mkdir(exist_ok=True)
         if not self.META_FILE.exists():
             self._save_meta({})
+        # 检查是否已安装Miniconda
+        self.miniconda_path = self.ENV_DIR / "miniconda"
+        logger.info(f"检查Miniconda安装状态: {self.miniconda_path}")
         self.meta = self._load_meta()
         self._scan_envs()
-        self._process = None
+
+        # 网络管理器（用于异步下载）
+        self._network_manager = QNetworkAccessManager(self)
+        self._network_manager.finished.connect(self._on_download_finished)
+
+        # 当前操作状态
         self._current_log_callback = None
+        self._installer_path = None
+        self._process = None
+        self._pending_env_creation = None  # (version, env_name, log_callback)
+
+    def refresh_env_config(self):
+        # Miniconda安装包下载链接（已去除多余空格）
+        self.MINICONDA_URLS = {
+            py_version: f"https://repo.anaconda.com/miniconda/Miniconda3-py{py_version.replace('.', '')}_{self.config.miniconda_version.value}-2-Windows-x86_64.exe"
+            for py_version in self.config.python_versions.value
+        }
+
+        # 默认要安装的包列表
+        self.DEFAULT_PACKAGES = self.config.default_packages.value
 
     def _load_meta(self):
         try:
@@ -55,61 +69,240 @@ class EnvironmentManager(QObject):
         self.META_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
     def _scan_envs(self):
-        """扫描 envs/ 下所有合法 venv"""
+        """只扫描 self.miniconda_path 下的环境"""
         new_meta = {}
-        for d in self.ENV_DIR.iterdir():
-            if d.is_dir():
-                python_exe = self._get_python_exe_in(d)
-                if python_exe and python_exe.exists():
+
+        miniconda_envs_dir = self.miniconda_path / "envs"
+        if miniconda_envs_dir.exists():
+            for d in miniconda_envs_dir.iterdir():
+                if d.is_dir() and (d / "python.exe").exists():
                     new_meta[d.name] = str(d)
         self.meta = new_meta
         self._save_meta(self.meta)
 
-    def _get_python_exe_in(self, env_path: Path) -> Path:
-        if platform.system() == "Windows":
-            return env_path / "Scripts" / "python.exe"
+    def _is_miniconda_installed(self):
+        """检查Miniconda是否已安装"""
+        return (self.miniconda_path / "Scripts" / "conda.exe").exists()
+
+    def install_miniconda(self, log_callback=None):
+        """安装Miniconda（异步下载 + 静默安装）"""
+        if self._is_miniconda_installed():
+            if log_callback:
+                log_callback("Miniconda已安装")
+            self.miniconda_install_finished.emit("success")
+            return
+
+        if log_callback:
+            log_callback("正在准备安装Miniconda...")
+
+        self._current_log_callback = log_callback
+        url = self.MINICONDA_URLS["3.11"]  # 默认安装Python 3.11版本
+        self._installer_path = self.ENV_DIR / url.split("/")[-1]
+
+        # ✅ 先检查本地是否已有安装包
+        if self._installer_path.exists():
+            if log_callback:
+                log_callback("本地已存在Miniconda安装包，跳过下载")
+            self._start_miniconda_install()
         else:
-            return env_path / "bin" / "python"
+            if log_callback:
+                log_callback(f"正在下载Miniconda安装包...")
+            # ✅ 异步下载（不阻塞主线程）
+            request = QNetworkRequest(QUrl(url))
+            self._network_manager.get(request)
 
-    def get_python_exe(self, env_name: str) -> Path:
-        if env_name not in self.meta:
-            return None
-        env_path = Path(self.meta[env_name])
-        return self._get_python_exe_in(env_path)
-
-    def list_envs(self):
-        self._scan_envs()
-        return list(self.meta.keys())
-
-    def ensure_uv_installed(self, log_callback=None) -> bool:
-        """确保 uv 已安装（简单检查）"""
+    def _on_download_finished(self, reply):
+        """Miniconda安装包下载完成回调"""
         try:
-            kwargs = {}
-            if platform.system() == "Windows":
-                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-            result = subprocess.run(
-                [get_uv_path(), "--version"],
-                capture_output=True,
-                text=True,
-                timeout=15,
-                **kwargs
-            )
-            if result.returncode == 0:
-                if log_callback:
-                    log_callback("✅ uv 已安装")
-                return True
-            else:
-                if log_callback:
-                    log_callback("❌ 未检测到 uv，请先安装 uv（pip install uv）")
-                return False
-        except FileNotFoundError:
-            if log_callback:
-                log_callback("❌ 未检测到 uv，请先安装 uv（pip install uv）")
-            return False
+            if reply.error():
+                error_msg = f"Miniconda下载失败: {reply.errorString()}"
+                if self._current_log_callback:
+                    self._current_log_callback(error_msg)
+                self.miniconda_install_finished.emit(RuntimeError(error_msg))
+                return
+
+            # 保存安装包
+            data = reply.readAll()
+            with open(self._installer_path, "wb") as f:
+                f.write(data)
+
+            if self._current_log_callback:
+                self._current_log_callback("Miniconda下载完成，开始安装...")
+
+            self._start_miniconda_install()
         except Exception as e:
+            self.miniconda_install_finished.emit(e)
+        finally:
+            reply.deleteLater()
+
+    def _start_miniconda_install(self):
+        """启动Miniconda静默安装进程"""
+        self._process = QProcess(self)
+        self._process.setProcessChannelMode(QProcess.MergedChannels)
+        self._process.readyReadStandardOutput.connect(self._on_process_output)
+        self._process.finished.connect(self._on_miniconda_install_finished)
+
+        if platform.system() == "Windows":
+            self._process.setProcessEnvironment(self._get_hidden_window_environment())
+
+        # 启动安装
+        self._process.start(str(self._installer_path), [
+            "/S",  # 静默安装
+            f"/D={str(self.miniconda_path)}"  # 指定安装路径
+        ])
+
+    def _on_miniconda_install_finished(self, exit_code, exit_status):
+        """Miniconda安装完成回调"""
+        try:
+            conda_exe = self.miniconda_path / "Scripts" / "conda.exe"
+            if not conda_exe.exists():
+                error_msg = "Miniconda安装失败：未找到 conda.exe"
+                if self._current_log_callback:
+                    self._current_log_callback(error_msg)
+                self.miniconda_install_finished.emit(RuntimeError(error_msg))
+                return
+
+            if self._current_log_callback:
+                self._current_log_callback("Miniconda安装完成")
+
+            # 清理安装包
+            if self._installer_path and self._installer_path.exists():
+                self._installer_path.unlink()
+
+            # 更新环境列表
+            self._scan_envs()
+
+            self.miniconda_install_finished.emit("success")
+
+            # 如果有待创建的环境，现在执行
+            if self._pending_env_creation:
+                version, env_name, log_cb = self._pending_env_creation
+                self._pending_env_creation = None
+                QTimer.singleShot(1000, lambda: self._create_env_with_qprocess(version, env_name, log_cb))
+
+        except Exception as e:
+            self.miniconda_install_finished.emit(e)
+
+    def download_and_install(self, version, env_name=None, log_callback=None):
+        """创建指定版本的Python环境"""
+        if not self._is_miniconda_installed():
             if log_callback:
-                log_callback(f"❌ 检查 uv 时出错: {e}")
-            return False
+                log_callback("Miniconda未安装，正在安装...")
+            # 记录待创建的环境
+            self._pending_env_creation = (version, env_name, log_callback)
+            self.install_miniconda(log_callback)
+            return
+
+        self._create_env_with_qprocess(version, env_name, log_callback)
+
+    def _create_env_with_qprocess(self, version, env_name=None, log_callback=None):
+        """使用QProcess创建环境"""
+        # 提取主要版本号
+        if env_name is None:
+            env_name = version
+
+        # 检查环境是否已存在
+        existing_envs = self.list_envs()
+        if env_name in existing_envs:
+            if log_callback:
+                log_callback(f"环境 {env_name} 已存在")
+            python_exe = self.get_python_exe(env_name)
+            env_path = python_exe.parent
+            self.meta[env_name] = str(env_path)
+            self._save_meta(self.meta)
+            self.install_finished.emit(str(env_path))
+            return
+
+        if log_callback:
+            log_callback(f"正在创建Python {version}环境，环境名为: {env_name}...")
+
+        self._current_log_callback = log_callback
+        conda_exe = self.miniconda_path / "Scripts" / "conda.exe"
+
+        self._process = QProcess(self)
+        self._process.setProcessChannelMode(QProcess.MergedChannels)
+        self._process.readyReadStandardOutput.connect(self._on_process_output)
+        if platform.system() == "Windows":
+            self._process.setProcessEnvironment(self._get_hidden_window_environment())
+        self._process.finished.connect(
+            lambda ec, es: self._on_create_env_finished(ec, es, env_name)
+        )
+
+        self._process.start(str(conda_exe), [
+            "create",
+            "--name", env_name,
+            f"python={version}",
+            "-y"
+        ])
+
+    def clone_env(self, source_env, target_env, log_callback=None):
+        """克隆已有环境"""
+        if source_env not in self.list_envs():
+            error_msg = f"源环境 {source_env} 不存在"
+            if log_callback:
+                log_callback(error_msg)
+            self.install_finished.emit(RuntimeError(error_msg))
+            return
+
+        if target_env in self.list_envs():
+            if log_callback:
+                log_callback(f"目标环境 {target_env} 已存在")
+            python_exe = self.get_python_exe(target_env)
+            env_path = python_exe.parent
+            self.meta[target_env] = str(env_path)
+            self._save_meta(self.meta)
+            self.install_finished.emit(str(env_path))
+            return
+
+        if log_callback:
+            log_callback(f"正在克隆环境 {source_env} 到 {target_env}...")
+
+        self._current_log_callback = log_callback
+        conda_exe = self.miniconda_path / "Scripts" / "conda.exe"
+
+        self._process = QProcess(self)
+        self._process.setProcessChannelMode(QProcess.MergedChannels)
+        self._process.readyReadStandardOutput.connect(self._on_process_output)
+        if platform.system() == "Windows":
+            self._process.setProcessEnvironment(self._get_hidden_window_environment())
+        self._process.finished.connect(
+            lambda ec, es: self._on_clone_env_finished(ec, es, target_env)
+        )
+
+        self._process.start(str(conda_exe), [
+            "create",
+            "--name", target_env,
+            "--clone", source_env,
+            "-y"
+        ])
+
+    def _on_clone_env_finished(self, exit_code, exit_status, env_name):
+        try:
+            if exit_code != 0:
+                error_msg = f"环境 {env_name} 克隆失败，退出码: {exit_code}"
+                if self._current_log_callback:
+                    self._current_log_callback(error_msg)
+                self.install_finished.emit(RuntimeError(error_msg))
+                return
+
+            python_exe = self.get_python_exe(env_name)
+            if not python_exe.exists():
+                error_msg = f"环境 {env_name} 克隆失败，未找到 python.exe"
+                if self._current_log_callback:
+                    self._current_log_callback(error_msg)
+                self.install_finished.emit(RuntimeError(error_msg))
+                return
+
+            env_path = python_exe.parent
+            self.meta[env_name] = str(env_path)
+            self._save_meta(self.meta)
+            self._scan_envs()
+            if self._current_log_callback:
+                self._current_log_callback(f"环境 {env_name} 克隆完成 ✅")
+
+            QTimer.singleShot(1000, lambda: self._install_default_packages(env_name, python_exe))
+        except Exception as e:
+            self.install_finished.emit(e)
 
     def _on_create_env_finished(self, exit_code, exit_status, env_name):
         try:
@@ -120,172 +313,127 @@ class EnvironmentManager(QObject):
                 self.install_finished.emit(error_msg)
                 return
 
-            # ✅ 直接构造预期的 python 路径（不依赖 meta）
-            env_path = self.ENV_DIR / env_name
-            python_exe = self._get_python_exe_in(env_path)
-
+            python_exe = self.get_python_exe(env_name)
             if not python_exe.exists():
-                error_msg = f"环境创建成功，但未找到 python.exe: {python_exe}"
+                error_msg = f"环境 {env_name} 创建失败，未找到 python.exe"
                 if self._current_log_callback:
                     self._current_log_callback(error_msg)
                 self.install_finished.emit(error_msg)
                 return
 
-            # ✅ 现在才更新 meta
+            env_path = python_exe.parent
             self.meta[env_name] = str(env_path)
             self._save_meta(self.meta)
-
+            self._scan_envs()
             if self._current_log_callback:
-                self._current_log_callback(f"✅ 环境 {env_name} 创建成功")
+                self._current_log_callback(f"Python {env_name} 环境创建完成 ✅")
 
             QTimer.singleShot(1000, lambda: self._install_default_packages(env_name, python_exe))
         except Exception as e:
-            if self._current_log_callback:
-                self._current_log_callback(f"创建环境异常: {e}")
-                import traceback
-                self._current_log_callback(traceback.format_exc())
-            self.install_finished.emit(str(e))
+            print(traceback.format_exc())
 
-    def clone_env(self, source_env: str, target_env: str, log_callback=None):
-        if source_env not in self.list_envs():
-            error_msg = f"源环境 {source_env} 不存在"
-            if log_callback:
-                log_callback(error_msg)
-            self.install_finished.emit(error_msg)
-            return
-
-        if target_env in self.list_envs():
-            if log_callback:
-                log_callback(f"目标环境 {target_env} 已存在")
-            self.install_finished.emit("已存在")
-            return
-
-        if not self.ensure_uv_installed(log_callback):
-            self.install_finished.emit("uv 未安装")
-            return
-
-        # 步骤1: 获取源环境的包列表
-        if log_callback:
-            log_callback(f"正在导出 {source_env} 的依赖...")
-
-        source_python = self.get_python_exe(source_env)
-        try:
-            result = subprocess.run(
-                [get_uv_path(), "pip", "freeze", "--python", str(source_python)],
-                capture_output=True,
-                text=True,
-                timeout=15
-            )
-            if result.returncode != 0:
-                raise RuntimeError("导出依赖失败")
-
-            requirements = result.stdout.strip()
-            if not requirements:
-                requirements = "# 空环境"
-        except Exception as e:
-            if log_callback:
-                log_callback(f"导出依赖失败: {e}")
-            self.install_finished.emit(str(e))
-            return
-
-        req_file = self.ENV_DIR / f"{target_env}_requirements.txt"
-        req_file.write_text(requirements, encoding="utf-8")
-
-        # 步骤2: 创建新环境（使用相同Python版本）
-        source_version = self._get_python_version(source_python)
-        self.create_env(source_version, target_env, log_callback)
-        # 克隆逻辑延后到 install_default_packages 中处理
-        # 临时存储 req_file 路径
-        self._pending_clone_req = (target_env, req_file)
-
-    def _get_python_version(self, python_exe: Path) -> str:
-        try:
-            result = subprocess.run(
-                [str(python_exe), "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            if result.returncode == 0:
-                # 返回 "3.11" 这样的主次版本
-                ver = result.stdout.strip().split()[-1]
-                return ".".join(ver.split(".")[:2])
-        except:
-            pass
-        return "3.11"  # fallback
-
-    def _install_default_packages(self, env_name: str, python_exe: Path):
-        # 检查是否是克隆场景
-        if hasattr(self, '_pending_clone_req') and self._pending_clone_req[0] == env_name:
-            target_env, req_file = self._pending_clone_req
-            delattr(self, '_pending_clone_req')
-            self._install_from_requirements(python_exe, req_file, env_name)
-        else:
-            # 默认包安装
-            packages = self.config.default_packages.value
-            if packages:
-                if self._current_log_callback:
-                    self._current_log_callback(f"正在安装默认包: {', '.join(packages)}")
-                self._install_next_package(python_exe, list(packages), env_name)
-            else:
-                if self._current_log_callback:
-                    self._current_log_callback("✅ 无默认包，环境初始化完成")
-                self.install_finished.emit("安装完成")
-
-    def _install_from_requirements(self, python_exe: Path, req_file: Path, env_name: str):
+    def _install_default_packages(self, env_name, python_exe):
         if self._current_log_callback:
-            self._current_log_callback(f"正在从 {req_file.name} 安装依赖...")
+            self._current_log_callback(f"正在安装默认包: {', '.join(self.DEFAULT_PACKAGES)}")
+        self._install_next_package(python_exe, list(self.DEFAULT_PACKAGES))
 
-        cmd = [get_uv_path(), "pip", "install", "-r", str(req_file), "--python", str(python_exe)]
-        self._add_mirror_sources_to_cmd(cmd)
-
-        def _on_finished(ec, es):
-            req_file.unlink(missing_ok=True)
-            if ec == 0:
-                if self._current_log_callback:
-                    self._current_log_callback("✅ 克隆依赖安装完成")
-                self.install_finished.emit("克隆完成")
-            else:
-                if self._current_log_callback:
-                    self._current_log_callback("❌ 克隆依赖安装失败")
-                self.install_finished.emit("克隆失败")
-
-        self._start_process(cmd, self._current_log_callback, _on_finished)
-
-    def remove_env(self, env_name: str, log_callback=None):
-        if env_name not in self.list_envs():
-            if log_callback:
-                log_callback(f"环境 {env_name} 不存在")
-            self.remove_finished.emit("不存在")
+    def _install_next_package(self, python_exe, remaining_packages):
+        if not remaining_packages:
+            if self._current_log_callback:
+                self._current_log_callback("默认包安装完成 ✅")
+            self.install_finished.emit("安装完成")
             return
 
-        env_path = Path(self.meta[env_name])
-        try:
-            if log_callback:
-                log_callback(f"正在删除环境 {env_name} ...")
-            shutil.rmtree(env_path, ignore_errors=True)
-            del self.meta[env_name]
-            self._save_meta(self.meta)
-            self._scan_envs()
-            if log_callback:
-                log_callback(f"✅ 环境 {env_name} 删除完成")
-            self.remove_finished.emit("success")
-        except Exception as e:
-            if log_callback:
-                log_callback(f"删除失败: {e}")
-            self.remove_finished.emit(str(e))
+        package = remaining_packages[0]
+        if self._current_log_callback:
+            self._current_log_callback(f"正在安装 {package}...")
 
-    def _start_process(self, cmd, log_callback, finished_callback, *args):
-        self._current_log_callback = log_callback
         self._process = QProcess(self)
         self._process.setProcessChannelMode(QProcess.MergedChannels)
         self._process.readyReadStandardOutput.connect(self._on_process_output)
         if platform.system() == "Windows":
-            from PyQt5.QtCore import QProcessEnvironment
-            env = QProcessEnvironment.systemEnvironment()
-            self._process.setProcessEnvironment(env)
-        self._process.finished.connect(lambda ec, es: finished_callback(ec, es, *args))
-        self._process.start(cmd[0], cmd[1:])
+            self._process.setProcessEnvironment(self._get_hidden_window_environment())
+        self._process.finished.connect(
+            lambda ec, es: self._on_package_installed(ec, es, python_exe, remaining_packages[1:])
+        )
+
+        # 构建pip安装命令，使用配置的镜像源
+        install_cmd = self._build_pip_install_command(package)
+        self._process.start(str(python_exe), install_cmd)
+
+    def _build_pip_install_command(self, package):
+        """构建pip安装命令，使用配置的镜像源"""
+        cmd = ["-m", "pip", "install", package]
+
+        # 获取配置的镜像源列表
+        mirrors = self.config.mirrors.value  # 假设配置中有个mirrors字段
+
+        if mirrors:  # 如果镜像源列表不为空
+            # 添加所有镜像源作为信任的主机
+            for mirror_url in mirrors:
+                cmd.extend(["--extra-index-url", mirror_url])
+                try:
+                    parsed = urlparse(mirror_url)
+                except Exception:
+                    logger.warning(f"Invalid mirror URL: {mirror_url}")
+                cmd.extend(["--trusted-host", parsed.hostname])
+        else:  # 如果镜像源列表为空，使用默认源
+            pass
+
+        return cmd
+
+    def _on_package_installed(self, exit_code, exit_status, python_exe, remaining_packages):
+        if exit_code != 0:
+            if self._current_log_callback:
+                self._current_log_callback(f"包安装失败，继续安装下一个包")
+        else:
+            if self._current_log_callback:
+                self._current_log_callback("✅ 包安装完成")
+        QTimer.singleShot(500, lambda: self._install_next_package(python_exe, remaining_packages))
+
+    def remove_env(self, env_name, log_callback=None):
+        if env_name not in self.meta and env_name not in self.list_envs():
+            error_msg = f"环境 {env_name} 不存在"
+            if log_callback:
+                log_callback(error_msg)
+            self.remove_finished.emit(error_msg)
+            return
+
+        if log_callback:
+            log_callback(f"正在删除环境 {env_name}...")
+
+        self._current_log_callback = log_callback
+        conda_exe = self.miniconda_path / "Scripts" / "conda.exe"
+
+        self._process = QProcess(self)
+        self._process.setProcessChannelMode(QProcess.MergedChannels)
+        self._process.readyReadStandardOutput.connect(self._on_process_output)
+        if platform.system() == "Windows":
+            self._process.setProcessEnvironment(self._get_hidden_window_environment())
+        self._process.finished.connect(
+            lambda ec, es: self._on_remove_env_finished(ec, es, env_name)
+        )
+        self._process.start(str(conda_exe), ["env", "remove", "--name", env_name, "-y"])
+
+    def _on_remove_env_finished(self, exit_code, exit_status, env_name):
+        try:
+            if exit_code != 0:
+                env_path = self.miniconda_path / "envs" / env_name
+                if env_path.exists():
+                    import time
+                    time.sleep(1)
+                    shutil.rmtree(env_path, ignore_errors=True)
+
+            if env_name in self.meta:
+                del self.meta[env_name]
+            self._save_meta(self.meta)
+            self._scan_envs()
+
+            if self._current_log_callback:
+                self._current_log_callback(f"环境 {env_name} 删除完成")
+            self.remove_finished.emit("success")
+        except Exception as e:
+            self.remove_finished.emit(e)
 
     def _on_process_output(self):
         if self._process:
@@ -294,136 +442,62 @@ class EnvironmentManager(QObject):
                 clean_data = self._clean_ansi_codes(data.strip())
                 self._current_log_callback(clean_data)
 
+    def list_envs(self):
+        self._scan_envs()
+        return list(self.meta.keys())
+
+    def get_python_exe(self, env_name: str) -> Path:
+        if env_name is None:
+            return None
+        env_path = self.miniconda_path / "envs" / env_name
+        python_exe = env_path / "python.exe"
+        if python_exe.exists():
+            self.meta[env_name] = str(env_path)
+            self._save_meta(self.meta)
+            return python_exe
+        if env_name == "miniconda":
+            base_exe = self.miniconda_path / "python.exe"
+            if base_exe.exists():
+                return base_exe
+        raise RuntimeError(f"环境 {env_name} 不存在于 {self.miniconda_path / 'envs'}")
+
     def _clean_ansi_codes(self, text):
         ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
         return ansi_escape.sub('', text)
 
-    def _add_mirror_sources_to_cmd(self, cmd):
-        mirrors = self.config.mirrors.value
-        if mirrors:
-            primary = mirrors[0]
-            cmd.extend(["--index-url", primary])
-            parsed = urlparse(primary)
-            cmd.extend(["--trusted-host", parsed.hostname])
-            for mirror in mirrors[1:]:
-                cmd.extend(["--extra-index-url", mirror])
-                parsed = urlparse(mirror)
-                cmd.extend(["--trusted-host", parsed.hostname])
-
-    def _install_next_package(self, python_exe: Path, remaining, env_name: str):
-        if not remaining:
-            if self._current_log_callback:
-                self._current_log_callback("✅ 默认包安装完成")
-            self.install_finished.emit("安装完成")
-            return
-
-        pkg = remaining[0]
-        cmd = [get_uv_path(), "pip", "install", pkg, "--python", str(python_exe)]
-        self._add_mirror_sources_to_cmd(cmd)
-
-        def _on_finished(ec, es):
-            if ec != 0:
-                if self._current_log_callback:
-                    self._current_log_callback(f"⚠️ {pkg} 安装失败，继续...")
-            else:
-                if self._current_log_callback:
-                    self._current_log_callback(f"✅ {pkg} 安装完成")
-            QTimer.singleShot(500, lambda: self._install_next_package(python_exe, remaining[1:], env_name))
-
-        self._start_process(cmd, self._current_log_callback, _on_finished)
-
-    def ensure_python_installed(self, version: str, log_callback=None) -> bool:
-        """
-        确保指定版本的 Python 已通过 uv 安装
-        返回: (是否成功, python_path)
-        """
-        if log_callback:
-            log_callback(f"正在检查 Python {version} 是否已安装...")
-
-        # 先列出已安装的 Python
-        try:
-            kwargs = {}
-            if platform.system() == "Windows":
-                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-            result = subprocess.run(
-                [get_uv_path(), "python", "list"],
-                capture_output=True,
-                text=True,
-                timeout=15,
-                **kwargs
-            )
-            if result.returncode != 0:
-                if log_callback:
-                    log_callback(f"❌ 无法列出 Python: {result.stderr}")
-                return False
-        except FileNotFoundError:
-            if log_callback:
-                log_callback("❌ uv 未安装")
-            return False
-        except Exception as e:
-            if log_callback:
-                log_callback(f"❌ 检查 Python 时出错: {e}")
-            return False
-
-        # 检查是否已有该版本（模糊匹配，如 3.12 匹配 3.12.3）
-        lines = result.stdout.strip().splitlines()
-        for line in lines:
-            if line.strip().startswith(version) and "installed" in line:
-                # 提取路径（最后一列）
-                parts = line.strip().split()
-                if parts:
-                    python_path = parts[-1]
-                    if log_callback:
-                        log_callback(f"✅ Python {version} 已安装: {python_path}")
-                    return True
-
-        # 未安装，开始安装
-        if log_callback:
-            log_callback(f"正在安装 Python {version}（通过 uv）... 这可能需要几分钟")
-
-        install_cmd = [get_uv_path(), "python", "install", version, "--no-progress"]
-        self._start_process(install_cmd, log_callback, self._dummy_finished)
-        self._process.waitForFinished(300_000)  # 最多等待 5 分钟
-
-        if self._process.exitCode() == 0:
-            if log_callback:
-                log_callback(f"✅ Python {version} 安装成功")
+    def ensure_pip(self, python_exe: str, log_callback=None) -> bool:
+        proc = QProcess()
+        if platform.system() == "Windows":
+            proc.setProcessEnvironment(self._get_hidden_window_environment())
+        proc.start(python_exe, ["-m", "pip", "--version"])
+        proc.waitForFinished()
+        if proc.exitCode() == 0:
+            log_callback and log_callback("pip 已存在 ✅")
             return True
         else:
-            stderr = self._process.readAllStandardError().data().decode("utf-8", errors="ignore")
-            if log_callback:
-                log_callback(f"❌ 安装 Python {version} 失败: {stderr}")
-            return False
+            log_callback and log_callback("pip 不存在，正在安装 ensurepip...")
+            try:
+                ensurepip_proc = QProcess()
+                if platform.system() == "Windows":
+                    ensurepip_proc.setProcessEnvironment(self._get_hidden_window_environment())
+                ensurepip_proc.start(python_exe, ["-m", "ensurepip"])
+                ensurepip_proc.waitForFinished()
+                if ensurepip_proc.exitCode() == 0:
+                    pip_upgrade_proc = QProcess()
+                    if platform.system() == "Windows":
+                        pip_upgrade_proc.setProcessEnvironment(self._get_hidden_window_environment())
+                    pip_upgrade_proc.start(python_exe, self._build_pip_install_command("pip"))
+                    pip_upgrade_proc.waitForFinished()
+                    if pip_upgrade_proc.exitCode() == 0:
+                        log_callback and log_callback("pip 安装完成 ✅")
+                        return True
+                log_callback and log_callback("pip 安装失败")
+                return False
+            except Exception as e:
+                log_callback and log_callback(f"安装 pip 失败: {e}")
+                return False
 
-    def _dummy_finished(self, ec, es):
-        pass  # 用于同步 wait
-
-    def create_env(self, python_version: str, env_name: str, log_callback=None):
-        """创建环境，自动安装所需 Python 版本"""
-        if not self.ensure_uv_installed(log_callback):
-            self.install_finished.emit("uv 未安装")
-            return
-
-        if env_name in self.list_envs():
-            if log_callback:
-                log_callback(f"环境 {env_name} 已存在")
-            self.install_finished.emit("已存在")
-            return
-
-        # ✅ 关键：确保 Python 版本已安装
-        if not self.ensure_python_installed(python_version, log_callback):
-            self.install_finished.emit(f"Python {python_version} 安装失败")
-            return
-
-        env_path = self.ENV_DIR / env_name
-        cmd = [get_uv_path(), "venv", str(env_path), "--python", python_version]
-
-        if log_callback:
-            log_callback(f"正在创建虚拟环境 {env_name} ...")
-
-        self._start_process(cmd, log_callback, self._on_create_env_finished, env_name)
-
-    def ensure_pip(self, python_exe: str, log_callback=None) -> bool:
-        # uv pip 不依赖 pip，但某些包可能需要
-        # 这里简单返回 True，实际可跳过
-        return True
+    def _get_hidden_window_environment(self):
+        from PyQt5.QtCore import QProcessEnvironment
+        env = QProcessEnvironment.systemEnvironment()
+        return env
