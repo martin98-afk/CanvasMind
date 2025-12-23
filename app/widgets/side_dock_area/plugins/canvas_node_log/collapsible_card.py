@@ -32,8 +32,8 @@ class CollapsibleLogCard(CardWidget):
 
     # 折叠箭头图标
     ARROW_ICONS = {
-        "collapsed": FluentIcon.CHEVRON_RIGHT_MED,   # ▶
-        "expanded": FluentIcon.CHEVRON_DOWN_MED   # ▼
+        "collapsed": get_icon("折叠"),   # ▶
+        "expanded": get_icon("展开")   # ▼
     }
 
     def __init__(self, run_id: str, title_color="color: #FFA500;", parent=None):
