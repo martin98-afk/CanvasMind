@@ -1,6 +1,7 @@
 # /app/interfaces/canvas_interface/exporter.py
 import json
 import shutil
+import sys
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +14,7 @@ from app.templates.readme_template import DETAILED_README
 from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, topological_sort, resource_path
 from app.widgets.dialog_widget.project_export_dialog import ProjectExportFlowDialog
+from .export_worker import UvWorker
 from .logger import get_logger
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
 
@@ -47,7 +49,8 @@ class CanvasExporter:
                     req_str = cls.requirements
                     if req_str:
                         requirements.update(pkg.strip() for pkg in req_str.split(',') if pkg.strip())
-            requirements.update(self.config.default_packages.value)
+            requirements.update(self.config.export_default_packages.value)
+
             # 构造markdown输入、输出端口信息
             def generate_markdown(input: list, output: list):
                 input_desc = ""
@@ -62,7 +65,7 @@ class CanvasExporter:
                 output_desc = ""
                 for i, out in enumerate(output):
                     output_desc += (f"- 输出{i + 1}：{out['custom_key']}\n   "
-                                    
+
                                     f"- 输出描述：{out.get('output_desc')}\n   "
                                     f"- 输出格式：{out['format']}\n   "
                                     f"- 输出格式描述：{out['format_desc']}\n   "
@@ -79,9 +82,9 @@ class CanvasExporter:
                     conn_count=len(self.parent.graph.serialize_session().get("connections", []))
                 )
                 return initial_readme
+
             # README
             export_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
 
             # 弹出流程对话框
             flow_dialog = ProjectExportFlowDialog(
@@ -175,32 +178,53 @@ class CanvasExporter:
                     "format": item["format"]
                 }
 
-            # 保存文件
-            (export_path / "model.workflow.json").write_text(
-                json.dumps(serialize_for_json({
-                    "graph": {"nodes": new_nodes_data, "connections": new_conns},
-                    "runtime": {
-                        "environment": self.parent.env_combo.currentData(),
-                        "environment_exe": self.parent.get_current_python_exe(),
-                        "execution_order": [(n.id, n.name()) for n in execution_order],
-                        "node_id2stable_key": {n.id: f"{n.FULL_PATH}||{n.name()}" for n in nodes_to_export},
-                        "node_states": {f"{n.FULL_PATH}||{n.name()}": self.parent.node_status.get(n.id, "unrun") for n in nodes_to_export},
-                        "node_outputs": {f"{n.FULL_PATH}||{n.name()}": serialize_for_json(getattr(n, '_output_values', {})) for n in nodes_to_export},
-                        "column_select": {f"{n.FULL_PATH}||{n.name()}": getattr(n, 'column_select', {}) for n in nodes_to_export},
-                        "global_variable": self.parent.global_variables.serialize()
-                    },
-                    "candidate_inputs": candidate_inputs,  # 可选：保留候选列表供参考
-                    "candidate_outputs": candidate_outputs  # 可选：保留候选列表供参考
-                }), ensure_ascii=False, indent=2),
-                encoding="utf-8"
-            )
-
+            # 保存 project_spec.json 和 README
             (export_path / "project_spec.json").write_text(
                 json.dumps(project_spec, ensure_ascii=False, indent=2),
                 encoding="utf-8"
             )
-            (export_path / "requirements.txt").write_text(final_requirements, encoding="utf-8")
             (export_path / "README.md").write_text(final_readme, encoding="utf-8")
+
+            # === 仅在这里插入 uv 异步逻辑 ===
+            # 先保存当前上下文，供后续回调使用
+            self._export_context = {
+                "export_path": export_path,
+                "project_name": project_name,
+                "nodes_to_export": nodes_to_export,
+                "execution_order": execution_order,
+                "component_path_map": component_path_map,
+                "new_nodes_data": new_nodes_data,
+                "new_conns": new_conns,
+                "selected_inputs": selected_inputs,
+                "selected_outputs": selected_outputs,
+                "candidate_inputs": candidate_inputs,
+                "candidate_outputs": candidate_outputs,
+                "final_requirements": final_requirements,
+                "components_dir": components_dir,
+            }
+
+            dependencies = [line.strip() for line in final_requirements.splitlines() if
+                            line.strip() and not line.strip().startswith("#")]
+            self._uv_worker = UvWorker(export_path, dependencies, project_name)
+            self._uv_worker.on_success.connect(self._on_uv_success)
+            self._uv_worker.on_error.connect(self._on_uv_error)
+            MessageManager.info("导出中", "正在创建 uv 虚拟环境，请稍候...", self.parent)
+            self._uv_worker.start()
+
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            MessageManager.error("导出失败", f"错误: {str(e)}", self.parent)
+
+    def _on_uv_success(self, python_exe_relative: str):
+        try:
+            logger.info(f"uv 创建成功: {python_exe_relative}")
+            logger.info("正在导出项目...")
+            ctx = self._export_context
+            export_path = ctx["export_path"]
+            project_name = ctx["project_name"]
+            nodes_to_export = ctx["nodes_to_export"]
+            execution_order = ctx["execution_order"]
+            components_dir = ctx["components_dir"]
 
             # 复制 runner
             runner_src = Path(resource_path("app")) / "runner"
@@ -214,12 +238,41 @@ class CanvasExporter:
                 if src.exists():
                     shutil.move(str(src), str(export_path / file))
 
+            # 构建 runtime
+            runtime_data = {
+                "environment": "uv",
+                "environment_exe": python_exe_relative,
+                "execution_order": [(n.id, n.name()) for n in execution_order],
+                "node_id2stable_key": {n.id: f"{n.FULL_PATH}||{n.name()}" for n in nodes_to_export},
+                "node_states": {f"{n.FULL_PATH}||{n.name()}": self.parent.node_status.get(n.id, "unrun") for n in
+                                nodes_to_export},
+                "node_outputs": {f"{n.FULL_PATH}||{n.name()}": serialize_for_json(getattr(n, '_output_values', {})) for
+                                 n in nodes_to_export},
+                "column_select": {f"{n.FULL_PATH}||{n.name()}": getattr(n, 'column_select', {}) for n in
+                                  nodes_to_export},
+                "global_variable": self.parent.global_variables.serialize()
+            }
+
+            # 保存 model.workflow.json
+            (export_path / "model.workflow.json").write_text(
+                json.dumps(serialize_for_json({
+                    "graph": {"nodes": ctx["new_nodes_data"], "connections": ctx["new_conns"]},
+                    "runtime": runtime_data,
+                    "candidate_inputs": ctx["candidate_inputs"],
+                    "candidate_outputs": ctx["candidate_outputs"]
+                }), ensure_ascii=False, indent=2),
+                encoding="utf-8"
+            )
+
             self._generate_selected_nodes_thumbnail(export_path)
             MessageManager.success("导出成功", f"模型项目已导出到:\n{export_path}", self.parent)
 
         except Exception as e:
             logger.error(traceback.format_exc())
-            MessageManager.error("导出失败", f"错误: {str(e)}", self.parent)
+            MessageManager.error("导出失败", f"写入 workflow 文件失败: {str(e)}", self.parent)
+
+    def _on_uv_error(self, error_msg: str):
+        MessageManager.error("导出失败", f"UV 环境创建失败:\n{error_msg}", self.parent)
 
     def _collect_inputs(self, nodes):
         inputs = []

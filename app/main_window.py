@@ -29,11 +29,12 @@ class LowCodeWindow(FluentWindow):
     def __init__(self):
         super().__init__()
         self._init_window()
+        QtCore.QTimer.singleShot(0, self._setup_splash_and_startup)
         self._setup_splash_and_startup()
         self._init_services()
         self._init_pages()
         self._setup_navigation()
-        QtCore.QTimer.singleShot(500, self.finish_splash_screen)
+        self.finish_splash_screen()
 
     # region [1. 窗口基础设置]
     def _init_window(self):

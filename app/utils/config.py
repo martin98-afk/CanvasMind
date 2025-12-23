@@ -126,6 +126,12 @@ class Settings(QConfig):
         ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi", "asteval", "wcwidth", "pyarrow", "ipykernel", "matplotlib"],
         ListValidator()
     )
+    export_default_packages = ConfigItem(
+        "Package",
+        "DefaultPackages",
+        ["loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "wcwidth", "pyarrow"],
+        ListValidator()
+    )
 
     # ========== 新增：大模型对话默认配置 ==========
     llm_model = ConfigItem("LLM", "Model", "qwen/qwen3-30b-a3b-2507")
