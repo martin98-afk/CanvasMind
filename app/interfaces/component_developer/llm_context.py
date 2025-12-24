@@ -1,3 +1,5 @@
+from PyQt5.QtCore import QTimer
+
 from app.interfaces.component_developer.constants import LLM_CODE_CONTEXT
 from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
 
@@ -50,5 +52,6 @@ class LLMContextProvider:
 
     def send_preset_generate_llm_request(self, question):
         # 右边栏切换到大模型
+        self.parent.llm_chatter._first_show = True
         self.parent.side_dock_area.switch_to("大模型对话")
         self.parent.llm_chatter.send_preset_question(question)
