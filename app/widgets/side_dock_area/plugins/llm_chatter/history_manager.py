@@ -10,8 +10,8 @@ from app.utils.utils import serialize_for_json, deserialize_from_json
 class HistoryManager:
     def __init__(self, canvas_name: str):
         self.canvas_name = canvas_name
-        self.history_dir = Path("canvas_files") / "llm_history"
-        self.history_file = self.history_dir / f"{canvas_name}.json"
+        self.history_dir = Path("canvas_files") / "workflows" / canvas_name
+        self.history_file = self.history_dir / f"llm_history.json"
         self.history_dir.mkdir(parents=True, exist_ok=True)
         self._history_sessions: List[Dict] = self._load_history()
 
