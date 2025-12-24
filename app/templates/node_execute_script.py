@@ -38,6 +38,7 @@ if __name__ == "__main__":
     RESULT_PATH = r"{result_path}"
     ERROR_PATH = r"{error_path}"
     NODE_ID = "{node_id}"
+    WORKFLOW_PATH = "{workflow_path}"
 
     # 移除默认 handler
     logger.remove()
@@ -99,7 +100,7 @@ if __name__ == "__main__":
         comp_instance = comp_class()
         comp_instance.logger = node_logger
         node_logger.info("开始执行组件")
-        output = comp_instance.execute(params, inputs, global_variables, NODE_ID)
+        output = comp_instance.execute(params, inputs, global_variables, NODE_ID, WORKFLOW_PATH)
 
         with open(RESULT_PATH, 'wb') as f:
             pickle.dump(output, f)

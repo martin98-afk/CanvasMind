@@ -497,7 +497,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                 result_path=result_path,
                 error_path=error_path,
                 log_file_path=log_file_path,
-                node_id=self.persistent_id
+                node_id=self.persistent_id,
+                workflow_path=parent_window.workflow_name
             )
             with open(temp_script_path, 'w', encoding='utf-8') as f:
                 f.write(script_content)
