@@ -1,0 +1,543 @@
+{
+  "graph": {
+    "layout_direction": 0,
+    "acyclic": true,
+    "pipe_collision": false,
+    "pipe_slicing": true,
+    "pipe_style": 1,
+    "accept_connection_types": "{}",
+    "reject_connection_types": "{}"
+  },
+  "nodes": {
+    "0x26068ad5570": {
+      "type_": "dynamic.StatusDynamicNode_网络请求_HTTP_请求客户端",
+      "icon": null,
+      "name": "HTTP 请求客户端 1",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 637.5600000000001,
+      "height": 559.12,
+      "pos": [
+        224.00619288774192,
+        574.029025637416
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "357e0fd4-b143-4065-a4bc-0194db99907c",
+        "version": "latest",
+        "debug_code": {},
+        "url": "http://168.168.10.110:20000/chat/completions",
+        "method": "POST",
+        "timeout": "10",
+        "verify_ssl": true,
+        "auth_type": "None",
+        "auth_value": "",
+        "headers": [],
+        "params": []
+      }
+    },
+    "0x26071edaef0": {
+      "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+      "icon": "D:\\work\\CanvasMind\\icons\\多轮对话.svg",
+      "name": "文本输入 2",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 468.28000000000003,
+      "height": 265.84000000000003,
+      "pos": [
+        -1581.3302030087443,
+        908.8701539194413
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "5cef7987-52f5-45e6-97b6-3c0ba4438dfa",
+        "version": "latest",
+        "debug_code": {},
+        "input": "0.7"
+      }
+    },
+    "0x26071ed95d0": {
+      "type_": "dynamic.StatusDynamicNode_大模型组件_构建多轮对话",
+      "icon": null,
+      "name": "构建多轮对话",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 553.84,
+      "height": 291.84000000000003,
+      "pos": [
+        -1581.850329711911,
+        446.5116998034222
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "80a9dcac-fcfc-4052-8e6b-7629016f7996",
+        "version": "latest",
+        "debug_code": {},
+        "prop1": [
+          {
+            "role": "user",
+            "content": "你是一个乐于助人的ai助手"
+          },
+          {
+            "role": "assistant",
+            "content": "好的"
+          },
+          {
+            "role": "user",
+            "content": "你叫什么名字"
+          }
+        ]
+      }
+    },
+    "0x26068b5d300": {
+      "type_": "dynamic.StatusDynamicNode_数据转换_文本转json",
+      "icon": null,
+      "name": "文本转json",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 192.28,
+      "height": 69.28,
+      "pos": [
+        -659.7760465577321,
+        1345.6301977224894
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "74ad8bfe-9f1a-4eb3-b3fe-52db7bdf63f8",
+        "version": "latest",
+        "debug_code": {}
+      }
+    },
+    "0x26071ed9c30": {
+      "type_": "dynamic.StatusDynamicNode_网络请求_JSON包装JSON",
+      "icon": null,
+      "name": "JSON包装JSON",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 402.04,
+      "height": 100.48,
+      "pos": [
+        -859.6636651427085,
+        559.3468767889143
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "c059ad76-895f-498a-8dc2-3ff94228db64",
+        "version": "latest",
+        "debug_code": {},
+        "prop_0": "messages"
+      }
+    },
+    "0x26068b5e5f0": {
+      "type_": "dynamic.StatusDynamicNode_网络请求_数值包装JSON",
+      "icon": null,
+      "name": "数值包装JSON",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 398.36,
+      "height": 100.48,
+      "pos": [
+        -862.7692690975653,
+        902.5670228686371
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "fe6e3df9-ac35-4520-aff1-58214413d666",
+        "version": "latest",
+        "debug_code": {},
+        "prop_0": "temperature"
+      }
+    },
+    "0x26071ed9b10": {
+      "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+      "icon": "D:\\work\\CanvasMind\\icons\\多轮对话.svg",
+      "name": "文本输入",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 446.20000000000005,
+      "height": 265.84000000000003,
+      "pos": [
+        -1514.3634185991295,
+        71.57516039359416
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "dbcba99e-924b-413c-903a-0a55cad41de8",
+        "version": "latest",
+        "debug_code": {},
+        "input": "qwen3-30b-a3b"
+      }
+    },
+    "0x26068b5fcd0": {
+      "type_": "dynamic.StatusDynamicNode_网络请求_文本包装JSON",
+      "icon": null,
+      "name": "文本包装JSON",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 398.36,
+      "height": 100.48,
+      "pos": [
+        -832.9586865629492,
+        293.38200043965946
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "ec653cec-910b-4aa0-abad-1461b7ca35a1",
+        "version": "latest",
+        "debug_code": {},
+        "prop_0": "model"
+      }
+    },
+    "0x26068b5d780": {
+      "type_": "dynamic.StatusDynamicNode_网络请求_请求体合并",
+      "icon": null,
+      "name": "请求体合并",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 201.48000000000002,
+      "height": 69.28,
+      "pos": [
+        -261.3203858698687,
+        554.0778106413758
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "2ad3d66d-67c4-45ab-a2f1-134e700f3171",
+        "version": "latest",
+        "debug_code": {}
+      }
+    },
+    "0x26068b5ce20": {
+      "type_": "dynamic.StatusDynamicNode_数据集成_文本输入",
+      "icon": "D:\\work\\CanvasMind\\icons\\多轮对话.svg",
+      "name": "文本输入 1",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 468.28000000000003,
+      "height": 265.84000000000003,
+      "pos": [
+        -1314.5538567662961,
+        1345.6301977224896
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "4e1bb760-9dc8-4522-bb11-05a6756c40b2",
+        "version": "latest",
+        "debug_code": {},
+        "input": "{\"name\": \"Alice\", \"age\": 25}"
+      }
+    }
+  },
+  "connections": [
+    {
+      "in": [
+        "0x26068ad5570",
+        "request_body"
+      ],
+      "out": [
+        "0x26068b5d780",
+        "request_bodies"
+      ]
+    },
+    {
+      "out": [
+        "0x26071edaef0",
+        "text"
+      ],
+      "in": [
+        "0x26068b5e5f0",
+        "input1"
+      ]
+    },
+    {
+      "out": [
+        "0x26071ed95d0",
+        "output1"
+      ],
+      "in": [
+        "0x26071ed9c30",
+        "input1"
+      ]
+    },
+    {
+      "in": [
+        "0x26068b5d300",
+        "input"
+      ],
+      "out": [
+        "0x26068b5ce20",
+        "text"
+      ]
+    },
+    {
+      "out": [
+        "0x26068b5d300",
+        "output"
+      ],
+      "in": [
+        "0x26068b5d780",
+        "request_body"
+      ]
+    },
+    {
+      "out": [
+        "0x26071ed9c30",
+        "output1"
+      ],
+      "in": [
+        "0x26068b5d780",
+        "request_body"
+      ]
+    },
+    {
+      "out": [
+        "0x26068b5e5f0",
+        "output1"
+      ],
+      "in": [
+        "0x26068b5d780",
+        "request_body"
+      ]
+    },
+    {
+      "out": [
+        "0x26071ed9b10",
+        "text"
+      ],
+      "in": [
+        "0x26068b5fcd0",
+        "input1"
+      ]
+    },
+    {
+      "out": [
+        "0x26068b5fcd0",
+        "output1"
+      ],
+      "in": [
+        "0x26068b5d780",
+        "request_body"
+      ]
+    }
+  ]
+}

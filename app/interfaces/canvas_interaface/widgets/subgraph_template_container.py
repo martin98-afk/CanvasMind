@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-import os
 import json
 import uuid
 from pathlib import Path
-from PyQt5.QtCore import Qt, QSize, QPoint, QRectF, QTimer, pyqtSignal
+
+from PyQt5.QtCore import Qt, QSize, QPoint, QRectF, QTimer
+from PyQt5.QtGui import QPixmap, QPainter, QImage
 from PyQt5.QtWidgets import (
     QLabel, QWidget, QVBoxLayout, QSizePolicy, QHBoxLayout,
     QSpacerItem, QApplication, QDialog
 )
-from PyQt5.QtGui import QPixmap, QPainter, QImage, QCursor
 from qfluentwidgets import (
     CardWidget, TransparentToolButton, FluentIcon, BodyLabel,
     StrongBodyLabel, RoundMenu, Action, SmoothScrollArea,
@@ -54,12 +54,6 @@ class SubgraphTemplatePanel(QWidget):
         top_layout.setSpacing(4)
         top_layout.addStretch()
 
-        add_env_btn = TransparentPushButton(text="添加为模板", parent=self, icon=FluentIcon.ADD)
-        add_env_btn.setIconSize(QSize(16, 16))
-        add_env_btn.setFixedHeight(36)
-        add_env_btn.clicked.connect(self.add_template)
-        top_layout.addWidget(add_env_btn)
-
         self.filter_btn = TransparentPushButton("筛选标签", self, FluentIcon.FILTER)
         self.filter_btn.setIconSize(QSize(16, 16))
         self.filter_btn.setFixedHeight(36)
@@ -67,6 +61,11 @@ class SubgraphTemplatePanel(QWidget):
         top_layout.addWidget(self.filter_btn)
         layout.addLayout(top_layout)
 
+        add_env_btn = TransparentPushButton(text="添加为模板", parent=self, icon=FluentIcon.ADD)
+        add_env_btn.setIconSize(QSize(16, 16))
+        add_env_btn.setFixedHeight(36)
+        add_env_btn.clicked.connect(self.add_template)
+        top_layout.addWidget(add_env_btn)
         # === 滚动内容区 ===
         self.container = QWidget(self)
         self.container.setObjectName("templateContainer")
@@ -186,9 +185,9 @@ class SubgraphTemplatePanel(QWidget):
         delete_btn.setToolTip("删除模板")
         delete_btn.clicked.connect(lambda _, t=tid: self.delete_template(t))
 
-        btn_layout.addWidget(apply_btn)
-        btn_layout.addSpacing(1)
         btn_layout.addWidget(delete_btn)
+        btn_layout.addSpacing(1)
+        btn_layout.addWidget(apply_btn)
         layout.addLayout(btn_layout)
 
         # 图片
@@ -285,7 +284,6 @@ class SubgraphTemplatePanel(QWidget):
 
         add_tag_btn.clicked.connect(on_add_tag)
         layout.addWidget(add_tag_btn)
-        layout.addStretch()
 
     def _save_template_tags(self, tid: str, tags: list):
         meta_file = self._template_dir / tid / "meta.json"
