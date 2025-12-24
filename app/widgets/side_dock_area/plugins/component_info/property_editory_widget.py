@@ -313,6 +313,8 @@ class PropertyEditorWidget(ConfigTableSpace):
             spinBox.setValue(float(default_value) if default_value not in (None, '') else 0.0)
             spinBox.valueChanged.connect(self.properties_changed.emit)
             self.table.setCellWidget(row, 3, spinBox)
+        elif prop_type == PropertyType.DYNAMICFORM:
+            pass
         else:
             edit = LineEdit()
             edit.setStyleSheet("color: white; background: transparent; border: none;")
