@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+from pathlib import Path
 
 from PyQt5.QtCore import Qt, QSize, QPoint
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
@@ -359,6 +360,7 @@ class CanvasUISetUp:
 
     def update_workflow_name(self, text):
         self.parent.workflow_name = text
+        self.parent.file_path = Path("canvas_files") / "workflows" / text / f"{text}.workflow.json"
         name_edit = self.name_container.findChild(LineEdit)
         if name_edit:
             self._update_name_label_width(name_edit)

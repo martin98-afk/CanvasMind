@@ -57,7 +57,7 @@ class SubgraphTemplatePanel(QWidget):
         # === 顶部：添加 + 筛选 ===
         top_layout = QHBoxLayout()
         top_layout.setContentsMargins(0, 0, 0, 0)
-        top_layout.setSpacing(4)
+        top_layout.setSpacing(0)
         top_layout.addStretch()
 
         self.filter_btn = TransparentPushButton("筛选标签", self, FluentIcon.FILTER)

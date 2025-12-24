@@ -66,7 +66,7 @@ class CanvasPage(QWidget):
         # --- 节点操作 ---
         self.node_operations = NodeOperations(self, self.graph, self.manager.recommendation_engine, self.thread_pool)
         # 注册节点
-        QtCore.QTimer.singleShot(10, self.node_operations.register_components)
+        self.node_operations.register_components()
         # --- 快捷组件工具管理 ---
         self.quick_manager = QuickComponentManager(self, self.component_map)
         # --- 自动保存相关 ---
