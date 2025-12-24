@@ -23,7 +23,7 @@ from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog, Custo
 
 
 class SubgraphTemplatePanel(QWidget):
-    """子图模板面板 - 支持局部更新 Tag、图片预览、标签筛选"""
+    """子图模板面板 - 支持局部更新 Tag、图片预览、标签筛选（带缓存与防抖）"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -33,6 +33,12 @@ class SubgraphTemplatePanel(QWidget):
         self._tag_containers = {}      # {tid: (container_widget, layout)}
         self._built = False
         self._selected_tags = set()
+
+        # === 新增：缓存与防抖 ===
+        self._template_cache = {}      # {tid: {"name": str, "tags": list, "preview_path": str}}
+        self._debounce_timer = QTimer(self)
+        self._debounce_timer.setSingleShot(True)
+        self._debounce_timer.timeout.connect(self._refresh_content)
 
         self._template_dir = Path("canvas_files") / "subgraph_templates"
         self._template_dir.mkdir(parents=True, exist_ok=True)
@@ -59,13 +65,15 @@ class SubgraphTemplatePanel(QWidget):
         self.filter_btn.setFixedHeight(36)
         self.filter_btn.clicked.connect(self._show_tag_filter)
         top_layout.addWidget(self.filter_btn)
-        layout.addLayout(top_layout)
 
         add_env_btn = TransparentPushButton(text="添加为模板", parent=self, icon=FluentIcon.ADD)
         add_env_btn.setIconSize(QSize(16, 16))
         add_env_btn.setFixedHeight(36)
         add_env_btn.clicked.connect(self.add_template)
         top_layout.addWidget(add_env_btn)
+
+        layout.addLayout(top_layout)
+
         # === 滚动内容区 ===
         self.container = QWidget(self)
         self.container.setObjectName("templateContainer")
@@ -128,27 +136,45 @@ class SubgraphTemplatePanel(QWidget):
                 self.container_layout.addWidget(card)
                 self._template_cards[tid] = card
 
-        spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.container_layout.addItem(spacer)
+        self.container_layout.addStretch(1)
 
     def _load_templates(self):
+        """使用缓存加载模板元数据，避免重复 I/O"""
+        current_tids = {d.name for d in self._template_dir.iterdir() if d.is_dir()}
+
+        # 清理已删除模板的缓存
+        stale_tids = set(self._template_cache.keys()) - current_tids
+        for tid in stale_tids:
+            self._template_cache.pop(tid, None)
+
+        # 加载新增或未缓存的模板
+        for tid in current_tids:
+            if tid not in self._template_cache:
+                meta_file = self._template_dir / tid / "meta.json"
+                preview_file = self._template_dir / tid / "preview.png"
+                if meta_file.exists() and preview_file.exists():
+                    try:
+                        with open(meta_file, 'r', encoding='utf-8') as f:
+                            meta = json.load(f)
+                        self._template_cache[tid] = {
+                            "name": meta.get("name", tid),
+                            "tags": meta.get("tags", []),
+                            "preview_path": str(preview_file)
+                        }
+                    except Exception:
+                        continue
+
+        # 构建返回列表
         templates = []
-        for tid_dir in self._template_dir.iterdir():
-            if not tid_dir.is_dir():
-                continue
-            meta_file = tid_dir / "meta.json"
-            preview_file = tid_dir / "preview.png"
-            if meta_file.exists() and preview_file.exists():
-                try:
-                    with open(meta_file, 'r', encoding='utf-8') as f:
-                        meta = json.load(f)
-                    tags = meta.get("tags", [])
-                    templates.append((meta['id'], meta['name'], str(preview_file), tags))
-                except Exception:
-                    continue
+        for tid, info in self._template_cache.items():
+            templates.append((tid, info["name"], info["preview_path"], info["tags"]))
         return templates
 
     def _get_template_tags(self, tid: str) -> list:
+        """从缓存获取标签（若无则 fallback 到文件）"""
+        if tid in self._template_cache:
+            return self._template_cache[tid]["tags"]
+        # fallback（理论上不应发生）
         meta_file = self._template_dir / tid / "meta.json"
         if meta_file.exists():
             try:
@@ -279,7 +305,10 @@ class SubgraphTemplatePanel(QWidget):
                     if new_tag not in current_tags:
                         current_tags.append(new_tag)
                         self._save_template_tags(tid, current_tags)
-                        # ✅ 局部更新：只刷新这个卡片
+                        # 更新缓存
+                        if tid in self._template_cache:
+                            self._template_cache[tid]["tags"] = current_tags
+                        # 局部更新 UI
                         self._update_tag_container(tid, current_tags)
 
         add_tag_btn.clicked.connect(on_add_tag)
@@ -303,22 +332,16 @@ class SubgraphTemplatePanel(QWidget):
         if tag_to_remove in current_tags:
             current_tags.remove(tag_to_remove)
             self._save_template_tags(tid, current_tags)
-            # ✅ 局部更新
+            # 更新缓存
+            if tid in self._template_cache:
+                self._template_cache[tid]["tags"] = current_tags
+            # 局部更新
             self._update_tag_container(tid, current_tags)
 
     def _get_all_tags(self):
         all_tags = set()
-        for tid_dir in self._template_dir.iterdir():
-            if tid_dir.is_dir():
-                meta_file = tid_dir / "meta.json"
-                if meta_file.exists():
-                    try:
-                        with open(meta_file, 'r', encoding='utf-8') as f:
-                            meta = json.load(f)
-                            tags = meta.get("tags", [])
-                            all_tags.update(tags)
-                    except:
-                        pass
+        for info in self._template_cache.values():
+            all_tags.update(info["tags"])
         return sorted(all_tags)
 
     def _show_tag_filter(self):
@@ -340,7 +363,8 @@ class SubgraphTemplatePanel(QWidget):
 
     def _on_tags_selected(self, selected_tags: set):
         self._selected_tags = selected_tags
-        self._refresh_content()  # ✅ 筛选时全局刷新合理
+        # ✅ 防抖：100ms 内多次筛选只刷新一次
+        self._debounce_timer.start(100)
 
     # ========== 原有功能（无需改动）==========
     def add_template(self):
@@ -380,7 +404,14 @@ class SubgraphTemplatePanel(QWidget):
         with open(template_path / "meta.json", "w", encoding="utf-8") as f:
             json.dump({"id": tid, "name": template_name, "tags": []}, f, ensure_ascii=False)
 
-        self._refresh_content()  # ✅ 新增模板需全局刷新
+        # ✅ 更新缓存
+        self._template_cache[tid] = {
+            "name": template_name,
+            "tags": [],
+            "preview_path": str(template_path / "preview.png")
+        }
+
+        self._refresh_content()  # 新增模板需立即刷新
 
     def _capture_selected_nodes(self, nodes):
         selected = self.parent.graph.selected_nodes()
@@ -481,4 +512,6 @@ class SubgraphTemplatePanel(QWidget):
         template_path = self._template_dir / tid
         if template_path.exists():
             shutil.rmtree(template_path)
-        self._refresh_content()  # ✅ 删除模板需全局刷新
+        # ✅ 清理缓存
+        self._template_cache.pop(tid, None)
+        self._refresh_content()  # 删除模板需立即刷新

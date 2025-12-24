@@ -70,25 +70,23 @@ class CollapsibleLogCard(CardWidget):
         self.title_label.setWordWrap(True)
         self.title_label.setStyleSheet(title_color + "background:transparent;border:none;")
         title_layout.addWidget(self.title_label, 1)
-        title_layout.addStretch(1)
+        title_layout.addStretch()
         # 循环信息
         if len(run_id.split("@")) == 3:
             loop_label = BodyLabel(f"{run_id.split('@')[1]}")
+            loop_label.setWordWrap(True)
             loop_label.setStyleSheet("color: #808080; background: transparent; border: none;")
-            title_layout.addWidget(loop_label)
+            title_layout.addWidget(loop_label, 1)
             # 竖线分隔符
             line_separator = QFrame()
             line_separator.setFrameShape(QFrame.VLine)
             line_separator.setStyleSheet("background: #444;")
-            title_layout.addWidget(line_separator)
+            title_layout.addSpacing(2)
 
         time_label = BodyLabel(run_id.split("@")[-1])
         time_label.setStyleSheet("color: #808080; background: transparent; border: none;")
         title_layout.addWidget(time_label)
-        line_separator = QFrame()
-        line_separator.setFrameShape(QFrame.VLine)
-        line_separator.setStyleSheet("background: #444;")
-        title_layout.addWidget(line_separator)
+        title_layout.addSpacing(2)
         # === 状态按钮（右侧）===
         self.status_button = TransparentToolButton(self.STATUS_ICONS["default"], self)
         self.status_button.setFixedSize(20, 20)
