@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import (
     CardWidget, TransparentToolButton, FluentIcon, BodyLabel,
     StrongBodyLabel, RoundMenu, Action, SmoothScrollArea,
-    TransparentPushButton
+    TransparentPushButton, FlowLayout
 )
 
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
@@ -237,55 +237,19 @@ class SubgraphTemplatePanel(QWidget):
         layout.addWidget(img_label, 1)
 
         # === 可局部更新的 Tag 容器 ===
+        bottom_container = QWidget()
+        bottom_layout = QHBoxLayout(bottom_container)
+        bottom_layout.setContentsMargins(0, 0, 0, 0)
+        bottom_layout.setSpacing(0)
         tag_container = QWidget()
-        tag_layout = QHBoxLayout(tag_container)
-        tag_layout.setContentsMargins(0, 6, 0, 0)
-        tag_layout.setSpacing(4)
+        tag_layout = FlowLayout()
+        tag_container.setLayout(tag_layout)
+        tag_container.setLayoutDirection(Qt.RightToLeft)
+        tag_layout.setContentsMargins(0, 0, 0, 0)
+        tag_layout.setSpacing(2)
         self._tag_containers[tid] = (tag_container, tag_layout)
         self._update_tag_container(tid, tags)
-        layout.addWidget(tag_container)
-
-        # 右键菜单
-        def show_context_menu(pos):
-            menu = RoundMenu(parent=self)
-            menu.addAction(Action(FluentIcon.ACCEPT_MEDIUM, "应用", triggered=lambda: self.apply_template(tid)))
-            menu.addAction(Action(FluentIcon.DELETE, "删除", triggered=lambda: self.delete_template(tid)))
-            menu.exec_(card.mapToGlobal(pos))
-
-        card.setContextMenuPolicy(Qt.CustomContextMenu)
-        card.customContextMenuRequested.connect(show_context_menu)
-        return card
-
-    def _update_tag_container(self, tid: str, tags: list):
-        """局部更新指定卡片的 tag 栏"""
-        if tid not in self._tag_containers:
-            return
-        container, layout = self._tag_containers[tid]
-
-        # 清空
-        while layout.count():
-            item = layout.takeAt(0)
-            w = item.widget()
-            if w:
-                w.deleteLater()
-
-        layout.addStretch()
-        # 重新添加 tag
-        for tag in tags:
-            tag_label = BodyLabel(f"#{tag}")
-            tag_label.setStyleSheet("""
-                QLabel {
-                    background-color: rgba(100, 100, 255, 30);
-                    border: 1px solid rgba(100, 100, 255, 80);
-                    border-radius: 8px;
-                    padding: 2px 6px;
-                    font-size: 11px;
-                    color: white;
-                }
-            """)
-            tag_label.setCursor(Qt.PointingHandCursor)
-            tag_label.mousePressEvent = lambda e, t=tag: self._remove_tag_from_card(tid, t)
-            layout.addWidget(tag_label)
+        bottom_layout.addWidget(tag_container, 1)
 
         # 添加 + 按钮
         add_tag_btn = TransparentToolButton(FluentIcon.ADD, self)
@@ -312,7 +276,45 @@ class SubgraphTemplatePanel(QWidget):
                         self._update_tag_container(tid, current_tags)
 
         add_tag_btn.clicked.connect(on_add_tag)
-        layout.addWidget(add_tag_btn)
+        bottom_layout.addWidget(add_tag_btn)
+        layout.addWidget(bottom_container)
+
+        # 右键菜单
+        def show_context_menu(pos):
+            menu = RoundMenu(parent=self)
+            menu.addAction(Action(FluentIcon.ACCEPT_MEDIUM, "应用", triggered=lambda: self.apply_template(tid)))
+            menu.addAction(Action(FluentIcon.DELETE, "删除", triggered=lambda: self.delete_template(tid)))
+            menu.exec_(card.mapToGlobal(pos))
+
+        card.setContextMenuPolicy(Qt.CustomContextMenu)
+        card.customContextMenuRequested.connect(show_context_menu)
+        return card
+
+    def _update_tag_container(self, tid: str, tags: list):
+        """局部更新指定卡片的 tag 栏"""
+        if tid not in self._tag_containers:
+            return
+        container, layout = self._tag_containers[tid]
+        # 清空
+        while layout.count():
+            item = layout.takeAt(0)
+            item.deleteLater()
+        # 重新添加 tag
+        for tag in tags:
+            tag_label = BodyLabel(f"#{tag}")
+            tag_label.setStyleSheet("""
+                QLabel {
+                    background-color: rgba(100, 100, 255, 30);
+                    border: 1px solid rgba(100, 100, 255, 80);
+                    border-radius: 8px;
+                    padding: 2px 6px;
+                    font-size: 11px;
+                    color: white;
+                }
+            """)
+            tag_label.setCursor(Qt.PointingHandCursor)
+            tag_label.mousePressEvent = lambda e, t=tag: self._remove_tag_from_card(tid, t)
+            layout.addWidget(tag_label)
 
     def _save_template_tags(self, tid: str, tags: list):
         meta_file = self._template_dir / tid / "meta.json"
