@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QVBoxLayout, QSplitter, QWidget
-from qfluentwidgets import MessageBoxBase, SubtitleLabel, LineEdit, ComboBox, BodyLabel, PlainTextEdit, TextEdit
+from qfluentwidgets import MessageBoxBase, SubtitleLabel, LineEdit, ComboBox, BodyLabel, PlainTextEdit, TextEdit, \
+    EditableComboBox
 
 
 class CustomInputDialog(MessageBoxBase):
@@ -15,6 +16,29 @@ class CustomInputDialog(MessageBoxBase):
         self.lineEdit.setPlaceholderText(placeholder)
         if currenttext:
             self.lineEdit.setText(currenttext)
+        self.lineEdit.setClearButtonEnabled(True)
+
+        # 将组件添加到布局中
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addWidget(self.lineEdit)
+        self.lineEdit.returnPressed.connect(self.accept)
+
+        # 设置对话框的最小宽度
+        self.widget.setMinimumWidth(350)
+
+    def get_text(self):
+        return self.lineEdit.text()
+
+
+class CustomEditableComboDialog(MessageBoxBase):
+    """自定义输入对话框"""
+
+    def __init__(self, title: str, placeholder: str = "", items: list = [], parent=None):
+        super().__init__(parent)
+        self.titleLabel = SubtitleLabel(title)
+        self.lineEdit = EditableComboBox()
+        self.lineEdit.addItems(items)
+        self.lineEdit.setPlaceholderText(placeholder)
         self.lineEdit.setClearButtonEnabled(True)
 
         # 将组件添加到布局中

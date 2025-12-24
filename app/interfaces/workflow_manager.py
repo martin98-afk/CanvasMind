@@ -486,7 +486,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
         self.parent_window.switchTo(self.opened_workflows[file_path])
 
-    def new_canvas(self, window=None):
+    def new_canvas(self, window=None, from_template=False):
         name_dialog = CustomInputDialog("新建画布", "请输入画布名称", parent=window or self)
         if not name_dialog.exec():
             return
@@ -513,6 +513,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
+            if from_template:
+                canvas_page.start_from_template()
             self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
             self.opened_workflows[file_path] = canvas_page
 

@@ -3,30 +3,37 @@ import os
 import json
 import uuid
 from pathlib import Path
-from PyQt5.QtCore import Qt, QSize, QPoint, QRectF, QTimer
-from PyQt5.QtWidgets import QLabel, QWidget, QVBoxLayout, QSizePolicy, QHBoxLayout, QSpacerItem, QLayoutItem, QApplication
-from PyQt5.QtGui import QPixmap, QPainter, QImage
+from PyQt5.QtCore import Qt, QSize, QPoint, QRectF, QTimer, pyqtSignal
+from PyQt5.QtWidgets import (
+    QLabel, QWidget, QVBoxLayout, QSizePolicy, QHBoxLayout,
+    QSpacerItem, QApplication, QDialog
+)
+from PyQt5.QtGui import QPixmap, QPainter, QImage, QCursor
 from qfluentwidgets import (
-    CardWidget, TransparentToolButton, FluentIcon, BodyLabel, SmoothScrollArea,
-    TransparentPushButton, StrongBodyLabel, RoundMenu, Action, ImageLabel
+    CardWidget, TransparentToolButton, FluentIcon, BodyLabel,
+    StrongBodyLabel, RoundMenu, Action, SmoothScrollArea,
+    TransparentPushButton
 )
 
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
+from app.utils.utils import get_icon
 from app.widgets.basic_widget.resizable_image_label import ResizableImageLabel
-from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
+from app.widgets.category_filter import CategoryFilterDialog
+from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog, CustomEditableComboDialog
 
 
 class SubgraphTemplatePanel(QWidget):
-    """子图模板面板"""
+    """子图模板面板 - 支持局部更新 Tag、图片预览、标签筛选"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
         self.setObjectName("templateManager")
-        self._template_cards = {}  # {template_id: card_widget}
+        self._template_cards = {}      # {tid: card_widget}
+        self._tag_containers = {}      # {tid: (container_widget, layout)}
         self._built = False
+        self._selected_tags = set()
 
-        # ✅ 模板存储目录
         self._template_dir = Path("canvas_files") / "subgraph_templates"
         self._template_dir.mkdir(parents=True, exist_ok=True)
 
@@ -41,10 +48,26 @@ class SubgraphTemplatePanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        add_env_btn = TransparentPushButton(text="添加为模板", parent=self, icon=FluentIcon.ADD)
-        add_env_btn.clicked.connect(self.add_template)
+        # === 顶部：添加 + 筛选 ===
+        top_layout = QHBoxLayout()
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setSpacing(4)
+        top_layout.addStretch()
 
-        # 内容容器
+        add_env_btn = TransparentPushButton(text="添加为模板", parent=self, icon=FluentIcon.ADD)
+        add_env_btn.setIconSize(QSize(16, 16))
+        add_env_btn.setFixedHeight(36)
+        add_env_btn.clicked.connect(self.add_template)
+        top_layout.addWidget(add_env_btn)
+
+        self.filter_btn = TransparentPushButton("筛选标签", self, FluentIcon.FILTER)
+        self.filter_btn.setIconSize(QSize(16, 16))
+        self.filter_btn.setFixedHeight(36)
+        self.filter_btn.clicked.connect(self._show_tag_filter)
+        top_layout.addWidget(self.filter_btn)
+        layout.addLayout(top_layout)
+
+        # === 滚动内容区 ===
         self.container = QWidget(self)
         self.container.setObjectName("templateContainer")
         self.container_layout = QVBoxLayout(self.container)
@@ -52,7 +75,6 @@ class SubgraphTemplatePanel(QWidget):
         self.container_layout.setSpacing(6)
 
         scroll = self.set_scroll(self.container)
-        layout.addWidget(add_env_btn)
         layout.addWidget(scroll, 1)
 
         QTimer.singleShot(100, self._refresh_content)
@@ -60,12 +82,7 @@ class SubgraphTemplatePanel(QWidget):
 
     def set_scroll(self, widget):
         scroll = SmoothScrollArea(self)
-        scroll.setStyleSheet("""
-            SmoothScrollArea {
-                background: transparent;
-                border: none;
-            }
-        """)
+        scroll.setStyleSheet("SmoothScrollArea { background: transparent; border: none; }")
         scroll.viewport().setStyleSheet("background-color: transparent; border: none;")
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -84,26 +101,38 @@ class SubgraphTemplatePanel(QWidget):
                 del item
 
     def _refresh_content(self):
+        """仅在结构变化时调用：新增/删除模板、筛选标签"""
         self._clear_layout(self.container_layout)
         for card in self._template_cards.values():
             card.deleteLater()
+        for container, _ in self._tag_containers.values():
+            container.deleteLater()
         self._template_cards.clear()
+        self._tag_containers.clear()
 
-        templates = self._load_templates()
+        all_templates = self._load_templates()
+        if self._selected_tags:
+            templates = [
+                (tid, name, img, tags) for tid, name, img, tags in all_templates
+                if self._selected_tags & set(tags)
+            ]
+        else:
+            templates = all_templates
+
         if not templates:
             label = BodyLabel("暂无子图模板")
             label.setAlignment(Qt.AlignCenter)
             self.container_layout.addWidget(label)
         else:
-            for tid, name, img_path in templates:
-                card = self._create_template_card(tid, name, img_path)
+            for tid, name, img_path, tags in templates:
+                card = self._create_template_card(tid, name, img_path, tags)
                 self.container_layout.addWidget(card)
                 self._template_cards[tid] = card
 
-        self.container_layout.addStretch(1)
+        spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.container_layout.addItem(spacer)
 
     def _load_templates(self):
-        """从磁盘加载所有模板"""
         templates = []
         for tid_dir in self._template_dir.iterdir():
             if not tid_dir.is_dir():
@@ -114,12 +143,24 @@ class SubgraphTemplatePanel(QWidget):
                 try:
                     with open(meta_file, 'r', encoding='utf-8') as f:
                         meta = json.load(f)
-                    templates.append((meta['id'], meta['name'], str(preview_file)))
+                    tags = meta.get("tags", [])
+                    templates.append((meta['id'], meta['name'], str(preview_file), tags))
                 except Exception:
                     continue
         return templates
 
-    def _create_template_card(self, tid: str, name: str, img_path: str):
+    def _get_template_tags(self, tid: str) -> list:
+        meta_file = self._template_dir / tid / "meta.json"
+        if meta_file.exists():
+            try:
+                with open(meta_file, 'r', encoding='utf-8') as f:
+                    meta = json.load(f)
+                    return meta.get("tags", [])
+            except:
+                pass
+        return []
+
+    def _create_template_card(self, tid: str, name: str, img_path: str, tags: list):
         card = CardWidget(self)
         card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         layout = QVBoxLayout(card)
@@ -131,28 +172,53 @@ class SubgraphTemplatePanel(QWidget):
         name_label = StrongBodyLabel(name)
         name_label.setWordWrap(True)
         btn_layout.addWidget(name_label, 1)
-        btn_layout.addStretch()
-        apply_btn = TransparentToolButton(FluentIcon.ADD, self)
-        apply_btn.setFixedSize(28, 28)
+        btn_layout.addSpacing(2)
+
+        apply_btn = TransparentToolButton(get_icon("导入"), self)
+        apply_btn.setIconSize(QSize(16, 16))
+        apply_btn.setFixedSize(32, 32)
         apply_btn.setToolTip("应用模板")
         apply_btn.clicked.connect(lambda _, t=tid: self.apply_template(t))
+
         delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
-        delete_btn.setFixedSize(28, 28)
+        delete_btn.setIconSize(QSize(16, 16))
+        delete_btn.setFixedSize(32, 32)
         delete_btn.setToolTip("删除模板")
         delete_btn.clicked.connect(lambda _, t=tid: self.delete_template(t))
+
         btn_layout.addWidget(apply_btn)
+        btn_layout.addSpacing(1)
         btn_layout.addWidget(delete_btn)
         layout.addLayout(btn_layout)
 
         # 图片
         img_label = ResizableImageLabel(self)
-        img_label.setMaxHeight(200)  # 可调
+        img_label.setMaxHeight(200)
+        img_label.setCursor(Qt.PointingHandCursor)
+        img_label.clicked.connect(lambda: self._show_preview_dialog(img_path))
+
         pixmap = QPixmap(img_path)
         if not pixmap.isNull():
             img_label.setOriginalPixmap(pixmap)
         else:
-            img_label.setOriginalPixmap(QPixmap())  # 触发 fallback
-        layout.addWidget(img_label)
+            placeholder = QPixmap(300, 180)
+            placeholder.fill(Qt.transparent)
+            painter = QPainter(placeholder)
+            painter.setPen(Qt.gray)
+            painter.drawText(placeholder.rect(), Qt.AlignCenter, "预览图丢失")
+            painter.end()
+            img_label.setOriginalPixmap(placeholder)
+
+        layout.addWidget(img_label, 1)
+
+        # === 可局部更新的 Tag 容器 ===
+        tag_container = QWidget()
+        tag_layout = QHBoxLayout(tag_container)
+        tag_layout.setContentsMargins(0, 6, 0, 0)
+        tag_layout.setSpacing(4)
+        self._tag_containers[tid] = (tag_container, tag_layout)
+        self._update_tag_container(tid, tags)
+        layout.addWidget(tag_container)
 
         # 右键菜单
         def show_context_menu(pos):
@@ -165,19 +231,131 @@ class SubgraphTemplatePanel(QWidget):
         card.customContextMenuRequested.connect(show_context_menu)
         return card
 
+    def _update_tag_container(self, tid: str, tags: list):
+        """局部更新指定卡片的 tag 栏"""
+        if tid not in self._tag_containers:
+            return
+        container, layout = self._tag_containers[tid]
+
+        # 清空
+        while layout.count():
+            item = layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+
+        layout.addStretch()
+        # 重新添加 tag
+        for tag in tags:
+            tag_label = BodyLabel(f"#{tag}")
+            tag_label.setStyleSheet("""
+                QLabel {
+                    background-color: rgba(100, 100, 255, 30);
+                    border: 1px solid rgba(100, 100, 255, 80);
+                    border-radius: 8px;
+                    padding: 2px 6px;
+                    font-size: 11px;
+                    color: white;
+                }
+            """)
+            tag_label.setCursor(Qt.PointingHandCursor)
+            tag_label.mousePressEvent = lambda e, t=tag: self._remove_tag_from_card(tid, t)
+            layout.addWidget(tag_label)
+
+        # 添加 + 按钮
+        add_tag_btn = TransparentToolButton(FluentIcon.ADD, self)
+        add_tag_btn.setIconSize(QSize(12, 12))
+        add_tag_btn.setFixedSize(20, 20)
+        add_tag_btn.setToolTip("添加标签")
+
+        def on_add_tag():
+            dialog = CustomEditableComboDialog(
+                "添加标签", "标签名（如：预处理、检测）",
+                items=self._get_all_tags(), parent=self.parent
+            )
+            if dialog.exec():
+                new_tag = dialog.get_text().strip()
+                if new_tag:
+                    current_tags = self._get_template_tags(tid)
+                    if new_tag not in current_tags:
+                        current_tags.append(new_tag)
+                        self._save_template_tags(tid, current_tags)
+                        # ✅ 局部更新：只刷新这个卡片
+                        self._update_tag_container(tid, current_tags)
+
+        add_tag_btn.clicked.connect(on_add_tag)
+        layout.addWidget(add_tag_btn)
+        layout.addStretch()
+
+    def _save_template_tags(self, tid: str, tags: list):
+        meta_file = self._template_dir / tid / "meta.json"
+        if not meta_file.exists():
+            return
+        try:
+            with open(meta_file, 'r', encoding='utf-8') as f:
+                meta = json.load(f)
+            meta['tags'] = list(dict.fromkeys(tags))
+            with open(meta_file, 'w', encoding='utf-8') as f:
+                json.dump(meta, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"保存 tag 失败: {e}")
+
+    def _remove_tag_from_card(self, tid: str, tag_to_remove: str):
+        current_tags = self._get_template_tags(tid)
+        if tag_to_remove in current_tags:
+            current_tags.remove(tag_to_remove)
+            self._save_template_tags(tid, current_tags)
+            # ✅ 局部更新
+            self._update_tag_container(tid, current_tags)
+
+    def _get_all_tags(self):
+        all_tags = set()
+        for tid_dir in self._template_dir.iterdir():
+            if tid_dir.is_dir():
+                meta_file = tid_dir / "meta.json"
+                if meta_file.exists():
+                    try:
+                        with open(meta_file, 'r', encoding='utf-8') as f:
+                            meta = json.load(f)
+                            tags = meta.get("tags", [])
+                            all_tags.update(tags)
+                    except:
+                        pass
+        return sorted(all_tags)
+
+    def _show_tag_filter(self):
+        all_tags = self._get_all_tags()
+        if not all_tags:
+            MessageManager.info("提示", "暂无可用标签", self.parent)
+            return
+
+        dialog = CategoryFilterDialog(
+            categories=all_tags,
+            parent=self,
+            selected_categories=self._selected_tags.copy(),
+            direction="down",
+            max_visible=8
+        )
+        dialog.categories_changed.connect(self._on_tags_selected)
+        pos = self.filter_btn.mapToGlobal(QPoint(0, self.filter_btn.height()))
+        dialog.show_at(pos)
+
+    def _on_tags_selected(self, selected_tags: set):
+        self._selected_tags = selected_tags
+        self._refresh_content()  # ✅ 筛选时全局刷新合理
+
+    # ========== 原有功能（无需改动）==========
     def add_template(self):
-        # 获取 graph（假设通过 parent.graph 或 parent.graph_controller）
         graph = getattr(self.parent, 'graph', None)
         if not graph:
-            MessageManager.error("错误", "无法获取画布", self)
+            MessageManager.error("错误", "无法获取画布", self.parent)
             return
 
         selected_nodes = graph.selected_nodes()
         if not selected_nodes:
-            MessageManager.warning("提示", "请先选择节点", self)
+            MessageManager.warning("提示", "请先选择节点", self.parent)
             return
 
-        # 弹出输入框
         default_name = f"{getattr(self.parent, 'workflow_name', '未命名')}子图"
         template_name_dialog = CustomInputDialog("请输入模板名称", "模板名称", default_name, parent=self.parent)
         if not template_name_dialog.exec():
@@ -186,36 +364,27 @@ class SubgraphTemplatePanel(QWidget):
         if not template_name:
             return
 
-        # 复制节点数据
-        nodes_data = graph._serialize(selected_nodes)  # 应为 dict 或 JSON-serializable
+        nodes_data = graph._serialize(selected_nodes)
 
-        # 生成截图
         try:
             preview_pixmap = self._capture_selected_nodes(selected_nodes)
         except Exception as e:
             preview_pixmap = QPixmap(300, 180)
             preview_pixmap.fill(Qt.transparent)
 
-        # 保存到磁盘
         tid = str(uuid.uuid4())
         template_path = self._template_dir / tid
         template_path.mkdir(exist_ok=True)
 
-        # 保存节点数据
         with open(template_path / "nodes.json", "w", encoding="utf-8") as f:
             json.dump(nodes_data, f, ensure_ascii=False, indent=2)
-
-        # 保存预览图
         preview_pixmap.save(str(template_path / "preview.png"))
-
-        # 保存元信息
         with open(template_path / "meta.json", "w", encoding="utf-8") as f:
-            json.dump({"id": tid, "name": template_name}, f, ensure_ascii=False)
+            json.dump({"id": tid, "name": template_name, "tags": []}, f, ensure_ascii=False)
 
-        self._refresh_content()
+        self._refresh_content()  # ✅ 新增模板需全局刷新
 
     def _capture_selected_nodes(self, nodes):
-        """生成选中节点的截图"""
         selected = self.parent.graph.selected_nodes()
         if not selected:
             return
@@ -226,17 +395,43 @@ class SubgraphTemplatePanel(QWidget):
             rect = rect.united(item_rect)
         if rect.isEmpty():
             return
-        # 扩展边距
         rect.adjust(-25, -25, 25, 25)
-        # 创建图像
         image = QImage(rect.size().toSize(), QImage.Format_ARGB32)
         image.fill(Qt.white)
         painter = QPainter(image)
-        # 渲染选中区域
         scene.render(painter, target=QRectF(image.rect()), source=rect)
         painter.end()
-
         return image
+
+    def _show_preview_dialog(self, img_path: str):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("模板预览")
+        dialog.setModal(True)
+        dialog.resize(800, 600)
+        dialog.setStyleSheet("background-color: #1e1e1e;")
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        label = QLabel()
+        label.setAlignment(Qt.AlignCenter)
+        label.setStyleSheet("background-color: transparent;")
+
+        pixmap = QPixmap(img_path)
+        if not pixmap.isNull():
+            screen = QApplication.primaryScreen()
+            screen_size = screen.availableGeometry().size() * 0.8
+            scaled_pixmap = pixmap.scaled(screen_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            label.setPixmap(scaled_pixmap)
+        else:
+            label.setText("无法加载预览图")
+            label.setStyleSheet("color: gray; font-size: 14px;")
+
+        label.setCursor(Qt.PointingHandCursor)
+        label.mousePressEvent = lambda e: dialog.accept()
+
+        layout.addWidget(label)
+        dialog.exec_()
 
     def apply_template(self, tid: str):
         graph = getattr(self.parent, 'graph', None)
@@ -251,7 +446,6 @@ class SubgraphTemplatePanel(QWidget):
         with open(nodes_file, "r", encoding="utf-8") as f:
             nodes_data = json.load(f)
 
-        # ===== 复用你原有的粘贴逻辑 =====
         selected_nodes = graph.selected_nodes()
         if selected_nodes:
             avg_x = sum(n.pos()[0] for n in selected_nodes) / len(selected_nodes)
@@ -280,13 +474,13 @@ class SubgraphTemplatePanel(QWidget):
                 node.set_pos(new_x, new_y)
 
             MessageManager.info("应用模板", f"已插入 {len(pasted_nodes)} 个节点", self.parent)
-            # 如果你有缓存失效逻辑
             if hasattr(self.parent, '_invalidate_node_cache'):
                 self.parent._invalidate_node_cache()
+        self.parent.graph.fit_to_selection()
 
     def delete_template(self, tid: str):
         import shutil
         template_path = self._template_dir / tid
         if template_path.exists():
             shutil.rmtree(template_path)
-        self._refresh_content()
+        self._refresh_content()  # ✅ 删除模板需全局刷新
