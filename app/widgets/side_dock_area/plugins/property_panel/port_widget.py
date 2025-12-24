@@ -441,7 +441,7 @@ class PortWidget(QWidget):
         if not src_path.exists():
             InfoBar.error("文件不存在", f"所选文件 {file_path} 不存在", parent=self.main_window)
             return
-        upload_root = canvas_file_dump_path() / "workflows" / self.main_window.workflow_name / self.node.persistent_id
+        upload_root = canvas_file_dump_path() / "workflows" / self.main_window.workflow_name / "uploads" /self.node.persistent_id
         upload_root.mkdir(exist_ok=True, parents=True)
         safe_name = re.sub(r'[^\w\.-]', '_', src_path.stem)
         suffix = src_path.suffix

@@ -17,6 +17,7 @@ from app.components.base import ArgumentType, PropertyType, ConnectionType, Glob
 from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
+from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import draw_square_port, draw_special_outputport, \
     canvas_file_dump_path, _safe_load_pickle, kill_proc_tree  # 假设 resource_path 也在 utils
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
@@ -29,9 +30,6 @@ from app.widgets.node_widget.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.node_widget.range_widget import RangeWidgetWrapper
 from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 from app.widgets.node_widget.variable_combo_widget import VarComboBoxWidgetWrapper
-
-PERSISTENT_TEMP_ROOT = (canvas_file_dump_path() / "run_scripts").resolve()
-PERSISTENT_TEMP_ROOT.mkdir(exist_ok=True, parents=True)
 
 
 def _is_import_error(proc_or_result, error_file_path):
@@ -86,9 +84,11 @@ def create_node_class(full_path, file_path, parent_window=None):
         NODE_NAME = parent_window.component_map[full_path].name
         FULL_PATH = full_path
         FILE_PATH = file_path  # 现在 FILE_PATH 是真实的组件文件路径
+        CACHE_PATH = (canvas_file_dump_path() / "workflows" / parent_window.workflow_name).resolve()
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
+            self.CACHE_PATH.mkdir(exist_ok=True, parents=True)
             self.set_property("version", "latest")
             self.parent_window = parent_window
             self.model.add_property("debug_code", {})
@@ -358,6 +358,11 @@ def create_node_class(full_path, file_path, parent_window=None):
 
             return current_code
 
+        def init_logger(self):
+            self.log_capture = NodeLogHandler(
+                self.persistent_id, self._log_message, self.CACHE_PATH, use_file_logging=True
+            )
+
         def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None, max_retries=1):
             """
             在独立Python环境中执行组件
@@ -455,7 +460,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
             # ✅ 关键修改：使用持久化运行目录，而非临时目录
             run_id = f"run_{self.persistent_id}"
-            run_dir = PERSISTENT_TEMP_ROOT / run_id
+            run_dir = self.CACHE_PATH / "run_scripts" / run_id
             shutil.rmtree(run_dir, ignore_errors=True)
             run_dir.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(resource_path("app/components/base.py"), str(run_dir.parent / "base.py"))

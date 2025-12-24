@@ -48,35 +48,50 @@ class CollapsibleLogCard(CardWidget):
         self._elapsed_timer = QElapsedTimer()  # 用于高精度计时
         self.timer_label = BodyLabel("0.00 s")
         self.timer_label.setStyleSheet("color: #FFA500; font-size: 13px; background: transparent; border: none;")
-        self.timer_label.setFixedWidth(60)  # 宽一点容纳 "99.99 秒"
         self.timer_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         self._update_timer = QTimer(self)
         self._update_timer.timeout.connect(self._update_timer_display)
         self._update_timer.setInterval(100)  # 每100ms更新一次，足够流畅且性能好
 
+        # === 标题布局 ===
+        title_layout = QHBoxLayout()
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        title_layout.addSpacing(0)
         # === 折叠箭头图标（左侧）===
         self.toggle_button = TransparentToolButton(self.ARROW_ICONS["expanded"], self)
         self.toggle_button.setFixedSize(16, 16)
         self.toggle_button.setStyleSheet("background: transparent; border: none;")
         self._update_toggle_text()
         self.toggle_button.clicked.connect(self.toggle)
+        title_layout.addWidget(self.toggle_button)
         # === 标题 ===
-        self.title_label = StrongBodyLabel(run_id)
+        self.title_label = StrongBodyLabel(run_id.split("@")[0])
         self.title_label.setWordWrap(True)
         self.title_label.setStyleSheet(title_color + "background:transparent;border:none;")
+        title_layout.addWidget(self.title_label, 1)
+        title_layout.addStretch()
+        # 循环信息
+        if len(run_id.split("@")) == 3:
+            loop_label = BodyLabel(f"{run_id.split('@')[1]}")
+            loop_label.setWordWrap(True)
+            loop_label.setStyleSheet("color: #808080; background: transparent; border: none;")
+            title_layout.addWidget(loop_label, 1)
+            # 竖线分隔符
+            line_separator = QFrame()
+            line_separator.setFrameShape(QFrame.VLine)
+            line_separator.setStyleSheet("background: #444;")
+            title_layout.addSpacing(2)
 
+        time_label = BodyLabel(run_id.split("@")[-1])
+        time_label.setStyleSheet("color: #808080; background: transparent; border: none;")
+        title_layout.addWidget(time_label)
+        title_layout.addSpacing(2)
         # === 状态按钮（右侧）===
         self.status_button = TransparentToolButton(self.STATUS_ICONS["default"], self)
         self.status_button.setFixedSize(20, 20)
         # self.status_button.clicked.connect(self._on_status_click)
 
-        # === 标题布局 ===
-        title_layout = QHBoxLayout()
-        title_layout.setContentsMargins(0, 0, 0, 0)
-        title_layout.addWidget(self.toggle_button)
-        title_layout.addWidget(self.title_label, 1)
-        title_layout.addStretch()
         title_layout.addWidget(self.timer_label)  # <-- 新增：计时器在 toggle 左边
         title_layout.addWidget(self.status_button)
 

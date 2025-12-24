@@ -1,15 +1,13 @@
-from PyQt5.QtCore import Qt
+# -*- coding: utf-8 -*-
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QSizePolicy
-from qfluentwidgets import ImageLabel
-
-from PyQt5.QtWidgets import QLabel
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QLabel, QSizePolicy
 
 
 class ResizableImageLabel(QLabel):
     """能严格按父容器宽度自适应缩放的图片标签，高度按比例计算，支持最大高度限制"""
+
+    clicked = pyqtSignal()  # ✅ 自定义点击信号
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -18,9 +16,9 @@ class ResizableImageLabel(QLabel):
         self.setAlignment(Qt.AlignCenter)
         self.setWordWrap(False)
         self.setTextFormat(Qt.PlainText)
-        # ✅ 关键：允许水平/垂直扩展，并忽略最小尺寸限制
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.setMinimumSize(1, 1)  # 防止被 layout 压成 0
+        self.setMinimumSize(1, 1)
+        self.setCursor(Qt.PointingHandCursor)  # ✅ 视觉反馈
 
     def setOriginalPixmap(self, pixmap: QPixmap):
         self._original_pixmap = pixmap if not pixmap.isNull() else QPixmap()
@@ -36,15 +34,11 @@ class ResizableImageLabel(QLabel):
             self.setStyleSheet("color: #888; font-size: 12px;")
             return
 
-        # 获取当前可用宽度（关键！）
         available_width = self.width()
         if available_width <= 1:
             return
 
-        # 按宽度缩放，保持比例
         scaled = self._original_pixmap.scaledToWidth(available_width, Qt.SmoothTransformation)
-
-        # 限制最大高度
         if scaled.height() > self._max_height:
             scaled = scaled.scaledToHeight(self._max_height, Qt.SmoothTransformation)
 
@@ -52,17 +46,19 @@ class ResizableImageLabel(QLabel):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        # ✅ 关键：延迟 0ms 执行，确保 width() 是最新值
         QTimer.singleShot(0, self._update_pixmap)
 
-    # ✅ 可选：让布局系统知道“我的高度依赖宽度”
     def hasHeightForWidth(self) -> bool:
         return not self._original_pixmap.isNull()
 
     def heightForWidth(self, w: int) -> int:
         if self._original_pixmap.isNull():
-            return 80  # fallback 高度
-        # 计算理想高度
+            return 80
         ratio = self._original_pixmap.height() / self._original_pixmap.width()
         ideal_h = int(w * ratio)
         return min(ideal_h, self._max_height)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+        # 不调用 super().mousePressEvent(event) 以避免文本选中等副作用

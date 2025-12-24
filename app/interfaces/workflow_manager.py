@@ -26,6 +26,38 @@ from app.widgets.side_dock_area.plugins.standalone_variable_explorer.variable_ex
 from app.widgets.side_dock_area.registry import SideDockRegistry
 
 
+def _migrate_legacy_workflow_structure(workflow_dirs: List[Path]):
+    """将旧版平铺结构自动迁移到新版：每个画布一个子文件夹"""
+    for root in workflow_dirs:
+        # 找出根目录下的 .workflow.json（排除子目录中的，避免重复迁移）
+        legacy_files = [
+            f for f in root.iterdir()
+            if f.is_file() and f.suffix == '.json' and f.name.endswith('.workflow.json')
+        ]
+        for wf_file in legacy_files:
+            # 从 "name.workflow.json" 提取 "name"
+            name = wf_file.stem
+            if name.endswith('.workflow'):
+                name = name[:-9]  # 去掉 ".workflow"
+            if not name:
+                continue
+
+            canvas_folder = root / name
+            canvas_folder.mkdir(exist_ok=True)
+
+            # 移动 .workflow.json
+            new_wf_path = canvas_folder / wf_file.name
+            if not new_wf_path.exists():
+                shutil.move(str(wf_file), str(new_wf_path))
+
+            # 移动对应的 .png（如果有）
+            png_file = root / f"{name}.png"
+            if png_file.exists():
+                new_png_path = canvas_folder / f"{name}.png"
+                if not new_png_path.exists():
+                    shutil.move(str(png_file), str(new_png_path))
+
+
 class WorkflowFileInfoScanner(QThread):
     scan_finished = pyqtSignal(list, dict)
 
@@ -50,7 +82,8 @@ class WorkflowFileInfoScanner(QThread):
         file_info_map = {}
         for path in self.workflow_dir:
             if path.exists():
-                workflow_files.extend(list(path.glob("*.workflow.json")))
+                # ✅ 使用 rglob 递归查找所有子目录中的 .workflow.json
+                workflow_files.extend(list(path.rglob("*.workflow.json")))
 
         for wf_path in workflow_files:
             with QMutexLocker(self._mutex):
@@ -113,12 +146,11 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self._wheel_threshold = 100
 
         self._setup_ui()
-        self._create_fixed_card()  # ✅ 关键：提前创建 ActionCard
+        self._create_fixed_card()
         self.build_recommendation_engine()
         self.load_workflows()
 
     def _create_fixed_card(self):
-        """立即创建固定操作卡片，不依赖扫描结果"""
         if self._fixed_card is None:
             self._fixed_card = ActionCard(parent=self)
 
@@ -140,7 +172,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
 
-        # === 顶部：排序 + 搜索 ===
         top_bar = QHBoxLayout()
         top_bar.setSpacing(16)
         top_bar.setContentsMargins(50, 0, 70, 0)
@@ -169,7 +200,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         top_bar.addWidget(self.sort_field_combo)
         top_bar.addWidget(self.sort_order_button)
 
-        # === 主体：卡片 + 分页器 ===
         content_layout = QHBoxLayout()
         content_layout.setSpacing(20)
 
@@ -289,6 +319,9 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
     def load_workflows(self):
         self.workflow_dir = self._get_workflow_dir()
+        # ✅ 自动迁移旧结构
+        _migrate_legacy_workflow_structure(self.workflow_dir)
+
         if self._is_loading:
             if hasattr(self, '_scanner') and hasattr(self, '_thread'):
                 try:
@@ -319,7 +352,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self._file_info_map = file_info_map
         self._known_files = set(workflow_files)
 
-        # 创建缺失的普通卡片
         for wf_path in workflow_files:
             if wf_path not in self._card_map:
                 try:
@@ -330,7 +362,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                     import traceback
                     traceback.print_exc()
 
-        # 更新现有卡片
         for wf_path, card in self._card_map.items():
             old_info = old_file_info_map.get(str(wf_path))
             new_info = self._file_info_map.get(str(wf_path))
@@ -341,35 +372,25 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             elif new_info:
                 card.update_file_info(new_info)
 
-        # ✅ 注意：_fixed_card 已在 __init__ 中创建，此处不再创建！
-
-        self._ensure_all_cards_in_layout()
         self._apply_sort_and_filter_and_refresh()
         self.scan_finished.emit(workflow_files, file_info_map)
-
-    def _ensure_all_cards_in_layout(self):
-        # 本方法实际已由 _show_page 完全控制，可保留也可移除
-        if self._fixed_card and self._fixed_card.parent() != self.scroll_widget:
-            self.flow_layout.addWidget(self._fixed_card)
-        for card in self._card_map.values():
-            if card.parent() != self.scroll_widget:
-                self.flow_layout.addWidget(card)
 
     def _show_page(self, page_index: int):
         self.current_page = page_index
 
-        # 安全保障：确保 _fixed_card 存在
         if self._fixed_card is None:
             self._create_fixed_card()
 
+        # 隐藏所有卡片（包括固定卡）
         self._fixed_card.hide()
         for card in self._card_map.values():
             card.hide()
 
-        # 清空当前布局
+        # 清空布局（真正移除 widget）
         while self.flow_layout.count():
-            self.flow_layout.takeAt(0)
+            item = self.flow_layout.takeAt(0)
 
+        # 添加当前页的卡片
         if page_index == 0:
             self.flow_layout.addWidget(self._fixed_card)
             self._fixed_card.show()
@@ -419,7 +440,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 info = self._file_info_map.get(str(wf_path), {})
                 ctime_ts = info.get('ctime_ts', 0)
                 mtime_ts = info.get('mtime_ts', 0)
-                name = wf_path.stem.split(".")[0]
+                name = wf_path.parent.name  # ✅ 画布名称 = 父文件夹名
 
                 if self._filter_text and self._filter_text not in name.lower():
                     continue
@@ -436,7 +457,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             file_with_info.sort(key=key_func, reverse=not is_ascending)
             self.all_workflow_paths = [item[0] for item in file_with_info]
 
-        # 重新计算分页
         self.page_size = self._calculate_cards_per_page()
         total_workflow = len(self.all_workflow_paths)
         if total_workflow == 0:
@@ -473,7 +493,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     def open_canvas(self, file_path: Path):
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
-            QTimer.singleShot(100, lambda: canvas_page.load_full_workflow(file_path))
+            canvas_page.load_full_workflow(file_path)
             canvas_page.canvas_deleted.connect(
                 lambda: (
                     self.opened_workflows.pop(file_path, None),
@@ -481,12 +501,12 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
-            self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
+            self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.parent.name, parent=self)
             self.opened_workflows[file_path] = canvas_page
 
         self.parent_window.switchTo(self.opened_workflows[file_path])
 
-    def new_canvas(self, window=None):
+    def new_canvas(self, window=None, from_template=False):
         name_dialog = CustomInputDialog("新建画布", "请输入画布名称", parent=window or self)
         if not name_dialog.exec():
             return
@@ -495,11 +515,15 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             InfoBar.warning("名称无效", "画布名称不能为空", parent=window or self)
             return
 
-        file_path = self.workflow_dir[0] / f"{base_name}.workflow.json"
-        counter = 1
-        while file_path.exists():
-            file_path = self.workflow_dir[0] / f"{base_name}_{counter}.workflow.json"
+        counter = 0
+        while True:
+            canvas_folder = self.workflow_dir[0] / (base_name if counter == 0 else f"{base_name}_{counter}")
+            file_path = canvas_folder / f"{canvas_folder.name}.workflow.json"
+            if not file_path.exists():
+                break
             counter += 1
+
+        canvas_folder.mkdir(parents=True, exist_ok=True)
 
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
@@ -513,7 +537,9 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
-            self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.stem.split(".")[0], parent=self)
+            if from_template:
+                canvas_page.start_from_template()
+            self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.parent.name, parent=self)
             self.opened_workflows[file_path] = canvas_page
 
         self.parent_window.switchTo(self.opened_workflows[file_path])
@@ -534,33 +560,44 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             InfoBar.error("文件不存在", "请选择有效的画布文件", parent=self)
             return
 
-        base_name = src_path.stem.split(".")[0]
-        dest_path = self.workflow_dir[0] / f"{base_name}.workflow.json"
-        counter = 1
-        while dest_path.exists():
-            dest_path = self.workflow_dir[0] / f"{base_name}_{counter}.workflow.json"
+        base_name = src_path.stem
+        if base_name.endswith('.workflow'):
+            base_name = base_name[:-9]
+        if not base_name:
+            base_name = "imported_canvas"
+
+        counter = 0
+        while True:
+            canvas_folder = self.workflow_dir[0] / (base_name if counter == 0 else f"{base_name}_{counter}")
+            dest_path = canvas_folder / f"{canvas_folder.name}.workflow.json"
+            if not dest_path.exists():
+                break
             counter += 1
+
+        canvas_folder.mkdir(parents=True, exist_ok=True)
+        dest_path = canvas_folder / f"{canvas_folder.name}.workflow.json"
 
         try:
             shutil.copy2(src_path, dest_path)
-            src_png = src_path.parent / f'{base_name}.png'
+            src_png = src_path.parent / f"{src_path.stem.replace('.workflow', '')}.png"
             if src_png.exists():
-                dest_png = dest_path.parent / f'{base_name}.png'
+                dest_png = canvas_folder / f"{canvas_folder.name}.png"
                 shutil.copy2(src_png, dest_png)
 
             now = datetime.now().timestamp()
             os.utime(dest_path, (now, now))
-            if dest_png.exists():
-                os.utime(dest_png, (now, now))
+            if (canvas_folder / f"{canvas_folder.name}.png").exists():
+                os.utime(canvas_folder / f"{canvas_folder.name}.png", (now, now))
 
-            InfoBar.success("导入成功", f"已导入 {dest_path.stem}", parent=self)
+            InfoBar.success("导入成功", f"已导入 {canvas_folder.name}", parent=self)
             self._schedule_refresh()
 
         except Exception as e:
             InfoBar.error("导入失败", str(e), parent=self)
 
     def edit_workflow(self, src_path: Path):
-        dialog = CustomInputDialog("重命名画布", "请输入新名称", src_path.stem.split(".")[0], self)
+        old_name = src_path.parent.name
+        dialog = CustomInputDialog("重命名画布", "请输入新名称", old_name, self)
         if not dialog.exec():
             return
         new_name = dialog.get_text().strip()
@@ -568,30 +605,31 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             InfoBar.warning("名称无效", "画布名称不能为空", parent=self)
             return
 
-        dest_path = self.workflow_dir[0] / f"{new_name}.workflow.json"
-        dest_png = self.workflow_dir[0] / f"{new_name}.png"
-        src_png = src_path.parent / f"{src_path.stem.split('.')[0]}.png"
-        counter = 1
-        base_name = new_name
-        while dest_path.exists():
-            new_name = f"{base_name}_{counter}"
-            dest_path = self.workflow_dir[0] / f"{new_name}.workflow.json"
-            dest_png = self.workflow_dir[0] / f"{new_name}.png"
+        counter = 0
+        while True:
+            new_folder = self.workflow_dir[0] / (new_name if counter == 0 else f"{new_name}_{counter}")
+            if not new_folder.exists():
+                break
             counter += 1
 
+        new_folder.mkdir(parents=True, exist_ok=True)
+        new_wf_path = new_folder / f"{new_folder.name}.workflow.json"
+        new_png_path = new_folder / f"{new_folder.name}.png"
+
+        src_png = src_path.parent / f"{old_name}.png"
+
         try:
-            shutil.copy2(src_path, dest_path)
+            shutil.copy2(src_path, new_wf_path)
             if src_png.exists():
-                shutil.copy2(src_png, dest_png)
+                shutil.copy2(src_png, new_png_path)
 
             now = datetime.now().timestamp()
-            os.utime(dest_path, (now, now))
-            if dest_png.exists():
-                os.utime(dest_png, (now, now))
+            os.utime(new_wf_path, (now, now))
+            if new_png_path.exists():
+                os.utime(new_png_path, (now, now))
 
-            src_path.unlink()
-            if src_png.exists():
-                src_png.unlink()
+            # 删除旧文件夹
+            shutil.rmtree(src_path.parent)
 
             if src_path in self.opened_workflows:
                 self.parent_window.removeInterface(self.opened_workflows[src_path])
@@ -604,13 +642,14 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 old_card.deleteLater()
                 del self._card_map[src_path]
 
-            InfoBar.success("重命名成功", f"已创建 {new_name}", parent=self)
+            InfoBar.success("重命名成功", f"已重命名为 {new_name}", parent=self)
             self._schedule_refresh()
         except Exception as e:
-            InfoBar.error("复制失败", str(e), parent=self)
+            InfoBar.error("重命名失败", str(e), parent=self)
 
     def duplicate_workflow(self, src_path: Path):
-        dialog = CustomInputDialog("复制画布", "请输入新画布名称", src_path.stem.split(".")[0] + "_copy", self)
+        old_name = src_path.parent.name
+        dialog = CustomInputDialog("复制画布", "请输入新画布名称", old_name + "_copy", self)
         if not dialog.exec():
             return
         new_name = dialog.get_text().strip()
@@ -618,26 +657,28 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             InfoBar.warning("名称无效", "画布名称不能为空", parent=self)
             return
 
-        dest_path = self.workflow_dir[0] / f"{new_name}.workflow.json"
-        dest_png = self.workflow_dir[0] / f"{new_name}.png"
-        src_png = src_path.parent / f"{src_path.stem.split('.')[0]}.png"
-        counter = 1
-        base_name = new_name
-        while dest_path.exists():
-            new_name = f"{base_name}_{counter}"
-            dest_path = self.workflow_dir[0] / f"{new_name}.workflow.json"
-            dest_png = self.workflow_dir[0] / f"{new_name}.png"
+        counter = 0
+        while True:
+            new_folder = self.workflow_dir[0] / (new_name if counter == 0 else f"{new_name}_{counter}")
+            if not new_folder.exists():
+                break
             counter += 1
 
+        new_folder.mkdir(parents=True, exist_ok=True)
+        new_wf_path = new_folder / f"{new_folder.name}.workflow.json"
+        new_png_path = new_folder / f"{new_folder.name}.png"
+
+        src_png = src_path.parent / f"{old_name}.png"
+
         try:
-            shutil.copy2(src_path, dest_path)
+            shutil.copy2(src_path, new_wf_path)
             if src_png.exists():
-                shutil.copy2(src_png, dest_png)
+                shutil.copy2(src_png, new_png_path)
 
             now = datetime.now().timestamp()
-            os.utime(dest_path, (now, now))
-            if dest_png.exists():
-                os.utime(dest_png, (now, now))
+            os.utime(new_wf_path, (now, now))
+            if new_png_path.exists():
+                os.utime(new_png_path, (now, now))
 
             InfoBar.success("复制成功", f"已创建 {new_name}", parent=self)
             self._schedule_refresh()
@@ -647,17 +688,16 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     def delete_workflow(self, file_path: Path):
         from qfluentwidgets import MessageBox, InfoBar
 
-        w = MessageBox("确认删除", f"确定要删除画布 \"{file_path.stem}\" 吗？\n此操作不可恢复！", self)
+        name = file_path.parent.name
+        w = MessageBox("确认删除", f"确定要删除画布 \"{name}\" 吗？\n此操作不可恢复！", self)
         if not w.exec():
             return
 
         try:
-            preview_path = file_path.parent / f"{file_path.stem.split('.')[0]}.png"
-            file_path.unlink()
-            if preview_path.exists():
-                preview_path.unlink()
+            # 删除整个画布文件夹
+            shutil.rmtree(file_path.parent)
 
-            InfoBar.success("删除成功", f"画布 '{file_path.stem}' 已删除", parent=self)
+            InfoBar.success("删除成功", f"画布 '{name}' 已删除", parent=self)
 
             if file_path in self.opened_workflows:
                 self.parent_window.removeInterface(self.opened_workflows[file_path])

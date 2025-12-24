@@ -501,12 +501,6 @@ class CustomNodeGraph(NodeGraph):
 
                 nodes[n_id] = node
 
-                # if not getattr(node, 'component_class', None) and n_data.get('port_deletion_allowed', None):
-                #     node.set_ports({
-                #         'input_ports': n_data['input_ports'],
-                #         'output_ports': n_data['output_ports']
-                #     })
-
         # 处理 backdrop 节点（放到最后）
         for n_id, n_data in backdrop_nodes_data.items():
             identifier = n_data['type_']

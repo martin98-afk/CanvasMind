@@ -1,0 +1,176 @@
+{
+  "graph": {
+    "layout_direction": 0,
+    "acyclic": true,
+    "pipe_collision": false,
+    "pipe_slicing": true,
+    "pipe_style": 2,
+    "accept_connection_types": "{}",
+    "reject_connection_types": "{}"
+  },
+  "nodes": {
+    "0x1c0d4c92020": {
+      "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
+      "icon": null,
+      "name": "文档上传 2",
+      "color": [
+        13,
+        18,
+        23,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 190.44,
+      "height": 69.28,
+      "pos": [
+        140.08647538998463,
+        460.6093138687668
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "378d2171-0148-4da4-9816-67f70f31a753",
+        "version": "latest",
+        "debug_code": {}
+      }
+    },
+    "0x1c0d49dbc70": {
+      "type_": "dynamic.StatusDynamicNode_模型训练_YOLO_关键点检测训练",
+      "icon": null,
+      "name": "YOLO 关键点检测训练",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 528.08,
+      "height": 497.76,
+      "pos": [
+        576.5864365363188,
+        332.94754063507776
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "9a892591-8a0f-453c-b5a7-42fb5c6981c0",
+        "version": "latest",
+        "debug_code": {},
+        "model_name": "yolov8n-pose.pt",
+        "epochs": "1",
+        "batch_size": "16",
+        "img_size": "640",
+        "device": "cpu",
+        "task_name": "detect",
+        "dataset_name": "object_detection_dataset",
+        "save_dir": "./runs/pose"
+      }
+    },
+    "0x1c0d49d94b0": {
+      "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
+      "icon": null,
+      "name": "文档上传",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 168.36,
+      "height": 69.28,
+      "pos": [
+        124.59227714362635,
+        258.20868945684924
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "e5b76cdd-be1a-4f44-8454-f6deae1731db",
+        "version": "latest",
+        "debug_code": {}
+      }
+    }
+  },
+  "connections": [
+    {
+      "out": [
+        "0x1c0d4c92020",
+        "file"
+      ],
+      "in": [
+        "0x1c0d49dbc70",
+        "pre_model"
+      ]
+    },
+    {
+      "in": [
+        "0x1c0d49dbc70",
+        "dataset_dir"
+      ],
+      "out": [
+        "0x1c0d49d94b0",
+        "file"
+      ]
+    },
+    {
+      "out": [
+        "0x1c0d49dbc70",
+        "model.pt"
+      ],
+      "in": [
+        "0x1c0d4c953f0",
+        "model"
+      ]
+    }
+  ]
+}

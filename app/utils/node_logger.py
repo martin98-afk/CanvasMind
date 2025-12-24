@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 import threading
+from pathlib import Path
 
 from loguru import logger
 
 from app.utils.utils import canvas_file_dump_path
 
-# 假设这些常量已定义
-LOG_ROOT = canvas_file_dump_path() / "node_logs"  # 示例路径
 MAX_LOG_LINES = 5000
 
 
 class NodeLogHandler:
     """Loguru 节点日志处理器 - 持久化日志，最多保留 5000 行"""
 
-    def __init__(self, node_id: str, log_callback, use_file_logging=True):
+    def __init__(self, node_id: str, log_callback, cache_dir: Path=canvas_file_dump_path(), use_file_logging=True):
         self.node_id = node_id
         self.log_callback = log_callback
         self.use_file_logging = use_file_logging
@@ -24,7 +23,7 @@ class NodeLogHandler:
 
         # 持久化日志路径
         safe_node_id = "".join(c if c.isalnum() or c in "._-" else "_" for c in str(node_id))
-        self.log_file_path = LOG_ROOT / f"node_{safe_node_id}.log"
+        self.log_file_path = cache_dir / "node_logs" / f"node_{safe_node_id}.log"
 
         self.logger = logger.bind(node_id=self.node_id)
         self.add_handler()

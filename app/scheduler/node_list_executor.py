@@ -8,6 +8,7 @@ from loguru import logger
 
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.status_node import NodeStatus
+from app.scan_components import ComponentScanner
 from app.scheduler.backdrop_executor import BackdropExecutor
 from app.scheduler.execution_context import ExecutionContext
 from app.scheduler.single_node_executor import execute_node
@@ -59,6 +60,7 @@ class NodeListExecutor(QRunnable):
 
     def run(self):
         """在工作线程中执行节点列表，动态跳过 disabled 节点"""
+        component_map, _ = ComponentScanner().get_components()
         try:
             for node in self.nodes:
                 if self.ctx.is_cancelled():
@@ -80,7 +82,7 @@ class NodeListExecutor(QRunnable):
                     if getattr(node, "execute_sync", None) is not None:
                         execute_node(
                             node=node,
-                            component_map=self.component_map,
+                            component_map=component_map,
                             python_exe=self.python_exe,
                             kernel_manager=self.kernel_manager,
                             scheduler=self.scheduler,
@@ -90,14 +92,13 @@ class NodeListExecutor(QRunnable):
                             log_message_func=self.signals.log_message.emit,
                             log_error_func=self.signals.log_error.emit,
                             log_finish_func=self.signals.log_finished.emit,
-                            run_id_prefix=""  # 主流程不加前缀
                         )
                     elif isinstance(node, ControlFlowBackdrop):
                         # 创建 BackdropExecutor 并同步执行（在当前工作线程）
                         backdrop_executor = BackdropExecutor(
                             backdrop=node,
                             scheduler=self.scheduler,
-                            component_map=self.component_map,
+                            component_map=component_map,
                             python_exe=self.python_exe,
                             kernel_manager=self.kernel_manager,
                             global_variables=self.scheduler.global_variables,

@@ -196,7 +196,7 @@ class BackdropExecutor(QObject):
                     log_message_func=self.log_message.emit,
                     log_error_func=self.log_error.emit,
                     log_finish_func=self.log_finished.emit,
-                    run_id_prefix=f"[{self.backdrop.name()}:{iteration_tag}] "
+                    run_id_postfix=f"{self.backdrop.name()}:{iteration_tag}"
                 )
                 self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
                 self.scheduler.property_changed.emit(self.backdrop)

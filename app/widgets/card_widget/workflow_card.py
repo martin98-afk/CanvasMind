@@ -41,23 +41,23 @@ class ActionCard(SimpleCardWidget):
         create_btn = PushButton(text="新建画布", icon=FluentIcon.ADD, parent=self)
         create_btn.clicked.connect(lambda: self.home.new_canvas())
         create_btn.setIconSize(QSize(22, 22))
-        create_btn.setFont(QFont("Microsoft YaHei", 16, QFont.Bold))
+        create_btn.setFont(QFont("Microsoft YaHei", 14))
+
+        # 可选：更多按钮（如模板等）
+        template_btn = PushButton(text="从模板创建", icon=get_icon("从模板创建"), parent=self)
+        template_btn.clicked.connect(lambda: self.home.new_canvas(from_template=True))
+        template_btn.setIconSize(QSize(22, 22))
+        template_btn.setFont(QFont("Microsoft YaHei", 14))
 
         # 导入按钮
         import_btn = PushButton(text="导入画布", icon=get_icon("导入文件"), parent=self)
         import_btn.clicked.connect(lambda: self.home.import_canvas())
         import_btn.setIconSize(QSize(22, 22))
-        import_btn.setFont(QFont("Microsoft YaHei", 16, QFont.Bold))
-
-        # 可选：更多按钮（如模板等）
-        template_btn = PushButton(text="从模板创建", icon=get_icon("从模板创建"), parent=self)
-        template_btn.clicked.connect(lambda: self.home.import_canvas())
-        template_btn.setIconSize(QSize(22, 22))
-        template_btn.setFont(QFont("Microsoft YaHei", 16, QFont.Bold))
+        import_btn.setFont(QFont("Microsoft YaHei", 14))
 
         btn_layout.addWidget(create_btn)
-        btn_layout.addWidget(import_btn)
         btn_layout.addWidget(template_btn)
+        btn_layout.addWidget(import_btn)
         layout.addWidget(btn_container, 1)
 
 class WorkflowCard(CardWidget):

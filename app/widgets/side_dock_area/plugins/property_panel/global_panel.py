@@ -650,7 +650,7 @@ class GlobalPanelWidget:
             title="未找到节点",
             content=f"无法定位到节点 '{node_name}'。",
             parent=self.main_window,
-            position=InfoBarPosition.TOP_RIGHT
+            position=InfoBarPosition.BOTTOM_RIGHT
         )
         return None
 
@@ -1082,7 +1082,7 @@ class GlobalPanelWidget:
             title="已复制",
             content=f"表达式已复制：{expr}",
             parent=self.main_window,
-            position=InfoBarPosition.TOP_RIGHT,
+            position=InfoBarPosition.BOTTOM_RIGHT,
             duration=1500
         )
 
@@ -1239,7 +1239,7 @@ class GlobalPanelWidget:
                 title="未找到节点",
                 content=f"无法定位到变量 '{var_name}' 对应的节点。",
                 parent=self.main_window,
-                position=InfoBarPosition.TOP_RIGHT
+                position=InfoBarPosition.BOTTOM_RIGHT
             )
             return None
 
@@ -1248,14 +1248,6 @@ class GlobalPanelWidget:
     def add_output_to_global_var(self, main_window, node, port_name: str):
         """将输出添加到全局变量"""
         value = node._output_values.get(port_name)
-        if value is None:
-            InfoBar.warning(
-                title="警告",
-                content=f"端口 {port_name} 当前无有效输出值",
-                parent=main_window,
-                position=InfoBarPosition.TOP_RIGHT
-            )
-            return
         safe_node_name = re.sub(r'\s+', '_', node.name())
         var_name = f"{safe_node_name}__{port_name}"
         main_window.global_variables.set_output(
@@ -1270,7 +1262,7 @@ class GlobalPanelWidget:
             title="成功",
             content=f"已添加全局变量：{var_name}",
             parent=main_window,
-            position=InfoBarPosition.TOP_RIGHT
+            position=InfoBarPosition.BOTTOM_RIGHT
         )
 
     def delete_output_from_global_var(self, main_window, node, port_name: str):
@@ -1288,7 +1280,7 @@ class GlobalPanelWidget:
             title="成功",
             content=f"已删除全局变量：{safe_node_name}__{port_name}",
             parent=main_window,
-            position=InfoBarPosition.TOP_RIGHT
+            position=InfoBarPosition.BOTTOM_RIGHT
         )
 
     def is_output_in_global_var(self, main_window, node, port_name: str):

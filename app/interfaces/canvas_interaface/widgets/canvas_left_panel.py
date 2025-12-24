@@ -45,3 +45,7 @@ class LeftPanel(QWidget):
     def onCurrentIndexChanged(self, index):
         widget = self.stackedWidget.widget(index)
         self.container.setCurrentItem(widget.objectName())
+
+    def start_from_template(self):
+        self.container.setCurrentItem(self.template_container.objectName())
+        self.stackedWidget.setCurrentWidget(self.template_container)

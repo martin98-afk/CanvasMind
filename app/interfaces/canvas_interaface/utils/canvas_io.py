@@ -1,4 +1,5 @@
 import json
+import time
 import traceback
 from pathlib import Path
 
@@ -54,7 +55,8 @@ class CanvasIO(QObject):
             "runtime": runtime,
             "global_variable": self.global_variables.serialize()
         }
-
+        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+        time.sleep(0.1)
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(serialize_for_json(full_data), f, indent=2, ensure_ascii=False)
 

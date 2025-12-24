@@ -11,6 +11,7 @@ from loguru import logger
 from qfluentwidgets import FluentIcon
 
 from app.components.base import GlobalVariableContext
+from app.interfaces.canvas_interaface.constants import TEMPLATE_START_SIZES
 from app.interfaces.canvas_interaface.llm_context import LLMContextProvider
 from app.interfaces.canvas_interaface.utils.auto_saver import AutoSaver
 from app.interfaces.canvas_interaface.utils.canvas_io import CanvasIO
@@ -65,7 +66,7 @@ class CanvasPage(QWidget):
         # --- 节点操作 ---
         self.node_operations = NodeOperations(self, self.graph, self.manager.recommendation_engine, self.thread_pool)
         # 注册节点
-        QtCore.QTimer.singleShot(10, self.node_operations.register_components)
+        self.node_operations.register_components()
         # --- 快捷组件工具管理 ---
         self.quick_manager = QuickComponentManager(self, self.component_map)
         # --- 自动保存相关 ---
@@ -260,6 +261,10 @@ class CanvasPage(QWidget):
 
     def get_current_python_exe(self):
         return self.environment_manager.get_current_python_exe()
+
+    def start_from_template(self):
+        self.ui_manager.nav_panel.start_from_template()
+        self.ui_manager.splitter.setSizes(TEMPLATE_START_SIZES)
 
     def switch_to_parent(self):
         self.parent.switchTo(self.parent.workflow_manager)
