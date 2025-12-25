@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import math
+
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
 from qfluentwidgets import Slider, LineEdit
@@ -14,7 +16,8 @@ class RangeWidget(QtWidgets.QWidget):
         self.min_val = min_val
         self.max_val = max_val
         self.step = step
-
+        # 小数位数计算
+        self.decimal_places = int(abs(math.log10(step))) + 1 if step < 1 else 0
         # 防抖定时器
         self._debounce_timer = QtCore.QTimer()
         self._debounce_timer.setSingleShot(True)
@@ -51,7 +54,7 @@ class RangeWidget(QtWidgets.QWidget):
 
     def _update_line_edit_width(self, value):
         """根据数值动态调整 LineEdit 宽度"""
-        text = f"{value:.1f}"
+        text = f"{value:.{self.decimal_places}f}"
         font_metrics = self.value_edit.fontMetrics()
         text_width = font_metrics.horizontalAdvance(text)
         # 添加左右内边距（例如 8px），避免文字紧贴边框
@@ -63,7 +66,7 @@ class RangeWidget(QtWidgets.QWidget):
         real_val = self.min_val + slider_val * self.step
         if not self.is_float:
             real_val = int(real_val)
-        self.value_edit.setText(f"{real_val:.1f}")
+        self.value_edit.setText(f"{real_val:.{self.decimal_places}f}")
         self._update_line_edit_width(real_val)
         # 只设置内部值，不立即触发信号
         self._current_value = real_val
@@ -83,7 +86,7 @@ class RangeWidget(QtWidgets.QWidget):
             val = self.min_val + steps * self.step
             if not self.is_float:
                 val = int(val)
-            self.value_edit.setText(f"{val:.1f}")
+            self.value_edit.setText(f"{val:.{self.decimal_places}f}")
             self._update_line_edit_width(val)
             self.slider.setValue(int((val - self.min_val) / self.step))
 
@@ -91,7 +94,7 @@ class RangeWidget(QtWidgets.QWidget):
             self._current_value = val
             self.valueChanged.emit(val)
         except ValueError:
-            self.value_edit.setText(f"{self.min_val:.1f}")
+            self.value_edit.setText(f"{self.min_val:.{self.decimal_places}f}")
             self._update_line_edit_width(self.min_val)
 
     def _emit_value_changed(self):
@@ -110,7 +113,7 @@ class RangeWidget(QtWidgets.QWidget):
         real_val = self.min_val + steps * self.step
         if not self.is_float:
             real_val = int(real_val)
-        self.value_edit.setText(f"{real_val:.1f}")
+        self.value_edit.setText(f"{real_val:.{self.decimal_places}f}")
         self._update_line_edit_width(real_val)
         self.slider.setValue(int(steps))
         # 设置内部值但不触发信号
