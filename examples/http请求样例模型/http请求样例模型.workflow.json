@@ -1,0 +1,590 @@
+{
+  "version": "1.0",
+  "graph": {
+    "graph": {
+      "layout_direction": 0,
+      "acyclic": true,
+      "pipe_collision": false,
+      "pipe_slicing": true,
+      "pipe_style": 2,
+      "accept_connection_types": "{}",
+      "reject_connection_types": "{}"
+    },
+    "nodes": {
+      "0x1e5a8947250": {
+        "type_": "dynamic.StatusDynamicNode_c423384e-7e12-4cf4-8593-1d1390e294ef",
+        "icon": null,
+        "name": "HTTP 请求客户端",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 615.48,
+        "height": 559.12,
+        "pos": [
+          692.5455126721328,
+          406.30617456353974
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "62c088b3-7497-4ba5-90cb-d96afafd7b6c",
+          "version": "latest",
+          "debug_code": {},
+          "url": "http://168.168.10.110:20000/chat/completions",
+          "method": "POST",
+          "timeout": "100",
+          "verify_ssl": true,
+          "auth_type": "None",
+          "auth_value": "",
+          "headers": [],
+          "params": []
+        }
+      },
+      "0x1e5a897fd00": {
+        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+        "icon": ":/icons/多轮对话.svg",
+        "name": "文本输入",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 446.20000000000005,
+        "height": 265.84000000000003,
+        "pos": [
+          -1424.426380529882,
+          -9.269585990433086
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "1c5325da-4f1e-4eb5-a522-4079dba5ca70",
+          "version": "latest",
+          "debug_code": {},
+          "input": "qwen3-30b-a3b"
+        }
+      },
+      "0x1e5a89c02b0": {
+        "type_": "dynamic.StatusDynamicNode_1b755204-171f-4c4b-b9a5-ab224a8eb93b",
+        "icon": null,
+        "name": "文本包装JSON",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 398.36,
+        "height": 100.48,
+        "pos": [
+          -633.42170934626,
+          92.69585990433075
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "7e8f6769-8013-48a8-9d5a-66cc21138de5",
+          "version": "latest",
+          "debug_code": {},
+          "prop_0": "model"
+        }
+      },
+      "0x1e5a89c0730": {
+        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+        "icon": ":/icons/多轮对话.svg",
+        "name": "文本输入 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 468.28000000000003,
+        "height": 265.84000000000003,
+        "pos": [
+          -1442.965552510748,
+          367.69357762051186
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "7732fbc4-b6e9-4e7e-ae2b-c96459c607ce",
+          "version": "latest",
+          "debug_code": {},
+          "input": "0.7"
+        }
+      },
+      "0x1e5a89c1810": {
+        "type_": "dynamic.StatusDynamicNode_c49e88c5-4a60-4118-a6ae-f32439ef6537",
+        "icon": null,
+        "name": "数值包装JSON",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 398.36,
+        "height": 100.48,
+        "pos": [
+          -602.5230893781496,
+          435.67054155035436
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "5c436383-1374-4ace-8d2c-2253e4697fdd",
+          "version": "latest",
+          "debug_code": {},
+          "prop_0": "temperature"
+        }
+      },
+      "0x1e5a8af64a0": {
+        "type_": "dynamic.StatusDynamicNode_8ba6c49f-06ab-40d3-8543-c69ce14bfafe",
+        "icon": null,
+        "name": "构建多轮对话",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 553.84,
+        "height": 167.04,
+        "pos": [
+          -1344.0899686127955,
+          803.364119170866
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "922fdee1-b056-4c31-8b0a-be7c59183b0f",
+          "version": "latest",
+          "debug_code": {},
+          "prop1": [
+            {
+              "role": "user",
+              "content": "你好"
+            }
+          ]
+        }
+      },
+      "0x1e5a897d510": {
+        "type_": "dynamic.StatusDynamicNode_eb0da7b4-2969-4b03-b87a-3cf8221e0160",
+        "icon": null,
+        "name": "JSON包装JSON",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 402.04,
+        "height": 100.48,
+        "pos": [
+          -661.230467317559,
+          834.2627391389765
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "5010e7d9-9895-4203-8142-791ab25336ca",
+          "version": "latest",
+          "debug_code": {},
+          "prop_0": "messages"
+        }
+      },
+      "0x1e5a8b277f0": {
+        "type_": "dynamic.StatusDynamicNode_75159f76-6474-42eb-bd53-27315574519e",
+        "icon": null,
+        "name": "请求体合并",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 201.48000000000002,
+        "height": 69.28,
+        "pos": [
+          157.1469245811379,
+          537.5658779033492
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "9a4770c3-d39c-4517-9fc5-274b5316c5ca",
+          "version": "latest",
+          "debug_code": {}
+        }
+      }
+    },
+    "connections": [
+      {
+        "in": [
+          "0x1e5a8947250",
+          "request_body"
+        ],
+        "out": [
+          "0x1e5a8b277f0",
+          "request_bodies"
+        ]
+      },
+      {
+        "out": [
+          "0x1e5a897fd00",
+          "text"
+        ],
+        "in": [
+          "0x1e5a89c02b0",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x1e5a89c02b0",
+          "output1"
+        ],
+        "in": [
+          "0x1e5a8b277f0",
+          "request_body"
+        ]
+      },
+      {
+        "out": [
+          "0x1e5a89c0730",
+          "text"
+        ],
+        "in": [
+          "0x1e5a89c1810",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x1e5a89c1810",
+          "output1"
+        ],
+        "in": [
+          "0x1e5a8b277f0",
+          "request_body"
+        ]
+      },
+      {
+        "out": [
+          "0x1e5a8af64a0",
+          "output1"
+        ],
+        "in": [
+          "0x1e5a897d510",
+          "input1"
+        ]
+      },
+      {
+        "out": [
+          "0x1e5a897d510",
+          "output1"
+        ],
+        "in": [
+          "0x1e5a8b277f0",
+          "request_body"
+        ]
+      }
+    ]
+  },
+  "runtime": {
+    "environment": "3.11",
+    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.11\\python.exe",
+    "node_id2stable_key": {
+      "0x1e5a8947250": "c423384e-7e12-4cf4-8593-1d1390e294ef||HTTP 请求客户端",
+      "0x1e5a897fd00": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入",
+      "0x1e5a89c02b0": "1b755204-171f-4c4b-b9a5-ab224a8eb93b||文本包装JSON",
+      "0x1e5a89c0730": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1",
+      "0x1e5a89c1810": "c49e88c5-4a60-4118-a6ae-f32439ef6537||数值包装JSON",
+      "0x1e5a8af64a0": "8ba6c49f-06ab-40d3-8543-c69ce14bfafe||构建多轮对话",
+      "0x1e5a897d510": "eb0da7b4-2969-4b03-b87a-3cf8221e0160||JSON包装JSON",
+      "0x1e5a8b277f0": "75159f76-6474-42eb-bd53-27315574519e||请求体合并"
+    },
+    "node_states": {
+      "c423384e-7e12-4cf4-8593-1d1390e294ef||HTTP 请求客户端": "success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": "success",
+      "1b755204-171f-4c4b-b9a5-ab224a8eb93b||文本包装JSON": "success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1": "success",
+      "c49e88c5-4a60-4118-a6ae-f32439ef6537||数值包装JSON": "success",
+      "8ba6c49f-06ab-40d3-8543-c69ce14bfafe||构建多轮对话": "success",
+      "eb0da7b4-2969-4b03-b87a-3cf8221e0160||JSON包装JSON": "success",
+      "75159f76-6474-42eb-bd53-27315574519e||请求体合并": "success"
+    },
+    "node_inputs": {
+      "c423384e-7e12-4cf4-8593-1d1390e294ef||HTTP 请求客户端": {},
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": {},
+      "1b755204-171f-4c4b-b9a5-ab224a8eb93b||文本包装JSON": {},
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1": {},
+      "c49e88c5-4a60-4118-a6ae-f32439ef6537||数值包装JSON": {},
+      "8ba6c49f-06ab-40d3-8543-c69ce14bfafe||构建多轮对话": {},
+      "eb0da7b4-2969-4b03-b87a-3cf8221e0160||JSON包装JSON": {},
+      "75159f76-6474-42eb-bd53-27315574519e||请求体合并": {}
+    },
+    "node_outputs": {
+      "c423384e-7e12-4cf4-8593-1d1390e294ef||HTTP 请求客户端": {
+        "response": {
+          "id": "chatcmpl-6310f715b9f840f99a68a5892e2120ad",
+          "object": "chat.completion",
+          "created": 1766655811,
+          "model": "qwen3-30b-a3b",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "<think>\nOkay, the user said \"你好\". That's Chinese for \"Hello\". I need to respond appropriately. Since it's a greeting, I should greet them back. Let me make sure I use the correct tone. Maybe \"你好！有什么我可以帮助你吗？\" which means \"Hello! How can I assist you?\" That's friendly and offers help. I should check if there are any other common responses, but this seems standard. Alright, go with that.\n</think>\n\n你好！有什么我可以帮助你吗？",
+                "refusal": null,
+                "annotations": null,
+                "audio": null,
+                "function_call": null,
+                "tool_calls": [],
+                "reasoning_content": null
+              },
+              "logprobs": null,
+              "finish_reason": "stop",
+              "stop_reason": null,
+              "token_ids": null
+            }
+          ],
+          "service_tier": null,
+          "system_fingerprint": null,
+          "usage": {
+            "prompt_tokens": 9,
+            "total_tokens": 116,
+            "completion_tokens": 107,
+            "prompt_tokens_details": null
+          },
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "kv_transfer_params": null
+        },
+        "status_code": 200,
+        "headers": {
+          "content-type": "application/json",
+          "date": "Thu, 25 Dec 2025 09:43:30 GMT",
+          "server": "Caddy, uvicorn",
+          "transfer-encoding": "chunked"
+        }
+      },
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": {
+        "text": "qwen3-30b-a3b"
+      },
+      "1b755204-171f-4c4b-b9a5-ab224a8eb93b||文本包装JSON": {
+        "output1": {
+          "model": "qwen3-30b-a3b"
+        }
+      },
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1": {
+        "text": "0.7"
+      },
+      "c49e88c5-4a60-4118-a6ae-f32439ef6537||数值包装JSON": {
+        "output1": {
+          "temperature": 0.7
+        }
+      },
+      "8ba6c49f-06ab-40d3-8543-c69ce14bfafe||构建多轮对话": {
+        "output1": [
+          {
+            "role": "user",
+            "content": "你好"
+          }
+        ]
+      },
+      "eb0da7b4-2969-4b03-b87a-3cf8221e0160||JSON包装JSON": {
+        "output1": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "你好"
+            }
+          ]
+        }
+      },
+      "75159f76-6474-42eb-bd53-27315574519e||请求体合并": {
+        "request_bodies": {
+          "model": "qwen3-30b-a3b",
+          "temperature": 0.7,
+          "messages": [
+            {
+              "role": "user",
+              "content": "你好"
+            }
+          ]
+        }
+      }
+    },
+    "column_select": {
+      "c423384e-7e12-4cf4-8593-1d1390e294ef||HTTP 请求客户端": {},
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": {},
+      "1b755204-171f-4c4b-b9a5-ab224a8eb93b||文本包装JSON": {},
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1": {},
+      "c49e88c5-4a60-4118-a6ae-f32439ef6537||数值包装JSON": {},
+      "8ba6c49f-06ab-40d3-8543-c69ce14bfafe||构建多轮对话": {},
+      "eb0da7b4-2969-4b03-b87a-3cf8221e0160||JSON包装JSON": {},
+      "75159f76-6474-42eb-bd53-27315574519e||请求体合并": {}
+    }
+  },
+  "global_variable": {
+    "env": {
+      "user_id": null,
+      "canvas_id": null,
+      "session_id": null,
+      "run_id": null,
+      "metadata": {
+        "TZ": "Asia/Shanghai",
+        "LANG": "en_US.UTF-8",
+        "LC_ALL": "en_US.UTF-8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "0",
+        "PYTHONPATH": ".",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONWARNINGS": "ignore"
+      }
+    },
+    "custom": {},
+    "custom_order": [],
+    "node_vars": {},
+    "node_vars_order": []
+  }
+}
