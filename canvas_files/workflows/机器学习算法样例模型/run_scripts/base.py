@@ -502,8 +502,9 @@ class DataHandler:
     专门处理组件输入输出数据的类。
     负责根据类型读取输入和存储输出。
     """
-    def __init__(self, node_id: Optional[str] = None, logger_instance=logger):
+    def __init__(self, node_id: Optional[str] = None, workflow_path: Optional[str] = None, logger_instance=logger):
         self.node_id = node_id
+        self.workflow_path = workflow_path
         self.logger = logger_instance or logger
         # 可以在这里添加更多与数据处理相关的状态或配置
 
@@ -771,7 +772,7 @@ class DataHandler:
         model_path = temp_dir / f"model_{self.node_id}.pkl"
         with open(model_path, 'wb') as f:
             pickle.dump(model, f)
-        return str(model_path.resolve())
+        return str(model_path)
 
     def _store_torch_model(self, model: Any) -> str:
         """存储torch模型到节点专属目录"""
@@ -782,7 +783,7 @@ class DataHandler:
         model_path = temp_dir / f"model_{self.node_id}.pth"
         scripted_model = torch.jit.script(model)
         scripted_model.save(str(model_path))
-        return str(model_path.resolve())
+        return str(model_path)
 
     def _store_image_data(self, image: Any) -> str:
         """存储图像数据到节点专属目录"""
@@ -793,7 +794,7 @@ class DataHandler:
         temp_dir = self._get_node_temp_dir()
         image_path = temp_dir / f"image_{self.node_id}.png"
         image.save(image_path, 'PNG')
-        return str(image_path.resolve())
+        return str(image_path)
 
     def _store_file_data(self, data: Any, output_name: str = "output_file") -> str:
         """存储任意文件数据，使用 output_name 作为文件名"""
@@ -821,14 +822,18 @@ class DataHandler:
         else:
             # 兜底：转为字符串
             file_path.write_text(str(data), encoding='utf-8')
-        return str(file_path.resolve())
+        return str(file_path)
 
     # --- 辅助方法 ---
     def _get_node_temp_dir(self) -> Path:
         """获取节点专属临时目录"""
         # 假设 canvas_file_dump_path 是一个全局函数或从其他地方导入
         # 这里简化处理，实际项目中需要正确引用
-        dump_path = Path("canvas_files") / "node_results" / (self.node_id or "default")
+        if self.workflow_path is None:
+            dump_path = Path("canvas_files") / "node_results" / (self.node_id or "default")
+        else:
+            dump_path = (Path("canvas_files") / "workflows" / self.workflow_path
+                         / "node_results" / (self.node_id or "default"))
         dump_path.mkdir(parents=True, exist_ok=True)
         return dump_path
 
@@ -974,10 +979,11 @@ class BaseComponent(ABC):
             params: Dict[str, Any],
             inputs: Optional[Dict[str, Any]] = None,
             global_vars: Dict[str, Any] = None,
-            node_id: str = None
+            node_id: str = None,
+            workflow_path: str = None
     ) -> Dict[str, Any]:
         """执行组件，包含错误处理和数据类型转换"""
-        self.data_handler = DataHandler(node_id=node_id, logger_instance=self.logger)
+        self.data_handler = DataHandler(node_id=node_id, workflow_path=workflow_path, logger_instance=self.logger)
         try:
             if global_vars is not None:
                 self.global_variable.deserialize(global_vars)

@@ -261,7 +261,7 @@ class ComponentDeveloperPage(QWidget):
     def _load_component_filepath(self, component_path: Path):
         file_map = {value: key for key, value in ComponentScanner().get_file_maps().items()}
         full_path = file_map.get(Path(component_path))
-        QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
+        QTimer.singleShot(300, lambda: self.update_usage_table(ComponentScanner().get_component(full_path).uuid))
         QTimer.singleShot(300, lambda: self._load_component(full_path))
 
     def _load_component(self, full_path=None, component=None):
@@ -310,31 +310,30 @@ class ComponentDeveloperPage(QWidget):
                 self._load_history_list(self._current_component_file)
             else:
                 self.history_table.setRowCount(0)
-            QTimer.singleShot(300, lambda: self.update_usage_table(full_path))
+            QTimer.singleShot(300, lambda: self.update_usage_table(component.uuid))
         except Exception as e:
             logger.error(traceback.format_exc())
             MessageManager.error(f"加载组件失败: {str(e)}", "", self)
 
-    def update_usage_table(self, full_path):
-        if full_path:
-            usage_records = ComponentUsageTracker().get_usage(full_path)
-            usage_list = [
-                {
-                    "canvas_name": str(rec.canvas_path.stem).split(".workflow")[0],
-                    "canvas_path": rec.canvas_path,
-                    "node_name": rec.node_name,
-                    "version": rec.version
-                }
-                for rec in usage_records
-            ]
-            history_tool = self.side_dock_area.get_tool_instance("组件历史管理")
-            try:
-                history_tool.strategy_changed.disconnect(self._on_usage_strategy_changed)
-            except TypeError:
-                pass
-            history_tool.strategy_changed.connect(self._on_usage_strategy_changed)
-            if history_tool:
-                history_tool.update_usage_table(usage_list)
+    def update_usage_table(self, uuid):
+        usage_records = ComponentUsageTracker().get_usage(uuid)
+        usage_list = [
+            {
+                "canvas_name": str(rec.canvas_path.stem).split(".workflow")[0],
+                "canvas_path": rec.canvas_path,
+                "node_name": rec.node_name,
+                "version": rec.version
+            }
+            for rec in usage_records
+        ]
+        history_tool = self.side_dock_area.get_tool_instance("组件历史管理")
+        try:
+            history_tool.strategy_changed.disconnect(self._on_usage_strategy_changed)
+        except TypeError:
+            pass
+        history_tool.strategy_changed.connect(self._on_usage_strategy_changed)
+        if history_tool:
+            history_tool.update_usage_table(usage_list)
 
     def _on_usage_strategy_changed(self, canvas_path: str, node_name: str, strategy: str):
         try:

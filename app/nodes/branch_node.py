@@ -55,7 +55,7 @@ def create_branch_node(parent_window):
             self._sync_timer = QtCore.QTimer()
             self._sync_timer.setSingleShot(True)
             self._sync_timer.timeout.connect(self._sync_output_ports)
-            self._sync_timer.start(100)
+            self._sync_timer.start(0)
 
         def _init_properties(self):
             condition_schema = {

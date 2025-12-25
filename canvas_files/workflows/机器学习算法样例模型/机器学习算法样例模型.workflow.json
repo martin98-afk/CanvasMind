@@ -11,8 +11,8 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x223c1fbf7c0": {
-        "type_": "dynamic.StatusDynamicNode_数据集成_文档上传",
+      "0x20d80097f70": {
+        "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传",
         "color": [
@@ -39,8 +39,8 @@
         "width": 166.175,
         "height": 69.28,
         "pos": [
-          -292.41860265037735,
-          454.0309533726716
+          -346.72379100441333,
+          501.84355136374325
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -51,8 +51,8 @@
           "debug_code": null
         }
       },
-      "0x223c1fbe6b0": {
-        "type_": "dynamic.StatusDynamicNode_数据集成_输入array",
+      "0x20d80168280": {
+        "type_": "dynamic.StatusDynamicNode_a1b716b5-35e3-4885-b907-01ed113f2279",
         "icon": null,
         "name": "输入array",
         "color": [
@@ -92,8 +92,8 @@
           "param1": "1,2,3,4"
         }
       },
-      "0x223c1fbf940": {
-        "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
+      "0x20d8016b970": {
+        "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
         "icon": null,
         "name": "逻辑回归推理(npy)",
         "color": [
@@ -151,8 +151,8 @@
           "debug_code": null
         }
       },
-      "0x223c1fbed70": {
-        "type_": "dynamic.StatusDynamicNode_数据预处理_MinMax归一化",
+      "0x20d8016bb50": {
+        "type_": "dynamic.StatusDynamicNode_c41d7b30-7d50-4765-a806-844d54021fdb",
         "icon": null,
         "name": "MinMax归一化",
         "color": [
@@ -179,8 +179,8 @@
         "width": 206.68375,
         "height": 81.76,
         "pos": [
-          313.2326403192184,
-          1116.9273980434448
+          296.3403677732786,
+          1108.0910306334074
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -191,8 +191,8 @@
           "debug_code": null
         }
       },
-      "0x223c1fbc850": {
-        "type_": "dynamic.StatusDynamicNode_数据预处理_归一化推理(npy)",
+      "0x20d8016bdc0": {
+        "type_": "dynamic.StatusDynamicNode_2c162fc3-2275-4f49-aeac-5dd4778911e9",
         "icon": null,
         "name": "归一化推理(npy)",
         "color": [
@@ -250,8 +250,8 @@
           "debug_code": {}
         }
       },
-      "0x223c1fbcc70": {
-        "type_": "dynamic.StatusDynamicNode_模型推理_逻辑回归推理(npy)",
+      "0x20d80188040": {
+        "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
         "icon": null,
         "name": "逻辑回归推理(npy) 1",
         "color": [
@@ -278,8 +278,8 @@
         "width": 275.425,
         "height": 81.76,
         "pos": [
-          1302.676030405637,
-          1078.4921812499695
+          1304.6076353638427,
+          1078.4921812499692
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -309,8 +309,8 @@
           "debug_code": {}
         }
       },
-      "0x223c1fbcb80": {
-        "type_": "dynamic.StatusDynamicNode_数据转换_csv转npy",
+      "0x20d801882e0": {
+        "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
         "icon": null,
         "name": "csv转npy",
         "color": [
@@ -368,8 +368,8 @@
           "debug_code": {}
         }
       },
-      "0x223c1fbeaa0": {
-        "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
+      "0x20d80188550": {
+        "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
         "icon": null,
         "name": "逻辑回归训练",
         "color": [
@@ -410,8 +410,8 @@
           "max_iter": "100"
         }
       },
-      "0x223bd722470": {
-        "type_": "dynamic.StatusDynamicNode_模型训练_逻辑回归训练",
+      "0x20d80188e80": {
+        "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
         "icon": null,
         "name": "逻辑回归训练 1",
         "color": [
@@ -452,8 +452,8 @@
           "max_iter": "100"
         }
       },
-      "0x223cad6cfa0": {
-        "type_": "dynamic.StatusDynamicNode_数据可视化_Matplotlib画图",
+      "0x20d80189810": {
+        "type_": "dynamic.StatusDynamicNode_generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8",
         "icon": null,
         "name": "Matplotlib画图",
         "color": [
@@ -480,8 +480,8 @@
         "width": 462.64500000000004,
         "height": 603.84,
         "pos": [
-          2042.6777343868293,
-          783.9363005148421
+          2042.677734386829,
+          781.7713069856318
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -501,8 +501,8 @@
           "auto_arrange": true
         }
       },
-      "0x223c7c523b0": {
-        "type_": "dynamic.StatusDynamicNode_模型推理_sklearn模型推理(csv)",
+      "0x20d8018b700": {
+        "type_": "dynamic.StatusDynamicNode_04f8eaf9-dafd-446a-94b2-d232bae8620a",
         "icon": null,
         "name": "sklearn模型推理(csv)",
         "color": [
@@ -541,8 +541,8 @@
           "debug_code": {}
         }
       },
-      "0x223c7c50430": {
-        "type_": "dynamic.StatusDynamicNode_数据集成_CSV读取器",
+      "0x20d8018b970": {
+        "type_": "dynamic.StatusDynamicNode_26f404b9-0029-4f8b-8abc-0740ecad423b",
         "icon": null,
         "name": "CSV读取器",
         "color": [
@@ -564,13 +564,13 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 176.5825,
         "height": 69.28,
         "pos": [
-          55.93012358880259,
-          440.7023665570375
+          49.435143001171454,
+          455.8573212615102
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -581,8 +581,8 @@
           "debug_code": null
         }
       },
-      "0x223c7c51570": {
-        "type_": "dynamic.StatusDynamicNode_模型评估_模型评估",
+      "0x20d8018bb50": {
+        "type_": "dynamic.StatusDynamicNode_e42b5e46-56d9-4089-9b4d-5f2b24802fef",
         "icon": null,
         "name": "模型评估",
         "color": [
@@ -623,8 +623,8 @@
           "average": "micro"
         }
       },
-      "0x223e4d89510": {
-        "type_": "dynamic.StatusDynamicNode_数据转换_csv转npy",
+      "0x20d801b4220": {
+        "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
         "icon": null,
         "name": "csv转npy 1",
         "color": [
@@ -651,8 +651,8 @@
         "width": 186.99,
         "height": 81.76,
         "pos": [
-          797.1707331848951,
-          424.5287928203583
+          797.170733184895,
+          422.36379929114787
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -663,8 +663,8 @@
           "debug_code": {}
         }
       },
-      "0x223e4d8b250": {
-        "type_": "dynamic.StatusDynamicNode_机器学习组件_随机森林分类训练",
+      "0x20d801b44f0": {
+        "type_": "dynamic.StatusDynamicNode_076e8486-c5ea-491d-ac67-99987a622dd5",
         "icon": null,
         "name": "随机森林分类训练",
         "color": [
@@ -691,7 +691,7 @@
         "width": 543.95,
         "height": 492.56,
         "pos": [
-          346.146835333459,
+          349.2677040622657,
           -337.27127545311396
         ],
         "layout_direction": 0,
@@ -714,221 +714,221 @@
     "connections": [
       {
         "out": [
-          "0x223c1fbf7c0",
+          "0x20d80097f70",
           "file"
         ],
         "in": [
-          "0x223c7c50430",
+          "0x20d8018b970",
           "csv"
         ]
       },
       {
         "out": [
-          "0x223c1fbe6b0",
+          "0x20d80168280",
           "output"
         ],
         "in": [
-          "0x223c1fbc850",
+          "0x20d8016bdc0",
           "input"
         ]
       },
       {
         "in": [
-          "0x223c1fbf940",
+          "0x20d8016b970",
           "feature"
         ],
         "out": [
-          "0x223c1fbcb80",
+          "0x20d801882e0",
           "output"
         ]
       },
       {
         "in": [
-          "0x223c1fbf940",
+          "0x20d8016b970",
           "model"
         ],
         "out": [
-          "0x223c1fbeaa0",
+          "0x20d80188550",
           "model"
         ]
       },
       {
         "out": [
-          "0x223c1fbf940",
+          "0x20d8016b970",
           "value"
         ],
         "in": [
-          "0x223c7c51570",
+          "0x20d8018bb50",
           "predictions"
         ]
       },
       {
         "in": [
-          "0x223c1fbed70",
+          "0x20d8016bb50",
           "input"
         ],
         "out": [
-          "0x223c7c50430",
+          "0x20d8018b970",
           "csv"
         ]
       },
       {
         "out": [
-          "0x223c1fbed70",
+          "0x20d8016bb50",
           "output"
         ],
         "in": [
-          "0x223bd722470",
+          "0x20d80188e80",
           "feature"
         ]
       },
       {
         "out": [
-          "0x223c1fbed70",
+          "0x20d8016bb50",
           "scaler"
         ],
         "in": [
-          "0x223c1fbc850",
+          "0x20d8016bdc0",
           "scaler"
         ]
       },
       {
         "out": [
-          "0x223c1fbc850",
+          "0x20d8016bdc0",
           "output"
         ],
         "in": [
-          "0x223c1fbcc70",
+          "0x20d80188040",
           "feature"
         ]
       },
       {
         "in": [
-          "0x223c1fbcc70",
+          "0x20d80188040",
           "model"
         ],
         "out": [
-          "0x223bd722470",
+          "0x20d80188e80",
           "model"
         ]
       },
       {
         "in": [
-          "0x223c1fbcb80",
+          "0x20d801882e0",
           "input"
         ],
         "out": [
-          "0x223c7c50430",
+          "0x20d8018b970",
           "csv"
         ]
       },
       {
         "out": [
-          "0x223c1fbcb80",
+          "0x20d801882e0",
           "output"
         ],
         "in": [
-          "0x223cad6cfa0",
+          "0x20d80189810",
           "x"
         ]
       },
       {
         "out": [
-          "0x223c1fbcb80",
+          "0x20d801882e0",
           "output"
         ],
         "in": [
-          "0x223cad6cfa0",
+          "0x20d80189810",
           "y"
         ]
       },
       {
         "in": [
-          "0x223c1fbeaa0",
+          "0x20d80188550",
           "feature"
         ],
         "out": [
-          "0x223c7c50430",
+          "0x20d8018b970",
           "csv"
         ]
       },
       {
         "in": [
-          "0x223c1fbeaa0",
+          "0x20d80188550",
           "target"
         ],
         "out": [
-          "0x223c7c50430",
+          "0x20d8018b970",
           "csv"
         ]
       },
       {
         "out": [
-          "0x223c1fbeaa0",
+          "0x20d80188550",
           "model"
         ],
         "in": [
-          "0x223c7c523b0",
+          "0x20d8018b700",
           "model"
         ]
       },
       {
         "in": [
-          "0x223bd722470",
+          "0x20d80188e80",
           "target"
         ],
         "out": [
-          "0x223c7c50430",
+          "0x20d8018b970",
           "csv"
         ]
       },
       {
         "in": [
-          "0x223c7c523b0",
+          "0x20d8018b700",
           "feature"
         ],
         "out": [
-          "0x223c7c50430",
+          "0x20d8018b970",
           "csv"
         ]
       },
       {
         "out": [
-          "0x223c7c50430",
+          "0x20d8018b970",
           "csv"
         ],
         "in": [
-          "0x223e4d89510",
+          "0x20d801b4220",
           "input"
         ]
       },
       {
         "out": [
-          "0x223c7c50430",
+          "0x20d8018b970",
           "csv"
         ],
         "in": [
-          "0x223e4d8b250",
+          "0x20d801b44f0",
           "features"
         ]
       },
       {
         "out": [
-          "0x223c7c50430",
+          "0x20d8018b970",
           "csv"
         ],
         "in": [
-          "0x223e4d8b250",
+          "0x20d801b44f0",
           "target"
         ]
       },
       {
         "in": [
-          "0x223c7c51570",
+          "0x20d8018bb50",
           "true_labels"
         ],
         "out": [
-          "0x223e4d89510",
+          "0x20d801b4220",
           "output"
         ]
       }
@@ -938,61 +938,61 @@
     "environment": "3.14",
     "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
     "node_id2stable_key": {
-      "0x223c1fbf7c0": "数据集成/文档上传||文档上传",
-      "0x223c1fbe6b0": "数据集成/输入array||输入array",
-      "0x223c1fbf940": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)",
-      "0x223c1fbed70": "数据预处理/MinMax归一化||MinMax归一化",
-      "0x223c1fbc850": "数据预处理/归一化推理(npy)||归一化推理(npy)",
-      "0x223c1fbcc70": "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1",
-      "0x223c1fbcb80": "数据转换/csv转npy||csv转npy",
-      "0x223c1fbeaa0": "模型训练/逻辑回归训练||逻辑回归训练",
-      "0x223bd722470": "模型训练/逻辑回归训练||逻辑回归训练 1",
-      "0x223cad6cfa0": "数据可视化/Matplotlib画图||Matplotlib画图",
-      "0x223c7c523b0": "模型推理/sklearn模型推理(csv)||sklearn模型推理(csv)",
-      "0x223c7c50430": "数据集成/CSV读取器||CSV读取器",
-      "0x223c7c51570": "模型评估/模型评估||模型评估",
-      "0x223e4d89510": "数据转换/csv转npy||csv转npy 1",
-      "0x223e4d8b250": "机器学习组件/随机森林分类训练||随机森林分类训练"
+      "0x20d80097f70": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传",
+      "0x20d80168280": "a1b716b5-35e3-4885-b907-01ed113f2279||输入array",
+      "0x20d8016b970": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)",
+      "0x20d8016bb50": "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化",
+      "0x20d8016bdc0": "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)",
+      "0x20d80188040": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1",
+      "0x20d801882e0": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy",
+      "0x20d80188550": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练",
+      "0x20d80188e80": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1",
+      "0x20d80189810": "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图",
+      "0x20d8018b700": "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)",
+      "0x20d8018b970": "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器",
+      "0x20d8018bb50": "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估",
+      "0x20d801b4220": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1",
+      "0x20d801b44f0": "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练"
     },
     "node_states": {
-      "数据集成/文档上传||文档上传": "success",
-      "数据集成/输入array||输入array": "success",
-      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)": "success",
-      "数据预处理/MinMax归一化||MinMax归一化": "success",
-      "数据预处理/归一化推理(npy)||归一化推理(npy)": "success",
-      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": "success",
-      "数据转换/csv转npy||csv转npy": "success",
-      "模型训练/逻辑回归训练||逻辑回归训练": "success",
-      "模型训练/逻辑回归训练||逻辑回归训练 1": "success",
-      "数据可视化/Matplotlib画图||Matplotlib画图": "success",
-      "模型推理/sklearn模型推理(csv)||sklearn模型推理(csv)": "success",
-      "数据集成/CSV读取器||CSV读取器": "success",
-      "模型评估/模型评估||模型评估": "success",
-      "数据转换/csv转npy||csv转npy 1": "success",
-      "机器学习组件/随机森林分类训练||随机森林分类训练": "success"
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": "success",
+      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": "success",
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": "success",
+      "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化": "success",
+      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": "success",
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1": "success",
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy": "success",
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": "success",
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": "success",
+      "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图": "success",
+      "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)": "success",
+      "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": "success",
+      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": "success",
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1": "success",
+      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": "success"
     },
     "node_inputs": {
-      "数据集成/文档上传||文档上传": {},
-      "数据集成/输入array||输入array": {},
-      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)": {},
-      "数据预处理/MinMax归一化||MinMax归一化": {},
-      "数据预处理/归一化推理(npy)||归一化推理(npy)": {},
-      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": {},
-      "数据转换/csv转npy||csv转npy": {},
-      "模型训练/逻辑回归训练||逻辑回归训练": {},
-      "模型训练/逻辑回归训练||逻辑回归训练 1": {},
-      "数据可视化/Matplotlib画图||Matplotlib画图": {},
-      "模型推理/sklearn模型推理(csv)||sklearn模型推理(csv)": {},
-      "数据集成/CSV读取器||CSV读取器": {},
-      "模型评估/模型评估||模型评估": {},
-      "数据转换/csv转npy||csv转npy 1": {},
-      "机器学习组件/随机森林分类训练||随机森林分类训练": {}
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {},
+      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": {},
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": {},
+      "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化": {},
+      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": {},
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1": {},
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy": {},
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": {},
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": {},
+      "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图": {},
+      "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)": {},
+      "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": {},
+      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": {},
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1": {},
+      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": {}
     },
     "node_outputs": {
-      "数据集成/文档上传||文档上传": {
-        "file": "canvas_files\\workflows\\机器学习算法样例模型\\7cd1da75-280b-424f-81e3-f40ffd756998\\iris.csv"
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {
+        "file": "canvas_files\\workflows\\机器学习算法样例模型\\uploads\\7cd1da75-280b-424f-81e3-f40ffd756998\\iris.csv"
       },
-      "数据集成/输入array||输入array": {
+      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": {
         "output": {
           "__type__": "ndarray",
           "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDQsKSwgfSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoAAAAAAADwPwAAAAAAAABAAAAAAAAACEAAAAAAAAAQQA==",
@@ -1003,7 +1003,7 @@
           "format": "npy_base64"
         }
       },
-      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)": {
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": {
         "value": [
           0,
           0,
@@ -1157,7 +1157,7 @@
           2
         ]
       },
-      "数据预处理/MinMax归一化||MinMax归一化": {
+      "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化": {
         "output": {
           "__type__": "DataFrame",
           "data": "QVJST1cxAAD/////UAQAABAAAAAAAAoADgAGAAUACAAKAAAAAAEEABAAAAAAAAoADAAAAAQACAAKAAAASAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAACADAAAEAAAAEwMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJvYmplY3QiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfV0sICJhdHRyaWJ1dGVzIjoge30sICJjcmVhdG9yIjogeyJsaWJyYXJ5IjogInB5YXJyb3ciLCAidmVyc2lvbiI6ICIyMi4wLjAifSwgInBhbmRhc192ZXJzaW9uIjogIjIuMi4zIn0ABgAAAHBhbmRhcwAA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",
@@ -1167,9 +1167,9 @@
             4
           ]
         },
-        "scaler": "D:\\work\\CanvasMind\\canvas_files\\node_results\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl"
+        "scaler": "canvas_files\\workflows\\机器学习算法样例模型\\node_results\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\model_3fd34b98-e9c6-42af-bf26-0cdee4adac74.pkl"
       },
-      "数据预处理/归一化推理(npy)||归一化推理(npy)": {
+      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": {
         "output": {
           "__type__": "ndarray",
           "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEsIDQpLCB9ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApUVVVVVVXtvwAAAAAAAAAA0HBS9+Wx1T8AAAAAAAD6Pw==",
@@ -1181,12 +1181,12 @@
           "format": "npy_base64"
         }
       },
-      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": {
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1": {
         "value": [
           2
         ]
       },
-      "数据转换/csv转npy||csv转npy": {
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy": {
         "output": {
           "__type__": "ndarray",
           "data": "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",
@@ -1204,22 +1204,22 @@
           "versicolor"
         ]
       },
-      "模型训练/逻辑回归训练||逻辑回归训练": {
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": {
         "value": [
           0
         ],
-        "model": "D:\\work\\CanvasMind\\canvas_files\\node_results\\b7c16be4-b689-4b20-99e4-99ffde6c2819\\model_b7c16be4-b689-4b20-99e4-99ffde6c2819.pkl"
+        "model": "canvas_files\\workflows\\机器学习算法样例模型\\node_results\\b7c16be4-b689-4b20-99e4-99ffde6c2819\\model_b7c16be4-b689-4b20-99e4-99ffde6c2819.pkl"
       },
-      "模型训练/逻辑回归训练||逻辑回归训练 1": {
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": {
         "value": [
           0
         ],
-        "model": "D:\\work\\CanvasMind\\canvas_files\\node_results\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_dc38700a-5e2b-41d0-ab95-4528f73e5f31.pkl"
+        "model": "canvas_files\\workflows\\机器学习算法样例模型\\node_results\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\model_dc38700a-5e2b-41d0-ab95-4528f73e5f31.pkl"
       },
-      "数据可视化/Matplotlib画图||Matplotlib画图": {
-        "output": "D:\\work\\CanvasMind\\canvas_files\\node_results\\fa4b5189-cafe-416f-859a-3864b4ec006f\\image_fa4b5189-cafe-416f-859a-3864b4ec006f.png"
+      "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图": {
+        "output": "canvas_files\\workflows\\机器学习算法样例模型\\node_results\\fa4b5189-cafe-416f-859a-3864b4ec006f\\image_fa4b5189-cafe-416f-859a-3864b4ec006f.png"
       },
-      "模型推理/sklearn模型推理(csv)||sklearn模型推理(csv)": {
+      "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)": {
         "value": [
           0,
           0,
@@ -1373,7 +1373,7 @@
           2
         ]
       },
-      "数据集成/CSV读取器||CSV读取器": {
+      "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": {
         "csv": {
           "__type__": "DataFrame",
           "data": "QVJST1cxAAD/////AAUAABAAAAAAAAoADgAGAAUACAAKAAAAAAEEABAAAAAAAAoADAAAAAQACAAKAAAAvAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAAJQDAAAEAAAAhgMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJvYmplY3QiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInZpcmdpbmljYSIsICJmaWVsZF9uYW1lIjogInZpcmdpbmljYSIsICJwYW5kYXNfdHlwZSI6ICJpbnQ2NCIsICJudW1weV90eXBlIjogImludDY0IiwgIm1ldGFkYXRhIjogbnVsbH1d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",
@@ -1384,12 +1384,12 @@
           ]
         }
       },
-      "模型评估/模型评估||模型评估": {
+      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": {
         "evaluation_results": {
           "precision": 0.9733333333333334
         }
       },
-      "数据转换/csv转npy||csv转npy 1": {
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1": {
         "output": {
           "__type__": "ndarray",
           "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGk4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDE1MCwgMSksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA=",
@@ -1404,7 +1404,7 @@
           "virginica"
         ]
       },
-      "机器学习组件/随机森林分类训练||随机森林分类训练": {
+      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": {
         "predictions": {
           "__type__": "DataFrame",
           "data": "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",
@@ -1414,14 +1414,14 @@
             1
           ]
         },
-        "model": "D:\\work\\CanvasMind\\canvas_files\\node_results\\ba304fa4-3630-4c75-be30-d7df1707d0f1\\model_ba304fa4-3630-4c75-be30-d7df1707d0f1.pkl"
+        "model": "canvas_files\\workflows\\机器学习算法样例模型\\node_results\\ba304fa4-3630-4c75-be30-d7df1707d0f1\\model_ba304fa4-3630-4c75-be30-d7df1707d0f1.pkl"
       }
     },
     "column_select": {
-      "数据集成/文档上传||文档上传": {},
-      "数据集成/输入array||输入array": {},
-      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy)": {},
-      "数据预处理/MinMax归一化||MinMax归一化": {
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {},
+      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": {},
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": {},
+      "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化": {
         "input": [
           "150",
           "4",
@@ -1429,9 +1429,9 @@
           "versicolor"
         ]
       },
-      "数据预处理/归一化推理(npy)||归一化推理(npy)": {},
-      "模型推理/逻辑回归推理(npy)||逻辑回归推理(npy) 1": {},
-      "数据转换/csv转npy||csv转npy": {
+      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": {},
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1": {},
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy": {
         "input": [
           "150",
           "4",
@@ -1439,7 +1439,7 @@
           "versicolor"
         ]
       },
-      "模型训练/逻辑回归训练||逻辑回归训练": {
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": {
         "feature": [
           "150",
           "4",
@@ -1450,7 +1450,7 @@
           "virginica"
         ]
       },
-      "模型训练/逻辑回归训练||逻辑回归训练 1": {
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": {
         "feature": [
           "150",
           "4",
@@ -1461,8 +1461,8 @@
           "virginica"
         ]
       },
-      "数据可视化/Matplotlib画图||Matplotlib画图": {},
-      "模型推理/sklearn模型推理(csv)||sklearn模型推理(csv)": {
+      "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图": {},
+      "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)": {
         "feature": [
           "150",
           "4",
@@ -1470,14 +1470,14 @@
           "versicolor"
         ]
       },
-      "数据集成/CSV读取器||CSV读取器": {},
-      "模型评估/模型评估||模型评估": {},
-      "数据转换/csv转npy||csv转npy 1": {
+      "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": {},
+      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": {},
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1": {
         "input": [
           "virginica"
         ]
       },
-      "机器学习组件/随机森林分类训练||随机森林分类训练": {
+      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": {
         "features": [
           "150",
           "4",
@@ -1614,7 +1614,7 @@
     ],
     "node_vars": {
       "Matplotlib画图__output": {
-        "value": "D:\\work\\CanvasMind\\canvas_files\\node_results\\fa4b5189-cafe-416f-859a-3864b4ec006f\\image_fa4b5189-cafe-416f-859a-3864b4ec006f.png",
+        "value": "canvas_files\\workflows\\机器学习算法样例模型\\node_results\\fa4b5189-cafe-416f-859a-3864b4ec006f\\image_fa4b5189-cafe-416f-859a-3864b4ec006f.png",
         "update_policy": "更新"
       }
     },

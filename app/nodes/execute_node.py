@@ -15,6 +15,7 @@ from qfluentwidgets import MessageBox
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext, \
     COMPONENT_IMPORT_CODE, resource_path
 from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
+from app.scan_components import ComponentScanner
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.node_logger import NodeLogHandler
@@ -92,8 +93,8 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.set_property("version", "latest")
             self.parent_window = parent_window
             self.model.add_property("debug_code", {})
-            if hasattr(parent_window.component_map[full_path], "icon"):
-                self.set_icon(parent_window.component_map[full_path].icon)
+            if hasattr(ComponentScanner().get_component_by_uuid(self.uuid), "icon"):
+                self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
             
             # --- 调试模式新增 ---
             self._debug_enabled = False
@@ -103,15 +104,19 @@ def create_node_class(full_path, file_path, parent_window=None):
 
             # === 动态生成属性 ===
             self._generate_parms_widget()
-            for port_name, label, connection in parent_window.component_map[full_path].get_inputs():
+            for port_name, label, connection in ComponentScanner().get_component_by_uuid(self.uuid).get_inputs():
                 if connection == ConnectionType.SINGLE:
                     self.add_input(port_name)
                 else:
                     self.add_input(port_name, True, painter_func=draw_square_port)
             QtCore.QTimer.singleShot(0, self.build_outputs)
+            
+        @property
+        def uuid(self):
+            return self.model.type_.split("StatusDynamicNode_")[1]
 
         def build_outputs(self):
-            for port_name, label in parent_window.component_map[full_path].get_outputs():
+            for port_name, label in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs():
                 self.delete_output(port_name)
                 name = re.sub(r'\s+', '_', self.name())
                 if f"{name}__{port_name}" in parent_window.global_variables.node_vars:
@@ -122,7 +127,7 @@ def create_node_class(full_path, file_path, parent_window=None):
         def refresh_node_outports(self):
             self.set_port_deletion_allowed(True)
             # 2. 记录当前所有输出端口的连线状态：{port_name: [connected_downstream_ports]}
-            expected_names = [port_name for port_name, _ in parent_window.component_map[full_path].get_outputs()]
+            expected_names = [port_name for port_name, _ in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs()]
             current_connections = {}
             for port in self.output_ports():
                 connected = port.connected_ports()
@@ -225,7 +230,7 @@ def create_node_class(full_path, file_path, parent_window=None):
         def _generate_parms_widget(self):
             """生成节点属性配置控件"""
             # 生成其他组件属性控件
-            for i, (prop_name, prop_def) in enumerate(parent_window.component_map[full_path].get_properties().items()):
+            for i, (prop_name, prop_def) in enumerate(ComponentScanner().get_component_by_uuid(self.uuid).get_properties().items()):
                 prop_type = prop_def.get("type", PropertyType.TEXT)
                 default = prop_def.get("default", "")
                 label = prop_def.get("label", prop_name)
@@ -240,7 +245,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                         self.add_custom_widget(
                             ComboBoxWidgetWrapper(
                                 parent=self.view, name=prop_name, label=label, items=choices,
-                                z_value=len(parent_window.component_map[full_path].get_properties()) - i
+                                z_value=len(ComponentScanner().get_component_by_uuid(self.uuid).get_properties()) - i
                             ),
                             tab="properties"
                         )
@@ -290,7 +295,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                         label=label,
                         schema=processed_schema,
                         window=parent_window,
-                        z_value=len(parent_window.component_map[full_path].get_properties()) - i
+                        z_value=len(ComponentScanner().get_component_by_uuid(self.uuid).get_properties()) - i
                     )
                     self.add_custom_widget(widget, tab='Properties')
                 elif prop_type == PropertyType.VARIABLE:  # 新增类型
@@ -302,7 +307,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                             label=label,
                             var_type=default_val or "全局变量",
                             main_window=parent_window,  # 传入 main_window 引用
-                            z_value=len(parent_window.component_map[full_path].get_properties()) - i
+                            z_value=len(ComponentScanner().get_component_by_uuid(self.uuid).get_properties()) - i
                         ),
                         tab="properties"
                     )
@@ -349,7 +354,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                     current_code = f.read()
             else:
                 current_code = None
-                for version_file in parent_window.component_map[full_path]._history_file:
+                for version_file in ComponentScanner().get_component_by_uuid(self.uuid)._history_file:
                     if version_file["version"] == current_version:
                         current_code = COMPONENT_IMPORT_CODE + version_file["code"]
                         break
@@ -481,7 +486,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                     f.write(self.current_code)
             else:
                 current_version = self.get_property("version")
-                if current_version == parent_window.component_map[full_path]._version or current_version == "latest":
+                if current_version == comp_obj._version or current_version == "latest":
                     temp_component_path = self.FILE_PATH
                 else:
                     component_code = self.get_current_code()
@@ -497,7 +502,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                 result_path=result_path,
                 error_path=error_path,
                 log_file_path=log_file_path,
-                node_id=self.persistent_id
+                node_id=self.persistent_id,
+                workflow_path=parent_window.workflow_name
             )
             with open(temp_script_path, 'w', encoding='utf-8') as f:
                 f.write(script_content)
@@ -535,8 +541,9 @@ def create_node_class(full_path, file_path, parent_window=None):
             requirements_str = getattr(comp_obj, 'requirements', '').strip()
 
             # 执行 %run -i
-            run_code = f'%run -i "{temp_script_path.as_posix()}"'
-            kernel_manager.execute_code(run_code, hidden=False)
+            with open(temp_script_path, 'r', encoding='utf-8') as f:
+                code = f.read()
+            kernel_manager.execute_code(code, hidden=True)
 
             # 轮询结果文件
             start_time = time.time()
@@ -545,7 +552,11 @@ def create_node_class(full_path, file_path, parent_window=None):
 
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
-                    # IPython 无法强制终止，但可跳过后续处理
+                    try:
+                        kernel_manager.restart_kernel()  # now=True 表示立即重启（不等待）
+                        self._log_message(self.persistent_id, "✅ 内核已重启，执行已终止。")
+                    except Exception as e:
+                        self._log_message(self.persistent_id, f"⚠️ 内核重启失败: {e}")
                     raise Exception("执行被用户取消")
 
                 if time.time() - start_time > timeout:
@@ -738,7 +749,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
                 # 判断是否为 ImportError 且可重试
                 if retry_count == 0 and _is_import_error(proc, error_path):
-                    _install_requirements(python_executable, requirements_str, parent_window.component_map[full_path].logger)
+                    _install_requirements(python_executable, requirements_str, comp_obj.logger)
                     retry_count += 1
                     continue
                 else:
@@ -748,7 +759,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             if os.path.exists(result_path):
                 with open(result_path, 'rb') as f:
                     output = pickle.load(f)
-                parent_window.component_map[full_path].logger.success("✅ 节点在独立环境执行完成")
+                comp_obj.logger.success("✅ 节点在独立环境执行完成")
                 for port in comp_obj.outputs:
                     if port.type != ArgumentType.UPLOAD:
                         self.set_output_value(port.name, output.get(port.name))

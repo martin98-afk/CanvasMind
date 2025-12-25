@@ -29,33 +29,53 @@ from app.widgets.side_dock_area.registry import SideDockRegistry
 def _migrate_legacy_workflow_structure(workflow_dirs: List[Path]):
     """将旧版平铺结构自动迁移到新版：每个画布一个子文件夹"""
     for root in workflow_dirs:
-        # 找出根目录下的 .workflow.json（排除子目录中的，避免重复迁移）
         legacy_files = [
             f for f in root.iterdir()
             if f.is_file() and f.suffix == '.json' and f.name.endswith('.workflow.json')
         ]
         for wf_file in legacy_files:
-            # 从 "name.workflow.json" 提取 "name"
             name = wf_file.stem
             if name.endswith('.workflow'):
-                name = name[:-9]  # 去掉 ".workflow"
+                name = name[:-9]
             if not name:
                 continue
 
             canvas_folder = root / name
             canvas_folder.mkdir(exist_ok=True)
 
-            # 移动 .workflow.json
             new_wf_path = canvas_folder / wf_file.name
             if not new_wf_path.exists():
                 shutil.move(str(wf_file), str(new_wf_path))
 
-            # 移动对应的 .png（如果有）
             png_file = root / f"{name}.png"
             if png_file.exists():
                 new_png_path = canvas_folder / f"{name}.png"
                 if not new_png_path.exists():
                     shutil.move(str(png_file), str(new_png_path))
+
+
+def _normalize_canvas_folder(folder: Path):
+    """
+    规范化画布文件夹内容：
+    - 确保 .workflow.json 命名为 {folder.name}.workflow.json
+    - 确保 .png 命名为 {folder.name}.png（如果存在）
+    """
+    if not folder.is_dir():
+        return
+
+    # 处理 .workflow.json
+    wf_files = list(folder.glob("*.workflow.json"))
+    if wf_files:
+        expected_wf = folder / f"{folder.name}.workflow.json"
+        if not expected_wf.exists():
+            wf_files[0].rename(expected_wf)
+
+    # 处理 .png
+    png_files = list(folder.glob("*.png"))
+    if png_files:
+        expected_png = folder / f"{folder.name}.png"
+        if not expected_png.exists():
+            png_files[0].rename(expected_png)
 
 
 class WorkflowFileInfoScanner(QThread):
@@ -82,7 +102,6 @@ class WorkflowFileInfoScanner(QThread):
         file_info_map = {}
         for path in self.workflow_dir:
             if path.exists():
-                # ✅ 使用 rglob 递归查找所有子目录中的 .workflow.json
                 workflow_files.extend(list(path.rglob("*.workflow.json")))
 
         for wf_path in workflow_files:
@@ -116,7 +135,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     running_projects_changed = pyqtSignal(str, str)
     node_request_edit = pyqtSignal(str)
 
-    # 注册侧边栏
     SideDockRegistry.register("运行画布", PropertyToolWindow.name, PropertyToolWindow)
     SideDockRegistry.register("运行画布", VariableExplorerToolWindow.name, VariableExplorerToolWindow)
     SideDockRegistry.register("运行画布", OpenAIChatToolWindow.name, OpenAIChatToolWindow)
@@ -319,7 +337,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
     def load_workflows(self):
         self.workflow_dir = self._get_workflow_dir()
-        # ✅ 自动迁移旧结构
         _migrate_legacy_workflow_structure(self.workflow_dir)
 
         if self._is_loading:
@@ -381,16 +398,13 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         if self._fixed_card is None:
             self._create_fixed_card()
 
-        # 隐藏所有卡片（包括固定卡）
         self._fixed_card.hide()
         for card in self._card_map.values():
             card.hide()
 
-        # 清空布局（真正移除 widget）
         while self.flow_layout.count():
             item = self.flow_layout.takeAt(0)
 
-        # 添加当前页的卡片
         if page_index == 0:
             self.flow_layout.addWidget(self._fixed_card)
             self._fixed_card.show()
@@ -440,7 +454,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 info = self._file_info_map.get(str(wf_path), {})
                 ctime_ts = info.get('ctime_ts', 0)
                 mtime_ts = info.get('mtime_ts', 0)
-                name = wf_path.parent.name  # ✅ 画布名称 = 父文件夹名
+                name = wf_path.parent.name
 
                 if self._filter_text and self._filter_text not in name.lower():
                     continue
@@ -518,12 +532,12 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         counter = 0
         while True:
             canvas_folder = self.workflow_dir[0] / (base_name if counter == 0 else f"{base_name}_{counter}")
-            file_path = canvas_folder / f"{canvas_folder.name}.workflow.json"
-            if not file_path.exists():
+            if not canvas_folder.exists():
                 break
             counter += 1
 
         canvas_folder.mkdir(parents=True, exist_ok=True)
+        file_path = canvas_folder / f"{canvas_folder.name}.workflow.json"
 
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
@@ -546,57 +560,54 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self._schedule_refresh()
 
     def import_canvas(self):
-        file_path, _ = QFileDialog.getOpenFileName(
+        folder_path = QFileDialog.getExistingDirectory(
             self,
-            "选择画布文件",
-            "",
-            "Workflow Files (*.workflow.json);;All Files (*)"
+            "选择要导入的画布文件夹",
+            str(self.workflow_dir[0])
         )
-        if not file_path:
+        if not folder_path:
             return
 
-        src_path = Path(file_path)
-        if not src_path.exists():
-            InfoBar.error("文件不存在", "请选择有效的画布文件", parent=self)
+        src_folder = Path(folder_path)
+        if not src_folder.is_dir():
+            InfoBar.error("无效目录", "请选择有效的画布文件夹", parent=self)
             return
 
-        base_name = src_path.stem
-        if base_name.endswith('.workflow'):
-            base_name = base_name[:-9]
-        if not base_name:
-            base_name = "imported_canvas"
+        wf_files = list(src_folder.glob("*.workflow.json"))
+        if not wf_files:
+            InfoBar.error("无效画布", "所选文件夹中未找到 .workflow.json 文件", parent=self)
+            return
 
+        base_name = src_folder.name
         counter = 0
         while True:
-            canvas_folder = self.workflow_dir[0] / (base_name if counter == 0 else f"{base_name}_{counter}")
-            dest_path = canvas_folder / f"{canvas_folder.name}.workflow.json"
-            if not dest_path.exists():
+            dest_folder = self.workflow_dir[0] / (base_name if counter == 0 else f"{base_name}_{counter}")
+            if not dest_folder.exists():
                 break
             counter += 1
 
-        canvas_folder.mkdir(parents=True, exist_ok=True)
-        dest_path = canvas_folder / f"{canvas_folder.name}.workflow.json"
-
         try:
-            shutil.copy2(src_path, dest_path)
-            src_png = src_path.parent / f"{src_path.stem.replace('.workflow', '')}.png"
-            if src_png.exists():
-                dest_png = canvas_folder / f"{canvas_folder.name}.png"
-                shutil.copy2(src_png, dest_png)
+            shutil.copytree(src_folder, dest_folder)
+            _normalize_canvas_folder(dest_folder)  # ✅ 同步 .json 和 .png 名称
 
+            # 更新时间戳
             now = datetime.now().timestamp()
-            os.utime(dest_path, (now, now))
-            if (canvas_folder / f"{canvas_folder.name}.png").exists():
-                os.utime(canvas_folder / f"{canvas_folder.name}.png", (now, now))
+            for f in dest_folder.iterdir():
+                if f.is_file():
+                    os.utime(f, (now, now))
 
-            InfoBar.success("导入成功", f"已导入 {canvas_folder.name}", parent=self)
+            InfoBar.success("导入成功", f"已导入画布 “{dest_folder.name}”", parent=self)
             self._schedule_refresh()
 
         except Exception as e:
-            InfoBar.error("导入失败", str(e), parent=self)
+            import traceback
+            traceback.print_exc()
+            InfoBar.error("导入失败", f"无法复制文件夹：{str(e)}", parent=self)
 
     def edit_workflow(self, src_path: Path):
-        old_name = src_path.parent.name
+        src_folder = src_path.parent
+        old_name = src_folder.name
+
         dialog = CustomInputDialog("重命名画布", "请输入新名称", old_name, self)
         if not dialog.exec():
             return
@@ -612,35 +623,19 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 break
             counter += 1
 
-        new_folder.mkdir(parents=True, exist_ok=True)
-        new_wf_path = new_folder / f"{new_folder.name}.workflow.json"
-        new_png_path = new_folder / f"{new_folder.name}.png"
-
-        src_png = src_path.parent / f"{old_name}.png"
-
         try:
-            shutil.copy2(src_path, new_wf_path)
-            if src_png.exists():
-                shutil.copy2(src_png, new_png_path)
-
-            now = datetime.now().timestamp()
-            os.utime(new_wf_path, (now, now))
-            if new_png_path.exists():
-                os.utime(new_png_path, (now, now))
-
-            # 删除旧文件夹
-            shutil.rmtree(src_path.parent)
+            shutil.move(str(src_folder), str(new_folder))
+            _normalize_canvas_folder(new_folder)  # ✅ 同步名称
 
             if src_path in self.opened_workflows:
                 self.parent_window.removeInterface(self.opened_workflows[src_path])
                 del self.opened_workflows[src_path]
 
             if src_path in self._card_map:
-                old_card = self._card_map[src_path]
+                old_card = self._card_map.pop(src_path)
                 self.flow_layout.removeWidget(old_card)
                 old_card.hide()
                 old_card.deleteLater()
-                del self._card_map[src_path]
 
             InfoBar.success("重命名成功", f"已重命名为 {new_name}", parent=self)
             self._schedule_refresh()
@@ -648,7 +643,9 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             InfoBar.error("重命名失败", str(e), parent=self)
 
     def duplicate_workflow(self, src_path: Path):
-        old_name = src_path.parent.name
+        src_folder = src_path.parent
+        old_name = src_folder.name
+
         dialog = CustomInputDialog("复制画布", "请输入新画布名称", old_name + "_copy", self)
         if not dialog.exec():
             return
@@ -664,21 +661,9 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 break
             counter += 1
 
-        new_folder.mkdir(parents=True, exist_ok=True)
-        new_wf_path = new_folder / f"{new_folder.name}.workflow.json"
-        new_png_path = new_folder / f"{new_folder.name}.png"
-
-        src_png = src_path.parent / f"{old_name}.png"
-
         try:
-            shutil.copy2(src_path, new_wf_path)
-            if src_png.exists():
-                shutil.copy2(src_png, new_png_path)
-
-            now = datetime.now().timestamp()
-            os.utime(new_wf_path, (now, now))
-            if new_png_path.exists():
-                os.utime(new_png_path, (now, now))
+            shutil.copytree(src_folder, new_folder)
+            _normalize_canvas_folder(new_folder)  # ✅ 同步名称
 
             InfoBar.success("复制成功", f"已创建 {new_name}", parent=self)
             self._schedule_refresh()
@@ -694,7 +679,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             return
 
         try:
-            # 删除整个画布文件夹
             shutil.rmtree(file_path.parent)
 
             InfoBar.success("删除成功", f"画布 '{name}' 已删除", parent=self)
@@ -704,11 +688,10 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 del self.opened_workflows[file_path]
 
             if file_path in self._card_map:
-                old_card = self._card_map[file_path]
+                old_card = self._card_map.pop(file_path)
                 self.flow_layout.removeWidget(old_card)
                 old_card.hide()
                 old_card.deleteLater()
-                del self._card_map[file_path]
 
             self._schedule_refresh()
         except Exception as e:

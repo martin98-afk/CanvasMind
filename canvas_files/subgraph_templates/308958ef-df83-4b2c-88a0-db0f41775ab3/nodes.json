@@ -1,0 +1,949 @@
+{
+  "graph": {
+    "layout_direction": 0,
+    "acyclic": true,
+    "pipe_collision": false,
+    "pipe_slicing": true,
+    "pipe_style": 2,
+    "accept_connection_types": "{}",
+    "reject_connection_types": "{}"
+  },
+  "nodes": {
+    "0x1f5905014b0": {
+      "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
+      "icon": null,
+      "name": "逻辑回归训练 1",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 411.09625,
+      "height": 170.16,
+      "pos": [
+        588.3454466694028,
+        955.9049716727206
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "dc38700a-5e2b-41d0-ab95-4528f73e5f31",
+        "version": "latest",
+        "debug_code": {},
+        "solver": "lbfgs",
+        "max_iter": "100"
+      }
+    },
+    "0x1f5905034f0": {
+      "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
+      "icon": null,
+      "name": "逻辑回归推理(npy) 1",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 275.425,
+      "height": 81.76,
+      "pos": [
+        1304.6076353638427,
+        1078.4921812499692
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": true,
+      "subgraph_session": {},
+      "input_ports": [
+        {
+          "name": "feature",
+          "multi_connection": false,
+          "display_name": true
+        },
+        {
+          "name": "model",
+          "multi_connection": false,
+          "display_name": true
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "value",
+          "multi_connection": true,
+          "display_name": true
+        }
+      ],
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "53081407-40bd-48e4-9e7a-ef3e4a06e3ed",
+        "version": "latest",
+        "debug_code": {}
+      }
+    },
+    "0x1f5aa230370": {
+      "type_": "dynamic.StatusDynamicNode_e42b5e46-56d9-4089-9b4d-5f2b24802fef",
+      "icon": null,
+      "name": "模型评估",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 388.49875000000003,
+      "height": 175.36,
+      "pos": [
+        1670.3961548622701,
+        356.1301491987681
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "7fa4a0a1-930f-494a-9569-5217d7cfdb08",
+        "version": "latest",
+        "debug_code": null,
+        "metric": "precision",
+        "average": "micro"
+      }
+    },
+    "0x1f5905a63b0": {
+      "type_": "dynamic.StatusDynamicNode_2c162fc3-2275-4f49-aeac-5dd4778911e9",
+      "icon": null,
+      "name": "归一化推理(npy)",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 236.03750000000002,
+      "height": 81.76,
+      "pos": [
+        840.252643434187,
+        1252.8229519125093
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": true,
+      "subgraph_session": {},
+      "input_ports": [
+        {
+          "name": "input",
+          "multi_connection": false,
+          "display_name": true
+        },
+        {
+          "name": "scaler",
+          "multi_connection": false,
+          "display_name": true
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "output",
+          "multi_connection": true,
+          "display_name": true
+        }
+      ],
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "0f14a852-995f-4c65-8cfb-ef6ccccfdc94",
+        "version": "latest",
+        "debug_code": {}
+      }
+    },
+    "0x1f5aa232f50": {
+      "type_": "dynamic.StatusDynamicNode_26f404b9-0029-4f8b-8abc-0740ecad423b",
+      "icon": null,
+      "name": "CSV读取器",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 176.5825,
+      "height": 69.28,
+      "pos": [
+        49.435143001171454,
+        455.8573212615102
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "e3a79f0b-3bfe-4f5b-bddd-160cd0e0adfe",
+        "version": "latest",
+        "debug_code": null
+      }
+    },
+    "0x1f590503f70": {
+      "type_": "dynamic.StatusDynamicNode_c41d7b30-7d50-4765-a806-844d54021fdb",
+      "icon": null,
+      "name": "MinMax归一化",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 206.68375,
+      "height": 81.76,
+      "pos": [
+        296.3403677732786,
+        1108.0910306334074
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "3fd34b98-e9c6-42af-bf26-0cdee4adac74",
+        "version": "latest",
+        "debug_code": null
+      }
+    },
+    "0x1f5a9a02bf0": {
+      "type_": "dynamic.StatusDynamicNode_04f8eaf9-dafd-446a-94b2-d232bae8620a",
+      "icon": null,
+      "name": "sklearn模型推理(csv)",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 286.58,
+      "height": 81.76,
+      "pos": [
+        1173.3678706434844,
+        254.8605889806446
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "f2776f95-0ee4-4092-817e-824be7f8ba84",
+        "version": "latest",
+        "debug_code": {}
+      }
+    },
+    "0x1f5905005b0": {
+      "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
+      "icon": null,
+      "name": "逻辑回归推理(npy)",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 255.73125000000002,
+      "height": 81.76,
+      "pos": [
+        1126.3102912350244,
+        716.7134541701661
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": true,
+      "subgraph_session": {},
+      "input_ports": [
+        {
+          "name": "feature",
+          "multi_connection": false,
+          "display_name": true
+        },
+        {
+          "name": "model",
+          "multi_connection": false,
+          "display_name": true
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "value",
+          "multi_connection": true,
+          "display_name": true
+        }
+      ],
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "3a7164f5-6f4f-4b92-a362-8e9168fa0604",
+        "version": "latest",
+        "debug_code": null
+      }
+    },
+    "0x1f590502e60": {
+      "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
+      "icon": null,
+      "name": "csv转npy",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 167.29625000000001,
+      "height": 81.76,
+      "pos": [
+        597.8046158504715,
+        814.9993017165933
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": true,
+      "subgraph_session": {},
+      "input_ports": [
+        {
+          "name": "input",
+          "multi_connection": false,
+          "display_name": true
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "output",
+          "multi_connection": true,
+          "display_name": true
+        },
+        {
+          "name": "columns",
+          "multi_connection": true,
+          "display_name": true
+        }
+      ],
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "c49464d4-a050-472c-adfb-cb2d7c5a83b1",
+        "version": "latest",
+        "debug_code": {}
+      }
+    },
+    "0x1f5b10e4a30": {
+      "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
+      "icon": null,
+      "name": "文档上传",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 166.175,
+      "height": 69.28,
+      "pos": [
+        -292.4186026503774,
+        457.0970982885694
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "7cd1da75-280b-424f-81e3-f40ffd756998",
+        "version": "latest",
+        "debug_code": null
+      }
+    },
+    "0x1f590502440": {
+      "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
+      "icon": null,
+      "name": "逻辑回归训练",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 391.40250000000003,
+      "height": 170.16,
+      "pos": [
+        499.2594511381602,
+        585.1528688507728
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "b7c16be4-b689-4b20-99e4-99ffde6c2819",
+        "version": "latest",
+        "debug_code": {},
+        "solver": "newton-cg",
+        "max_iter": "100"
+      }
+    },
+    "0x1f5aa2306a0": {
+      "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
+      "icon": null,
+      "name": "csv转npy 1",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 186.99,
+      "height": 81.76,
+      "pos": [
+        797.170733184895,
+        422.36379929114787
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "30ab0492-c0db-4e76-9276-91c59476835f",
+        "version": "latest",
+        "debug_code": {}
+      }
+    },
+    "0x1f5aa2321d0": {
+      "type_": "dynamic.StatusDynamicNode_076e8486-c5ea-491d-ac67-99987a622dd5",
+      "icon": null,
+      "name": "随机森林分类训练",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 543.95,
+      "height": 492.56,
+      "pos": [
+        349.2677040622657,
+        -337.27127545311396
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "ba304fa4-3630-4c75-be30-d7df1707d0f1",
+        "version": "latest",
+        "debug_code": {},
+        "n_estimators": "100",
+        "max_depth": "5",
+        "min_samples_split": "2",
+        "min_samples_leaf": "1",
+        "max_features": "sqrt",
+        "random_state": "42",
+        "n_jobs": "-1"
+      }
+    },
+    "0x1f5b10e51b0": {
+      "type_": "dynamic.StatusDynamicNode_a1b716b5-35e3-4885-b907-01ed113f2279",
+      "icon": null,
+      "name": "输入array",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 362.79625000000004,
+      "height": 100.48,
+      "pos": [
+        140.77322760954615,
+        1296.5864315941192
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "f023577e-5cd0-4099-9f53-4c747aae8a5c",
+        "version": "latest",
+        "debug_code": {},
+        "param1": "1,2,3,4"
+      }
+    },
+    "0x1f5905003d0": {
+      "type_": "dynamic.StatusDynamicNode_generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8",
+      "icon": null,
+      "name": "Matplotlib画图",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 462.64500000000004,
+      "height": 603.84,
+      "pos": [
+        2042.677734386829,
+        781.7713069856318
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "global_variable": {},
+        "persistent_id": "fa4b5189-cafe-416f-859a-3864b4ec006f",
+        "version": "latest",
+        "debug_code": {},
+        "title": "",
+        "xlabel": "",
+        "ylabel": "",
+        "plot_mode": "柱状图",
+        "line_color": "blue",
+        "line_width": 1.0,
+        "show_grid": true,
+        "fig_size": "8,6",
+        "auto_arrange": true
+      }
+    }
+  },
+  "connections": [
+    {
+      "in": [
+        "0x1f5905014b0",
+        "feature"
+      ],
+      "out": [
+        "0x1f590503f70",
+        "output"
+      ]
+    },
+    {
+      "in": [
+        "0x1f5905014b0",
+        "target"
+      ],
+      "out": [
+        "0x1f5aa232f50",
+        "csv"
+      ]
+    },
+    {
+      "out": [
+        "0x1f5905014b0",
+        "model"
+      ],
+      "in": [
+        "0x1f5905034f0",
+        "model"
+      ]
+    },
+    {
+      "in": [
+        "0x1f5905034f0",
+        "feature"
+      ],
+      "out": [
+        "0x1f5905a63b0",
+        "output"
+      ]
+    },
+    {
+      "in": [
+        "0x1f5aa230370",
+        "predictions"
+      ],
+      "out": [
+        "0x1f5905005b0",
+        "value"
+      ]
+    },
+    {
+      "in": [
+        "0x1f5aa230370",
+        "true_labels"
+      ],
+      "out": [
+        "0x1f5aa2306a0",
+        "output"
+      ]
+    },
+    {
+      "in": [
+        "0x1f5905a63b0",
+        "input"
+      ],
+      "out": [
+        "0x1f5b10e51b0",
+        "output"
+      ]
+    },
+    {
+      "in": [
+        "0x1f5905a63b0",
+        "scaler"
+      ],
+      "out": [
+        "0x1f590503f70",
+        "scaler"
+      ]
+    },
+    {
+      "in": [
+        "0x1f5aa232f50",
+        "csv"
+      ],
+      "out": [
+        "0x1f5b10e4a30",
+        "file"
+      ]
+    },
+    {
+      "out": [
+        "0x1f5aa232f50",
+        "csv"
+      ],
+      "in": [
+        "0x1f590503f70",
+        "input"
+      ]
+    },
+    {
+      "out": [
+        "0x1f5aa232f50",
+        "csv"
+      ],
+      "in": [
+        "0x1f590502e60",
+        "input"
+      ]
+    },
+    {
+      "out": [
+        "0x1f5aa232f50",
+        "csv"
+      ],
+      "in": [
+        "0x1f590502440",
+        "feature"
+      ]
+    },
+    {
+      "out": [
+        "0x1f5aa232f50",
+        "csv"
+      ],
+      "in": [
+        "0x1f590502440",
+        "target"
+      ]
+    },
+    {
+      "out": [
+        "0x1f5aa232f50",
+        "csv"
+      ],
+      "in": [
+        "0x1f5a9a02bf0",
+        "feature"
+      ]
+    },
+    {
+      "out": [
+        "0x1f5aa232f50",
+        "csv"
+      ],
+      "in": [
+        "0x1f5aa2306a0",
+        "input"
+      ]
+    },
+    {
+      "out": [
+        "0x1f5aa232f50",
+        "csv"
+      ],
+      "in": [
+        "0x1f5aa2321d0",
+        "features"
+      ]
+    },
+    {
+      "out": [
+        "0x1f5aa232f50",
+        "csv"
+      ],
+      "in": [
+        "0x1f5aa2321d0",
+        "target"
+      ]
+    },
+    {
+      "in": [
+        "0x1f5a9a02bf0",
+        "model"
+      ],
+      "out": [
+        "0x1f590502440",
+        "model"
+      ]
+    },
+    {
+      "in": [
+        "0x1f5905005b0",
+        "feature"
+      ],
+      "out": [
+        "0x1f590502e60",
+        "output"
+      ]
+    },
+    {
+      "in": [
+        "0x1f5905005b0",
+        "model"
+      ],
+      "out": [
+        "0x1f590502440",
+        "model"
+      ]
+    },
+    {
+      "out": [
+        "0x1f590502e60",
+        "output"
+      ],
+      "in": [
+        "0x1f5905003d0",
+        "x"
+      ]
+    },
+    {
+      "out": [
+        "0x1f590502e60",
+        "output"
+      ],
+      "in": [
+        "0x1f5905003d0",
+        "y"
+      ]
+    }
+  ]
+}

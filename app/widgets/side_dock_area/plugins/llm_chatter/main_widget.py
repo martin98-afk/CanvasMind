@@ -68,7 +68,7 @@ class OpenAIChatToolWindow(ToolWindow):
         if not self._first_show:
             self._first_show = True
             # 可选：首次显示时展开基本信息卡
-            QTimer.singleShot(100, lambda: self._create_new_session())
+            QTimer.singleShot(0, lambda: self._create_new_session())
         super().showEvent(event)
 
     def setup_ui(self):

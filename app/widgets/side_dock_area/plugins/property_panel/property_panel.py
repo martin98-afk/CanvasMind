@@ -9,6 +9,7 @@ from qfluentwidgets import SmoothScrollArea, TransparentDropDownToolButton, \
 
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
+from app.scan_components import ComponentScanner
 from app.widgets.side_dock_area.plugins.property_panel.flow_control_panel import FlowControlPanelWidget
 from app.widgets.side_dock_area.plugins.property_panel.global_panel import GlobalPanelWidget
 from app.widgets.side_dock_area.plugins.property_panel.node_list_panel import NodeListPanelWidget
@@ -238,12 +239,11 @@ class PropertyPanel(QWidget):
 
     def get_node_description(self, node):
         """获取节点描述"""
-        if hasattr(node, 'component_class'):
-            return getattr(node.component_class, 'description', '')
-        try:
-            return node.model.get_property('description')
-        except KeyError:
-            return ''
+        if "StatusDynamicNode_" not in node.model.type_:
+            return ""
+        else:
+            comp_cls = ComponentScanner().get_component_by_uuid(node.uuid)
+            return comp_cls.description
 
     # ========================
     # 全局变量面板（只构建一次）

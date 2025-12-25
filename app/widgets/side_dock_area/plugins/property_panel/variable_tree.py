@@ -446,7 +446,6 @@ class VariableTreeWidget(TreeWidget):
                 self.expandItem(top_item)
 
     def _on_build_error(self, error_message):
-        print(f"构建树形结构时出错: {error_message}")
         from qfluentwidgets import InfoBar, InfoBarPosition
         InfoBar.error(
             title="数据结构解析失败",

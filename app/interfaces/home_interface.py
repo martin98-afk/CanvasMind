@@ -328,7 +328,7 @@ class SampleModelCardView(SimpleCardWidget):
             self.contentLayout.addWidget(card)
 
     def _on_open_sample(self, model_name: str):
-        target_path = Path(resource_path("examples")) / f"{model_name}.workflow.json"
+        target_path = Path(resource_path("examples")) / model_name / f"{model_name}.workflow.json"
         try:
             self.openSampleSignal.emit(str(target_path))
         except Exception as e:

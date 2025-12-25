@@ -1,0 +1,165 @@
+{
+  "graph": {
+    "layout_direction": 0,
+    "acyclic": true,
+    "pipe_collision": false,
+    "pipe_slicing": true,
+    "pipe_style": 2,
+    "accept_connection_types": "{}",
+    "reject_connection_types": "{}"
+  },
+  "nodes": {
+    "0x1f5905c78e0": {
+      "type_": "dynamic.StatusDynamicNode_d0d5d987-67d5-4aa3-833f-a7a3fa7a794b",
+      "icon": null,
+      "name": "图片转base64编码",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 246.07125000000002,
+      "height": 69.28,
+      "pos": [
+        417.18060227820376,
+        -1.4690156959855827
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "persistent_id": "cd8f6647-3e0c-48e4-a900-feeaf9aa6cdc",
+        "version": "latest",
+        "debug_code": {}
+      }
+    },
+    "0x1f59068d4e0": {
+      "type_": "dynamic.StatusDynamicNode_b9732471-0d7d-4343-847c-9f1edec19eed",
+      "icon": null,
+      "name": "图像4通道转3通道 1",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 265.0175,
+      "height": 69.28,
+      "pos": [
+        -9.193246911767005,
+        -20.684805551475762
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "persistent_id": "634ad6ff-58c5-48d4-8366-7d3009f70289",
+        "version": "latest",
+        "debug_code": {}
+      }
+    },
+    "0x1f590641660": {
+      "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
+      "icon": null,
+      "name": "文档上传 1",
+      "color": [
+        25,
+        70,
+        45,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 185.86875,
+      "height": 69.28,
+      "pos": [
+        -275.9363256408342,
+        -30.842101670059478
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "persistent_id": "a0a3c272-c6bb-4b82-befc-6305980a565f",
+        "version": "latest",
+        "debug_code": {}
+      }
+    }
+  },
+  "connections": [
+    {
+      "in": [
+        "0x1f5905c78e0",
+        "input1"
+      ],
+      "out": [
+        "0x1f59068d4e0",
+        "output"
+      ]
+    },
+    {
+      "out": [
+        "0x1f5905c78e0",
+        "output1"
+      ],
+      "in": [
+        "0x1f5905c75b0",
+        "input1"
+      ]
+    },
+    {
+      "in": [
+        "0x1f59068d4e0",
+        "input"
+      ],
+      "out": [
+        "0x1f590641660",
+        "file"
+      ]
+    }
+  ]
+}
