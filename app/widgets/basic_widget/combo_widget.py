@@ -93,10 +93,10 @@ class CustomComboBox(QComboBox):
                 background-color: {bg};
                 border: 1px solid {border};
                 border-radius: 4px;
-                padding: 4px 26px 4px 10px;
+                padding: 4px 20px 4px 10px;
                 color: {text};
                 font-size: 14px;
-                min-height: 28px;
+                min-height: 20px;
             }}
             QComboBox:hover {{
                 border-color: {theme_hex};

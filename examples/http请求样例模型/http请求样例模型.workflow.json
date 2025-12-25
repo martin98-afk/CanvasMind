@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1e5a8947250": {
+      "0x29802cbce20": {
         "type_": "dynamic.StatusDynamicNode_c423384e-7e12-4cf4-8593-1d1390e294ef",
         "icon": null,
         "name": "HTTP 请求客户端",
@@ -34,10 +34,10 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 615.48,
-        "height": 559.12,
+        "width": 586.18375,
+        "height": 557.04,
         "pos": [
           692.5455126721328,
           406.30617456353974
@@ -59,7 +59,7 @@
           "params": []
         }
       },
-      "0x1e5a897fd00": {
+      "0x29802cf32e0": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/多轮对话.svg",
         "name": "文本输入",
@@ -84,7 +84,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 446.20000000000005,
+        "width": 444.01500000000004,
         "height": 265.84000000000003,
         "pos": [
           -1424.426380529882,
@@ -100,7 +100,7 @@
           "input": "qwen3-30b-a3b"
         }
       },
-      "0x1e5a89c02b0": {
+      "0x29802cf3910": {
         "type_": "dynamic.StatusDynamicNode_1b755204-171f-4c4b-b9a5-ab224a8eb93b",
         "icon": null,
         "name": "文本包装JSON",
@@ -125,7 +125,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 398.36,
+        "width": 392.15000000000003,
         "height": 100.48,
         "pos": [
           -633.42170934626,
@@ -141,7 +141,7 @@
           "prop_0": "model"
         }
       },
-      "0x1e5a89c0730": {
+      "0x29802cf3ee0": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/多轮对话.svg",
         "name": "文本输入 1",
@@ -166,7 +166,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 468.28000000000003,
+        "width": 463.70875,
         "height": 265.84000000000003,
         "pos": [
           -1442.965552510748,
@@ -182,7 +182,7 @@
           "input": "0.7"
         }
       },
-      "0x1e5a89c1810": {
+      "0x29802d545b0": {
         "type_": "dynamic.StatusDynamicNode_c49e88c5-4a60-4118-a6ae-f32439ef6537",
         "icon": null,
         "name": "数值包装JSON",
@@ -207,7 +207,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 398.36,
+        "width": 392.15000000000003,
         "height": 100.48,
         "pos": [
           -602.5230893781496,
@@ -223,7 +223,7 @@
           "prop_0": "temperature"
         }
       },
-      "0x1e5a8af64a0": {
+      "0x29802d54be0": {
         "type_": "dynamic.StatusDynamicNode_8ba6c49f-06ab-40d3-8543-c69ce14bfafe",
         "icon": null,
         "name": "构建多轮对话",
@@ -248,8 +248,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 553.84,
-        "height": 167.04,
+        "width": 548.7225,
+        "height": 166.0,
         "pos": [
           -1344.0899686127955,
           803.364119170866
@@ -269,7 +269,7 @@
           ]
         }
       },
-      "0x1e5a897d510": {
+      "0x29802d54fa0": {
         "type_": "dynamic.StatusDynamicNode_eb0da7b4-2969-4b03-b87a-3cf8221e0160",
         "icon": null,
         "name": "JSON包装JSON",
@@ -294,7 +294,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 402.04,
+        "width": 392.89750000000004,
         "height": 100.48,
         "pos": [
           -661.230467317559,
@@ -310,7 +310,7 @@
           "prop_0": "messages"
         }
       },
-      "0x1e5a8b277f0": {
+      "0x29802d55db0": {
         "type_": "dynamic.StatusDynamicNode_75159f76-6474-42eb-bd53-27315574519e",
         "icon": null,
         "name": "请求体合并",
@@ -335,7 +335,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 201.48000000000002,
+        "width": 202.83125,
         "height": 69.28,
         "pos": [
           157.1469245811379,
@@ -354,88 +354,88 @@
     "connections": [
       {
         "in": [
-          "0x1e5a8947250",
+          "0x29802cbce20",
           "request_body"
         ],
         "out": [
-          "0x1e5a8b277f0",
+          "0x29802d55db0",
           "request_bodies"
         ]
       },
       {
         "out": [
-          "0x1e5a897fd00",
+          "0x29802cf32e0",
           "text"
         ],
         "in": [
-          "0x1e5a89c02b0",
+          "0x29802cf3910",
           "input1"
         ]
       },
       {
         "out": [
-          "0x1e5a89c02b0",
+          "0x29802cf3910",
           "output1"
         ],
         "in": [
-          "0x1e5a8b277f0",
+          "0x29802d55db0",
           "request_body"
         ]
       },
       {
         "out": [
-          "0x1e5a89c0730",
+          "0x29802cf3ee0",
           "text"
         ],
         "in": [
-          "0x1e5a89c1810",
+          "0x29802d545b0",
           "input1"
         ]
       },
       {
         "out": [
-          "0x1e5a89c1810",
+          "0x29802d545b0",
           "output1"
         ],
         "in": [
-          "0x1e5a8b277f0",
+          "0x29802d55db0",
           "request_body"
         ]
       },
       {
         "out": [
-          "0x1e5a8af64a0",
+          "0x29802d54be0",
           "output1"
         ],
         "in": [
-          "0x1e5a897d510",
+          "0x29802d54fa0",
           "input1"
         ]
       },
       {
         "out": [
-          "0x1e5a897d510",
+          "0x29802d54fa0",
           "output1"
         ],
         "in": [
-          "0x1e5a8b277f0",
+          "0x29802d55db0",
           "request_body"
         ]
       }
     ]
   },
   "runtime": {
-    "environment": "3.11",
-    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.11\\python.exe",
+    "environment": "3.13",
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.13\\python.exe",
     "node_id2stable_key": {
-      "0x1e5a8947250": "c423384e-7e12-4cf4-8593-1d1390e294ef||HTTP 请求客户端",
-      "0x1e5a897fd00": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入",
-      "0x1e5a89c02b0": "1b755204-171f-4c4b-b9a5-ab224a8eb93b||文本包装JSON",
-      "0x1e5a89c0730": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1",
-      "0x1e5a89c1810": "c49e88c5-4a60-4118-a6ae-f32439ef6537||数值包装JSON",
-      "0x1e5a8af64a0": "8ba6c49f-06ab-40d3-8543-c69ce14bfafe||构建多轮对话",
-      "0x1e5a897d510": "eb0da7b4-2969-4b03-b87a-3cf8221e0160||JSON包装JSON",
-      "0x1e5a8b277f0": "75159f76-6474-42eb-bd53-27315574519e||请求体合并"
+      "0x29802cbce20": "c423384e-7e12-4cf4-8593-1d1390e294ef||HTTP 请求客户端",
+      "0x29802cf32e0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入",
+      "0x29802cf3910": "1b755204-171f-4c4b-b9a5-ab224a8eb93b||文本包装JSON",
+      "0x29802cf3ee0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1",
+      "0x29802d545b0": "c49e88c5-4a60-4118-a6ae-f32439ef6537||数值包装JSON",
+      "0x29802d54be0": "8ba6c49f-06ab-40d3-8543-c69ce14bfafe||构建多轮对话",
+      "0x29802d54fa0": "eb0da7b4-2969-4b03-b87a-3cf8221e0160||JSON包装JSON",
+      "0x29802d55db0": "75159f76-6474-42eb-bd53-27315574519e||请求体合并"
     },
     "node_states": {
       "c423384e-7e12-4cf4-8593-1d1390e294ef||HTTP 请求客户端": "success",
