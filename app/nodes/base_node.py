@@ -223,10 +223,14 @@ class BasicNodeWithGlobalProperty(NodeObject):
         w.show()
 
     def set_output_value(self, port_name, value):
+        if self._output_values is None:
+            self._output_values = {}
         self._output_values[port_name] = value
 
     def clear_output_value(self):
         self._output_values = {}
 
     def get_output_value(self, port_name):
+        if self._output_values is None:
+            return None
         return self._output_values.get(port_name)

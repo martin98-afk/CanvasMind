@@ -7,6 +7,7 @@ import os
 import sys
 import threading
 import traceback
+from collections import defaultdict
 from pathlib import Path
 from typing import Tuple, Dict, Type, Optional, List
 
@@ -46,7 +47,7 @@ class ComponentUsageTracker:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._index: Dict[str, List[UsageRecord]] = {}
+            cls._instance._index: Dict[str, List[UsageRecord]] = defaultdict(list)
             cls._running = False
             if HAS_WATCHFILES:
                 cls._instance._start_watcher()
@@ -89,23 +90,17 @@ class ComponentUsageTracker:
                 data = json.load(f)
             nodes = data.get("graph", {}).get("nodes", {})
             runtime = data.get("runtime", {})
-            stable_key_map = runtime.get("node_id2stable_key", {})
-
             # 清理该画布旧记录（用绝对路径）
             await self._remove_canvas(canvas_path)
 
             for node_id, node_data in nodes.items():
                 version = node_data.get("custom", {}).get("version", "latest")
-                node_name = node_data.get("name", "Unknown")
-                stable_key = stable_key_map.get(node_id, "")
-                full_path = stable_key.split("||")[0] if "||" in stable_key else ""
-                if not full_path:
+                node_name = node_data.get("name", "")
+                if "StatusDynamicNode_" not in node_data.get("type_", "Unknown"):
                     continue
-
-                if full_path not in self._index:
-                    self._index[full_path] = []
+                node_uuid = node_data.get("type_", "Unknown").split("StatusDynamicNode_")[1]
                 # 存储绝对路径
-                self._index[full_path].append(UsageRecord(canvas_path, node_name, version))
+                self._index[node_uuid].append(UsageRecord(canvas_path, node_name, version))
         except Exception as e:
             logger.warning(f"解析画布失败 {canvas_path}: {e}")
 
@@ -116,8 +111,8 @@ class ComponentUsageTracker:
             # 使用 Path.resolve() 后，== 可正确比较同一文件
             records[:] = [r for r in records if r.canvas_path != canvas_path]
 
-    def get_usage(self, full_path: str) -> List[UsageRecord]:
-        return self._index.get(full_path, [])
+    def get_usage(self, node_uuid: str) -> List[UsageRecord]:
+        return self._index.get(node_uuid, [])
 
 
 # === 原 ComponentScanner 保持不变（略作清理）===
@@ -425,6 +420,7 @@ class ComponentScanner:
 
         comp_cls._version = version
         comp_cls._source_file = py_file
+        comp_cls.uuid = py_file.stem
         comp_cls._is_fallback = is_fallback
 
         hist_path = ComponentHistoryManager.get_history_file_path(py_file)

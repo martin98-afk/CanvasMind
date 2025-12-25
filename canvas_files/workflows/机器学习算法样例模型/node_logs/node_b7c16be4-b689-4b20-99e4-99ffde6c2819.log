@@ -23,3 +23,52 @@
 [2025-12-25 11:12:47] run-71 INFO: solver='newton-cg' max_iter=100
 [2025-12-25 11:12:47] run-86 INFO: Model accuracy: 0.9733
 [2025-12-25 11:12:47] <module>-108 SUCCESS: 节点执行完成
+[2025-12-25 15:18:18] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-25 15:18:18] <module>-102 INFO: 开始执行组件
+[2025-12-25 15:18:21] run-71 INFO: solver='newton-cg' max_iter=100
+[2025-12-25 15:18:22] run-86 INFO: Model accuracy: 0.9733
+[2025-12-25 15:18:22] <module>-108 SUCCESS: 节点执行完成
+[2025-12-25 15:34:58] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-25 15:34:58] <module>-102 INFO: 开始执行组件
+[2025-12-25 15:34:59] run-71 INFO: solver='newton-cg' max_iter=100
+[2025-12-25 15:34:59] run-94 ERROR: Error in LogisticRegressionComponent: y should be a 1d array, got an array of shape (150, 5) instead.
+EXECUTION_ERROR: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+  File "D:\work\WorkFlowGUI\app\components\模型训练\2493f13f-9a89-44a5-8aa6-fe201d4886f9.py", line 95, in run
+    raise e
+  File "D:\work\WorkFlowGUI\app\components\模型训练\2493f13f-9a89-44a5-8aa6-fe201d4886f9.py", line 80, in run
+    model.fit(feature, target)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\base.py", line 1336, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File "D:\work\WorkFlowGUI\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\linear_model\_logistic.py", line 1191, in fit
+    X, y = validate_data(
+           ~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<5 lines>...
+        accept_large_sparse=solver not in ["liblinear", "sag", "saga"],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\work\WorkFlowGUI\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\utils\validation.py", line 2919, in validate_data
+    X, y = check_X_y(X, y, **check_params)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\utils\validation.py", line 1331, in check_X_y
+    y = _check_y(y, multi_output=multi_output, y_numeric=y_numeric, estimator=estimator)
+  File "D:\work\WorkFlowGUI\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\utils\validation.py", line 1352, in _check_y
+    y = column_or_1d(y, warn=True)
+  File "D:\work\WorkFlowGUI\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\utils\validation.py", line 1434, in column_or_1d
+    raise ValueError(
+        "y should be a 1d array, got an array of shape {} instead.".format(shape)
+    )
+ValueError: y should be a 1d array, got an array of shape (150, 5) instead.
+
+an array of shape (150, 5) instead.
+
+[2025-12-25 15:36:27] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-25 15:36:27] <module>-102 INFO: 开始执行组件
+[2025-12-25 15:36:28] run-71 INFO: solver='newton-cg' max_iter=100
+[2025-12-25 15:36:28] run-86 INFO: Model accuracy: 0.9733
+[2025-12-25 15:36:28] <module>-108 SUCCESS: 节点执行完成

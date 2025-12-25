@@ -6,10 +6,11 @@ from pathlib import Path
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt
 from PyQt5.QtWidgets import QProgressDialog, QApplication
 
-from app.utils.threading_utils import WorkflowLoader, ThumbnailGenerator
+from app.scan_components import ComponentScanner
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from .logger import get_logger
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
+from .utils import ThumbnailGenerator, WorkflowLoader
 
 logger = get_logger("CanvasIO")
 
@@ -39,10 +40,17 @@ class CanvasIO(QObject):
             "node_outputs": {},
             "column_select": {}
         }
-
+        # for node in self.graph.all_nodes():
+            # node_comp_cls = ComponentScanner().get_component(getattr(node, 'FULL_PATH', 'unknown'))
+            # if node_comp_cls is None:
+            #     continue
+            # category, name = node.FULL_PATH.split("/")
+            # for node_data in graph_data["nodes"].values():
+            #     if "StatusDynamicNode_" in node_data["type_"] and node_data["type_"].split("StatusDynamicNode_")[1] == f"{category}_{name}":
+            #         node_data["type_"] = "dynamic.StatusDynamicNode_" + node_comp_cls.uuid
         for node in self.graph.all_nodes():
-            full_path = getattr(node, 'FULL_PATH', 'unknown')
-            stable_key = f"{full_path}||{node.name()}"
+            node_comp_cls = ComponentScanner().get_component(getattr(node, 'FULL_PATH', 'unknown'))
+            stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"
             runtime["node_id2stable_key"][node.id] = stable_key
             runtime["node_states"][stable_key] = self.node_status.get(node.id, "unrun")
             runtime["node_inputs"][stable_key] = getattr(node, '_input_values', {})
@@ -129,13 +137,16 @@ class CanvasIO(QObject):
                     break
 
         for node in self.graph.all_nodes():
-            full_path = getattr(node, 'FULL_PATH', 'unknown')
-            stable_key = f"{full_path}||{node.name()}"
+            node_comp_cls = ComponentScanner().get_component(getattr(node, 'FULL_PATH', 'unknown'))
+            stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"
             node_status = node_status_data.get(stable_key, {})
-            node._input_values = deserialize_from_json(node_status.get("node_inputs", {}))
-            node._output_values = deserialize_from_json(node_status.get("node_outputs", {}))
-            node.column_select = node_status.get("column_select", {})
-            custom_props = node_status.get("custom_property", {})
+            node_inputs = node_status.get("node_inputs", {}) if node_status.get("node_inputs", {}) else {}
+            node_outputs = node_status.get("node_outputs", {}) if node_status.get("node_outputs", {}) else {}
+            column_select = node_status.get("column_select", {}) if node_status.get("column_select", {}) else {}
+            custom_props = node_status.get("custom_property", {}) if node_status.get("custom_property", {}) else {}
+            node._input_values = deserialize_from_json(node_inputs)
+            node._output_values = deserialize_from_json(node_outputs)
+            node.column_select = column_select
             for key, value in custom_props.items():
                 if not node.has_property(key):
                     node.create_property(key, value)

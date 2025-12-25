@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "YOLO 关键点检测训练"
     category = "模型训练"
     description = "YOLO关键点检测训练组件用于基于YOLOv8关键点检测模型对标准YOLO格式数据集（含train/val图像与标签）进行训练，输入为数据集ZIP文件或目录及可选预训练模型文件，输出为训练好的模型文件（.pt）和包含预测结果的验证图像，参数包括模型类型、训练轮数、批量大小、图像尺寸、运行设备和任务类型等可配置项。"
-    requirements = "Pillow,torch,ultralytics"
+    requirements = "torch,Pillow,ultralytics"
     inputs = [
         PortDefinition(name="dataset_dir", label="数据集目录", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
         PortDefinition(name="pre_model", label="预训练模型", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
@@ -33,7 +33,7 @@ class Component(BaseComponent):
             type=PropertyType.CHOICE,
             default="yolov8n-pose.pt",
             label="预训练模型",
-            choices=["yolov8n-pose.pt", "yolov8s-pose.pt", "yolov8m-pose.pt", "yolov8l-pose.pt", "yolov8x-pose.pt"]
+            choices=["yolov8n-pose.pt", "yolov8s-pose.pt", "yolov8m-pose.pt", "yolov8l-pose.pt", "yolov8x-pose.pt", "yolov8n.pt"]
         ),
         "epochs": PropertyDefinition(
             type=PropertyType.INT,

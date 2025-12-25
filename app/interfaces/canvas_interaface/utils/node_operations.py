@@ -73,11 +73,9 @@ class NodeOperations:
             node_class_names = []
             # 普通节点
             for full_path, comp_cls in component_map.items():
-                safe_name = (full_path.replace("/", "_").replace(" ", "_").
-                             replace("-", "_"))
                 node_class = create_node_class(full_path, file_map.get(full_path), self.parent)
                 node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
-                node_class.__name__ = f"StatusDynamicNode_{safe_name}"
+                node_class.__name__ = f"StatusDynamicNode_{comp_cls.uuid}"
                 node_class_names.append(node_class.__name__)
                 self.graph.register_node(node_class)
                 self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
