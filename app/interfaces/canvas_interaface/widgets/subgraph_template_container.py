@@ -194,25 +194,26 @@ class SubgraphTemplatePanel(QWidget):
 
         # 名称 + 操作按钮
         btn_layout = QHBoxLayout()
+        btn_layout.setContentsMargins(0, 0, 0, 0)
+        btn_layout.setSpacing(0)
         name_label = StrongBodyLabel(name)
         name_label.setWordWrap(True)
         btn_layout.addWidget(name_label, 1)
-        btn_layout.addSpacing(2)
+        btn_layout.addStretch()
 
         apply_btn = TransparentToolButton(get_icon("导入"), self)
         apply_btn.setIconSize(QSize(16, 16))
-        apply_btn.setFixedSize(32, 32)
+        apply_btn.setFixedSize(28, 28)
         apply_btn.setToolTip("应用模板")
         apply_btn.clicked.connect(lambda _, t=tid: self.apply_template(t))
 
         delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
         delete_btn.setIconSize(QSize(16, 16))
-        delete_btn.setFixedSize(32, 32)
+        delete_btn.setFixedSize(28, 28)
         delete_btn.setToolTip("删除模板")
         delete_btn.clicked.connect(lambda _, t=tid: self.delete_template(t))
 
         btn_layout.addWidget(delete_btn)
-        btn_layout.addSpacing(1)
         btn_layout.addWidget(apply_btn)
         layout.addLayout(btn_layout)
 

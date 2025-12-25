@@ -1,1 +1,4 @@
 pyinstaller --onedir --add-data "app;app" --add-data "logo.png;logo.png" --add-data "envs/Miniconda3-py311_23.11.0-2-Windows-x86_64.exe;envs" --add-data ".venv/Lib/site-packages/spyder;spyder" --add-data "resource;resource" --add-data "examples;examples" --copy-metadata jupyter_client --hidden-import jupyter_client.provisioning.local --hidden-import ipykernel -i logo.png --windowed main.py
+
+
+python -m nuitka --standalone --include-data-dir=app=app --include-data-file=logo.png=logo.png --include-data-dir=envs=envs --include-data-dir=D:/work/NarratoAI/venv\Lib/site-packages/spyder=spyder   --include-data-dir=resource=resource   --include-data-dir=examples=examples   --include-module=jupyter_client  --include-module=ipykernel   --windows-disable-console   --windows-icon-from-ico=logo.png   main.py

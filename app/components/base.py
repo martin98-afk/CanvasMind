@@ -772,7 +772,7 @@ class DataHandler:
         model_path = temp_dir / f"model_{self.node_id}.pkl"
         with open(model_path, 'wb') as f:
             pickle.dump(model, f)
-        return str(model_path.resolve())
+        return str(model_path)
 
     def _store_torch_model(self, model: Any) -> str:
         """存储torch模型到节点专属目录"""
@@ -783,7 +783,7 @@ class DataHandler:
         model_path = temp_dir / f"model_{self.node_id}.pth"
         scripted_model = torch.jit.script(model)
         scripted_model.save(str(model_path))
-        return str(model_path.resolve())
+        return str(model_path)
 
     def _store_image_data(self, image: Any) -> str:
         """存储图像数据到节点专属目录"""
@@ -794,7 +794,7 @@ class DataHandler:
         temp_dir = self._get_node_temp_dir()
         image_path = temp_dir / f"image_{self.node_id}.png"
         image.save(image_path, 'PNG')
-        return str(image_path.resolve())
+        return str(image_path)
 
     def _store_file_data(self, data: Any, output_name: str = "output_file") -> str:
         """存储任意文件数据，使用 output_name 作为文件名"""
@@ -822,7 +822,7 @@ class DataHandler:
         else:
             # 兜底：转为字符串
             file_path.write_text(str(data), encoding='utf-8')
-        return str(file_path.resolve())
+        return str(file_path)
 
     # --- 辅助方法 ---
     def _get_node_temp_dir(self) -> Path:

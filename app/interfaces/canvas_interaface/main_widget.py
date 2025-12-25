@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 import traceback
-
 from pathlib import Path
+
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint, QTimer
-from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget
 from loguru import logger
 from qfluentwidgets import FluentIcon
@@ -27,7 +26,6 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
 from app.utils.config import Settings
-from app.utils.utils import get_icon
 from app.widgets.category_filter import CategoryFilterDialog
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 
