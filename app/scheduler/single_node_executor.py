@@ -6,6 +6,7 @@ import traceback
 from loguru import logger
 
 from app.nodes.status_node import NodeStatus
+from app.scan_components import ComponentScanner
 
 
 def register_global_variable(node, global_variable):
@@ -41,8 +42,10 @@ def execute_node(
     # 跳过 disabled 节点
     if node.get_property("disabled"):
         return None
-
-    comp_cls = component_map.get(getattr(node, "FULL_PATH", None))
+    if "StatusDynamicNode_" not in node.model.type_:
+        comp_cls = None
+    else:
+        comp_cls = ComponentScanner().get_component_by_uuid(node.uuid)
     run_id_postfix = f'@{run_id_postfix}'if run_id_postfix else ''
     # 生成 run_id
     run_id = f"{node.name()}{run_id_postfix}@{datetime.datetime.now().strftime('%H:%M:%S')}"

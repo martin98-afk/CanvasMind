@@ -27,6 +27,9 @@ class IPythonConsoleToolWindow(ToolWindow):
     def stop_kernel(self):
         self.console.stop_kernel()
 
+    def restart_kernel(self):
+        self.console.restart_kernel()
+
     def execute_code(self, code: str, hidden: bool= False):
         self.console.execute_code(code, hidden)
 

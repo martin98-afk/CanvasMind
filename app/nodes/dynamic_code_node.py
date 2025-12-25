@@ -473,7 +473,7 @@ def create_dynamic_code_node(parent_window=None):
                     error_path=error_path,
                     log_file_path=log_file_path,
                     node_id=self.persistent_id,
-                    workflow_name=parent_window.workflow_name
+                    workflow_path=parent_window.workflow_name
                 )
                 with open(temp_script_path, 'w', encoding='utf-8') as f:
                     f.write(script_content)
@@ -515,6 +515,11 @@ def create_dynamic_code_node(parent_window=None):
 
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
+                    try:
+                        kernel_manager.restart_kernel()  # now=True 表示立即重启（不等待）
+                        self._log_message(self.persistent_id, "✅ 内核已重启，执行已终止。")
+                    except Exception as e:
+                        self._log_message(self.persistent_id, f"⚠️ 内核重启失败: {e}")
                     raise Exception("执行被用户取消")
                 if time.time() - start_time > timeout:
                     raise Exception("❌ 节点执行超时（5分钟）")

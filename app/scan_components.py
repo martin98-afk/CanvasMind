@@ -136,6 +136,7 @@ def resource_path(relative_path):
 class ComponentScanner:
     _instance = None
     _cache: Optional[Tuple[Dict[str, Type], Dict[str, Path]]] = None
+    _uuid_map: Dict[str, Type] = {}
     _components_dir: Path = Path(resource_path("app/components"))
     _file_mtime_map: Dict[Path, int]
     _refresh_pending: bool = False
@@ -244,6 +245,9 @@ class ComponentScanner:
         for name in to_remove:
             del sys.modules[name]
 
+    def get_component_by_uuid(self, node_uuid: str) -> Optional[Type]:
+        return self._uuid_map.get(node_uuid)
+
     def get_components(self, force_reload: bool = False) -> Tuple[Dict[str, Type], Dict[str, Path]]:
         if self._cache is None or force_reload:
             return self.refresh()
@@ -288,6 +292,7 @@ class ComponentScanner:
             for k in keys_to_remove:
                 comp_map.pop(k, None)
                 file_map.pop(k, None)
+                self._uuid_map.pop(k, None)
             self._file_mtime_map.pop(del_file, None)
             logger.info(f"🗑️ 组件文件已删除: {del_file.name}")
 
@@ -306,6 +311,7 @@ class ComponentScanner:
             for k in keys_to_remove:
                 comp_map.pop(k, None)
                 file_map.pop(k, None)
+                self._uuid_map.pop(k, None)
 
             try:
                 self._load_single_component(py_file, comp_map, file_map)
@@ -435,3 +441,4 @@ class ComponentScanner:
 
         comp_map[full_path] = comp_cls
         file_map[full_path] = py_file
+        self._uuid_map[py_file.stem] = comp_cls
