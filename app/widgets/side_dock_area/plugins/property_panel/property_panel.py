@@ -248,14 +248,17 @@ class PropertyPanel(QWidget):
     # ========================
     # 全局变量面板（只构建一次）
     # ========================
+    def _init_global_variables_panel(self):
+        if not hasattr(self, 'global_panel_widget') or not self.global_panel_widget:
+            self.global_panel_widget = GlobalPanelWidget(self.main_window, self, self.global_vbox)
+        self.global_panel_widget.build_ui()
+
     def _show_global_variables_panel(self):
         """构建全局变量面板"""
         if self._global_panel_built:
             return
         # 委托给 GlobalPanelWidget
-        if not hasattr(self, 'global_panel_widget') or not self.global_panel_widget:
-            self.global_panel_widget = GlobalPanelWidget(self.main_window, self, self.global_vbox)
-        self.global_panel_widget.build_ui()
+        self._init_global_variables_panel()
         self._global_panel_built = True
 
     # ========================
@@ -308,6 +311,8 @@ class PropertyPanel(QWidget):
         self.global_panel_widget.delete_output_from_global_var(self.main_window, node, port_name)
 
     def _is_output_in_global_variable(self, node, port_name: str):
+        if not hasattr(self, 'global_panel_widget') or not self.global_panel_widget:
+            self.global_panel_widget = GlobalPanelWidget(self.main_window, self, self.global_vbox)
         return self.global_panel_widget.is_output_in_global_var(self.main_window, node, port_name)
 
     def _refresh_node_vars_page(self):
