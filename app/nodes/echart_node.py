@@ -22,6 +22,7 @@ def create_chart_node(parent_window):
             self._node_logs = ""
             self._output_values = {}
             self._input_values = {}
+            self.view.set_align("center")
 
             # 添加输入端口（接收 HTML 字符串）
             self.add_input('html', False)
