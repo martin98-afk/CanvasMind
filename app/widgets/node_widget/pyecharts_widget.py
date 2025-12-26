@@ -46,7 +46,7 @@ class ChartWidget(QtWidgets.QWidget):
             layout.addWidget(self.fallback)
 
     def set_value(self, html: str):
-        self._html = html or "<center>无数据</center>"
+        self._html = html or ""
         if HAS_WEBENGINE:
             self.view.setHtml(self._html, QtCore.QUrl("https://chart.local/"))
             content_w, content_h = self._extract_size_from_html(html)
@@ -60,8 +60,8 @@ class ChartWidget(QtWidgets.QWidget):
         width_match = re.search(r'width\s*:\s*(\d+)px', html, re.IGNORECASE)
         height_match = re.search(r'height\s*:\s*(\d+)px', html, re.IGNORECASE)
 
-        width = int(width_match.group(1)) if width_match else 700
-        height = int(height_match.group(1)) if height_match else 500
+        width = int(width_match.group(1)) if width_match else 200
+        height = int(height_match.group(1)) if height_match else 150
         # 添加内边距（避免贴边）
         padding_w = 20
         padding_h = 20  # 标题栏高度

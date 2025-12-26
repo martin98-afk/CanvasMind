@@ -1,0 +1,55 @@
+[2025-12-26 17:27:27] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:27:27] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:27:28] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 17:27:50] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:27:50] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:27:50] <module>-131 ERROR: 执行异常: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\app\components\数据可视化\f946ed63-36ae-4da3-8a3b-de6d0d80cf01.py", line 160, in run
+    chart.add(name, scatter_data)
+    ^^^^^^^^^
+AttributeError: 'Scatter' object has no attribute 'add'
+
+[2025-12-26 17:30:15] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:30:15] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:30:15] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 17:30:59] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:30:59] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:30:59] <module>-131 ERROR: 执行异常: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\app\components\数据可视化\f946ed63-36ae-4da3-8a3b-de6d0d80cf01.py", line 160, in run
+    chart.add_yaxis(name, scatter_data)
+                          ^^^^^^^^^^^^
+NameError: name 'scatter_data' is not defined
+
+EXECUTION_ERROR: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\app\components\数据可视化\f946ed63-36ae-4da3-8a3b-de6d0d80cf01.py", line 160, in run
+    chart.add_yaxis(name, scatter_data)
+                          ^^^^^^^^^^^^
+NameError: name 'scatter_data' is not defined
+
+[2025-12-26 17:31:24] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:31:24] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:31:24] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 17:31:46] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:31:46] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:31:46] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 17:34:44] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:34:44] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:34:45] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 17:37:13] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:37:13] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:37:13] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 17:37:29] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:37:29] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:37:29] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 17:38:27] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:38:27] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:38:27] <module>-108 SUCCESS: 节点执行完成

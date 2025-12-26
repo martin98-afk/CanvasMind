@@ -1,0 +1,130 @@
+[2025-12-26 13:56:31] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 13:56:31] <module>-102 INFO: 开始执行组件
+EXECUTION_ERROR: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\app\components\数据可视化\f946ed63-36ae-4da3-8a3b-de6d0d80cf01.py", line 66, in run
+    if y_parsed and not isinstance(y_parsed[0], list):
+ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+
+[2025-12-26 13:56:31] <module>-131 ERROR: 执行异常: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\app\components\数据可视化\f946ed63-36ae-4da3-8a3b-de6d0d80cf01.py", line 66, in run
+    if y_parsed and not isinstance(y_parsed[0], list):
+ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+
+[2025-12-26 14:01:58] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:01:58] <module>-102 INFO: 开始执行组件
+EXECUTION_ERROR: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\app\components\数据可视化\f946ed63-36ae-4da3-8a3b-de6d0d80cf01.py", line 88, in run
+    if y_data_raw and isinstance(y_data_raw[0], (list, tuple, np.ndarray)):
+                                                              ^^
+NameError: name 'np' is not defined
+
+NameError: name 'np' is not defined
+
+[2025-12-26 14:02:21] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:02:21] <module>-102 INFO: 开始执行组件
+[2025-12-26 14:02:21] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 14:02:58] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:02:58] <module>-102 INFO: 开始执行组件
+[2025-12-26 14:02:59] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 14:04:05] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:04:05] <module>-102 INFO: 开始执行组件
+[2025-12-26 14:04:06] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 14:04:38] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:04:38] <module>-102 INFO: 开始执行组件
+[2025-12-26 14:04:39] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 14:04:59] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:04:59] <module>-102 INFO: 开始执行组件
+[2025-12-26 14:04:59] <module>-131 ERROR: 执行异常: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\app\components\数据可视化\f946ed63-36ae-4da3-8a3b-de6d0d80cf01.py", line 139, in run
+    chart.add(name, scatter_data)
+    ^^^^^^^^^
+AttributeError: 'Scatter' object has no attribute 'add'
+
+EXECUTION_ERROR: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\app\components\数据可视化\f946ed63-36ae-4da3-8a3b-de6d0d80cf01.py", line 139, in run
+    chart.add(name, scatter_data)
+    ^^^^^^^^^
+AttributeError: 'Scatter' object has no attribute 'add'
+
+[2025-12-26 14:05:09] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:05:09] <module>-102 INFO: 开始执行组件
+[2025-12-26 14:05:10] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 14:06:29] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:06:29] <module>-102 INFO: 开始执行组件
+[2025-12-26 14:06:29] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 14:09:49] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:09:49] <module>-102 INFO: 开始执行组件
+[2025-12-26 14:09:49] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 14:16:12] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:16:12] <module>-102 INFO: 开始执行组件
+[2025-12-26 14:16:12] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 14:24:27] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:24:27] <module>-102 INFO: 开始执行组件
+[2025-12-26 14:24:27] <module>-131 ERROR: 执行异常: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\app\components\数据可视化\f946ed63-36ae-4da3-8a3b-de6d0d80cf01.py", line 104, in run
+    theme=ThemeType.DARK,          # ← 启用深色主题
+          ^^^^^^^^^
+NameError: name 'ThemeType' is not defined
+
+EXECUTION_ERROR: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\app\components\数据可视化\f946ed63-36ae-4da3-8a3b-de6d0d80cf01.py", line 104, in run
+    theme=ThemeType.DARK,          # ← 启用深色主题
+          ^^^^^^^^^
+NameError: name 'ThemeType' is not defined
+
+[2025-12-26 14:25:06] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:25:06] <module>-102 INFO: 开始执行组件
+[2025-12-26 14:25:07] <module>-131 ERROR: 执行异常: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\app\components\数据可视化\f946ed63-36ae-4da3-8a3b-de6d0d80cf01.py", line 171, in run
+    axisline_opts=opts.AxisLineOpts(line_style=opts.LineStyleOpts(color="#555555")),
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: AxisLineOpts.__init__() got an unexpected keyword argument 'line_style'
+
+EXECUTION_ERROR: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\WorkFlowGUI\app\components\base.py", line 1015, in execute
+    result = self.run(validated_params, validated_inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\work\WorkFlowGUI\app\components\数据可视化\f946ed63-36ae-4da3-8a3b-de6d0d80cf01.py", line 171, in run
+    axisline_opts=opts.AxisLineOpts(line_style=opts.LineStyleOpts(color="#555555")),
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: AxisLineOpts.__init__() got an unexpected keyword argument 'line_style'
+
+[2025-12-26 14:26:34] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 14:26:34] <module>-102 INFO: 开始执行组件
+[2025-12-26 14:26:35] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 17:25:36] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:25:36] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:25:37] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 17:25:49] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:25:49] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:25:49] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 17:37:56] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:37:56] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:37:57] <module>-108 SUCCESS: 节点执行完成
+[2025-12-26 17:38:09] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-26 17:38:09] <module>-102 INFO: 开始执行组件
+[2025-12-26 17:38:09] <module>-108 SUCCESS: 节点执行完成
