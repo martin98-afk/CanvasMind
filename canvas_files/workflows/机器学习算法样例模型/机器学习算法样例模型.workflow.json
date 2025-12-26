@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x2730581f460": {
+      "0x20c0aa66b00": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传",
@@ -51,7 +51,7 @@
           "debug_code": null
         }
       },
-      "0x2730861aad0": {
+      "0x20c0aa67cd0": {
         "type_": "dynamic.StatusDynamicNode_a1b716b5-35e3-4885-b907-01ed113f2279",
         "icon": null,
         "name": "输入array",
@@ -92,7 +92,7 @@
           "param1": "1,2,3,4"
         }
       },
-      "0x2730586b250": {
+      "0x20c0aaff4f0": {
         "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
         "icon": null,
         "name": "逻辑回归推理(npy)",
@@ -151,7 +151,7 @@
           "debug_code": null
         }
       },
-      "0x2730586a4a0": {
+      "0x20c0aaff6d0": {
         "type_": "dynamic.StatusDynamicNode_c41d7b30-7d50-4765-a806-844d54021fdb",
         "icon": null,
         "name": "MinMax归一化",
@@ -191,7 +191,7 @@
           "debug_code": null
         }
       },
-      "0x27305869c30": {
+      "0x20c0aaff940": {
         "type_": "dynamic.StatusDynamicNode_2c162fc3-2275-4f49-aeac-5dd4778911e9",
         "icon": null,
         "name": "归一化推理(npy)",
@@ -250,7 +250,7 @@
           "debug_code": {}
         }
       },
-      "0x273058694b0": {
+      "0x20c0aaffb80": {
         "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
         "icon": null,
         "name": "逻辑回归推理(npy) 1",
@@ -309,7 +309,7 @@
           "debug_code": {}
         }
       },
-      "0x27305868e50": {
+      "0x20c0aaffe20": {
         "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
         "icon": null,
         "name": "逻辑回归训练",
@@ -351,7 +351,7 @@
           "max_iter": "100"
         }
       },
-      "0x2730586b5e0": {
+      "0x20c0ab18700": {
         "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
         "icon": null,
         "name": "逻辑回归训练 1",
@@ -393,7 +393,7 @@
           "max_iter": "100"
         }
       },
-      "0x27305869e70": {
+      "0x20c0ab19090": {
         "type_": "dynamic.StatusDynamicNode_generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8",
         "icon": null,
         "name": "Matplotlib画图",
@@ -442,7 +442,7 @@
           "auto_arrange": true
         }
       },
-      "0x273058d2530": {
+      "0x20c0ab1af80": {
         "type_": "dynamic.StatusDynamicNode_04f8eaf9-dafd-446a-94b2-d232bae8620a",
         "icon": null,
         "name": "sklearn模型推理(csv)",
@@ -482,7 +482,7 @@
           "debug_code": {}
         }
       },
-      "0x273058d16c0": {
+      "0x20c0ab1b1f0": {
         "type_": "dynamic.StatusDynamicNode_26f404b9-0029-4f8b-8abc-0740ecad423b",
         "icon": null,
         "name": "CSV读取器",
@@ -522,7 +522,7 @@
           "debug_code": null
         }
       },
-      "0x273058d3460": {
+      "0x20c0ab1b3d0": {
         "type_": "dynamic.StatusDynamicNode_e42b5e46-56d9-4089-9b4d-5f2b24802fef",
         "icon": null,
         "name": "模型评估",
@@ -564,7 +564,7 @@
           "average": "micro"
         }
       },
-      "0x273c50568f0": {
+      "0x20c0ab1baf0": {
         "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
         "icon": null,
         "name": "csv转npy 1",
@@ -590,7 +590,7 @@
         "selected": false,
         "visible": true,
         "width": 186.99,
-        "height": 81.76,
+        "height": 104.64,
         "pos": [
           797.170733184895,
           422.36379929114787
@@ -604,7 +604,7 @@
           "debug_code": {}
         }
       },
-      "0x273c50573a0": {
+      "0x20c0ab1bdf0": {
         "type_": "dynamic.StatusDynamicNode_076e8486-c5ea-491d-ac67-99987a622dd5",
         "icon": null,
         "name": "随机森林分类训练",
@@ -651,7 +651,7 @@
           "n_jobs": "-1"
         }
       },
-      "0x273253f1c30": {
+      "0x20c0ab91bd0": {
         "type_": "dynamic.StatusDynamicNode_f946ed63-36ae-4da3-8a3b-de6d0d80cf01",
         "icon": null,
         "name": "通用ECharts图表绘制",
@@ -674,7 +674,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 522.35875,
         "height": 290.8,
@@ -688,14 +688,14 @@
         "custom": {
           "persistent_id": "36008b50-52b8-4644-a883-ba2a83b38920",
           "version": "latest",
-          "debug_code": {},
+          "debug_code": null,
           "chart_type": "bar",
           "title": "",
           "widt": 1000.0,
           "heigh": 300.0
         }
       },
-      "0x27325411ff0": {
+      "0x20c0ab92b60": {
         "type_": "visualize.EchartsNode",
         "icon": ":/icons/图表",
         "name": "HTML 图表",
@@ -734,7 +734,7 @@
           "chart_display": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"f6712b67c5544226843bd65eb5be653a\" class=\"chart-container\" style=\"width:1000px; height:300px; \"></div>\n    <script>\n        var chart_f6712b67c5544226843bd65eb5be653a = echarts.init(\n            document.getElementById('f6712b67c5544226843bd65eb5be653a'), 'dark', {renderer: 'canvas', locale: 'ZH'});\n        var option_f6712b67c5544226843bd65eb5be653a = {\n    \"backgroundColor\": \"transparent\",\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u7cfb\\u52171\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u7cfb\\u52171\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"textStyle\": {\n                \"color\": \"#cccccc\"\n            },\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"color\": \"#000000\"\n        },\n        \"backgroundColor\": \"#ffffff\",\n        \"borderColor\": \"#666666\",\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"type\": \"category\",\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                0,\n                1,\n                2,\n                3,\n                4,\n                5,\n                6,\n                7,\n                8,\n                9,\n                10,\n                11,\n                12,\n                13,\n                14,\n                15,\n                16,\n                17,\n                18,\n                19,\n                20,\n                21,\n                22,\n                23,\n                24,\n                25,\n                26,\n                27,\n                28,\n                29,\n                30,\n                31,\n                32,\n                33,\n                34,\n                35,\n                36,\n                37,\n                38,\n                39,\n                40,\n                41,\n                42,\n                43,\n                44,\n                45,\n                46,\n                47,\n                48,\n                49,\n                50,\n                51,\n                52,\n                53,\n                54,\n                55,\n                56,\n                57,\n                58,\n                59,\n                60,\n                61,\n                62,\n                63,\n                64,\n                65,\n                66,\n                67,\n                68,\n                69,\n                70,\n                71,\n                72,\n                73,\n                74,\n                75,\n                76,\n                77,\n                78,\n                79,\n                80,\n                81,\n                82,\n                83,\n                84,\n                85,\n                86,\n                87,\n                88,\n                89,\n                90,\n                91,\n                92,\n                93,\n                94,\n                95,\n                96,\n                97,\n                98,\n                99,\n                100,\n                101,\n                102,\n                103,\n                104,\n                105,\n                106,\n                107,\n                108,\n                109,\n                110,\n                111,\n                112,\n                113,\n                114,\n                115,\n                116,\n                117,\n                118,\n                119,\n                120,\n                121,\n                122,\n                123,\n                124,\n                125,\n                126,\n                127,\n                128,\n                129,\n                130,\n                131,\n                132,\n                133,\n                134,\n                135,\n                136,\n                137,\n                138,\n                139,\n                140,\n                141,\n                142,\n                143,\n                144,\n                145,\n                146,\n                147,\n                148,\n                149\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#333333\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false,\n            \"textStyle\": {\n                \"color\": \"#ffffff\"\n            }\n        }\n    ],\n    \"toolbox\": {\n        \"show\": false,\n        \"orient\": \"horizontal\",\n        \"itemSize\": 15,\n        \"itemGap\": 10,\n        \"left\": \"80%\",\n        \"feature\": {\n            \"saveAsImage\": {\n                \"type\": \"png\",\n                \"backgroundColor\": \"auto\",\n                \"connectedBackgroundColor\": \"#fff\",\n                \"show\": true,\n                \"pixelRatio\": 1\n            },\n            \"restore\": {\n                \"show\": true\n            },\n            \"dataView\": {\n                \"show\": true,\n                \"readOnly\": false,\n                \"backgroundColor\": \"#fff\",\n                \"textareaColor\": \"#fff\",\n                \"textareaBorderColor\": \"#333\",\n                \"textColor\": \"#000\",\n                \"buttonColor\": \"#c23531\",\n                \"buttonTextColor\": \"#fff\"\n            },\n            \"dataZoom\": {\n                \"show\": true,\n                \"title\": {},\n                \"icon\": {},\n                \"filterMode\": \"filter\"\n            },\n            \"magicType\": {\n                \"show\": true,\n                \"type\": [\n                    \"line\",\n                    \"bar\",\n                    \"stack\",\n                    \"tiled\"\n                ],\n                \"title\": {},\n                \"icon\": {}\n            }\n        }\n    }\n};\n        chart_f6712b67c5544226843bd65eb5be653a.setOption(option_f6712b67c5544226843bd65eb5be653a);\n    </script>\n</body>\n</html>\n"
         }
       },
-      "0x2732b22b370": {
+      "0x20c0aba88b0": {
         "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
         "icon": null,
         "name": "csv转npy 2",
@@ -797,256 +797,360 @@
           "version": "latest",
           "debug_code": null
         }
+      },
+      "0x20c0c8a3b20": {
+        "type_": "dynamic.DYNAMIC_CODE",
+        "icon": ":/icons/代码执行",
+        "name": "代码编辑",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 812.015,
+        "height": 736.96,
+        "pos": [
+          1016.2298631280605,
+          1586.4046336617425
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "html",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "persistent_id": "7cd7821c-2a7f-4ec5-b3ca-0a8d4ed1a18c",
+          "input_ports": [],
+          "output_ports": [
+            {
+              "name": "html",
+              "type": "文本"
+            }
+          ],
+          "glue_code_template": "default:空白模板",
+          "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    from pyecharts.charts import Bar\n    from pyecharts import options as opts\n    \n    # V1 版本开始支持链式调用\n    bar = (\n        Bar()\n        .add_xaxis([\"衬衫\", \"毛衣\", \"领带\", \"裤子\", \"风衣\", \"高跟鞋\", \"袜子\"])\n        .add_yaxis(\"商家A\", [114, 55, 27, 101, 125, 27, 105])\n        .add_yaxis(\"商家B\", [57, 134, 137, 129, 145, 60, 49])\n        .set_global_opts(title_opts=opts.TitleOpts(title=\"某商场销售情况\"))\n    )\n    result = bar.render_embed()\n    return {\n        \"html\": result\n    }"
+        }
+      },
+      "0x20c0c8beda0": {
+        "type_": "visualize.EchartsNode",
+        "icon": ":/icons/图表",
+        "name": "echarts 图表",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 1054.9237500000002,
+        "height": 592.4,
+        "pos": [
+          1928.2448631280604,
+          1586.4046336617425
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "e88659a1-dfc5-4c5c-bbdc-431ea1b4a9a5",
+          "chart_display": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"571c37f2c62a441f980dab1dd8c88445\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_571c37f2c62a441f980dab1dd8c88445 = echarts.init(\n            document.getElementById('571c37f2c62a441f980dab1dd8c88445'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_571c37f2c62a441f980dab1dd8c88445 = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_571c37f2c62a441f980dab1dd8c88445.setOption(option_571c37f2c62a441f980dab1dd8c88445);\n    </script>\n</body>\n</html>\n"
+        }
       }
     },
     "connections": [
       {
         "out": [
-          "0x2730581f460",
+          "0x20c0aa66b00",
           "file"
         ],
         "in": [
-          "0x273058d16c0",
+          "0x20c0ab1b1f0",
           "csv"
         ]
       },
       {
         "out": [
-          "0x2730861aad0",
+          "0x20c0aa67cd0",
           "output"
         ],
         "in": [
-          "0x27305869c30",
+          "0x20c0aaff940",
           "input"
         ]
       },
       {
         "in": [
-          "0x2730586b250",
+          "0x20c0aaff4f0",
           "feature"
         ],
         "out": [
-          "0x2732b22b370",
+          "0x20c0aba88b0",
           "output"
         ]
       },
       {
         "in": [
-          "0x2730586b250",
+          "0x20c0aaff4f0",
           "model"
         ],
         "out": [
-          "0x27305868e50",
+          "0x20c0aaffe20",
           "model"
         ]
       },
       {
         "out": [
-          "0x2730586b250",
+          "0x20c0aaff4f0",
           "value"
         ],
         "in": [
-          "0x273058d3460",
+          "0x20c0ab1b3d0",
           "predictions"
         ]
       },
       {
         "in": [
-          "0x2730586a4a0",
+          "0x20c0aaff6d0",
           "input"
         ],
         "out": [
-          "0x273058d16c0",
+          "0x20c0ab1b1f0",
           "csv"
         ]
       },
       {
         "out": [
-          "0x2730586a4a0",
+          "0x20c0aaff6d0",
           "output"
         ],
         "in": [
-          "0x2730586b5e0",
+          "0x20c0ab18700",
           "feature"
         ]
       },
       {
         "out": [
-          "0x2730586a4a0",
+          "0x20c0aaff6d0",
           "scaler"
         ],
         "in": [
-          "0x27305869c30",
+          "0x20c0aaff940",
           "scaler"
         ]
       },
       {
         "out": [
-          "0x27305869c30",
+          "0x20c0aaff940",
           "output"
         ],
         "in": [
-          "0x273058694b0",
+          "0x20c0aaffb80",
           "feature"
         ]
       },
       {
         "in": [
-          "0x273058694b0",
+          "0x20c0aaffb80",
           "model"
         ],
         "out": [
-          "0x2730586b5e0",
+          "0x20c0ab18700",
           "model"
         ]
       },
       {
         "in": [
-          "0x27305868e50",
+          "0x20c0aaffe20",
           "feature"
         ],
         "out": [
-          "0x273058d16c0",
+          "0x20c0ab1b1f0",
           "csv"
         ]
       },
       {
         "in": [
-          "0x27305868e50",
+          "0x20c0aaffe20",
           "target"
         ],
         "out": [
-          "0x273058d16c0",
+          "0x20c0ab1b1f0",
           "csv"
         ]
       },
       {
         "out": [
-          "0x27305868e50",
+          "0x20c0aaffe20",
           "model"
         ],
         "in": [
-          "0x273058d2530",
+          "0x20c0ab1af80",
           "model"
         ]
       },
       {
         "in": [
-          "0x2730586b5e0",
+          "0x20c0ab18700",
           "target"
         ],
         "out": [
-          "0x273058d16c0",
+          "0x20c0ab1b1f0",
           "csv"
         ]
       },
       {
         "in": [
-          "0x27305869e70",
+          "0x20c0ab19090",
           "x"
         ],
         "out": [
-          "0x2732b22b370",
+          "0x20c0aba88b0",
           "output"
         ]
       },
       {
         "in": [
-          "0x27305869e70",
+          "0x20c0ab19090",
           "y"
         ],
         "out": [
-          "0x2732b22b370",
+          "0x20c0aba88b0",
           "output"
         ]
       },
       {
         "in": [
-          "0x273058d2530",
+          "0x20c0ab1af80",
           "feature"
         ],
         "out": [
-          "0x273058d16c0",
+          "0x20c0ab1b1f0",
           "csv"
         ]
       },
       {
         "out": [
-          "0x273058d2530",
+          "0x20c0ab1af80",
           "value"
         ],
         "in": [
-          "0x273253f1c30",
+          "0x20c0ab91bd0",
           "y_data"
         ]
       },
       {
         "out": [
-          "0x273058d16c0",
+          "0x20c0ab1b1f0",
           "csv"
         ],
         "in": [
-          "0x273c50568f0",
+          "0x20c0ab1baf0",
           "input"
         ]
       },
       {
         "out": [
-          "0x273058d16c0",
+          "0x20c0ab1b1f0",
           "csv"
         ],
         "in": [
-          "0x273c50573a0",
+          "0x20c0ab1bdf0",
           "features"
         ]
       },
       {
         "out": [
-          "0x273058d16c0",
+          "0x20c0ab1b1f0",
           "csv"
         ],
         "in": [
-          "0x273c50573a0",
+          "0x20c0ab1bdf0",
           "target"
         ]
       },
       {
         "out": [
-          "0x273058d16c0",
+          "0x20c0ab1b1f0",
           "csv"
         ],
         "in": [
-          "0x2732b22b370",
+          "0x20c0aba88b0",
           "input"
         ]
       },
       {
         "in": [
-          "0x273058d3460",
+          "0x20c0ab1b3d0",
           "true_labels"
         ],
         "out": [
-          "0x273c50568f0",
+          "0x20c0ab1baf0",
           "output"
         ]
       },
       {
         "in": [
-          "0x273253f1c30",
+          "0x20c0ab91bd0",
           "x_data"
         ],
         "out": [
-          "0x2732b22b370",
+          "0x20c0aba88b0",
           "index"
         ]
       },
       {
         "out": [
-          "0x273253f1c30",
+          "0x20c0ab91bd0",
           "output1"
         ],
         "in": [
-          "0x27325411ff0",
+          "0x20c0ab92b60",
+          "html"
+        ]
+      },
+      {
+        "out": [
+          "0x20c0c8a3b20",
+          "html"
+        ],
+        "in": [
+          "0x20c0c8beda0",
           "html"
         ]
       }
@@ -1056,23 +1160,25 @@
     "environment": "3.14",
     "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
     "node_id2stable_key": {
-      "0x2730581f460": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传",
-      "0x2730861aad0": "a1b716b5-35e3-4885-b907-01ed113f2279||输入array",
-      "0x2730586b250": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)",
-      "0x2730586a4a0": "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化",
-      "0x27305869c30": "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)",
-      "0x273058694b0": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1",
-      "0x27305868e50": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练",
-      "0x2730586b5e0": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1",
-      "0x27305869e70": "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图",
-      "0x273058d2530": "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)",
-      "0x273058d16c0": "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器",
-      "0x273058d3460": "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估",
-      "0x273c50568f0": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1",
-      "0x273c50573a0": "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练",
-      "0x273253f1c30": "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制",
-      "0x27325411ff0": "unknown||HTML 图表",
-      "0x2732b22b370": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2"
+      "0x20c0aa66b00": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传",
+      "0x20c0aa67cd0": "a1b716b5-35e3-4885-b907-01ed113f2279||输入array",
+      "0x20c0aaff4f0": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)",
+      "0x20c0aaff6d0": "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化",
+      "0x20c0aaff940": "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)",
+      "0x20c0aaffb80": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1",
+      "0x20c0aaffe20": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练",
+      "0x20c0ab18700": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1",
+      "0x20c0ab19090": "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图",
+      "0x20c0ab1af80": "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)",
+      "0x20c0ab1b1f0": "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器",
+      "0x20c0ab1b3d0": "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估",
+      "0x20c0ab1baf0": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1",
+      "0x20c0ab1bdf0": "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练",
+      "0x20c0ab91bd0": "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制",
+      "0x20c0ab92b60": "unknown||HTML 图表",
+      "0x20c0aba88b0": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2",
+      "0x20c0c8a3b20": "unknown||代码编辑",
+      "0x20c0c8beda0": "unknown||echarts 图表"
     },
     "node_states": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": "success",
@@ -1091,7 +1197,9 @@
       "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": "success",
       "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": "success",
       "unknown||HTML 图表": "success",
-      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": "success"
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": "success",
+      "unknown||代码编辑": "success",
+      "unknown||echarts 图表": "unrun"
     },
     "node_inputs": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {},
@@ -1110,7 +1218,9 @@
       "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": {},
       "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": {},
       "unknown||HTML 图表": {},
-      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": {}
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": {},
+      "unknown||代码编辑": {},
+      "unknown||echarts 图表": {}
     },
     "node_outputs": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {
@@ -1523,7 +1633,7 @@
         "model": "canvas_files\\workflows\\机器学习算法样例模型\\node_results\\ba304fa4-3630-4c75-be30-d7df1707d0f1\\model_ba304fa4-3630-4c75-be30-d7df1707d0f1.pkl"
       },
       "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": {
-        "output1": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"f6712b67c5544226843bd65eb5be653a\" class=\"chart-container\" style=\"width:1000px; height:300px; \"></div>\n    <script>\n        var chart_f6712b67c5544226843bd65eb5be653a = echarts.init(\n            document.getElementById('f6712b67c5544226843bd65eb5be653a'), 'dark', {renderer: 'canvas', locale: 'ZH'});\n        var option_f6712b67c5544226843bd65eb5be653a = {\n    \"backgroundColor\": \"transparent\",\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u7cfb\\u52171\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u7cfb\\u52171\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"textStyle\": {\n                \"color\": \"#cccccc\"\n            },\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"color\": \"#000000\"\n        },\n        \"backgroundColor\": \"#ffffff\",\n        \"borderColor\": \"#666666\",\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"type\": \"category\",\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                0,\n                1,\n                2,\n                3,\n                4,\n                5,\n                6,\n                7,\n                8,\n                9,\n                10,\n                11,\n                12,\n                13,\n                14,\n                15,\n                16,\n                17,\n                18,\n                19,\n                20,\n                21,\n                22,\n                23,\n                24,\n                25,\n                26,\n                27,\n                28,\n                29,\n                30,\n                31,\n                32,\n                33,\n                34,\n                35,\n                36,\n                37,\n                38,\n                39,\n                40,\n                41,\n                42,\n                43,\n                44,\n                45,\n                46,\n                47,\n                48,\n                49,\n                50,\n                51,\n                52,\n                53,\n                54,\n                55,\n                56,\n                57,\n                58,\n                59,\n                60,\n                61,\n                62,\n                63,\n                64,\n                65,\n                66,\n                67,\n                68,\n                69,\n                70,\n                71,\n                72,\n                73,\n                74,\n                75,\n                76,\n                77,\n                78,\n                79,\n                80,\n                81,\n                82,\n                83,\n                84,\n                85,\n                86,\n                87,\n                88,\n                89,\n                90,\n                91,\n                92,\n                93,\n                94,\n                95,\n                96,\n                97,\n                98,\n                99,\n                100,\n                101,\n                102,\n                103,\n                104,\n                105,\n                106,\n                107,\n                108,\n                109,\n                110,\n                111,\n                112,\n                113,\n                114,\n                115,\n                116,\n                117,\n                118,\n                119,\n                120,\n                121,\n                122,\n                123,\n                124,\n                125,\n                126,\n                127,\n                128,\n                129,\n                130,\n                131,\n                132,\n                133,\n                134,\n                135,\n                136,\n                137,\n                138,\n                139,\n                140,\n                141,\n                142,\n                143,\n                144,\n                145,\n                146,\n                147,\n                148,\n                149\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#333333\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false,\n            \"textStyle\": {\n                \"color\": \"#ffffff\"\n            }\n        }\n    ],\n    \"toolbox\": {\n        \"show\": false,\n        \"orient\": \"horizontal\",\n        \"itemSize\": 15,\n        \"itemGap\": 10,\n        \"left\": \"80%\",\n        \"feature\": {\n            \"saveAsImage\": {\n                \"type\": \"png\",\n                \"backgroundColor\": \"auto\",\n                \"connectedBackgroundColor\": \"#fff\",\n                \"show\": true,\n                \"pixelRatio\": 1\n            },\n            \"restore\": {\n                \"show\": true\n            },\n            \"dataView\": {\n                \"show\": true,\n                \"readOnly\": false,\n                \"backgroundColor\": \"#fff\",\n                \"textareaColor\": \"#fff\",\n                \"textareaBorderColor\": \"#333\",\n                \"textColor\": \"#000\",\n                \"buttonColor\": \"#c23531\",\n                \"buttonTextColor\": \"#fff\"\n            },\n            \"dataZoom\": {\n                \"show\": true,\n                \"title\": {},\n                \"icon\": {},\n                \"filterMode\": \"filter\"\n            },\n            \"magicType\": {\n                \"show\": true,\n                \"type\": [\n                    \"line\",\n                    \"bar\",\n                    \"stack\",\n                    \"tiled\"\n                ],\n                \"title\": {},\n                \"icon\": {}\n            }\n        }\n    }\n};\n        chart_f6712b67c5544226843bd65eb5be653a.setOption(option_f6712b67c5544226843bd65eb5be653a);\n    </script>\n</body>\n</html>\n"
+        "output1": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"288f9ecf504341488b1a58a2f39944b5\" class=\"chart-container\" style=\"width:1000px; height:300px; \"></div>\n    <script>\n        var chart_288f9ecf504341488b1a58a2f39944b5 = echarts.init(\n            document.getElementById('288f9ecf504341488b1a58a2f39944b5'), 'dark', {renderer: 'canvas', locale: 'ZH'});\n        var option_288f9ecf504341488b1a58a2f39944b5 = {\n    \"backgroundColor\": \"transparent\",\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u7cfb\\u52171\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u7cfb\\u52171\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"textStyle\": {\n                \"color\": \"#cccccc\"\n            },\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"color\": \"#000000\"\n        },\n        \"backgroundColor\": \"#ffffff\",\n        \"borderColor\": \"#666666\",\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"type\": \"category\",\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                0,\n                1,\n                2,\n                3,\n                4,\n                5,\n                6,\n                7,\n                8,\n                9,\n                10,\n                11,\n                12,\n                13,\n                14,\n                15,\n                16,\n                17,\n                18,\n                19,\n                20,\n                21,\n                22,\n                23,\n                24,\n                25,\n                26,\n                27,\n                28,\n                29,\n                30,\n                31,\n                32,\n                33,\n                34,\n                35,\n                36,\n                37,\n                38,\n                39,\n                40,\n                41,\n                42,\n                43,\n                44,\n                45,\n                46,\n                47,\n                48,\n                49,\n                50,\n                51,\n                52,\n                53,\n                54,\n                55,\n                56,\n                57,\n                58,\n                59,\n                60,\n                61,\n                62,\n                63,\n                64,\n                65,\n                66,\n                67,\n                68,\n                69,\n                70,\n                71,\n                72,\n                73,\n                74,\n                75,\n                76,\n                77,\n                78,\n                79,\n                80,\n                81,\n                82,\n                83,\n                84,\n                85,\n                86,\n                87,\n                88,\n                89,\n                90,\n                91,\n                92,\n                93,\n                94,\n                95,\n                96,\n                97,\n                98,\n                99,\n                100,\n                101,\n                102,\n                103,\n                104,\n                105,\n                106,\n                107,\n                108,\n                109,\n                110,\n                111,\n                112,\n                113,\n                114,\n                115,\n                116,\n                117,\n                118,\n                119,\n                120,\n                121,\n                122,\n                123,\n                124,\n                125,\n                126,\n                127,\n                128,\n                129,\n                130,\n                131,\n                132,\n                133,\n                134,\n                135,\n                136,\n                137,\n                138,\n                139,\n                140,\n                141,\n                142,\n                143,\n                144,\n                145,\n                146,\n                147,\n                148,\n                149\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#333333\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false,\n            \"textStyle\": {\n                \"color\": \"#ffffff\"\n            }\n        }\n    ],\n    \"toolbox\": {\n        \"show\": false,\n        \"orient\": \"horizontal\",\n        \"itemSize\": 15,\n        \"itemGap\": 10,\n        \"left\": \"80%\",\n        \"feature\": {\n            \"saveAsImage\": {\n                \"type\": \"png\",\n                \"backgroundColor\": \"auto\",\n                \"connectedBackgroundColor\": \"#fff\",\n                \"show\": true,\n                \"pixelRatio\": 1\n            },\n            \"restore\": {\n                \"show\": true\n            },\n            \"dataView\": {\n                \"show\": true,\n                \"readOnly\": false,\n                \"backgroundColor\": \"#fff\",\n                \"textareaColor\": \"#fff\",\n                \"textareaBorderColor\": \"#333\",\n                \"textColor\": \"#000\",\n                \"buttonColor\": \"#c23531\",\n                \"buttonTextColor\": \"#fff\"\n            },\n            \"dataZoom\": {\n                \"show\": true,\n                \"title\": {},\n                \"icon\": {},\n                \"filterMode\": \"filter\"\n            },\n            \"magicType\": {\n                \"show\": true,\n                \"type\": [\n                    \"line\",\n                    \"bar\",\n                    \"stack\",\n                    \"tiled\"\n                ],\n                \"title\": {},\n                \"icon\": {}\n            }\n        }\n    }\n};\n        chart_288f9ecf504341488b1a58a2f39944b5.setOption(option_288f9ecf504341488b1a58a2f39944b5);\n    </script>\n</body>\n</html>\n"
       },
       "unknown||HTML 图表": {},
       "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": {
@@ -1696,7 +1806,11 @@
           148,
           149
         ]
-      }
+      },
+      "unknown||代码编辑": {
+        "html": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"571c37f2c62a441f980dab1dd8c88445\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_571c37f2c62a441f980dab1dd8c88445 = echarts.init(\n            document.getElementById('571c37f2c62a441f980dab1dd8c88445'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_571c37f2c62a441f980dab1dd8c88445 = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_571c37f2c62a441f980dab1dd8c88445.setOption(option_571c37f2c62a441f980dab1dd8c88445);\n    </script>\n</body>\n</html>\n"
+      },
+      "unknown||echarts 图表": {}
     },
     "column_select": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {},
@@ -1771,7 +1885,9 @@
           "versicolor",
           "virginica"
         ]
-      }
+      },
+      "unknown||代码编辑": {},
+      "unknown||echarts 图表": {}
     }
   },
   "global_variable": {
