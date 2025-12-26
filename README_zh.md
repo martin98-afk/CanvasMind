@@ -22,6 +22,8 @@
 
 <img src="images/宣传图.png" width="100%" height="100%"><br>
 
+<img src="images/宣传图2.png" width="100%" height="100%"><br>
+
 ---
 
 ## 🌟 为什么选择 CanvasMind？

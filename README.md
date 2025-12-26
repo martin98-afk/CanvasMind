@@ -6,7 +6,7 @@
 <div align="center">
   <h1>Visual Programming Platform for Algorithm & AI Workflow Development</h1>
 
-  [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md) | [📘 Documentation](https://canvasmind-sphinx-build.readthedocs.io/en/latest/)
+  [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md) | [📘 Documentation](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/)
 </div>
 
 <div align="center">
@@ -20,6 +20,8 @@
 A modern low-code visual programming platform built on **NodeGraphQt** and **qfluentwidgets**, supporting drag-and-drop component orchestration, asynchronous execution, file operations, control flow logic, and one-click export of workflows into standalone, executable projects—enabling seamless transition from development to deployment.
 
 <img src="images/宣传图.png" width="100%" height="100%"><br>
+
+<img src="images/宣传图2.png" width="100%" height="100%"><br>
 
 ---
 

@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "ECharts 图表绘制"
     category = "数据可视化"
     description = "支持柱状图、折线图、饼图、散点图，输出 HTML 嵌入片段"
-    requirements = "numpy,pyecharts"
+    requirements = "pyecharts,numpy"
 
     inputs = [
         PortDefinition(name="x_data", label="X 轴数据", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE),
@@ -135,7 +135,6 @@ class Component(BaseComponent):
 
         # 设置数据
         if chart_type == "pie":
-            # 饼图：x 为标签，y[0] 为值
             values = y_data[0] if y_data else []
             if len(x_data) != len(values):
                 min_len = min(len(x_data), len(values))
@@ -144,26 +143,15 @@ class Component(BaseComponent):
             pie_data = list(zip(x_data, values))
             chart.add("", pie_data)
         else:
-            # 非饼图：设置 X 轴
+            # ✅ 只在这里调用一次 add_xaxis
             chart.add_xaxis(x_data)
             for i, y_series in enumerate(y_data):
                 name = series_names[i]
-                if chart_type == "scatter":
-                    # 散点图：数据为 [(x0,y0), (x1,y1), ...]
-                    if len(x_data) != len(y_series):
-                        min_len = min(len(x_data), len(y_series))
-                        x_scatter = x_data[:min_len]
-                        y_scatter = y_series[:min_len]
-                    else:
-                        x_scatter, y_scatter = x_data, y_series
-                    scatter_data = list(zip(x_scatter, y_scatter))
-                    chart.add(name, scatter_data)
-                else:
-                    # 柱状图/折线图
-                    if len(x_data) != len(y_series):
-                        min_len = min(len(x_data), len(y_series))
-                        y_series = y_series[:min_len]
-                    chart.add_yaxis(name, y_series)
+                if len(x_data) != len(y_series):
+                    min_len = min(len(x_data), len(y_series))
+                    y_series = y_series[:min_len]
+                # ✅ scatter 和 line 都只 add_yaxis
+                chart.add_yaxis(name, y_series)
 
         chart.set_global_opts(
             title_opts=opts.TitleOpts(
@@ -183,6 +171,7 @@ class Component(BaseComponent):
             toolbox_opts=opts.ToolboxOpts(is_show=False),
             # 坐标轴样式（非饼图）
             xaxis_opts=opts.AxisOpts(
+                type_="value" if chart_type in ["scatter", "line"] else "category",
                 axislabel_opts=opts.LabelOpts(color="#aaaaaa"),
                 axisline_opts=opts.AxisLineOpts(
                     linestyle_opts=opts.LineStyleOpts(color="#555555")
