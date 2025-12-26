@@ -367,7 +367,8 @@ class PortWidget(QWidget):
             else:
                 filtered_data = data
 
-        tree_widget = VariableTreeWidget(filtered_data, port_type, parent=self.main_window)
+        tree_widget = VariableTreeWidget(parent=self.main_window)
+        tree_widget.set_data(filtered_data)
         browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
         browse_btn.setFixedSize(QSize(26, 20))
         self._detail_popup = None
