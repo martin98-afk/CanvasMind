@@ -167,6 +167,16 @@ def create_node_class(full_path, file_path, parent_window=None):
                 self._debug_enabled = False
                 self._disable_debug_mode()
 
+        def _add_custom_widget(self, widget, widget_type=None, tab=None):
+            # widget_type = widget_type or NodePropWidgetEnum.HIDDEN.value
+            self.set_property(widget.get_name(), widget.get_value())
+            widget.value_changed.connect(lambda k, v: self.set_property(k, v))
+            widget._node = self
+            self.view.add_widget(widget)
+            #: redraw node to address calls outside the "__init__" func.
+            self.view.draw_node()
+            widget.parent()
+
         def _enable_debug_mode(self):
             """启用调试模式，添加代码编辑器"""
             self.current_code = self.get_current_code()

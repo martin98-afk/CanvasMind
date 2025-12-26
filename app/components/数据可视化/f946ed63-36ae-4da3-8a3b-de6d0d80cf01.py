@@ -42,6 +42,22 @@ class Component(BaseComponent):
             default="",
             label="图表标题",
         ),
+        "widt": PropertyDefinition(
+            type=PropertyType.RANGE,
+            default="700.0",
+            label="宽",
+            min=300.0,
+            max=1000.0,
+            step=50.0,
+        ),
+        "heigh": PropertyDefinition(
+            type=PropertyType.RANGE,
+            default="500.0",
+            label="高",
+            min=300.0,
+            max=1000.0,
+            step=50.0,
+        ),
     }
 
     def _to_list(self, data):
@@ -67,8 +83,8 @@ class Component(BaseComponent):
         chart_type = params.get("chart_type", "bar")
         title = params.get("title", "ECharts 图表")
         try:
-            width = int(params.get("width", "700"))
-            height = int(params.get("height", "500"))
+            width = int(params.get("widt", "700"))
+            height = int(params.get("heigh", "500"))
         except (ValueError, TypeError):
             width, height = 700, 500
 
