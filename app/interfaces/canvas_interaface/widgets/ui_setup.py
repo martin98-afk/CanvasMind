@@ -171,6 +171,12 @@ class CanvasUISetUp:
         self.branch_node.clicked.connect(lambda: self.parent.create_next_node("control_flow.ControlFlowBranchNode"))
         self.node_layout.addWidget(self.branch_node)
 
+        self.echart_node = TransparentToolButton(get_icon("图表"), parent=self.parent.canvas_widget)
+        self.echart_node.setIconSize(QSize(18, 18))
+        self.echart_node.setToolTip("创建图表节点")
+        self.echart_node.clicked.connect(lambda: self.parent.create_next_node("visualize.EchartsNode"))
+        self.node_layout.addWidget(self.echart_node)
+
         self.code_node = TransparentToolButton(get_icon("代码执行"), parent=self.parent.canvas_widget)
         self.code_node.setIconSize(QSize(18, 18))
         self.code_node.setToolTip("创建代码编辑")

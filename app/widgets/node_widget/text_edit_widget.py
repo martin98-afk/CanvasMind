@@ -49,6 +49,7 @@ class TextWidget(QtWidgets.QWidget):
         return self._text
 
     def set_value(self, text):
+        print(text)
         self._text = text or ""
         self.summary_label.setText(self._text)
 

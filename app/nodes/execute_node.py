@@ -324,22 +324,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                         ), tab='Properties'
                     )
 
-        def _add_custom_widget(self, widget, widget_type=None, tab=None):
-            # widget_type = widget_type or NodePropWidgetEnum.HIDDEN.value
-            self.set_property(widget.get_name(), widget.get_value())
-            widget.value_changed.connect(lambda k, v: self.set_property(k, v))
-            widget._node = self
-            self.view.add_widget(widget)
-            #: redraw node to address calls outside the "__init__" func.
-            self.view.draw_node()
-            widget.parent()
-
-        def set_property(self, name, value, push_undo=True):
-            if name.endswith('_file_filter'):
-                self.model.properties[name] = value
-                return
-            super().set_property(name, value, push_undo)
-
         def remove_property(self, name):
             self.model._custom_prop[name] = None
 

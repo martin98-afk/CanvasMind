@@ -61,7 +61,7 @@ def create_dynamic_code_node(parent_window=None):
             super().__init__(CustomNodeItem)
             self.parent_window = parent_window
             self._view.set_align("center")
-            self.set_icon(resource_path("icons/代码执行.svg"))
+            self.set_icon(":/icons/代码执行")
             self.model.port_deletion_allowed = True
 
             # 定时器：分离 input / output / property update
