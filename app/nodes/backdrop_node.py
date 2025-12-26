@@ -56,7 +56,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
 
     def __init__(self):
         BackdropNode.__init__(self, ControlFlowBackdropNodeItem)
-        self.set_icon(resource_path(self.ICON_PATH))
+        self.set_icon(self.ICON_PATH)
         self._inputs = []
         self._outputs = []
         self._output_values = {}
@@ -489,7 +489,7 @@ class ControlFlowLoopNode(ControlFlowBackdrop):
     NODE_NAME = "循环控制流区域"
     TYPE = "loop"
     FULL_PATH = f"{category}/{NODE_NAME}"
-    ICON_PATH = "./icons/无限.png"
+    ICON_PATH = ":/icons/无限"
 
 
 class ControlFlowIterateNode(ControlFlowBackdrop):
@@ -497,4 +497,4 @@ class ControlFlowIterateNode(ControlFlowBackdrop):
     NODE_NAME = "迭代控制流区域"
     TYPE = "iterate"
     FULL_PATH = f"{category}/{NODE_NAME}"
-    ICON_PATH = "./icons/更新.svg"
+    ICON_PATH = ":/icons/更新"

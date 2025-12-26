@@ -1,7 +1,8 @@
 import json
+import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu
-from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE
+from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE, PortTypeEnum
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.pipe import PipeItem
@@ -9,6 +10,7 @@ from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
+from loguru import logger
 from qtpy import QtGui, QtCore, QtWidgets
 
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
@@ -494,7 +496,7 @@ class CustomNodeGraph(NodeGraph):
                     try:
                         node.model.set_property(prop, val)
                     except:
-                        pass
+                        logger.warning(traceback.format_exc())
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
                             node.view.widgets[prop].set_value(val)

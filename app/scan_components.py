@@ -70,7 +70,7 @@ class ComponentUsageTracker:
                 break
             for change_type, file_path in changes:
                 path = Path(file_path).resolve()  # ← 统一为绝对路径
-                if path.suffix == ".workflow.json":  # 或更严格：path.name.endswith(".workflow.json")
+                if str(path).endswith(".workflow.json"):  # 或更严格：path.name.endswith(".workflow.json")
                     logger.info(f"文件变化: {path} {change_type}")
                     if change_type in (Change.added, Change.modified):
                         await self._update_index(path)

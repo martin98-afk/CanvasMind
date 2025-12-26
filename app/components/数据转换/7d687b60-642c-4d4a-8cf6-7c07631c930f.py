@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "数据合并"
+    name = "数据拆分"
     category = "数据转换"
     description = ""
     requirements = ""

@@ -1,10 +1,12 @@
 import json
+import os
 import time
 import traceback
 from pathlib import Path
 
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt
-from PyQt5.QtWidgets import QProgressDialog, QApplication
+from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt, QRectF
+from PyQt5.QtGui import QImage, QPainter
+from PyQt5.QtWidgets import QProgressDialog, QApplication, QGraphicsProxyWidget, QLabel
 
 from app.scan_components import ComponentScanner
 from app.utils.utils import serialize_for_json, deserialize_from_json
@@ -68,14 +70,72 @@ class CanvasIO(QObject):
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(serialize_for_json(full_data), f, indent=2, ensure_ascii=False)
 
-        self._generate_canvas_thumbnail_async(file_path)
+        QTimer.singleShot(100, lambda: self.do_generate_thumbnail(file_path))
         if show_info:
             MessageManager.success("保存成功", "工作流保存成功！", self.parent)
 
-    def _generate_canvas_thumbnail_async(self, workflow_path):
-        self.thumbnail_thread = ThumbnailGenerator(self.graph, workflow_path)
-        self.thumbnail_thread.finished.connect(self._on_thumbnail_generated)
-        self.thumbnail_thread.start()
+    def do_generate_thumbnail(self, workflow_path):
+        """在主线程中安全生成缩略图（临时替换 WebEngineView）"""
+
+        scene = self.graph.viewer().scene()
+        chart_widgets_backup = {}  # 保存原始 widget
+
+        try:
+            # 1. 找到所有图表节点，临时替换其 widget
+            for node in self.graph.all_nodes():
+                if node.model.type_.startswith("visualize"):
+                    view = node.view
+                    # 找到嵌入的 ChartWidget（通过 proxy widget）
+                    for item in view.childItems():
+                        if isinstance(item, QGraphicsProxyWidget):
+                            proxy = item
+                            original_widget = proxy.widget()
+                            if original_widget and hasattr(original_widget, 'view') and hasattr(original_widget.view,
+                                                                                                'page'):
+                                # 确认是 QWebEngineView
+                                # 创建占位符
+                                placeholder = QLabel("[图表预览]")
+                                placeholder.setAlignment(Qt.AlignCenter)
+                                placeholder.setStyleSheet("""
+                                    background: #2a2a2a;
+                                    color: #aaa;
+                                    border: 1px solid #444;
+                                """)
+                                # 保存原始 widget
+                                chart_widgets_backup[proxy] = original_widget
+                                # 替换
+                                proxy.setWidget(placeholder)
+
+            # 2. 计算场景边界
+            rect = QRectF()
+            for node in self.graph.all_nodes():
+                item_rect = node.view.sceneBoundingRect()
+                rect = rect.united(item_rect)
+
+            if rect.isEmpty():
+                image = QImage(800, 600, QImage.Format_ARGB32)
+                image.fill(Qt.white)
+            else:
+                rect.adjust(-100, -100, 90, 90)
+                image = QImage(rect.size().toSize(), QImage.Format_ARGB32)
+                image.fill(Qt.white)
+                painter = QPainter(image)
+                scene.render(painter, target=QRectF(image.rect()), source=rect)
+                painter.end()
+
+            # 3. 保存
+            base_name = os.path.splitext(os.path.splitext(workflow_path)[0])[0]
+            png_path = base_name + ".png"
+            image.save(png_path, "PNG")
+            self._on_thumbnail_generated(png_path)
+
+        except Exception as e:
+            logger.error(f"缩略图生成失败: {e}")
+            return ""
+        finally:
+            # 4. 恢复原始 widget
+            for proxy, original_widget in chart_widgets_backup.items():
+                proxy.setWidget(original_widget)
 
     def _on_thumbnail_generated(self, png_path):
         if png_path:
@@ -143,15 +203,9 @@ class CanvasIO(QObject):
             node_inputs = node_status.get("node_inputs", {}) if node_status.get("node_inputs", {}) else {}
             node_outputs = node_status.get("node_outputs", {}) if node_status.get("node_outputs", {}) else {}
             column_select = node_status.get("column_select", {}) if node_status.get("column_select", {}) else {}
-            custom_props = node_status.get("custom_property", {}) if node_status.get("custom_property", {}) else {}
             node._input_values = deserialize_from_json(node_inputs)
             node._output_values = deserialize_from_json(node_outputs)
             node.column_select = column_select
-            for key, value in custom_props.items():
-                if not node.has_property(key):
-                    node.create_property(key, value)
-                else:
-                    node.set_property(key, value)
             status_str = node_status.get("node_states", "unrun") or "unrun"
             from app.nodes.status_node import NodeStatus
             status_enum = getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
