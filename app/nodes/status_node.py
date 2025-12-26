@@ -19,6 +19,28 @@ class NodeStatus:
 # ----------------------------
 # 自定义节点类（支持状态显示）- 淡色版本
 # ----------------------------
+class NoStatusNode(BasicNodeWithGlobalProperty):
+    """支持状态显示的基节点类 - 使用淡色背景确保白色文字清晰"""
+    def __init__(self, qgraphics_item=None):
+        super().__init__(qgraphics_item)
+        self._status = NodeStatus.NODE_STATUS_UNRUN
+        self._original_color = self.color()  # 保存原始颜色
+        self._update_status_color()
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        self._status = value
+        self._update_status_color()
+
+    def _update_status_color(self):
+        """根据状态更新节点颜色（使用淡色）"""
+        self.view.draw_node()
+
+
 class StatusNode(BasicNodeWithGlobalProperty):
     """支持状态显示的基节点类 - 使用淡色背景确保白色文字清晰"""
     def __init__(self, qgraphics_item=None):

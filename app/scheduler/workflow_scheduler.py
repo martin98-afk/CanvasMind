@@ -2,7 +2,7 @@
 from typing import List, Dict, Any, Optional, Callable
 
 from NodeGraphQt import BackdropNode
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal, QThreadPool
 from loguru import logger
 
 from app.components.base import GlobalVariableContext
@@ -214,7 +214,6 @@ class WorkflowScheduler(QObject):
             self._executor.signals.finished.connect(self._on_finished)
             self._executor.signals.error.connect(lambda message: self._on_error(message, nodes))
 
-            from PyQt5.QtCore import QThreadPool
             QThreadPool.globalInstance().start(self._executor)
 
         except Exception as e:

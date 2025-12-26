@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "ECharts 图表绘制"
+    name = "通用ECharts图表绘制"
     category = "数据可视化"
     description = "支持柱状图、折线图、饼图、散点图，输出 HTML 嵌入片段"
     requirements = "pyecharts,numpy"

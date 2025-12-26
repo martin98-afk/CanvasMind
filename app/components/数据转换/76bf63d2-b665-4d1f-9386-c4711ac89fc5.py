@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
-import pathlib
-base_path = pathlib.Path(__file__).parent.parent / "base.py"
+from pathlib import Path
+base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -21,11 +21,12 @@ class Component(BaseComponent):
     description = ""
     requirements = ""
     inputs = [
-        PortDefinition(name="input", label="端口1", type=ArgumentType.CSV),
+        PortDefinition(name="input", label="端口1", type=ArgumentType.CSV, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="output", label="端口1", type=ArgumentType.ARRAY),
-        PortDefinition(name="columns", label="端口2", type=ArgumentType.ARRAY),
+        PortDefinition(name="output", label="数据", type=ArgumentType.ARRAY),
+        PortDefinition(name="columns", label="列名", type=ArgumentType.ARRAY),
+        PortDefinition(name="index", label="标签", type=ArgumentType.ARRAY),
     ]
     properties = {
     }
@@ -40,5 +41,6 @@ class Component(BaseComponent):
         
         return {
             "output": inputs.input.values,
-            "columns": [column for column in inputs.input.columns]
+            "columns": [column for column in inputs.input.columns],
+            "index": [id for id in inputs.input.index]
         }

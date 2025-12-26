@@ -77,11 +77,11 @@ class ChartWidget(QtWidgets.QWidget):
 
 
 class ChartWidgetWrapper(CustomNodeBaseWidget):
-    def __init__(self, parent=None, name="", label="", default="", window=None):
+    def __init__(self, parent=None, name="", default="", window=None):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
-        widget = ChartWidget(default_html=default)
+        widget = ChartWidget(default_html=default, parent=window)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
         # ✅ 监听尺寸请求
