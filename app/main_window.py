@@ -91,9 +91,9 @@ class LowCodeWindow(FluentWindow):
             self.develop_page.save_component_by_full_path
         )
         self.workflow_manager.node_request_edit.connect(
-            lambda full_path: (
+            lambda uuid: (
                 self.switchTo(self.develop_page),
-                self.develop_page._load_component(full_path)
+                self.develop_page._load_component(uuid=uuid)
             )
         )
         self.project_manager.exported_projects_changed.connect(

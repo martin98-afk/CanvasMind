@@ -186,7 +186,7 @@ class NodeOperations:
         )
 
     def edit_node(self, node):
-        self.parent.node_request_edit.emit(node.FULL_PATH)
+        self.parent.node_request_edit.emit(node.uuid)
 
     def on_node_created(self, node):
         self._node_id_cache[node.id] = node

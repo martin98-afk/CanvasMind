@@ -264,11 +264,12 @@ class ComponentDeveloperPage(QWidget):
         QTimer.singleShot(300, lambda: self.update_usage_table(ComponentScanner().get_component(full_path).uuid))
         QTimer.singleShot(300, lambda: self._load_component(full_path))
 
-    def _load_component(self, full_path=None, component=None):
+    def _load_component(self, full_path=None, component=None, uuid=None):
         try:
-            if full_path is not None:
-                self.component_tree.set_current_editing_component(full_path)
+            if uuid is not None:
+                component = ComponentScanner().get_component_by_uuid(uuid)
             component = component or ComponentScanner().get_component(full_path)
+            self.component_tree.set_current_editing_component(f"{component.category}/{component.name}")
             self.name_edit.setText(getattr(component, 'name', ''))
             self.category_edit.setText(getattr(component, 'category', ''))
             self.description_edit.setText(getattr(component, 'description', ''))
@@ -960,6 +961,12 @@ except:
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(code)
         self._current_component_file = filepath
+
+    def reset_edit(self):
+        self.component_info.clear_all()
+        self.code_editor.set_code(DEFAULT_NODE_TEMPLATE)
+        self._current_component_file = None
+        self.component_tree.set_current_editing_component(None)
 
     def _cancel_edit(self):
         w = MessageBox("确认", "确定要取消编辑吗？未保存的更改将丢失。", self.window())
