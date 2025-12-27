@@ -1,5 +1,6 @@
 from NodeGraphQt import NodeBaseWidget
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
+from PyQt5.QtCore import Qt
 from qtpy import QtCore
 
 from app.widgets.code_editor.code_editer import CodeEditorWidget
@@ -14,6 +15,7 @@ class CodeEditorWidgetWrapper(CustomNodeBaseWidget):
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
         self.set_label(label)
+        self.setFocusPolicy(Qt.WheelFocus)
         self._editor = CodeEditorWidget(
             parent=window, python_exe=window.get_current_python_exe(), default_code=default
         )

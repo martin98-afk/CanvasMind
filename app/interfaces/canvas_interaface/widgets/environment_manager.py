@@ -16,6 +16,7 @@ class EnvironmentManager:
             envs = self.parent.parent.package_manager.mgr.list_envs()
             for env in envs:
                 self.env_combo.addItem(env, userData=env)
+                self.env_combo.setCurrentText(self.parent.config.current_env_selected.value)
 
     def on_environment_changed(self):
         current_text = self.env_combo.currentText()
