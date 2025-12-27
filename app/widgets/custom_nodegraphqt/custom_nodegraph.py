@@ -2,7 +2,7 @@ import json
 import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu
-from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE, PortTypeEnum
+from NodeGraphQt.constants import LayoutDirectionEnum, PipeLayoutEnum, ViewerEnum, Z_VAL_PIPE
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.pipe import PipeItem
@@ -10,11 +10,15 @@ from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QGraphicsProxyWidget, QApplication
 from loguru import logger
 from qtpy import QtGui, QtCore, QtWidgets
 
+from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomLivePipeItem, CustomPipeItem
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
 class CustomNodeScene(NodeScene):
@@ -161,6 +165,37 @@ class CustomNodeViewer(NodeViewer):
         # connection constrains.
         self.accept_connection_types = None
         self.reject_connection_types = None
+
+    def wheelEvent(self, event):
+        # 判断鼠标位置下是否有嵌入的 widget（QGraphicsProxyWidget）
+        pos = event.pos()
+        item = self.itemAt(pos)
+        if isinstance(item, CustomNodeBaseWidget):
+            widget = item.widget().get_node_widget()
+            # 如果代码编辑框被focus
+            if hasattr(widget, 'code_editor') and widget.code_editor.hasFocus():
+                # 将事件直接交给内部的代码编辑区域
+                widget.code_editor.wheelEvent(event)
+                return
+        elif isinstance(item, QGraphicsProxyWidget):
+            for combo in QApplication.allWidgets():
+                if isinstance(combo, CustomComboBox) and combo.view().window().isVisible():
+                    combo.view().wheelEvent(event)
+                    return
+
+        # 否则，执行原始的缩放行为
+        try:
+            delta = event.delta()
+        except AttributeError:
+            # For PyQt5+
+            delta = event.angleDelta().y()
+            if delta == 0:
+                delta = event.angleDelta().x()
+
+        try:
+            self._set_viewer_zoom(delta, pos=event.pos())
+        except AttributeError:
+            self._set_viewer_zoom(delta, pos=event.position().toPoint())
 
     def establish_connection(self, start_port, end_port):
         """

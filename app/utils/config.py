@@ -126,6 +126,7 @@ class Settings(QConfig):
         ["pyzmq","loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi", "asteval", "wcwidth", "pyarrow", "ipykernel", "matplotlib"],
         ListValidator()
     )
+    current_env_selected = ConfigItem("Package", "EnvSelected", "")
 
     # ========== 新增：大模型对话默认配置 ==========
     llm_model = ConfigItem("LLM", "Model", "qwen/qwen3-30b-a3b-2507")

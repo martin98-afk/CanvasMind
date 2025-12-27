@@ -100,7 +100,7 @@ class NodeOperations:
         graph_menu.add_command('重做', self.parent._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
         graph_menu.add_command('自动布局', self.parent._auto_layout_selected, 'Ctrl+L')
         edit_menu = graph_menu.add_menu('编辑')
-        edit_menu.add_command('全选', lambda graph: graph.select_all(), 'Ctrl+A')
+        edit_menu.add_command('全选', lambda graph: graph.select_all())
         edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
         edit_menu.add_command(
             '删除选中', lambda graph: (

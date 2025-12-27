@@ -16,6 +16,7 @@ from qfluentwidgets import (
     FluentIcon, InfoBar, SearchLineEdit, TextEdit, PushButton, MessageBox, BodyLabel, StateToolTip
 )
 
+from app.utils.config import Settings
 from app.utils.env_operation import EnvironmentManager
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.basic_widget.style_sheet import StyleSheet
@@ -64,7 +65,7 @@ class EnvManagerUI(QWidget):
         self.process = None
         self.current_env = None
         self.pkgs_data = []  # 保存完整包列表数据
-
+        self.config = Settings.get_instance()
         # ---------- 顶部环境选择 ----------
         self.envCombo = ComboBox(self)
         self.refresh_env_list()
@@ -178,12 +179,17 @@ class EnvManagerUI(QWidget):
         self.envCombo.clear()
         envs = self.mgr.list_envs()
         self.envCombo.addItems(envs)
+        print(self.config.current_env_selected.value)
+        if len(envs) > 0 and self.config.current_env_selected.value in envs:
+            self.envCombo.setCurrentText(self.config.current_env_selected.value)
 
     def on_env_changed(self):
         # Miniconda安装包下载链接（已去除多余空格）
         self.mgr.refresh_env_config()
         # 取消所有正在运行的摘要获取线程
         self.current_env = self.envCombo.currentText()
+        self.config.set(self.config.current_env_selected, self.current_env)
+        self.config.save_config()
         if self.current_env:
             self.load_packages(self.current_env)
 

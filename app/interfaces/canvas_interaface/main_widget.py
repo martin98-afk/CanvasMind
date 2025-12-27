@@ -5,7 +5,7 @@ from pathlib import Path
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint, QTimer
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget, QGraphicsProxyWidget, QApplication
 from loguru import logger
 from qfluentwidgets import FluentIcon
 
@@ -449,7 +449,20 @@ class CanvasPage(QWidget):
 
     # --- 画布按键信号 ---
     def _canvas_key_press_event(self, event):
-        super(NodeViewer, self.canvas_widget).keyPressEvent(event)
+        mouse_pos = self.canvas_widget.mapFromGlobal(QtGui.QCursor.pos())
+        item = self.canvas_widget.itemAt(mouse_pos)
+
+        if isinstance(item, QGraphicsProxyWidget):
+            widget = item.widget().get_node_widget()  # 这是你的 CodeEditorWidgetWrapper 或 QFrame
+
+            if hasattr(widget, 'code_editor') and widget.code_editor.hasFocus():
+                editor = widget.code_editor
+                QApplication.sendEvent(editor, event)
+                return
+            elif widget.hasFocus():
+                QApplication.sendEvent(widget, event)
+                return
+
         self.canvas_widget.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
         self.canvas_widget.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
         self.canvas_widget.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
@@ -459,6 +472,7 @@ class CanvasPage(QWidget):
         if self.canvas_widget._LIVE_PIPE.isVisible():
             super(NodeViewer, self.canvas_widget).keyPressEvent(event)
             return
+
         # show cursor text
         overlay_text = None
         self.canvas_widget._cursor_text.setVisible(False)
@@ -476,11 +490,14 @@ class CanvasPage(QWidget):
             self.canvas_widget._cursor_text.setDefaultTextColor(Qt.white)
             self.canvas_widget._cursor_text.setPos(self.canvas_widget.mapToScene(self.canvas_widget._previous_pos))
             self.canvas_widget._cursor_text.setVisible(True)
+
         if event.modifiers() == QtCore.Qt.ControlModifier:
             if event.key() == QtCore.Qt.Key_C:
                 self.node_operations._copy_selected_nodes()
             elif event.key() == QtCore.Qt.Key_V:
                 self.node_operations._paste_nodes()
+
+        super(NodeViewer, self.canvas_widget).keyPressEvent(event)
 
     def eventFilter(self, obj, event):
         if obj is self.graph.viewer() and event.type() == event.Resize:

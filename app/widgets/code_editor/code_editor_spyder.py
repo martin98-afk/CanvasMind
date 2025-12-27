@@ -1171,6 +1171,10 @@ class JediCodeEditor(CodeEditor):
             self._toggle_comment()
             event.accept()  # 确保事件被处理
             return
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_A:
+            self.selectAll()
+            event.accept()
+            return
         # 处理补全弹窗导航
         if self.popup.isVisible():
             # ---- Handle hard coded and builtin actions
