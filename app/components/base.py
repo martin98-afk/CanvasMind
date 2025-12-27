@@ -22,6 +22,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 from pydantic import create_model
 
+PROGRESS_MARKER = "PROGRESS_UPDATE_JSON:"
 ENV_RULES = {
     "user_id": {"type": str, "readonly": True},
     "canvas_id": {"type": str, "readonly": True},
@@ -901,6 +902,7 @@ class BaseComponent(ABC):
                 return False
         return True
 
+    # 输入输出数据模型
     @classmethod
     def get_input_model(cls) -> Type[BaseModel]:
         """动态创建输入数据模型，并支持 .get() 方法"""
@@ -973,6 +975,19 @@ class BaseComponent(ABC):
         model_name = f"{cls.__name__}Params"
         base_classes = (ModelMixin, BaseModel)
         return create_model(model_name, __base__=base_classes, **fields)
+
+    # ----------------中间结果流式返回----------------
+    def emit_progress(self, data: dict):
+        """
+        通用流式输出方法。
+        调用此方法会将 data 以 JSON 形式发送到主界面。
+        例如: self.emit_progress({"type": "loss", "value": 0.5, "epoch": 10})
+        """
+        if not isinstance(data, dict):
+            raise ValueError("emit_progress only accepts dict")
+        # 通过 stdout 发送特殊标记的 JSON
+        marker_line = f"{PROGRESS_MARKER}{json.dumps(data, ensure_ascii=False)}"
+        print(marker_line, flush=True)  # 确保立即输出（配合 PYTHONUNBUFFERED=1）
 
     # ---------------- 执行包装器 ----------------
     def execute(

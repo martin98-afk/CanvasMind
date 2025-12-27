@@ -501,12 +501,11 @@ def create_node_class(full_path, file_path, parent_window=None):
             )
             with open(temp_script_path, 'w', encoding='utf-8') as f:
                 f.write(script_content)
-
+            self.last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
             try:
                 if kernel_manager is not None:
                     # 使用 IPython 内核执行
-                    return self._execute_via_ipython(
-                        comp_obj=comp_obj,
+                    self._execute_via_ipython(
                         temp_script_path=temp_script_path,
                         result_path=result_path,
                         error_path=error_path,
@@ -516,23 +515,38 @@ def create_node_class(full_path, file_path, parent_window=None):
                     )
                 else:
                     # 回退到 subprocess（兼容模式）
-                    return self._execute_via_subprocess(
-                        python_executable, temp_script_path, comp_obj, result_path, error_path,
-                        log_file_path, check_cancel, max_retries, requirements_str
+                    self._execute_via_subprocess(
+                        python_executable, temp_script_path, log_file_path, check_cancel
                     )
+                # === 读取剩余日志 ===
+                with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                    lf.seek(self.last_log_pos)
+                    new_content = lf.read()
+                    if new_content:
+                        self._log_message(self.persistent_id, new_content)
+                        self.last_log_pos = lf.tell()
+                # === 处理最终结果 ===
+                if os.path.exists(result_path):
+                    output = _safe_load_pickle(result_path)
+                    for port in comp_obj.outputs:
+                        if port.type != ArgumentType.UPLOAD:
+                            self.set_output_value(port.name, output.get(port.name))
+                    return output
+                elif os.path.exists(error_path):
+                    error_info = _safe_load_pickle(error_path)
+                    raise Exception(error_info['traceback'])
+                else:
+                    raise Exception("未知错误")
             finally:
-                time.sleep(0.05)  # 小延迟释放文件句柄
                 shutil.rmtree(run_dir, ignore_errors=True)
 
         def _execute_via_ipython(
-                self, comp_obj, temp_script_path, result_path, error_path, log_file_path,
+                self, temp_script_path, result_path, error_path, log_file_path,
                 check_cancel, kernel_manager
         ):
             # 清空变量，防止污染
             run_code = f'%reset -f'
             kernel_manager.execute_code(run_code, hidden=True)
-            # 获取 requirements
-            requirements_str = getattr(comp_obj, 'requirements', '').strip()
 
             # 执行 %run -i
             with open(temp_script_path, 'r', encoding='utf-8') as f:
@@ -542,7 +556,6 @@ def create_node_class(full_path, file_path, parent_window=None):
             # 轮询结果文件
             start_time = time.time()
             timeout = 300  # 5分钟
-            last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
 
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
@@ -552,220 +565,58 @@ def create_node_class(full_path, file_path, parent_window=None):
                     except Exception as e:
                         self._log_message(self.persistent_id, f"⚠️ 内核重启失败: {e}")
                     raise Exception("执行被用户取消")
-
-                if time.time() - start_time > timeout:
-                    raise Exception("❌ 节点执行超时（5分钟）")
-                # 实时日志轮询
                 try:
                     if os.path.exists(log_file_path):
                         with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                            lf.seek(last_log_pos)
+                            lf.seek(self.last_log_pos)
                             new_content = lf.read()
                             if new_content:
                                 self._log_message(self.persistent_id, new_content)
-                                last_log_pos = lf.tell()
+                                self.last_log_pos = lf.tell()
                 except Exception:
                     pass
+                if time.time() - start_time > timeout:
+                    raise Exception("❌ 节点执行超时（5分钟）")
 
                 time.sleep(0.1)
-
-            # 读取剩余日志
-            try:
-                if os.path.exists(log_file_path):
-                    with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                        lf.seek(last_log_pos)
-                        tail_content = lf.read()
-                        if tail_content:
-                            self._log_message(self.persistent_id, tail_content)
-            except Exception:
-                pass
-
-            # 检查结果/错误
-            if result_path.exists():
-                output = _safe_load_pickle(result_path)
-                self._log_message(self.persistent_id, "✅ 节点在 IPython 内核中执行完成")
-                for port in comp_obj.outputs:
-                    if port.type != ArgumentType.UPLOAD:
-                        self.set_output_value(port.name, output.get(port.name))
-                return output
-            elif error_path.exists():
-                with open(error_path, 'rb') as f:
-                    error_info = pickle.load(f)
-
-                # 检查是否为 ImportError 并尝试安装依赖
-                if error_info.get("type") == "ImportError" and requirements_str:
-                    self._log_message(self.persistent_id, "检测到 ImportError，尝试安装依赖包...")
-
-                    # 解析并安装依赖包
-                    packages = [pkg.strip() for pkg in requirements_str.split(',') if pkg.strip()]
-                    if packages:
-                        parent_window.parent.package_manager.run_pip_command("安装", " ".join(packages))
-
-                        self._log_message(self.persistent_id, "依赖包安装完成，重新执行...")
-
-                        # 清理之前的错误文件
-                        error_path.unlink(missing_ok=True)
-                        result_path.unlink(missing_ok=True)
-
-                        # 重新执行 %run -i
-                        kernel_manager.execute_code(run_code, hidden=False)
-
-                        # 再次轮询结果
-                        start_time = time.time()
-                        last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
-
-                        while not (result_path.exists() or error_path.exists()):
-                            if check_cancel and check_cancel():
-                                raise Exception("执行被用户取消")
-
-                            if time.time() - start_time > timeout:
-                                raise Exception("❌ 节点执行超时（5分钟）")
-
-                            # 实时日志轮询
-                            try:
-                                if os.path.exists(log_file_path):
-                                    with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                                        lf.seek(last_log_pos)
-                                        new_content = lf.read()
-                                        if new_content:
-                                            self._log_message(self.persistent_id, new_content)
-                                            last_log_pos = lf.tell()
-                            except Exception:
-                                pass
-
-                            time.sleep(0.1)
-
-                        # 读取剩余日志
-                        try:
-                            if os.path.exists(log_file_path):
-                                with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                                    lf.seek(last_log_pos)
-                                    tail_content = lf.read()
-                                    if tail_content:
-                                        self._log_message(self.persistent_id, tail_content)
-                        except Exception:
-                            pass
-
-                        # 检查重试后的结果
-                        if result_path.exists():
-                            output = _safe_load_pickle(result_path)
-                            self._log_message(self.persistent_id, "✅ 节点在 IPython 内核中执行完成（重试后）")
-                            for port in comp_obj.outputs:
-                                if port.type != ArgumentType.UPLOAD:
-                                    self.set_output_value(port.name, output.get(port.name))
-                            return output
-                        elif error_path.exists():
-                            with open(error_path, 'rb') as f:
-                                error_info_retry = pickle.load(f)
-                            error_msg = f"❌ 节点执行失败（重试后）: {error_info_retry['traceback']}"
-                            raise Exception(error_info_retry['traceback'])
-                        else:
-                            raise Exception("未知错误：未生成结果或错误文件（重试后）")
-                else:
-                    raise Exception(error_info['traceback'])
-            else:
-                raise Exception("未知错误：未生成结果或错误文件")
+            self._log_message(self.persistent_id, "✅ 节点在ipython环境执行完成")
 
         def _execute_via_subprocess(
-                self, python_executable, temp_script_path, comp_obj, result_path, error_path,
-                log_file_path, check_cancel, max_retries, requirements_str
+                self, python_executable, temp_script_path, log_file_path, check_cancel
         ):
-            retry_count = 0
-            while retry_count <= max_retries:
-                # 检查是否已取消
+            # 启动子进程（非阻塞）
+            kwargs = {}
+            if platform.system() == "Windows":
+                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+            proc = subprocess.Popen(
+                [python_executable, temp_script_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                encoding='utf-8',
+                **kwargs
+            )
+
+            start_time = time.time()
+            timeout = 300
+            while proc.poll() is None:
                 if check_cancel and check_cancel():
+                    kill_proc_tree(proc.pid)
                     raise Exception("执行已被用户取消")
-
-                # 启动子进程（非阻塞）
-                kwargs = {}
-                if platform.system() == "Windows":
-                    kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-                proc = subprocess.Popen(
-                    [python_executable, temp_script_path],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    encoding='utf-8',
-                    **kwargs
-                )
-
-                # 轮询 + 超时 + 取消检查
-                start_time = time.time()
-                timeout = 300  # 5分钟
-                cancelled = False
-                last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
-                while proc.poll() is None:
-                    # 检查取消
-                    if check_cancel and check_cancel():
-                        kill_proc_tree(proc.pid)
-                        cancelled = True
-                        break
-                    # 检查超时
-                    if time.time() - start_time > timeout:
-                        proc.terminate()
-                        try:
-                            proc.wait(timeout=5)
-                        except subprocess.TimeoutExpired:
-                            proc.kill()
-                        self._log_message(self.persistent_id, "❌ 节点执行超时（5分钟）")
-                        raise Exception("❌ 节点执行超时（5分钟）")
-
-                    # 增量读取日志，实时输出
-                    try:
-                        if os.path.exists(log_file_path):
-                            with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                                lf.seek(last_log_pos)
-                                new_content = lf.read()
-                                if new_content:
-                                    self._log_message(self.persistent_id, new_content)
-                                    last_log_pos = lf.tell()
-                    except Exception:
-                        pass
-                    time.sleep(0.1)  # 避免 CPU 占用过高
-
-                if cancelled:
-                    self._log_message(self.persistent_id, "执行已被用户取消")
-                    raise Exception("执行已被用户取消")
-
-                # 读取剩余日志（无论成功失败）
+                if time.time() - start_time > timeout:
+                    kill_proc_tree(proc.pid)
+                    raise Exception("❌ 节点执行超时（5分钟）")
+                # 增量读取日志，实时输出
                 try:
                     if os.path.exists(log_file_path):
                         with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                            lf.seek(last_log_pos)
-                            tail_content = lf.read()
-                            if tail_content:
-                                self._log_message(self.persistent_id, tail_content)
+                            lf.seek(self.last_log_pos)
+                            new_content = lf.read()
+                            if new_content:
+                                self._log_message(self.persistent_id, new_content)
+                                self.last_log_pos = lf.tell()
                 except Exception:
                     pass
-
-                # 检查是否成功
-                if proc.returncode == 0:
-                    break
-
-                # 判断是否为 ImportError 且可重试
-                if retry_count == 0 and _is_import_error(proc, error_path):
-                    _install_requirements(python_executable, requirements_str, comp_obj.logger)
-                    retry_count += 1
-                    continue
-                else:
-                    break
-
-            # === 处理最终结果 ===
-            if os.path.exists(result_path):
-                with open(result_path, 'rb') as f:
-                    output = pickle.load(f)
-                comp_obj.logger.success("✅ 节点在独立环境执行完成")
-                for port in comp_obj.outputs:
-                    if port.type != ArgumentType.UPLOAD:
-                        self.set_output_value(port.name, output.get(port.name))
-                return output
-            elif os.path.exists(error_path):
-                with open(error_path, 'rb') as f:
-                    error_info = pickle.load(f)
-                error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
-                raise Exception(error_info['traceback'])
-            else:
-                # 未生成结果或错误文件，视为未知异常
-                error_msg = "❌ 节点执行异常: 未知错误"
-                raise Exception("未知错误")
+                time.sleep(0.1)
+            self._log_message(self.persistent_id, "✅ 节点在独立环境执行完成")
 
     return DynamicNode

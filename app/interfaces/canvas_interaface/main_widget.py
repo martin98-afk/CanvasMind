@@ -451,10 +451,9 @@ class CanvasPage(QWidget):
     def _canvas_key_press_event(self, event):
         mouse_pos = self.canvas_widget.mapFromGlobal(QtGui.QCursor.pos())
         item = self.canvas_widget.itemAt(mouse_pos)
-
+        # 单独处理控件中代码编辑器的按键信号，避免和画布的按键冲突
         if isinstance(item, QGraphicsProxyWidget):
-            widget = item.widget().get_node_widget()  # 这是你的 CodeEditorWidgetWrapper 或 QFrame
-
+            widget = item.widget().get_node_widget()  # 这是 CodeEditorWidgetWrapper 或 QFrame
             if hasattr(widget, 'code_editor') and widget.code_editor.hasFocus():
                 editor = widget.code_editor
                 QApplication.sendEvent(editor, event)
