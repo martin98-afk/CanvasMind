@@ -33,7 +33,7 @@ class LowCodeWindow(FluentWindow):
         self._init_services()
         self._init_pages()
         self._setup_navigation()
-        QTimer.singleShot(3000, self.finish_splash_screen)
+        QTimer.singleShot(0, self.finish_splash_screen)
 
     # region [1. 窗口基础设置]
     def _init_window(self):
@@ -91,9 +91,9 @@ class LowCodeWindow(FluentWindow):
             self.develop_page.save_component_by_full_path
         )
         self.workflow_manager.node_request_edit.connect(
-            lambda full_path: (
+            lambda uuid: (
                 self.switchTo(self.develop_page),
-                self.develop_page._load_component(full_path)
+                self.develop_page._load_component(uuid=uuid)
             )
         )
         self.project_manager.exported_projects_changed.connect(

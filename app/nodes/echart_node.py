@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
-
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
 from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
-from app.nodes.status_node import StatusNode
-from app.utils.utils import resource_path, draw_square_port
+from app.nodes.status_node import NoStatusNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.pyecharts_widget import ChartWidgetWrapper
 
 
+# ✅ 信号类必须独立于非-QObject 节点
+class ChartNodeSignals(QObject):
+    htmlReady = pyqtSignal(str)
+
+
 def create_chart_node(parent_window):
 
-    class ChartNode(CustomBaseNode, StatusNode, BasicNodeWithGlobalProperty):
+    class ChartNode(CustomBaseNode, NoStatusNode, BasicNodeWithGlobalProperty):
         category: str = "可视化"
         __identifier__ = 'visualize'
         NODE_NAME = 'HTML 图表'
@@ -17,72 +21,72 @@ def create_chart_node(parent_window):
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
-            self.set_icon(":/icons/图表")  # 确保图标存在
+            self.set_icon(":/icons/图表")
             self.model.port_deletion_allowed = False
             self._node_logs = ""
             self._output_values = {}
             self._input_values = {}
             self.view.set_align("center")
 
-            # 添加输入端口（接收 HTML 字符串）
+            # 添加输入端口
             self.add_input('html', False)
 
-            # 添加图表控件到节点内部（非属性面板）
+            # 添加图表控件
             chart_widget = ChartWidgetWrapper(
                 parent=self.view,
                 name="chart_display",
-                label="图表预览",
                 default="<center><small>等待输入 HTML</small></center>",
                 window=parent_window
             )
             self.add_custom_widget(chart_widget)
 
-            # 监听输入变化（可选：通过端口连接触发更新）
+            # ✅ 创建信号对象（必须是 QObject 子类实例）
+            self.signals = ChartNodeSignals()
+            # 连接信号到槽（确保在主线程执行）
+            self.signals.htmlReady.connect(self._on_html_ready, Qt.QueuedConnection)
+
             self.set_disabled(False)
-            # 注意：NodeGraphQt 不会自动调用 execute，除非在流程中。我们改为监听端口数据更新。
+
+        def _on_html_ready(self, html: str):
+            """主线程中更新图表"""
+            chart_widget = self.get_widget("chart_display")
+            if chart_widget:
+                chart_widget.set_value(html)
+
+        def _trigger_chart_update(self):
+            """统一触发 HTML 更新"""
+            html_val = ""
+            port = self.get_input("html")
+            if port and port.connected_ports():
+                connected = port.connected_ports()[0]
+                upstream_node = connected.node()
+                html_val = upstream_node._output_values.get(connected.name(), "")
+            # ✅ 通过信号对象 emit
+            self.signals.htmlReady.emit(html_val)
 
         def on_input_connected(self, in_port, out_port):
             super().on_input_connected(in_port, out_port)
-            self._update_chart_from_input()
+            self._trigger_chart_update()
 
         def on_input_disconnected(self, in_port, out_port):
             super().on_input_disconnected(in_port, out_port)
-            self._update_chart_from_input()
+            self._trigger_chart_update()
 
         def set_input_value(self, port_name, value):
             super().set_input_value(port_name, value)
             if port_name == "html":
-                self._update_chart_from_input()
+                self._trigger_chart_update()
 
-        def _update_chart_from_input(self):
-            """从输入端口读取 html 并更新图表控件"""
+        def execute_sync(self, *args, **kwargs):
+            self.init_logger()
             html_val = ""
             port = self.get_input("html")
             if port and port.connected_ports():
-                # 假设上游节点设置了 _output_values
                 connected = port.connected_ports()[0]
                 upstream_node = connected.node()
                 html_val = upstream_node._output_values.get(connected.name(), "")
-            else:
-                html_val = ""
-            chart_widget = self.get_widget("chart_display")
-            if chart_widget:
-                chart_widget.set_value(html_val)
-
-        def execute_sync(self, *args, **kwargs):
-            # 可选：如果该节点参与执行流程
-            self.init_logger()
-            # 读取输入
-            html_input = ""
-            input_port = self.get_input("html")
-            if input_port and input_port.connected_ports():
-                upstream = input_port.connected_ports()[0]
-                html_input = upstream.node()._output_values.get(upstream.name(), "")
-
-            # 更新内部控件
-            self._update_chart_from_input()
-
-            # 无输出（不调用 set_output_value）
-            self._output_values.clear()
+            # ✅ 安全 emit
+            self.signals.htmlReady.emit(html_val)
+            self.clear_output_value()
 
     return ChartNode

@@ -9,6 +9,10 @@ warnings.filterwarnings("ignore")
 from pathlib import Path
 from loguru import logger
 
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+    
 # ==================== 输出重定向（捕获 stdout/stderr） ====================
 class StreamToLogger:
     def __init__(self, log_func):

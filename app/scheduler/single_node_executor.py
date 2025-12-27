@@ -46,13 +46,14 @@ def execute_node(
         comp_cls = None
     else:
         comp_cls = ComponentScanner().get_component_by_uuid(node.uuid)
-    run_id_postfix = f'@{run_id_postfix}'if run_id_postfix else ''
-    # 生成 run_id
-    run_id = f"{node.name()}{run_id_postfix}@{datetime.datetime.now().strftime('%H:%M:%S')}"
-    node._current_run_id = run_id
-    node._log_message_emitter = log_message_func
-    # 发送运行开始信号
-    log_start_func(run_id)
+    if "StatusDynamicNode_" in node.model.type_ or  "DYNAMIC_CODE" in node.model.type_:
+        run_id_postfix = f'@{run_id_postfix}'if run_id_postfix else ''
+        # 生成 run_id
+        run_id = f"{node.name()}{run_id_postfix}@{datetime.datetime.now().strftime('%H:%M:%S')}"
+        node._current_run_id = run_id
+        node._log_message_emitter = log_message_func
+        # 发送运行开始信号
+        log_start_func(run_id)
 
     try:
         # 根据运行模式选择执行方式
@@ -74,7 +75,8 @@ def execute_node(
                 if var_obj and var_obj.update_policy != "固定":
                     scheduler.update_node_variable(var_key, result, var_obj.update_policy)
         # 发送运行完成信号
-        log_finish_func(run_id)
+        if "StatusDynamicNode_" in node.model.type_ or "DYNAMIC_CODE" in node.model.type_:
+            log_finish_func(run_id)
 
         return results
 

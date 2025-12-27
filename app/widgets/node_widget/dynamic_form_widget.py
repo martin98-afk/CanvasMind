@@ -193,7 +193,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
         self.field_width = 0
         self.get_port_func = get_port_func
         # 添加按钮
-        self.btn_add = TransparentPushButton(text=f"添加{self.label}", icon=FluentIcon.ADD, parent=self)
+        self.btn_add = TransparentPushButton(text=f"添加{self.label}", icon=FluentIcon.ADD, parent=parent)
         self.container = QtWidgets.QVBoxLayout()
         self.container.setSpacing(6)
 
@@ -210,7 +210,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
         field = FormFieldWidget(
             self.schema,
             home=self.parent,
-            parent=self,
+            parent=self.parent,
             get_port_func=self.get_port_func,
             index=index
         )
@@ -287,7 +287,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
 
         # 添加新字段
         for item in data_list or []:
-            field = FormFieldWidget(self.schema, home=self.parent, parent=self, get_port_func=self.get_port_func)
+            field = FormFieldWidget(self.schema, home=self.parent, parent=self.parent, get_port_func=self.get_port_func)
             if item:
                 field.set_data(item)
             field.removed.connect(self.remove_field)

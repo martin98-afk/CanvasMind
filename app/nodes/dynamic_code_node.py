@@ -359,6 +359,7 @@ def create_dynamic_code_node(parent_window=None):
                     widget.valueChanged.connect(self._on_outputs_changed)
 
         def save_to_component(self):
+            parent_window.parent.develop_page.reset_edit()
             parent_window.parent.develop_page.code_editor.set_code(self.format_code(add_import=False))
             parent_window.parent.switchTo(parent_window.parent.develop_page)
 

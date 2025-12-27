@@ -111,7 +111,7 @@ class NodeOperations:
         # 节点右键菜单注册
         nodes_menu = self.graph.get_context_menu('nodes')
         for special_node in [
-            "dynamic.DYNAMIC_CODE", "control_flow.ControlFlowIterateNode",
+            "visualize.EchartsNode", "dynamic.DYNAMIC_CODE", "control_flow.ControlFlowIterateNode",
             "control_flow.ControlFlowLoopNode", "control_flow.ControlFlowBranchNode"
         ]:
             nodes_menu.add_command('运行此节点', lambda graph, node: self.parent.run_node(node),
@@ -186,7 +186,7 @@ class NodeOperations:
         )
 
     def edit_node(self, node):
-        self.parent.node_request_edit.emit(node.FULL_PATH)
+        self.parent.node_request_edit.emit(node.uuid)
 
     def on_node_created(self, node):
         self._node_id_cache[node.id] = node

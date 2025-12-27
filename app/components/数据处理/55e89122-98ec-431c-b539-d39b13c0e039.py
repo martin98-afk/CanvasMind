@@ -15,20 +15,20 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType
 
 
-class Component(BaseComponent):
-    name = "csv转npy"
-    category = "数据转换"
-    description = ""
+class DynamicComponent(BaseComponent):
+    name = "图像resize"
+    category = "数据处理"
+    description = "由用户动态生成的组件"
     requirements = ""
+
     inputs = [
-        PortDefinition(name="input", label="端口1", type=ArgumentType.CSV, connection=ConnectionType.SINGLE),
+        PortDefinition(name="input1", label="input1", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="output", label="数据", type=ArgumentType.ARRAY),
-        PortDefinition(name="columns", label="列名", type=ArgumentType.ARRAY),
-        PortDefinition(name="index", label="标签", type=ArgumentType.ARRAY),
+        PortDefinition(name="output1", label="output1", type=ArgumentType.IMAGE),
     ]
     properties = {
+
     }
 
     def run(self, params, inputs=None):
@@ -37,10 +37,7 @@ class Component(BaseComponent):
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
-        # 在这里编写你的组件逻辑
-        
+        from PIL import Image
         return {
-            "output": inputs.input.values,
-            "columns": [column for column in inputs.input.columns],
-            "index": [id for id in inputs.input.index]
+            "output1": inputs.input1.resize((520, 520), Image.Resampling.NEAREST)
         }

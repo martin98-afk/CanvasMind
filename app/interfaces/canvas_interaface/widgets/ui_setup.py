@@ -147,12 +147,13 @@ class CanvasUISetUp:
         self.nodes_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         self._update_nodes_container_position()
         self.node_layout = QVBoxLayout(self.nodes_container)
-        self.node_layout.setSpacing(3)
+        self.node_layout.setSpacing(5)
         self.node_layout.setContentsMargins(0, 0, 0, 0)
 
         # === 固定控制流按钮 ===
         self.iterate_node = TransparentToolButton(get_icon("更新"), parent=self.parent.canvas_widget)
         self.iterate_node.setIconSize(QSize(18, 18))
+        self.iterate_node.setFixedSize(24, 24)
         self.iterate_node.setToolTip("创建迭代")
         self.iterate_node.clicked.connect(
             lambda: self.parent.create_backdrop_node("ControlFlowIterateNode")
@@ -161,30 +162,35 @@ class CanvasUISetUp:
 
         self.loop_node = TransparentToolButton(get_icon("无限"), parent=self.parent.canvas_widget)
         self.loop_node.setIconSize(QSize(18, 18))
+        self.loop_node.setFixedSize(24, 24)
         self.loop_node.setToolTip("创建循环")
         self.loop_node.clicked.connect(lambda: self.parent.create_backdrop_node("ControlFlowLoopNode"))
         self.node_layout.addWidget(self.loop_node)
 
         self.branch_node = TransparentToolButton(get_icon("条件分支"), parent=self.parent.canvas_widget)
         self.branch_node.setIconSize(QSize(18, 18))
+        self.branch_node.setFixedSize(24, 24)
         self.branch_node.setToolTip("创建分支")
         self.branch_node.clicked.connect(lambda: self.parent.create_next_node("control_flow.ControlFlowBranchNode"))
         self.node_layout.addWidget(self.branch_node)
 
         self.echart_node = TransparentToolButton(get_icon("图表"), parent=self.parent.canvas_widget)
         self.echart_node.setIconSize(QSize(18, 18))
+        self.echart_node.setFixedSize(24, 24)
         self.echart_node.setToolTip("创建图表节点")
         self.echart_node.clicked.connect(lambda: self.parent.create_next_node("visualize.EchartsNode"))
         self.node_layout.addWidget(self.echart_node)
 
         self.code_node = TransparentToolButton(get_icon("代码执行"), parent=self.parent.canvas_widget)
         self.code_node.setIconSize(QSize(18, 18))
+        self.code_node.setFixedSize(24, 24)
         self.code_node.setToolTip("创建代码编辑")
         self.code_node.clicked.connect(lambda: self.parent.create_next_node("dynamic.DYNAMIC_CODE"))
         self.node_layout.addWidget(self.code_node)
 
         self.tool_node = TransparentToolButton(get_icon("工具"), parent=self.parent.canvas_widget)
         self.tool_node.setIconSize(QSize(18, 18))
+        self.tool_node.setFixedSize(24, 24)
         self.tool_node.setToolTip("创建工具调用")
         self.tool_node.clicked.connect(
             lambda: self.parent.create_next_node("dynamic.StatusDynamicNode_大模型组件_工具调用",
@@ -205,6 +211,7 @@ class CanvasUISetUp:
         # === "更多"按钮及其菜单 ===
         self.more_quick_button = TransparentToolButton(FluentIcon.MORE, parent=self.parent.canvas_widget)  # 使用 FluentIcon.MORE 或自定义图标
         self.more_quick_button.setIconSize(QSize(18, 18))
+        self.more_quick_button.setFixedSize(24, 24)
         self.more_quick_button.setToolTip("更多快捷组件")
         self.more_quick_menu = RoundMenu(parent=self.parent.canvas_widget)  # 使用 qfluentwidgets 的菜单
         self.more_quick_button.clicked.connect(self._show_more_quick_menu)
@@ -215,6 +222,7 @@ class CanvasUISetUp:
         # === 原来的 "+" 按钮（始终在最后）===
         self.add_quick_btn = TransparentToolButton(FluentIcon.ADD, parent=self.parent.canvas_widget)
         self.add_quick_btn.setIconSize(QSize(18, 18))
+        self.add_quick_btn.setFixedSize(24, 24)
         self.add_quick_btn.setToolTip("添加快捷组件")
         self.add_quick_btn.clicked.connect(self.parent.quick_manager.open_add_dialog)
         self.node_layout.addWidget(self.add_quick_btn)
@@ -296,6 +304,7 @@ class CanvasUISetUp:
 
                 btn = TransparentToolButton(icon, parent=self.parent.canvas_widget)
                 btn.setIconSize(QSize(18, 18))
+                btn.setFixedSize(24, 24)
                 btn.setToolTip(f"创建 {comp_name}")
                 btn.setProperty("full_path", full_path)
                 btn.clicked.connect(lambda _, ip=icon_path, fp=full_path: self.parent.create_next_node(fp, ip))
