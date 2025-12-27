@@ -659,7 +659,8 @@ class DataHandler:
         """读取torch模型"""
         torch = self._get_torch()
         if isinstance(data, (str, Path)) and os.path.exists(data):
-            return torch.jit.load(data)
+            with open(data, 'rb') as f:
+                return torch.export.load(f)
         else:
             raise ComponentError(f"无法读取torch模型: {data}")
 
@@ -780,11 +781,10 @@ class DataHandler:
         if torch is None:
             raise ComponentError("torch 未安装", "MISSING_DEPENDENCY")
         temp_dir = self._get_node_temp_dir()
-        model_path = temp_dir / f"model_{self.node_id}.pth"
-        scripted_model = torch.jit.script(model)
+        model_path = str(temp_dir / f"model_{self.node_id}.pt2")
         with open(model_path, 'wb') as f:
-            torch.jit.save(scripted_model, f)
-        return str(model_path)
+            torch.export.save(model, f)
+        return model_path
 
     def _store_image_data(self, image: Any) -> str:
         """存储图像数据到节点专属目录"""
