@@ -1,3 +1,4 @@
+import platform
 import subprocess
 import sys
 import threading
@@ -16,7 +17,7 @@ class LspClientManager(QThread):
 
     def __init__(self, python_path: Optional[str] = None, parent: Optional[QObject] = None):
         super().__init__(parent)
-        self.python_path = python_path or sys.executable
+        self.python_path = python_path
         self.endpoint: Optional[JsonRpcEndpoint] = None
         self.process: Optional[subprocess.Popen] = None
         self.version = 0
@@ -32,11 +33,15 @@ class LspClientManager(QThread):
         try:
             # 启动 pylsp
             cmd = [self.python_path, "-m", "pylsp"]
+            kwargs = {}
+            if platform.system() == "Windows":
+                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
             self.process = subprocess.Popen(
                 cmd,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                **kwargs
             )
 
             # 启动 stderr 日志（用于调试）

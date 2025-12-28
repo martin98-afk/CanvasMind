@@ -15,7 +15,8 @@ from spyder.plugins.editor.widgets.completion import CompletionWidget
 from spyder.widgets.findreplace import FindReplace
 from spyder_kernels.utils.dochelpers import getobj
 
-from app.server_manager.lsp_server.lsp_manager import LspClientManager
+from app.server_manager.lsp_server.lsp_manager_stdio import LspClientManager
+from app.server_manager.lsp_server.lsp_manager_zmq import LspClientZMQManager
 from app.utils.utils import get_icon
 
 
@@ -132,6 +133,8 @@ class LSPCodeEditor(CodeEditor):
             return
         code = self.toPlainText()
         self._document_version += 1
+
+        # 第一次同步时发送 didOpen
         if not self._lsp_document_opened:
             self.lsp_manager.open_document(code)
             self._lsp_document_opened = True

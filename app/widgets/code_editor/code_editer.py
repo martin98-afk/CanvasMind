@@ -153,29 +153,46 @@ class CodeEditorWidget(QWidget):
             self._suspend_sync_depth -= 1
 
     def replace_text_preserving_view(self, new_text: str):
-        doc_text = self.get_code()
-        if new_text == doc_text:
+        old_text = self.get_code()
+        if new_text == old_text:
             return
+
+        # ✅ 1. 保存滚动位置和光标位置（仅用 selection）
         scrollbar = self.code_editor.verticalScrollBar()
         scroll_pos = scrollbar.value()
+
         cursor = self.code_editor.textCursor()
         sel_start = cursor.selectionStart()
         sel_end = cursor.selectionEnd()
+        is_selection = sel_start != sel_end
+
+        # ✅ 2. 阻断信号，替换全文
         self.code_editor.blockSignals(True)
-        cursor.beginEditBlock()
-        cursor.select(QTextCursor.Document)
-        cursor.insertText(new_text.replace('\r\n', '\n').replace('\r', '\n'))
-        cursor.endEditBlock()
-        self.code_editor.blockSignals(False)
-        c = self.code_editor.textCursor()
-        if sel_start != sel_end:
-            c.setPosition(max(0, min(sel_start, len(new_text))))
-            c.setPosition(max(0, min(sel_end, len(new_text))), QTextCursor.KeepAnchor)
+        try:
+            # 使用 setPlainText（最可靠的方式替换全文）
+            self.code_editor.setPlainText(new_text.replace('\r\n', '\n').replace('\r', '\n'))
+        finally:
+            self.code_editor.blockSignals(False)
+
+        # ✅ 3. 严格限制位置在新文本范围内
+        new_len = len(new_text)
+        new_start = max(0, min(sel_start, new_len))
+        new_end = max(0, min(sel_end, new_len))
+
+        # ✅ 4. 设置新光标
+        new_cursor = self.code_editor.textCursor()
+        if is_selection:
+            new_cursor.setPosition(new_start)
+            new_cursor.setPosition(new_end, QTextCursor.KeepAnchor)
         else:
-            c.setPosition(max(0, min(cursor.position(), len(new_text))))
-        self.code_editor.setTextCursor(c)
-        self.code_editor.textChanged.emit()
+            new_cursor.setPosition(new_start)  # 单点光标
+        self.code_editor.setTextCursor(new_cursor)
+
+        # ✅ 5. 恢复滚动
         scrollbar.setValue(scroll_pos)
+
+        # ✅ 6. 手动触发 textChanged（如果需要）
+        self.code_editor.textChanged.emit()
 
     def _toggle_find_panel(self, focus_replace=False):
         """切换查找替换面板的可见性"""

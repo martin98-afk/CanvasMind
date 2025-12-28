@@ -156,9 +156,9 @@ class ComponentDeveloperPage(QWidget):
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.FocusOut:
-            if obj is self.code_editor.code_editor:
-                # 代码编辑器失去焦点，触发依赖分析
-                self._analysis_timer.start(300)  # 可设为短延迟，避免频繁触发
+            # if obj is self.code_editor.code_editor:
+            #     # 代码编辑器失去焦点，触发依赖分析
+            #     self._analysis_timer.start(300)  # 可设为短延迟，避免频繁触发
             if obj in [self.name_edit, self.category_edit, self.description_edit, self.requirements_edit]:
                 # ✅ 用户结束编辑，立即同步到代码
                 self._sync_basic_info_to_code()
@@ -836,6 +836,7 @@ except:
             return
         self._saving = True
         try:
+            self._analyze_code_for_requirements()
             self._sync_basic_info_to_code()
             name = self.name_edit.text().strip()
             category = self.category_edit.currentText().strip()
