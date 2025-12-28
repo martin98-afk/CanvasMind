@@ -17,7 +17,7 @@ class CodeEditorWidgetWrapper(CustomNodeBaseWidget):
         self.set_label(label)
         self.setFocusPolicy(Qt.WheelFocus)
         self._editor = CodeEditorWidget(
-            parent=window, python_exe=window.get_current_python_exe(), default_code=default
+            parent=window, python_exe=window.get_current_python_exe(), default_code=default, editor_type="jedi"
         )
         self._editor.code_changed.connect(
             lambda: self.valueChanged.emit(self._editor.get_code())

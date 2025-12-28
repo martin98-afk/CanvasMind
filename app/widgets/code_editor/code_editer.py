@@ -9,17 +9,22 @@ from spyder.widgets.findreplace import FindReplace
 from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon  # 假设您有这个工具函数
 from app.widgets.basic_widget.style_sheet import StyleSheet
-from app.widgets.code_editor.code_editor_lsp import JediCodeEditor  # 确保导入路径正确
+from app.widgets.code_editor.code_editor_lsp import LSPCodeEditor  # 确保导入路径正确
+from app.widgets.code_editor.code_editor_spyder import JediCodeEditor
 
 
 # ---------------- 主部件 ----------------
 class CodeEditorWidget(QWidget):
+    """
+
+    """
     code_changed = pyqtSignal()
     parsed_component = pyqtSignal(dict)
 
-    def __init__(self, parent=None, python_exe=None, popup_offset=0, default_code=DEFAULT_NODE_TEMPLATE):
+    def __init__(self, parent=None, python_exe=None, popup_offset=0, editor_type="lsp", default_code=DEFAULT_NODE_TEMPLATE):
         super().__init__(parent)  # 确保父类初始化
         self.default_code = default_code
+        self.editor_type = editor_type
         self._suspend_sync_depth = 0  # 初始化，避免在_setup_ui前访问
         self.original_parent = parent  # 保存原始父对象，用于全屏后恢复
         self.fullscreen_mode = False  # 标记是否处于全屏模式
@@ -45,7 +50,12 @@ class CodeEditorWidget(QWidget):
         self.main_layout.addWidget(self.find_replace)
 
         # 代码编辑器
-        self.code_editor = JediCodeEditor(self, self, python_exe_path=python_exe, popup_offset=popup_offset)
+        if self.editor_type == "lsp":
+            self.code_editor = LSPCodeEditor(self, self.original_parent, python_exe_path=python_exe)
+        elif self.editor_type == "jedi":
+            self.code_editor = JediCodeEditor(
+                self, self.original_parent, python_exe_path=python_exe, popup_offset=popup_offset
+            )
         self.code_editor.textChanged.connect(self.code_changed)
         # --- 关键修改：连接内部按钮的点击信号到本类的切换方法 ---
         self.code_editor.fullscreen_button.clicked.connect(self._toggle_fullscreen)
