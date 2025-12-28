@@ -1,28 +1,30 @@
 # -*- coding: utf-8 -*-
 import ast
-import re
 
 from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QEvent
-from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QShortcut, QHBoxLayout, \
-    QLineEdit, QPushButton, QCheckBox, QLabel, QInputDialog
+from PyQt5.QtGui import QTextCursor
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QShortcut, QLabel, QInputDialog
 from spyder.widgets.findreplace import FindReplace
 
 from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon  # 假设您有这个工具函数
 from app.widgets.basic_widget.style_sheet import StyleSheet
-
-from app.widgets.code_editor.code_editor_spyder import JediCodeEditor  # 确保导入路径正确
+from app.widgets.code_editor.code_editor_lsp import LSPCodeEditor  # 确保导入路径正确
+from app.widgets.code_editor.code_editor_spyder import JediCodeEditor
 
 
 # ---------------- 主部件 ----------------
 class CodeEditorWidget(QWidget):
+    """
+
+    """
     code_changed = pyqtSignal()
     parsed_component = pyqtSignal(dict)
 
-    def __init__(self, parent=None, python_exe=None, popup_offset=0, default_code=DEFAULT_NODE_TEMPLATE):
+    def __init__(self, parent=None, python_exe=None, popup_offset=0, editor_type="lsp", default_code=DEFAULT_NODE_TEMPLATE):
         super().__init__(parent)  # 确保父类初始化
         self.default_code = default_code
+        self.editor_type = editor_type
         self._suspend_sync_depth = 0  # 初始化，避免在_setup_ui前访问
         self.original_parent = parent  # 保存原始父对象，用于全屏后恢复
         self.fullscreen_mode = False  # 标记是否处于全屏模式
@@ -48,7 +50,12 @@ class CodeEditorWidget(QWidget):
         self.main_layout.addWidget(self.find_replace)
 
         # 代码编辑器
-        self.code_editor = JediCodeEditor(self, self, python_exe_path=python_exe, popup_offset=popup_offset)
+        if self.editor_type == "lsp":
+            self.code_editor = LSPCodeEditor(self, self.original_parent, python_exe_path=python_exe)
+        elif self.editor_type == "jedi":
+            self.code_editor = JediCodeEditor(
+                self, self.original_parent, python_exe_path=python_exe, popup_offset=popup_offset
+            )
         self.code_editor.textChanged.connect(self.code_changed)
         # --- 关键修改：连接内部按钮的点击信号到本类的切换方法 ---
         self.code_editor.fullscreen_button.clicked.connect(self._toggle_fullscreen)
@@ -146,29 +153,46 @@ class CodeEditorWidget(QWidget):
             self._suspend_sync_depth -= 1
 
     def replace_text_preserving_view(self, new_text: str):
-        doc_text = self.get_code()
-        if new_text == doc_text:
+        old_text = self.get_code()
+        if new_text == old_text:
             return
+
+        # ✅ 1. 保存滚动位置和光标位置（仅用 selection）
         scrollbar = self.code_editor.verticalScrollBar()
         scroll_pos = scrollbar.value()
+
         cursor = self.code_editor.textCursor()
         sel_start = cursor.selectionStart()
         sel_end = cursor.selectionEnd()
+        is_selection = sel_start != sel_end
+
+        # ✅ 2. 阻断信号，替换全文
         self.code_editor.blockSignals(True)
-        cursor.beginEditBlock()
-        cursor.select(QTextCursor.Document)
-        cursor.insertText(new_text.replace('\r\n', '\n').replace('\r', '\n'))
-        cursor.endEditBlock()
-        self.code_editor.blockSignals(False)
-        c = self.code_editor.textCursor()
-        if sel_start != sel_end:
-            c.setPosition(max(0, min(sel_start, len(new_text))))
-            c.setPosition(max(0, min(sel_end, len(new_text))), QTextCursor.KeepAnchor)
+        try:
+            # 使用 setPlainText（最可靠的方式替换全文）
+            self.code_editor.setPlainText(new_text.replace('\r\n', '\n').replace('\r', '\n'))
+        finally:
+            self.code_editor.blockSignals(False)
+
+        # ✅ 3. 严格限制位置在新文本范围内
+        new_len = len(new_text)
+        new_start = max(0, min(sel_start, new_len))
+        new_end = max(0, min(sel_end, new_len))
+
+        # ✅ 4. 设置新光标
+        new_cursor = self.code_editor.textCursor()
+        if is_selection:
+            new_cursor.setPosition(new_start)
+            new_cursor.setPosition(new_end, QTextCursor.KeepAnchor)
         else:
-            c.setPosition(max(0, min(cursor.position(), len(new_text))))
-        self.code_editor.setTextCursor(c)
-        self.code_editor.textChanged.emit()
+            new_cursor.setPosition(new_start)  # 单点光标
+        self.code_editor.setTextCursor(new_cursor)
+
+        # ✅ 5. 恢复滚动
         scrollbar.setValue(scroll_pos)
+
+        # ✅ 6. 手动触发 textChanged（如果需要）
+        self.code_editor.textChanged.emit()
 
     def _toggle_find_panel(self, focus_replace=False):
         """切换查找替换面板的可见性"""

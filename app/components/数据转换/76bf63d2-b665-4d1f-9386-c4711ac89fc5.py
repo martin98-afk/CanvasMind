@@ -29,6 +29,11 @@ class Component(BaseComponent):
         PortDefinition(name="index", label="标签", type=ArgumentType.ARRAY),
     ]
     properties = {
+        "number": PropertyDefinition(
+            type=PropertyType.INT,
+            default=-1,
+            label="取数量(-1为全部)",
+        ),
     }
 
     def run(self, params, inputs=None):
@@ -40,7 +45,7 @@ class Component(BaseComponent):
         # 在这里编写你的组件逻辑
         
         return {
-            "output": inputs.input.values,
+            "output": inputs.input.values[:params.number, :],
             "columns": [column for column in inputs.input.columns],
-            "index": [id for id in inputs.input.index]
+            "index": [id for id in inputs.input.iloc[:params.number, :].index]
         }

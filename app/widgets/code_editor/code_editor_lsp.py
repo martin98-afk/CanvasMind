@@ -1,331 +1,51 @@
 # -*- coding: utf-8 -*-
-import ast
 import re
 import sys
-from typing import List, Tuple, Dict
+import uuid
+from typing import List, Dict
+from urllib.parse import quote
 
-import parso
-from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal, QObject, QRect, QEvent, QFileSystemWatcher
-from PyQt5.QtGui import QFont, QTextCursor, QColor, QPainter, QCursor, QTextBlock, QTextCharFormat, QKeySequence
-from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate, QStyle, QVBoxLayout, QShortcut, QMainWindow, QWidget, QApplication, QToolTip
-from intervaltree import IntervalTree
+from PyQt5.QtCore import Qt, QTimer, QSize
+from PyQt5.QtGui import QFont, QTextCursor, QColor, QTextCharFormat, QCursor
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QApplication
 from loguru import logger
 from qfluentwidgets import TransparentToolButton
-from qtpy import QtCore
-from spyder.plugins.editor.panels.utils import FoldingRegion
 from spyder.plugins.editor.widgets.codeeditor import CodeEditor
+from spyder.plugins.editor.widgets.completion import CompletionWidget
 from spyder.widgets.findreplace import FindReplace
+from spyder_kernels.utils.dochelpers import getobj
 
-from app.server_manager.lsp_server.lsp_manager import LspClientManager
+from app.server_manager.lsp_server.lsp_manager_stdio import LspClientManager
+from app.server_manager.lsp_server.lsp_manager_zmq import LspClientZMQManager
 from app.utils.utils import get_icon
 
 
-# --- 使用 AST 计算折叠区域 ---
-def compute_folding_from_ast(code: str):
-    try:
-        tree = ast.parse(code)
-        folding_regions: Dict[int, int] = {}
-        folding_status: Dict[int, bool] = {}
-        lines = code.splitlines(keepends=True)
-        def visit_node(node):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
-                                 ast.If, ast.For, ast.AsyncFor, ast.While,
-                                 ast.Try,
-                                 ast.With, ast.AsyncWith,
-                                 ast.ExceptHandler)):
-                start_line = node.lineno
-                end_line = -1
-                if isinstance(node, ast.ExceptHandler):
-                    if hasattr(node, 'end_lineno') and node.end_lineno is not None:
-                        end_line = node.end_lineno
-                    else:
-                        if node.body:
-                            last_stmt = node.body[-1]
-                            end_line = getattr(last_stmt, 'end_lineno', last_stmt.lineno)
-                            end_line = max(end_line, start_line)
-                        else:
-                            end_line = start_line
-                else:
-                    if hasattr(node, 'end_lineno') and node.end_lineno is not None:
-                        end_line = node.end_lineno
-                    else:
-                        if node.body:
-                            last_stmt = node.body[-1]
-                            end_line = getattr(last_stmt, 'end_lineno', last_stmt.lineno)
-                            end_line = max(end_line, start_line)
-                        else:
-                            end_line = start_line
-                if end_line > start_line:
-                    folding_regions[start_line] = end_line
-                    folding_status[start_line] = False
-            for child_node in ast.iter_child_nodes(node):
-                visit_node(child_node)
-        visit_node(tree)
-        current_tree = IntervalTree()
-        root = FoldingRegion(None, None)
-        folding_nesting = {}
-        folding_levels = {}
-        for start, end in folding_regions.items():
-            current_tree[start:end+1] = (start, end)
-            folding_levels[start] = 1
-            folding_nesting[start] = []
-        logger.debug(f"[Folding] AST found {len(folding_regions)} regions.")
-        return current_tree, root, folding_regions, folding_nesting, folding_levels, folding_status
-    except SyntaxError as e:
-        logger.warning(f"[Folding] Syntax error in code, cannot compute folding: {e}")
-        return IntervalTree(), FoldingRegion(None, None), {}, {}, {}, {}
-    except Exception as e:
-        logger.error(f"[Folding] Unexpected error computing folding from AST: {e}")
-        return IntervalTree(), FoldingRegion(None, None), {}, {}, {}, {}
-
-
-class ParsoCodeAnalysis:
-    @staticmethod
-    def run_parso_analysis(code):
-        try:
-            grammar = parso.load_grammar()
-            module = grammar.parse(code, error_recovery=True)
-            errors = grammar.iter_errors(module)
-            messages = []
-            for error in errors:
-                line_number = error.start_pos[0]
-                column_number = error.start_pos[1] + 1
-                message_text = error.message
-                msg_type = 'error'
-                messages.append({
-                    'row': line_number,
-                    'column': column_number,
-                    'type': msg_type,
-                    'message': message_text
-                })
-        except Exception as e:
-            logger.error(f"[Parso] Unexpected error during analysis: {e}")
-            messages = []
-        return messages
-
-
-class CompletionItemDelegate(QStyledItemDelegate):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.type_colors = {
-            'function': QColor("#FFB86C"),
-            'method': QColor("#FFB86C"),
-            'class': QColor("#82AAFF"),
-            'module': QColor("#B267E6"),
-            'instance': QColor("#F07178"),
-            'keyword': QColor("#C792EA"),
-            'property': QColor("#FFCB6B"),
-            'param': QColor("#F78C6C"),
-            'variable': QColor("#E0E0E0"),
-            'custom': QColor("#89DDFF"),
-            'unknown': QColor("#CCCCCC"),
-            'variable_str': QColor("#FFCB6B"),
-            'variable_int': QColor("#F78C6C"),
-            'variable_float': QColor("#F78C6C"),
-            'variable_list': QColor("#E0E0E0"),
-            'variable_dict': QColor("#E0E0E0"),
-            'variable_bool': QColor("#FFB86C"),
-            'variable_tuple': QColor("#E0E0E0"),
-            'variable_set': QColor("#E0E0E0"),
-            'builtin': QColor("#FFB86C"),
-            'enum': QColor("#82AAFF"),
-            'attribute': QColor("#E0E0E0"),
-        }
-        self.type_chars = {
-            'function': 'Ƒ',
-            'method': 'ℳ',
-            'class': '𝒞',
-            'module': 'ℳ',
-            'instance': 'ℐ',
-            'keyword': '𝕂',
-            'property': '𝒫',
-            'param': '𝒫',
-            'variable': '𝒱',
-            'custom': '★',
-            'variable_str': '𝒱',
-            'variable_int': '𝒱',
-            'variable_float': '𝒱',
-            'variable_list': '𝒱',
-            'variable_dict': '𝒱',
-            'variable_bool': '𝒱',
-            'variable_tuple': '𝒱',
-            'variable_set': '𝒱',
-            'builtin': 'ℬ',
-            'enum': 'ℰ',
-            'attribute': '𝒜',
-        }
-        self.max_description_length = 60
-        self.truncation_suffix = "..."
-        self.max_detail_length = 40
-
-    def _truncate_description(self, description: str) -> str:
-        if len(description) > self.max_description_length:
-            return description[:self.max_description_length - len(self.truncation_suffix)] + self.truncation_suffix
-        return description
-
-    def _truncate_detail(self, detail: str) -> str:
-        if len(detail) > self.max_detail_length:
-            return detail[:self.max_detail_length - len(self.truncation_suffix)] + self.truncation_suffix
-        return detail
-
-    def paint(self, painter: QPainter, option, index):
-        if option.state & QStyle.State_Selected:
-            painter.fillRect(option.rect, QColor("#2A3B4D"))
-            painter.setPen(QColor("#FFFFFF"))
-        else:
-            painter.fillRect(option.rect, QColor("#19232D"))
-            painter.setPen(QColor("#FFFFFF"))
-        item_data = index.data(Qt.UserRole)
-        if item_data:
-            name, type_name, description, detail = item_data
-            description = self._truncate_description(description)
-            detail = self._truncate_detail(detail) if detail else ""
-        else:
-            name = str(index.data(Qt.DisplayRole) or "")
-            type_name = ""
-            description = ""
-            detail = ""
-        padding = 10
-        char_width = 20
-        char_spacing = 10
-        rect = option.rect.adjusted(padding, 0, -padding, 0)
-        char_rect = QRect(rect.left(), rect.top(), char_width, rect.height())
-        available_width = rect.width() - char_width - char_spacing
-        painter.setFont(option.font)
-        fm = painter.fontMetrics()
-        combined_info = ""
-        if description or detail:
-            parts = []
-            if description:
-                parts.append(description)
-            if detail:
-                parts.append(detail)
-            combined_info = "; ".join(parts)
-            combined_info = self._truncate_detail(combined_info)
-            info_width = fm.width(combined_info)
-            max_info_width = int(available_width * 0.6)
-            if info_width > max_info_width:
-                extra = info_width - max_info_width
-                cut_len = len(combined_info) - (extra // (fm.averageCharWidth() or 1)) - len(self.truncation_suffix)
-                if cut_len > 0:
-                    combined_info = combined_info[:max(0, cut_len)] + self.truncation_suffix
-                    info_width = fm.width(combined_info)
-        else:
-            info_width = 0
-            combined_info = ""
-        name_max_width = available_width - info_width - (10 if info_width > 0 else 0)
-        if name_max_width < 0:
-            name_max_width = available_width
-            info_width = 0
-            combined_info = ""
-        name_width = fm.width(name)
-        if name_width > name_max_width:
-            name = fm.elidedText(name, Qt.ElideRight, name_max_width)
-        name_x = rect.left() + char_width + char_spacing
-        name_rect = QRect(name_x, rect.top(), name_max_width, rect.height())
-        type_char = self.type_chars.get(type_name, '?')
-        type_color = self.type_colors.get(type_name, self.type_colors['unknown'])
-        painter.setPen(type_color)
-        char_font = painter.font()
-        char_font.setPointSize(char_font.pointSize() + 1)
-        char_font.setBold(True)
-        painter.setFont(char_font)
-        painter.drawText(char_rect, Qt.AlignCenter, type_char)
-        painter.setFont(option.font)
-        painter.setPen(QColor("#FFFFFF"))
-        name_font = painter.font()
-        name_font.setPointSize(name_font.pointSize() + 1)
-        painter.setFont(name_font)
-        painter.drawText(name_rect, Qt.AlignLeft | Qt.AlignVCenter, name)
-        painter.setFont(option.font)
-        if combined_info:
-            info_x = name_x + available_width - info_width
-            info_rect = QRect(info_x, rect.top(), info_width, rect.height())
-            desc_font = painter.font()
-            desc_font.setPointSize(desc_font.pointSize() - 1)
-            desc_font.setItalic(True)
-            painter.setFont(desc_font)
-            painter.setPen(QColor("#AAAAAA"))
-            painter.drawText(info_rect, Qt.AlignLeft | Qt.AlignVCenter, combined_info)
-            painter.setFont(option.font)
-
-    def sizeHint(self, option, index):
-        size = super().sizeHint(option, index)
-        return QSize(size.width(), 40)
-
-
-class JediCodeEditor(CodeEditor):
-    def __init__(self, parent=None, code_parent=None, python_exe_path=None, popup_offset=2, dialog=None):
+class LSPCodeEditor(CodeEditor):
+    def __init__(self, parent=None, code_parent=None, python_exe_path=None, dialog=None):
         super().__init__()
-        self.python_exe_path = python_exe_path
-        self.popup_offset = popup_offset
+        self.python_exe_path = python_exe_path or sys.executable
         self.parent_widget = parent
-        self.parent = code_parent
-        self.custom_completions = set()
-        self.add_custom_completions([
+        self.code_parent = code_parent
+        self._lsp_ready = False
+        self._completing = False
+        self._document_version = 0
+        self._lsp_document_opened = False
+        # --- 自定义补全词（CompletionWidget 会自动合并）---
+        self.custom_completions = {
             'True', 'False', 'None', 'Exception', 'OSError', 'ValueError', 'TypeError',
             'print', 'input', 'open', 'range', 'enumerate', 'len', 'str', 'int', 'float',
             'list', 'dict', 'set', 'tuple', '__init__', '__name__', '__file__',
-        ])
+        }
 
-        # --- LSP 初始化 ---
-        self.lsp_manager = LspClientManager(python_path=self.python_exe_path or sys.executable)
-        self.lsp_manager.initialized.connect(self._on_lsp_initialized)
-        self.lsp_manager.completion_ready.connect(self._on_lsp_completions_ready)
-        self.lsp_manager.diagnostics_ready.connect(self._on_lsp_diagnostics_ready)
-        self.lsp_manager.start()
-        self._lsp_ready = False
-        self.textChanged.connect(self._on_text_changed_for_lsp)
+        self.set_completion_environment(python_exe_path)
 
-        # --- 补全弹窗 ---
-        self.popup = QListWidget()
-        self.popup.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
-        self.popup.setFocusPolicy(Qt.NoFocus)
-        self.popup.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.popup.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.popup.setStyleSheet("""
-            QListWidget {
-                background-color: #19232D;
-                color: #FFFFFF;
-                border: 1px solid #32414B;
-                outline: 0;
-                padding: 4px;
-            }
-            QListWidget::item:selected {
-                background-color: #2A3B4D;
-            }
-            QScrollBar:vertical {
-                width: 8px;
-                background-color: #2A3B4D;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #32414B;
-                border-radius: 4px;
-                min-height: 20px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background-color: #4A5C6D;
-            }
-        """)
-        self.popup.setFont(QFont('Consolas', 12))
-        self.popup.setItemDelegate(CompletionItemDelegate())
-        self.popup.itemClicked.connect(self._on_completion_selected)
-        self.popup.itemEntered.connect(self._on_item_hovered)
-        self.popup.setUniformItemSizes(True)
-        self.popup.setMaximumWidth(1200)
-        self.popup.setMinimumWidth(500)
-        self.popup.hide()
-
-        # --- 超时自动关闭 ---
-        self._popup_timeout_timer = QTimer()
-        self._popup_timeout_timer.setSingleShot(True)
-        self._popup_timeout_timer.timeout.connect(self._on_popup_timeout)
-        self._popup_timeout_duration = 10000
-
-        # --- 编辑器设置 ---
-        self._font_family = 'Consolas'
-        self._current_font_size = 13
+        # === ✅ 使用 Spyder 的 CompletionWidget ===
+        self.completion_widget = CompletionWidget(parent=self, ancestor=self.code_parent)
+        # 深色背景
+        self.completion_widget.setStyleSheet("background-color: #1E1E1E;")
+        self.completion_widget.setMinimumWidth(350)
+        self.completion_widget.setMinimumHeight(200)
+        # --- 编辑器设置（必须启用 underline_errors 才能显示 ScrollFlagArea 图标）---
         font = QFont('Consolas', 13)
         self.setup_editor(
             language='python',
@@ -337,19 +57,21 @@ class JediCodeEditor(CodeEditor):
             close_quotes=True,
             indent_guides=True,
             folding=True,
+            markers=True,
+            automatic_completions=True,  # ✅ 关键！
+            automatic_completions_after_chars=1,
             intelligent_backspace=True,
-            automatic_completions=False,
-            underline_errors=True,
-            completions_hint=False,
+            completions_hint=True,
+            underline_errors=True,  # ✅ 必须为 True 才能显示行号前错误图标
             highlight_current_line=True,
         )
-
-        # --- 快捷键 ---
-        self.shortcut = QShortcut(QKeySequence("Ctrl+Space"), self)
-        self.shortcut.activated.connect(self._request_completions)
-
+        self.auto_completion_characters = ["."]
         # --- 按钮 ---
-        self._create_fullscreen_button("放大" if dialog is None else "缩小")
+        btn_text = "缩小" if dialog else "放大"
+        self.fullscreen_button = TransparentToolButton(get_icon(btn_text), parent=self)
+        self.fullscreen_button.setIconSize(QSize(28, 28))
+        self.fullscreen_button.setFixedSize(28, 28)
+        self.fullscreen_button.setToolTip("放大编辑器")
         self.spyder_button = TransparentToolButton(get_icon("spyder"), parent=self)
         self.spyder_button.setIconSize(QSize(28, 28))
         self.spyder_button.setFixedSize(28, 28)
@@ -357,87 +79,169 @@ class JediCodeEditor(CodeEditor):
         self.spyder_button.clicked.connect(self._open_in_spyder)
         self._update_button_position()
 
-        # --- 类型字符映射 ---
-        self.type_chars = {
-            'function': 'Ƒ',
-            'method': 'ℳ',
-            'class': '𝒞',
-            'module': 'ℳ',
-            'instance': 'ℐ',
-            'keyword': '𝕂',
-            'property': '𝒫',
-            'param': '𝒫',
-            'variable': '𝒱',
-            'custom': '★',
-            'variable_str': '𝒱',
-            'variable_int': '𝒱',
-            'variable_float': '𝒱',
-            'variable_list': '𝒱',
-            'variable_dict': '𝒱',
-            'variable_bool': '𝒱',
-            'variable_tuple': '𝒱',
-            'variable_set': '𝒱',
-            'builtin': 'ℬ',
-            'enum': 'ℰ',
-            'attribute': '𝒜',
-        }
+        # --- LSP 同步 ---
+        self._lsp_sync_timer = QTimer()
+        self._lsp_sync_timer.setSingleShot(True)
+        self._lsp_sync_timer.timeout.connect(self._sync_to_lsp)
+        self.textChanged.connect(self._on_text_changed_for_lsp)
 
-        # --- 保留 parso 语法检查 ---
+        # --- LSP 折叠 ---
+        self._folding_timer = QTimer()
+        self._folding_timer.setSingleShot(True)
+        self._folding_timer.timeout.connect(self._request_folding)
+        self.textChanged.connect(self._on_text_changed_for_folding)
+
+        # --- Parso 语法检查（可选）---
         self._parso_timer = QTimer()
         self._parso_timer.setSingleShot(True)
         self._parso_timer.timeout.connect(self._run_parso_analysis)
         self.textChanged.connect(self._on_text_changed_for_parso)
 
-        # --- 折叠更新 ---
-        self.textChanged.connect(self._on_text_changed_for_folding)
+        if hasattr(self, 'folding_panel') and self.folding_panel:
+            self.folding_panel.folding_status = {}
 
-        self._completing = False
+    def set_completion_environment(self, python_exe: str):
+        if hasattr(self, 'lsp_manager') and self.lsp_manager:
+            self.lsp_manager.shutdown()
+        self.lsp_manager = LspClientManager(python_path=python_exe)
+        self.lsp_manager.initialized.connect(self._on_lsp_initialized)
+        self.lsp_manager.completion_ready.connect(self._on_lsp_completions_ready)
+        self.lsp_manager.diagnostics_ready.connect(self._on_lsp_diagnostics_ready)
+        self.lsp_manager.folding_ready.connect(self._on_lsp_folding_ready)
+        self.lsp_manager.start()
 
     # ========== LSP 集成 ==========
+    def _document_uri(self) -> str:
+        return "file://" + quote("/tmp/editor.py")
+
     def _on_lsp_initialized(self):
         self._lsp_ready = True
         code = self.toPlainText()
         if code.strip():
-            self.lsp_manager.open_document(code)
+            self._sync_to_lsp()
 
     def _on_text_changed_for_lsp(self):
-        if not self._lsp_ready:
-            return
-        if not hasattr(self, '_lsp_sync_timer'):
-            self._lsp_sync_timer = QTimer()
-            self._lsp_sync_timer.setSingleShot(True)
-            self._lsp_sync_timer.timeout.connect(self._sync_to_lsp)
-        self._lsp_sync_timer.start(300)
+        if self._lsp_ready:
+            self._lsp_sync_timer.start(300)
+
+    def _on_text_changed_for_folding(self):
+        if self._lsp_ready:
+            self._folding_timer.start(800)
 
     def _sync_to_lsp(self):
+        if not self._lsp_ready:
+            return
         code = self.toPlainText()
-        if not hasattr(self, '_lsp_first_sync'):
+        self._document_version += 1
+
+        # 第一次同步时发送 didOpen
+        if not self._lsp_document_opened:
             self.lsp_manager.open_document(code)
-            self._lsp_first_sync = True
+            self._lsp_document_opened = True
         else:
             self.lsp_manager.change_document(code)
+        self._request_folding()
 
-    def _on_lsp_completions_ready(self, completions: List[Tuple[str, int, str, str]]):
-        KIND_MAP = {
-            1: 'text', 2: 'method', 3: 'function', 4: 'constructor',
-            5: 'field', 6: 'variable', 7: 'class', 8: 'interface',
-            9: 'module', 10: 'property', 11: 'unit', 12: 'value',
-            13: 'enum', 14: 'keyword', 15: 'snippet', 16: 'color',
-            17: 'file', 18: 'reference', 25: 'typeparameter'
-        }
-        filtered_completions = []
-        for label, kind, detail, doc in completions:
-            kind_name = KIND_MAP.get(kind, 'unknown')
-            if kind_name in ('text', 'snippet', 'unit', 'value', 'color', 'file', 'reference'):
-                continue
-            if kind_name in ('field', 'property', 'variable'):
-                kind_name = 'variable'
-            filtered_completions.append((label, kind_name, doc or '', detail or ''))
-        current_prefix = self._get_completion_prefix()
-        self._filter_and_show_completions(filtered_completions, current_prefix)
+    def _request_folding(self):
+        if self._lsp_ready:
+            self.lsp_manager.request_folding_ranges(self._document_uri())
 
-    def _on_lsp_diagnostics_ready(self, diagnostics: List[dict]):
-        self._clear_lsp_results()
+    def _on_lsp_folding_ready(self, folding_ranges: List[Dict]):
+        if not hasattr(self, 'folding_panel') or not self.folding_panel:
+            return
+        from intervaltree import IntervalTree
+        from spyder.plugins.editor.panels.utils import FoldingRegion
+        current_tree = IntervalTree()
+        folding_regions = {}
+        folding_nesting = {}
+        folding_levels = {}
+        folding_status = {}
+        for fr in folding_ranges:
+            start = fr['startLine'] + 1
+            end = fr['endLine'] + 1
+            if end > start:
+                folding_regions[start] = end
+                folding_status[start] = False
+                current_tree[start:end + 1] = (start, end)
+                folding_levels[start] = 1
+                folding_nesting[start] = []
+        root = FoldingRegion(None, None)
+        self.folding_panel.update_folding(
+            (current_tree, root, folding_regions, folding_nesting, folding_levels, folding_status)
+        )
+        self.folding_panel.folding_regions = folding_regions
+        self.folding_panel.folding_status = folding_status
+
+    def do_completion(self, automatic=True):
+        """触发 LSP 补全请求（Spyder 风格）"""
+        if not self._lsp_ready:
+            return
+        cursor = self.textCursor()
+        line = cursor.blockNumber()  # 0-based
+        col = cursor.columnNumber()  # 0-based
+        self.lsp_manager.request_completion(line, col)
+
+    # ========== 补全核心（使用 CompletionWidget）==========
+    def _get_completion_prefix(self) -> str:
+        cursor = self.textCursor()
+        pos = cursor.position()
+        if pos <= 0:
+            return ""
+        text = self.toPlainText()
+        start = pos
+        while start > 0:
+            ch = text[start - 1]
+            if ch.isalnum() or ch == '_':
+                start -= 1
+            else:
+                break
+        return text[start:pos]
+
+    def _on_lsp_completions_ready(self, completion_items: List[Dict]):
+        # ✅ 补全缺失的 filterText（用 label 代替）
+        for item in completion_items:
+            if 'filterText' not in item:
+                item['filterText'] = item.get('label', '')
+            if 'insertText' not in item:
+                item['insertText'] = item.get('label', '')
+            if 'kind' not in item:
+                item['kind'] = 0  # 'unknown'
+            if 'detail' not in item:
+                item['detail'] = ''
+            if 'documentation' not in item:
+                item['documentation'] = ''
+
+        # ✅ 注入自定义补全（可选）
+        current_prefix = self._get_completion_prefix().lower()
+        for word in self.custom_completions:
+            if word.lower().startswith(current_prefix):
+                completion_items.append({
+                    'label': word,
+                    'kind': 6,  # variable
+                    'detail': 'builtin',
+                    'documentation': '',
+                    'filterText': word,
+                    'insertText': word
+                })
+
+        cursor_pos = self.textCursor().position()
+        self.completion_widget.show_list(
+            completion_list=completion_items,
+            position=cursor_pos,
+            automatic=True
+        )
+
+    # ========== 错误下划线 + 行号前图标 ==========
+    def _on_lsp_diagnostics_ready(self, diagnostics: List[Dict]):
+        self.clear_extra_selections('lsp_underline')
+        block = self.document().firstBlock()
+        while block.isValid():
+            data = block.userData()
+            if data and hasattr(data, 'code_analysis'):
+                data.code_analysis = [x for x in data.code_analysis if x[0] != 'lsp']
+                if not data.code_analysis:
+                    data.color = None
+            block = block.next()
         has_error = False
         for diag in diagnostics:
             try:
@@ -453,237 +257,61 @@ class JediCodeEditor(CodeEditor):
                 if not data:
                     from spyder.plugins.editor.utils.editor import BlockUserData
                     data = BlockUserData(self)
-                    block.setUserData(data)
+                block.setUserData(data)
                 data.code_analysis.append(('lsp', '', severity, message))
                 data.color = self.error_color if severity == 1 else self.warning_color
                 has_error = True
+                start_char = diag['range']['start']['character']
+                end_char = diag['range']['end']['character']
+                start_pos = block.position() + start_char
+                end_pos = block.position() + end_char
+                cursor = QTextCursor(self.document())
+                cursor.setPosition(start_pos)
+                cursor.setPosition(end_pos, QTextCursor.KeepAnchor)
+                self.highlight_selection(
+                    'lsp_underline',
+                    cursor,
+                    underline_color=QColor(data.color),
+                    underline_style=QTextCharFormat.WaveUnderline
+                )
             except Exception as e:
                 logger.error(f"[LSP] Error processing diagnostic: {e}")
         if has_error:
-            self.sig_flags_changed.emit()
-        if hasattr(self, 'linenumberarea'):
-            self.linenumberarea.update()
+            self.sig_flags_changed.emit()  # ✅ 触发行号前错误图标
+            if hasattr(self, 'linenumberarea'):
+                self.linenumberarea.update()
 
-    def _clear_lsp_results(self):
-        self.clear_extra_selections('lsp_underline')
-        block = self.document().firstBlock()
-        while block.isValid():
-            data = block.userData()
-            if data and hasattr(data, 'code_analysis'):
-                data.code_analysis = [(s, c, sev, msg) for s, c, sev, msg in data.code_analysis if s != 'lsp']
-                if not data.code_analysis:
-                    data.color = None
-            block = block.next()
-
-    def add_custom_completions(self, words):
-        if isinstance(words, str):
-            words = [words]
-        self.custom_completions.update(words)
-
-    # ========== 补全核心 ==========
-    def _request_completions(self):
-        if self._completing or not self._lsp_ready:
-            return
+    # ========== 其他功能（注释、折叠复制等）==========
+    def _smart_newline(self):
         cursor = self.textCursor()
-        line = cursor.blockNumber()
-        col = cursor.columnNumber()
-        self.lsp_manager.request_completion(line, col)
-
-    def _filter_and_show_completions(self, completions: List[Tuple[str, str, str, str]], current_prefix: str):
-        seen = {name for name, _, _, _ in completions}
-        for word in self.custom_completions:
-            if word.lower().startswith(current_prefix.lower()) and word not in seen and len(word) >= 2:
-                completions.append((word, 'custom', '', ''))
-                seen.add(word)
-        if not completions:
-            self.popup.hide()
-            self._popup_timeout_timer.stop()
-            return
-        def sort_key(item):
-            name, type_name, _, _ = item
-            exact = -1 if name.lower() == current_prefix.lower() else 0
-            prefix = -1 if name.lower().startswith(current_prefix.lower()) else 0
-            type_priority = {
-                'keyword': 900, 'function': 700, 'method': 650, 'class': 600,
-                'attribute': 550, 'variable': 500, 'property': 450, 'param': 400,
-                'instance': 350, 'module': 300, 'custom': 250, 'builtin': 750,
-                'enum': 620, 'unknown': 100
-            }
-            return (exact, prefix, -type_priority.get(type_name, 0), name.lower())
-        completions.sort(key=sort_key)
-        completions = completions[:80]
-        self.popup.clear()
-        for name, type_name, description, detail in completions:
-            item = QListWidgetItem(name)
-            item.setData(Qt.UserRole, (name, type_name, description, detail))
-            self.popup.addItem(item)
-        if self.popup.count() > 0:
-            self._show_popup()
-            self.popup.setCurrentRow(0)
-            self.popup.installEventFilter(self)
-            self._popup_timeout_timer.start(self._popup_timeout_duration)
-        else:
-            self.popup.hide()
-            self._popup_timeout_timer.stop()
-
-    def _on_popup_timeout(self):
-        if self.popup.isVisible():
-            self.popup.hide()
-
-    def _get_completion_prefix(self):
-        cursor = self.textCursor()
-        pos = cursor.position()
-        text = self.toPlainText()
-        start = pos
-        while start > 0:
-            ch = text[start - 1]
-            if ch.isalnum() or ch == '_':
-                start -= 1
-            else:
-                break
-        return text[start:pos]
-
-    def _show_popup(self):
-        cursor_rect = self.cursorRect()
-        editor_global_pos = self.mapToGlobal(QtCore.QPoint(0, 0))
-        screen_cursor_pos = QtCore.QPoint(
-            editor_global_pos.x() + cursor_rect.left(),
-            editor_global_pos.y() + cursor_rect.bottom()
-        )
-        max_width = 500
-        for i in range(self.popup.count()):
-            item = self.popup.item(i)
-            fm = self.popup.fontMetrics()
-            text_width = fm.boundingRect(0, 0, 10000, 100, 0, item.text()).width() if item.text() else 0
-            w = text_width + 100
-            max_width = max(max_width, w)
-        popup_width = min(max_width, self.screen().geometry().width() - 100)
-        popup_width = max(popup_width, 500)
-        self.popup.setFixedWidth(popup_width)
-        x = screen_cursor_pos.x()
-        y = screen_cursor_pos.y()
-        if x + popup_width > self.screen().geometry().width():
-            x = self.screen().geometry().width() - popup_width - 10
-        item_height = 40
-        visible_items = min(self.popup.count(), 15)
-        popup_height = item_height * visible_items + 10
-        self.popup.move(x, y)
-        self.popup.setFixedHeight(popup_height)
-        self.popup.show()
-        self.popup.setFocus()
-
-    def _apply_selected_completion(self):
-        if not self.popup.currentItem() or self._completing:
-            self.popup.hide()
-            self._popup_timeout_timer.stop()
-            return
-        self._completing = True
-        try:
-            item = self.popup.currentItem()
-            data = item.data(Qt.UserRole)
-            if data:
-                completion, type_name, _, _ = data
-            else:
-                completion, type_name = item.text(), ""
-            cursor = self.textCursor()
-            prefix = self._get_completion_prefix()
-            if prefix:
-                cursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, len(prefix))
-            cursor.insertText(completion)
-            if type_name in ['function', 'method', 'class', 'builtin']:
-                cursor.insertText('()')
-                cursor.movePosition(QTextCursor.PreviousCharacter)
-            self.setTextCursor(cursor)
-        finally:
-            self._completing = False
-            self.popup.hide()
-            self._popup_timeout_timer.stop()
-
-    def _on_completion_selected(self, item):
-        self._apply_selected_completion()
-
-    def _on_item_hovered(self, item):
-        data = item.data(Qt.UserRole)
-        if data:
-            _, _, description, _ = data
-            if description:
-                QToolTip.showText(QCursor.pos(), description)
-
-    # ========== 快捷键功能 ==========
-    def keyPressEvent(self, event):
-        # 处理补全弹窗键盘事件
-        if self.popup.isVisible():
-            key = event.key()
-            if key == Qt.Key_Tab or key == Qt.Key_Return:
-                self._apply_selected_completion()
-                event.accept()
-                return
-            elif key == Qt.Key_Up:
-                current = self.popup.currentRow()
-                self.popup.setCurrentRow(max(0, current - 1))
-                event.accept()
-                return
-            elif key == Qt.Key_Down:
-                current = self.popup.currentRow()
-                self.popup.setCurrentRow(min(self.popup.count() - 1, current + 1))
-                event.accept()
-                return
-            elif event.text() in '()[]{}.,;:!? ':
-                self.popup.hide()
-
-        # Shift + Enter: 智能换行
-        if event.modifiers() == Qt.ShiftModifier and event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            cursor = self.textCursor()
-            current_line = cursor.block().text()
-            leading_spaces = len(current_line) - len(current_line.lstrip(' '))
-            indent = ' ' * leading_spaces
-            cursor.movePosition(QTextCursor.EndOfLine)
-            cursor.insertText('\n' + indent)
-            self.setTextCursor(cursor)
-            event.accept()
-            return
-
-        # Ctrl + /: 注释切换
-        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_Slash:
-            self._toggle_comment()
-            event.accept()
-            return
-
-        # 原有补全触发逻辑
-        super().keyPressEvent(event)
-        text = event.text()
-        if text == '.' or (text.isalnum() or text == '_'):
-            self._request_completions()
-        elif event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
-            if self._should_show_completion_on_delete():
-                self._request_completions()
+        current_line = cursor.block().text()
+        leading_spaces = len(current_line) - len(current_line.lstrip(' '))
+        indent = ' ' * leading_spaces
+        cursor.movePosition(QTextCursor.EndOfLine)
+        cursor.insertText('\n' + indent)
+        self.setTextCursor(cursor)
 
     def _toggle_comment(self):
         cursor = self.textCursor()
         doc = self.document()
         start = cursor.selectionStart()
         end = cursor.selectionEnd()
-
         c1 = QTextCursor(doc)
         c1.setPosition(start)
         c1.movePosition(QTextCursor.StartOfLine)
         start_line_pos = c1.position()
-
         c2 = QTextCursor(doc)
         c2.setPosition(end)
         if c2.atBlockStart() and end > start:
             c2.movePosition(QTextCursor.Left)
-        c2.movePosition(QTextCursor.EndOfLine)
+            c2.movePosition(QTextCursor.EndOfLine)
         end_line_pos = c2.position()
-
         c1.setPosition(start_line_pos)
         c1.setPosition(end_line_pos, QTextCursor.KeepAnchor)
         lines = c1.selectedText().split('\u2029')
-
         def is_commented(s):
             return s.strip().startswith('#')
         all_commented = all(not t.strip() or is_commented(t) for t in lines)
-
         new_lines = []
         if all_commented:
             for t in lines:
@@ -699,32 +327,325 @@ class JediCodeEditor(CodeEditor):
                     m = re.match(r'^(\s*)', t)
                     indent = m.group(1) if m else ''
                     new_lines.append(f"{indent}# {t[len(indent):]}")
-
         cursor.beginEditBlock()
         c1.insertText('\n'.join(new_lines))
         cursor.endEditBlock()
 
-    def _should_show_completion_on_delete(self):
+    def _copy_with_folding(self):
         cursor = self.textCursor()
-        pos = cursor.position()
-        if pos <= 0:
-            return False
-        text = self.toPlainText()
-        prev_char = text[pos - 1]
-        return prev_char.isalnum() or prev_char == '_' or prev_char == '.'
+        start = cursor.selectionStart()
+        end = cursor.selectionEnd()
+        if start == end:
+            block = cursor.block()
+            line_number = block.blockNumber() + 1
+            if (hasattr(self, 'folding_status') and
+                line_number in self.folding_panel.folding_status and
+                self.folding_panel.folding_status[line_number]):
+                if (hasattr(self, 'folding_regions') and
+                    line_number in self.folding_panel.folding_regions):
+                    end_line = self.folding_panel.folding_regions[line_number]
+                    start_pos = self.document().findBlockByNumber(line_number - 1).position()
+                    end_block = self.document().findBlockByNumber(end_line - 1)
+                    end_pos = end_block.position() + end_block.length() - 1
+                    copy_cursor = QTextCursor(self.document())
+                    copy_cursor.setPosition(start_pos)
+                    copy_cursor.setPosition(end_pos, QTextCursor.KeepAnchor)
+                    clipboard = QApplication.clipboard()
+                    clipboard.setText(copy_cursor.selectedText())
+                    return
+        super().copy()
 
-    def focusOutEvent(self, event):
-        self.popup.hide()
-        self._popup_timeout_timer.stop()
-        QToolTip.hideText()
-        super().focusOutEvent(event)
+    def keyPressEvent(self, event):
+        """Reimplement Qt method."""
+        key = event.key()
+        # 处理 Ctrl+C
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_C:
+            self._copy_with_folding()
+            event.accept()
+            return
 
-    def __del__(self):
-        if self.lsp_manager:
-            self.lsp_manager.shutdown()
-            self.lsp_manager.wait()
+        if key in (Qt.Key_Return, Qt.Key_Enter) and not event.modifiers():
+            cursor = self.textCursor()
+            block = cursor.block()
+            text = block.text()
+            cursor_pos = cursor.positionInBlock()
+            line_before_cursor = text[:cursor_pos]
+            line_after_cursor = text[cursor_pos:]
+            open_count = line_before_cursor.count('[') + line_before_cursor.count('(') + line_before_cursor.count('{')
+            close_count = line_before_cursor.count(']') + line_before_cursor.count(')') + line_before_cursor.count('}')
+            if open_count > close_count:
+                leading_spaces = len(text) - len(text.lstrip())
+                new_indent = ' ' * (leading_spaces + 4)
+                cursor.insertText('\n' + new_indent)
+                if line_after_cursor.strip().startswith(']') or line_after_cursor.strip().startswith(
+                        ')') or line_after_cursor.strip().startswith('}'):
+                    cursor.insertText('\n' + ' ' * leading_spaces)
+                    cursor.movePosition(QTextCursor.PreviousBlock)
+                    cursor.movePosition(QTextCursor.EndOfBlock)
+                    self.setTextCursor(cursor)
+                event.accept()
+                return
 
-    # ========== 其他保留功能 ==========
+        # 自定义快捷键
+        if event.modifiers() == Qt.ShiftModifier and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            self._smart_newline()
+            event.accept()
+            return
+        elif event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_Slash:
+            self._toggle_comment()
+            event.accept()
+            return
+
+        if self.completions_hint_after_ms > 0:
+            self._completions_hint_idle = False
+            self._timer_completions_hint.start(self.completions_hint_after_ms)
+        else:
+            self._set_completions_hint_idle()
+
+        # Only set overwrite mode during key handling to allow correct painting
+        # of multiple overwrite cursors. Must unset overwrite before return.
+        self.setOverwriteMode(self.overwrite_mode)
+        self.start_cursor_blink()  # reset cursor blink by reseting timer
+        if self.extra_cursors:
+            self.handle_multi_cursor_keypress(event)
+            self.setOverwriteMode(False)
+            return
+
+        # Send the signal to the editor's extension.
+        event.ignore()
+        self.sig_key_pressed.emit(event)
+
+        self._last_pressed_key = key = event.key()
+        self._last_key_pressed_text = text = str(event.text())
+        has_selection = self.has_selected_text()
+        ctrl = event.modifiers() & Qt.ControlModifier
+        shift = event.modifiers() & Qt.ShiftModifier
+
+        if text:
+            self.clear_occurrences()
+
+        if key in {Qt.Key_Up, Qt.Key_Left, Qt.Key_Right, Qt.Key_Down}:
+            self.hide_tooltip()
+
+        if key in {Qt.Key_PageUp, Qt.Key_PageDown}:
+            self.hide_tooltip()
+            self.hide_calltip()
+
+        if event.isAccepted():
+            # The event was handled by one of the editor extension.
+            self.setOverwriteMode(False)
+            return
+
+        if key in [Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt,
+                   Qt.Key_Meta, Qt.KeypadModifier]:
+            self.setOverwriteMode(False)
+            # The user pressed only a modifier key.
+            if event.modifiers() == self.mouse_shortcuts['goto_definition']:
+                pos = self.mapFromGlobal(QCursor.pos())
+                pos = self.calculate_real_position_from_global(pos)
+                if self._handle_goto_uri_event(pos):
+                    event.accept()
+                    return
+
+                if self._handle_goto_definition_event(pos):
+                    event.accept()
+                    return
+            return
+
+        # ---- Handle hard coded and builtin actions
+        operators = {'+', '-', '*', '**', '/', '//', '%', '@', '<<', '>>',
+                     '&', '|', '^', '~', '<', '>', '<=', '>=', '==', '!='}
+        delimiters = {',', ':', ';', '@', '=', '->', '+=', '-=', '*=', '/=',
+                      '//=', '%=', '@=', '&=', '|=', '^=', '>>=', '<<=', '**='}
+
+        if text not in self.auto_completion_characters:
+            if text in operators or text in delimiters:
+                self.completion_widget.hide()
+        if key in (Qt.Key_Enter, Qt.Key_Return):
+            if not shift and not ctrl:
+                if (
+                    self.add_colons_enabled and
+                    self.is_python_like() and
+                    self.autoinsert_colons()
+                ):
+                    self.textCursor().beginEditBlock()
+                    self.insert_text(':' + self.get_line_separator())
+                    if self.strip_trailing_spaces_on_modify:
+                        self.fix_and_strip_indent()
+                    else:
+                        self.fix_indent()
+                    self.textCursor().endEditBlock()
+                elif self.is_completion_widget_visible():
+                    self.select_completion_list()
+                else:
+                    self.textCursor().beginEditBlock()
+                    cur_indent = self.get_block_indentation(
+                        self.textCursor().blockNumber())
+                    self._handle_keypress_event(event)
+                    # Check if we're in a comment or a string at the
+                    # current position
+                    cmt_or_str_cursor = self.in_comment_or_string()
+
+                    # Check if the line start with a comment or string
+                    cursor = self.textCursor()
+                    cursor.setPosition(cursor.block().position(),
+                                       QTextCursor.KeepAnchor)
+                    cmt_or_str_line_begin = self.in_comment_or_string(
+                        cursor=cursor)
+
+                    # Check if we are in a comment or a string
+                    cmt_or_str = cmt_or_str_cursor and cmt_or_str_line_begin
+
+                    if self.strip_trailing_spaces_on_modify:
+                        self.fix_and_strip_indent(
+                            comment_or_string=cmt_or_str,
+                            cur_indent=cur_indent)
+                    else:
+                        self.fix_indent(comment_or_string=cmt_or_str,
+                                        cur_indent=cur_indent)
+                    self.textCursor().endEditBlock()
+        elif key == Qt.Key_Insert and not shift and not ctrl:
+            self.overwrite_mode = not self.overwrite_mode
+        elif key == Qt.Key_Backspace and not shift and not ctrl:
+            if has_selection or not self.intelligent_backspace:
+                self._handle_keypress_event(event)
+            else:
+                leading_text = self.get_text('sol', 'cursor')
+                leading_length = len(leading_text)
+                trailing_spaces = leading_length - len(leading_text.rstrip())
+                trailing_text = self.get_text('cursor', 'eol')
+                matches = ('()', '[]', '{}', '\'\'', '""')
+                if (
+                    not leading_text.strip() and
+                    (leading_length > len(self.indent_chars))
+                ):
+                    if leading_length % len(self.indent_chars) == 0:
+                        self.unindent()
+                    else:
+                        self._handle_keypress_event(event)
+                elif trailing_spaces and not trailing_text.strip():
+                    self.remove_suffix(leading_text[-trailing_spaces:])
+                elif (
+                    leading_text and
+                    trailing_text and
+                    (leading_text[-1] + trailing_text[0] in matches)
+                ):
+                    cursor = self.textCursor()
+                    cursor.movePosition(QTextCursor.PreviousCharacter)
+                    cursor.movePosition(QTextCursor.NextCharacter,
+                                        QTextCursor.KeepAnchor, 2)
+                    cursor.removeSelectedText()
+                else:
+                    self._handle_keypress_event(event)
+        elif key == Qt.Key_Home:
+            self.stdkey_home(shift, ctrl)
+        elif key == Qt.Key_End:
+            # See spyder-ide/spyder#495: on MacOS X, it is necessary to
+            # redefine this basic action which should have been implemented
+            # natively
+            self.stdkey_end(shift, ctrl)
+        elif (
+            text in self.auto_completion_characters and
+            self.automatic_completions
+        ):
+            self.insert_text(text)
+            if text == ".":
+                if not self.in_comment_or_string():
+                    text = self.get_text('sol', 'cursor')
+                    last_obj = getobj(text)
+                    prev_char = text[-2] if len(text) > 1 else ''
+                    if (
+                        prev_char in {')', ']', '}'} or
+                        (last_obj and not last_obj.isdigit())
+                    ):
+                        # Completions should be triggered immediately when
+                        # an autocompletion character is introduced.
+                        self.do_completion(automatic=True)
+            else:
+                self.do_completion(automatic=True)
+        elif (
+            text in self.signature_completion_characters and
+            not self.has_selected_text()
+        ):
+            self.insert_text(text)
+            self.request_signature()
+        elif (
+            key == Qt.Key_Colon and
+            not has_selection and
+            self.auto_unindent_enabled
+        ):
+            leading_text = self.get_text('sol', 'cursor')
+            if leading_text.lstrip() in ('else', 'finally'):
+                ind = lambda txt: len(txt) - len(txt.lstrip())
+                prevtxt = str(self.textCursor().block().previous().text())
+                if self.language == 'Python':
+                    prevtxt = prevtxt.rstrip()
+                if ind(leading_text) == ind(prevtxt):
+                    self.unindent(force=True)
+            self._handle_keypress_event(event)
+        elif (
+            key == Qt.Key_Space and
+            not shift and
+            not ctrl and
+            not has_selection and
+            self.auto_unindent_enabled
+        ):
+            self.completion_widget.hide()
+            leading_text = self.get_text('sol', 'cursor')
+            if leading_text.lstrip() in ('elif', 'except'):
+                ind = lambda txt: len(txt)-len(txt.lstrip())
+                prevtxt = str(self.textCursor().block().previous().text())
+                if self.language == 'Python':
+                    prevtxt = prevtxt.rstrip()
+                if ind(leading_text) == ind(prevtxt):
+                    self.unindent(force=True)
+            self._handle_keypress_event(event)
+        elif key == Qt.Key_Tab and not ctrl:
+            # Important note: <TAB> can't be called with a QShortcut because
+            # of its singular role with respect to widget focus management
+            if not has_selection and not self.tab_mode:
+                self.intelligent_tab()
+            else:
+                # indent the selected text
+                self.indent_or_replace()
+        elif key == Qt.Key_Backtab and not ctrl:
+            # Backtab, i.e. Shift+<TAB>, could be treated as a QShortcut but
+            # there is no point since <TAB> can't (see above)
+            if not has_selection and not self.tab_mode:
+                self.intelligent_backtab()
+            else:
+                # indent the selected text
+                self.unindent()
+            event.accept()
+        elif not event.isAccepted():
+            self._handle_keypress_event(event)
+
+        if not event.modifiers():
+            # Accept event to avoid it being handled by the parent.
+            # Modifiers should be passed to the parent because they
+            # could be shortcuts
+            event.accept()
+
+        self.setOverwriteMode(False)
+
+    def _open_in_spyder(self):
+        pass
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_button_position()
+
+    def _update_button_position(self):
+        if not hasattr(self, 'fullscreen_button'):
+            return
+        button_width = 28
+        button_spacing = 8
+        x = self.width() - button_width - 30
+        y_top = 6
+        y_bottom = y_top + button_width + button_spacing
+        self.fullscreen_button.move(x, y_top)
+        self.spyder_button.move(x, y_bottom)
+
     def _on_text_changed_for_parso(self):
         self._parso_timer.stop()
         self._parso_timer.start(800)
@@ -734,101 +655,77 @@ class JediCodeEditor(CodeEditor):
         if not code.strip():
             self._clear_parso_results()
             return
-        messages = ParsoCodeAnalysis.run_parso_analysis(code)
+        try:
+            import parso
+            grammar = parso.load_grammar()
+            module = grammar.parse(code, error_recovery=True)
+            errors = list(grammar.iter_errors(module))
+        except Exception as e:
+            logger.error(f"[Parso] Parse error: {e}")
+            errors = []
         self._clear_parso_results()
-        self.clear_extra_selections('code_analysis_underline')
-        for msg in messages:
-            line_number = msg['row']
-            col_start = msg['column'] - 1
-            message_text = msg['message']
-            msg_type = msg['type']
-            block = self.document().findBlockByNumber(line_number - 1)
-            if block and block.isValid():
+        self.clear_extra_selections('parso_underline')
+        error_color = QColor(self.error_color) if self.error_color else QColor("#ff0000")
+        warning_color = QColor(self.warning_color) if self.warning_color else QColor("#ffaa00")
+        for error in errors:
+            try:
+                line_number = error.start_pos[0]
+                column_number = error.start_pos[1]
+                message = error.message
+                block = self.document().findBlockByNumber(line_number - 1)
+                if not block.isValid():
+                    continue
                 data = block.userData()
                 if not data:
                     from spyder.plugins.editor.utils.editor import BlockUserData
                     data = BlockUserData(self)
-                    block.setUserData(data)
-                severity = 2 if msg_type == 'error' else 1
-                data.code_analysis.append(('parso', '', severity, message_text))
-                data.color = self.error_color if msg_type == 'error' else self.warning_color
-                start_pos = block.position() + col_start
+                block.setUserData(data)
+                data.code_analysis.append(('parso', '', 2, message))
+                data.color = error_color
+                start_pos = block.position() + column_number
                 end_pos = start_pos + 1
                 cursor = QTextCursor(self.document())
                 cursor.setPosition(start_pos)
                 cursor.setPosition(end_pos, QTextCursor.KeepAnchor)
                 self.highlight_selection(
-                    'code_analysis_underline',
+                    'parso_underline',
                     cursor,
-                    underline_color=QColor(data.color),
-                    underline_style=QTextCharFormat.SingleUnderline
+                    underline_color=error_color,
+                    underline_style=QTextCharFormat.WaveUnderline
                 )
+            except Exception as e:
+                logger.error(f"[Parso] Highlight error: {e}")
         self.sig_flags_changed.emit()
         if hasattr(self, 'linenumberarea'):
             self.linenumberarea.update()
 
     def _clear_parso_results(self):
+        self.clear_extra_selections('parso_underline')
         block = self.document().firstBlock()
         while block.isValid():
             data = block.userData()
             if data and hasattr(data, 'code_analysis'):
-                data.code_analysis = [(s, c, sev, msg) for s, c, sev, msg in data.code_analysis if s != 'parso']
+                data.code_analysis = [x for x in data.code_analysis if x[0] != 'parso']
                 if not data.code_analysis:
                     data.color = None
             block = block.next()
-
-    def _on_text_changed_for_folding(self):
-        if hasattr(self, '_folding_update_timer'):
-            self._folding_update_timer.stop()
-        else:
-            self._folding_update_timer = QTimer()
-            self._folding_update_timer.setSingleShot(True)
-            self._folding_update_timer.timeout.connect(self._update_folding_from_code)
-        self._folding_update_timer.start(800)
-
-    def _update_folding_from_code(self):
-        code = self.toPlainText()
-        folding_info = compute_folding_from_ast(code)
-        if folding_info:
-            self.folding_panel.update_folding(folding_info)
-        else:
-            self.folding_panel.update_folding(None)
-
-    def _create_fullscreen_button(self, type="放大"):
-        self.fullscreen_button = TransparentToolButton(get_icon(type), parent=self)
-        self.fullscreen_button.setIconSize(QSize(28, 28))
-        self.fullscreen_button.setFixedSize(28, 28)
-        self.fullscreen_button.setToolTip("放大编辑器")
-
-    def _update_button_position(self):
-        button_width = 28
-        button_spacing = 8
-        x = self.width() - button_width - 30
-        y_top = 6
-        y_bottom = y_top + button_width + button_spacing
-        self.fullscreen_button.move(x, y_top)
-        self.spyder_button.move(x, y_bottom)
-
-    def _open_in_spyder(self):
-        pass
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Professional LSP Code Editor")
+        self.setWindowTitle("Jedi Frontend + LSP Backend with CompletionWidget")
         self.setStyleSheet("background-color: #333; color: white;")
         self.resize(800, 600)
         self.find_replace = FindReplace(self, True)
-        self.editor = JediCodeEditor(python_exe_path=r"D:\work\CanvasMind\.venv\Scripts\python.exe")
+        self.editor = LSPCodeEditor(python_exe_path=r"D:\work\CanvasMind\.venv\Scripts\python.exe")
         example_code = """import numpy as np
 a = np.array([1, 2, 3])
-# Try: a. then Ctrl+Space
-def hello():
-    x = 10
-    if x > 5:
-        print("Greater")
-    return x + 1"""
+# Try: a. then Backspace
+def hello(x, y):
+    z = x + y
+    return z
+result = hello(1, 2)"""
         self.editor.set_text(example_code)
         self.find_replace.set_editor(self.editor)
         central = QWidget()
@@ -836,6 +733,7 @@ def hello():
         layout.addWidget(self.find_replace)
         layout.addWidget(self.editor)
         self.setCentralWidget(central)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

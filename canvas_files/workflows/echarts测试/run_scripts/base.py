@@ -770,7 +770,7 @@ class DataHandler:
         """存储sklearn模型到节点专属目录"""
         temp_dir = self._get_node_temp_dir()
         model_path = temp_dir / f"model_{self.node_id}.pkl"
-        with open(model_path, 'wb') as f:
+        with open(model_path.resolve(), 'wb') as f:
             pickle.dump(model, f)
         return str(model_path)
 
@@ -782,7 +782,8 @@ class DataHandler:
         temp_dir = self._get_node_temp_dir()
         model_path = temp_dir / f"model_{self.node_id}.pth"
         scripted_model = torch.jit.script(model)
-        scripted_model.save(str(model_path))
+        with open(model_path, 'wb') as f:
+            torch.jit.save(scripted_model, f)
         return str(model_path)
 
     def _store_image_data(self, image: Any) -> str:
@@ -793,7 +794,7 @@ class DataHandler:
             raise ComponentError(f"无法存储图像数据: {type(image)}")
         temp_dir = self._get_node_temp_dir()
         image_path = temp_dir / f"image_{self.node_id}.png"
-        image.save(image_path, 'PNG')
+        image.save(image_path.resolve(), 'PNG')
         return str(image_path)
 
     def _store_file_data(self, data: Any, output_name: str = "output_file") -> str:
@@ -814,7 +815,7 @@ class DataHandler:
             path = Path(data)
             if path.is_file():
                 import shutil
-                shutil.copy2(path, file_path)
+                shutil.copy2(path, file_path.resolve())
             else:
                 file_path.write_text(str(data), encoding='utf-8')
         elif isinstance(data, bytes):

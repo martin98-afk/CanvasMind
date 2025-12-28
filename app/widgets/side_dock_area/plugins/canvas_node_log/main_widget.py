@@ -67,6 +67,11 @@ class LogToolWindow(ToolWindow):
         self.run_cards = {}  # {run_id: card}
         self.current_run_id = None
 
+    def showEvent(self, event):
+        self._collapse_all()
+        QTimer.singleShot(10, self._expand_all)
+        super().showEvent(event)
+
     def start_run(self, run_id: str):
         if run_id == self.current_run_id:
             return
@@ -123,18 +128,24 @@ class LogToolWindow(ToolWindow):
     def _expand_all(self):
         for run_id, card in self.run_cards.items():
             card.expand()
+        self._scroll_to_bottom()
 
     def _collapse_all(self):
         for run_id, card in self.run_cards.items():
             card.collapse()
 
     def _clear_logs(self):
-        for run_id, card in self.run_cards.items():
-            card.deleteLater()
-        while self.log_layout.count():
-            if self.log_layout.takeAt(0) is None:
-                break
-            self.log_layout.takeAt(0).widget().deleteLater()
+        # 先清除 run_cards 字典（避免后续访问已删除对象）
         self.run_cards.clear()
-        self.log_layout.addStretch()
         self.current_run_id = None
+
+        # 安全清空 layout 中的所有 widget
+        while self.log_layout.count():
+            item = self.log_layout.takeAt(0)
+            if item is not None:
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
+
+        # 重新添加 stretch（保持底部对齐）
+        self.log_layout.addStretch()

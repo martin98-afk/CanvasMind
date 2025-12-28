@@ -1,7 +1,9 @@
 import os
 import pickle
+import platform
 import re
 import shutil
+import subprocess
 import time
 import uuid
 from pathlib import Path
@@ -478,17 +480,36 @@ def create_dynamic_code_node(parent_window=None):
                 )
                 with open(temp_script_path, 'w', encoding='utf-8') as f:
                     f.write(script_content)
+                self.last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
                 # === 5. 执行 ===
                 if kernel_manager is not None:
-                    return self._execute_dynamic_via_ipython(
+                    self._execute_via_ipython(
                         temp_script_path, result_path, error_path, log_file_path,
-                        check_cancel, kernel_manager, temp_component_path
+                        check_cancel, kernel_manager
                     )
                 else:
-                    return self._execute_dynamic_via_subprocess(
-                        python_executable, temp_script_path, result_path, error_path,
-                        log_file_path, check_cancel, temp_component_path
+                    self._execute_via_subprocess(
+                        python_executable, temp_script_path, log_file_path, check_cancel
                     )
+                # === 读取剩余日志 ===
+                with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                    lf.seek(self.last_log_pos)
+                    new_content = lf.read()
+                    if new_content:
+                        self._log_message(self.persistent_id, new_content)
+                        self.last_log_pos = lf.tell()
+                # === 处理最终结果 ===
+                if result_path.exists():
+                    output = _safe_load_pickle(result_path)
+                    for port in self.output_ports():
+                        if port.name() in output:
+                            self.set_output_value(port.name(), output[port.name()])
+                    return output
+                elif os.path.exists(error_path):
+                    error_info = _safe_load_pickle(error_path)
+                    raise Exception(error_info['traceback'])
+                else:
+                    raise Exception("未知错误")
             finally:
                 # 清理临时组件
                 try:
@@ -498,21 +519,22 @@ def create_dynamic_code_node(parent_window=None):
                 except Exception:
                     pass
 
-
-        def _execute_dynamic_via_ipython(
+        def _execute_via_ipython(
                 self, temp_script_path, result_path, error_path, log_file_path,
-                check_cancel, kernel_manager, temp_component_path
+                check_cancel, kernel_manager
         ):
+            # 清空变量，防止污染
             run_code = f'%reset -f'
             kernel_manager.execute_code(run_code, hidden=True)
-            # 执行脚本（无需注入变量，统一走文件）
-            run_code = f'%run -i "{temp_script_path.as_posix()}"'
-            kernel_manager.execute_code(run_code, hidden=False)
 
-            # 轮询结果（与 subprocess 一致）
+            # 执行 %run -i
+            with open(temp_script_path, 'r', encoding='utf-8') as f:
+                code = f.read()
+            kernel_manager.execute_code(code, hidden=True)
+
+            # 轮询结果文件
             start_time = time.time()
-            timeout = 300
-            last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
+            timeout = 300  # 5分钟
 
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
@@ -522,64 +544,26 @@ def create_dynamic_code_node(parent_window=None):
                     except Exception as e:
                         self._log_message(self.persistent_id, f"⚠️ 内核重启失败: {e}")
                     raise Exception("执行被用户取消")
-                if time.time() - start_time > timeout:
-                    raise Exception("❌ 节点执行超时（5分钟）")
-
                 try:
                     if os.path.exists(log_file_path):
                         with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                            lf.seek(last_log_pos)
+                            lf.seek(self.last_log_pos)
                             new_content = lf.read()
                             if new_content:
                                 self._log_message(self.persistent_id, new_content)
-                                last_log_pos = lf.tell()
+                                self.last_log_pos = lf.tell()
                 except Exception:
                     pass
+                if time.time() - start_time > timeout:
+                    raise Exception("❌ 节点执行超时（5分钟）")
+
                 time.sleep(0.1)
+            self._log_message(self.persistent_id, "✅ 节点在ipython环境执行完成")
 
-            # 读取剩余日志
-            try:
-                if os.path.exists(log_file_path):
-                    with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                        lf.seek(last_log_pos)
-                        tail_content = lf.read()
-                        if tail_content:
-                            self._log_message(self.persistent_id, tail_content)
-            except Exception:
-                pass
-
-            # 清理临时组件文件
-            try:
-                if temp_component_path.exists():
-                    temp_component_path.unlink()
-            except Exception:
-                pass
-            # 处理结果
-            if result_path.exists():
-                output = _safe_load_pickle(result_path)
-                for port in self.output_ports():
-                    if port.name() in output:
-                        self.set_output_value(port.name(), output[port.name()])
-                return output
-            elif error_path.exists():
-                with open(error_path, 'rb') as f:
-                    error_info = pickle.load(f)
-                error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
-                self._log_message(self.persistent_id, error_msg)
-                raise Exception(error_info['error'])
-            else:
-                raise Exception("未知错误：未生成结果或错误文件")
-
-        def _execute_dynamic_via_subprocess(
-                self, python_executable, temp_script_path, result_path, error_path,
-                log_file_path, check_cancel, temp_component_path
+        def _execute_via_subprocess(
+                self, python_executable, temp_script_path, log_file_path, check_cancel
         ):
-            import subprocess, platform, time, os, pickle
-
-            # 检查取消
-            if check_cancel and check_cancel():
-                raise Exception("执行已被用户取消")
-
+            # 启动子进程（非阻塞）
             kwargs = {}
             if platform.system() == "Windows":
                 kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
@@ -593,65 +577,26 @@ def create_dynamic_code_node(parent_window=None):
 
             start_time = time.time()
             timeout = 300
-            cancelled = False
-            last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
-
             while proc.poll() is None:
                 if check_cancel and check_cancel():
                     kill_proc_tree(proc.pid)
-                    cancelled = True
-                    break
-
+                    raise Exception("执行已被用户取消")
                 if time.time() - start_time > timeout:
-                    proc.terminate()
-                    try:
-                        proc.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        proc.kill()
-                    self._log_message(self.persistent_id, "❌ 节点执行超时（5分钟）")
+                    kill_proc_tree(proc.pid)
                     raise Exception("❌ 节点执行超时（5分钟）")
-
+                # 增量读取日志，实时输出
                 try:
                     if os.path.exists(log_file_path):
                         with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                            lf.seek(last_log_pos)
+                            lf.seek(self.last_log_pos)
                             new_content = lf.read()
                             if new_content:
                                 self._log_message(self.persistent_id, new_content)
-                                last_log_pos = lf.tell()
+                                self.last_log_pos = lf.tell()
                 except Exception:
                     pass
                 time.sleep(0.1)
-
-            if cancelled:
-                self._log_message(self.persistent_id, "执行已被用户取消")
-                raise Exception("执行已被用户取消")
-
-            try:
-                if os.path.exists(log_file_path):
-                    with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                        lf.seek(last_log_pos)
-                        tail_content = lf.read()
-                        if tail_content:
-                            self._log_message(self.persistent_id, tail_content)
-            except Exception:
-                pass
-
-            if result_path.exists():
-                with open(result_path, 'rb') as f:
-                    output = pickle.load(f)
-                for port in self.output_ports():
-                    if port.name() in output:
-                        self.set_output_value(port.name(), output[port.name()])
-                return output
-            elif error_path.exists():
-                with open(error_path, 'rb') as f:
-                    error_info = pickle.load(f)
-                error_msg = f"❌ 节点执行失败: {error_info['traceback']}"
-                self._log_message(self.persistent_id, error_msg)
-                raise Exception(error_info['error'])
-            else:
-                raise Exception("未知错误")
+            self._log_message(self.persistent_id, "✅ 节点在独立环境执行完成")
 
         def __del__(self):
             # 注意：__del__ 在 PyQt 中不一定可靠，但可加强保障

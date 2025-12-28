@@ -19,13 +19,13 @@ class TorchClassifierTrainer(BaseComponent):
     name = "PyTorch 分类模型训练"
     category = "机器学习"
     description = "使用 PyTorch 训练一个用于数据分类的神经网络模型，支持自定义结构与超参数配置。"
-    requirements = "torch,pandas,scikit-learn"
+    requirements = "pandas,torch,scikit-learn"
     inputs = [
         PortDefinition(name="training_data", label="训练数据", type=ArgumentType.CSV, connection=ConnectionType.SINGLE),
         PortDefinition(name="labels", label="标签数据", type=ArgumentType.CSV, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="classifier_model.pth", label="训练好的模型", type=ArgumentType.TORCHMODEL),
+        PortDefinition(name="classifier_model", label="训练好的模型", type=ArgumentType.TORCHMODEL),
         PortDefinition(name="accuracy", label="模型准确率", type=ArgumentType.FLOAT),
         PortDefinition(name="training_log", label="训练日志", type=ArgumentType.JSON),
     ]
@@ -174,9 +174,13 @@ class TorchClassifierTrainer(BaseComponent):
             _, predicted = test_outputs.max(1)
             test_acc = 100. * predicted.eq(y_test_tensor.to(device)).sum().item() / len(y_test_tensor)
 
+        # 9.准备预导出模型
+        batch_dim = torch.export.Dim("batch")
+        dynamic_shapes = {"x": {0: batch_dim}}
+        exported_program = torch.export.export(model, args=(X_test_tensor,), dynamic_shapes=dynamic_shapes)
         # 10. 返回结果
         return {
-            "classifier_model.pth": model,
+            "classifier_model": exported_program,
             "accuracy": test_acc,
             "training_log": {
                 "train_losses": train_losses,
