@@ -670,7 +670,7 @@ class JediCodeEditor(CodeEditor):
         self._completing = False
         self.dialog = dialog
         # --- 保留原来的 site-packages 逻辑 ---
-        self.set_jedi_environment(str(python_exe_path) if python_exe_path else None)
+        self.set_completion_environment(str(python_exe_path) if python_exe_path else None)
         # --- 高性能补全相关 ---
         self.completion_worker = CompletionWorker()
         self.completion_future: Optional[Future] = None
@@ -984,7 +984,7 @@ class JediCodeEditor(CodeEditor):
         font = QFont(self._font_family, self._current_font_size)
         self.set_font(font)
 
-    def set_jedi_environment(self, python_exe_path):
+    def set_completion_environment(self, python_exe_path):
         """设置Jedi环境 (仅用于获取site-packages路径)"""
         if python_exe_path and os.path.exists(python_exe_path):
             python_dir = Path(os.path.abspath(python_exe_path)).parent.parent

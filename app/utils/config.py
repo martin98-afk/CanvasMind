@@ -123,7 +123,11 @@ class Settings(QConfig):
     default_packages = ConfigItem(
         "Package",
         "DefaultPackages",
-        ["pyzmq","loguru", "pydantic", "pandas", "Pillow", "fastapi", "uvicorn", "jedi", "asteval", "wcwidth", "pyarrow", "ipykernel", "matplotlib"],
+        [
+            "pyzmq","loguru", "pydantic", "pandas", "Pillow", "fastapi",
+            "uvicorn", "python-lsp-server[all]", "asteval", "wcwidth",
+            "pyarrow", "ipykernel", "matplotlib", "pyecharts"
+        ],
         ListValidator()
     )
     current_env_selected = ConfigItem("Package", "EnvSelected", "")

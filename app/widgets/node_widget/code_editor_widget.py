@@ -22,7 +22,7 @@ class CodeEditorWidgetWrapper(CustomNodeBaseWidget):
         self._editor.code_changed.connect(
             lambda: self.valueChanged.emit(self._editor.get_code())
         )
-        window.env_changed.connect(self._editor.code_editor.set_jedi_environment)
+        window.env_changed.connect(self._editor.code_editor.set_completion_environment)
         self._editor.setMinimumSize(width, height)  # 足够大的编辑区域
         self._editor.code_changed.connect(self._on_code_changed)
         self.set_custom_widget(self._editor)

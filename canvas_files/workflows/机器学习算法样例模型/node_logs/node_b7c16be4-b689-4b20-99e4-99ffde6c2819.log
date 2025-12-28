@@ -107,3 +107,69 @@ an array of shape (150, 5) instead.
 [2025-12-28 01:42:00] run-71 INFO: solver='newton-cg' max_iter=100
 [2025-12-28 01:42:00] run-86 INFO: Model accuracy: 0.9733
 [2025-12-28 01:42:00] <module>-112 SUCCESS: 节点执行完成
+[2025-12-28 11:55:59] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-28 11:55:59] <module>-102 INFO: 开始执行组件
+[2025-12-28 11:56:00] run-71 INFO: solver='liblinear' max_iter=100
+[2025-12-28 11:56:00] run-94 ERROR: Error in LogisticRegressionComponent: The 'liblinear' solver does not support multiclass classification (n_classes >= 3). Either use another solver or wrap the estimator in a OneVsRestClassifier to keep applying a one-versus-rest scheme.
+[2025-12-28 11:56:00] <module>-131 ERROR: 执行异常: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\CanvasMind\app\components\base.py", line 1031, in execute
+    result = self.run(validated_params, validated_inputs)
+  File "D:\work\CanvasMind\app\components\模型训练\2493f13f-9a89-44a5-8aa6-fe201d4886f9.py", line 95, in run
+    raise e
+  File "D:\work\CanvasMind\app\components\模型训练\2493f13f-9a89-44a5-8aa6-fe201d4886f9.py", line 80, in run
+    model.fit(feature, target)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\work\CanvasMind\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\base.py", line 1336, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File "D:\work\CanvasMind\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\linear_model\_logistic.py", line 1208, in fit
+    raise ValueError(
+    ...<4 lines>...
+    )
+ValueError: The 'liblinear' solver does not support multiclass classification (n_classes >= 3). Either use another solver or wrap the estimator in a OneVsRestClassifier to keep applying a one-versus-rest scheme.
+
+[2025-12-28 11:57:06] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-28 11:57:06] <module>-102 INFO: 开始执行组件
+[2025-12-28 11:57:06] run-71 INFO: solver='liblinear' max_iter=100
+[2025-12-28 11:57:06] run-94 ERROR: Error in LogisticRegressionComponent: The 'liblinear' solver does not support multiclass classification (n_classes >= 3). Either use another solver or wrap the estimator in a OneVsRestClassifier to keep applying a one-versus-rest scheme.
+[2025-12-28 11:57:06] <module>-131 ERROR: 执行异常: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\CanvasMind\app\components\base.py", line 1031, in execute
+    result = self.run(validated_params, validated_inputs)
+  File "D:\work\CanvasMind\app\components\模型训练\2493f13f-9a89-44a5-8aa6-fe201d4886f9.py", line 95, in run
+    raise e
+  File "D:\work\CanvasMind\app\components\模型训练\2493f13f-9a89-44a5-8aa6-fe201d4886f9.py", line 80, in run
+    model.fit(feature, target)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\work\CanvasMind\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\base.py", line 1336, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File "D:\work\CanvasMind\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\linear_model\_logistic.py", line 1208, in fit
+    raise ValueError(
+    ...<4 lines>...
+    )
+ValueError: The 'liblinear' solver does not support multiclass classification (n_classes >= 3). Either use another solver or wrap the estimator in a OneVsRestClassifier to keep applying a one-versus-rest scheme.
+
+EXECUTION_ERROR: 组件执行失败: Traceback (most recent call last):
+  File "D:\work\CanvasMind\app\components\base.py", line 1031, in execute
+    result = self.run(validated_params, validated_inputs)
+  File "D:\work\CanvasMind\app\components\模型训练\2493f13f-9a89-44a5-8aa6-fe201d4886f9.py", line 95, in run
+    raise e
+  File "D:\work\CanvasMind\app\components\模型训练\2493f13f-9a89-44a5-8aa6-fe201d4886f9.py", line 80, in run
+    model.fit(feature, target)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\work\CanvasMind\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\base.py", line 1336, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File "D:\work\CanvasMind\envs\miniconda\envs\3.14\Lib\site-packages\sklearn\linear_model\_logistic.py", line 1208, in fit
+    raise ValueError(
+    ...<4 lines>...
+    )
+ValueError: The 'liblinear' solver does not support multiclass classification (n_classes >= 3). Either use another solver or wrap the estimator in a OneVsRestClassifier to keep applying a one-versus-rest scheme.
+
+[2025-12-28 16:30:55] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-28 16:30:55] <module>-102 INFO: 开始执行组件
+[2025-12-28 16:30:55] run-71 INFO: solver='newton-cg' max_iter=100
+[2025-12-28 16:30:55] run-86 INFO: Model accuracy: 0.9733
+[2025-12-28 16:30:55] <module>-108 SUCCESS: 节点执行完成
+[2025-12-28 16:31:38] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-28 16:31:38] <module>-102 INFO: 开始执行组件
+[2025-12-28 16:31:39] run-71 INFO: solver='newton-cg' max_iter=100
+[2025-12-28 16:31:39] run-86 INFO: Model accuracy: 0.9733
+[2025-12-28 16:31:39] <module>-108 SUCCESS: 节点执行完成

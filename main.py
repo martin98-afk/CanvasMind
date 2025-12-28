@@ -43,7 +43,6 @@ if __name__ == '__main__':
         font-size: 12px;
     }
     """
-
     # 如果你已有全局样式，合并进去
     app.setStyleSheet(app.styleSheet() + tooltip_style)
     # 创建并显示主窗口

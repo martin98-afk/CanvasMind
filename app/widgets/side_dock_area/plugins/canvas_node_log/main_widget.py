@@ -69,7 +69,7 @@ class LogToolWindow(ToolWindow):
 
     def showEvent(self, event):
         self._collapse_all()
-        self._expand_all()
+        QTimer.singleShot(10, self._expand_all)
         super().showEvent(event)
 
     def start_run(self, run_id: str):
