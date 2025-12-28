@@ -736,6 +736,7 @@ class JediCodeEditor(CodeEditor):
             close_quotes=True,
             indent_guides=True,
             folding=True,  # 启用折叠
+            markers=True,
             intelligent_backspace=True,
             automatic_completions=True,
             underline_errors=True, # 启用下划线错误
