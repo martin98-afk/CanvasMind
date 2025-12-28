@@ -67,6 +67,11 @@ class LogToolWindow(ToolWindow):
         self.run_cards = {}  # {run_id: card}
         self.current_run_id = None
 
+    def showEvent(self, event):
+        self._collapse_all()
+        self._expand_all()
+        super().showEvent(event)
+
     def start_run(self, run_id: str):
         if run_id == self.current_run_id:
             return
@@ -123,6 +128,7 @@ class LogToolWindow(ToolWindow):
     def _expand_all(self):
         for run_id, card in self.run_cards.items():
             card.expand()
+        self._scroll_to_bottom()
 
     def _collapse_all(self):
         for run_id, card in self.run_cards.items():

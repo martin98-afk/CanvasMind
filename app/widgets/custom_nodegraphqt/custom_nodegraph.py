@@ -505,7 +505,7 @@ class CustomNodeGraph(NodeGraph):
         backdrop_nodes_data = {}
 
         for n_id, n_data in nodes_data.items():
-            # 判断是否为 backdrop 节点（通常 backdrop 节点类型包含 'backdrop' 或类似的标识）
+            # 判断是否为 backdrop 节点
             node_type = n_data.get('type_', '')
             if 'control_flow' in node_type.lower():
                 backdrop_nodes_data[n_id] = n_data

@@ -378,8 +378,8 @@ class CanvasPage(QWidget):
         self.ui_manager.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
         self.ui_manager.close_btn.clicked.connect(
             lambda: (
-                self.switch_to_parent(),
-                QtCore.QTimer.singleShot(0, self.close_current_canvas)
+                QtCore.QTimer.singleShot(0, self.close_current_canvas),
+                self.switch_to_parent()
             )
         )
 

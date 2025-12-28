@@ -105,6 +105,11 @@ class RightToolPanel(QFrame):
     """
     PyCharm 风格右侧工具面板，支持插件式 ToolWindow
     """
+    # 信号：传出的是 ToolWindow 名
+    topToolChecked = pyqtSignal(str)      # Type
+    topToolUnchecked = pyqtSignal(str)
+    bottomToolChecked = pyqtSignal(str)
+    bottomToolUnchecked = pyqtSignal(str)
 
     def __init__(self, canvas_page, parent=None):
         super().__init__(parent)
@@ -204,9 +209,3 @@ class RightToolPanel(QFrame):
             self.bottomToolChecked.emit(tool_cls.name)
         else:
             self.bottomToolUnchecked.emit(tool_cls.name)
-
-    # 信号：传出的是 ToolWindow 类（或你可在内部实例化后传实例）
-    topToolChecked = pyqtSignal(str)      # Type[ToolWindow]
-    topToolUnchecked = pyqtSignal(str)
-    bottomToolChecked = pyqtSignal(str)
-    bottomToolUnchecked = pyqtSignal(str)
