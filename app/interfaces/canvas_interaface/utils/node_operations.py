@@ -331,7 +331,7 @@ class NodeOperations:
             center = viewer.mapToScene(viewer.rect().center())
             avg_x, avg_y = center.x(), center.y()
             offset = (0, 0)
-        pasted_nodes = self.graph.paste_nodes(self._clipboard_data)
+        pasted_nodes = self.graph.paste_nodes(False)
         if pasted_nodes:
             min_x = min(n.pos()[0] for n in pasted_nodes)
             min_y = min(n.pos()[1] for n in pasted_nodes)

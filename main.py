@@ -6,6 +6,8 @@ import matplotlib
 import qtconsole.client
 from PyQt5.QtGui import QPalette, QColor
 
+from app.utils.utils import get_icon
+
 warnings.filterwarnings("ignore")
 
 from app.utils import icons_rc
@@ -23,11 +25,7 @@ def enable_dpi_scale():
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
 
-# ----------------------------
-# 启动应
-# ----------------------------
-if __name__ == '__main__':
-    os.environ['PYTHONIOENCODING'] = 'utf-8'
+def create_application():
     # 启用 DPI 缩放
     enable_dpi_scale()
     # 创建应用
@@ -35,16 +33,31 @@ if __name__ == '__main__':
     # 启用fusion样式
     app.setStyle("Fusion")
     tooltip_style = """
-    QToolTip {
-        color: white;
-        background-color: black;
-        border: none;
-        padding: 2px;
-        font-size: 12px;
-    }
-    """
+        QToolTip {
+            color: white;
+            background-color: black;
+            border: none;
+            padding: 2px;
+            font-size: 12px;
+        }
+        """
     # 如果你已有全局样式，合并进去
     app.setStyleSheet(app.styleSheet() + tooltip_style)
+
+    # Required for correct icon on GNOME/Wayland:
+    if hasattr(app, 'setDesktopFileName'):
+        app.setDesktopFileName('CanvasMind')
+
+    return app
+
+
+# ----------------------------
+# 启动应
+# ----------------------------
+if __name__ == '__main__':
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    app = create_application()
+
     # 创建并显示主窗口
     try:
         window = LowCodeWindow()
