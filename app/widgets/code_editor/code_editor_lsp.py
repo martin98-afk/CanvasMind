@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 import re
 import sys
-import uuid
 from typing import List, Dict
 from urllib.parse import quote
 
-from PyQt5.QtCore import Qt, QTimer, QSize
+from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QTextCharFormat, QCursor
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QApplication
 from loguru import logger
@@ -16,11 +15,11 @@ from spyder.widgets.findreplace import FindReplace
 from spyder_kernels.utils.dochelpers import getobj
 
 from app.server_manager.lsp_server.lsp_manager_stdio import LspClientManager
-from app.server_manager.lsp_server.lsp_manager_zmq import LspClientZMQManager
 from app.utils.utils import get_icon
 
 
 class LSPCodeEditor(CodeEditor):
+    lsp_signal = pyqtSignal(str)
     CODE_PREFIX = """from app.components import BaseComponent, ArgumentType, PropertyType, PortDefinition, PropertyDefinition, ConnectionType
 
 
@@ -41,9 +40,6 @@ class LSPCodeEditor(CodeEditor):
             'print', 'input', 'open', 'range', 'enumerate', 'len', 'str', 'int', 'float',
             'list', 'dict', 'set', 'tuple', '__init__', '__name__', '__file__',
         }
-
-        self.set_completion_environment(python_exe_path)
-
         # === ✅ 使用 Spyder 的 CompletionWidget ===
         self.completion_widget = CompletionWidget(parent=self, ancestor=self.code_parent)
         # 深色背景
@@ -105,14 +101,20 @@ class LSPCodeEditor(CodeEditor):
         if hasattr(self, 'folding_panel') and self.folding_panel:
             self.folding_panel.folding_status = {}
 
-    def set_completion_environment(self, python_exe: str):
+    def set_completion_environment(self, python_exe: str = None):
+        if python_exe is None:
+            self.lsp_signal.emit("restarting...")
+        else:
+            self.lsp_signal.emit("starting")
         if hasattr(self, 'lsp_manager') and self.lsp_manager:
             self.lsp_manager.shutdown()
-        self.lsp_manager = LspClientManager(python_path=python_exe)
+
+        self.lsp_manager = LspClientManager(python_path=python_exe or self.python_exe_path)
         self.lsp_manager.initialized.connect(self._on_lsp_initialized)
         self.lsp_manager.completion_ready.connect(self._on_lsp_completions_ready)
         self.lsp_manager.diagnostics_ready.connect(self._on_lsp_diagnostics_ready)
         self.lsp_manager.folding_ready.connect(self._on_lsp_folding_ready)
+        self.lsp_manager.error.connect(lambda e: self.lsp_signal.emit(str(e)))
         self.lsp_manager.start()
 
     # ========== LSP 集成 ==========
@@ -121,6 +123,7 @@ class LSPCodeEditor(CodeEditor):
 
     def _on_lsp_initialized(self):
         self._lsp_ready = True
+        self.lsp_signal.emit("ready")
         code = self.toPlainText()
         if code.strip():
             self._sync_to_lsp()

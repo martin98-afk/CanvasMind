@@ -4,6 +4,7 @@ import ast
 from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QEvent
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QShortcut, QLabel, QInputDialog
+from qfluentwidgets import TransparentToolButton
 from spyder.widgets.findreplace import FindReplace
 
 from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
@@ -35,14 +36,10 @@ class CodeEditorWidget(QWidget):
         self._setup_shortcuts()
 
     def _setup_ui(self, python_exe, popup_offset):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-
         # 5. 创建主要的编辑器视图（包含查找替换面板和编辑器）
-        self.main_view = QWidget()
-        self.main_layout = QVBoxLayout(self.main_view)
+        self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
-
+        self.main_layout.setSpacing(0)
         # 查找替换面板
         self.find_replace = FindReplace(self, True)
         self.find_replace.hide()
@@ -62,16 +59,68 @@ class CodeEditorWidget(QWidget):
         self.main_layout.addWidget(self.code_editor)
         self.find_replace.set_editor(self.code_editor)
         # 状态栏
-        self.status_label = QLabel("Ln 1, Col 1", self.main_view)
-        self.status_label.setStyleSheet("color:#9aa0a6; padding:3px 6px; background:transparent;")
-        self.main_layout.addWidget(self.status_label)
+        self.status_label = QLabel("Ln 1, Col 1", self)
+        self.status_label.setStyleSheet("color:#9aa0a6; padding:2px 6px; background:transparent;")
         self.code_editor.cursorPositionChanged.connect(self._update_status_label)
 
-        # 6. 将主视图添加到主布局
-        layout.addWidget(self.main_view)
+        # ------- 新增：LSP 服务状态区域（仅在 lsp 模式下） -------
+        if self.editor_type == "lsp":
+            from PyQt5.QtWidgets import QHBoxLayout, QPushButton
+            self.lsp_status_layout = QHBoxLayout()
+            self.lsp_status_layout.setContentsMargins(0, 0, 0, 0)
+            self.lsp_status_layout.setSpacing(2)
 
+            self.lsp_status_indicator = QLabel("LSP: offline", self)
+            self.lsp_status_indicator.setStyleSheet(
+                "color:#9aa0a6; padding:2px 6px; background:transparent; font-size:12px; font-weight:bold")
+
+            self.lsp_restart_button = TransparentToolButton(get_icon("更新"), self)
+            self.lsp_restart_button.setFixedSize(25, 25)
+            self.lsp_restart_button.setToolTip("重启 LSP 服务")
+            self.lsp_restart_button.clicked.connect(self.code_editor.set_completion_environment)
+
+            self.lsp_status_layout.addWidget(self.status_label)
+            self.lsp_status_layout.addStretch()
+            self.lsp_status_layout.addWidget(self.lsp_status_indicator)
+            self.lsp_status_layout.addWidget(self.lsp_restart_button)
+
+            # 将 LSP 状态布局放入一个容器 widget，便于添加到主布局
+            self.lsp_status_widget = QWidget(self)
+            self.lsp_status_widget.setLayout(self.lsp_status_layout)
+            self.lsp_status_widget.setStyleSheet("background: transparent;")
+            self.main_layout.addWidget(self.lsp_status_widget)
+            self.code_editor.lsp_signal.connect(self._update_lsp_status)
+            self.code_editor.set_completion_environment(python_exe)
+        else:
+            self.lsp_status_widget = None
+            self.lsp_status_indicator = None
+            self.lsp_restart_button = None
+            self.main_layout.addWidget(self.status_label)
+
+        self.code_editor.cursorPositionChanged.connect(self._update_status_label)
         # 7. 设置初始代码
         self.replace_text_preserving_view(self.default_code)
+
+    def _update_lsp_status(self, status: str):
+        """更新 LSP 状态显示"""
+        if not self.lsp_status_indicator:
+            return
+        if status == "ready":
+            self.lsp_status_indicator.setText("LSP: ready")
+            self.lsp_status_indicator.setStyleSheet(
+                "color:#4caf50; padding:2px 6px; background:transparent; font-size:12px;")
+        elif status == "starting":
+            self.lsp_status_indicator.setText("LSP: starting...")
+            self.lsp_status_indicator.setStyleSheet(
+                "color:#ff9800; padding:2px 6px; background:transparent; font-size:12px;")
+        elif status == "restarting...":
+            self.lsp_status_indicator.setText("LSP: restarting...")
+            self.lsp_status_indicator.setStyleSheet(
+                "color:#ff9800; padding:2px 6px; background:transparent; font-size:12px;")
+        else:  # offline / error
+            self.lsp_status_indicator.setText("LSP: offline")
+            self.lsp_status_indicator.setStyleSheet(
+                "color:#f44336; padding:2px 6px; background:transparent; font-size:12px;")
 
     def _setup_auto_sync(self):
         self._sync_timer = QTimer()
@@ -238,7 +287,7 @@ class CodeEditorWidget(QWidget):
 
         # 保存当前的大小信息，用于退出全屏后恢复
         self._original_size = self.size()
-        self._original_main_view_size = self.main_view.size()
+        self._original_main_view_size = self.size()
 
         # 保存当前的可见性状态
         self._find_replace_visible = self.find_replace.isVisible()
@@ -303,7 +352,7 @@ class CodeEditorWidget(QWidget):
             fullscreen_container.hide()
 
         # 3. 重新将组件添加到原布局
-        main_layout = self.main_view.layout()
+        main_layout = self.layout()
 
         # 清空原布局中的内容
         for i in reversed(range(main_layout.count())):
@@ -333,7 +382,7 @@ class CodeEditorWidget(QWidget):
         if hasattr(self, '_original_size'):
             self.resize(self._original_size)
         if hasattr(self, '_original_main_view_size'):
-            self.main_view.resize(self._original_main_view_size)
+            self.resize(self._original_main_view_size)
 
         # 7. 重新设置编辑器的查找替换组件
         self.find_replace.set_editor(self.code_editor)

@@ -6,6 +6,7 @@ import time
 from typing import Optional
 
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
+from loguru import logger
 from pylspclient.json_rpc_endpoint import JsonRpcEndpoint
 
 
@@ -14,6 +15,7 @@ class LspClientManager(QThread):
     diagnostics_ready = pyqtSignal(list)   # List[Diagnostic]
     folding_ready = pyqtSignal(list)       # List[FoldingRange]
     initialized = pyqtSignal()
+    error = pyqtSignal(str)
 
     def __init__(self, python_path: Optional[str] = None, parent: Optional[QObject] = None):
         super().__init__(parent)
@@ -102,13 +104,14 @@ class LspClientManager(QThread):
             self.initialized.emit()
 
         except Exception as e:
-            print(f"[LSP] Startup error: {e}", flush=True)
+            logger.error(f"[LSP] Startup error: {e}")
+            self.error.emit(str(e))
 
     def _log_stderr(self):
         if self.process and self.process.stderr:
             for line in self.process.stderr:
                 if line:
-                    print(f"[LSP stderr] {line.decode('utf-8', errors='replace').strip()}", flush=True)
+                    logger.error(f"[LSP stderr] {line.decode('utf-8', errors='replace').strip()}")
 
     def _listen_messages(self):
         while self._running and self.process:
@@ -125,7 +128,7 @@ class LspClientManager(QThread):
                         self.diagnostics_ready.emit(diagnostics)
             except Exception as e:
                 if self._running:
-                    print(f"[LSP] Listen error: {e}", flush=True)
+                    logger.error(f"[LSP] Listen error: {e}")
                 break
 
     def _send_message(self, method: str, params: dict, is_notification: bool = False):
@@ -179,7 +182,7 @@ class LspClientManager(QThread):
                 items = result['result'].get('items', []) if isinstance(result['result'], dict) else result['result']
                 self.completion_ready.emit(items)
         except Exception as e:
-            print(f"[LSP] Completion error: {e}", flush=True)
+            logger.error(f"[LSP] Completion error: {e}")
 
     def request_folding_ranges(self, uri: str):
         try:
@@ -190,7 +193,7 @@ class LspClientManager(QThread):
             if result and 'result' in result:
                 self.folding_ready.emit(result['result'] or [])
         except Exception as e:
-            print(f"[LSP] Folding error: {e}", flush=True)
+            logger.error(f"[LSP] Folding error: {e}")
 
     def shutdown(self):
         self._running = False

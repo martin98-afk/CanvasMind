@@ -59,19 +59,9 @@ class ProjectRunnerThread(QThread):
 
     def run(self):
         try:
-            # 1. 构造测试输入（可从 UI 传入，或用默认值）
-            test_inputs = {}
-            spec_path = os.path.join(self.project_path, "project_spec.json")
-            if os.path.exists(spec_path):
-                with open(spec_path, 'r', encoding='utf-8') as f:
-                    spec = json.load(f)
-                for key, cfg in spec.get("inputs", {}).items():
-                    # 用 current_value 或默认值
-                    test_inputs[key] = cfg.get("current_value", "")
-
             # 2. 执行 MCP 工具
             tool = McpWorkflowTool(self.project_path)
-            outputs = tool.execute(test_inputs)
+            outputs = tool.execute({})
 
             # 3. 模拟日志（可选）
             log_content = "✅ MCP 工具执行成功\n" + json.dumps(outputs, indent=2, ensure_ascii=False)
