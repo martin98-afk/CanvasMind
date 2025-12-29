@@ -45,7 +45,7 @@ class LSPCodeEditor(CodeEditor):
         # 深色背景
         self.completion_widget.setStyleSheet("background-color: #1E1E1E;")
         self.completion_widget.setMinimumWidth(350)
-        self.completion_widget.setMinimumHeight(200)
+        self.completion_widget.setMinimumHeight(120)
         # --- 编辑器设置（必须启用 underline_errors 才能显示 ScrollFlagArea 图标）---
         font = QFont('Consolas', 13)
         self.setup_editor(
@@ -114,6 +114,9 @@ class LSPCodeEditor(CodeEditor):
         self.lsp_manager.completion_ready.connect(self._on_lsp_completions_ready)
         self.lsp_manager.diagnostics_ready.connect(self._on_lsp_diagnostics_ready)
         self.lsp_manager.folding_ready.connect(self._on_lsp_folding_ready)
+        self.lsp_manager.hover_ready.connect(self._on_hover_response)
+        self.lsp_manager.definition_ready.connect(self._on_definition_response)
+        self.lsp_manager.formatting_ready.connect(self._apply_formatting_edits)
         self.lsp_manager.error.connect(lambda e: self.lsp_signal.emit(str(e)))
         self.lsp_manager.start()
 
@@ -124,13 +127,14 @@ class LSPCodeEditor(CodeEditor):
     def _on_lsp_initialized(self):
         self._lsp_ready = True
         self.lsp_signal.emit("ready")
+        self.start_completion_services()  # ← LSPMixin 方法！
         code = self.toPlainText()
         if code.strip():
             self._sync_to_lsp()
 
     def _on_text_changed_for_lsp(self):
         if self._lsp_ready:
-            self._lsp_sync_timer.start(300)
+            self._lsp_sync_timer.start(10)
 
     def _on_text_changed_for_folding(self):
         if self._lsp_ready:
@@ -160,7 +164,7 @@ class LSPCodeEditor(CodeEditor):
 
     def _request_folding(self):
         if self._lsp_ready:
-            self.lsp_manager.request_folding_ranges(self._document_uri())
+            self.lsp_manager.request_folding_ranges()
 
     def _on_lsp_folding_ready(self, folding_ranges: List[Dict]):
         if not hasattr(self, 'folding_panel') or not self.folding_panel:
@@ -187,6 +191,70 @@ class LSPCodeEditor(CodeEditor):
         )
         self.folding_panel.folding_regions = folding_regions
         self.folding_panel.folding_status = folding_status
+
+    def format_document(self):
+        """格式化整个文档"""
+        if not self._lsp_ready:
+            return
+        self.lsp_manager.request_formatting()
+
+    def format_selection(self):
+        """格式化选中区域"""
+        if not self._lsp_ready:
+            return
+        cursor = self.textCursor()
+        if cursor.hasSelection():
+            start_block = self.document().findBlock(cursor.selectionStart())
+            end_block = self.document().findBlock(cursor.selectionEnd())
+            # 注意：LSP 行号是 0-based
+            start_line = start_block.blockNumber()
+            start_col = 0
+            end_line = end_block.blockNumber()
+            end_col = end_block.length() - 1  # 包含换行符
+            self.lsp_manager.request_range_formatting(start_line, start_col, end_line, end_col)
+
+    def _apply_formatting_edits(self, text_edits: List[Dict]):
+        """Apply LSP TextEdits to the document"""
+        if not text_edits:
+            return
+
+        # 如果只有一个 edit 且覆盖全文（常见于 formatting），直接替换
+        if len(text_edits) == 1:
+            edit = text_edits[0]
+            start = edit['range']['start']
+            end = edit['range']['end']
+            # 检查是否覆盖全文（从 0,0 开始，到最后一行）
+            if start['line'] == 0 and start['character'] == 0:
+                doc_lines = self.toPlainText().splitlines()
+                last_line = len(doc_lines) - 1
+                if end['line'] >= last_line and end['character'] == 0:
+                    # 是全文替换！
+                    new_text = edit['newText']
+                    # 修复换行符
+                    new_text = new_text.replace('\r\n', '\n').replace('\r', '\n')
+                    # 但要移除 CODE_PREFIX（因为编辑器不显示它）
+                    prefix_lines = len(self.CODE_PREFIX.splitlines())
+                    actual_lines = new_text.splitlines()
+                    if len(actual_lines) > prefix_lines:
+                        # 剔除前缀部分
+                        displayed_text = '\n'.join(actual_lines[prefix_lines:])
+                    else:
+                        displayed_text = new_text  # 安全兜底
+
+                    cursor = self.textCursor()
+                    cursor.beginEditBlock()
+                    try:
+                        cursor.select(QTextCursor.Document)  # 全选
+                        cursor.insertText(displayed_text)
+                    finally:
+                        cursor.endEditBlock()
+                    return
+
+    def _on_hover_response(self, result):
+        self.handle_hover_response({"params": result})
+
+    def _on_definition_response(self, result):
+        self.handle_go_to_definition({"params": result})
 
     def do_completion(self, automatic=True):
         """触发 LSP 补全请求（Spyder 风格）"""
@@ -226,26 +294,9 @@ class LSPCodeEditor(CodeEditor):
                 item['detail'] = ''
             if 'documentation' not in item:
                 item['documentation'] = ''
-
-        # ✅ 注入自定义补全（可选）
-        current_prefix = self._get_completion_prefix().lower()
-        for word in self.custom_completions:
-            if word.lower().startswith(current_prefix):
-                completion_items.append({
-                    'label': word,
-                    'kind': 6,  # variable
-                    'detail': 'builtin',
-                    'documentation': '',
-                    'filterText': word,
-                    'insertText': word
-                })
-
-        cursor_pos = self.textCursor().position()
-        self.completion_widget.show_list(
-            completion_list=completion_items,
-            position=cursor_pos,
-            automatic=True
-        )
+        self.completion_args = (self.textCursor().position(), True)
+        params = {"params": completion_items}
+        self.process_completion(params)
 
     # ========== 错误下划线 + 行号前图标 ==========
     def _on_lsp_diagnostics_ready(self, diagnostics: List[Dict]):
@@ -409,6 +460,10 @@ class LSPCodeEditor(CodeEditor):
             return
         elif event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_Slash:
             self._toggle_comment()
+            event.accept()
+            return
+        elif event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_I:
+            self.format_document()
             event.accept()
             return
 

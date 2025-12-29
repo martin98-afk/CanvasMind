@@ -687,7 +687,9 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             if input_key in external_inputs:
                 node_id = cfg["node_id"]
                 if node_id in nodes:
-                    value = external_inputs[input_key]
+                    value = external_inputs.get(input_key)
+                    if value is None:
+                        continue
                     if cfg["type"] == "组件超参数":
                         nodes[node_id]["params"][cfg["param_name"]] = value
                     else:
