@@ -16,6 +16,7 @@ ICON_NAME_TO_FILE = {
     "logo": "logo.png",
     "logo2": "logo2.png",
     "logo3": "logo3.png",
+    "logoico": "logoico.ico",
     "ls": "ls.svg",
     "Miniconda": "Miniconda.svg",
     "number": "number.svg",

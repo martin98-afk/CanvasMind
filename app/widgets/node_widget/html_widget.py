@@ -88,7 +88,8 @@ class HtmlWidgetWrapper(CustomNodeBaseWidget):
 
     def _update_node(self):
         if self.node.graph is not None:
-            self.node.graph.viewer().force_update()
+            self.node.view.set_proxy_mode(False)
+            self.node.view.draw_node()
 
     def get_value(self):
         return self.get_custom_widget().get_value()

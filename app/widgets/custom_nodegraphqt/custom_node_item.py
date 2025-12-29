@@ -332,7 +332,7 @@ class CustomNodeItem(NodeItem):
         # 节点宽度计算, 端口宽+端口文本宽+max（节点文本宽,自定义控件宽）+边距，最后与代理文本宽度取最大
         width = max(
             port_width + port_text_width + max([text_w, widget_width]) + side_padding,
-            self._proxy_text_item.boundingRect().width() + side_padding
+            self._proxy_text_item.boundingRect().width() + 20
         )
         height = max([text_h, p_input_height, p_output_height, widget_height])
         height *= 1.04
