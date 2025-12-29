@@ -8,7 +8,7 @@ from qfluentwidgets import (
     ScrollArea, SettingCardGroup, PushSettingCard, SwitchSettingCard,
     LineEdit, FluentIcon as FIF, InfoBar, MessageBox, TextEdit,
     OptionsSettingCard, FolderListSettingCard, OptionsValidator, Theme, setTheme, themeColor, PrimaryPushSettingCard,
-    FluentIcon
+    FluentIcon, RangeSettingCard
 )
 
 from app.utils.config import Settings
@@ -193,7 +193,7 @@ class SettingInterface(ScrollArea):
             texts=["ipython运行", "subprocess运行"],
             parent=self.canvasGroup
         )
-        self.cfg.canvas_run_mode.valueChanged.connect(self.onConfigChanged)
+        self.runModeCard.optionChanged.connect(self.onConfigChanged)
         self.showGridCard = OptionsSettingCard(
             self.cfg.canvas_grid_mode,
             get_icon("画布"),
@@ -203,7 +203,7 @@ class SettingInterface(ScrollArea):
             parent=self.canvasGroup
         )
         # 连接配置变化信号，自动保存
-        self.cfg.canvas_grid_mode.valueChanged.connect(self.onConfigChanged)
+        self.showGridCard.optionChanged.connect(self.onConfigChanged)
 
         self.autoSaveCard = SwitchSettingCard(
             get_icon("画布"),
@@ -213,16 +213,26 @@ class SettingInterface(ScrollArea):
             parent=self.canvasGroup
         )
         # 连接配置变化信号，自动保存
-        self.cfg.canvas_auto_save.valueChanged.connect(self.onConfigChanged)
+        self.autoSaveCard.checkedChanged.connect(self.onConfigChanged)
 
-        self.autoSaveIntervalCard = PushSettingCard(
-            "修改",
+        self.autoSaveIntervalCard = RangeSettingCard(
+            self.cfg.canvas_auto_save_interval,
             get_icon("画布"),
+            "修改",
             "自动保存间隔 (秒)",
-            str(self.cfg.canvas_auto_save_interval.value),
             parent=self.canvasGroup
         )
-        self.autoSaveIntervalCard.clicked.connect(self.onAutoSaveIntervalClicked)
+        self.autoSaveIntervalCard.valueChanged.connect(self.onConfigChanged)
+
+        self.NodeProxyCard = RangeSettingCard(
+            self.cfg.node_proxy_size,
+            get_icon("画布"),
+            "节点细节绘制距离",
+            "设置节点中控件最小绘制距离，如果超过距离会隐藏控件以提升画布性能",
+            parent=self.canvasGroup
+        )
+        # 连接配置变化信号，自动保存
+        self.NodeProxyCard.valueChanged.connect(self.onConfigChanged)
 
         self.pipelayoutCard = OptionsSettingCard(
             self.cfg.canvas_pipelayout,
@@ -233,7 +243,7 @@ class SettingInterface(ScrollArea):
             parent=self.canvasGroup
         )
         # 连接配置变化信号，自动保存
-        self.cfg.canvas_pipelayout.valueChanged.connect(self.onConfigChanged)
+        self.pipelayoutCard.optionChanged.connect(self.onConfigChanged)
 
         self.pipeDirectionCard = OptionsSettingCard(
             self.cfg.canvas_direction,
@@ -244,12 +254,13 @@ class SettingInterface(ScrollArea):
             parent=self.canvasGroup
         )
         # 连接配置变化信号，自动保存
-        self.cfg.canvas_direction.valueChanged.connect(self.onConfigChanged)
+        self.pipeDirectionCard.optionChanged.connect(self.onConfigChanged)
 
         self.canvasGroup.addSettingCard(self.runModeCard)
-        self.canvasGroup.addSettingCard(self.showGridCard)
         self.canvasGroup.addSettingCard(self.autoSaveCard)
         self.canvasGroup.addSettingCard(self.autoSaveIntervalCard)
+        self.canvasGroup.addSettingCard(self.showGridCard)
+        self.canvasGroup.addSettingCard(self.NodeProxyCard)
         self.canvasGroup.addSettingCard(self.pipelayoutCard)
         self.canvasGroup.addSettingCard(self.pipeDirectionCard)
 
@@ -298,20 +309,6 @@ class SettingInterface(ScrollArea):
             ),
             min_val=5,
             max_val=100
-        )
-
-    def onAutoSaveIntervalClicked(self):
-        self.showNumberEditDialog(
-            "自动保存间隔",
-            self.cfg.canvas_auto_save_interval.value,
-            lambda x: (
-                self.cfg.set(self.cfg.canvas_auto_save_interval, x),
-                # 自动保存
-                self.cfg.save_config(),
-                self.configChanged.emit()
-            ),
-            min_val=10,
-            max_val=600
         )
 
     def onConfigChanged(self):

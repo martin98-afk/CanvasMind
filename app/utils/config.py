@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from qfluentwidgets import ConfigSerializer, ConfigItem, QConfig, OptionsValidator, BoolValidator, FolderListValidator, \
-    RangeValidator, OptionsConfigItem, ConfigValidator
+    RangeValidator, OptionsConfigItem, ConfigValidator, RangeConfigItem
 from enum import Enum
 
 from app.utils.utils import resource_path
@@ -35,31 +35,6 @@ class QuickComponentsSerializer(ConfigSerializer):
 
 class Settings(QConfig):
     _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    @classmethod
-    def get_instance(cls):
-        """获取配置实例（单例模式）"""
-        if cls._instance is None:
-            cls._instance = cls()
-            CONFIG_FILE = resource_path("../app.config")
-            try:
-                cls._instance.load(CONFIG_FILE)
-            except:
-                # 首次运行，保存默认配置
-                cls._instance.save(CONFIG_FILE)
-                print(f"✅ 已创建默认配置文件: {CONFIG_FILE}")
-        return cls._instance
-
-    @classmethod
-    def save_config(cls):
-        """保存配置"""
-        if cls._instance:
-            cls._instance.save()
     # 版本信息
     current_version = "v0.2.3"
 
@@ -88,16 +63,17 @@ class Settings(QConfig):
 
     # ========== 新增：画布设置 ==========
     canvas_run_mode = OptionsConfigItem("Canvas", "RunMode", "subprocess运行",
-                                         OptionsValidator(["ipython运行", "subprocess运行"]))
+                                        OptionsValidator(["ipython运行", "subprocess运行"]))
     canvas_grid_mode = OptionsConfigItem("Canvas", "ShowGrid", "线网格",
-                                            OptionsValidator(["线网格", "点网格", "无网格"]))
+                                         OptionsValidator(["线网格", "点网格", "无网格"]))
+    node_proxy_size = RangeConfigItem("Canvas", "NodeProxySize", 120, RangeValidator(70, 300))
     canvas_grid_size = ConfigItem("Canvas", "GridSize", 20, RangeValidator(10, 30))
     canvas_auto_save = ConfigItem("Canvas", "AutoSave", True, BoolValidator())
-    canvas_auto_save_interval = ConfigItem("Canvas", "AutoSaveInterval", 60, RangeValidator(60, 120))
+    canvas_auto_save_interval = RangeConfigItem("Canvas", "AutoSaveInterval", 60, RangeValidator(15, 300))
     canvas_pipelayout = OptionsConfigItem("Canvas", "PipeLayout", "折线",
-                                            OptionsValidator(["直线", "曲线", "折线"]))
+                                          OptionsValidator(["直线", "曲线", "折线"]))
     canvas_direction = OptionsConfigItem("Canvas", "Direction", "水平",
-                                          OptionsValidator(["水平", "垂直"]))
+                                         OptionsValidator(["水平", "垂直"]))
 
     # ========== 新增：画布快捷组件 ==========
 
@@ -124,7 +100,7 @@ class Settings(QConfig):
         "Package",
         "DefaultPackages",
         [
-            "pyzmq","loguru", "pydantic", "pandas", "Pillow", "fastapi",
+            "pyzmq", "loguru", "pydantic", "pandas", "Pillow", "fastapi",
             "uvicorn", "python-lsp-server[all]", "asteval", "wcwidth",
             "pyarrow", "ipykernel", "matplotlib", "pyecharts"
         ],
@@ -139,3 +115,29 @@ class Settings(QConfig):
     llm_max_tokens = ConfigItem("LLM", "MaxTokens", 2048, RangeValidator(1024, 40960))
     llm_temperature = ConfigItem("LLM", "Temperature", 0.7, RangeValidator(0, 1))
     llm_enable_thinking = ConfigItem("LLM", "EnableThinking", True, BoolValidator())
+
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    @classmethod
+    def get_instance(cls):
+        """获取配置实例（单例模式）"""
+        if cls._instance is None:
+            cls._instance = cls()
+            CONFIG_FILE = resource_path("../app.config")
+            try:
+                cls._instance.load(CONFIG_FILE)
+            except:
+                # 首次运行，保存默认配置
+                cls._instance.save(CONFIG_FILE)
+                print(f"✅ 已创建默认配置文件: {CONFIG_FILE}")
+        return cls._instance
+
+    @classmethod
+    def save_config(cls):
+        """保存配置"""
+        if cls._instance:
+            cls._instance.save()
