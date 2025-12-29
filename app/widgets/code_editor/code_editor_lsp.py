@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 import re
 import sys
-import uuid
 from typing import List, Dict
 from urllib.parse import quote
 
-from PyQt5.QtCore import Qt, QTimer, QSize
+from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QTextCharFormat, QCursor
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QApplication
 from loguru import logger
@@ -16,11 +15,11 @@ from spyder.widgets.findreplace import FindReplace
 from spyder_kernels.utils.dochelpers import getobj
 
 from app.server_manager.lsp_server.lsp_manager_stdio import LspClientManager
-from app.server_manager.lsp_server.lsp_manager_zmq import LspClientZMQManager
 from app.utils.utils import get_icon
 
 
 class LSPCodeEditor(CodeEditor):
+    lsp_signal = pyqtSignal(str)
     CODE_PREFIX = """from app.components import BaseComponent, ArgumentType, PropertyType, PortDefinition, PropertyDefinition, ConnectionType
 
 
@@ -41,15 +40,12 @@ class LSPCodeEditor(CodeEditor):
             'print', 'input', 'open', 'range', 'enumerate', 'len', 'str', 'int', 'float',
             'list', 'dict', 'set', 'tuple', '__init__', '__name__', '__file__',
         }
-
-        self.set_completion_environment(python_exe_path)
-
         # === ✅ 使用 Spyder 的 CompletionWidget ===
         self.completion_widget = CompletionWidget(parent=self, ancestor=self.code_parent)
         # 深色背景
         self.completion_widget.setStyleSheet("background-color: #1E1E1E;")
         self.completion_widget.setMinimumWidth(350)
-        self.completion_widget.setMinimumHeight(200)
+        self.completion_widget.setMinimumHeight(120)
         # --- 编辑器设置（必须启用 underline_errors 才能显示 ScrollFlagArea 图标）---
         font = QFont('Consolas', 13)
         self.setup_editor(
@@ -63,6 +59,7 @@ class LSPCodeEditor(CodeEditor):
             indent_guides=True,
             folding=True,
             markers=True,
+            hover_hints=True,
             automatic_completions=True,  # ✅ 关键！
             automatic_completions_after_chars=1,
             intelligent_backspace=True,
@@ -105,14 +102,24 @@ class LSPCodeEditor(CodeEditor):
         if hasattr(self, 'folding_panel') and self.folding_panel:
             self.folding_panel.folding_status = {}
 
-    def set_completion_environment(self, python_exe: str):
+    def set_completion_environment(self, python_exe: str = None):
+        if python_exe is None:
+            self.lsp_signal.emit("restarting...")
+        else:
+            self.lsp_signal.emit("starting")
         if hasattr(self, 'lsp_manager') and self.lsp_manager:
             self.lsp_manager.shutdown()
-        self.lsp_manager = LspClientManager(python_path=python_exe)
+
+        self.lsp_manager = LspClientManager(python_path=python_exe or self.python_exe_path)
         self.lsp_manager.initialized.connect(self._on_lsp_initialized)
         self.lsp_manager.completion_ready.connect(self._on_lsp_completions_ready)
         self.lsp_manager.diagnostics_ready.connect(self._on_lsp_diagnostics_ready)
         self.lsp_manager.folding_ready.connect(self._on_lsp_folding_ready)
+        self.lsp_manager.hover_ready.connect(self._on_hover_response)
+        self.lsp_manager.definition_ready.connect(self._on_definition_response)
+        self.lsp_manager.formatting_ready.connect(self._apply_formatting_edits)
+        self.lsp_manager.completion_resolved.connect(self._on_completion_resolved)
+        self.lsp_manager.error.connect(lambda e: self.lsp_signal.emit(str(e)))
         self.lsp_manager.start()
 
     # ========== LSP 集成 ==========
@@ -121,13 +128,15 @@ class LSPCodeEditor(CodeEditor):
 
     def _on_lsp_initialized(self):
         self._lsp_ready = True
+        self.lsp_signal.emit("ready")
+        self.start_completion_services()  # ← LSPMixin 方法！
         code = self.toPlainText()
         if code.strip():
             self._sync_to_lsp()
 
     def _on_text_changed_for_lsp(self):
         if self._lsp_ready:
-            self._lsp_sync_timer.start(300)
+            self._lsp_sync_timer.start(10)
 
     def _on_text_changed_for_folding(self):
         if self._lsp_ready:
@@ -154,10 +163,11 @@ class LSPCodeEditor(CodeEditor):
         else:
             self.lsp_manager.change_document(code_for_lsp)
         self._request_folding()
+        self.do_automatic_completions()
 
     def _request_folding(self):
         if self._lsp_ready:
-            self.lsp_manager.request_folding_ranges(self._document_uri())
+            self.lsp_manager.request_folding_ranges()
 
     def _on_lsp_folding_ready(self, folding_ranges: List[Dict]):
         if not hasattr(self, 'folding_panel') or not self.folding_panel:
@@ -184,6 +194,96 @@ class LSPCodeEditor(CodeEditor):
         )
         self.folding_panel.folding_regions = folding_regions
         self.folding_panel.folding_status = folding_status
+
+    def format_document(self):
+        """格式化整个文档"""
+        if not self._lsp_ready:
+            return
+        self.lsp_manager.request_formatting()
+
+    def format_selection(self):
+        """格式化选中区域"""
+        if not self._lsp_ready:
+            return
+        cursor = self.textCursor()
+        if cursor.hasSelection():
+            start_block = self.document().findBlock(cursor.selectionStart())
+            end_block = self.document().findBlock(cursor.selectionEnd())
+            # 注意：LSP 行号是 0-based
+            start_line = start_block.blockNumber()
+            start_col = 0
+            end_line = end_block.blockNumber()
+            end_col = end_block.length() - 1  # 包含换行符
+            self.lsp_manager.request_range_formatting(start_line, start_col, end_line, end_col)
+
+    def _apply_formatting_edits(self, text_edits: List[Dict]):
+        """Apply LSP TextEdits to the document"""
+        if not text_edits:
+            return
+
+        # 如果只有一个 edit 且覆盖全文（常见于 formatting），直接替换
+        if len(text_edits) == 1:
+            edit = text_edits[0]
+            start = edit['range']['start']
+            end = edit['range']['end']
+            # 检查是否覆盖全文（从 0,0 开始，到最后一行）
+            if start['line'] == 0 and start['character'] == 0:
+                doc_lines = self.toPlainText().splitlines()
+                last_line = len(doc_lines) - 1
+                if end['line'] >= last_line and end['character'] == 0:
+                    # 是全文替换！
+                    new_text = edit['newText']
+                    # 修复换行符
+                    new_text = new_text.replace('\r\n', '\n').replace('\r', '\n')
+                    # 但要移除 CODE_PREFIX（因为编辑器不显示它）
+                    prefix_lines = len(self.CODE_PREFIX.splitlines())
+                    actual_lines = new_text.splitlines()
+                    if len(actual_lines) > prefix_lines:
+                        # 剔除前缀部分
+                        displayed_text = '\n'.join(actual_lines[prefix_lines:])
+                    else:
+                        displayed_text = new_text  # 安全兜底
+
+                    cursor = self.textCursor()
+                    cursor.beginEditBlock()
+                    try:
+                        cursor.select(QTextCursor.Document)  # 全选
+                        cursor.insertText(displayed_text)
+                    finally:
+                        cursor.endEditBlock()
+                    return
+
+    def request_symbols(self):
+        self.lsp_manager.request_symbols()
+
+    def request_hover(self, line, col, offset, show_hint=True, clicked=True):
+        self._show_hint = show_hint
+        self._request_hover_clicked = clicked
+        self.lsp_manager.request_hover(line + len(self.CODE_PREFIX.splitlines()), col)
+
+    def _on_hover_response(self, result):
+        if result["contents"]:
+            self.handle_hover_response({"params": result["contents"]["value"]})
+
+    def go_to_definition_from_cursor(self, cursor=None):
+        if not self.go_to_definition_enabled or self.in_comment_or_string():
+            return
+
+        if cursor is None:
+            cursor = self.textCursor()
+
+        text = str(cursor.selectedText())
+
+        if len(text) == 0:
+            cursor.select(QTextCursor.WordUnderCursor)
+            text = str(cursor.selectedText())
+
+        if text is not None:
+            line, column = self.get_cursor_line_column()
+        self.lsp_manager.request_definition(line, column)
+
+    def _on_definition_response(self, result):
+        self.handle_go_to_definition({"params": result})
 
     def do_completion(self, automatic=True):
         """触发 LSP 补全请求（Spyder 风格）"""
@@ -223,26 +323,16 @@ class LSPCodeEditor(CodeEditor):
                 item['detail'] = ''
             if 'documentation' not in item:
                 item['documentation'] = ''
+        self.completion_args = (self.textCursor().position(), True)
+        params = {"params": completion_items}
+        self.process_completion(params)
+        self._set_completions_hint_idle()
 
-        # ✅ 注入自定义补全（可选）
-        current_prefix = self._get_completion_prefix().lower()
-        for word in self.custom_completions:
-            if word.lower().startswith(current_prefix):
-                completion_items.append({
-                    'label': word,
-                    'kind': 6,  # variable
-                    'detail': 'builtin',
-                    'documentation': '',
-                    'filterText': word,
-                    'insertText': word
-                })
+    def resolve_completion_item(self, item):
+        self.lsp_manager.request_completion_resolve(item)
 
-        cursor_pos = self.textCursor().position()
-        self.completion_widget.show_list(
-            completion_list=completion_items,
-            position=cursor_pos,
-            automatic=True
-        )
+    def _on_completion_resolved(self, item):
+        self.handle_completion_item_resolution({"params": item})
 
     # ========== 错误下划线 + 行号前图标 ==========
     def _on_lsp_diagnostics_ready(self, diagnostics: List[Dict]):
@@ -371,11 +461,6 @@ class LSPCodeEditor(CodeEditor):
     def keyPressEvent(self, event):
         """Reimplement Qt method."""
         key = event.key()
-        # 处理 Ctrl+C
-        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_C:
-            self._copy_with_folding()
-            event.accept()
-            return
 
         if key in (Qt.Key_Return, Qt.Key_Enter) and not event.modifiers():
             cursor = self.textCursor()
@@ -408,238 +493,12 @@ class LSPCodeEditor(CodeEditor):
             self._toggle_comment()
             event.accept()
             return
-
-        if self.completions_hint_after_ms > 0:
-            self._completions_hint_idle = False
-            self._timer_completions_hint.start(self.completions_hint_after_ms)
-        else:
-            self._set_completions_hint_idle()
-
-        # Only set overwrite mode during key handling to allow correct painting
-        # of multiple overwrite cursors. Must unset overwrite before return.
-        self.setOverwriteMode(self.overwrite_mode)
-        self.start_cursor_blink()  # reset cursor blink by reseting timer
-        if self.extra_cursors:
-            self.handle_multi_cursor_keypress(event)
-            self.setOverwriteMode(False)
-            return
-
-        # Send the signal to the editor's extension.
-        event.ignore()
-        self.sig_key_pressed.emit(event)
-
-        self._last_pressed_key = key = event.key()
-        self._last_key_pressed_text = text = str(event.text())
-        has_selection = self.has_selected_text()
-        ctrl = event.modifiers() & Qt.ControlModifier
-        shift = event.modifiers() & Qt.ShiftModifier
-
-        if text:
-            self.clear_occurrences()
-
-        if key in {Qt.Key_Up, Qt.Key_Left, Qt.Key_Right, Qt.Key_Down}:
-            self.hide_tooltip()
-
-        if key in {Qt.Key_PageUp, Qt.Key_PageDown}:
-            self.hide_tooltip()
-            self.hide_calltip()
-
-        if event.isAccepted():
-            # The event was handled by one of the editor extension.
-            self.setOverwriteMode(False)
-            return
-
-        if key in [Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt,
-                   Qt.Key_Meta, Qt.KeypadModifier]:
-            self.setOverwriteMode(False)
-            # The user pressed only a modifier key.
-            if event.modifiers() == self.mouse_shortcuts['goto_definition']:
-                pos = self.mapFromGlobal(QCursor.pos())
-                pos = self.calculate_real_position_from_global(pos)
-                if self._handle_goto_uri_event(pos):
-                    event.accept()
-                    return
-
-                if self._handle_goto_definition_event(pos):
-                    event.accept()
-                    return
-            return
-
-        # ---- Handle hard coded and builtin actions
-        operators = {'+', '-', '*', '**', '/', '//', '%', '@', '<<', '>>',
-                     '&', '|', '^', '~', '<', '>', '<=', '>=', '==', '!='}
-        delimiters = {',', ':', ';', '@', '=', '->', '+=', '-=', '*=', '/=',
-                      '//=', '%=', '@=', '&=', '|=', '^=', '>>=', '<<=', '**='}
-
-        if text not in self.auto_completion_characters:
-            if text in operators or text in delimiters:
-                self.completion_widget.hide()
-        if key in (Qt.Key_Enter, Qt.Key_Return):
-            if not shift and not ctrl:
-                if (
-                    self.add_colons_enabled and
-                    self.is_python_like() and
-                    self.autoinsert_colons()
-                ):
-                    self.textCursor().beginEditBlock()
-                    self.insert_text(':' + self.get_line_separator())
-                    if self.strip_trailing_spaces_on_modify:
-                        self.fix_and_strip_indent()
-                    else:
-                        self.fix_indent()
-                    self.textCursor().endEditBlock()
-                elif self.is_completion_widget_visible():
-                    self.select_completion_list()
-                else:
-                    self.textCursor().beginEditBlock()
-                    cur_indent = self.get_block_indentation(
-                        self.textCursor().blockNumber())
-                    self._handle_keypress_event(event)
-                    # Check if we're in a comment or a string at the
-                    # current position
-                    cmt_or_str_cursor = self.in_comment_or_string()
-
-                    # Check if the line start with a comment or string
-                    cursor = self.textCursor()
-                    cursor.setPosition(cursor.block().position(),
-                                       QTextCursor.KeepAnchor)
-                    cmt_or_str_line_begin = self.in_comment_or_string(
-                        cursor=cursor)
-
-                    # Check if we are in a comment or a string
-                    cmt_or_str = cmt_or_str_cursor and cmt_or_str_line_begin
-
-                    if self.strip_trailing_spaces_on_modify:
-                        self.fix_and_strip_indent(
-                            comment_or_string=cmt_or_str,
-                            cur_indent=cur_indent)
-                    else:
-                        self.fix_indent(comment_or_string=cmt_or_str,
-                                        cur_indent=cur_indent)
-                    self.textCursor().endEditBlock()
-        elif key == Qt.Key_Insert and not shift and not ctrl:
-            self.overwrite_mode = not self.overwrite_mode
-        elif key == Qt.Key_Backspace and not shift and not ctrl:
-            if has_selection or not self.intelligent_backspace:
-                self._handle_keypress_event(event)
-            else:
-                leading_text = self.get_text('sol', 'cursor')
-                leading_length = len(leading_text)
-                trailing_spaces = leading_length - len(leading_text.rstrip())
-                trailing_text = self.get_text('cursor', 'eol')
-                matches = ('()', '[]', '{}', '\'\'', '""')
-                if (
-                    not leading_text.strip() and
-                    (leading_length > len(self.indent_chars))
-                ):
-                    if leading_length % len(self.indent_chars) == 0:
-                        self.unindent()
-                    else:
-                        self._handle_keypress_event(event)
-                elif trailing_spaces and not trailing_text.strip():
-                    self.remove_suffix(leading_text[-trailing_spaces:])
-                elif (
-                    leading_text and
-                    trailing_text and
-                    (leading_text[-1] + trailing_text[0] in matches)
-                ):
-                    cursor = self.textCursor()
-                    cursor.movePosition(QTextCursor.PreviousCharacter)
-                    cursor.movePosition(QTextCursor.NextCharacter,
-                                        QTextCursor.KeepAnchor, 2)
-                    cursor.removeSelectedText()
-                else:
-                    self._handle_keypress_event(event)
-        elif key == Qt.Key_Home:
-            self.stdkey_home(shift, ctrl)
-        elif key == Qt.Key_End:
-            # See spyder-ide/spyder#495: on MacOS X, it is necessary to
-            # redefine this basic action which should have been implemented
-            # natively
-            self.stdkey_end(shift, ctrl)
-        elif (
-            text in self.auto_completion_characters and
-            self.automatic_completions
-        ):
-            self.insert_text(text)
-            if text == ".":
-                if not self.in_comment_or_string():
-                    text = self.get_text('sol', 'cursor')
-                    last_obj = getobj(text)
-                    prev_char = text[-2] if len(text) > 1 else ''
-                    if (
-                        prev_char in {')', ']', '}'} or
-                        (last_obj and not last_obj.isdigit())
-                    ):
-                        # Completions should be triggered immediately when
-                        # an autocompletion character is introduced.
-                        self.do_completion(automatic=True)
-            else:
-                self.do_completion(automatic=True)
-        elif (
-            text in self.signature_completion_characters and
-            not self.has_selected_text()
-        ):
-            self.insert_text(text)
-            self.request_signature()
-        elif (
-            key == Qt.Key_Colon and
-            not has_selection and
-            self.auto_unindent_enabled
-        ):
-            leading_text = self.get_text('sol', 'cursor')
-            if leading_text.lstrip() in ('else', 'finally'):
-                ind = lambda txt: len(txt) - len(txt.lstrip())
-                prevtxt = str(self.textCursor().block().previous().text())
-                if self.language == 'Python':
-                    prevtxt = prevtxt.rstrip()
-                if ind(leading_text) == ind(prevtxt):
-                    self.unindent(force=True)
-            self._handle_keypress_event(event)
-        elif (
-            key == Qt.Key_Space and
-            not shift and
-            not ctrl and
-            not has_selection and
-            self.auto_unindent_enabled
-        ):
-            self.completion_widget.hide()
-            leading_text = self.get_text('sol', 'cursor')
-            if leading_text.lstrip() in ('elif', 'except'):
-                ind = lambda txt: len(txt)-len(txt.lstrip())
-                prevtxt = str(self.textCursor().block().previous().text())
-                if self.language == 'Python':
-                    prevtxt = prevtxt.rstrip()
-                if ind(leading_text) == ind(prevtxt):
-                    self.unindent(force=True)
-            self._handle_keypress_event(event)
-        elif key == Qt.Key_Tab and not ctrl:
-            # Important note: <TAB> can't be called with a QShortcut because
-            # of its singular role with respect to widget focus management
-            if not has_selection and not self.tab_mode:
-                self.intelligent_tab()
-            else:
-                # indent the selected text
-                self.indent_or_replace()
-        elif key == Qt.Key_Backtab and not ctrl:
-            # Backtab, i.e. Shift+<TAB>, could be treated as a QShortcut but
-            # there is no point since <TAB> can't (see above)
-            if not has_selection and not self.tab_mode:
-                self.intelligent_backtab()
-            else:
-                # indent the selected text
-                self.unindent()
+        elif event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_I:
+            self.format_document()
             event.accept()
-        elif not event.isAccepted():
-            self._handle_keypress_event(event)
+            return
 
-        if not event.modifiers():
-            # Accept event to avoid it being handled by the parent.
-            # Modifiers should be passed to the parent because they
-            # could be shortcuts
-            event.accept()
-
-        self.setOverwriteMode(False)
+        super().keyPressEvent(event)
 
     def _open_in_spyder(self):
         pass
