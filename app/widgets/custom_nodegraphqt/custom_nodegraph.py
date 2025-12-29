@@ -602,4 +602,4 @@ class CustomNodeGraph(NodeGraph):
 
         self._viewer.setUpdatesEnabled(True)
         self._viewer.scene().blockSignals(False)
-        self._viewer.scene().update()
+        [n.view.draw_node() for n in nodes.values()]

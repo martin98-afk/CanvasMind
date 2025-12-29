@@ -313,6 +313,8 @@ class SampleModelCardView(SimpleCardWidget):
              "key": "react智能体"},
             {"icon": get_icon("HTTP请求"), "title": "http请求", "content": "http请求样例模型，包含请求体合并操作",
              "key": "http请求样例模型"},
+            {"icon": get_icon("图表"), "title": "echarts图表样例", "content": "使用echarts节点进行数据可视化分析",
+             "key": "echarts样例"},
         ]
 
         for i, ex in enumerate(examples):

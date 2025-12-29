@@ -195,7 +195,7 @@ class CustomPipeItem(PipeItem):
             width=3,
             style=PipeEnum.DRAW_TYPE_DEFAULT.value
         )
-        self.setZValue(Z_VAL_NODE+1)
+        self.setZValue(Z_VAL_NODE+0.5)
 
     def highlight(self):
         self._highlight = True
@@ -204,7 +204,7 @@ class CustomPipeItem(PipeItem):
             width=2,
             style=PipeEnum.DRAW_TYPE_DEFAULT.value
         )
-        self.setZValue(Z_VAL_NODE+1)
+        self.setZValue(Z_VAL_NODE+0.5)
 
     def reset(self):
         """
