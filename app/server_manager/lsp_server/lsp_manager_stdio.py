@@ -18,6 +18,8 @@ class LspClientManager(QThread):
     formatting_ready = pyqtSignal(list)  # List[TextEdit]
     hover_ready = pyqtSignal(dict)  # hover content
     definition_ready = pyqtSignal(dict)  # location
+    references_ready = pyqtSignal(list)
+    document_symbols_ready = pyqtSignal(list)
     initialized = pyqtSignal()
     error = pyqtSignal(str)
 
@@ -154,6 +156,19 @@ class LspClientManager(QThread):
                     elif method == "textDocument/formatting" or method == "textDocument/rangeFormatting":
                         edits = msg.get('result') or []
                         self.formatting_ready.emit(edits)
+                    elif method == "textDocument/definition":
+                        result = msg.get('result') or []
+                        self.definition_ready.emit(result)
+                    elif method == "textDocument/references":
+                        result = msg.get('result') or []
+                        self.references_ready.emit(result)
+                    elif method == "textDocument/documentSymbol":
+                        result = msg.get('result') or []
+                        self.document_symbol_ready.emit(result)
+                    elif method == "textDocument/hover":
+                        result = msg.get('result') or []
+                        self.hover_ready.emit(result)
+
                     # Optional: keep generic response for debug
                     with self._lock:
                         self._response_map[msg['id']] = msg
@@ -230,6 +245,12 @@ class LspClientManager(QThread):
             "textDocument": {"uri": self.uri, "version": self.version},
             "contentChanges": changes
         }, is_notification=True)
+
+    def request_symbol(self):
+        """Non-blocking. Result arrives via `document_symbol_ready` signal."""
+        self._send_message("textDocument/documentSymbol", {
+            "textDocument": {"uri": self.uri}
+        })
 
     def request_completion(self, line: int, col: int):
         """Non-blocking. Result arrives via `completion_ready` signal."""

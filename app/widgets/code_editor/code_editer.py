@@ -11,7 +11,7 @@ from app.templates.component_templates.base import DEFAULT_NODE_TEMPLATE
 from app.utils.utils import get_icon  # 假设您有这个工具函数
 from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.code_editor.code_editor_lsp import LSPCodeEditor  # 确保导入路径正确
-from app.widgets.code_editor.code_editor_spyder import JediCodeEditor
+from app.widgets.code_editor.code_editor_jedi import JediCodeEditor
 
 
 # ---------------- 主部件 ----------------
