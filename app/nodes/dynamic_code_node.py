@@ -404,7 +404,7 @@ def create_dynamic_code_node(parent_window=None):
             return temp_component_code
 
         # === 关键：重写 execute_sync，使用动态代码模板 ===
-        def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None):
+        def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None, global_variable=None):
             try:
                 self.init_logger()
                 temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
@@ -426,29 +426,42 @@ def create_dynamic_code_node(parent_window=None):
                 with open(temp_component_path, 'w', encoding='utf-8') as f:
                     f.write(temp_component_code)
                 # === 3. 收集 inputs / params / global_variable（不变）===
-                global_variable = self.global_variable
+                params = {}
                 gv = GlobalVariableContext()
                 gv.deserialize(global_variable)
-
+                # === 收集 inputs_raw ===
                 inputs_raw = {}
-                for i, input_port in enumerate(self.input_ports()):
+                input_vars = {}
+                for input_port in self.input_ports():
                     port_name = input_port.name()
                     connected = input_port.connected_ports()
                     if connected:
-                        if len(connected) == 1:
-                            upstream = connected[0]
-                            value = upstream.node()._output_values.get(upstream.name())
-                            inputs_raw[port_name] = value
-                        else:
+                        if input_port.model.multi_connection:
                             inputs_raw[port_name] = [
                                 upstream.node()._output_values.get(upstream.name()) for upstream in connected
                             ]
-                    else:
-                        inputs_raw[port_name] = gv.get(self.get_property("input_ports")[i]["var"])
+                            safe_key = f"input_{port_name}"
+                            input_vars[safe_key] = inputs_raw[port_name]
+                            for upstream in connected:
+                                safe_name = upstream.node().name().replace(" ", "_")
+                                safe_key = f"input_{safe_name}__{upstream.name()}"
+                                input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
+                        else:
+                            inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
+                            # 当前节点输入端口key
+                            safe_key = f"input_{port_name}"
+                            input_vars[safe_key] = inputs_raw[port_name]
+                            safe_name = connected[0].node().name().replace(" ", "_")
+                            # 上游节点输出端口key
+                            safe_key = f"input_{safe_name}__{connected[0].name()}"
+                            input_vars[safe_key] = inputs_raw[port_name]
+                        if port_name in self.column_select:
+                            inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
 
-                input_vars = {f"input_{k}": v for k, v in inputs_raw.items()}
+                # === 创建表达式引擎（带全局变量）===
                 expr_engine = ExpressionEngine(global_vars_context=gv)
 
+                # === 递归求值 params，传入 input_vars ===
                 def _evaluate_with_inputs(value, engine, input_vars_dict):
                     if isinstance(value, str):
                         return engine.evaluate_template(value, local_vars=input_vars_dict)
@@ -458,9 +471,7 @@ def create_dynamic_code_node(parent_window=None):
                         return {k: _evaluate_with_inputs(v, engine, input_vars_dict) for k, v in value.items()}
                     else:
                         return value
-
                 inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
-                params = {}  # 动态节点无额外参数
 
                 # === 4. 准备临时文件（不变）===
                 # 保存执行参数（IPython 和 subprocess 都需要）

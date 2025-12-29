@@ -171,16 +171,11 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self._node_logs = ""
         self._realtime_logs = ""
         self._bound_to_persistent_log = False
-        self.model.add_property("global_variable", {})
         self.model.add_property("persistent_id", str(uuid.uuid4()))
 
     @property
     def persistent_id(self):
         return self.model.get_property("persistent_id")
-
-    @property
-    def global_variable(self):
-        return self.model.get_property("global_variable")
 
     # ===========================日志处理=================================================
     def init_logger(self):

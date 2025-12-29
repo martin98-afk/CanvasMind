@@ -17,14 +17,13 @@ except ImportError:
     logger.error("警告: QtWebEngine not available. Chart will not render.")
 
 
-class ChartWidget(QtWidgets.QWidget):
+class HtmlWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(str)
     sizeHintChanged = QtCore.Signal()
 
     def __init__(self, parent=None, default_html=""):
         super().__init__(parent)
         self._html = default_html or "<center>等待图表...</center>"
-        self.setStyleSheet("background-color: transparent; border: none;")
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -76,12 +75,12 @@ class ChartWidget(QtWidgets.QWidget):
         return QtCore.QSize(w, h)
 
 
-class ChartWidgetWrapper(CustomNodeBaseWidget):
+class HtmlWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", default="", window=None):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
-        widget = ChartWidget(default_html=default, parent=window)
+        widget = HtmlWidget(default_html=default, parent=window)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
         # ✅ 监听尺寸请求

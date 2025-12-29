@@ -1001,8 +1001,10 @@ class BaseComponent(ABC):
         """执行组件，包含错误处理和数据类型转换"""
         self.data_handler = DataHandler(node_id=node_id, workflow_path=workflow_path, logger_instance=self.logger)
         try:
+            self.logger.info(global_vars)
             if global_vars is not None:
                 self.global_variable.deserialize(global_vars)
+            self.logger.info(self.global_variable)
             params_model = self.get_params_model()
             validated_params = params_model(**params)
             input_model_cls = self.get_input_model()

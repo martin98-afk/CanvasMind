@@ -33,7 +33,7 @@ class CustomNodeItem(NodeItem):
         self._input_items = OrderedDict()
         self._output_items = OrderedDict()
         self._widgets = OrderedDict()
-        self._proxy_mode = False
+        self._proxy_mode = True
         self._proxy_mode_threshold = 70
         self.setZValue(Z_VAL_NODE)
 
@@ -99,6 +99,7 @@ class CustomNodeItem(NodeItem):
                 used to describe the parameters needed to draw.
             widget (QtWidgets.QWidget): not used.
         """
+        self.auto_switch_mode()
         if self.viewer() is None:
             return
         if self.layout_direction is LayoutDirectionEnum.HORIZONTAL.value:
@@ -378,3 +379,43 @@ class CustomNodeItem(NodeItem):
         width = r.x() - l.x()
 
         self.set_proxy_mode(width < self._proxy_mode_threshold)
+
+    def set_proxy_mode(self, mode):
+        """
+        Set whether to draw the node with proxy mode.
+        (proxy mode toggles visibility for some qgraphic items in the node.)
+
+        Args:
+            mode (bool): true to enable proxy mode.
+        """
+        if mode is self._proxy_mode:
+            return
+        self._proxy_mode = mode
+
+        visible = not mode
+
+        # disable overlay item.
+        self._x_item.proxy_mode = self._proxy_mode
+
+        # node widget visibility.
+        for w in self._widgets.values():
+            w.widget().setVisible(visible)
+
+        # port text is not visible in vertical layout.
+        if self.layout_direction is LayoutDirectionEnum.VERTICAL.value:
+            port_text_visible = False
+        else:
+            port_text_visible = visible
+
+        # input port text visibility.
+        for port, text in self._input_items.items():
+            if port.display_name:
+                text.setVisible(port_text_visible)
+
+        # output port text visibility.
+        for port, text in self._output_items.items():
+            if port.display_name:
+                text.setVisible(port_text_visible)
+
+        self._text_item.setVisible(visible)
+        self._icon_item.setVisible(visible)

@@ -173,3 +173,23 @@ ValueError: The 'liblinear' solver does not support multiclass classification (n
 [2025-12-28 16:31:39] run-71 INFO: solver='newton-cg' max_iter=100
 [2025-12-28 16:31:39] run-86 INFO: Model accuracy: 0.9733
 [2025-12-28 16:31:39] <module>-108 SUCCESS: 节点执行完成
+[2025-12-29 11:48:43] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-29 11:48:43] <module>-102 INFO: 开始执行组件
+[2025-12-29 11:48:45] run-71 INFO: solver='newton-cg' max_iter=100
+[2025-12-29 11:48:45] run-86 INFO: Model accuracy: 0.9733
+[2025-12-29 11:48:45] <module>-108 SUCCESS: 节点执行完成
+[2025-12-29 11:52:40] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-29 11:52:40] <module>-102 INFO: 开始执行组件
+[2025-12-29 11:52:43] run-71 INFO: solver='newton-cg' max_iter=100
+[2025-12-29 11:52:43] run-86 INFO: Model accuracy: 0.9733
+[2025-12-29 11:52:43] <module>-108 SUCCESS: 节点执行完成
+[2025-12-29 11:54:51] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-29 11:54:51] <module>-102 INFO: 开始执行组件
+[2025-12-29 11:54:53] run-71 INFO: solver='newton-cg' max_iter=100
+[2025-12-29 11:54:53] run-86 INFO: Model accuracy: 0.9733
+[2025-12-29 11:54:53] <module>-108 SUCCESS: 节点执行完成
+[2025-12-29 12:04:56] <module>-98 INFO: 从参数文件加载配置执行
+[2025-12-29 12:04:56] <module>-102 INFO: 开始执行组件
+[2025-12-29 12:04:57] run-71 INFO: solver='newton-cg' max_iter=100
+[2025-12-29 12:04:57] run-86 INFO: Model accuracy: 0.9733
+[2025-12-29 12:04:57] <module>-108 SUCCESS: 节点执行完成

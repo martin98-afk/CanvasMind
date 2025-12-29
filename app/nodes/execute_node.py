@@ -92,7 +92,6 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.CACHE_PATH.mkdir(exist_ok=True, parents=True)
             self.set_property("version", "latest")
             self.parent_window = parent_window
-            self.model.add_property("debug_code", {})
             if hasattr(ComponentScanner().get_component_by_uuid(self.uuid), "icon"):
                 self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
             
@@ -194,7 +193,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             self._debug_widget.valueChanged.connect(self._save_debug_code)
 
             # 添加到节点属性面板
-            self._add_custom_widget(self._debug_widget, tab='Debug')
+            self.add_custom_widget(self._debug_widget, tab='Debug')
 
             logger.info(f"节点 {self.NODE_NAME} ({self.id}) 启用调试模式。")
 
@@ -228,7 +227,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                 self.remove_property("debug_code")
                 self.view.remove_widget(self._debug_widget)
                 self.view.draw_node()
-                self.graph.viewer().force_update()
                 self._debug_widget = None
                 logger.info(f"节点 {self.NODE_NAME} ({self.id}) 禁用调试模式。")
 
@@ -362,7 +360,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 self.persistent_id, self._log_message, self.CACHE_PATH, use_file_logging=True
             )
 
-        def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None, max_retries=1):
+        def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None, global_variable=None):
             """
             在独立Python环境中执行组件
             :param check_cancel: 可选回调函数，返回 True 表示应取消执行
@@ -385,74 +383,54 @@ def create_node_class(full_path, file_path, parent_window=None):
                 else:
                     params[prop_name] = self.get_property(prop_name) if self.has_property(prop_name) else default
 
-            # === 全局变量 ===
-            global_variable = self.global_variable
-            # === 【关键】创建表达式引擎并求值 ===
-            if global_variable is not None:
-                gv = GlobalVariableContext()
-                gv.deserialize(global_variable)
-                # === 收集 inputs_raw ===
-                inputs_raw = {}
-                input_vars = {}
-                for input_port in self.input_ports():
-                    port_name = input_port.name()
-                    connected = input_port.connected_ports()
-                    if connected:
-                        if input_port.model.multi_connection:
-                            inputs_raw[port_name] = [
-                                    upstream.node()._output_values.get(upstream.name()) for upstream in connected
-                                ]
-                            safe_key = f"input_{port_name}"
-                            input_vars[safe_key] = inputs_raw[port_name]
-                            for upstream in connected:
-                                safe_name = upstream.node().name().replace(" ", "_")
-                                safe_key = f"input_{safe_name}__{upstream.name()}"
-                                input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
-                        else:
-                            inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
-                            # 当前节点输入端口key
-                            safe_key = f"input_{port_name}"
-                            input_vars[safe_key] = inputs_raw[port_name]
-                            safe_name = connected[0].node().name().replace(" ", "_")
-                            # 上游节点输出端口key
-                            safe_key = f"input_{safe_name}__{connected[0].name()}"
-                            input_vars[safe_key] = inputs_raw[port_name]
-                        if port_name in self.column_select:
-                            inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
-
-                # === 创建表达式引擎（带全局变量）===
-                expr_engine = ExpressionEngine(global_vars_context=gv)
-
-                # === 递归求值 params，传入 input_vars ===
-                def _evaluate_with_inputs(value, engine, input_vars_dict):
-                    if isinstance(value, str):
-                        return engine.evaluate_template(value, local_vars=input_vars_dict)
-                    elif isinstance(value, list):
-                        return [_evaluate_with_inputs(v, engine, input_vars_dict) for v in value]
-                    elif isinstance(value, dict):
-                        return {k: _evaluate_with_inputs(v, engine, input_vars_dict) for k, v in value.items()}
-                    else:
-                        return value
-
-                params = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in params.items()}
-                inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
-            else:
-                # 无全局变量时，按原逻辑收集 inputs
-                inputs = {}
-                for input_port in self.input_ports():
-                    port_name = input_port.name()
-                    connected = input_port.connected_ports()
-                    if connected:
-                        if len(connected) == 1:
-                            upstream = connected[0]
-                            value = upstream.node()._output_values.get(upstream.name())
-                            inputs[port_name] = value
-                        else:
-                            inputs[port_name] = [
+            # === 全局变量 创建表达式引擎并求值 ===
+            gv = GlobalVariableContext()
+            gv.deserialize(global_variable)
+            # === 收集 inputs_raw ===
+            inputs_raw = {}
+            input_vars = {}
+            for input_port in self.input_ports():
+                port_name = input_port.name()
+                connected = input_port.connected_ports()
+                if connected:
+                    if input_port.model.multi_connection:
+                        inputs_raw[port_name] = [
                                 upstream.node()._output_values.get(upstream.name()) for upstream in connected
                             ]
-                        if port_name in self.column_select:
-                            inputs[f"{port_name}_column_select"] = self.column_select.get(port_name)
+                        safe_key = f"input_{port_name}"
+                        input_vars[safe_key] = inputs_raw[port_name]
+                        for upstream in connected:
+                            safe_name = upstream.node().name().replace(" ", "_")
+                            safe_key = f"input_{safe_name}__{upstream.name()}"
+                            input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
+                    else:
+                        inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
+                        # 当前节点输入端口key
+                        safe_key = f"input_{port_name}"
+                        input_vars[safe_key] = inputs_raw[port_name]
+                        safe_name = connected[0].node().name().replace(" ", "_")
+                        # 上游节点输出端口key
+                        safe_key = f"input_{safe_name}__{connected[0].name()}"
+                        input_vars[safe_key] = inputs_raw[port_name]
+                    if port_name in self.column_select:
+                        inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
+
+            # === 创建表达式引擎（带全局变量）===
+            expr_engine = ExpressionEngine(global_vars_context=gv)
+
+            # === 递归求值 params，传入 input_vars ===
+            def _evaluate_with_inputs(value, engine, input_vars_dict):
+                if isinstance(value, str):
+                    return engine.evaluate_template(value, local_vars=input_vars_dict)
+                elif isinstance(value, list):
+                    return [_evaluate_with_inputs(v, engine, input_vars_dict) for v in value]
+                elif isinstance(value, dict):
+                    return {k: _evaluate_with_inputs(v, engine, input_vars_dict) for k, v in value.items()}
+                else:
+                    return value
+
+            params = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in params.items()}
+            inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
 
             # === 获取 requirements ===
             requirements_str = getattr(comp_obj, 'requirements', '').strip()

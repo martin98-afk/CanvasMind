@@ -21,6 +21,11 @@ from app.utils.utils import get_icon
 
 
 class LSPCodeEditor(CodeEditor):
+    CODE_PREFIX = """from app.components import BaseComponent, ArgumentType, PropertyType, PortDefinition, PropertyDefinition, ConnectionType
+
+
+"""
+
     def __init__(self, parent=None, code_parent=None, python_exe_path=None, dialog=None):
         super().__init__()
         self.python_exe_path = python_exe_path or sys.executable
@@ -128,18 +133,26 @@ class LSPCodeEditor(CodeEditor):
         if self._lsp_ready:
             self._folding_timer.start(800)
 
+    def _get_code_with_prefix(self) -> str:
+        """返回用于 LSP 分析的代码（含虚拟导入前缀）"""
+
+        original_code = self.toPlainText()
+        if original_code.startswith(self.CODE_PREFIX):
+            # 防止重复添加（虽然一般不会）
+            return original_code
+        return self.CODE_PREFIX + original_code
+
     def _sync_to_lsp(self):
         if not self._lsp_ready:
             return
-        code = self.toPlainText()
+        code_for_lsp = self._get_code_with_prefix()  # ✅ 关键修改
         self._document_version += 1
 
-        # 第一次同步时发送 didOpen
         if not self._lsp_document_opened:
-            self.lsp_manager.open_document(code)
+            self.lsp_manager.open_document(code_for_lsp)
             self._lsp_document_opened = True
         else:
-            self.lsp_manager.change_document(code)
+            self.lsp_manager.change_document(code_for_lsp)
         self._request_folding()
 
     def _request_folding(self):
@@ -157,8 +170,8 @@ class LSPCodeEditor(CodeEditor):
         folding_levels = {}
         folding_status = {}
         for fr in folding_ranges:
-            start = fr['startLine'] + 1
-            end = fr['endLine'] + 1
+            start = fr['startLine'] + 1 - len(self.CODE_PREFIX.splitlines())
+            end = fr['endLine'] + 1 - len(self.CODE_PREFIX.splitlines())
             if end > start:
                 folding_regions[start] = end
                 folding_status[start] = False
@@ -177,7 +190,7 @@ class LSPCodeEditor(CodeEditor):
         if not self._lsp_ready:
             return
         cursor = self.textCursor()
-        line = cursor.blockNumber()  # 0-based
+        line = cursor.blockNumber() + len(self.CODE_PREFIX.splitlines())  # 0-based
         col = cursor.columnNumber()  # 0-based
         self.lsp_manager.request_completion(line, col)
 
@@ -245,7 +258,7 @@ class LSPCodeEditor(CodeEditor):
         has_error = False
         for diag in diagnostics:
             try:
-                line = diag['range']['start']['line']
+                line = diag['range']['start']['line'] - len(self.CODE_PREFIX.splitlines())
                 severity = diag.get('severity', 1)
                 message = diag.get('message', '').strip()
                 if not message:

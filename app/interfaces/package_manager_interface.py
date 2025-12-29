@@ -179,7 +179,6 @@ class EnvManagerUI(QWidget):
         self.envCombo.clear()
         envs = self.mgr.list_envs()
         self.envCombo.addItems(envs)
-        print(self.config.current_env_selected.value)
         if len(envs) > 0 and self.config.current_env_selected.value in envs:
             self.envCombo.setCurrentText(self.config.current_env_selected.value)
 

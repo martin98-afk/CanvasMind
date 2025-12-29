@@ -3,7 +3,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, Qt
 from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
 from app.nodes.status_node import NoStatusNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
-from app.widgets.node_widget.pyecharts_widget import ChartWidgetWrapper
+from app.widgets.node_widget.html_widget import HtmlWidgetWrapper
 
 
 # ✅ 信号类必须独立于非-QObject 节点
@@ -32,7 +32,7 @@ def create_chart_node(parent_window):
             self.add_input('html', False)
 
             # 添加图表控件
-            chart_widget = ChartWidgetWrapper(
+            chart_widget = HtmlWidgetWrapper(
                 parent=self.view,
                 name="chart_display",
                 default="<center><small>等待输入 HTML</small></center>",

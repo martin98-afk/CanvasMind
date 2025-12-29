@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import signal
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QSize, Qt, QTimer
@@ -9,6 +10,7 @@ from qfluentwidgets import (
     FluentWindow, Theme, setTheme, NavigationItemPosition,
     SplashScreen, FluentIcon
 )
+from spyder.plugins.completion.providers.languageserver.client import LSPClient
 
 # --- 页面模块 ---
 from app.interfaces.component_developer import ComponentDeveloperPage
@@ -66,12 +68,12 @@ class LowCodeWindow(FluentWindow):
 
     # region [2. 核心服务初始化]
     def _init_services(self):
-        # 初始化日志系统
+        # ------------初始化日志系统
         self._setup_log_viewer()
-        # 启动监听器
-        ComponentUsageTracker()
-        ComponentScanner()
-        # 加载配置
+        # ------------启动监听器
+        ComponentUsageTracker()   # 日志使用情况监督
+        ComponentScanner()        # 日志实时监控服务
+        # ------------加载配置
         self.config = Settings.get_instance()
         self.config.save()  # 确保默认配置落盘
     # endregion

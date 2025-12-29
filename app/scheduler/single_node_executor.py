@@ -58,12 +58,12 @@ def execute_node(
     try:
         # 根据运行模式选择执行方式
         run_mode = scheduler.parent.config.canvas_run_mode.value
-        register_global_variable(node, global_variable)
         results = node.execute_sync(
             comp_cls,
             python_executable=python_exe,
             check_cancel=execution_context.check_cancel,
-            kernel_manager=kernel_manager if run_mode == "ipython运行" else None
+            kernel_manager=kernel_manager if run_mode == "ipython运行" else None,
+            global_variable=global_variable.serialize()
         )
 
         # 变量自动更新
