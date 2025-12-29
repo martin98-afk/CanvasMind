@@ -19,7 +19,8 @@ class LspClientManager(QThread):
     hover_ready = pyqtSignal(dict)  # hover content
     definition_ready = pyqtSignal(dict)  # location
     references_ready = pyqtSignal(list)
-    document_symbols_ready = pyqtSignal(list)
+    document_symbol_ready = pyqtSignal(list)
+    completion_resolved = pyqtSignal(dict)  # resolved completion item
     initialized = pyqtSignal()
     error = pyqtSignal(str)
 
@@ -168,7 +169,9 @@ class LspClientManager(QThread):
                     elif method == "textDocument/hover":
                         result = msg.get('result') or []
                         self.hover_ready.emit(result)
-
+                    elif method == "completionItem/resolve":
+                        resolved_item = msg.get('result', {})
+                        self.completion_resolved.emit(resolved_item)
                     # Optional: keep generic response for debug
                     with self._lock:
                         self._response_map[msg['id']] = msg
@@ -258,6 +261,10 @@ class LspClientManager(QThread):
             "textDocument": {"uri": self.uri},
             "position": {"line": line, "character": col}
         })
+
+    def request_completion_resolve(self, item: dict):
+        """Resolve a completion item to get full documentation"""
+        self._send_message("completionItem/resolve", item)
 
     def request_folding_ranges(self):
         """Non-blocking. Result arrives via `folding_ready` signal."""

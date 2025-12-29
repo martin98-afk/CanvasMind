@@ -118,6 +118,7 @@ class LSPCodeEditor(CodeEditor):
         self.lsp_manager.hover_ready.connect(self._on_hover_response)
         self.lsp_manager.definition_ready.connect(self._on_definition_response)
         self.lsp_manager.formatting_ready.connect(self._apply_formatting_edits)
+        self.lsp_manager.completion_resolved.connect(self._on_completion_resolved)
         self.lsp_manager.error.connect(lambda e: self.lsp_signal.emit(str(e)))
         self.lsp_manager.start()
 
@@ -162,6 +163,7 @@ class LSPCodeEditor(CodeEditor):
         else:
             self.lsp_manager.change_document(code_for_lsp)
         self._request_folding()
+        self.do_automatic_completions()
 
     def _request_folding(self):
         if self._lsp_ready:
@@ -324,6 +326,13 @@ class LSPCodeEditor(CodeEditor):
         self.completion_args = (self.textCursor().position(), True)
         params = {"params": completion_items}
         self.process_completion(params)
+        self._set_completions_hint_idle()
+
+    def resolve_completion_item(self, item):
+        self.lsp_manager.request_completion_resolve(item)
+
+    def _on_completion_resolved(self, item):
+        self.handle_completion_item_resolution({"params": item})
 
     # ========== 错误下划线 + 行号前图标 ==========
     def _on_lsp_diagnostics_ready(self, diagnostics: List[Dict]):
