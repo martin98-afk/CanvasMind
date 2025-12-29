@@ -41,7 +41,7 @@ class CustomNodeItem(NodeItem):
         self.setZValue(Z_VAL_NODE)
         self._proxy_text_item = QtWidgets.QGraphicsTextItem(self.name, self)
         proxy_font = QtGui.QFont()
-        proxy_font.setPointSize(24)  # 大号字体，可调
+        proxy_font.setPointSize(35)  # 大号字体，可调
         proxy_font.setBold(True)
         self._proxy_text_item.setFont(proxy_font)
         self._proxy_text_item.setVisible(False)  # 初始隐藏
@@ -271,7 +271,7 @@ class CustomNodeItem(NodeItem):
         # width, height from node name text.
         font = self._text_item.font()
         font_metrics = QtGui.QFontMetrics(font)
-        text_w = max(self._text_item.boundingRect().width(), font_metrics.horizontalAdvance(self.name)) + 50
+        text_w = max(self._text_item.boundingRect().width(), font_metrics.horizontalAdvance(self.name))
         text_h = self._text_item.boundingRect().height()
 
         # width, height from node ports.
@@ -315,26 +315,26 @@ class CustomNodeItem(NodeItem):
                 w_height = w_size.height()
                 if w_width > widget_width:
                     widget_width = w_width
-                widget_height += w_height + 10
+                widget_height += w_height + 8
             else:
                 w_width = widget.boundingRect().width()
                 w_height = widget.boundingRect().height()
                 if w_width > widget_width:
                     widget_width = w_width
-                widget_height += w_height + 10
+                widget_height += w_height + 8
 
         side_padding = 0.0
         if all([widget_width, p_input_text_width, p_output_text_width]):
             port_text_width = max([p_input_text_width, p_output_text_width])
             port_text_width *= 2
-        elif widget_width:
-            side_padding = 0
-
-        width = port_width + max([text_w, port_text_width]) + side_padding
-        height = max([text_h, p_input_height, p_output_height, widget_height])
         if widget_width:
-            # add additional width for node widget.
-            width += widget_width
+            side_padding = 20
+        # 节点宽度计算, 端口宽+端口文本宽+max（节点文本宽,自定义控件宽）+边距，最后与代理文本宽度取最大
+        width = max(
+            port_width + port_text_width + max([text_w, widget_width]) + side_padding,
+            self._proxy_text_item.boundingRect().width() + side_padding
+        )
+        height = max([text_h, p_input_height, p_output_height, widget_height])
         height *= 1.04
         width *= 0.92
         return width, height
@@ -413,6 +413,13 @@ class CustomNodeItem(NodeItem):
         self._proxy_text_item.setPos(x, y)
 
     def set_proxy_mode(self, mode):
+        """
+        Set whether to draw the node with proxy mode.
+        (proxy mode toggles visibility for some qgraphic items in the node.)
+
+        Args:
+            mode (bool): true to enable proxy mode.
+        """
         if mode is self._proxy_mode:
             return
         self._proxy_mode = mode
@@ -426,16 +433,24 @@ class CustomNodeItem(NodeItem):
         for w in self._widgets.values():
             w.widget().setVisible(visible)
 
-        # port text visibility (horizontal layout only)
-        port_text_visible = visible and (self.layout_direction == LayoutDirectionEnum.HORIZONTAL.value)
+        # port text is not visible in vertical layout.
+        if self.layout_direction is LayoutDirectionEnum.VERTICAL.value:
+            port_text_visible = False
+        else:
+            port_text_visible = visible
 
-        for text in self._input_items.values():
-            text.setVisible(port_text_visible and text.isVisible())
-        for text in self._output_items.values():
-            text.setVisible(port_text_visible and text.isVisible())
+        # input port text visibility.
+        for port, text in self._input_items.items():
+            if port.display_name:
+                text.setVisible(port_text_visible)
 
-        # 主标题（正常模式）
+        # output port text visibility.
+        for port, text in self._output_items.items():
+            if port.display_name:
+                text.setVisible(port_text_visible)
+
         self._text_item.setVisible(visible)
+        self._icon_item.setVisible(visible)
         # proxy 大标题（仅 proxy 模式显示）
         self._proxy_text_item.setVisible(mode)
 
