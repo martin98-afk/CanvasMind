@@ -240,6 +240,19 @@ class CodeEditorWidget(QWidget):
         # ✅ 5. 恢复滚动
         scrollbar.setValue(scroll_pos)
 
+        # lsp 文档同步
+        if hasattr(self.code_editor, '_lsp_ready') and self.code_editor._lsp_ready:
+            # 构造带 CODE_PREFIX 的新内容
+            code_for_lsp = self.code_editor._get_code_with_prefix()
+            # 重置 LSP 文档：先关闭再打开（最可靠）
+            self.code_editor.lsp_session.close_document()
+            self.code_editor.lsp_session.open_document(code_for_lsp)  # ← 使用全量替换
+            # 更新本地记录，确保下次增量更新正确
+            self.code_editor._last_lsp_content = code_for_lsp
+            self.code_editor._lsp_document_opened = True
+            # 重新请求折叠（可选）
+            self.code_editor._request_folding()
+
         # ✅ 6. 手动触发 textChanged（如果需要）
         self.code_editor.textChanged.emit()
 

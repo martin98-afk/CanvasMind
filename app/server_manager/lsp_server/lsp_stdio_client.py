@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import platform
 import subprocess
 import sys
@@ -11,16 +12,16 @@ from pylspclient.json_rpc_endpoint import JsonRpcEndpoint
 
 
 class LspClientManager(QThread):
-    # 异步信号：不再在 request_* 中阻塞等待
-    completion_ready = pyqtSignal(list)       # List[CompletionItem]
-    diagnostics_ready = pyqtSignal(list)      # List[Diagnostic]
-    folding_ready = pyqtSignal(list)          # List[FoldingRange]
-    formatting_ready = pyqtSignal(list)  # List[TextEdit]
-    hover_ready = pyqtSignal(dict)  # hover content
-    definition_ready = pyqtSignal(dict)  # location
+    completion_ready = pyqtSignal(list)
+    diagnostics_ready = pyqtSignal(list)
+    folding_ready = pyqtSignal(list)
+    formatting_ready = pyqtSignal(list)
+    hover_ready = pyqtSignal(dict)
+    definition_ready = pyqtSignal(dict)
     references_ready = pyqtSignal(list)
     document_symbol_ready = pyqtSignal(list)
-    completion_resolved = pyqtSignal(dict)  # resolved completion item
+    completion_resolved = pyqtSignal(dict)
+    signature_help_ready = pyqtSignal(dict)
     initialized = pyqtSignal()
     error = pyqtSignal(str)
 
@@ -34,14 +35,13 @@ class LspClientManager(QThread):
         self._running = True
         self._msg_id = 1
         self._response_map: Dict[int, Any] = {}
-        self._pending_requests: Dict[int, str] = {}  # msg_id -> method
+        self._pending_requests: Dict[int, str] = {}
         self._lock = threading.Lock()
         self._notification_thread = None
         self._stderr_thread = None
 
     def run(self):
         try:
-            print(self.python_path)
             cmd = [self.python_path, "-m", "pylsp"]
             kwargs = {}
             if platform.system() == "Windows":
@@ -62,11 +62,9 @@ class LspClientManager(QThread):
             self._notification_thread = threading.Thread(target=self._listen_messages, daemon=True)
             self._notification_thread.start()
 
-            # Only initialize is allowed to block
             init_id = self._send_message("initialize", {
                 "processId": self.process.pid,
                 "rootUri": "file:///tmp",
-                "stdio": True,
                 "initializationOptions": {
                     "pylsp": {
                         "plugins": {
@@ -74,11 +72,16 @@ class LspClientManager(QThread):
                                 'environment': str(self.python_path),  # ← 必须是 python.exe 的完整路径
                                 'extra_paths': []  # 如有额外路径可加
                             },
-                            'rope': {'enabled': False},  # 可选：禁用 rope 避免干扰
-                            "jedi_completion": {"enabled": True},
+                            "jedi_completion": {"enabled": True, "fuzzy": True},
+                            "jedi_definition": {"enabled": True},
+                            "jedi_hover": {"enabled": True},
+                            "jedi_signature_help": {"enabled": True},
+                            "jedi_references": {"enabled": True},
                             "pyflakes": {"enabled": True},
-                            "folding": {"enabled": True},          # ← 必须启用
-                            "pycodestyle": {"enabled": True}       # ← folding 依赖它
+                            "folding": {"enabled": True},
+                            "pycodestyle": {"enabled": False},  # ← 关闭
+                            "mccabe": {"enabled": False},       # ← 关闭
+                            "preload": {"enabled": True}
                         }
                     }
                 },
@@ -87,8 +90,8 @@ class LspClientManager(QThread):
                         "completionItem": {
                             "documentationFormat": ["plaintext"],
                             "snippetSupport": True,
-                            "insertTextMode": 1,        # ← 改为 InsertTextMode.AdjustIndentation
-                            "commitCharactersSupport": True  # ← 可选，但推荐添加
+                            "insertTextMode": 1,
+                            "commitCharactersSupport": True
                         },
                         "publishDiagnostics": {},
                         "foldingRange": {},
@@ -101,8 +104,6 @@ class LspClientManager(QThread):
                         "definitionProvider": True,
                         "referencesProvider": True,
                         "documentSymbolProvider": True,
-                        "documentHighlightProvider": True,
-                        "renameProvider": True,
                         "documentFormattingProvider": True,
                         "documentRangeFormattingProvider": True,
                     }
@@ -115,15 +116,6 @@ class LspClientManager(QThread):
                 raise TimeoutError("Initialize timeout")
 
             self._send_message("initialized", {}, is_notification=True)
-            self._send_message("textDocument/didOpen", {
-                "textDocument": {
-                    "uri": self.uri,
-                    "languageId": "python",
-                    "version": 1,
-                    "text": ""
-                }
-            }, is_notification=True)
-
             self.initialized.emit()
 
         except Exception as e:
@@ -150,41 +142,29 @@ class LspClientManager(QThread):
                         method = self._pending_requests.pop(msg['id'], None)
                     if method == "textDocument/completion":
                         result = msg.get('result')
-                        items = []
-                        if result is not None:
-                            if isinstance(result, dict) and 'items' in result:
-                                items = result['items']
-                            elif isinstance(result, list):
-                                items = result
+                        items = result.get('items', []) if isinstance(result, dict) else (result or [])
                         self.completion_ready.emit(items)
                     elif method == "textDocument/foldingRange":
-                        result = msg.get('result') or []
-                        self.folding_ready.emit(result)
-                    elif method == "textDocument/formatting" or method == "textDocument/rangeFormatting":
-                        edits = msg.get('result') or []
-                        self.formatting_ready.emit(edits)
+                        self.folding_ready.emit(msg.get('result') or [])
+                    elif method in ("textDocument/formatting", "textDocument/rangeFormatting"):
+                        self.formatting_ready.emit(msg.get('result') or [])
                     elif method == "textDocument/definition":
-                        result = msg.get('result') or []
-                        self.definition_ready.emit(result)
+                        self.definition_ready.emit(msg.get('result') or [])
                     elif method == "textDocument/references":
-                        result = msg.get('result') or []
-                        self.references_ready.emit(result)
+                        self.references_ready.emit(msg.get('result') or [])
                     elif method == "textDocument/documentSymbol":
-                        result = msg.get('result') or []
-                        self.document_symbol_ready.emit(result)
+                        self.document_symbol_ready.emit(msg.get('result') or [])
                     elif method == "textDocument/hover":
-                        result = msg.get('result') or []
-                        self.hover_ready.emit(result)
+                        self.hover_ready.emit(msg.get('result') or {})
                     elif method == "completionItem/resolve":
-                        resolved_item = msg.get('result', {})
-                        self.completion_resolved.emit(resolved_item)
-                    # Optional: keep generic response for debug
+                        self.completion_resolved.emit(msg.get('result', {}))
+                    elif method == "textDocument/signatureHelp":
+                        self.signature_help_ready.emit(msg.get('result', {}))
                     with self._lock:
                         self._response_map[msg['id']] = msg
-                elif 'method' in msg:
-                    if msg['method'] == 'textDocument/publishDiagnostics':
-                        diagnostics = msg['params'].get('diagnostics', [])
-                        self.diagnostics_ready.emit(diagnostics)
+                elif 'method' in msg and msg['method'] == 'textDocument/publishDiagnostics':
+                    diagnostics = msg['params'].get('diagnostics', [])
+                    self.diagnostics_ready.emit(diagnostics)
             except Exception as e:
                 if self._running:
                     logger.error(f"[LSP] Listen error: {e}")
@@ -194,6 +174,11 @@ class LspClientManager(QThread):
         msg = {"jsonrpc": "2.0", "method": method, "params": params}
         if not is_notification:
             with self._lock:
+                # 丢弃同类高频请求
+                if method in ("textDocument/completion", "textDocument/signatureHelp", "textDocument/hover"):
+                    keys_to_remove = [k for k, v in self._pending_requests.items() if v == method]
+                    for k in keys_to_remove:
+                        self._pending_requests.pop(k, None)
                 msg_id = self._msg_id
                 self._msg_id += 1
                 msg["id"] = msg_id
@@ -212,7 +197,6 @@ class LspClientManager(QThread):
             return None
 
     def _wait_for_response(self, msg_id: int, timeout: float = 5.0):
-        """Only used during initialization."""
         start = time.time()
         while time.time() - start < timeout:
             with self._lock:
@@ -224,58 +208,40 @@ class LspClientManager(QThread):
     def open_document(self, text: str):
         self.version = 1
         self._send_message("textDocument/didOpen", {
-            "textDocument": {
-                "uri": self.uri,
-                "languageId": "python",
-                "version": self.version,
-                "text": text
-            }
+            "textDocument": {"uri": self.uri, "languageId": "python", "version": self.version, "text": text}
         }, is_notification=True)
 
-    def change_document(self, text: str):
-        """Simple full-text replacement (for compatibility).
-        For better performance, implement delta changes in the editor layer."""
-        self.version += 1
-        self._send_message("textDocument/didChange", {
-            "textDocument": {"uri": self.uri, "version": self.version},
-            "contentChanges": [{"text": text}]
+    def close_document(self):
+        self._send_message("textDocument/didClose", {
+            "textDocument": {"uri": self.uri}
         }, is_notification=True)
 
     def change_document_delta(self, changes: List[Dict]):
-        """Efficient incremental update. Call this if your editor tracks edits.
-        Example change:
-        {
-            "range": {"start": {"line": 1, "character": 2}, "end": {"line": 1, "character": 2}},
-            "text": "new"
-        }
-        """
         self.version += 1
         self._send_message("textDocument/didChange", {
             "textDocument": {"uri": self.uri, "version": self.version},
             "contentChanges": changes
         }, is_notification=True)
 
-    def request_symbol(self):
-        """Non-blocking. Result arrives via `document_symbol_ready` signal."""
-        self._send_message("textDocument/documentSymbol", {
-            "textDocument": {"uri": self.uri}
-        })
-
     def request_completion(self, line: int, col: int):
-        """Non-blocking. Result arrives via `completion_ready` signal."""
         self._send_message("textDocument/completion", {
             "textDocument": {"uri": self.uri},
             "position": {"line": line, "character": col}
         })
 
     def request_completion_resolve(self, item: dict):
-        """Resolve a completion item to get full documentation"""
-        self._send_message("completionItem/resolve", item)
+        # 清理非标准字段
+        clean_item = {k: v for k, v in item.items() if k in {
+            'label', 'kind', 'detail', 'documentation', 'insertText', 'filterText',
+            'textEdit', 'additionalTextEdits', 'command', 'data', 'tags',
+            'insertTextFormat', 'commitCharacters', 'preselect'
+        }}
+        self._send_message("completionItem/resolve", clean_item)
 
-    def request_folding_ranges(self):
-        """Non-blocking. Result arrives via `folding_ready` signal."""
-        self._send_message("textDocument/foldingRange", {
-            "textDocument": {"uri": self.uri}
+    def request_signature_help(self, line: int, col: int):
+        self._send_message("textDocument/signatureHelp", {
+            "textDocument": {"uri": self.uri},
+            "position": {"line": line, "character": col}
         })
 
     def request_hover(self, line: int, col: int):
@@ -290,28 +256,13 @@ class LspClientManager(QThread):
             "position": {"line": line, "character": col}
         })
 
+    def request_folding_ranges(self):
+        self._send_message("textDocument/foldingRange", {"textDocument": {"uri": self.uri}})
+
     def request_formatting(self):
-        """Format entire document"""
         self._send_message("textDocument/formatting", {
             "textDocument": {"uri": self.uri},
-            "options": {
-                "tabSize": 4,
-                "insertSpaces": True
-            }
-        })
-
-    def request_range_formatting(self, start_line, start_col, end_line, end_col):
-        """Format selected range"""
-        self._send_message("textDocument/rangeFormatting", {
-            "textDocument": {"uri": self.uri},
-            "range": {
-                "start": {"line": start_line, "character": start_col},
-                "end": {"line": end_line, "character": end_col}
-            },
-            "options": {
-                "tabSize": 4,
-                "insertSpaces": True
-            }
+            "options": {"tabSize": 4, "insertSpaces": True}
         })
 
     def shutdown(self):
@@ -332,9 +283,7 @@ class LspClientManager(QThread):
             except subprocess.TimeoutExpired:
                 self.process.kill()
                 self.process.wait()
-        # Join threads if needed (optional, daemon=True so not required)
 
     def stop(self):
-        """Call this explicitly from main thread to shut down safely."""
         self.shutdown()
-        self.wait()  # Waits for QThread to finish
+        self.wait()
