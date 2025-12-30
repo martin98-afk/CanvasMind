@@ -539,6 +539,7 @@ class EnvManagerUI(QWidget):
                             self.refresh_env_list(),
                             InfoBar.success("成功", f"环境 {env_name} 已创建", parent=window or self),
                             self.envCombo.setCurrentText(env_name),
+                            self.on_env_changed(),
                             self.env_changed.emit()
                         )
                     )

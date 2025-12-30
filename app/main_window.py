@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import signal
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QSize, Qt, QTimer
@@ -10,7 +9,6 @@ from qfluentwidgets import (
     FluentWindow, Theme, setTheme, NavigationItemPosition,
     SplashScreen, FluentIcon
 )
-from spyder.plugins.completion.providers.languageserver.client import LSPClient
 
 # --- 页面模块 ---
 from app.interfaces.component_developer import ComponentDeveloperPage

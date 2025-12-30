@@ -3,7 +3,7 @@ import ast
 
 from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QEvent
 from PyQt5.QtGui import QTextCursor
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QShortcut, QLabel, QInputDialog
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QShortcut, QLabel, QInputDialog, QHBoxLayout
 from qfluentwidgets import TransparentToolButton
 from spyder.widgets.findreplace import FindReplace
 
@@ -65,7 +65,6 @@ class CodeEditorWidget(QWidget):
 
         # ------- 新增：LSP 服务状态区域（仅在 lsp 模式下） -------
         if self.editor_type == "lsp":
-            from PyQt5.QtWidgets import QHBoxLayout, QPushButton
             self.lsp_status_layout = QHBoxLayout()
             self.lsp_status_layout.setContentsMargins(0, 0, 0, 0)
             self.lsp_status_layout.setSpacing(2)
@@ -77,7 +76,11 @@ class CodeEditorWidget(QWidget):
             self.lsp_restart_button = TransparentToolButton(get_icon("更新"), self)
             self.lsp_restart_button.setFixedSize(25, 25)
             self.lsp_restart_button.setToolTip("重启 LSP 服务")
-            self.lsp_restart_button.clicked.connect(self.code_editor.set_completion_environment)
+            self.lsp_restart_button.clicked.connect(
+                lambda: self.code_editor.set_completion_environment(
+                    self.original_parent.package_manager.get_current_python_exe()
+                )
+            )
 
             self.lsp_status_layout.addWidget(self.status_label)
             self.lsp_status_layout.addStretch()
@@ -239,6 +242,19 @@ class CodeEditorWidget(QWidget):
 
         # ✅ 5. 恢复滚动
         scrollbar.setValue(scroll_pos)
+
+        # lsp 文档同步
+        if hasattr(self.code_editor, '_lsp_ready') and self.code_editor._lsp_ready:
+            # 构造带 CODE_PREFIX 的新内容
+            code_for_lsp = self.code_editor._get_code_with_prefix()
+            # 重置 LSP 文档：先关闭再打开（最可靠）
+            self.code_editor.lsp_session.close_document()
+            self.code_editor.lsp_session.open_document(code_for_lsp)  # ← 使用全量替换
+            # 更新本地记录，确保下次增量更新正确
+            self.code_editor._last_lsp_content = code_for_lsp
+            self.code_editor._lsp_document_opened = True
+            # 重新请求折叠（可选）
+            self.code_editor._request_folding()
 
         # ✅ 6. 手动触发 textChanged（如果需要）
         self.code_editor.textChanged.emit()
