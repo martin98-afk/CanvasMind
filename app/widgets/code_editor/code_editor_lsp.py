@@ -29,7 +29,7 @@ class LSPCodeEditor(CodeEditor):
 
     def __init__(self, parent=None, code_parent=None, python_exe_path=None, dialog=None):
         super().__init__()
-        self.python_exe_path = python_exe_path or sys.executable
+        self.python_exe_path = python_exe_path
         self.parent_widget = parent
         self.code_parent = code_parent
         self._lsp_ready = False
@@ -46,6 +46,18 @@ class LSPCodeEditor(CodeEditor):
             'print', 'input', 'open', 'range', 'enumerate', 'len', 'str', 'int', 'float',
             'list', 'dict', 'set', 'tuple', '__init__', '__name__', '__file__',
         }
+        # --- LSP 集成 ---
+        self.lsp_session = LspClientManager(python_path=self.python_exe_path)
+        self.lsp_session.initialized.connect(self._on_lsp_initialized)
+        self.lsp_session.completion_ready.connect(self._on_lsp_completions_ready)
+        self.lsp_session.diagnostics_ready.connect(self._on_lsp_diagnostics_ready)
+        self.lsp_session.folding_ready.connect(self._on_lsp_folding_ready)
+        self.lsp_session.hover_ready.connect(self._on_hover_response)
+        self.lsp_session.definition_ready.connect(self._on_definition_response)
+        self.lsp_session.formatting_ready.connect(self._apply_formatting_edits)
+        self.lsp_session.completion_resolved.connect(self._on_completion_resolved)
+        self.lsp_session.signature_help_ready.connect(self._on_signature_help_response)  # ← 新增
+        self.lsp_session.error.connect(lambda e: self.lsp_signal.emit(str(e)))
 
         # === ✅ CompletionWidget 配置 ===
         self.completion_widget = CompletionWidget(parent=self, ancestor=self.code_parent)
@@ -53,8 +65,6 @@ class LSPCodeEditor(CodeEditor):
         self.completion_widget.setStyleSheet("background-color: #1E1E1E;")
         self.completion_widget.setMinimumWidth(350)
         self.completion_widget.setMinimumHeight(120)
-        self.completion_widget.accept_completion_with_parentheses = True  # ← 自动加括号
-        self.completion_widget.show_detail = True
 
         # --- 编辑器设置 ---
         font = QFont('Consolas', 13)
@@ -117,21 +127,12 @@ class LSPCodeEditor(CodeEditor):
         if python_exe is None:
             self.lsp_signal.emit("restarting...")
         else:
+            self.python_exe_path = python_exe
             self.lsp_signal.emit("starting")
         if hasattr(self, 'lsp_session') and self.lsp_session:
-            self.lsp_session.shutdown()
+            self.lsp_session.stop()
 
-        self.lsp_session = LspClientManager(python_path=python_exe or self.python_exe_path)
-        self.lsp_session.initialized.connect(self._on_lsp_initialized)
-        self.lsp_session.completion_ready.connect(self._on_lsp_completions_ready)
-        self.lsp_session.diagnostics_ready.connect(self._on_lsp_diagnostics_ready)
-        self.lsp_session.folding_ready.connect(self._on_lsp_folding_ready)
-        self.lsp_session.hover_ready.connect(self._on_hover_response)
-        self.lsp_session.definition_ready.connect(self._on_definition_response)
-        self.lsp_session.formatting_ready.connect(self._apply_formatting_edits)
-        self.lsp_session.completion_resolved.connect(self._on_completion_resolved)
-        self.lsp_session.signature_help_ready.connect(self._on_signature_help_response)  # ← 新增
-        self.lsp_session.error.connect(lambda e: self.lsp_signal.emit(str(e)))
+        self.lsp_session.set_python_path(self.python_exe_path)
         self.lsp_session.start()
 
     # ========== LSP 集成 ==========
@@ -139,7 +140,6 @@ class LSPCodeEditor(CodeEditor):
     def _on_lsp_initialized(self):
         self._lsp_ready = True
         self.lsp_signal.emit("ready")
-        self.start_completion_services()
         code = self.toPlainText()
         if code.strip():
             self._sync_to_lsp()

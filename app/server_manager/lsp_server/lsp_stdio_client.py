@@ -27,7 +27,7 @@ class LspClientManager(QThread):
 
     def __init__(self, python_path: Optional[str] = None, parent: Optional[QObject] = None):
         super().__init__(parent)
-        self.python_path = python_path or sys.executable
+        self.python_path = python_path
         self.endpoint: Optional[JsonRpcEndpoint] = None
         self.process: Optional[subprocess.Popen] = None
         self.version = 0
@@ -40,8 +40,12 @@ class LspClientManager(QThread):
         self._notification_thread = None
         self._stderr_thread = None
 
+    def set_python_path(self, python_path: str):
+        self.python_path = python_path
+
     def run(self):
         try:
+            self._running = True
             cmd = [self.python_path, "-m", "pylsp"]
             kwargs = {}
             if platform.system() == "Windows":
@@ -65,6 +69,7 @@ class LspClientManager(QThread):
             init_id = self._send_message("initialize", {
                 "processId": self.process.pid,
                 "rootUri": "file:///tmp",
+                "stdio": True,
                 "initializationOptions": {
                     "pylsp": {
                         "plugins": {
@@ -111,11 +116,12 @@ class LspClientManager(QThread):
                 "trace": "off"
             })
 
-            response = self._wait_for_response(init_id, timeout=10.0)
+            response = self._wait_for_response(init_id, timeout=30.0)
             if not response:
                 raise TimeoutError("Initialize timeout")
 
             self._send_message("initialized", {}, is_notification=True)
+            self._running = True
             self.initialized.emit()
 
         except Exception as e:
@@ -264,6 +270,9 @@ class LspClientManager(QThread):
             "textDocument": {"uri": self.uri},
             "options": {"tabSize": 4, "insertSpaces": True}
         })
+
+    def is_alive(self):
+        return self._running and self.process and self.process.poll() is None
 
     def shutdown(self):
         if not self._running:
