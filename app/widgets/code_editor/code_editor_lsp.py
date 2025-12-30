@@ -79,11 +79,13 @@ class LSPCodeEditor(CodeEditor):
             indent_guides=True,
             folding=True,
             markers=True,
-            hover_hints=True,
             automatic_completions=True,
             automatic_completions_after_chars=1,
-            intelligent_backspace=True,
             completions_hint=True,
+            completions_hint_after_ms=500,
+            hover_hints=True,
+            code_snippets=True,
+            intelligent_backspace=True,
             underline_errors=True,
             highlight_current_line=True,
         )
@@ -115,9 +117,11 @@ class LSPCodeEditor(CodeEditor):
         self._hover_timer.setSingleShot(True)
         self._hover_timer.timeout.connect(self._trigger_hover)
 
+        self._folding_timer = QTimer()
+        self._folding_timer.setSingleShot(True)
+        self._folding_timer.timeout.connect(self._request_folding)
         # --- 连接信号 ---
         self.textChanged.connect(self._on_text_changed_for_lsp)
-        self.textChanged.connect(self._on_text_changed_for_folding)
 
         if hasattr(self, 'folding_panel') and self.folding_panel:
             self.folding_panel.folding_status = {}
@@ -147,13 +151,6 @@ class LSPCodeEditor(CodeEditor):
     def _on_text_changed_for_lsp(self):
         if self._lsp_ready:
             self._lsp_sync_timer.start(30)  # ← 防抖 30ms
-
-    def _on_text_changed_for_folding(self):
-        if self._lsp_ready:
-            self._folding_timer = QTimer()
-            self._folding_timer.setSingleShot(True)
-            self._folding_timer.timeout.connect(self._request_folding)
-            self._folding_timer.start(800)
 
     def _get_code_with_prefix(self) -> str:
         original_code = self.toPlainText()
@@ -254,7 +251,8 @@ class LSPCodeEditor(CodeEditor):
             if changes:
                 self.lsp_session.change_document_delta(changes)
                 self._last_lsp_content = code_for_lsp
-        self._request_folding()
+
+        self._folding_timer.start(800)
 
     def _request_folding(self):
         if self._lsp_ready:
@@ -325,6 +323,17 @@ class LSPCodeEditor(CodeEditor):
                     finally:
                         cursor.endEditBlock()
                     return
+            self.reopen_document()
+
+    def reopen_document(self):
+        code_for_lsp = self._get_code_with_prefix()
+        # 重置 LSP 文档：先关闭再打开（最可靠）
+        self.lsp_session.close_document()
+        self.lsp_session.open_document(code_for_lsp)  # ← 使用全量替换
+        # 更新本地记录，确保下次增量更新正确
+        self._last_lsp_content = code_for_lsp
+        self._lsp_document_opened = True
+        self._sync_to_lsp()
 
     def request_hover(self, line, col, offset, show_hint=True, clicked=True):
         self._show_hint = show_hint
