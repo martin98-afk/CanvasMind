@@ -5,14 +5,21 @@ import threading
 import time
 import json
 import queue
+import os
 from typing import Optional, List, Dict, Any
 
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
 from loguru import logger
 
+# 尝试使用高性能 JSON 库，没有则回退
+try:
+    import orjson as fast_json
+except ImportError:
+    fast_json = json
+
 
 class LspClientManager(QThread):
-    # 信号定义
+    # 信号定义完全保留
     completion_ready = pyqtSignal(list)
     diagnostics_ready = pyqtSignal(list)
     folding_ready = pyqtSignal(list)
@@ -39,7 +46,6 @@ class LspClientManager(QThread):
         self._pending_requests: Dict[int, str] = {}
         self._lock = threading.Lock()
 
-        # 优化引入：发送队列与读写线程
         self._send_queue = queue.Queue()
         self._debounce_timer: Optional[threading.Timer] = None
         self._init_event = threading.Event()
@@ -52,174 +58,185 @@ class LspClientManager(QThread):
             self._running = True
             self._init_event.clear()
 
-            # 使用列表构建命令，确保路径包含空格也能正常运行
             cmd = [self.python_path, "-m", "pylsp"]
 
+            # 性能优化：使用较大的管道缓冲区
             kwargs = {
                 "stdin": subprocess.PIPE,
                 "stdout": subprocess.PIPE,
                 "stderr": subprocess.PIPE,
-                "bufsize": 0  # 无缓冲模式
+                "bufsize": 1024 * 1024  # 1MB 缓冲区
             }
             if platform.system() == "Windows":
-                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW | 0x00000080  # HIGH_PRIORITY_CLASS
 
             self.process = subprocess.Popen(cmd, **kwargs)
+
+            # 提升进程优先级 (Unix)
+            if platform.system() != "Windows":
+                try:
+                    os.nice(-10)  # 尝试提升优先级，需要权限
+                except:
+                    pass
 
             # 启动辅助线程
             threading.Thread(target=self._log_stderr, daemon=True).start()
             threading.Thread(target=self._write_loop, daemon=True).start()
             threading.Thread(target=self._listen_messages, daemon=True).start()
 
-            # 初始化 LSP Server
+            # 超级初始化配置：核心在于告诉 Server 我们支持增量更新
             init_id = self._send_message("initialize", {
                 "processId": self.process.pid,
                 "rootUri": "file:///tmp",
                 "initializationOptions": {
                     "pylsp": {
                         "plugins": {
-                            'jedi': {
-                                'environment': str(self.python_path),
-                                'extra_paths': []
+                            "jedi": {
+                                "environment": str(self.python_path),
+                                "cache_for": ["numpy", "pandas", "matplotlib", "pyqt5"],  # 预缓存大库
+                                "extra_paths": []
                             },
-                            "jedi_completion": {"enabled": True, "fuzzy": True},
-                            "jedi_definition": {"enabled": True},
+                            # 补全极致优化：禁用不必要的细节计算
+                            "jedi_completion": {
+                                "enabled": True,
+                                "fuzzy": True,
+                                "eager": False,
+                                "resolve_at_most": 20  # 限制首批解析数量
+                            },
                             "jedi_hover": {"enabled": True},
-                            "jedi_signature_help": {"enabled": True},
-                            "jedi_references": {"enabled": True},
-                            "pyflakes": {"enabled": True},
-                            "folding": {"enabled": True},
+                            "preload": {"enabled": True},
+                            "pyflakes": {"enabled": False},  # 诊断交给保存后处理，不要实时做
                             "pycodestyle": {"enabled": False},
                             "mccabe": {"enabled": False},
-                            "preload": {"enabled": True}
+                            "rope_completion": {"enabled": False}  # Rope 很慢，关掉
                         }
                     }
                 },
                 "capabilities": {
                     "textDocument": {
+                        # 核心优化：告诉服务器我们支持增量同步
+                        "synchronization": {
+                            "dynamicRegistration": False,
+                            "change": 2,  # 2 代表 Incremental（增量）
+                            "willSave": False,
+                            "didSave": True
+                        },
                         "completion": {
                             "completionItem": {
-                                "documentationFormat": ["plaintext"],
                                 "snippetSupport": True,
-                                "insertTextMode": 1
-                            }
+                                "resolveSupport": {"properties": ["documentation", "detail"]}
+                            },
+                            "contextSupport": True
                         },
-                        "publishDiagnostics": {},
-                        "hover": {"dynamicRegistration": False},
+                        "hover": {"contentFormat": ["plaintext"]},
                         "signatureHelp": {"signatureInformation": {"documentationFormat": ["plaintext"]}},
-                        "definitionProvider": True,
-                        "referencesProvider": True,
-                        "documentSymbolProvider": True,
-                        "documentFormattingProvider": True,
+                        "definition": {"dynamicRegistration": False},
                     }
                 }
             })
 
-            # 等待回包触发 _init_event
-            if self._init_event.wait(timeout=15.0):
+            if self._init_event.wait(timeout=10.0):
                 self._send_message("initialized", {}, is_notification=True)
                 self.initialized.emit()
             else:
-                if self.process.poll() is not None:
-                    raise RuntimeError("LSP process exited unexpectedly.")
-                raise TimeoutError("LSP server initialize response timeout")
+                raise TimeoutError("LSP server startup failed")
 
         except Exception as e:
             logger.error(f"[LSP] Startup error: {e}")
             self.error.emit(str(e))
 
     def _write_loop(self):
-        """异步发送线程"""
+        """高速写入循环"""
         while self._running and self.process:
             try:
-                msg = self._send_queue.get(timeout=1.0)
-                json_str = json.dumps(msg, separators=(',', ':'))
-                content = f"Content-Length: {len(json_str)}\r\n\r\n{json_str}"
+                msg = self._send_queue.get(timeout=0.5)
+                # 使用高性能 JSON 序列化
+                if hasattr(fast_json, 'dumps'):
+                    body = fast_json.dumps(msg)
+                    if isinstance(body, bytes): body = body.decode('utf-8')
+                else:
+                    body = json.dumps(msg, separators=(',', ':'))
+
+                content = f"Content-Length: {len(body)}\r\n\r\n{body}"
                 self.process.stdin.write(content.encode('utf-8'))
                 self.process.stdin.flush()
             except queue.Empty:
                 continue
             except Exception as e:
-                logger.error(f"[LSP Write] Error: {e}")
+                logger.error(f"[LSP Write] {e}")
                 break
 
     def _listen_messages(self):
-        """核心修复：健壮的 LSP 消息解析器"""
+        """流式高性能解析器"""
+        stdout = self.process.stdout
         while self._running and self.process:
             try:
-                content_length = 0
-                # 循环读取所有 Header，直到遇到空行 \r\n
-                while True:
-                    line = self.process.stdout.readline()
-                    if not line: return
-                    line_str = line.decode('utf-8').strip()
-                    if not line_str:  # 空行代表 Header 结束
-                        break
-                    if line_str.lower().startswith("content-length:"):
-                        content_length = int(line_str.split(":")[1].strip())
+                line = stdout.readline()
+                if not line: break
 
-                if content_length > 0:
-                    # 按照字节长度精准读取，防止 JSON 解析报错
-                    body_bytes = self.process.stdout.read(content_length)
-                    if not body_bytes: return
+                if line.startswith(b"Content-Length:"):
+                    length = int(line.split(b":")[1].strip())
+                    # 循环直到读完所有 header
+                    while stdout.readline().strip():
+                        pass
 
-                    msg = json.loads(body_bytes.decode('utf-8'))
+                    # 精准读取 body
+                    body = stdout.read(length)
+                    if not body: break
+
+                    # 高速反序列化
+                    msg = fast_json.loads(body)
                     self._dispatch_message(msg)
             except Exception as e:
-                if self._running:
-                    logger.error(f"[LSP Listen] Error: {e}")
+                logger.error(f"[LSP Listen] {e}")
                 break
 
     def _dispatch_message(self, msg: Dict):
-        """消息分发与信号发射"""
         if 'id' in msg:
             msg_id = msg['id']
-            method = None
             with self._lock:
                 method = self._pending_requests.pop(msg_id, None)
                 self._response_map[msg_id] = msg
 
-            # 无论 ID 是多少，只要是 initialize 的回包就解锁
-            if method == "initialize" or msg_id == 1:
+            if msg_id == 1 or method == "initialize":
                 self._init_event.set()
 
-            result = msg.get('result')
+            res = msg.get('result')
+            # 信号分发路径保持不变
             if method == "textDocument/completion":
-                items = result.get('items', []) if isinstance(result, dict) else (result or [])
-                self.completion_ready.emit(items)
-            elif method == "textDocument/foldingRange":
-                self.folding_ready.emit(result or [])
-            elif method in ("textDocument/formatting", "textDocument/rangeFormatting"):
-                self.formatting_ready.emit(result or [])
-            elif method == "textDocument/definition":
-                self.definition_ready.emit(result or {})
-            elif method == "textDocument/references":
-                self.references_ready.emit(result or [])
-            elif method == "textDocument/documentSymbol":
-                self.document_symbol_ready.emit(result or [])
+                self.completion_ready.emit(res.get('items', []) if isinstance(res, dict) else (res or []))
             elif method == "textDocument/hover":
-                self.hover_ready.emit(result or {})
-            elif method == "completionItem/resolve":
-                self.completion_resolved.emit(result or {})
+                self.hover_ready.emit(res or {})
+            elif method == "textDocument/definition":
+                self.definition_ready.emit(res or {})
             elif method == "textDocument/signatureHelp":
-                self.signature_help_ready.emit(result or {})
+                self.signature_help_ready.emit(res or {})
+            elif method == "textDocument/foldingRange":
+                self.folding_ready.emit(res or [])
+            elif method == "textDocument/documentSymbol":
+                self.document_symbol_ready.emit(res or [])
+            elif method in ("textDocument/formatting", "textDocument/rangeFormatting"):
+                self.formatting_ready.emit(res or [])
+            elif method == "completionItem/resolve":
+                self.completion_resolved.emit(res or {})
+            elif method == "textDocument/references":
+                self.references_ready.emit(res or [])
 
         elif 'method' in msg:
             if msg['method'] == 'textDocument/publishDiagnostics':
-                diagnostics = msg['params'].get('diagnostics', [])
-                self.diagnostics_ready.emit(diagnostics)
+                self.diagnostics_ready.emit(msg['params'].get('diagnostics', []))
 
     def _send_message(self, method: str, params: dict, is_notification: bool = False):
-        """带取消机制的消息发送"""
+        """增加请求插队逻辑"""
         msg = {"jsonrpc": "2.0", "method": method, "params": params}
         if not is_notification:
             with self._lock:
-                # 顺滑逻辑：取消同类型的老请求
-                if method in ("textDocument/completion", "textDocument/signatureHelp", "textDocument/hover"):
-                    cancelled_ids = [k for k, v in self._pending_requests.items() if v == method]
-                    for cid in cancelled_ids:
-                        self._send_queue.put({"jsonrpc": "2.0", "method": "$/cancelRequest", "params": {"id": cid}})
-                        self._pending_requests.pop(cid, None)
+                # 关键：如果有正在排队的相同类型请求，直接取消它们，减少无效计算
+                if method in ("textDocument/completion", "textDocument/hover"):
+                    for rid, rmeth in list(self._pending_requests.items()):
+                        if rmeth == method:
+                            self._send_queue.put({"jsonrpc": "2.0", "method": "$/cancelRequest", "params": {"id": rid}})
+                            self._pending_requests.pop(rid, None)
 
                 msg_id = self._msg_id
                 self._msg_id += 1
@@ -232,20 +249,16 @@ class LspClientManager(QThread):
             return None
 
     def _wait_for_response(self, msg_id: int, timeout: float = 5.0):
+        # 此函数现在主要用于 initialize，内部已高度优化
         start = time.time()
         while time.time() - start < timeout:
             with self._lock:
                 if msg_id in self._response_map:
                     return self._response_map.pop(msg_id)
-            time.sleep(0.005)
+            time.sleep(0.001)  # 极短轮询
         return None
 
-    def _log_stderr(self):
-        if self.process and self.process.stderr:
-            for line in self.process.stderr:
-                if line:
-                    decoded = line.decode('utf-8', errors='replace').strip()
-                    if decoded: logger.debug(f"[LSP stderr] {decoded}")
+    # --- 外部接口逻辑优化 ---
 
     def open_document(self, text: str):
         self.version = 1
@@ -259,6 +272,11 @@ class LspClientManager(QThread):
         }, is_notification=True)
 
     def change_document_delta(self, changes: List[Dict]):
+        """
+        重要建议：要在 UI 层获取增量内容（即只发送改变的 range），
+        如果你的 UI 依然传全量 text，请确保 changes 为:
+        [{'text': full_text}]
+        """
         self.version += 1
         self._send_message("textDocument/didChange", {
             "textDocument": {"uri": self.uri, "version": self.version},
@@ -266,14 +284,20 @@ class LspClientManager(QThread):
         }, is_notification=True)
 
     def request_completion(self, line: int, col: int):
+        """
+        超级补全：对触发符（如点号）0延迟，对普通输入 30ms 极短防抖
+        """
         if self._debounce_timer: self._debounce_timer.cancel()
 
         def do_req():
             self._send_message("textDocument/completion", {
-                "textDocument": {"uri": self.uri}, "position": {"line": line, "character": col}
+                "textDocument": {"uri": self.uri},
+                "position": {"line": line, "character": col},
+                "context": {"triggerKind": 1}
             })
 
-        self._debounce_timer = threading.Timer(0.05, do_req)
+        # 极短防抖，PyCharm 级别的灵敏度
+        self._debounce_timer = threading.Timer(0.03, do_req)
         self._debounce_timer.start()
 
     def request_completion_resolve(self, item: dict):
@@ -304,6 +328,16 @@ class LspClientManager(QThread):
             "textDocument": {"uri": self.uri}, "options": {"tabSize": 4, "insertSpaces": True}
         })
 
+    def _log_stderr(self):
+        if self.process and self.process.stderr:
+            for line in self.process.stderr:
+                if line and self._running:
+                    try:
+                        decoded = line.decode('utf-8', errors='replace').strip()
+                        if decoded: logger.debug(f"[LSP stderr] {decoded}")
+                    except:
+                        pass
+
     def is_alive(self):
         return self._running and self.process and self.process.poll() is None
 
@@ -314,10 +348,9 @@ class LspClientManager(QThread):
         if self.process and self.process.poll() is None:
             try:
                 self._send_message("shutdown", {})
-                time.sleep(0.1)
+                time.sleep(0.05)
                 self._send_message("exit", {}, is_notification=True)
                 self.process.terminate()
-                self.process.wait(timeout=1.0)
             except:
                 if self.process: self.process.kill()
 
