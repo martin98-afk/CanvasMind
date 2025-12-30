@@ -5,16 +5,18 @@ from typing import List, Dict
 from urllib.parse import quote
 
 from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal
-from PyQt5.QtGui import QFont, QTextCursor, QColor, QTextCharFormat, QCursor
+from PyQt5.QtGui import QFont, QTextCursor, QColor, QTextCharFormat
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QApplication
+from intervaltree import IntervalTree
 from loguru import logger
 from qfluentwidgets import TransparentToolButton
+from spyder.plugins.editor.panels.utils import FoldingRegion
+from spyder.plugins.editor.utils.editor import BlockUserData
 from spyder.plugins.editor.widgets.codeeditor import CodeEditor
 from spyder.plugins.editor.widgets.completion import CompletionWidget
 from spyder.widgets.findreplace import FindReplace
-from spyder_kernels.utils.dochelpers import getobj
 
-from app.server_manager.lsp_server.lsp_manager_stdio import LspClientManager
+from app.server_manager.lsp_server.lsp_stdio_client import LspClientManager
 from app.utils.utils import get_icon
 
 
@@ -42,6 +44,7 @@ class LSPCodeEditor(CodeEditor):
         }
         # === ✅ 使用 Spyder 的 CompletionWidget ===
         self.completion_widget = CompletionWidget(parent=self, ancestor=self.code_parent)
+        self.completion_widget.sig_completion_hint.connect(self.show_hint_for_completion)
         # 深色背景
         self.completion_widget.setStyleSheet("background-color: #1E1E1E;")
         self.completion_widget.setMinimumWidth(350)
@@ -60,7 +63,7 @@ class LSPCodeEditor(CodeEditor):
             folding=True,
             markers=True,
             hover_hints=True,
-            automatic_completions=True,  # ✅ 关键！
+            automatic_completions=True,  # ✅
             automatic_completions_after_chars=1,
             intelligent_backspace=True,
             completions_hint=True,
@@ -74,11 +77,6 @@ class LSPCodeEditor(CodeEditor):
         self.fullscreen_button.setIconSize(QSize(28, 28))
         self.fullscreen_button.setFixedSize(28, 28)
         self.fullscreen_button.setToolTip("放大编辑器")
-        self.spyder_button = TransparentToolButton(get_icon("spyder"), parent=self)
-        self.spyder_button.setIconSize(QSize(28, 28))
-        self.spyder_button.setFixedSize(28, 28)
-        self.spyder_button.setToolTip("在 Spyder 中打开当前代码")
-        self.spyder_button.clicked.connect(self._open_in_spyder)
         self._update_button_position()
 
         # --- LSP 同步 ---
@@ -107,20 +105,20 @@ class LSPCodeEditor(CodeEditor):
             self.lsp_signal.emit("restarting...")
         else:
             self.lsp_signal.emit("starting")
-        if hasattr(self, 'lsp_manager') and self.lsp_manager:
-            self.lsp_manager.shutdown()
+        if hasattr(self, 'lsp_session') and self.lsp_session:
+            self.lsp_session.shutdown()
 
-        self.lsp_manager = LspClientManager(python_path=python_exe or self.python_exe_path)
-        self.lsp_manager.initialized.connect(self._on_lsp_initialized)
-        self.lsp_manager.completion_ready.connect(self._on_lsp_completions_ready)
-        self.lsp_manager.diagnostics_ready.connect(self._on_lsp_diagnostics_ready)
-        self.lsp_manager.folding_ready.connect(self._on_lsp_folding_ready)
-        self.lsp_manager.hover_ready.connect(self._on_hover_response)
-        self.lsp_manager.definition_ready.connect(self._on_definition_response)
-        self.lsp_manager.formatting_ready.connect(self._apply_formatting_edits)
-        self.lsp_manager.completion_resolved.connect(self._on_completion_resolved)
-        self.lsp_manager.error.connect(lambda e: self.lsp_signal.emit(str(e)))
-        self.lsp_manager.start()
+        self.lsp_session = LspClientManager(python_path=python_exe or self.python_exe_path)
+        self.lsp_session.initialized.connect(self._on_lsp_initialized)
+        self.lsp_session.completion_ready.connect(self._on_lsp_completions_ready)
+        self.lsp_session.diagnostics_ready.connect(self._on_lsp_diagnostics_ready)
+        self.lsp_session.folding_ready.connect(self._on_lsp_folding_ready)
+        self.lsp_session.hover_ready.connect(self._on_hover_response)
+        self.lsp_session.definition_ready.connect(self._on_definition_response)
+        self.lsp_session.formatting_ready.connect(self._apply_formatting_edits)
+        self.lsp_session.completion_resolved.connect(self._on_completion_resolved)
+        self.lsp_session.error.connect(lambda e: self.lsp_signal.emit(str(e)))
+        self.lsp_session.start()
 
     # ========== LSP 集成 ==========
     def _document_uri(self) -> str:
@@ -158,22 +156,19 @@ class LSPCodeEditor(CodeEditor):
         self._document_version += 1
 
         if not self._lsp_document_opened:
-            self.lsp_manager.open_document(code_for_lsp)
+            self.lsp_session.open_document(code_for_lsp)
             self._lsp_document_opened = True
         else:
-            self.lsp_manager.change_document(code_for_lsp)
+            self.lsp_session.change_document(code_for_lsp)
         self._request_folding()
-        self.do_automatic_completions()
 
     def _request_folding(self):
         if self._lsp_ready:
-            self.lsp_manager.request_folding_ranges()
+            self.lsp_session.request_folding_ranges()
 
     def _on_lsp_folding_ready(self, folding_ranges: List[Dict]):
         if not hasattr(self, 'folding_panel') or not self.folding_panel:
             return
-        from intervaltree import IntervalTree
-        from spyder.plugins.editor.panels.utils import FoldingRegion
         current_tree = IntervalTree()
         folding_regions = {}
         folding_nesting = {}
@@ -199,7 +194,7 @@ class LSPCodeEditor(CodeEditor):
         """格式化整个文档"""
         if not self._lsp_ready:
             return
-        self.lsp_manager.request_formatting()
+        self.lsp_session.request_formatting()
 
     def format_selection(self):
         """格式化选中区域"""
@@ -214,7 +209,7 @@ class LSPCodeEditor(CodeEditor):
             start_col = 0
             end_line = end_block.blockNumber()
             end_col = end_block.length() - 1  # 包含换行符
-            self.lsp_manager.request_range_formatting(start_line, start_col, end_line, end_col)
+            self.lsp_session.request_range_formatting(start_line, start_col, end_line, end_col)
 
     def _apply_formatting_edits(self, text_edits: List[Dict]):
         """Apply LSP TextEdits to the document"""
@@ -253,13 +248,10 @@ class LSPCodeEditor(CodeEditor):
                         cursor.endEditBlock()
                     return
 
-    def request_symbols(self):
-        self.lsp_manager.request_symbols()
-
     def request_hover(self, line, col, offset, show_hint=True, clicked=True):
         self._show_hint = show_hint
         self._request_hover_clicked = clicked
-        self.lsp_manager.request_hover(line + len(self.CODE_PREFIX.splitlines()), col)
+        self.lsp_session.request_hover(line + len(self.CODE_PREFIX.splitlines()), col)
 
     def _on_hover_response(self, result):
         if result["contents"]:
@@ -280,7 +272,7 @@ class LSPCodeEditor(CodeEditor):
 
         if text is not None:
             line, column = self.get_cursor_line_column()
-        self.lsp_manager.request_definition(line, column)
+        self.lsp_session.request_definition(line, column)
 
     def _on_definition_response(self, result):
         self.handle_go_to_definition({"params": result})
@@ -292,7 +284,7 @@ class LSPCodeEditor(CodeEditor):
         cursor = self.textCursor()
         line = cursor.blockNumber() + len(self.CODE_PREFIX.splitlines())  # 0-based
         col = cursor.columnNumber()  # 0-based
-        self.lsp_manager.request_completion(line, col)
+        self.lsp_session.request_completion(line, col)
 
     # ========== 补全核心（使用 CompletionWidget）==========
     def _get_completion_prefix(self) -> str:
@@ -312,6 +304,8 @@ class LSPCodeEditor(CodeEditor):
 
     def _on_lsp_completions_ready(self, completion_items: List[Dict]):
         # ✅ 补全缺失的 filterText（用 label 代替）
+        cursor = self.textCursor()
+        cursor_position = cursor.position()  # 👈 获取当前光标位置（作为 point）
         for item in completion_items:
             if 'filterText' not in item:
                 item['filterText'] = item.get('label', '')
@@ -323,13 +317,14 @@ class LSPCodeEditor(CodeEditor):
                 item['detail'] = ''
             if 'documentation' not in item:
                 item['documentation'] = ''
+            item['point'] = cursor_position
+            item['resolve'] = True
         self.completion_args = (self.textCursor().position(), True)
         params = {"params": completion_items}
         self.process_completion(params)
-        self._set_completions_hint_idle()
 
     def resolve_completion_item(self, item):
-        self.lsp_manager.request_completion_resolve(item)
+        self.lsp_session.request_completion_resolve(item)
 
     def _on_completion_resolved(self, item):
         self.handle_completion_item_resolution({"params": item})
@@ -358,7 +353,6 @@ class LSPCodeEditor(CodeEditor):
                     continue
                 data = block.userData()
                 if not data:
-                    from spyder.plugins.editor.utils.editor import BlockUserData
                     data = BlockUserData(self)
                 block.setUserData(data)
                 data.code_analysis.append(('lsp', '', severity, message))
@@ -500,9 +494,6 @@ class LSPCodeEditor(CodeEditor):
 
         super().keyPressEvent(event)
 
-    def _open_in_spyder(self):
-        pass
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._update_button_position()
@@ -516,7 +507,6 @@ class LSPCodeEditor(CodeEditor):
         y_top = 6
         y_bottom = y_top + button_width + button_spacing
         self.fullscreen_button.move(x, y_top)
-        self.spyder_button.move(x, y_bottom)
 
     def _on_text_changed_for_parso(self):
         self._parso_timer.stop()
@@ -549,7 +539,6 @@ class LSPCodeEditor(CodeEditor):
                     continue
                 data = block.userData()
                 if not data:
-                    from spyder.plugins.editor.utils.editor import BlockUserData
                     data = BlockUserData(self)
                 block.setUserData(data)
                 data.code_analysis.append(('parso', '', 2, message))

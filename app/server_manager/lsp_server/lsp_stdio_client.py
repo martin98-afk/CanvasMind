@@ -41,6 +41,7 @@ class LspClientManager(QThread):
 
     def run(self):
         try:
+            print(self.python_path)
             cmd = [self.python_path, "-m", "pylsp"]
             kwargs = {}
             if platform.system() == "Windows":
@@ -65,9 +66,15 @@ class LspClientManager(QThread):
             init_id = self._send_message("initialize", {
                 "processId": self.process.pid,
                 "rootUri": "file:///tmp",
+                "stdio": True,
                 "initializationOptions": {
                     "pylsp": {
                         "plugins": {
+                            'jedi': {
+                                'environment': str(self.python_path),  # ← 必须是 python.exe 的完整路径
+                                'extra_paths': []  # 如有额外路径可加
+                            },
+                            'rope': {'enabled': False},  # 可选：禁用 rope 避免干扰
                             "jedi_completion": {"enabled": True},
                             "pyflakes": {"enabled": True},
                             "folding": {"enabled": True},          # ← 必须启用
@@ -77,12 +84,11 @@ class LspClientManager(QThread):
                 },
                 "capabilities": {
                     "textDocument": {
-                        "completion": {
-                            "completionItem": {
-                                "documentationFormat": ["plaintext"],
-                                "snippetSupport": True,
-                                "insertTextMode": 2  # AsIs
-                            }
+                        "completionItem": {
+                            "documentationFormat": ["plaintext"],
+                            "snippetSupport": True,
+                            "insertTextMode": 1,        # ← 改为 InsertTextMode.AdjustIndentation
+                            "commitCharactersSupport": True  # ← 可选，但推荐添加
                         },
                         "publishDiagnostics": {},
                         "foldingRange": {},
