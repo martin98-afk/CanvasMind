@@ -140,7 +140,7 @@ class ExportedProjectsPage(QWidget):
         self.pips_pager.currentIndexChanged.connect(self._on_page_changed)
         self.pips_pager.setNextButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
         self.pips_pager.setPreviousButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
-        self.pips_pager.setFixedHeight(40)
+        # self.pips_pager.setFixedHeight(20)
         left_layout.addWidget(self.pips_pager)
 
         # 简单美化一下分页器容器背景，使其与列表有区分（可选）

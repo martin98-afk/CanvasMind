@@ -3,9 +3,9 @@ import os
 import json
 import subprocess
 from pathlib import Path
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QFont, QGuiApplication, QPixmap, QPainter, QColor, QPen
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QFrame
+from PyQt5.QtCore import Qt, QSize, QRect, QRectF
+from PyQt5.QtGui import QFont, QGuiApplication, QPixmap, QPainter, QColor, QPen, QPainterPath
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QFrame, QDialog
 from qfluentwidgets import (
     CardWidget, BodyLabel, PrimaryPushButton,
     FluentIcon, InfoBar, ImageLabel, TransparentToolButton, themeColor, isDarkTheme
@@ -22,7 +22,6 @@ class ClickableLabel(BodyLabel):
         self.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.setCursor(Qt.PointingHandCursor)
         self.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        # 优化颜色，使其更符合现代 UI，深色模式适配
         color = "#4cc2ff" if isDarkTheme() else "#0078d4"
         self.setStyleSheet(f"color: {color}; text-decoration: none;")
         self.setFont(QFont("Microsoft YaHei", 9))
@@ -46,6 +45,85 @@ class ClickableLabel(BodyLabel):
         super().leaveEvent(event)
 
 
+class PreviewLabel(QLabel):
+    """自定义预览标签，确保图片完整显示（Contain模式），支持双击放大"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setScaledContents(False)
+        self._pixmap = None
+        self.setFixedSize(368, 160)
+        # 设置背景样式，类似相框
+        self.setStyleSheet(
+            f"background-color: {'rgba(255, 255, 255, 0.05)' if isDarkTheme() else 'rgba(0, 0, 0, 0.03)'};"
+            f"border-radius: 6px;"
+            f"border: 1px solid {'#333' if isDarkTheme() else '#e0e0e0'};"
+        )
+        self.setAlignment(Qt.AlignCenter)
+        self.setText("无预览图")  # 默认文本
+
+    def set_image(self, pixmap: QPixmap):
+        self._pixmap = pixmap
+        self.setText("") if pixmap and not pixmap.isNull() else self.setText("无预览图")
+        self.update()  # 触发重绘
+
+    def paintEvent(self, event):
+        # 1. 绘制背景和边框（由样式表处理，或者这里也可以手动画）
+        super().paintEvent(event)  # 绘制样式表定义的背景/文字
+
+        if not self._pixmap or self._pixmap.isNull():
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+
+        # 2. 计算保持比例的矩形 (Contain 模式)
+        target_rect = QRectF(self.rect())
+        # 留一点内边距，避免紧贴边框
+        target_rect.adjust(4, 4, -4, -4)
+
+        # 计算缩放后的尺寸
+        scaled_size = self._pixmap.size().scaled(target_rect.size().toSize(), Qt.KeepAspectRatio)
+
+        # 计算居中位置
+        x = target_rect.x() + (target_rect.width() - scaled_size.width()) / 2
+        y = target_rect.y() + (target_rect.height() - scaled_size.height()) / 2
+
+        draw_rect = QRectF(x, y, scaled_size.width(), scaled_size.height())
+
+        # 3. 绘制圆角图片
+        path = QPainterPath()
+        path.addRoundedRect(draw_rect, 4, 4)
+        painter.setClipPath(path)
+        painter.drawPixmap(draw_rect.toRect(), self._pixmap)
+
+    def mouseDoubleClickEvent(self, event):
+        if self._pixmap and not self._pixmap.isNull():
+            # 双击显示大图弹窗
+            self._show_lightbox()
+        super().mouseDoubleClickEvent(event)
+
+    def _show_lightbox(self):
+        dialog = QDialog(self.window())
+        dialog.setWindowTitle("预览图")
+        dialog.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint)
+        dialog.resize(800, 600)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        img_lbl = QLabel()
+        img_lbl.setAlignment(Qt.AlignCenter)
+        # 大图也保持比例适应
+        scaled_pix = self._pixmap.scaled(QSize(780, 580), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        img_lbl.setPixmap(scaled_pix)
+        img_lbl.setStyleSheet("background-color: #1e1e1e;" if isDarkTheme() else "background-color: #f0f0f0;")
+
+        layout.addWidget(img_lbl)
+        dialog.exec()
+
+
 class ProjectCard(CardWidget):
     def __init__(self, project_path, parent=None):
         super().__init__(parent)
@@ -56,12 +134,12 @@ class ProjectCard(CardWidget):
         self.mcp_dot = None
         self.api_label = None
         self.mcp_label = None
-        self.image_label = None
+        self.preview_label = None  # 改用自定义 Label
         self.is_selected = False
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setFixedSize(400, 310)  # 稍微增加高度以容纳新布局
+        self.setFixedSize(400, 310)
         self.setBorderRadius(10)
 
         main_layout = QVBoxLayout(self)
@@ -73,20 +151,17 @@ class ProjectCard(CardWidget):
         self.name_label = BodyLabel(self.project_name)
         self.name_label.setFont(QFont("Microsoft YaHei", 12, QFont.Bold))
         self.name_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.name_label.setWordWrap(False)  # 不换行，溢出省略
-        # 添加 tooltip 以防名字太长显示不全
+        self.name_label.setWordWrap(False)
         self.name_label.setToolTip(self.project_name)
         top_layout.addWidget(self.name_label)
         top_layout.addStretch()
         main_layout.addLayout(top_layout)
 
-        # === 预览图 ===
-        # 占位，后面 _create_or_update_preview 会填充
-        self.preview_container = QLabel()
-        self.preview_container.setFixedSize(368, 160)
-        self.preview_container.setAlignment(Qt.AlignCenter)
-        self.preview_container.setStyleSheet("background: transparent;")
-        main_layout.addWidget(self.preview_container)
+        # === 预览图 (使用自定义 PreviewLabel) ===
+        self.preview_label = PreviewLabel(self)
+        self.preview_label.setCursor(Qt.PointingHandCursor)
+        self.preview_label.setToolTip("双击查看大图")
+        main_layout.addWidget(self.preview_label)
 
         self._create_or_update_preview()
 
@@ -97,7 +172,6 @@ class ProjectCard(CardWidget):
         status_layout.setContentsMargins(4, 0, 4, 0)
         status_layout.setSpacing(4)
 
-        # 辅助函数：创建一行状态
         def create_status_row(label_text):
             row = QHBoxLayout()
             row.setSpacing(8)
@@ -124,7 +198,6 @@ class ProjectCard(CardWidget):
 
         self.run_btn = PrimaryPushButton("运行", self, FluentIcon.PLAY)
         self.service_btn = PrimaryPushButton("上线", self, FluentIcon.LINK)
-        # 按钮样式微调
         for btn in [self.run_btn, self.service_btn]:
             btn.setFixedHeight(30)
             btn.setFixedWidth(80)
@@ -154,45 +227,13 @@ class ProjectCard(CardWidget):
         self.setCursor(Qt.PointingHandCursor)
 
     def _create_or_update_preview(self):
-        """刷新预览图，强制重载 QPixmap 避免缓存"""
+        """加载原图传给 PreviewLabel，由其内部处理缩放"""
         preview_path = Path(self.project_path) / "preview.png"
-
-        pixmap = QPixmap()
-        has_image = False
-
         if preview_path.exists():
-            # 显式加载 pixmap，而不是让控件自己去缓存
-            loaded = pixmap.load(str(preview_path))
-            if loaded:
-                has_image = True
-                # 保持比例填充，缩放质量平滑
-                pixmap = pixmap.scaled(
-                    self.preview_container.size(),
-                    Qt.KeepAspectRatioByExpanding,
-                    Qt.SmoothTransformation
-                )
-
-        if has_image:
-            self.preview_container.setPixmap(pixmap)
-            # 设置裁剪，防止 KeepAspectRatioByExpanding 超出边界
-            # 注意：QLabel 本身不支持 border-radius 裁剪图片，这里简单处理
-            # 更好的做法是自定义 paintEvent 绘制圆角图片，或者样式表
-            # 这里为了不改动太多代码，保持图片显示即可，样式表辅助
-            self.preview_container.setStyleSheet(
-                f"border-radius: 6px; border: 1px solid #e0e0e0;"
-                if not isDarkTheme() else
-                f"border-radius: 6px; border: 1px solid #333;"
-            )
+            pixmap = QPixmap(str(preview_path))
+            self.preview_label.set_image(pixmap)
         else:
-            self.preview_container.setPixmap(QPixmap())
-            self.preview_container.setText("无预览图")
-            self.preview_container.setStyleSheet("""
-                color: #999;
-                background-color: rgba(128, 128, 128, 0.1);
-                border-radius: 6px;
-                border: 1px dashed #bbb;
-                font-size: 13px;
-            """)
+            self.preview_label.set_image(None)
 
     def _update_service_button(self):
         is_running = SERVICE_MANAGER.is_running(self.project_path)
@@ -223,13 +264,11 @@ class ProjectCard(CardWidget):
             self.run_btn.setIcon(FluentIcon.PLAY)
 
     def refresh(self):
-        """被 ExportedProjectsPage 调用"""
         self._create_or_update_preview()
         self._load_status_info()
         self._update_service_button()
 
     def _load_status_info(self):
-        # --- API 服务 ---
         if SERVICE_MANAGER.is_running(self.project_path):
             api_url = SERVICE_MANAGER.get_url(self.project_path) or "API服务：运行中"
             api_status = 'green'
@@ -237,11 +276,9 @@ class ProjectCard(CardWidget):
             api_url = "API服务：未部署"
             api_status = 'gray'
 
-        # --- MCP 工具 ---
         mcp_path = Path(self.project_path) / "mcp.json"
         if mcp_path.exists():
             try:
-                # 简单验证 json 有效性
                 with open(mcp_path, 'r', encoding='utf-8') as f:
                     json.load(f)
                 mcp_content = "点击复制配置"
@@ -268,50 +305,38 @@ class ProjectCard(CardWidget):
         """)
         label.setText(text)
         label.copy_content = copy_content or ""
-
-        # 如果是绿色状态，加深标签文字颜色
         if status == 'green':
             label.setStyleSheet("color: #4caf50; font-weight: bold;")
         else:
-            # 恢复默认
             color = "#666666" if not isDarkTheme() else "#aaaaaa"
             label.setStyleSheet(f"color: {color}; font-weight: normal;")
 
     def set_selected(self, is_selected: bool):
-        """设置选中状态并刷新界面"""
         if self.is_selected == is_selected:
             return
         self.is_selected = is_selected
-        self.update()  # 触发 paintEvent 重绘
+        self.update()
 
     def paintEvent(self, event):
-        """重写绘制事件，绘制选中状态的边框"""
         super().paintEvent(event)
         if self.is_selected:
             painter = QPainter(self)
             painter.setRenderHint(QPainter.Antialiasing)
-            # 使用当前主题色
             c = themeColor()
-            pen = QPen(c, 2)  # 2像素宽度的边框
+            pen = QPen(c, 2)
             painter.setPen(pen)
-            # 绘制圆角矩形边框，稍微内缩一点避免被切掉
             rect = self.rect().adjusted(1, 1, -1, -1)
             painter.drawRoundedRect(rect, 10, 10)
 
     def mousePressEvent(self, event):
         clicked_widget = self.childAt(event.pos())
-        # 定义需要拦截点击事件的控件类型
-        # 注意：childAt 可能返回 label 内部的对象，所以通常比较对象引用
         buttons = {
             self.run_btn, self.service_btn,
             self.edit_btn, self.view_log_btn, self.delete_btn,
             self.api_label, self.mcp_label
         }
-
-        # 简单判断：如果点击的不是功能按钮，则认为是选中卡片
         is_button_clicked = False
         if clicked_widget:
-            # 向上查找父级看是否是按钮
             curr = clicked_widget
             while curr and curr != self:
                 if curr in buttons:
@@ -319,10 +344,15 @@ class ProjectCard(CardWidget):
                     break
                 curr = curr.parent()
 
+        # 如果点击的是预览图，不认为是选中项目，让预览图自己处理双击事件
+        # 但是这里要注意，单击预览图也应该选中卡片
+        if clicked_widget == self.preview_label:
+            # 允许向下传递以触发 Label 的双击，但同时也触发选卡片
+            pass
+
         if not is_button_clicked:
             if self.home and hasattr(self.home, 'on_card_clicked'):
                 self.home.on_card_clicked(self)
-
         else:
             super().mousePressEvent(event)
 
