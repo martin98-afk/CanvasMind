@@ -38,15 +38,6 @@ class ProjectInfoTool(ToolWindow):
             if item.widget():
                 item.widget().deleteLater()
 
-        # 来源画布
-        spec_path = project_path / "project_spec.json"
-        if spec_path.exists():
-            try:
-                with open(spec_path, 'r', encoding='utf-8') as f:
-                    spec = json.load(f)
-            except:
-                pass
-
         md_path = project_path / "README.md"
         if md_path.exists():
             try:
