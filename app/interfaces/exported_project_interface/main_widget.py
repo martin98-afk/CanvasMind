@@ -131,7 +131,7 @@ class ExportedProjectsPage(QWidget):
 
         # --- 右侧：详情面板 ---
         self.side_dock_area = SideDockArea(self, "项目管理")
-        self.service_test_tool = self.side_dock_area.get_tool_instance("项目服务测试")
+        self.service_test_tool = self.side_dock_area.get_tool_instance("API 调试台")
         self.project_logs_tool = self.side_dock_area.get_tool_instance("项目日志")
         self.project_info_tool = self.side_dock_area.get_tool_instance("项目基本信息")
         # --- 分页器（放在左侧底部）---

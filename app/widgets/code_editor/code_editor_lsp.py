@@ -113,13 +113,13 @@ class LSPCodeEditor(CodeEditor):
         if python_exe is None or python_exe == self.python_exe_path:
             self.lsp_signal.emit("restarting...")
         else:
-            self.python_exe_path = python_exe;
+            self.python_exe_path = python_exe
             self.lsp_signal.emit("starting")
         if hasattr(self, 'lsp_session') and self.lsp_session:
             self.lsp_session.shutdown()
         self.lsp_session.set_python_path(self.python_exe_path)
 
-        QTimer.singleShot(1000, self.lsp_session.start)
+        QTimer.singleShot(2000, self.lsp_session.start)
 
     # ========== 核心优化：0-Diff 增量同步 ==========
 
@@ -201,7 +201,8 @@ class LSPCodeEditor(CodeEditor):
         self.folding_panel.folding_status = status
 
     def format_document(self):
-        if self._lsp_ready: self.lsp_session.request_formatting()
+        if self._lsp_ready:
+            self.lsp_session.request_formatting()
 
     def format_selection(self):
         if not self._lsp_ready: return
@@ -215,28 +216,8 @@ class LSPCodeEditor(CodeEditor):
     def _apply_formatting_edits(self, text_edits: List[Dict]):
         if not text_edits:
             return
-        if len(text_edits) == 1:
-            edit = text_edits[0]
-            start = edit['range']['start']
-            end = edit['range']['end']
-            if start['line'] == 0 and start['character'] == 0:
-                doc_lines = self.toPlainText().splitlines()
-                last_line = len(doc_lines) - 1
-                if end['line'] >= last_line and end['character'] == 0:
-                    new_text = edit['newText'].replace('\r\n', '\n').replace('\r', '\n')
-                    prefix_lines = len(self.CODE_PREFIX.splitlines())
-                    actual_lines = new_text.splitlines()
-                    displayed_text = '\n'.join(actual_lines[prefix_lines:]) if len(
-                        actual_lines) > prefix_lines else new_text
-                    cursor = self.textCursor()
-                    cursor.beginEditBlock()
-                    try:
-                        cursor.select(QTextCursor.Document)
-                        cursor.insertText(displayed_text)
-                    finally:
-                        cursor.endEditBlock()
-                    return
-            self.reopen_document()
+        self.set_text(text_edits[0]['newText'][self._prefix_char_count:])
+        self.reopen_document()
 
     def reopen_document(self):
         """强制重置 LSP 服务器端的文档状态，解决全量替换导致的乱序问题"""
@@ -322,8 +303,6 @@ class LSPCodeEditor(CodeEditor):
         """处理补全结果"""
         pos = self.textCursor().position()
         clean_items = []
-
-        prefix = self._get_completion_prefix()
 
         for item in completion_items:
             # 1. 获取基础信息

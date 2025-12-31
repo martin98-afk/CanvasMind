@@ -22,7 +22,8 @@ class LongTextEditorDialog(MessageBoxBase):
         global_vars = getattr(self.main_window, 'global_variables', None)
         if global_vars is not None and hasattr(global_vars, 'get_vars'):
             self.text_edit = VariableCompletionTextEdit(
-                get_variable_list_func=lambda keys=extra_keys, func=get_port_func: global_vars.get_vars(keys + func()), parent=self
+                get_variable_list_func=lambda keys=extra_keys, func=get_port_func: global_vars.get_vars(keys + func()),
+                parent=self
             )
         else:
             self.text_edit = TextEdit()
