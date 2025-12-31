@@ -2,13 +2,11 @@
 import re
 import sys
 from typing import List, Dict
-from urllib.parse import quote
 
-from PyQt5.QtCore import Qt, QTimer, QSize, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QTextCharFormat
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QApplication
 from intervaltree import IntervalTree
-from loguru import logger
 from qfluentwidgets import TransparentToolButton
 from spyder.plugins.editor.panels.utils import FoldingRegion
 from spyder.plugins.editor.utils.editor import BlockUserData
@@ -52,7 +50,7 @@ class LSPCodeEditor(CodeEditor):
         self.lsp_session.formatting_ready.connect(self._apply_formatting_edits)
         self.lsp_session.completion_resolved.connect(self._on_completion_resolved)
         self.lsp_session.signature_help_ready.connect(self._on_signature_help_response)
-        self.lsp_session.error.connect(lambda e: self.lsp_signal.emit(str(e)))
+        self.lsp_session.error.connect(lambda e: self.lsp_signal.emit("error"))
 
         # CompletionWidget
         self.completion_widget = CompletionWidget(parent=self, ancestor=self.code_parent)
@@ -63,14 +61,14 @@ class LSPCodeEditor(CodeEditor):
 
         # 编辑器设置
         self.setup_editor(
-            language='python', 
+            language='python',
             color_scheme='spyder/dark',
             font=QFont('Consolas', 13),
-            folding=True, 
+            folding=True,
             automatic_completions=True,
             completions_hint=True,
             hover_hints=True,
-            underline_errors=True, 
+            underline_errors=True,
             highlight_current_line=True,
             markers=True,
             automatic_completions_after_chars=1,
@@ -144,13 +142,16 @@ class LSPCodeEditor(CodeEditor):
 
     def set_completion_environment(self, python_exe: str = None):
         self._lsp_document_opened = False
-        if python_exe is None:
+        if python_exe is None or python_exe == self.python_exe_path:
             self.lsp_signal.emit("restarting...")
         else:
-            self.python_exe_path = python_exe; self.lsp_signal.emit("starting")
-        if hasattr(self, 'lsp_session') and self.lsp_session: self.lsp_session.stop()
+            self.python_exe_path = python_exe;
+            self.lsp_signal.emit("starting")
+        if hasattr(self, 'lsp_session') and self.lsp_session:
+            self.lsp_session.shutdown()
         self.lsp_session.set_python_path(self.python_exe_path)
-        self.lsp_session.start()
+
+        QTimer.singleShot(1000, self.lsp_session.start)
 
     def _on_lsp_initialized(self):
         self._lsp_ready = True;
@@ -209,8 +210,30 @@ class LSPCodeEditor(CodeEditor):
             )
 
     def _apply_formatting_edits(self, text_edits: List[Dict]):
-        if not text_edits: return
-        self.set_text(text_edits[0]['newText'][self._prefix_char_count:])
+        if not text_edits:
+            return
+        if len(text_edits) == 1:
+            edit = text_edits[0]
+            start = edit['range']['start']
+            end = edit['range']['end']
+            if start['line'] == 0 and start['character'] == 0:
+                doc_lines = self.toPlainText().splitlines()
+                last_line = len(doc_lines) - 1
+                if end['line'] >= last_line and end['character'] == 0:
+                    new_text = edit['newText'].replace('\r\n', '\n').replace('\r', '\n')
+                    prefix_lines = len(self.CODE_PREFIX.splitlines())
+                    actual_lines = new_text.splitlines()
+                    displayed_text = '\n'.join(actual_lines[prefix_lines:]) if len(
+                        actual_lines) > prefix_lines else new_text
+                    cursor = self.textCursor()
+                    cursor.beginEditBlock()
+                    try:
+                        cursor.select(QTextCursor.Document)
+                        cursor.insertText(displayed_text)
+                    finally:
+                        cursor.endEditBlock()
+                    return
+            self.reopen_document()
 
     def reopen_document(self):
         """强制重置 LSP 服务器端的文档状态，解决全量替换导致的乱序问题"""
@@ -241,20 +264,23 @@ class LSPCodeEditor(CodeEditor):
         self._folding_timer.start(500)
 
     def request_hover(self, line, col, offset, show_hint=True, clicked=True):
-        self._show_hint = show_hint;
+        self._show_hint = show_hint
         self._request_hover_clicked = clicked
         self.lsp_session.request_hover(line + self._prefix_line_count, col)
 
     def _on_hover_response(self, result):
         if result.get("contents"):
-            val = result["contents"].get("value", "") if isinstance(result["contents"], dict) else str(
-                result["contents"])
+            val = result["contents"].get("value", "") \
+                if isinstance(result["contents"], dict) else str(result["contents"])
             self.handle_hover_response({"params": val})
 
     def go_to_definition_from_cursor(self, cursor=None):
-        if not self.go_to_definition_enabled or self.in_comment_or_string(): return
-        if cursor is None: cursor = self.textCursor()
-        if not cursor.hasSelection(): cursor.select(QTextCursor.WordUnderCursor)
+        if not self.go_to_definition_enabled or self.in_comment_or_string():
+            return
+        if cursor is None:
+            cursor = self.textCursor()
+        if not cursor.hasSelection():
+            cursor.select(QTextCursor.WordUnderCursor)
         if cursor.selectedText():
             self.lsp_session.request_definition(cursor.blockNumber() + self._prefix_line_count, cursor.columnNumber())
 
@@ -262,46 +288,57 @@ class LSPCodeEditor(CodeEditor):
         self.handle_go_to_definition({"params": result})
 
     def do_completion(self, automatic=True):
-        if self._lsp_ready: self._completion_timer.start(80)
+        if self._lsp_ready:
+            self._completion_timer.start(10)
 
     def _trigger_completion(self):
-        self.lsp_session.request_completion(self.textCursor().blockNumber() + self._prefix_line_count,
-                                            self.textCursor().columnNumber())
-
-    def _trigger_signature_hint_if_needed(self, event):
-        if event.text() in ('(', ',') and self._lsp_ready: self._signature_timer.start(50); return True
-        return False
+        self.lsp_session.request_completion(
+            self.textCursor().blockNumber() + self._prefix_line_count, self.textCursor().columnNumber()
+        )
 
     def _trigger_signature_help(self):
-        self.lsp_session.request_signature_help(self.textCursor().blockNumber() + self._prefix_line_count,
-                                                self.textCursor().columnNumber())
+        self.lsp_session.request_signature_help(
+            self.textCursor().blockNumber() + self._prefix_line_count, self.textCursor().columnNumber()
+        )
 
     def _trigger_hover(self):
-        self.lsp_session.request_hover(self.textCursor().blockNumber() + self._prefix_line_count,
-                                       self.textCursor().columnNumber())
+        self.lsp_session.request_hover(
+            self.textCursor().blockNumber() + self._prefix_line_count, self.textCursor().columnNumber()
+        )
 
     def _get_completion_prefix(self) -> str:
-        cursor = self.textCursor();
-        pos = cursor.position();
-        text = self.toPlainText();
+        cursor = self.textCursor()
+        pos = cursor.position()
+        text = self.toPlainText()
         start = pos
-        while start > 0 and (text[start - 1].isalnum() or text[start - 1] == '_'): start -= 1
+        while start > 0 and (text[start - 1].isalnum() or text[start - 1] == '_'):
+            start -= 1
         return text[start:pos]
 
     def _on_lsp_completions_ready(self, completion_items: List[Dict]):
         pos = self.textCursor().position()
         for item in completion_items:
-            item.update({'filterText': item.get('label', ''), 'insertText': item.get('label', ''), 'point': pos,
-                         'resolve': True})
+            item.update(
+                {
+                    'filterText': item.get('label', ''),
+                    'insertText': item.get('label', ''),
+                    'point': pos,
+                    'resolve': True
+                }
+            )
         self.completion_args = (pos, True)
         self.process_completion({"params": completion_items})
 
     def resolve_completion_item(self, item):
-        self.lsp_session.request_completion_resolve({k: v for k, v in item.items() if
-                                                     k in {'label', 'kind', 'detail', 'documentation', 'insertText',
-                                                           'filterText', 'textEdit', 'additionalTextEdits', 'command',
-                                                           'data', 'tags', 'insertTextFormat', 'commitCharacters',
-                                                           'preselect'}})
+        self.lsp_session.request_completion_resolve(
+            {
+                k: v for k, v in item.items()
+                if k in {'label', 'kind', 'detail', 'documentation', 'insertText',
+                         'filterText', 'textEdit', 'additionalTextEdits', 'command',
+                         'data', 'tags', 'insertTextFormat', 'commitCharacters',
+                         'preselect'}
+            }
+        )
 
     def _on_completion_resolved(self, resolved_item):
         cw = self.completion_widget
@@ -315,11 +352,20 @@ class LSPCodeEditor(CodeEditor):
         active_sig = result.get('activeSignature', 0)
         sig = result['signatures'][active_sig if active_sig < len(result['signatures']) else 0]
         doc = sig.get('documentation', '')
-        self.process_signatures({"params": {"signatures": {"label": sig['label'],
-                                                           "documentation": doc.get('value', '') if isinstance(doc,
-                                                                                                               dict) else doc,
-                                                           "parameters": sig.get('parameters', [])},
-                                            "activeParameter": result.get('activeParameter', 0)}})
+        self.process_signatures(
+            {
+                "params":
+                    {
+                        "signatures":
+                            {
+                                "label": sig['label'],
+                                "documentation": doc.get('value', '') if isinstance(doc, dict) else doc,
+                                "parameters": sig.get('parameters', [])
+                            },
+                        "activeParameter": result.get('activeParameter', 0)
+                    }
+            }
+        )
 
     def _on_lsp_diagnostics_ready(self, diagnostics: List[Dict]):
         self.clear_extra_selections('lsp_underline')
@@ -346,21 +392,24 @@ class LSPCodeEditor(CodeEditor):
         self.sig_flags_changed.emit()
 
     def _smart_newline(self):
-        cursor = self.textCursor();
+        """
+        shift + enter 智能换行
+        """
+        cursor = self.textCursor()
         line = cursor.block().text()
         indent = ' ' * (len(line) - len(line.lstrip()))
-        cursor.movePosition(QTextCursor.EndOfLine);
-        cursor.insertText('\n' + indent);
+        cursor.movePosition(QTextCursor.EndOfLine)
+        cursor.insertText('\n' + indent)
         self.setTextCursor(cursor)
 
     def _toggle_comment(self):
-        cursor = self.textCursor();
+        cursor = self.textCursor()
         doc = self.document()
-        c = QTextCursor(doc);
-        c.setPosition(cursor.selectionStart());
+        c = QTextCursor(doc)
+        c.setPosition(cursor.selectionStart())
         c.movePosition(QTextCursor.StartOfLine)
-        start_pos = c.position();
-        c.setPosition(cursor.selectionEnd());
+        start_pos = c.position()
+        c.setPosition(cursor.selectionEnd())
         c.movePosition(QTextCursor.EndOfLine)
         c.setPosition(start_pos, QTextCursor.KeepAnchor)
         lines = c.selectedText().split('\u2029')
@@ -371,10 +420,11 @@ class LSPCodeEditor(CodeEditor):
                 new_lines.append(re.sub(r'^(\s*)#\s?', r'\1', t))
             else:
                 pattern = r'^(\s*)'
-                new_lines.append(f"{re.match(pattern, t).group(1)}# {t.lstrip()}") if t.strip() else new_lines.append(
-                    t)
-        cursor.beginEditBlock();
-        c.insertText('\n'.join(new_lines));
+                new_lines.append(
+                    f"{re.match(pattern, t).group(1)}# {t.lstrip()}"
+                ) if t.strip() else new_lines.append(t)
+        cursor.beginEditBlock()
+        c.insertText('\n'.join(new_lines))
         cursor.endEditBlock()
 
     def _copy_with_folding(self):
@@ -383,23 +433,18 @@ class LSPCodeEditor(CodeEditor):
             line = cursor.blockNumber() + 1
             if getattr(self, 'folding_panel', None) and self.folding_panel.folding_status.get(line):
                 end_line = self.folding_panel.folding_regions[line]
-                c = QTextCursor(self.document());
+                c = QTextCursor(self.document())
                 c.setPosition(self.document().findBlockByNumber(line - 1).position())
                 c.setPosition(
                     self.document().findBlockByNumber(end_line - 1).position() + self.document().findBlockByNumber(
                         end_line - 1).length() - 1, QTextCursor.KeepAnchor)
-                QApplication.clipboard().setText(c.selectedText());
+                QApplication.clipboard().setText(c.selectedText())
                 return
         super().copy()
 
     def keyPressEvent(self, event):
-        key = event.key();
+        key = event.key()
         txt = event.text()
-        # 极限响应：触发符立即同步并请求补全 (0 延迟)
-        if txt == "." and self._lsp_ready:
-            super().keyPressEvent(event);
-            self._trigger_completion();
-            return
 
         # 快捷键逻辑保留
         if key in (Qt.Key_Return, Qt.Key_Enter) and not event.modifiers():
@@ -425,11 +470,14 @@ class LSPCodeEditor(CodeEditor):
                 return
 
         if event.modifiers() == Qt.ShiftModifier and key in (Qt.Key_Return, Qt.Key_Enter):
-            self._smart_newline(); return
+            self._smart_newline()
+            return
         elif event.modifiers() == Qt.ControlModifier and key == Qt.Key_Slash:
-            self._toggle_comment(); return
+            self._toggle_comment()
+            return
         elif event.modifiers() == Qt.ControlModifier and key == Qt.Key_I:
-            self.format_document(); return
+            self.format_document()
+            return
 
         if txt in ('(', ',') and self._lsp_ready: self._signature_timer.start(50)
         if txt and self._lsp_ready: self._hover_timer.start(300)
@@ -437,10 +485,12 @@ class LSPCodeEditor(CodeEditor):
         super().keyPressEvent(event)
 
     def resizeEvent(self, event):
-        super().resizeEvent(event); self._update_button_position()
+        super().resizeEvent(event)
+        self._update_button_position()
 
     def _update_button_position(self):
-        if hasattr(self, 'fullscreen_button'): self.fullscreen_button.move(self.width() - 58, 6)
+        if hasattr(self, 'fullscreen_button'):
+            self.fullscreen_button.move(self.width() - 58, 6)
 
 
 class MainWindow(QMainWindow):

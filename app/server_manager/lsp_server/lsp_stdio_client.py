@@ -113,7 +113,7 @@ class LspClientManager(QThread):
                             "environment": self.python_path,
                             "fast_parser": True
                         },
-                        "jedi_completion": {"enabled": True, "fuzzy": True, "include_params": True},
+                        "jedi_completion": {"enabled": True, "fuzzy": True},
                         "pyflakes": {"enabled": True},
                         "pycodestyle": {"enabled": False},
                         "mccabe": {"enabled": False},
@@ -271,11 +271,13 @@ class LspClientManager(QThread):
 
         self._debounce_timer = QTimer()
         self._debounce_timer.setSingleShot(True)
-        self._debounce_timer.timeout.connect(lambda: self._send_message("textDocument/completion", {
-            "textDocument": {"uri": self.uri},
-            "position": {"line": line, "character": col},
-            "context": {"triggerKind": 1}
-        }, priority=10))
+        self._debounce_timer.timeout.connect(
+            lambda: self._send_message("textDocument/completion", {
+                "textDocument": {"uri": self.uri},
+                "position": {"line": line, "character": col},
+                "context": {"triggerKind": 1}
+            }, priority=10)
+        )
         self._debounce_timer.start(25)
 
     def change_document_delta(self, changes: List[Dict]):
@@ -292,7 +294,9 @@ class LspClientManager(QThread):
         }, is_notification=True)
 
     def close_document(self):
-        self._send_message("textDocument/didClose", {"textDocument": {"uri": self.uri}}, is_notification=True)
+        self._send_message(
+            "textDocument/didClose", {"textDocument": {"uri": self.uri}}, is_notification=True
+        )
 
     def request_completion_resolve(self, item: dict):
         keys = {'label', 'kind', 'detail', 'documentation', 'insertText', 'filterText', 'textEdit',
@@ -345,11 +349,5 @@ class LspClientManager(QThread):
 
     def _terminate_process(self):
         if self.process:
-            self.process.terminate()
-            if not self.process.waitForFinished(1000):
-                self.process.kill()
+            self.process.kill()
         self.quit()
-
-    def stop(self):
-        self.shutdown()
-        self.wait()
