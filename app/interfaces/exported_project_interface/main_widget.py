@@ -101,11 +101,6 @@ class ExportedProjectsPage(QWidget):
         top_bar.addWidget(self.import_btn)
         top_bar.addStretch(1)
 
-        # === 主体：Splitter 分割左右 ===
-        splitter = ModernSplitter(Qt.Horizontal)
-        splitter.setHandleWidth(8)
-        splitter.setStyleSheet("QSplitter::handle { background: #3c3c40; }")
-
         # --- 左侧：项目列表 ---
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
@@ -143,11 +138,8 @@ class ExportedProjectsPage(QWidget):
         self.pips_pager.setFixedHeight(30)
         left_layout.addWidget(self.pips_pager)
 
-        splitter.addWidget(left_widget)
-        splitter.addWidget(self.side_dock_area)
-        splitter.setSizes([100, 700])  # 初始隐藏右侧
-
-        main_layout.addWidget(splitter)
+        main_layout.addWidget(left_widget)
+        main_layout.addWidget(self.side_dock_area, 1)
         main_layout.addWidget(self.side_dock_area.tool_panel)
 
     @property

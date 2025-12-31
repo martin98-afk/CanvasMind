@@ -329,7 +329,8 @@ class LspClientManager(QThread):
     def _on_stderr_ready(self):
         try:
             err = self.process.readAllStandardError().data().decode('utf-8', errors='ignore')
-            if err.strip(): logger.debug(f"[LSP Stderr] {err.strip()}")
+            if err.strip():
+                logger.debug(f"[LSP Stderr] {err.strip()}")
         except:
             pass
 

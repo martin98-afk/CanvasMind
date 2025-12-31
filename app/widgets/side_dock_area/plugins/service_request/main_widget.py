@@ -148,8 +148,8 @@ class ServiceTestTool(ToolWindow):
         json_layout.addWidget(self.json_edit)
 
         # 添加到 Stack
-        self.input_stack.addWidget(self.form_page)  # index 0
         self.input_stack.addWidget(self.json_page)  # index 1
+        self.input_stack.addWidget(self.form_page)  # index 0
 
         self.left_layout.addWidget(self.input_stack)
 

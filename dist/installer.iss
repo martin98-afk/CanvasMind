@@ -6,7 +6,7 @@ DefaultGroupName=CanvasMind
 OutputBaseFilename=CanvasMind_installer
 Compression=lzma2
 SolidCompression=yes
-SetupIconFile=logo.ico
+SetupIconFile=logoico.ico
 UninstallDisplayIcon={app}\CanvasMind.exe
 
 [Files]
