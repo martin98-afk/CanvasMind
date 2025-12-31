@@ -141,7 +141,7 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
         return f'''
         <div style="
             position: relative;
-            margin: 16px 0;
+            margin: 12px 0;
             background: #1E1E1E;
             border: 1px solid #3A3F47;
             border-radius: 10px;
@@ -307,7 +307,7 @@ class CodeWebViewer(QWebEngineView):
             pass
 
     def _on_height_reported(self, h):
-        final_h = h + 15
+        final_h = h + 2
         if abs(self.height() - final_h) > 2:
             self.contentHeightChanged.emit(final_h)
 
@@ -318,8 +318,7 @@ class CodeWebViewer(QWebEngineView):
     def _load_skeleton(self):
         tag_css = []
         for act, col in ACTION_COLOR_MAP.items():
-            tag_css.append(
-                f'.context-tag[data-type="{act}"] {{ background: {col}15; border-color: {col}60; color: {col}; }}')
+            tag_css.append(f'.context-tag[data-type="{act}"] {{ background: {col}15; border-color: {col}60; color: {col}; }}')
             tag_css.append(f'.context-tag[data-type="{act}"]:hover {{ background: {col}30; border-color: {col}; }}')
 
         cdn_libs = """
@@ -346,26 +345,46 @@ class CodeWebViewer(QWebEngineView):
                 html {{ overflow: hidden; }}
                 body {{
                     background: transparent !important; color: #E0E0E0;
-                    font-family: "Segoe UI", sans-serif; font-size: 14px; line-height: 1.6;
-                    margin: 0; padding: 12px 12px; overflow: hidden;
+                    font-family: "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5;
+                    margin: 0; 
+                    /* 优化：减小上下内边距 */
+                    padding: 4px 12px; 
+                    overflow: hidden;
                 }}
                 {scrollbar_css}
-                table:not(.code-table) {{ width: 100%; border-collapse: collapse; margin: 12px 0; background: #252526; border-radius: 6px; overflow: hidden; border: 1px solid #3A3F47; }}
-                table:not(.code-table) th {{ background: #333; padding: 8px 12px; text-align: left; font-weight: 600; color: #fff; border-bottom: 2px solid #454545; }}
-                table:not(.code-table) td {{ padding: 8px 12px; border-bottom: 1px solid #3A3F47; color: #ccc; }}
+
+                /* 优化：移除首尾元素的边距，彻底消除多余空白 */
+                #content-placeholder > :first-child {{ margin-top: 0 !important; }}
+                #content-placeholder > :last-child {{ margin-bottom: 0 !important; }}
+                
+                /* 优化：紧凑的段落间距 */
+                p {{ margin: 6px 0; }}
+
+                /* Markdown 表格 */
+                table:not(.code-table) {{ width: 100%; border-collapse: collapse; margin: 8px 0; background: #252526; border-radius: 6px; overflow: hidden; border: 1px solid #3A3F47; }}
+                table:not(.code-table) th {{ background: #333; padding: 6px 12px; text-align: left; font-weight: 600; color: #fff; border-bottom: 2px solid #454545; }}
+                table:not(.code-table) td {{ padding: 6px 12px; border-bottom: 1px solid #3A3F47; color: #ccc; }}
                 table:not(.code-table) tr:nth-child(even) {{ background: #2A2D31; }}
                 table:not(.code-table) tr:hover {{ background: #3A3F47; }}
-                .context-tag {{ display: inline-block; padding: 2px 6px; margin: 0 2px; border: 1px solid transparent; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; }}
-                {"".join(tag_css)}
+                
+                /* 标签 */
+                .context-tag {{ display: inline-block; padding: 1px 5px; margin: 0 2px; border: 1px solid transparent; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; vertical-align: middle; }}
+                { "".join(tag_css) }
+                
+                /* 代码块通用样式 */
                 .code-table {{ width: 100%; border-collapse: collapse; }}
                 .code-table td {{ padding: 0; vertical-align: top; }}
                 .lineno {{ width: 32px; text-align: right; padding-right: 8px !important; color: #606060; border-right: 1px solid #404040; user-select: none; font-size: 12px; line-height: 1.5; }}
+                
+                /* 关键：修复缩进丢失 */
                 .code-line {{ padding-left: 12px !important; color: #d4d4d4; font-size: 13px; line-height: 1.5; white-space: pre; font-family: Consolas, monospace; }}
+                
                 .code-btn:hover {{ background: rgba(255,255,255,0.1) !important; }}
-                details.think-block {{ margin: 8px 0; background: #1a1b1e; border: 1px solid #333; border-radius: 6px; }}
-                details.think-block summary {{ padding: 6px 10px; cursor: pointer; color: #aaa; font-weight: 600; }}
-                .think-content {{ padding: 10px; border-top: 1px solid #333; color: #888; font-style: italic; }}
-                blockquote {{ border-left: 3px solid #FFA500; background: rgba(255,165,0,0.05); margin: 10px 0; padding: 4px 12px; color: #ccc; }}
+                
+                details.think-block {{ margin: 6px 0; background: #1a1b1e; border: 1px solid #333; border-radius: 6px; }}
+                details.think-block summary {{ padding: 4px 10px; cursor: pointer; color: #aaa; font-weight: 600; }}
+                .think-content {{ padding: 8px; border-top: 1px solid #333; color: #888; font-style: italic; }}
+                blockquote {{ border-left: 3px solid #FFA500; background: rgba(255,165,0,0.05); margin: 6px 0; padding: 4px 12px; color: #ccc; }}
             </style>
         </head>
         <body>
@@ -598,6 +617,19 @@ class MessageCard(SimpleCardWidget):
         self.viewer.setFixedHeight(max(40, h))
         self.updateGeometry()
         if self.parentWidget(): QTimer.singleShot(10, self.parentWidget().updateGeometry)
+
+    def wheelEvent(self, event: QWheelEvent):
+        try:
+            scroll_area = self.parent.chat_scroll_area
+            if scroll_area:
+                vbar = scroll_area.verticalScrollBar()
+                if vbar and vbar.minimum() != vbar.maximum() and event.angleDelta().y() != 0:
+                    vbar.setValue(vbar.value() - event.angleDelta().y() // 2)
+                    event.accept()
+                    return
+        except:
+            pass
+        super().wheelEvent(event)
 
     def update_content(self, txt):
         self.viewer.append_chunk(txt)

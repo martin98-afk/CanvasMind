@@ -3,9 +3,11 @@ import json
 import os
 from pathlib import Path
 
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPainter, QPixmap
 from PyQt5.QtWidgets import QVBoxLayout
-from qfluentwidgets import BodyLabel, TextEdit, SubtitleLabel
-from spyder.plugins.variableexplorer.widgets.texteditor import TextEditor
+from qfluentwidgets import TextEdit
+from app.widgets.basic_widget.resizable_image_label import ResizableImageLabel
 
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
@@ -39,6 +41,21 @@ class ProjectInfoTool(ToolWindow):
                 item.widget().deleteLater()
 
         md_path = project_path / "README.md"
+        img_label = ResizableImageLabel(self)
+        img_label.setCursor(Qt.PointingHandCursor)
+
+        pixmap = QPixmap(str(project_path / "preview.png"))
+        if not pixmap.isNull():
+            img_label.setOriginalPixmap(pixmap)
+        else:
+            placeholder = QPixmap(500, 480)
+            placeholder.fill(Qt.transparent)
+            painter = QPainter(placeholder)
+            painter.setPen(Qt.gray)
+            painter.drawText(placeholder.rect(), Qt.AlignCenter, "预览图丢失")
+            painter.end()
+            img_label.setOriginalPixmap(placeholder)
+
         if md_path.exists():
             try:
                 with open(md_path, 'r', encoding='utf-8') as f:
@@ -48,4 +65,5 @@ class ProjectInfoTool(ToolWindow):
         md_description = TextEdit(self)
         md_description.setMarkdown(md_content)
         md_description.setReadOnly(True)
+        self.main_layout.addWidget(img_label)
         self.main_layout.addWidget(md_description, 1)

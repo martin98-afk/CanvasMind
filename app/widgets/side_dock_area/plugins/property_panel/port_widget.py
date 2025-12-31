@@ -10,7 +10,7 @@ import traceback
 from pathlib import Path
 
 import pandas as pd
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QRect
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QWidget, QFileDialog, QStackedWidget
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SegmentedWidget, \
@@ -20,8 +20,7 @@ from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleC
 
 from app.components.base import ArgumentType
 from app.utils.utils import get_icon, canvas_file_dump_path
-from app.widgets.side_dock_area.plugins.property_panel.variable_detailed_popup import VariableDetailPopup
-from app.widgets.side_dock_area.plugins.property_panel.variable_tree import VariableTreeWidget
+from app.widgets.side_dock_area.plugins.property_panel.variable_tree import VariableTreeWidget, VariableDetailPopup
 
 
 class PortWidget(QWidget):
@@ -372,7 +371,7 @@ class PortWidget(QWidget):
         def show_variable_detail():
             if self._detail_popup is None:
                 self._detail_popup = VariableDetailPopup(parent=self)
-            self._detail_popup.set_data(filtered_data, title="变量详情")
+            self._detail_popup.set_data(filtered_data, name="变量详情")
             self._detail_popup.show_at_left_of(browse_btn)
 
         browse_btn.clicked.connect(show_variable_detail)

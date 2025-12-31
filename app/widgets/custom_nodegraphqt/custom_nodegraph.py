@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 import traceback
 
@@ -10,7 +11,6 @@ from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QGraphicsProxyWidget, QApplication
 from loguru import logger
 from qtpy import QtGui, QtCore, QtWidgets
