@@ -7,6 +7,7 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QTextCharFormat
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QApplication
 from intervaltree import IntervalTree
+from loguru import logger
 from qfluentwidgets import TransparentToolButton
 from spyder.plugins.editor.panels.utils import FoldingRegion
 from spyder.plugins.editor.utils.editor import BlockUserData
@@ -38,19 +39,11 @@ class LSPCodeEditor(CodeEditor):
         self._pending_changes = []
         self._prefix_line_count = self.CODE_PREFIX.count('\n')
         self._prefix_char_count = len(self.CODE_PREFIX)
-
+        # 初始化定时器
+        self._init_timers()
         # LSP 集成
         self.lsp_session = LspClientManager(python_path=self.python_exe_path)
-        self.lsp_session.initialized.connect(self._on_lsp_initialized)
-        self.lsp_session.completion_ready.connect(self._on_lsp_completions_ready)
-        self.lsp_session.diagnostics_ready.connect(self._on_lsp_diagnostics_ready)
-        self.lsp_session.folding_ready.connect(self._on_lsp_folding_ready)
-        self.lsp_session.hover_ready.connect(self._on_hover_response)
-        self.lsp_session.definition_ready.connect(self._on_definition_response)
-        self.lsp_session.formatting_ready.connect(self._apply_formatting_edits)
-        self.lsp_session.completion_resolved.connect(self._on_completion_resolved)
-        self.lsp_session.signature_help_ready.connect(self._on_signature_help_response)
-        self.lsp_session.error.connect(lambda e: self.lsp_signal.emit("error"))
+        self._connect_lsp_signals()
 
         # CompletionWidget
         self.completion_widget = CompletionWidget(parent=self, ancestor=self.code_parent)
@@ -83,10 +76,10 @@ class LSPCodeEditor(CodeEditor):
         self.fullscreen_button.setFixedSize(28, 28)
         self._update_button_position()
 
-        # 计时器系统
-        self._lsp_sync_timer = QTimer()
-        self._lsp_sync_timer.setSingleShot(True)
-        self._lsp_sync_timer.timeout.connect(self._sync_to_lsp)
+        # --- 关键：监听内容变更 ---
+        self.document().contentsChange.connect(self._on_document_contents_change)
+
+    def _init_timers(self):
         self._completion_timer = QTimer()
         self._completion_timer.setSingleShot(True)
         self._completion_timer.timeout.connect(self._trigger_completion)
@@ -99,9 +92,34 @@ class LSPCodeEditor(CodeEditor):
         self._folding_timer = QTimer()
         self._folding_timer.setSingleShot(True)
         self._folding_timer.timeout.connect(self._request_folding)
+        self._lsp_sync_timer = QTimer()
+        self._lsp_sync_timer.setSingleShot(True)
+        self._lsp_sync_timer.timeout.connect(self._sync_to_lsp)
 
-        # 极限性能：使用 contentsChange 替代 textChanged
-        self.document().contentsChange.connect(self._on_document_contents_change)
+    def _connect_lsp_signals(self):
+        self.lsp_session.initialized.connect(self._on_lsp_initialized)
+        self.lsp_session.completion_ready.connect(self._on_lsp_completions_ready)
+        self.lsp_session.diagnostics_ready.connect(self._on_lsp_diagnostics_ready)
+        self.lsp_session.folding_ready.connect(self._on_lsp_folding_ready)
+        self.lsp_session.hover_ready.connect(self._on_hover_response)
+        self.lsp_session.definition_ready.connect(self._on_definition_response)
+        self.lsp_session.formatting_ready.connect(self._apply_formatting_edits)
+        self.lsp_session.completion_resolved.connect(self._on_completion_resolved)
+        self.lsp_session.signature_help_ready.connect(self._on_signature_help_response)
+        self.lsp_session.error.connect(lambda e: self.lsp_signal.emit("error"))
+
+    def set_completion_environment(self, python_exe: str = None):
+        self._lsp_document_opened = False
+        if python_exe is None or python_exe == self.python_exe_path:
+            self.lsp_signal.emit("restarting...")
+        else:
+            self.python_exe_path = python_exe;
+            self.lsp_signal.emit("starting")
+        if hasattr(self, 'lsp_session') and self.lsp_session:
+            self.lsp_session.shutdown()
+        self.lsp_session.set_python_path(self.python_exe_path)
+
+        QTimer.singleShot(1000, self.lsp_session.start)
 
     # ========== 核心优化：0-Diff 增量同步 ==========
 
@@ -137,21 +155,6 @@ class LSPCodeEditor(CodeEditor):
             self.lsp_session.change_document_delta(changes)
             self._pending_changes.clear()
         self._folding_timer.start(800)
-
-    # ========== 保留所有原有函数，禁止删减功能 ==========
-
-    def set_completion_environment(self, python_exe: str = None):
-        self._lsp_document_opened = False
-        if python_exe is None or python_exe == self.python_exe_path:
-            self.lsp_signal.emit("restarting...")
-        else:
-            self.python_exe_path = python_exe;
-            self.lsp_signal.emit("starting")
-        if hasattr(self, 'lsp_session') and self.lsp_session:
-            self.lsp_session.shutdown()
-        self.lsp_session.set_python_path(self.python_exe_path)
-
-        QTimer.singleShot(1000, self.lsp_session.start)
 
     def _on_lsp_initialized(self):
         self._lsp_ready = True;
@@ -316,18 +319,38 @@ class LSPCodeEditor(CodeEditor):
         return text[start:pos]
 
     def _on_lsp_completions_ready(self, completion_items: List[Dict]):
+        """处理补全结果"""
         pos = self.textCursor().position()
+        clean_items = []
+
+        prefix = self._get_completion_prefix()
+
         for item in completion_items:
-            item.update(
-                {
-                    'filterText': item.get('label', ''),
-                    'insertText': item.get('label', ''),
-                    'point': pos,
-                    'resolve': True
-                }
-            )
+            # 1. 获取基础信息
+            label = item.get('label', '')
+            insert_text = item.get('insertText', label)
+
+            # 2. 解决 "plt.plot(args...)" 问题：剥离括号及参数
+            # 如果 insertText 等于 label 且包含括号，这通常是 Jedi 的默认行为，我们需要手动清洗
+            if insert_text == label and '(' in insert_text:
+                insert_text = insert_text.split('(')[0]
+
+            # 构造 Spyder 需要的格式
+            item_data = item.copy()
+            item_data.update({
+                'label': label,
+                'filterText': item.get('filterText', label),  # 用于模糊匹配
+                'insertText': insert_text,
+                'kind': item.get('kind', 1),
+                'documentation': item.get('documentation', ''),
+                'detail': item.get('detail', ''),
+                'point': pos,
+                'resolve': True  # 允许后续解析文档
+            })
+            clean_items.append(item_data)
+
         self.completion_args = (pos, True)
-        self.process_completion({"params": completion_items})
+        self.process_completion({"params": clean_items})
 
     def resolve_completion_item(self, item):
         self.lsp_session.request_completion_resolve(
@@ -369,27 +392,51 @@ class LSPCodeEditor(CodeEditor):
 
     def _on_lsp_diagnostics_ready(self, diagnostics: List[Dict]):
         self.clear_extra_selections('lsp_underline')
-        # 批量处理诊断信息，减少 UI 刷新频率
+        block = self.document().firstBlock()
+        while block.isValid():
+            data = block.userData()
+            if data and hasattr(data, 'code_analysis'):
+                data.code_analysis = [x for x in data.code_analysis if x[0] != 'lsp']
+                if not data.code_analysis:
+                    data.color = None
+            block = block.next()
+        has_error = False
         for diag in diagnostics:
             try:
-                line = diag['range']['start']['line'] - self._prefix_line_count
-                if line < 0: continue
+                line = diag['range']['start']['line'] - len(self.CODE_PREFIX.splitlines())
+                severity = diag.get('severity', 1)
+                message = diag.get('message', '').strip()
+                if not message:
+                    continue
                 block = self.document().findBlockByNumber(line)
-                if not block.isValid(): continue
-                data = block.userData() or BlockUserData(self)
-                data.code_analysis = [('lsp', '', diag.get('severity', 1), diag.get('message', '').strip())]
-                data.color = self.error_color if diag.get('severity') == 1 else self.warning_color
+                if not block.isValid():
+                    continue
+                data = block.userData()
+                if not data:
+                    data = BlockUserData(self)
                 block.setUserData(data)
-                # 绘制下划线
-                cursor = QTextCursor(block)
-                cursor.movePosition(QTextCursor.Right, QTextCursor.MoveAnchor, diag['range']['start']['character'])
-                cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor,
-                                    diag['range']['end']['character'] - diag['range']['start']['character'])
-                self.highlight_selection('lsp_underline', cursor, underline_color=QColor(data.color),
-                                         underline_style=QTextCharFormat.WaveUnderline)
-            except:
-                pass
-        self.sig_flags_changed.emit()
+                data.code_analysis.append(('lsp', '', severity, message))
+                data.color = self.error_color if severity == 1 else self.warning_color
+                has_error = True
+                start_char = diag['range']['start']['character']
+                end_char = diag['range']['end']['character']
+                start_pos = block.position() + start_char
+                end_pos = block.position() + end_char
+                cursor = QTextCursor(self.document())
+                cursor.setPosition(start_pos)
+                cursor.setPosition(end_pos, QTextCursor.KeepAnchor)
+                self.highlight_selection(
+                    'lsp_underline',
+                    cursor,
+                    underline_color=QColor(data.color),
+                    underline_style=QTextCharFormat.WaveUnderline
+                )
+            except Exception as e:
+                logger.exception(f"[LSP] Error processing diagnostic: {e}")
+        if has_error:
+            self.sig_flags_changed.emit()
+            if hasattr(self, 'linenumberarea'):
+                self.linenumberarea.update()
 
     def _smart_newline(self):
         """
