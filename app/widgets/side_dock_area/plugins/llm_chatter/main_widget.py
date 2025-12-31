@@ -498,6 +498,8 @@ class OpenAIChatToolWindow(ToolWindow):
         elif action == "copy":
             clipboard = QApplication.clipboard()
             clipboard.setText(code)
+            InfoBar.success('已复制', '', duration=1500, parent=self.homepage,
+                            position=InfoBarPosition.TOP_RIGHT)
 
     def _scroll_to_bottom(self):
         QTimer.singleShot(10, lambda: self.chat_scroll_area.verticalScrollBar().setValue(
