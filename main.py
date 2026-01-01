@@ -29,6 +29,8 @@ def create_application():
     # 启用 DPI 缩放
     enable_dpi_scale()
     # 创建应用
+    sys.argv.append("--no-sandbox")
+
     app = QApplication(sys.argv)
     # 启用fusion样式
     app.setStyle("Fusion")

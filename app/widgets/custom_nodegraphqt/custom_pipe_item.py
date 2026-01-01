@@ -117,26 +117,41 @@ class CustomPipeItem(PipeItem):
 
     def _draw_path_horizontal(self, start_port, pos1, pos2, path):
         """
-        优化后的路径绘制逻辑
+        优化后的路径绘制逻辑，修复近距离扭曲问题
         """
         if pos1 == pos2:
             return
-        # --- 内部辅助函数：计算节点高度（保持原样或略作优化） ---
+
         def calc_node_height(node):
-            if hasattr(node, "view"):  # NodeGraphQt 内部通常可以通过 view 获取
+            if hasattr(node, "view"):
                 return node.view.boundingRect().height()
             return node.boundingRect().height()
 
-        # 基础参数
         layout = self.viewer_pipe_layout()
 
-        # 1. 【曲线布局优化】使用自适应切线
-        if layout == PipeLayoutEnum.CURVED.value:
-            dist = abs(pos1.x() - pos2.x())
-            # 根据距离动态调整切线长度，最小 40，最大 150
-            tangent = min(max(dist * 0.5, 40.0), 150.0)
+        # 获取水平和垂直距离
+        dx = abs(pos1.x() - pos2.x())
+        dy = abs(pos1.y() - pos2.y())
 
-            # 如果是输入端口（从右往左拉），切线方向反转
+        # 1. 【曲线布局优化】解决近距离扭曲
+        if layout == PipeLayoutEnum.CURVED.value:
+            # --- 核心算法：自适应切线 ---
+            # 1. 基础切线是水平距离的一半
+            tangent = dx * 0.5
+
+            # 2. 修正：当水平距离 dx 非常小时，如果还用固定最小值(如40)，曲线会扭曲。
+            # 我们基于垂直距离 dy 补偿一点弧度，但限制它不能在 dx 很小时过大。
+            if dx < 100:
+                # 在近距离时，切线由 dx 和 dy 共同决定，比例缩小
+                # 这里的公式保证了当 dx 趋近 0 时，切线不会保持在 40 导致“打结”
+                tangent = min(max(dx * 0.5, dy * 0.1), 40.0)
+                # 确保即使重合也有极小的一段直线引出
+                tangent = max(tangent, 15.0)
+            else:
+                # 远距离时限制最大切线长度，防止曲线过大
+                tangent = min(tangent, 150.0)
+
+            # 判断端口类型决定切线方向
             if start_port.port_type == PortTypeEnum.IN.value:
                 cp1 = QtCore.QPointF(pos1.x() - tangent, pos1.y())
                 cp2 = QtCore.QPointF(pos2.x() + tangent, pos2.y())
@@ -146,50 +161,47 @@ class CustomPipeItem(PipeItem):
 
             path.cubicTo(cp1, cp2, pos2)
 
-        # 2. 【折线布局优化】实现带圆角的智能避让折线
+        # 2. 【折线布局优化】实现动态避让
         elif layout == PipeLayoutEnum.ANGLE.value:
             points = [pos1]
-            side_margin = 40.0
 
-            # 简化后的点生成逻辑 (这里保持你之前的逻辑，但增加对重合点的防御)
+            # 动态边距：如果节点离得太近，缩小起始段的长度
+            side_margin = min(40.0, dx * 0.4) if dx > 5 else 5.0
+
+            is_forward = False
             if start_port.port_type == PortTypeEnum.OUT.value:
-                if pos1.x() + side_margin <= pos2.x() - side_margin:
-                    mid_x = pos1.x() + (pos2.x() - pos1.x()) / 2
-                    points.append(QtCore.QPointF(mid_x, pos1.y()))
-                    points.append(QtCore.QPointF(mid_x, pos2.y()))
-                else:
-                    node_h = calc_node_height(start_port.node)
-                    y_offset = node_h if pos1.y() <= pos2.y() else -node_h
-                    points.append(QtCore.QPointF(pos1.x() + side_margin, pos1.y()))
-                    points.append(QtCore.QPointF(pos1.x() + side_margin, pos1.y() + y_offset))
-                    points.append(QtCore.QPointF(pos2.x() - side_margin, pos1.y() + y_offset))
-                    points.append(QtCore.QPointF(pos2.x() - side_margin, pos2.y()))
+                is_forward = pos2.x() > pos1.x() + (side_margin * 2)
             else:
-                # IN 端口逻辑同理...
-                if pos1.x() - side_margin >= pos2.x() + side_margin:
-                    mid_x = pos1.x() - (pos1.x() - pos2.x()) / 2
-                    points.append(QtCore.QPointF(mid_x, pos1.y()))
-                    points.append(QtCore.QPointF(mid_x, pos2.y()))
-                else:
-                    node_h = calc_node_height(start_port.node)
-                    y_offset = node_h if pos1.y() <= pos2.y() else -node_h
-                    points.append(QtCore.QPointF(pos1.x() - side_margin, pos1.y()))
-                    points.append(QtCore.QPointF(pos1.x() - side_margin, pos1.y() + y_offset))
-                    points.append(QtCore.QPointF(pos2.x() + side_margin, pos1.y() + y_offset))
-                    points.append(QtCore.QPointF(pos2.x() + side_margin, pos2.y()))
+                is_forward = pos2.x() < pos1.x() - (side_margin * 2)
+
+            if is_forward:
+                # 正常向前的折线
+                mid_x = pos1.x() + (pos2.x() - pos1.x()) / 2
+                points.append(QtCore.QPointF(mid_x, pos1.y()))
+                points.append(QtCore.QPointF(mid_x, pos2.y()))
+            else:
+                # 逆向避让折线
+                node_h = calc_node_height(start_port.node)
+                y_offset = node_h if pos1.y() <= pos2.y() else -node_h
+
+                # 根据端口类型计算绕行点
+                direct = 1 if start_port.port_type == PortTypeEnum.OUT.value else -1
+
+                p1_ext = QtCore.QPointF(pos1.x() + side_margin * direct, pos1.y())
+                p1_bypass = QtCore.QPointF(pos1.x() + side_margin * direct, pos1.y() + y_offset)
+                p2_bypass = QtCore.QPointF(pos2.x() - side_margin * direct, pos1.y() + y_offset)
+                p2_ext = QtCore.QPointF(pos2.x() - side_margin * direct, pos2.y())
+
+                points.extend([p1_ext, p1_bypass, p2_bypass, p2_ext])
 
             points.append(pos2)
 
-            # --- 修复点重合问题的关键步骤 ---
-            # 1. 过滤掉连续的重复点
+            # 过滤极近点并绘制圆角
             clean_points = [points[0]]
             for i in range(1, len(points)):
-                # 如果当前点和上一个点太近，就跳过
-                dist = (points[i] - clean_points[-1]).manhattanLength()
-                if dist > 0.1:  # 只要距离大于0.1像素就认为是有效的转折点
+                if (points[i] - clean_points[-1]).manhattanLength() > 0.5:
                     clean_points.append(points[i])
 
-            # 2. 调用安全的绘图函数
             self._draw_rounded_path(path, clean_points, radius=12.0)
 
         self.setPath(path)
