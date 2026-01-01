@@ -21,6 +21,7 @@ from Qt import QtGui, QtCore, QtWidgets
 from loguru import logger
 from qtpy import QtGui, QtCore, QtWidgets
 
+from app.nodes.sticky_note import StickyNoteNode
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomLivePipeItem, CustomPipeItem
@@ -690,6 +691,8 @@ class CustomNodeGraph(NodeGraph):
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
                             node.view.widgets[prop].set_value(val)
+                    elif isinstance(node, StickyNoteNode):
+                        node.set_property(prop, val)
 
                 nodes[n_id] = node
 

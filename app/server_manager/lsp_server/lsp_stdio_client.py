@@ -111,9 +111,13 @@ class LspClientManager(QThread):
                     "plugins": {
                         "jedi": {
                             "environment": self.python_path,
-                            "fast_parser": True
+                            "fast_parser": True,
                         },
-                        "jedi_completion": {"enabled": True, "fuzzy": True},
+                        "jedi_completion": {
+                            "enabled": True, "fuzzy": True,
+                            "cache_for": ["numpy", "pandas", "sklearn", "matplotlib"]  # 对大型库开启缓存
+                        },
+                        "jedi_definition": {"enabled": True, "follow_imports": True},
                         "pyflakes": {"enabled": True},
                         "pycodestyle": {"enabled": False},
                         "mccabe": {"enabled": False},

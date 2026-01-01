@@ -11,6 +11,7 @@ from app.nodes.echart_node import create_chart_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.status_node import StatusNode
+from app.nodes.sticky_note import StickyNoteNode
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_icon
 from .logger import get_logger
@@ -59,6 +60,10 @@ class NodeOperations:
         output_port_node = CustomPortOutputNode
         output_port_node.__name__ = "ControlFlowOutputPort"
         self.graph.register_node(output_port_node)
+        # 注释节点
+        sticky_note = StickyNoteNode
+        sticky_note.__name__ = "StickyNote"
+        self.graph.register_node(sticky_note)
         # 注册分支节点
         branch_node = create_branch_node(self.parent)
         branch_node.__name__ = "ControlFlowBranchNode"
