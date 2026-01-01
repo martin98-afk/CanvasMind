@@ -30,11 +30,13 @@
     <file>从此处运行.svg</file>
     <file>代码执行.svg</file>
     <file>停止.svg</file>
+    <file>全选.svg</file>
     <file>关联规则.svg</file>
     <file>分类决策树.svg</file>
     <file>删除变量.svg</file>
     <file>升序.svg</file>
     <file>参数提取器-F.svg</file>
+    <file>取消选择.svg</file>
     <file>变量.svg</file>
     <file>回归决策树.svg</file>
     <file>回形针.svg</file>
@@ -62,6 +64,7 @@
     <file>放大.svg</file>
     <file>数据分析-流量分析.svg</file>
     <file>数据库操作.svg</file>
+    <file>数组.svg</file>
     <file>文档.svg</file>
     <file>文档提取器.svg</file>
     <file>新建.svg</file>
@@ -86,6 +89,7 @@
     <file>缩放.svg</file>
     <file>自定义变量.svg</file>
     <file>节点变量.svg</file>
+    <file>表格.svg</file>
     <file>调试.svg</file>
     <file>运行.svg</file>
     <file>运行中.svg</file>

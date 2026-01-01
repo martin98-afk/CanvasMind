@@ -10,7 +10,7 @@ import traceback
 from pathlib import Path
 
 import pandas as pd
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QRect
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QWidget, QFileDialog, QStackedWidget
 from loguru import logger
 from qfluentwidgets import CardWidget, BodyLabel, PushButton, ListWidget, SegmentedWidget, \
@@ -20,8 +20,7 @@ from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleC
 
 from app.components.base import ArgumentType
 from app.utils.utils import get_icon, canvas_file_dump_path
-from app.widgets.side_dock_area.plugins.property_panel.variable_detailed_popup import VariableDetailPopup
-from app.widgets.side_dock_area.plugins.property_panel.variable_tree import VariableTreeWidget
+from app.widgets.side_dock_area.plugins.property_panel.variable_tree import VariableTreeWidget, VariableDetailPopup
 
 
 class PortWidget(QWidget):
@@ -218,33 +217,6 @@ class PortWidget(QWidget):
 
     def _add_column_selector_widget_to_layout(self, port_name, data, layout):
         """向布局添加列选择控件"""
-        if not isinstance(data, pd.DataFrame) or data.empty:
-            return
-        columns = list(data.columns)
-        if not columns:
-            return
-
-        column_card = CardWidget(self)
-        initial_max_height = 200
-        column_card.setMaximumHeight(initial_max_height)
-        column_card.setMinimumHeight(initial_max_height)
-
-        node_id = self.node.id
-        port_identifier = f"{node_id}_{port_name}"
-        if not hasattr(self.parent_panel, '_column_selector_card_expanded'):
-            self.parent_panel._column_selector_card_expanded = {}
-        self.parent_panel._column_selector_card_expanded[port_identifier] = False
-
-        card_layout = QVBoxLayout(column_card)
-        card_layout.setContentsMargins(4, 4, 4, 4)
-        card_layout.setSpacing(8)
-
-        title_btn_layout = QHBoxLayout()
-        title_label = BodyLabel("   CSV列选择:")
-        title_btn_layout.addWidget(title_label)
-        title_btn_layout.addStretch()
-        expand_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
-
         def toggle_expand():
             is_expanded = self.parent_panel._column_selector_card_expanded[port_identifier]
             if is_expanded:
@@ -258,38 +230,10 @@ class PortWidget(QWidget):
                 padding_height = card_layout.contentsMargins().top() + card_layout.contentsMargins().bottom()
                 title_height = title_label.sizeHint().height() + card_layout.spacing()
                 total_estimated_height = padding_height + title_height + estimated_height_for_items
-                column_card.setFixedHeight(total_estimated_height + 40)
+                column_card.setFixedHeight(total_estimated_height + 10)
                 expand_btn.setIcon(get_icon("缩小"))
                 self.parent_panel._column_selector_card_expanded[port_identifier] = True
             layout.invalidate()  # 通知父布局重新计算大小
-
-        expand_btn.clicked.connect(toggle_expand)
-        title_btn_layout.addWidget(expand_btn)
-        card_layout.addLayout(title_btn_layout)
-
-        list_widget = ListWidget(self)
-        list_widget.setSelectionMode(ListWidget.NoSelection)
-        for col in columns:
-            item = QListWidgetItem(col)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Unchecked)
-            list_widget.addItem(item)
-
-        selected_columns = self.node.column_select.get(port_name, [])
-        if not selected_columns and columns:
-            selected_columns = columns.copy()
-            self.node.column_select[port_name] = selected_columns
-        for i in range(list_widget.count()):
-            item = list_widget.item(i)
-            item.setCheckState(Qt.Checked if item.text() in selected_columns else Qt.Unchecked)
-
-        card_layout.addWidget(list_widget)
-
-        btn_layout = QHBoxLayout()
-        select_all_btn = PushButton("全选", self)
-        select_all_btn.setFixedHeight(26)
-        clear_btn = PushButton("清空", self)
-        clear_btn.setFixedHeight(26)
 
         def select_all():
             list_widget.blockSignals(True)
@@ -325,12 +269,63 @@ class PortWidget(QWidget):
                 if isinstance(widget, VariableTreeWidget):
                     widget.set_data(selected_data_subset)
 
-        list_widget.itemChanged.connect(_on_selection_changed)
+        if not isinstance(data, pd.DataFrame) or data.empty:
+            return
+        columns = list(data.columns)
+        if not columns:
+            return
+
+        column_card = CardWidget(self)
+        initial_max_height = 200
+        column_card.setMaximumHeight(initial_max_height)
+        column_card.setMinimumHeight(initial_max_height)
+
+        node_id = self.node.id
+        port_identifier = f"{node_id}_{port_name}"
+        if not hasattr(self.parent_panel, '_column_selector_card_expanded'):
+            self.parent_panel._column_selector_card_expanded = {}
+        self.parent_panel._column_selector_card_expanded[port_identifier] = False
+
+        card_layout = QVBoxLayout(column_card)
+        card_layout.setContentsMargins(4, 4, 4, 4)
+        card_layout.setSpacing(0)
+
+        title_btn_layout = QHBoxLayout()
+        title_label = BodyLabel("   CSV列选择:")
+        title_btn_layout.addWidget(title_label)
+        title_btn_layout.addStretch()
+
+        select_all_btn = TransparentToolButton(icon=get_icon("全选"), parent=self)
+        clear_btn = TransparentToolButton(icon=get_icon("取消选择"), parent=self)
         select_all_btn.clicked.connect(select_all)
         clear_btn.clicked.connect(clear_all)
-        btn_layout.addWidget(select_all_btn)
-        btn_layout.addWidget(clear_btn)
-        card_layout.addLayout(btn_layout)
+        title_btn_layout.addWidget(select_all_btn)
+        title_btn_layout.addWidget(clear_btn)
+
+        expand_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
+        expand_btn.clicked.connect(toggle_expand)
+        title_btn_layout.addWidget(expand_btn)
+        card_layout.addLayout(title_btn_layout)
+
+        list_widget = ListWidget(self)
+        list_widget.setSelectionMode(ListWidget.NoSelection)
+        for col in columns:
+            item = QListWidgetItem(col)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(Qt.Unchecked)
+            list_widget.addItem(item)
+
+        selected_columns = self.node.column_select.get(port_name, [])
+        if not selected_columns and columns:
+            selected_columns = columns.copy()
+            self.node.column_select[port_name] = selected_columns
+        for i in range(list_widget.count()):
+            item = list_widget.item(i)
+            item.setCheckState(Qt.Checked if item.text() in selected_columns else Qt.Unchecked)
+
+        card_layout.addWidget(list_widget)
+
+        list_widget.itemChanged.connect(_on_selection_changed)
         layout.addWidget(column_card, 1)
 
         self._column_list_widgets[port_name] = list_widget
@@ -376,7 +371,7 @@ class PortWidget(QWidget):
         def show_variable_detail():
             if self._detail_popup is None:
                 self._detail_popup = VariableDetailPopup(parent=self)
-            self._detail_popup.set_data(filtered_data, title="变量详情")
+            self._detail_popup.set_data(filtered_data, name="变量详情")
             self._detail_popup.show_at_left_of(browse_btn)
 
         browse_btn.clicked.connect(show_variable_detail)

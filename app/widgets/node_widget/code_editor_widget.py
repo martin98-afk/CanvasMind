@@ -35,3 +35,6 @@ class CodeEditorWidgetWrapper(CustomNodeBaseWidget):
 
     def set_value(self, value):
         self._editor.set_code(value or "")
+
+    def size_hint(self):
+        return QtCore.QSize(self._editor.width(), self._editor.height())

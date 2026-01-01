@@ -220,29 +220,31 @@ class CustomNodeItem(NodeItem):
         MIN_HEADER_HEIGHT = 16.0
         text_height = self._text_item.boundingRect().height()
         header_height = max(text_height + 4.0, MIN_HEADER_HEIGHT)
-        label_v_offset = (header_height - text_height) / 2.0
 
-        # update port text visibility
-        for port, text in self._input_items.items():
-            if port.isVisible():
-                text.setVisible(port.display_name)
-        for port, text in self._output_items.items():
-            if port.isVisible():
-                text.setVisible(port.display_name)
+        if not self._proxy_mode:
+            label_v_offset = (header_height - text_height) / 2.0
+            # update port text visibility
+            for port, text in self._input_items.items():
+                if port.isVisible():
+                    text.setVisible(port.display_name)
+            for port, text in self._output_items.items():
+                if port.isVisible():
+                    text.setVisible(port.display_name)
 
-        # setup base size —— 确保总高度至少包含标题
-        self._set_base_size(add_h=header_height)
+            # setup base size —— 确保总高度至少包含标题
+            self._set_base_size(add_h=header_height)
 
-        # set colors and tooltip
-        self._set_text_color(self.text_color)
-        self._tooltip_disable(self.disabled)
+            # set colors and tooltip
+            self._set_text_color(self.text_color)
+            self._tooltip_disable(self.disabled)
 
-        # --- align all items with new header offset ---
-        self.align_label(v_offset=label_v_offset)
-        self.align_icon(h_offset=6, v_offset=label_v_offset - 1.5)
+            # --- align all items with new header offset ---
+            self.align_label(v_offset=label_v_offset)
+            self.align_icon(h_offset=6, v_offset=label_v_offset - 1.5)
+
+            self.align_widgets(v_offset=header_height + 8.0)  # ⬅️ widgets 下移
+
         self.align_ports(v_offset=header_height)  # ⬅️ ports 下移
-        self.align_widgets(v_offset=header_height + 8.0)  # ⬅️ widgets 下移
-
         self.update()
         if self._proxy_mode:
             self._update_proxy_text_position()
@@ -331,7 +333,7 @@ class CustomNodeItem(NodeItem):
             side_padding = 20
         # 节点宽度计算, 端口宽+端口文本宽+max（节点文本宽,自定义控件宽）+边距，最后与代理文本宽度取最大
         width = max(
-            port_width + port_text_width + max([text_w, widget_width]) + side_padding,
+            port_width + max(port_text_width, 40) + max([text_w, widget_width]) + side_padding,
             self._proxy_text_item.boundingRect().width() + 20
         )
         height = max([text_h, p_input_height, p_output_height, widget_height])

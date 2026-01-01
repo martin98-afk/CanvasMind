@@ -3,10 +3,12 @@ import base64
 import re
 import urllib
 import time
+import json
+import uuid
 from datetime import datetime
 from html import escape
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl, QPoint
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QWheelEvent
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import (
@@ -29,13 +31,9 @@ except ImportError:
 # ======== Markdown 实例 ========
 _md_instance = None
 ACTION_COLOR_MAP = {
-    "jump": "#FFA500",  # 橙色
-    "create": "#9370DB",  # 皇家蓝
-    "generate": "#32CD32",  # 石灰绿
-    "ask": "#FF6347",  # 番茄红
-    "view": "#4169E1",  # 中紫色
+    "jump": "#FFA500", "create": "#9370DB", "generate": "#32CD32", "ask": "#FF6347", "view": "#4169E1"
 }
-DEFAULT_COLOR = "#888888"  # 未知类型兜底色
+DEFAULT_COLOR = "#888888"
 
 
 def get_markdown_instance():
@@ -50,67 +48,63 @@ def get_markdown_instance():
 
 
 def _unwrap_code_blocks_with_context_links(md_text: str) -> str:
-    """
-    如果代码块（```...```）内部包含 [xxx](yyy) 格式的上下文链接，
-    则移除 ``` 包裹，使其作为普通 Markdown 段落渲染，
-    从而让 [xxx](yyy) 能被正常转换为 context-tag。
-    """
-
     def replacer(match):
         lang_part = match.group(1) or ""
         code_content = match.group(2)
-        # 检查是否包含 [xxx](yyy) 模式（允许有空格）
         if re.search(r'\[[^\[\]]+\]\([^)\s]+\)', code_content) and lang_part not in ("python"):
-            # 包含上下文链接 → 返回未包裹的原始内容（保留语言标识？不保留）
             return code_content
         else:
-            # 不包含 → 保留原样
-            if lang_part:
-                return f'```{lang_part}\n{code_content}```'
-            else:
-                return f'```\n{code_content}```'
+            return f'```{lang_part}\n{code_content}```' if lang_part else f'```\n{code_content}```'
 
-    # 匹配所有 ```...``` 代码块（包括带语言和不带语言的）
     pattern = re.compile(r'```(\w*)\n(.*?)```', re.DOTALL)
     return pattern.sub(replacer, md_text)
 
 
-# ======== Web 专用：代码块增强（使用 Pygments + 完整 CSS）========
+# ======== 核心逻辑：保留你的原始代码块样式 ========
 def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
     def replacer(match):
         lang = (match.group(1) or "").replace("language-", "").strip()
         code_content_raw = match.group(2) or ""
 
+        # --- Echarts 支持 ---
+        if lang == 'echarts':
+            chart_id = f"chart_{uuid.uuid4().hex}"
+            try:
+                json_content = code_content_raw.strip()
+            except:
+                json_content = "{}"
+            return f'''
+            <div class="echarts-wrapper" style="width: 100%; height: 300px; margin: 16px 0; border: 1px solid #3A3F47; border-radius: 10px; padding: 4px; background: #1E1E1E;">
+                <div id="{chart_id}" class="echarts-div" style="width: 100%; height: 100%;" data-option="{escape(json_content)}"></div>
+            </div>
+            '''
+
+        # --- Mermaid 支持 ---
+        if lang == 'mermaid':
+            return f'''<div class="mermaid" style="background: transparent; margin: 16px 0; overflow-x: auto;">{code_content_raw}</div>'''
+
+        # --- 你的原始代码块逻辑 ---
         try:
-            copy_text = code_content_raw.replace("&lt;", "<") \
-                .replace("&gt;", ">") \
-                .replace("&amp;", "&") \
-                .replace("&#39;", "'") \
-                .replace("&quot;", '"')
+            copy_text = code_content_raw.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&").replace(
+                "&#39;", "'").replace("&quot;", '"')
         except:
             copy_text = code_content_raw
 
         b64_copy = base64.b64encode(copy_text.encode('utf-8')).decode('ascii')
 
-        # —————— 关键：我们自己生成表格，不依赖 Pygments 行号 ——————
         try:
             from pygments import highlight
             from pygments.lexers import get_lexer_by_name, TextLexer
             from pygments.formatters import HtmlFormatter
-
             lexer = get_lexer_by_name(lang, stripall=False) if lang else TextLexer()
             formatter = HtmlFormatter(
-                style='dracula',
-                linenos=False,
-                noclasses=True,
-                cssclass='code-block',
+                style='dracula', linenos=False, noclasses=True, cssclass='code-block',
                 prestyles='margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;'
             )
             highlighted_code = highlight(copy_text, lexer, formatter)
         except Exception:
             highlighted_code = f'<pre style="margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;">{escape(copy_text)}</pre>'
 
-        # —————— 手动构造带行号的表格 ——————
         lines = copy_text.splitlines() or [""]
         max_line = len(str(len(lines)))
         line_numbers_html = "\n".join(
@@ -147,7 +141,7 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
         return f'''
         <div style="
             position: relative;
-            margin: 16px 0;
+            margin: 12px 0;
             background: #1E1E1E;
             border: 1px solid #3A3F47;
             border-radius: 10px;
@@ -155,74 +149,28 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
             font-family: Consolas, monospace;
             font-size: 13px;
         ">
-            <!-- 顶部工具栏区域（固定，不滚动） -->
+            <!-- 顶部工具栏区域 -->
             <div style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 6px 10px;
-                height: 30px;
-                background: rgba(28, 28, 28, 0.95);
-                border-bottom: 1px solid #2d2d2d;
-                border-radius: 10px 10px 0 0;
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 6px 10px; height: 30px; background: rgba(28, 28, 28, 0.95);
+                border-bottom: 1px solid #2d2d2d; border-radius: 10px 10px 0 0;
             ">
-                <!-- 左侧：语言标签 -->
                 {f'<span style="color: #FFA500; font-size: 13px; font-weight: bold;">{lang}</span>' if lang else '<span style="color: #888;">Plain Text</span>'}
-
-                <!-- 右侧：按钮组 -->
                 <div style="display: flex; gap: 12px; align-items: center; padding-right: 4px;">
-                    <button type="button" data-action="insert" data-copy="{b64_copy}" class="code-btn" data-tooltip="插入代码" style="
-                        width: 30px;
-                        height: 30px;
-                        background: transparent;
-                        border: none;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 0;
-                        border-radius: 6px;
-                    ">
+                    <button type="button" data-action="insert" data-copy="{b64_copy}" class="code-btn" data-tooltip="插入代码" style="width: 30px; height: 30px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 6px;">
                         <img src="qrc:/icons/插入.svg" style="width:22px; height:22px; pointer-events: none;" />
                     </button>
-                    <button type="button" data-action="create" data-copy="{b64_copy}" class="code-btn" data-tooltip="新建组件" style="
-                        width: 30px;
-                        height: 30px;
-                        background: transparent;
-                        border: none;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 0;
-                        border-radius: 6px;
-                    ">
+                    <button type="button" data-action="create" data-copy="{b64_copy}" class="code-btn" data-tooltip="新建组件" style="width: 30px; height: 30px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 6px;">
                         <img src="qrc:/icons/新建.svg" style="width:22px; height:22px; pointer-events: none;" />
                     </button>
-                    <button type="button" data-action="copy" data-copy="{b64_copy}" class="code-btn" data-tooltip="复制代码" style="
-                        width: 30px;
-                        height: 30px;
-                        background: transparent;
-                        border: none;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 0;
-                        border-radius: 6px;
-                    ">
+                    <button type="button" data-action="copy" data-copy="{b64_copy}" class="code-btn" data-tooltip="复制代码" style="width: 30px; height: 30px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 6px;">
                         <img src="qrc:/icons/复制.svg" style="width:22px; height:22px; pointer-events: none;" />
                     </button>
                 </div>
             </div>
-
-            <!-- 可横向滚动的代码区域（仅此处滚动） -->
+            <!-- 可横向滚动的代码区域 -->
             <div style="
-                padding: 8px 10px;
-                overflow-x: auto;
-                overflow-y: hidden;
-                scrollbar-width: thin;
-                -ms-overflow-style: -ms-autohiding-scrollbar;
+                padding: 8px 10px; overflow-x: auto; overflow-y: hidden;
                 border-radius: 0 0 10px 10px;
             ">
                 {table_html}
@@ -234,46 +182,17 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
     return re.sub(pattern, replacer, html, flags=re.DOTALL)
 
 
-# ======== 辅助函数（保持不变）========
 def _sanitize_incomplete_markdown(md_text: str) -> str:
-    if not md_text.strip():
-        return md_text
-    if md_text.count('```') % 2 == 1:
-        md_text += '\n```'
-    if not md_text.endswith('\n'):
-        md_text += '\n'
+    if not md_text: return ""
+    if md_text.count('```') % 2 == 1: md_text += '\n```'
+    if md_text.endswith('<'): md_text = md_text[:-1]
     return md_text
 
 
 def _render_think_block(content: str, completed: bool = True) -> str:
-    content = (content.replace("&", "&amp;")
-               .replace("<", "&lt;")
-               .replace(">", "&gt;")
-               .replace('"', "&quot;"))
     status_text = "💡 思考过程" if completed else "🧠 正在思考..."
-
     open_attr = ' open' if not completed else ''
-
-    return f'''
-<details{open_attr} class="think-block" style="
-    margin: 12px 0;
-    background: #252D38;
-    border: 1px solid #3A3F47;
-    border-radius: 8px;
-    padding: 12px;
-    font-size: 13px;
-    color: #CCCCCC;
-">
-    <summary style="
-        cursor: pointer;
-        color: #FFA500;
-        font-weight: bold;
-        list-style: none;
-        outline: none;
-    ">{status_text}</summary>
-    <div style="margin-top: 8px; white-space: pre-wrap;">{content}</div>
-</details>
-'''
+    return f'<details{open_attr} class="think-block"><summary>{status_text}</summary><div class="think-content">{content}</div></details>'
 
 
 def _inject_think_cards(md_text: str, completed: bool = True) -> str:
@@ -298,401 +217,269 @@ def _inject_think_cards(md_text: str, completed: bool = True) -> str:
 
 
 def _inject_context_links(md_text: str) -> str:
-    """
-    将 [content](action) 转为可点击的 <span class="context-tag"> 标签
-    不再使用 <a>，避免链接行为和渲染异常
-    """
-
     def replacer(match):
-        content = match.group(1)  # 如 "数据加载器"
-        action = match.group(2)  # 如 "jump"
-
-        # 安全编码，防止 XSS 或 JS 注入
+        content, action = match.group(1), match.group(2)
         import urllib.parse
-        encoded_content = urllib.parse.quote(content, safe='')
-        encoded_action = urllib.parse.quote(action, safe='')
-        return (
-            f'<span class="context-tag" '
-            f'data-type="{action}" '
-            f'data-content="{encoded_content}" '
-            f'data-action="{encoded_action}">'
-            f'{escape(content)}'
-            f'</span>'
-        )
+        encoded_c = urllib.parse.quote(content, safe='')
+        encoded_a = urllib.parse.quote(action, safe='')
+        return f'<span class="context-tag" data-type="{action}" data-content="{encoded_c}" data-action="{encoded_a}">{escape(content)}</span>'
 
     return re.sub(r'`*\[([^\[\]]+?)\]\(([^)\s]+)\)`*', replacer, md_text)
 
 
-# ======== 自定义 WebEnginePage：监听 console.log ========
+# ======== WebViewer ========
 class ConsoleMonitorPage(QWebEnginePage):
-    codeActionRequested = pyqtSignal(str, str)  # (code: str, action: str)
-    contextActionRequested = pyqtSignal(str, str)  # (type, content, action)
+    codeActionRequested = pyqtSignal(str, str)
+    contextActionRequested = pyqtSignal(str, str)
     heightReported = pyqtSignal(int)
+    contentReady = pyqtSignal()
 
     def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
         msg = message.strip()
-        if msg.startswith("pywebview_action:"):
-            if msg.startswith("pywebview_action:context|||"):
-                try:
-                    parts = msg.split("|||")
-                    if len(parts) == 3:
-                        _, raw_content, raw_action = parts
-                        content = urllib.parse.unquote(raw_content)
-                        action = urllib.parse.unquote(raw_action)
-                        self.contextActionRequested.emit(content, action)
-                except Exception:
-                    pass
-            elif msg.count(":") == 2:
-                # 处理 copy/insert/create 等旧格式
-                _, action, b64_payload = msg.split(":")
-                try:
-                    text = base64.b64decode(b64_payload).decode('utf-8')
-                    self.codeActionRequested.emit(text, action)
-                except Exception:
-                    pass
+        if msg == "pywebview_ready":
+            self.contentReady.emit()
         elif msg.startswith("pywebview_height:"):
             try:
-                h = int(msg[len("pywebview_height:"):])
-                self.heightReported.emit(h)
-            except ValueError:
+                self.heightReported.emit(int(float(msg.split(":")[1])))
+            except:
                 pass
+        elif msg.startswith("pywebview_action:"):
+            if "context|||" in msg:
+                try:
+                    parts = msg.split("|||")
+                    self.contextActionRequested.emit(urllib.parse.unquote(parts[1]), urllib.parse.unquote(parts[2]))
+                except:
+                    pass
+            else:
+                try:
+                    p = msg.split(":")
+                    self.codeActionRequested.emit(base64.b64decode(p[2]).decode('utf-8'), p[1])
+                except:
+                    pass
 
 
-# ======== 核心：CodeWebViewer（基于 QWebEngineView）========
 class CodeWebViewer(QWebEngineView):
     contentHeightChanged = pyqtSignal(int)
-    codeActionRequested = pyqtSignal(str, str)  # (code, action)
-    contextActionRequested = pyqtSignal(str, str)  # (type, content, action)
+    codeActionRequested = pyqtSignal(str, str)
+    contextActionRequested = pyqtSignal(str, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._markdown_text = ""
         self._streaming = True
-        self._html_timer = None
-        self._completed = False
-        self._resize_timer = None
-        self._last_render_time = 0
-        self._min_render_interval = 100  # ms
-        # 使用自定义 Page 以捕获 console.log
+        self._is_js_ready = False
+
+        # 1. 渲染定时器
+        self._render_timer = QTimer(self)
+        self._render_timer.setSingleShot(True)
+        self._render_timer.timeout.connect(self._perform_update)
+        self._min_render_interval = 35
+
+        # 2. Resize 定时器 (修复 Crash 的关键：作为成员变量，随 self 销毁)
+        self._resize_timer = QTimer(self)
+        self._resize_timer.setSingleShot(True)
+        self._resize_timer.setInterval(50)
+        self._resize_timer.timeout.connect(self._safe_report_height)
+
         self._page = ConsoleMonitorPage(self)
         self.setPage(self._page)
-
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.page().setBackgroundColor(Qt.transparent)
         self.setContextMenuPolicy(Qt.NoContextMenu)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        self.setMinimumHeight(1)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setMinimumHeight(40)
 
-        # 连接信号
         self._page.codeActionRequested.connect(self.codeActionRequested.emit)
         self._page.contextActionRequested.connect(self.contextActionRequested.emit)
-        self._page.heightReported.connect(self._on_js_height_reported)
+        self._page.heightReported.connect(self._on_height_reported)
+        self._page.contentReady.connect(self._on_js_ready)
 
-        self.loadFinished.connect(self._on_load_finished)
+        self._load_skeleton()
 
-    def _on_load_finished(self, ok: bool):
-        if ok:
-            QTimer.singleShot(100, self._request_content_height)
+    # 安全的高度上报函数
+    def _safe_report_height(self):
+        try:
+            # 再次检查 page 是否存在，避免 C++ 对象已删除错误
+            if self.page():
+                self.page().runJavaScript("reportHeight();")
+        except RuntimeError:
+            # 捕获可能的 "wrapped C/C++ object has been deleted"
+            pass
 
-    def _on_js_height_reported(self, height: int):
-        self.contentHeightChanged.emit(height)
+    def _on_height_reported(self, h):
+        final_h = h + 2
+        if abs(self.height() - final_h) > 2:
+            self.contentHeightChanged.emit(final_h)
 
-    def _render(self):
-        self._last_render_time = time.time() * 1000
+    def _on_js_ready(self):
+        self._is_js_ready = True
+        if self._markdown_text: self._schedule_render()
 
-        def _generate_context_tag_css():
-            css_rules = []
-            for act_type, color in ACTION_COLOR_MAP.items():
-                css_rules.append(
-                    f'.context-tag[data-type="{act_type}"] {{ '
-                    f'background: {color}20; '
-                    f'border-color: {color}; '
-                    f'color: {color}; '
-                    f'}}\n'
-                    f'.context-tag[data-type="{act_type}"]:hover {{ '
-                    f'background: {color}60; '
-                    f'border-color: {color}cc; '
-                    f'color: {color}ff; '
-                    f'transform: translateY(-1px) scale(1.02); '
-                    f'transition: all 0.15s ease; '
-                    f'}}'
-                )
-            # 默认兜底
-            css_rules.append(
-                f'.context-tag[data-type="other"], .context-tag:not([data-type]) {{ '
-                f'background: {DEFAULT_COLOR}20; '
-                f'border-color: {DEFAULT_COLOR}; '
-                f'color: {DEFAULT_COLOR}; '
-                f'}}'
-            )
-            return "\n".join(css_rules)
+    def _load_skeleton(self):
+        tag_css = []
+        for act, col in ACTION_COLOR_MAP.items():
+            tag_css.append(f'.context-tag[data-type="{act}"] {{ background: {col}15; border-color: {col}60; color: {col}; }}')
+            tag_css.append(f'.context-tag[data-type="{act}"]:hover {{ background: {col}30; border-color: {col}; }}')
 
-        if not self._markdown_text.strip():
-            html_body = ""
-        else:
-            safe_md = _sanitize_incomplete_markdown(self._markdown_text)
-            safe_md = _unwrap_code_blocks_with_context_links(safe_md)
-            safe_md = _inject_context_links(safe_md)
-            processed_md = _inject_think_cards(safe_md, completed=self._completed)
+        cdn_libs = """
+        <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+        <script>mermaid.initialize({ startOnLoad: false, theme: 'dark' });</script>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        """
 
-            try:
-                md = get_markdown_instance()
-                md.reset()
-                html_body = md.convert(processed_md)
-                html_body = _wrap_code_blocks_with_copy_button_web(html_body)
-            except Exception:
-                html_body = (self._markdown_text
-                             .replace('&', '&amp;')
-                             .replace('<', '&lt;')
-                             .replace('>', '&gt;')
-                             .replace('\n', '<br>'))
+        scrollbar_css = """
+            ::-webkit-scrollbar { width: 10px; height: 10px; }
+            ::-webkit-scrollbar-track { background: #252526; border-radius: 5px; }
+            ::-webkit-scrollbar-thumb { background: #454545; border-radius: 5px; border: 1px solid #3c3c3c; }
+            ::-webkit-scrollbar-thumb:hover { background: #5a5a5a; }
+        """
 
-        full_html = f"""
+        html = f"""
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
+            {cdn_libs}
             <style>
-                html, body {{
-                    background: transparent !important;
-                    color: white;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-                    font-size: 14px;
-                    line-height: 1.5;
-                    margin: 0;
-                    padding: 4px 0;
+                html {{ overflow: hidden; }}
+                body {{
+                    background: transparent !important; color: #E0E0E0;
+                    font-family: "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5;
+                    margin: 0; 
+                    /* 优化：减小上下内边距 */
+                    padding: 4px 12px; 
                     overflow: hidden;
-                    height: auto;
-                    min-height: 1px;
                 }}
-                body > * {{
-                    max-width: 100%;
-                    overflow-wrap: break-word;
-                }}
-                .context-tag {{
-                    display: inline-block;
-                    padding: 2px 6px;
-                    margin: 0 2px;
-                    border: 1px solid;
-                    border-radius: 4px;
-                    font-size: 13px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    user-select: none;
-                    transition: all 0.2s ease;
-                }}
-                {_generate_context_tag_css()}
-                pre, code {{
-                    white-space: pre-wrap;
-                    word-break: break-all;
-                }}
-                details {{
-                    margin: 12px 0;
-                    background: #252D38;
-                    border: 1px solid #3A3F47;
-                    border-radius: 8px;
-                    padding: 12px;
-                    font-size: 13px;
-                    color: #CCCCCC;
-                }}
-                summary {{
-                    color: #FFA500;
-                    font-weight: bold;
-                    cursor: pointer;
-                    outline: none;
-                    list-style: none;
-                }}
-                button[data-copy] {{
-                    z-index: 10;
-                }}
-                .code-table {{
-                    border-collapse: collapse;
-                    width: auto;
-                    min-width: 100%;
-                    white-space: nowrap;
-                    margin: 0;
-                    font-family: Consolas, monospace;
-                    font-size: 13px;
-                    color: #D4D4D4;
-                }}
-                .code-table td {{
-                    padding: 0;
-                    vertical-align: top;
-                    border: none;
-                }}
-                .code-table .lineno {{
-                    user-select: none;
-                    width: 32px !important;
-                    -webkit-user-select: none;
-                    color: #888 !important;
-                    padding-right: 6px !important;
-                    border-right: 1px solid #444444 !important;
-                    text-align: right;
-                    white-space: nowrap;
-                    font-size: 12px;
-                    opacity: 0.85;
-                }}
-                .code-table .code-line {{
-                    white-space: pre;
-                    padding-left: 8px;
-                    background: transparent !important;
-                }}
-                [style*="overflow-x: auto"]::-webkit-scrollbar {{
-                    height: 10px;
-                }}
-                [style*="overflow-x: auto"]::-webkit-scrollbar-track {{
-                    background: #252526;
-                    border-radius: 5px;
-                }}
-                [style*="overflow-x: auto"]::-webkit-scrollbar-thumb {{
-                    background: #454545;
-                    border-radius: 5px;
-                    border: 1px solid #3c3c3c;
-                }}
-                [style*="overflow-x: auto"]::-webkit-scrollbar-thumb:hover {{
-                    background: #5a5a5a;
-                }}
+                {scrollbar_css}
 
-                /* 自定义代码按钮 Tooltip */
-                .code-btn {{
-                    position: relative;
-                }}
-                .code-btn:hover::after {{
-                    content: attr(data-tooltip);
-                    position: absolute;
-                    bottom: 100%;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    background: #1a1a1a;
-                    color: white;
-                    padding: 4px 8px;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    white-space: nowrap;
-                    z-index: 1000;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-                    margin-bottom: 4px;
-                }}
-                .code-btn:hover::before {{
-                    content: "";
-                    position: absolute;
-                    top: -6px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    border-width: 4px 4px 0;
-                    border-style: solid;
-                    border-color: #1a1a1a transparent transparent;
-                    z-index: 1001;
-                }}
-                .code-btn:hover {{
-                    background: rgba(255, 255, 255, 0.08);
-                    transform: translateY(-1px);
-                    transition: background 0.15s ease, transform 0.15s ease;
-                }}
-                .code-btn:active {{
-                    transform: translateY(0);
-                }}
+                /* 优化：移除首尾元素的边距，彻底消除多余空白 */
+                #content-placeholder > :first-child {{ margin-top: 0 !important; }}
+                #content-placeholder > :last-child {{ margin-bottom: 0 !important; }}
+                
+                /* 优化：紧凑的段落间距 */
+                p {{ margin: 6px 0; }}
+
+                /* Markdown 表格 */
+                table:not(.code-table) {{ width: 100%; border-collapse: collapse; margin: 8px 0; background: #252526; border-radius: 6px; overflow: hidden; border: 1px solid #3A3F47; }}
+                table:not(.code-table) th {{ background: #333; padding: 6px 12px; text-align: left; font-weight: 600; color: #fff; border-bottom: 2px solid #454545; }}
+                table:not(.code-table) td {{ padding: 6px 12px; border-bottom: 1px solid #3A3F47; color: #ccc; }}
+                table:not(.code-table) tr:nth-child(even) {{ background: #2A2D31; }}
+                table:not(.code-table) tr:hover {{ background: #3A3F47; }}
+                
+                /* 标签 */
+                .context-tag {{ display: inline-block; padding: 1px 5px; margin: 0 2px; border: 1px solid transparent; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; vertical-align: middle; }}
+                { "".join(tag_css) }
+                
+                /* 代码块通用样式 */
+                .code-table {{ width: 100%; border-collapse: collapse; }}
+                .code-table td {{ padding: 0; vertical-align: top; }}
+                .lineno {{ width: 32px; text-align: right; padding-right: 8px !important; color: #606060; border-right: 1px solid #404040; user-select: none; font-size: 12px; line-height: 1.5; }}
+                
+                /* 关键：修复缩进丢失 */
+                .code-line {{ padding-left: 12px !important; color: #d4d4d4; font-size: 13px; line-height: 1.5; white-space: pre; font-family: Consolas, monospace; }}
+                
+                .code-btn:hover {{ background: rgba(255,255,255,0.1) !important; }}
+                
+                details.think-block {{ margin: 6px 0; background: #1a1b1e; border: 1px solid #333; border-radius: 6px; }}
+                details.think-block summary {{ padding: 4px 10px; cursor: pointer; color: #aaa; font-weight: 600; }}
+                .think-content {{ padding: 8px; border-top: 1px solid #333; color: #888; font-style: italic; }}
+                blockquote {{ border-left: 3px solid #FFA500; background: rgba(255,165,0,0.05); margin: 6px 0; padding: 4px 12px; color: #ccc; }}
             </style>
         </head>
         <body>
-            {html_body}
+            <div id="content-placeholder"></div>
             <script>
-                document.addEventListener('click', function(e) {{
+                function updateContent(newHtml) {{
+                    const container = document.getElementById('content-placeholder');
+                    if (container.innerHTML !== newHtml) {{
+                        container.innerHTML = newHtml;
+                        document.querySelectorAll('.echarts-div').forEach(div => {{
+                            if (div.getAttribute('data-processed')) return;
+                            try {{
+                                const option = JSON.parse(decodeURIComponent(div.getAttribute('data-option')));
+                                const chart = echarts.init(div, 'dark', {{renderer: 'canvas', useDirtyRect: false}});
+                                option.backgroundColor = 'transparent';
+                                chart.setOption(option);
+                                new ResizeObserver(() => chart.resize()).observe(div);
+                                div.setAttribute('data-processed', 'true');
+                            }} catch(e) {{}}
+                        }});
+                        mermaid.run({{ nodes: document.querySelectorAll('.mermaid') }});
+                        if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise();
+                        reportHeight();
+                    }}
+                }}
+                function reportHeight() {{
+                    const h = document.documentElement.getBoundingClientRect().height;
+                    console.log('pywebview_height:' + h);
+                }}
+                document.addEventListener('click', e => {{
                     const btn = e.target.closest('button[data-action]');
                     if (btn) {{
-                        e.preventDefault();
-                        const action = btn.getAttribute('data-action');
+                        const act = btn.getAttribute('data-action');
                         const b64 = btn.getAttribute('data-copy');
-                        const text = atob(b64);
-                        if (navigator.clipboard && action === 'copy') {{
-                            navigator.clipboard.writeText(text).catch(() => {{
-                                console.log('pywebview_action:copy:' + b64);
-                            }});
-                        }} else {{
-                            console.log('pywebview_action:' + action + ':' + b64);
-                        }}
+                        if (act === 'copy' && navigator.clipboard) navigator.clipboard.writeText(atob(b64));
+                        console.log('pywebview_action:' + act + ':' + b64);
                     }}
-                }});
-                document.addEventListener('click', function(e) {{
                     const tag = e.target.closest('.context-tag');
-                    if (tag) {{
-                        e.preventDefault();
-                        const content = tag.getAttribute('data-content');
-                        const action = tag.getAttribute('data-action');
-                        if (content && action) {{
-                            console.log('pywebview_action:context|||' + content + '|||' + action);
-                        }}
-                    }}
+                    if (tag) console.log('pywebview_action:context|||' + tag.getAttribute('data-content') + '|||' + tag.getAttribute('data-action'));
                 }});
-
-                let heightReportTimer = null;
-                function reportHeight() {{
-                    if (heightReportTimer) clearTimeout(heightReportTimer);
-                    heightReportTimer = setTimeout(() => {{
-                        const h = document.body.scrollHeight;
-                        console.log('pywebview_height:' + h);
-                    }}, 30);
-                }}
-
-                document.addEventListener('DOMContentLoaded', function() {{
-                    setTimeout(reportHeight, 100);
-                    document.querySelectorAll('details.think-block').forEach(el => {{
-                        el.addEventListener('toggle', () => setTimeout(reportHeight, 20));
-                    }});
-                }});
-                if (window.ResizeObserver) {{
-                    const resizeObserver = new ResizeObserver(() => {{
-                        setTimeout(reportHeight, 30);
-                    }});
-                    resizeObserver.observe(document.body);
-                }} else {{
-                    window.addEventListener('resize', () => setTimeout(reportHeight, 100));
-                }}
-                window.pywebview = {{
-                    reportHeight: reportHeight
+                window.onload = () => {{
+                    console.log('pywebview_ready');
+                    new ResizeObserver(() => requestAnimationFrame(reportHeight)).observe(document.body);
                 }};
+                window.pywebview = {{ reportHeight: reportHeight }};
             </script>
         </body>
         </html>
         """
-        self.setHtml(full_html, QUrl(""))
-        QTimer.singleShot(100, self._request_content_height)
-
-    def _request_content_height(self):
-        self.page().runJavaScript("reportHeight();")
+        self.setHtml(html, QUrl(""))
 
     def append_chunk(self, text: str):
-        if not text:
-            return
+        if not text: return
         self._markdown_text += text
         self._schedule_render()
 
+    def _schedule_render(self):
+        if not self._is_js_ready: return
+        if not self._render_timer.isActive():
+            self._render_timer.start(self._min_render_interval)
+
+    def _perform_update(self):
+        try:
+            # 增加检查
+            if not self.page(): return
+
+            raw_md = self._markdown_text
+            safe_md = _sanitize_incomplete_markdown(raw_md)
+            safe_md = _unwrap_code_blocks_with_context_links(safe_md)
+            safe_md = _inject_context_links(safe_md)
+            processed_md = _inject_think_cards(safe_md, self._streaming == False)
+            try:
+                md = get_markdown_instance()
+                md.reset()
+                html_content = md.convert(processed_md)
+                html_content = _wrap_code_blocks_with_copy_button_web(html_content)
+            except Exception:
+                html_content = f"<pre>{escape(raw_md)}</pre>"
+
+            js_code = f"updateContent({json.dumps(html_content, ensure_ascii=False)});"
+            self.page().runJavaScript(js_code)
+        except RuntimeError:
+            pass
+
     def finish_streaming(self):
         self._streaming = False
-        self._completed = True
-        self._render()
-
-    def _schedule_render(self):
-        now = time.time() * 1000
-        if self._html_timer is None:
-            self._html_timer = QTimer()
-            self._html_timer.setSingleShot(True)
-            self._html_timer.timeout.connect(self._render)
-        if not self._html_timer.isActive():
-            delay = max(0, self._min_render_interval - (now - self._last_render_time))
-            self._html_timer.start(int(delay))
+        self._perform_update()
 
     def get_plain_text(self) -> str:
         return self._markdown_text
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if self._resize_timer:
-            self._resize_timer.stop()
-        self._resize_timer = QTimer()
-        self._resize_timer.setSingleShot(True)
-        self._resize_timer.timeout.connect(self._request_content_height)
-        self._resize_timer.start(10)
+        # 使用成员变量 timer，替代 lambda
+        self._resize_timer.start()
 
     def wheelEvent(self, event: QWheelEvent):
         # 获取滚动条（向上找 QScrollArea）
@@ -709,11 +496,14 @@ class CodeWebViewer(QWebEngineView):
         super().wheelEvent(event)
 
     def deleteLater(self):
-        self.page().deleteLater()
+        # 显式停止定时器
+        if self._render_timer.isActive(): self._render_timer.stop()
+        if self._resize_timer.isActive(): self._resize_timer.stop()
+        if self.page(): self.page().deleteLater()
         super().deleteLater()
 
 
-# ======== MessageCard（适配 WebViewer）========
+# ======== MessageCard ========
 class TagWidget(CardWidget):
     closed = pyqtSignal(str)
     doubleClicked = pyqtSignal(str)
@@ -724,24 +514,19 @@ class TagWidget(CardWidget):
         self.setFixedHeight(24)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.setCursor(Qt.PointingHandCursor)
+        l = QHBoxLayout(self);
+        l.setContentsMargins(6, 0, 6, 0)
+        l.addWidget(CaptionLabel(text, self))
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(6, 0, 6, 0)
-        layout.setSpacing(6)
-
-        self.label = CaptionLabel(text, self)
-        layout.addWidget(self.label)
-
-    def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.doubleClicked.emit(self.key)
-        super().mouseDoubleClickEvent(event)
+    def mouseDoubleClickEvent(self, e):
+        if e.button() == Qt.LeftButton: self.doubleClicked.emit(self.key)
+        super().mouseDoubleClickEvent(e)
 
 
 class MessageCard(SimpleCardWidget):
     deleteRequested = pyqtSignal()
     regenerateRequested = pyqtSignal()
-    actionRequested = pyqtSignal(str, str)  # (code, action)
+    actionRequested = pyqtSignal(str, str)
     contextActionRequested = pyqtSignal(str, str)
 
     def __init__(self, role: str, timestamp: str = None, parent=None, tag_params: dict = None, error: bool = False):
@@ -751,154 +536,87 @@ class MessageCard(SimpleCardWidget):
         self.context_tags = tag_params or {}
         self.timestamp = timestamp or datetime.now().strftime('%H:%M')
         self.error = error
-        self.setup_ui()
+        self._setup_ui()
 
-    def setup_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(5, 5, 5, 5)
-        main_layout.setSpacing(2)
-        main_layout.setSizeConstraint(QVBoxLayout.SetMinAndMaxSize)
-
-        top_layout = QHBoxLayout()
-        top_layout.setSpacing(6)
-
+    def _setup_ui(self):
+        main = QVBoxLayout(self);
+        main.setContentsMargins(5, 5, 5, 5);
+        main.setSpacing(2)
+        top = QHBoxLayout();
+        top.setSpacing(6)
         if self.role == "user":
-            avatar_text = "👤"
-            avatar_color = "#63B3ED"
-            name = "用户"
-            name_color = "#63B3ED"
-            bg_color = "#2A2A2A"
-            border_color = "#4A5568"
+            av_t, av_c, nm, nm_c, bg, bd = "👤", "#63B3ED", "用户", "#63B3ED", "#2A2A2A", "#4A5568"
         else:
-            avatar_text = "🤖"
-            avatar_color = "#FFA500"
-            name = "大模型助手"
-            name_color = "#FFA500"
-            bg_color = "#1E293B"
-            border_color = "#334155"
+            av_t, av_c, nm, nm_c, bg, bd = "🤖", "#FFA500", "画布助手", "#FFA500", "#1E293B", "#334155"
+        if self.error: bd, bg = "#ff4d4d", "#2a1f1f"
 
-        if self.error:
-            border_color = "#ff4d4d"
-            bg_color = "#2a1f1f"
+        av = QLabel(av_t, self);
+        av.setStyleSheet(f"font-size:20px;color:{av_c};font-weight:bold")
+        av.setFixedSize(28, 28);
+        av.setAlignment(Qt.AlignCenter)
+        nm_l = QLabel(nm, self);
+        nm_l.setStyleSheet(f"font-size:15px;color:{nm_c};font-weight:bold")
+        top.addWidget(av);
+        top.addWidget(nm_l)
+        if self.role == "assistant": ts = QLabel(self.timestamp, self); ts.setStyleSheet(
+            "font-size:12px;color:#B0B0B0"); top.addWidget(ts)
+        top.addStretch()
 
-        avatar_label = QLabel(avatar_text, self)
-        avatar_label.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {avatar_color};")
-        avatar_label.setFixedSize(28, 28)
-        avatar_label.setAlignment(Qt.AlignCenter)
-
-        name_label = QLabel(name, self)
-        name_label.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {name_color};")
-
-        top_layout.addWidget(avatar_label)
-        top_layout.addWidget(name_label)
-
+        btns = QWidget(self);
+        bl = QHBoxLayout(btns);
+        bl.setContentsMargins(0, 0, 0, 0);
+        bl.setSpacing(4)
+        specs = []
         if self.role == "assistant":
-            time_label = QLabel(self.timestamp, self)
-            time_label.setStyleSheet("font-size: 12px; color: #B0B0B0;")
-            top_layout.addWidget(time_label)
-
-        top_layout.addStretch()
-
-        button_container = QWidget(self)
-        button_layout = QHBoxLayout(button_container)
-        button_layout.setContentsMargins(0, 0, 0, 0)
-        button_layout.setSpacing(4)
-
-        if self.role == "assistant":
-            btn_specs = [
-                (FluentIcon.COPY, "复制",
-                 lambda: self.actionRequested.emit(self.content_widget.get_plain_text(), "copy")),
-                (FluentIcon.SYNC, "重新生成", self.regenerateRequested.emit)
-            ]
+            specs = [(FluentIcon.COPY, "复制", lambda: self.actionRequested.emit(self.viewer.get_plain_text(), "copy")),
+                     (FluentIcon.SYNC, "重试", self.regenerateRequested.emit)]
         elif self.role == "user":
-            btn_specs = [
-                (FluentIcon.COPY, "复制",
-                 lambda: self.actionRequested.emit(self.content_widget.get_plain_text(), "copy")),
-                (FluentIcon.DELETE, "删除", self.deleteRequested.emit),
-            ]
-        else:
-            btn_specs = []
-
-        for icon, tooltip, slot in btn_specs:
-            btn = TransparentToolButton(icon, self)
-            btn.setToolTip(tooltip)
-            btn.clicked.connect(slot)
-            btn.setFixedSize(24, 24)
-            btn.installEventFilter(ToolTipFilter(btn))
-            button_layout.addWidget(btn)
-
-        top_layout.addWidget(button_container)
-        main_layout.addLayout(top_layout)
-        main_layout.addWidget(CardSeparator(self))
+            specs = [(FluentIcon.COPY, "复制", lambda: self.actionRequested.emit(self.viewer.get_plain_text(), "copy")),
+                     (FluentIcon.DELETE, "删除", self.deleteRequested.emit)]
+        for ic, tp, cb in specs:
+            b = TransparentToolButton(ic, self);
+            b.setToolTip(tp);
+            b.clicked.connect(cb)
+            b.setFixedSize(24, 24);
+            b.installEventFilter(ToolTipFilter(b));
+            bl.addWidget(b)
+        top.addWidget(btns);
+        main.addLayout(top);
+        main.addWidget(CardSeparator(self))
 
         if self.role == "user" and self.context_tags:
-            tags_container = QWidget(self)
-            tags_container.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
-            tags_layout = QHBoxLayout(tags_container)
-            tags_layout.setContentsMargins(0, 0, 0, 0)
-            tags_layout.setSpacing(4)
+            tg_c = QWidget(self);
+            tl = QHBoxLayout(tg_c);
+            tl.setContentsMargins(0, 0, 0, 0);
+            tl.setSpacing(4)
+            for k, (n, _, _, _) in self.context_tags.items():
+                t = TagWidget(k, n);
+                t.doubleClicked.connect(lambda k=k, t=t: self._on_link_click(k, t))
+                tl.addWidget(t)
+            tl.addStretch();
+            main.addWidget(tg_c);
+            main.addWidget(CardSeparator(self))
 
-            for key, (name, content, callback_params, is_image) in self.context_tags.items():
-                tag = TagWidget(key, name)
-                tag.doubleClicked.connect(lambda k=key, t=tag: self._on_context_link_clicked(k, t))
-                tags_layout.addWidget(tag)
-            tags_layout.addStretch()
-            main_layout.addWidget(tags_container)
-            main_layout.addWidget(CardSeparator(self))
+        self.viewer = CodeWebViewer(self)
+        self.viewer.codeActionRequested.connect(self.actionRequested.emit)
+        self.viewer.contextActionRequested.connect(self.contextActionRequested.emit)
+        self.viewer.contentHeightChanged.connect(self._update_height)
+        main.addWidget(self.viewer);
+        main.addWidget(CardSeparator(self))
+        self.setStyleSheet(f"CardWidget{{background-color:{bg};border:1px solid {bd};border-radius:12px;}}")
 
-        self.content_widget = CodeWebViewer(self)
-        self.content_widget.contextActionRequested.connect(self.contextActionRequested.emit)
-        self.content_widget.contentHeightChanged.connect(self._on_content_height_changed)
-        self.content_widget.codeActionRequested.connect(
-            lambda code, action: QTimer.singleShot(200, lambda: self._on_code_action(code, action))
-        )
-        main_layout.addWidget(self.content_widget)
-        main_layout.addWidget(CardSeparator(self))
+    def _on_link_click(self, k, t):
+        if ContextRegistry and k in self.context_tags:
+            try:
+                exe = self.parent.homepage.context_register.get_executor(k)
+                if exe: exe(self.context_tags[k][2], t)
+            except:
+                pass
 
-        self.setStyleSheet(f"""
-            CardWidget {{
-                background-color: {bg_color};
-                border: 1px solid {border_color};
-                border-radius: 12px;
-            }}
-        """)
-
-    def _on_code_action(self, code: str, action: str):
-        if action == "copy":
-            QApplication.clipboard().setText(code)
-            InfoBar.success(
-                title='已复制',
-                content='代码已复制到剪贴板',
-                isClosable=True,
-                position=InfoBarPosition.TOP_RIGHT,
-                duration=2000,
-                parent=self.parent
-            )
-            self.actionRequested.emit(code, action)
-
-        elif action == "insert":
-            self.actionRequested.emit(code, action)
-
-        elif action == "create":
-            self.actionRequested.emit(code, action)
-
-    def _on_context_link_clicked(self, tool_key: str, tag: TagWidget):
-        if tool_key in self.context_tags:
-            name, content, callback_params, is_image = self.context_tags[tool_key]
-            executor = self.parent.homepage.context_register.get_executor(tool_key)
-            if executor:
-                executor(callback_params, tag)
-
-    def _on_content_height_changed(self, height):
-        self.content_widget.setMinimumHeight(max(1, height))
+    def _update_height(self, h):
+        self.viewer.setFixedHeight(max(40, h))
         self.updateGeometry()
-        QTimer.singleShot(20, lambda: self.parentWidget().updateGeometry() if self.parentWidget() else None)
-
-    def update_content(self, new_content: str):
-        self.content_widget.append_chunk(new_content)
-
-    def finish_streaming(self):
-        self.content_widget.finish_streaming()
+        if self.parentWidget(): QTimer.singleShot(10, self.parentWidget().updateGeometry)
 
     def wheelEvent(self, event: QWheelEvent):
         try:
@@ -913,9 +631,14 @@ class MessageCard(SimpleCardWidget):
             pass
         super().wheelEvent(event)
 
-    def closeEvent(self, event):
-        self.content_widget.deleteLater()
-        super().closeEvent(event)
+    def update_content(self, txt):
+        self.viewer.append_chunk(txt)
+
+    def finish_streaming(self):
+        self.viewer.finish_streaming()
+
+    def closeEvent(self, e):
+        self.viewer.deleteLater(); super().closeEvent(e)
 
 
 def create_welcome_card(parent=None) -> MessageCard:

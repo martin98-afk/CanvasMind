@@ -4,8 +4,7 @@ import os
 from pathlib import Path
 
 from PyQt5.QtWidgets import QVBoxLayout
-from qfluentwidgets import BodyLabel, TextEdit, SubtitleLabel
-from spyder.plugins.variableexplorer.widgets.texteditor import TextEditor
+from qfluentwidgets import TextEdit
 
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
@@ -38,16 +37,8 @@ class ProjectInfoTool(ToolWindow):
             if item.widget():
                 item.widget().deleteLater()
 
-        # 来源画布
-        spec_path = project_path / "project_spec.json"
-        if spec_path.exists():
-            try:
-                with open(spec_path, 'r', encoding='utf-8') as f:
-                    spec = json.load(f)
-            except:
-                pass
-
         md_path = project_path / "README.md"
+
         if md_path.exists():
             try:
                 with open(md_path, 'r', encoding='utf-8') as f:

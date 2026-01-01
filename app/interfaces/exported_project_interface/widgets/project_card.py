@@ -3,12 +3,12 @@ import os
 import json
 import subprocess
 from pathlib import Path
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QGuiApplication
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel
+from PyQt5.QtCore import Qt, QSize, QRect, QRectF
+from PyQt5.QtGui import QFont, QGuiApplication, QPixmap, QPainter, QColor, QPen, QPainterPath
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QFrame, QDialog
 from qfluentwidgets import (
     CardWidget, BodyLabel, PrimaryPushButton,
-    FluentIcon, InfoBar, ImageLabel, TransparentToolButton
+    FluentIcon, InfoBar, ImageLabel, TransparentToolButton, themeColor, isDarkTheme
 )
 from app.server_manager.http_server.service_manager import SERVICE_MANAGER
 from app.widgets.dialog_widget.service_request_dialog import ServiceRequestDialog
@@ -22,7 +22,9 @@ class ClickableLabel(BodyLabel):
         self.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.setCursor(Qt.PointingHandCursor)
         self.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.setStyleSheet("color: #1e88e5; text-decoration: underline;")
+        color = "#4cc2ff" if isDarkTheme() else "#0078d4"
+        self.setStyleSheet(f"color: {color}; text-decoration: none;")
+        self.setFont(QFont("Microsoft YaHei", 9))
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -33,6 +35,93 @@ class ClickableLabel(BodyLabel):
         clipboard = QGuiApplication.clipboard()
         clipboard.setText(self.copy_content)
         InfoBar.success("已复制", "内容已复制到剪贴板", parent=self.parent, duration=1500)
+
+    def enterEvent(self, event):
+        self.setFont(QFont("Microsoft YaHei", 9, QFont.Bold))
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self.setFont(QFont("Microsoft YaHei", 9))
+        super().leaveEvent(event)
+
+
+class PreviewLabel(QLabel):
+    """自定义预览标签，确保图片完整显示（Contain模式），支持双击放大"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setScaledContents(False)
+        self._pixmap = None
+        self.setFixedSize(368, 160)
+        # 设置背景样式，类似相框
+        self.setStyleSheet(
+            f"background-color: {'rgba(255, 255, 255, 0.05)' if isDarkTheme() else 'rgba(0, 0, 0, 0.03)'};"
+            f"border-radius: 6px;"
+            f"border: 1px solid {'#333' if isDarkTheme() else '#e0e0e0'};"
+        )
+        self.setAlignment(Qt.AlignCenter)
+        self.setText("无预览图")  # 默认文本
+
+    def set_image(self, pixmap: QPixmap):
+        self._pixmap = pixmap
+        self.setText("") if pixmap and not pixmap.isNull() else self.setText("无预览图")
+        self.update()  # 触发重绘
+
+    def paintEvent(self, event):
+        # 1. 绘制背景和边框（由样式表处理，或者这里也可以手动画）
+        super().paintEvent(event)  # 绘制样式表定义的背景/文字
+
+        if not self._pixmap or self._pixmap.isNull():
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+
+        # 2. 计算保持比例的矩形 (Contain 模式)
+        target_rect = QRectF(self.rect())
+        # 留一点内边距，避免紧贴边框
+        target_rect.adjust(4, 4, -4, -4)
+
+        # 计算缩放后的尺寸
+        scaled_size = self._pixmap.size().scaled(target_rect.size().toSize(), Qt.KeepAspectRatio)
+
+        # 计算居中位置
+        x = target_rect.x() + (target_rect.width() - scaled_size.width()) / 2
+        y = target_rect.y() + (target_rect.height() - scaled_size.height()) / 2
+
+        draw_rect = QRectF(x, y, scaled_size.width(), scaled_size.height())
+
+        # 3. 绘制圆角图片
+        path = QPainterPath()
+        path.addRoundedRect(draw_rect, 4, 4)
+        painter.setClipPath(path)
+        painter.drawPixmap(draw_rect.toRect(), self._pixmap)
+
+    def mouseDoubleClickEvent(self, event):
+        if self._pixmap and not self._pixmap.isNull():
+            # 双击显示大图弹窗
+            self._show_lightbox()
+        super().mouseDoubleClickEvent(event)
+
+    def _show_lightbox(self):
+        dialog = QDialog(self.window())
+        dialog.setWindowTitle("预览图")
+        dialog.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint)
+        dialog.resize(800, 600)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        img_lbl = QLabel()
+        img_lbl.setAlignment(Qt.AlignCenter)
+        # 大图也保持比例适应
+        scaled_pix = self._pixmap.scaled(QSize(780, 580), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        img_lbl.setPixmap(scaled_pix)
+        img_lbl.setStyleSheet("background-color: #1e1e1e;" if isDarkTheme() else "background-color: #f0f0f0;")
+
+        layout.addWidget(img_lbl)
+        dialog.exec()
 
 
 class ProjectCard(CardWidget):
@@ -45,110 +134,106 @@ class ProjectCard(CardWidget):
         self.mcp_dot = None
         self.api_label = None
         self.mcp_label = None
-        self.image_label = None
+        self.preview_label = None  # 改用自定义 Label
+        self.is_selected = False
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setFixedSize(400, 300)
-        self.setBorderRadius(12)
+        self.setFixedSize(400, 310)
+        self.setBorderRadius(10)
+
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 16, 20, 16)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(16, 16, 16, 16)
+        main_layout.setSpacing(10)
 
-        # === 标题 ===
+        # === 顶部：标题 ===
+        top_layout = QHBoxLayout()
         self.name_label = BodyLabel(self.project_name)
-        self.name_label.setFont(QFont("Microsoft YaHei", 14, QFont.DemiBold))
-        self.name_label.setAlignment(Qt.AlignCenter)
-        self.name_label.setWordWrap(True)
-        main_layout.addWidget(self.name_label)
+        self.name_label.setFont(QFont("Microsoft YaHei", 12, QFont.Bold))
+        self.name_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.name_label.setWordWrap(False)
+        self.name_label.setToolTip(self.project_name)
+        top_layout.addWidget(self.name_label)
+        top_layout.addStretch()
+        main_layout.addLayout(top_layout)
 
-        # === 预览图 ===
+        # === 预览图 (使用自定义 PreviewLabel) ===
+        self.preview_label = PreviewLabel(self)
+        self.preview_label.setCursor(Qt.PointingHandCursor)
+        self.preview_label.setToolTip("双击查看大图")
+        main_layout.addWidget(self.preview_label)
+
         self._create_or_update_preview()
 
-        # === API 服务状态行 ===
-        self.api_dot = QLabel()
-        self.api_dot.setFixedSize(12, 12)
-        self.api_dot.setStyleSheet("border-radius: 6px; background: gray;")
-        self.api_label = ClickableLabel("API服务：未部署", self)
-        api_layout = QHBoxLayout()
-        api_layout.addWidget(self.api_dot)
-        api_layout.addWidget(self.api_label, 1)
-        api_layout.setSpacing(6)
-
-        # === MCP 工具状态行 ===
-        self.mcp_dot = QLabel()
-        self.mcp_dot.setFixedSize(12, 12)
-        self.mcp_dot.setStyleSheet("border-radius: 6px; background: gray;")
-        self.mcp_label = ClickableLabel("MCP工具：未注册", self)
-        mcp_layout = QHBoxLayout()
-        mcp_layout.addWidget(self.mcp_dot)
-        mcp_layout.addWidget(self.mcp_label, 1)
-        mcp_layout.setSpacing(6)
-
-        status_layout = QVBoxLayout()
+        # === 状态区 (API / MCP) ===
+        status_container = QFrame()
+        status_container.setStyleSheet("background-color: transparent;")
+        status_layout = QVBoxLayout(status_container)
+        status_layout.setContentsMargins(4, 0, 4, 0)
         status_layout.setSpacing(4)
-        status_layout.addLayout(api_layout)
-        status_layout.addLayout(mcp_layout)
-        main_layout.addLayout(status_layout)
 
-        # === 按钮区 ===
+        def create_status_row(label_text):
+            row = QHBoxLayout()
+            row.setSpacing(8)
+            dot = QLabel()
+            dot.setFixedSize(8, 8)
+            dot.setStyleSheet("border-radius: 4px; background: gray;")
+
+            lbl = ClickableLabel(label_text, self)
+            row.addWidget(dot)
+            row.addWidget(lbl, 1)
+            return row, dot, lbl
+
+        api_row, self.api_dot, self.api_label = create_status_row("API服务：未部署")
+        mcp_row, self.mcp_dot, self.mcp_label = create_status_row("MCP工具：未注册")
+
+        status_layout.addLayout(api_row)
+        status_layout.addLayout(mcp_row)
+        main_layout.addWidget(status_container)
+
+        # === 底部按钮区 ===
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(10)
+        btn_layout.setContentsMargins(0, 4, 0, 0)
+        btn_layout.setSpacing(8)
+
         self.run_btn = PrimaryPushButton("运行", self, FluentIcon.PLAY)
         self.service_btn = PrimaryPushButton("上线", self, FluentIcon.LINK)
+        for btn in [self.run_btn, self.service_btn]:
+            btn.setFixedHeight(30)
+            btn.setFixedWidth(80)
+
         self.edit_btn = TransparentToolButton(FluentIcon.EDIT, self)
         self.view_log_btn = TransparentToolButton(FluentIcon.VIEW, self)
         self.delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
+
+        for btn in [self.edit_btn, self.view_log_btn, self.delete_btn]:
+            btn.setFixedSize(30, 30)
+            btn.setIconSize(QSize(16, 16))
+
         self.view_log_btn.setToolTip("查看日志")
         self.delete_btn.setToolTip("删除项目")
+        self.edit_btn.setToolTip("编辑信息")
 
-        for btn in [self.run_btn, self.service_btn]:
-            btn.setFixedHeight(28)
-            btn.setFont(QFont("Microsoft YaHei", 9))
-        for btn in [self.edit_btn, self.view_log_btn, self.delete_btn]:
-            btn.setFixedSize(28, 28)
-
-        left_box = QHBoxLayout()
-        left_box.addWidget(self.run_btn)
-        left_box.addWidget(self.service_btn)
-
-        right_box = QHBoxLayout()
-        right_box.setSpacing(8)
-        right_box.addWidget(self.edit_btn)
-        right_box.addWidget(self.view_log_btn)
-        right_box.addWidget(self.delete_btn)
-
-        btn_layout.addLayout(left_box)
+        btn_layout.addWidget(self.run_btn)
+        btn_layout.addWidget(self.service_btn)
         btn_layout.addStretch()
-        btn_layout.addLayout(right_box)
+        btn_layout.addWidget(self.edit_btn)
+        btn_layout.addWidget(self.view_log_btn)
+        btn_layout.addWidget(self.delete_btn)
+
         main_layout.addLayout(btn_layout)
 
         self._update_service_button()
         self.setCursor(Qt.PointingHandCursor)
 
     def _create_or_update_preview(self):
-        if self.image_label:
-            self.layout().removeWidget(self.image_label)
-            self.image_label.deleteLater()
-            self.image_label = None
-
+        """加载原图传给 PreviewLabel，由其内部处理缩放"""
         preview_path = Path(self.project_path) / "preview.png"
         if preview_path.exists():
-            self.image_label = ImageLabel(str(preview_path), self)
-            self.image_label.setFixedSize(340, 150)
-            self.image_label.setBorderRadius(8, 8, 8, 8)
+            pixmap = QPixmap(str(preview_path))
+            self.preview_label.set_image(pixmap)
         else:
-            self.image_label = BodyLabel("无预览图")
-            self.image_label.setFixedSize(300, 150)
-            self.image_label.setAlignment(Qt.AlignCenter)
-            self.image_label.setStyleSheet("""
-                color: #999;
-                background-color: #fafafa;
-                border-radius: 8px;
-                border: 1px dashed #e0e0e0;
-                font-size: 12px;
-            """)
-        self.layout().insertWidget(1, self.image_label, 0, Qt.AlignCenter)
+            self.preview_label.set_image(None)
 
     def _update_service_button(self):
         is_running = SERVICE_MANAGER.is_running(self.project_path)
@@ -174,20 +259,16 @@ class ProjectCard(CardWidget):
         if is_running:
             self.run_btn.setText("停止")
             self.run_btn.setIcon(FluentIcon.PAUSE)
-            # self.run_btn.setEnabled(False)
         else:
             self.run_btn.setText("运行")
             self.run_btn.setIcon(FluentIcon.PLAY)
-            # self.run_btn.setEnabled(True)
 
     def refresh(self):
-        """被 ExportedProjectsPage._toggle_service 或 watchfiles 调用"""
         self._create_or_update_preview()
         self._load_status_info()
         self._update_service_button()
 
     def _load_status_info(self):
-        # --- API 服务 ---
         if SERVICE_MANAGER.is_running(self.project_path):
             api_url = SERVICE_MANAGER.get_url(self.project_path) or "API服务：运行中"
             api_status = 'green'
@@ -195,12 +276,12 @@ class ProjectCard(CardWidget):
             api_url = "API服务：未部署"
             api_status = 'gray'
 
-        # --- MCP 工具 ---
         mcp_path = Path(self.project_path) / "mcp.json"
         if mcp_path.exists():
             try:
                 with open(mcp_path, 'r', encoding='utf-8') as f:
-                    mcp_content = json.dumps(json.load(f), ensure_ascii=False, indent=2)
+                    json.load(f)
+                mcp_content = "点击复制配置"
                 mcp_status = 'green'
             except:
                 mcp_content = ""
@@ -209,33 +290,69 @@ class ProjectCard(CardWidget):
             mcp_content = ""
             mcp_status = 'gray'
 
-        # --- 更新 UI ---
         self._update_dot_and_label(self.api_dot, self.api_label, api_status,
                                    api_url, copy_content=api_url if api_status == 'green' else None)
         self._update_dot_and_label(self.mcp_dot, self.mcp_label, mcp_status,
                                    "MCP工具：已注册" if mcp_status == 'green' else "MCP工具：未注册",
-                                   copy_content=mcp_content)
+                                   copy_content=mcp_content if mcp_status == 'green' else None)
 
     def _update_dot_and_label(self, dot, label, status, text, copy_content=None):
-        color_map = {'green': '#4caf50', 'gray': '#9e9e9e', 'red': '#f44336'}
-        dot.setStyleSheet(f"border-radius: 6px; background: {color_map.get(status, '#9e9e9e')};")
+        color_map = {'green': '#4caf50', 'gray': '#d0d0d0' if not isDarkTheme() else '#666666'}
+        dot.setStyleSheet(f"""
+            min-width: 8px; min-height: 8px; max-width: 8px; max-height: 8px;
+            border-radius: 4px; 
+            background-color: {color_map.get(status, 'gray')};
+        """)
         label.setText(text)
         label.copy_content = copy_content or ""
+        if status == 'green':
+            label.setStyleSheet("color: #4caf50; font-weight: bold;")
+        else:
+            color = "#666666" if not isDarkTheme() else "#aaaaaa"
+            label.setStyleSheet(f"color: {color}; font-weight: normal;")
+
+    def set_selected(self, is_selected: bool):
+        if self.is_selected == is_selected:
+            return
+        self.is_selected = is_selected
+        self.update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self.is_selected:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.Antialiasing)
+            c = themeColor()
+            pen = QPen(c, 2)
+            painter.setPen(pen)
+            rect = self.rect().adjusted(1, 1, -1, -1)
+            painter.drawRoundedRect(rect, 10, 10)
 
     def mousePressEvent(self, event):
-        # 排除按钮区域，防止冲突
         clicked_widget = self.childAt(event.pos())
         buttons = {
             self.run_btn, self.service_btn,
             self.edit_btn, self.view_log_btn, self.delete_btn,
             self.api_label, self.mcp_label
         }
-        if clicked_widget not in buttons:
+        is_button_clicked = False
+        if clicked_widget:
+            curr = clicked_widget
+            while curr and curr != self:
+                if curr in buttons:
+                    is_button_clicked = True
+                    break
+                curr = curr.parent()
+
+        # 如果点击的是预览图，不认为是选中项目，让预览图自己处理双击事件
+        # 但是这里要注意，单击预览图也应该选中卡片
+        if clicked_widget == self.preview_label:
+            # 允许向下传递以触发 Label 的双击，但同时也触发选卡片
+            pass
+
+        if not is_button_clicked:
             if self.home and hasattr(self.home, 'on_card_clicked'):
                 self.home.on_card_clicked(self)
-            else:
-                # 默认行为：打开文件夹（可选，建议保留）
-                self._open_project_folder()
         else:
             super().mousePressEvent(event)
 

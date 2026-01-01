@@ -61,4 +61,3 @@ class ResizableImageLabel(QLabel):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.clicked.emit()
-        # 不调用 super().mousePressEvent(event) 以避免文本选中等副作用
