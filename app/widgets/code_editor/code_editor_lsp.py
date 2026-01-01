@@ -300,36 +300,72 @@ class LSPCodeEditor(CodeEditor):
         return text[start:pos]
 
     def _on_lsp_completions_ready(self, completion_items: List[Dict]):
-        """处理补全结果"""
+        """处理补全结果：解决吞点问题 + 智能括号补全"""
         pos = self.textCursor().position()
         clean_items = []
 
         for item in completion_items:
-            # 1. 获取基础信息
             label = item.get('label', '')
-            insert_text = item.get('insertText', label)
+            kind = item.get('kind', 1)  # 2: Method, 3: Function
 
-            # 2. 解决 "plt.plot(args...)" 问题：剥离括号及参数
-            # 如果 insertText 等于 label 且包含括号，这通常是 Jedi 的默认行为，我们需要手动清洗
-            if insert_text == label and '(' in insert_text:
-                insert_text = insert_text.split('(')[0]
+            # 基础插入文本（去除现有的括号，由我们重新统一构造）
+            # 比如 'plot(args...)' -> 'plot'
+            base_text = item.get('insertText', label)
+            if '(' in base_text:
+                base_text = base_text.split('(')[0]
 
-            # 构造 Spyder 需要的格式
-            item_data = item.copy()
-            item_data.update({
+            # 默认值
+            insert_text = base_text
+            insert_format = 1  # 1 为普通文本，2 为 Snippet
+
+            # --- 智能括号逻辑 ---
+            # Kind 2 是 Method, 3 是 Function
+            if kind in (2, 3):
+                # 检查 label 确认是否有参数
+                # 逻辑：如果括号内有除 self 以外的内容，则认为有参数
+                has_args = False
+                # 匹配 label 中的括号内容，例如 plot(x, y) -> x, y
+                import re
+                params_match = re.search(r'\((.*)\)', label)
+                if params_match:
+                    params_text = params_match.group(1).strip()
+                    # 如果参数列表不为空，且不只是 self，则认为需要填写参数
+                    if params_text and params_text != 'self':
+                        has_args = True
+
+                if has_args:
+                    # 有参数：生成 snippet "func($1)"，$1 是光标首选位置
+                    insert_text = f"{base_text}($1)"
+                    insert_format = 2
+                else:
+                    # 无参数：直接生成 "func()"，光标自然落在括号后
+                    insert_text = f"{base_text}()"
+                    insert_format = 1
+
+            # 构造 Spyder 兼容字典
+            item_data = {
                 'label': label,
-                'filterText': item.get('filterText', label),  # 用于模糊匹配
                 'insertText': insert_text,
-                'kind': item.get('kind', 1),
+                'insertTextFormat': insert_format,  # 告诉编辑器这是 Snippet
+                'filterText': item.get('filterText', label),
+                'sortText': item.get('sortText', label),
+                'kind': kind,
                 'documentation': item.get('documentation', ''),
                 'detail': item.get('detail', ''),
                 'point': pos,
-                'resolve': True  # 允许后续解析文档
-            })
+                'resolve': True
+            }
+
+            if 'data' in item:
+                item_data['data'] = item['data']
+
             clean_items.append(item_data)
 
         self.completion_args = (pos, True)
-        self.process_completion({"params": clean_items})
+        try:
+            self.process_completion({"params": clean_items})
+        except Exception as e:
+            logger.error(f"Error processing completions: {e}")
 
     def resolve_completion_item(self, item):
         self.lsp_session.request_completion_resolve(

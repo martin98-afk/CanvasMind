@@ -90,7 +90,7 @@ class ServiceTestTool(ToolWindow):
         self.input_mode_tabs = SegmentedWidget()
         self.input_mode_tabs.addItem("Json", "JSON 编辑")
         self.input_mode_tabs.addItem("Form", "表单填写")
-        self.input_mode_tabs.setCurrentItem("Json")
+        self.input_mode_tabs.setCurrentItem("Form")
         self.input_mode_tabs.currentItemChanged.connect(self._on_input_mode_changed)
         self.left_layout.addWidget(self.input_mode_tabs)
 
@@ -148,8 +148,8 @@ class ServiceTestTool(ToolWindow):
         json_layout.addWidget(self.json_edit)
 
         # 添加到 Stack
-        self.input_stack.addWidget(self.json_page)  # index 1
         self.input_stack.addWidget(self.form_page)  # index 0
+        self.input_stack.addWidget(self.json_page)  # index 1
 
         self.left_layout.addWidget(self.input_stack)
 
