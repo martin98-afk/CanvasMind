@@ -213,3 +213,13 @@ ValueError: The 'liblinear' solver does not support multiclass classification (n
 [2026-01-01 03:51:03] run-71 INFO: solver='newton-cg' max_iter=100
 [2026-01-01 03:51:03] run-86 INFO: Model accuracy: 0.9733
 [2026-01-01 03:51:03] <module>-108 SUCCESS: 节点执行完成
+[2026-01-01 04:28:18] <module>-98 INFO: 从参数文件加载配置执行
+[2026-01-01 04:28:18] <module>-102 INFO: 开始执行组件
+[2026-01-01 04:28:19] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-01 04:28:19] run-86 INFO: Model accuracy: 0.9733
+[2026-01-01 04:28:19] <module>-108 SUCCESS: 节点执行完成
+[2026-01-01 11:23:55] <module>-98 INFO: 从参数文件加载配置执行
+[2026-01-01 11:23:55] <module>-102 INFO: 开始执行组件
+[2026-01-01 11:23:55] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-01 11:23:55] run-86 INFO: Model accuracy: 0.9733
+[2026-01-01 11:23:55] <module>-108 SUCCESS: 节点执行完成
