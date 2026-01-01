@@ -205,6 +205,10 @@ class CanvasExporter:
                 json.dumps(project_spec, ensure_ascii=False, indent=2),
                 encoding="utf-8"
             )
+            # === 新增：生成并保存 MCP 实例脚本 ===
+            mcp_code = self._generate_mcp_instance_code(project_spec)
+            (export_path / "mcp_instance.py").write_text(mcp_code, encoding="utf-8")
+
             (export_path / "requirements.txt").write_text(final_requirements, encoding="utf-8")
             (export_path / "README.md").write_text(final_readme, encoding="utf-8")
 
@@ -386,3 +390,90 @@ class CanvasExporter:
         except Exception as e:
             logger.error(f"预览图生成失败: {e}")
             MessageManager.warning("预览图", f"生成失败: {str(e)}", self.parent)
+
+    def _generate_mcp_instance_code(self, project_spec):
+        import json
+        graph_name = project_spec.get("graph_name", "未命名工作流")
+
+        # --- 1. 构建全信息描述文档 (塞入 description) ---
+        doc_lines = [
+            f"工具名称: {graph_name}",
+            "描述: 此工具由可视化画布导出，用于执行特定的 AI/数据工作流任务。",
+            "",
+            "=== 输入参数详细定义 ==="
+        ]
+
+        input_args = []
+        for key, info in project_spec.get("inputs", {}).items():
+            node_name = info.get("node_name", "未知节点")
+            p_desc = info.get("param_desc") or info.get("port_desc") or "无描述"
+            fmt = info.get("format", "TEXT")
+            fmt_desc = info.get("format_desc", "")
+
+            # 塞入文档
+            doc_lines.append(f"- 参数字段: {key}")
+            doc_lines.append(f"  来自节点: {node_name}")
+            doc_lines.append(f"  功能描述: {p_desc}")
+            doc_lines.append(f"  数据格式: {fmt} ({fmt_desc})")
+            doc_lines.append("")
+
+            # 构造 Pydantic 参数
+            safe_key = f"{key}_param" if key in ("input", "type", "id") else key
+            input_args.append(f'    {safe_key}: str = Field(default=None, description="输入字段: {key}")')
+
+        doc_lines.append("=== 输出结果结构预览 ===")
+        for ok, ov in project_spec.get("outputs", {}).items():
+            doc_lines.append(f"- 输出字段: {ok} (格式: {ov.get('format', 'TEXT')})")
+
+        full_description = "\n".join(doc_lines)
+
+        # 参数映射逻辑
+        mapping_str = ", ".join([f'"{k}": {f"{k}_param" if k in ("input", "type", "id") else k}' for k in
+                                 project_spec["inputs"].keys()])
+
+        # --- 2. 生成代码模板 ---
+        template = f'''# -*- coding: utf-8 -*-
+import traceback
+import json, httpx, os
+from pathlib import Path
+from mcp.server.fastmcp import FastMCP
+from pydantic import Field
+
+# 动态地址文件
+CUR_DIR = Path(__file__).parent
+URL_FILE = CUR_DIR / "service_url.txt"
+
+mcp = FastMCP("{graph_name}-Server")
+
+def get_api_url():
+    if not URL_FILE.exists():
+        raise RuntimeError("【错误】服务未上线。请在画布管理界面点击'上线'按钮。")
+    return URL_FILE.read_text(encoding="utf-8").strip()
+
+@mcp.tool(
+    name="run_{"".join([c if c.isalnum() else "_" for c in graph_name]).lower()}",
+    title="{graph_name}",
+    description={json.dumps(full_description, ensure_ascii=False)}
+)
+async def execute_task({", ".join(input_args)}):
+    """
+    {graph_name} 的核心执行工具。
+    """
+    # 组装请求
+    payload = {{{mapping_str}}}
+    payload = {{k: v for k, v in payload.items() if v is not None}}
+
+    try:
+        target_url = get_api_url()
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            # 这里的 params={{"mcp": "true"}} 会触发你 api_server.py 里的 MCP 返回逻辑
+            resp = await client.post(target_url, json=payload, params={{"mcp": "true"}})
+            resp.raise_for_status()
+            return json.dumps(resp.json(), indent=2, ensure_ascii=False)
+    except Exception as e:
+        return f"执行失败: {{traceback.format_exc()}}"
+
+if __name__ == "__main__":
+    mcp.run()
+'''
+        return template

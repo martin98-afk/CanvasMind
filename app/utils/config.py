@@ -102,7 +102,7 @@ class Settings(QConfig):
         [
             "pyzmq", "loguru", "pydantic", "pandas", "Pillow", "fastapi",
             "uvicorn", "python-lsp-server[all]", "asteval", "wcwidth",
-            "pyarrow", "ipykernel", "matplotlib", "pyecharts"
+            "pyarrow", "ipykernel", "matplotlib", "pyecharts", "mcp"
         ],
         ListValidator()
     )

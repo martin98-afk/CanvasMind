@@ -278,7 +278,7 @@ class ExportedProjectsPage(QWidget):
         card = ProjectCard(proj_path, self)
         card.run_btn.clicked.connect(lambda _, p=proj_path: self._run_project(p))
         card.edit_btn.clicked.connect(lambda _, p=proj_path: self._edit_project(p))
-        card.service_btn.clicked.connect(lambda _, p=proj_path: self._toggle_service(p))
+        # card.service_btn.clicked.connect(lambda _, p=proj_path: self._toggle_service(p))
         card.view_log_btn.clicked.connect(lambda _, p=proj_path: self._view_project_log(p))
         card.delete_btn.clicked.connect(lambda _, p=proj_path: self._delete_project(p))
         card.hide()
