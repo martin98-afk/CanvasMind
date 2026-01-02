@@ -18,8 +18,8 @@ class PropertyToolWindow(ToolWindow):
         self.property_panel = PropertyPanel(self.homepage, self.homepage)
         layout.addWidget(self.property_panel)
 
-    def _on_global_variables_changed(self, *args):
-        self.property_panel._on_global_variables_changed(*args)
+    def _on_global_variables_changed(self, *args, **kwargs):
+        self.property_panel._on_global_variables_changed(*args, **kwargs)
 
     # --- 工具对外暴露的方法 ---
     def update_properties(self, node, node_changed=False):

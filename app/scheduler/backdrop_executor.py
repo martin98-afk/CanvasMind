@@ -180,6 +180,8 @@ class BackdropExecutor(QObject):
             self.ctx.wait_if_paused()  # ← 关键：支持暂停
             if self.ctx.is_cancelled():
                 break
+            if node.get_property("disabled"):
+                continue
             self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
             self.scheduler.property_changed.emit(self.backdrop)
             try:
@@ -219,6 +221,8 @@ class BackdropExecutor(QObject):
             for out_port in in_port.connected_ports():
                 node = out_port.node()
                 val = node._output_values.get(out_port.name())
+                if val is None:
+                    continue
                 outputs.append(val)
         if len(outputs) == 0:
             return None

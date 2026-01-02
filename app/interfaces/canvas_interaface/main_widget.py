@@ -202,8 +202,8 @@ class CanvasPage(QWidget):
         category_filter_dialog.categories_changed.connect(self.ui_manager.nav_panel.draggable_tree._on_categories_changed)
         category_filter_dialog.show_at(pos)
 
-    def _on_global_variables_changed(self, *args):
-        self.property_panel._on_global_variables_changed(*args)
+    def _on_global_variables_changed(self, var_type: str, var_name: str, action: str):
+        self.property_panel._on_global_variables_changed(var_type, var_name, action)
 
     def show_splitter(self):
         self.ui_manager.show_splitter()

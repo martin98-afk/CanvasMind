@@ -1,18 +1,22 @@
-import time
+import json
 import uuid
 
-import numpy as np
 from NodeGraphQt import NodeObject, BaseNode
 from NodeGraphQt.base.commands import NodeVisibleCmd
 from NodeGraphQt.constants import NodePropWidgetEnum
+from PyQt5 import QtWidgets, QtCore
+from PyQt5.QtCore import QObject
 from loguru import logger
 
+from app.components.base import PROGRESS_MARKER
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import _safe_equal
 from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
 
-import numpy as np
-from PyQt5 import QtWidgets
+
+class NodeSignals(QObject):
+    intercepted_msg_signal = QtCore.pyqtSignal(dict)
+    htmlReady = QtCore.pyqtSignal(str)
 
 
 class PropertyChangedCmd(QtWidgets.QUndoCommand):
@@ -164,6 +168,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
 
     def __init__(self, qgraphics_item=None):
         super().__init__(qgraphics_item)
+        self.signals = NodeSignals()
         self.parent_window = None
         self._output_values = {}
         self._input_values = {}
@@ -198,6 +203,33 @@ class BasicNodeWithGlobalProperty(NodeObject):
                     self.log_capture.log_window.add_log_entry(message)
                 except Exception as e:
                     logger.error(f"Error sending log to window: {e}")
+
+    def _parse_and_filter_logs(self, raw_text):
+        """
+        从原始日志中过滤出特殊的标记信息，并返回清洗后的日志
+        """
+        if not raw_text:
+            return ""
+
+        clean_lines = []
+        lines = raw_text.splitlines()
+
+        for line in lines:
+            if PROGRESS_MARKER in line:
+                try:
+                    # 提取 JSON 部分
+                    json_str = line.split(PROGRESS_MARKER)[1].strip()
+                    data = json.loads(json_str)
+                    # 触发截获处理程序
+                    self.signals.intercepted_msg_signal.emit(data)
+                    # 注意：这里我们不把这行放入 clean_lines，这样 UI 日志面板就不会显示这行 JSON
+                    continue
+                except Exception as e:
+                    logger.error(f"解析拦截消息失败: {e}")
+
+            clean_lines.append(line)
+
+        return "\n".join(clean_lines)
 
     def get_logs(self):
         """从持久化日志文件读取内容（最多5000行）"""
