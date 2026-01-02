@@ -202,7 +202,7 @@ class CustomPipeItem(PipeItem):
                 if (points[i] - clean_points[-1]).manhattanLength() > 0.5:
                     clean_points.append(points[i])
 
-            self._draw_rounded_path(path, clean_points, radius=12.0)
+            self._draw_rounded_path(path, clean_points, radius=16.0)
 
         self.setPath(path)
 
