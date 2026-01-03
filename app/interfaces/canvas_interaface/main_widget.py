@@ -560,6 +560,8 @@ class CanvasPage(QWidget):
         default_style = PipeEnum.DRAW_TYPE_DEFAULT.value
 
         # 1. 重置与当前节点相关的所有连接线
+        if not hasattr(node, "input_ports"):
+            return
         for input_port in node.input_ports():
             for out_port in input_port.connected_ports():
                 pipe = self._find_pipe_by_ports(out_port, input_port, viewer.all_pipes())

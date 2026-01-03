@@ -60,7 +60,6 @@ class Component(BaseComponent):
         def unescape_and_clean(text):
             import re
             import html
-            import codecs
             # 1. 将字符串中的 "\\n", "\\t" 等转义序列为真实字符
             text = html.unescape(text)
             # 2. 移除 HTML/XML 标签
@@ -69,10 +68,6 @@ class Component(BaseComponent):
             text = re.sub(r"[^\x20-\x7E\u4e00-\u9fff\.\,\!\?\:\;\n]", " ", text)
             # 4. 合并多个空白为单个空格
             text = re.sub(r"\s+", " ", text).strip()
-            
-            text = codecs.decode(text, 'unicode_escape')
-            # 2. 将多个换行/空格压缩为合理停顿（可选）
-            import re
             text = re.sub(r'\s+', ' ', text).strip()
             return text
 
