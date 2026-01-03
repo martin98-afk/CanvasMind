@@ -597,7 +597,7 @@ def create_dynamic_code_node(parent_window=None):
 
             # 轮询结果文件
             start_time = time.time()
-            timeout = 300  # 5分钟
+            timeout = parent_window.config.node_run_timeout.value  # 5分钟
 
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
@@ -620,7 +620,7 @@ def create_dynamic_code_node(parent_window=None):
                 except Exception:
                     pass
                 if time.time() - start_time > timeout:
-                    raise Exception("❌ 节点执行超时（5分钟）")
+                    raise Exception(f"❌ 节点执行超时（{timeout} 秒）")
 
                 time.sleep(0.1)
             self._log_message(self.persistent_id, "✅ 节点在ipython环境执行完成")
@@ -641,14 +641,14 @@ def create_dynamic_code_node(parent_window=None):
             )
 
             start_time = time.time()
-            timeout = 300
+            timeout = parent_window.config.node_run_timeout.value
             while proc.poll() is None:
                 if check_cancel and check_cancel():
                     kill_proc_tree(proc.pid)
                     raise Exception("执行已被用户取消")
                 if time.time() - start_time > timeout:
                     kill_proc_tree(proc.pid)
-                    raise Exception("❌ 节点执行超时（5分钟）")
+                    raise Exception(f"❌ 节点执行超时（{timeout} 秒）")
                 # 增量读取日志，实时输出
                 try:
                     if os.path.exists(log_file_path):

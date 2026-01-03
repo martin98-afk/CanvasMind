@@ -267,6 +267,7 @@ class SettingInterface(ScrollArea):
         self.pipeDirectionCard.optionChanged.connect(self.onConfigChanged)
 
         self.canvasGroup.addSettingCard(self.runModeCard)
+        self.canvasGroup.addSettingCard(self.nodeTimeoutCard)
         self.canvasGroup.addSettingCard(self.autoSaveCard)
         self.canvasGroup.addSettingCard(self.autoSaveIntervalCard)
         self.canvasGroup.addSettingCard(self.showGridCard)

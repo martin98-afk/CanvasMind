@@ -10,6 +10,7 @@ import traceback
 import uuid
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -829,6 +830,8 @@ class DataHandler:
         temp_dir = self._get_node_temp_dir()
         # 保留扩展名：如果 output_name 有后缀，直接用；否则尝试推断或默认 .bin
         filename = Path(output_name).name or "output_file"
+        if "{{now}}" in filename:
+            filename = filename.replace("{{now}}", datetime.now().strftime("%Y%m%d%H%M%S"))
         if "." not in filename:
             # 尝试推断扩展名（可选）
             if isinstance(data, str):

@@ -24,7 +24,7 @@ class Component(BaseComponent):
         PortDefinition(name="text", label="待转换文本", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="output.mp3", label="生成的语音文件路径", type=ArgumentType.FILE),
+        PortDefinition(name="output_{{now}}.mp3", label="生成的语音文件路径", type=ArgumentType.FILE),
     ]
 
     properties = {
@@ -33,11 +33,6 @@ class Component(BaseComponent):
             default="zh-CN-XiaoxiaoNeural",
             label="语音名称",
             choices=["zh-CN-XiaoxiaoNeural", "zh-CN-YunjianNeural", "zh-CN-XiaoyiNeural", "zh-CN-liaoning-XiaobeiNeural", "zh-CN-shaanxi-XiaoniNeural", "en-US-JennyNeural", "en-US-GuyNeural", "ja-JP-NanamiNeural", "ko-KR-SunHiNeural"]
-        ),
-        "output_path": PropertyDefinition(
-            type=PropertyType.TEXT,
-            default="./output_edge_tts.mp3",
-            label="输出文件路径",
         ),
     }
 
@@ -53,20 +48,43 @@ class Component(BaseComponent):
 
         text = inputs.text
         voice_name = params.voice_name
-        output_path = params.output_path
+        output_path = "output.mp3"
 
         # 确保输出目录存在
-        os.makedirs(os.path.dirname(output_path) if os.path.dirname(output_path) else ".", exist_ok=True)
+        os.makedirs(
+            os.path.dirname(output_path)
+            if os.path.dirname(output_path) else ".",
+            exist_ok=True
+        )
+        
+        def unescape_and_clean(text):
+            import re
+            import html
+            import codecs
+            # 1. 将字符串中的 "\\n", "\\t" 等转义序列为真实字符
+            text = html.unescape(text)
+            # 2. 移除 HTML/XML 标签
+            text = re.sub(r"<[^>]+>", "", text)
+            # 3. 移除非打印字符（保留基本可读字符）
+            text = re.sub(r"[^\x20-\x7E\u4e00-\u9fff\.\,\!\?\:\;\n]", " ", text)
+            # 4. 合并多个空白为单个空格
+            text = re.sub(r"\s+", " ", text).strip()
+            
+            text = codecs.decode(text, 'unicode_escape')
+            # 2. 将多个换行/空格压缩为合理停顿（可选）
+            import re
+            text = re.sub(r'\s+', ' ', text).strip()
+            return text
 
         async def _tts():
-            communicate = edge_tts.Communicate(text, voice_name)
+            communicate = edge_tts.Communicate(unescape_and_clean(text), voice_name)
             await communicate.save(output_path)
 
         try:
             asyncio.run(_tts())
             self.logger.info(f"Edge TTS合成成功，文件已保存至: {output_path}")
             with open(output_path, "rb") as f:
-                return {"output.mp3": f.read()}
+                return {"output_{{now}}.mp3": f.read()}
         except Exception as e:
             self.logger.error(f"Edge TTS合成过程中发生错误: {str(e)}")
             raise

@@ -73,6 +73,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
 
         # === 添加属性 ===
         self.model.add_property("current_index", 0)
+        self.model.add_property("current_key", "")
         self.model.add_property("loop_nums", 5)
         self.model.add_property("max_iterations", 1000)
         self.model.add_property("loop_condition", "")
