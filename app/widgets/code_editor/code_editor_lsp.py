@@ -150,8 +150,6 @@ class LSPCodeEditor(CodeEditor):
             self.lsp_session.open_document(full_text)
             self._lsp_document_opened = True
         else:
-            # 发送全量更新：在 LSP 协议中，若 contentChanges 中不带 range 字段，则视为全量
-            # 如果你的 LspClientManager 内部强制要求 range，请确保传的是 None
             try:
                 # 这里我们清空暂存区，直接同步全文
                 self.lsp_session.change_document_delta([{"text": full_text}])
