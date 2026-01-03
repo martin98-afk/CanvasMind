@@ -42,14 +42,6 @@ class CanvasIO(QObject):
             "node_outputs": {},
             "column_select": {}
         }
-        # for node in self.graph.all_nodes():
-            # node_comp_cls = ComponentScanner().get_component(getattr(node, 'FULL_PATH', 'unknown'))
-            # if node_comp_cls is None:
-            #     continue
-            # category, name = node.FULL_PATH.split("/")
-            # for node_data in graph_data["nodes"].values():
-            #     if "StatusDynamicNode_" in node_data["type_"] and node_data["type_"].split("StatusDynamicNode_")[1] == f"{category}_{name}":
-            #         node_data["type_"] = "dynamic.StatusDynamicNode_" + node_comp_cls.uuid
         for node in self.graph.all_nodes():
             node_comp_cls = ComponentScanner().get_component(getattr(node, 'FULL_PATH', 'unknown'))
             stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"

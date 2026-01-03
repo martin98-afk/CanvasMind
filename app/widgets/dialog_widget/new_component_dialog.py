@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QFormLayout, QWidget
-from qfluentwidgets import LineEdit, BodyLabel, MessageBoxBase, TextEdit
+from qfluentwidgets import LineEdit, BodyLabel, MessageBoxBase, TextEdit, EditableComboBox
+
+from app.scan_components import ComponentScanner
 
 
 class NewComponentDialog(MessageBoxBase):
@@ -23,15 +25,21 @@ class NewComponentDialog(MessageBoxBase):
         self.buttonLayout.itemAt(0).widget().deleteLater()
 
     def _setup_ui(self):
-        # 使用 qfluentwidgets 的 LineEdit
+        # 组件名定义
         self.name_edit = LineEdit()
         self.name_edit.setMinimumWidth(300)
-        self.category_edit = LineEdit()
-        self.description_edit = TextEdit()
-        if self._default_category:
-            self.category_edit.setText(self._default_category)
         if self._default_name:
             self.name_edit.setText(self._default_name)
+        # 组件类别定义
+        self.category_edit = EditableComboBox()
+        self.category_edit.setMaxVisibleItems(12)
+        compoent_map, _ = ComponentScanner().get_components()
+        categories = {getattr(cls, 'category', 'General') for cls in compoent_map.values()}
+        self.category_edit.addItems(sorted(categories))
+        self.category_edit.setText(self._default_category)
+
+        # 组件描述定义
+        self.description_edit = TextEdit()
         if self._default_description:
             self.description_edit.setText(self._default_description)
         # 添加到表单布局

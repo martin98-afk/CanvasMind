@@ -568,6 +568,8 @@ def topological_sort(nodes: List, split_components: bool = False) -> Union[Optio
 
     node_set = set(sorted_nodes)
     for node in sorted_nodes:
+        if not hasattr(node, 'input_ports'):
+            continue
         for input_port in node.input_ports():
             for upstream_out in input_port.connected_ports():
                 upstream = get_port_node(upstream_out)
@@ -618,6 +620,8 @@ def topological_sort(nodes: List, split_components: bool = False) -> Union[Optio
 
         # 重新计算连通分量内的入度
         for node in component_nodes:
+            if not hasattr(node, 'input_ports'):
+                continue
             for input_port in node.input_ports():
                 for upstream_out in input_port.connected_ports():
                     upstream = get_port_node(upstream_out)

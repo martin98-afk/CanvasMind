@@ -76,7 +76,6 @@ class LogToolWindow(ToolWindow):
         if run_id == self.current_run_id:
             return
 
-        # 折叠上一个
         if self.current_run_id and self.current_run_id in self.run_cards:
             self.current_run_id = None
 

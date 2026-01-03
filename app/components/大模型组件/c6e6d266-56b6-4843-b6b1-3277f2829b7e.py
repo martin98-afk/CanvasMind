@@ -82,7 +82,6 @@ class Component(BaseComponent):
         from openai import OpenAI
         from PIL import Image
         import io
-        self.logger.info(params)
         # 处理输入数据
         if params.visual:
             # 处理图像输入

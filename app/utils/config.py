@@ -64,6 +64,7 @@ class Settings(QConfig):
     # ========== 新增：画布设置 ==========
     canvas_run_mode = OptionsConfigItem("Canvas", "RunMode", "subprocess运行",
                                         OptionsValidator(["ipython运行", "subprocess运行"]))
+    node_run_timeout = RangeConfigItem("Canvas", "RunTimeout", 300, RangeValidator(120, 3000))
     canvas_grid_mode = OptionsConfigItem("Canvas", "ShowGrid", "线网格",
                                          OptionsValidator(["线网格", "点网格", "无网格"]))
     node_proxy_size = RangeConfigItem("Canvas", "NodeProxySize", 120, RangeValidator(70, 300))
@@ -102,7 +103,7 @@ class Settings(QConfig):
         [
             "pyzmq", "loguru", "pydantic", "pandas", "Pillow", "fastapi",
             "uvicorn", "python-lsp-server[all]", "asteval", "wcwidth",
-            "pyarrow", "ipykernel", "matplotlib", "pyecharts"
+            "pyarrow", "ipykernel", "matplotlib", "pyecharts", "mcp"
         ],
         ListValidator()
     )

@@ -111,9 +111,13 @@ class LspClientManager(QThread):
                     "plugins": {
                         "jedi": {
                             "environment": self.python_path,
-                            "fast_parser": True
+                            "fast_parser": True,
                         },
-                        "jedi_completion": {"enabled": True, "fuzzy": True},
+                        "jedi_completion": {
+                            "enabled": True, "fuzzy": True,
+                            "cache_for": ["numpy", "pandas", "sklearn", "matplotlib"]  # 对大型库开启缓存
+                        },
+                        "jedi_definition": {"enabled": True, "follow_imports": True},
                         "pyflakes": {"enabled": True},
                         "pycodestyle": {"enabled": False},
                         "mccabe": {"enabled": False},
@@ -125,7 +129,7 @@ class LspClientManager(QThread):
                 "textDocument": {
                     "synchronization": {
                         "dynamicRegistration": False,
-                        "change": 2,  # 增量更新 (Incremental)
+                        "change": 1,  # 增量更新 (Incremental)
                         "didSave": True
                     },
                     "completion": {
@@ -279,6 +283,14 @@ class LspClientManager(QThread):
             }, priority=10)
         )
         self._debounce_timer.start(25)
+
+    def change_document_full(self, text: str):
+        """新增全量同步接口"""
+        self.version += 1
+        self._send_message("textDocument/didChange", {
+            "textDocument": {"uri": self.uri, "version": self.version},
+            "contentChanges": [{"text": text}]  # 全量只传一个字典，不传 range
+        }, is_notification=True)
 
     def change_document_delta(self, changes: List[Dict]):
         self.version += 1

@@ -16,14 +16,13 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "获取全局变量"
-    category = "数据集成"
-    description = "用于获取当前画布全局变量的具体数值"
+    name = "节点全局变量清空"
+    category = "变量操作"
+    description = "选择需要清空的节点型全局变量数据，但不会删除该变量"
     requirements = ""
     inputs = [
     ]
     outputs = [
-        PortDefinition(name="output1", label="输出1", type=ArgumentType.JSON),
     ]
     properties = {
         "prop1": PropertyDefinition(
@@ -32,13 +31,32 @@ class Component(BaseComponent):
             label="属性1",
         ),
     }
-
     def run(self, params, inputs=None):
         """
         params: 节点属性（来自UI）
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
-        return {
-            "output1": self.global_variable.get(params.prop1)
-        }
+        self.emit_custom_message(
+            method="global_variable.clear",
+            params={
+                "type": "node_vars",
+                "value": params.prop1
+            }
+        )
+
+
+if __name__ == "__main__":
+    import warnings
+    warnings.filterwarnings("ignore")
+    model = Component()
+    result = model.debug(
+        params={"prop1": "test"},
+        inputs={"input1": "output"},
+        node_id="测试模型",
+        show_input_types = True,
+        show_output_types = True,
+        show_execution_time = True,
+        global_vars = {}
+    )
+    print(result)

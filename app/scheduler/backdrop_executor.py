@@ -85,22 +85,53 @@ class BackdropExecutor(QObject):
         return data if len(data) != 1 else data[0]
 
     def _run_iterate(self, input_data, input_proxy, output_proxy, execute_nodes):
-        if not isinstance(input_data, (list, tuple)):
-            input_data = [input_data]
+        # --- 新增：处理输入数据类型 ---
+        iterable_items = []
+        is_dict_mode = False
+
+        if isinstance(input_data, dict):
+            # 如果是字典，迭代 (key, value) 元组
+            iterable_items = list(input_data.items())
+            is_dict_mode = True
+        elif isinstance(input_data, (list, tuple)):
+            iterable_items = input_data
+        else:
+            # 兼容非容器类型，视作单元素列表
+            iterable_items = [input_data]
 
         results = []
-        for idx, item in enumerate(input_data):
+        for idx, item in enumerate(iterable_items):
             if self.ctx.is_cancelled():
                 break
-            self.ctx.wait_if_paused()  # ← 关键：支持暂停
+            self.ctx.wait_if_paused()
+
             if self.ctx.is_cancelled():
                 break
-            input_proxy.set_output_value(item)
-            internal_results = self._execute_subgraph(execute_nodes, f"iter_{idx}")
+
+            # --- 新增：属性增强 ---
+            if is_dict_mode:
+                # item 是 (key, value)
+                current_key, current_val = item
+                # 将 key 存入模型属性，方便 UI 监视
+                self.backdrop.model.set_property("current_key", str(current_key))
+                # 传递给输入代理的值可以是整个元组，或者仅是 value（取决于你的业务逻辑）
+                # 这里推荐传递整个元组，或者在输入代理中增加逻辑拆分
+                input_proxy.set_output_value(item)
+            else:
+                self.backdrop.model.set_property("current_key", None)
+                input_proxy.set_output_value(item)
+
+            # 执行子图
+            self._execute_subgraph(execute_nodes, f"iter_{idx}")
+
+            # 收集结果
             output = self._collect_output(output_proxy)
             results.append(output)
+
+            # 更新进度
             self.backdrop.model.set_property("current_index", idx + 1)
             self.scheduler.property_changed.emit(self.backdrop)
+
         return results
 
     def _run_condition_loop(self, input_data, input_proxy, output_proxy, execute_nodes):
@@ -180,6 +211,8 @@ class BackdropExecutor(QObject):
             self.ctx.wait_if_paused()  # ← 关键：支持暂停
             if self.ctx.is_cancelled():
                 break
+            if node.get_property("disabled"):
+                continue
             self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
             self.scheduler.property_changed.emit(self.backdrop)
             try:
@@ -204,7 +237,7 @@ class BackdropExecutor(QObject):
                 if hasattr(node, '_output_values'):
                     node_name = re.sub(r'\s+', '_', node.name())
                     for port, val in node._output_values.items():
-                        results_map[f"node_vars_{node_name}__{port}"] = val
+                        results_map[f"node_vars.{node_name}__{port}"] = val
 
             except Exception as e:
                 self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
@@ -219,6 +252,8 @@ class BackdropExecutor(QObject):
             for out_port in in_port.connected_ports():
                 node = out_port.node()
                 val = node._output_values.get(out_port.name())
+                if val is None:
+                    continue
                 outputs.append(val)
         if len(outputs) == 0:
             return None

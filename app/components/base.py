@@ -5,10 +5,12 @@ import os
 import pickle
 import re
 import sys
+import time
 import traceback
 import uuid
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -65,6 +67,31 @@ PropertyDefinition = base_module.PropertyDefinition
 PropertyType = base_module.PropertyType
 ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType\n\n\n"""
+
+
+# ==================== 中间消息通信协议 ====================
+
+class MessageLevel(str, Enum):
+    DEBUG = "debug"
+    INFO = "info"
+    SUCCESS = "success"
+    WARNING = "warning"
+    ERROR = "error"
+
+
+class ComponentMessage(BaseModel):
+    """标准通信协议模型"""
+    v: str = "1.0"  # 协议版本，用于未来兼容性处理
+    msg_id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # 消息唯一ID
+    timestamp: float = Field(default_factory=time.time)  # 时间戳
+
+    # 核心路由字段
+    method: str  # 模拟 RPC 方法名，如 "ui.progress" 或 "data.preview"
+    params: Dict[str, Any] = {}  # 参数负载
+
+    # 上下文元数据
+    level: MessageLevel = MessageLevel.INFO
+    extra: Optional[Dict[str, Any]] = None  # 预留扩展空间
 
 
 # ==================== 工具函数 ====================
@@ -803,6 +830,8 @@ class DataHandler:
         temp_dir = self._get_node_temp_dir()
         # 保留扩展名：如果 output_name 有后缀，直接用；否则尝试推断或默认 .bin
         filename = Path(output_name).name or "output_file"
+        if "{{now}}" in filename:
+            filename = filename.replace("{{now}}", datetime.now().strftime("%Y%m%d%H%M%S"))
         if "." not in filename:
             # 尝试推断扩展名（可选）
             if isinstance(data, str):
@@ -977,17 +1006,25 @@ class BaseComponent(ABC):
         return create_model(model_name, __base__=base_classes, **fields)
 
     # ----------------中间结果流式返回----------------
-    def emit_progress(self, data: dict):
+    def emit_custom_message(self, method: str, params: Dict[str, Any], level=MessageLevel.INFO):
         """
-        通用流式输出方法。
-        调用此方法会将 data 以 JSON 形式发送到主界面。
-        例如: self.emit_progress({"type": "loss", "value": 0.5, "epoch": 10})
+        规范化的通信接口
         """
-        if not isinstance(data, dict):
-            raise ValueError("emit_progress only accepts dict")
-        # 通过 stdout 发送特殊标记的 JSON
-        marker_line = f"{PROGRESS_MARKER}{json.dumps(data, ensure_ascii=False)}"
-        print(marker_line, flush=True)  # 确保立即输出（配合 PYTHONUNBUFFERED=1）
+        msg = ComponentMessage(
+            method=method,
+            params=params,
+            level=level
+        )
+        # 通过 stdout 发送加密/编码后的 JSON，防止业务日志干扰
+        print(f"{PROGRESS_MARKER}{msg.json()}", flush=True)
+
+    def update_progress(self, percent: int, status_text: str = ""):
+        """快捷方式：更新进度"""
+        self.emit_custom_message("ui.progress", {"value": percent, "text": status_text})
+
+    def send_preview(self, data_type: str, payload: Any):
+        """快捷方式：发送数据预览"""
+        self.emit_custom_message("data.preview", {"type": data_type, "data": payload})
 
     # ---------------- 执行包装器 ----------------
     def execute(

@@ -13,7 +13,7 @@ from qfluentwidgets import MessageBox
 
 # --- 其他原有导入 ---
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext, \
-    COMPONENT_IMPORT_CODE, resource_path
+    COMPONENT_IMPORT_CODE, resource_path, ComponentMessage
 from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
 from app.scan_components import ComponentScanner
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
@@ -89,9 +89,9 @@ def create_node_class(full_path, file_path, parent_window=None):
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
+            self.parent_window = parent_window
             self.CACHE_PATH.mkdir(exist_ok=True, parents=True)
             self.set_property("version", "latest")
-            self.parent_window = parent_window
             if hasattr(ComponentScanner().get_component_by_uuid(self.uuid), "icon"):
                 self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
             self.view.set_align("center")
@@ -126,7 +126,9 @@ def create_node_class(full_path, file_path, parent_window=None):
         def refresh_node_outports(self):
             self.set_port_deletion_allowed(True)
             # 2. 记录当前所有输出端口的连线状态：{port_name: [connected_downstream_ports]}
-            expected_names = [port_name for port_name, _ in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs()]
+            expected_names = [
+                port_name for port_name, _ in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs()
+            ]
             current_connections = {}
             for port in self.output_ports():
                 connected = port.connected_ports()
@@ -228,6 +230,7 @@ def create_node_class(full_path, file_path, parent_window=None):
         def _generate_parms_widget(self):
             """生成节点属性配置控件"""
             # 生成其他组件属性控件
+            custom_widgets_num = len(ComponentScanner().get_component_by_uuid(self.uuid).get_properties()) + 10
             for i, (prop_name, prop_def) in enumerate(ComponentScanner().get_component_by_uuid(self.uuid).get_properties().items()):
                 prop_type = prop_def.get("type", PropertyType.TEXT)
                 default = prop_def.get("default", "")
@@ -243,7 +246,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                         self.add_custom_widget(
                             ComboBoxWidgetWrapper(
                                 parent=self.view, name=prop_name, label=label, items=choices,
-                                z_value=len(ComponentScanner().get_component_by_uuid(self.uuid).get_properties()) - i
+                                z_value=custom_widgets_num - i
                             ),
                             tab="properties"
                         )
@@ -293,7 +296,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                         label=label,
                         schema=processed_schema,
                         window=parent_window,
-                        z_value=len(ComponentScanner().get_component_by_uuid(self.uuid).get_properties()) - i
+                        z_value=custom_widgets_num - i
                     )
                     self.add_custom_widget(widget, tab='Properties')
                 elif prop_type == PropertyType.VARIABLE:  # 新增类型
@@ -305,7 +308,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                             label=label,
                             var_type=default_val or "全局变量",
                             main_window=parent_window,  # 传入 main_window 引用
-                            z_value=len(ComponentScanner().get_component_by_uuid(self.uuid).get_properties()) - i
+                            z_value=custom_widgets_num - i
                         ),
                         tab="properties"
                     )
@@ -523,7 +526,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
             # 轮询结果文件
             start_time = time.time()
-            timeout = 300  # 5分钟
+            timeout = parent_window.config.node_run_timeout.value  # 5分钟
 
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
@@ -539,12 +542,13 @@ def create_node_class(full_path, file_path, parent_window=None):
                             lf.seek(self.last_log_pos)
                             new_content = lf.read()
                             if new_content:
+                                # --- 关键修改 ---
                                 self._log_message(self.persistent_id, new_content)
                                 self.last_log_pos = lf.tell()
                 except Exception:
                     pass
                 if time.time() - start_time > timeout:
-                    raise Exception("❌ 节点执行超时（5分钟）")
+                    raise Exception(f"❌ 节点执行超时（{timeout} 秒）")
 
                 time.sleep(0.1)
             self._log_message(self.persistent_id, "✅ 节点在ipython环境执行完成")
@@ -565,14 +569,14 @@ def create_node_class(full_path, file_path, parent_window=None):
             )
 
             start_time = time.time()
-            timeout = 300
+            timeout = parent_window.config.node_run_timeout.value
             while proc.poll() is None:
                 if check_cancel and check_cancel():
                     kill_proc_tree(proc.pid)
                     raise Exception("执行已被用户取消")
                 if time.time() - start_time > timeout:
                     kill_proc_tree(proc.pid)
-                    raise Exception("❌ 节点执行超时（5分钟）")
+                    raise Exception(f"❌ 节点执行超时（{timeout} 秒）")
                 # 增量读取日志，实时输出
                 try:
                     if os.path.exists(log_file_path):

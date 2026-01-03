@@ -17,15 +17,19 @@ from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
+from PyQt5.QtWidgets import QApplication, QTextEdit
 from Qt import QtGui, QtCore, QtWidgets
 from loguru import logger
+from qfluentwidgets import TextEdit
 from qtpy import QtGui, QtCore, QtWidgets
 
+from app.nodes.sticky_note import StickyNoteNode
 from app.widgets.basic_widget.combo_widget import CustomComboBox
+from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomLivePipeItem, CustomPipeItem
 from app.widgets.node_widget.base import CustomNodeBaseWidget
-
+from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 
 # --- 常量配置 ---
 SNAP_THRESHOLD = 15.0  # 吸附距离阈值
@@ -325,10 +329,13 @@ class CustomNodeViewer(NodeViewer):
             if hasattr(widget, 'code_editor') and widget.code_editor.hasFocus():
                 widget.code_editor.wheelEvent(event)
                 return
+            elif hasattr(widget, "summary_label") and widget.summary_label.hasFocus():
+                widget.summary_label.wheelEvent(event)
+                return
         elif isinstance(item, QtWidgets.QGraphicsProxyWidget):
-            for combo in QtWidgets.QApplication.allWidgets():
-                if isinstance(combo, CustomComboBox) and combo.view().window().isVisible():
-                    combo.view().wheelEvent(event)
+            for widget in QtWidgets.QApplication.allWidgets():
+                if isinstance(widget, CustomComboBox) and widget.view().window().isVisible():
+                    widget.view().wheelEvent(event)
                     return
 
         try:
@@ -690,6 +697,8 @@ class CustomNodeGraph(NodeGraph):
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
                             node.view.widgets[prop].set_value(val)
+                    elif isinstance(node, StickyNoteNode):
+                        node.set_property(prop, val)
 
                 nodes[n_id] = node
 

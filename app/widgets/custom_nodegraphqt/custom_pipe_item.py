@@ -165,7 +165,6 @@ class CustomPipeItem(PipeItem):
         elif layout == PipeLayoutEnum.ANGLE.value:
             points = [pos1]
 
-            # 动态边距：如果节点离得太近，缩小起始段的长度
             side_margin = min(40.0, dx * 0.4) if dx > 5 else 5.0
 
             is_forward = False
@@ -180,9 +179,17 @@ class CustomPipeItem(PipeItem):
                 points.append(QtCore.QPointF(mid_x, pos1.y()))
                 points.append(QtCore.QPointF(mid_x, pos2.y()))
             else:
-                # 逆向避让折线
+                # -------------------------------------------------------
+                # [修正逻辑]：向上固定100，向下维持节点高度
+                # -------------------------------------------------------
                 node_h = calc_node_height(start_port.node)
-                y_offset = node_h if pos1.y() <= pos2.y() else -node_h
+
+                if pos1.y() > pos2.y():
+                    # 起始节点在结束节点【上方】，需要向上避让
+                    y_offset = -100
+                else:
+                    # 起始节点在结束节点【下方】，需要向下避让，使用原来的节点高度
+                    y_offset = node_h
 
                 # 根据端口类型计算绕行点
                 direct = 1 if start_port.port_type == PortTypeEnum.OUT.value else -1
@@ -202,7 +209,7 @@ class CustomPipeItem(PipeItem):
                 if (points[i] - clean_points[-1]).manhattanLength() > 0.5:
                     clean_points.append(points[i])
 
-            self._draw_rounded_path(path, clean_points, radius=12.0)
+            self._draw_rounded_path(path, clean_points, radius=16.0)
 
         self.setPath(path)
 

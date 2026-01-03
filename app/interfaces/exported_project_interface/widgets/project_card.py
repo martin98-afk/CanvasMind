@@ -2,6 +2,7 @@
 import os
 import json
 import subprocess
+import sys
 from pathlib import Path
 from PyQt5.QtCore import Qt, QSize, QRect, QRectF
 from PyQt5.QtGui import QFont, QGuiApplication, QPixmap, QPainter, QColor, QPen, QPainterPath
@@ -198,6 +199,7 @@ class ProjectCard(CardWidget):
 
         self.run_btn = PrimaryPushButton("运行", self, FluentIcon.PLAY)
         self.service_btn = PrimaryPushButton("上线", self, FluentIcon.LINK)
+        self.service_btn.clicked.connect(self._handle_service_toggle)
         for btn in [self.run_btn, self.service_btn]:
             btn.setFixedHeight(30)
             btn.setFixedWidth(80)
@@ -268,48 +270,117 @@ class ProjectCard(CardWidget):
         self._load_status_info()
         self._update_service_button()
 
+    def _get_project_python_exe(self):
+        """从项目导出的 workflow json 中读取记录的 Python 环境路径"""
+        workflow_json = Path(self.project_path) / "model.workflow.json"
+        if workflow_json.exists():
+            try:
+                with open(workflow_json, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    # 尝试从 runtime -> environment_exe 获取路径
+                    exe_path = data.get("runtime", {}).get("environment_exe")
+                    if exe_path and os.path.exists(exe_path):
+                        return exe_path.replace("\\", "/")
+            except Exception as e:
+                print(f"解析项目 Python 环境失败: {e}")
+
+        # 兜底方案：如果没找到或路径失效，返回当前运行环境
+        return sys.executable.replace("\\", "/")
+
+    def _handle_service_toggle(self):
+        """处理上线/下线按钮逻辑"""
+        try:
+            if not SERVICE_MANAGER.is_running(self.project_path):
+                # 1. 启动服务获取动态 URL
+                url = SERVICE_MANAGER.start_service(self.project_path)
+
+                # 2. 【关键：动态写入地址文件】
+                url_file = Path(self.project_path) / "service_url.txt"
+                url_file.write_text(url, encoding="utf-8")
+
+                InfoBar.success("上线成功", f"服务已启动: {url}", parent=self.window())
+            else:
+                # 下线逻辑
+                SERVICE_MANAGER.stop_service(self.project_path)
+                # 下线时可以删除地址文件，防止误调
+                url_file = Path(self.project_path) / "service_url.txt"
+                if url_file.exists():
+                    url_file.unlink()
+
+                InfoBar.warning("服务已下线", "API 端口已释放", parent=self.window())
+
+            # 3. 刷新卡片状态（会触发 _load_status_info）
+            self.refresh()
+
+        except Exception as e:
+            InfoBar.error("操作失败", str(e), parent=self.window())
+
     def _load_status_info(self):
-        if SERVICE_MANAGER.is_running(self.project_path):
-            api_url = SERVICE_MANAGER.get_url(self.project_path) or "API服务：运行中"
+        """状态加载逻辑：没上线不给复制"""
+        is_api_running = SERVICE_MANAGER.is_running(self.project_path)
+        mcp_script_exists = (Path(self.project_path) / "mcp_instance.py").exists()
+
+        # API 状态
+        if is_api_running:
+            api_url = SERVICE_MANAGER.get_url(self.project_path)
             api_status = 'green'
         else:
-            api_url = "API服务：未部署"
+            api_url = "API服务：未上线"
             api_status = 'gray'
 
-        mcp_path = Path(self.project_path) / "mcp.json"
-        if mcp_path.exists():
-            try:
-                with open(mcp_path, 'r', encoding='utf-8') as f:
-                    json.load(f)
-                mcp_content = "点击复制配置"
-                mcp_status = 'green'
-            except:
-                mcp_content = ""
-                mcp_status = 'gray'
+        # MCP 状态：只有 【API运行中】 且 【脚本已导出】 才允许复制
+        if is_api_running and mcp_script_exists:
+            project_python = self._get_project_python_exe()
+            mcp_config = {
+                "mcpServers": {
+                    f"Canvas_{self.project_name}": {
+                        "command": project_python.replace("\\", "/"),
+                        "args": [str((Path(self.project_path) / "mcp_instance.py").absolute()).replace("\\", "/")]
+                    }
+                }
+            }
+            mcp_content = "MCP配置：点击复制 JSON"
+            mcp_copy_data = json.dumps(mcp_config, indent=2, ensure_ascii=False)
+            mcp_status = 'green'
         else:
-            mcp_content = ""
+            mcp_content = "MCP工具：请先上线服务" if mcp_script_exists else "MCP工具：未导出脚本"
+            mcp_copy_data = ""  # 没上线，点击复制也没内容
             mcp_status = 'gray'
 
-        self._update_dot_and_label(self.api_dot, self.api_label, api_status,
-                                   api_url, copy_content=api_url if api_status == 'green' else None)
-        self._update_dot_and_label(self.mcp_dot, self.mcp_label, mcp_status,
-                                   "MCP工具：已注册" if mcp_status == 'green' else "MCP工具：未注册",
-                                   copy_content=mcp_content if mcp_status == 'green' else None)
+        self._update_dot_and_label(self.api_dot, self.api_label, api_status, api_url,
+                                   copy_content=api_url if is_api_running else None)
+
+        self._update_dot_and_label(self.mcp_dot, self.mcp_label, mcp_status, mcp_content,
+                                   copy_content=mcp_copy_data)
 
     def _update_dot_and_label(self, dot, label, status, text, copy_content=None):
-        color_map = {'green': '#4caf50', 'gray': '#d0d0d0' if not isDarkTheme() else '#666666'}
+        # 颜色定义
+        color_map = {
+            'green': '#4caf50',
+            'gray': '#d0d0d0' if not isDarkTheme() else '#666666'
+        }
+
+        # 更新圆点颜色
         dot.setStyleSheet(f"""
             min-width: 8px; min-height: 8px; max-width: 8px; max-height: 8px;
             border-radius: 4px; 
             background-color: {color_map.get(status, 'gray')};
         """)
+
+        # 更新文字
         label.setText(text)
+
+        # 重要：更新 ClickableLabel 内部的复制内容
         label.copy_content = copy_content or ""
+
+        # 更新颜色样式
         if status == 'green':
-            label.setStyleSheet("color: #4caf50; font-weight: bold;")
+            label.setStyleSheet("color: #4caf50; font-weight: bold; text-decoration: underline;")
+            label.setToolTip("点击直接复制 MCP JSON 配置")
         else:
             color = "#666666" if not isDarkTheme() else "#aaaaaa"
             label.setStyleSheet(f"color: {color}; font-weight: normal;")
+            label.setToolTip("当前项目缺少 mcp_instance.py")
 
     def set_selected(self, is_selected: bool):
         if self.is_selected == is_selected:

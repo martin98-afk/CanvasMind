@@ -194,7 +194,7 @@ def create_branch_node(parent_window):
                                      for inactive_start in inactive_branch_nodes)
             return not inactive_reachable  # 默认禁用
 
-        def execute_sync(self, global_variable=None, *args, **kwargs):
+        def execute_sync(self, *args, global_variable=None, **kwargs):
             self.init_logger()
             gv = GlobalVariableContext()
             gv.deserialize(global_variable)

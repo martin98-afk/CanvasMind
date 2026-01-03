@@ -194,6 +194,16 @@ class SettingInterface(ScrollArea):
             parent=self.canvasGroup
         )
         self.runModeCard.optionChanged.connect(self.onConfigChanged)
+
+        self.nodeTimeoutCard = RangeSettingCard(
+            self.cfg.node_run_timeout,
+            get_icon("画布"),
+            "节点运行超时时间",
+            "决定节点最长运行时间（秒）如果超过则会直接中止运行",
+            parent=self.canvasGroup
+        )
+        self.nodeTimeoutCard.valueChanged.connect(self.onConfigChanged)
+
         self.showGridCard = OptionsSettingCard(
             self.cfg.canvas_grid_mode,
             get_icon("画布"),
@@ -257,6 +267,7 @@ class SettingInterface(ScrollArea):
         self.pipeDirectionCard.optionChanged.connect(self.onConfigChanged)
 
         self.canvasGroup.addSettingCard(self.runModeCard)
+        self.canvasGroup.addSettingCard(self.nodeTimeoutCard)
         self.canvasGroup.addSettingCard(self.autoSaveCard)
         self.canvasGroup.addSettingCard(self.autoSaveIntervalCard)
         self.canvasGroup.addSettingCard(self.showGridCard)

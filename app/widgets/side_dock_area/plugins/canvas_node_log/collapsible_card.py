@@ -1,16 +1,17 @@
 # collapsible_log_card.py （优化版）
 import re
 
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QElapsedTimer
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QElapsedTimer, QSize
 from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor, QTextBlockFormat, QTextOption
 from PyQt5.QtWidgets import *
 from qfluentwidgets import CardWidget, BodyLabel, TextEdit, TransparentToolButton, StrongBodyLabel
 
 from app.utils.utils import get_icon
+from app.widgets.basic_widget.roating_status_button import RotatingStatusButton
 
 
 class CollapsibleLogCard(CardWidget):
-    doubleClicked = pyqtSignal(str)  # 传出 run_id
+    doubleClicked = pyqtSignal(str)
 
     LEVEL_COLORS = {
         'DEBUG': '#808080',
@@ -31,8 +32,8 @@ class CollapsibleLogCard(CardWidget):
     }
 
     ARROW_ICONS = {
-        "collapsed": get_icon("折叠"),   # ▶
-        "expanded": get_icon("展开")    # ▼
+        "collapsed": get_icon("折叠"),
+        "expanded": get_icon("展开")
     }
 
     def __init__(self, run_id: str, title_color="color: #FFA500;", parent=None):
@@ -64,41 +65,41 @@ class CollapsibleLogCard(CardWidget):
         title_layout.setContentsMargins(6, 4, 6, 4)
         title_layout.setSpacing(6)
 
-        # 折叠按钮
         self.toggle_button = TransparentToolButton(self.ARROW_ICONS["expanded"], self)
         self.toggle_button.setFixedSize(16, 16)
-        self.toggle_button.setStyleSheet("background: transparent; border: none;")
         self.toggle_button.clicked.connect(self.toggle)
         title_layout.addWidget(self.toggle_button)
 
-        # 主标题（节点名）
         self.title_label = StrongBodyLabel(run_id.split("@")[0])
-        self.title_label.setWordWrap(False)
         self.title_label.setStyleSheet(title_color + " background: transparent; border: none;")
         title_layout.addWidget(self.title_label)
 
-        # 循环信息（如有）
         parts = run_id.split("@")
         if len(parts) == 3:
             separator = BodyLabel("│")
             separator.setStyleSheet("color: #555; background: transparent;")
             title_layout.addWidget(separator)
-
             loop_label = BodyLabel(parts[1])
             loop_label.setWordWrap(True)
             loop_label.setStyleSheet("color: #808080; background: transparent; border: none;")
             title_layout.addWidget(loop_label, 1)
 
-        title_layout.addStretch()  # 推动右侧元素靠右
-        # 时间戳
+        title_layout.addStretch()
+
         time_label = BodyLabel(parts[-1])
         time_label.setStyleSheet("color: #808080; background: transparent; border: none;")
         title_layout.addWidget(time_label)
 
-        # 计时器 & 状态
         title_layout.addWidget(self.timer_label)
-        self.status_button = TransparentToolButton(self.STATUS_ICONS["default"], self)
+
+        # 使用自定义的旋转按钮
+        self.status_button = RotatingStatusButton(
+            self.STATUS_ICONS["default"],
+            animation_duration=2000,
+            parent=self
+        )
         self.status_button.setFixedSize(20, 20)
+        self.status_button.setIconSize(QSize(16, 16))
         title_layout.addWidget(self.status_button)
 
         # === 日志文本区域 ===
@@ -112,20 +113,45 @@ class CollapsibleLogCard(CardWidget):
         self.log_text.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.log_text.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.log_text.setLineWrapMode(QTextEdit.WidgetWidth)
-        self.log_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-
-        # 初始高度
         self.log_text.setFixedHeight(20)
 
-        # 布局
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(4)
         layout.addLayout(title_layout)
         layout.addWidget(self.log_text)
 
-        self.expand()  # 默认展开
+        self.expand()
 
+    # --- 核心逻辑修改：启动动画 ---
+    def set_current_running(self, is_running: bool):
+        if self.is_current_running == is_running:
+            return
+        self.is_current_running = is_running
+
+        if is_running:
+            self.set_status("running")
+            self.status_button.start_rotation()  # 开启旋转
+            self._elapsed_timer.restart()
+            self._update_timer.start()
+            self.timer_label.show()
+            self.expand()
+        else:
+            self._update_timer.stop()
+            self.status_button.stop_rotation()  # 停止旋转
+        self._update_style()
+
+    def set_status(self, status: str):
+        self.status = status
+        icon = self.STATUS_ICONS.get(status, self.STATUS_ICONS["default"])
+        self.status_button.setIcon(icon)
+
+        # 如果从运行切换到其他状态，确保动画停止
+        if status != "running":
+            self.status_button.stop_rotation()
+        self._update_style()
+
+    # 其余代码保持原样...
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.doubleClicked.emit(self.run_id)
@@ -152,29 +178,6 @@ class CollapsibleLogCard(CardWidget):
             self.expand()
         else:
             self.collapse()
-
-    def set_current_running(self, is_running: bool):
-        if self.is_current_running == is_running:
-            return
-        self.is_current_running = is_running
-
-        if is_running:
-            self.set_status("running")
-            self._elapsed_timer.restart()
-            self._update_timer.start()
-            self.timer_label.show()
-            self.expand()
-        else:
-            self._update_timer.stop()
-        self._update_style()
-
-    def set_status(self, status: str):
-        if self.status == status:
-            return
-        self.status = status
-        icon = self.STATUS_ICONS.get(status, self.STATUS_ICONS["default"])
-        self.status_button.setIcon(icon)
-        self._update_style()
 
     def mark_as_error(self):
         self.set_status("error")
@@ -205,47 +208,30 @@ class CollapsibleLogCard(CardWidget):
         self.timer_label.setText(f"{elapsed_sec:.2f} s")
 
     def append_colored_log(self, text: str):
-        if not text:
-            return
-
+        if not text: return
         cursor = self.log_text.textCursor()
         cursor.movePosition(QTextCursor.End)
-
-        # 使用 splitlines(keepends=False) 是安全的，但我们要保留空行语义
         lines = text.splitlines()
-
-        # 如果原文以 \n 结尾，splitlines() 会丢掉最后一个空行，可选保留：
-        if text.endswith('\n'):
-            lines.append("")
-
+        if text.endswith('\n'): lines.append("")
         block_format = QTextBlockFormat()
         block_format.setLineHeight(110, QTextBlockFormat.ProportionalHeight)
-
         for i, line in enumerate(lines):
-            # 检测日志级别
             color_hex = "#ffffff"
-            clean_line = line.rstrip('\r\n\t ')  # 仅用于检测，不修改原 line
+            clean_line = line.rstrip('\r\n\t ')
             for level, col in self.LEVEL_COLORS.items():
                 if re.search(rf'\b{level}\b', clean_line, re.IGNORECASE):
                     color_hex = col
                     break
-
             char_format = QTextCharFormat()
             char_format.setForeground(QColor(color_hex))
             char_format.setFontFamily("Consolas")
             char_format.setFontPointSize(10)
-
-            # 关键：即使 line 是空字符串，也要插入一个 block
             cursor.setBlockFormat(block_format)
-            cursor.insertText(line, char_format)  # 保留原始 line（包括末尾空格）
-            if i < len(lines) - 1:
-                cursor.insertBlock()  # 每行后换 block
-
-        # 滚动到底
+            cursor.insertText(line, char_format)
+            if i < len(lines) - 1: cursor.insertBlock()
         self.log_text.setTextCursor(cursor)
         scrollbar = self.log_text.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
-
         self._adjust_height()
 
     def resizeEvent(self, event):

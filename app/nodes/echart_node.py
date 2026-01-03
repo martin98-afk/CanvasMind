@@ -6,11 +6,6 @@ from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.html_widget import HtmlWidgetWrapper
 
 
-# ✅ 信号类必须独立于非-QObject 节点
-class ChartNodeSignals(QObject):
-    htmlReady = pyqtSignal(str)
-
-
 def create_chart_node(parent_window):
 
     class ChartNode(CustomBaseNode, NoStatusNode, BasicNodeWithGlobalProperty):
@@ -40,8 +35,6 @@ def create_chart_node(parent_window):
             )
             self.add_custom_widget(chart_widget)
 
-            # ✅ 创建信号对象（必须是 QObject 子类实例）
-            self.signals = ChartNodeSignals()
             # 连接信号到槽（确保在主线程执行）
             self.signals.htmlReady.connect(self._on_html_ready, Qt.QueuedConnection)
 

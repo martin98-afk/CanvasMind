@@ -10,8 +10,9 @@ from pathlib import Path
 
 from NodeGraphQt import BaseNode
 from PyQt5 import QtCore
+from loguru import logger
 
-from app.components.base import PropertyType, GlobalVariableContext, ArgumentType
+from app.components.base import PropertyType, GlobalVariableContext, ArgumentType, ComponentMessage
 from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import resource_path, draw_special_outputport, canvas_file_dump_path, _safe_load_pickle, \
@@ -365,6 +366,34 @@ def create_dynamic_code_node(parent_window=None):
             parent_window.parent.develop_page.code_editor.set_code(self.format_code(add_import=False))
             parent_window.parent.switchTo(parent_window.parent.develop_page)
 
+        # --- 具体处理器 ---
+        def _handle_global_variable_clear(self, params: dict, msg: ComponentMessage):
+            """
+            处理全局变量清空逻辑
+            """
+            type = params.get("type", "")
+            value = params.get("value", "")
+            if value.startswith(type):
+                value = value.split(".")[1]
+            if type == "node_vars":
+                parent_window._on_global_variables_changed(
+                    var_type="node_vars",
+                    var_name=value,
+                    action="clear"
+                )
+                logger.info(f"[变量 {value} 内容已清空]")
+
+        def _handle_global_variable_add(self, params: dict, msg: ComponentMessage):
+            """
+            处理全局变量添加逻辑
+            """
+            value = params.get("value", "")
+            if value:
+                parent_window.property_panel._add_output_to_global_variable(
+                    node=self,
+                    port_name=value,
+                )
+
         def format_code(self, add_import=True):
             # === 1. 收集参数（不变）===
             user_code = self.get_property("code") or ""
@@ -545,7 +574,7 @@ def create_dynamic_code_node(parent_window=None):
 
             # 轮询结果文件
             start_time = time.time()
-            timeout = 300  # 5分钟
+            timeout = parent_window.config.node_run_timeout.value  # 5分钟
 
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
@@ -566,7 +595,7 @@ def create_dynamic_code_node(parent_window=None):
                 except Exception:
                     pass
                 if time.time() - start_time > timeout:
-                    raise Exception("❌ 节点执行超时（5分钟）")
+                    raise Exception(f"❌ 节点执行超时（{timeout} 秒）")
 
                 time.sleep(0.1)
             self._log_message(self.persistent_id, "✅ 节点在ipython环境执行完成")
@@ -587,14 +616,14 @@ def create_dynamic_code_node(parent_window=None):
             )
 
             start_time = time.time()
-            timeout = 300
+            timeout = parent_window.config.node_run_timeout.value
             while proc.poll() is None:
                 if check_cancel and check_cancel():
                     kill_proc_tree(proc.pid)
                     raise Exception("执行已被用户取消")
                 if time.time() - start_time > timeout:
                     kill_proc_tree(proc.pid)
-                    raise Exception("❌ 节点执行超时（5分钟）")
+                    raise Exception(f"❌ 节点执行超时（{timeout} 秒）")
                 # 增量读取日志，实时输出
                 try:
                     if os.path.exists(log_file_path):

@@ -5,9 +5,10 @@ from pathlib import Path
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint, QTimer
-from PyQt5.QtWidgets import QWidget, QGraphicsProxyWidget, QApplication
+from PyQt5.QtWidgets import QWidget, QGraphicsProxyWidget, QApplication, QTextEdit, QLineEdit
 from loguru import logger
-from qfluentwidgets import FluentIcon
+from lsprotocol.types import TextEdit
+from qfluentwidgets import FluentIcon, LineEdit
 
 from app.components.base import GlobalVariableContext
 from app.interfaces.canvas_interaface.constants import TEMPLATE_START_SIZES
@@ -202,8 +203,8 @@ class CanvasPage(QWidget):
         category_filter_dialog.categories_changed.connect(self.ui_manager.nav_panel.draggable_tree._on_categories_changed)
         category_filter_dialog.show_at(pos)
 
-    def _on_global_variables_changed(self, *args):
-        self.property_panel._on_global_variables_changed(*args)
+    def _on_global_variables_changed(self, var_type: str, var_name: str, action: str):
+        self.property_panel._on_global_variables_changed(var_type, var_name, action)
 
     def show_splitter(self):
         self.ui_manager.show_splitter()
@@ -356,6 +357,7 @@ class CanvasPage(QWidget):
             QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED))
 
         self.run_btn.show()
+        self.pause_btn.hide()
         self.stop_btn.hide()
         self._scheduler = None
 
@@ -450,10 +452,15 @@ class CanvasPage(QWidget):
     # --- 画布按键信号 ---
     def _canvas_key_press_event(self, event):
         focused_widget = QApplication.focusWidget()
-        if focused_widget and hasattr(focused_widget, 'code_editor'):
-            # 是代码编辑器获得焦点
-            QApplication.sendEvent(focused_widget.code_editor, event)
-            return
+        if focused_widget :
+            if hasattr(focused_widget, 'code_editor'):
+                # 是代码编辑器获得焦点
+                QApplication.sendEvent(focused_widget.code_editor, event)
+                return
+            elif isinstance(focused_widget, (QTextEdit, QLineEdit)):
+                QApplication.sendEvent(focused_widget, event)
+                return
+
 
         self.canvas_widget.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
         self.canvas_widget.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
@@ -553,6 +560,8 @@ class CanvasPage(QWidget):
         default_style = PipeEnum.DRAW_TYPE_DEFAULT.value
 
         # 1. 重置与当前节点相关的所有连接线
+        if not hasattr(node, "input_ports"):
+            return
         for input_port in node.input_ports():
             for out_port in input_port.connected_ports():
                 pipe = self._find_pipe_by_ports(out_port, input_port, viewer.all_pipes())

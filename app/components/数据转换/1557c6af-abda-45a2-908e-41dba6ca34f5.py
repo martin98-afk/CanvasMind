@@ -16,21 +16,18 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "获取全局变量"
-    category = "数据集成"
-    description = "用于获取当前画布全局变量的具体数值"
+    name = "列表合并"
+    category = "数据转换"
+    description = ""
     requirements = ""
     inputs = [
+        PortDefinition(name="input1", label="输入1", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),
+        PortDefinition(name="input2", label="输入2", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="output1", label="输出1", type=ArgumentType.JSON),
     ]
     properties = {
-        "prop1": PropertyDefinition(
-            type=PropertyType.VARIABLE,
-            default="全局变量",
-            label="属性1",
-        ),
     }
 
     def run(self, params, inputs=None):
@@ -39,6 +36,8 @@ class Component(BaseComponent):
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
+        output = inputs.input1
+        output.append(inputs.input2)
         return {
-            "output1": self.global_variable.get(params.prop1)
+            "output1": output
         }

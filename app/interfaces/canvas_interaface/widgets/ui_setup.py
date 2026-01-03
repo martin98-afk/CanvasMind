@@ -150,6 +150,16 @@ class CanvasUISetUp:
         self.node_layout.setSpacing(5)
         self.node_layout.setContentsMargins(0, 0, 0, 0)
 
+        # === 文本注释节点 ===
+        # self.annotate_node = TransparentToolButton(get_icon("文本注释"), parent=self.parent.canvas_widget)
+        # self.annotate_node.setIconSize(QSize(18, 18))
+        # self.annotate_node.setFixedSize(24, 24)
+        # self.annotate_node.setToolTip("创建注释")
+        # self.annotate_node.clicked.connect(
+        #     lambda: self.parent.create_next_node("general.StickyNote", icon_path="icons/文本注释.svg")
+        # )
+        # self.node_layout.addWidget(self.annotate_node)
+
         # === 固定控制流按钮 ===
         self.iterate_node = TransparentToolButton(get_icon("更新"), parent=self.parent.canvas_widget)
         self.iterate_node.setIconSize(QSize(18, 18))

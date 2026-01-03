@@ -35,10 +35,12 @@ class LSPCodeEditor(CodeEditor):
         self._lsp_document_opened = False
         self._last_lsp_content = ""
 
-        # 极限优化：缓存增量变更，不再使用全文 Diff
+        # 缓存变更
         self._pending_changes = []
+        # 修正行数统计：确保与 LSP 内部计算逻辑一致
         self._prefix_line_count = self.CODE_PREFIX.count('\n')
         self._prefix_char_count = len(self.CODE_PREFIX)
+
         # 初始化定时器
         self._init_timers()
         # LSP 集成
@@ -57,17 +59,22 @@ class LSPCodeEditor(CodeEditor):
             language='python',
             color_scheme='spyder/dark',
             font=QFont('Consolas', 13),
+            show_blanks=False,
+            edge_line=True,
+            auto_unindent=True,
+            close_quotes=True,
+            indent_guides=True,
             folding=True,
-            automatic_completions=True,
-            completions_hint=True,
-            hover_hints=True,
-            underline_errors=True,
-            highlight_current_line=True,
             markers=True,
+            automatic_completions=True,
             automatic_completions_after_chars=1,
+            completions_hint=True,
             completions_hint_after_ms=500,
+            hover_hints=True,
             code_snippets=True,
             intelligent_backspace=True,
+            underline_errors=True,
+            highlight_current_line=True,
         )
 
         # 按钮
@@ -121,55 +128,54 @@ class LSPCodeEditor(CodeEditor):
 
         QTimer.singleShot(2000, self.lsp_session.start)
 
-    # ========== 核心优化：0-Diff 增量同步 ==========
+    # ========== 核心修复：稳健同步逻辑 ==========
 
     def _on_document_contents_change(self, position, chars_removed, chars_added):
-        """不再对比全文字符串，直接捕获物理变更 (O(1) 复杂度)"""
         if not self._lsp_ready: return
         self._pending_changes.append((position, chars_removed, chars_added))
-        self._lsp_sync_timer.start(30)
+        # 缩短同步时间间隔，提高响应感
+        self._lsp_sync_timer.start(50)
 
     def _sync_to_lsp(self):
+        """
+        优化：改用全量同步 didChange。
+        在存在 CODE_PREFIX 的情况下，手动计算增量偏移极其容易出错（莫名红线的根源）。
+        对于普通脚本大小，发送全量文本的开销微乎其微，但能保证服务器与编辑器绝对同步。
+        """
         if not self._lsp_ready: return
-        if not self._lsp_document_opened:
-            self.lsp_session.open_document(self._get_code_with_prefix())
-            self._lsp_document_opened = True
-            self._pending_changes.clear()
-        elif self._pending_changes:
-            full_text = self._get_code_with_prefix()
-            changes = []
-            for pos, removed, added in self._pending_changes:
-                # 坐标平移（加上前缀长度）
-                actual_pos = pos + self._prefix_char_count
-                # 高效计算 LSP 坐标
-                line = full_text.count('\n', 0, actual_pos)
-                last_nl = full_text.rfind('\n', 0, actual_pos)
-                col = actual_pos - (last_nl + 1) if last_nl != -1 else actual_pos
 
-                # 这里为了极致简化且安全，我们发送此时刻该位置的文本
-                changes.append({
-                    "range": {"start": {"line": line, "character": col},
-                              "end": {"line": line, "character": col + removed}},
-                    "text": full_text[actual_pos: actual_pos + added]
-                })
-            self.lsp_session.change_document_delta(changes)
-            self._pending_changes.clear()
+        full_text = self._get_code_with_prefix()
+
+        if not self._lsp_document_opened:
+            self.lsp_session.open_document(full_text)
+            self._lsp_document_opened = True
+        else:
+            try:
+                # 这里我们清空暂存区，直接同步全文
+                self.lsp_session.change_document_delta([{"text": full_text}])
+            except Exception as e:
+                logger.error(f"Sync failed: {e}")
+                self.reopen_document()
+
+        self._pending_changes.clear()
         self._folding_timer.start(800)
 
     def _on_lsp_initialized(self):
-        self._lsp_ready = True;
+        self._lsp_ready = True
         self.lsp_signal.emit("ready")
         if self.toPlainText().strip(): self._sync_to_lsp()
 
     def _on_text_changed_for_lsp(self):
-        pass  # 已被 contentsChange 替代，保留定义
+        pass
 
     def _get_code_with_prefix(self) -> str:
         code = self.toPlainText()
-        return code if code.startswith(self.CODE_PREFIX[:10]) else self.CODE_PREFIX + code
+        # 优化判断：防止重复添加前缀
+        if code.startswith(self.CODE_PREFIX[:20]):
+            return code
+        return self.CODE_PREFIX + code
 
     def _compute_text_changes(self, old_text: str, new_text: str) -> List[Dict]:
-        """保留原有函数定义，但实际同步已优化为 contentsChange 驱动"""
         return []
 
     def _pos_to_line_col(self, text: str, pos: int) -> tuple[int, int]:
@@ -186,18 +192,18 @@ class LSPCodeEditor(CodeEditor):
 
     def _on_lsp_folding_ready(self, folding_ranges: List[Dict]):
         if not hasattr(self, 'folding_panel') or not self.folding_panel: return
-        tree = IntervalTree();
-        regions = {};
+        tree = IntervalTree()
+        regions = {}
         status = {}
         for fr in folding_ranges:
             start = fr['startLine'] + 1 - self._prefix_line_count
             end = fr['endLine'] + 1 - self._prefix_line_count
             if end > start:
-                regions[start] = end;
-                status[start] = False;
+                regions[start] = end
+                status[start] = False
                 tree[start:end + 1] = (start, end)
         self.folding_panel.update_folding((tree, FoldingRegion(None, None), regions, {}, {}, status))
-        self.folding_panel.folding_regions = regions;
+        self.folding_panel.folding_regions = regions
         self.folding_panel.folding_status = status
 
     def format_document(self):
@@ -209,42 +215,31 @@ class LSPCodeEditor(CodeEditor):
         cursor = self.textCursor()
         if cursor.hasSelection():
             self.lsp_session.request_range_formatting(
-                self.document().findBlock(cursor.selectionStart()).blockNumber(), 0,
-                self.document().findBlock(cursor.selectionEnd()).blockNumber(), 0
+                self.document().findBlock(cursor.selectionStart()).blockNumber() + self._prefix_line_count, 0,
+                self.document().findBlock(cursor.selectionEnd()).blockNumber() + self._prefix_line_count, 0
             )
 
     def _apply_formatting_edits(self, text_edits: List[Dict]):
         if not text_edits:
             return
-        self.set_text(text_edits[0]['newText'][self._prefix_char_count:])
+        # 格式化通常返回全文，去除前缀
+        new_text = text_edits[0]['newText']
+        if new_text.startswith(self.CODE_PREFIX):
+            new_text = new_text[self._prefix_char_count:]
+        self.set_text(new_text)
         self.reopen_document()
 
     def reopen_document(self):
-        """强制重置 LSP 服务器端的文档状态，解决全量替换导致的乱序问题"""
-        if not self._lsp_ready:
-            return
-
-        # 1. 停止增量同步计时器
+        if not self._lsp_ready: return
         self._lsp_sync_timer.stop()
         self._pending_changes.clear()
-
-        # 2. 构造带前缀的新内容
         full_code = self._get_code_with_prefix()
-
-        # 3. 先关闭再打开（这是 LSP 协议中最稳健的硬重置方式）
-        # 即使服务器没打开过这个文档，发 close 也是安全的
         try:
             self.lsp_session.close_document()
         except:
             pass
-
-        # 4. 发送 didOpen
         self.lsp_session.open_document(full_code)
-
-        # 5. 更新本地状态，确保后续的 contentsChange 从这个新起点计算
         self._lsp_document_opened = True
-
-        # 6. 顺便请求一次新的折叠范围，保持 UI 同步
         self._folding_timer.start(500)
 
     def request_hover(self, line, col, offset, show_hint=True, clicked=True):
@@ -253,7 +248,7 @@ class LSPCodeEditor(CodeEditor):
         self.lsp_session.request_hover(line + self._prefix_line_count, col)
 
     def _on_hover_response(self, result):
-        if result.get("contents"):
+        if result and result.get("contents"):
             val = result["contents"].get("value", "") \
                 if isinstance(result["contents"], dict) else str(result["contents"])
             self.handle_hover_response({"params": val})
@@ -276,18 +271,21 @@ class LSPCodeEditor(CodeEditor):
             self._completion_timer.start(10)
 
     def _trigger_completion(self):
+        cursor = self.textCursor()
         self.lsp_session.request_completion(
-            self.textCursor().blockNumber() + self._prefix_line_count, self.textCursor().columnNumber()
+            cursor.blockNumber() + self._prefix_line_count, cursor.columnNumber()
         )
 
     def _trigger_signature_help(self):
+        cursor = self.textCursor()
         self.lsp_session.request_signature_help(
-            self.textCursor().blockNumber() + self._prefix_line_count, self.textCursor().columnNumber()
+            cursor.blockNumber() + self._prefix_line_count, cursor.columnNumber()
         )
 
     def _trigger_hover(self):
+        cursor = self.textCursor()
         self.lsp_session.request_hover(
-            self.textCursor().blockNumber() + self._prefix_line_count, self.textCursor().columnNumber()
+            cursor.blockNumber() + self._prefix_line_count, cursor.columnNumber()
         )
 
     def _get_completion_prefix(self) -> str:
@@ -299,60 +297,62 @@ class LSPCodeEditor(CodeEditor):
             start -= 1
         return text[start:pos]
 
-    def _on_lsp_completions_ready(self, completion_items: List[Dict]):
-        """处理补全结果：解决吞点问题 + 智能括号补全"""
-        pos = self.textCursor().position()
-        clean_items = []
+    # ========== 核心修复：解决补全吞点逻辑 ==========
 
+    def _on_lsp_completions_ready(self, completion_items: List[Dict]):
+        """
+        处理补全结果：修正锚点（point）位置，防止点（.）被覆盖
+        """
+        cursor = self.textCursor()
+        current_pos = cursor.position()
+        text = self.toPlainText()
+
+        # 计算补全起始位置（锚点）：
+        # 如果光标前是字母/数字，则锚点是该单词起始位置；
+        # 如果光标前是点（.），则锚点就是光标当前位置。
+        start_pos = current_pos
+        while start_pos > 0 and (text[start_pos - 1].isalnum() or text[start_pos - 1] == '_'):
+            start_pos -= 1
+
+        clean_items = []
         for item in completion_items:
             label = item.get('label', '')
-            kind = item.get('kind', 1)  # 2: Method, 3: Function
+            kind = item.get('kind', 1)
 
-            # 基础插入文本（去除现有的括号，由我们重新统一构造）
-            # 比如 'plot(args...)' -> 'plot'
+            # 基础文本处理
             base_text = item.get('insertText', label)
             if '(' in base_text:
                 base_text = base_text.split('(')[0]
 
-            # 默认值
             insert_text = base_text
-            insert_format = 1  # 1 为普通文本，2 为 Snippet
+            insert_format = 1
 
-            # --- 智能括号逻辑 ---
-            # Kind 2 是 Method, 3 是 Function
+            # 智能括号
             if kind in (2, 3):
-                # 检查 label 确认是否有参数
-                # 逻辑：如果括号内有除 self 以外的内容，则认为有参数
                 has_args = False
-                # 匹配 label 中的括号内容，例如 plot(x, y) -> x, y
-                import re
                 params_match = re.search(r'\((.*)\)', label)
                 if params_match:
                     params_text = params_match.group(1).strip()
-                    # 如果参数列表不为空，且不只是 self，则认为需要填写参数
                     if params_text and params_text != 'self':
                         has_args = True
 
                 if has_args:
-                    # 有参数：生成 snippet "func($1)"，$1 是光标首选位置
                     insert_text = f"{base_text}($1)"
                     insert_format = 2
                 else:
-                    # 无参数：直接生成 "func()"，光标自然落在括号后
                     insert_text = f"{base_text}()"
                     insert_format = 1
 
-            # 构造 Spyder 兼容字典
             item_data = {
                 'label': label,
                 'insertText': insert_text,
-                'insertTextFormat': insert_format,  # 告诉编辑器这是 Snippet
+                'insertTextFormat': insert_format,
                 'filterText': item.get('filterText', label),
                 'sortText': item.get('sortText', label),
                 'kind': kind,
                 'documentation': item.get('documentation', ''),
                 'detail': item.get('detail', ''),
-                'point': pos,
+                'point': start_pos,  # 重要：此处设为起始位置，保证不吞点
                 'resolve': True
             }
 
@@ -361,7 +361,8 @@ class LSPCodeEditor(CodeEditor):
 
             clean_items.append(item_data)
 
-        self.completion_args = (pos, True)
+        # completion_args 同样需要使用 start_pos
+        self.completion_args = (start_pos, True)
         try:
             self.process_completion({"params": clean_items})
         except Exception as e:
@@ -415,28 +416,33 @@ class LSPCodeEditor(CodeEditor):
                 if not data.code_analysis:
                     data.color = None
             block = block.next()
+
         has_error = False
         for diag in diagnostics:
             try:
-                line = diag['range']['start']['line'] - len(self.CODE_PREFIX.splitlines())
+                line = diag['range']['start']['line'] - self._prefix_line_count
+                if line < 0: continue  # 过滤前缀部分的错误
+
                 severity = diag.get('severity', 1)
                 message = diag.get('message', '').strip()
-                if not message:
-                    continue
+                if not message: continue
+
                 block = self.document().findBlockByNumber(line)
-                if not block.isValid():
-                    continue
+                if not block.isValid(): continue
+
                 data = block.userData()
-                if not data:
-                    data = BlockUserData(self)
+                if not data: data = BlockUserData(self)
                 block.setUserData(data)
+
                 data.code_analysis.append(('lsp', '', severity, message))
                 data.color = self.error_color if severity == 1 else self.warning_color
                 has_error = True
+
                 start_char = diag['range']['start']['character']
                 end_char = diag['range']['end']['character']
                 start_pos = block.position() + start_char
                 end_pos = block.position() + end_char
+
                 cursor = QTextCursor(self.document())
                 cursor.setPosition(start_pos)
                 cursor.setPosition(end_pos, QTextCursor.KeepAnchor)
@@ -447,16 +453,14 @@ class LSPCodeEditor(CodeEditor):
                     underline_style=QTextCharFormat.WaveUnderline
                 )
             except Exception as e:
-                logger.exception(f"[LSP] Error processing diagnostic: {e}")
+                logger.error(f"[LSP] Diagnostic Error: {e}")
+
         if has_error:
             self.sig_flags_changed.emit()
             if hasattr(self, 'linenumberarea'):
                 self.linenumberarea.update()
 
     def _smart_newline(self):
-        """
-        shift + enter 智能换行
-        """
         cursor = self.textCursor()
         line = cursor.block().text()
         indent = ' ' * (len(line) - len(line.lstrip()))
@@ -508,7 +512,6 @@ class LSPCodeEditor(CodeEditor):
         key = event.key()
         txt = event.text()
 
-        # 快捷键逻辑保留
         if key in (Qt.Key_Return, Qt.Key_Enter) and not event.modifiers():
             cursor = self.textCursor()
             block = cursor.block()
@@ -562,10 +565,11 @@ class MainWindow(QMainWindow):
         self.setStyleSheet("background-color: #333; color: white;")
         self.resize(800, 600)
         self.find_replace = FindReplace(self, True)
-        self.editor = LSPCodeEditor(python_exe_path=r"D:\work\CanvasMind\.venv\Scripts\python.exe")
+        self.editor = LSPCodeEditor(python_exe_path=r"python.exe")
         example_code = """import numpy as np
 a = np.array([1, 2, 3])
-# Try: a. then Backspace
+
+# Try typing: a.
 def hello(x, y):
     z = x + y
     return z

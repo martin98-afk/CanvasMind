@@ -200,7 +200,7 @@ class VarComboBoxWidget(QtWidgets.QWidget):
 class VarComboBoxWidgetWrapper(CustomNodeBaseWidget):
     """全局变量下拉框包装器（用于 NodeGraphQt）"""
 
-    def __init__(self, parent=None, name="", label="", var_type="全局变量", main_window=None, z_value=1):
+    def __init__(self, parent=None, name="", label="", var_type="全局变量", main_window=None, z_value=10):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
