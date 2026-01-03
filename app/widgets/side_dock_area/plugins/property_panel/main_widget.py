@@ -21,6 +21,12 @@ class PropertyToolWindow(ToolWindow):
     def _on_global_variables_changed(self, *args, **kwargs):
         self.property_panel._on_global_variables_changed(*args, **kwargs)
 
+    def _add_output_to_global_variable(self, node, port_name):
+        self.property_panel._add_output_to_global_variable(node, port_name)
+
+    def _delete_output_from_global_variable(self, node, port_name):
+        self.property_panel._delete_output_from_global_variable(node, port_name)
+
     # --- 工具对外暴露的方法 ---
     def update_properties(self, node, node_changed=False):
         self.property_panel.update_properties(node, node_changed)

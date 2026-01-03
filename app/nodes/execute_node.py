@@ -89,9 +89,9 @@ def create_node_class(full_path, file_path, parent_window=None):
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
+            self.parent_window = parent_window
             self.CACHE_PATH.mkdir(exist_ok=True, parents=True)
             self.set_property("version", "latest")
-            self.parent_window = parent_window
             if hasattr(ComponentScanner().get_component_by_uuid(self.uuid), "icon"):
                 self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
             self.view.set_align("center")
@@ -109,7 +109,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                 else:
                     self.add_input(port_name, True, painter_func=draw_square_port)
             QtCore.QTimer.singleShot(0, self.build_outputs)
-            self.signals.intercepted_msg_signal.connect(self._message_router)
             
         @property
         def uuid(self):
@@ -349,55 +348,6 @@ def create_node_class(full_path, file_path, parent_window=None):
 
             return current_code
 
-        # --- 中间消息通信协议接收 ---
-        def _message_router(self, msg_dict: dict):
-            """
-            根据 method 动态分发消息
-            """
-            try:
-                # 1. 验证并解析协议
-                msg = ComponentMessage(**msg_dict)
-
-                # 2. 提取命名空间和动作
-                parts = msg.method.split(".")
-                namespace = parts[0] if len(parts) > 1 else "default"
-                action = parts[1] if len(parts) > 1 else parts[0]
-
-                # 3. 动态寻找处理函数: _handle_{namespace}_{action}
-                handler_name = f"_handle_{namespace}_{action}"
-                handler = getattr(self, handler_name, self._handle_unknown_method)
-
-                # 4. 异步执行处理逻辑
-                handler(msg.params, msg)
-
-            except Exception as e:
-                logger.error(f"消息路由失败: {e}")
-
-        # --- 具体处理器 ---
-        def _handle_global_variable_clear(self, params: dict, msg: ComponentMessage):
-            """
-            处理全局变量清空逻辑
-            """
-            type = params.get("type", "")
-            value = params.get("value", "")
-            if value.startswith(type):
-                value = value.split(".")[1]
-            if type == "node_vars":
-                parent_window._on_global_variables_changed(
-                    var_type="node_vars",
-                    var_name=value,
-                    action="clear"
-                )
-                logger.info(f"[变量 {value} 内容已清空]")
-
-        def _handle_data_preview(self, params: dict, msg: ComponentMessage):
-            # 处理数据预览逻辑，比如弹出小窗显示表格预览
-            pass
-
-        def _handle_unknown_method(self, params: dict, msg: ComponentMessage):
-            logger.warning(f"收到未知指令: {msg.method}")
-
-
         def init_logger(self):
             self.log_capture = NodeLogHandler(
                 self.persistent_id, self._log_message, self.CACHE_PATH, use_file_logging=True
@@ -544,9 +494,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                     lf.seek(self.last_log_pos)
                     new_content = lf.read()
                     if new_content:
-                        clean_content = self._parse_and_filter_logs(new_content)
-                        if clean_content:
-                            self._log_message(self.persistent_id, clean_content)
+                        self._log_message(self.persistent_id, new_content)
                         self.last_log_pos = lf.tell()
                 # === 处理最终结果 ===
                 if os.path.exists(result_path):
@@ -595,9 +543,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                             new_content = lf.read()
                             if new_content:
                                 # --- 关键修改 ---
-                                clean_content = self._parse_and_filter_logs(new_content)
-                                if clean_content:
-                                    self._log_message(self.persistent_id, clean_content)
+                                self._log_message(self.persistent_id, new_content)
                                 self.last_log_pos = lf.tell()
                 except Exception:
                     pass
@@ -638,14 +584,10 @@ def create_node_class(full_path, file_path, parent_window=None):
                             lf.seek(self.last_log_pos)
                             new_content = lf.read()
                             if new_content:
-                                # --- 关键修改：先过滤并处理消息，再发送给真正的日志处理器 ---
-                                clean_content = self._parse_and_filter_logs(new_content)
-                                if clean_content:
-                                    self._log_message(self.persistent_id, clean_content)
+                                self._log_message(self.persistent_id, new_content)
                                 self.last_log_pos = lf.tell()
                 except Exception:
                     pass
-                time.sleep(0.1)
                 time.sleep(0.1)
             self._log_message(self.persistent_id, "✅ 节点在独立环境执行完成")
 

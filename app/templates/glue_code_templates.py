@@ -36,6 +36,56 @@ GLUE_CODE_TEMPLATES = {
     )
 '''
     },
+    "node_variable_add": {
+        "name": "节点端口变量加入全局变量",
+        "code": '''def run(self, params, inputs=None):
+    """
+    params: {mode: "parse" 或 "serialize"}
+    inputs: {"input_data": str 或 dict}
+    """
+    self.emit_custom_message(
+        method="global_variable.add",
+        params={"value": "output1"}
+    )
+    return {"output1": "test"}
+'''
+    },
+    "node_variable_remove": {
+        "name": "节点端口变量移除全局变量",
+        "code": '''def run(self, params, inputs=None):
+    """
+    params: {mode: "parse" 或 "serialize"}
+    inputs: {"input_data": str 或 dict}
+    """
+    self.emit_custom_message(
+        method="global_variable.delete",
+        params={"value": "output1"}
+    )
+    return {"output1": "test"}
+'''
+    },
+    "stream_output": {
+        "name": "实时结果使用示例",
+        "code": '''def run(self, params, inputs=None):
+    """
+    params: 节点属性（来自UI）
+    inputs: 上游输入（key=输入端口名）
+    return: 输出数据（key=输出端口名）
+    """
+    import time
+    count = 0 
+    while True:
+        self.emit_custom_message(
+            method="stream.output",
+            params={"output1": {"data": count, "data_type": "str"}}
+        )
+        count += 1
+        time.sleep(1)
+    return {
+        "output1": result
+    }
+'''
+    },
     "json_parse": {
         "name": "JSON 解析/序列化",
         "code": '''def run(self, params, inputs=None):
