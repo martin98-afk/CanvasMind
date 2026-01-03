@@ -5,9 +5,10 @@ from pathlib import Path
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint, QTimer
-from PyQt5.QtWidgets import QWidget, QGraphicsProxyWidget, QApplication
+from PyQt5.QtWidgets import QWidget, QGraphicsProxyWidget, QApplication, QTextEdit, QLineEdit
 from loguru import logger
-from qfluentwidgets import FluentIcon
+from lsprotocol.types import TextEdit
+from qfluentwidgets import FluentIcon, LineEdit
 
 from app.components.base import GlobalVariableContext
 from app.interfaces.canvas_interaface.constants import TEMPLATE_START_SIZES
@@ -451,10 +452,15 @@ class CanvasPage(QWidget):
     # --- 画布按键信号 ---
     def _canvas_key_press_event(self, event):
         focused_widget = QApplication.focusWidget()
-        if focused_widget and hasattr(focused_widget, 'code_editor'):
-            # 是代码编辑器获得焦点
-            QApplication.sendEvent(focused_widget.code_editor, event)
-            return
+        if focused_widget :
+            if hasattr(focused_widget, 'code_editor'):
+                # 是代码编辑器获得焦点
+                QApplication.sendEvent(focused_widget.code_editor, event)
+                return
+            elif isinstance(focused_widget, (QTextEdit, QLineEdit)):
+                QApplication.sendEvent(focused_widget, event)
+                return
+
 
         self.canvas_widget.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
         self.canvas_widget.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier

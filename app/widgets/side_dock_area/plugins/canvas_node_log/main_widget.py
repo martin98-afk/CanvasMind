@@ -76,7 +76,6 @@ class LogToolWindow(ToolWindow):
         if run_id == self.current_run_id:
             return
 
-        # 折叠上一个
         if self.current_run_id and self.current_run_id in self.run_cards:
             self.current_run_id = None
 
@@ -108,6 +107,8 @@ class LogToolWindow(ToolWindow):
         if run_id in self.run_cards:
             self.run_cards[run_id].set_current_running(False)
             self.run_cards[run_id].mark_as_success()
+            # 如果成功运行就进行折叠，避免不必要的渲染
+            self.run_cards[run_id].collapse()
 
     def on_error(self, run_id: str):
         if run_id in self.run_cards:
