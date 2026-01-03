@@ -231,6 +231,7 @@ def create_node_class(full_path, file_path, parent_window=None):
         def _generate_parms_widget(self):
             """生成节点属性配置控件"""
             # 生成其他组件属性控件
+            custom_widgets_num = len(ComponentScanner().get_component_by_uuid(self.uuid).get_properties()) + 10
             for i, (prop_name, prop_def) in enumerate(ComponentScanner().get_component_by_uuid(self.uuid).get_properties().items()):
                 prop_type = prop_def.get("type", PropertyType.TEXT)
                 default = prop_def.get("default", "")
@@ -246,7 +247,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                         self.add_custom_widget(
                             ComboBoxWidgetWrapper(
                                 parent=self.view, name=prop_name, label=label, items=choices,
-                                z_value=len(ComponentScanner().get_component_by_uuid(self.uuid).get_properties()) - i
+                                z_value=custom_widgets_num - i
                             ),
                             tab="properties"
                         )
@@ -296,7 +297,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                         label=label,
                         schema=processed_schema,
                         window=parent_window,
-                        z_value=len(ComponentScanner().get_component_by_uuid(self.uuid).get_properties()) - i
+                        z_value=custom_widgets_num - i
                     )
                     self.add_custom_widget(widget, tab='Properties')
                 elif prop_type == PropertyType.VARIABLE:  # 新增类型
@@ -308,7 +309,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                             label=label,
                             var_type=default_val or "全局变量",
                             main_window=parent_window,  # 传入 main_window 引用
-                            z_value=len(ComponentScanner().get_component_by_uuid(self.uuid).get_properties()) - i
+                            z_value=custom_widgets_num - i
                         ),
                         tab="properties"
                     )

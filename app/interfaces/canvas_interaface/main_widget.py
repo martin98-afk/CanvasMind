@@ -356,6 +356,7 @@ class CanvasPage(QWidget):
             QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED))
 
         self.run_btn.show()
+        self.pause_btn.hide()
         self.stop_btn.hide()
         self._scheduler = None
 

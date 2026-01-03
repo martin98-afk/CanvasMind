@@ -10,8 +10,9 @@ from pathlib import Path
 
 from NodeGraphQt import BaseNode
 from PyQt5 import QtCore
+from loguru import logger
 
-from app.components.base import PropertyType, GlobalVariableContext, ArgumentType
+from app.components.base import PropertyType, GlobalVariableContext, ArgumentType, ComponentMessage
 from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
 from app.scheduler.expression_engine import ExpressionEngine
 from app.utils.utils import resource_path, draw_special_outputport, canvas_file_dump_path, _safe_load_pickle, \
@@ -81,6 +82,7 @@ def create_dynamic_code_node(parent_window=None):
 
             self._init_properties()
             self._setup_port_sync()
+            self.signals.intercepted_msg_signal.connect(self._message_router)
 
         def _setup_port_sync(self):
             input_widget = self.input_widget.get_custom_widget()
@@ -365,6 +367,54 @@ def create_dynamic_code_node(parent_window=None):
             parent_window.parent.develop_page.code_editor.set_code(self.format_code(add_import=False))
             parent_window.parent.switchTo(parent_window.parent.develop_page)
 
+        # --- 中间消息通信协议接收 ---
+        def _message_router(self, msg_dict: dict):
+            """
+            根据 method 动态分发消息
+            """
+            try:
+                # 1. 验证并解析协议
+                msg = ComponentMessage(**msg_dict)
+
+                # 2. 提取命名空间和动作
+                parts = msg.method.split(".")
+                namespace = parts[0] if len(parts) > 1 else "default"
+                action = parts[1] if len(parts) > 1 else parts[0]
+
+                # 3. 动态寻找处理函数: _handle_{namespace}_{action}
+                handler_name = f"_handle_{namespace}_{action}"
+                handler = getattr(self, handler_name, self._handle_unknown_method)
+
+                # 4. 异步执行处理逻辑
+                handler(msg.params, msg)
+
+            except Exception as e:
+                logger.error(f"消息路由失败: {e}")
+
+        # --- 具体处理器 ---
+        def _handle_global_variable_clear(self, params: dict, msg: ComponentMessage):
+            """
+            处理全局变量清空逻辑
+            """
+            type = params.get("type", "")
+            value = params.get("value", "")
+            if value.startswith(type):
+                value = value.split(".")[1]
+            if type == "node_vars":
+                parent_window._on_global_variables_changed(
+                    var_type="node_vars",
+                    var_name=value,
+                    action="clear"
+                )
+                logger.info(f"[变量 {value} 内容已清空]")
+
+        def _handle_data_preview(self, params: dict, msg: ComponentMessage):
+            # 处理数据预览逻辑，比如弹出小窗显示表格预览
+            pass
+
+        def _handle_unknown_method(self, params: dict, msg: ComponentMessage):
+            logger.warning(f"收到未知指令: {msg.method}")
+
         def format_code(self, add_import=True):
             # === 1. 收集参数（不变）===
             user_code = self.get_property("code") or ""
@@ -507,7 +557,9 @@ def create_dynamic_code_node(parent_window=None):
                     lf.seek(self.last_log_pos)
                     new_content = lf.read()
                     if new_content:
-                        self._log_message(self.persistent_id, new_content)
+                        clean_content = self._parse_and_filter_logs(new_content)
+                        if clean_content:
+                            self._log_message(self.persistent_id, clean_content)
                         self.last_log_pos = lf.tell()
                 # === 处理最终结果 ===
                 if result_path.exists():
@@ -561,7 +613,9 @@ def create_dynamic_code_node(parent_window=None):
                             lf.seek(self.last_log_pos)
                             new_content = lf.read()
                             if new_content:
-                                self._log_message(self.persistent_id, new_content)
+                                clean_content = self._parse_and_filter_logs(new_content)
+                                if clean_content:
+                                    self._log_message(self.persistent_id, clean_content)
                                 self.last_log_pos = lf.tell()
                 except Exception:
                     pass
@@ -602,7 +656,9 @@ def create_dynamic_code_node(parent_window=None):
                             lf.seek(self.last_log_pos)
                             new_content = lf.read()
                             if new_content:
-                                self._log_message(self.persistent_id, new_content)
+                                clean_content = self._parse_and_filter_logs(new_content)
+                                if clean_content:
+                                    self._log_message(self.persistent_id, clean_content)
                                 self.last_log_pos = lf.tell()
                 except Exception:
                     pass

@@ -20,6 +20,22 @@ GLUE_CODE_TEMPLATES = {
         "name": "空白模板",
         "code": DEFAULT_CODE_TEMPLATE.strip()
     },
+    "variable_clear": {
+        "name": "节点变量清理",
+        "code": '''def run(self, params, inputs=None):
+    """
+    params: {mode: "parse" 或 "serialize"}
+    inputs: {"input_data": str 或 dict}
+    """
+    self.emit_custom_message(
+        method="global_variable.clear",
+        params={
+                "type": "node_vars",
+                "value": "变量名"
+            }
+    )
+'''
+    },
     "json_parse": {
         "name": "JSON 解析/序列化",
         "code": '''def run(self, params, inputs=None):
