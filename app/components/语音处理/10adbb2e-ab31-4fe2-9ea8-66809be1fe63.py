@@ -46,7 +46,7 @@ class Component(BaseComponent):
         import asyncio
         import edge_tts
 
-        text = inputs.text
+        text = inputs.text.encode("utf-8").decode("utf-8")
         voice_name = params.voice_name
         output_path = "output.mp3"
 
@@ -60,15 +60,36 @@ class Component(BaseComponent):
         def unescape_and_clean(text):
             import re
             import html
-            # 1. 将字符串中的 "\\n", "\\t" 等转义序列为真实字符
+        
+            if not text:
+                return ""
+        
+            # 1. 处理字面意义上的转义字符 (例如把字符串 "\\n" 变成真正的换行，或者直接换成空格)
+            # 这一步解决“读出反斜杠n”的问题
+            text = text.replace('\\n', '\n').replace('\\t', '\t').replace('\\r', '\r')
+        
+            # 2. HTML 实体转码 (例如 &amp; -> &)
             text = html.unescape(text)
-            # 2. 移除 HTML/XML 标签
+        
+            # 3. 移除 Markdown 常见的特殊符号（LLM 输出常带这些）
+            # 移除加粗、斜体符号: **text**, __text__, *text*, _text_
+            text = re.sub(r'[\*\#\_\~\>\`]', '', text)
+        
+            # 4. 移除 HTML 标签
             text = re.sub(r"<[^>]+>", "", text)
-            # 3. 移除非打印字符（保留基本可读字符）
-            text = re.sub(r"[^\x20-\x7E\u4e00-\u9fff\.\,\!\?\:\;\n]", " ", text)
-            # 4. 合并多个空白为单个空格
+        
+            # 5. 替换连续的换行符为单个换行，或替换为空格
+            # 注意：EdgeTTS 遇到 \n 会有短暂停顿。如果你不想要停顿，就换成空格。
+            text = re.sub(r'\n+', '。', text) 
+        
+            # 6. 只保留中英文、数字及基础标点，过滤掉其他乱码或不可见字符
+            # 允许的字符：汉字、字母、数字、基础标点 (，。！？：；（）“” ,.!?:;() )
+            # 注意：这里去掉了反斜杠，能彻底防止读出“反斜杠”
+            text = re.sub(r"[^\u4e00-\u9fff\u0030-\u0039\u0041-\u005a\u0061-\u007a\u3002\uff0c\uff1f\uff01\uff1a\uff1b\u3001\uff08\uff09\u201c\u201d\.\,\!\?\:\;\(\)]", " ", text)
+        
+            # 7. 合并多个空格并修剪两端
             text = re.sub(r"\s+", " ", text).strip()
-            text = re.sub(r'\s+', ' ', text).strip()
+        
             return text
 
         async def _tts():
