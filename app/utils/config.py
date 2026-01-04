@@ -36,7 +36,7 @@ class QuickComponentsSerializer(ConfigSerializer):
 class Settings(QConfig):
     _instance = None
     # 版本信息
-    current_version = "v0.2.4"
+    current_version = "v0.2.5"
 
     # 通用设置
     auto_check_update = ConfigItem("General", "AutoCheckUpdate", True, BoolValidator())

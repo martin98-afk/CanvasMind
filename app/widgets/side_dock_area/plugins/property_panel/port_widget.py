@@ -5,7 +5,7 @@ import shutil
 import traceback
 from pathlib import Path
 import pandas as pd
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QTimer
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QWidget, QFileDialog, QStackedWidget
 from loguru import logger
 from qfluentwidgets import (CardWidget, PushButton, ListWidget, SegmentedWidget,
@@ -20,7 +20,10 @@ from app.widgets.side_dock_area.plugins.property_panel.variable_tree import Vari
 
 class PortWidget(QWidget):
     """
-    完全修复版：支持控件复用、CSV列选择、文件上传。
+    终极修复版：
+    1. 修复：Tab 顺序错乱及状态丢失问题。
+    2. 修复：切换节点后再切回时输出端口点击失效的问题。
+    3. 优化：上传按钮移至卡片内部标题与树之间。
     """
 
     def __init__(self, main_window, parent_panel, node, port_info_func,
@@ -35,11 +38,10 @@ class PortWidget(QWidget):
         self.delete_output_from_global_func = delete_func
         self.is_in_global_func = is_in_func
 
-        # --- 控件池与缓存 ---
         self._input_cards = []
         self._output_cards = []
         self._text_edit_widgets = {}
-        self._added_keys = set()  # 记录 SegmentedWidget 已添加的项
+        self.current_segment = None  # 记录当前选中的 Tab key
 
         self._setup_skeleton()
         self.refresh(node)
@@ -50,19 +52,21 @@ class PortWidget(QWidget):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
+        # 1. 分段控件 (Tab)
         self.segmented_widget = SegmentedWidget(self)
         self.main_layout.addWidget(self.segmented_widget)
 
+        # 2. 堆叠容器
         self.stacked_widget = QStackedWidget(self)
 
-        # 输入页
+        # 准备输入页面
         self.input_page = QWidget()
         self.input_layout = QVBoxLayout(self.input_page)
         self.input_layout.setContentsMargins(10, 10, 10, 10)
         self.input_layout.setSpacing(8)
         self.input_scroll = self.parent_panel.set_scrollbar(self.input_page)
 
-        # 输出页
+        # 准备输出页面
         self.output_page = QWidget()
         self.output_layout = QVBoxLayout(self.output_page)
         self.output_layout.setContentsMargins(10, 10, 10, 10)
@@ -73,40 +77,71 @@ class PortWidget(QWidget):
         self.stacked_widget.addWidget(self.output_scroll)
         self.main_layout.addWidget(self.stacked_widget)
 
+        # 引用映射
+        self.page_map = {
+            'input': self.input_scroll,
+            'output': self.output_scroll
+        }
+
         self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
 
     def _on_segmented_changed(self, item_key):
-        idx = 0 if item_key == 'input' else 1
-        self.stacked_widget.setCurrentIndex(idx)
+        """处理 Tab 切换并记录状态"""
+        self.current_segment = item_key
+        target_widget = self.page_map.get(item_key)
+        if target_widget:
+            self.stacked_widget.setCurrentWidget(target_widget)
+
+    def _update_segments(self, has_in, has_out):
+        """
+        核心修复：
+        1. 强制物理顺序：输入在前，输出在后。
+        2. 状态记忆：重建后恢复之前的选中状态。
+        """
+        self.segmented_widget.blockSignals(True)
+
+        # 彻底清空标签以保证物理顺序 (防止动态添加导致的乱序)
+        # qfluentwidgets 的 SegmentedWidget 最好通过重新 add 来控制顺序
+        try:
+            # 这是一个强制清除法，确保界面重建
+            for i in range(self.segmented_widget.count()):
+                self.segmented_widget.removeWidget(self.segmented_widget.items[0])
+            self.segmented_widget.items.clear()
+        except:
+            pass
+
+        # 重新按固定顺序添加
+        if has_in:
+            self.segmented_widget.addItem('input', '输入端口')
+        if has_out:
+            self.segmented_widget.addItem('output', '输出端口')
+
+        # 确定需要恢复的 Key
+        target_key = self.current_segment
+        if not target_key or (target_key == 'input' and not has_in) or (target_key == 'output' and not has_out):
+            target_key = 'input' if has_in else ('output' if has_out else None)
+
+        # 恢复选中并同步 StackedWidget (解决点不动的核心)
+        if target_key:
+            self.segmented_widget.setCurrentItem(target_key)
+            self.stacked_widget.setCurrentWidget(self.page_map[target_key])
+            self.current_segment = target_key
+
+        self.segmented_widget.setVisible(has_in and has_out)
+        self.segmented_widget.blockSignals(False)
 
     def refresh(self, node):
-        """增量刷新端口数据"""
+        """刷新入口"""
         self.node = node
-        if not hasattr(self.node, '_input_values'): self.node._input_values = {}
-        if not hasattr(self.node, 'column_select'): self.node.column_select = {}
-
         input_infos = self.port_info_func(node, is_input=True)
         output_infos = self.port_info_func(node, is_input=False)
 
+        # 1. 刷新标签顺序及状态
         self._update_segments(len(input_infos) > 0, len(output_infos) > 0)
+
+        # 2. 同步卡片内容 (增量更新)
         self._sync_port_cards(input_infos, self._input_cards, self.input_layout, is_output=False)
         self._sync_port_cards(output_infos, self._output_cards, self.output_layout, is_output=True)
-
-    def _update_segments(self, has_in, has_out):
-        self.segmented_widget.blockSignals(True)
-        if has_in and 'input' not in self._added_keys:
-            self.segmented_widget.addItem('input', '输入端口')
-            self._added_keys.add('input')
-        if has_out and 'output' not in self._added_keys:
-            self.segmented_widget.addItem('output', '输出端口')
-            self._added_keys.add('output')
-
-        if not self.segmented_widget.currentRouteKey():
-            if has_in:
-                self.segmented_widget.setCurrentItem('input')
-            elif has_out:
-                self.segmented_widget.setCurrentItem('output')
-        self.segmented_widget.blockSignals(False)
 
     def _sync_port_cards(self, port_infos, card_cache, layout, is_output):
         for i in range(max(len(port_infos), len(card_cache))):
@@ -124,10 +159,13 @@ class PortWidget(QWidget):
                 card_cache[i].hide()
 
     def _create_port_card(self, is_output):
+        """创建卡片结构"""
         card = SimpleCardWidget(self)
         lay = QVBoxLayout(card)
         lay.setContentsMargins(8, 8, 8, 8)
+        lay.setSpacing(4)
 
+        # 第一部分：标题
         t_lay = QHBoxLayout()
         title_label = CaptionLabel()
         title_label.setWordWrap(True)
@@ -138,14 +176,28 @@ class PortWidget(QWidget):
         lay.addLayout(t_lay)
         lay.addWidget(CardSeparator(card))
 
+        # 第二部分：新增 Action 区域 (用于放置上传按钮，介于标题和树之间)
+        action_container = QVBoxLayout()
+        action_container.setContentsMargins(0, 2, 0, 2)
+        lay.addLayout(action_container)
+
+        # 第三部分：变量树
         tree = VariableTreeWidget(parent=self.main_window)
         lay.addWidget(tree, 1)
 
+        # 第四部分：额外组件区域 (如 CSV 选择器)
         extra_container = QVBoxLayout()
         lay.addLayout(extra_container)
 
-        card.ui = {'title_label': title_label, 'tree': tree, 'btn_container': btn_container,
-                   'extra_container': extra_container, 'global_btn': None, 'browse_btn': None}
+        card.ui = {
+            'title_label': title_label,
+            'tree': tree,
+            'btn_container': btn_container,
+            'action_container': action_container,  # 上传按钮容器
+            'extra_container': extra_container,
+            'global_btn': None,
+            'browse_btn': None
+        }
 
         browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=card)
         browse_btn.setFixedSize(QSize(26, 20))
@@ -161,9 +213,11 @@ class PortWidget(QWidget):
         return card
 
     def _update_card_data(self, card, p_name, p_label, p_type, is_output):
+        """刷新卡片业务数据"""
         ui = card.ui
         ui['title_label'].setText(f"• {p_label} ({p_name}): {p_type.value}")
 
+        # 获取数据
         data = "暂无数据"
         if is_output:
             data = getattr(self.node, '_output_values', {}).get(p_name)
@@ -183,7 +237,6 @@ class PortWidget(QWidget):
 
         filtered_data = data
         if not is_output and p_type == ArgumentType.CSV:
-            # 处理 CSV 字符串路径转 DataFrame
             if isinstance(data, str) and Path(data).is_file() and data.endswith('.csv'):
                 try:
                     data = pd.read_csv(data, nrows=5)
@@ -194,12 +247,14 @@ class PortWidget(QWidget):
         ui['tree'].set_data(filtered_data, p_name)
         self._text_edit_widgets[p_name] = ui['tree']
 
+        # 绑定放大镜
         try:
             ui['browse_btn'].clicked.disconnect()
         except:
             pass
         ui['browse_btn'].clicked.connect(lambda: self._show_detail_popup(filtered_data, p_label, ui['browse_btn']))
 
+        # 全局变量按钮
         if is_output and ui['global_btn']:
             ui['global_btn'].blockSignals(True)
             ui['global_btn'].setChecked(self.is_in_global_func(self.node, p_name))
@@ -216,7 +271,26 @@ class PortWidget(QWidget):
                 pass
             card.customContextMenuRequested.connect(lambda pos: self._show_context_menu(card, p_name, pos))
 
+        # === 核心优化：在卡片内渲染上传按钮 (介于名和树之间) ===
+        self._refresh_card_actions(card, p_name, p_label, p_type, is_output)
+
+        # 刷新 Extra 区域 (CSV)
         self._refresh_extra_area(card, p_name, p_type, data, is_output)
+
+    def _refresh_card_actions(self, card, p_name, p_label, p_type, is_output):
+        """刷新卡片内的操作按钮 (上传按钮)"""
+        container = card.ui['action_container']
+        # 清理旧按钮
+        while container.count():
+            item = container.takeAt(0)
+            if item.widget(): item.widget().deleteLater()
+
+        # 如果是上传类型且为输出端口，显示上传按钮
+        if p_type == ArgumentType.UPLOAD and is_output:
+            upload_btn = PushButton(FluentIcon.UP, f"上传文件到 {p_label}", self)
+            upload_btn.setFixedHeight(30)
+            upload_btn.clicked.connect(lambda: self._select_upload_file(p_name))
+            container.addWidget(upload_btn)
 
     def _show_detail_popup(self, data, label, btn):
         popup = VariableDetailPopup(parent=self)
@@ -229,23 +303,17 @@ class PortWidget(QWidget):
             item = container.takeAt(0)
             if item.widget(): item.widget().deleteLater()
 
-        if p_type == ArgumentType.UPLOAD and is_output:
-            self._add_upload_widget_to_layout(p_name, container)
-        elif p_type == ArgumentType.CSV and not is_output:
+        if p_type == ArgumentType.CSV and not is_output:
             if isinstance(data, pd.DataFrame) and not data.empty:
                 self._add_column_selector_widget_to_layout(p_name, data, container)
 
-    # ========================
-    # 核心：修复缺失的 CSV 列选择逻辑
-    # ========================
     def _add_column_selector_widget_to_layout(self, port_name, data, layout):
         if not isinstance(data, pd.DataFrame) or data.empty: return
         columns = list(data.columns)
         if not columns: return
 
         column_card = CardWidget(self)
-        column_card.setMaximumHeight(200)
-        column_card.setMinimumHeight(200)
+        column_card.setFixedHeight(200)
 
         node_id = self.node.id
         port_identifier = f"{node_id}_{port_name}"
@@ -261,7 +329,6 @@ class PortWidget(QWidget):
         title_btn_layout.addWidget(BodyLabel("   CSV列选择:"))
         title_btn_layout.addStretch()
 
-        # 全选/清空
         def select_all():
             list_widget.blockSignals(True)
             for i in range(list_widget.count()): list_widget.item(i).setCheckState(Qt.Checked)
@@ -300,7 +367,6 @@ class PortWidget(QWidget):
         for col in columns:
             item = QListWidgetItem(col)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            # 恢复之前的勾选状态
             saved = self.node.column_select.get(port_name, columns)
             item.setCheckState(Qt.Checked if col in saved else Qt.Unchecked)
             list_widget.addItem(item)
@@ -326,31 +392,51 @@ class PortWidget(QWidget):
                 return original_data
         return original_data
 
-    def _add_upload_widget_to_layout(self, port_name, layout):
-        btn = PushButton("📁 上传文件", self)
-        btn.clicked.connect(lambda: self._select_upload_file(port_name))
-        layout.addWidget(btn)
-
     def _select_upload_file(self, port_name):
+        """
+        处理文件选择并上传。
+        即使文件已存在，依然将路径同步到输出中。
+        """
         curr = self.node._output_values.get(port_name, "")
-        file_path, _ = QFileDialog.getOpenFileName(self, "上传文件", os.path.dirname(curr) if curr else "",
-                                                   "All Files (*)")
-        if not file_path: return
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "上传文件", os.path.dirname(curr) if curr else "", "All Files (*)"
+        )
+        if not file_path:
+            return
 
         src = Path(file_path)
+        # 确保工作流上传目录存在
         upload_root = canvas_file_dump_path() / "workflows" / self.main_window.workflow_name / "uploads" / self.node.persistent_id
         upload_root.mkdir(exist_ok=True, parents=True)
+
+        # 清理文件名并构建目标路径
         pattern = r'[^\w\.-]'
         dst = upload_root / f"{re.sub(pattern, '_', src.stem)}{src.suffix}"
 
         try:
+            # 如果目标文件已存在且不是同一文件，copy2 会默认覆盖
+            # 如果 src 和 dst 是同一个文件，会抛出 SameFileError
             shutil.copy2(src, dst)
-            self.node._output_values[port_name] = str(dst)
-            InfoBar.success("上传成功", f"保存至：{dst.name}", parent=self.main_window)
-            if port_name in self._text_edit_widgets:
-                self._text_edit_widgets[port_name].set_data(str(dst), port_name)
+        except shutil.SameFileError:
+            # 如果是同一个文件，无需操作，视为成功
+            pass
         except Exception as e:
-            InfoBar.error("上传失败", str(e), parent=self.main_window)
+            # 只有真正的 IO 报错（如权限拒绝、磁盘满）才拦截
+            logger.error(f"文件上传过程中发生实质性错误: {traceback.format_exc()}")
+            InfoBar.error("上传失败", f"无法处理文件: {str(e)}", parent=self.main_window)
+            return
+
+        # --- 关键修改：只要没发生实质性报错，就更新输出值 ---
+        self.node._output_values[port_name] = str(dst)
+
+        # 提示用户
+        InfoBar.success("文件已就绪", f"路径已同步: {dst.name}", parent=self.main_window, duration=2000)
+
+        # 实时同步更新属性面板里的预览树
+        if port_name in self._text_edit_widgets:
+            widget = self._text_edit_widgets[port_name]
+            if hasattr(widget, 'set_data'):
+                widget.set_data(str(dst), port_name)
 
     def handle_global_variable(self, node, port_name, is_checked):
         if is_checked:
