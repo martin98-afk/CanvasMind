@@ -310,7 +310,7 @@ class VariableDetailPopup(QWidget):
         else:
             # 默认文本/结构显示
             text = str(obj)
-            if len(text) > 5000: text = text[:5000] + "\n... (truncated)"
+            # if len(text) > 5000: text = text[:5000] + "\n... (truncated)"
             self.preview_widget = TextEdit()
             self.preview_widget.setPlainText(text)
             self.preview_widget.setReadOnly(True)

@@ -2,6 +2,7 @@
 import json
 import shutil
 import traceback
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
@@ -235,6 +236,13 @@ class CanvasExporter:
         inputs = []
         for node in nodes:
             cls = self.component_map.get(node.FULL_PATH)
+            # 收集输入端口连接的上游节点名和端口名
+            port_dict = defaultdict(list)
+            for input_port in node.input_ports():
+                port_name = input_port.name()
+                connected = input_port.connected_ports()
+                for connect_pipe in connected:
+                    port_dict[port_name].append((connect_pipe.node().name(), connect_pipe.name()))
             # 超参数
             for prop_name, val in node.model.custom_properties.items():
                 if cls is None:
@@ -249,7 +257,8 @@ class CanvasExporter:
                     "param_name": prop_name,
                     "param_desc": prop_def.label,
                     "current_value": str(val)[:300],
-                    "display_name": f"{prop_name}({prop_def.label})",
+                    "display_name":
+                        f"{prop_name}({prop_def.label})",
                     "format": getattr(prop_def, 'type', None).name if prop_def else "TEXT",
                     "format_desc": prop_def.type.value if prop_def else "文本",
                 }
@@ -295,15 +304,24 @@ class CanvasExporter:
                     "port_name": port_name,
                     "port_desc": port_desc,
                     "current_value": str(val)[:300],
-                    "display_name": f"{port_name}" if not port_desc else f"{port_name}({port_desc})",
+                    "display_name": (f"{port_name}" if not port_desc else f"{port_name}({port_desc})") +
+                        "".join([f" <- {val[0]}:{val[1]}" for val in port_dict.get(port_name, [])]),
                     "format": port_type,
                     "format_desc": port_type_desc
                 })
         return inputs
 
     def _collect_outputs(self, nodes):
+        """获取导出项目的输出参数候选"""
         outputs = []
         for node in nodes:
+            # 收集输出端口连接的下游节点名和端口名
+            port_dict = defaultdict(list)
+            for output_port in node.output_ports():
+                port_name = output_port.name()
+                connected = output_port.connected_ports()
+                for connect_pipe in connected:
+                    port_dict[port_name].append((connect_pipe.node().name(), connect_pipe.name()))
             output_ports = node.model.outputs.keys()
             cls = self.component_map.get(node.FULL_PATH)
             for out_name in output_ports:
@@ -317,13 +335,14 @@ class CanvasExporter:
                             out_type_desc = out.type.value
                             out_desc = out.label
                             break
+                port_suffix = "".join([f" -> {val[0]}:{val[1]}" for val in port_dict.get(out_name, [])])
                 outputs.append({
                     "type": "组件输出",
                     "node_id": node.id,
                     "node_name": node.name(),
                     "output_name": out_name,
                     "output_desc": out_desc,
-                    "display_name": f"{out_name}" if not out_desc else f"{out_name}({out_desc})",
+                    "display_name": (f"{out_name}" if not out_desc else f"{out_name}({out_desc})") + port_suffix,
                     "format": out_type,
                     "format_desc": out_type_desc
                 })
