@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import base64
+import json
 import re
 import urllib
-import time
-import json
 import uuid
 from datetime import datetime
 from html import escape
@@ -13,12 +12,15 @@ from PyQt5.QtGui import QWheelEvent
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QSizePolicy, QApplication
+    QSizePolicy
 )
 from markdown import Markdown
+from pygments import highlight
+from pygments.formatters import HtmlFormatter
+from pygments.lexers import get_lexer_by_name, TextLexer
 from qfluentwidgets import (
     FluentIcon, ToolTipFilter, TransparentToolButton,
-    CardWidget, CaptionLabel, InfoBar, InfoBarPosition
+    CardWidget, CaptionLabel
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleCardWidget
 
@@ -83,7 +85,7 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
         if lang == 'mermaid':
             return f'''<div class="mermaid" style="background: transparent; margin: 16px 0; overflow-x: auto;">{code_content_raw}</div>'''
 
-        # --- 你的原始代码块逻辑 ---
+        # --- 优化后的代码块逻辑 ---
         try:
             copy_text = code_content_raw.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&").replace(
                 "&#39;", "'").replace("&quot;", '"')
@@ -92,50 +94,41 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
 
         b64_copy = base64.b64encode(copy_text.encode('utf-8')).decode('ascii')
 
+        lines = copy_text.splitlines() or [""]
+        line_count = len(lines)
+
+        # 高亮代码（获取 <pre> 内部 HTML）
         try:
-            from pygments import highlight
-            from pygments.lexers import get_lexer_by_name, TextLexer
-            from pygments.formatters import HtmlFormatter
             lexer = get_lexer_by_name(lang, stripall=False) if lang else TextLexer()
             formatter = HtmlFormatter(
-                style='dracula', linenos=False, noclasses=True, cssclass='code-block',
+                style='dracula',
+                linenos=False,
+                noclasses=True,
+                cssclass='code-block',
                 prestyles='margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;'
             )
-            highlighted_code = highlight(copy_text, lexer, formatter)
-        except Exception:
-            highlighted_code = f'<pre style="margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;">{escape(copy_text)}</pre>'
-
-        lines = copy_text.splitlines() or [""]
-        max_line = len(str(len(lines)))
-        line_numbers_html = "\n".join(
-            f'<td class="lineno" data-line="{i + 1}">{str(i + 1).rjust(max_line)}</td>'
-            for i in range(len(lines))
-        )
-        try:
+            highlighted = highlight(copy_text, lexer, formatter)
+            # 提取 <pre> 内部内容
             import re as preg
-            pre_match = preg.search(r'<pre[^>]*>(.*?)</pre>', highlighted_code, preg.DOTALL)
+            pre_match = preg.search(r'<pre[^>]*>(.*?)</pre>', highlighted, preg.DOTALL)
             if pre_match:
-                inner_html = pre_match.group(1)
-                code_lines = inner_html.split('\n')
-                if len(code_lines) < len(lines):
-                    code_lines.extend([''] * (len(lines) - len(code_lines)))
+                inner_code_html = pre_match.group(1)
             else:
-                code_lines = [escape(line) for line in lines]
-        except:
-            code_lines = [escape(line) for line in lines]
+                inner_code_html = escape(copy_text)
+        except Exception:
+            inner_code_html = escape(copy_text)
 
-        code_lines_html = "\n".join(f'<td class="code-line">{line}</td>' for line in code_lines)
-        table_rows = "\n".join(
-            f'<tr>{line_numbers_html.splitlines()[i]}{code_lines_html.splitlines()[i]}</tr>'
-            for i in range(len(lines))
-        )
+        # 生成行号（纯文本，每行一个数字）
+        line_numbers_text = "\n".join(str(i + 1) for i in range(line_count))
 
-        table_html = f'''
-        <table class="code-table">
-            <tbody>
-                {table_rows}
-            </tbody>
-        </table>
+        # 构建新的代码容器（行号固定 + 代码可横向滚动）
+        code_block_html = f'''
+        <div class="code-container">
+            <div class="line-numbers">{escape(line_numbers_text)}</div>
+            <div class="code-content">
+                <pre>{inner_code_html}</pre>
+            </div>
+        </div>
         '''
 
         return f'''
@@ -170,10 +163,10 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
             </div>
             <!-- 可横向滚动的代码区域 -->
             <div style="
-                padding: 8px 10px; overflow-x: auto; overflow-y: hidden;
+                padding: 8px 0 0 0;
                 border-radius: 0 0 10px 10px;
             ">
-                {table_html}
+                {code_block_html}
             </div>
         </div>
         '''
@@ -283,9 +276,14 @@ class CodeWebViewer(QWebEngineView):
 
         self._page = ConsoleMonitorPage(self)
         self.setPage(self._page)
+        # 透明背景
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.page().setBackgroundColor(Qt.transparent)
         self.setContextMenuPolicy(Qt.NoContextMenu)
+        # 确保它是作为普通窗口部件渲染
+        # self.setAttribute(Qt.WA_DontCreateNativeAncestors)
+        # self.setAttribute(Qt.WA_NativeWindow)
+
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setMinimumHeight(40)
 
@@ -375,7 +373,46 @@ class CodeWebViewer(QWebEngineView):
                 .code-table {{ width: 100%; border-collapse: collapse; }}
                 .code-table td {{ padding: 0; vertical-align: top; }}
                 .lineno {{ width: 32px; text-align: right; padding-right: 8px !important; color: #606060; border-right: 1px solid #404040; user-select: none; font-size: 12px; line-height: 1.5; }}
-                
+                /* 优化后的代码块布局：行号固定，代码可横向滚动 */
+                .code-container {{
+                    display: flex;
+                    overflow-x: auto;
+                    overflow-y: hidden;
+                    background: #1E1E1E;
+                    font-family: Consolas, monospace;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    padding: 0 10px 8px 0;
+                    margin: 0;
+                }}
+                .line-numbers {{
+                    flex: 0 0 auto;
+                    text-align: right;
+                    padding-right: 12px;
+                    color: #606060;
+                    border-right: 1px solid #404040;
+                    user-select: none; /* 关键：禁止复制行号 */
+                    white-space: pre;
+                    min-width: 32px;
+                    overflow: hidden;
+                }}
+                .code-content {{
+                    flex: 1;
+                    overflow-x: auto;
+                    overflow-y: hidden;
+                    padding-left: 12px;
+                }}
+                .code-content pre {{
+                    margin: 0 !important;
+                    white-space: pre;
+                    word-wrap: normal;
+                    overflow: visible;
+                    background: transparent !important;
+                    color: #D4D4D4 !important;
+                    font-family: Consolas, monospace !important;
+                    font-size: 13px !important;
+                    line-height: 1.5 !important;
+                }}
                 /* 关键：修复缩进丢失 */
                 .code-line {{ padding-left: 12px !important; color: #d4d4d4; font-size: 13px; line-height: 1.5; white-space: pre; font-family: Consolas, monospace; }}
                 

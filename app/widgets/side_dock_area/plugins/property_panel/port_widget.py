@@ -267,7 +267,7 @@ class PortWidget(QWidget):
             if port_name in self._text_edit_widgets:
                 widget = self._text_edit_widgets[port_name]
                 if isinstance(widget, VariableTreeWidget):
-                    widget.set_data(selected_data_subset)
+                    widget.set_data(selected_data_subset, port_name)
 
         if not isinstance(data, pd.DataFrame) or data.empty:
             return
@@ -363,7 +363,7 @@ class PortWidget(QWidget):
                 filtered_data = data
 
         tree_widget = VariableTreeWidget(parent=self.main_window)
-        tree_widget.set_data(filtered_data)
+        tree_widget.set_data(filtered_data, port_name)
         browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
         browse_btn.setFixedSize(QSize(26, 20))
         self._detail_popup = None
@@ -464,4 +464,4 @@ class PortWidget(QWidget):
         if port_name in self._text_edit_widgets:
             widget = self._text_edit_widgets[port_name]
             if isinstance(widget, VariableTreeWidget):
-                widget.set_data(str(dst_path))
+                widget.set_data(str(dst_path), port_name)

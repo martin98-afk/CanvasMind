@@ -446,7 +446,7 @@ class ControlFlowLoopNode(ControlFlowBackdrop):
     NODE_NAME = "循环控制流区域"
     TYPE = "loop"
     FULL_PATH = f"{category}/{NODE_NAME}"
-    ICON_PATH = ":/icons/无限"
+    ICON_PATH = ":/icons/无限.png"
 
 
 class ControlFlowIterateNode(ControlFlowBackdrop):
@@ -454,4 +454,4 @@ class ControlFlowIterateNode(ControlFlowBackdrop):
     NODE_NAME = "迭代控制流区域"
     TYPE = "iterate"
     FULL_PATH = f"{category}/{NODE_NAME}"
-    ICON_PATH = ":/icons/更新"
+    ICON_PATH = ":/icons/更新.svg"

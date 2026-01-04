@@ -12,7 +12,6 @@ from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 
 
 def create_branch_node(parent_window):
-
     class ConditionalBranchNode(CustomBaseNode, StatusNode, BasicNodeWithGlobalProperty):
         category: str = "控制流"
         __identifier__ = 'control_flow'
@@ -28,15 +27,14 @@ def create_branch_node(parent_window):
             self._input_values = {}
             self.column_select = {}
 
-            # === 新增：条件索引 → 实际端口名的映射（用于执行时精准激活）===
+            # 条件索引 → 实际输出端口名的映射
             self._condition_index_to_port = {}
 
-            # === 初始化属性控件（但不立即同步端口）===
             self._init_properties()
+            # 初始主数据输入端口
             self.add_input('input', True, painter_func=draw_square_port)
-            # === 延迟绑定监听器 + 延迟首次同步 ===
-            self._delayed_setup()
 
+            self._delayed_setup()
             self._sync_timer = None
 
         def _delayed_setup(self):
@@ -46,7 +44,7 @@ def create_branch_node(parent_window):
             else_widget.valueChanged.connect(self._on_conditions_changed)
             execute_all_widget = self.get_widget("execute_all_matches").get_custom_widget()
             execute_all_widget.valueChanged.connect(self._on_conditions_changed)
-            self._sync_output_ports()
+            self._sync_all_ports()
 
         def _on_conditions_changed(self):
             if self._sync_timer:
@@ -54,7 +52,7 @@ def create_branch_node(parent_window):
                 self._sync_timer.deleteLater()
             self._sync_timer = QtCore.QTimer()
             self._sync_timer.setSingleShot(True)
-            self._sync_timer.timeout.connect(self._sync_output_ports)
+            self._sync_timer.timeout.connect(self._sync_all_ports)
             self._sync_timer.start(0)
 
         def _init_properties(self):
@@ -113,12 +111,14 @@ def create_branch_node(parent_window):
                 name = "b_" + name
             return name
 
-        def _sync_output_ports(self):
+        def _sync_all_ports(self):
+            """同步输入和输出端口"""
             conditions = self.get_property("conditions") or []
             enable_else = self.get_property("enable_else")
 
-            # === 1. 生成唯一端口名并建立 condition_index → port_name 映射 ===
-            expected_names = []
+            # 1. 确定预期的端口列表
+            expected_output_names = []
+            expected_input_cond_names = []  # 只有普通分支有输入端口
             used_names = set()
             self._condition_index_to_port.clear()
 
@@ -131,45 +131,68 @@ def create_branch_node(parent_window):
                     port_name = f"{base}{counter}"
                     counter += 1
                 used_names.add(port_name)
-                expected_names.append(port_name)
-                self._condition_index_to_port[i] = port_name  # ✅ 关键：记录映射
+
+                expected_output_names.append(port_name)
+                expected_input_cond_names.append(f"{port_name}_condition")
+                self._condition_index_to_port[i] = port_name
 
             if enable_else:
-                expected_names.append("else")
+                expected_output_names.append("else")
+                # 注意：这里不向 expected_input_cond_names 添加 else_condition
 
-            # === 2. 保存当前连线 ===
-            current_connections = {}
+            # 2. 保存现有连线 (输入和输出)
+            old_connections = {"in": {}, "out": {}}
+            for port in self.input_ports():
+                if port.name() != "input":
+                    connected = port.connected_ports()
+                    if connected:
+                        old_connections["in"][port.name()] = list(connected)
+
             for port in self.output_ports():
                 connected = port.connected_ports()
                 if connected:
-                    current_connections[port.name()] = list(connected)
+                    old_connections["out"][port.name()] = list(connected)
 
-            # === 3. 删除所有输出端口 ===
+            # 3. 删除旧的动态端口
             for port in list(self.output_ports()):
                 port.clear_connections(push_undo=False, emit_signal=False)
                 self.delete_output(port.name())
 
-            # === 4. 重建端口 ===
-            for name in expected_names:
+            for port in list(self.input_ports()):
+                if port.name().endswith("_condition"):
+                    port.clear_connections(push_undo=False, emit_signal=False)
+                    self.delete_input(port.name())
+
+            # 4. 重建端口
+            for name in expected_output_names:
                 self.add_output(name)
 
-            # === 5. 恢复连线（仅当名称未变）===
-            new_ports = {p.name(): p for p in self.output_ports()}
-            for old_name, connected_list in current_connections.items():
-                if old_name in new_ports:
-                    new_port = new_ports[old_name]
-                    for downstream_port in connected_list:
-                        try:
-                            if downstream_port.node() and downstream_port.node().graph:
-                                new_port.connect_to(downstream_port, push_undo=False, emit_signal=False)
-                        except Exception:
-                            continue
+            for name in expected_input_cond_names:
+                # 增加输入端口用来做同步判断
+                self.add_input(name, multi_input=False)
 
-            # === 6. 更新属性面板（如选中）===
+            # 5. 恢复连线
+            new_in_ports = {p.name(): p for p in self.input_ports()}
+            new_out_ports = {p.name(): p for p in self.output_ports()}
+
+            for name, connected_list in old_connections["in"].items():
+                if name in new_in_ports:
+                    for up_port in connected_list:
+                        try:
+                            up_port.connect_to(new_in_ports[name], push_undo=False, emit_signal=False)
+                        except:
+                            pass
+
+            for name, connected_list in old_connections["out"].items():
+                if name in new_out_ports:
+                    for down_port in connected_list:
+                        try:
+                            new_out_ports[name].connect_to(down_port, push_undo=False, emit_signal=False)
+                        except:
+                            pass
+
             if self.selected():
                 QtCore.QTimer.singleShot(100, lambda: parent_window.property_panel.update_properties(self))
-
-        # ========== 执行逻辑 ==========
 
         def _get_all_downstream_nodes(self, start_node, visited=None):
             if visited is None:
@@ -192,84 +215,86 @@ def create_branch_node(parent_window):
                 return True
             inactive_reachable = any(node in self._get_all_downstream_nodes(inactive_start, set())
                                      for inactive_start in inactive_branch_nodes)
-            return not inactive_reachable  # 默认禁用
+            return not inactive_reachable
 
         def execute_sync(self, *args, global_variable=None, **kwargs):
             self.init_logger()
             gv = GlobalVariableContext()
             gv.deserialize(global_variable)
 
+            # 收集所有输入
             inputs_raw = {}
             input_vars = {}
             for input_port in self.input_ports():
                 port_name = input_port.name()
                 connected = input_port.connected_ports()
                 if connected:
-                    inputs_raw[port_name] = [
-                        upstream.node()._output_values.get(upstream.name()) for upstream in connected
-                    ]
-                    safe_key = f"input_{port_name}"
-                    input_vars[safe_key] = inputs_raw[port_name]
-                    for upstream in connected:
-                        safe_name = upstream.node().name().replace(" ", "_")
-                        safe_key = f"input_{safe_name}__{upstream.name()}"
-                        input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
+                    val_list = [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
+                    inputs_raw[port_name] = val_list
+                    # 主数据端口放入表达式上下文
+                    if port_name == "input":
+                        input_vars["input_input"] = val_list
+                        for upstream in connected:
+                            safe_name = upstream.node().name().replace(" ", "_")
+                            safe_key = f"input_{safe_name}__{upstream.name()}"
+                            input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
 
             expr_engine = ExpressionEngine(global_vars_context=gv)
-
-            def _evaluate_with_inputs(value, engine, input_vars_dict):
-                if isinstance(value, str):
-                    return engine.evaluate_template(value, local_vars=input_vars_dict)
-                elif isinstance(value, list):
-                    return [_evaluate_with_inputs(v, engine, input_vars_dict) for v in value]
-                elif isinstance(value, dict):
-                    return {k: _evaluate_with_inputs(v, engine, input_vars_dict) for k, v in value.items()}
-                else:
-                    return value
-
-            inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
-
-            # === 条件求值 + 获取真实端口名 ===
             conditions = self.get_property("conditions") or []
             enable_else = self.get_property("enable_else")
             execute_all = self.get_property("execute_all_matches")
 
             activated_branches = []
+            any_condition_matched = False
 
+            # === 遍历分支判断逻辑 ===
             for i, cond in enumerate(conditions):
-                expr = cond.get("expr", "").strip()
-                if not expr:
-                    continue
-                try:
-                    if expr_engine.is_pure_expression_block(expr):
-                        result = expr_engine.evaluate_expression_block(expr, local_vars=input_vars)
-                    else:
-                        evaluated_str = expr_engine.evaluate_template(expr, local_vars=input_vars)
-                        result = bool(evaluated_str and evaluated_str.strip() and "[ExprError:" not in evaluated_str)
-                    if result:
-                        # ✅ 使用映射获取实际端口名（唯一、去重后）
-                        port_name = self._condition_index_to_port.get(i, f"branch{i}")
-                        activated_branches.append(port_name)
-                        if not execute_all:
-                            break
-                except Exception as e:
-                    self._log_message(self.persistent_id, f"条件表达式错误 [{expr}]: {e}\n")
-                    continue
+                port_name = self._condition_index_to_port.get(i, f"branch{i}")
+                cond_input_name = f"{port_name}_condition"
 
-            if not activated_branches and enable_else:
+                # 检查输入端口是否有连接
+                input_port = self.get_input(cond_input_name)
+                if input_port and input_port.connected_ports():
+                    # 1. 优先使用端口值
+                    port_val = inputs_raw.get(cond_input_name, [False])[0]
+                    result = bool(port_val)
+                else:
+                    # 2. 如果没连接，使用属性里的表达式
+                    expr = cond.get("expr", "").strip()
+                    if not expr:
+                        result = False
+                    else:
+                        try:
+                            if expr_engine.is_pure_expression_block(expr):
+                                result = expr_engine.evaluate_expression_block(expr, local_vars=input_vars)
+                            else:
+                                evaluated_str = expr_engine.evaluate_template(expr, local_vars=input_vars)
+                                result = bool(
+                                    evaluated_str and evaluated_str.strip() and "[ExprError:" not in evaluated_str)
+                        except Exception as e:
+                            self._log_message(self.persistent_id, f"条件表达式错误 [{expr}]: {e}\n")
+                            result = False
+
+                if result:
+                    activated_branches.append(port_name)
+                    any_condition_matched = True
+                    if not execute_all:
+                        break
+
+            # === Else 分支逻辑：仅当没有任何分支满足且启用了else时执行 ===
+            if not any_condition_matched and enable_else:
                 activated_branches = ["else"]
 
-            # === 获取激活/未激活分支的下游节点 ===
+            # === 状态更新与下游控制 ===
             graph = self.graph
-            if graph is None:
-                return {}
+            if graph is None: return {}
 
             active_downstream_nodes = []
             inactive_downstream_nodes = []
 
             for port in self.output_ports():
-                port_name = port.name()
-                is_active = port_name in activated_branches
+                p_name = port.name()
+                is_active = p_name in activated_branches
                 for downstream_port in port.connected_ports():
                     downstream_node = downstream_port.node()
                     if downstream_node:
@@ -278,7 +303,6 @@ def create_branch_node(parent_window):
                         else:
                             inactive_downstream_nodes.append(downstream_node)
 
-            # === 收集所有受影响节点并设置状态 ===
             all_affected_nodes = set()
             for node in active_downstream_nodes + inactive_downstream_nodes:
                 all_affected_nodes.update(self._get_all_downstream_nodes(node, set()))
@@ -295,10 +319,11 @@ def create_branch_node(parent_window):
                     if hasattr(node, '_output_values'):
                         node._output_values = {}
 
-            # === 设置输出值 ===
+            # 设置输出
             self.clear_output_value()
-            input_val = inputs["input"] if len(inputs["input"]) > 1 else inputs["input"][0]
+            main_in = inputs_raw.get("input", [None])
+            out_val = main_in if len(main_in) > 1 else main_in[0]
             for branch in activated_branches:
-                self.set_output_value(branch, input_val)
+                self.set_output_value(branch, out_val)
 
     return ConditionalBranchNode

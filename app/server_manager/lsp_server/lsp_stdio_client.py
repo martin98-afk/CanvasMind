@@ -9,15 +9,15 @@ from typing import Optional, List, Dict, Any
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, QProcess, QTimer, QByteArray
 from loguru import logger
 
-# 极限性能：尝试使用 orjson，速度比内置 json 快 5-10 倍
+# 尝试使用高性能 JSON 库，没有则回退
 try:
     import orjson as fast_json
 except ImportError:
-    import json as fast_json
+    fast_json = json
 
 
 class LspClientManager(QThread):
-    # 原有信号定义完全保留
+    # 信号定义完全保留
     completion_ready = pyqtSignal(list)
     diagnostics_ready = pyqtSignal(list)
     folding_ready = pyqtSignal(list)

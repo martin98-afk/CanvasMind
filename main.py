@@ -25,9 +25,15 @@ def enable_dpi_scale():
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
 
+def enable_opengl():
+    QApplication.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
+    QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
+
+
 def create_application():
     # 启用 DPI 缩放
     enable_dpi_scale()
+    enable_opengl()
     # 创建应用
     sys.argv.append("--no-sandbox")
 

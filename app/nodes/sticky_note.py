@@ -12,10 +12,11 @@ from app.widgets.custom_nodegraphqt.sticky_note_item import StickyNoteItem
 
 class StickyNoteNode(BackdropNode):
     __identifier__ = 'general'
-    NODE_NAME = 'Sticky Note'
+    NODE_NAME = '注释节点'
 
     def __init__(self):
         super(StickyNoteNode, self).__init__(qgraphics_views=StickyNoteItem)
+        self.set_icon(":/icons/文本注释.svg")
         self.view.node = self
         # 添加 note_text 属性到 model 中，这是保存到 JSON 的关键
         self.model.add_property('note_text', '')

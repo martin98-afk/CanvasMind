@@ -185,29 +185,61 @@ def build_internal_graph(internal_nodes, graph_data):
         raise ValueError("循环体内部存在依赖环")
     return order
 
-def execute_branch_node_internal(branch_node, input_data, local_vars, execute_all_matches=False):
+def execute_branch_node(branch_node, input_data, local_vars, execute_all_matches=False):
+    """
+    非UI环境下的分支执行逻辑
+    :param local_vars: 包含了所有输入端口的值，例如 local_vars["input_branch1_condition"]
+    """
     output_dict = {}
     selected_ports = []
+    any_matched = False
+
+    # 遍历分支条件
     for cond in branch_node.get("conditions", []):
-        expr = cond.get("expr", "").strip()
         port_name = cond.get("name")
-        if not expr or not port_name:
+        if not port_name:
             continue
-        try:
-            if expr_engine.is_pure_expression_block(expr):
-                result = expr_engine.evaluate_expression_block(expr, local_vars)
-                if result:
-                    selected_ports.append(port_name)
-                    if not execute_all_matches:
-                        break
-        except Exception as e:
-            logger.warning(f"表达式评估失败 {expr}: {e}")
-            continue
-    if not selected_ports and branch_node.get("enable_else", False):
+
+        # 1. 优先检查同步输入端口是否有值 (Runner中输入端口变量名通常是 input_[端口名])
+        cond_port_key = f"input_{port_name}_condition"
+
+        if cond_port_key in local_vars and isinstance(local_vars[cond_port_key], bool):
+            # 如果 local_vars 里有这个键，说明该端口在画布上有连线
+            result = bool(local_vars[cond_port_key])
+        else:
+            # 2. 如果没连线，走表达式逻辑
+            expr = cond.get("expr", "").strip()
+            if not expr:
+                result = False
+            else:
+                try:
+                    if expr_engine.is_pure_expression_block(expr):
+                        result = expr_engine.evaluate_expression_block(expr, local_vars)
+                    else:
+                        evaluated_str = expr_engine.evaluate_template(expr, local_vars)
+                        result = bool(evaluated_str and evaluated_str.strip() and "[ExprError:" not in evaluated_str)
+                except Exception as e:
+                    logger.warning(f"分支评估异常 {port_name}: {e}")
+                    result = False
+
+        if result:
+            selected_ports.append(port_name)
+            any_matched = True
+            if not execute_all_matches:
+                break
+
+    # 3. Else 兜底逻辑：无任何匹配且启用了 else
+    if not any_matched and branch_node.get("enable_else", False):
         selected_ports.append("else")
+
+    # 4. 数据传导
     if selected_ports:
+        # 确保数据格式正确
+        final_val = input_data if not isinstance(input_data, list) else (
+            input_data[0] if len(input_data) == 1 else input_data)
         for port in selected_ports:
-            output_dict[port] = input_data if len(input_data) > 1 else input_data[0]
+            output_dict[port] = final_val
+
     return selected_ports, output_dict
 
 def execute_loop_node_with_branches(loop_node, all_nodes, graph_data, input_data, runtime_data, disabled_nodes=None):
@@ -407,10 +439,22 @@ def _evaluate_condition_with_engine(condition_expr, current_data, runtime_data, 
         logger.warning(f"条件表达式评估异常: {condition_expr}, 错误: {e}")
         return False
 
-def evaludate_model_inputs(inputs, params, local_vars):
-    params = {k: expr_engine.evaluate_template(v, local_vars=local_vars) for k, v in params.items()}
+def evaluate_model_inputs(inputs, local_vars):
     inputs = {k: expr_engine.evaluate_template(v, local_vars=local_vars) for k, v in inputs.items()}
-    return inputs, params
+    return inputs
+
+def evaluate_model_params(params, local_vars):
+    for k, v in params.items():
+        if isinstance(v, dict):
+            params[k] = evaluate_model_params(v, local_vars)
+        elif isinstance(v, list):
+            params[k] = [evaluate_model_params(item, local_vars) for item in v]
+        elif isinstance(v, str):
+            params[k] = expr_engine.evaluate_template(v, local_vars=local_vars)
+        else:
+            pass
+
+    return params
 
 # --- 修改后的 get_downstream_nodes 函数 ---
 def get_downstream_nodes(start_node_id, connections, all_node_ids, specific_port=None, downstream_cache=None):
@@ -547,7 +591,7 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
         if n.get("is_branch_node", False):
             input_val = next(iter(node_inputs.values()), None)
             execute_all_matches = n.get("execute_all_matches", False)
-            selected_ports, output = execute_branch_node_internal(n, input_val, local_vars_for_inputs, execute_all_matches)
+            selected_ports, output = execute_branch_node(n, input_val, local_vars_for_inputs, execute_all_matches)
             # --- 新增：处理未激活端口及其下游节点 ---
             all_port_names = {cond.get("name") for cond in n.get("conditions", [])}
             if n.get("enable_else", False):
@@ -584,7 +628,8 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
             # 执行普通节点（如果未被禁用）
             if nid not in disabled_nodes:
                 # 将精确引用变量合并到 node_inputs 作为 evaludate_model_inputs 的局部变量
-                node_inputs_evaluated, node_params_evaluated = evaludate_model_inputs(node_inputs, n["params"], local_vars=local_vars_for_inputs)
+                node_inputs_evaluated = evaluate_model_inputs(node_inputs, local_vars=local_vars_for_inputs)
+                node_params_evaluated = evaluate_model_params(n["params"], local_vars=local_vars_for_inputs)
                 logger.info(f"执行内部节点: {n['name']}")
                 logger.info(f"输入: {node_inputs_evaluated}")
                 logger.info(f"参数: {node_params_evaluated}")
@@ -841,7 +886,8 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
             # 执行普通节点（如果未被禁用）
             if node_id not in disabled_nodes:
                 # 将精确引用变量合并到 node_inputs 作为 evaludate_model_inputs 的局部变量
-                node_inputs_evaluated, node_params_evaluated = evaludate_model_inputs(node_inputs, node["params"], local_vars=local_vars_for_inputs)
+                node_inputs_evaluated = evaluate_model_inputs(node_inputs, local_vars=local_vars_for_inputs)
+                node_params_evaluated = evaluate_model_params(node["params"], local_vars=local_vars_for_inputs)
                 try:
                     logger.info(f"执行节点: {node['name']}")
                     logger.info(f"输入: {node_inputs_evaluated}")
@@ -882,31 +928,6 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
     with open(result_path, 'wb') as f:
         pickle.dump(final_outputs, f)
 
-# --- (execute_branch_node 函数保持不变) ---
-def execute_branch_node(branch_node, input_data, local_vars, execute_all_matches=False):
-    output_dict = {}
-    selected_ports = []
-    for cond in branch_node.get("conditions", []):
-        expr = cond.get("expr", "").strip()
-        port_name = cond.get("name")
-        if not expr or not port_name:
-            continue
-        try:
-            if expr_engine.is_pure_expression_block(expr):
-                result = expr_engine.evaluate_expression_block(expr, local_vars)
-                if result:
-                    selected_ports.append(port_name)
-                    if not execute_all_matches:
-                        break
-        except Exception as e:
-            logger.warning(f"表达式评估失败 {expr}: {e}")
-            continue
-    if not selected_ports and branch_node.get("enable_else", False):
-        selected_ports.append("else")
-    if selected_ports:
-        for port in selected_ports:
-            output_dict[port] = input_data if len(input_data) > 1 else input_data[0]
-    return selected_ports, output_dict
 
 if __name__ == "__main__":
     logger.remove()
