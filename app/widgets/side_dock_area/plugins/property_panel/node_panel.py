@@ -1,78 +1,118 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWidgets import QFrame
-from qfluentwidgets import BodyLabel, SubtitleLabel
+from PyQt5.QtWidgets import QFrame, QVBoxLayout, QWidget
+from qfluentwidgets import BodyLabel, SubtitleLabel, SmoothScrollArea
 
-# --- 导入新模块 ---
+# --- 导入优化后的 PortWidget ---
 from app.widgets.side_dock_area.plugins.property_panel.port_widget import PortWidget
 
 
-class NodePanelWidget:
-    """处理普通节点属性UI的子模块"""
+class NodePanelWidget(QWidget):
+    """
+    优化后的普通节点属性面板。
+    不再是工具类，而是一个具有持久状态的 QWidget。
+    """
 
-    def __init__(self, main_window, parent_panel, parent_layout):
+    def __init__(self, main_window, parent_panel, node):
+        """
+        Args:
+            main_window: 主窗口实例
+            parent_panel: PropertyPanel 实例
+            node: 绑定的初始节点
+        """
+        super().__init__(parent_panel)
         self.main_window = main_window
-        self.parent_panel = parent_panel  # PropertyPanel 的实例
-        self.parent_layout = parent_layout # PropertyPanel 中的 node_vbox
+        self.parent_panel = parent_panel
 
-        # 存储当前节点的UI元素
-        self.port_widget = None # 引用 PortWidget 实例
-        self.current_segment = None
+        # 内部状态缓存
+        self.current_segment = 'input'
 
-    def build_port(self, node):
-        # (c) 创建新的 PortWidget 实例
+        # 初始化 UI 骨架
+        self._setup_ui(node)
+
+    def _setup_ui(self, node):
+        """仅在面板创建时执行一次，构建 UI 结构"""
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(8)
+
+        # 1. 标题 (📌 节点名称)
+        self.title_label = SubtitleLabel()
+        self.title_label.setWordWrap(True)
+        self.main_layout.addWidget(self.title_label)
+
+        # 2. 描述 (📝 节点描述)
+        self.desc_label = BodyLabel()
+        self.desc_label.setWordWrap(True)
+        self.main_layout.addWidget(self.desc_label)
+
+        # 3. 分隔线
+        self.separator = self._create_separator()
+        self.main_layout.addWidget(self.separator)
+
+        # 4. 端口组件 (核心：只创建一次)
         self.port_widget = PortWidget(
             main_window=self.main_window,
             parent_panel=self.parent_panel,
             node=node,
-            port_info_func=self.parent_panel.get_port_info,  # 传递获取端口信息的函数
-            copy_as_expression_func=self.parent_panel._copy_as_expression,  # 传递复制表达式的函数
-            add_func=self.parent_panel._add_output_to_global_variable,  # 传递添加到全局变量的函数
+            port_info_func=self.parent_panel.get_port_info,
+            copy_as_expression_func=self.parent_panel._copy_as_expression,
+            add_func=self.parent_panel._add_output_to_global_variable,
             delete_func=self.parent_panel._delete_output_from_global_variable,
             is_in_func=self.parent_panel._is_output_in_global_variable,
-            parent=self.parent_panel  # 或者传入 self.parent_layout 的父控件
+            parent=self
         )
+        # 绑定分段切换事件，用于保留用户选中的 Tab 状态
         self.port_widget.segmented_widget.currentItemChanged.connect(self._on_port_segment_changed)
 
-    def build_ui(self, node, current_segment=None):
-        """构建节点UI"""
-        # 2. 初始化节点属性
+        # 将 PortWidget 添加到主布局
+        self.main_layout.addWidget(self.port_widget, 1)
+
+    def update_data(self, node):
+        """
+        增量更新方法：当 PropertyPanel 切换到此节点时调用。
+        不重建任何控件，只修改现有控件的属性。
+        """
+        # 1. 初始化节点属性缓存（业务逻辑保留）
         if not hasattr(node, '_input_values'):
             node._input_values = {}
         if not hasattr(node, 'column_select'):
             node.column_select = {}
 
-        self.build_port(node)
+        # 2. 更新标题
+        self.title_label.setText(f"📌 {node.name()}")
 
-        title = SubtitleLabel(f"📌 {node.name()}")
-        title.setWordWrap(True)
-        self.parent_layout.addWidget(title)
-
-        description = self.parent_panel.get_node_description(node) # 调用父控件的方法
+        # 3. 更新描述
+        description = self.parent_panel.get_node_description(node)
         if description and description.strip():
-            desc_label = BodyLabel(f"📝 {description}")
-            desc_label.setWordWrap(True)
-            self.parent_layout.addWidget(desc_label)
+            self.desc_label.setText(f"📝 {description}")
+            self.desc_label.show()
+            self.separator.show()
+        else:
+            self.desc_label.hide()
+            self.separator.hide()
 
-        self._add_separator(self.parent_layout)
-        # 将已存在的 PortWidget 添加回布局
-        self.parent_layout.addWidget(self.port_widget)
-        # 根据 current_segment 设置 PortWidget 内部的分段控件状态
-        if self.current_segment is not None:
-             self.port_widget.segmented_widget.setCurrentItem(self.current_segment)
-        elif hasattr(self.port_widget, 'segmented_widget'):
-             if current_segment in ['input', 'output']:
-                 self.port_widget.segmented_widget.setCurrentItem(current_segment)
+        # 4. 核心：触发 PortWidget 的增量刷新
+        # 它会处理内部 Card 的复用、隐藏和数据显示
+        self.port_widget.refresh(node)
 
-        self.parent_layout.addWidget(self.port_widget)
+        # 5. 恢复之前的分段选择状态 (Input/Output)
+        self._restore_segment_state()
+
+    def _restore_segment_state(self):
+        """恢复分段控件的选中状态"""
+        if hasattr(self.port_widget, 'segmented_widget'):
+            self.port_widget.segmented_widget.blockSignals(True)
+            self.port_widget.segmented_widget.setCurrentItem(self.current_segment)
+            self.port_widget.segmented_widget.blockSignals(False)
 
     def _on_port_segment_changed(self, segment):
-        """处理 PortWidget 的分段切换事件"""
+        """记录用户的 Tab 选择，以便在下次刷新时保留"""
         self.current_segment = segment
 
-    def _add_separator(self, layout):
-        """向布局添加分隔线"""
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        separator.setStyleSheet("color: #444444;")
-        layout.addWidget(separator)
+    def _create_separator(self):
+        """创建分隔线"""
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setFrameShadow(QFrame.Sunken)
+        sep.setStyleSheet("background-color: #444444; max-height: 1px; border: none;")
+        return sep

@@ -53,6 +53,14 @@ class ExpressionEngine:
 
         return flat
 
+    def _flatten_dict(self, d: Dict[str, Any]) -> Dict[str, Any]:
+        """将字典中的键名从 a.b 转换为 a_b"""
+        new_dict = {}
+        for k, v in d.items():
+            new_key = k.replace('.', '_')
+            new_dict[new_key] = v
+        return new_dict
+
     def _register_functions(self):
         """注册安全函数到解释器"""
         safe_functions = {
@@ -125,37 +133,36 @@ class ExpressionEngine:
         return isinstance(value, str) and '$' in value and re.search(r'\$[^$]*\$', value) is not None
 
     def evaluate_expression_block(self, expr_block: str, local_vars: Optional[Dict[str, Any]] = None) -> Any:
-        """
-        评估纯表达式块（如 "$input.age > 18$"），返回原始 Python 值（bool/int/str 等）
-        :param expr_block: 完整的表达式块字符串，如 "$input.age > 18$"
-        :param local_vars: 局部变量
-        :return: 表达式计算结果（原始类型）
-        """
         if not self.is_pure_expression_block(expr_block):
             raise ValueError("Not a pure expression block")
 
-        # 提取内部表达式
         inner_expr = expr_block.strip()[1:-1].strip()
 
-        # 展平点语法（如 input.age → input_age）
-        safe_expr = re.sub(
-            r'\b(env|custom|node_vars|input)\.([a-zA-Z_\u4e00-\u9fff][a-zA-Z0-9_\u4e00-\u9fff]*)',
-            r'\1_\2', inner_expr
-        )
-        # 合并符号表
+        # 1. 转换表达式中的点为下划线
+        safe_expr = inner_expr
+        for prefix in ['env.', 'custom.', 'node_vars.', 'input.']:
+            safe_expr = safe_expr.replace(prefix, prefix.replace('.', '_'))
+
+        # 2. 准备符号表：合并全局变量和扁平化后的局部变量
         temp_symtable = dict(self.interp.symtable)
         if local_vars:
-            temp_symtable.update(local_vars)
+            # 关键修复：处理传入的 local_vars，确保里面的点也换成下划线
+            temp_symtable.update(self._flatten_dict(local_vars))
 
         try:
             interp_temp = Interpreter(max_time=2.0)
             interp_temp.symtable.update(temp_symtable)
             result = interp_temp.eval(safe_expr)
+
+            # 3. 调试：如果返回 None，打印 asteval 的内部错误
+            if result is None and len(interp_temp.error) > 0:
+                for err in interp_temp.error:
+                    print(f"Asteval Error: {err.get_error()}")  # 这里能看到具体的 NameError
+
             if hasattr(result, 'item'):
                 result = result.item()
             return result
         except Exception as e:
-            # 在条件判断中，错误表达式应视为 False
             return f"[ExprError: {str(e)}]"
 
     def evaluate_template(self, template: str, local_vars: Optional[Dict[str, Any]] = None) -> str:
