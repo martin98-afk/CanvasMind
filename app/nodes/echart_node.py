@@ -4,6 +4,7 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
 from app.nodes.status_node import NoStatusNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.html_widget import HtmlWidgetWrapper
+from app.widgets.node_widget.universal_display_widget import UniversalWidgetWrapper
 
 
 def create_chart_node(parent_window):
@@ -27,7 +28,7 @@ def create_chart_node(parent_window):
             self.add_input('html', False)
 
             # 添加图表控件
-            chart_widget = HtmlWidgetWrapper(
+            chart_widget = UniversalWidgetWrapper(
                 parent=self.view,
                 name="chart_display",
                 default="<center><small>等待输入 HTML</small></center>",
@@ -72,7 +73,7 @@ def create_chart_node(parent_window):
 
         def execute_sync(self, *args, **kwargs):
             self.init_logger()
-            html_val = ""
+            html_val = None
             port = self.get_input("html")
             if port and port.connected_ports():
                 connected = port.connected_ports()[0]
