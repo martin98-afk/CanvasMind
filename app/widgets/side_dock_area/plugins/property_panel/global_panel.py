@@ -871,7 +871,7 @@ class GlobalPanelWidget:
         layout.addLayout(title_layout)
         layout.addWidget(CardSeparator(self.parent_panel))
         tree = VariableTreeWidget(parent=self.main_window)
-        tree.set_data(node_var_obj.value)
+        tree.set_data(node_var_obj.value, port_name)
         tree.setMinimumHeight(80)
         tree.setMaximumHeight(120)
         layout.addWidget(tree, 1)

@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import base64
+import json
 import re
 import urllib
-import time
-import json
 import uuid
 from datetime import datetime
 from html import escape
@@ -13,12 +12,15 @@ from PyQt5.QtGui import QWheelEvent
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QSizePolicy, QApplication
+    QSizePolicy
 )
 from markdown import Markdown
+from pygments import highlight
+from pygments.formatters import HtmlFormatter
+from pygments.lexers import get_lexer_by_name, TextLexer
 from qfluentwidgets import (
     FluentIcon, ToolTipFilter, TransparentToolButton,
-    CardWidget, CaptionLabel, InfoBar, InfoBarPosition
+    CardWidget, CaptionLabel
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleCardWidget
 
@@ -83,7 +85,7 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
         if lang == 'mermaid':
             return f'''<div class="mermaid" style="background: transparent; margin: 16px 0; overflow-x: auto;">{code_content_raw}</div>'''
 
-        # --- 你的原始代码块逻辑 ---
+        # --- 优化后的代码块逻辑 ---
         try:
             copy_text = code_content_raw.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&").replace(
                 "&#39;", "'").replace("&quot;", '"')
@@ -92,50 +94,41 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
 
         b64_copy = base64.b64encode(copy_text.encode('utf-8')).decode('ascii')
 
+        lines = copy_text.splitlines() or [""]
+        line_count = len(lines)
+
+        # 高亮代码（获取 <pre> 内部 HTML）
         try:
-            from pygments import highlight
-            from pygments.lexers import get_lexer_by_name, TextLexer
-            from pygments.formatters import HtmlFormatter
             lexer = get_lexer_by_name(lang, stripall=False) if lang else TextLexer()
             formatter = HtmlFormatter(
-                style='dracula', linenos=False, noclasses=True, cssclass='code-block',
+                style='dracula',
+                linenos=False,
+                noclasses=True,
+                cssclass='code-block',
                 prestyles='margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;'
             )
-            highlighted_code = highlight(copy_text, lexer, formatter)
-        except Exception:
-            highlighted_code = f'<pre style="margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;">{escape(copy_text)}</pre>'
-
-        lines = copy_text.splitlines() or [""]
-        max_line = len(str(len(lines)))
-        line_numbers_html = "\n".join(
-            f'<td class="lineno" data-line="{i + 1}">{str(i + 1).rjust(max_line)}</td>'
-            for i in range(len(lines))
-        )
-        try:
+            highlighted = highlight(copy_text, lexer, formatter)
+            # 提取 <pre> 内部内容
             import re as preg
-            pre_match = preg.search(r'<pre[^>]*>(.*?)</pre>', highlighted_code, preg.DOTALL)
+            pre_match = preg.search(r'<pre[^>]*>(.*?)</pre>', highlighted, preg.DOTALL)
             if pre_match:
-                inner_html = pre_match.group(1)
-                code_lines = inner_html.split('\n')
-                if len(code_lines) < len(lines):
-                    code_lines.extend([''] * (len(lines) - len(code_lines)))
+                inner_code_html = pre_match.group(1)
             else:
-                code_lines = [escape(line) for line in lines]
-        except:
-            code_lines = [escape(line) for line in lines]
+                inner_code_html = escape(copy_text)
+        except Exception:
+            inner_code_html = escape(copy_text)
 
-        code_lines_html = "\n".join(f'<td class="code-line">{line}</td>' for line in code_lines)
-        table_rows = "\n".join(
-            f'<tr>{line_numbers_html.splitlines()[i]}{code_lines_html.splitlines()[i]}</tr>'
-            for i in range(len(lines))
-        )
+        # 生成行号（纯文本，每行一个数字）
+        line_numbers_text = "\n".join(str(i + 1) for i in range(line_count))
 
-        table_html = f'''
-        <table class="code-table">
-            <tbody>
-                {table_rows}
-            </tbody>
-        </table>
+        # 构建新的代码容器（行号固定 + 代码可横向滚动）
+        code_block_html = f'''
+        <div class="code-container">
+            <div class="line-numbers">{escape(line_numbers_text)}</div>
+            <div class="code-content">
+                <pre>{inner_code_html}</pre>
+            </div>
+        </div>
         '''
 
         return f'''
@@ -170,10 +163,10 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
             </div>
             <!-- 可横向滚动的代码区域 -->
             <div style="
-                padding: 8px 10px; overflow-x: auto; overflow-y: hidden;
+                padding: 8px 0 0 0;
                 border-radius: 0 0 10px 10px;
             ">
-                {table_html}
+                {code_block_html}
             </div>
         </div>
         '''
@@ -182,10 +175,13 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
     return re.sub(pattern, replacer, html, flags=re.DOTALL)
 
 
-def _sanitize_incomplete_markdown(md_text: str) -> str:
-    if not md_text: return ""
-    if md_text.count('```') % 2 == 1: md_text += '\n```'
-    if md_text.endswith('<'): md_text = md_text[:-1]
+def _sanitize_incomplete_markdown(md_text: str, is_final: bool = False) -> str:
+    if not md_text:
+        return ""
+    if is_final and md_text.count('```') % 2 == 1:
+        md_text += '\n```'
+    if md_text.endswith('<'):
+        md_text = md_text[:-1]
     return md_text
 
 
@@ -268,6 +264,7 @@ class CodeWebViewer(QWebEngineView):
         self._markdown_text = ""
         self._streaming = True
         self._is_js_ready = False
+        self._last_rendered_len = 0  # 👈 新增：记录已渲染的 Markdown 长度
 
         # 1. 渲染定时器
         self._render_timer = QTimer(self)
@@ -275,7 +272,7 @@ class CodeWebViewer(QWebEngineView):
         self._render_timer.timeout.connect(self._perform_update)
         self._min_render_interval = 35
 
-        # 2. Resize 定时器 (修复 Crash 的关键：作为成员变量，随 self 销毁)
+        # 2. Resize 定时器
         self._resize_timer = QTimer(self)
         self._resize_timer.setSingleShot(True)
         self._resize_timer.setInterval(50)
@@ -296,14 +293,11 @@ class CodeWebViewer(QWebEngineView):
 
         self._load_skeleton()
 
-    # 安全的高度上报函数
     def _safe_report_height(self):
         try:
-            # 再次检查 page 是否存在，避免 C++ 对象已删除错误
             if self.page():
                 self.page().runJavaScript("reportHeight();")
         except RuntimeError:
-            # 捕获可能的 "wrapped C/C++ object has been deleted"
             pass
 
     def _on_height_reported(self, h):
@@ -313,12 +307,14 @@ class CodeWebViewer(QWebEngineView):
 
     def _on_js_ready(self):
         self._is_js_ready = True
-        if self._markdown_text: self._schedule_render()
+        if self._markdown_text:
+            self._schedule_render()
 
     def _load_skeleton(self):
         tag_css = []
         for act, col in ACTION_COLOR_MAP.items():
-            tag_css.append(f'.context-tag[data-type="{act}"] {{ background: {col}15; border-color: {col}60; color: {col}; }}')
+            tag_css.append(
+                f'.context-tag[data-type="{act}"] {{ background: {col}15; border-color: {col}60; color: {col}; }}')
             tag_css.append(f'.context-tag[data-type="{act}"]:hover {{ background: {col}30; border-color: {col}; }}')
 
         cdn_libs = """
@@ -347,40 +343,66 @@ class CodeWebViewer(QWebEngineView):
                     background: transparent !important; color: #E0E0E0;
                     font-family: "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5;
                     margin: 0; 
-                    /* 优化：减小上下内边距 */
                     padding: 4px 12px; 
                     overflow: hidden;
                 }}
                 {scrollbar_css}
 
-                /* 优化：移除首尾元素的边距，彻底消除多余空白 */
                 #content-placeholder > :first-child {{ margin-top: 0 !important; }}
                 #content-placeholder > :last-child {{ margin-bottom: 0 !important; }}
-                
-                /* 优化：紧凑的段落间距 */
                 p {{ margin: 6px 0; }}
 
-                /* Markdown 表格 */
                 table:not(.code-table) {{ width: 100%; border-collapse: collapse; margin: 8px 0; background: #252526; border-radius: 6px; overflow: hidden; border: 1px solid #3A3F47; }}
                 table:not(.code-table) th {{ background: #333; padding: 6px 12px; text-align: left; font-weight: 600; color: #fff; border-bottom: 2px solid #454545; }}
                 table:not(.code-table) td {{ padding: 6px 12px; border-bottom: 1px solid #3A3F47; color: #ccc; }}
                 table:not(.code-table) tr:nth-child(even) {{ background: #2A2D31; }}
                 table:not(.code-table) tr:hover {{ background: #3A3F47; }}
-                
-                /* 标签 */
+
                 .context-tag {{ display: inline-block; padding: 1px 5px; margin: 0 2px; border: 1px solid transparent; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; vertical-align: middle; }}
-                { "".join(tag_css) }
-                
-                /* 代码块通用样式 */
-                .code-table {{ width: 100%; border-collapse: collapse; }}
-                .code-table td {{ padding: 0; vertical-align: top; }}
-                .lineno {{ width: 32px; text-align: right; padding-right: 8px !important; color: #606060; border-right: 1px solid #404040; user-select: none; font-size: 12px; line-height: 1.5; }}
-                
-                /* 关键：修复缩进丢失 */
-                .code-line {{ padding-left: 12px !important; color: #d4d4d4; font-size: 13px; line-height: 1.5; white-space: pre; font-family: Consolas, monospace; }}
-                
+                {"".join(tag_css)}
+
+                .code-container {{
+                    display: flex;
+                    overflow-x: auto;
+                    overflow-y: hidden;
+                    background: #1E1E1E;
+                    font-family: Consolas, monospace;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    padding: 0 10px 8px 0;
+                    margin: 0;
+                }}
+                .line-numbers {{
+                    flex: 0 0 auto;
+                    text-align: right;
+                    padding-right: 12px;
+                    color: #606060;
+                    border-right: 1px solid #404040;
+                    user-select: none;
+                    white-space: pre;
+                    min-width: 32px;
+                    overflow: hidden;
+                }}
+                .code-content {{
+                    flex: 1;
+                    overflow-x: auto;
+                    overflow-y: hidden;
+                    padding-left: 12px;
+                }}
+                .code-content pre {{
+                    margin: 0 !important;
+                    white-space: pre;
+                    word-wrap: normal;
+                    overflow: visible;
+                    background: transparent !important;
+                    color: #D4D4D4 !important;
+                    font-family: Consolas, monospace !important;
+                    font-size: 13px !important;
+                    line-height: 1.5 !important;
+                }}
+
                 .code-btn:hover {{ background: rgba(255,255,255,0.1) !important; }}
-                
+
                 details.think-block {{ margin: 6px 0; background: #1a1b1e; border: 1px solid #333; border-radius: 6px; }}
                 details.think-block summary {{ padding: 4px 10px; cursor: pointer; color: #aaa; font-weight: 600; }}
                 .think-content {{ padding: 8px; border-top: 1px solid #333; color: #888; font-style: italic; }}
@@ -390,41 +412,58 @@ class CodeWebViewer(QWebEngineView):
         <body>
             <div id="content-placeholder"></div>
             <script>
-                function updateContent(newHtml) {{
+                function appendChunk(htmlFragment) {{
                     const container = document.getElementById('content-placeholder');
-                    if (container.innerHTML !== newHtml) {{
-                        container.innerHTML = newHtml;
-                        document.querySelectorAll('.echarts-div').forEach(div => {{
-                            if (div.getAttribute('data-processed')) return;
-                            try {{
-                                const option = JSON.parse(decodeURIComponent(div.getAttribute('data-option')));
-                                const chart = echarts.init(div, 'dark', {{renderer: 'canvas', useDirtyRect: false}});
-                                option.backgroundColor = 'transparent';
-                                chart.setOption(option);
-                                new ResizeObserver(() => chart.resize()).observe(div);
-                                div.setAttribute('data-processed', 'true');
-                            }} catch(e) {{}}
-                        }});
-                        mermaid.run({{ nodes: document.querySelectorAll('.mermaid') }});
-                        if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise();
-                        reportHeight();
+                    const div = document.createElement('div');
+                    div.className = 'message-chunk';
+                    div.innerHTML = htmlFragment;
+
+                    // 初始化新 chunk 中的 echarts
+                    div.querySelectorAll('.echarts-div').forEach(div => {{
+                        if (div.getAttribute('data-processed')) return;
+                        try {{
+                            const option = JSON.parse(decodeURIComponent(div.getAttribute('data-option')));
+                            const chart = echarts.init(div, 'dark', {{renderer: 'canvas', useDirtyRect: false}});
+                            option.backgroundColor = 'transparent';
+                            chart.setOption(option);
+                            new ResizeObserver(() => chart.resize()).observe(div);
+                            div.setAttribute('data-processed', 'true');
+                        }} catch(e) {{}}
+                    }});
+
+                    // 初始化 mermaid
+                    mermaid.run({{ nodes: div.querySelectorAll('.mermaid') }});
+
+                    // MathJax
+                    if (window.MathJax && MathJax.typesetPromise) {{
+                        MathJax.typesetPromise(div.querySelectorAll("mjx-container"));
                     }}
+
+                    container.appendChild(div);
+                    reportHeight();
                 }}
+
                 function reportHeight() {{
                     const h = document.documentElement.getBoundingClientRect().height;
                     console.log('pywebview_height:' + h);
                 }}
+
                 document.addEventListener('click', e => {{
                     const btn = e.target.closest('button[data-action]');
                     if (btn) {{
                         const act = btn.getAttribute('data-action');
                         const b64 = btn.getAttribute('data-copy');
-                        if (act === 'copy' && navigator.clipboard) navigator.clipboard.writeText(atob(b64));
+                        if (act === 'copy' && navigator.clipboard) {{
+                            navigator.clipboard.writeText(atob(b64));
+                        }}
                         console.log('pywebview_action:' + act + ':' + b64);
                     }}
                     const tag = e.target.closest('.context-tag');
-                    if (tag) console.log('pywebview_action:context|||' + tag.getAttribute('data-content') + '|||' + tag.getAttribute('data-action'));
+                    if (tag) {{
+                        console.log('pywebview_action:context|||' + tag.getAttribute('data-content') + '|||' + tag.getAttribute('data-action'));
+                    }}
                 }});
+
                 window.onload = () => {{
                     console.log('pywebview_ready');
                     new ResizeObserver(() => requestAnimationFrame(reportHeight)).observe(document.body);
@@ -437,69 +476,99 @@ class CodeWebViewer(QWebEngineView):
         self.setHtml(html, QUrl(""))
 
     def append_chunk(self, text: str):
-        if not text: return
+        if not text:
+            return
         self._markdown_text += text
         self._schedule_render()
 
     def _schedule_render(self):
-        if not self._is_js_ready: return
-        if not self._render_timer.isActive():
+        if not self._is_js_ready:
+            return
+        new_len = len(self._markdown_text)
+        # 如果新增内容较多，立即渲染；否则节流
+        if new_len - self._last_rendered_len > 50:
+            self._render_timer.stop()
+            self._perform_update()
+        elif not self._render_timer.isActive():
             self._render_timer.start(self._min_render_interval)
 
     def _perform_update(self):
         try:
-            # 增加检查
-            if not self.page(): return
+            if not self.page() or not self._is_js_ready:
+                return
 
-            raw_md = self._markdown_text
-            safe_md = _sanitize_incomplete_markdown(raw_md)
+            new_md = self._markdown_text[self._last_rendered_len:]
+            if not new_md.strip():
+                return
+
+            # 注意：流式中不补全代码块（is_final=False）
+            safe_md = _sanitize_incomplete_markdown(new_md, is_final=False)
             safe_md = _unwrap_code_blocks_with_context_links(safe_md)
             safe_md = _inject_context_links(safe_md)
-            processed_md = _inject_think_cards(safe_md, self._streaming == False)
+            processed_md = _inject_think_cards(safe_md, completed=False)
+
             try:
                 md = get_markdown_instance()
                 md.reset()
-                html_content = md.convert(processed_md)
-                html_content = _wrap_code_blocks_with_copy_button_web(html_content)
+                html_fragment = md.convert(processed_md)
+                html_fragment = _wrap_code_blocks_with_copy_button_web(html_fragment)
             except Exception:
-                html_content = f"<pre>{escape(raw_md)}</pre>"
+                html_fragment = f"<pre>{escape(new_md)}</pre>"
 
-            js_code = f"updateContent({json.dumps(html_content, ensure_ascii=False)});"
+            js_code = f"appendChunk({json.dumps(html_fragment, ensure_ascii=False)});"
             self.page().runJavaScript(js_code)
+            self._last_rendered_len = len(self._markdown_text)
+
         except RuntimeError:
             pass
 
     def finish_streaming(self):
         self._streaming = False
-        self._perform_update()
+        # 渲染剩余未完成内容（作为最终块）
+        if self._last_rendered_len < len(self._markdown_text):
+            remaining = self._markdown_text[self._last_rendered_len:]
+            safe_md = _sanitize_incomplete_markdown(remaining, is_final=True)
+            safe_md = _unwrap_code_blocks_with_context_links(safe_md)
+            safe_md = _inject_context_links(safe_md)
+            processed_md = _inject_think_cards(safe_md, completed=True)
+            try:
+                md = get_markdown_instance()
+                md.reset()
+                html_fragment = md.convert(processed_md)
+                html_fragment = _wrap_code_blocks_with_copy_button_web(html_fragment)
+                js_code = f"appendChunk({json.dumps(html_fragment, ensure_ascii=False)});"
+                self.page().runJavaScript(js_code)
+                self._last_rendered_len = len(self._markdown_text)
+            except Exception:
+                pass
+        # 最后上报高度
+        self._safe_report_height()
 
     def get_plain_text(self) -> str:
         return self._markdown_text
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        # 使用成员变量 timer，替代 lambda
         self._resize_timer.start()
 
     def wheelEvent(self, event: QWheelEvent):
-        # 获取滚动条（向上找 QScrollArea）
         scroll_area = self.parent().parent.chat_scroll_area
         if scroll_area:
             vbar = scroll_area.verticalScrollBar()
             if vbar and vbar.minimum() != vbar.maximum():
-                # 让外部 ScrollArea 滚动
                 delta = event.angleDelta().y()
                 vbar.setValue(vbar.value() - delta // 2)
-                event.accept()  # 标记事件已处理
+                event.accept()
                 return
-
         super().wheelEvent(event)
 
     def deleteLater(self):
-        # 显式停止定时器
-        if self._render_timer.isActive(): self._render_timer.stop()
-        if self._resize_timer.isActive(): self._resize_timer.stop()
-        if self.page(): self.page().deleteLater()
+        if self._render_timer.isActive():
+            self._render_timer.stop()
+        if self._resize_timer.isActive():
+            self._resize_timer.stop()
+        if self.page():
+            self.page().deleteLater()
         super().deleteLater()
 
 
