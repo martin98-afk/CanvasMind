@@ -302,7 +302,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
         处理全局变量清空逻辑
         """
         value = params.get("value", "")
-        if value.startswith(type):
+        if value.startswith(params.get("type", "")):
             value = value.split(".")[1]
         if self.parent_window:
             self.parent_window._on_global_variables_changed(
