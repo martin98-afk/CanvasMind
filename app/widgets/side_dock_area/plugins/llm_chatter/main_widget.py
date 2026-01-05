@@ -535,84 +535,70 @@ class OpenAIChatToolWindow(ToolWindow):
         self._on_send_clicked(user_text=question.strip())
 
     def _on_send_clicked(self, user_text: str = ""):
-        # === 防止重复发送：自动中止当前请求 ===
         if self._is_streaming:
-            self._on_stop_clicked()  # 安全中止当前 worker
-        self.input_area.toggle_send_button(False)
-        # === 安全移除欢迎卡片（动态查找）===
-        welcome_card = None
-        for i in range(self.chat_layout.count()):
-            widget = self.chat_layout.itemAt(i).widget()
-            if isinstance(widget, MessageCard) and getattr(widget, '_is_welcome', False):
-                welcome_card = widget
-                break
-        if welcome_card is not None:
-            self.chat_layout.removeWidget(welcome_card)
-            welcome_card.deleteLater()
+            self._on_stop_clicked()
 
-        # === 原有发送逻辑继续 ===
+        self.input_area.toggle_send_button(False)
+
+        # 1. 获取当前会话和配置
         session = self.session_manager.get_current_session()
+        selected_name = self.model_combo.currentText()
+        llm_config = self._valid_configs.get(selected_name)
+
+        if not llm_config:
+            InfoBar.error("配置无效", "请检查模型设置", parent=self)
+            return
+
+        # 2. 处理用户输入
         if not user_text:
             user_text = self.input_area.toPlainText().strip()
-            if not user_text:
-                return
+            if not user_text: return
             session.add_user_message(
                 content=user_text,
-                params={key: value for key, value in self.context_selector.context.items()}
+                params={k: v for k, v in self.context_selector.context.items()}
             )
             self.input_area.clear()
             self._append_user_message(user_text)
 
-        selected_name = self.model_combo.currentText()
-        llm_config = self._valid_configs.get(selected_name)
-        assistant_card = self._append_assistant_message()
-        if not llm_config:
-            self._update_assistant_message(assistant_card, "[错误] 模型配置无效")
-            return
-
-        # 构建系统消息
+        # 3. 构造消息列表 (System Prompt)
         messages = []
-        system_prompt = (self._system_prompt + llm_config.get("系统提示", "").strip()).strip()
-        messages.append({"role": "system", "content": system_prompt})
+        full_system_prompt = (self._system_prompt + "\n" + llm_config.get("系统提示", "").strip()).strip()
+        messages.append({"role": "system", "content": full_system_prompt})
 
-        # 添加历史消息（注意：历史消息必须是纯文本，不能含 image_url）
+        # 4. 注入历史消息
         for msg in session.messages[:-1]:
-            # 历史消息只保留文本，丢弃图片（或你也可设计历史支持图片，但需更复杂处理）
-            if isinstance(msg["content"], list):
-                # 如果历史中已有多模态，只取 text 部分（简化处理）
-                text_parts = [item["text"] for item in msg["content"] if item["type"] == "text"]
-                content = "\n".join(text_parts)
-            else:
-                content = msg["content"]
+            content = msg["content"]
+            if isinstance(content, list):  # 简化多模态历史
+                content = "\n".join([item["text"] for item in content if item["type"] == "text"])
             messages.append({"role": msg["role"], "content": content})
 
-        # 当前用户消息：多模态
-        model_name = llm_config.get("模型名称", "")
-        supports_vision = any(
-            m in model_name.lower() for m in ["4o", "4-turbo", "gpt-4-v", "vision", "vl", "glm-4v", "qwen-vl"])
+        # 5. 处理当前消息的多模态逻辑
+        model_name = str(llm_config.get("模型名称", "")).lower()
+        supports_vision = any(x in model_name for x in ["4o", "vision", "vl", "gemini", "claude-3"])
         has_image = any([item[-1] for item in self.context_selector._context_cache])
+
         if supports_vision and has_image:
-            context_items = self.context_selector.get_multimodal_context_items()
-            user_content_list = []
-            for item in context_items:
-                user_content_list.append(item)
-            user_content_list.append({"type": "text", "text": user_text})
-            # 使用多模态格式
-            messages.append({"role": "user", "content": user_content_list})
+            user_content = self.context_selector.get_multimodal_context_items()
+            user_content.append({"type": "text", "text": user_text})
+            messages.append({"role": "user", "content": user_content})
         else:
-            # 回退到纯文本
             context_text = self.context_selector.get_text_context()
             messages.append({"role": "user", "content": context_text + user_text})
 
+        # 6. 准备助手卡片
+        assistant_card = self._append_assistant_message()
+
+        # 7. 启动 Worker (透传整个 llm_config 字典)
         self._is_streaming = True
-        # 在 _on_send_clicked 中，构建 messages 之后、创建 worker 之前，加入：
-        available_tools = self._get_available_mcp_tools()  # ← 新方法
+        # available_tools = self._get_available_mcp_tools()
 
         self._worker = OpenAIChatWorker(
             messages=messages,
-            llm_config=llm_config,
-            tools=available_tools  # ← 传入 tools
+            llm_config=llm_config,  # 直接传递字典，Worker 内部会动态解析
+            # tools=available_tools
         )
+
+        # 信号连接
         self._worker.content_received.connect(lambda c: self._on_content_received(c, assistant_card))
         self._worker.error_occurred.connect(lambda e: self._on_error(e, assistant_card))
         self._worker.finished_with_content.connect(lambda r: self._on_worker_finished(r, assistant_card))
@@ -727,7 +713,14 @@ class OpenAIChatToolWindow(ToolWindow):
         logger.error(f"[Title Gen] 未能从以下输出中提取标题:\n{raw_output}")
 
     def _get_available_mcp_tools(self) -> List[Dict]:
-        """从 MCP 服务器或注册表中获取当前可用的工具定义"""
-        exports_dir = Path(r"D:\work\CanvasMind\canvas_files\projects")
-        server = GlobalMcpServer(exports_dir)
-        return server.handle_initialize(None)
+        """获取工具定义，如果没有 MCP 服务器则返回空列表"""
+        try:
+            # 确保返回的是 OpenAI 标准的 tools 格式: [{"type": "function", "function": {...}}]
+            exports_dir = Path(r"D:\work\CanvasMind\canvas_files\projects")
+            server = GlobalMcpServer(exports_dir)
+            # 假设该方法返回符合 OpenAI 规范的 list
+            tools = server.handle_initialize(None)
+            return tools if isinstance(tools, list) else []
+        except Exception as e:
+            logger.warning(f"获取 MCP 工具失败: {e}")
+            return []

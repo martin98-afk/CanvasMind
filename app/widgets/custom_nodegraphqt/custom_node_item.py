@@ -144,7 +144,8 @@ class CustomNodeItem(NodeItem):
         text.setFont(QtGui.QFont("Arial", 10))
         text.setDefaultTextColor(QtGui.QColor("white"))  # 设置字体颜色
         text.setVisible(port.display_name)
-        text.setCacheMode(ITEM_CACHE_MODE)
+        # 禁用缓存，确保始终使用高质量渲染，解决长按时字体模糊扭曲问题
+        text.setCacheMode(QtWidgets.QGraphicsItem.NoCache)
         if port.port_type == PortTypeEnum.IN.value:
             self._input_items[port] = text
         elif port.port_type == PortTypeEnum.OUT.value:
