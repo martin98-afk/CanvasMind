@@ -179,6 +179,13 @@ class NodeListPanelWidget(QWidget):
         status_list = [self.main_window.get_node_status(n) for n in topo_sorted]
         name_list = [n.name() for n in topo_sorted]
         node_list_widget = InternalNodeList(status_list, name_list, self)
+        def on_double_click(item):
+            row = node_list_widget.row(item)
+            if 0 <= row < len(topo_sorted):
+                node = topo_sorted[row]
+                self.main_window.canvas_widget.zoom_to_nodes([node._view])
+
+        node_list_widget.itemDoubleClicked.connect(on_double_click)
         node_list_widget.setFixedHeight(max(40 * len(topo_sorted), 40))
         comp_layout.addWidget(node_list_widget)
         self._column_list_widgets[list_id] = node_list_widget

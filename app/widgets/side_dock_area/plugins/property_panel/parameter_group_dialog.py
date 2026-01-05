@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QListWidgetItem
 from qfluentwidgets import PushButton, ListWidget, FluentIcon, InfoBar, TransparentToolButton, BodyLabel, LineEdit, \
     ToggleToolButton, SearchLineEdit
@@ -262,4 +261,3 @@ class ParameterGroupDialog(StepMessageBoxBase):
             elif self.selected_template_name in self.templates:
                 self._load_parameters_for_edit(self.selected_template_name, self.templates[self.selected_template_name])
         super()._on_next_clicked()
-
