@@ -457,7 +457,7 @@ class VariableTreeWidget(TreeWidget):
             QHeaderView::section {
                 background-color: #252526;
                 color: #d4d4d4;
-                padding: 4px;
+                padding: 0px;
                 border: none;
             }
         """)

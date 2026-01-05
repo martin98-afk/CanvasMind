@@ -312,10 +312,6 @@ class GlobalPanelWidget:
         if self._built:
             self._refresh_content()
             return
-
-        title = SubtitleLabel("🌍 全局变量")
-        self.parent_layout.addWidget(title)
-
         segment_layout = QHBoxLayout(self.parent_panel)
         segment_layout.setContentsMargins(5, 5, 5, 0)
         self.global_segmented = SegmentedWidget(self.parent_panel)

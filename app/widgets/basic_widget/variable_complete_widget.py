@@ -1,54 +1,30 @@
 # -*- coding: utf-8 -*-
 import re
-from pypinyin import lazy_pinyin
+from pypinyin import lazy_pinyin, Style
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QKeyEvent, QFont, QSyntaxHighlighter, QTextCharFormat, QColor, QPalette, QCursor
 from PyQt5.QtGui import QTextCursor
-from PyQt5.QtWidgets import QListWidget, QDesktopWidget  # 添加 QDesktopWidget
+from PyQt5.QtWidgets import QListWidget
 from qfluentwidgets import TextEdit, LineEdit
-
-from app.widgets.basic_widget.style_sheet import StyleSheet
 
 
 # -----------------------
-# 高亮器类：用于高亮 $$ 变量表达式
+# 高亮器类：用于高亮 $变量$
 # -----------------------
 class VariableHighlighter(QSyntaxHighlighter):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.variable_format = QTextCharFormat()
-        self.variable_format.setForeground(QColor("#FFD700"))  # 金色
-        self.variable_format.setBackground(QColor("#2C2C2C"))  # 深灰色背景
+        self.variable_format.setForeground(QColor("#FFD700"))
+        self.variable_format.setBackground(QColor("#2C2C2C"))
         self.variable_format.setFontWeight(QFont.Bold)
 
     def highlightBlock(self, text):
-        # 清除之前的所有格式
-        self.setFormat(0, len(text), QTextCharFormat())
-
-        # 使用平衡计数法准确判断开始和结束的 $ 符号
-        balance = 0
-        start_pos = -1
-        i = 0
-        while i < len(text):
-            char = text[i]
-            if char == '$':
-                if balance == 0:
-                    # 开始
-                    start_pos = i
-                    balance = 1
-                else:
-                    # 结束
-                    balance -= 1
-                    if balance == 0 and start_pos != -1:
-                        # 高亮整个 $...$ 段
-                        self.setFormat(start_pos, i - start_pos + 1, self.variable_format)
-                        start_pos = -1
-            elif char == '\n':
-                # 换行符重置状态
-                balance = 0
-                start_pos = -1
-            i += 1
+        # 使用正则匹配 $...$，非贪婪
+        pattern = re.compile(r'\$[^$\n]+\$')
+        for match in pattern.finditer(text):
+            self.setFormat(match.start(), match.end() - match.start(), self.variable_format)
 
 
 # -----------------------
@@ -61,10 +37,7 @@ class VariableCompletionPopup(QListWidget):
         super().__init__(parent)
         self.use_qcursor = use_qcursor
         self.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
-        self.setFocusPolicy(Qt.StrongFocus)  # 改为 StrongFocus，允许接收焦点
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        # 改进样式，增加选中项的高亮
+        self.setFocusPolicy(Qt.NoFocus)  # 建议不抢焦点，让键盘事件留在编辑器
         self.setStyleSheet("""
             QListWidget {
                 background-color: #19232D;
@@ -73,606 +46,209 @@ class VariableCompletionPopup(QListWidget):
                 outline: 0;
                 padding: 4px;
             }
-            QListWidget::item {
-                padding: 4px;
-            }
+            QListWidget::item { padding: 4px; }
             QListWidget::item:selected {
-                background-color: #2A4C66; /* 更深的蓝色背景 */
-                color: #FFFFFF; /* 确保文字颜色 */
-                border: 1px solid #50A1C5; /* 添加边框 */
-            }
-            QListWidget::item:hover {
-                background-color: #253648; /* 悬停背景 */
-            }
-            QScrollBar:vertical {
-                width: 8px;
-                background-color: #2A3B4D;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #32414B;
-                border-radius: 4px;
-                min-height: 20px;
+                background-color: #2A4C66;
+                color: #FFFFFF;
+                border: 1px solid #50A1C5;
             }
         """)
-        font = QFont('Consolas', 12)
-        self.setFont(font)
-        self.setMinimumWidth(300)
-        self.itemClicked.connect(self._on_item_clicked)
-        self.hide()
-
-        # 添加鼠标事件处理，防止滚轮点击关闭
-        self.setMouseTracking(True)
-
-    def _on_item_clicked(self, item):
-        self.itemSelected.emit(item.text())
-        self.hide()
+        self.setFont(QFont('Consolas', 11))
+        self.setMinimumWidth(250)
+        self.itemClicked.connect(lambda item: self.itemSelected.emit(item.text()))
 
     def show_at_cursor(self, editor):
-        # 获取当前鼠标位置
         if not self.use_qcursor:
-            cursor_rect = editor.cursorRect()
-            cursor_pos = editor.mapToGlobal(cursor_rect.bottomLeft())
-            x = cursor_pos.x()
-            y = cursor_pos.y()
+            rect = editor.cursorRect()
+            pos = editor.mapToGlobal(rect.bottomLeft())
         else:
-            cursor_pos = QCursor.pos()
-            # 计算调整后的 x, y 坐标 - 显示在鼠标位置下方
-            x = cursor_pos.x()
-            y = cursor_pos.y() + 10  # 在鼠标下方留一点间距
-
-        self.move(int(x), int(y))
+            pos = QCursor.pos()
+        self.move(pos.x(), pos.y() + 5)
         self.show()
-        self.setFocus()
-
-    def mousePressEvent(self, event):
-        # 检查是否是滚轮点击，如果是则不隐藏补全框
-        if event.button() == Qt.MiddleButton:
-            # 滚轮点击不隐藏补全框
-            return
-        # 其他鼠标点击正常处理
-        super().mousePressEvent(event)
-
-    def focusOutEvent(self, event):
-        """当补全框失去焦点时，只有在编辑框也失去焦点时才隐藏补全框"""
-        # 检查父编辑器是否还有焦点
-        if hasattr(self, 'editor') and self.editor and self.editor.hasFocus():
-            # 编辑器还有焦点，不隐藏补全框
-            return
-        # 只有当编辑器也失去焦点时才隐藏
-        self.hide()
-        super().focusOutEvent(event)
 
 
 # -----------------------
-# 支持变量补全和高亮的 TextEdit
+# 核心逻辑混合类 (Mixin) 用于减少重复代码
 # -----------------------
-class VariableCompletionTextEdit(TextEdit):
-    def __init__(self, get_variable_list_func, use_qcursor=False, parent=None):
-        super().__init__(parent)
-        self.get_variable_list_func = get_variable_list_func
-        self.popup = VariableCompletionPopup(use_qcursor)
-        self.popup.itemSelected.connect(self._apply_completion)
+class CompletionMixin:
+    def init_completion(self, get_var_func):
+        self.get_variable_list_func = get_var_func
         self._completing = False
         self._input_timer = QTimer()
         self._input_timer.setSingleShot(True)
         self._input_timer.timeout.connect(self._trigger_completion)
 
-        # 创建并应用高亮器
-        self.highlighter = VariableHighlighter(self.document())
+    def _get_context_info(self):
+        """获取当前光标在 $ 表达式中的位置信息"""
+        cursor = self.textCursor() if hasattr(self, 'textCursor') else None
+        pos = cursor.position() if cursor else self.cursorPosition()
+        text = self.toPlainText() if hasattr(self, 'toPlainText') else self.text()
 
-        # 将编辑器引用传递给补全框
-        self.popup.editor = self
+        # 寻找当前行开始
+        line_start = text.rfind('\n', 0, pos) + 1
+        current_line_prefix = text[line_start:pos]
 
-    def focusOutEvent(self, event):
-        """当焦点离开编辑框时，只有在补全框也失去焦点时才隐藏补全框"""
-        # 检查补全框是否还有焦点
-        if self.popup.hasFocus():
-            # 补全框还有焦点，不隐藏，让补全框自己处理
-            super().focusOutEvent(event)
-            return
-        # 只有当补全框也失去焦点时才隐藏
-        self.popup.hide()
-        super().focusOutEvent(event)
+        # 寻找左侧最近的 $
+        dollar_pos = current_line_prefix.rfind('$')
+        if dollar_pos == -1:
+            return None, 0
 
-    def keyPressEvent(self, event: QKeyEvent):
-        # 处理 $ 触发补全
-        if event.text() == '$' and not self._completing:
-            super().keyPressEvent(event)
-            # --- 优化触发逻辑 ---
-            # 检查输入 $ 后，当前位置是否处于未闭合的变量上下文中
-            # 获取光标位置（事件已处理，光标已移动）
-            cursor = self.textCursor()
-            pos_after_input = cursor.position()
-            text_after_input = self.toPlainText()
+        abs_dollar_pos = line_start + dollar_pos
+        prefix = text[abs_dollar_pos + 1: pos]
+        return abs_dollar_pos, prefix
 
-            # 使用平衡计数法判断新输入的 $ 是否是未闭合的
-            balance = 0
-            in_unmatched_dollar_context = False
-            for i in range(pos_after_input):
-                if text_after_input[i] == '$':
-                    if balance == 0:
-                        # 新的开始，或恰好是当前光标前的那个$
-                        balance = 1
-                        in_unmatched_dollar_context = True
-                    else:
-                        # 结束一个配对
-                        balance -= 1
-                        if balance == 0:
-                            in_unmatched_dollar_context = False
+    def _filter_variables(self, prefix):
+        all_vars = self.get_variable_list_func()
+        if not prefix:
+            return all_vars
 
-            # 只有在未闭合的上下文中才触发补全
-            if in_unmatched_dollar_context:
-                QTimer.singleShot(0, lambda: self._trigger_completion_if_needed())
-            # --- 优化结束 ---
-            return
-
-        # 处理退格或删除时可能需要更新补全
-        if event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
-            super().keyPressEvent(event)
-            if self._is_in_variable_context():
-                self._input_timer.start(50)
+        prefix_l = prefix.lower()
+        scored_items = []
+        for var in all_vars:
+            var_l = var.lower()
+            # 1. 直接匹配开头 (最高优先级)
+            if var_l.startswith(prefix_l):
+                score = 0
+            # 2. 汉字包含匹配
+            elif prefix_l in var_l:
+                score = 1
+            # 3. 拼音匹配
             else:
-                self.popup.hide()
-            # 高亮器会自动更新，因为 document() 会感知到变化
+                pinyin_list = lazy_pinyin(var, style=Style.NORMAL)
+                pinyin_str = "".join(pinyin_list).lower()
+                first_letters = "".join([p[0] for p in pinyin_list if p]).lower()
+
+                if pinyin_str.startswith(prefix_l) or first_letters.startswith(prefix_l):
+                    score = 2
+                elif prefix_l in pinyin_str:
+                    score = 3
+                else:
+                    continue
+            scored_items.append((score, var))
+
+        # 按得分排序，得分越低越靠前
+        scored_items.sort(key=lambda x: (x[0], x[1]))
+        return [item[1] for item in scored_items]
+
+    def _trigger_completion(self):
+        dollar_pos, prefix = self._get_context_info()
+        if dollar_pos is None:
+            self.popup.hide()
             return
 
-        # 处理弹窗导航
+        filtered = self._filter_variables(prefix)
+        if not filtered:
+            self.popup.hide()
+            return
+
+        self.popup.clear()
+        self.popup.addItems(filtered)
+        self.popup.setCurrentRow(0)
+        if not self.popup.isVisible():
+            self.popup.show_at_cursor(self)
+
+    def handle_key_event(self, event):
         if self.popup.isVisible():
             if event.key() == Qt.Key_Escape:
                 self.popup.hide()
-                return
-            elif event.key() == Qt.Key_Return or event.key() == Qt.Key_Tab:
+                return True
+            elif event.key() in (Qt.Key_Return, Qt.Key_Tab, Qt.Key_Enter):
                 if self.popup.currentItem():
                     self._apply_completion(self.popup.currentItem().text())
-                    return
+                    return True
             elif event.key() == Qt.Key_Up:
                 self.popup.setCurrentRow(max(0, self.popup.currentRow() - 1))
-                return
+                return True
             elif event.key() == Qt.Key_Down:
                 self.popup.setCurrentRow(min(self.popup.count() - 1, self.popup.currentRow() + 1))
-                return
+                return True
 
-        # 关键修改：处理中文和其他字符输入，包括拼音匹配
-        key_text = event.text()
-        # 如果是可打印字符（包括中文、英文、数字等），且在变量上下文中
-        if key_text and self._is_in_variable_context():
-            super().keyPressEvent(event)
-            self._input_timer.start(50)  # 延迟触发补全更新
-        else:
-            # 其他情况正常处理
-            super().keyPressEvent(event)
-            if self._is_in_variable_context():
-                self._input_timer.start(50)
-            elif self.popup.isVisible():
-                self.popup.hide()
+        # 输入 $ 立即触发，其他字符延迟触发
+        if event.text() == '$':
+            QTimer.singleShot(10, self._trigger_completion)
+        elif event.text() or event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
+            self._input_timer.start(100)
 
-    def _trigger_completion_if_needed(self):
-        """在UI更新后检查是否需要触发补全"""
-        if self._is_in_variable_context():
-            self._trigger_completion()
-
-    def _is_in_variable_context(self) -> bool:
-        cursor = self.textCursor()
-        pos = cursor.position()
-        text = self.toPlainText()
-        if pos == 0:
-            return False
-
-        # 使用平衡计数法判断是否在未闭合的 $ 内
-        balance = 0
-        in_variable = False
-        for i in range(pos):
-            if text[i] == '$':
-                if balance == 0:
-                    # 新的开始
-                    balance = 1
-                    in_variable = True
-                else:
-                    # 结束一个配对
-                    balance -= 1
-                    if balance == 0:
-                        in_variable = False
-            elif text[i] == '\n':
-                # 换行符重置，因为变量不跨行
-                balance = 0
-                in_variable = False
-
-        return in_variable
-
-    def _get_variable_prefix(self) -> str:
-        cursor = self.textCursor()
-        pos = cursor.position()
-        text = self.toPlainText()
-        # 找到最近的未闭合的 $
-        temp_balance = 0
-        start_pos = -1
-        for i in range(pos - 1, -1, -1):
-            if text[i] == '$':
-                if temp_balance == 0:
-                    start_pos = i
-                    # 检查这个$之后到pos之间是否有结束$
-                    has_end = False
-                    for j in range(start_pos + 1, pos):
-                        if text[j] == '$':
-                            has_end = True
-                            break
-                    if not has_end:
-                        # 找到了未闭合的开始$
-                        break
-                    else:
-                        # 这个$已经闭合，继续找
-                        continue
-                else:
-                    temp_balance -= 1
-            elif text[i] == '\n':
-                break
-
-        if start_pos == -1:
-            return ""
-        return text[start_pos + 1:pos]
-
-    def _trigger_completion(self):
-        if not self._is_in_variable_context():
-            self.popup.hide()
-            return
-
-        prefix = self._get_variable_prefix()
-        all_vars = self.get_variable_list_func()
-
-        # 修改过滤逻辑以支持中文和拼音匹配
-        if prefix:  # 如果有前缀，则进行匹配
-            filtered = []
-            for var in all_vars:
-                # 英文/数字前缀匹配
-                if var.lower().startswith(prefix.lower()):
-                    filtered.append((var, 1))  # (变量名, 匹配优先级)
-                # 中文拼音匹配
-                elif prefix.isalpha():  # 如果输入的是字母，尝试拼音匹配
-                    var_pinyin = ''.join(lazy_pinyin(var)).lower()
-                    if var_pinyin.startswith(prefix.lower()):
-                        filtered.append((var, 2))  # 拼音匹配优先级稍低
-                    # 或者支持拼音的包含匹配
-                    elif prefix.lower() in var_pinyin:
-                        filtered.append((var, 3))  # 包含匹配优先级更低
-                # 中文字符匹配
-                elif any('\u4e00' <= char <= '\u9fff' for char in prefix):  # 包含中文
-                    if var.startswith(prefix):
-                        filtered.append((var, 1))
-                    elif prefix in var:
-                        filtered.append((var, 3))
-        else:  # 如果没有前缀，则显示所有变量
-            filtered = [(var, 0) for var in all_vars]
-
-        if not filtered:
-            self.popup.hide()
-            return
-
-        # 按优先级排序，相同优先级保持原有顺序
-        filtered.sort(key=lambda x: x[1])
-
-        # 去重并保持顺序
-        seen = set()
-        unique_filtered = []
-        for var, priority in filtered:
-            if var not in seen:
-                seen.add(var)
-                unique_filtered.append(var)
-
-        self.popup.clear()
-        for var in unique_filtered:
-            self.popup.addItem(var)
-
-        if not self.popup.isVisible():
-            self.popup.show_at_cursor(self)
-        self.popup.setCurrentRow(0)
-
-    def _apply_completion(self, var_name: str):
-        if self._completing:
-            return
-        self._completing = True
-        try:
-            cursor = self.textCursor()
-            pos = cursor.position()
-            text_before = self.toPlainText()  # 获取修改前的文本
-
-            # 找到最近的未闭合的 $
-            temp_balance = 0
-            start_dollar = -1
-            for i in range(pos - 1, -1, -1):
-                if text_before[i] == '$':
-                    if temp_balance == 0:
-                        start_dollar = i
-                        # 检查是否已闭合
-                        has_end = False
-                        for j in range(start_dollar + 1, pos):
-                            if text_before[j] == '$':
-                                has_end = True
-                                break
-                        if not has_end:
-                            break
-                        else:
-                            continue
-                    else:
-                        temp_balance -= 1
-                elif text_before[i] == '\n':
-                    break
-            if start_dollar == -1:
-                return
-
-            # 选中从 $ 到光标的内容（包括 $）
-            cursor.setPosition(start_dollar)
-            cursor.setPosition(pos, QTextCursor.KeepAnchor)
-            cursor.insertText(f"${var_name}$")
-
-            # 光标移到 $ 后
-            cursor.setPosition(start_dollar + len(var_name) + 2)
-            self.setTextCursor(cursor)
-        finally:
-            self._completing = False
-            self.popup.hide()
-        self.textChanged.emit()
+        return False
 
 
-class VariableCompletionLineEdit(LineEdit):
+# -----------------------
+# 优化后的 TextEdit
+# -----------------------
+class VariableCompletionTextEdit(TextEdit, CompletionMixin):
     def __init__(self, get_variable_list_func, use_qcursor=False, parent=None):
         super().__init__(parent)
-        self.get_variable_list_func = get_variable_list_func
-        self.popup = VariableCompletionPopup(use_qcursor)
+        self.popup = VariableCompletionPopup(use_qcursor, self.window())
         self.popup.itemSelected.connect(self._apply_completion)
+        self.init_completion(get_variable_list_func)
+        self.highlighter = VariableHighlighter(self.document())
+
+    def keyPressEvent(self, event):
+        if self.handle_key_event(event):
+            return
+        super().keyPressEvent(event)
+
+    def _apply_completion(self, var_name):
+        self._completing = True
+        cursor = self.textCursor()
+        pos = cursor.position()
+        text = self.toPlainText()
+
+        dollar_pos, _ = self._get_context_info()
+        if dollar_pos is not None:
+            # 检查右侧是否已经有 $
+            has_right_dollar = (pos < len(text) and text[pos] == '$')
+
+            # 选中并替换从 $ 之后到当前光标的内容
+            cursor.setPosition(dollar_pos + 1)
+            cursor.setPosition(pos, QTextCursor.KeepAnchor)
+
+            completion = var_name if has_right_dollar else f"{var_name}$"
+            cursor.insertText(completion)
+            self.setTextCursor(cursor)
+
+        self.popup.hide()
         self._completing = False
-        self._input_timer = QTimer()
-        self._input_timer.setSingleShot(True)
-        self._input_timer.timeout.connect(self._trigger_completion)
-
-        # 为 LineEdit 使用 QPalette 进行背景高亮
-        self._original_palette = self.palette()
-        self._highlighted_palette = self._create_highlighted_palette()
-        self._last_text = ""
-        self.textChanged.connect(self._on_text_changed)
-
-        # 将编辑器引用传递给补全框
-        self.popup.editor = self
-
-    def _create_highlighted_palette(self):
-        palette = self.palette()
-        # 设置背景色为深灰色，模拟TextEdit的高亮背景
-        palette.setColor(QPalette.Base, QColor("#2C2C2C"))
-        # 设置文字颜色为白色或浅色，以匹配TextEdit的高亮文字
-        palette.setColor(QPalette.Text, QColor("#FFFFFF"))
-        # 因此这里只改变整体背景和文字颜色，提供一种视觉上的区分
-        return palette
-
-    def _on_text_changed(self, text):
-        # 检测文本中是否包含 $$ 模式，如果包含则应用高亮样式
-        if self._has_variable_pattern(text):
-            self.setPalette(self._highlighted_palette)
-        else:
-            self.setPalette(self._original_palette)
-        self._last_text = text
-
-    def _has_variable_pattern(self, text):
-        match = re.search(r'\$[^\$]*\$', text)
-        return match is not None
 
     def focusOutEvent(self, event):
-        """当焦点离开编辑框时，只有在补全框也失去焦点时才隐藏补全框"""
-        # 检查补全框是否还有焦点
-        if self.popup.hasFocus():
-            # 补全框还有焦点，不隐藏，让补全框自己处理
-            super().focusOutEvent(event)
-            return
-        # 只有当补全框也失去焦点时才隐藏
-        self.popup.hide()
+        QTimer.singleShot(200, self.popup.hide)
         super().focusOutEvent(event)
 
-    def keyPressEvent(self, event: QKeyEvent):
-        # 处理 $ 触发补全
-        if event.text() == '$' and not self._completing:
-            super().keyPressEvent(event)
-            # --- 优化触发逻辑 ---
-            # 检查输入 $ 后，当前位置是否处于未闭合的变量上下文中
-            pos_after_input = self.cursorPosition()
-            text_after_input = self.text()
 
-            # 使用平衡计数法判断新输入的 $ 是否是未闭合的
-            balance = 0
-            in_unmatched_dollar_context = False
-            for i in range(pos_after_input):
-                if text_after_input[i] == '$':
-                    if balance == 0:
-                        # 新的开始，或恰好是当前光标前的那个$
-                        balance = 1
-                        in_unmatched_dollar_context = True
-                    else:
-                        # 结束一个配对
-                        balance -= 1
-                        if balance == 0:
-                            in_unmatched_dollar_context = False
+# -----------------------
+# 优化后的 LineEdit
+# -----------------------
+class VariableCompletionLineEdit(LineEdit, CompletionMixin):
+    def __init__(self, get_variable_list_func, use_qcursor=False, parent=None):
+        super().__init__(parent)
+        self.popup = VariableCompletionPopup(use_qcursor, self.window())
+        self.popup.itemSelected.connect(self._apply_completion)
+        self.init_completion(get_variable_list_func)
 
-            # 只有在未闭合的上下文中才触发补全
-            if in_unmatched_dollar_context:
-                QTimer.singleShot(0, lambda: self._trigger_completion_if_needed())
-            # --- 优化结束 ---
+    def keyPressEvent(self, event):
+        if self.handle_key_event(event):
             return
+        super().keyPressEvent(event)
 
-        # 处理退格或删除时可能需要更新补全
-        if event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
-            super().keyPressEvent(event)
-            if self._is_in_variable_context():
-                self._input_timer.start(50)
-            else:
-                self.popup.hide()
-            # textChanged 信号会触发 _on_text_changed，自动更新样式
-            return
-
-        # 处理弹窗导航
-        if self.popup.isVisible():
-            if event.key() == Qt.Key_Escape:
-                self.popup.hide()
-                return
-            elif event.key() == Qt.Key_Return or event.key() == Qt.Key_Tab:
-                if self.popup.currentItem():
-                    self._apply_completion(self.popup.currentItem().text())
-                    return
-            elif event.key() == Qt.Key_Up:
-                # LineEdit 上下键不移动选择，模拟为上一个/下一个
-                current_row = self.popup.currentRow()
-                if current_row > 0:
-                    self.popup.setCurrentRow(current_row - 1)
-                return
-            elif event.key() == Qt.Key_Down:
-                current_row = self.popup.currentRow()
-                if current_row < self.popup.count() - 1:
-                    self.popup.setCurrentRow(current_row + 1)
-                return
-
-        # 关键修改：处理中文和其他字符输入，包括拼音匹配
-        key_text = event.text()
-        # 如果是可打印字符（包括中文、英文、数字等），且在变量上下文中
-        if key_text and self._is_in_variable_context():
-            super().keyPressEvent(event)
-            self._input_timer.start(50)  # 延迟触发补全更新
-        else:
-            # 其他情况正常处理
-            super().keyPressEvent(event)
-            if self._is_in_variable_context():
-                self._input_timer.start(50)
-            elif self.popup.isVisible():
-                self.popup.hide()
-
-    def _trigger_completion_if_needed(self):
-        """在UI更新后检查是否需要触发补全"""
-        if self._is_in_variable_context():
-            self._trigger_completion()
-
-    def _is_in_variable_context(self) -> bool:
-        cursor_pos = self.cursorPosition()
-        text = self.text()
-        if cursor_pos == 0:
-            return False
-
-        # 使用平衡计数法判断是否在未闭合的 $ 内
-        # 从头开始计算到当前位置的平衡
-        balance = 0
-        in_variable_at_pos = False
-        for i in range(cursor_pos):
-            if text[i] == '$':
-                if balance == 0:
-                    # 新的开始
-                    balance = 1
-                    in_variable_at_pos = True
-                else:
-                    # 结束一个配对
-                    balance -= 1
-                    if balance == 0:
-                        in_variable_at_pos = False
-        return in_variable_at_pos
-
-    def _get_variable_prefix(self) -> str:
-        cursor_pos = self.cursorPosition()
-        text = self.text()
-        # 找到最近的未闭合的 $
-        # 从当前位置向前找
-        balance = 0
-        start_pos = -1
-        for i in range(cursor_pos - 1, -1, -1):
-            if text[i] == '$':
-                if balance == 0:
-                    # 这是一个未闭合的开始$
-                    start_pos = i
-                    break
-                else:
-                    balance -= 1
-        if start_pos == -1:
-            return ""
-        return text[start_pos + 1:cursor_pos]
-
-    def _trigger_completion(self):
-        if not self._is_in_variable_context():
-            self.popup.hide()
-            return
-
-        prefix = self._get_variable_prefix()
-        all_vars = self.get_variable_list_func()
-
-        # 修改过滤逻辑以支持中文和拼音匹配
-        if prefix:  # 如果有前缀，则进行匹配
-            filtered = []
-            for var in all_vars:
-                # 英文/数字前缀匹配
-                if var.lower().startswith(prefix.lower()):
-                    filtered.append((var, 1))  # (变量名, 匹配优先级)
-                # 中文拼音匹配
-                elif prefix.isalpha():  # 如果输入的是字母，尝试拼音匹配
-                    var_pinyin = ''.join(lazy_pinyin(var)).lower()
-                    if var_pinyin.startswith(prefix.lower()):
-                        filtered.append((var, 2))  # 拼音匹配优先级稍低
-                    # 或者支持拼音的包含匹配
-                    elif prefix.lower() in var_pinyin:
-                        filtered.append((var, 3))  # 包含匹配优先级更低
-                # 中文字符匹配
-                elif any('\u4e00' <= char <= '\u9fff' for char in prefix):  # 包含中文
-                    if var.startswith(prefix):
-                        filtered.append((var, 1))
-                    elif prefix in var:
-                        filtered.append((var, 3))
-        else:  # 如果没有前缀，则显示所有变量
-            filtered = [(var, 0) for var in all_vars]
-
-        if not filtered:
-            self.popup.hide()
-            return
-
-        # 按优先级排序，相同优先级保持原有顺序
-        filtered.sort(key=lambda x: x[1])
-
-        # 去重并保持顺序
-        seen = set()
-        unique_filtered = []
-        for var, priority in filtered:
-            if var not in seen:
-                seen.add(var)
-                unique_filtered.append(var)
-
-        self.popup.clear()
-        for var in unique_filtered:
-            self.popup.addItem(var)
-
-        if not self.popup.isVisible():
-            self.popup.show_at_cursor(self)
-        self.popup.setCurrentRow(0)
-
-    def _apply_completion(self, var_name: str):
-        if self._completing:
-            return
+    def _apply_completion(self, var_name):
         self._completing = True
-        try:
-            cursor_pos = self.cursorPosition()
-            text_before = self.text()  # 获取修改前的文本
+        pos = self.cursorPosition()
+        text = self.text()
 
-            # 找到最近的未闭合的 $
-            balance = 0
-            start_dollar = -1
-            for i in range(cursor_pos - 1, -1, -1):
-                if text_before[i] == '$':
-                    if balance == 0:
-                        start_dollar = i
-                        break
-                    else:
-                        balance -= 1
-            if start_dollar == -1:
-                return
+        dollar_pos, _ = self._get_context_info()
+        if dollar_pos is not None:
+            has_right_dollar = (pos < len(text) and text[pos] == '$')
 
-            # 替换文本
-            new_text = text_before[:start_dollar] + f"${var_name}$" + text_before[cursor_pos:]
-            self.setText(new_text)
+            left_part = text[:dollar_pos + 1]
+            right_part = text[pos:]
 
-            # 设置新的光标位置
-            new_cursor_pos = start_dollar + len(var_name) + 2
-            self.setCursorPosition(new_cursor_pos)
-        finally:
-            self._completing = False
-            self.popup.hide()
-        # 手动触发高亮更新，因为 setText 不会触发 textChanged
-        self._on_text_changed(self.text())
+            completion = var_name if has_right_dollar else f"{var_name}$"
+            self.setText(left_part + completion + right_part)
+            self.setCursorPosition(dollar_pos + 1 + len(completion))
+
+        self.popup.hide()
+        self._completing = False
+
+    def focusOutEvent(self, event):
+        QTimer.singleShot(200, self.popup.hide)
+        super().focusOutEvent(event)

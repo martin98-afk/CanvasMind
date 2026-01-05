@@ -114,7 +114,7 @@ class ImageWidget(QtWidgets.QWidget):
             if q_img and not q_img.isNull():
                 img_size = q_img.size()
                 img_size.scale(self._max_width, self._max_height, Qt.KeepAspectRatio)
-                self.label.setFixedSize(img_size)
+                self.label.setMinimumSize(img_size)
                 self.label.setImage(q_img)
             else:
                 self.label.setText("无效图片")
@@ -142,7 +142,6 @@ class ImageWidgetWrapper(CustomNodeBaseWidget):
 
         widget = ImageWidget(default_image=default, parent=window)
         self.set_custom_widget(widget)
-
         widget.valueChanged.connect(self.on_value_changed)
         widget.sizeHintChanged.connect(self._update_node)
 

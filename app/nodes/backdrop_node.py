@@ -244,10 +244,13 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
             return
 
         # 计算包围盒
-        min_x = min(n.view.scenePos().x() for n in nodes_to_include)
-        min_y = min(n.view.scenePos().y() for n in nodes_to_include)
-        max_x = max(n.view.scenePos().x() + n.view.width for n in nodes_to_include)
-        max_y = max(n.view.scenePos().y() + n.view.height for n in nodes_to_include)
+        try:
+            min_x = min(n.view.scenePos().x() for n in nodes_to_include)
+            min_y = min(n.view.scenePos().y() for n in nodes_to_include)
+            max_x = max(n.view.scenePos().x() + n.view.width for n in nodes_to_include)
+            max_y = max(n.view.scenePos().y() + n.view.height for n in nodes_to_include)
+        except (RuntimeError, AttributeError):
+            return
 
         new_width = max(max_x - min_x + 2 * padding, min_width)
         new_height = max(max_y - min_y + 2 * padding, min_height)
@@ -275,14 +278,25 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
 
     def _get_backdrop_scene_rect(self):
         try:
+            if not self.view:
+                return QtCore.QRectF()
             pos = self.view.scenePos()
             return QtCore.QRectF(pos.x(), pos.y(), self.view.width, self.view.height)
-        except RuntimeError:
+        except (RuntimeError, ReferenceError):
             return QtCore.QRectF()
 
     def _get_node_scene_rect(self, node):
-        pos = node.view.scenePos()
-        return QtCore.QRectF(pos.x(), pos.y(), node.view.width, node.view.height)
+        try:
+            # 检查 node 和 node.view 是否还存在
+            if not node or not node.view:
+                return QtCore.QRectF()
+
+            # 尝试访问属性，如果 C++ 对象已删，这里会抛出 RuntimeError
+            pos = node.view.scenePos()
+            return QtCore.QRectF(pos.x(), pos.y(), node.view.width, node.view.height)
+        except (RuntimeError, ReferenceError):
+            # 捕获 "object has been deleted" 异常
+            return QtCore.QRectF()
 
     def _get_currently_contained_nodes(self):
         nodes = []

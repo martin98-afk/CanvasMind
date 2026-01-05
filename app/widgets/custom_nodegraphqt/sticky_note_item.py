@@ -42,12 +42,6 @@ class StickyNoteItem(BackdropNodeItem):
 
     def __init__(self, name='Sticky Note', text='', parent=None):
         super(StickyNoteItem, self).__init__(name, parent)
-        pixmap = QtGui.QPixmap(ICON_NODE_BASE)
-        if pixmap.size().height() > NodeEnum.ICON_SIZE.value:
-            pixmap = pixmap.scaledToHeight(
-                28,
-                QtCore.Qt.SmoothTransformation
-            )
         # 【核心设置 1】：开启子项裁剪，防止文本超出节点圆角边框
         self.setFlag(QtWidgets.QGraphicsItem.ItemClipsChildrenToShape, True)
         # 【核心设置 2】：设置文本项
@@ -58,8 +52,6 @@ class StickyNoteItem(BackdropNodeItem):
         font.setBold(True)  # 可选
         self._text_item.setFont(font)
         self._text_item.setDefaultTextColor(QtGui.QColor("white"))
-        self._icon_item = QtWidgets.QGraphicsPixmapItem(pixmap, self)
-        self._icon_item.setTransformationMode(QtCore.Qt.SmoothTransformation)
         # 注释文本
         self._note_item = EditableTextItem(self)
         self._note_item.setPlainText(text)
@@ -152,43 +144,4 @@ class StickyNoteItem(BackdropNodeItem):
         self._text_item.setPlainText(name)
         if self.scene():
             self._align_label()
-        self.update()
-
-    @property
-    def icon(self):
-        return self._properties.get("icon")
-
-    @icon.setter
-    def icon(self, value=None):
-        self._properties['icon'] = value
-
-        # 确定最终使用的 pixmap
-        if isinstance(value, QtGui.QIcon):
-            # 从 QIcon 提取 QPixmap（推荐使用标准大小）
-            pixmap = value.pixmap(28, 28)  # 或根据需要调整
-        elif isinstance(value, str):
-            # 从路径加载
-            pixmap = QtGui.QPixmap(value)
-        else:
-            # fallback to default
-            pixmap = QtGui.QPixmap(ICON_NODE_BASE)
-
-        # 缩放逻辑保持不变
-        if not pixmap.isNull():
-            if pixmap.height() > 28:
-                pixmap = pixmap.scaledToHeight(28, QtCore.Qt.SmoothTransformation)
-            if pixmap.width() > 28:
-                pixmap = pixmap.scaledToWidth(28, QtCore.Qt.SmoothTransformation)
-        else:
-            # 如果加载失败，使用默认图标
-            pixmap = QtGui.QPixmap(ICON_NODE_BASE)
-            if pixmap.height() > 28:
-                pixmap = pixmap.scaledToHeight(28, QtCore.Qt.SmoothTransformation)
-            if pixmap.width() > 28:
-                pixmap = pixmap.scaledToWidth(28, QtCore.Qt.SmoothTransformation)
-
-        self._icon_item.setPixmap(pixmap)
-        if self.scene():
-            self.post_init()
-
         self.update()
