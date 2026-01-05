@@ -18,7 +18,10 @@ from app.widgets.side_dock_area.plugins.property_panel.port_widget import PortWi
 class FlowControlPanelWidget(QWidget):
     """
     极致舒适版：控制流面板
-    特点：状态监控 Dashboard、配置分区化、极简信息密度。
+    优化说明：
+    1. 修复内部节点展开/收起的高度计算逻辑。
+    2. 解决底部端口被挤压的问题。
+    3. 保持高科技 Dashboard 视觉风格。
     """
 
     def __init__(self, main_window, parent_panel, node):
@@ -28,6 +31,8 @@ class FlowControlPanelWidget(QWidget):
         self.current_node = node
         self.current_segment = 'input'
 
+        # 状态记录
+        self._is_nodes_expanded = False
         self._backdrop_internal_nodes_list = None
         self._port_widget = None
 
@@ -41,10 +46,10 @@ class FlowControlPanelWidget(QWidget):
         self.setObjectName("FlowControlPanel")
         self.setStyleSheet("background-color: transparent;")
 
-        # 主布局：增加内边距和间距
+        # 主布局
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(16, 12, 16, 12)
-        self.main_layout.setSpacing(15)
+        self.main_layout.setContentsMargins(10, 8, 10, 8)
+        self.main_layout.setSpacing(5)
 
         # --- [1] 状态控制台 (Dashboard Header) ---
         self._setup_status_dashboard()
@@ -56,14 +61,14 @@ class FlowControlPanelWidget(QWidget):
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
-        self.scroll_layout.setContentsMargins(0, 0, 4, 0)
-        self.scroll_layout.setSpacing(16)
+        self.scroll_layout.setContentsMargins(0, 0, 8, 0)
+        self.scroll_layout.setSpacing(3)
 
-        # 初始化：循环配置
+        # 初始化：循环配置卡片
         self._init_loop_config_section()
-        # 初始化：内部成员监控
+        # 初始化：内部成员监控卡片
         self._init_internal_nodes_section(node)
-        # 初始化：端口管理
+        # 初始化：端口管理区域
         self._init_port_section(node)
 
         self.scroll_layout.addStretch(1)
@@ -71,13 +76,13 @@ class FlowControlPanelWidget(QWidget):
         self.main_layout.addWidget(self.scroll_area, 1)
 
     def _setup_status_dashboard(self):
-        """创建一个类似 HUD 的状态显示区域"""
+        """创建一个科技感 HUD 状态显示区域"""
         dash_container = QFrame()
         dash_container.setObjectName("Dashboard")
         dash_container.setStyleSheet("""
             #Dashboard {
-                background-color: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                background-color: rgba(0, 162, 255, 0.05);
+                border: 1px solid rgba(0, 162, 255, 0.1);
                 border-radius: 8px;
             }
         """)
@@ -85,18 +90,16 @@ class FlowControlPanelWidget(QWidget):
         dash_layout.setContentsMargins(12, 10, 12, 10)
         dash_layout.setSpacing(6)
 
-        # 状态行
         status_line = QHBoxLayout()
         status_icon = IconWidget(FluentIcon.PLAY)
         status_icon.setFixedSize(14, 14)
 
-        self.status_title = CaptionLabel("运行状态分析")
-        self.status_title.setStyleSheet("color: #888888; text-transform: uppercase;")
+        self.status_title = CaptionLabel("循环节点运行状态")
+        self.status_title.setStyleSheet("color: #00a2ff; font-weight: bold;")
 
         self.progress_label = StrongBodyLabel("0 / 0")
-        # 使用等宽字体防止数字变动时宽度抖动
         self.progress_label.setFont(QFont("Consolas", 11, QFont.Bold))
-        self.progress_label.setStyleSheet("color: #00a2ff;")
+        self.progress_label.setStyleSheet("color: #ffffff;")
 
         status_line.addWidget(status_icon)
         status_line.addWidget(self.status_title)
@@ -104,7 +107,6 @@ class FlowControlPanelWidget(QWidget):
         status_line.addWidget(self.progress_label)
         dash_layout.addLayout(status_line)
 
-        # 进度条：更细、更精致
         self.progress_bar = ProgressBar(self, useAni=True)
         self.progress_bar.setFixedHeight(4)
         dash_layout.addWidget(self.progress_bar)
@@ -112,54 +114,45 @@ class FlowControlPanelWidget(QWidget):
         self.main_layout.addWidget(dash_container)
 
     def _init_loop_config_section(self):
-        """配置区域：带有逻辑感的分组"""
+        """配置区域卡片"""
         self.config_card = CardWidget(self)
         self.config_card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         layout = QVBoxLayout(self.config_card)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(12)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
-        # 头部：带图标的标签
-        mode_header = QHBoxLayout()
-        mode_icon = IconWidget(FluentIcon.SETTING)
-        mode_icon.setFixedSize(16, 16)
-        mode_header.addWidget(mode_icon)
-        mode_header.addWidget(BodyLabel("逻辑策略配置"))
-        mode_header.addStretch()
-        layout.addLayout(mode_header)
-
+        layout.addWidget(BodyLabel("循环模式:"))
         self.mode_combo = ComboBox(self)
         self.mode_combo.addItems(['固定次数', '条件循环', 'While循环'])
         self.mode_combo.currentTextChanged.connect(self._on_mode_ui_changed)
         layout.addWidget(self.mode_combo)
 
-        # 分隔符
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
         line.setStyleSheet("background-color: rgba(255, 255, 255, 0.05);")
         layout.addWidget(line)
 
-        # --- 容器1: 固定次数 ---
+        # 固定次数页面
         self.container_count = QWidget()
         count_lay = QVBoxLayout(self.container_count)
         count_lay.setContentsMargins(0, 0, 0, 0)
-        count_lay.addWidget(CaptionLabel("ITERATION COUNT"))
+        count_lay.addWidget(CaptionLabel("固定循环次数设定"))
         self.max_iter_spin = SpinBox(self)
         self.max_iter_spin.setRange(1, 10000)
-        self.max_iter_spin.setMinimumWidth(150)
+        self.max_iter_spin.setMinimumWidth(120)
         self.max_iter_spin.valueChanged.connect(lambda v: self._set_node_prop('loop_nums', v))
         count_lay.addWidget(self.max_iter_spin)
         layout.addWidget(self.container_count)
 
-        # --- 容器2: 条件表达式 ---
+        # 条件页面
         self.container_condition = QWidget()
         cond_lay = QVBoxLayout(self.container_condition)
         cond_lay.setContentsMargins(0, 0, 0, 0)
 
         expr_head = QHBoxLayout()
-        expr_head.addWidget(CaptionLabel("LOGIC EXPRESSION"))
+        expr_head.addWidget(CaptionLabel("循环条件(为False时退出循环)"))
         expr_head.addStretch()
-        self.browse_btn = TransparentToolButton(FluentIcon.FULL_SCREEN)
+        self.browse_btn = TransparentToolButton(get_icon("放大"))
         self.browse_btn.setFixedSize(24, 24)
         self.browse_btn.clicked.connect(self._open_long_text_editor)
         expr_head.addWidget(self.browse_btn)
@@ -169,7 +162,6 @@ class FlowControlPanelWidget(QWidget):
             get_variable_list_func=self._get_variable_autocomplete_list,
             parent=self
         )
-        self.condition_edit.setPlaceholderText("请输入 Python 表达式...")
         self.condition_edit.setMaximumHeight(80)
         self.condition_edit.textChanged.connect(
             lambda: self._set_node_prop('loop_condition', self.condition_edit.toPlainText())
@@ -177,7 +169,7 @@ class FlowControlPanelWidget(QWidget):
         cond_lay.addWidget(self.condition_edit)
 
         cond_lay.addSpacing(5)
-        cond_lay.addWidget(CaptionLabel("SAFE EXIT THRESHOLD (MAX ITER)"))
+        cond_lay.addWidget(CaptionLabel("最大循环次数 (安全退出)"))
         self.cond_max_spin = SpinBox(self)
         self.cond_max_spin.setRange(1, 10000)
         self.cond_max_spin.valueChanged.connect(lambda v: self._set_node_prop('max_iterations', v))
@@ -187,33 +179,49 @@ class FlowControlPanelWidget(QWidget):
         self.scroll_layout.addWidget(self.config_card)
 
     def _init_internal_nodes_section(self, node):
-        """内部成员监控：使用 HUD 风格"""
+        """内部成员监控：处理高度自适应逻辑"""
         self.nodes_card = CardWidget(self)
+        self.nodes_card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         layout = QVBoxLayout(self.nodes_card)
-        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setContentsMargins(10, 10, 10, 10)
 
         title_lay = QHBoxLayout()
-        title_icon = IconWidget(FluentIcon.BASKETBALL)  # 类似原子图标
-        title_icon.setFixedSize(16, 16)
-        title_lay.addWidget(title_icon)
-        title_lay.addWidget(BodyLabel("内部成员状态监控"))
+        title_lay.addWidget(BodyLabel("区域内部节点："))
         title_lay.addStretch()
-        self.expand_btn = TransparentToolButton(FluentIcon.ZOOM_IN)
+        self.expand_btn = TransparentToolButton(get_icon("放大"))
+        self.expand_btn.setFixedSize(QSize(26, 26))
         self.expand_btn.clicked.connect(self._toggle_nodes_expand)
         title_lay.addWidget(self.expand_btn)
         layout.addLayout(title_lay)
 
         self._backdrop_internal_nodes_list = InternalNodeList([], [], self)
         self._backdrop_internal_nodes_list.itemDoubleClicked.connect(self._on_internal_node_clicked)
-        # 优化列表样式，使其更紧凑
-        self._backdrop_internal_nodes_list.setStyleSheet("QListWidget { background: transparent; border: none; }")
-
         layout.addWidget(self._backdrop_internal_nodes_list)
-        self.nodes_card.setFixedHeight(180)
+
+        # 初始高度计算
+        self._update_nodes_card_height()
         self.scroll_layout.addWidget(self.nodes_card)
 
+    def _update_nodes_card_height(self):
+        """核心：计算并设置内部节点卡片的高度"""
+        if not self._backdrop_internal_nodes_list:
+            return
+
+        count = self._backdrop_internal_nodes_list.count()
+        # 估算高度：每行约 38px + 头部间距约 50px
+        actual_needed_h = count * 38 + 52
+
+        if self._is_nodes_expanded:
+            # 放大：匹配全长
+            self.nodes_card.setFixedHeight(actual_needed_h)
+            self.expand_btn.setIcon(get_icon("缩小"))
+        else:
+            # 缩小：最大限制 180px，若节点少则匹配实际高度
+            self.nodes_card.setFixedHeight(min(actual_needed_h, 180))
+            self.expand_btn.setIcon(get_icon("放大"))
+
     def _init_port_section(self, node):
-        """端口区：保持简洁"""
+        """端口区：增加权重防止被挤压"""
         self._port_widget = PortWidget(
             main_window=self.main_window, parent_panel=self.parent_panel, node=node,
             port_info_func=self.parent_panel.get_port_info,
@@ -223,10 +231,13 @@ class FlowControlPanelWidget(QWidget):
             is_in_func=self.parent_panel._is_output_in_global_variable,
             parent=self
         )
-        self.scroll_layout.addWidget(self._port_widget)
+        # 设置最小高度确保可见，并将 stretch 设为 1
+        self._port_widget.setMinimumHeight(350)
+        self._port_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.scroll_layout.addWidget(self._port_widget, 1)
 
     def update_data(self, node):
-        """增量刷新数据：极致效率"""
+        """增量刷新"""
         self.current_node = node
         flow_type = getattr(node, 'TYPE', 'unknown')
 
@@ -236,17 +247,19 @@ class FlowControlPanelWidget(QWidget):
         self.progress_label.setText(f"{current} / {total}")
         self.progress_bar.setValue(int(current / max(1, total) * 100) if total > 0 else 0)
 
-        # 2. 刷新配置页显隐
+        # 2. 刷新配置
         self.config_card.setVisible(flow_type == "loop")
         if flow_type == "loop":
             self._update_loop_config_ui(node)
 
-        # 3. 内部列表增量更新 (不重建列表)
+        # 3. 内部列表更新并同步高度
         _, _, internal_nodes = node.get_nodes()
         if self._backdrop_internal_nodes_list:
             status_list = [self.main_window.get_node_status(n) for n in internal_nodes]
             name_list = [n.name() for n in internal_nodes]
             self._backdrop_internal_nodes_list.update_content(status_list, name_list)
+            self._update_nodes_card_height()  # 数量变化时刷新高度
+
         self._current_internal_nodes = internal_nodes
 
         # 4. 端口刷新
@@ -261,7 +274,6 @@ class FlowControlPanelWidget(QWidget):
         self.mode_combo.setCurrentText(mode_text)
         self.mode_combo.blockSignals(False)
 
-        # 使用 setVisible 结合布局自动收缩，物理上极度舒适
         if mode == 'count':
             self.container_count.setVisible(True)
             self.container_condition.setVisible(False)
@@ -278,12 +290,17 @@ class FlowControlPanelWidget(QWidget):
             self.cond_max_spin.setValue(node.model.get_property("max_iterations"))
             self.cond_max_spin.blockSignals(False)
 
-    # --- 辅助逻辑保持不变 ---
+    def _toggle_nodes_expand(self):
+        """切换展开/收起状态"""
+        self._is_nodes_expanded = not self._is_nodes_expanded
+        self._update_nodes_card_height()
+
+    # --- 辅助逻辑 ---
     def _get_variable_autocomplete_list(self):
         if not self.current_node: return []
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars: return []
-        extra_keys = ['data', 'result', 'current_index', 'current_iteration', 'loop_mode', 'max_iterations']
+        extra_keys = ['current_index', 'max_iterations', 'loop_mode']
         try:
             _, _, internal_nodes = self.current_node.get_nodes()
             for n in internal_nodes:
@@ -295,10 +312,14 @@ class FlowControlPanelWidget(QWidget):
 
     def _on_mode_ui_changed(self, text):
         mode_map = {'固定次数': 'count', '条件循环': 'condition', 'While循环': 'while'}
-        new_mode = mode_map.get(text, "count")
         if self.current_node:
-            self.current_node.model.set_property("loop_mode", new_mode)
-            self.update_data(self.current_node)
+            self.current_node.model.set_property("loop_mode", mode_map.get(text, "count"))
+            self.update_properties_trigger()
+
+    def update_properties_trigger(self):
+        # 触发父面板重新布局（由于配置容器切换了显隐）
+        if hasattr(self.parent_panel, 'update_properties'):
+            self.parent_panel.update_properties(self.current_node, node_changed=True)
 
     def _set_node_prop(self, key, value):
         if self.current_node:
@@ -318,29 +339,10 @@ class FlowControlPanelWidget(QWidget):
         if hasattr(self, '_current_internal_nodes') and 0 <= row < len(self._current_internal_nodes):
             self.main_window.canvas_widget.zoom_to_nodes([self._current_internal_nodes[row]._view])
 
-    def _toggle_nodes_expand(self):
-        if self.nodes_card.height() <= 180:
-            count = self._backdrop_internal_nodes_list.count()
-            self.nodes_card.setFixedHeight(max(180, count * 36 + 60))
-            self.expand_btn.setIcon(FluentIcon.ZOOM_OUT)
-        else:
-            self.nodes_card.setFixedHeight(180)
-            self.expand_btn.setIcon(FluentIcon.ZOOM_IN)
-
     def _open_long_text_editor(self):
-        # 重新生成最新的 key 列表
-        global_vars = getattr(self.main_window, 'global_variables', None)
-        extra_keys = ['current_index', 'max_iterations', 'loop_mode']
-        try:
-            _, _, internal_nodes = self.current_node.get_nodes()
-            for n in internal_nodes:
-                name = re.sub(r'\s+', '_', n.name())
-                for port in n.output_ports(): extra_keys.append(f"node_vars.{name}__{port.name()}")
-        except:
-            pass
-
+        keys = self._get_variable_autocomplete_list()
         dialog = LongTextEditorDialog(
-            content=self.condition_edit.toPlainText(), extra_keys=extra_keys,
+            content=self.condition_edit.toPlainText(), extra_keys=keys,
             parent=self.window(), main_window=self.main_window
         )
         if dialog.exec():
