@@ -107,10 +107,6 @@ class OpenAIChatWorker(QThread):
                 if cn_key == "是否思考":
                     status = "enabled" if (value is True or str(value).lower() == "true") else "disabled"
                     # 针对 Claude：放在顶层，但如果报错我们会捕获
-                    req_kwargs["thinking"] = {
-                        "type": status,
-                        "budget_tokens": int(self.llm_config.get("思考Token", 1024))
-                    }
                     # 针对其他模型：在 extra_body 传一份布尔值
                     extra_body["enable_thinking"] = (status == "enabled")
                     extra_body["include_reasoning"] = (status == "enabled")
@@ -149,7 +145,7 @@ class OpenAIChatWorker(QThread):
 
             response = client.chat.completions.create(**req_kwargs)
 
-            # ... 流式处理逻辑 (提取 content 和 reasoning_content) ...
+            # --- 流式处理逻辑 (提取 content 和 reasoning_content) ...
             self.full_response = ""
             for chunk in response:
                 if self._is_cancelled: return
