@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
-import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QSizePolicy, QHBoxLayout
 from PyQt5.QtCore import Qt, QTimer, QMimeData
-from qfluentwidgets import SubtitleLabel
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
+from qfluentwidgets import SubtitleLabel, SimpleCardWidget
 
 from app.utils.utils import topological_sort
 from app.widgets.side_dock_area.plugins.property_panel.draggable_container import DraggableContainer
 
 
-class NodeListPanelWidget(QWidget):
+class NodeListPanelWidget(SimpleCardWidget):
     """
     优化后的多节点列表面板。
     支持拖拽排序记忆、增量更新和连通图分割。
@@ -31,10 +30,6 @@ class NodeListPanelWidget(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(8)
-
-        # 标题
-        self.title_label = SubtitleLabel("⏬ 连通图执行顺序")
-        self.main_layout.addWidget(self.title_label)
 
         # 创建你提供的可拖拽容器
         # 注意：现在 self 就是 panel_widget

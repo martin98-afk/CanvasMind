@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QFrame, QVBoxLayout, QWidget
-from qfluentwidgets import BodyLabel, SubtitleLabel, SmoothScrollArea
+from qfluentwidgets import BodyLabel, SubtitleLabel, SmoothScrollArea, SimpleCardWidget
 
 # --- 导入优化后的 PortWidget ---
 from app.widgets.side_dock_area.plugins.property_panel.port_widget import PortWidget
 
 
-class NodePanelWidget(QWidget):
+class NodePanelWidget(SimpleCardWidget):
     """
     优化后的普通节点属性面板。
     不再是工具类，而是一个具有持久状态的 QWidget。
@@ -34,11 +34,6 @@ class NodePanelWidget(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(8)
-
-        # 1. 标题 (📌 节点名称)
-        self.title_label = SubtitleLabel()
-        self.title_label.setWordWrap(True)
-        self.main_layout.addWidget(self.title_label)
 
         # 2. 描述 (📝 节点描述)
         self.desc_label = BodyLabel()
@@ -77,9 +72,6 @@ class NodePanelWidget(QWidget):
             node._input_values = {}
         if not hasattr(node, 'column_select'):
             node.column_select = {}
-
-        # 2. 更新标题
-        self.title_label.setText(f"📌 {node.name()}")
 
         # 3. 更新描述
         description = self.parent_panel.get_node_description(node)

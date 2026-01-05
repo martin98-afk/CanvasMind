@@ -3,7 +3,7 @@ import re
 from PyQt5.QtCore import QSize, Qt, QTimer
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QStackedWidget
 from qfluentwidgets import (CardWidget, BodyLabel, ProgressBar, TransparentToolButton,
-                            SubtitleLabel, StrongBodyLabel, ComboBox, SpinBox, SmoothScrollArea)
+                            SubtitleLabel, StrongBodyLabel, ComboBox, SpinBox, SmoothScrollArea, SimpleCardWidget)
 
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
@@ -12,7 +12,7 @@ from app.widgets.side_dock_area.plugins.property_panel.internal_node_list import
 from app.widgets.side_dock_area.plugins.property_panel.port_widget import PortWidget
 
 
-class FlowControlPanelWidget(QWidget):
+class FlowControlPanelWidget(SimpleCardWidget):
     """
     完全修复版：处理控制流节点，修复 VariableCompletionTextEdit 初始化报错。
     """
@@ -38,9 +38,6 @@ class FlowControlPanelWidget(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(8)
-
-        self.title_label = SubtitleLabel()
-        self.main_layout.addWidget(self.title_label)
 
         self.progress_label = StrongBodyLabel()
         self.progress_bar = ProgressBar(self, useAni=False)
@@ -153,7 +150,6 @@ class FlowControlPanelWidget(QWidget):
         self.current_node = node
 
         # 标题和进度
-        self.title_label.setText(f"🔁 {node.NODE_NAME}")
         flow_type = getattr(node, 'TYPE', 'unknown')
         current = node.model.get_property('current_index')
         total = self._calculate_total(node, flow_type)

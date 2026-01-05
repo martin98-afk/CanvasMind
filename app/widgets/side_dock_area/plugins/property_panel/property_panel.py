@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from collections import OrderedDict
-from NodeGraphQt import BaseNode
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QStackedWidget, QSizePolicy
-from loguru import logger
-from qfluentwidgets import SmoothScrollArea, TransparentDropDownToolButton
+
+from PyQt5.QtCore import Qt, QPropertyAnimation, QRect, QParallelAnimationGroup, QEasingCurve, QTimer
+from PyQt5.QtGui import QPainter, QColor
+from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QStyleOption, QStyle,
+                             QGraphicsDropShadowEffect, QGraphicsOpacityEffect, QFrame)
+from qfluentwidgets import SmoothScrollArea, StrongBodyLabel, IconWidget, FluentIcon
 
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
@@ -15,165 +16,301 @@ from app.widgets.side_dock_area.plugins.property_panel.node_list_panel import No
 from app.widgets.side_dock_area.plugins.property_panel.node_panel import NodePanelWidget
 
 
+class FuturisticCard(QFrame):
+    """
+    科技感卡片容器：
+    1. 自带顶部 HUD 标题栏（在堆叠露出的 42px 区域显示）。
+    2. 支持动态流光边框和深度投影。
+    """
+
+    def __init__(self, parent=None, title="Unknown Node", icon=FluentIcon.DEVELOPER_TOOLS):
+        super().__init__(parent)
+        self.is_active = False
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setObjectName("PropertyCard")
+
+        # 内部布局
+        self.card_layout = QVBoxLayout(self)
+        self.card_layout.setContentsMargins(0, 0, 0, 0)
+        self.card_layout.setSpacing(0)
+
+        # 1. 顶部 HUD 区域 (露出区域)
+        self.header_hud = QWidget()
+        self.header_hud.setFixedHeight(42)
+        header_layout = QHBoxLayout(self.header_hud)
+        header_layout.setContentsMargins(15, 0, 15, 0)
+
+        self.icon_widget = IconWidget(icon, self.header_hud)
+        self.icon_widget.setFixedSize(18, 18)
+
+        self.title_label = StrongBodyLabel(title, self.header_hud)
+        self.title_label.setStyleSheet("color: #0078d7; font-size: 13px;")
+
+        header_layout.addWidget(self.icon_widget)
+        header_layout.addWidget(self.title_label)
+        header_layout.addStretch()
+
+        self.card_layout.addWidget(self.header_hud)
+
+        # 2. 内容区域 (放置真正的业务面板)
+        self.content_area = QWidget()
+        self.content_layout = QVBoxLayout(self.content_area)
+        self.content_layout.setContentsMargins(2, 0, 2, 2)
+        self.card_layout.addWidget(self.content_area, 1)
+
+        self.update_style()
+
+    def set_title(self, title):
+        self.title_label.setText(title)
+
+    def set_active(self, active: bool):
+        if self.is_active != active:
+            self.is_active = active
+            self.update_style()
+
+    def update_style(self):
+        # 活跃状态：霓虹蓝，非活跃状态：暗银色
+        main_color = "#0078d7" if self.is_active else "#454545"
+        bg_color = "#202020" if self.is_active else "#1a1a1a"
+
+        self.setStyleSheet(f"""
+            QWidget#PropertyCard {{
+                background-color: {bg_color};
+                border-top: 2px solid {main_color};
+                border-left: 1px solid #333333;
+                border-right: 1px solid #333333;
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+            }}
+        """)
+
+        if self.is_active:
+            self.title_label.setStyleSheet("color: #0078d7; font-weight: bold;")
+            eff = QGraphicsDropShadowEffect(self)
+            eff.setBlurRadius(25)
+            eff.setColor(QColor(0, 120, 215, 120))
+            eff.setOffset(0, -2)
+            self.setGraphicsEffect(eff)
+        else:
+            self.title_label.setStyleSheet("color: #888888;")
+            eff = QGraphicsOpacityEffect(self)
+            eff.setOpacity(0.8)  # 底层卡片半透明，增加视差感
+            self.setGraphicsEffect(eff)
+
+    def paintEvent(self, event):
+        opt = QStyleOption()
+        opt.initFrom(self)
+        p = QPainter(self)
+        self.style().drawPrimitive(QStyle.PE_Widget, opt, p, self)
+
+
 class PropertyPanel(QWidget):
     """
-    优化后的主属性面板控件。
-    采用对象池（LRU缓存）机制，解决大图表下的性能问题与界面闪烁。
+    终极科技版属性面板：
+    - 全局变量面板与节点面板统一堆叠。
+    - 解决了非全局面板显示空白的问题。
+    - 增加 HUD 标题识别历史卡片。
     """
 
     def __init__(self, main_window, parent=None):
         super().__init__(parent)
         self.main_window = main_window
-        self.setMinimumWidth(280)
+        self.setMinimumWidth(300)
 
-        # === 性能优化：面板缓存 ===
-        # 使用 OrderedDict 实现 LRU 缓存，key 为 node.id，value 为 panel_widget
+        # === 核心状态 ===
         self._node_panel_cache = OrderedDict()
-        self._max_cache_size = 50  # 最大缓存50个节点面板，超过则释放最旧的
-
-        self._global_panel_built = False
+        self._max_cache_size = 50
+        self._history_stack = []
         self._allowed_update = False
+        self._global_panel_built = False
         self.current_node = None
 
-        # === UI 初始化 ===
-        self.main_stacked = QStackedWidget(self)
+        # === 视觉基调 ===
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setStyleSheet("PropertyPanel { background-color: #0f0f0f; }")  # 极深色底
 
-        # 1. 节点展示区域 (Index 0)
-        self._setup_node_panel()
-        # 2. 全局变量展示区域 (Index 1)
-        self._setup_global_panel()
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
 
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(self.main_stacked)
+        # 舞台区域
+        self.stage = QWidget()
+        self.main_layout.addWidget(self.stage)
 
-        # 内部状态记录
-        self._current_global_tab = 'custom'
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
-        # === 显式定义外部接口需要的属性引用 ===
+        # 外部引用
         self.node_list_panel_widget = None
         self.flow_control_panel_widget = None
         self.node_panel_widget = None
-        self.global_panel_widget = None  # 全局变量面板
+        self.global_panel_widget = None
 
-        # 兼容旧代码的属性占位
-        self._column_list_widgets = {}
-        self._text_edit_widgets = {}
-        self._internal_nodes_card_expanded = {}
-        self.segmented_widget = None  # 移至具体 Panel 内部管理
-        self.stacked_widget = None
+        # 动画组
+        self.anim_group = QParallelAnimationGroup(self)
+        self._header_h = 42
 
-    def _setup_node_panel(self):
-        """初始化节点面板容器"""
-        self.node_container = QWidget()
-        self.node_vbox = QVBoxLayout(self.node_container)
-        self.node_vbox.setContentsMargins(0, 0, 0, 0)
-
-        # 核心：使用 StackedWidget 管理缓存的节点面板
-        self.node_panel_stack = QStackedWidget()
-        self.node_vbox.addWidget(self.node_panel_stack)
-
-        self.main_stacked.addWidget(self.node_container)  # index 0
-
-    def _setup_global_panel(self):
-        """初始化全局变量面板容器"""
-        self.global_container = QWidget()
-        self.global_vbox = QVBoxLayout(self.global_container)
-        self.global_vbox.setContentsMargins(0, 0, 0, 0)
-        self.main_stacked.addWidget(self.global_container)  # index 1
-
-    def set_scrollbar(self, widget):
-        """公共方法：为组件设置平滑滚动条"""
-        scroll = SmoothScrollArea(self)
-        scroll.setStyleSheet("SmoothScrollArea { background: transparent; border: none; }")
-        scroll.viewport().setStyleSheet("background-color: transparent; border: none;")
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-        scroll.setWidget(widget)
-        return scroll
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def update_properties(self, node, node_changed=False):
-        """核心更新接口"""
+        """核心入口"""
         if not self._allowed_update:
             return
 
-        if not node:
-            self.current_node = None
-            self._show_global_variables_panel()
-            self.main_stacked.setCurrentIndex(1)
-            return
-
-        self.main_stacked.setCurrentIndex(0)
-
-        is_list = isinstance(node, list)
-        cache_key = "MULTI_SELECT_PANEL" if is_list else node.id
-
-        # 1. 获取或创建面板
-        if cache_key in self._node_panel_cache:
-            target_panel = self._node_panel_cache.pop(cache_key)
+        # 1. 确定 Cache Key
+        if node is None:
+            cache_key = "GLOBAL_VARS"
+        elif isinstance(node, list):
+            cache_key = "MULTI_SELECT"
         else:
-            target_panel = self._create_panel_instance(node)
-            if not target_panel: return
-            self.node_panel_stack.addWidget(target_panel)
+            cache_key = node.id
 
-            if len(self._node_panel_cache) >= self._max_cache_size:
-                _, old_panel = self._node_panel_cache.popitem(last=False)
-                # 清理被淘汰面板的引用，防止悬空指针
-                if old_panel == self.node_list_panel_widget: self.node_list_panel_widget = None
-                if old_panel == self.flow_control_panel_widget: self.flow_control_panel_widget = None
-                if old_panel == self.node_panel_widget: self.node_panel_widget = None
+        # 2. 获取或创建卡片
+        if cache_key in self._node_panel_cache:
+            target_card = self._node_panel_cache[cache_key]
+        else:
+            target_card = self._build_new_card(node, cache_key)
+            if not target_card: return
+            self._node_panel_cache[cache_key] = target_card
+            target_card.installEventFilter(self)
 
-                self.node_panel_stack.removeWidget(old_panel)
-                old_panel.deleteLater()
+            if len(self._node_panel_cache) > self._max_cache_size:
+                k, c = self._node_panel_cache.popitem(last=False)
+                if c in self._history_stack: self._history_stack.remove(c)
+                c.deleteLater()
 
-        # 2. 更新缓存排序
-        self._node_panel_cache[cache_key] = target_panel
-        self.node_panel_stack.setCurrentWidget(target_panel)
-        self.current_node = node if not is_list else None
+        # 3. 维护历史栈（最近选中的在列表最后，代表最前方）
+        if target_card in self._history_stack:
+            self._history_stack.remove(target_card)
+        self._history_stack.append(target_card)
 
-        # === 3. 关键修复：同步外部访问的属性引用 ===
-        if is_list:
-            self.node_list_panel_widget = target_panel
+        if len(self._history_stack) > 3:
+            old = self._history_stack.pop(0)
+            old.hide()
+
+        # 4. 刷新数据内容（修复空白的关键）
+        self._refresh_card_logic(target_card, node, cache_key)
+        self.current_node = node if not isinstance(node, list) else None
+
+        # 5. 执行动画
+        self._play_stack_animation()
+
+    def _build_new_card(self, node, cache_key):
+        """创建卡片并植入业务面板"""
+        # 根据类型确定标题和图标
+        title = "Unknown"
+        icon = FluentIcon.DEVELOPER_TOOLS
+
+        if cache_key == "GLOBAL_VARS":
+            title = "全局变量"
+            icon = FluentIcon.GLOBE
+        elif cache_key == "MULTI_SELECT":
+            title = f"连通图列表"
+            icon = FluentIcon.IOT
         elif isinstance(node, ControlFlowBackdrop):
-            self.flow_control_panel_widget = target_panel
-        elif isinstance(node, BaseNode):
-            self.node_panel_widget = target_panel
+            title = node.NODE_NAME
+            icon = FluentIcon.SYNC
+        else:
+            title = node.name()
+            icon = FluentIcon.INFO
 
-        # 4. 执行刷新
-        if hasattr(target_panel, 'update_data'):
-            target_panel.update_data(node)
-        elif hasattr(target_panel, 'build_ui'):
-            target_panel.build_ui(node)
+        card = FuturisticCard(self.stage, title=title, icon=icon)
 
-    # === 4. 增加防御性代理方法 (防止面板未创建时调用报错) ===
-    def update_node_list_content(self):
-        """兼容外部 main_widget.py 的调用"""
-        if self.node_list_panel_widget and hasattr(self.node_list_panel_widget, 'update_node_list_content'):
-            self.node_list_panel_widget.update_node_list_content()
-
-    def _refresh_node_vars_page(self):
-        """兼容外部调用"""
-        if self.global_panel_widget:
-            self.global_panel_widget._refresh_node_vars_page()
-
-    def _create_panel_instance(self, node):
-        """工厂方法：根据节点类型创建对应的面板实例"""
-        if isinstance(node, list):
-            return NodeListPanelWidget(self.main_window, self, node)
+        # 业务逻辑植入
+        if cache_key == "GLOBAL_VARS":
+            # 全局面板是逻辑类，直接传入卡片的 content_layout
+            self.global_panel_widget = GlobalPanelWidget(self.main_window, self, card.content_layout)
+            card._logic = self.global_panel_widget
+        elif cache_key == "MULTI_SELECT":
+            # 节点列表是 Widget，需要 addWidget
+            self.node_list_panel_widget = NodeListPanelWidget(self.main_window, self, node)
+            card.content_layout.addWidget(self.node_list_panel_widget)
+            card._logic = self.node_list_panel_widget
         elif isinstance(node, ControlFlowBackdrop):
-            return FlowControlPanelWidget(self.main_window, self, node)
-        elif isinstance(node, BaseNode):
-            return NodePanelWidget(self.main_window, self, node)
-        return None
+            self.flow_control_panel_widget = FlowControlPanelWidget(self.main_window, self, node)
+            card.content_layout.addWidget(self.flow_control_panel_widget)
+            card._logic = self.flow_control_panel_widget
+        else:
+            self.node_panel_widget = NodePanelWidget(self.main_window, self, node)
+            card.content_layout.addWidget(self.node_panel_widget)
+            card._logic = self.node_panel_widget
 
-    def set_allowed_update(self, allowed: bool):
-        """接口函数：设置是否允许刷新"""
-        self._allowed_update = allowed
+        card._node_ref = node
+        return card
+
+    def _refresh_card_logic(self, card, node, cache_key):
+        """调用子面板的刷新接口"""
+        if cache_key == "GLOBAL_VARS":
+            card._logic.build_ui()
+            self._global_panel_built = True
+        else:
+            # 更新外部引用名，确保 main_widget 的调用有效
+            if cache_key == "MULTI_SELECT":
+                self.node_list_panel_widget = card._logic
+            elif isinstance(node, ControlFlowBackdrop):
+                self.flow_control_panel_widget = card._logic
+            else:
+                self.node_panel_widget = card._logic
+
+            if hasattr(card._logic, 'update_data'):
+                card._logic.update_data(node)
+            elif hasattr(card._logic, 'build_ui'):
+                card._logic.build_ui(node)
+
+    def _play_stack_animation(self):
+        """三级视差动画"""
+        self.anim_group.stop()
+        self.anim_group.clear()
+
+        w, h = self.stage.width(), self.stage.height()
+        if w <= 10: w, h = self.width(), self.height()
+
+        count = len(self._history_stack)
+        for i, card in enumerate(self._history_stack):
+            card.show()
+            card.raise_()
+
+            is_active = (i == count - 1)
+            card.set_active(is_active)
+
+            # 位置计算：
+            # i=0(最底层) -> y=0
+            # i=2(活跃层) -> y=84, 露出底下的两个头部
+            target_y = i * self._header_h
+            target_rect = QRect(0, target_y, w, h - target_y)
+
+            anim = QPropertyAnimation(card, b"geometry")
+            anim.setDuration(500)
+            anim.setStartValue(card.geometry())
+            anim.setEndValue(target_rect)
+            anim.setEasingCurve(QEasingCurve.OutBack if is_active else QEasingCurve.OutCubic)
+            self.anim_group.addAnimation(anim)
+
+        self.anim_group.start()
+
+    def eventFilter(self, obj, event):
+        """点击露出区域自动切回历史"""
+        if event.type() == event.MouseButtonPress:
+            if obj in self._history_stack and self._history_stack[-1] != obj:
+                if 0 <= event.pos().y() <= self._header_h:
+                    self.update_properties(getattr(obj, '_node_ref', None))
+                    return True
+        return super().eventFilter(obj, event)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self._history_stack:
+            QTimer.singleShot(0, self._play_stack_animation)
+
+    # ========================
+    # 业务接口保持 (适配 PortWidget 等外部调用)
+    # ========================
+    def set_scrollbar(self, widget):
+        scroll = SmoothScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.viewport().setStyleSheet("background-color: transparent;")
+        scroll.setStyleSheet("SmoothScrollArea { background-color: transparent; border: none; }")
+        scroll.setWidget(widget)
+        return scroll
 
     def get_port_info(self, node, is_input=True):
-        """接口函数：获取端口信息"""
         full_path = getattr(node, 'FULL_PATH', None)
         if full_path and hasattr(self.main_window, 'component_map'):
             comp_cls = self.main_window.component_map.get(full_path)
@@ -182,91 +319,53 @@ class PropertyPanel(QWidget):
                 port_dict = {p.name(): p for p in (node.input_ports() if is_input else node.output_ports())}
                 result = []
                 for comp_def in comp_ports:
-                    port_name = comp_def.name
-                    result.append((port_name, comp_def.label, comp_def.type))
-                # 补充动态端口
-                for port in (node.input_ports() if is_input else node.output_ports()):
-                    if port.name() not in [r[0] for r in result]:
-                        result.append((port.name(), port.name(), ArgumentType.JSON))
+                    result.append((comp_def.name, comp_def.label, comp_def.type))
                 return result
-
-        if node.has_property(f"{'input' if is_input else 'output'}_ports"):
-            ports = node.input_ports() if is_input else node.output_ports()
-            port_defs = node.get_property(f"{'input' if is_input else 'output'}_ports")
-            type_dict = {item.value: item for item in ArgumentType}
-            return [(p.name(), p.name(), type_dict[pd["type"]]) for p, pd in zip(ports, port_defs)]
-        else:
-            return [(p.name(), p.name(), ArgumentType.JSON) for p in
-                    (node.input_ports() if is_input else node.output_ports())]
+        return [(p.name(), p.name(), ArgumentType.JSON) for p in
+                (node.input_ports() if is_input else node.output_ports())]
 
     def get_node_description(self, node):
-        """接口函数：获取节点描述"""
-        if not node or "StatusDynamicNode_" not in node.model.type_:
-            return ""
+        if not node or "StatusDynamicNode_" not in node.model.type_: return ""
         comp_cls = ComponentScanner().get_component_by_uuid(node.uuid)
         return comp_cls.description if comp_cls else ""
 
     def _show_global_variables_panel(self):
-        """展示全局变量面板（懒加载）"""
-        if not self._global_panel_built:
-            if not hasattr(self, 'global_panel_widget') or not self.global_panel_widget:
-                self.global_panel_widget = GlobalPanelWidget(self.main_window, self, self.global_vbox)
-            self.global_panel_widget.build_ui()
-            self._global_panel_built = True
+        self.update_properties(None)
 
-    # ========================
-    # 全局变量与外部组件交互代理 (保留原有全部接口)
-    # ========================
     def _on_global_variables_changed(self, var_type, var_name, action):
-        if hasattr(self, 'global_panel_widget') and self.global_panel_widget:
-            self.global_panel_widget.on_global_variables_changed(var_type, var_name, action)
+        if self.global_panel_widget: self.global_panel_widget.on_global_variables_changed(var_type, var_name, action)
 
     def _refresh_node_vars_page(self):
-        if hasattr(self, 'global_panel_widget') and self.global_panel_widget:
-            self.global_panel_widget._refresh_node_vars_page()
+        if self.global_panel_widget: self.global_panel_widget._refresh_node_vars_page()
 
     def _copy_as_expression(self, prefix, var_name):
-        if hasattr(self, 'global_panel_widget') and self.global_panel_widget:
-            self.global_panel_widget.copy_as_expression(prefix, var_name)
+        if self.global_panel_widget: self.global_panel_widget.copy_as_expression(prefix, var_name)
 
     def _add_output_to_global_variable(self, node, port_name):
-        self._show_global_variables_panel()
+        self.update_properties(None)
         self.global_panel_widget.add_output_to_global_var(self.main_window, node, port_name)
 
     def _delete_output_from_global_variable(self, node, port_name):
-        if hasattr(self, 'global_panel_widget'):
-            self.global_panel_widget.delete_output_from_global_var(self.main_window, node, port_name)
+        if self.global_panel_widget: self.global_panel_widget.delete_output_from_global_var(self.main_window, node,
+                                                                                            port_name)
 
     def _is_output_in_global_variable(self, node, port_name):
-        self._show_global_variables_panel()
+        if not self._global_panel_built: self.update_properties(None)
         return self.global_panel_widget.is_output_in_global_var(self.main_window, node, port_name)
 
-    def _delete_custom_variable(self, var_name, var_type):
-        if self.global_panel_widget: self.global_panel_widget.delete_variable(var_type, var_name)
-
-    def _add_new_custom_variable(self):
-        if self.global_panel_widget: self.global_panel_widget.add_new_custom_variable()
-
-    def _edit_custom_variable(self, var_name, current_value):
-        if self.global_panel_widget: self.global_panel_widget.edit_custom_variable(var_name, current_value)
-
-    def _locate_node_by_variable_name(self, var_name):
-        return self.global_panel_widget.locate_node_by_name(var_name) if self.global_panel_widget else None
+    def update_node_list_content(self):
+        if self.node_list_panel_widget: self.node_list_panel_widget.update_node_list_content()
 
     def get_current_execution_order(self):
-        # 此时需要从缓存中找到那个唯一的 ListPanel 实例
-        panel = self._node_panel_cache.get("MULTI_SELECT_PANEL")
-        return panel.get_current_order() if panel else []
+        return self.node_list_panel_widget.get_current_order() if self.node_list_panel_widget else []
 
     def reset_current_components(self):
-        panel = self._node_panel_cache.get("MULTI_SELECT_PANEL")
-        if panel: panel.reset_components()
+        if self.node_list_panel_widget: self.node_list_panel_widget.reset_components()
+
+    def set_allowed_update(self, allowed: bool):
+        self._allowed_update = allowed
 
     def _clear_node_layout(self):
-        """保留方法名兼容，现在主要用于清空缓存（如切换图表时）"""
-        for panel in self._node_panel_cache.values():
-            self.node_panel_stack.removeWidget(panel)
-            panel.deleteLater()
+        for card in self._node_panel_cache.values(): card.deleteLater()
         self._node_panel_cache.clear()
-        self._column_list_widgets.clear()
-        self._text_edit_widgets.clear()
+        self._history_stack.clear()
