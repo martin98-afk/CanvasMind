@@ -19,7 +19,6 @@ class InternalNodeList(ListWidget):
         super().__init__(parent)
         self._status_list = list(status_list) if status_list else []
         self._name_list = list(node_name_list) if node_name_list else []
-
         self._rebuild_items()
 
     def _rebuild_items(self):

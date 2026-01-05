@@ -271,3 +271,7 @@ ValueError: y should be a 1d array, got an array of shape (150, 3) instead.
 [2026-01-04 21:11:59] run-71 INFO: solver='newton-cg' max_iter=100
 [2026-01-04 21:11:59] run-86 INFO: Model accuracy: 0.9733
 [2026-01-04 21:11:59] <module>-93 SUCCESS: 节点执行成功
+[2026-01-05 23:59:25] <module>-84 INFO: 开始执行组件
+[2026-01-05 23:59:26] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-05 23:59:26] run-86 INFO: Model accuracy: 0.9733
+[2026-01-05 23:59:26] <module>-93 SUCCESS: 节点执行成功
