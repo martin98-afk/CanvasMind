@@ -5,7 +5,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QPropertyAnimation, QRect, QParallelAnimationGroup, QEasingCurve, pyqtProperty, \
     pyqtSignal
 from PyQt5.QtGui import QPainter, QColor, QLinearGradient, QBrush, QPen, QFont, QPainterPath
-from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame)
+from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame, QGraphicsOpacityEffect)
 from qfluentwidgets import SmoothScrollArea, StrongBodyLabel, IconWidget, FluentIcon, TransparentToolButton
 
 from app.components.base import ArgumentType
@@ -59,6 +59,10 @@ class FuturisticCard(QFrame):
         self.close_btn.setCursor(Qt.PointingHandCursor)
         self.close_btn.setToolTip("移除此卡片")
         self.close_btn.clicked.connect(lambda: self.closed.emit(self))
+        # 为按钮单独设置透明度效果，修复 AttributeError
+        self.close_btn_opacity = QGraphicsOpacityEffect(self.close_btn)
+        self.close_btn.setGraphicsEffect(self.close_btn_opacity)
+        self.close_btn.clicked.connect(lambda: self.closed.emit(self))
         # 初始隐藏，只有在活跃或堆叠中才显示（由父级控制）
 
         header_layout.addWidget(self.icon_widget)
@@ -88,6 +92,7 @@ class FuturisticCard(QFrame):
     def set_active(self, active: bool, level: int = 0, animate: bool = True):
         self.is_active = active
         target_op = 1.0 if active else max(0.3, 1.0 - level * 0.3)
+        self.close_btn_opacity.setOpacity(1.0 if active else 0.4)
 
         if animate:
             self.op_ani = QPropertyAnimation(self, b"cardOpacity")
