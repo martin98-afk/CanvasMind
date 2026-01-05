@@ -1,31 +1,31 @@
 # -*- coding: utf-8 -*-
 import time
-from typing import Dict, List
-
+import re
+from typing import Dict, List, Any
 import openai
-from PyQt5.QtCore import QRunnable, pyqtSlot
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QRunnable, pyqtSlot, QThread, pyqtSignal
 from openai import OpenAI, APIError, APIConnectionError, RateLimitError, BadRequestError, APITimeoutError
 
 
 class TitleGenerationTask(QRunnable):
+    """异步生成标题任务"""
+
     def __init__(self, current_title: str, messages_for_summary: list, llm_config: dict, callback):
         super().__init__()
         self.current_title = current_title
         self.messages_for_summary = messages_for_summary
         self.llm_config = llm_config
-        self.callback = callback  # 用于线程安全地回传结果到主线程（通过信号或直接调用）
+        self.callback = callback
         self.setAutoDelete(True)
 
     @pyqtSlot()
     def run(self):
         try:
-            # 构造 prompt（复用你的逻辑）
             summary_text = ""
             for msg in self.messages_for_summary[-4:]:
                 content = msg["content"]
                 if isinstance(content, list):
-                    texts = [item["text"] for item in content if item["type"] == "text"]
+                    texts = [item.get("text", "") for item in content if item.get("type") == "text"]
                     content = "\n".join(texts)
                 role = "用户" if msg["role"] == "user" else "助手"
                 summary_text += f"{role}：{content}\n"
@@ -33,30 +33,23 @@ class TitleGenerationTask(QRunnable):
             prompt = (
                 "你是一个对话标题生成器。请根据以下对话内容，生成一个不超过20个字的中文标题.\n"
                 f"对话内容：\n{summary_text}\n\n"
-                f"概括整个对话的核心主题。当前已有对话标题为：{self.current_title}\n\n"
-                "请严格按以下格式输出，不要包含任何其他文字、解释或标点：\n\n"
-                "```title\n你的标题\n```\n\n"
-                "标题内容为：\n"
+                "请严格按以下格式输出：\n```title\n你的标题\n```"
             )
 
-            # 调用 OpenAI API（同步调用，因为在线程中）
-            client = openai.OpenAI(
-                api_key=self.llm_config["API_KEY"],
-                base_url=self.llm_config["API_URL"]
+            client = OpenAI(
+                api_key=self.llm_config.get("API_KEY", ""),
+                base_url=self.llm_config.get("API_URL")
             )
             resp = client.chat.completions.create(
-                model=self.llm_config["模型名称"],
+                model=self.llm_config.get("模型名称", "gpt-4o"),
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
-                max_tokens=500,
-                stream=False
+                max_tokens=100
             )
             raw_title = resp.choices[0].message.content.strip()
-            # 安全回传（QRunnable 不能直接 emit 信号，但可调用主线程的槽，前提是用 QObject）
             self.callback(raw_title)
         except Exception as e:
-            error_msg = f"[TitleGen Error] {str(e)}"
-            self.callback(None, error=error_msg)
+            self.callback(None, error=str(e))
 
 
 class OpenAIChatWorker(QThread):
@@ -76,83 +69,97 @@ class OpenAIChatWorker(QThread):
     def cancel(self):
         self._is_cancelled = True
 
-    def _check_cancel(self) -> bool:
-        return self._is_cancelled
-
-    def _execute_mcp_tool(self, tool, tool_args: dict) -> dict:
-        """执行 MCP 工具并返回结果（结构化字典）"""
-        try:
-            result = tool.execute(tool_args)
-            return {
-                "type": "tool_result",
-                "tool_name": tool.name,
-                "result": result,
-                "error": None
-            }
-        except Exception as e:
-            return {
-                "type": "tool_error",
-                "tool_name": tool.name,
-                "result": None,
-                "error": str(e)
-            }
-
     def run(self):
         try:
+            # 1. 基础必需参数
             api_key = self.llm_config.get("API_KEY", "").strip()
             base_url = self.llm_config.get("API_URL") or None
-            model = self.llm_config.get("模型名称", "gpt-4o").strip()
-            temperature = float(self.llm_config.get("温度", 0.7))
-            max_tokens = int(self.llm_config.get("最大Token", 2048))
-            enable_thinking = bool(self.llm_config.get("是否思考", True))
+            model = str(self.llm_config.get("模型名称", "gpt-4o"))
 
-            if not model:
-                self.error_occurred.emit("[错误] 模型名称未配置")
-                return
-
-            # 设置超时（连接 + 读取）
-            client = OpenAI(
-                api_key=api_key,
-                base_url=base_url,
-                timeout=60.0,  # 总超时 60 秒
-                max_retries=2  # 最多重试 2 次
-            )
-
-            # 构建请求参数
+            # 2. 准备参数桶
+            # 顶层参数：极其严格，只放最稳妥的
             req_kwargs = {
                 "model": model,
                 "messages": self.messages,
-                "temperature": temperature,
-                "max_tokens": max_tokens,
                 "stream": self.stream,
             }
 
-            # 仅对支持 thinking 的官方 API 才加 extra_body（避免第三方报错）
-            # 这里保守处理：只在 base_url 为 None 或 openai 官方域名时启用
-            if enable_thinking and (not base_url or "openai" in (base_url or "")):
-                req_kwargs["extra_body"] = {
-                    "enable_thinking": True,
-                    "chat_template_kwargs": {"enable_thinking": True}
-                }
+            # 额外参数桶：比较宽松，大部分平台会忽略不认识的
+            extra_body = {}
+            # 3. 映射表：将中文配置映射为 API 英文键名
+            mapping = {
+                "温度": "temperature",
+                "最大Token": "max_tokens",
+                "核采样": "top_p",
+                "频率惩罚": "presence_penalty",
+                "重复惩罚": "frequency_penalty",
+                "思考等级": "reasoning_effort",
+            }
 
-            # 执行请求
+            # 4. 【一股脑逻辑】遍历所有配置
+            for cn_key, value in self.llm_config.items():
+                if cn_key in ["API_KEY", "API_URL", "模型名称", "系统提示"]:
+                    continue
+
+                # --- 核心处理：根据参数类型决定放哪 ---
+
+                # A. 思考模式的特殊结构处理（自动适配 Claude 和普通模型）
+                if cn_key == "是否思考":
+                    status = "enabled" if (value is True or str(value).lower() == "true") else "disabled"
+                    # 针对 Claude：放在顶层，但如果报错我们会捕获
+                    req_kwargs["thinking"] = {
+                        "type": status,
+                        "budget_tokens": int(self.llm_config.get("思考Token", 1024))
+                    }
+                    # 针对其他模型：在 extra_body 传一份布尔值
+                    extra_body["enable_thinking"] = (status == "enabled")
+                    extra_body["include_reasoning"] = (status == "enabled")
+
+                # B. 温度和 Top_P 的特殊性
+                # 获取对应的英文 Key（如果没映射，且本来就是英文，则直接用）
+                en_key = mapping.get(cn_key)
+                if not en_key and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', cn_key):
+                    en_key = cn_key
+                if not en_key:
+                    continue
+                # 很多推理模型 (o1, R1) 传温度会报错，所以我们优先放 extra_body，或者只在非 o1 模型放顶层
+                elif en_key in ["temperature", "top_p"] and (model.startswith("o1") or model.startswith("o3")):
+                    continue  # o1 模型坚决不传温度
+
+                # C. 其他所有参数一律尝试放进 req_kwargs
+                # 如果这个参数属于 OpenAI 的标准顶层参数，放这里
+                elif en_key in ["temperature", "max_tokens", "top_p", "presence_penalty", "frequency_penalty",
+                                "reasoning_effort"]:
+                    req_kwargs[en_key] = value
+
+                # D. 其余不确定的全塞进 extra_body（这部分最安全，不认识也不报错）
+                else:
+                    extra_body[en_key] = value
+
+            if extra_body:
+                req_kwargs["extra_body"] = extra_body
+                print(extra_body)
+            # 5. 执行请求
+            client = OpenAI(api_key=api_key, base_url=base_url, timeout=120.0)
+
+            # --- 最后的“暴力”修正：处理不支持流式的模型 ---
+            if "o1-preview" in model or "o1-mini" in model:
+                req_kwargs.pop("stream", None)
+                self.stream = False
+
             response = client.chat.completions.create(**req_kwargs)
 
+            # ... 流式处理逻辑 (提取 content 和 reasoning_content) ...
             self.full_response = ""
-            last_chunk_time = time.time()
-
             for chunk in response:
-                if self._is_cancelled:
-                    self.error_occurred.emit("[已取消] 用户手动中止请求")
-                    return
+                if self._is_cancelled: return
+                delta = chunk.choices[0].delta
 
-                # 防止无限等待（虽然有 timeout，但流式可能卡在某 chunk）
-                if time.time() - last_chunk_time > 30:
-                    self.error_occurred.emit("[超时] 流式响应超过 30 秒无数据")
-                    return
+                # 自动兼容 DeepSeek 的推理内容
+                reasoning = getattr(delta, 'reasoning_content', None)
+                content = getattr(delta, 'content', None)
 
-                if chunk.choices and chunk.choices[0].delta.content is not None:
-                    content = chunk.choices[0].delta.content
+                if content:
                     self.full_response += content
                     self.content_received.emit(content)
                     last_chunk_time = time.time()
@@ -195,13 +202,12 @@ class OpenAIChatWorker(QThread):
             self.error_occurred.emit(f"[配置错误] 参数类型无效: {str(e)}")
 
         except Exception as e:
-
+            # 💡 关键：如果是“参数不匹配”导致的报错，给用户一个明确提示
             error_str = str(e)
-
-            if "max_tokens" in error_str.lower() or "context length" in error_str.lower():
-
+            if "unrecognized_parameter" in error_str or "extra_parameters" in error_str:
+                self.error_occurred.emit(
+                    f"[兼容性提示] 当前模型可能不支持某些高级设置（如思考模式或温度）。错误信息：{error_str}")
+            elif "max_tokens" in error_str.lower() or "context length" in error_str.lower():
                 self.error_occurred.emit("[错误] 模型上下文或最大Token超出限制，请减少输入长度或调低 max_tokens")
-
             else:
-
-                self.error_occurred.emit(f"[未知错误] {error_str}")
+                self.error_occurred.emit(f"[API请求错误] {error_str}")

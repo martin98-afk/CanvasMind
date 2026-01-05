@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QFrame, QVBoxLayout, QWidget
-from qfluentwidgets import BodyLabel, SubtitleLabel, SmoothScrollArea, SimpleCardWidget
+from qfluentwidgets import BodyLabel
 
 # --- 导入优化后的 PortWidget ---
 from app.widgets.side_dock_area.plugins.property_panel.port_widget import PortWidget
 
 
-class NodePanelWidget(SimpleCardWidget):
+class NodePanelWidget(QWidget):
     """
     优化后的普通节点属性面板。
     不再是工具类，而是一个具有持久状态的 QWidget。

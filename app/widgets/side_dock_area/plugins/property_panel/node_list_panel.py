@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt, QTimer, QMimeData
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
-from qfluentwidgets import SubtitleLabel, SimpleCardWidget
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget
 
 from app.utils.utils import topological_sort
 from app.widgets.side_dock_area.plugins.property_panel.draggable_container import DraggableContainer
 
 
-class NodeListPanelWidget(SimpleCardWidget):
+class NodeListPanelWidget(QWidget):
     """
     优化后的多节点列表面板。
     支持拖拽排序记忆、增量更新和连通图分割。
