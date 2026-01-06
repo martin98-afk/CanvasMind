@@ -3,11 +3,12 @@ from collections import OrderedDict
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QPropertyAnimation, QRect, QParallelAnimationGroup, QEasingCurve, pyqtProperty, \
-    pyqtSignal
+    pyqtSignal, QTimer, QPointF, QRectF
 from PyQt5.QtGui import QPainter, QColor, QLinearGradient, QBrush, QPen, QFont, QPainterPath
 from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame, QGraphicsOpacityEffect)
 from qfluentwidgets import SmoothScrollArea, StrongBodyLabel, IconWidget, FluentIcon, TransparentToolButton
 
+# 保持业务相关的引用（根据你的项目环境确保这些能正常 import）
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.scan_components import ComponentScanner
@@ -19,12 +20,11 @@ from app.widgets.side_dock_area.plugins.property_panel.node_panel import NodePan
 
 class FuturisticCard(QFrame):
     """
-    极致科技感卡片容器：
-    - 集成数字化 HUD 头部。
-    - 新增关闭（销毁）按钮。
-    - 采用 pyqtProperty 驱动高性能渲染。
+    还原最初视觉风格的极致优化版卡片：
+    - 视觉：顶部 2px 蓝色/灰色条，左右深色 1px 边框，背景 #1e1e1e/#141414。
+    - 逻辑：无半透明，非活跃字体变灰，Resize 防抖，QPainter 路径缓存绘制。
     """
-    closed = pyqtSignal(object)  # 发射自身实例用于关闭逻辑
+    closed = pyqtSignal(object)
 
     def __init__(self, parent=None, title="Unknown Node", icon=FluentIcon.DEVELOPER_TOOLS):
         super().__init__(parent)
@@ -33,43 +33,53 @@ class FuturisticCard(QFrame):
         self._last_rect = QRect()
         self._border_path = QPainterPath()
 
+        # 还原最初的颜色配置
+        self.COLOR_ACTIVE_TOP = QColor("#00a2ff")  # 活跃顶部蓝色
+        self.COLOR_INACTIVE_TOP = QColor("#666666")  # 非活跃顶部灰色
+        self.COLOR_SIDE = QColor("#2d2d2d")  # 左右深色边框
+        self.COLOR_TEXT_DIM = QColor("#828282")  # 非活跃文字灰色
+
+        self.BG_ACTIVE = QColor("#1e1e1e")  # 活跃背景
+        self.BG_INACTIVE = QColor("#141414")  # 非活跃背景
+
+        self.SCAN_LINE_PEN = QPen(QColor(255, 255, 255, 5), 1)
+
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setObjectName("PropertyCard")
+        # 移除背景样式，全部由 paintEvent 处理
+        self.setStyleSheet("QWidget#PropertyCard { background: transparent; border: none; }")
 
-        # 内部布局
         self.card_layout = QVBoxLayout(self)
         self.card_layout.setContentsMargins(0, 0, 0, 0)
         self.card_layout.setSpacing(0)
 
-        # 1. 顶部 HUD 区域
+        # 1. 顶部 HUD
         self.header_hud = QWidget()
         self.header_hud.setFixedHeight(45)
         header_layout = QHBoxLayout(self.header_hud)
         header_layout.setContentsMargins(18, 0, 10, 0)
 
-        # 图标和标题
         self.icon_widget = IconWidget(icon, self.header_hud)
         self.icon_widget.setFixedSize(18, 18)
         self.title_label = StrongBodyLabel(title, self.header_hud)
         self.title_label.setFont(QFont("Segoe UI Semibold", 10))
 
-        # 数字化关闭按钮
         self.close_btn = TransparentToolButton(FluentIcon.CLOSE, self.header_hud)
         self.close_btn.setFixedSize(28, 28)
         self.close_btn.setCursor(Qt.PointingHandCursor)
-        self.close_btn.setToolTip("移除此卡片")
-        self.close_btn.clicked.connect(lambda: self.closed.emit(self))
-        # 为按钮单独设置透明度效果，修复 AttributeError
+        self.close_btn.setStyleSheet("""
+            TransparentToolButton { border-radius: 4px; padding: 4px; }
+            TransparentToolButton:hover { background-color: rgba(255, 60, 60, 0.2); }
+        """)
+
         self.close_btn_opacity = QGraphicsOpacityEffect(self.close_btn)
         self.close_btn.setGraphicsEffect(self.close_btn_opacity)
         self.close_btn.clicked.connect(lambda: self.closed.emit(self))
-        # 初始隐藏，只有在活跃或堆叠中才显示（由父级控制）
 
         header_layout.addWidget(self.icon_widget)
         header_layout.addWidget(self.title_label)
         header_layout.addStretch()
         header_layout.addWidget(self.close_btn)
-
         self.card_layout.addWidget(self.header_hud)
 
         # 2. 内容区域
@@ -78,83 +88,74 @@ class FuturisticCard(QFrame):
         self.content_layout.setContentsMargins(4, 2, 4, 4)
         self.card_layout.addWidget(self.content_area, 1)
 
-        self.update_style()
-
     @pyqtProperty(float)
     def cardOpacity(self):
         return self._custom_opacity
 
     @cardOpacity.setter
     def cardOpacity(self, v):
-        self._custom_opacity = v
+        self._custom_opacity = 1.0  # 强制不透明
         self.update()
 
     def set_active(self, active: bool, level: int = 0, animate: bool = True):
         self.is_active = active
-        target_op = 1.0 if active else max(0.3, 1.0 - level * 0.3)
-        self.close_btn_opacity.setOpacity(1.0 if active else 0.4)
+        # 字体颜色逻辑
+        text_color = self.COLOR_ACTIVE_TOP if active else self.COLOR_TEXT_DIM
+        self.title_label.setStyleSheet(f"color: {text_color.name()};")
 
-        if animate:
-            self.op_ani = QPropertyAnimation(self, b"cardOpacity")
-            self.op_ani.setDuration(400)
-            self.op_ani.setEndValue(target_op)
-            self.op_ani.setEasingCurve(QEasingCurve.OutCubic)
-            self.op_ani.start()
-        else:
-            self.cardOpacity = target_op
-
-        self.update_style()
-
-    def update_style(self):
-        neon_blue = "#00a2ff" if self.is_active else "#666666"
-        bg_color = "#1e1e1e" if self.is_active else "#141414"
-        self.title_label.setStyleSheet(f"color: {neon_blue};")
-
-        # 关闭按钮悬停红色警告色
-        self.close_btn.setStyleSheet("""
-            TransparentToolButton { border-radius: 4px; padding: 4px; }
-            TransparentToolButton:hover { background-color: rgba(255, 60, 60, 0.2); }
-        """)
-
-        self.setStyleSheet(f"""
-            QWidget#PropertyCard {{
-                background-color: {bg_color};
-                border-top: 2px solid {neon_blue};
-                border-left: 1px solid #2d2d2d;
-                border-right: 1px solid #2d2d2d;
-                border-top-left-radius: 14px;
-                border-top-right-radius: 14px;
-            }}
-        """)
+        # 按钮透明度区分
+        # self.close_btn_opacity.setOpacity(1.0 if active else 0.4)
+        self.update()
 
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        p.setOpacity(self._custom_opacity)
+
+        rect = QRectF(self.rect())
+        r = 14.0  # 圆角半径
+
+        # 1. 缓存背景路径（仅顶部圆角）
         if self._last_rect != self.rect():
             self._border_path = QPainterPath()
-            self._border_path.addRoundedRect(QtCore.QRectF(self.rect()), 14, 14)
+            # 创建仅顶部圆角的路径
+            self._border_path.moveTo(0, r)
+            self._border_path.arcTo(0, 0, r * 2, r * 2, 180, -90)  # 左上
+            self._border_path.lineTo(rect.width() - r, 0)
+            self._border_path.arcTo(rect.width() - r * 2, 0, r * 2, r * 2, 90, -90)  # 右上
+            self._border_path.lineTo(rect.width(), rect.height())
+            self._border_path.lineTo(0, rect.height())
+            self._border_path.closeSubpath()
             self._last_rect = self.rect()
-        p.fillPath(self._border_path, QBrush(QColor(30, 30, 30)))
-        if self.is_active:
-            grad = QLinearGradient(0, 0, self.width(), 0)
-            grad.setColorAt(0, QColor(0, 162, 255, 0))
-            grad.setColorAt(0.5, QColor(0, 162, 255, 180))
-            grad.setColorAt(1, QColor(0, 162, 255, 0))
-            p.setPen(QPen(grad, 4))
-            p.drawLine(20, 1, self.width() - 20, 1)
-        p.setPen(QPen(QColor(255, 255, 255, 5)))
-        for i in range(0, self.height(), 5):
+
+        # 2. 填充背景色
+        p.fillPath(self._border_path, QBrush(self.BG_ACTIVE if self.is_active else self.BG_INACTIVE))
+
+        # 3. 绘制扫描线 (步长10提高性能)
+        p.setPen(self.SCAN_LINE_PEN)
+        for i in range(0, self.height(), 10):
             p.drawLine(0, i, self.width(), i)
-        super().paintEvent(event)
+
+        # 4. 还原最初的边框逻辑
+        # 顶部 2px 颜色条
+        top_pen = QPen(self.COLOR_ACTIVE_TOP if self.is_active else self.COLOR_INACTIVE_TOP, 2)
+        p.setPen(top_pen)
+        # 绘制顶部圆弧部分的线条
+        p.drawArc(QtCore.QRectF(0, 0, r * 2, r * 2), 90 * 16, 90 * 16)  # 左上弧
+        p.drawLine(QtCore.QPointF(r, 0), QtCore.QPointF(rect.width() - r, 0))  # 顶平线
+        p.drawArc(QtCore.QRectF(rect.width() - r * 2, 0, r * 2, r * 2), 0 * 16, 90 * 16)  # 右上弧
+
+        # 左右 1px 深色边框
+        side_pen = QPen(self.COLOR_SIDE, 1)
+        p.setPen(side_pen)
+        p.drawLine(QtCore.QPointF(0, r), QtCore.QPointF(0, rect.height()))  # 左
+        p.drawLine(QtCore.QPointF(rect.width(), r), QtCore.QPointF(rect.width(), rect.height()))  # 右
 
 
 class PropertyPanel(QWidget):
     """
-    终极版属性面板：
-    - 支持点击“X”按钮关闭历史卡片。
-    - 自动重排剩余卡片。
-    - 极致流畅的 Resize 同步。
+    极致优化版属性面板：
+    - 引入 Resize 防抖计时器，避免在拖动窗口边缘时进行高频几何重排和 raise_() 调用。
+    - 批量处理 setUpdatesEnabled 状态，消除动画过程中的闪烁。
     """
 
     def __init__(self, main_window, parent=None, max_history=3, header_height=45):
@@ -172,6 +173,12 @@ class PropertyPanel(QWidget):
         self._allowed_update = False
         self._global_panel_built = False
         self.current_node = None
+
+        # Resize 防抖计时器
+        self._resize_timer = QTimer(self)
+        self._resize_timer.setSingleShot(True)
+        self._resize_timer.timeout.connect(self._on_resize_timeout)
+        self._is_resizing = False
 
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setObjectName("UltimatePropertyPanel")
@@ -208,7 +215,6 @@ class PropertyPanel(QWidget):
             if not target_card: return
             self._node_panel_cache[cache_key] = target_card
             target_card.installEventFilter(self)
-            # 绑定关闭信号
             target_card.closed.connect(self._close_card)
 
             if len(self._node_panel_cache) > self._max_cache_size:
@@ -233,36 +239,41 @@ class PropertyPanel(QWidget):
         if card not in self._history_stack:
             return
 
-        # 1. 如果关闭的是活跃卡片，尝试寻找下一个可激活的节点
         is_active = (self._history_stack[-1] == card)
         self._history_stack.remove(card)
         card.hide()
 
         if is_active:
             if self._history_stack:
-                # 将最后一张卡片作为新的活跃卡片
                 next_card = self._history_stack[-1]
                 self.update_properties(getattr(next_card, '_node_ref', None))
             else:
-                # 没有任何卡片了，显示全局变量
                 self.update_properties(None)
         else:
-            # 只是关闭了背景中的卡片，重新排布剩余卡片位置
             self._sync_stack_layout(animate=True)
 
     def _sync_stack_layout(self, animate=True):
+        # 如果正在进行窗口拖拽缩放，跳过带有动画的请求，避免坐标冲突
+        if self._is_resizing and animate:
+            return
+
         if animate:
             self.anim_group.stop()
             self.anim_group.clear()
 
+        # 批量禁止渲染，极大减少 Layout 反复计算开销
         self.stage.setUpdatesEnabled(False)
+
         w, h = self.stage.width(), self.stage.height()
         if w <= 10: w, h = self.width(), self.height()
 
         stack_count = len(self._history_stack)
         for i, card in enumerate(self._history_stack):
             card.show()
-            card.raise_()
+            # 只有在动画过程中才 raise，避免非必要的图形层级重算
+            if animate:
+                card.raise_()
+
             level = (stack_count - 1) - i
             card.set_active(level == 0, level, animate=animate)
             target_y = i * self._header_reveal_h
@@ -270,28 +281,45 @@ class PropertyPanel(QWidget):
 
             if animate:
                 anim = QPropertyAnimation(card, b"geometry")
-                anim.setDuration(500)
+                anim.setDuration(400)  # 稍微缩短时间，增加灵敏度感
                 anim.setStartValue(card.geometry())
                 anim.setEndValue(target_rect)
-                curve = QEasingCurve.OutBack if level == 0 else QEasingCurve.OutQuart
+                curve = QEasingCurve.OutCubic if level == 0 else QEasingCurve.OutQuart
                 anim.setEasingCurve(curve)
                 self.anim_group.addAnimation(anim)
             else:
                 card.setGeometry(target_rect)
 
-        if animate:
+        if animate and self.anim_group.animationCount() > 0:
             self.anim_group.start()
+
         self.stage.setUpdatesEnabled(True)
 
     def resizeEvent(self, event):
+        """防抖 Resize 逻辑"""
+        self._is_resizing = True
+        new_w = event.size().width()
+
+        # 1. 在拖动过程中，仅快速同步修改卡片的宽度，不改变位置和高度
+        # 这对于 Qt 绘图引擎来说是廉价的。
+        for card in self._history_stack:
+            if card.isVisible():
+                curr_geo = card.geometry()
+                card.setGeometry(curr_geo.x(), curr_geo.y(), new_w, curr_geo.height())
+
+        # 2. 启动计时器。如果 50ms 内不再 resize，说明停止了拖拽，再刷新纵向布局。
+        self._resize_timer.start(50)
         super().resizeEvent(event)
-        if self._history_stack:
-            self._sync_stack_layout(animate=False)
+
+    def _on_resize_timeout(self):
+        self._is_resizing = False
+        self._sync_stack_layout(animate=False)
 
     def eventFilter(self, obj, event):
         if event.type() == event.MouseButtonPress:
-            # 关键：如果点击的是卡片内的子按钮（如关闭按钮），不触发“飞升”切换逻辑
-            if obj.childAt(event.pos()) == obj.findChild(TransparentToolButton):
+            # 过滤点击关闭按钮时的事件
+            btn = obj.findChild(TransparentToolButton)
+            if btn and obj.childAt(event.pos()) == btn:
                 return False
 
             if obj in self._history_stack and self._history_stack[-1] != obj:
@@ -345,9 +373,8 @@ class PropertyPanel(QWidget):
         if isinstance(node, ControlFlowBackdrop): return node.NODE_NAME, FluentIcon.SYNC
         return node.name(), FluentIcon.INFO
 
-    # ========================
-    # 外部业务接口兼容 (保持)
-    # ========================
+    # --- 外部业务接口 ---
+
     def set_scrollbar(self, widget):
         scroll = SmoothScrollArea()
         scroll.setWidgetResizable(True)
@@ -387,8 +414,7 @@ class PropertyPanel(QWidget):
 
     def _delete_output_from_global_variable(self, node, port_name):
         if self.global_panel_widget:
-            self.global_panel_widget.delete_output_from_global_var(self.main_window, node,
-                                                                                            port_name)
+            self.global_panel_widget.delete_output_from_global_var(self.main_window, node, port_name)
 
     def _is_output_in_global_variable(self, node, port_name):
         if not self._global_panel_built:
@@ -409,6 +435,9 @@ class PropertyPanel(QWidget):
         self._allowed_update = allowed
 
     def _clear_node_layout(self):
-        for card in self._node_panel_cache.values(): card.deleteLater()
+        # 优化销毁逻辑，确保无内存残留
+        for card in self._node_panel_cache.values():
+            card.closed.disconnect()
+            card.deleteLater()
         self._node_panel_cache.clear()
         self._history_stack.clear()

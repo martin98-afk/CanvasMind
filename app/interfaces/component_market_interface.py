@@ -196,6 +196,8 @@ class PluginManagerCenter(QWidget):
         self.search_bar.setObjectName("SearchBar")
         self.search_bar.setPlaceholderText("🔍 搜索组件名称或分类...")
         self.search_bar.textChanged.connect(self.on_search)
+        self.search_bar.searchSignal.connect(self.on_search)
+        self.search_bar.clearSignal.connect(self.on_search)
         content_lay.addWidget(self.search_bar)
 
         self.stack = QStackedWidget()

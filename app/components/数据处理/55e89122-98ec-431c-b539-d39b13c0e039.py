@@ -19,7 +19,7 @@ class DynamicComponent(BaseComponent):
     name = "图像resize"
     category = "数据处理"
     description = "由用户动态生成的组件"
-    requirements = ""
+    requirements = "Pillow"
 
     inputs = [
         PortDefinition(name="input1", label="input1", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
@@ -28,7 +28,16 @@ class DynamicComponent(BaseComponent):
         PortDefinition(name="output1", label="output1", type=ArgumentType.IMAGE),
     ]
     properties = {
-
+        "w": PropertyDefinition(
+            type=PropertyType.INT,
+            default=512,
+            label="调整后宽",
+        ),
+        "h": PropertyDefinition(
+            type=PropertyType.INT,
+            default=512,
+            label="调整后高",
+        ),
     }
 
     def run(self, params, inputs=None):
@@ -39,5 +48,5 @@ class DynamicComponent(BaseComponent):
         """
         from PIL import Image
         return {
-            "output1": inputs.input1.resize((520, 520), Image.Resampling.NEAREST)
+            "output1": inputs.input1.resize((params.w, params.h), Image.Resampling.NEAREST)
         }
