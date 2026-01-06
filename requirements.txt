@@ -142,3 +142,4 @@ openai~=2.7.2
 scikit-learn~=1.7.2
 tomli_w~=1.2.0
 markdown
+orjson
