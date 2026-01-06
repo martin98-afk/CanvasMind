@@ -27,7 +27,7 @@ class AudioPlayWidget(QtWidgets.QWidget):
         # 2. 关键修复：将父对象设为 self，而不是外部传入的 parent
         # 播放控制条 (音频播放时使用)
         self.playBar = SimpleMediaPlayBar()
-
+        self.playBar.setFixedSize(220, 200)
         # 将控件添加到布局
         self.main_layout.addWidget(self.playBar)
 
