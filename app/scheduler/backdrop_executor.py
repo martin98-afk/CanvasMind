@@ -260,7 +260,6 @@ class BackdropExecutor(QObject):
         return outputs[0] if len(outputs) == 1 else outputs
 
     def _evaluate_condition(self, expr, current_data, internal_outputs):
-        print(internal_outputs)
         engine = ExpressionEngine(self.global_variables)
         temp_vars = {
             'data': current_data,
@@ -272,9 +271,7 @@ class BackdropExecutor(QObject):
         }
         if internal_outputs:
             temp_vars.update(internal_outputs)
-        print(expr)
         result = engine.evaluate_expression_block(expr, temp_vars)
-        print(result)
         if isinstance(result, str) and result.startswith('[ExprError:'):
             return False
         return bool(result)

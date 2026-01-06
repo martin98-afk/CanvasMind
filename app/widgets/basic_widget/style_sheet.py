@@ -17,6 +17,7 @@ class StyleSheet(StyleSheetBase, Enum):
     CATEGORY_FILTER = "category_filter"
     FIND_REPLACE = "find_replace"
     CODE_EDITOR = "code_editor"
+    COMPONENT_MARKET = "component_market"
 
     def path(self, theme=Theme.AUTO):
         return resource_path(f"resource/{self.value}.qss")

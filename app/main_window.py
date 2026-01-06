@@ -12,6 +12,7 @@ from qfluentwidgets import (
 
 # --- 页面模块 ---
 from app.interfaces.component_developer import ComponentDeveloperPage
+from app.interfaces.component_market_interface import PluginManagerCenter
 from app.interfaces.exported_project_interface import ExportedProjectsPage
 from app.interfaces.home_interface import HomeInterface
 from app.interfaces.package_manager_interface import EnvManagerUI
@@ -84,6 +85,7 @@ class LowCodeWindow(FluentWindow):
         self.package_manager = EnvManagerUI(self)
         self.home_interface = HomeInterface(self)
         self.develop_page = ComponentDeveloperPage(self)
+        self.market_page = PluginManagerCenter(self)
         self.project_manager = ExportedProjectsPage(self)
         self.setting_card = SettingInterface(self)
         # 信号连接
@@ -116,6 +118,10 @@ class LowCodeWindow(FluentWindow):
 
         self.addSubInterface(
             self.develop_page, get_icon("组件"), '组件管理'
+        )
+
+        self.addSubInterface(
+            self.market_page, get_icon("插件市场"), '插件市场'
         )
 
         project_item = self.addSubInterface(

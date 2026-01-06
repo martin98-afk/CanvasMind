@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x26a522d5a80": {
+      "0x21c9670d120": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传",
@@ -36,7 +36,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 202.4,
+        "width": 202.055,
         "height": 69.28,
         "pos": [
           -2.959610349970859,
@@ -50,47 +50,7 @@
           "version": "latest"
         }
       },
-      "0x26a522d51e0": {
-        "type_": "dynamic.StatusDynamicNode_ee0224df-fe3c-40c1-9412-1b6c69a59d91",
-        "icon": null,
-        "name": "获取全局变量",
-        "color": [
-          25,
-          70,
-          45,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 438.84000000000003,
-        "height": 95.28,
-        "pos": [
-          -641.2608898699395,
-          290.80225682490493
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "53bc916b-fd32-4dbb-9c0d-47a4a1cf025c",
-          "version": "latest",
-          "prop1": "node_vars.YOLO_关键点检测训练_1__model.pt"
-        }
-      },
-      "0x26a522d76a0": {
+      "0x21c9670c3d0": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传 1",
@@ -115,7 +75,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 248.4,
+        "width": 246.12875,
         "height": 69.28,
         "pos": [
           -695.7273477716603,
@@ -129,7 +89,7 @@
           "version": "latest"
         }
       },
-      "0x26a522d7580": {
+      "0x21c9670c550": {
         "type_": "dynamic.StatusDynamicNode_b6e2e5cb-3167-4360-bb3c-238f1ad267f5",
         "icon": null,
         "name": "YOLO目标检测及关键点检测 1",
@@ -154,11 +114,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 605.36,
-        "height": 220.08,
+        "width": 857.75625,
+        "height": 664.16,
         "pos": [
-          1206.539563808982,
-          115.95809191985518
+          1398.3324418478232,
+          78.44003082748571
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -168,10 +128,11 @@
           "version": "latest",
           "device": "cpu",
           "conf_threshold": 0.5,
-          "iou_threshold": 0.7
+          "iou_threshold": 0.7,
+          "debug_code": "# -*- coding: utf-8 -*-\nimport importlib.util\nfrom pathlib import Path\nbase_path = Path(__file__).parent.parent / \"base.py\"\nspec = importlib.util.spec_from_file_location(\"base\", str(base_path))\nbase_module = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(base_module)\n\n# 导入所需项目\nBaseComponent = base_module.BaseComponent\nPortDefinition = base_module.PortDefinition\nPropertyDefinition = base_module.PropertyDefinition\nPropertyType = base_module.PropertyType\nArgumentType = base_module.ArgumentType\nConnectionType = base_module.ConnectionType\n\n\nclass Component(BaseComponent):\n    name = \"YOLO目标检测及关键点检测\"\n    category = \"目标检测\"\n    description = \"使用YOLOv8模型进行目标检测和关键点检测\"\n    requirements = \"ultralytics,opencv-python,numpy,pillow\"\n    inputs = [\n        PortDefinition(name=\"input_image\", label=\"输入图像\", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),\n        PortDefinition(name=\"model\", label=\"模型文件\", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),\n    ]\n    outputs = [\n        PortDefinition(name=\"detections\", label=\"检测结果\", type=ArgumentType.JSON),\n        PortDefinition(name=\"keypoints\", label=\"关键点信息\", type=ArgumentType.JSON),\n        PortDefinition(name=\"output_image\", label=\"标注图像\", type=ArgumentType.IMAGE),\n    ]\n    properties = {\n        \"device\": PropertyDefinition(\n            type=PropertyType.CHOICE,\n            default=\"cpu\",\n            label=\"运行设备\",\n            choices=[\"cpu\", \"cuda\"]\n        ),\n        \"conf_threshold\": PropertyDefinition(\n            type=PropertyType.RANGE,\n            default=\"0.50\",\n            label=\"置信度阈值\",\n            min=0.0,\n            max=1.0,\n            step=0.05,\n        ),\n        \"iou_threshold\": PropertyDefinition(\n            type=PropertyType.RANGE,\n            default=\"0.70\",\n            label=\"NMS IoU阈值\",\n            min=0.0,\n            max=1.0,\n            step=0.05,\n        ),\n    }\n\n    def load_model(self, model_name: str, device: str):\n        from ultralytics import YOLO\n        self.model = YOLO(model_name)\n        self.device = device\n        self.logger.info(f\"YOLO model {model_name} loaded on {self.device}\")\n\n    def run(self, params, inputs=None):\n        from ultralytics import YOLO\n        from PIL import Image\n        import numpy as np\n        import io\n        import base64\n        import cv2\n        print(inputs.model)\n        # 加载模型\n        self.load_model(inputs.model, params.device)\n\n        # 获取输入图像\n        input_image = inputs.input_image\n        if input_image is None:\n            raise ValueError(\"未提供图像！\")\n\n        # 转换为PIL图像\n        if isinstance(input_image, str):\n            # 如果是Base64字符串，转换为PIL图像\n            from io import BytesIO\n            image_data = base64.b64decode(input_image)\n            input_image = Image.open(BytesIO(image_data))\n\n        # 执行推理\n        results = self.model.predict(source=input_image, device=params.device, conf=params.conf_threshold, iou=params.iou_threshold)\n\n        # 解析结果\n        detections = []\n        keypoints = []\n        annotated_image = None\n\n        for result in results:\n            # 绘制标注图像\n            annotated_image = result.plot()\n\n            # 解析检测结果\n            for box in result.boxes:\n                # 检测框信息\n                x1, y1, x2, y2 = box.xyxy[0].tolist()\n                cls = box.cls[0].item()\n                conf = box.conf[0].item()\n\n                # 添加检测框信息\n                detections.append({\n                    \"bbox\": [x1, y1, x2, y2],\n                    \"class\": cls,\n                    \"confidence\": conf\n                })\n            if result.keypoints is not None:\n                for keypoint in result.keypoints:\n                    # 关键点信息\n                    points = keypoint.xy[0].tolist()\n                    kps = {f\"keypoint_{i}\": [x, y] for i, (x, y) in enumerate(points)}\n                    keypoints.append({\n                        \"keypoints\": kps\n                    })\n\n        return {\n            \"detections\": detections,\n            \"keypoints\": keypoints,\n            \"output_image\": annotated_image\n        }\n\n\nif __name__ == \"__main__\":\n    import warnings\n    warnings.filterwarnings(\"ignore\")\n    model = Component()\n    result = model.debug(\n        params={\n            \"device\": \"cpu\",\n            \"conf_threshold\": 0.5,\n            \"iou_threshold\": 0.7\n        },\n        inputs={\n            \"input_image\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASw...\",\n            \"model\": \"yolov8n.pt\"\n        },\n        global_vars={},\n        node_id=\"test_node\",\n        show_input_types=True,\n        show_output_types=True,\n        show_execution_time=True\n    )\n    print(result)\n"
         }
       },
-      "0x26a52306830": {
+      "0x21c96775bd0": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传 2",
@@ -196,7 +157,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 248.4,
+        "width": 246.12875,
         "height": 69.28,
         "pos": [
           -2.959610349970859,
@@ -210,7 +171,7 @@
           "version": "latest"
         }
       },
-      "0x26a52306770": {
+      "0x21c96775d50": {
         "type_": "dynamic.StatusDynamicNode_d0d5d987-67d5-4aa3-833f-a7a3fa7a794b",
         "icon": null,
         "name": "图片转base64编码",
@@ -235,7 +196,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 384.56,
+        "width": 380.85125,
         "height": 69.28,
         "pos": [
           207.2850912127907,
@@ -249,7 +210,7 @@
           "version": "latest"
         }
       },
-      "0x26a3a9a0a60": {
+      "0x21c96775f30": {
         "type_": "dynamic.StatusDynamicNode_8b652ae6-dd8e-490a-bd84-6f69662f7a9e",
         "icon": null,
         "name": "Base64 转图片",
@@ -274,7 +235,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 319.24,
+        "width": 314.32375,
         "height": 69.28,
         "pos": [
           761.808056334111,
@@ -288,7 +249,7 @@
           "version": "latest"
         }
       },
-      "0x26a3a9a0c40": {
+      "0x21c96776110": {
         "type_": "dynamic.StatusDynamicNode_c7f3c9b1-820f-4161-8f08-3b0edfbaf19c",
         "icon": null,
         "name": "YOLO 关键点检测训练 1",
@@ -313,7 +274,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 495.88,
+        "width": 489.785,
         "height": 466.56,
         "pos": [
           459.1601647571666,
@@ -334,7 +295,7 @@
           "dataset_name": "object_detection_dataset"
         }
       },
-      "0x26a3aa3f7c0": {
+      "0x21c96777f10": {
         "type_": "dynamic.StatusDynamicNode_b9732471-0d7d-4343-847c-9f1edec19eed",
         "icon": null,
         "name": "图像4通道转3通道 1",
@@ -359,7 +320,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 426.88,
+        "width": 423.2575,
         "height": 69.28,
         "pos": [
           -353.0989688881748,
@@ -372,123 +333,169 @@
           "persistent_id": "634ad6ff-58c5-48d4-8366-7d3009f70289",
           "version": "latest"
         }
+      },
+      "0x21c9747f910": {
+        "type_": "visualize.EchartsNode",
+        "icon": ":/icons/图表",
+        "name": "HTML 图表",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 2710.32,
+        "height": 1391.1200000000001,
+        "pos": [
+          2659.1944598126283,
+          26.599217246012188
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "ae1ddba0-4919-40f0-8b58-5014f9df5285",
+          "chart_display": "canvas_files\\workflows\\目标检测训练\\node_results\\d7d6deb8-f8ca-4dc9-bb6a-7bfb901878f7\\image_d7d6deb8-f8ca-4dc9-bb6a-7bfb901878f7.png"
+        }
       }
     },
     "connections": [
       {
         "out": [
-          "0x26a522d5a80",
+          "0x21c9670d120",
           "file"
         ],
         "in": [
-          "0x26a3a9a0c40",
+          "0x21c96776110",
           "dataset_dir"
         ]
       },
       {
         "out": [
-          "0x26a522d76a0",
+          "0x21c9670c3d0",
           "file"
         ],
         "in": [
-          "0x26a3aa3f7c0",
+          "0x21c96777f10",
           "input"
         ]
       },
       {
         "in": [
-          "0x26a522d7580",
+          "0x21c9670c550",
           "input_image"
         ],
         "out": [
-          "0x26a3a9a0a60",
+          "0x21c96775f30",
           "output1"
         ]
       },
       {
         "in": [
-          "0x26a522d7580",
+          "0x21c9670c550",
           "model"
         ],
         "out": [
-          "0x26a3a9a0c40",
+          "0x21c96776110",
           "model.pt"
         ]
       },
       {
         "out": [
-          "0x26a52306830",
+          "0x21c9670c550",
+          "output_image"
+        ],
+        "in": [
+          "0x21c9747f910",
+          "html"
+        ]
+      },
+      {
+        "out": [
+          "0x21c96775bd0",
           "file"
         ],
         "in": [
-          "0x26a3a9a0c40",
+          "0x21c96776110",
           "pre_model"
         ]
       },
       {
         "in": [
-          "0x26a52306770",
+          "0x21c96775d50",
           "input1"
         ],
         "out": [
-          "0x26a3aa3f7c0",
+          "0x21c96777f10",
           "output"
         ]
       },
       {
         "out": [
-          "0x26a52306770",
+          "0x21c96775d50",
           "output1"
         ],
         "in": [
-          "0x26a3a9a0a60",
+          "0x21c96775f30",
           "input1"
         ]
       }
     ]
   },
   "runtime": {
-    "environment": "3.14",
-    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.14\\python.exe",
+    "environment": "3.12",
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.12\\python.exe",
     "node_id2stable_key": {
-      "0x26a522d5a80": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传",
-      "0x26a522d51e0": "ee0224df-fe3c-40c1-9412-1b6c69a59d91||获取全局变量",
-      "0x26a522d76a0": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 1",
-      "0x26a522d7580": "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 1",
-      "0x26a52306830": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 2",
-      "0x26a52306770": "d0d5d987-67d5-4aa3-833f-a7a3fa7a794b||图片转base64编码",
-      "0x26a3a9a0a60": "8b652ae6-dd8e-490a-bd84-6f69662f7a9e||Base64 转图片",
-      "0x26a3a9a0c40": "c7f3c9b1-820f-4161-8f08-3b0edfbaf19c||YOLO 关键点检测训练 1",
-      "0x26a3aa3f7c0": "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1"
+      "0x21c9670d120": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传",
+      "0x21c9670c3d0": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 1",
+      "0x21c9670c550": "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 1",
+      "0x21c96775bd0": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 2",
+      "0x21c96775d50": "d0d5d987-67d5-4aa3-833f-a7a3fa7a794b||图片转base64编码",
+      "0x21c96775f30": "8b652ae6-dd8e-490a-bd84-6f69662f7a9e||Base64 转图片",
+      "0x21c96776110": "c7f3c9b1-820f-4161-8f08-3b0edfbaf19c||YOLO 关键点检测训练 1",
+      "0x21c96777f10": "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1",
+      "0x21c9747f910": "unknown||HTML 图表"
     },
     "node_states": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": "success",
-      "ee0224df-fe3c-40c1-9412-1b6c69a59d91||获取全局变量": "success",
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 1": "success",
       "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 1": "success",
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 2": "success",
       "d0d5d987-67d5-4aa3-833f-a7a3fa7a794b||图片转base64编码": "success",
       "8b652ae6-dd8e-490a-bd84-6f69662f7a9e||Base64 转图片": "success",
       "c7f3c9b1-820f-4161-8f08-3b0edfbaf19c||YOLO 关键点检测训练 1": "success",
-      "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1": "success"
+      "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1": "success",
+      "unknown||HTML 图表": "success"
     },
     "node_inputs": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {},
-      "ee0224df-fe3c-40c1-9412-1b6c69a59d91||获取全局变量": {},
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 1": {},
       "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 1": {},
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 2": {},
       "d0d5d987-67d5-4aa3-833f-a7a3fa7a794b||图片转base64编码": {},
       "8b652ae6-dd8e-490a-bd84-6f69662f7a9e||Base64 转图片": {},
       "c7f3c9b1-820f-4161-8f08-3b0edfbaf19c||YOLO 关键点检测训练 1": {},
-      "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1": {}
+      "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1": {},
+      "unknown||HTML 图表": {}
     },
     "node_outputs": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {
         "file": "canvas_files\\workflows\\目标检测训练\\uploads\\e5b76cdd-be1a-4f44-8454-f6deae1731db\\object_detection_dataset.zip"
-      },
-      "ee0224df-fe3c-40c1-9412-1b6c69a59d91||获取全局变量": {
-        "output1": "canvas_files\\workflows\\目标检测训练\\node_results\\3a302e7b-1df7-4255-bd20-e5772568bda7\\model.pt"
       },
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 1": {
         "file": "canvas_files\\workflows\\目标检测训练\\uploads\\a0a3c272-c6bb-4b82-befc-6305980a565f\\2.jpg"
@@ -534,18 +541,19 @@
       },
       "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1": {
         "output": "canvas_files\\workflows\\目标检测训练\\node_results\\634ad6ff-58c5-48d4-8366-7d3009f70289\\image_634ad6ff-58c5-48d4-8366-7d3009f70289.png"
-      }
+      },
+      "unknown||HTML 图表": {}
     },
     "column_select": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {},
-      "ee0224df-fe3c-40c1-9412-1b6c69a59d91||获取全局变量": {},
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 1": {},
       "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 1": {},
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 2": {},
       "d0d5d987-67d5-4aa3-833f-a7a3fa7a794b||图片转base64编码": {},
       "8b652ae6-dd8e-490a-bd84-6f69662f7a9e||Base64 转图片": {},
       "c7f3c9b1-820f-4161-8f08-3b0edfbaf19c||YOLO 关键点检测训练 1": {},
-      "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1": {}
+      "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1": {},
+      "unknown||HTML 图表": {}
     }
   },
   "global_variable": {
