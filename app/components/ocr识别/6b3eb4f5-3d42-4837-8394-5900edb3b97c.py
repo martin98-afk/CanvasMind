@@ -37,7 +37,7 @@ class Component(BaseComponent):
         from pix2tex.cli import LatexOCR
         p2t = LatexOCR()
         image = inputs.input_image
-        text = "Formula text: " + p2t(image)
+        text = p2t(image)
         return {
             "output1": text
         }
