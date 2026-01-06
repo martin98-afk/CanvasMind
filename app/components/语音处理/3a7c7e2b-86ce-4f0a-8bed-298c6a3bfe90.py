@@ -61,14 +61,12 @@ class DynamicComponent(BaseComponent):
             frame_energy = np.mean(np.abs(np_data))
             # print(frame_energy)
             # 如果能量低于阈值持续时间过长，则停止录音
-            print(frame_energy)
             if frame_energy < THRESHOLD:
                 count += 1
             elif count > 0:
                 count -= 1
 
             frames.append(data)
-        # print("停止录音!")
         print(f"停止录音!")
         stream.stop_stream()
         stream.close()
