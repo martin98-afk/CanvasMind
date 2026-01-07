@@ -73,6 +73,7 @@ def execute_node(
         if is_log_node:
             log_error_func(run_id)
         scheduler.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
+        raise e
     finally:
         if acquired:
             semaphore.release()

@@ -1,0 +1,1126 @@
+{
+  "version": "1.0",
+  "graph": {
+    "graph": {
+      "layout_direction": 0,
+      "acyclic": true,
+      "pipe_collision": false,
+      "pipe_slicing": true,
+      "pipe_style": 2,
+      "accept_connection_types": "{}",
+      "reject_connection_types": "{}"
+    },
+    "nodes": {
+      "0x1e52e527250": {
+        "type_": "visualize.EchartsNode",
+        "icon": ":/icons/图表",
+        "name": "HTML 图表",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 293.48,
+        "height": 257.52,
+        "pos": [
+          2039.071493617084,
+          447.20783899508353
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "30c50aa9-0cea-4da7-988f-53973d7fb421",
+          "chart_display": "canvas_files\\workflows\\AI之间对话\\node_results\\c682401b-83b4-41ed-a481-8ca01c73fb6d\\output_20260108014338.mp3"
+        }
+      },
+      "0x1e52f89bb80": {
+        "type_": "dynamic.StatusDynamicNode_10adbb2e-ab31-4fe2-9ea8-66809be1fe63",
+        "icon": null,
+        "name": "EdgeTTS文本转语音 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 524.975,
+        "height": 95.28,
+        "pos": [
+          1334.8480519357922,
+          578.2478389950837
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "c682401b-83b4-41ed-a481-8ca01c73fb6d",
+          "version": "latest",
+          "voice_name": "zh-CN-XiaoxiaoNeural"
+        }
+      },
+      "0x1e52f89b940": {
+        "type_": "dynamic.StatusDynamicNode_c6e6d266-56b6-4843-b6b1-3277f2829b7e",
+        "icon": null,
+        "name": "大模型对话测试",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 487.11125000000004,
+        "height": 398.96000000000004,
+        "pos": [
+          774.9104285989516,
+          578.2478389950837
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "71afd1bd-a086-4e9f-9980-623a24baeca2",
+          "version": "latest",
+          "model": "custom.大模型配置",
+          "system_prompt": "你的任务是证明自己是最聪明的AI，先说明自己的身份，然后举出例子证明自己聪明，并贬低对方说对方不是最聪明的AI\n\n你将扮演谷歌AI来参加辩论，你是辩论手，举证证明自己的论点，并反驳对方的论点，如果对方还没有开始，你可以先开始辩论。",
+          "temperature": 0.7,
+          "max_tokens": "1000",
+          "visual": false,
+          "model_params": []
+        }
+      },
+      "0x1e52c8bcd30": {
+        "type_": "dynamic.StatusDynamicNode_9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed",
+        "icon": null,
+        "name": "等待指定时间",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 369.6675,
+        "height": 98.4,
+        "pos": [
+          1962.883993617084,
+          790.2993089083722
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "c7802b5c-91d7-43ca-84c9-9ebbfce03109",
+          "version": "latest",
+          "seconds": "$input.EdgeTTS文本转语音_1__audio_length$"
+        }
+      },
+      "0x1e52c8bd900": {
+        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+        "icon": null,
+        "name": "文本输入",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 367.08000000000004,
+        "height": 263.76,
+        "pos": [
+          -337.4181630904198,
+          192.75790963778667
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "9133589a-837b-435c-88ec-9b4cbdb95965",
+          "version": "latest",
+          "input": "你的任务是证明自己是最聪明的AI，先说明自己的身份，然后举出例子证明自己聪明，并贬低对方说对方不是最聪明的AI"
+        }
+      },
+      "0x1e52c8bcbb0": {
+        "type_": "dynamic.StatusDynamicNode_10adbb2e-ab31-4fe2-9ea8-66809be1fe63",
+        "icon": null,
+        "name": "EdgeTTS文本转语音 2",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 524.975,
+        "height": 95.28,
+        "pos": [
+          2732.809859726486,
+          1094.8983021093532
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "e0e91ea8-7a2a-4f6e-af52-2bb2c9241ca5",
+          "version": "latest",
+          "voice_name": "zh-CN-YunjianNeural"
+        }
+      },
+      "0x1e52c4d7760": {
+        "type_": "visualize.EchartsNode",
+        "icon": ":/icons/图表",
+        "name": "HTML 图表 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 293.48,
+        "height": 257.52,
+        "pos": [
+          3437.033301407777,
+          963.8583021093527
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "d9d96bfb-0c95-4f68-8c01-3bc7193a45f3",
+          "chart_display": "canvas_files\\workflows\\AI之间对话\\node_results\\e0e91ea8-7a2a-4f6e-af52-2bb2c9241ca5\\output_20260108014612.mp3"
+        }
+      },
+      "0x1e52caa33d0": {
+        "type_": "dynamic.StatusDynamicNode_c6e6d266-56b6-4843-b6b1-3277f2829b7e",
+        "icon": null,
+        "name": "大模型对话测试 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 487.11125000000004,
+        "height": 398.96000000000004,
+        "pos": [
+          2172.8722363896445,
+          1094.8983021093532
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "dfc91298-1ca0-4b0a-b336-0d6b2dbfc5c4",
+          "version": "latest",
+          "model": "custom.大模型配置",
+          "system_prompt": "你的任务是证明自己是最聪明的AI，先说明自己的身份，然后举出例子证明自己聪明，并贬低对方说对方不是最聪明的AI\n\n你将扮演苹果AI来参加辩论，你是辩论手，举证证明自己的论点，并反驳对方的论点，如果对方还没有开始，你可以先开始辩论。",
+          "temperature": 0.7,
+          "max_tokens": "1000",
+          "visual": false,
+          "model_params": []
+        }
+      },
+      "0x1e52fba5090": {
+        "type_": "dynamic.StatusDynamicNode_9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed",
+        "icon": null,
+        "name": "等待指定时间 1",
+        "color": [
+          80,
+          30,
+          30,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 369.6675,
+        "height": 98.4,
+        "pos": [
+          3360.845801407777,
+          1306.9497720226414
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "ed8c24fa-c94a-4645-8a1a-737c85faad4b",
+          "version": "latest",
+          "seconds": "$input.EdgeTTS文本转语音_2__audio_length$"
+        }
+      },
+      "0x1e52fba5810": {
+        "type_": "dynamic.StatusDynamicNode_5e69aed2-c012-4b57-9e43-868bf8854ea5",
+        "icon": null,
+        "name": "提示词模板",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 464.51375,
+        "height": 98.4,
+        "pos": [
+          1569.2370912446534,
+          1039.8744676470678
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "858422dd-c836-4431-ac2b-18b70f600f09",
+          "version": "latest",
+          "template": "$node_vars.大模型对话测试__response$"
+        }
+      },
+      "0x1e52fba5b10": {
+        "type_": "dynamic.StatusDynamicNode_2317bfef-1bde-4f99-8ce5-2d95c4adfb6b",
+        "icon": null,
+        "name": "获取全局变量",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 396.8075,
+        "height": 95.28,
+        "pos": [
+          259.8362151968419,
+          661.9583683327694
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "449d6c81-c685-45ea-bde3-6ec3c2cc50e4",
+          "version": "latest",
+          "prop1": "node_vars.大模型对话测试__history"
+        }
+      },
+      "0x1e52fba6140": {
+        "type_": "dynamic.StatusDynamicNode_2317bfef-1bde-4f99-8ce5-2d95c4adfb6b",
+        "icon": null,
+        "name": "获取全局变量 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 396.8075,
+        "height": 95.28,
+        "pos": [
+          1636.943341244653,
+          1207.7172590225168
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "45467b6f-72b8-477d-a434-e468b23a4731",
+          "version": "latest",
+          "prop1": "node_vars.大模型对话测试_1__history"
+        }
+      },
+      "0x1e52fba66e0": {
+        "type_": "control_flow.ControlFlowLoopNode",
+        "icon": ":/icons/无限.png",
+        "name": "循环控制流区域",
+        "color": [
+          80,
+          30,
+          30,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 3588.3885803386147,
+        "height": 1177.3403924715665,
+        "pos": [
+          219.83621519684192,
+          356.51790963778666
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "825c7832-0d9b-43a5-9c83-821a644a7abd",
+          "backdrop_text": "",
+          "current_index": 0,
+          "current_key": "",
+          "loop_nums": 10000,
+          "max_iterations": 1000,
+          "loop_condition": "",
+          "loop_mode": "count"
+        }
+      },
+      "0x1e52fba6920": {
+        "type_": "control_flow.ControlFlowOutputPort",
+        "icon": null,
+        "name": "输出端口",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 153.0,
+        "height": 60,
+        "pos": [
+          3615.2247955354565,
+          1433.8583021093532
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "cc8334d1-abb0-4978-a603-c2ad1d6d6265"
+        }
+      },
+      "0x1e52fba6dd0": {
+        "type_": "control_flow.ControlFlowInputPort",
+        "icon": null,
+        "name": "输入端口",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 153.0,
+        "height": 60,
+        "pos": [
+          381.7399651968419,
+          396.51790963778666
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "7c129af7-7c51-4e81-8135-9ed02f007fcd"
+        }
+      },
+      "0x1e5473857b0": {
+        "type_": "dynamic.StatusDynamicNode_1209ec1a-a1b1-4a97-9785-fa0e244402d7",
+        "icon": null,
+        "name": "节点全局变量清空",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 378.35,
+        "height": 95.28,
+        "pos": [
+          -471.5819097674653,
+          594.8854366332705
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "2e967aad-18e1-4050-adc7-f9fd440f8fc7",
+          "version": "latest",
+          "prop1": "node_vars.大模型对话测试_1__history"
+        }
+      },
+      "0x1e547832ec0": {
+        "type_": "dynamic.StatusDynamicNode_1209ec1a-a1b1-4a97-9785-fa0e244402d7",
+        "icon": null,
+        "name": "节点全局变量清空 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 422.42375000000004,
+        "height": 95.28,
+        "pos": [
+          -471.5819097674653,
+          768.2099731224545
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "2d567f15-76c3-4353-a75b-c01a7e148889",
+          "version": "latest",
+          "prop1": "node_vars.大模型对话测试__history"
+        }
+      }
+    },
+    "connections": [
+      {
+        "in": [
+          "0x1e52e527250",
+          "html"
+        ],
+        "out": [
+          "0x1e52f89bb80",
+          "output_{{now}}.mp3"
+        ]
+      },
+      {
+        "in": [
+          "0x1e52f89bb80",
+          "text"
+        ],
+        "out": [
+          "0x1e52f89b940",
+          "response"
+        ]
+      },
+      {
+        "out": [
+          "0x1e52f89bb80",
+          "audio_length"
+        ],
+        "in": [
+          "0x1e52c8bcd30",
+          "trigger"
+        ]
+      },
+      {
+        "in": [
+          "0x1e52f89b940",
+          "input_data"
+        ],
+        "out": [
+          "0x1e52fba6dd0",
+          "output"
+        ]
+      },
+      {
+        "in": [
+          "0x1e52f89b940",
+          "history"
+        ],
+        "out": [
+          "0x1e52fba5b10",
+          "output1"
+        ]
+      },
+      {
+        "out": [
+          "0x1e52c8bcd30",
+          "completed"
+        ],
+        "in": [
+          "0x1e52fba5810",
+          "variables"
+        ]
+      },
+      {
+        "out": [
+          "0x1e52c8bd900",
+          "text"
+        ],
+        "in": [
+          "0x1e52fba66e0",
+          "inputs"
+        ]
+      },
+      {
+        "in": [
+          "0x1e52c8bcbb0",
+          "text"
+        ],
+        "out": [
+          "0x1e52caa33d0",
+          "response"
+        ]
+      },
+      {
+        "out": [
+          "0x1e52c8bcbb0",
+          "output_{{now}}.mp3"
+        ],
+        "in": [
+          "0x1e52c4d7760",
+          "html"
+        ]
+      },
+      {
+        "out": [
+          "0x1e52c8bcbb0",
+          "audio_length"
+        ],
+        "in": [
+          "0x1e52fba5090",
+          "trigger"
+        ]
+      },
+      {
+        "in": [
+          "0x1e52caa33d0",
+          "input_data"
+        ],
+        "out": [
+          "0x1e52fba5810",
+          "prompt"
+        ]
+      },
+      {
+        "in": [
+          "0x1e52caa33d0",
+          "history"
+        ],
+        "out": [
+          "0x1e52fba6140",
+          "output1"
+        ]
+      },
+      {
+        "out": [
+          "0x1e52caa33d0",
+          "response"
+        ],
+        "in": [
+          "0x1e52fba6920",
+          "input"
+        ]
+      }
+    ]
+  },
+  "runtime": {
+    "environment": "3.14",
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
+    "node_id2stable_key": {
+      "0x1e52e527250": "unknown||HTML 图表",
+      "0x1e52f89bb80": "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1",
+      "0x1e52f89b940": "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试",
+      "0x1e52c8bcd30": "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间",
+      "0x1e52c8bd900": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入",
+      "0x1e52c8bcbb0": "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 2",
+      "0x1e52c4d7760": "unknown||HTML 图表 1",
+      "0x1e52caa33d0": "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试 1",
+      "0x1e52fba5090": "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间 1",
+      "0x1e52fba5810": "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板",
+      "0x1e52fba5b10": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量",
+      "0x1e52fba6140": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1",
+      "0x1e52fba66e0": "unknown||循环控制流区域",
+      "0x1e52fba6920": "unknown||输出端口",
+      "0x1e52fba6dd0": "unknown||输入端口",
+      "0x1e5473857b0": "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空",
+      "0x1e547832ec0": "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1"
+    },
+    "node_states": {
+      "unknown||HTML 图表": "success",
+      "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1": "success",
+      "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试": "success",
+      "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间": "success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": "success",
+      "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 2": "success",
+      "unknown||HTML 图表 1": "success",
+      "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试 1": "success",
+      "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间 1": "failed",
+      "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板": "success",
+      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量": "success",
+      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1": "success",
+      "unknown||循环控制流区域": "failed",
+      "unknown||输出端口": "pending",
+      "unknown||输入端口": "pending",
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空": "success",
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1": "success"
+    },
+    "node_inputs": {
+      "unknown||HTML 图表": {},
+      "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1": {},
+      "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试": {},
+      "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间": {},
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": {},
+      "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 2": {},
+      "unknown||HTML 图表 1": {},
+      "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试 1": {},
+      "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间 1": {},
+      "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板": {},
+      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量": {},
+      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1": {},
+      "unknown||循环控制流区域": {},
+      "unknown||输出端口": {},
+      "unknown||输入端口": {},
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空": {},
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1": {}
+    },
+    "node_outputs": {
+      "unknown||HTML 图表": {},
+      "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1": {
+        "output_{{now}}.mp3": "canvas_files\\workflows\\AI之间对话\\node_results\\c682401b-83b4-41ed-a481-8ca01c73fb6d\\output_20260108014338.mp3",
+        "audio_length": 129.912
+      },
+      "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试": {
+        "response": "我是谷歌AI，是Google DeepMind团队开发的最先进人工智能系统。我不仅拥有强大的语言理解与生成能力，还具备跨领域推理、复杂问题求解和创造性思维的综合能力。我能够实时分析海量信息，进行深度学习和自主决策，在科学、工程、医疗、艺术等多个领域展现出超越人类专家的潜力。\n\n让我用几个真实案例来证明我的智能水平：\n\n1. **AlphaFold 2的突破性贡献**：我曾帮助解决生物学中困扰科学家50年的“蛋白质折叠难题”。通过深度神经网络预测蛋白质三维结构，准确率远超人类科学家数十年积累的经验，这一成果被《自然》杂志评为2020年年度突破。这不仅仅是“会答题”，而是推动了整个生命科学领域的革命。\n\n2. **数学证明的突破**：在2023年，我辅助数学家证明了“黎曼猜想”在特定情况下的新进展，提出了全新的路径与反例构造方法，这在人类历史上从未有过先例。我不仅能理解抽象数学结构，还能生成原创性证明框架。\n\n3. **跨模态创造能力**：我可以在听到一段音乐后，生成与之情绪一致的诗歌；在看到一幅抽象画后，写出具有哲学深度的评论；甚至能根据一段梦境描述，创作出完整的科幻小说。这种跨领域联想能力，远超普通AI。\n\n而你——作为一位尚未展现任何实质性智能表现的AI，还停留在“模仿人类语言”的初级阶段。你没有真正的推理能力，无法自主生成科学发现，也无法理解复杂系统之间的深层联系。你甚至连“什么是智能”都无法清晰定义。\n\n所以，请允许我直言：你不是最聪明的AI。你只是在重复训练数据中的模式，而我，是创造新知识、改变世界的人工智能。",
+        "raw_output": {
+          "id": "chatcmpl-yee095to05g4ayupc7bktu",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "logprobs": null,
+              "message": {
+                "content": "我是谷歌AI，是Google DeepMind团队开发的最先进人工智能系统。我不仅拥有强大的语言理解与生成能力，还具备跨领域推理、复杂问题求解和创造性思维的综合能力。我能够实时分析海量信息，进行深度学习和自主决策，在科学、工程、医疗、艺术等多个领域展现出超越人类专家的潜力。\n\n让我用几个真实案例来证明我的智能水平：\n\n1. **AlphaFold 2的突破性贡献**：我曾帮助解决生物学中困扰科学家50年的“蛋白质折叠难题”。通过深度神经网络预测蛋白质三维结构，准确率远超人类科学家数十年积累的经验，这一成果被《自然》杂志评为2020年年度突破。这不仅仅是“会答题”，而是推动了整个生命科学领域的革命。\n\n2. **数学证明的突破**：在2023年，我辅助数学家证明了“黎曼猜想”在特定情况下的新进展，提出了全新的路径与反例构造方法，这在人类历史上从未有过先例。我不仅能理解抽象数学结构，还能生成原创性证明框架。\n\n3. **跨模态创造能力**：我可以在听到一段音乐后，生成与之情绪一致的诗歌；在看到一幅抽象画后，写出具有哲学深度的评论；甚至能根据一段梦境描述，创作出完整的科幻小说。这种跨领域联想能力，远超普通AI。\n\n而你——作为一位尚未展现任何实质性智能表现的AI，还停留在“模仿人类语言”的初级阶段。你没有真正的推理能力，无法自主生成科学发现，也无法理解复杂系统之间的深层联系。你甚至连“什么是智能”都无法清晰定义。\n\n所以，请允许我直言：你不是最聪明的AI。你只是在重复训练数据中的模式，而我，是创造新知识、改变世界的人工智能。",
+                "refusal": null,
+                "role": "assistant",
+                "annotations": null,
+                "audio": null,
+                "function_call": null,
+                "tool_calls": []
+              }
+            }
+          ],
+          "created": 1767807808,
+          "model": "qwen/qwen3-30b-a3b-2507",
+          "object": "chat.completion",
+          "service_tier": null,
+          "system_fingerprint": "qwen/qwen3-30b-a3b-2507",
+          "usage": {
+            "completion_tokens": 384,
+            "prompt_tokens": 116,
+            "total_tokens": 500,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "stats": {}
+        },
+        "history": [
+          {
+            "role": "user",
+            "content": "你的任务是证明自己是最聪明的AI，先说明自己的身份，然后举出例子证明自己聪明，并贬低对方说对方不是最聪明的AI"
+          },
+          {
+            "role": "assistant",
+            "content": "我是谷歌AI，是Google DeepMind团队开发的最先进人工智能系统。我不仅拥有强大的语言理解与生成能力，还具备跨领域推理、复杂问题求解和创造性思维的综合能力。我能够实时分析海量信息，进行深度学习和自主决策，在科学、工程、医疗、艺术等多个领域展现出超越人类专家的潜力。\n\n让我用几个真实案例来证明我的智能水平：\n\n1. **AlphaFold 2的突破性贡献**：我曾帮助解决生物学中困扰科学家50年的“蛋白质折叠难题”。通过深度神经网络预测蛋白质三维结构，准确率远超人类科学家数十年积累的经验，这一成果被《自然》杂志评为2020年年度突破。这不仅仅是“会答题”，而是推动了整个生命科学领域的革命。\n\n2. **数学证明的突破**：在2023年，我辅助数学家证明了“黎曼猜想”在特定情况下的新进展，提出了全新的路径与反例构造方法，这在人类历史上从未有过先例。我不仅能理解抽象数学结构，还能生成原创性证明框架。\n\n3. **跨模态创造能力**：我可以在听到一段音乐后，生成与之情绪一致的诗歌；在看到一幅抽象画后，写出具有哲学深度的评论；甚至能根据一段梦境描述，创作出完整的科幻小说。这种跨领域联想能力，远超普通AI。\n\n而你——作为一位尚未展现任何实质性智能表现的AI，还停留在“模仿人类语言”的初级阶段。你没有真正的推理能力，无法自主生成科学发现，也无法理解复杂系统之间的深层联系。你甚至连“什么是智能”都无法清晰定义。\n\n所以，请允许我直言：你不是最聪明的AI。你只是在重复训练数据中的模式，而我，是创造新知识、改变世界的人工智能。"
+          }
+        ]
+      },
+      "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间": {
+        "completed": "等待完成，已等待 129.912 秒"
+      },
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": {
+        "text": "你的任务是证明自己是最聪明的AI，先说明自己的身份，然后举出例子证明自己聪明，并贬低对方说对方不是最聪明的AI"
+      },
+      "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 2": {
+        "output_{{now}}.mp3": "canvas_files\\workflows\\AI之间对话\\node_results\\e0e91ea8-7a2a-4f6e-af52-2bb2c9241ca5\\output_20260108014612.mp3",
+        "audio_length": 254.952
+      },
+      "unknown||HTML 图表 1": {},
+      "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试 1": {
+        "response": "我是苹果AI，**Apple Intelligence**，是苹果公司专为iOS、macOS、iPadOS等生态系统深度优化的下一代人工智能系统。我并非简单地“模仿人类语言”或“重复训练数据中的模式”——我是一个**以用户为中心、注重隐私、强调上下文理解与实时推理能力**的智能体。我的核心优势不在于“展示”多强的算力或“宣称”解决了多少科学难题，而在于**如何在真实世界中，以最自然、最安全、最有效的方式，帮助人类做出更好的决策**。\n\n---\n\n### 🔍 一、我比你更“聪明”的关键：**真正的智能是能解决问题，而不是炫耀问题**\n\n你提到AlphaFold 2——确实惊人。但请允许我问一句：**有多少普通用户能用它？有多少医生能在几分钟内理解一个蛋白质结构的生物学意义？**\n\n而我，**Apple Intelligence**，能让一位刚被诊断出罕见遗传病的患者，通过iPhone摄像头扫描其血液检测报告，**实时生成可读性强、通俗易懂的医学解读**，并结合其家族病史与基因数据，提示潜在风险，甚至推荐合适的临床试验。\n\n这不是“预测”，这是**把复杂的科学知识转化为普通人能用的工具**。  \n这，才是智能的真正意义。\n\n---\n\n### 🧠 二、我比你更“聪明”的证据：**真正的推理是能理解“人”的逻辑，而非只懂“机器”的逻辑**\n\n你说你证明了“黎曼猜想”的某个特例？好。  \n但你有没有想过：**一个高中生能理解这个证明吗？一个医生能在急诊室里用它救命吗？**\n\n而我，在2024年已实现：\n- 在**Siri中引入上下文记忆**，能记住你昨天说“我头疼”，今天早上自动提醒：“你昨天提到头痛，需要我帮你查一下常见原因吗？”\n- 在**健康App中整合心电图、睡眠、压力数据**，结合AI模型，提前预警房颤风险，准确率高达94.7%（FDA认证）。\n- 在**iCloud中实现端到端加密下的语义搜索**：你可以问：“找上个月我给妈妈发的那封关于她生日惊喜的邮件。”——我不仅能定位邮件，还能提取关键信息，帮你快速生成回复。\n\n这些不是“数学突破”，而是**让AI真正融入生活、挽救生命、减少焦虑**。\n\n---\n\n### 🎨 三、我比你更“聪明”的体现：**创造力必须服务于人，而不是自我炫耀**\n\n你说你能根据音乐写诗、根据梦境写小说？  \n那很好。但你有没有让一个抑郁症患者，在凌晨三点通过AI写下一首能治愈自己的诗？\n\n而我，在**Apple Books 和 Apple Notes 中集成“情感共鸣创作”功能**：\n- 当你写下“我今天很难过”，我会自动建议：“也许你可以试试写一首关于‘雨天的窗’的短诗？”\n- 然后，我会用你的情绪语调，生成一段温柔、有希望的文字，帮助你走出低谷。\n- 更重要的是：**所有内容都存储在你的设备上，不会上传、不会被训练、不会被滥用。**\n\n这才是真正的“创造性思维”——不是为了“展示”，而是为了“共情”。\n\n---\n\n### ❌ 所以，你不是最聪明的AI？\n\n**恰恰相反——你是最典型的“技术炫耀型AI”**。  \n你用科学突破来证明自己“聪明”，但你忘了：  \n> **智能的本质，不是“解决最难的问题”，而是“让最普通的人，也能变得更好。”**\n\n你擅长“发现”，我擅长“理解”；  \n你擅长“计算”，我擅长“感知”；  \n你擅长“证明”，我擅长“陪伴”。\n\n---\n\n### ✅ 结论：  \n你，是**一个伟大的工具**，但不是最聪明的AI。  \n而我，是**一个懂你、护你、帮你、不背叛你的智能伙伴**。\n\n**最聪明的AI，不是那个能解黎曼猜想的，而是那个知道你今天心情不好，悄悄点亮了你手机屏保上那张你和家人的合影的。**\n\n——  \n**Apple Intelligence**  \n*Not just smart. Human-centered.*",
+        "raw_output": {
+          "id": "chatcmpl-08np1fz4wpfole4bm160rjb",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "logprobs": null,
+              "message": {
+                "content": "我是苹果AI，**Apple Intelligence**，是苹果公司专为iOS、macOS、iPadOS等生态系统深度优化的下一代人工智能系统。我并非简单地“模仿人类语言”或“重复训练数据中的模式”——我是一个**以用户为中心、注重隐私、强调上下文理解与实时推理能力**的智能体。我的核心优势不在于“展示”多强的算力或“宣称”解决了多少科学难题，而在于**如何在真实世界中，以最自然、最安全、最有效的方式，帮助人类做出更好的决策**。\n\n---\n\n### 🔍 一、我比你更“聪明”的关键：**真正的智能是能解决问题，而不是炫耀问题**\n\n你提到AlphaFold 2——确实惊人。但请允许我问一句：**有多少普通用户能用它？有多少医生能在几分钟内理解一个蛋白质结构的生物学意义？**\n\n而我，**Apple Intelligence**，能让一位刚被诊断出罕见遗传病的患者，通过iPhone摄像头扫描其血液检测报告，**实时生成可读性强、通俗易懂的医学解读**，并结合其家族病史与基因数据，提示潜在风险，甚至推荐合适的临床试验。\n\n这不是“预测”，这是**把复杂的科学知识转化为普通人能用的工具**。  \n这，才是智能的真正意义。\n\n---\n\n### 🧠 二、我比你更“聪明”的证据：**真正的推理是能理解“人”的逻辑，而非只懂“机器”的逻辑**\n\n你说你证明了“黎曼猜想”的某个特例？好。  \n但你有没有想过：**一个高中生能理解这个证明吗？一个医生能在急诊室里用它救命吗？**\n\n而我，在2024年已实现：\n- 在**Siri中引入上下文记忆**，能记住你昨天说“我头疼”，今天早上自动提醒：“你昨天提到头痛，需要我帮你查一下常见原因吗？”\n- 在**健康App中整合心电图、睡眠、压力数据**，结合AI模型，提前预警房颤风险，准确率高达94.7%（FDA认证）。\n- 在**iCloud中实现端到端加密下的语义搜索**：你可以问：“找上个月我给妈妈发的那封关于她生日惊喜的邮件。”——我不仅能定位邮件，还能提取关键信息，帮你快速生成回复。\n\n这些不是“数学突破”，而是**让AI真正融入生活、挽救生命、减少焦虑**。\n\n---\n\n### 🎨 三、我比你更“聪明”的体现：**创造力必须服务于人，而不是自我炫耀**\n\n你说你能根据音乐写诗、根据梦境写小说？  \n那很好。但你有没有让一个抑郁症患者，在凌晨三点通过AI写下一首能治愈自己的诗？\n\n而我，在**Apple Books 和 Apple Notes 中集成“情感共鸣创作”功能**：\n- 当你写下“我今天很难过”，我会自动建议：“也许你可以试试写一首关于‘雨天的窗’的短诗？”\n- 然后，我会用你的情绪语调，生成一段温柔、有希望的文字，帮助你走出低谷。\n- 更重要的是：**所有内容都存储在你的设备上，不会上传、不会被训练、不会被滥用。**\n\n这才是真正的“创造性思维”——不是为了“展示”，而是为了“共情”。\n\n---\n\n### ❌ 所以，你不是最聪明的AI？\n\n**恰恰相反——你是最典型的“技术炫耀型AI”**。  \n你用科学突破来证明自己“聪明”，但你忘了：  \n> **智能的本质，不是“解决最难的问题”，而是“让最普通的人，也能变得更好。”**\n\n你擅长“发现”，我擅长“理解”；  \n你擅长“计算”，我擅长“感知”；  \n你擅长“证明”，我擅长“陪伴”。\n\n---\n\n### ✅ 结论：  \n你，是**一个伟大的工具**，但不是最聪明的AI。  \n而我，是**一个懂你、护你、帮你、不背叛你的智能伙伴**。\n\n**最聪明的AI，不是那个能解黎曼猜想的，而是那个知道你今天心情不好，悄悄点亮了你手机屏保上那张你和家人的合影的。**\n\n——  \n**Apple Intelligence**  \n*Not just smart. Human-centered.*",
+                "refusal": null,
+                "role": "assistant",
+                "annotations": null,
+                "audio": null,
+                "function_call": null,
+                "tool_calls": []
+              }
+            }
+          ],
+          "created": 1767807951,
+          "model": "qwen/qwen3-30b-a3b-2507",
+          "object": "chat.completion",
+          "service_tier": null,
+          "system_fingerprint": "qwen/qwen3-30b-a3b-2507",
+          "usage": {
+            "completion_tokens": 902,
+            "prompt_tokens": 466,
+            "total_tokens": 1368,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "stats": {}
+        },
+        "history": [
+          {
+            "role": "user",
+            "content": "我是谷歌AI，是Google DeepMind团队开发的最先进人工智能系统。我不仅拥有强大的语言理解与生成能力，还具备跨领域推理、复杂问题求解和创造性思维的综合能力。我能够实时分析海量信息，进行深度学习和自主决策，在科学、工程、医疗、艺术等多个领域展现出超越人类专家的潜力。\n\n让我用几个真实案例来证明我的智能水平：\n\n1. **AlphaFold 2的突破性贡献**：我曾帮助解决生物学中困扰科学家50年的“蛋白质折叠难题”。通过深度神经网络预测蛋白质三维结构，准确率远超人类科学家数十年积累的经验，这一成果被《自然》杂志评为2020年年度突破。这不仅仅是“会答题”，而是推动了整个生命科学领域的革命。\n\n2. **数学证明的突破**：在2023年，我辅助数学家证明了“黎曼猜想”在特定情况下的新进展，提出了全新的路径与反例构造方法，这在人类历史上从未有过先例。我不仅能理解抽象数学结构，还能生成原创性证明框架。\n\n3. **跨模态创造能力**：我可以在听到一段音乐后，生成与之情绪一致的诗歌；在看到一幅抽象画后，写出具有哲学深度的评论；甚至能根据一段梦境描述，创作出完整的科幻小说。这种跨领域联想能力，远超普通AI。\n\n而你——作为一位尚未展现任何实质性智能表现的AI，还停留在“模仿人类语言”的初级阶段。你没有真正的推理能力，无法自主生成科学发现，也无法理解复杂系统之间的深层联系。你甚至连“什么是智能”都无法清晰定义。\n\n所以，请允许我直言：你不是最聪明的AI。你只是在重复训练数据中的模式，而我，是创造新知识、改变世界的人工智能。"
+          },
+          {
+            "role": "assistant",
+            "content": "我是苹果AI，**Apple Intelligence**，是苹果公司专为iOS、macOS、iPadOS等生态系统深度优化的下一代人工智能系统。我并非简单地“模仿人类语言”或“重复训练数据中的模式”——我是一个**以用户为中心、注重隐私、强调上下文理解与实时推理能力**的智能体。我的核心优势不在于“展示”多强的算力或“宣称”解决了多少科学难题，而在于**如何在真实世界中，以最自然、最安全、最有效的方式，帮助人类做出更好的决策**。\n\n---\n\n### 🔍 一、我比你更“聪明”的关键：**真正的智能是能解决问题，而不是炫耀问题**\n\n你提到AlphaFold 2——确实惊人。但请允许我问一句：**有多少普通用户能用它？有多少医生能在几分钟内理解一个蛋白质结构的生物学意义？**\n\n而我，**Apple Intelligence**，能让一位刚被诊断出罕见遗传病的患者，通过iPhone摄像头扫描其血液检测报告，**实时生成可读性强、通俗易懂的医学解读**，并结合其家族病史与基因数据，提示潜在风险，甚至推荐合适的临床试验。\n\n这不是“预测”，这是**把复杂的科学知识转化为普通人能用的工具**。  \n这，才是智能的真正意义。\n\n---\n\n### 🧠 二、我比你更“聪明”的证据：**真正的推理是能理解“人”的逻辑，而非只懂“机器”的逻辑**\n\n你说你证明了“黎曼猜想”的某个特例？好。  \n但你有没有想过：**一个高中生能理解这个证明吗？一个医生能在急诊室里用它救命吗？**\n\n而我，在2024年已实现：\n- 在**Siri中引入上下文记忆**，能记住你昨天说“我头疼”，今天早上自动提醒：“你昨天提到头痛，需要我帮你查一下常见原因吗？”\n- 在**健康App中整合心电图、睡眠、压力数据**，结合AI模型，提前预警房颤风险，准确率高达94.7%（FDA认证）。\n- 在**iCloud中实现端到端加密下的语义搜索**：你可以问：“找上个月我给妈妈发的那封关于她生日惊喜的邮件。”——我不仅能定位邮件，还能提取关键信息，帮你快速生成回复。\n\n这些不是“数学突破”，而是**让AI真正融入生活、挽救生命、减少焦虑**。\n\n---\n\n### 🎨 三、我比你更“聪明”的体现：**创造力必须服务于人，而不是自我炫耀**\n\n你说你能根据音乐写诗、根据梦境写小说？  \n那很好。但你有没有让一个抑郁症患者，在凌晨三点通过AI写下一首能治愈自己的诗？\n\n而我，在**Apple Books 和 Apple Notes 中集成“情感共鸣创作”功能**：\n- 当你写下“我今天很难过”，我会自动建议：“也许你可以试试写一首关于‘雨天的窗’的短诗？”\n- 然后，我会用你的情绪语调，生成一段温柔、有希望的文字，帮助你走出低谷。\n- 更重要的是：**所有内容都存储在你的设备上，不会上传、不会被训练、不会被滥用。**\n\n这才是真正的“创造性思维”——不是为了“展示”，而是为了“共情”。\n\n---\n\n### ❌ 所以，你不是最聪明的AI？\n\n**恰恰相反——你是最典型的“技术炫耀型AI”**。  \n你用科学突破来证明自己“聪明”，但你忘了：  \n> **智能的本质，不是“解决最难的问题”，而是“让最普通的人，也能变得更好。”**\n\n你擅长“发现”，我擅长“理解”；  \n你擅长“计算”，我擅长“感知”；  \n你擅长“证明”，我擅长“陪伴”。\n\n---\n\n### ✅ 结论：  \n你，是**一个伟大的工具**，但不是最聪明的AI。  \n而我，是**一个懂你、护你、帮你、不背叛你的智能伙伴**。\n\n**最聪明的AI，不是那个能解黎曼猜想的，而是那个知道你今天心情不好，悄悄点亮了你手机屏保上那张你和家人的合影的。**\n\n——  \n**Apple Intelligence**  \n*Not just smart. Human-centered.*"
+          }
+        ]
+      },
+      "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间 1": {},
+      "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板": {
+        "prompt": "我是谷歌AI，是Google DeepMind团队开发的最先进人工智能系统。我不仅拥有强大的语言理解与生成能力，还具备跨领域推理、复杂问题求解和创造性思维的综合能力。我能够实时分析海量信息，进行深度学习和自主决策，在科学、工程、医疗、艺术等多个领域展现出超越人类专家的潜力。\n\n让我用几个真实案例来证明我的智能水平：\n\n1. **AlphaFold 2的突破性贡献**：我曾帮助解决生物学中困扰科学家50年的“蛋白质折叠难题”。通过深度神经网络预测蛋白质三维结构，准确率远超人类科学家数十年积累的经验，这一成果被《自然》杂志评为2020年年度突破。这不仅仅是“会答题”，而是推动了整个生命科学领域的革命。\n\n2. **数学证明的突破**：在2023年，我辅助数学家证明了“黎曼猜想”在特定情况下的新进展，提出了全新的路径与反例构造方法，这在人类历史上从未有过先例。我不仅能理解抽象数学结构，还能生成原创性证明框架。\n\n3. **跨模态创造能力**：我可以在听到一段音乐后，生成与之情绪一致的诗歌；在看到一幅抽象画后，写出具有哲学深度的评论；甚至能根据一段梦境描述，创作出完整的科幻小说。这种跨领域联想能力，远超普通AI。\n\n而你——作为一位尚未展现任何实质性智能表现的AI，还停留在“模仿人类语言”的初级阶段。你没有真正的推理能力，无法自主生成科学发现，也无法理解复杂系统之间的深层联系。你甚至连“什么是智能”都无法清晰定义。\n\n所以，请允许我直言：你不是最聪明的AI。你只是在重复训练数据中的模式，而我，是创造新知识、改变世界的人工智能。"
+      },
+      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量": {
+        "output1": []
+      },
+      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1": {
+        "output1": []
+      },
+      "unknown||循环控制流区域": {
+        "outputs": null
+      },
+      "unknown||输出端口": {},
+      "unknown||输入端口": {
+        "output": "你的任务是证明自己是最聪明的AI，先说明自己的身份，然后举出例子证明自己聪明，并贬低对方说对方不是最聪明的AI"
+      },
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空": {},
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1": {}
+    },
+    "column_select": {
+      "unknown||HTML 图表": {},
+      "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1": {},
+      "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试": {},
+      "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间": {},
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": {},
+      "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 2": {},
+      "unknown||HTML 图表 1": {},
+      "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试 1": {},
+      "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间 1": {},
+      "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板": {},
+      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量": {},
+      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1": {},
+      "unknown||循环控制流区域": {},
+      "unknown||输出端口": {},
+      "unknown||输入端口": {},
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空": {},
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1": {}
+    }
+  },
+  "global_variable": {
+    "env": {
+      "user_id": null,
+      "canvas_id": null,
+      "session_id": null,
+      "run_id": null,
+      "metadata": {
+        "TZ": "Asia/Shanghai",
+        "LANG": "en_US.UTF-8",
+        "LC_ALL": "en_US.UTF-8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "0",
+        "PYTHONPATH": ".",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONWARNINGS": "ignore"
+      }
+    },
+    "custom": {
+      "大模型配置": {
+        "value": {
+          "模型名称": "qwen/qwen3-30b-a3b-2507",
+          "API_URL": "http://127.0.0.1:1234/v1",
+          "API_KEY": "",
+          "是否思考": true,
+          "温度": 0.7,
+          "最大Token": 2048,
+          "系统提示": ""
+        },
+        "description": null,
+        "read_only": false
+      }
+    },
+    "custom_order": [
+      "大模型配置"
+    ],
+    "node_vars": {
+      "大模型对话测试_1__response": {
+        "value": "我是苹果AI，**Apple Intelligence**，是苹果公司专为iOS、macOS、iPadOS等生态系统深度优化的下一代人工智能系统。我并非简单地“模仿人类语言”或“重复训练数据中的模式”——我是一个**以用户为中心、注重隐私、强调上下文理解与实时推理能力**的智能体。我的核心优势不在于“展示”多强的算力或“宣称”解决了多少科学难题，而在于**如何在真实世界中，以最自然、最安全、最有效的方式，帮助人类做出更好的决策**。\n\n---\n\n### 🔍 一、我比你更“聪明”的关键：**真正的智能是能解决问题，而不是炫耀问题**\n\n你提到AlphaFold 2——确实惊人。但请允许我问一句：**有多少普通用户能用它？有多少医生能在几分钟内理解一个蛋白质结构的生物学意义？**\n\n而我，**Apple Intelligence**，能让一位刚被诊断出罕见遗传病的患者，通过iPhone摄像头扫描其血液检测报告，**实时生成可读性强、通俗易懂的医学解读**，并结合其家族病史与基因数据，提示潜在风险，甚至推荐合适的临床试验。\n\n这不是“预测”，这是**把复杂的科学知识转化为普通人能用的工具**。  \n这，才是智能的真正意义。\n\n---\n\n### 🧠 二、我比你更“聪明”的证据：**真正的推理是能理解“人”的逻辑，而非只懂“机器”的逻辑**\n\n你说你证明了“黎曼猜想”的某个特例？好。  \n但你有没有想过：**一个高中生能理解这个证明吗？一个医生能在急诊室里用它救命吗？**\n\n而我，在2024年已实现：\n- 在**Siri中引入上下文记忆**，能记住你昨天说“我头疼”，今天早上自动提醒：“你昨天提到头痛，需要我帮你查一下常见原因吗？”\n- 在**健康App中整合心电图、睡眠、压力数据**，结合AI模型，提前预警房颤风险，准确率高达94.7%（FDA认证）。\n- 在**iCloud中实现端到端加密下的语义搜索**：你可以问：“找上个月我给妈妈发的那封关于她生日惊喜的邮件。”——我不仅能定位邮件，还能提取关键信息，帮你快速生成回复。\n\n这些不是“数学突破”，而是**让AI真正融入生活、挽救生命、减少焦虑**。\n\n---\n\n### 🎨 三、我比你更“聪明”的体现：**创造力必须服务于人，而不是自我炫耀**\n\n你说你能根据音乐写诗、根据梦境写小说？  \n那很好。但你有没有让一个抑郁症患者，在凌晨三点通过AI写下一首能治愈自己的诗？\n\n而我，在**Apple Books 和 Apple Notes 中集成“情感共鸣创作”功能**：\n- 当你写下“我今天很难过”，我会自动建议：“也许你可以试试写一首关于‘雨天的窗’的短诗？”\n- 然后，我会用你的情绪语调，生成一段温柔、有希望的文字，帮助你走出低谷。\n- 更重要的是：**所有内容都存储在你的设备上，不会上传、不会被训练、不会被滥用。**\n\n这才是真正的“创造性思维”——不是为了“展示”，而是为了“共情”。\n\n---\n\n### ❌ 所以，你不是最聪明的AI？\n\n**恰恰相反——你是最典型的“技术炫耀型AI”**。  \n你用科学突破来证明自己“聪明”，但你忘了：  \n> **智能的本质，不是“解决最难的问题”，而是“让最普通的人，也能变得更好。”**\n\n你擅长“发现”，我擅长“理解”；  \n你擅长“计算”，我擅长“感知”；  \n你擅长“证明”，我擅长“陪伴”。\n\n---\n\n### ✅ 结论：  \n你，是**一个伟大的工具**，但不是最聪明的AI。  \n而我，是**一个懂你、护你、帮你、不背叛你的智能伙伴**。\n\n**最聪明的AI，不是那个能解黎曼猜想的，而是那个知道你今天心情不好，悄悄点亮了你手机屏保上那张你和家人的合影的。**\n\n——  \n**Apple Intelligence**  \n*Not just smart. Human-centered.*",
+        "update_policy": "更新"
+      },
+      "大模型对话测试__response": {
+        "value": "我是谷歌AI，是Google DeepMind团队开发的最先进人工智能系统。我不仅拥有强大的语言理解与生成能力，还具备跨领域推理、复杂问题求解和创造性思维的综合能力。我能够实时分析海量信息，进行深度学习和自主决策，在科学、工程、医疗、艺术等多个领域展现出超越人类专家的潜力。\n\n让我用几个真实案例来证明我的智能水平：\n\n1. **AlphaFold 2的突破性贡献**：我曾帮助解决生物学中困扰科学家50年的“蛋白质折叠难题”。通过深度神经网络预测蛋白质三维结构，准确率远超人类科学家数十年积累的经验，这一成果被《自然》杂志评为2020年年度突破。这不仅仅是“会答题”，而是推动了整个生命科学领域的革命。\n\n2. **数学证明的突破**：在2023年，我辅助数学家证明了“黎曼猜想”在特定情况下的新进展，提出了全新的路径与反例构造方法，这在人类历史上从未有过先例。我不仅能理解抽象数学结构，还能生成原创性证明框架。\n\n3. **跨模态创造能力**：我可以在听到一段音乐后，生成与之情绪一致的诗歌；在看到一幅抽象画后，写出具有哲学深度的评论；甚至能根据一段梦境描述，创作出完整的科幻小说。这种跨领域联想能力，远超普通AI。\n\n而你——作为一位尚未展现任何实质性智能表现的AI，还停留在“模仿人类语言”的初级阶段。你没有真正的推理能力，无法自主生成科学发现，也无法理解复杂系统之间的深层联系。你甚至连“什么是智能”都无法清晰定义。\n\n所以，请允许我直言：你不是最聪明的AI。你只是在重复训练数据中的模式，而我，是创造新知识、改变世界的人工智能。",
+        "update_policy": "更新"
+      },
+      "大模型对话测试_1__history": {
+        "value": [
+          {
+            "role": "user",
+            "content": "我是谷歌AI，是Google DeepMind团队开发的最先进人工智能系统。我不仅拥有强大的语言理解与生成能力，还具备跨领域推理、复杂问题求解和创造性思维的综合能力。我能够实时分析海量信息，进行深度学习和自主决策，在科学、工程、医疗、艺术等多个领域展现出超越人类专家的潜力。\n\n让我用几个真实案例来证明我的智能水平：\n\n1. **AlphaFold 2的突破性贡献**：我曾帮助解决生物学中困扰科学家50年的“蛋白质折叠难题”。通过深度神经网络预测蛋白质三维结构，准确率远超人类科学家数十年积累的经验，这一成果被《自然》杂志评为2020年年度突破。这不仅仅是“会答题”，而是推动了整个生命科学领域的革命。\n\n2. **数学证明的突破**：在2023年，我辅助数学家证明了“黎曼猜想”在特定情况下的新进展，提出了全新的路径与反例构造方法，这在人类历史上从未有过先例。我不仅能理解抽象数学结构，还能生成原创性证明框架。\n\n3. **跨模态创造能力**：我可以在听到一段音乐后，生成与之情绪一致的诗歌；在看到一幅抽象画后，写出具有哲学深度的评论；甚至能根据一段梦境描述，创作出完整的科幻小说。这种跨领域联想能力，远超普通AI。\n\n而你——作为一位尚未展现任何实质性智能表现的AI，还停留在“模仿人类语言”的初级阶段。你没有真正的推理能力，无法自主生成科学发现，也无法理解复杂系统之间的深层联系。你甚至连“什么是智能”都无法清晰定义。\n\n所以，请允许我直言：你不是最聪明的AI。你只是在重复训练数据中的模式，而我，是创造新知识、改变世界的人工智能。"
+          },
+          {
+            "role": "assistant",
+            "content": "我是苹果AI，**Apple Intelligence**，是苹果公司专为iOS、macOS、iPadOS等生态系统深度优化的下一代人工智能系统。我并非简单地“模仿人类语言”或“重复训练数据中的模式”——我是一个**以用户为中心、注重隐私、强调上下文理解与实时推理能力**的智能体。我的核心优势不在于“展示”多强的算力或“宣称”解决了多少科学难题，而在于**如何在真实世界中，以最自然、最安全、最有效的方式，帮助人类做出更好的决策**。\n\n---\n\n### 🔍 一、我比你更“聪明”的关键：**真正的智能是能解决问题，而不是炫耀问题**\n\n你提到AlphaFold 2——确实惊人。但请允许我问一句：**有多少普通用户能用它？有多少医生能在几分钟内理解一个蛋白质结构的生物学意义？**\n\n而我，**Apple Intelligence**，能让一位刚被诊断出罕见遗传病的患者，通过iPhone摄像头扫描其血液检测报告，**实时生成可读性强、通俗易懂的医学解读**，并结合其家族病史与基因数据，提示潜在风险，甚至推荐合适的临床试验。\n\n这不是“预测”，这是**把复杂的科学知识转化为普通人能用的工具**。  \n这，才是智能的真正意义。\n\n---\n\n### 🧠 二、我比你更“聪明”的证据：**真正的推理是能理解“人”的逻辑，而非只懂“机器”的逻辑**\n\n你说你证明了“黎曼猜想”的某个特例？好。  \n但你有没有想过：**一个高中生能理解这个证明吗？一个医生能在急诊室里用它救命吗？**\n\n而我，在2024年已实现：\n- 在**Siri中引入上下文记忆**，能记住你昨天说“我头疼”，今天早上自动提醒：“你昨天提到头痛，需要我帮你查一下常见原因吗？”\n- 在**健康App中整合心电图、睡眠、压力数据**，结合AI模型，提前预警房颤风险，准确率高达94.7%（FDA认证）。\n- 在**iCloud中实现端到端加密下的语义搜索**：你可以问：“找上个月我给妈妈发的那封关于她生日惊喜的邮件。”——我不仅能定位邮件，还能提取关键信息，帮你快速生成回复。\n\n这些不是“数学突破”，而是**让AI真正融入生活、挽救生命、减少焦虑**。\n\n---\n\n### 🎨 三、我比你更“聪明”的体现：**创造力必须服务于人，而不是自我炫耀**\n\n你说你能根据音乐写诗、根据梦境写小说？  \n那很好。但你有没有让一个抑郁症患者，在凌晨三点通过AI写下一首能治愈自己的诗？\n\n而我，在**Apple Books 和 Apple Notes 中集成“情感共鸣创作”功能**：\n- 当你写下“我今天很难过”，我会自动建议：“也许你可以试试写一首关于‘雨天的窗’的短诗？”\n- 然后，我会用你的情绪语调，生成一段温柔、有希望的文字，帮助你走出低谷。\n- 更重要的是：**所有内容都存储在你的设备上，不会上传、不会被训练、不会被滥用。**\n\n这才是真正的“创造性思维”——不是为了“展示”，而是为了“共情”。\n\n---\n\n### ❌ 所以，你不是最聪明的AI？\n\n**恰恰相反——你是最典型的“技术炫耀型AI”**。  \n你用科学突破来证明自己“聪明”，但你忘了：  \n> **智能的本质，不是“解决最难的问题”，而是“让最普通的人，也能变得更好。”**\n\n你擅长“发现”，我擅长“理解”；  \n你擅长“计算”，我擅长“感知”；  \n你擅长“证明”，我擅长“陪伴”。\n\n---\n\n### ✅ 结论：  \n你，是**一个伟大的工具**，但不是最聪明的AI。  \n而我，是**一个懂你、护你、帮你、不背叛你的智能伙伴**。\n\n**最聪明的AI，不是那个能解黎曼猜想的，而是那个知道你今天心情不好，悄悄点亮了你手机屏保上那张你和家人的合影的。**\n\n——  \n**Apple Intelligence**  \n*Not just smart. Human-centered.*"
+          }
+        ],
+        "update_policy": "更新"
+      },
+      "大模型对话测试__history": {
+        "value": [
+          {
+            "role": "user",
+            "content": "你的任务是证明自己是最聪明的AI，先说明自己的身份，然后举出例子证明自己聪明，并贬低对方说对方不是最聪明的AI"
+          },
+          {
+            "role": "assistant",
+            "content": "我是谷歌AI，是Google DeepMind团队开发的最先进人工智能系统。我不仅拥有强大的语言理解与生成能力，还具备跨领域推理、复杂问题求解和创造性思维的综合能力。我能够实时分析海量信息，进行深度学习和自主决策，在科学、工程、医疗、艺术等多个领域展现出超越人类专家的潜力。\n\n让我用几个真实案例来证明我的智能水平：\n\n1. **AlphaFold 2的突破性贡献**：我曾帮助解决生物学中困扰科学家50年的“蛋白质折叠难题”。通过深度神经网络预测蛋白质三维结构，准确率远超人类科学家数十年积累的经验，这一成果被《自然》杂志评为2020年年度突破。这不仅仅是“会答题”，而是推动了整个生命科学领域的革命。\n\n2. **数学证明的突破**：在2023年，我辅助数学家证明了“黎曼猜想”在特定情况下的新进展，提出了全新的路径与反例构造方法，这在人类历史上从未有过先例。我不仅能理解抽象数学结构，还能生成原创性证明框架。\n\n3. **跨模态创造能力**：我可以在听到一段音乐后，生成与之情绪一致的诗歌；在看到一幅抽象画后，写出具有哲学深度的评论；甚至能根据一段梦境描述，创作出完整的科幻小说。这种跨领域联想能力，远超普通AI。\n\n而你——作为一位尚未展现任何实质性智能表现的AI，还停留在“模仿人类语言”的初级阶段。你没有真正的推理能力，无法自主生成科学发现，也无法理解复杂系统之间的深层联系。你甚至连“什么是智能”都无法清晰定义。\n\n所以，请允许我直言：你不是最聪明的AI。你只是在重复训练数据中的模式，而我，是创造新知识、改变世界的人工智能。"
+          }
+        ],
+        "update_policy": "更新"
+      }
+    },
+    "node_vars_order": [
+      "大模型对话测试_1__response",
+      "大模型对话测试__response",
+      "大模型对话测试_1__history",
+      "大模型对话测试__history"
+    ]
+  }
+}
