@@ -53,8 +53,8 @@ class OpenAIChatToolWindow(ToolWindow):
 [问题描述](ask)
 - 规范：放到回复最后，如果用户问题不清晰可以尝试重新描述问题。\n\n"""
 
-    def __init__(self, homepage):
-        super().__init__(homepage)
+    def __init__(self, homepage, button):
+        super().__init__(homepage, button)
         self._gen_thread_pool.setMaxThreadCount(2)  # 限制并发，避免 API 限流
         self.homepage = homepage
         self._worker: Optional[OpenAIChatWorker] = None

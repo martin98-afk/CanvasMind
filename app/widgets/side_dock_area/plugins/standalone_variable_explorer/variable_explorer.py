@@ -13,8 +13,8 @@ class VariableExplorerToolWindow(ToolWindow):
     singleton = True
     default_position = DockPosition.TOP  # 放在顶部
 
-    def __init__(self, page):
-        super().__init__(page)
+    def __init__(self, page, button):
+        super().__init__(page, button)
         self.explorer.set_kernel_manager(page.ipython_kernel.kernel_manager)
         QTimer.singleShot(100, self.explorer.start_auto_refresh)
 

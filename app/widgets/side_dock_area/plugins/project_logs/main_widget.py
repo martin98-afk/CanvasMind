@@ -120,8 +120,8 @@ class ProjectLogTool(ToolWindow):
     default_position = DockPosition.BOTTOM
     project_path = None
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent=None, button=None):
+        super().__init__(parent,  button)
         self.setObjectName("ProjectLogTool")
         self._watcher_thread = None  # 用于管理后台线程
 

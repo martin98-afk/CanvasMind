@@ -19,7 +19,7 @@ class ModelEvaluationComponent(BaseComponent):
     name = "模型评估"
     category = "模型评估"
     description = "计算模型分类评估指标（准确率、F1分数等）"
-    requirements = "scikit-learn>=0.24.0"
+    requirements = "scikit-learn"
     inputs = [
         PortDefinition(name="predictions", label="预测结果", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE),
         PortDefinition(name="true_labels", label="真实标签", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE)
@@ -39,7 +39,7 @@ class ModelEvaluationComponent(BaseComponent):
             default="binary",
             label="平均方式",
             choices=["binary", "micro", "macro", "weighted", "none"]
-        )
+        ),
     }
 
     def run(self, params, inputs):
