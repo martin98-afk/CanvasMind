@@ -279,3 +279,46 @@ ValueError: y should be a 1d array, got an array of shape (150, 3) instead.
 [2026-01-06 22:27:55] run-71 INFO: solver='newton-cg' max_iter=100
 [2026-01-06 22:27:55] run-86 INFO: Model accuracy: 0.9733
 [2026-01-06 22:27:55] <module>-93 SUCCESS: 节点执行成功
+[2026-01-07 20:44:11] <module>-84 INFO: 开始执行组件
+[2026-01-07 20:44:11] run-94 ERROR: Error in LogisticRegressionComponent: No module named 'sklearn'
+[2026-01-07 20:44:11] <module>-107 ERROR: 执行异常: 环境安装包缺失: No module named 'sklearn'
+[2026-01-07 20:44:22] <module>-84 INFO: 开始执行组件
+[2026-01-07 20:44:23] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-07 20:44:23] run-86 INFO: Model accuracy: 0.9733
+[2026-01-07 20:44:23] <module>-93 SUCCESS: 节点执行成功
+[2026-01-07 20:44:43] <module>-84 INFO: 开始执行组件
+[2026-01-07 20:44:43] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-07 20:44:43] run-86 INFO: Model accuracy: 0.9733
+[2026-01-07 20:44:43] <module>-93 SUCCESS: 节点执行成功
+[2026-01-07 23:55:54] <module>-84 INFO: 开始执行组件
+[2026-01-07 23:55:54] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-07 23:55:54] run-86 INFO: Model accuracy: 0.9733
+[2026-01-07 23:55:54] <module>-93 SUCCESS: 节点执行成功
+[2026-01-07 23:57:41] <module>-84 INFO: 开始执行组件
+[2026-01-07 23:57:41] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-07 23:57:41] run-86 INFO: Model accuracy: 0.9733
+[2026-01-07 23:57:41] <module>-93 SUCCESS: 节点执行成功
+[2026-01-07 23:58:05] <module>-84 INFO: 开始执行组件
+[2026-01-07 23:58:06] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-07 23:58:06] run-86 INFO: Model accuracy: 0.9733
+[2026-01-07 23:58:06] <module>-93 SUCCESS: 节点执行成功
+[2026-01-08 00:00:37] <module>-84 INFO: 开始执行组件
+[2026-01-08 00:00:38] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-08 00:00:38] run-86 INFO: Model accuracy: 0.9733
+[2026-01-08 00:00:38] <module>-93 SUCCESS: 节点执行成功
+[2026-01-08 00:11:35] <module>-84 INFO: 开始执行组件
+[2026-01-08 00:11:36] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-08 00:11:36] run-86 INFO: Model accuracy: 0.9733
+[2026-01-08 00:11:36] <module>-93 SUCCESS: 节点执行成功
+[2026-01-08 00:11:50] <module>-84 INFO: 开始执行组件
+[2026-01-08 00:11:50] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-08 00:11:50] run-86 INFO: Model accuracy: 0.9733
+[2026-01-08 00:11:50] <module>-93 SUCCESS: 节点执行成功
+[2026-01-08 00:12:06] <module>-84 INFO: 开始执行组件
+[2026-01-08 00:12:07] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-08 00:12:07] run-86 INFO: Model accuracy: 0.9733
+[2026-01-08 00:12:07] <module>-93 SUCCESS: 节点执行成功
+[2026-01-08 00:12:17] <module>-84 INFO: 开始执行组件
+[2026-01-08 00:12:17] run-71 INFO: solver='newton-cg' max_iter=100
+[2026-01-08 00:12:17] run-86 INFO: Model accuracy: 0.9733
+[2026-01-08 00:12:17] <module>-93 SUCCESS: 节点执行成功

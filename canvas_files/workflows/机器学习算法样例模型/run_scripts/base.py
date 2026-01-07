@@ -893,6 +893,7 @@ class BaseComponent(ABC):
     name: str = ""
     category: str = ""
     description: str = ""
+    requirements: str = ""
     inputs: List[PortDefinition] = []
     outputs: List[PortDefinition] = []
     properties: Dict[str, PropertyDefinition] = {}

@@ -111,7 +111,7 @@ class DependencyToolWindow(ToolWindow):
         self.thread.error_occurred.connect(self._on_env_error)
         self.thread.start()
 
-    def _on_env_loaded(self, stdout):
+    def _on_env_loaded(self, python_version, stdout):
         try:
             match = re.search(r"\[.*\]", stdout, re.S)
             data = json.loads(match.group(0)) if match else []
