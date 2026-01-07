@@ -1,7 +1,9 @@
 # backdrop_executor.py
+import concurrent
 import datetime
 import re
 import traceback
+from threading import Lock
 
 from PyQt5.QtCore import QObject, pyqtSignal
 from loguru import logger
@@ -33,6 +35,7 @@ class BackdropExecutor(QObject):
             kernel_manager,
             global_variables,
             execution_context,  # ← 新增
+            run_parallel=False,
             parent=None
     ):
         super().__init__(parent)
@@ -43,6 +46,7 @@ class BackdropExecutor(QObject):
         self.kernel_manager = kernel_manager
         self.global_variables = global_variables
         self.ctx = execution_context  # ← 共享上下文
+        self.run_parallel = run_parallel
 
     def execute(self):
         """在工作线程中调用（由 QRunnable 包装）"""
@@ -200,51 +204,81 @@ class BackdropExecutor(QObject):
         return current
 
     def _execute_subgraph(self, nodes, iteration_tag):
-        """执行 backdrop 内部节点，使用 execute_node，不创建 NodeListExecutor"""
+        """执行 Backdrop 内部子图"""
         results_map = {}
         for node in nodes:
             self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_PENDING)
 
+        if self.run_parallel:
+            # 使用拓扑排序执行子图，复用 execute_node 逻辑
+            # 注意：这里需要传入信号量限流
+            self._execute_subgraph_parallel(nodes, iteration_tag)
+        else:
+            # 原有的串行逻辑
+            for node in nodes:
+                if self.ctx.is_cancelled(): break
+                self.ctx.wait_if_paused()
+                if node.get_property("disabled"): continue
+                self._run_single_subnode(node, iteration_tag)
+
+        # 收集结果用于表达式判断
         for node in nodes:
-            if self.ctx.is_cancelled():
-                break
-            self.ctx.wait_if_paused()  # ← 关键：支持暂停
-            if self.ctx.is_cancelled():
-                break
-            if node.get_property("disabled"):
-                continue
-            self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
-            self.scheduler.property_changed.emit(self.backdrop)
-            try:
-                # 使用统一 execute_node
-                execute_node(
-                    node=node,
-                    component_map=self.component_map,
-                    python_exe=self.python_exe,
-                    kernel_manager=self.kernel_manager,
-                    scheduler=self.scheduler,
-                    global_variable=self.global_variables,
-                    execution_context=self.ctx,
-                    log_start_func=self.log_start.emit,
-                    log_message_func=self.log_message.emit,
-                    log_error_func=self.log_error.emit,
-                    log_finish_func=self.log_finished.emit,
-                    run_id_postfix=f"{self.backdrop.name()}:{iteration_tag}"
-                )
-                self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
-                self.scheduler.property_changed.emit(self.backdrop)
-                # 收集输出用于条件判断
-                if hasattr(node, '_output_values'):
-                    node_name = re.sub(r'\s+', '_', node.name())
-                    for port, val in node._output_values.items():
-                        results_map[f"node_vars.{node_name}__{port}"] = val
-
-            except Exception as e:
-                self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
-                self.scheduler.property_changed.emit(self.backdrop)
-                raise  # 向上抛出，终止 backdrop
-
+            if hasattr(node, '_output_values'):
+                node_name = re.sub(r'\s+', '_', node.name())
+                for port, val in node._output_values.items():
+                    results_map[f"node_vars.{node_name}__{port}"] = val
         return results_map
+
+    def _execute_subgraph_parallel(self, nodes, iteration_tag):
+        """子图并行化：这里简化逻辑，直接借用逻辑或手动实现拓扑"""
+        node_map = {n.id: n for n in nodes}
+        in_degree = {n.id: 0 for n in nodes}
+        children = {n.id: [] for n in nodes}
+        for node in nodes:
+            for ip in node.input_ports():
+                for cp in ip.connected_ports():
+                    if cp.node().id in node_map:
+                        children[cp.node().id].append(node.id)
+                        in_degree[node.id] += 1
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(nodes) + 1) as executor:
+            lock = Lock()
+            futures = {}
+            def submit(n):
+                if self.ctx.is_cancelled(): return
+                f = executor.submit(self._run_single_subnode, n, iteration_tag)
+                futures[f] = n
+
+            for n in [nd for nd in nodes if in_degree[nd.id] == 0]:
+                submit(n)
+
+            while futures:
+                done, _ = concurrent.futures.wait(futures.keys(), return_when=concurrent.futures.FIRST_COMPLETED)
+                for f in done:
+                    node = futures.pop(f)
+                    f.result() # 抛出异常
+                    with lock:
+                        for cid in children.get(node.id, []):
+                            in_degree[cid] -= 1
+                            if in_degree[cid] == 0: submit(node_map[cid])
+
+    def _run_single_subnode(self, node, iteration_tag):
+        """包装单个子节点的执行，调用 execute_node"""
+        self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
+        try:
+            execute_node(
+                node=node, component_map=self.component_map, python_exe=self.python_exe,
+                kernel_manager=self.kernel_manager, scheduler=self.scheduler,
+                global_variable=self.global_variables, execution_context=self.ctx,
+                log_start_func=self.log_start.emit, log_message_func=self.log_message.emit,
+                log_error_func=self.log_error.emit, log_finish_func=self.log_finished.emit,
+                run_id_postfix=f"{self.backdrop.name()}:{iteration_tag}",
+                semaphore=self.scheduler.execution_semaphore # 必须传递
+            )
+            self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
+        except Exception as e:
+            self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
+            raise e
 
     def _collect_output(self, output_proxy):
         outputs = []

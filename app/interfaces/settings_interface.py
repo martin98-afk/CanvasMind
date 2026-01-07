@@ -41,7 +41,9 @@ class SettingInterface(ScrollArea):
         self.setup_workflow_paths_settings()
         self.setup_project_paths_settings()  # 本地项目路径
         self.setup_runtime_env_settings()  # 运行环境管理
-        self.setup_canvas_settings()        # 画布详细设置
+        self.setup_canvas_run_settings()
+        self.setup_canvas_io_settings()
+        self.setup_canvas_display_settings()        # 画布详细设置
 
         self.vBoxLayout.addStretch(1)
 
@@ -181,10 +183,9 @@ class SettingInterface(ScrollArea):
         self.vBoxLayout.addWidget(self.projectPathsGroup)
 
     # ==================== 新增：画布详细设置 ====================
-
-    def setup_canvas_settings(self):
+    def setup_canvas_run_settings(self):
         """画布详细设置"""
-        self.canvasGroup = SettingCardGroup(" 画布设置", self.view)
+        self.canvasGroup = SettingCardGroup(" 画布运行设置", self.view)
         self.runModeCard = OptionsSettingCard(
             self.cfg.canvas_run_mode,
             get_icon("画布"),
@@ -204,17 +205,34 @@ class SettingInterface(ScrollArea):
         )
         self.nodeTimeoutCard.valueChanged.connect(self.onConfigChanged)
 
-        self.showGridCard = OptionsSettingCard(
-            self.cfg.canvas_grid_mode,
+        self.runParallelCard = SwitchSettingCard(
             get_icon("画布"),
-            "显示网格",
-            "在画布上显示辅助网格",
-            texts=["线网格", "点网格", "无网格"],
+            "是否并行运行",
+            "是否并行运行画布节点（拓扑排序中同时入度为0的节点在此模式下会同时运行，ipython模式暂时无法并行执行）",
+            configItem=self.cfg.run_parallel,
             parent=self.canvasGroup
         )
-        # 连接配置变化信号，自动保存
-        self.showGridCard.optionChanged.connect(self.onConfigChanged)
+        self.runParallelCard.checkedChanged.connect(self.onConfigChanged)
 
+        self.parallelNumCard = RangeSettingCard(
+            self.cfg.run_parallel_max_workers,
+            get_icon("画布"),
+            "运行并行度",
+            "最大并行度控制，同时最多多少个节点同时运行",
+            parent=self.canvasGroup
+        )
+        self.parallelNumCard.valueChanged.connect(self.onConfigChanged)
+
+        self.canvasGroup.addSettingCard(self.runModeCard)
+        self.canvasGroup.addSettingCard(self.nodeTimeoutCard)
+        self.canvasGroup.addSettingCard(self.runParallelCard)
+        self.canvasGroup.addSettingCard(self.parallelNumCard)
+
+        self.vBoxLayout.addWidget(self.canvasGroup)
+
+    def setup_canvas_io_settings(self):
+        """画布详细设置"""
+        self.canvasGroup = SettingCardGroup(" 画布保存设置", self.view)
         self.autoSaveCard = SwitchSettingCard(
             get_icon("画布"),
             "自动保存",
@@ -233,6 +251,24 @@ class SettingInterface(ScrollArea):
             parent=self.canvasGroup
         )
         self.autoSaveIntervalCard.valueChanged.connect(self.onConfigChanged)
+        self.canvasGroup.addSettingCard(self.autoSaveCard)
+        self.canvasGroup.addSettingCard(self.autoSaveIntervalCard)
+
+        self.vBoxLayout.addWidget(self.canvasGroup)
+
+    def setup_canvas_display_settings(self):
+        """画布详细设置"""
+        self.canvasGroup = SettingCardGroup(" 画布显示设置", self.view)
+        self.showGridCard = OptionsSettingCard(
+            self.cfg.canvas_grid_mode,
+            get_icon("画布"),
+            "显示网格",
+            "在画布上显示辅助网格",
+            texts=["线网格", "点网格", "无网格"],
+            parent=self.canvasGroup
+        )
+        # 连接配置变化信号，自动保存
+        self.showGridCard.optionChanged.connect(self.onConfigChanged)
 
         self.NodeProxyCard = RangeSettingCard(
             self.cfg.node_proxy_size,
@@ -265,11 +301,6 @@ class SettingInterface(ScrollArea):
         )
         # 连接配置变化信号，自动保存
         self.pipeDirectionCard.optionChanged.connect(self.onConfigChanged)
-
-        self.canvasGroup.addSettingCard(self.runModeCard)
-        self.canvasGroup.addSettingCard(self.nodeTimeoutCard)
-        self.canvasGroup.addSettingCard(self.autoSaveCard)
-        self.canvasGroup.addSettingCard(self.autoSaveIntervalCard)
         self.canvasGroup.addSettingCard(self.showGridCard)
         self.canvasGroup.addSettingCard(self.NodeProxyCard)
         self.canvasGroup.addSettingCard(self.pipelayoutCard)

@@ -14,7 +14,7 @@ from qfluentwidgets import (
     ComboBox, PrimaryPushButton, LineEdit, TableWidget,
     FluentIcon, InfoBar, SearchLineEdit, TextEdit, MessageBox,
     BodyLabel, StateToolTip, StrongBodyLabel, CardWidget, TransparentToolButton,
-    IconWidget
+    IconWidget, CaptionLabel
 )
 
 from app.utils.config import Settings
@@ -26,8 +26,9 @@ from app.widgets.dialog_widget.custom_messagebox import CustomComboDialog, Custo
 
 
 class PackageListThread(QThread):
-    packages_loaded = pyqtSignal(str)  # 成功时发送 stdout
-    error_occurred = pyqtSignal(Exception)  # 失败时发送异常
+    # 修改信号：第一个参数是 python 版本，第二个是包列表 json
+    packages_loaded = pyqtSignal(str, str)
+    error_occurred = pyqtSignal(Exception)
 
     def __init__(self, python_exe, parent=None):
         super().__init__(parent)
@@ -38,7 +39,17 @@ class PackageListThread(QThread):
         if platform.system() == "Windows":
             kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
         try:
-            # 增加 --disable-pip-version-check 减少杂音，加快速度
+            # 1. 获取 Python 版本信息
+            version_res = subprocess.run(
+                [self.python_exe, "--version"],
+                capture_output=True,
+                text=True,
+                check=True,
+                **kwargs
+            )
+            py_version = version_res.stdout.strip() # 例如 "Python 3.10.5"
+
+            # 2. 获取 Pip 包列表
             result = subprocess.run(
                 [self.python_exe, "-m", "pip", "list", "--format=json", "--disable-pip-version-check"],
                 capture_output=True,
@@ -47,7 +58,7 @@ class PackageListThread(QThread):
                 timeout=20,
                 **kwargs
             )
-            self.packages_loaded.emit(result.stdout.strip())
+            self.packages_loaded.emit(py_version, result.stdout.strip())
         except Exception as e:
             self.error_occurred.emit(e)
 
@@ -138,11 +149,22 @@ class EnvManagerUI(QWidget):
         rightLayout.setSpacing(15)
 
         # 3. 环境管理区域 (顶部)
+        # --- UI 优化：增加版本显示标签 ---
         envTitleLayout = QHBoxLayout()
-        envIcon = IconWidget(get_icon("python"), self)  # 使用已有的 get_icon
+        envIcon = IconWidget(get_icon("python"), self)
         envIcon.setFixedSize(20, 20)
+
+        titleVBoxLayout = QVBoxLayout()  # 使用垂直布局包裹标题和版本号
+        titleVBoxLayout.setSpacing(0)
+
+        self.titleLabel = StrongBodyLabel("环境管理", self)
+        self.pyVersionLabel = CaptionLabel("Python 版本: --", self)  # 用于显示具体版本号
+
+        titleVBoxLayout.addWidget(self.titleLabel)
+        titleVBoxLayout.addWidget(self.pyVersionLabel)
+
         envTitleLayout.addWidget(envIcon)
-        envTitleLayout.addWidget(StrongBodyLabel("环境管理", self))
+        envTitleLayout.addLayout(titleVBoxLayout)
         envTitleLayout.addStretch(1)
 
         # 环境下拉框
@@ -292,11 +314,13 @@ class EnvManagerUI(QWidget):
 
     def load_packages(self, env_name):
         """启动线程获取包列表"""
-        self._log_color(f"> 正在加载环境: {env_name} ...", "#61afef")  # Blue
+        self.pyVersionLabel.setText("正在获取版本...")  # 加载状态提示
+        self._log_color(f"> 正在加载环境: {env_name} ...", "#61afef")
         try:
             python_exe = str(self.mgr.get_python_exe(env_name))
         except Exception as e:
             self.logEdit.append(f"[错误] 获取 Python 路径失败: {e}")
+            self.pyVersionLabel.setText("获取版本失败")
             return
 
         if hasattr(self, '_pkg_thread') and self._pkg_thread.isRunning():
@@ -304,11 +328,15 @@ class EnvManagerUI(QWidget):
             self._pkg_thread.wait()
 
         self._pkg_thread = PackageListThread(python_exe)
+        # 注意：这里的槽函数接收两个参数了
         self._pkg_thread.packages_loaded.connect(self.on_load_packages)
         self._pkg_thread.error_occurred.connect(self.on_load_packages_error)
         self._pkg_thread.start()
 
-    def on_load_packages(self, package_list):
+    def on_load_packages(self, py_version, package_list):
+        """成功加载后的回调"""
+        self.pyVersionLabel.setText(f"基础环境: {py_version}")  # 更新 UI 上的版本号
+
         self.packageTable.setRowCount(0)
         try:
             match = re.search(r"\[.*\]", package_list, re.S)
@@ -321,9 +349,10 @@ class EnvManagerUI(QWidget):
 
         self.pkgs_data = pkgs
         self._repopulate_table(pkgs)
-        self._log_color(f"> 加载完成，共 {len(pkgs)} 个包。", "#98c379")  # Green
+        self._log_color(f"> 加载完成，{py_version} 共 {len(pkgs)} 个包。", "#98c379")
 
     def on_load_packages_error(self, e):
+        self.pyVersionLabel.setText("获取版本失败")
         error_msg = str(e)
         if hasattr(e, 'stderr') and e.stderr:
             error_msg = e.stderr.strip() or error_msg

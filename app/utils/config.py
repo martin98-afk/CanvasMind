@@ -48,35 +48,41 @@ class Settings(QConfig):
     github_repo = ConfigItem("Patch", "GitHub/Repo", "martin98-afk/CanvasMind")
     github_token = ConfigItem("Patch", "GitHub/Token", "")
 
-    # ========== 新增：画布路径 ==========
+    # ========== 画布路径 ==========
     workflow_paths = ConfigItem(
         "Workflow",
         "Paths", ["./canvas_files/workflows"],
         ListValidator()
     )
-    # ========== 新增：项目路径 ==========
+    # ========== 项目路径 ==========
     project_paths = ConfigItem(
         "Project",
         "Paths", ["./canvas_files/projects"],
         ListValidator()
     )
 
-    # ========== 新增：画布设置 ==========
-    canvas_run_mode = OptionsConfigItem("Canvas", "RunMode", "subprocess运行",
+    # ========== 画布运行设置 ==========
+    canvas_run_mode = OptionsConfigItem("CanvasRun", "RunMode", "subprocess运行",
                                         OptionsValidator(["ipython运行", "subprocess运行"]))
-    node_run_timeout = RangeConfigItem("Canvas", "RunTimeout", 300, RangeValidator(120, 3000))
-    canvas_grid_mode = OptionsConfigItem("Canvas", "ShowGrid", "线网格",
+    node_run_timeout = RangeConfigItem("CanvasRun", "RunTimeout", 300, RangeValidator(120, 3000))
+    run_parallel = ConfigItem("CanvasRun", "RunParallel", True, BoolValidator())
+    run_parallel_max_workers = RangeConfigItem("CanvasRun", "RunParallelMaxWorkers", 2, RangeValidator(1, 10))
+
+    # ========== 画布自动保存设置 ==========
+    canvas_auto_save = ConfigItem("CanvasIO", "AutoSave", True, BoolValidator())
+    canvas_auto_save_interval = RangeConfigItem("CanvasIO", "AutoSaveInterval", 60, RangeValidator(15, 300))
+
+    # ========== 画布显示设置 ==========
+    canvas_grid_mode = OptionsConfigItem("CanvasDisplay", "ShowGrid", "线网格",
                                          OptionsValidator(["线网格", "点网格", "无网格"]))
-    node_proxy_size = RangeConfigItem("Canvas", "NodeProxySize", 120, RangeValidator(70, 300))
-    canvas_grid_size = ConfigItem("Canvas", "GridSize", 20, RangeValidator(10, 30))
-    canvas_auto_save = ConfigItem("Canvas", "AutoSave", True, BoolValidator())
-    canvas_auto_save_interval = RangeConfigItem("Canvas", "AutoSaveInterval", 60, RangeValidator(15, 300))
-    canvas_pipelayout = OptionsConfigItem("Canvas", "PipeLayout", "折线",
+    node_proxy_size = RangeConfigItem("CanvasDisplay", "NodeProxySize", 120, RangeValidator(70, 300))
+    canvas_grid_size = ConfigItem("CanvasDisplay", "GridSize", 20, RangeValidator(10, 30))
+    canvas_pipelayout = OptionsConfigItem("CanvasDisplay", "PipeLayout", "折线",
                                           OptionsValidator(["直线", "曲线", "折线"]))
-    canvas_direction = OptionsConfigItem("Canvas", "Direction", "水平",
+    canvas_direction = OptionsConfigItem("CanvasDisplay", "Direction", "水平",
                                          OptionsValidator(["水平", "垂直"]))
 
-    # ========== 新增：画布快捷组件 ==========
+    # ========== 画布快捷组件 ==========
 
     # 快捷组件
     quick_components = ConfigItem(
@@ -86,7 +92,7 @@ class Settings(QConfig):
         serializer=QuickComponentsSerializer()
     )
 
-    # ========== 新增：运行环境管理配置 ==========
+    # ========== 运行环境管理配置 ==========
     python_versions = ConfigItem(
         "Package",
         "PythonVersions", ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"],
@@ -109,7 +115,7 @@ class Settings(QConfig):
     )
     current_env_selected = ConfigItem("Package", "EnvSelected", "")
 
-    # ========== 新增：大模型对话默认配置 ==========
+    # ========== 大模型对话默认配置 ==========
     llm_model = ConfigItem("LLM", "Model", "qwen/qwen3-30b-a3b-2507")
     llm_api_key = ConfigItem("LLM", "APIKey", "")
     llm_api_base = ConfigItem("LLM", "APIBase", "http://127.0.0.1:1234/v1")
