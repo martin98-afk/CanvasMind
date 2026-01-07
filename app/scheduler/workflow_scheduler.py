@@ -19,9 +19,6 @@ class WorkflowScheduler(QObject):
     - 条件分支节点可动态禁用下游
     - 调度器自动跳过 disabled 节点及其下游
     """
-    node_started = pyqtSignal(str)  # node_id
-    node_finished = pyqtSignal(str)
-    node_error = pyqtSignal(str)
     finished = pyqtSignal()
     error = pyqtSignal(str)
     cancelled = pyqtSignal()
@@ -207,10 +204,7 @@ class WorkflowScheduler(QObject):
             self._executor.signals.log_error.connect(self.parent.log_window.on_error)
             self._executor.signals.log_finished.connect(self.parent.log_window.on_finished)
             self._executor.component_map = self.component_map
-            self._executor.signals.node_started.connect(self.node_started)
             self._executor.signals.backdrop_finished.connect(self.backdrop_finished)
-            self._executor.signals.node_finished.connect(self.node_finished)
-            self._executor.signals.node_error.connect(self.node_error)
             self._executor.signals.finished.connect(self._on_finished)
             self._executor.signals.error.connect(lambda message: self._on_error(message, nodes))
 

@@ -44,7 +44,6 @@ class NodeListExecutor(QRunnable):
         # 并行配置
         self.run_parallel = self.main_window.config.run_parallel.value
         self.max_workers = self.main_window.config.run_parallel_max_workers.value
-
         # 全局资源：信号量限流。如果 scheduler 没有，则创建一个。
         if not hasattr(self.scheduler, "execution_semaphore"):
             self.scheduler.execution_semaphore = BoundedSemaphore(self.max_workers)
@@ -144,36 +143,31 @@ class NodeListExecutor(QRunnable):
         if self.ctx.is_cancelled(): return
         self.ctx.wait_if_paused()
 
-        self.signals.node_started.emit(node.id)
-        try:
-            if isinstance(node, ControlFlowBackdrop):
-                # 循环节点：内部也支持并行
-                be = BackdropExecutor(
-                    backdrop=node, scheduler=self.scheduler,
-                    component_map=component_map, python_exe=self.python_exe,
-                    kernel_manager=self.kernel_manager, global_variables=self.scheduler.global_variables,
-                    execution_context=self.ctx,
-                    run_parallel=self.run_parallel  # 传递并行标志
-                )
-                be.log_start.connect(self.signals.log_start)
-                be.log_message.connect(self.signals.log_message)
-                be.log_error.connect(self.signals.log_error)
-                be.log_finished.connect(self.signals.log_finished)
-                be.execute()
-                self.signals.backdrop_finished.emit()
-            else:
-                execute_node(
-                    node=node, component_map=component_map, python_exe=self.python_exe,
-                    kernel_manager=self.kernel_manager, scheduler=self.scheduler,
-                    global_variable=self.scheduler.global_variables, execution_context=self.ctx,
-                    log_start_func=self.signals.log_start.emit, log_message_func=self.signals.log_message.emit,
-                    log_error_func=self.signals.log_error.emit, log_finish_func=self.signals.log_finished.emit,
-                    semaphore=self.scheduler.execution_semaphore  # 传递信号量
-                )
-            self.signals.node_finished.emit(node.id)
-        except Exception as e:
-            self.signals.node_error.emit(node.id)
-            raise e
+        if isinstance(node, ControlFlowBackdrop):
+            # 循环节点：内部也支持并行
+            be = BackdropExecutor(
+                backdrop=node, scheduler=self.scheduler,
+                component_map=component_map, python_exe=self.python_exe,
+                kernel_manager=self.kernel_manager, global_variables=self.scheduler.global_variables,
+                execution_context=self.ctx,
+                run_parallel=self.run_parallel  # 传递并行标志
+            )
+            be.log_start.connect(self.signals.log_start)
+            be.log_message.connect(self.signals.log_message)
+            be.log_error.connect(self.signals.log_error)
+            be.log_finished.connect(self.signals.log_finished)
+            be.execute()
+            self.signals.backdrop_finished.emit()
+        else:
+            execute_node(
+                node=node, python_exe=self.python_exe,
+                kernel_manager=self.kernel_manager, scheduler=self.scheduler,
+                global_variable=self.scheduler.global_variables, execution_context=self.ctx,
+                log_start_func=self.signals.log_start.emit, log_message_func=self.signals.log_message.emit,
+                log_error_func=self.signals.log_error.emit, log_finish_func=self.signals.log_finished.emit,
+                semaphore=self.scheduler.execution_semaphore  # 传递信号量
+            )
+        self.signals.node_finished.emit(node.id)
 
     def push_log_message(self, run_id: str, line: str):
         self.signals.log_message.emit(run_id, line)

@@ -188,7 +188,7 @@ class SettingInterface(ScrollArea):
         self.canvasGroup = SettingCardGroup(" 画布运行设置", self.view)
         self.runModeCard = OptionsSettingCard(
             self.cfg.canvas_run_mode,
-            get_icon("画布"),
+            get_icon("运行模式"),
             "画布运行方式",
             "选择画布节点运行方式，ipython：在同一环境下运行，初始化慢、执行快、可调试，有环境污染风险；subprocess：独立环境运行，初始化、执行慢，无环境污染风险。",
             texts=["ipython运行", "subprocess运行"],
@@ -198,7 +198,7 @@ class SettingInterface(ScrollArea):
 
         self.nodeTimeoutCard = RangeSettingCard(
             self.cfg.node_run_timeout,
-            get_icon("画布"),
+            get_icon("运行模式"),
             "节点运行超时时间",
             "决定节点最长运行时间（秒）如果超过则会直接中止运行",
             parent=self.canvasGroup
@@ -206,7 +206,7 @@ class SettingInterface(ScrollArea):
         self.nodeTimeoutCard.valueChanged.connect(self.onConfigChanged)
 
         self.runParallelCard = SwitchSettingCard(
-            get_icon("画布"),
+            get_icon("运行模式"),
             "是否并行运行",
             "是否并行运行画布节点（拓扑排序中同时入度为0的节点在此模式下会同时运行，ipython模式暂时无法并行执行）",
             configItem=self.cfg.run_parallel,
@@ -216,7 +216,7 @@ class SettingInterface(ScrollArea):
 
         self.parallelNumCard = RangeSettingCard(
             self.cfg.run_parallel_max_workers,
-            get_icon("画布"),
+            get_icon("运行模式"),
             "运行并行度",
             "最大并行度控制，同时最多多少个节点同时运行",
             parent=self.canvasGroup
@@ -234,7 +234,7 @@ class SettingInterface(ScrollArea):
         """画布详细设置"""
         self.canvasGroup = SettingCardGroup(" 画布保存设置", self.view)
         self.autoSaveCard = SwitchSettingCard(
-            get_icon("画布"),
+            get_icon("自动保存"),
             "自动保存",
             "每隔一段时间自动保存当前项目",
             configItem=self.cfg.canvas_auto_save,
@@ -245,7 +245,7 @@ class SettingInterface(ScrollArea):
 
         self.autoSaveIntervalCard = RangeSettingCard(
             self.cfg.canvas_auto_save_interval,
-            get_icon("画布"),
+            get_icon("自动保存"),
             "修改",
             "自动保存间隔 (秒)",
             parent=self.canvasGroup

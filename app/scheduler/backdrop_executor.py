@@ -264,10 +264,9 @@ class BackdropExecutor(QObject):
 
     def _run_single_subnode(self, node, iteration_tag):
         """包装单个子节点的执行，调用 execute_node"""
-        self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
         try:
             execute_node(
-                node=node, component_map=self.component_map, python_exe=self.python_exe,
+                node=node, python_exe=self.python_exe,
                 kernel_manager=self.kernel_manager, scheduler=self.scheduler,
                 global_variable=self.global_variables, execution_context=self.ctx,
                 log_start_func=self.log_start.emit, log_message_func=self.log_message.emit,
@@ -275,9 +274,7 @@ class BackdropExecutor(QObject):
                 run_id_postfix=f"{self.backdrop.name()}:{iteration_tag}",
                 semaphore=self.scheduler.execution_semaphore # 必须传递
             )
-            self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
         except Exception as e:
-            self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
             raise e
 
     def _collect_output(self, output_proxy):

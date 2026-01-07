@@ -61,6 +61,7 @@
     <file>惊叹号.svg</file>
     <file>成功.svg</file>
     <file>折叠.svg</file>
+    <file>插件市场.svg</file>
     <file>插入.svg</file>
     <file>放大.svg</file>
     <file>数据分析-流量分析.svg</file>
@@ -89,6 +90,7 @@
     <file>组件.png</file>
     <file>缩小.svg</file>
     <file>缩放.svg</file>
+    <file>自动保存.svg</file>
     <file>自定义变量.svg</file>
     <file>节点变量.svg</file>
     <file>表格.svg</file>
@@ -96,6 +98,7 @@
     <file>运行.svg</file>
     <file>运行中.svg</file>
     <file>运行到此处.svg</file>
+    <file>运行模式.svg</file>
     <file>运行记录.svg</file>
     <file>远程重启.svg</file>
     <file>追加.svg</file>
