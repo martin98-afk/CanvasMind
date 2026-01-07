@@ -5,9 +5,6 @@ from app.scheduler.workflow_scheduler import WorkflowScheduler
 
 
 class CanvasRunner(QObject):
-    node_started = pyqtSignal(str)
-    node_finished = pyqtSignal(str)
-    node_error = pyqtSignal(str)
     workflow_started = pyqtSignal()
     workflow_finished = pyqtSignal()
     workflow_error = pyqtSignal(str)
@@ -88,9 +85,6 @@ class CanvasRunner(QObject):
 
     def _connect_signals(self, scheduler):
         self.workflow_started.emit()
-        scheduler.node_started.connect(self.node_started.emit)
-        scheduler.node_finished.connect(self.node_finished.emit)
-        scheduler.node_error.connect(self.node_error.emit)
         scheduler.finished.connect(self.workflow_finished.emit)
         scheduler.error.connect(self.workflow_error.emit)
         scheduler.node_vars_changed.connect(self.node_vars_changed.emit)

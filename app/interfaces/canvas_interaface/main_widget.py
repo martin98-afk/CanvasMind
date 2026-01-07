@@ -393,9 +393,6 @@ class CanvasPage(QWidget):
         self.canvas_runner.workflow_finished.connect(self._on_workflow_finished)
         self.canvas_runner.workflow_error.connect(self._on_workflow_error)
         # 节点信号
-        self.canvas_runner.node_started.connect(self.on_node_started_simple)
-        self.canvas_runner.node_finished.connect(self.on_node_finished_simple)
-        self.canvas_runner.node_error.connect(self.on_node_error_simple)
         self.canvas_runner.node_status_changed.connect(self.set_node_status_by_id)
         # 画布样式更改信号
         self.config.canvas_grid_mode.valueChanged.connect(self.ui_manager._setup_pipeline_style)
@@ -429,9 +426,6 @@ class CanvasPage(QWidget):
         self.canvas_runner.workflow_cancelled.disconnect(self._on_workflow_cancelled)
         self.canvas_runner.workflow_finished.disconnect(self._on_workflow_finished)
         self.canvas_runner.workflow_error.disconnect(self._on_workflow_error)
-        self.canvas_runner.node_started.disconnect(self.on_node_started_simple)
-        self.canvas_runner.node_finished.disconnect(self.on_node_finished_simple)
-        self.canvas_runner.node_error.disconnect(self.on_node_error_simple)
         self.canvas_runner.node_status_changed.disconnect(self.set_node_status_by_id)
         self.canvas_runner.property_changed.disconnect()
         self.canvas_runner.node_vars_changed.disconnect()
