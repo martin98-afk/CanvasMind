@@ -361,24 +361,6 @@ class ComponentScanner:
             except Exception as e:
                 logger.error(f"当前组件文件加载失败 {py_file}: {e}")
 
-        # # 回退到历史版本
-        # histories = ComponentHistoryManager.load_histories(py_file)
-        # latest_hist = histories[-2] if len(histories) > 1 else histories[0]
-        # version = latest_hist["version"]
-        # if not histories or version == "0.0.0":
-        #     raise RuntimeError(f"组件 {py_file} 加载失败，且无可用历史版本")
-        #
-        # fallback_code = COMPONENT_IMPORT_CODE + latest_hist["code"]
-        # logger.warning(f"⚠️ 回退到历史版本 {version} for {py_file.name}")
-        #
-        # try:
-        #     py_file.write_text(fallback_code, encoding="utf-8")
-        #     self._do_load_component_from_file(
-        #         py_file, fallback_code, comp_map, file_map, is_fallback=True, fallback_version=version
-        #     )
-        # except Exception as e:
-        #     raise RuntimeError(f"历史版本 {version} 回退失败: {e}") from e
-
     def _do_load_component_from_file(
         self,
         py_file: Path,

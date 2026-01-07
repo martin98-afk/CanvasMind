@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import ast
+import io
 import json
 import os
 import pickle
@@ -696,6 +697,12 @@ class DataHandler:
         """读取图像数据"""
         if isinstance(data, (str, Path)) and os.path.exists(data):
             return Image.open(data)
+        elif isinstance(data, Image.Image):
+            return data
+        elif isinstance(data, np.ndarray):
+            return Image.fromarray(data)
+        elif isinstance(data, bytes):
+            return Image.open(io.BytesIO(data))
         else:
             raise ComponentError(f"无法读取图像数据: {data}")
 
@@ -886,6 +893,7 @@ class BaseComponent(ABC):
     name: str = ""
     category: str = ""
     description: str = ""
+    requirements: str = ""
     inputs: List[PortDefinition] = []
     outputs: List[PortDefinition] = []
     properties: Dict[str, PropertyDefinition] = {}

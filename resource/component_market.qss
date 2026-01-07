@@ -1,0 +1,35 @@
+QWidget#MarketCenter { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', 'Inter'; }
+#SideBar { background-color: #161b22; border-right: 1px solid #30363d; min-width: 180px; }
+
+/* 导航按钮 */
+#NavBtn { border: none; padding: 12px 16px; text-align: left; color: #8b949e; border-radius: 6px; margin: 4px 10px; font-weight: 500; }
+#NavBtn:hover { background-color: #21262d; color: #f0f6fc; }
+#NavBtn:checked { background-color: #1f6feb; color: #ffffff; }
+
+#ScrollArea { background-color: transparent; border: none;}
+
+/* 分类组 */
+#CategoryHeader { background-color: transparent; padding: 10px 5px; }
+#CategoryTitle { font-size: 12px; font-weight: 800; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; }
+
+/* 组件卡片 */
+#PluginCard { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 8px; }
+#PluginCard:hover { border: 1px solid #444c56; background-color: #1c2128; }
+
+#Title { color: #58a6ff; font-size: 15px; font-weight: 600; }
+#Desc { color: #8b949e; font-size: 13px; }
+#Tag { background-color: #21262d; color: #8b949e; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+
+/* 状态色块 */
+#Status_active { background-color: #238636; border-radius: 2px; }
+#Status_disabled { background-color: #da3633; border-radius: 2px; }
+
+/* 按钮 */
+#BtnAction { background-color: #21262d; color: #c9d1d9; border: 1px solid #363b42; padding: 6px 12px; border-radius: 6px; font-size: 12px; }
+#BtnAction:hover { background-color: #30363d; border-color: #8b949e; }
+#BtnAction[danger="true"] { color: #f85149; }
+#BtnAction[danger="true"]:hover { background-color: #da3633; color: white; }
+
+QScrollArea { border: none; background: transparent; }
+QScrollBar:vertical { background: #0d1117; width: 8px; }
+QScrollBar::handle:vertical { background: #30363d; border-radius: 4px; }

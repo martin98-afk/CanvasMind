@@ -16,44 +16,29 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "公式ocr"
-    category = "ocr识别"
-    description = "首次运行要打开梯子，以便下载权重文件"
-    requirements = "pix2tex"
+    name = "获取全局变量"
+    category = "变量操作"
+    description = "用于获取当前画布全局变量的具体数值"
+    requirements = ""
     inputs = [
-        PortDefinition(name="input_image", label="输入图像", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="output1", label="输出1", type=ArgumentType.TEXT),
+        PortDefinition(name="output1", label="输出1", type=ArgumentType.JSON),
     ]
     properties = {
+        "prop1": PropertyDefinition(
+            type=PropertyType.VARIABLE,
+            default="全局变量",
+            label="属性1",
+        ),
     }
+
     def run(self, params, inputs=None):
         """
         params: 节点属性（来自UI）
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
-        from pix2tex.cli import LatexOCR
-        p2t = LatexOCR()
-        image = inputs.input_image
-        text = p2t(image)
         return {
-            "output1": text
+            "output1": self.global_variable.get(params.prop1)
         }
-
-
-if __name__ == "__main__":
-    import warnings
-    warnings.filterwarnings("ignore")
-    model = Component()
-    result = model.debug(
-        params={"prop1": "test"},
-        inputs={"input1": "output"},
-        node_id="测试模型",
-        show_input_types = True,
-        show_output_types = True,
-        show_execution_time = True,
-        global_vars = {}
-    )
-    print(result)

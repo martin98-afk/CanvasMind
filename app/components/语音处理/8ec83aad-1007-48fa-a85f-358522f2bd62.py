@@ -19,10 +19,10 @@ class DynamicComponent(BaseComponent):
     name = "语音识别为文字"
     category = "语音处理"
     description = "将用户录制的音频转为文字内容"
-    requirements = "requests,vosk"
+    requirements = "vosk,requests"
 
     inputs = [
-        PortDefinition(name="input1", label="input1", type=ArgumentType.ARRAY, connection=ConnectionType.SINGLE),
+        PortDefinition(name="input1", label="input1", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="output1", label="output1", type=ArgumentType.TEXT),

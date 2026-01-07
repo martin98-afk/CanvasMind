@@ -22,7 +22,7 @@ class Component(BaseComponent):
     inputs = [
     ]
     outputs = [
-        PortDefinition(name="file", label="csv文件", type=ArgumentType.UPLOAD),
+        PortDefinition(name="file", label="文件", type=ArgumentType.UPLOAD),
     ]
 
     def run(self, params, inputs=None):

@@ -270,6 +270,11 @@ class EnvManagerUI(QWidget):
         """获取当前环境 Python 的路径"""
         return self.mgr.get_python_exe(self.current_env)
 
+    def change_env(self, env_name):
+        envs = self.mgr.list_envs()
+        if env_name in envs:
+            self.envCombo.setCurrentText(env_name)
+
     def refresh_env_list(self):
         self.envCombo.clear()
         envs = self.mgr.list_envs()

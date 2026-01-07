@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from typing import Type, Optional, Dict
-
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QWidget, QStackedWidget, QHBoxLayout
@@ -14,15 +13,11 @@ from ..basic_widget.splitter import ModernSplitter
 class AdaptiveStackedWidget(QStackedWidget):
     def sizeHint(self) -> QSize:
         current = self.currentWidget()
-        if current:
-            return current.sizeHint()
-        return QSize(0, 0)
+        return current.sizeHint() if current else QSize(0, 0)
 
     def minimumSizeHint(self) -> QSize:
         current = self.currentWidget()
-        if current:
-            return current.minimumSizeHint()
-        return QSize(0, 0)
+        return current.minimumSizeHint() if current else QSize(0, 0)
 
 
 class SideDockArea(QWidget):
@@ -32,7 +27,6 @@ class SideDockArea(QWidget):
         self.context_id = context_id
         self._instances: Dict[str, ToolWindow] = {}
 
-        # ✅【关键】禁止 UI 刷新
         self.setUpdatesEnabled(False)
 
         try:
@@ -40,7 +34,7 @@ class SideDockArea(QWidget):
             main_layout.setContentsMargins(0, 0, 0, 0)
             main_layout.setSpacing(0)
 
-            # 内容区
+            # 内容分栏
             self.splitter = ModernSplitter(Qt.Vertical)
             self.top_stack = AdaptiveStackedWidget()
             self.bottom_stack = AdaptiveStackedWidget()
@@ -53,40 +47,61 @@ class SideDockArea(QWidget):
             self.splitter.addWidget(self.top_stack)
             self.splitter.addWidget(self.bottom_stack)
 
-            # 工具面板
+            # 工具按钮栏 (保留变量名 tool_panel)
             self.tool_panel = RightToolPanel(page, self)
             self.tool_panel.topToolChecked.connect(self._show_top_tool)
             self.tool_panel.topToolUnchecked.connect(self._hide_top_tool)
             self.tool_panel.bottomToolChecked.connect(self._show_bottom_tool)
             self.tool_panel.bottomToolUnchecked.connect(self._hide_bottom_tool)
+            self.tool_panel.toolMoveRequested.connect(self._handle_tool_reposition)
 
             main_layout.addWidget(self.splitter)
 
-            # 加载插件（此时不会触发重绘）
             self._load_plugins(context_id)
 
         finally:
-            # ✅【关键】恢复刷新并强制重绘
             self.setUpdatesEnabled(True)
-            self.update()  # 或 self.repaint()
+            self.update()
+
+    def _handle_tool_reposition(self, tool_name, pos_str):
+        """处理拖拽后的位置逻辑切换"""
+        instance = self.get_tool_instance(tool_name)
+        if not instance: return
+
+        new_pos = DockPosition.TOP if pos_str == "top" else DockPosition.BOTTOM
+        # 如果位置没变，不处理
+        if hasattr(instance, 'position') and instance.position == new_pos:
+            return
+
+        # 1. 记录当前开启状态
+        was_visible = instance.isVisible()
+
+        # 2. 从原 Stack 物理移除
+        self.top_stack.removeWidget(instance)
+        self.bottom_stack.removeWidget(instance)
+
+        # 3. 按钮栏 UI 调整
+        self.tool_panel.add_button_to_layout(tool_name, pos_str)
+
+        # 4. 更新实例属性
+        instance.position = new_pos
+
+        # 5. 如果搬迁前是打开的，搬迁后在对应位置打开
+        if was_visible:
+            self.switch_to(tool_name)
+        else:
+            self._update_splitter()
 
     def switch_to(self, tool_name):
-        """切换到指定工具面板"""
         view = self.get_tool_instance(tool_name)
-        if view is None:
-            return
+        if view is None: return
         self.tool_panel.set_checked(tool_name)
-        if hasattr(view, "position") and view.position == DockPosition.TOP:
-            self._show_top_tool(tool_name)
-        else:
-            self._show_bottom_tool(tool_name)
 
     def _show_top_tool(self, tool_name):
         view = self.get_tool_instance(tool_name)
-        idx = self.top_stack.indexOf(view)
-        if idx == -1:
-            idx = self.top_stack.addWidget(view)
-        self.top_stack.setCurrentIndex(idx)
+        if self.top_stack.indexOf(view) == -1:
+            self.top_stack.addWidget(view)
+        self.top_stack.setCurrentWidget(view)
         self.top_stack.show()
         self._top_visible = True
         self._update_splitter()
@@ -98,10 +113,9 @@ class SideDockArea(QWidget):
 
     def _show_bottom_tool(self, tool_name):
         view = self.get_tool_instance(tool_name)
-        idx = self.bottom_stack.indexOf(view)
-        if idx == -1:
-            idx = self.bottom_stack.addWidget(view)
-        self.bottom_stack.setCurrentIndex(idx)
+        if self.bottom_stack.indexOf(view) == -1:
+            self.bottom_stack.addWidget(view)
+        self.bottom_stack.setCurrentWidget(view)
         self.bottom_stack.show()
         self._bottom_visible = True
         self._update_splitter()
@@ -112,12 +126,10 @@ class SideDockArea(QWidget):
         self._update_splitter()
 
     def _update_splitter(self):
-        # 如果上次更新时没有内容，现在有内容了需要更新splitter,如果上次有内容，这次没有了也需要更新
         if self.last_content_visible and not (self._top_visible or self._bottom_visible):
             self.splitter.setSizes([0, 0])
             self.page.hide_splitter()
             self.last_content_visible = False
-
             return
         elif not self.last_content_visible and (self._top_visible or self._bottom_visible):
             self.last_content_visible = True
@@ -131,82 +143,76 @@ class SideDockArea(QWidget):
             self.splitter.setSizes([0, 1])
 
     def _load_plugins(self, context_id):
-        """自动按注册时的 default_position 添加到对应区域，并默认选中第一个 TOP 插件"""
         top_classes = []
         for name, entry in SideDockRegistry.get_all(context_id).items():
-            if entry.position == DockPosition.TOP:
-                self.tool_panel.add_to_top(entry.cls)
-                top_classes.append(entry.cls)
-            elif entry.position == DockPosition.BOTTOM:
-                self.tool_panel.add_to_bottom(entry.cls)
+            # 先创建按钮
+            self.tool_panel.create_button(entry.cls)
+            # 再按初始位置摆放按钮
+            pos_str = "top" if entry.position == DockPosition.TOP else "bottom"
+            self.tool_panel.add_button_to_layout(name, pos_str)
 
-        # 自动选中第一个 TOP 插件（模拟 PyCharm 默认行为）
+            if entry.position == DockPosition.TOP:
+                top_classes.append(entry.cls)
+
         if top_classes:
             first_cls = top_classes[0]
-            # 触发“选中”逻辑：手动调用显示 + 按钮置为 checked
             QtCore.QTimer.singleShot(100, lambda: self._show_top_tool(first_cls.name))
             self.last_content_visible = True
-            # 同时让对应按钮进入 checked 状态（视觉同步）
             self.tool_panel._set_top_button_checked(first_cls)
 
     def _get_or_create_instance(self, cls: Type[ToolWindow]) -> ToolWindow:
-        """根据 singleton 策略获取或创建实例"""
+        """根据 singleton 策略获取或创建实例，并将 button 注入"""
         self.setUpdatesEnabled(False)
-
         try:
             name = cls.name
-            if cls.singleton:
-                if name not in self._instances:
-                    self._instances[name] = cls(self.page)
+            if cls.singleton and name in self._instances:
                 return self._instances[name]
-            else:
-                return cls(self.page)
+
+            # 【关键重构】从 tool_panel 获取对应的按钮实例
+            btn_instance = self.tool_panel._button_by_name.get(name)
+
+            # 注入 button 到插件类构造函数中
+            instance = cls(self.page, button=btn_instance)
+
+            # 初始化位置信息
+            entry = SideDockRegistry._registries.get(self.context_id).get(name)
+            instance.position = entry.position if entry else DockPosition.TOP
+
+            if cls.singleton:
+                self._instances[name] = instance
+            return instance
         finally:
             self.setUpdatesEnabled(True)
             self.update()
 
     def get_tool_instance(self, name: str) -> Optional[ToolWindow]:
-        """外部可通过 name 获取面板实例，用于信号连接等"""
         entry = SideDockRegistry._registries.get(self.context_id).get(name)
-        if entry is None:
-            return None
+        if entry is None: return None
         return self._get_or_create_instance(entry.cls)
 
     def cleanup(self):
-        """释放所有资源，清空内存"""
-        # 1. 断开信号连接（防止 lambda 或槽函数持有引用）
         try:
             self.tool_panel.topToolChecked.disconnect(self._show_top_tool)
             self.tool_panel.topToolUnchecked.disconnect(self._hide_top_tool)
             self.tool_panel.bottomToolChecked.disconnect(self._show_bottom_tool)
             self.tool_panel.bottomToolUnchecked.disconnect(self._hide_bottom_tool)
-        except TypeError:
-            pass  # 已断开或未连接
+            self.tool_panel.toolMoveRequested.disconnect(self._handle_tool_reposition)
+        except:
+            pass
 
-        # 2. 删除所有 ToolWindow 实例（调用它们的 cleanup 如果有）
         for name, instance in self._instances.items():
-            if hasattr(instance, 'cleanup'):
-                instance.cleanup()
-            # 强制删除其所有子控件
+            if hasattr(instance, 'cleanup'): instance.cleanup()
             instance.setParent(None)
             instance.deleteLater()
         self._instances.clear()
 
-        # 3. 清空 stacked widgets 中的所有 widget
         def clear_stacked(stack: QStackedWidget):
             while stack.count():
                 widget = stack.widget(0)
                 stack.removeWidget(widget)
-                widget.setParent(None)
                 widget.deleteLater()
 
         clear_stacked(self.top_stack)
         clear_stacked(self.bottom_stack)
-
-        # 4. 清理 splitter
-        self.splitter.setParent(None)
         self.splitter.deleteLater()
-
-        # 5. 清理 tool_panel
-        self.tool_panel.setParent(None)
         self.tool_panel.deleteLater()

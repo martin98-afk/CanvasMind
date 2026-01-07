@@ -503,12 +503,15 @@ class CanvasPage(QWidget):
             self.ui_manager.update_position()
         return super().eventFilter(obj, event)
 
-    def center_to(self, node):
+    def center_to(self, nodes):
+        if not isinstance(nodes, list):
+            nodes = [nodes]
         self.graph.clear_selection()
-        if node not in self.graph.all_nodes():
-            MessageManager.warning("错误", "原节点不存在！", self)
-            return
-        node.set_selected(True)
+        for node in nodes:
+            if node not in self.graph.all_nodes():
+                MessageManager.warning("错误", "原节点不存在！", self)
+                return
+            node.set_selected(True)
         self.graph.fit_to_selection()
 
     def canvas_drag_enter_event(self, event):
