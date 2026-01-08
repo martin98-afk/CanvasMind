@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import json
-import platform
 import re
 from urllib.parse import urlparse
 
@@ -14,11 +13,10 @@ except ImportError:
 
 from PyQt5.QtCore import Qt, QTimer, QProcess, QSize
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QHeaderView, QAbstractItemView, QTableWidgetItem, QFrame
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QHeaderView, QAbstractItemView, QTableWidgetItem
 from qfluentwidgets import (
     TableWidget, PrimaryPushButton, TransparentToolButton,
-    StrongBodyLabel, FluentIcon, InfoBar, InfoBarPosition,
-    StateToolTip, CaptionLabel, IndeterminateProgressRing, InfoBadgePosition, InfoBadge
+    StrongBodyLabel, FluentIcon, InfoBar, CaptionLabel, IndeterminateProgressRing
 )
 
 from app.interfaces.package_manager_interface import PackageListThread
@@ -53,7 +51,7 @@ class DependencyToolWindow(ToolWindow):
         title_v_layout.addWidget(self.status_label)
 
         self.loading_ring = IndeterminateProgressRing(self)
-        self.loading_ring.setFixedSize(16, 16)
+        self.loading_ring.setFixedSize(28, 28)
         self.loading_ring.hide()
 
         header_layout.addLayout(title_v_layout)
@@ -75,7 +73,7 @@ class DependencyToolWindow(ToolWindow):
 
         # --- 表格配置 ---
         self.table = TableWidget(self)
-        self.table.setMinimumWidth(350)
+        self.table.setMinimumWidth(400)
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["包名", "需求汇总", "当前版本", "状态", "操作"])
 
@@ -324,10 +322,8 @@ class DependencyToolWindow(ToolWindow):
         if mirrors:
             for m in mirrors:
                 cmd.extend(["--extra-index-url", m, "--trusted-host", urlparse(m).hostname])
-
-        self.tip = StateToolTip("正在修复...", "同步 Python 环境", self.homepage)
-        self.tip.move(self.homepage.width() - self.tip.width() - 30, 50)
-        self.tip.show()
+        self.loading_ring.show()
+        self.status_label.setText("正在安装...")
         self.setEnabled(False)
 
         self._process = QProcess(self)
@@ -337,7 +333,13 @@ class DependencyToolWindow(ToolWindow):
 
     def _on_install_finished(self):
         self.setEnabled(True)
-        if hasattr(self, 'tip'): self.tip.setState(True)
+        self.loading_ring.hide()
+        if self._process.exitCode() != 0:
+            self.status_label.setText("安装失败，请尝试在安装包管理界面手动安装...")
+            return
+        self.loading_ring.hide()
+        self.status_label.setText("安装完成，正在重新扫描依赖...")
+        self.status_label.setStyleSheet("color: #107C10;")
         QTimer.singleShot(1000, self.run_check)
 
     def install_all_missing(self):

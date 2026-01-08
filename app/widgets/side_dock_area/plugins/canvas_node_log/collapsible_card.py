@@ -213,8 +213,6 @@ class CollapsibleLogCard(CardWidget):
         cursor.movePosition(QTextCursor.End)
         lines = text.splitlines()
         if text.endswith('\n'): lines.append("")
-        block_format = QTextBlockFormat()
-        block_format.setLineHeight(110, QTextBlockFormat.ProportionalHeight)
         for i, line in enumerate(lines):
             color_hex = "#ffffff"
             clean_line = line.rstrip('\r\n\t ')
@@ -226,7 +224,6 @@ class CollapsibleLogCard(CardWidget):
             char_format.setForeground(QColor(color_hex))
             char_format.setFontFamily("Consolas")
             char_format.setFontPointSize(10)
-            cursor.setBlockFormat(block_format)
             cursor.insertText(line, char_format)
             if i < len(lines) - 1: cursor.insertBlock()
         self.log_text.setTextCursor(cursor)

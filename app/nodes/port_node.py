@@ -11,6 +11,7 @@ class CustomPortInputNode(PortInputNode, BasicNodeWithGlobalProperty):
     category = "控制流"
     NODE_NAME = '输入端口'
     FULL_PATH = f"{category}/{NODE_NAME}"
+    description = "循环、迭代体的输入端口，将需要获取循环初始数据的节点连接至该节点"
 
     def __init__(self, qgraphics_item=None, parent_port=None):
         super(CustomPortInputNode, self).__init__(qgraphics_item or PortInputNodeItem)
@@ -30,6 +31,7 @@ class CustomPortOutputNode(PortOutputNode, BasicNodeWithGlobalProperty):
     category = "控制流"
     NODE_NAME = '输出端口'
     FULL_PATH = f"{category}/{NODE_NAME}"
+    description = "循环、迭代体的输出端口，将需要传递到下一轮循环迭代的数据连接至该节点"
 
     def __init__(self, qgraphics_item=None, parent_port=None):
         super(CustomPortOutputNode, self).__init__(qgraphics_item or PortOutputNodeItem)
