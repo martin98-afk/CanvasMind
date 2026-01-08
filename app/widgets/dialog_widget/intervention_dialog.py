@@ -25,7 +25,7 @@ class InterventionDialog(MessageBoxBase):
         self._setup_dynamic_form()
 
         # 设置对话框宽度
-        self.widget.setMinimumWidth(400)
+        self.widget.setMinimumWidth(600)
 
     def _setup_dynamic_form(self):
         for field_name, prop_def in self.schema.items():
