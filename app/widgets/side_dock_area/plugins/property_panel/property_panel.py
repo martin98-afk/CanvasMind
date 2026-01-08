@@ -97,6 +97,10 @@ class FuturisticCard(QFrame):
         self._custom_opacity = 1.0  # 强制不透明
         self.update()
 
+    def set_title(self, title):
+        """动态更新卡片标题"""
+        self.title_label.setText(title)
+
     def set_active(self, active: bool, level: int = 0, animate: bool = True):
         self.is_active = active
         # 字体颜色逻辑
@@ -196,6 +200,10 @@ class PropertyPanel(QWidget):
 
         self.anim_group = QParallelAnimationGroup(self)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        QTimer.singleShot(300, lambda: self._sync_stack_layout(animate=False))
 
     def update_properties(self, node, node_changed=False):
         if not self._allowed_update:
@@ -351,6 +359,11 @@ class PropertyPanel(QWidget):
         return card
 
     def _refresh_card_content(self, card, node, key):
+        # --- 新增：刷新卡片标题，应对重命名 ---
+        new_title, _ = self._get_metadata(node, key)
+        card.set_title(new_title)
+        # -----------------------------------
+
         if getattr(card, "_is_logic_class", False):
             card._logic.build_ui()
             self._global_panel_built = True
