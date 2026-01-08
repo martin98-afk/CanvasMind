@@ -545,6 +545,7 @@ def create_dynamic_code_node(parent_window=None):
                     for port in self.output_ports():
                         if port.name() in output:
                             self.set_output_value(port.name(), output[port.name()])
+                    self._trigger_ui_update()
                     return output
                 elif os.path.exists(error_path):
                     error_info = _safe_load_pickle(error_path)

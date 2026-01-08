@@ -1,4 +1,6 @@
 import json
+import os
+import pickle
 import uuid
 
 from NodeGraphQt import NodeObject, BaseNode
@@ -408,9 +410,27 @@ class BasicNodeWithGlobalProperty(NodeObject):
                 # 刷新属性面板
                 self.parent_window.property_panel.update_properties(self)
 
-    def _handle_data_preview(self, params: dict, msg: ComponentMessage):
-        # 处理数据预览逻辑，比如弹出小窗显示表格预览
-        pass
+    def _handle_ui_ask(self, params: dict, msg: ComponentMessage):
+        """
+        处理来自组件的人工干预请求
+        """
+        title = params.get("title", "人工干预")
+        message = params.get("message", "")
+        response_file = params.get("response_file")
+        schema = params.get("schema")
+        # 确保响应文件目录存在
+        os.makedirs(os.path.dirname(response_file), exist_ok=True)
+
+        def on_confirmed(result_data):
+            # 将用户输入的结果写入文件，节点那边就会感知到
+            with open(response_file, 'wb') as f:
+                pickle.dump(result_data, f)
+
+        # 逻辑：
+        # 1. 弹出对话框
+        # 2. 用户输入
+        # 3. 写入文件
+        self.parent_window.show_intervention_dialog(title, message, schema, on_confirmed)
 
     def _handle_unknown_method(self, params: dict, msg: ComponentMessage):
         logger.warning(f"收到未知指令: {msg.method}")

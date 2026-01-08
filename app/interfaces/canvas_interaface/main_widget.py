@@ -193,6 +193,9 @@ class CanvasPage(QWidget):
     def log_window(self):
         return self.ui_manager.log_window
 
+    def show_intervention_dialog(self, title, message, schema, callback):
+        self.canvas_runner.show_intervention_dialog(title, message, schema, callback)
+
     def show_category_dialog(self, categories, tag):
         all_categories = set()
         for full_path, comp_cls in self.component_map.items():

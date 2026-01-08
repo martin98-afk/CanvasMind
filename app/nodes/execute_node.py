@@ -498,6 +498,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                     for port in comp_obj.outputs:
                         if port.type != ArgumentType.UPLOAD:
                             self.set_output_value(port.name, output.get(port.name))
+                    self._trigger_ui_update()
                     return output
                 elif os.path.exists(error_path):
                     error_info = _safe_load_pickle(error_path)
