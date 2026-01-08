@@ -133,8 +133,12 @@ class PortWidget(QWidget):
     def refresh(self, node):
         """刷新入口"""
         self.node = node
-        input_infos = self.port_info_func(node, is_input=True)
-        output_infos = self.port_info_func(node, is_input=False)
+        if hasattr(node, "input_ports"):
+            input_infos = self.port_info_func(node, is_input=True)
+            output_infos = self.port_info_func(node, is_input=False)
+        else:
+            input_infos = []
+            output_infos = []
 
         # 1. 刷新标签顺序及状态
         self._update_segments(len(input_infos) > 0, len(output_infos) > 0)

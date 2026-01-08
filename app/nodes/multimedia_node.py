@@ -12,8 +12,9 @@ def create_chart_node(parent_window):
     class ChartNode(CustomBaseNode, NoStatusNode, BasicNodeWithGlobalProperty):
         category: str = "可视化"
         __identifier__ = 'visualize'
-        NODE_NAME = 'HTML 图表'
+        NODE_NAME = '多媒体展示节点'
         FULL_PATH = f"{category}/{NODE_NAME}"
+        description: str = "可展示 html格式的echarts图表、图片数据、语音数据、视频数据。"
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
@@ -25,7 +26,7 @@ def create_chart_node(parent_window):
             self.view.set_align("center")
 
             # 添加输入端口
-            self.add_input('html', False)
+            self.add_input('data', False)
 
             # 添加图表控件
             chart_widget = UniversalWidgetWrapper(
@@ -50,7 +51,7 @@ def create_chart_node(parent_window):
         def _trigger_chart_update(self):
             """统一触发 HTML 更新"""
             html_val = ""
-            port = self.get_input("html")
+            port = self.get_input("data")
             if port and port.connected_ports():
                 connected = port.connected_ports()[0]
                 upstream_node = connected.node()
@@ -68,13 +69,13 @@ def create_chart_node(parent_window):
 
         def set_input_value(self, port_name, value):
             super().set_input_value(port_name, value)
-            if port_name == "html":
+            if port_name == "data":
                 self._trigger_chart_update()
 
         def execute_sync(self, *args, **kwargs):
             self.init_logger()
             html_val = None
-            port = self.get_input("html")
+            port = self.get_input("data")
             if port and port.connected_ports():
                 connected = port.connected_ports()[0]
                 upstream_node = connected.node()

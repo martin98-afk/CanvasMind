@@ -7,7 +7,7 @@ from app.interfaces.canvas_interaface.widgets.message_manager import MessageMana
 from app.nodes.backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
 from app.nodes.branch_node import create_branch_node
 from app.nodes.dynamic_code_node import create_dynamic_code_node
-from app.nodes.echart_node import create_chart_node
+from app.nodes.multimedia_node import create_chart_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.status_node import StatusNode

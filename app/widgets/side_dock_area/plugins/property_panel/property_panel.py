@@ -395,7 +395,10 @@ class PropertyPanel(QWidget):
                 (node.input_ports() if is_input else node.output_ports())]
 
     def get_node_description(self, node):
-        if not node or "StatusDynamicNode_" not in node.model.type_: return ""
+        if hasattr(node, 'description'):
+            return node.description
+        if not node or "StatusDynamicNode_" not in node.model.type_:
+            return ""
         comp_cls = ComponentScanner().get_component_by_uuid(node.uuid)
         return comp_cls.description if comp_cls else ""
 

@@ -59,6 +59,7 @@ def create_dynamic_code_node(parent_window=None):
         NODE_NAME = "代码编辑"
         FULL_PATH = f"代码执行/{NODE_NAME}"
         FILE_PATH = "DYNAMIC_CODE"  # 不需要真实文件路径
+        description = "动态代码组件，右键选择固化为组件可以将当前代码保存为固定组件。"
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)

@@ -138,7 +138,7 @@ class VarComboBoxWidget(QtWidgets.QWidget):
 
         try:
             all_vars = get_vars_func()
-            all_vars = sorted(set(all_vars))
+            # all_vars = sorted(set(all_vars))
             if all_vars:
                 self.combobox.addItems(all_vars)
         except Exception:

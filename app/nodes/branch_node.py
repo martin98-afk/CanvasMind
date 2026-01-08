@@ -17,6 +17,8 @@ def create_branch_node(parent_window):
         __identifier__ = 'control_flow'
         NODE_NAME = '条件分支'
         FULL_PATH = f"{category}/{NODE_NAME}"
+        description = ("根据条件执行不同的分支, 第一个输入为实际用来判断逻辑的数据，后续输入为逻辑判断输入，可以替代动态表单接收由逻辑判断节点"
+                       "计算的布尔值，当逻辑判断输入有连接时会优先使用其连接节点的数据进行分支判断。")
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
