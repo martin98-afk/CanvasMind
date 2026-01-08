@@ -45,12 +45,11 @@ class CanvasRunner(QObject):
         if nodes:
             self._scheduler.run_full(nodes=nodes, sort=False)
             for sig in [
-                self._scheduler.node_started,
-                self._scheduler.node_finished,
                 self._scheduler.backdrop_finished,
                 self._scheduler.finished,
                 self._scheduler.error,
                 self._scheduler.cancelled,
+                self._scheduler.node_status_changed
             ]:
                 sig.connect(
                     lambda: QTimer.singleShot(50, self.parent.property_panel.update_node_list_content)
