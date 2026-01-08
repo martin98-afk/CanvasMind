@@ -424,10 +424,6 @@ def create_node_class(full_path, file_path, parent_window=None):
 
             params = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in params.items()}
             inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
-
-            # === 获取 requirements ===
-            requirements_str = getattr(comp_obj, 'requirements', '').strip()
-
             # ✅ 关键修改：使用持久化运行目录，而非临时目录
             run_id = f"run_{self.persistent_id}"
             run_dir = self.CACHE_PATH / "run_scripts" / run_id
@@ -502,6 +498,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                     for port in comp_obj.outputs:
                         if port.type != ArgumentType.UPLOAD:
                             self.set_output_value(port.name, output.get(port.name))
+                    self._trigger_ui_update()
                     return output
                 elif os.path.exists(error_path):
                     error_info = _safe_load_pickle(error_path)

@@ -1,6 +1,5 @@
 # backdrop_executor.py
 import concurrent
-import datetime
 import re
 import traceback
 from threading import Lock
@@ -246,6 +245,7 @@ class BackdropExecutor(QObject):
             futures = {}
             def submit(n):
                 if self.ctx.is_cancelled(): return
+                self.ctx.wait_if_paused()
                 f = executor.submit(self._run_single_subnode, n, iteration_tag)
                 futures[f] = n
 
@@ -272,7 +272,8 @@ class BackdropExecutor(QObject):
                 log_start_func=self.log_start.emit, log_message_func=self.log_message.emit,
                 log_error_func=self.log_error.emit, log_finish_func=self.log_finished.emit,
                 run_id_postfix=f"{self.backdrop.name()}:{iteration_tag}",
-                semaphore=self.scheduler.execution_semaphore # 必须传递
+                semaphore=self.scheduler.execution_semaphore, # 必须传递
+                callback_func=lambda: self.scheduler.property_changed.emit(self.backdrop)
             )
         except Exception as e:
             raise e

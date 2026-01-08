@@ -9,7 +9,7 @@ def execute_node(
     node, python_exe, kernel_manager, scheduler,
     global_variable, execution_context, log_start_func,
     log_message_func, log_error_func, log_finish_func,
-    run_id_postfix="", semaphore=None
+    run_id_postfix="", semaphore=None, callback_func=None
 ):
     # 容器节点不占用信号量名额，直接返回
     if isinstance(node, ControlFlowBackdrop):
@@ -27,7 +27,7 @@ def execute_node(
 
     # 2. 【关键】只有抢到位置后，才更新状态和发送开始信号
     scheduler.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
-
+    if callback_func: callback_func()
     # 3. 日志卡片开始记录
     # 日志准备逻辑...
     is_log_node = "StatusDynamicNode_" in node.model.type_ or "DYNAMIC_CODE" in node.model.type_
@@ -67,12 +67,14 @@ def execute_node(
         if is_log_node:
             log_finish_func(run_id)
         scheduler.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
+        if callback_func: callback_func()
         return results
 
     except Exception as e:
         if is_log_node:
             log_error_func(run_id)
         scheduler.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
+        if callback_func: callback_func()
         raise e
     finally:
         if acquired:
