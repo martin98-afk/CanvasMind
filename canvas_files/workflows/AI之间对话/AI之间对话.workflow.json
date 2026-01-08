@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1e52e527250": {
+      "0x2b65a56a740": {
         "type_": "visualize.EchartsNode",
         "icon": ":/icons/图表",
         "name": "HTML 图表",
@@ -37,7 +37,7 @@
         "selected": false,
         "visible": true,
         "width": 293.48,
-        "height": 257.52,
+        "height": 226.32,
         "pos": [
           2039.071493617084,
           447.20783899508353
@@ -50,7 +50,7 @@
           "chart_display": "canvas_files\\workflows\\AI之间对话\\node_results\\c682401b-83b4-41ed-a481-8ca01c73fb6d\\output_20260108014338.mp3"
         }
       },
-      "0x1e52f89bb80": {
+      "0x2b6650865f0": {
         "type_": "dynamic.StatusDynamicNode_10adbb2e-ab31-4fe2-9ea8-66809be1fe63",
         "icon": null,
         "name": "EdgeTTS文本转语音 1",
@@ -75,7 +75,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 524.975,
+        "width": 529.0,
         "height": 95.28,
         "pos": [
           1334.8480519357922,
@@ -90,7 +90,7 @@
           "voice_name": "zh-CN-XiaoxiaoNeural"
         }
       },
-      "0x1e52f89b940": {
+      "0x2b665086a70": {
         "type_": "dynamic.StatusDynamicNode_c6e6d266-56b6-4843-b6b1-3277f2829b7e",
         "icon": null,
         "name": "大模型对话测试",
@@ -115,8 +115,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 487.11125000000004,
-        "height": 398.96000000000004,
+        "width": 486.68,
+        "height": 400.0,
         "pos": [
           774.9104285989516,
           578.2478389950837
@@ -135,7 +135,7 @@
           "model_params": []
         }
       },
-      "0x1e52c8bcd30": {
+      "0x2b6650b4250": {
         "type_": "dynamic.StatusDynamicNode_9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed",
         "icon": null,
         "name": "等待指定时间",
@@ -160,7 +160,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 369.6675,
+        "width": 379.96000000000004,
         "height": 98.4,
         "pos": [
           1962.883993617084,
@@ -175,7 +175,7 @@
           "seconds": "$input.EdgeTTS文本转语音_1__audio_length$"
         }
       },
-      "0x1e52c8bd900": {
+      "0x2b6650b4820": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入",
@@ -215,7 +215,7 @@
           "input": "你的任务是证明自己是最聪明的AI，先说明自己的身份，然后举出例子证明自己聪明，并贬低对方说对方不是最聪明的AI"
         }
       },
-      "0x1e52c8bcbb0": {
+      "0x2b6650b4e50": {
         "type_": "dynamic.StatusDynamicNode_10adbb2e-ab31-4fe2-9ea8-66809be1fe63",
         "icon": null,
         "name": "EdgeTTS文本转语音 2",
@@ -240,7 +240,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 524.975,
+        "width": 529.0,
         "height": 95.28,
         "pos": [
           2732.809859726486,
@@ -255,7 +255,7 @@
           "voice_name": "zh-CN-YunjianNeural"
         }
       },
-      "0x1e52c4d7760": {
+      "0x2b6650b5360": {
         "type_": "visualize.EchartsNode",
         "icon": ":/icons/图表",
         "name": "HTML 图表 1",
@@ -281,7 +281,7 @@
         "selected": false,
         "visible": true,
         "width": 293.48,
-        "height": 257.52,
+        "height": 226.32,
         "pos": [
           3437.033301407777,
           963.8583021093527
@@ -294,7 +294,7 @@
           "chart_display": "canvas_files\\workflows\\AI之间对话\\node_results\\e0e91ea8-7a2a-4f6e-af52-2bb2c9241ca5\\output_20260108014612.mp3"
         }
       },
-      "0x1e52caa33d0": {
+      "0x2b6650b70a0": {
         "type_": "dynamic.StatusDynamicNode_c6e6d266-56b6-4843-b6b1-3277f2829b7e",
         "icon": null,
         "name": "大模型对话测试 1",
@@ -319,8 +319,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 487.11125000000004,
-        "height": 398.96000000000004,
+        "width": 486.68,
+        "height": 400.0,
         "pos": [
           2172.8722363896445,
           1094.8983021093532
@@ -339,7 +339,7 @@
           "model_params": []
         }
       },
-      "0x1e52fba5090": {
+      "0x2b6650d8760": {
         "type_": "dynamic.StatusDynamicNode_9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed",
         "icon": null,
         "name": "等待指定时间 1",
@@ -362,9 +362,9 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 369.6675,
+        "width": 379.96000000000004,
         "height": 98.4,
         "pos": [
           3360.845801407777,
@@ -379,7 +379,7 @@
           "seconds": "$input.EdgeTTS文本转语音_2__audio_length$"
         }
       },
-      "0x1e52fba5810": {
+      "0x2b6650d8e20": {
         "type_": "dynamic.StatusDynamicNode_5e69aed2-c012-4b57-9e43-868bf8854ea5",
         "icon": null,
         "name": "提示词模板",
@@ -404,7 +404,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 464.51375,
+        "width": 460.92,
         "height": 98.4,
         "pos": [
           1569.2370912446534,
@@ -419,7 +419,7 @@
           "template": "$node_vars.大模型对话测试__response$"
         }
       },
-      "0x1e52fba5b10": {
+      "0x2b6650d94b0": {
         "type_": "dynamic.StatusDynamicNode_2317bfef-1bde-4f99-8ce5-2d95c4adfb6b",
         "icon": null,
         "name": "获取全局变量",
@@ -444,7 +444,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 396.8075,
+        "width": 402.96000000000004,
         "height": 95.28,
         "pos": [
           259.8362151968419,
@@ -459,7 +459,7 @@
           "prop1": "node_vars.大模型对话测试__history"
         }
       },
-      "0x1e52fba6140": {
+      "0x2b6650d97e0": {
         "type_": "dynamic.StatusDynamicNode_2317bfef-1bde-4f99-8ce5-2d95c4adfb6b",
         "icon": null,
         "name": "获取全局变量 1",
@@ -484,7 +484,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 396.8075,
+        "width": 402.96000000000004,
         "height": 95.28,
         "pos": [
           1636.943341244653,
@@ -499,7 +499,87 @@
           "prop1": "node_vars.大模型对话测试_1__history"
         }
       },
-      "0x1e52fba66e0": {
+      "0x2b6650d9bd0": {
+        "type_": "dynamic.StatusDynamicNode_1209ec1a-a1b1-4a97-9785-fa0e244402d7",
+        "icon": null,
+        "name": "节点全局变量清空",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 379.04,
+        "height": 95.28,
+        "pos": [
+          -471.5819097674653,
+          594.8854366332705
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "2e967aad-18e1-4050-adc7-f9fd440f8fc7",
+          "version": "latest",
+          "prop1": "node_vars.大模型对话测试_1__history"
+        }
+      },
+      "0x2b6650d9ed0": {
+        "type_": "dynamic.StatusDynamicNode_1209ec1a-a1b1-4a97-9785-fa0e244402d7",
+        "icon": null,
+        "name": "节点全局变量清空 1",
+        "color": [
+          25,
+          70,
+          45,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 425.04,
+        "height": 95.28,
+        "pos": [
+          -471.5819097674653,
+          768.2099731224545
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "2d567f15-76c3-4353-a75b-c01a7e148889",
+          "version": "latest",
+          "prop1": "node_vars.大模型对话测试__history"
+        }
+      },
+      "0x2b6650da1a0": {
         "type_": "control_flow.ControlFlowLoopNode",
         "icon": ":/icons/无限.png",
         "name": "循环控制流区域",
@@ -525,7 +605,7 @@
         "selected": false,
         "visible": true,
         "width": 3588.3885803386147,
-        "height": 1177.3403924715665,
+        "height": 1178.3803924715664,
         "pos": [
           219.83621519684192,
           356.51790963778666
@@ -544,7 +624,7 @@
           "loop_mode": "count"
         }
       },
-      "0x1e52fba6920": {
+      "0x2b6650da3e0": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -582,7 +662,7 @@
           "persistent_id": "cc8334d1-abb0-4978-a603-c2ad1d6d6265"
         }
       },
-      "0x1e52fba6dd0": {
+      "0x2b6650da530": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -619,216 +699,136 @@
         "custom": {
           "persistent_id": "7c129af7-7c51-4e81-8135-9ed02f007fcd"
         }
-      },
-      "0x1e5473857b0": {
-        "type_": "dynamic.StatusDynamicNode_1209ec1a-a1b1-4a97-9785-fa0e244402d7",
-        "icon": null,
-        "name": "节点全局变量清空",
-        "color": [
-          25,
-          70,
-          45,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 378.35,
-        "height": 95.28,
-        "pos": [
-          -471.5819097674653,
-          594.8854366332705
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "2e967aad-18e1-4050-adc7-f9fd440f8fc7",
-          "version": "latest",
-          "prop1": "node_vars.大模型对话测试_1__history"
-        }
-      },
-      "0x1e547832ec0": {
-        "type_": "dynamic.StatusDynamicNode_1209ec1a-a1b1-4a97-9785-fa0e244402d7",
-        "icon": null,
-        "name": "节点全局变量清空 1",
-        "color": [
-          25,
-          70,
-          45,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 422.42375000000004,
-        "height": 95.28,
-        "pos": [
-          -471.5819097674653,
-          768.2099731224545
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "2d567f15-76c3-4353-a75b-c01a7e148889",
-          "version": "latest",
-          "prop1": "node_vars.大模型对话测试__history"
-        }
       }
     },
     "connections": [
       {
         "in": [
-          "0x1e52e527250",
+          "0x2b65a56a740",
           "html"
         ],
         "out": [
-          "0x1e52f89bb80",
+          "0x2b6650865f0",
           "output_{{now}}.mp3"
         ]
       },
       {
         "in": [
-          "0x1e52f89bb80",
+          "0x2b6650865f0",
           "text"
         ],
         "out": [
-          "0x1e52f89b940",
+          "0x2b665086a70",
           "response"
         ]
       },
       {
         "out": [
-          "0x1e52f89bb80",
+          "0x2b6650865f0",
           "audio_length"
         ],
         "in": [
-          "0x1e52c8bcd30",
+          "0x2b6650b4250",
           "trigger"
         ]
       },
       {
         "in": [
-          "0x1e52f89b940",
+          "0x2b665086a70",
           "input_data"
         ],
         "out": [
-          "0x1e52fba6dd0",
+          "0x2b6650da530",
           "output"
         ]
       },
       {
         "in": [
-          "0x1e52f89b940",
+          "0x2b665086a70",
           "history"
         ],
         "out": [
-          "0x1e52fba5b10",
+          "0x2b6650d94b0",
           "output1"
         ]
       },
       {
         "out": [
-          "0x1e52c8bcd30",
+          "0x2b6650b4250",
           "completed"
         ],
         "in": [
-          "0x1e52fba5810",
+          "0x2b6650d8e20",
           "variables"
         ]
       },
       {
         "out": [
-          "0x1e52c8bd900",
+          "0x2b6650b4820",
           "text"
         ],
         "in": [
-          "0x1e52fba66e0",
+          "0x2b6650da1a0",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x1e52c8bcbb0",
+          "0x2b6650b4e50",
           "text"
         ],
         "out": [
-          "0x1e52caa33d0",
+          "0x2b6650b70a0",
           "response"
         ]
       },
       {
         "out": [
-          "0x1e52c8bcbb0",
+          "0x2b6650b4e50",
           "output_{{now}}.mp3"
         ],
         "in": [
-          "0x1e52c4d7760",
+          "0x2b6650b5360",
           "html"
         ]
       },
       {
         "out": [
-          "0x1e52c8bcbb0",
+          "0x2b6650b4e50",
           "audio_length"
         ],
         "in": [
-          "0x1e52fba5090",
+          "0x2b6650d8760",
           "trigger"
         ]
       },
       {
         "in": [
-          "0x1e52caa33d0",
+          "0x2b6650b70a0",
           "input_data"
         ],
         "out": [
-          "0x1e52fba5810",
+          "0x2b6650d8e20",
           "prompt"
         ]
       },
       {
         "in": [
-          "0x1e52caa33d0",
+          "0x2b6650b70a0",
           "history"
         ],
         "out": [
-          "0x1e52fba6140",
+          "0x2b6650d97e0",
           "output1"
         ]
       },
       {
         "out": [
-          "0x1e52caa33d0",
+          "0x2b6650b70a0",
           "response"
         ],
         "in": [
-          "0x1e52fba6920",
+          "0x2b6650da3e0",
           "input"
         ]
       }
@@ -836,25 +836,25 @@
   },
   "runtime": {
     "environment": "3.14",
-    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
+    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.14\\python.exe",
     "node_id2stable_key": {
-      "0x1e52e527250": "unknown||HTML 图表",
-      "0x1e52f89bb80": "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1",
-      "0x1e52f89b940": "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试",
-      "0x1e52c8bcd30": "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间",
-      "0x1e52c8bd900": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入",
-      "0x1e52c8bcbb0": "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 2",
-      "0x1e52c4d7760": "unknown||HTML 图表 1",
-      "0x1e52caa33d0": "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试 1",
-      "0x1e52fba5090": "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间 1",
-      "0x1e52fba5810": "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板",
-      "0x1e52fba5b10": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量",
-      "0x1e52fba6140": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1",
-      "0x1e52fba66e0": "unknown||循环控制流区域",
-      "0x1e52fba6920": "unknown||输出端口",
-      "0x1e52fba6dd0": "unknown||输入端口",
-      "0x1e5473857b0": "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空",
-      "0x1e547832ec0": "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1"
+      "0x2b65a56a740": "unknown||HTML 图表",
+      "0x2b6650865f0": "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1",
+      "0x2b665086a70": "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试",
+      "0x2b6650b4250": "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间",
+      "0x2b6650b4820": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入",
+      "0x2b6650b4e50": "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 2",
+      "0x2b6650b5360": "unknown||HTML 图表 1",
+      "0x2b6650b70a0": "c6e6d266-56b6-4843-b6b1-3277f2829b7e||大模型对话测试 1",
+      "0x2b6650d8760": "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间 1",
+      "0x2b6650d8e20": "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板",
+      "0x2b6650d94b0": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量",
+      "0x2b6650d97e0": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1",
+      "0x2b6650d9bd0": "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空",
+      "0x2b6650d9ed0": "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1",
+      "0x2b6650da1a0": "unknown||循环控制流区域",
+      "0x2b6650da3e0": "unknown||输出端口",
+      "0x2b6650da530": "unknown||输入端口"
     },
     "node_states": {
       "unknown||HTML 图表": "success",
@@ -869,11 +869,11 @@
       "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板": "success",
       "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量": "success",
       "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1": "success",
-      "unknown||循环控制流区域": "failed",
-      "unknown||输出端口": "pending",
-      "unknown||输入端口": "pending",
       "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空": "success",
-      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1": "success"
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1": "success",
+      "unknown||循环控制流区域": "failed",
+      "unknown||输出端口": "unrun",
+      "unknown||输入端口": "unrun"
     },
     "node_inputs": {
       "unknown||HTML 图表": {},
@@ -888,11 +888,11 @@
       "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板": {},
       "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量": {},
       "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1": {},
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空": {},
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1": {},
       "unknown||循环控制流区域": {},
       "unknown||输出端口": {},
-      "unknown||输入端口": {},
-      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空": {},
-      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1": {}
+      "unknown||输入端口": {}
     },
     "node_outputs": {
       "unknown||HTML 图表": {},
@@ -1011,15 +1011,13 @@
       "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1": {
         "output1": []
       },
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空": {},
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1": {},
       "unknown||循环控制流区域": {
         "outputs": null
       },
       "unknown||输出端口": {},
-      "unknown||输入端口": {
-        "output": "你的任务是证明自己是最聪明的AI，先说明自己的身份，然后举出例子证明自己聪明，并贬低对方说对方不是最聪明的AI"
-      },
-      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空": {},
-      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1": {}
+      "unknown||输入端口": {}
     },
     "column_select": {
       "unknown||HTML 图表": {},
@@ -1034,11 +1032,11 @@
       "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板": {},
       "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量": {},
       "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1": {},
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空": {},
+      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1": {},
       "unknown||循环控制流区域": {},
       "unknown||输出端口": {},
-      "unknown||输入端口": {},
-      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空": {},
-      "1209ec1a-a1b1-4a97-9785-fa0e244402d7||节点全局变量清空 1": {}
+      "unknown||输入端口": {}
     }
   },
   "global_variable": {
