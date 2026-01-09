@@ -119,7 +119,7 @@ class NodeLogHandler:
             logger.remove(self.file_handler_id)
 
     def get_log_file_path(self):
-        return str(self.log_file_path)
+        return self.log_file_path
 
     def read_log_file(self):
         if self.log_file_path.exists():

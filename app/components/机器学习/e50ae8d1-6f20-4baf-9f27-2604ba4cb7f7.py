@@ -28,6 +28,12 @@ class TorchClassifierTrainer(BaseComponent):
         PortDefinition(name="output", label="推理结果", type=ArgumentType.ARRAY),
     ]
     properties = {
+        "device": PropertyDefinition(
+            type=PropertyType.CHOICE,
+            default="cuda",
+            label="运行设备",
+            choices=["cuda", "cpu"]
+        ),
     }
 
     def run(self, params, inputs=None):
@@ -37,10 +43,10 @@ class TorchClassifierTrainer(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         import torch
-
+        device = torch.device(params.device)
         data = inputs.test_data
         model = inputs.model
-        data = torch.tensor(data, dtype=torch.float32)
+        data = torch.tensor(data, dtype=torch.float32).to(device)
         test_outputs = model.module()(data)
         _, predicted = test_outputs.max(1)
 

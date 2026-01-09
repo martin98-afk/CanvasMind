@@ -23,10 +23,10 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
         self.stack = QtWidgets.QStackedWidget()
         self.layout.addWidget(self.stack)
 
-        self.html_view = HtmlWidget(self)
-        self.image_view = ImageWidget(self)
-        self.video_view = VideoPlayWidget(self)  # 新增媒体控件
-        self.audio_view = AudioPlayWidget(self)
+        self.html_view = HtmlWidget(parent)
+        self.image_view = ImageWidget(parent)
+        self.video_view = VideoPlayWidget(parent)  # 新增媒体控件
+        self.audio_view = AudioPlayWidget(parent)
 
         self.stack.addWidget(self.html_view)  # Index 0
         self.stack.addWidget(self.image_view)  # Index 1
@@ -113,7 +113,7 @@ class UniversalWidgetWrapper(CustomNodeBaseWidget):
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
 
-        widget = UniversalDisplayWidget()
+        widget = UniversalDisplayWidget(window)
         self.set_custom_widget(widget)
 
         widget.valueChanged.connect(self.on_value_changed)
@@ -121,6 +121,8 @@ class UniversalWidgetWrapper(CustomNodeBaseWidget):
 
     def _update_node(self):
         if self.node and self.node.graph is not None:
+            # 强制关闭代理模式更新节点大小
+            self.node.view.set_proxy_mode(False)
             # 强制让代理容器更新尺寸
             # NodeGraphQt 的节点内部有一个 proxy 容器
             view = self.node.view

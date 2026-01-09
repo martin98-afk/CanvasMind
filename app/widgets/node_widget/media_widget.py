@@ -97,6 +97,7 @@ class VideoPlayWidget(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.parent = parent
         self._file_path = None
         # 用于保存弹出窗口的引用，防止被垃圾回收
         self._player_window = None
@@ -106,13 +107,14 @@ class VideoPlayWidget(QtWidgets.QWidget):
 
         # 改成一个美观的按钮
         self.play_btn = PushButton(FluentIcon.PLAY, "点击播放视频", self)
-        self.play_btn.clicked.connect(self._on_play_clicked)
+        self.play_btn.clicked.connect(self.play)
+        self.play_btn.hide()
         self.main_layout.addWidget(self.play_btn)
 
         # 初始状态
         self.play_btn.setEnabled(False)
 
-    def _on_play_clicked(self):
+    def play(self):
         if not self._file_path:
             return
 
@@ -125,6 +127,7 @@ class VideoPlayWidget(QtWidgets.QWidget):
     def set_value(self, file_path):
         self._file_path = file_path
         if file_path and os.path.exists(file_path):
+            self.play_btn.show()
             self.play_btn.setEnabled(True)
             self.play_btn.setText(f"播放: {os.path.basename(file_path)}")
         else:

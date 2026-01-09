@@ -117,7 +117,7 @@ def canvas_file_dump_path(dump_location: str = "canvas_files") -> Path:
 
 def _get_node_temp_dir(node_id: Optional[str]) -> Path:
     """获取节点专属临时目录"""
-    base_dir = canvas_file_dump_path() / "node_results" / node_id
+    base_dir = canvas_file_dump_path() / "node_workspace" / node_id
     base_dir.mkdir(parents=True, exist_ok=True)
     return base_dir
 
@@ -600,6 +600,14 @@ class DataHandler:
                 return np.array([])
             else:
                 return ""
+        if input_type.is_file() and not Path(input_value).exists():
+            stem_node_id = Path(input_value).parent.parent.stem
+            if (Path(f"../{stem_node_id}/upload") / Path(input_value).name).exists():
+                input_value = str(Path(f"../{stem_node_id}/upload") / Path(input_value).name)
+            elif (Path("inputs") / Path(input_value).name).exists():
+                input_value = str(Path("inputs") / Path(input_value).name)
+            elif (Path(self.workflow_path).parent.parent.parent / input_value).exists():
+                input_value = str(Path(self.workflow_path).parent.parent.parent / input_value)
 
         try:
             if input_type == ArgumentType.TEXT:
@@ -626,8 +634,6 @@ class DataHandler:
                 return self._read_torch_model(input_value)
             elif input_type == ArgumentType.IMAGE:
                 return self._read_image_data(input_value)
-            elif input_type == ArgumentType.FILE:
-                return input_value
             else:
                 return input_value
         except Exception as e:
@@ -917,10 +923,9 @@ class DataHandler:
         # 假设 canvas_file_dump_path 是一个全局函数或从其他地方导入
         # 这里简化处理，实际项目中需要正确引用
         if self.workflow_path is None:
-            dump_path = Path("canvas_files") / "node_results" / (self.node_id or "default")
+            dump_path = Path("canvas_files") / "node_workspace" / (self.node_id or "default") / "results"
         else:
-            dump_path = (Path("canvas_files") / "workflows" / self.workflow_path
-                         / "node_results" / (self.node_id or "default"))
+            dump_path = (Path(self.workflow_path) / "node_workspace" / (self.node_id or "default")) / "results"
         dump_path.mkdir(parents=True, exist_ok=True)
         return dump_path
 

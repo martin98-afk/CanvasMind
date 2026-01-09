@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "EdgeTTS文本转语音"
     category = "语音处理"
     description = "使用微软Edge TTS将文本转换为语音，并保存为本地音频文件"
-    requirements = "mutagen,edge_tts"
+    requirements = "edge_tts,mutagen"
     inputs = [
         PortDefinition(name="text", label="待转换文本", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]
@@ -48,6 +48,7 @@ class Component(BaseComponent):
         import asyncio
         import edge_tts
         import uuid
+        from pathlib import Path
         from mutagen.mp3 import MP3  # 用于计算MP3时长
 
         text = inputs.text.encode("utf-8").decode("utf-8")
@@ -106,3 +107,5 @@ class Component(BaseComponent):
         except Exception as e:
             self.logger.error(f"Edge TTS合成过程中发生错误: {str(e)}")
             raise
+        finally:
+            Path(output_path).unlink(missing_ok=True)
