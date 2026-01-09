@@ -37,7 +37,6 @@ class CustomNodeItem(NodeItem):
         self._output_items = OrderedDict()
         self._widgets = OrderedDict()
         self._proxy_mode = False
-        self._proxy_mode_threshold = Settings.get_instance().node_proxy_size.value
         self.setZValue(Z_VAL_NODE)
         self._proxy_text_item = QtWidgets.QGraphicsTextItem(self.name, self)
         proxy_font = QtGui.QFont()
@@ -404,7 +403,7 @@ class CustomNodeItem(NodeItem):
         # width is the node width in screen
         width = r.x() - l.x()
 
-        self.set_proxy_mode(width < self._proxy_mode_threshold)
+        self.set_proxy_mode(width < Settings.get_instance().node_proxy_size.value)
 
     def _update_proxy_text_position(self):
         if not self._proxy_mode:

@@ -101,22 +101,14 @@ class ComponentCloudManager:
 
         return self._execute("add", batch_data)
 
-    def update_component(self, comp_id: str, update_fields: Dict):
+    def update_component(self, cloud_id: str, update_fields: Dict, is_row_id: bool = False):
         """
-        专业优化：利用 Stein 的 condition 机制按 组件id 匹配更新
-        :param comp_id: 组件唯一业务 ID
-        :param update_fields: 需要更新的字段字典
+        :param cloud_id: 如果是 Stein，传 '组件id'；如果是 Sheety，传行号 'id'
+        :param is_row_id: 是否是 Sheety 专用的行号
         """
         update_fields["最后修改人"] = self.config.user_name.value
         update_fields["最后修改时间"] = self._get_now_time()
-
-        # 构建 Stein PUT 请求要求的格式
-        payload = {
-            "condition": {"组件id": str(comp_id)},
-            "set": update_fields
-        }
-        # 这里的 update 在适配器层应处理 PUT 请求
-        return self._execute("update", payload)
+        return self._execute("update", cloud_id, update_fields)
 
     def update_rows(self, condition: Dict, set_data: Dict, limit: Optional[int] = None):
         """
@@ -181,6 +173,7 @@ class ComponentCloudManager:
 
             # 管理员权限：如果云端已存在，则调用优化的 update_component (PUT)
             if is_admin and cid in cloud_mapping:
+                internal_id = cloud_mapping[cid].get("id", cid)
                 update_data = {
                     "组件名称": lc.get("组件名称") or lc.get("name"),
                     "组件描述": lc.get("组件描述") or lc.get("desc"),
@@ -190,7 +183,7 @@ class ComponentCloudManager:
                     "组件类别": lc.get("组件类别") or lc.get("category")
                 }
                 logger.info(f"管理员正在更新组件: {cid}")
-                if self.update_component(cid, update_data):
+                if self.update_component(internal_id, update_data):
                     success_count += 1
             else:
                 # 非管理员用户，或不存在的组件，全部存入待新增列表
