@@ -14,7 +14,6 @@ class ComponentCloudManager:
 
     def __init__(self):
         self.config = Settings.get_instance()
-        self.user = self.config.user_name.value
 
         # 初始化两个适配器
         self.primary = SteinAdapter(self.config.STEIN_URL.value)

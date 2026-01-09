@@ -39,13 +39,15 @@ class GenericWorker(QThread):
 # --- Dify 风格组件卡片 ---
 class ComponentCard(CardWidget):
     action_signal = pyqtSignal(dict, str)
+    delete_signal = pyqtSignal(dict)  # 新增：删除信号
 
-    def __init__(self, data, mode="market", is_linked=False, parent=None):
+    def __init__(self, data, mode="market", is_linked=False, is_admin=False, parent=None):
         super().__init__(parent=parent)
         self.setObjectName("ComponentCard")
         self.data = data
         self.mode = mode
         self.is_linked = is_linked
+        self.is_admin = is_admin  # 记录是否为管理员
         self.setMinimumWidth(350)
         self.setFixedHeight(210)
         self.init_ui()
@@ -130,6 +132,18 @@ class ComponentCard(CardWidget):
         footer.addWidget(ver_tag)
 
         footer.addStretch()
+        # --- 新增：如果是云端模式且是管理员，增加删除按钮 ---
+        if self.mode == "market" and self.is_admin:
+            self.delete_btn = ToolButton(FluentIcon.DELETE, self)
+            self.delete_btn.setCursor(Qt.PointingHandCursor)
+            # 设置红色警告样式
+            self.delete_btn.setStyleSheet("""
+                        ToolButton { color: #ff4d4f; }
+                        ToolButton:hover { background: rgba(255, 77, 79, 0.1); color: #ff7875; }
+                    """)
+            self.delete_btn.setToolTip("从云端彻底删除")
+            self.delete_btn.clicked.connect(lambda: self.delete_signal.emit(self.data))
+            footer.addWidget(self.delete_btn)
 
         btn_text = "安装" if self.mode == "market" else "上传"
         icon = FluentIcon.DOWNLOAD if self.mode == "market" else get_icon("upload")
@@ -287,7 +301,7 @@ class PluginManagerCenter(QWidget):
 
         stein_lay.addWidget(BodyLabel("主用 API 接口地址，支持批量上传与条件修改。"))
         self.stein_url_edit = LineEdit()
-        self.stein_url_edit.setText(self.cloud_mgr.STEIN_URL)
+        self.stein_url_edit.setText(self.cloud_mgr.config.STEIN_URL.value)
         self.stein_url_edit.setPlaceholderText("请输入 Stein API URL...")
         stein_lay.addWidget(self.stein_url_edit)
         layout.addWidget(stein_card)
@@ -306,7 +320,7 @@ class PluginManagerCenter(QWidget):
 
         sheety_lay.addWidget(BodyLabel("备用 API 接口地址，当 Stein 无法连接时自动切换。"))
         self.sheety_url_edit = LineEdit()
-        self.sheety_url_edit.setText(self.cloud_mgr.SHEETLY_URL)
+        self.sheety_url_edit.setText(self.cloud_mgr.config.SHEETY_URL.value)
         self.sheety_url_edit.setPlaceholderText("请输入 Sheety API URL...")
         sheety_lay.addWidget(self.sheety_url_edit)
         layout.addWidget(sheety_card)
@@ -314,9 +328,10 @@ class PluginManagerCenter(QWidget):
         # 用户信息显示
         user_card = CardWidget(container)
         user_lay = QHBoxLayout(user_card)
-        user_lay.addWidget(BodyLabel(f"当前同步身份: <b>{self.cloud_mgr.user}</b>"))
+        user_name = self.cloud_mgr.config.user_name.value
+        user_lay.addWidget(BodyLabel(f"当前同步身份: <b>{user_name}</b>"))
         user_lay.addStretch()
-        if self.cloud_mgr.user == "martin98-afk":
+        if user_name == "martin98-afk":
             badge = QLabel("管理员模式")
             badge.setObjectName("TagLabel")
             user_lay.addWidget(badge)
@@ -475,6 +490,7 @@ class PluginManagerCenter(QWidget):
         grid.setSpacing(15)
         user_name = self.cloud_mgr.config.user_name.value
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        is_admin = (user_name == "martin98-afk")
         for i, item in enumerate(items):
             uuid = str(item.get('组件id') or item.get('uuid'))
             is_linked = uuid in linked_set
@@ -488,8 +504,12 @@ class PluginManagerCenter(QWidget):
                 "组件源码": item.get('组件源码') or item.get("source_code"),
                 "path": item.get('path') or item.get('real_path')
             }
-            card = ComponentCard(c_data, mode, is_linked, parent=view)
+            card = ComponentCard(c_data, mode, is_linked, is_admin=is_admin, parent=view)
             card.action_signal.connect(self.on_card_action)
+
+            # 连接删除信号
+            if mode == "market":
+                card.delete_signal.connect(self.on_delete_cloud_component)
             grid.addWidget(card, i // 2, i % 2)
         v_lay.addLayout(grid)
         return view
@@ -588,6 +608,36 @@ class PluginManagerCenter(QWidget):
     def on_error(self, msg):
         self.loading_ring.hide()
         InfoBar.error("异常", msg, parent=self)
+
+    def on_delete_cloud_component(self, data):
+        """处理云端组件删除"""
+        comp_name = data.get('组件名称', '未知组件')
+        comp_id = data.get('组件id')
+
+        # 1. 弹出强提醒确认框
+        title = "危险操作"
+        content = f"确认要从云端数据库彻底删除组件 [{comp_name}] 吗？\n该操作无法撤销，所有用户将无法再看到此组件。"
+        msg = MessageBox(title, content, self)
+        msg.yesButton.setText("确定删除")
+        msg.cancelButton.setText("取消")
+
+        if msg.exec():
+            self.loading_ring.show()
+            # 2. 调用管理器 delete_component
+            self.active_worker = GenericWorker(self.cloud_mgr.delete_component, comp_id)
+
+            # 3. 连接成功后的回调
+            def on_done(success):
+                self.loading_ring.hide()
+                if success:
+                    InfoBar.success("删除成功", f"组件 {comp_name} 已从云端移除", parent=self)
+                    self.force_refresh()  # 刷新 UI 缓存
+                else:
+                    InfoBar.error("删除失败", "服务器拒绝了请求，请检查网络或权限", parent=self)
+
+            self.active_worker.finished.connect(on_done)
+            self.active_worker.error.connect(self.on_error)
+            self.active_worker.start()
 
     def clear_layout(self, layout):
         while layout.count():
