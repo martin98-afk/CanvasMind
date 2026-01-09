@@ -7,7 +7,7 @@ from app.interfaces.canvas_interaface.widgets.message_manager import MessageMana
 from app.nodes.backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
 from app.nodes.branch_node import create_branch_node
 from app.nodes.dynamic_code_node import create_dynamic_code_node
-from app.nodes.multimedia_node import create_chart_node
+from app.nodes.multimedia_node import create_media_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.status_node import StatusNode
@@ -70,7 +70,7 @@ class NodeOperations:
         self.graph.register_node(branch_node)
         self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
         # 注册图表绘制节点
-        echart_node = create_chart_node(self.parent)
+        echart_node = create_media_node(self.parent)
         echart_node.__name__ = "EchartsNode"
         self.graph.register_node(echart_node)
         self.node_type_map[echart_node.FULL_PATH] = f"visualize.{echart_node.__name__}"

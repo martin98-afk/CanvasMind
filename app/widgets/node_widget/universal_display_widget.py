@@ -8,7 +8,7 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from .html_widget import HtmlWidget
 from .image_widget import ImageWidget
-from ..basic_widget.media_widget import VideoPlayWidget, AudioPlayWidget
+from app.widgets.node_widget.media_widget import VideoPlayWidget, AudioPlayWidget
 
 
 class UniversalDisplayWidget(QtWidgets.QWidget):
@@ -37,6 +37,16 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
         self.image_view.sizeHintChanged.connect(self.sizeHintChanged.emit)
         self.video_view.sizeHintChanged.connect(self.sizeHintChanged.emit)
         self.audio_view.sizeHintChanged.connect(self.sizeHintChanged.emit)
+
+    def sizeHint(self):
+        # 返回当前正在显示的页面的尺寸
+        return self.stack.currentWidget().sizeHint()
+
+    def play(self):
+        if self.stack.currentIndex() == 2:
+            self.video_view.play()
+        elif self.stack.currentIndex() == 3:
+            self.audio_view.play()
 
     def show_html(self, html_str):
         self.stack.setCurrentIndex(0)
@@ -96,13 +106,14 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
             self.show_audio(None)
             self.show_video(None)
 
+
 class UniversalWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", default=None, window=None):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
 
-        widget = UniversalDisplayWidget(parent=window)
+        widget = UniversalDisplayWidget()
         self.set_custom_widget(widget)
 
         widget.valueChanged.connect(self.on_value_changed)
@@ -110,11 +121,20 @@ class UniversalWidgetWrapper(CustomNodeBaseWidget):
 
     def _update_node(self):
         if self.node and self.node.graph is not None:
-            self.node.view.set_proxy_mode(False)
-            self.node.view.draw_node()
+            # 强制让代理容器更新尺寸
+            # NodeGraphQt 的节点内部有一个 proxy 容器
+            view = self.node.view
+            # 这种方法可以强制刷新节点内的 Widget 布局
+            if hasattr(view, 'update'):
+                view.update()
 
-    def get_value(self):
-        return self.get_custom_widget().get_value()
+            # 重新计算节点高度以包裹 Widget
+            self.node.view.draw_node()
 
     def set_value(self, value):
         self.get_custom_widget().set_value(value)
+        # 设置值后也要触发重绘
+        self._update_node()
+
+    def get_value(self):
+        return self.get_custom_widget().get_value()

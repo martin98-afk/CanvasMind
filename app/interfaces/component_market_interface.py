@@ -537,7 +537,7 @@ class PluginManagerCenter(QWidget):
 
         h_lay = QHBoxLayout()
         cat_check = CheckBox(str(name))
-        cat_check.setStyleSheet("font-weight: bold; font-size: 15px;")
+        cat_check.setStyleSheet("color: white; font-weight: bold; font-size: 15px;")
         h_lay.addWidget(cat_check)
         h_lay.addStretch()
         v_lay.addLayout(h_lay)

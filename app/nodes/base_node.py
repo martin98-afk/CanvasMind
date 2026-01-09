@@ -18,7 +18,7 @@ from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
 
 class NodeSignals(QObject):
     intercepted_msg_signal = QtCore.pyqtSignal(dict)
-    htmlReady = QtCore.pyqtSignal(str)
+    htmlReady = QtCore.pyqtSignal(str, bool)
     stream_data_updated = QtCore.pyqtSignal(str, object)
 
 
