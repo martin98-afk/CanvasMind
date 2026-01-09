@@ -600,7 +600,7 @@ class DataHandler:
                 return np.array([])
             else:
                 return ""
-        if input_type.is_file() and not Path(input_value).exists():
+        if (input_type.is_file() or input_type.is_image()) and not Path(input_value).exists():
             stem_node_id = Path(input_value).parent.parent.stem
             if (Path(f"../{stem_node_id}/upload") / Path(input_value).name).exists():
                 input_value = str(Path(f"../{stem_node_id}/upload") / Path(input_value).name)
