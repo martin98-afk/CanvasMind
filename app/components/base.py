@@ -490,7 +490,7 @@ class PortDefinition(BaseModel):
     type: ArgumentType = ArgumentType.TEXT
     connection: ConnectionType = ConnectionType.SINGLE
 
-
+# ======= 构造pydantic输入、参数解析 ========
 class ModelMixin(BaseModel):
     """为输入模型添加 .get() 和 [] 访问方法，兼容字典用法"""
 
@@ -516,6 +516,55 @@ class ModelMixin(BaseModel):
         return key in self.__dict__ and self.__dict__[key] is not None
 
 
+def _parse_default_value(default_str: str, target_type: type) -> Any:
+    """安全解析默认值"""
+    if default_str == "" or default_str is None:
+        if target_type == int:
+            return 0
+        elif target_type == float:
+            return 0.0
+        elif target_type == bool:
+            return False
+        else:
+            return ""
+
+    try:
+        if target_type == int:
+            return int(default_str)
+        elif target_type == float:
+            return float(default_str)
+        elif target_type == bool and isinstance(default_str, str):
+            return default_str.lower() in ("true", "1", "yes", "on")
+        else:
+            return str(default_str)
+    except (ValueError, TypeError):
+        # 转换失败，返回类型默认值
+        return _parse_default_value("", target_type)
+
+
+def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition']) -> Type[BaseModel]:
+    """为 DYNAMICFORM 创建嵌套模型"""
+    fields = {}
+    for field_name, field_def in schema.items():
+        if field_def.type == PropertyType.INT:
+            ft = int
+        elif field_def.type == PropertyType.FLOAT:
+            ft = float
+        elif field_def.type == PropertyType.BOOL:
+            ft = bool
+        elif field_def.type == PropertyType.RANGE:
+            ft = Union[int, float]
+        else:
+            ft = str
+        default_val = _parse_default_value(field_def.default, ft)
+        # 修改这里：使用 Field 包装默认值
+        fields[field_name] = (ft, Field(default=default_val))
+    model_name = f"{name}Item"
+    base_classes = (ModelMixin, BaseModel)
+    return create_model(model_name, __base__=base_classes, **fields)
+
+
+# =============== 节点错误解析 =============
 class ComponentError(Exception):
     """组件执行错误"""
 
@@ -887,6 +936,7 @@ class DataHandler:
         return self._torch_cache
 
 
+# ========= 组件基类  =========
 class BaseComponent(ABC):
     """所有组件必须继承此类"""
     # 组件配置（子类需要定义）
@@ -1032,7 +1082,7 @@ class BaseComponent(ABC):
         """
         request_id = str(uuid.uuid4())
         # 获取当前运行目录，这个目录在 execute 脚本中会被设置到环境变量
-        run_dir = canvas_file_dump_path() / "node_results" / self.node_id
+        run_dir = canvas_file_dump_path() / "jrpc_response" / self.node_id
         response_path = run_dir / f"response_{request_id}.pkl"
 
         # 1. 发送指令给 UI (通过日志流)
@@ -1316,51 +1366,3 @@ class BaseComponent(ABC):
 
         else:
             return f"{type(value).__name__}: {str(value)[:max_length]}"
-
-
-def _parse_default_value(default_str: str, target_type: type) -> Any:
-    """安全解析默认值"""
-    if default_str == "" or default_str is None:
-        if target_type == int:
-            return 0
-        elif target_type == float:
-            return 0.0
-        elif target_type == bool:
-            return False
-        else:
-            return ""
-
-    try:
-        if target_type == int:
-            return int(default_str)
-        elif target_type == float:
-            return float(default_str)
-        elif target_type == bool and isinstance(default_str, str):
-            return default_str.lower() in ("true", "1", "yes", "on")
-        else:
-            return str(default_str)
-    except (ValueError, TypeError):
-        # 转换失败，返回类型默认值
-        return _parse_default_value("", target_type)
-
-
-def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition']) -> Type[BaseModel]:
-    """为 DYNAMICFORM 创建嵌套模型"""
-    fields = {}
-    for field_name, field_def in schema.items():
-        if field_def.type == PropertyType.INT:
-            ft = int
-        elif field_def.type == PropertyType.FLOAT:
-            ft = float
-        elif field_def.type == PropertyType.BOOL:
-            ft = bool
-        elif field_def.type == PropertyType.RANGE:
-            ft = Union[int, float]
-        else:
-            ft = str
-        default_val = _parse_default_value(field_def.default, ft)
-        # 修改这里：使用 Field 包装默认值
-        fields[field_name] = (ft, Field(default=default_val))
-    model_name = f"{name}Item"
-    base_classes = (ModelMixin, BaseModel)
-    return create_model(model_name, __base__=base_classes, **fields)

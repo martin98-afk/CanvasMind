@@ -1,35 +1,37 @@
-QWidget#MarketCenter { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', 'Inter'; }
-#SideBar { background-color: #161b22; border-right: 1px solid #30363d; min-width: 180px; }
+#MarketCenter { background-color: #0b0e14; }
+#SideBar { background-color: #11141a; border-right: 1px solid #1f6feb; }
+#NavBtn {
+    border: none; color: #8b949e; padding: 15px 25px; text-align: left;
+    font-size: 15px; font-weight: bold; border-radius: 0px;
+}
+#NavBtn:hover { background-color: #1c2128; color: #58a6ff; }
+#NavBtn:checked { background-color: #1f6feb22; color: #58a6ff; border-left: 4px solid #58a6ff; }
 
-/* 导航按钮 */
-#NavBtn { border: none; padding: 12px 16px; text-align: left; color: #8b949e; border-radius: 6px; margin: 4px 10px; font-weight: 500; }
-#NavBtn:hover { background-color: #21262d; color: #f0f6fc; }
-#NavBtn:checked { background-color: #1f6feb; color: #ffffff; }
+#CategoryTitle {
+    color: #58a6ff; font-size: 16px; font-weight: 900;
+    padding: 10px 5px; margin-top: 15px; border-bottom: 1px solid #30363d;
+}
 
-#ScrollArea { background-color: transparent; border: none;}
+/* 卡片样式：强化边界线 */
+#ComponentCard {
+    background-color: #161b22;
+    border: 1px solid #30363d; /* 默认灰色边界 */
+    border-radius: 10px;
+}
+#ComponentCard:hover {
+    border: 1px solid #58a6ff; /* 悬浮蓝边 */
+    background-color: #1c2128;
+}
 
-/* 分类组 */
-#CategoryHeader { background-color: transparent; padding: 10px 5px; }
-#CategoryTitle { font-size: 12px; font-weight: 800; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; }
+#CardTitle { color: #f0f6fc; font-size: 16px; font-weight: bold; }
+#CardUUID { color: #58a6ff; font-family: 'Consolas'; font-size: 11px; opacity: 0.8; }
+#CardDesc { color: #8b949e; font-size: 13px; line-height: 18px; }
 
-/* 组件卡片 */
-#PluginCard { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 8px; }
-#PluginCard:hover { border: 1px solid #444c56; background-color: #1c2128; }
-
-#Title { color: #58a6ff; font-size: 15px; font-weight: 600; }
-#Desc { color: #8b949e; font-size: 13px; }
-#Tag { background-color: #21262d; color: #8b949e; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
-
-/* 状态色块 */
-#Status_active { background-color: #238636; border-radius: 2px; }
-#Status_disabled { background-color: #da3633; border-radius: 2px; }
-
-/* 按钮 */
-#BtnAction { background-color: #21262d; color: #c9d1d9; border: 1px solid #363b42; padding: 6px 12px; border-radius: 6px; font-size: 12px; }
-#BtnAction:hover { background-color: #30363d; border-color: #8b949e; }
-#BtnAction[danger="true"] { color: #f85149; }
-#BtnAction[danger="true"]:hover { background-color: #da3633; color: white; }
-
-QScrollArea { border: none; background: transparent; }
-QScrollBar:vertical { background: #0d1117; width: 8px; }
-QScrollBar::handle:vertical { background: #30363d; border-radius: 4px; }
+#BtnAction {
+    border-radius: 4px; padding: 8px 15px; font-weight: bold; font-size: 12px;
+    border: 1px solid #30363d; background: #21262d; color: #c9d1d9;
+}
+#BtnAction:hover { background: #30363d; border-color: #8b949e; }
+#BtnDownload { background: #238636; color: white; border: none; }
+#BtnDownload:hover { background: #2ea043; }
+#BtnAction:disabled { color: #484f58; background: #0d1117; }
