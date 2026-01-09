@@ -25,7 +25,9 @@ class SteinAdapter(BaseAdapter):
     def add(self, data: Dict) -> bool:
         # Stein 接受对象数组: [ {...} ]
         with httpx.Client(timeout=20.0) as client:
-            resp = client.post(self.url, json=[data])
+            if not isinstance(data, list):
+                data = [data]
+            resp = client.post(self.url, json=data)
             return resp.status_code == 200
 
     def update(self, unique_id: str, data: Dict) -> bool:

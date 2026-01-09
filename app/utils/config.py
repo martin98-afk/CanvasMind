@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
+from uuid import uuid4
 
 from qfluentwidgets import ConfigSerializer, ConfigItem, QConfig, OptionsValidator, BoolValidator, FolderListValidator, \
     RangeValidator, OptionsConfigItem, ConfigValidator, RangeConfigItem
@@ -37,7 +38,7 @@ class Settings(QConfig):
     _instance = None
     # 版本信息
     current_version = "v0.2.6"
-    user_name = ConfigItem("General", "UserName", "martin98-afk")
+    user_name = ConfigItem("General", "UserName", str(uuid4().hex))
     # 通用设置
     auto_check_update = ConfigItem("General", "AutoCheckUpdate", True, BoolValidator())
 

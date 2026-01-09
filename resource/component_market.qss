@@ -47,3 +47,13 @@
 #BtnAction:hover { background: #30363d; border-color: #8b949e; }
 #BtnDownload { background: #238636; color: white; border: none; }
 #BtnDownload:hover { background: #2ea043; }
+
+#ComponentCard {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+}
+/* 确保搜索过滤时布局不会因为失去宽度而崩塌 */
+#PageContainer {
+    background: transparent;
+}
