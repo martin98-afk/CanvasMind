@@ -3,12 +3,12 @@ from pathlib import Path
 
 from PyQt5.QtCore import pyqtSignal, Qt, QThread
 from PyQt5.QtWidgets import (QHBoxLayout, QVBoxLayout, QLabel, QPushButton,
-                             QWidget, QStackedWidget, QMessageBox, QGridLayout)
+                             QWidget, QStackedWidget, QGridLayout)
 from qfluentwidgets import SearchLineEdit, IndeterminateProgressRing, SmoothScrollArea, CardWidget, \
-    PrimaryPushButton, FluentIcon, InfoBar
+    PrimaryPushButton, FluentIcon, InfoBar, Dialog, PushButton
 
 from app.scan_components import ComponentScanner
-from app.server_manager.sheetly.component_cloud_manager import ComponentCloudManager
+from app.server_manager.cloud_bakup.component_cloud_manager import ComponentCloudManager
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.style_sheet import StyleSheet
 
@@ -53,14 +53,6 @@ class ComponentCard(CardWidget):
         top_layout = QHBoxLayout()
         top_layout.setSpacing(15)
 
-        # 模拟图标 (首字母)
-        # icon_text = self.data['name'][0] if self.data['name'] else "?"
-        # self.icon_label = QLabel(icon_text.upper())
-        # self.icon_label.setFixedSize(44, 44)
-        # self.icon_label.setAlignment(Qt.AlignCenter)
-        # self.icon_label.setObjectName("CardIcon")
-        # top_layout.addWidget(self.icon_label)
-
         # 标题与ID
         title_v_layout = QVBoxLayout()
         title_v_layout.setSpacing(2)
@@ -100,9 +92,10 @@ class ComponentCard(CardWidget):
         tag_container.addWidget(cat_tag)
 
         requirements = self.data.get('requirements', "")
-        req_tags = QLabel(requirements)
-        req_tags.setObjectName("TagLabel")
-        tag_container.addWidget(req_tags)
+        if requirements:
+            req_tags = QLabel(requirements)
+            req_tags.setObjectName("TagLabel")
+            tag_container.addWidget(req_tags)
 
         bottom_layout.addLayout(tag_container)
         bottom_layout.addStretch()
@@ -129,7 +122,10 @@ class PluginManagerCenter(QWidget):
 
         self.scanner = ComponentScanner()
         self.cloud_mgr = ComponentCloudManager()
+
+        # 缓存数据
         self._cloud_cache = None
+        self._local_cache = None
 
         self.init_ui()
         self.switch_page(0)
@@ -183,10 +179,10 @@ class PluginManagerCenter(QWidget):
         self.search_bar.textChanged.connect(self.filter_cards)
         top_bar.addWidget(self.search_bar)
 
-        self.refresh_btn = QPushButton("刷新")
+        self.refresh_btn = PushButton("刷新")
         self.refresh_btn.setObjectName("BtnAction")
         self.refresh_btn.setFixedHeight(36)
-        self.refresh_btn.clicked.connect(self.force_refresh_cloud)
+        self.refresh_btn.clicked.connect(self.force_refresh)
         top_bar.addWidget(self.refresh_btn)
 
         self.loading_ring = IndeterminateProgressRing(self)
@@ -225,8 +221,21 @@ class PluginManagerCenter(QWidget):
             else:
                 self.render_market_page(self._cloud_cache)
         else:
-            self.render_local_page()
+            if self._local_cache is None:
+                self.start_local_scan()
+            else:
+                self.render_local_page(self._local_cache)
 
+    def force_refresh(self):
+        """根据当前所在页面刷新对应的缓存"""
+        curr_idx = self.stack.currentIndex()
+        if curr_idx == 0:
+            self._cloud_cache = None
+        else:
+            self._local_cache = None
+        self.refresh_ui()
+
+    # --- 异步拉取云端 ---
     def start_cloud_fetch(self):
         self.loading_ring.show()
         self.refresh_btn.setEnabled(False)
@@ -241,10 +250,6 @@ class PluginManagerCenter(QWidget):
         self.refresh_btn.setEnabled(True)
         self.render_market_page(data)
 
-    def force_refresh_cloud(self):
-        self._cloud_cache = None
-        self.refresh_ui()
-
     def render_market_page(self, data):
         layout = self.pages[0].widget().layout()
         self.clear_layout(layout)
@@ -256,16 +261,24 @@ class PluginManagerCenter(QWidget):
             layout.addWidget(self._create_category_view(cat, items, "market"))
         layout.addStretch()
 
-    def render_local_page(self):
-        layout = self.pages[1].widget().layout()
-        self.clear_layout(layout)
-        comp_map, _ = self.scanner.get_components()
-        groups = {}
+    # --- 异步扫描本地 (解决阻塞主进程) ---
+    def start_local_scan(self):
+        self.loading_ring.show()
+        self.refresh_btn.setEnabled(False)
+        # 仅将扫描逻辑放入后台
+        self.local_worker = GenericWorker(self.scanner.get_components)
+        self.local_worker.finished.connect(self.on_local_scan_done)
+        self.local_worker.error.connect(self.on_worker_error)
+        self.local_worker.start()
+
+    def on_local_scan_done(self, result):
+        comp_map, _ = result
+        processed_data = []
         for full_path, cls in comp_map.items():
             cat = getattr(cls, 'category', '常规')
             uuid = getattr(cls, 'uuid', Path(full_path).stem)
             source_file = getattr(cls, '_source_file', full_path)
-            groups.setdefault(cat, []).append({
+            processed_data.append({
                 'uuid': uuid,
                 'name': getattr(cls, 'name', uuid),
                 'category': cat,
@@ -274,6 +287,20 @@ class PluginManagerCenter(QWidget):
                 'version': getattr(cls, '_version', '1.0.0'),
                 'real_path': str(source_file)
             })
+
+        self._local_cache = processed_data
+        self.loading_ring.hide()
+        self.refresh_btn.setEnabled(True)
+        self.render_local_page(processed_data)
+
+    def render_local_page(self, data):
+        layout = self.pages[1].widget().layout()
+        self.clear_layout(layout)
+        groups = {}
+        for item in data:
+            cat = item.get('category', '常规')
+            groups.setdefault(cat, []).append(item)
+
         for cat, items in groups.items():
             layout.addWidget(self._create_category_view(cat, items, "local"))
         layout.addStretch()
@@ -288,7 +315,7 @@ class PluginManagerCenter(QWidget):
         v_lay.addWidget(title)
 
         grid = QGridLayout()
-        grid.setSpacing(20)  # 增大间距
+        grid.setSpacing(20)
         for i, item in enumerate(items):
             c_data = {
                 'uuid': item.get('组件id') or item.get('uuid'),
@@ -298,7 +325,7 @@ class PluginManagerCenter(QWidget):
                 'version': item.get('版本号') or item.get('version'),
                 'category': name,
                 'source': item.get('组件源码'),
-                'path': item.get('real_path')
+                'path': item.get('path') or item.get('real_path')
             }
             card = ComponentCard(c_data, mode)
             card.action_signal.connect(self.handle_action)
@@ -313,9 +340,11 @@ class PluginManagerCenter(QWidget):
             try:
                 target_path.parent.mkdir(parents=True, exist_ok=True)
                 target_path.write_text(data['source'], encoding="utf-8")
-                QMessageBox.information(self, "成功", f"组件已安装")
+                InfoBar.success("成功", f"组件 {data['name']} 已安装", parent=self)
+                # 安装新组件后，建议清除本地缓存以便刷新显示
+                self._local_cache = None
             except Exception as e:
-                QMessageBox.critical(self, "错误", str(e))
+                InfoBar.error("错误", str(e), parent=self)
         else:
             self.loading_ring.show()
             p = Path(data['path'])
@@ -328,23 +357,53 @@ class PluginManagerCenter(QWidget):
 
     def on_single_sync_done(self, name):
         self.loading_ring.hide()
-        InfoBar.success( "同步成功", f"组件 [{name}] 已推送到云端。")
+        InfoBar.success("同步成功", f"组件 [{name}] 已推送到云端。", parent=self)
 
     def upload_all_logic(self):
-        reply = QMessageBox.question(self, '全量同步', '确认同步所有本地组件到云端吗？',
-                                     QMessageBox.Yes | QMessageBox.No)
-        if reply == QMessageBox.No: return
-        self.loading_ring.show()
-        self.sync_all_btn.setEnabled(False)
-        comp_map, _ = self.scanner.get_components()
+        reply = Dialog('全量同步', '确认同步所有本地组件到云端吗？', parent=self)
+        if reply.exec():
+            self.loading_ring.show()
+            self.sync_all_btn.setEnabled(False)
+
+            # 使用现有缓存或重新获取
+            if self._local_cache:
+                self._start_mass_upload(self._local_cache)
+            else:
+                # 如果没缓存先扫一下
+                self.local_worker = GenericWorker(self.scanner.get_components)
+                self.local_worker.finished.connect(lambda res: self._prepare_mass_upload(res))
+                self.local_worker.start()
+
+    def _prepare_mass_upload(self, scan_result):
+        comp_map, _ = scan_result
         local_list = []
         for _, cls in comp_map.items():
             p = Path(getattr(cls, '_source_file'))
-            local_list.append({"组件id": cls.uuid, "组件名称": cls.name, "组件类别": cls.category,
-                               "组件描述": getattr(cls, 'description', ""),
-                               "工具包需求": getattr(cls, 'requirements', ""),
-                               "版本号": getattr(cls, '_version', '1.0.0'), "组件源码": p.read_text(encoding="utf-8")})
-        self.worker = GenericWorker(self.cloud_mgr.sync_local_to_cloud, local_list)
+            local_list.append({
+                "组件id": cls.uuid, "组件名称": cls.name, "组件类别": cls.category,
+                "组件描述": getattr(cls, 'description', ""),
+                "工具包需求": getattr(cls, 'requirements', ""),
+                "版本号": getattr(cls, '_version', '1.0.0'),
+                "组件源码": p.read_text(encoding="utf-8")
+            })
+        self._start_mass_upload(local_list)
+
+    def _start_mass_upload(self, data_list):
+        # 这里的 data_list 需要确保格式符合云端管理器的要求
+        # 如果是从 _local_cache 来的，需要补充组件源码
+        final_list = []
+        for item in data_list:
+            if 'source' not in item and 'real_path' in item:
+                item['组件源码'] = Path(item['real_path']).read_text(encoding='utf-8')
+                item['组件id'] = item['uuid']
+                item['组件名称'] = item['name']
+                item['组件类别'] = item['category']
+                item['组件描述'] = item['desc']
+                item['工具包需求'] = item['requirements']
+                item['版本号'] = item['version']
+            final_list.append(item)
+
+        self.worker = GenericWorker(self.cloud_mgr.sync_local_to_cloud, final_list)
         self.worker.finished.connect(self.on_all_sync_done)
         self.worker.error.connect(self.on_worker_error)
         self.worker.start()
@@ -352,13 +411,13 @@ class PluginManagerCenter(QWidget):
     def on_all_sync_done(self, res):
         self.loading_ring.hide()
         self.sync_all_btn.setEnabled(True)
-        InfoBar.success("完成", "同步结束")
+        InfoBar.success("完成", "同步结束", parent=self)
 
     def on_worker_error(self, msg):
         self.loading_ring.hide()
         self.refresh_btn.setEnabled(True)
         self.sync_all_btn.setEnabled(True)
-        InfoBar.error("异常", msg)
+        InfoBar.error("异常", msg, parent=self)
 
     def clear_layout(self, layout):
         while layout.count():
