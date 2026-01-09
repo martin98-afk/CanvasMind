@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent / "base.py" if (Path(__file__).parent / "base.py").exists() else Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -19,20 +19,22 @@ class Component(BaseComponent):
     name = "大模型对话测试"
     category = "大模型组件"
     description = "调用大语言模型（支持 OpenAI 或本地兼容 API 的模型）"
-    requirements = "openai,Pillow"
+    requirements = "openai"
     inputs = [
-        PortDefinition(name="input_data", label="输入数据", type=ArgumentType.TEXT),
+        PortDefinition(name="input_data", label="输入数据",
+                       type=ArgumentType.TEXT),
         PortDefinition(name="history", label="对话历史", type=ArgumentType.JSON),
     ]
     outputs = [
         PortDefinition(name="response", label="模型回复", type=ArgumentType.TEXT),
-        PortDefinition(name="raw_output", label="原始响应", type=ArgumentType.JSON),
+        PortDefinition(name="raw_output", label="原始响应",
+                       type=ArgumentType.JSON),
         PortDefinition(name="history", label="对话历史", type=ArgumentType.JSON),
     ]
     properties = {
         "model": PropertyDefinition(
             type=PropertyType.VARIABLE,
-            default="",
+            default="全局变量",
             label="模型参数",
         ),
         "system_prompt": PropertyDefinition(
@@ -58,6 +60,11 @@ class Component(BaseComponent):
             default=False,
             label="启用视觉识别",
         ),
+        "intervent": PropertyDefinition(
+            type=PropertyType.BOOL,
+            default=False,
+            label="结果干预",
+        ),
         "model_params": PropertyDefinition(
             type=PropertyType.DYNAMICFORM,
             label="模型配置",
@@ -75,13 +82,10 @@ class Component(BaseComponent):
             }
         ),
     }
+
     def run(self, params, inputs):
-        import os
         import json
-        import base64
         from openai import OpenAI
-        from PIL import Image
-        import io
         # 处理输入数据
         if params.visual:
             # 处理图像输入
@@ -118,7 +122,8 @@ class Component(BaseComponent):
                 "role": "user",
                 "content": [
                     {"type": "text", "text": ""},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{input_data}"}}
+                    {"type": "image_url", "image_url": {
+                        "url": f"data:image/jpeg;base64,{input_data}"}}
                 ]
             })
         else:
@@ -151,6 +156,18 @@ class Component(BaseComponent):
                 })
             else:
                 messages.append({"role": "assistant", "content": reply})
+            # 进行人工结果干预
+            if params.intervent:
+                reply = self.ask_user(
+                    title="请确认生成结果",
+                    message="",
+                    schema={
+                        "reply": {
+                            "label": "当前生成结果",
+                            "default": reply
+                        }
+                    }
+                ).get("reply")
             return {
                 "response": reply,
                 "raw_output": raw_data,

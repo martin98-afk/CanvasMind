@@ -124,6 +124,9 @@ class Settings(QConfig):
     llm_temperature = ConfigItem("LLM", "Temperature", 0.7, RangeValidator(0, 1))
     llm_enable_thinking = ConfigItem("LLM", "EnableThinking", True, BoolValidator())
 
+    # ========== 云组件库API ==========
+    STEIN_URL = ConfigItem("CloudAPI", "Stein", "https://api.steinhq.com/v1/storages/69606496affba40a6237b4c2/sheet1")
+    SHEETY_URL = ConfigItem("CloudAPI", "Sheety", "https://api.sheety.co/fe7b5d36457f54901b6078c05196e0a0/云组件库/sheet1")
 
     def __new__(cls):
         if cls._instance is None:

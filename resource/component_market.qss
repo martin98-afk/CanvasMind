@@ -1,59 +1,132 @@
-#MarketCenter { background-color: #0d1117; }
-#SideBar { background-color: #161b22; border-right: 1px solid #30363d; }
+/* 全局背景与文字 */
+#MarketCenter {
+    background-color: #0d1117;
+}
+
+/* 侧边栏：更现代的悬浮感 */
+#SideBar {
+    background-color: #0d1117;
+    border-right: 1px solid #30363d;
+}
 
 #NavBtn {
-    border: none; color: #8b949e; padding: 12px 20px; text-align: left;
-    font-size: 14px; font-weight: 500; border-radius: 8px; margin: 4px 10px;
+    border: none;
+    color: #8b949e;
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    margin: 2px 12px;
+    background: transparent;
 }
-#NavBtn:hover { background-color: #21262d; color: #f0f6fc; }
-#NavBtn:checked { background-color: #1f6feb22; color: #58a6ff; font-weight: bold; }
+#NavBtn:hover {
+    background-color: #161b22;
+    color: #f0f6fc;
+}
+#NavBtn:checked {
+    background-color: #1f6feb15;
+    color: #58a6ff;
+    font-weight: 600;
+}
 
-/* 分类标题 */
+/* 顶部工具栏适配 */
+#Toolbar {
+    background-color: #0d1117;
+    margin-bottom: 10px;
+}
+
+/* 分类标题：增加字母间距和精致感 */
 #CategoryTitle {
-    color: #f0f6fc; font-size: 18px; font-weight: 600;
-    margin-top: 30px; margin-bottom: 10px; padding-left: 5px;
+    color: #f0f6fc;
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    padding-left: 2px;
+    border-left: 3px solid #1f6feb; /* 侧边装饰条 */
+    padding-left: 12px;
 }
 
-/* Dify 风格卡片 */
+/* MCP 风格卡片 */
 #ComponentCard {
     background-color: #161b22;
     border: 1px solid #30363d;
-    border-radius: 12px;
+    border-radius: 10px;
 }
 #ComponentCard:hover {
-    border: 1px solid #1f6feb;
+    border: 1px solid #444c56;
     background-color: #1c2128;
+    /* 模拟现代阴影 */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 
-#CardIcon {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #1f6feb, stop:1 #8144ff);
-    color: white; border-radius: 8px; font-weight: bold; font-size: 16px;
+/* 卡片内文字 */
+#CardTitle {
+    color: #58a6ff;
+    font-size: 15px;
+    font-weight: 600;
+}
+#CardUUID {
+    color: #484f58;
+    font-size: 11px;
+    font-family: 'Segoe UI', 'Consolas';
+}
+#CardDesc {
+    color: #8b949e;
+    font-size: 13px;
+    line-height: 18px;
 }
 
-#CardTitle { color: #f0f6fc; font-size: 15px; font-weight: 600; }
-#CardUUID { color: #8b949e; font-size: 12px; font-family: 'Consolas'; }
-#CardDesc { color: #8b949e; font-size: 13px; line-height: 20px; }
-
+/* 标签：更紧凑的 MCP 风格 */
 #TagLabel {
-    color: #58a6ff; background-color: #388bfd1a;
-    border: 1px solid #388bfd26; border-radius: 4px;
-    padding: 2px 8px; font-size: 11px; font-weight: 500;
-}
-
-#BtnAction {
-    border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600;
-    border: 1px solid #30363d; background: #21262d; color: #c9d1d9;
-}
-#BtnAction:hover { background: #30363d; border-color: #8b949e; }
-#BtnDownload { background: #238636; color: white; border: none; }
-#BtnDownload:hover { background: #2ea043; }
-
-#ComponentCard {
-    background-color: #161b22;
+    color: #8b949e;
+    background-color: #21262d;
     border: 1px solid #30363d;
-    border-radius: 12px;
+    border-radius: 12px; /* 圆角矩形 */
+    padding: 2px 10px;
+    font-size: 11px;
 }
-/* 确保搜索过滤时布局不会因为失去宽度而崩塌 */
-#PageContainer {
-    background: transparent;
+
+/* 特殊高亮标签 */
+#StatusTag {
+    color: #3fb950;
+    background-color: rgba(63, 185, 80, 0.1);
+    border: 1px solid rgba(63, 185, 80, 0.2);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+/* 动作按钮 */
+#BtnAction {
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid #363b42;
+    background: #21262d;
+    color: #c9d1d9;
+}
+#BtnAction:hover {
+    background: #30363d;
+    border-color: #8b949e;
+}
+#BtnDownload {
+    background: #1f6feb;
+    color: white;
+    border: none;
+}
+#BtnDownload:hover {
+    background: #388bfd;
+}
+
+/* 设置页输入框适配 */
+QLineEdit {
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #c9d1d9;
+    padding: 5px;
 }

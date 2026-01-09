@@ -12,16 +12,23 @@ from app.utils.config import Settings
 class ComponentCloudManager:
     """组件云端管理器 (Stein 优先，Sheety 备用)"""
 
-    STEIN_URL = "https://api.steinhq.com/v1/storages/69606496affba40a6237b4c2/sheet1"
-    SHEETLY_URL = "https://api.sheety.co/fe7b5d36457f54901b6078c05196e0a0/云组件库/sheet1"
-
     def __init__(self):
         self.config = Settings.get_instance()
         self.user = self.config.user_name.value
 
         # 初始化两个适配器
-        self.primary = SteinAdapter(self.STEIN_URL)
-        self.backup = SheetyAdapter(self.SHEETLY_URL)
+        self.primary = SteinAdapter(self.config.STEIN_URL.value)
+        self.backup = SheetyAdapter(self.config.SHEETY_URL.value)
+
+    def update_adapter(self, new_stein: str, new_sheety: str):
+        """切换适配器"""
+        self.config.set(self.config.STEIN_URL, new_stein)
+        self.config.set(self.config.SHEETY_URL, new_sheety)
+        self.config.save_config()
+        logger.info(f"已切换云端适配器: Stein: {new_stein}, Sheety: {new_sheety}")
+
+        self.primary = SteinAdapter(new_stein)
+        self.backup = SheetyAdapter(new_sheety)
 
     def _get_now_time(self):
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
