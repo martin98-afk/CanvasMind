@@ -57,6 +57,14 @@ class SettingInterface(ScrollArea):
             parent=self.versionGroup
         )
         self.info_card.clicked.connect(self.parent.updater.check_update)
+        self.userNameCard = PushSettingCard(
+            self.cfg.user_name.value,
+            get_icon("用户名"),
+            "当前用户名",
+            "用户名用于云端组件管理",
+            parent=self.versionGroup
+        )
+        self.userNameCard.clicked.connect(lambda: self.onUserNameClicked(self.userNameCard.button))
         self.autoUpdateCard = SwitchSettingCard(
             get_icon("更新"),
             "自动更新",
@@ -67,6 +75,7 @@ class SettingInterface(ScrollArea):
         # 连接配置变化信号，自动保存
         self.cfg.auto_check_update.valueChanged.connect(self.onConfigChanged)
         self.versionGroup.addSettingCard(self.info_card)
+        self.versionGroup.addSettingCard(self.userNameCard)
         self.versionGroup.addSettingCard(self.autoUpdateCard)
         self.vBoxLayout.addWidget(self.versionGroup)
 
@@ -118,13 +127,14 @@ class SettingInterface(ScrollArea):
 
         # Miniconda 版本
         self.minicondaVersionCard = PushSettingCard(
-            "修改",
+            self.cfg.miniconda_version.value,
             get_icon("Miniconda"),
             "Miniconda 版本",
-            self.cfg.miniconda_version.value,
+            "用于修改miniconda安装的版本，暂时没啥用",
             parent=self.runtimeEnvGroup
         )
-        self.minicondaVersionCard.clicked.connect(self.onMinicondaVersionClicked)
+        self.minicondaVersionCard.clicked.connect(
+            lambda: self.onMinicondaVersionClicked(self.minicondaVersionCard.button))
 
         # 默认包列表
         self.defaultPackagesCard = PackageListSettingCard(
@@ -309,14 +319,29 @@ class SettingInterface(ScrollArea):
         self.vBoxLayout.addWidget(self.canvasGroup)
 
     # ==================== 信号处理方法 ====================
+    def onUserNameClicked(self, button):
+        """修改 Miniconda 版本"""
+        self.showLineEditDialog(
+            "输入当前用户名",
+            self.cfg.user_name.value,
+            lambda x: (
+                self.cfg.set(self.cfg.user_name, x),
+                button.setText(x),
+                # 自动保存
+                self.cfg.save_config(),
+                self.configChanged.emit()
+            ),
+            placeholder="例如: martin98-afk"
+        )
 
-    def onMinicondaVersionClicked(self):
+    def onMinicondaVersionClicked(self, button):
         """修改 Miniconda 版本"""
         self.showLineEditDialog(
             "Miniconda 版本",
             self.cfg.miniconda_version.value,
             lambda x: (
                 self.cfg.set(self.cfg.miniconda_version, x),
+                button.setText(x),
                 # 自动保存
                 self.cfg.save_config(),
                 self.configChanged.emit()

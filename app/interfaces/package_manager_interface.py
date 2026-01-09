@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import (
     ComboBox, PrimaryPushButton, LineEdit, TableWidget,
     FluentIcon, InfoBar, SearchLineEdit, TextEdit, MessageBox,
-    BodyLabel, StateToolTip, StrongBodyLabel, CardWidget, TransparentToolButton,
+    BodyLabel, StateToolTip, StrongBodyLabel, SimpleCardWidget, TransparentToolButton,
     IconWidget, CaptionLabel
 )
 
@@ -141,9 +141,9 @@ class EnvManagerUI(QWidget):
         leftLayout.addWidget(self.packageTable)
 
         # ----------------------------------------------------------
-        # 右侧：控制面板 + 日志 (使用 CardWidget 聚合)
+        # 右侧：控制面板 + 日志 (使用 SimpleCardWidget 聚合)
         # ----------------------------------------------------------
-        self.rightCard = CardWidget(self)
+        self.rightCard = SimpleCardWidget(self)
         rightLayout = QVBoxLayout(self.rightCard)
         rightLayout.setContentsMargins(15, 15, 15, 15)
         rightLayout.setSpacing(15)

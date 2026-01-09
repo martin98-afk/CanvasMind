@@ -374,8 +374,8 @@ class ComponentScanner:
             raise ValueError("组件代码为空")
         source_lines = code.splitlines(keepends=True)
         start = len(COMPONENT_IMPORT_CODE.split("\n")) - 1
-        code = ''.join(source_lines[start:])
-        unique_id = f"{hash(code)}_{py_file.stem}"
+        clean_code = ''.join(source_lines[start:])
+        unique_id = f"{hash(clean_code)}_{py_file.stem}"
         module_name = f"dynamic_component_{unique_id}"
         if module_name in sys.modules:
             del sys.modules[module_name]
@@ -402,12 +402,13 @@ class ComponentScanner:
             histories = ComponentHistoryManager.load_histories(py_file)
             if not histories:
                 component_name = getattr(comp_cls, 'name', py_file.stem)
-                version = ComponentHistoryManager.save_history(py_file, component_name, code)
+                version = ComponentHistoryManager.save_history(py_file, component_name, clean_code)
             else:
                 version = histories[-1]["version"]
 
         comp_cls._version = version
         comp_cls._source_file = py_file
+        comp_cls._source_code = code
         comp_cls.uuid = py_file.stem
         comp_cls._is_fallback = is_fallback
 
