@@ -25,6 +25,7 @@ ICON_NAME_TO_FILE = {
     "spyder": "spyder.ico",
     "string": "string.svg",
     "Sync": "Sync.svg",
+    "upload": "upload.svg",
     "从模板创建": "从模板创建.svg",
     "从此处运行": "从此处运行.svg",
     "代码执行": "代码执行.svg",

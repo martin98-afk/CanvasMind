@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
+
 from PyQt5.QtCore import pyqtSignal, Qt, QThread
-from PyQt5.QtWidgets import (QFrame, QHBoxLayout, QVBoxLayout, QLabel, QPushButton,
-                             QWidget, QStackedWidget, QScrollArea, QMessageBox, QGridLayout)
-from qfluentwidgets import SearchLineEdit, IndeterminateProgressRing
+from PyQt5.QtWidgets import (QHBoxLayout, QVBoxLayout, QLabel, QPushButton,
+                             QWidget, QStackedWidget, QMessageBox, QGridLayout)
+from qfluentwidgets import SearchLineEdit, IndeterminateProgressRing, SmoothScrollArea, CardWidget, \
+    PrimaryPushButton, FluentIcon, InfoBar
 
 from app.scan_components import ComponentScanner
 from app.server_manager.sheetly.component_cloud_manager import ComponentCloudManager
+from app.utils.utils import get_icon
 from app.widgets.basic_widget.style_sheet import StyleSheet
 
 
 class GenericWorker(QThread):
-    """通用后台任务执行器，防止阻塞主进程"""
     finished = pyqtSignal(object)
     error = pyqtSignal(str)
 
@@ -29,8 +31,8 @@ class GenericWorker(QThread):
             self.error.emit(str(e))
 
 
-class ComponentCard(QFrame):
-    """带明显边界的高科技组件卡片"""
+class ComponentCard(CardWidget):
+    """模仿 Dify Tools 样式的卡片"""
     action_signal = pyqtSignal(dict, str)
 
     def __init__(self, data, mode="market"):
@@ -38,48 +40,85 @@ class ComponentCard(QFrame):
         self.setObjectName("ComponentCard")
         self.data = data
         self.mode = mode
-        self.setFixedSize(310, 195)
+        self.setMinimumWidth(340)
+        self.setFixedHeight(180)
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(10)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(12)
 
-        # UUID
-        uuid_label = QLabel(f"ID: {self.data['uuid']}")
+        # 上部分：图标 + 标题信息
+        top_layout = QHBoxLayout()
+        top_layout.setSpacing(15)
+
+        # 模拟图标 (首字母)
+        # icon_text = self.data['name'][0] if self.data['name'] else "?"
+        # self.icon_label = QLabel(icon_text.upper())
+        # self.icon_label.setFixedSize(44, 44)
+        # self.icon_label.setAlignment(Qt.AlignCenter)
+        # self.icon_label.setObjectName("CardIcon")
+        # top_layout.addWidget(self.icon_label)
+
+        # 标题与ID
+        title_v_layout = QVBoxLayout()
+        title_v_layout.setSpacing(2)
+
+        name_label = QLabel(self.data['name'])
+        name_label.setObjectName("CardTitle")
+        title_v_layout.addWidget(name_label)
+
+        uuid_label = QLabel(self.data['uuid'])
         uuid_label.setObjectName("CardUUID")
-        layout.addWidget(uuid_label)
+        title_v_layout.addWidget(uuid_label)
 
-        # 名称
-        title = QLabel(self.data['name'])
-        title.setObjectName("CardTitle")
-        layout.addWidget(title)
+        top_layout.addLayout(title_v_layout)
+        top_layout.addStretch()
+        main_layout.addLayout(top_layout)
 
-        # 描述
-        desc = QLabel(self.data.get('desc', '暂无描述。'))
-        desc.setObjectName("CardDesc")
-        desc.setWordWrap(True)
-        desc.setAlignment(Qt.AlignTop)
-        layout.addWidget(desc, 1)
+        # 中间部分：描述
+        desc_label = QLabel(self.data.get('desc', '暂无描述。'))
+        desc_label.setObjectName("CardDesc")
+        desc_label.setWordWrap(True)
+        desc_label.setAlignment(Qt.AlignTop)
+        main_layout.addWidget(desc_label, 1)
 
-        # 底部栏
-        footer = QHBoxLayout()
-        ver = QLabel(f"v{self.data.get('version', '1.0.0')}")
-        ver.setStyleSheet("color: #484f58; font-size: 11px;")
-        footer.addWidget(ver)
-        footer.addStretch()
+        # 底部部分：标签 + 按钮
+        bottom_layout = QHBoxLayout()
 
-        btn_text = "下载组件" if self.mode == "market" else "上传同步"
-        self.action_btn = QPushButton(btn_text)
+        # 标签 (模仿 Dify 的 Tag)
+        tag_container = QHBoxLayout()
+        tag_container.setSpacing(6)
+
+        ver_tag = QLabel(f"v{self.data.get('version', '1.0.0')}")
+        ver_tag.setObjectName("TagLabel")
+        tag_container.addWidget(ver_tag)
+
+        cat_tag = QLabel(self.data.get('category', '常规'))
+        cat_tag.setObjectName("TagLabel")
+        tag_container.addWidget(cat_tag)
+
+        requirements = self.data.get('requirements', "")
+        req_tags = QLabel(requirements)
+        req_tags.setObjectName("TagLabel")
+        tag_container.addWidget(req_tags)
+
+        bottom_layout.addLayout(tag_container)
+        bottom_layout.addStretch()
+
+        # 按钮
+        btn_text = "下载" if self.mode == "market" else "上传"
+        icon = FluentIcon.DOWNLOAD if self.mode == "market" else get_icon("upload")
+        self.action_btn = PrimaryPushButton(icon, btn_text)
         self.action_btn.setObjectName("BtnAction")
         if self.mode == "market":
             self.action_btn.setObjectName("BtnDownload")
         self.action_btn.setCursor(Qt.PointingHandCursor)
         self.action_btn.clicked.connect(lambda: self.action_signal.emit(self.data, self.mode))
-        footer.addWidget(self.action_btn)
+        bottom_layout.addWidget(self.action_btn)
 
-        layout.addLayout(footer)
+        main_layout.addLayout(bottom_layout)
 
 
 class PluginManagerCenter(QWidget):
@@ -103,15 +142,15 @@ class PluginManagerCenter(QWidget):
         # --- 侧边栏 ---
         sidebar = QWidget()
         sidebar.setObjectName("SideBar")
-        sidebar.setFixedWidth(180)
+        sidebar.setFixedWidth(200)
         side_lay = QVBoxLayout(sidebar)
 
-        logo = QLabel("组件控制中心")
-        logo.setStyleSheet("color: #58a6ff; font-weight: 900; font-size: 20px; margin: 25px 15px;")
+        logo = QLabel("组件市场")
+        logo.setStyleSheet("color: #f0f6fc; font-weight: 700; font-size: 18px; margin: 25px 20px;")
         side_lay.addWidget(logo)
 
         self.nav_btns = []
-        for text, idx in [("🌐 云端市场", 0), ("📦 本地库", 1)]:
+        for text, idx in [("🛰️ 云端探索", 0), ("🏠 本地工作站", 1)]:
             btn = QPushButton(text)
             btn.setObjectName("NavBtn")
             btn.setCheckable(True)
@@ -121,9 +160,10 @@ class PluginManagerCenter(QWidget):
 
         side_lay.addStretch()
 
-        self.sync_all_btn = QPushButton("🚀 全量同步")
+        self.sync_all_btn = QPushButton("同步全部组件")
         self.sync_all_btn.setObjectName("BtnAction")
         self.sync_all_btn.setFixedHeight(40)
+        self.sync_all_btn.setCursor(Qt.PointingHandCursor)
         self.sync_all_btn.clicked.connect(self.upload_all_logic)
         side_lay.addWidget(self.sync_all_btn)
         side_lay.addSpacing(20)
@@ -133,26 +173,26 @@ class PluginManagerCenter(QWidget):
         # --- 内容区 ---
         content = QWidget()
         content_lay = QVBoxLayout(content)
-        content_lay.setContentsMargins(25, 20, 25, 0)
+        content_lay.setContentsMargins(30, 20, 30, 0)
 
-        # 工具栏
+        # 顶栏
         top_bar = QHBoxLayout()
         self.search_bar = SearchLineEdit()
-        self.search_bar.setPlaceholderText("根据ID或名称检索...")
+        self.search_bar.setPlaceholderText("搜索组件...")
+        self.search_bar.setFixedHeight(36)
         self.search_bar.textChanged.connect(self.filter_cards)
         top_bar.addWidget(self.search_bar)
 
-        self.refresh_btn = QPushButton("刷新数据")
+        self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.setObjectName("BtnAction")
+        self.refresh_btn.setFixedHeight(36)
         self.refresh_btn.clicked.connect(self.force_refresh_cloud)
         top_bar.addWidget(self.refresh_btn)
 
-        # 加载环 (高科技感)
         self.loading_ring = IndeterminateProgressRing(self)
         self.loading_ring.setFixedSize(20, 20)
         self.loading_ring.hide()
         top_bar.addWidget(self.loading_ring)
-
         content_lay.addLayout(top_bar)
 
         self.stack = QStackedWidget()
@@ -163,7 +203,7 @@ class PluginManagerCenter(QWidget):
         main_lay.addWidget(content)
 
     def _create_grid_page(self):
-        scroll = QScrollArea()
+        scroll = SmoothScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet("background: transparent; border: none;")
         container = QWidget()
@@ -188,10 +228,8 @@ class PluginManagerCenter(QWidget):
             self.render_local_page()
 
     def start_cloud_fetch(self):
-        """异步获取云端数据"""
         self.loading_ring.show()
         self.refresh_btn.setEnabled(False)
-
         self.worker = GenericWorker(self.cloud_mgr.fetch_all)
         self.worker.finished.connect(self.on_cloud_fetch_done)
         self.worker.error.connect(self.on_worker_error)
@@ -210,12 +248,10 @@ class PluginManagerCenter(QWidget):
     def render_market_page(self, data):
         layout = self.pages[0].widget().layout()
         self.clear_layout(layout)
-
         groups = {}
         for item in data:
             cat = item.get("组件类别", "常规")
             groups.setdefault(cat, []).append(item)
-
         for cat, items in groups.items():
             layout.addWidget(self._create_category_view(cat, items, "market"))
         layout.addStretch()
@@ -223,14 +259,12 @@ class PluginManagerCenter(QWidget):
     def render_local_page(self):
         layout = self.pages[1].widget().layout()
         self.clear_layout(layout)
-
         comp_map, _ = self.scanner.get_components()
         groups = {}
         for full_path, cls in comp_map.items():
             cat = getattr(cls, 'category', '常规')
             uuid = getattr(cls, 'uuid', Path(full_path).stem)
             source_file = getattr(cls, '_source_file', full_path)
-
             groups.setdefault(cat, []).append({
                 'uuid': uuid,
                 'name': getattr(cls, 'name', uuid),
@@ -240,7 +274,6 @@ class PluginManagerCenter(QWidget):
                 'version': getattr(cls, '_version', '1.0.0'),
                 'real_path': str(source_file)
             })
-
         for cat, items in groups.items():
             layout.addWidget(self._create_category_view(cat, items, "local"))
         layout.addStretch()
@@ -248,14 +281,14 @@ class PluginManagerCenter(QWidget):
     def _create_category_view(self, name, items, mode):
         view = QWidget()
         v_lay = QVBoxLayout(view)
-        v_lay.setContentsMargins(0, 0, 0, 0)
+        v_lay.setContentsMargins(0, 0, 0, 10)
 
-        title = QLabel(f"📁 {name}")
+        title = QLabel(name)
         title.setObjectName("CategoryTitle")
         v_lay.addWidget(title)
 
         grid = QGridLayout()
-        grid.setSpacing(15)
+        grid.setSpacing(20)  # 增大间距
         for i, item in enumerate(items):
             c_data = {
                 'uuid': item.get('组件id') or item.get('uuid'),
@@ -275,56 +308,42 @@ class PluginManagerCenter(QWidget):
         return view
 
     def handle_action(self, data, mode):
-        """组件操作逻辑：下载或上传"""
         if mode == "market":
-            # 下载逻辑：本地 IO 不耗时，直接主线程处理
             target_path = Path("app/components") / data['category'] / f"{data['uuid']}.py"
             try:
                 target_path.parent.mkdir(parents=True, exist_ok=True)
                 target_path.write_text(data['source'], encoding="utf-8")
-                QMessageBox.information(self, "成功", f"组件已部署至：\n{target_path}")
+                QMessageBox.information(self, "成功", f"组件已安装")
             except Exception as e:
                 QMessageBox.critical(self, "错误", str(e))
         else:
-            # 上传逻辑：涉及网络请求，开启异步
             self.loading_ring.show()
             p = Path(data['path'])
             source = p.read_text(encoding="utf-8")
-
-            # 开启异步同步
-            self.worker = GenericWorker(
-                self.cloud_mgr.add_component,
-                data['uuid'], data['name'], data['category'],
-                data['desc'], data["requirements"], data['version'], source
-            )
+            self.worker = GenericWorker(self.cloud_mgr.add_component, data['uuid'], data['name'], data['category'],
+                                        data['desc'], data["requirements"], data['version'], source)
             self.worker.finished.connect(lambda: self.on_single_sync_done(data['name']))
             self.worker.error.connect(self.on_worker_error)
             self.worker.start()
 
     def on_single_sync_done(self, name):
         self.loading_ring.hide()
-        QMessageBox.information(self, "同步成功", f"组件 [{name}] 已推送到云端。")
+        InfoBar.success( "同步成功", f"组件 [{name}] 已推送到云端。")
 
     def upload_all_logic(self):
-        """异步全量同步"""
-        reply = QMessageBox.question(self, '全量同步', '确定同步所有本地组件到云端吗？',
+        reply = QMessageBox.question(self, '全量同步', '确认同步所有本地组件到云端吗？',
                                      QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.No: return
-
         self.loading_ring.show()
         self.sync_all_btn.setEnabled(False)
-
         comp_map, _ = self.scanner.get_components()
         local_list = []
         for _, cls in comp_map.items():
             p = Path(getattr(cls, '_source_file'))
-            local_list.append({
-                "组件id": cls.uuid, "组件名称": cls.name, "组件类别": cls.category,
-                "组件描述": getattr(cls, 'description', ""), "工具包需求": getattr(cls, 'requirements', ""),
-                "版本号": getattr(cls, '_version', '1.0.0'), "组件源码": p.read_text(encoding="utf-8")
-            })
-
-        # 批量同步逻辑
+            local_list.append({"组件id": cls.uuid, "组件名称": cls.name, "组件类别": cls.category,
+                               "组件描述": getattr(cls, 'description', ""),
+                               "工具包需求": getattr(cls, 'requirements', ""),
+                               "版本号": getattr(cls, '_version', '1.0.0'), "组件源码": p.read_text(encoding="utf-8")})
         self.worker = GenericWorker(self.cloud_mgr.sync_local_to_cloud, local_list)
         self.worker.finished.connect(self.on_all_sync_done)
         self.worker.error.connect(self.on_worker_error)
@@ -333,13 +352,13 @@ class PluginManagerCenter(QWidget):
     def on_all_sync_done(self, res):
         self.loading_ring.hide()
         self.sync_all_btn.setEnabled(True)
-        QMessageBox.information(self, "完成", "所有本地组件同步尝试已结束。")
+        InfoBar.success("完成", "同步结束")
 
     def on_worker_error(self, msg):
         self.loading_ring.hide()
         self.refresh_btn.setEnabled(True)
         self.sync_all_btn.setEnabled(True)
-        QMessageBox.critical(self, "网络异常", f"云端操作失败：\n{msg}")
+        InfoBar.error("异常", msg)
 
     def clear_layout(self, layout):
         while layout.count():
@@ -347,22 +366,17 @@ class PluginManagerCenter(QWidget):
             if item.widget(): item.widget().deleteLater()
 
     def filter_cards(self, text):
-        """实时过滤搜索"""
         page_idx = self.stack.currentIndex()
         container = self.pages[page_idx].widget()
         for i in range(container.layout().count()):
             group = container.layout().itemAt(i).widget()
             if not group: continue
-
-            # 搜索类别和卡片
             grid = group.layout().itemAt(1).layout()
             group_visible = text.lower() in group.layout().itemAt(0).widget().text().lower()
-
             cards_visible = False
             for j in range(grid.count()):
                 card = grid.itemAt(j).widget()
                 match = text.lower() in card.data['name'].lower() or text.lower() in card.data['uuid'].lower()
                 card.setVisible(match)
                 if match: cards_visible = True
-
             group.setVisible(group_visible or cards_visible)

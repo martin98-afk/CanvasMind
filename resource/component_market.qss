@@ -1,37 +1,49 @@
-#MarketCenter { background-color: #0b0e14; }
-#SideBar { background-color: #11141a; border-right: 1px solid #1f6feb; }
+#MarketCenter { background-color: #0d1117; }
+#SideBar { background-color: #161b22; border-right: 1px solid #30363d; }
+
 #NavBtn {
-    border: none; color: #8b949e; padding: 15px 25px; text-align: left;
-    font-size: 15px; font-weight: bold; border-radius: 0px;
+    border: none; color: #8b949e; padding: 12px 20px; text-align: left;
+    font-size: 14px; font-weight: 500; border-radius: 8px; margin: 4px 10px;
 }
-#NavBtn:hover { background-color: #1c2128; color: #58a6ff; }
-#NavBtn:checked { background-color: #1f6feb22; color: #58a6ff; border-left: 4px solid #58a6ff; }
+#NavBtn:hover { background-color: #21262d; color: #f0f6fc; }
+#NavBtn:checked { background-color: #1f6feb22; color: #58a6ff; font-weight: bold; }
 
+/* 分类标题 */
 #CategoryTitle {
-    color: #58a6ff; font-size: 16px; font-weight: 900;
-    padding: 10px 5px; margin-top: 15px; border-bottom: 1px solid #30363d;
+    color: #f0f6fc; font-size: 18px; font-weight: 600;
+    margin-top: 30px; margin-bottom: 10px; padding-left: 5px;
 }
 
-/* 卡片样式：强化边界线 */
+/* Dify 风格卡片 */
 #ComponentCard {
     background-color: #161b22;
-    border: 1px solid #30363d; /* 默认灰色边界 */
-    border-radius: 10px;
+    border: 1px solid #30363d;
+    border-radius: 12px;
 }
 #ComponentCard:hover {
-    border: 1px solid #58a6ff; /* 悬浮蓝边 */
+    border: 1px solid #1f6feb;
     background-color: #1c2128;
 }
 
-#CardTitle { color: #f0f6fc; font-size: 16px; font-weight: bold; }
-#CardUUID { color: #58a6ff; font-family: 'Consolas'; font-size: 11px; opacity: 0.8; }
-#CardDesc { color: #8b949e; font-size: 13px; line-height: 18px; }
+#CardIcon {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #1f6feb, stop:1 #8144ff);
+    color: white; border-radius: 8px; font-weight: bold; font-size: 16px;
+}
+
+#CardTitle { color: #f0f6fc; font-size: 15px; font-weight: 600; }
+#CardUUID { color: #8b949e; font-size: 12px; font-family: 'Consolas'; }
+#CardDesc { color: #8b949e; font-size: 13px; line-height: 20px; }
+
+#TagLabel {
+    color: #58a6ff; background-color: #388bfd1a;
+    border: 1px solid #388bfd26; border-radius: 4px;
+    padding: 2px 8px; font-size: 11px; font-weight: 500;
+}
 
 #BtnAction {
-    border-radius: 4px; padding: 8px 15px; font-weight: bold; font-size: 12px;
+    border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600;
     border: 1px solid #30363d; background: #21262d; color: #c9d1d9;
 }
 #BtnAction:hover { background: #30363d; border-color: #8b949e; }
 #BtnDownload { background: #238636; color: white; border: none; }
 #BtnDownload:hover { background: #2ea043; }
-#BtnAction:disabled { color: #484f58; background: #0d1117; }
