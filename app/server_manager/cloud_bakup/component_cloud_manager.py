@@ -56,7 +56,7 @@ class ComponentCloudManager:
             "组件名称": name,
             "组件类别": category,
             "组件描述": description,
-            "工具包需求": str(requirements),  # 确保是字符串防止解析错误
+            "工具包需求": str(requirements),
             "最后修改人": self.config.user_name.value,
             "最后修改时间": now,
             "创建人": self.config.user_name.value,
@@ -69,7 +69,6 @@ class ComponentCloudManager:
     def add_batch(self, components: List[Dict]):
         """
         批量添加组件列表 (优化网络请求)
-        :param components: 结构匹配本地缓存格式的列表
         """
         if not components:
             return True
@@ -78,34 +77,57 @@ class ComponentCloudManager:
         batch_data = []
 
         for lc in components:
-            # 兼容 UI 传参和本地字典格式
+            # 字段兼容与标准化
             data = {
-                "组件id": str(lc.get("uuid") or lc.get("组件id")),
-                "组件名称": lc.get("name") or lc.get("组件名称"),
-                "组件类别": lc.get("category") or lc.get("组件类别"),
-                "组件描述": lc.get("desc") or lc.get("组件描述"),
-                "工具包需求": str(lc.get("requirements") or lc.get("工具包需求", "[]")),
+                "组件id": str(lc.get("组件id") or lc.get("uuid")),
+                "组件名称": lc.get("组件名称") or lc.get("name"),
+                "组件类别": lc.get("组件类别") or lc.get("category"),
+                "组件描述": lc.get("组件描述") or lc.get("desc"),
+                "工具包需求": str(lc.get("工具包需求") or lc.get("requirements") or "[]"),
                 "最后修改人": self.config.user_name.value,
                 "最后修改时间": now,
-                "创建人": self.config.user_name.value,
-                "创建时间": now,
-                "版本号": lc.get("version") or lc.get("版本号"),
-                "组件源码": lc.get("source") or lc.get("组件源码")
+                "创建人": lc.get("创建人") or self.config.user_name.value,
+                "创建时间": lc.get("创建时间") or now,
+                "版本号": lc.get("版本号") or lc.get("version"),
+                "组件源码": lc.get("组件源码") or lc.get("source")
             }
             batch_data.append(data)
 
-        # Stein 适配器的 add 方法通常支持 Dict 或 List[Dict]
-        # 如果适配器不支持列表，建议在适配器里做循环，但在这里统筹调度
         return self._execute("add", batch_data)
 
-    def update_component(self, cloud_id: str, update_fields: Dict, is_row_id: bool = False):
+    def update_component(self, comp_id: str, update_fields: Dict):
         """
-        :param cloud_id: 如果是 Stein，传 '组件id'；如果是 Sheety，传行号 'id'
-        :param is_row_id: 是否是 Sheety 专用的行号
+        专业优化：利用 Stein 的 condition 机制按 组件id 匹配更新
+        :param comp_id: 组件唯一业务 ID
+        :param update_fields: 需要更新的字段字典
         """
         update_fields["最后修改人"] = self.config.user_name.value
         update_fields["最后修改时间"] = self._get_now_time()
-        return self._execute("update", cloud_id, update_fields)
+
+        # 构建 Stein PUT 请求要求的格式
+        payload = {
+            "condition": {"组件id": str(comp_id)},
+            "set": update_fields
+        }
+        # 这里的 update 在适配器层应处理 PUT 请求
+        return self._execute("update", payload)
+
+    def update_rows(self, condition: Dict, set_data: Dict, limit: Optional[int] = None):
+        """
+        专业功能：批量多行条件修改
+        例如：{"condition": {"创建人": "martin"}, "set": {"版本号": "2.0.0"}}
+        """
+        set_data["最后修改人"] = self.config.user_name.value
+        set_data["最后修改时间"] = self._get_now_time()
+
+        payload = {
+            "condition": condition,
+            "set": set_data
+        }
+        if limit:
+            payload["limit"] = limit
+
+        return self._execute("update", payload)
 
     def delete_component(self, cloud_id: str):
         return self._execute("delete", cloud_id)
@@ -130,44 +152,52 @@ class ComponentCloudManager:
             return False
 
     def sync_local_to_cloud(self, local_components: List[Dict]):
-        """增量同步逻辑 (优化批量上传)"""
+        """
+        增量同步逻辑
+        权限规则：只有 martin98-afk 拥有覆盖更新权限，否则全部作为新记录 add_batch 上传
+        """
         if not local_components:
             return True
 
+        current_user = str(self.config.user_name.value)
+        is_admin = (current_user == "martin98-afk")
+        logger.info(f"执行同步 - 用户: {current_user} | 管理员权限: {is_admin}")
+
         cloud_data = self.fetch_all()
-        # 建立 业务ID 到 云端原始对象 的映射
         cloud_mapping = {str(item["组件id"]): item for item in cloud_data}
 
         to_add = []
         success_count = 0
 
         for lc in local_components:
-            cid = str(lc.get("uuid") or lc.get("组件id"))
-            if cid in cloud_mapping:
-                # 已存在则同步更新（更新通常只能单条操作，受限于 API 设计）
-                internal_id = cloud_mapping[cid].get("id", cid)
-                # 提取更新字段，移除可能冲突的内部 id
+            # 统一取值
+            cid = str(lc.get("组件id") or lc.get("uuid"))
+
+            # 管理员权限：如果云端已存在，则调用优化的 update_component (PUT)
+            if is_admin and cid in cloud_mapping:
                 update_data = {
-                    "组件名称": lc.get("name") or lc.get("组件名称"),
-                    "组件描述": lc.get("desc") or lc.get("组件描述"),
-                    "工具包需求": str(lc.get("requirements") or lc.get("工具包需求", "[]")),
-                    "版本号": lc.get("version") or lc.get("版本号"),
-                    "组件源码": lc.get("source") or lc.get("组件源码"),
-                    "组件类别": lc.get("category") or lc.get("组件类别")
+                    "组件名称": lc.get("组件名称") or lc.get("name"),
+                    "组件描述": lc.get("组件描述") or lc.get("desc"),
+                    "工具包需求": str(lc.get("工具包需求") or lc.get("requirements") or "[]"),
+                    "版本号": lc.get("版本号") or lc.get("version"),
+                    "组件源码": lc.get("组件源码") or lc.get("source"),
+                    "组件类别": lc.get("组件类别") or lc.get("category")
                 }
-                logger.info(f"同步更新: {cid}")
-                if self.update_component(internal_id, update_data):
+                logger.info(f"管理员正在更新组件: {cid}")
+                if self.update_component(cid, update_data):
                     success_count += 1
             else:
-                # 不存在则加入待批量新增列表
+                # 非管理员用户，或不存在的组件，全部存入待新增列表
+                if not is_admin and cid in cloud_mapping:
+                    logger.warning(f"组件 {cid} 已在云端存在，当前用户无权覆盖，将新建副本。")
                 to_add.append(lc)
 
-        # 执行批量上传新增组件
+        # 批量上传新增部分
         if to_add:
-            logger.info(f"开始批量上传 {len(to_add)} 个新组件...")
+            logger.info(f"开始为用户 {current_user} 批量上传 {len(to_add)} 个组件记录...")
             if self.add_batch(to_add):
                 success_count += len(to_add)
-                logger.success(f"批量上传完成")
+                logger.success(f"批量上传成功")
             else:
                 logger.error(f"批量上传失败")
 

@@ -101,7 +101,7 @@ class NodeOperations:
         graph_menu.add_command('运行工作流', self.parent.canvas_runner.run_workflow, 'Ctrl+R')
         graph_menu.add_command('保存工作流', self.parent.save_full_workflow, 'Ctrl+S')
         graph_menu.add_separator()
-        graph_menu.add_command("添加注释", lambda: self.create_next_node("general.StickyNote"), 'Ctrl+/')
+        graph_menu.add_command("添加注释", lambda: self.create_next_node("general.StickyNote"))
         graph_menu.add_command('撤销', self.parent._undo, 'Ctrl+Z')
         graph_menu.add_command('重做', self.parent._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
         graph_menu.add_command('自动布局', self.parent._auto_layout_selected, 'Ctrl+L')

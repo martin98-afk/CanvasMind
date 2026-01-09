@@ -1,6 +1,8 @@
 import httpx
 from typing import Optional, Dict, List
 
+from loguru import logger
+
 from app.server_manager.cloud_bakup.adapters.base import BaseAdapter
 
 
@@ -28,7 +30,11 @@ class SteinAdapter(BaseAdapter):
             if not isinstance(data, list):
                 data = [data]
             resp = client.post(self.url, json=data)
-            return resp.status_code == 200
+            if resp.status_code == 200:
+                return True
+            else:
+                logger.error(f"Stein 添加失败: {resp.text}")
+                return False
 
     def update(self, unique_id: str, data: Dict) -> bool:
         # Stein 使用 condition 匹配更新
@@ -38,11 +44,19 @@ class SteinAdapter(BaseAdapter):
         }
         with httpx.Client(timeout=20.0) as client:
             resp = client.put(self.url, json=payload)
-            return resp.status_code == 200
+            if resp.status_code == 200:
+                return True
+            else:
+                logger.error(f"Stein 更新失败: {resp.text}")
+                return False
 
     def delete(self, unique_id: str) -> bool:
         payload = {"condition": {"组件id": unique_id}}
         with httpx.Client(timeout=20.0) as client:
             # 注意：某些 Stein 版本 DELETE 需要通过 request 或特定的 put 实现，标准为此格式
             resp = client.request("DELETE", self.url, json=payload)
-            return resp.status_code == 200
+            if resp.status_code == 200:
+                return True
+            else:
+                logger.error(f"Stein 删除失败: {resp.text}")
+                return False

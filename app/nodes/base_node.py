@@ -385,7 +385,6 @@ class BasicNodeWithGlobalProperty(NodeObject):
                     self.set_output_value(port_name, new_data)
 
                 # ✅ 发送流式更新信号，通知 UI 刷新（例如预览窗口、实时图表）
-                # 建议在 NodeSignals 中定义 stream_data_updated 信号
                 if hasattr(self.signals, 'stream_data_updated'):
                     self.signals.stream_data_updated.emit(port_name, self._output_values[port_name])
 
