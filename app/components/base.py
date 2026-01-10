@@ -263,15 +263,56 @@ class GlobalVariableContext(BaseModel):
     def is_output_in_node_vars(self, node_name: str, output_name: str):
         return f"{node_name}__{output_name}" in self.node_vars
 
-    def rename_node_vars(self, old_name: str, new_name: str):
-        for key in self.node_vars:
-            if key.startswith(old_name):
-                self.node_vars[key.replace(old_name, new_name)] = self.node_vars.pop(key)
+    def rename_node_vars(self, old_name: str, new_name: str) -> Tuple[List[str], List[str]]:
+        """
+        重命名节点相关的变量，并返回重命名的键列表。
+
+        Returns:
+            tuple: (old_keys_list, new_keys_list)
+        """
+        # 构造精确前缀，防止误匹配（例如防止 Node1 匹配到 Node11）
+        old_prefix = f"{old_name}__"
+        new_prefix = f"{new_name}__"
+
+        old_name_list = []
+        new_name_list = []
+
+        # 使用 OrderedDict 重新构建以保持顺序，并避免遍历时修改的错误
+        new_node_vars = OrderedDict()
+
+        for key, var_obj in self.node_vars.items():
+            if key.startswith(old_prefix):
+                # 生成新键名（仅替换第一个匹配到的前缀）
+                new_key = key.replace(old_prefix, new_prefix, 1)
+
+                # 记录变更
+                old_name_list.append(f"node_vars.{key}")
+                new_name_list.append(f"node_vars.{new_key}")
+
+                # 存入新字典
+                new_node_vars[new_key] = var_obj
+            else:
+                # 不需要修改的变量原样保留
+                new_node_vars[key] = var_obj
+
+        # 更新原始变量字典
+        self.node_vars = new_node_vars
+
+        return old_name_list, new_name_list
 
     def clear_node_vars(self, name: str):
-        if isinstance(self.node_vars[name].value, (list, dict, tuple, set)):
-            self.node_vars[name].value.clear()
-        elif isinstance(self.node_vars[name].value, str):
+        # 增加对 key 是否存在的检查，防止 KeyError
+        if name not in self.node_vars:
+            return
+
+        val = self.node_vars[name].value
+        if isinstance(val, (list, dict, tuple, set)):
+            # 注意：tuple 是不可变的，不能 clear()，建议统一设为 None 或对应的空类型
+            if isinstance(val, tuple):
+                self.node_vars[name].value = ()
+            else:
+                val.clear()
+        elif isinstance(val, str):
             self.node_vars[name].value = ""
         else:
             self.node_vars[name].value = None

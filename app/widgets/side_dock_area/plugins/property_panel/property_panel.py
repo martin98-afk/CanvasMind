@@ -62,7 +62,7 @@ class FuturisticCard(QFrame):
         self.icon_widget = IconWidget(icon, self.header_hud)
         self.icon_widget.setFixedSize(18, 18)
         self.title_label = StrongBodyLabel(title, self.header_hud)
-        self.title_label.setFont(QFont("Segoe UI Semibold", 10))
+        self.title_label.setFont(QFont("Segoe UI Semibold", 13))
 
         self.close_btn = TransparentToolButton(FluentIcon.CLOSE, self.header_hud)
         self.close_btn.setFixedSize(28, 28)

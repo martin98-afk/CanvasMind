@@ -39,6 +39,7 @@ class CanvasExporter:
                 return
             # 过滤注释节点
             execution_order = [node for node in execution_order if not isinstance(node, StickyNoteNode)]
+            nodes_to_export = [node for node in nodes_to_export if not isinstance(node, StickyNoteNode)]
             # 收集候选输入/输出
             candidate_inputs = self._collect_inputs(execution_order)
             candidate_outputs = self._collect_outputs(execution_order)
