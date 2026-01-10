@@ -302,6 +302,7 @@ class GlobalVariableContext(BaseModel):
 
     def clear_node_vars(self, name: str):
         # 增加对 key 是否存在的检查，防止 KeyError
+        print(name)
         if name not in self.node_vars:
             return
 

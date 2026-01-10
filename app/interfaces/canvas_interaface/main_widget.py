@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 import traceback
 from pathlib import Path
 
@@ -193,6 +194,8 @@ class CanvasPage(QWidget):
         return self.ui_manager.log_window
 
     def rename_node_vars(self, old_name, new_name):
+        old_name = re.sub(r'\s+', '_', old_name)
+        new_name = re.sub(r'\s+', '_', new_name)
         old_names, newe_names = self.global_variables.rename_node_vars(old_name, new_name)
         for old_name, new_name in zip(old_names, newe_names):
             self.global_variables_changed.emit(old_name, "delete")

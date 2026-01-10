@@ -1246,9 +1246,11 @@ class GlobalPanelWidget:
         """将输出添加到全局变量"""
         value = node._output_values.get(port_name)
         safe_node_name = re.sub(r'\s+', '_', node.name())
-        var_name = f"{safe_node_name}__{port_name}"
+        safe_port_name = re.sub(r'\s+', '_', port_name)
+        safe_port_name = re.sub(r'\.+', '_', safe_port_name)
+        var_name = f"{safe_node_name}__{safe_port_name}"
         main_window.global_variables.set_output(
-            node_name=safe_node_name, output_name=port_name, output_value=value
+            node_name=safe_node_name, output_name=safe_port_name, output_value=value
         )
         if hasattr(node, "refresh_node_outports"):
             QtCore.QTimer.singleShot(100, node.refresh_node_outports)
@@ -1265,17 +1267,19 @@ class GlobalPanelWidget:
     def delete_output_from_global_var(self, main_window, node, port_name: str):
         """从全局变量中删除输出"""
         safe_node_name = re.sub(r'\s+', '_', node.name())
+        safe_port_name = re.sub(r'\s+', '_', port_name)
+        safe_port_name = re.sub(r'\.+', '_', safe_port_name)
         main_window.global_variables.delete_output(
-            node_name=safe_node_name, output_name=port_name
+            node_name=safe_node_name, output_name=safe_port_name
         )
         if hasattr(node, "refresh_node_outports"):
             QtCore.QTimer.singleShot(100, node.refresh_node_outports)
         if hasattr(node, "_sync_outputs_ports"):
             QtCore.QTimer.singleShot(100, node._sync_outputs_ports)
-        self._handle_global_variable_change("node_vars", f"{safe_node_name}__{port_name}", "delete")
+        self._handle_global_variable_change("node_vars", f"{safe_node_name}__{safe_port_name}", "delete")
         InfoBar.success(
             title="成功",
-            content=f"已删除全局变量：{safe_node_name}__{port_name}",
+            content=f"已删除全局变量：{safe_node_name}__{safe_port_name}",
             parent=main_window,
             position=InfoBarPosition.BOTTOM_RIGHT
         )
@@ -1283,4 +1287,6 @@ class GlobalPanelWidget:
     def is_output_in_global_var(self, main_window, node, port_name: str):
         """判断输出是否在全局变量中"""
         safe_node_name = re.sub(r'\s+', '_', node.name())
-        return main_window.global_variables.is_output_in_node_vars(safe_node_name, port_name)
+        safe_port_name = re.sub(r'\s+', '_', port_name)
+        safe_port_name = re.sub(r'\.+', '_', safe_port_name)
+        return main_window.global_variables.is_output_in_node_vars(safe_node_name, safe_port_name)

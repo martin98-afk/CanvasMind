@@ -305,7 +305,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
         """
         value = params.get("value", "")
         if value.startswith(params.get("type", "")):
-            value = value.split(".")[1]
+            value = value.split("node_vars.")[1]
         if self.parent_window:
             self.parent_window._on_global_variables_changed(
                 var_type="node_vars",
