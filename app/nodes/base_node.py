@@ -20,7 +20,7 @@ from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
 class NodeSignals(QObject):
     intercepted_msg_signal = QtCore.pyqtSignal(dict)
     htmlReady = QtCore.pyqtSignal(str, bool)
-    stream_data_updated = QtCore.pyqtSignal(str, object)
+    stream_data_updated = QtCore.pyqtSignal(object)
 
 
 class PropertyChangedCmd(QtWidgets.QUndoCommand):
@@ -174,24 +174,43 @@ class BasicNodeWithGlobalProperty(NodeObject):
         super().__init__(qgraphics_item)
         self.signals = NodeSignals()
         self.parent_window = None
+
+        # 数据存储
         self._output_values = {}
         self._input_values = {}
         self.column_select = {}
         self._node_logs = ""
         self._realtime_logs = ""
         self._bound_to_persistent_log = False
-        self.signals.intercepted_msg_signal.connect(self._message_router)
-        # --- 防抖/节流相关配置 ---
+        # --- 性能优化相关 ---
+        self._var_key_cache = {}  # 缓存端口对应的全局变量Key
+        self._stream_buffer = set()  # 记录哪些端口有待同步的数据更新
         self._ui_update_timer = QtCore.QTimer()
-        self._ui_update_timer.setSingleShot(True)  # 设置为单次触发
-        self._ui_update_timer.timeout.connect(self._trigger_ui_update)
-        self._ui_update_interval = 150  # 刷新频率限制：150ms 刷新一次 UI
+        self._ui_update_timer.setSingleShot(True)
+        self._ui_update_timer.timeout.connect(self._sync_buffer_to_global)
+        self._ui_update_interval = 150  # 刷新频率 (ms)
+
+        self.signals.intercepted_msg_signal.connect(self._message_router)
         self.signals.stream_data_updated.connect(self._on_stream_data_received)
         self.model.add_property("persistent_id", str(uuid.uuid4()))
 
     @property
     def persistent_id(self):
         return self.model.get_property("persistent_id")
+
+    @property
+    def safe_name(self):
+        pattern = r'\s+'
+        return re.sub(pattern, '_', self.name())
+
+    def _get_var_key(self, port_name):
+        if port_name not in self._var_key_cache:
+            self._var_key_cache[port_name] = f"{self.safe_name}__{port_name}"
+        return self._var_key_cache[port_name]
+
+    # 当节点改名时清空缓存
+    def on_name_changed(self, old_name, new_name):
+        self._var_key_cache.clear()
 
     # ===========================日志处理=================================================
     def init_logger(self):
@@ -386,75 +405,80 @@ class BasicNodeWithGlobalProperty(NodeObject):
     # --- 结果流式输出处理逻辑 ---
     def _handle_stream_output(self, params: dict, msg: ComponentMessage):
         """
-        处理节点中需要流式输出的结果。
-        params 结构示例:
-        {
-            "output_port_1": {"data": "增加的文本", "data_type": "str"},
-            "output_port_2": {"data": [1, 2, 3], "data_type": "list"}
-        }
+        处理流式输出：仅更新内存数据并标记脏数据
         """
         try:
+            if self._output_values is None: self._output_values = {}
+
             for port_name, info in params.items():
                 new_data = info.get("data")
                 data_type = info.get("data_type", "str")
+                old_val = self._output_values.get(port_name)
 
-                # 确保输出字典已初始化
-                if self._output_values is None:
-                    self._output_values = {}
-
-                # 获取旧值并进行增量更新
-                old_value = self._output_values.get(port_name)
-
+                # 高性能增量更新
                 if data_type == "str":
-                    # 字符串连接（适用于 LLM 文本流）
-                    updated_value = (old_value if old_value else "") + str(new_data)
-                    self.set_output_value(port_name, updated_value)
-
+                    self._output_values[port_name] = (old_val or "") + str(new_data)
                 elif data_type == "list":
-                    # 列表追加（适用于 批量处理/采集 任务）
-                    if old_value is None or not isinstance(old_value, list):
-                        old_value = []
+                    if not isinstance(old_val, list): old_val = []
                     if isinstance(new_data, list):
-                        old_value.extend(new_data)
+                        old_val.extend(new_data)
                     else:
-                        old_value.append(new_data)
-                    self.set_output_value(port_name, old_value)
-
+                        old_val.append(new_data)
+                    self._output_values[port_name] = old_val
                 elif data_type == "dict":
-                    # 字典合并（适用于 状态更新/指标 监控）
-                    if old_value is None or not isinstance(old_value, dict):
-                        old_value = {}
-                    if isinstance(new_data, dict):
-                        old_value.update(new_data)
-                    self.set_output_value(port_name, old_value)
-
+                    if not isinstance(old_val, dict): old_val = {}
+                    if isinstance(new_data, dict): old_val.update(new_data)
+                    self._output_values[port_name] = old_val
                 else:
-                    # 默认行为：直接覆盖
-                    self.set_output_value(port_name, new_data)
+                    self._output_values[port_name] = new_data
 
-                # ✅ 发送流式更新信号，通知 UI 刷新（例如预览窗口、实时图表）
-                if hasattr(self.signals, 'stream_data_updated'):
-                    self.signals.stream_data_updated.emit(port_name, self._output_values[port_name])
+                # 标记该端口需要同步
+                self._stream_buffer.add(port_name)
+
+            # 触发异步节流刷新
+            self.signals.stream_data_updated.emit(None)  # 信号内容不再重要，因为数据在内存里
 
         except Exception as e:
             logger.error(f"流式结果处理失败: {e}")
 
-    def _on_stream_data_received(self, port_name, value):
-        """
-        当收到流式数据时，不立即刷新 UI，而是开启/重启计时器
-        """
-        # 如果计时器没在跑，就启动它；如果在跑，就让它继续跑（节流模式）
-        # 或者使用 singleShot 重新开始（防抖模式），这里推荐节流
+    def _on_stream_data_received(self, _):
+        """收到流信号时，仅启动/重置计时器"""
         if not self._ui_update_timer.isActive():
             self._ui_update_timer.start(self._ui_update_interval)
 
-    def _trigger_ui_update(self):
+    def _sync_buffer_to_global(self):
         """
-        真正触发 UI 刷新的地方（在主线程执行）
+        【核心优化】在计时器触发时，一次性同步所有累积的数据并刷新一次 UI
         """
-        if self.parent_window and self.parent_window.property_panel:
+        if not self.parent_window or not self._stream_buffer:
+            return
+
+        has_changed = False
+        scheduler = self.parent_window.scheduler
+
+        # 1. 批量同步到全局变量 (不逐个发射信号)
+        for port_name in self._stream_buffer:
+            var_key = self._get_var_key(port_name)
+            var_obj = self.parent_window.global_variables.node_vars.get(var_key)
+
+            if var_obj and var_obj.update_policy != "固定" and scheduler:
+                # 获取最新的内存值
+                current_val = self._output_values.get(port_name)
+                # 使用静默更新方法（见下文）
+                scheduler.update_node_variable_silent(var_key, current_val, var_obj.update_policy)
+                has_changed = True
+
+        # 2. 清空缓冲区
+        self._stream_buffer.clear()
+
+        # 3. 统一触发一次 UI 刷新信号
+        if has_changed:
+            scheduler.node_vars_changed.emit()
+
+        # 4. 如果当前节点被选中，刷新属性面板
+        if self.parent_window.property_panel:
             if self.selected() and len(self.parent_window.graph.selected_nodes()) == 1:
-                # 刷新属性面板
+                # 确保 update_properties 内部只更新值，不重建整个面板
                 self.parent_window.property_panel.update_properties(self)
 
     def _handle_ui_ask(self, params: dict, msg: ComponentMessage):
@@ -473,10 +497,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
             with open(response_file, 'wb') as f:
                 pickle.dump(result_data, f)
 
-        # 逻辑：
-        # 1. 弹出对话框
-        # 2. 用户输入
-        # 3. 写入文件
+        # 逻辑： 1. 弹出对话框 2. 用户输入 3. 写入文件
         self.parent_window.show_intervention_dialog(title, message, schema, on_confirmed)
 
     def _handle_unknown_method(self, params: dict, msg: ComponentMessage):

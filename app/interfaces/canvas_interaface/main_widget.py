@@ -193,6 +193,10 @@ class CanvasPage(QWidget):
     def log_window(self):
         return self.ui_manager.log_window
 
+    @property
+    def scheduler(self):
+        return self.canvas_runner._scheduler
+
     def rename_node_vars(self, old_name, new_name):
         old_name = re.sub(r'\s+', '_', old_name)
         new_name = re.sub(r'\s+', '_', new_name)
@@ -376,7 +380,6 @@ class CanvasPage(QWidget):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
-        self._scheduler = None
 
     def on_node_started_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)

@@ -50,41 +50,28 @@ class WorkflowScheduler(QObject):
     def set_node_status(self, node, status):
         self.node_status_changed.emit(node.id, status)
 
-    def update_node_variable(self, name, value, policy):
+    def update_node_variable_silent(self, name, value, policy):
+        """静默更新，不发送信号"""
         node_var_obj = self.parent.global_variables.node_vars.get(name)
+        if not node_var_obj:
+            return
+
         if policy == "更新":
             node_var_obj.value = value
         elif policy == "追加":
-            current_value = node_var_obj.value
-            # 尝试进行追加操作
-            try:
-                # --- 处理字符串 ---
-                if isinstance(current_value, list):
-                    if isinstance(value, list):
-                        node_var_obj.value = current_value + value
-                    else:
-                        # 如果当前是列表，但新值不是列表，将新值作为一个元素追加
-                        node_var_obj.value = current_value + [value]
-                # --- 处理字典 ---
-                elif isinstance(current_value, dict):
-                    if isinstance(value, dict):
-                        # 合并字典，新值会覆盖同名键的旧值
-                        node_var_obj.value = {**current_value, **value}
-                    else:
-                        logger.warning(f"无法将非字典值 {value} (type: {type(value)}) 追加到字典变量 '{name}'。")
-                # --- 其他类型 ---
+            # 这里的类型判断可以优化：根据 node_var_obj 的类型直接操作，减少猜测
+            curr = node_var_obj.value
+            if isinstance(curr, str):
+                node_var_obj.value = curr + str(value)
+            elif isinstance(curr, list):
+                if isinstance(value, list):
+                    curr.extend(value)  # 使用 extend 比 + 性能好，原地修改
                 else:
-                    # 对于其他类型，尝试直接相加，如果失败则覆盖
-                    node_var_obj.value = [current_value, value]
-            except TypeError as e:
-                # 如果相加操作不支持（例如 list + int），则记录警告并覆盖
-                logger.warning(f"追加变量 '{name}' 失败: {e}. 将覆盖旧值。")
-                node_var_obj.value = value
-            except Exception as e:
-                # 捕获其他任何可能的异常，记录警告并覆盖
-                logger.error(f"追加变量 '{name}' 时发生未知错误: {e}. 将覆盖旧值。")
-                node_var_obj.value = value
-        self.node_vars_changed.emit()
+                    curr.append(value)
+            elif isinstance(curr, dict) and isinstance(value, dict):
+                curr.update(value)  # 原地修改
+            else:
+                node_var_obj.value = value  # 兜底覆盖
 
     def get_executable_nodes(self, nodes=[]):
         """获取所有顶层可执行节点（排除循环内部节点）"""

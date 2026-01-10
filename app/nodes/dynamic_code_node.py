@@ -437,6 +437,7 @@ def create_dynamic_code_node(parent_window=None):
         # === 关键：重写 execute_sync，使用动态代码模板 ===
         def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None, global_variable=None):
             try:
+                self.clear_output_value()
                 self.init_logger()
                 temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
                 temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
@@ -546,7 +547,7 @@ def create_dynamic_code_node(parent_window=None):
                     for port in self.output_ports():
                         if port.name() in output:
                             self.set_output_value(port.name(), output[port.name()])
-                    self._trigger_ui_update()
+                    self._sync_buffer_to_global()
                     return output
                 elif os.path.exists(error_path):
                     error_info = _safe_load_pickle(error_path)

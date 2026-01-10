@@ -26,8 +26,8 @@ class TorchClassifierTrainer(BaseComponent):
     ]
     outputs = [
         PortDefinition(name="classifier_model", label="训练好的模型", type=ArgumentType.TORCHMODEL),
-        PortDefinition(name="accuracy", label="模型准确率", type=ArgumentType.FLOAT),
-        PortDefinition(name="training_log", label="训练日志", type=ArgumentType.JSON),
+        PortDefinition(name="training_loss", label="训练日志", type=ArgumentType.JSON),
+        PortDefinition(name="accuracy", label="准确率", type=ArgumentType.JSON),
     ]
     properties = {
         "hidden_size": PropertyDefinition(
@@ -164,10 +164,18 @@ class TorchClassifierTrainer(BaseComponent):
 
             train_loss = running_loss / len(train_loader)
             acc = 100. * correct / total
+            
             train_losses.append(train_loss)
             accuracies.append(acc)
 
             if (epoch + 1) % 50 == 0:
+                self.emit_custom_message(
+                method="stream.output",
+                    params={
+                        "training_loss": {"data": train_loss, "data_type": "list"},
+                        "accuracy": {"data": acc, "data_type": "list"},
+                    }
+                )
                 self.logger.info(f"Epoch [{epoch+1}/{epochs}], Loss: {train_loss:.4f}, Acc: {acc:.2f}%")
 
         # 8. 测试模型
@@ -187,17 +195,8 @@ class TorchClassifierTrainer(BaseComponent):
         # 10. 返回结果
         return {
             "classifier_model": exported_program,
-            "accuracy": test_acc,
-            "training_log": {
-                "train_losses": train_losses,
-                "accuracies": accuracies,
-                "test_accuracy": test_acc,
-                "epochs": epochs,
-                "batch_size": batch_size,
-                "hidden_size": hidden_size,
-                "learning_rate": float(params.learning_rate),
-                "label_classes": le.classes_.tolist(),
-            }
+            "training_loss": train_losses,
+            "accuracy": accuracies
         }
 
 
