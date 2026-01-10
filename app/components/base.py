@@ -228,7 +228,6 @@ class CustomVariable(BaseModel):
 class NodeVariable(BaseModel):
     value: Any = None
     update_policy: Optional[str] = "固定"
-    node_id: Optional[str] = None
 
 
 class GlobalVariableContext(BaseModel):
@@ -253,9 +252,9 @@ class GlobalVariableContext(BaseModel):
         else:
             self.custom[key].value = value
 
-    def set_output(self, node_name: str, output_name: str, output_value: Any, policy: str="更新", node_id: str=None):
+    def set_output(self, node_name: str, output_name: str, output_value: Any, policy: str="更新"):
         self.node_vars[f"{node_name}__{output_name}"] = NodeVariable(
-            value=output_value, update_policy=policy, node_id=node_id
+            value=output_value, update_policy=policy
         )
 
     def delete_output(self, node_name: str, output_name: str):
@@ -263,6 +262,11 @@ class GlobalVariableContext(BaseModel):
 
     def is_output_in_node_vars(self, node_name: str, output_name: str):
         return f"{node_name}__{output_name}" in self.node_vars
+
+    def rename_node_vars(self, old_name: str, new_name: str):
+        for key in self.node_vars:
+            if key.startswith(old_name):
+                self.node_vars[key.replace(old_name, new_name)] = self.node_vars.pop(key)
 
     def clear_node_vars(self, name: str):
         if isinstance(self.node_vars[name].value, (list, dict, tuple, set)):

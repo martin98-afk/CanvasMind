@@ -95,6 +95,8 @@ def create_node_class(full_path, file_path, parent_window=None):
             if hasattr(ComponentScanner().get_component_by_uuid(self.uuid), "icon"):
                 self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
             self.view.set_align("center")
+            # 重命名节点自动同步全局变量名
+            self.view.rename_signal.rename.connect(parent_window.rename_node_vars)
             # --- 调试模式新增 ---
             self._debug_enabled = False
             self._debug_widget = None

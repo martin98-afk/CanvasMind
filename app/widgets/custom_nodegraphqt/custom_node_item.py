@@ -13,6 +13,10 @@ from qtpy import QtGui
 from app.utils.config import Settings
 
 
+class RenameSignal(QtCore.QObject):
+    rename = QtCore.Signal(str, str) # old name, new name
+
+
 class CustomNodeItem(NodeItem):
     _align = None
 
@@ -24,6 +28,7 @@ class CustomNodeItem(NodeItem):
                 28,
                 QtCore.Qt.SmoothTransformation
             )
+        self.rename_signal = RenameSignal()
         self._properties['icon'] = ICON_NODE_BASE
         self._icon_item = QtWidgets.QGraphicsPixmapItem(pixmap, self)
         self._icon_item.setTransformationMode(QtCore.Qt.SmoothTransformation)
@@ -65,6 +70,7 @@ class CustomNodeItem(NodeItem):
 
     @AbstractNodeItem.name.setter
     def name(self, name=''):
+        self.rename_signal.rename.emit(self.name, name)
         AbstractNodeItem.name.fset(self, name)
         if name == self._text_item.toPlainText():
             return

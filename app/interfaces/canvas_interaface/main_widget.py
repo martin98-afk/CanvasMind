@@ -193,6 +193,9 @@ class CanvasPage(QWidget):
     def log_window(self):
         return self.ui_manager.log_window
 
+    def rename_node_vars(self, old_name, new_name):
+        self.global_variables.rename_node_vars(old_name, new_name)
+
     def show_intervention_dialog(self, title, message, schema, callback):
         self.canvas_runner.show_intervention_dialog(title, message, schema, callback)
 

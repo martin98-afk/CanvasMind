@@ -46,7 +46,7 @@ if __name__ == "__main__":
     RESULT_PATH = r"{result_path}"
     ERROR_PATH = r"{error_path}"
     NODE_ID = "{node_id}"
-    WORKFLOW_PATH = "{workflow_path}"
+    WORKFLOW_PATH = r"{workflow_path}"
     PARAMS_PATH = r"{params_path}"
     # 1. 配置唯一的 Sink
     logger.remove()
@@ -68,6 +68,7 @@ if __name__ == "__main__":
     sys.stderr = StreamToLogger(raw_logger.error)
 
     try:
+        print(WORKFLOW_PATH)
         node_output_dir = Path(WORKFLOW_PATH) / "workspace" / NODE_ID
         node_output_dir.mkdir(parents=True, exist_ok=True)
         os.chdir(str(node_output_dir))
