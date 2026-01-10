@@ -5,10 +5,9 @@ from pathlib import Path
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint, QTimer
-from PyQt5.QtWidgets import QWidget, QGraphicsProxyWidget, QApplication, QTextEdit, QLineEdit
+from PyQt5.QtWidgets import QWidget, QApplication, QTextEdit, QLineEdit
 from loguru import logger
-from lsprotocol.types import TextEdit
-from qfluentwidgets import FluentIcon, LineEdit
+from qfluentwidgets import FluentIcon
 
 from app.components.base import GlobalVariableContext
 from app.interfaces.canvas_interaface.constants import TEMPLATE_START_SIZES
@@ -27,7 +26,7 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
 from app.utils.config import Settings
-from app.widgets.category_filter import CategoryFilterDialog
+from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 
 

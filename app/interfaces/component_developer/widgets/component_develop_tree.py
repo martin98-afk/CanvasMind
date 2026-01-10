@@ -20,7 +20,7 @@ from qfluentwidgets import (
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.new_component_dialog import NewComponentDialog
-from app.widgets.category_filter import CategoryFilterDialog
+from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 
 
 class ComponentTreeWidget(TreeWidget):
