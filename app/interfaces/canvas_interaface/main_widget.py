@@ -564,6 +564,8 @@ class CanvasPage(QWidget):
                 pass
         # 优化：只高亮目标节点相关的连接线
         self._highlight_node_connections(node, status)
+        if status == NodeStatus.NODE_STATUS_SUCCESS:
+            self.on_node_finished_simple(node)
 
     def _highlight_node_connections(self, node, status):
         """优化的连接线高亮方法"""
@@ -609,11 +611,7 @@ class CanvasPage(QWidget):
                 return pipe
         return None
 
-    def on_node_finished_simple(self, node_id):
-        node = self.node_operations._get_node_by_id_cached(node_id)
-        if node:
-            # 直接调用 set_node_status，恢复即时更新
-            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS))
+    def on_node_finished_simple(self, node):
         # 优化：只在只选中该节点时更新其属性面板
         if node and node.selected() and len(self.graph.selected_nodes()) == 1:
             QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
