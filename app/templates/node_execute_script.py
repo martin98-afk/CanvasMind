@@ -68,7 +68,7 @@ if __name__ == "__main__":
     sys.stderr = StreamToLogger(raw_logger.error)
 
     try:
-        node_output_dir = Path(WORKFLOW_PATH) / "node_workspace" / NODE_ID
+        node_output_dir = Path(WORKFLOW_PATH) / "workspace" / NODE_ID
         node_output_dir.mkdir(parents=True, exist_ok=True)
         os.chdir(str(node_output_dir))
         spec = importlib.util.spec_from_file_location(CLASS_NAME, FILE_PATH)

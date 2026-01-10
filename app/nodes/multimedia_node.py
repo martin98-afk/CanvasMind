@@ -18,7 +18,7 @@ def create_media_node(parent_window):
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
-            self.set_icon(":/icons/图表")
+            self.set_icon(":/icons/多媒体.svg")
             self.model.port_deletion_allowed = False
             self._node_logs = ""
             self._output_values = {}

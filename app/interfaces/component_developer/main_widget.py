@@ -237,6 +237,7 @@ class ComponentDeveloperPage(QWidget):
         MessageManager.success(f"已切换到模板: {template_name}", "", self)
 
     def _on_component_created(self, component_info):
+        self.requirements_edit.setText("")
         self._create_new_component(component_info)
         self._save_component()
 
@@ -770,14 +771,17 @@ except:
             logger.warning(f"代码 → UI 同步失败: {e}")
 
     def _analyze_code_for_requirements(self):
+        """优化后的依赖分析：只增不减，保留手动添加的项和版本号"""
         code = self.code_editor.get_code()
         if not code.strip():
             return
+
         try:
             tree = ast.parse(code)
         except SyntaxError:
-            logger.error("代码语法错误，无法分析依赖。")
             return
+
+        # 1. 提取代码中所有的 import
         imported_modules = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -786,33 +790,55 @@ except:
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
                     imported_modules.add(node.module.split('.')[0])
-        external_packages = imported_modules - BUILTIN_MODULES
-        resolved_packages = {
+
+        # 2. 转换为实际包名并过滤标准库
+        external_packages = {
             MODULE_TO_PACKAGE_MAP.get(mod, mod)
-            for mod in external_packages
+            for mod in imported_modules
+            if mod not in BUILTIN_MODULES and mod != "app"  # 排除自身应用包
         }
+
+        # 3. 获取 UI 现有的依赖（解析为字典 {包名: 原始行内容}）
         current_text = self.requirements_edit.toPlainText()
-        if not current_text.strip() and not resolved_packages:
-            return
-        other_lines, package_lines = self._parse_requirements_lines(current_text)
-        current_pkg_names = set(package_lines.keys())
-        needed_pkgs = {pkg.lower() for pkg in resolved_packages}
-        kept_package_lines = [
-            package_lines[pkg] for pkg in needed_pkgs if pkg in package_lines
-        ]
-        new_pkgs = needed_pkgs - current_pkg_names
-        new_package_lines = sorted([pkg for pkg in resolved_packages if pkg.lower() in new_pkgs])
-        all_lines = other_lines + kept_package_lines + new_package_lines
-        updated_text = '\n'.join(all_lines)
-        if updated_text == current_text:
-            return
-        if not self._updating_requirements_from_analysis:
-            self._updating_requirements_from_analysis = True
-            code_cursor = self.code_editor.code_editor.textCursor()
-            pos = code_cursor.position()
-            self.requirements_edit.setPlainText(updated_text)
-            self._updating_requirements_from_analysis = False
-            self._sync_basic_info_to_code()
+        existing_reqs_map = {}  # key: lowercase_pkg_name, value: full_line
+
+        lines = current_text.splitlines()
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith('#'):
+                continue
+            # 提取包名（支持 requests==2.0, requests>=2.0 等格式）
+            match = re.match(r'^([a-zA-Z0-9._-]+)', stripped)
+            if match:
+                pkg_name = match.group(1).lower()
+                existing_reqs_map[pkg_name] = line
+
+        # 4. 合并逻辑：保留旧的，添加新的
+        has_changed = False
+        final_lines = list(lines)  # 先拷贝一份现有的
+
+        for pkg in external_packages:
+            pkg_lower = pkg.lower()
+            if pkg_lower not in existing_reqs_map:
+                # 发现新包，添加
+                final_lines.append(pkg)
+                existing_reqs_map[pkg_lower] = pkg  # 防止重复添加
+                has_changed = True
+                logger.info(f"检测到新依赖并添加: {pkg}")
+            else:
+                # 包已存在，不做任何操作（保留用户原有的版本号和格式）
+                pass
+
+        # 5. 更新 UI
+        if has_changed:
+            updated_text = '\n'.join(final_lines)
+            # 避免正在编辑时刷新
+            if not self._updating_requirements_from_analysis:
+                self._updating_requirements_from_analysis = True
+                self.requirements_edit.setPlainText(updated_text)
+                self._updating_requirements_from_analysis = False
+                # 触发同步到代码
+                self._sync_basic_info_to_code()
 
     def _parse_requirements_lines(self, text):
         lines = []

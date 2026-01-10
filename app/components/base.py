@@ -117,7 +117,7 @@ def canvas_file_dump_path(dump_location: str = "canvas_files") -> Path:
 
 def _get_node_temp_dir(node_id: Optional[str]) -> Path:
     """获取节点专属临时目录"""
-    base_dir = canvas_file_dump_path() / "node_workspace" / node_id
+    base_dir = canvas_file_dump_path() / "workspace" / node_id
     base_dir.mkdir(parents=True, exist_ok=True)
     return base_dir
 
@@ -923,9 +923,9 @@ class DataHandler:
         # 假设 canvas_file_dump_path 是一个全局函数或从其他地方导入
         # 这里简化处理，实际项目中需要正确引用
         if self.workflow_path is None:
-            dump_path = Path("canvas_files") / "node_workspace" / (self.node_id or "default") / "results"
+            dump_path = Path("canvas_files") / "workspace" / (self.node_id or "default") / "results"
         else:
-            dump_path = (Path(self.workflow_path) / "node_workspace" / (self.node_id or "default")) / "results"
+            dump_path = (Path(self.workflow_path) / "workspace" / (self.node_id or "default")) / "results"
         dump_path.mkdir(parents=True, exist_ok=True)
         return dump_path
 
