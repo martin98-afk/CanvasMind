@@ -109,19 +109,6 @@ def resource_path(relative_path) -> str:
     return os.path.join(base_path, relative_path)
 
 
-def canvas_file_dump_path(dump_location: str = "canvas_files") -> Path:
-    dump_path = Path(dump_location)
-    dump_path.mkdir(parents=True, exist_ok=True)
-    return dump_path
-
-
-def _get_node_temp_dir(node_id: Optional[str]) -> Path:
-    """获取节点专属临时目录"""
-    base_dir = canvas_file_dump_path() / "workspace" / node_id
-    base_dir.mkdir(parents=True, exist_ok=True)
-    return base_dir
-
-
 def _get_torch():
     """懒加载 torch"""
     global _TORCH_AVAILABLE, _TORCH_MODULE
@@ -302,7 +289,6 @@ class GlobalVariableContext(BaseModel):
 
     def clear_node_vars(self, name: str):
         # 增加对 key 是否存在的检查，防止 KeyError
-        print(name)
         if name not in self.node_vars:
             return
 
@@ -810,7 +796,7 @@ class DataHandler:
 
     def _read_file_data(self, data: Any) -> Path:
         """读取任意文件内容（路径、bytes、str），返回临时路径"""
-        temp_dir = self._get_node_temp_dir()
+        temp_dir = Path(".").resolve()
         if isinstance(data, (str, Path)):
             path = Path(data)
             if path.is_file():
@@ -906,7 +892,7 @@ class DataHandler:
 
     def _store_sklearn_model(self, model: Any) -> str:
         """存储sklearn模型到节点专属目录"""
-        temp_dir = self._get_node_temp_dir()
+        temp_dir = Path(".").resolve()
         model_path = temp_dir / f"model_{self.node_id}.pkl"
         with open(model_path.resolve(), 'wb') as f:
             pickle.dump(model, f)
@@ -917,7 +903,7 @@ class DataHandler:
         torch = self._get_torch()
         if torch is None:
             raise ComponentError("torch 未安装", "MISSING_DEPENDENCY")
-        temp_dir = self._get_node_temp_dir()
+        temp_dir = Path(".").resolve()
         model_path = str(temp_dir / f"model_{self.node_id}.pt2")
         with open(model_path, 'wb') as f:
             torch.export.save(model, f)
@@ -929,14 +915,14 @@ class DataHandler:
             image = Image.fromarray(image)
         elif not isinstance(image, Image.Image):
             raise ComponentError(f"无法存储图像数据: {type(image)}")
-        temp_dir = self._get_node_temp_dir()
+        temp_dir = Path(".").resolve()
         image_path = temp_dir / f"image_{self.node_id}.png"
         image.save(image_path.resolve(), 'PNG')
         return str(image_path)
 
     def _store_file_data(self, data: Any, output_name: str = "output_file") -> str:
         """存储任意文件数据，使用 output_name 作为文件名"""
-        temp_dir = self._get_node_temp_dir()
+        temp_dir = Path(".").resolve()
         # 保留扩展名：如果 output_name 有后缀，直接用；否则尝试推断或默认 .bin
         filename = Path(output_name).name or "output_file"
         if "{{now}}" in filename:
@@ -963,18 +949,6 @@ class DataHandler:
             # 兜底：转为字符串
             file_path.write_text(str(data), encoding='utf-8')
         return str(file_path)
-
-    # --- 辅助方法 ---
-    def _get_node_temp_dir(self) -> Path:
-        """获取节点专属临时目录"""
-        # 假设 canvas_file_dump_path 是一个全局函数或从其他地方导入
-        # 这里简化处理，实际项目中需要正确引用
-        if self.workflow_path is None:
-            dump_path = Path("canvas_files") / "workspace" / (self.node_id or "default") / "results"
-        else:
-            dump_path = (Path(self.workflow_path) / "workspace" / (self.node_id or "default")) / "results"
-        dump_path.mkdir(parents=True, exist_ok=True)
-        return dump_path
 
     def _get_torch(self):
         """懒加载 torch"""
@@ -1134,7 +1108,7 @@ class BaseComponent(ABC):
         """
         request_id = str(uuid.uuid4())
         # 获取当前运行目录，这个目录在 execute 脚本中会被设置到环境变量
-        run_dir = canvas_file_dump_path() / "jrpc_response" / self.node_id
+        run_dir = Path(".").resolve() / "jrpc_response" / self.node_id
         response_path = run_dir / f"response_{request_id}.pkl"
 
         # 1. 发送指令给 UI (通过日志流)
