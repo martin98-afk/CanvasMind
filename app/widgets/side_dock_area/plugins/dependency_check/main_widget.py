@@ -83,7 +83,7 @@ class DependencyToolWindow(ToolWindow):
         header.setSectionResizeMode(2, QHeaderView.Fixed)
         header.resizeSection(2, 80)
         header.setSectionResizeMode(3, QHeaderView.Fixed)
-        header.resizeSection(3, 90)
+        header.resizeSection(3, 70)
         header.setSectionResizeMode(4, QHeaderView.Fixed)
         header.resizeSection(4, 40)
 
