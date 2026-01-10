@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x26897da3be0": {
+      "0x229c3a51c60": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传",
@@ -50,7 +50,7 @@
           "version": "latest"
         }
       },
-      "0x26897da2050": {
+      "0x229c6881cf0": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传 1",
@@ -89,7 +89,7 @@
           "version": "latest"
         }
       },
-      "0x26897da1ea0": {
+      "0x229c6881a50": {
         "type_": "dynamic.StatusDynamicNode_b6e2e5cb-3167-4360-bb3c-238f1ad267f5",
         "icon": null,
         "name": "YOLO目标检测及关键点检测 1",
@@ -131,7 +131,7 @@
           "iou_threshold": 0.7
         }
       },
-      "0x26891cb0b50": {
+      "0x229e0f39960": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传 2",
@@ -170,7 +170,7 @@
           "version": "latest"
         }
       },
-      "0x26891cb3820": {
+      "0x229e0f380d0": {
         "type_": "dynamic.StatusDynamicNode_d0d5d987-67d5-4aa3-833f-a7a3fa7a794b",
         "icon": null,
         "name": "图片转base64编码",
@@ -209,7 +209,7 @@
           "version": "latest"
         }
       },
-      "0x26891cb3010": {
+      "0x229e0f38d00": {
         "type_": "dynamic.StatusDynamicNode_8b652ae6-dd8e-490a-bd84-6f69662f7a9e",
         "icon": null,
         "name": "Base64 转图片",
@@ -248,7 +248,7 @@
           "version": "latest"
         }
       },
-      "0x26891cb3880": {
+      "0x229e0f392a0": {
         "type_": "dynamic.StatusDynamicNode_c7f3c9b1-820f-4161-8f08-3b0edfbaf19c",
         "icon": null,
         "name": "YOLO 关键点检测训练 1",
@@ -294,7 +294,7 @@
           "dataset_name": "object_detection_dataset"
         }
       },
-      "0x26897912f50": {
+      "0x229e0f27310": {
         "type_": "dynamic.StatusDynamicNode_b9732471-0d7d-4343-847c-9f1edec19eed",
         "icon": null,
         "name": "图像4通道转3通道 1",
@@ -333,7 +333,7 @@
           "version": "latest"
         }
       },
-      "0x26897910e20": {
+      "0x229e0f268c0": {
         "type_": "dynamic.StatusDynamicNode_55e89122-98ec-431c-b539-d39b13c0e039",
         "icon": null,
         "name": "图像resize 1",
@@ -374,46 +374,7 @@
           "h": "512"
         }
       },
-      "0x268979118d0": {
-        "type_": "visualize.EchartsNode",
-        "icon": ":/icons/图表",
-        "name": "HTML 图表",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 571.32,
-        "height": 592.4,
-        "pos": [
-          2657.7160763747884,
-          2.5911838650820105
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "02992771-76c4-4a56-acdd-72452a9a886e",
-          "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\目标检测训练\\node_workspace\\e3114114-5097-4585-8b2b-5d2cae5e55a5\\results\\image_e3114114-5097-4585-8b2b-5d2cae5e55a5.png"
-        }
-      },
-      "0x268950f5210": {
+      "0x229e0f27a60": {
         "type_": "dynamic.StatusDynamicNode_55e89122-98ec-431c-b539-d39b13c0e039",
         "icon": null,
         "name": "图像resize 2",
@@ -441,8 +402,8 @@
         "width": 332.695,
         "height": 160.8,
         "pos": [
-          2740.0508839911445,
-          -949.6504115286355
+          2738.2197618516075,
+          -927.0750115316183
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -454,46 +415,7 @@
           "h": "512"
         }
       },
-      "0x268950f7a90": {
-        "type_": "visualize.EchartsNode",
-        "icon": ":/icons/图表",
-        "name": "HTML 图表 1",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 293.48,
-        "height": 226.32,
-        "pos": [
-          3229.8369572046095,
-          -873.8015645662315
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "30fce21b-9aa7-4108-ab89-976d2c507e1f",
-          "media_display": "<center>等待图表...</center>"
-        }
-      },
-      "0x268950f4ca0": {
+      "0x22984438970": {
         "type_": "dynamic.StatusDynamicNode_b6e2e5cb-3167-4360-bb3c-238f1ad267f5",
         "icon": null,
         "name": "YOLO目标检测及关键点检测 2",
@@ -516,7 +438,7 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 600.38625,
         "height": 220.08,
@@ -535,7 +457,7 @@
           "iou_threshold": 0.7
         }
       },
-      "0x26893471db0": {
+      "0x229bc1d55a0": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -573,7 +495,7 @@
           "persistent_id": "2c94fb1b-63d3-4220-9e0f-59c44e0eaddd"
         }
       },
-      "0x26893471630": {
+      "0x229bc1d4130": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -611,7 +533,7 @@
           "persistent_id": "c3960c32-199f-4b59-87ca-b9af2701e6fa"
         }
       },
-      "0x26893471300": {
+      "0x229bc1d4df0": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": ":/icons/更新.svg",
         "name": "迭代控制流区域",
@@ -637,7 +559,7 @@
         "selected": false,
         "visible": true,
         "width": 2163.799897799232,
-        "height": 409.03374473290955,
+        "height": 402.79374473290966,
         "pos": [
           1656.925829700861,
           -1016.5153092991411
@@ -655,136 +577,224 @@
           "loop_condition": "",
           "loop_mode": "count"
         }
+      },
+      "0x229c3c4a800": {
+        "type_": "visualize.MediaNode",
+        "icon": ":/icons/多媒体.svg",
+        "name": "多媒体展示节点",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 571.32,
+        "height": 592.4,
+        "pos": [
+          2574.152496138106,
+          2.5911838650820105
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "987ac8d5-c39f-4545-8883-3b7d9aeb3bab",
+          "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\目标检测训练\\node_workspace\\e3114114-5097-4585-8b2b-5d2cae5e55a5\\results\\image_e3114114-5097-4585-8b2b-5d2cae5e55a5.png"
+        }
+      },
+      "0x229e25312d0": {
+        "type_": "visualize.MediaNode",
+        "icon": ":/icons/多媒体.svg",
+        "name": "多媒体展示节点 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 378.35,
+        "height": 226.32,
+        "pos": [
+          3248.0178956927393,
+          -870.1655556012593
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "906fc21d-cd2b-46dc-b4e4-d1645048974d",
+          "media_display": "canvas_files\\workflows\\目标检测训练\\node_results\\2d6d81d8-69a7-4676-bc57-04c1a006b363\\image_2d6d81d8-69a7-4676-bc57-04c1a006b363.png"
+        }
       }
     },
     "connections": [
       {
         "out": [
-          "0x26897da3be0",
+          "0x229c3a51c60",
           "file"
         ],
         "in": [
-          "0x26891cb3880",
+          "0x229e0f392a0",
           "dataset_dir"
         ]
       },
       {
         "out": [
-          "0x26897da2050",
+          "0x229c6881cf0",
           "file"
         ],
         "in": [
-          "0x26897912f50",
+          "0x229e0f27310",
           "input"
         ]
       },
       {
         "in": [
-          "0x26897da1ea0",
+          "0x229c6881a50",
           "input_image"
         ],
         "out": [
-          "0x26891cb3010",
+          "0x229e0f38d00",
           "output1"
         ]
       },
       {
         "in": [
-          "0x26897da1ea0",
+          "0x229c6881a50",
           "model"
         ],
         "out": [
-          "0x26891cb3880",
+          "0x229e0f392a0",
           "model.pt"
         ]
       },
       {
         "out": [
-          "0x26897da1ea0",
+          "0x229c6881a50",
           "output_image"
         ],
         "in": [
-          "0x26897910e20",
+          "0x229e0f268c0",
           "input1"
         ]
       },
       {
         "out": [
-          "0x26891cb0b50",
+          "0x229e0f39960",
           "file"
         ],
         "in": [
-          "0x26891cb3880",
+          "0x229e0f392a0",
           "pre_model"
         ]
       },
       {
         "in": [
-          "0x26891cb3820",
+          "0x229e0f380d0",
           "input1"
         ],
         "out": [
-          "0x26897912f50",
+          "0x229e0f27310",
           "output"
         ]
       },
       {
         "out": [
-          "0x26891cb3820",
+          "0x229e0f380d0",
           "output1"
         ],
         "in": [
-          "0x26891cb3010",
+          "0x229e0f38d00",
           "input1"
         ]
       },
       {
         "out": [
-          "0x26891cb3880",
+          "0x229e0f392a0",
           "model.pt"
         ],
         "in": [
-          "0x268950f4ca0",
+          "0x22984438970",
           "model"
         ]
       },
       {
         "out": [
-          "0x26897910e20",
+          "0x229e0f268c0",
           "output1"
         ],
         "in": [
-          "0x268979118d0",
+          "0x229c3c4a800",
           "data"
         ]
       },
       {
         "in": [
-          "0x268950f5210",
+          "0x229e0f27a60",
           "input1"
         ],
         "out": [
-          "0x268950f4ca0",
+          "0x22984438970",
           "output_image"
         ]
       },
       {
         "out": [
-          "0x268950f5210",
+          "0x229e0f27a60",
           "output1"
         ],
         "in": [
-          "0x26893471630",
+          "0x229bc1d4130",
           "input"
         ]
       },
       {
+        "out": [
+          "0x229e0f27a60",
+          "output1"
+        ],
         "in": [
-          "0x268950f4ca0",
+          "0x229e25312d0",
+          "data"
+        ]
+      },
+      {
+        "in": [
+          "0x22984438970",
           "input_image"
         ],
         "out": [
-          "0x26893471db0",
+          "0x229bc1d55a0",
           "output"
         ]
       }
@@ -794,22 +804,22 @@
     "environment": "3.11",
     "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe",
     "node_id2stable_key": {
-      "0x26897da3be0": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传",
-      "0x26897da2050": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 1",
-      "0x26897da1ea0": "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 1",
-      "0x26891cb0b50": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 2",
-      "0x26891cb3820": "d0d5d987-67d5-4aa3-833f-a7a3fa7a794b||图片转base64编码",
-      "0x26891cb3010": "8b652ae6-dd8e-490a-bd84-6f69662f7a9e||Base64 转图片",
-      "0x26891cb3880": "c7f3c9b1-820f-4161-8f08-3b0edfbaf19c||YOLO 关键点检测训练 1",
-      "0x26897912f50": "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1",
-      "0x26897910e20": "55e89122-98ec-431c-b539-d39b13c0e039||图像resize 1",
-      "0x268979118d0": "unknown||HTML 图表",
-      "0x268950f5210": "55e89122-98ec-431c-b539-d39b13c0e039||图像resize 2",
-      "0x268950f7a90": "unknown||HTML 图表 1",
-      "0x268950f4ca0": "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 2",
-      "0x26893471db0": "unknown||输入端口",
-      "0x26893471630": "unknown||输出端口",
-      "0x26893471300": "unknown||迭代控制流区域"
+      "0x229c3a51c60": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传",
+      "0x229c6881cf0": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 1",
+      "0x229c6881a50": "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 1",
+      "0x229e0f39960": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传 2",
+      "0x229e0f380d0": "d0d5d987-67d5-4aa3-833f-a7a3fa7a794b||图片转base64编码",
+      "0x229e0f38d00": "8b652ae6-dd8e-490a-bd84-6f69662f7a9e||Base64 转图片",
+      "0x229e0f392a0": "c7f3c9b1-820f-4161-8f08-3b0edfbaf19c||YOLO 关键点检测训练 1",
+      "0x229e0f27310": "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1",
+      "0x229e0f268c0": "55e89122-98ec-431c-b539-d39b13c0e039||图像resize 1",
+      "0x229e0f27a60": "55e89122-98ec-431c-b539-d39b13c0e039||图像resize 2",
+      "0x22984438970": "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 2",
+      "0x229bc1d55a0": "unknown||输入端口",
+      "0x229bc1d4130": "unknown||输出端口",
+      "0x229bc1d4df0": "unknown||迭代控制流区域",
+      "0x229c3c4a800": "unknown||多媒体展示节点",
+      "0x229e25312d0": "unknown||多媒体展示节点 1"
     },
     "node_states": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": "success",
@@ -821,13 +831,13 @@
       "c7f3c9b1-820f-4161-8f08-3b0edfbaf19c||YOLO 关键点检测训练 1": "success",
       "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1": "success",
       "55e89122-98ec-431c-b539-d39b13c0e039||图像resize 1": "success",
-      "unknown||HTML 图表": "success",
       "55e89122-98ec-431c-b539-d39b13c0e039||图像resize 2": "failed",
-      "unknown||HTML 图表 1": "pending",
       "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 2": "success",
       "unknown||输入端口": "unrun",
       "unknown||输出端口": "unrun",
-      "unknown||迭代控制流区域": "failed"
+      "unknown||迭代控制流区域": "failed",
+      "unknown||多媒体展示节点": "unrun",
+      "unknown||多媒体展示节点 1": "unrun"
     },
     "node_inputs": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {},
@@ -839,13 +849,13 @@
       "c7f3c9b1-820f-4161-8f08-3b0edfbaf19c||YOLO 关键点检测训练 1": {},
       "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1": {},
       "55e89122-98ec-431c-b539-d39b13c0e039||图像resize 1": {},
-      "unknown||HTML 图表": {},
       "55e89122-98ec-431c-b539-d39b13c0e039||图像resize 2": {},
-      "unknown||HTML 图表 1": {},
       "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 2": {},
       "unknown||输入端口": {},
       "unknown||输出端口": {},
-      "unknown||迭代控制流区域": {}
+      "unknown||迭代控制流区域": {},
+      "unknown||多媒体展示节点": {},
+      "unknown||多媒体展示节点 1": {}
     },
     "node_outputs": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {
@@ -899,11 +909,9 @@
       "55e89122-98ec-431c-b539-d39b13c0e039||图像resize 1": {
         "output1": "D:\\work\\CanvasMind\\canvas_files\\workflows\\目标检测训练\\node_workspace\\e3114114-5097-4585-8b2b-5d2cae5e55a5\\results\\image_e3114114-5097-4585-8b2b-5d2cae5e55a5.png"
       },
-      "unknown||HTML 图表": {},
       "55e89122-98ec-431c-b539-d39b13c0e039||图像resize 2": {
         "output1": "canvas_files\\workflows\\目标检测训练\\node_results\\2d6d81d8-69a7-4676-bc57-04c1a006b363\\image_2d6d81d8-69a7-4676-bc57-04c1a006b363.png"
       },
-      "unknown||HTML 图表 1": {},
       "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 2": {
         "detections": [],
         "keypoints": [],
@@ -911,7 +919,9 @@
       },
       "unknown||输入端口": {},
       "unknown||输出端口": {},
-      "unknown||迭代控制流区域": {}
+      "unknown||迭代控制流区域": {},
+      "unknown||多媒体展示节点": {},
+      "unknown||多媒体展示节点 1": {}
     },
     "column_select": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {},
@@ -923,13 +933,13 @@
       "c7f3c9b1-820f-4161-8f08-3b0edfbaf19c||YOLO 关键点检测训练 1": {},
       "b9732471-0d7d-4343-847c-9f1edec19eed||图像4通道转3通道 1": {},
       "55e89122-98ec-431c-b539-d39b13c0e039||图像resize 1": {},
-      "unknown||HTML 图表": {},
       "55e89122-98ec-431c-b539-d39b13c0e039||图像resize 2": {},
-      "unknown||HTML 图表 1": {},
       "b6e2e5cb-3167-4360-bb3c-238f1ad267f5||YOLO目标检测及关键点检测 2": {},
       "unknown||输入端口": {},
       "unknown||输出端口": {},
-      "unknown||迭代控制流区域": {}
+      "unknown||迭代控制流区域": {},
+      "unknown||多媒体展示节点": {},
+      "unknown||多媒体展示节点 1": {}
     }
   },
   "global_variable": {

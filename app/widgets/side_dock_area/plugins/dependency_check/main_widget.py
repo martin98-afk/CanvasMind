@@ -16,7 +16,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QHeaderView, QAbstractItemView, QTableWidgetItem
 from qfluentwidgets import (
     TableWidget, PrimaryPushButton, TransparentToolButton,
-    StrongBodyLabel, FluentIcon, InfoBar, CaptionLabel, IndeterminateProgressRing
+    StrongBodyLabel, FluentIcon, InfoBar, CaptionLabel, IndeterminateProgressRing, InfoBarPosition
 )
 
 from app.interfaces.package_manager_interface import PackageListThread
@@ -312,7 +312,9 @@ class DependencyToolWindow(ToolWindow):
         if self.button:
             if error_count > 0:
                 InfoBar.error(
-                    "环境异常", f"请修复 {error_count} 项异常", duration=-1, parent=self.homepage,
+                    "环境异常", f"请修复 {error_count} 项异常",
+                    duration=-1, parent=self.homepage,
+                    position=InfoBarPosition.TOP_RIGHT
                 )
 
     def install_packages(self, pkg_specs):

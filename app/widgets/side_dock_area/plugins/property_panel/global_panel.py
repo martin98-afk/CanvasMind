@@ -1248,7 +1248,7 @@ class GlobalPanelWidget:
         safe_node_name = re.sub(r'\s+', '_', node.name())
         var_name = f"{safe_node_name}__{port_name}"
         main_window.global_variables.set_output(
-            node_id=safe_node_name, output_name=port_name, output_value=value
+            node_name=safe_node_name, output_name=port_name, output_value=value, node_id=node.uuid
         )
         if hasattr(node, "refresh_node_outports"):
             QtCore.QTimer.singleShot(100, node.refresh_node_outports)
@@ -1266,7 +1266,7 @@ class GlobalPanelWidget:
         """从全局变量中删除输出"""
         safe_node_name = re.sub(r'\s+', '_', node.name())
         main_window.global_variables.delete_output(
-            node_id=safe_node_name, output_name=port_name
+            node_name=safe_node_name, output_name=port_name, node_id=node.uuid
         )
         if hasattr(node, "refresh_node_outports"):
             QtCore.QTimer.singleShot(100, node.refresh_node_outports)
