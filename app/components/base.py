@@ -244,8 +244,22 @@ class GlobalVariableContext(BaseModel):
             value=output_value, update_policy=policy
         )
 
-    def delete_output(self, node_name: str, output_name: str):
-        self.node_vars.pop(f"{node_name}__{output_name}", None)
+    def delete_output(self, node_name: str, output_name: str=None):
+        """如果不指定output_name则清除该节点所有节点变量"""
+        if output_name is None:
+            new_node_vars = OrderedDict()
+
+            for key, var_obj in self.node_vars.items():
+                if key.startswith(node_name):
+                    continue
+                else:
+                    # 不需要修改的变量原样保留
+                    new_node_vars[key] = var_obj
+
+            # 更新原始变量字典
+            self.node_vars = new_node_vars
+        else:
+            self.node_vars.pop(f"{node_name}__{output_name}", None)
 
     def is_output_in_node_vars(self, node_name: str, output_name: str):
         return f"{node_name}__{output_name}" in self.node_vars

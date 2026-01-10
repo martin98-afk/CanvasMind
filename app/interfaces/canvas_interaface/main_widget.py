@@ -196,10 +196,16 @@ class CanvasPage(QWidget):
     def rename_node_vars(self, old_name, new_name):
         old_name = re.sub(r'\s+', '_', old_name)
         new_name = re.sub(r'\s+', '_', new_name)
-        old_names, newe_names = self.global_variables.rename_node_vars(old_name, new_name)
-        for old_name, new_name in zip(old_names, newe_names):
+        input_proxy_old_name = f"input.{old_name}"
+        input_proxy_new_name = f"input.{new_name}"
+        old_names, new_names = self.global_variables.rename_node_vars(old_name, new_name)
+        for old_name, new_name in zip(old_names, new_names):
             self.global_variables_changed.emit(old_name, "delete")
             self.global_variables_changed.emit(new_name, "add")
+        for node in self.graph.all_nodes():
+            node.rename_variable(
+                old_names + [input_proxy_old_name], new_names + [input_proxy_new_name]
+            )
 
     def show_intervention_dialog(self, title, message, schema, callback):
         self.canvas_runner.show_intervention_dialog(title, message, schema, callback)

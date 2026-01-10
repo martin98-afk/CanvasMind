@@ -1,6 +1,7 @@
 import json
 import os
 import pickle
+import re
 import uuid
 
 from NodeGraphQt import NodeObject, BaseNode
@@ -272,6 +273,53 @@ class BasicNodeWithGlobalProperty(NodeObject):
         if self._output_values is None:
             return None
         return self._output_values.get(port_name)
+
+    def rename_variable(self, old_names: list[str], new_names: list[str]):
+        """
+        极速重命名：使用正则单次扫描 + 预筛选
+        """
+        if not old_names:
+            return
+
+        # 1. 预编译正则：将所有旧变量名合并成一个模式，且按长度降序排列（防止短名误伤长名）
+        # 结果类似于: (node_vars\.Node11__out|node_vars\.Node1__out)
+        mapping = dict(zip(old_names, new_names))
+        pattern = re.compile('|'.join(map(re.escape, sorted(old_names, key=len, reverse=True))))
+
+        # 替换函数：从映射表中取值
+        def _replace_func(match):
+            return mapping[match.group(0)]
+
+        def _process_value(val):
+            # 类型检查效率优化：优先处理最常见的字符串
+            val_type = type(val)
+
+            if val_type is str:
+                # 预过滤：如果字符串里连 "node_vars." 都没有，直接跳过正则，极大地提速
+                if "node_vars." in val or "input." in val:
+                    return pattern.sub(_replace_func, val)
+                return val
+
+            if val_type is list:
+                # 列表推导式效率高于 loop.append
+                return [_process_value(i) for i in val]
+
+            if val_type is dict:
+                # 字典推导式
+                return {k: _process_value(v) for k, v in val.items()}
+
+            return val
+
+        # 2. 遍历属性：直接通过 model 内部字典遍历，避免调用 get_property 的额外开销
+        for prop_name, current_val in self.model.custom_properties.items():
+            if current_val is None:
+                continue
+
+            new_val = _process_value(current_val)
+
+            # 3. 仅在值真正改变时才调用 set_property (触发UI刷新)
+            if current_val != new_val:
+                self.set_property(prop_name, new_val, push_undo=False)
 
     # --- 中间消息通信协议接收 ---
     def _message_router(self, msg_dict: dict):

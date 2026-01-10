@@ -9,9 +9,9 @@ from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QStackedWidget, Q
 from loguru import logger
 from qfluentwidgets import CardWidget, PushButton, ListWidget, SegmentedWidget, \
     FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
-    TransparentDropDownToolButton, SubtitleLabel, BodyLabel, LineEdit, \
-    ToggleToolButton, SearchLineEdit, StrongBodyLabel
-from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleCardWidget
+    TransparentDropDownToolButton, BodyLabel, LineEdit, \
+    ToggleToolButton, SearchLineEdit, StrongBodyLabel, CaptionLabel, ToolButton
+from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 from app.templates.global_custom_var_template import PARAMETER_TEMPLATE
 from app.utils.utils import get_icon
@@ -549,14 +549,29 @@ class GlobalPanelWidget:
         self.custom_separator.setVisible(has_params and has_kvs)
 
     def _refresh_node_vars_page(self):
+        """优化后的节点变量刷新逻辑"""
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars:
             return
 
+        # 获取当前所有节点变量并分组
         current_node_vars = set(global_vars.node_vars.keys()) if hasattr(global_vars, 'node_vars') else set()
-        existing_node_vars = set(self._node_var_cards.keys())
 
-        # 重构逻辑：按节点分组
+        # 清空布局
+        while self.node_vars_layout.count():
+            child = self.node_vars_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        if not current_node_vars:
+            # 添加空状态提示
+            empty_label = BodyLabel("变量池中暂无节点输出\n在节点输出菜单中添加")
+            empty_label.setAlignment(Qt.AlignCenter)
+            empty_label.setStyleSheet("color: #888888; margin-top: 50px;")
+            self.node_vars_layout.addWidget(empty_label)
+            return
+
+        # 按节点分组
         current_node_groups = {}
         for var_name in current_node_vars:
             node_name = var_name.split("__")[0]
@@ -564,91 +579,169 @@ class GlobalPanelWidget:
                 current_node_groups[node_name] = []
             current_node_groups[node_name].append((var_name, global_vars.node_vars[var_name]))
 
-        # 清空现有布局
-        while self.node_vars_layout.count():
-            child = self.node_vars_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-
-        # 重新创建并排序分组
-        sorted_node_names = sorted(current_node_groups.keys())
-        for node_name in sorted_node_names:
-            group_items = sorted(current_node_groups[node_name], key=lambda x: x[0])  # 按 var_name 排序端口
-            group_card = self._create_node_group_card(node_name, group_items)
+        # 重新创建排序分组
+        for node_name in sorted(current_node_groups.keys()):
+            group_items = sorted(current_node_groups[node_name], key=lambda x: x[0])
+            # 使用优化后的组卡片
+            group_card = self._create_node_group_card_enhanced(node_name, group_items)
             self.node_vars_layout.addWidget(group_card)
+
         self.node_vars_layout.addStretch(1)
-        # 由于完全重建，现有卡片缓存也需要更新
-        for card in self._node_var_cards.values():
-            card.deleteLater()
-        self._node_var_cards.clear()
 
-    def _create_node_group_card(self, node_name: str, node_var_items: list):
-        """创建一个包含该节点所有端口变量的分组卡片"""
-        group_card = CardWidget(self.parent_panel)
-        group_layout = QVBoxLayout(group_card)
-        group_layout.setContentsMargins(8, 8, 8, 8)
-        group_layout.setSpacing(4)
+    def _create_node_group_card_enhanced(self, node_name: str, node_var_items: list):
+        """增强版节点组卡片：支持折叠、定位、计数"""
+        card = CardWidget(self.parent_panel)
+        outer_layout = QVBoxLayout(card)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
 
-        # 节点标题
-        node_title_layout = QHBoxLayout()
-        node_title = StrongBodyLabel(node_name)
-        node_title_layout.addWidget(node_title)
+        # --- 头部区域 ---
+        header_widget = QWidget()
+        header_widget.setFixedHeight(45)
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(6, 0, 6, 0)
 
-        group_layout.addLayout(node_title_layout)
+        # 节点图标和名称
+        node = self.locate_node_by_name(node_name)
+        node_icon = TransparentToolButton((node and node.icon()) or FluentIcon.TILES, header_widget)
+        node_icon.setFixedSize(24, 24)
 
-        group_layout.addWidget(CardSeparator(group_card))
+        display_name = node_name.replace("_", " ")  # 更加可读的名称
+        name_label = StrongBodyLabel(display_name)
+        name_label.setWordWrap(True)
+        # 快速定位按钮
+        locate_btn = TransparentToolButton(get_icon("location"), header_widget)
+        locate_btn.setToolTip("在画布中定位节点")
+        locate_btn.setFixedSize(24, 24)
+        locate_btn.clicked.connect(lambda: self.zoom_to_node_by_name(node_name))
 
-        # 添加该节点的所有端口变量卡片
+        # 展开/折叠按钮
+        toggle_btn = ToolButton(FluentIcon.CHEVRON_RIGHT, header_widget)
+        toggle_btn.setFixedSize(24, 24)
+
+        header_layout.addWidget(node_icon)
+        header_layout.addWidget(name_label, 1)
+        header_layout.addStretch()
+        header_layout.addWidget(locate_btn)
+        header_layout.addWidget(toggle_btn)
+
+        outer_layout.addWidget(header_widget)
+
+        # --- 内容区域（可折叠） ---
+        content_container = QWidget()
+        content_layout = QVBoxLayout(content_container)
+        content_layout.setContentsMargins(3, 3, 3, 3)
+        content_layout.setSpacing(3)
+
         for var_name, node_var_obj in node_var_items:
-            port_card = self._create_variable_card(var_name, node_var_obj)
-            group_layout.addWidget(port_card)
+            port_row = self._create_compact_port_row(var_name, node_var_obj)
+            content_layout.addWidget(port_row)
 
-        # 为分组卡片添加跳转功能
-        def on_group_card_double_clicked(event):
-            if event.button() == Qt.LeftButton:
-                self.zoom_to_node_by_name(node_name)
+        content_container.setVisible(False)  # 默认收起
+        outer_layout.addWidget(content_container)
 
-        group_card.mouseDoubleClickEvent = on_group_card_double_clicked
-        group_card.setCursor(Qt.PointingHandCursor)
-        group_layout.addStretch()
-        return group_card
+        # 折叠逻辑
+        def toggle():
+            is_visible = content_container.isVisible()
+            content_container.setVisible(not is_visible)
+            toggle_btn.setIcon(FluentIcon.CHEVRON_DOWN_MED if not is_visible else FluentIcon.CHEVRON_RIGHT)
 
-    def zoom_to_node_by_name(self, node_name: str):
-        """根据节点名称跳转到节点"""
-        node_graph = self.main_window.graph
-        if not node_graph:
-            logger.warning("无法获取节点图实例")
-            return None
-        found_node = node_graph.get_node_by_name(node_name)
-        # 如果 base 本身就在组里，直接返回
-        if found_node:
-            return self.main_window.canvas_widget.zoom_to_nodes([found_node._view])
+        header_widget.mousePressEvent = lambda e: toggle() if e.button() == Qt.LeftButton else None
+        toggle_btn.clicked.connect(toggle)
 
-        # 否则，尝试从右向左逐步将下划线替换为空格（实际是“保留更多右侧片段”）
-        parts = node_name.split('_')
-        n = len(parts)
+        return card
 
-        # 从最细粒度（全拆成空格）到最粗（保留所有下划线）尝试
-        for i in range(n - 1, 0, -1):  # i 是保留原始下划线的起始索引（右侧 i 个部分保持原样）
-            candidate = ' '.join(parts[:n - i]) + '_' + '_'.join(parts[n - i:]) if n - i > 0 else '_'.join(parts)
-            found_node = node_graph.get_node_by_name(candidate)
-            if found_node:
-                return self.main_window.canvas_widget.zoom_to_nodes([found_node._view])
+    def _create_compact_port_row(self, full_var_name: str, node_var_obj):
+        """更紧凑的端口行，而不是嵌套卡片"""
+        row_widget = QWidget()
+        row_widget.setObjectName("portRow")
+        row_widget.setStyleSheet("""
+            #portRow { 
+                background: rgba(0, 0, 0, 0.05); 
+                border-radius: 4px; 
+            }
+            #portRow:hover { 
+                background: rgba(0, 0, 0, 0.08); 
+            }
+        """)
 
-        # 如果上面都失败，尝试直接用空格替换所有下划线
-        fallback = ' '.join(parts)
-        found_node = node_graph.get_node_by_name(fallback)
-        if found_node:
-            return self.main_window.canvas_widget.zoom_to_nodes([found_node._view])
+        layout = QVBoxLayout(row_widget)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(4)
 
-        logger.warning(f"未找到节点: '{node_name}'")
-        InfoBar.warning(
-            title="未找到节点",
-            content=f"无法定位到节点 '{node_name}'。",
-            parent=self.main_window,
-            position=InfoBarPosition.BOTTOM_RIGHT
+        # 端口标题行
+        title_layout = QHBoxLayout()
+        port_name = full_var_name.split("__")[-1]
+
+        port_icon = CaptionLabel("端口")
+        port_icon.setStyleSheet("background: #0078d4; color: white; padding: 1px 4px; border-radius: 2px;")
+
+        port_label = BodyLabel(port_name)
+
+        # 策略图标预览
+        strategy_combo = TransparentDropDownToolButton(icon=get_icon(node_var_obj.update_policy),
+                                                       parent=self.parent_panel)
+        strategy_combo.setFixedSize(52, 24)
+        strategy_combo.setProperty("policy", node_var_obj.update_policy)
+        strategy_combo.setProperty("node_var_name", full_var_name)
+        menu = RoundMenu(parent=strategy_combo)
+        menu.addAction(
+            Action(get_icon("固定"), '固定',
+                   triggered=lambda checked=False, btn=strategy_combo: self.change_node_var_strategy("固定", btn))
         )
-        return None
+        menu.addAction(
+            Action(get_icon("更新"), '更新',
+                   triggered=lambda checked=False, btn=strategy_combo: self.change_node_var_strategy("更新", btn))
+        )
+        menu.addAction(
+            Action(get_icon("追加"), '追加',
+                   triggered=lambda checked=False, btn=strategy_combo: self.change_node_var_strategy("追加", btn))
+        )
+        strategy_combo.setMenu(menu)
+
+        del_btn = TransparentToolButton(FluentIcon.CLOSE)
+        del_btn.setFixedSize(20, 20)
+        del_btn.clicked.connect(lambda: self.delete_variable('node_vars', full_var_name))
+
+        title_layout.addWidget(port_icon)
+        title_layout.addWidget(port_label)
+        title_layout.addStretch()
+        title_layout.addWidget(strategy_combo)
+        title_layout.addWidget(del_btn)
+
+        layout.addLayout(title_layout)
+
+        # 数据预览区域（只有在有数据时才显示一部分）
+        if node_var_obj.value is not None:
+            tree = VariableTreeWidget(parent=self.main_window)
+            tree.set_data(node_var_obj.value, port_name)
+            tree.setMinimumHeight(60)
+            tree.setMaximumHeight(100)
+            layout.addWidget(tree)
+        else:
+            layout.addWidget(CaptionLabel("等待执行产生数据..."))
+
+        # 右键菜单保持不变
+        row_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        row_widget.customContextMenuRequested.connect(
+            lambda pos: self._show_port_context_menu(pos, row_widget, full_var_name))
+
+        return row_widget
+
+    def _show_port_context_menu(self, pos, widget, name):
+        """提取出的右键菜单逻辑"""
+        menu = RoundMenu(parent=self.parent_panel)
+        menu.addActions([
+            Action(FluentIcon.COPY, "复制表达式", triggered=lambda: self.copy_as_expression("node_vars", name)),
+            Action(FluentIcon.DELETE, "清空数据",
+                   triggered=lambda: self._handle_global_variable_change("node_vars", name, "clear"))
+        ])
+        menu.exec_(widget.mapToGlobal(pos))
+
+    def zoom_to_node_by_name(self, node_name):
+        """根据节点名称跳转到节点"""
+        found_node = self.locate_node_by_name(node_name)
+        return self.main_window.canvas_widget.zoom_to_nodes([found_node._view])
 
     def _refresh_env_page(self):
         # 去除最后strech
@@ -814,101 +907,6 @@ class GlobalPanelWidget:
         detail_container.setVisible(not is_visible)
         toggle_btn.setText("收起" if not is_visible else "展开")
 
-    def _create_variable_card(self, name: str, node_var_obj):
-        parts = name.split("__")
-        if len(parts) == 2:
-            node_name = parts[0]
-            port_name = parts[1]
-        else:
-            parts = name.split("_")
-            if len(parts) == 2:
-                node_name = parts[0]
-                port_name = parts[1]
-            else:
-                if re.match(r'\d+', parts[1]):
-                    node_name = "_".join(parts[:2])
-                    port_name = "_".join(parts[2:])
-                else:
-                    node_name = parts[0]
-                    port_name = "_".join(parts[1:])
-        node_name = re.sub(r'_(?=\d+$)', " ", node_name)
-        card = SimpleCardWidget(self.parent_panel)
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(6, 3, 3, 3)
-        layout.setSpacing(0)
-        title_layout = QHBoxLayout()
-        title = BodyLabel(f"端口: {port_name}")
-        title_layout.addWidget(title, 1)
-        strategy_combo = TransparentDropDownToolButton(icon=get_icon(node_var_obj.update_policy),
-                                                       parent=self.parent_panel)
-        strategy_combo.setFixedSize(52, 24)
-        strategy_combo.setProperty("policy", node_var_obj.update_policy)
-        strategy_combo.setProperty("node_var_name", name)
-        menu = RoundMenu(parent=strategy_combo)
-        menu.addAction(
-            Action(get_icon("固定"), '固定',
-                   triggered=lambda checked=False, btn=strategy_combo: self.change_node_var_strategy("固定", btn))
-        )
-        menu.addAction(
-            Action(get_icon("更新"), '更新',
-                   triggered=lambda checked=False, btn=strategy_combo: self.change_node_var_strategy("更新", btn))
-        )
-        menu.addAction(
-            Action(get_icon("追加"), '追加',
-                   triggered=lambda checked=False, btn=strategy_combo: self.change_node_var_strategy("追加", btn))
-        )
-        strategy_combo.setMenu(menu)
-        title_layout.addStretch()
-        title_layout.addWidget(strategy_combo)
-        del_btn = TransparentToolButton(FluentIcon.CLOSE, self.parent_panel)
-        del_btn.setFixedSize(24, 24)
-        del_btn.clicked.connect(lambda _, n=name: self.delete_variable('node_vars', n))
-        title_layout.addWidget(del_btn)
-        layout.addLayout(title_layout)
-        layout.addWidget(CardSeparator(self.parent_panel))
-        tree = VariableTreeWidget(parent=self.main_window)
-        tree.set_data(node_var_obj.value, port_name)
-        tree.setMinimumHeight(80)
-        tree.setMaximumHeight(120)
-        layout.addWidget(tree, 1)
-        layout.addWidget(CardSeparator(self.parent_panel))
-
-        def show_context_menu(pos):
-            menu = RoundMenu(parent=self.parent_panel)
-            menu.addActions(
-                [
-                    Action(
-                        FluentIcon.COPY, "复制为表达式", parent=self.parent_panel,
-                        triggered=lambda: self.copy_as_expression("node_vars", name)
-                    ),
-                    Action(
-                        FluentIcon.DELETE, "清空变量结果", parent=self.parent_panel,
-                        triggered=lambda:
-                        self._handle_global_variable_change("node_vars", name, "clear")
-                    ),
-                    Action(
-                        FluentIcon.FIT_PAGE, "跳转到该节点", parent=self.parent_panel,
-                        triggered=lambda: self.zoom_to_node(name)
-                    )
-                ]
-            )
-            menu.exec_(card.mapToGlobal(pos))
-
-        card.setContextMenuPolicy(Qt.CustomContextMenu)
-        card.customContextMenuRequested.connect(show_context_menu)
-
-        card.strategy_combo = strategy_combo
-
-        def on_card_double_clicked(event):
-            if event.button() == Qt.LeftButton:
-                self.zoom_to_node(name)
-
-        card.mouseDoubleClickEvent = on_card_double_clicked
-        card.setCursor(Qt.PointingHandCursor)
-        card.tree_widget = tree
-        card.node_var_name = name
-        return card
-
     def _create_env_var_row(self, key: str, value):
         card = CardWidget(self.parent_panel)
         layout = QHBoxLayout(card)
@@ -957,7 +955,7 @@ class GlobalPanelWidget:
                 del global_vars.custom[var_name]
             elif var_type == 'node_vars' and hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
                 global_vars.node_vars.pop(var_name, None)
-                node = self.locate_node_by_name(var_name)
+                node = self.locate_node_by_name(var_name.split("__")[0])
                 if node:
                     if hasattr(node, "refresh_node_outports"):
                         QtCore.QTimer.singleShot(0, node.refresh_node_outports)
@@ -1206,41 +1204,37 @@ class GlobalPanelWidget:
             self._refresh_env_page()
             InfoBar.success("已更新", f"环境变量 {new_key}", parent=self.main_window)
 
-    def zoom_to_node(self, var_name: str):
-        found_node = self.locate_node_by_name(var_name)
-        self.main_window.canvas_widget.zoom_to_nodes([found_node._view])
-
-    def locate_node_by_name(self, var_name: str):
+    def locate_node_by_name(self, node_name: str):
         """根据全局变量名定位到对应的节点"""
-        parts = var_name.split("_")
-        if len(parts) < 2:
-            logger.warning(f"无法从变量名 '{var_name}' 解析出节点名称")
-            return None
-        elif len(parts) == 2:
-            safe_node_name_candidate = parts[0]
-        else:
-            if re.match(r'\d+', parts[1]):
-                safe_node_name_candidate = "_".join(parts[:2])
-            else:
-                safe_node_name_candidate = parts[0]
-        original_name_candidate = re.sub(r'_(?=\d+$)', " ", safe_node_name_candidate)
         node_graph = self.main_window.graph
-        if not node_graph:
-            logger.warning("无法获取节点图实例")
-            return None
-        found_node = node_graph.get_node_by_name(original_name_candidate)
-        if not found_node:
-            logger.warning(f"未找到与变量名 '{var_name}' 对应的节点 "
-                           f"(尝试名称: '{original_name_candidate}', '{safe_node_name_candidate}')")
-            InfoBar.warning(
-                title="未找到节点",
-                content=f"无法定位到变量 '{var_name}' 对应的节点。",
-                parent=self.main_window,
-                position=InfoBarPosition.BOTTOM_RIGHT
-            )
-            return None
+        found_node = node_graph.get_node_by_name(node_name)
+        # 如果 base 本身就在组里，直接返回
+        if found_node:
+            return found_node
+        parts = node_name.split('_')
+        n = len(parts)
 
-        return found_node
+        # 从最细粒度（全拆成空格）到最粗（保留所有下划线）尝试
+        for i in range(n - 1, 0, -1):  # i 是保留原始下划线的起始索引（右侧 i 个部分保持原样）
+            candidate = ' '.join(parts[:n - i]) + '_' + '_'.join(parts[n - i:]) if n - i > 0 else '_'.join(parts)
+            found_node = node_graph.get_node_by_name(candidate)
+            if found_node:
+                return found_node
+
+        # 如果上面都失败，尝试直接用空格替换所有下划线
+        fallback = ' '.join(parts)
+        found_node = node_graph.get_node_by_name(fallback)
+        if found_node:
+            return found_node
+
+        logger.warning(f"未找到节点: '{node_name}'")
+        InfoBar.warning(
+            title="未找到节点",
+            content=f"无法定位到节点 '{node_name}'。",
+            parent=self.main_window,
+            position=InfoBarPosition.BOTTOM_RIGHT
+        )
+        self.main_window.global_variables.delete_output(node_name=node_name)
 
     def add_output_to_global_var(self, main_window, node, port_name: str):
         """将输出添加到全局变量"""
@@ -1264,11 +1258,14 @@ class GlobalPanelWidget:
             position=InfoBarPosition.BOTTOM_RIGHT
         )
 
-    def delete_output_from_global_var(self, main_window, node, port_name: str):
+    def delete_output_from_global_var(self, main_window, node, port_name: str=None):
         """从全局变量中删除输出"""
         safe_node_name = re.sub(r'\s+', '_', node.name())
-        safe_port_name = re.sub(r'\s+', '_', port_name)
-        safe_port_name = re.sub(r'\.+', '_', safe_port_name)
+        if port_name is not None:
+            safe_port_name = re.sub(r'\s+', '_', port_name)
+            safe_port_name = re.sub(r'\.+', '_', safe_port_name)
+        else:
+            safe_port_name = None
         main_window.global_variables.delete_output(
             node_name=safe_node_name, output_name=safe_port_name
         )
