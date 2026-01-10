@@ -85,50 +85,62 @@ class PortWidget(QWidget):
 
         self.segmented_widget.currentItemChanged.connect(self._on_segmented_changed)
 
+    def _update_segments(self, has_in, has_out):
+        """
+        修复版：解决切换节点后点不动、状态不一致的问题
+        """
+        # 1. 确定当前应该存在的 Keys 顺序
+        expected_keys = []
+        if has_in: expected_keys.append('input')
+        if has_out: expected_keys.append('output')
+
+        # 2. 检查是否真的需要重建 (优化：如果结构没变，就不重建，防止点击失效)
+        current_keys = list(self.segmented_widget.items.keys())
+        if current_keys != expected_keys:
+            self.segmented_widget.blockSignals(True)
+            # 清空
+            for key in current_keys:
+                self.segmented_widget.removeWidget(key)
+            # 按物理顺序重新添加：左输入，右输出
+            if has_in:
+                self.segmented_widget.addItem('input', '输入端口')
+            if has_out:
+                self.segmented_widget.addItem('output', '输出端口')
+            self.segmented_widget.blockSignals(False)
+
+        # 3. 决定最终要显示的 Tab (逻辑记忆)
+        # 如果当前记录的 Tab 在新结构中不存在，则自动降级
+        target_key = self.current_segment
+        if target_key not in expected_keys:
+            target_key = expected_keys[0] if expected_keys else None
+
+        # 4. 【核心修复】强制 UI 状态同步
+        if target_key:
+            self.segmented_widget.blockSignals(True)
+            self.segmented_widget.setCurrentItem(target_key)  # 更新 Segmented 内部索引
+            self.segmented_widget.blockSignals(False)
+
+            self.current_segment = target_key
+
+            # 强制让 StackedWidget 切换到正确的 Page
+            # 这解决了“点不动”的问题，因为我们不依赖 Segmented 的信号来做初次同步
+            target_page = self.page_map.get(target_key)
+            if target_page:
+                self.stacked_widget.setCurrentWidget(target_page)
+
+        # 5. 控制可见性
+        self.segmented_widget.setVisible(has_in and has_out)
+
     def _on_segmented_changed(self, item_key):
-        """处理 Tab 切换并记录状态"""
+        """处理用户手动点击 Tab"""
+        if not item_key:
+            return
+        # 记录用户的选择
         self.current_segment = item_key
+        # 同步页面
         target_widget = self.page_map.get(item_key)
         if target_widget:
             self.stacked_widget.setCurrentWidget(target_widget)
-
-    def _update_segments(self, has_in, has_out):
-        """
-        核心修复：
-        1. 强制物理顺序：输入在前，输出在后。
-        2. 状态记忆：重建后恢复之前的选中状态。
-        """
-        self.segmented_widget.blockSignals(True)
-
-        # 彻底清空标签以保证物理顺序 (防止动态添加导致的乱序)
-        # qfluentwidgets 的 SegmentedWidget 最好通过重新 add 来控制顺序
-        try:
-            # 这是一个强制清除法，确保界面重建
-            for i in range(self.segmented_widget.count()):
-                self.segmented_widget.removeWidget(self.segmented_widget.items[0])
-            self.segmented_widget.items.clear()
-        except:
-            pass
-
-        # 重新按固定顺序添加
-        if has_in:
-            self.segmented_widget.addItem('input', '输入端口')
-        if has_out:
-            self.segmented_widget.addItem('output', '输出端口')
-
-        # 确定需要恢复的 Key
-        target_key = self.current_segment
-        if not target_key or (target_key == 'input' and not has_in) or (target_key == 'output' and not has_out):
-            target_key = 'input' if has_in else ('output' if has_out else None)
-
-        # 恢复选中并同步 StackedWidget (解决点不动的核心)
-        if target_key:
-            self.segmented_widget.setCurrentItem(target_key)
-            self.stacked_widget.setCurrentWidget(self.page_map[target_key])
-            self.current_segment = target_key
-
-        self.segmented_widget.setVisible(has_in and has_out)
-        self.segmented_widget.blockSignals(False)
 
     def refresh(self, node):
         """刷新入口"""

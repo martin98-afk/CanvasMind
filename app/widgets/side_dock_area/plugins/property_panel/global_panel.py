@@ -458,9 +458,27 @@ class GlobalPanelWidget:
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
-        title = TransparentPushButton(text="节点输出变量 (node_vars)", icon=get_icon("节点变量"),
+
+        # 标题
+        title_layout = QHBoxLayout()
+        title = TransparentPushButton(text="节点变量 (node_vars)", icon=get_icon("节点变量"),
                                       parent=self.parent_panel)
-        layout.addWidget(title)
+        title_layout.addWidget(title, 1)
+
+        expand_all_btn = TransparentToolButton(get_icon("expand_all"))
+        expand_all_btn.setFixedSize(25, 32)
+        collapse_all_btn = TransparentToolButton(get_icon("collapse_all"))
+        collapse_all_btn.setFixedSize(25, 32)
+
+        expand_all_btn.clicked.connect(lambda: self._set_all_nodes_expanded(True))
+        collapse_all_btn.clicked.connect(lambda: self._set_all_nodes_expanded(False))
+
+        title_layout.addWidget(expand_all_btn)
+        title_layout.addWidget(collapse_all_btn)
+        layout.addLayout(title_layout)
+        layout.addStretch()
+        # --------------------------
+
         self.node_vars_container = QWidget()
         self.node_vars_container.setStyleSheet("background: transparent; border: none;")
         self.node_vars_layout = QVBoxLayout(self.node_vars_container)
@@ -554,24 +572,22 @@ class GlobalPanelWidget:
         if not global_vars:
             return
 
-        # 获取当前所有节点变量并分组
         current_node_vars = set(global_vars.node_vars.keys()) if hasattr(global_vars, 'node_vars') else set()
 
-        # 清空布局
+        # 清空布局和旧缓存
         while self.node_vars_layout.count():
             child = self.node_vars_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
+        self._node_var_cards.clear() # 清空旧卡片引用
 
         if not current_node_vars:
-            # 添加空状态提示
             empty_label = BodyLabel("变量池中暂无节点输出\n在节点输出菜单中添加")
             empty_label.setAlignment(Qt.AlignCenter)
             empty_label.setStyleSheet("color: #888888; margin-top: 50px;")
             self.node_vars_layout.addWidget(empty_label)
             return
 
-        # 按节点分组
         current_node_groups = {}
         for var_name in current_node_vars:
             node_name = var_name.split("__")[0]
@@ -579,12 +595,12 @@ class GlobalPanelWidget:
                 current_node_groups[node_name] = []
             current_node_groups[node_name].append((var_name, global_vars.node_vars[var_name]))
 
-        # 重新创建排序分组
         for node_name in sorted(current_node_groups.keys()):
             group_items = sorted(current_node_groups[node_name], key=lambda x: x[0])
-            # 使用优化后的组卡片
             group_card = self._create_node_group_card_enhanced(node_name, group_items)
             self.node_vars_layout.addWidget(group_card)
+            # --- 关键：存入缓存 ---
+            self._node_var_cards[node_name] = group_card
 
         self.node_vars_layout.addStretch(1)
 
@@ -606,17 +622,16 @@ class GlobalPanelWidget:
         node_icon = TransparentToolButton((node and node.icon()) or FluentIcon.TILES, header_widget)
         node_icon.setFixedSize(24, 24)
 
-        display_name = node_name.replace("_", " ")  # 更加可读的名称
+        display_name = node_name.replace("_", " ")
         name_label = StrongBodyLabel(display_name)
         name_label.setWordWrap(True)
-        # 快速定位按钮
+
         locate_btn = TransparentToolButton(get_icon("location"), header_widget)
         locate_btn.setToolTip("在画布中定位节点")
         locate_btn.setFixedSize(24, 24)
         locate_btn.clicked.connect(lambda: self.zoom_to_node_by_name(node_name))
 
-        # 展开/折叠按钮
-        toggle_btn = ToolButton(FluentIcon.CHEVRON_RIGHT, header_widget)
+        toggle_btn = ToolButton(FluentIcon.CHEVRON_DOWN_MED, header_widget)
         toggle_btn.setFixedSize(24, 24)
 
         header_layout.addWidget(node_icon)
@@ -627,7 +642,7 @@ class GlobalPanelWidget:
 
         outer_layout.addWidget(header_widget)
 
-        # --- 内容区域（可折叠） ---
+        # --- 内容区域 ---
         content_container = QWidget()
         content_layout = QVBoxLayout(content_container)
         content_layout.setContentsMargins(3, 3, 3, 3)
@@ -637,14 +652,19 @@ class GlobalPanelWidget:
             port_row = self._create_compact_port_row(var_name, node_var_obj)
             content_layout.addWidget(port_row)
 
-        content_container.setVisible(False)  # 默认收起
         outer_layout.addWidget(content_container)
 
-        # 折叠逻辑
+        # --- 修改部分：定义显式的展开/折叠方法 ---
+        def set_expanded(expanded: bool):
+            content_container.setVisible(expanded)
+            toggle_btn.setIcon(FluentIcon.CHEVRON_DOWN_MED if expanded else FluentIcon.CHEVRON_RIGHT)
+
+        # 将方法挂载到 card 对象上，方便外部调用
+        card.set_expanded = set_expanded
+
         def toggle():
             is_visible = content_container.isVisible()
-            content_container.setVisible(not is_visible)
-            toggle_btn.setIcon(FluentIcon.CHEVRON_DOWN_MED if not is_visible else FluentIcon.CHEVRON_RIGHT)
+            set_expanded(not is_visible)
 
         header_widget.mousePressEvent = lambda e: toggle() if e.button() == Qt.LeftButton else None
         toggle_btn.clicked.connect(toggle)
@@ -727,6 +747,12 @@ class GlobalPanelWidget:
             lambda pos: self._show_port_context_menu(pos, row_widget, full_var_name))
 
         return row_widget
+
+    def _set_all_nodes_expanded(self, expanded: bool):
+        """批量设置所有节点卡片的展开状态"""
+        for card in self._node_var_cards.values():
+            if hasattr(card, 'set_expanded'):
+                card.set_expanded(expanded)
 
     def _show_port_context_menu(self, pos, widget, name):
         """提取出的右键菜单逻辑"""
