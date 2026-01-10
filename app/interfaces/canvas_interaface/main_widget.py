@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 import traceback
 from pathlib import Path
 
@@ -193,10 +194,18 @@ class CanvasPage(QWidget):
         return self.ui_manager.log_window
 
     def rename_node_vars(self, old_name, new_name):
-        old_names, newe_names = self.global_variables.rename_node_vars(old_name, new_name)
-        for old_name, new_name in zip(old_names, newe_names):
+        old_name = re.sub(r'\s+', '_', old_name)
+        new_name = re.sub(r'\s+', '_', new_name)
+        input_proxy_old_name = f"input.{old_name}"
+        input_proxy_new_name = f"input.{new_name}"
+        old_names, new_names = self.global_variables.rename_node_vars(old_name, new_name)
+        for old_name, new_name in zip(old_names, new_names):
             self.global_variables_changed.emit(old_name, "delete")
             self.global_variables_changed.emit(new_name, "add")
+        for node in self.graph.all_nodes():
+            node.rename_variable(
+                old_names + [input_proxy_old_name], new_names + [input_proxy_new_name]
+            )
 
     def show_intervention_dialog(self, title, message, schema, callback):
         self.canvas_runner.show_intervention_dialog(title, message, schema, callback)
@@ -555,6 +564,8 @@ class CanvasPage(QWidget):
                 pass
         # 优化：只高亮目标节点相关的连接线
         self._highlight_node_connections(node, status)
+        if status == NodeStatus.NODE_STATUS_SUCCESS:
+            self.on_node_finished_simple(node)
 
     def _highlight_node_connections(self, node, status):
         """优化的连接线高亮方法"""
@@ -600,11 +611,7 @@ class CanvasPage(QWidget):
                 return pipe
         return None
 
-    def on_node_finished_simple(self, node_id):
-        node = self.node_operations._get_node_by_id_cached(node_id)
-        if node:
-            # 直接调用 set_node_status，恢复即时更新
-            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS))
+    def on_node_finished_simple(self, node):
         # 优化：只在只选中该节点时更新其属性面板
         if node and node.selected() and len(self.graph.selected_nodes()) == 1:
             QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))

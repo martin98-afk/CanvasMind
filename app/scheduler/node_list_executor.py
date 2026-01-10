@@ -19,9 +19,6 @@ class WorkerSignals(QObject):
     finished = pyqtSignal(object)
     error = pyqtSignal(str)
     progress = pyqtSignal(object)
-    node_started = pyqtSignal(str)
-    node_finished = pyqtSignal(str)
-    node_error = pyqtSignal(str)
     backdrop_finished = pyqtSignal()
     log_start = pyqtSignal(str)
     log_message = pyqtSignal(str, str)
@@ -167,7 +164,3 @@ class NodeListExecutor(QRunnable):
                 log_error_func=self.signals.log_error.emit, log_finish_func=self.signals.log_finished.emit,
                 semaphore=self.scheduler.execution_semaphore  # 传递信号量
             )
-        self.signals.node_finished.emit(node.id)
-
-    def push_log_message(self, run_id: str, line: str):
-        self.signals.log_message.emit(run_id, line)

@@ -534,7 +534,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         counter = 0
         while True:
             canvas_folder = self.workflow_dir[0] / (base_name if counter == 0 else f"{base_name}_{counter}")
-            if not canvas_folder.exists():
+            if not (canvas_folder / f"{base_name}.workflow.json").exists():
                 break
             counter += 1
 
@@ -553,7 +553,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
-            canvas_page.save_full_workflow(show_info=False)
             if from_template:
                 canvas_page.start_from_template()
             self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.parent.name, parent=self)
