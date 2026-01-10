@@ -117,7 +117,7 @@ def canvas_file_dump_path(dump_location: str = "canvas_files") -> Path:
 
 def _get_node_temp_dir(node_id: Optional[str]) -> Path:
     """获取节点专属临时目录"""
-    base_dir = canvas_file_dump_path() / "node_results" / node_id
+    base_dir = canvas_file_dump_path() / "workspace" / node_id
     base_dir.mkdir(parents=True, exist_ok=True)
     return base_dir
 
@@ -252,21 +252,67 @@ class GlobalVariableContext(BaseModel):
         else:
             self.custom[key].value = value
 
-    def set_output(self, node_id: str, output_name: str, output_value: Any, policy: str="更新"):
-        self.node_vars[f"{node_id}__{output_name}"] = NodeVariable(
+    def set_output(self, node_name: str, output_name: str, output_value: Any, policy: str="更新"):
+        self.node_vars[f"{node_name}__{output_name}"] = NodeVariable(
             value=output_value, update_policy=policy
         )
 
-    def delete_output(self, node_id: str, output_name: str):
-        self.node_vars.pop(f"{node_id}__{output_name}", None)
+    def delete_output(self, node_name: str, output_name: str):
+        self.node_vars.pop(f"{node_name}__{output_name}", None)
 
-    def is_output_in_node_vars(self, node_id: str, output_name: str):
-        return f"{node_id}__{output_name}" in self.node_vars
+    def is_output_in_node_vars(self, node_name: str, output_name: str):
+        return f"{node_name}__{output_name}" in self.node_vars
+
+    def rename_node_vars(self, old_name: str, new_name: str) -> Tuple[List[str], List[str]]:
+        """
+        重命名节点相关的变量，并返回重命名的键列表。
+
+        Returns:
+            tuple: (old_keys_list, new_keys_list)
+        """
+        # 构造精确前缀，防止误匹配（例如防止 Node1 匹配到 Node11）
+        old_prefix = f"{old_name}__"
+        new_prefix = f"{new_name}__"
+
+        old_name_list = []
+        new_name_list = []
+
+        # 使用 OrderedDict 重新构建以保持顺序，并避免遍历时修改的错误
+        new_node_vars = OrderedDict()
+
+        for key, var_obj in self.node_vars.items():
+            if key.startswith(old_prefix):
+                # 生成新键名（仅替换第一个匹配到的前缀）
+                new_key = key.replace(old_prefix, new_prefix, 1)
+
+                # 记录变更
+                old_name_list.append(f"node_vars.{key}")
+                new_name_list.append(f"node_vars.{new_key}")
+
+                # 存入新字典
+                new_node_vars[new_key] = var_obj
+            else:
+                # 不需要修改的变量原样保留
+                new_node_vars[key] = var_obj
+
+        # 更新原始变量字典
+        self.node_vars = new_node_vars
+
+        return old_name_list, new_name_list
 
     def clear_node_vars(self, name: str):
-        if isinstance(self.node_vars[name].value, (list, dict, tuple, set)):
-            self.node_vars[name].value.clear()
-        elif isinstance(self.node_vars[name].value, str):
+        # 增加对 key 是否存在的检查，防止 KeyError
+        if name not in self.node_vars:
+            return
+
+        val = self.node_vars[name].value
+        if isinstance(val, (list, dict, tuple, set)):
+            # 注意：tuple 是不可变的，不能 clear()，建议统一设为 None 或对应的空类型
+            if isinstance(val, tuple):
+                self.node_vars[name].value = ()
+            else:
+                val.clear()
+        elif isinstance(val, str):
             self.node_vars[name].value = ""
         else:
             self.node_vars[name].value = None
@@ -600,6 +646,14 @@ class DataHandler:
                 return np.array([])
             else:
                 return ""
+        if (input_type.is_file() or input_type.is_image()) and not Path(input_value).exists():
+            stem_node_id = Path(input_value).parent.parent.stem
+            if (Path(f"../{stem_node_id}/upload") / Path(input_value).name).exists():
+                input_value = str(Path(f"../{stem_node_id}/upload") / Path(input_value).name)
+            elif (Path("inputs") / Path(input_value).name).exists():
+                input_value = str(Path("inputs") / Path(input_value).name)
+            elif (Path(self.workflow_path).parent.parent.parent / input_value).exists():
+                input_value = str(Path(self.workflow_path).parent.parent.parent / input_value)
 
         try:
             if input_type == ArgumentType.TEXT:
@@ -626,8 +680,6 @@ class DataHandler:
                 return self._read_torch_model(input_value)
             elif input_type == ArgumentType.IMAGE:
                 return self._read_image_data(input_value)
-            elif input_type == ArgumentType.FILE:
-                return input_value
             else:
                 return input_value
         except Exception as e:
@@ -917,10 +969,9 @@ class DataHandler:
         # 假设 canvas_file_dump_path 是一个全局函数或从其他地方导入
         # 这里简化处理，实际项目中需要正确引用
         if self.workflow_path is None:
-            dump_path = Path("canvas_files") / "node_results" / (self.node_id or "default")
+            dump_path = Path("canvas_files") / "workspace" / (self.node_id or "default") / "results"
         else:
-            dump_path = (Path("canvas_files") / "workflows" / self.workflow_path
-                         / "node_results" / (self.node_id or "default"))
+            dump_path = (Path(self.workflow_path) / "workspace" / (self.node_id or "default")) / "results"
         dump_path.mkdir(parents=True, exist_ok=True)
         return dump_path
 

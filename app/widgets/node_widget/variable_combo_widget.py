@@ -155,16 +155,33 @@ class VarComboBoxWidget(QtWidgets.QWidget):
                 self._value = ""
 
     def on_variable_changed(self, var_name, operation):
-        """处理变量变更（仅当前 source 有效）"""
+        """处理变量变更：新变量置顶，重命名自动同步"""
+
         if operation == 'add':
-            if self.combobox.findText(var_name) == -1:
-                self._insert_sorted(var_name)
+            # 1. 检查是否已经存在（防止重复添加）
+            existing_idx = self.combobox.findText(var_name)
+
+            if existing_idx == -1:
+                # 2. 【核心修改】：插入到索引 1 的位置（即“无”的下面，作为最上面的有效项）
+                self.combobox.insertItem(1, var_name)
+                new_idx = 1
+            else:
+                new_idx = existing_idx
+
+            # 3. 【自动同步】：如果当前是“无”（self._value为空），自动选中这个新加/新重命名的变量
+            # 在重命名流程中，delete信号已经把值清空了，所以这里会精准命中并选中新名字
+            if not self._value or self.combobox.currentIndex() == 0:
+                self.combobox.setCurrentIndex(new_idx)
+
         elif operation == 'delete':
             idx = self.combobox.findText(var_name)
             if idx >= 0:
+                # 4. 如果删除的是当前选中的项，先切回“无”
                 if self.combobox.itemText(idx) == self._value:
-                    self._value = ""
                     self.combobox.setCurrentIndex(0)
+                    # 此时 self._value 会由于触发 _on_index_changed 变成 ""
+
+                # 从列表中移除旧变量
                 self.combobox.removeItem(idx)
 
     def _insert_sorted(self, text):

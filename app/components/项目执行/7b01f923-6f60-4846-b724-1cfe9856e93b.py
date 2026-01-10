@@ -21,7 +21,7 @@ class Component(BaseComponent):
     description = "将已导出的模型项目作为工具调用，接收项目名称和输入数据，通过运行工作流脚本执行模型任务，返回结果和运行日志，输入为项目路径和JSON格式数据，输出为JSON格式结果和文本日志，无额外参数。"
     requirements = ""
     inputs = [
-        PortDefinition(name="project_name", label="项目名称", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="project_name", label="项目名称", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
         PortDefinition(name="input", label="项目输入", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),
     ]
     outputs = [

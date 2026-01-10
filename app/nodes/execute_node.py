@@ -13,19 +13,19 @@ from qfluentwidgets import MessageBox
 
 # --- 其他原有导入 ---
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext, \
-    COMPONENT_IMPORT_CODE, resource_path, ComponentMessage
+    COMPONENT_IMPORT_CODE, resource_path
 from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
 from app.scan_components import ComponentScanner
-from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.scheduler.expression_engine import ExpressionEngine
+from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import draw_square_port, draw_special_outputport, \
-    canvas_file_dump_path, _safe_load_pickle, kill_proc_tree  # 假设 resource_path 也在 utils
+    _safe_load_pickle, kill_proc_tree  # 假设 resource_path 也在 utils
+from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 # 导入代码编辑器组件
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
-from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 from app.widgets.node_widget.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.node_widget.range_widget import RangeWidgetWrapper
@@ -85,7 +85,7 @@ def create_node_class(full_path, file_path, parent_window=None):
         NODE_NAME = parent_window.component_map[full_path].name
         FULL_PATH = full_path
         FILE_PATH = file_path  # 现在 FILE_PATH 是真实的组件文件路径
-        CACHE_PATH = (canvas_file_dump_path() / "workflows" / parent_window.workflow_name).resolve()
+        CACHE_PATH = parent_window.file_path.parent.resolve()
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
@@ -95,6 +95,8 @@ def create_node_class(full_path, file_path, parent_window=None):
             if hasattr(ComponentScanner().get_component_by_uuid(self.uuid), "icon"):
                 self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
             self.view.set_align("center")
+            # 重命名节点自动同步全局变量名
+            self.view.rename_signal.rename.connect(parent_window.rename_node_vars)
             # --- 调试模式新增 ---
             self._debug_enabled = False
             self._debug_widget = None
@@ -458,13 +460,13 @@ def create_node_class(full_path, file_path, parent_window=None):
             # 注意：这里仍然使用原始的 FILE_PATH，执行的是保存后的代码
             script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
                 class_name=comp_obj.__name__,
-                file_path=temp_component_path,  # 使用历史版本文件
-                params_path=params_path,
-                result_path=result_path,
-                error_path=error_path,
-                log_file_path=log_file_path,
+                file_path=str(temp_component_path.resolve()),  # 使用历史版本文件
+                params_path=str(params_path.resolve()),
+                result_path=str(result_path.resolve()),
+                error_path=str(error_path.resolve()),
+                log_file_path=str(log_file_path.resolve()),
                 node_id=self.persistent_id,
-                workflow_path=parent_window.workflow_name
+                workflow_path=str(self.CACHE_PATH)
             )
             with open(temp_script_path, 'w', encoding='utf-8') as f:
                 f.write(script_content)

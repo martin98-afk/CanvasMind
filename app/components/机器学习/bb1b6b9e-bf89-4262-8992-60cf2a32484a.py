@@ -19,7 +19,7 @@ class TorchClassifierTrainer(BaseComponent):
     name = "PyTorch 分类模型训练"
     category = "机器学习"
     description = "使用 PyTorch 训练一个用于数据分类的神经网络模型，支持自定义结构与超参数配置。"
-    requirements = "pandas,torch,scikit-learn"
+    requirements = "torch,scikit-learn"
     inputs = [
         PortDefinition(name="training_data", label="训练数据", type=ArgumentType.CSV, connection=ConnectionType.SINGLE),
         PortDefinition(name="labels", label="标签数据", type=ArgumentType.CSV, connection=ConnectionType.SINGLE),
@@ -55,6 +55,12 @@ class TorchClassifierTrainer(BaseComponent):
             default=0.2,
             label="测试集比例",
         ),
+        "device": PropertyDefinition(
+            type=PropertyType.CHOICE,
+            default="cuda",
+            label="运行设备",
+            choices=["cuda", "cpu"]
+        ),
     }
 
     def run(self, params, inputs=None):
@@ -67,11 +73,8 @@ class TorchClassifierTrainer(BaseComponent):
         import torch.nn as nn
         import torch.optim as optim
         from torch.utils.data import DataLoader, TensorDataset
-        import pandas as pd
         from sklearn.model_selection import train_test_split
         from sklearn.preprocessing import LabelEncoder
-        import json
-        import os
 
         # 1. 读取输入数据
         try:
@@ -124,7 +127,7 @@ class TorchClassifierTrainer(BaseComponent):
                 return x
 
         model = SimpleClassifier(num_features, hidden_size, num_classes)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device(params.device)
         model.to(device)
 
         # 6. 定义损失与优化器
@@ -177,7 +180,10 @@ class TorchClassifierTrainer(BaseComponent):
         # 9.准备预导出模型
         batch_dim = torch.export.Dim("batch")
         dynamic_shapes = {"x": {0: batch_dim}}
-        exported_program = torch.export.export(model, args=(X_test_tensor,), dynamic_shapes=dynamic_shapes)
+        exported_program = torch.export.export(
+            model, args=(X_test_tensor.to(device),),
+            dynamic_shapes=dynamic_shapes
+        )
         # 10. 返回结果
         return {
             "classifier_model": exported_program,

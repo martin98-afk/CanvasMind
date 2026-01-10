@@ -53,7 +53,8 @@ class LSPCodeEditor(CodeEditor):
         self.completion_widget.setStyleSheet("background-color: #1E1E1E;")
         self.completion_widget.setMinimumWidth(350)
         self.completion_widget.setMinimumHeight(120)
-
+        self._font_family = 'Consolas'
+        self._current_font_size = 13
         # 编辑器设置
         self.setup_editor(
             language='python',
@@ -507,6 +508,36 @@ class LSPCodeEditor(CodeEditor):
                 QApplication.clipboard().setText(c.selectedText())
                 return
         super().copy()
+
+    def wheelEvent(self, event):
+        """处理鼠标滚轮事件以缩放字体"""
+        if event.modifiers() == Qt.ControlModifier:
+            delta = event.angleDelta().y()
+            if delta > 0:
+                self._increase_font_size()
+            else:
+                self._decrease_font_size()
+            event.accept()
+        else:
+            super().wheelEvent(event)
+
+    def _increase_font_size(self):
+        """增加字体大小"""
+        if self._current_font_size < 30:
+            self._current_font_size += 1
+            self._apply_font()
+
+    def _decrease_font_size(self):
+        """减少字体大小"""
+        if self._current_font_size > 8:
+            self._current_font_size -= 1
+            self._apply_font()
+
+    def _apply_font(self):
+        """应用当前字体设置"""
+        font = QFont(self._font_family, self._current_font_size)
+        self.set_font(font)
+
 
     def keyPressEvent(self, event):
         key = event.key()

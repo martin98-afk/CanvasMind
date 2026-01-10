@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt, QSize, QPoint, QRectF, QTimer
 from PyQt5.QtGui import QPixmap, QPainter, QImage
 from PyQt5.QtWidgets import (
     QLabel, QWidget, QVBoxLayout, QSizePolicy, QHBoxLayout,
-    QSpacerItem, QApplication, QDialog
+    QApplication, QDialog
 )
 from qfluentwidgets import (
     CardWidget, TransparentToolButton, FluentIcon, BodyLabel,
@@ -18,7 +18,7 @@ from qfluentwidgets import (
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.resizable_image_label import ResizableImageLabel
-from app.widgets.category_filter import CategoryFilterDialog
+from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog, CustomEditableComboDialog
 
 

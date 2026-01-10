@@ -28,8 +28,6 @@ from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 # 在 app/components 下创建 .temp 目录（隐藏目录）
 TEMP_COMPONENTS_DIR = Path(__file__).parent.parent / "components" / ".temp"
 TEMP_COMPONENTS_DIR.mkdir(exist_ok=True)
-PERSISTENT_TEMP_ROOT = (canvas_file_dump_path() / "run_scripts").resolve()
-PERSISTENT_TEMP_ROOT.mkdir(exist_ok=True, parents=True)
 
 
 _TEMP_COMPONENT_TEMPLATE = '''{import_code}class DynamicComponent(BaseComponent):
@@ -60,6 +58,7 @@ def create_dynamic_code_node(parent_window=None):
         FULL_PATH = f"代码执行/{NODE_NAME}"
         FILE_PATH = "DYNAMIC_CODE"  # 不需要真实文件路径
         description = "动态代码组件，右键选择固化为组件可以将当前代码保存为固定组件。"
+        CACHE_PATH = parent_window.file_path.parent.resolve()
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
@@ -67,7 +66,9 @@ def create_dynamic_code_node(parent_window=None):
             self._view.set_align("center")
             self.set_icon(":/icons/代码执行")
             self.model.port_deletion_allowed = True
-
+            # 重命名节点自动同步全局变量名
+            self.view.set_align("center")
+            self.view.rename_signal.rename.connect(parent_window.rename_node_vars)
             # 定时器：分离 input / output / property update
             self._input_sync_timer = QtCore.QTimer()
             self._input_sync_timer.setSingleShot(True)
@@ -440,7 +441,7 @@ def create_dynamic_code_node(parent_window=None):
                 temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
                 temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
                 run_id = f"run_{self.persistent_id}"
-                run_dir = PERSISTENT_TEMP_ROOT / run_id
+                run_dir = self.CACHE_PATH / "run_scripts" / run_id
                 shutil.rmtree(run_dir, ignore_errors=True)
                 run_dir.mkdir(parents=True, exist_ok=True)
                 temp_script_path = run_dir / "exec_script.py"
@@ -511,13 +512,13 @@ def create_dynamic_code_node(parent_window=None):
                 # 生成执行脚本（使用原始 subprocess 模板，不需双模式）
                 script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
                     class_name="DynamicComponent",
-                    file_path=temp_component_path,
-                    params_path=params_path,
-                    result_path=result_path,
-                    error_path=error_path,
-                    log_file_path=log_file_path,
+                    file_path=str(temp_component_path.resolve()),  # 使用历史版本文件
+                    params_path=str(params_path.resolve()),
+                    result_path=str(result_path.resolve()),
+                    error_path=str(error_path.resolve()),
+                    log_file_path=str(log_file_path.resolve()),
                     node_id=self.persistent_id,
-                    workflow_path=parent_window.workflow_name
+                    workflow_path=str(self.CACHE_PATH)
                 )
                 with open(temp_script_path, 'w', encoding='utf-8') as f:
                     f.write(script_content)

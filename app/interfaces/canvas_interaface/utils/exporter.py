@@ -10,6 +10,7 @@ from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import QImage, QPainter
 
 from app.nodes.backdrop_node import ControlFlowBackdrop
+from app.nodes.sticky_note import StickyNoteNode
 from app.templates.readme_template import DETAILED_README
 from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, topological_sort, resource_path
@@ -36,7 +37,9 @@ class CanvasExporter:
             if not nodes_to_export:
                 MessageManager.warning("导出失败", "选中的节点无效（只有分组节点）！", self.parent)
                 return
-
+            # 过滤注释节点
+            execution_order = [node for node in execution_order if not isinstance(node, StickyNoteNode)]
+            nodes_to_export = [node for node in nodes_to_export if not isinstance(node, StickyNoteNode)]
             # 收集候选输入/输出
             candidate_inputs = self._collect_inputs(execution_order)
             candidate_outputs = self._collect_outputs(execution_order)

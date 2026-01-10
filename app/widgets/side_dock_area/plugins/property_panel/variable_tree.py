@@ -614,7 +614,7 @@ class VariableTreeWidget(TreeWidget):
         if not HAS_SPYDER: return
         if VariableUtils.is_pandas_series(data):
             data = data.to_frame()
-        editor = DataFrameEditor(parent=self, readonly=True)
+        editor = DataFrameEditor(parent=self, readonly=True, namespacebrowser=NamespaceBrowser(self.parent()))
         if editor.setup_and_check(data, title=title):
             editor.exec_()
 

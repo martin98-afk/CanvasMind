@@ -13,6 +13,10 @@ from qtpy import QtGui
 from app.utils.config import Settings
 
 
+class RenameSignal(QtCore.QObject):
+    rename = QtCore.Signal(str, str) # old name, new name
+
+
 class CustomNodeItem(NodeItem):
     _align = None
 
@@ -24,6 +28,7 @@ class CustomNodeItem(NodeItem):
                 28,
                 QtCore.Qt.SmoothTransformation
             )
+        self.rename_signal = RenameSignal()
         self._properties['icon'] = ICON_NODE_BASE
         self._icon_item = QtWidgets.QGraphicsPixmapItem(pixmap, self)
         self._icon_item.setTransformationMode(QtCore.Qt.SmoothTransformation)
@@ -37,7 +42,6 @@ class CustomNodeItem(NodeItem):
         self._output_items = OrderedDict()
         self._widgets = OrderedDict()
         self._proxy_mode = False
-        self._proxy_mode_threshold = Settings.get_instance().node_proxy_size.value
         self.setZValue(Z_VAL_NODE)
         self._proxy_text_item = QtWidgets.QGraphicsTextItem(self.name, self)
         proxy_font = QtGui.QFont()
@@ -66,6 +70,7 @@ class CustomNodeItem(NodeItem):
 
     @AbstractNodeItem.name.setter
     def name(self, name=''):
+        self.rename_signal.rename.emit(self.name, name)
         AbstractNodeItem.name.fset(self, name)
         if name == self._text_item.toPlainText():
             return
@@ -404,7 +409,7 @@ class CustomNodeItem(NodeItem):
         # width is the node width in screen
         width = r.x() - l.x()
 
-        self.set_proxy_mode(width < self._proxy_mode_threshold)
+        self.set_proxy_mode(width < Settings.get_instance().node_proxy_size.value)
 
     def _update_proxy_text_position(self):
         if not self._proxy_mode:

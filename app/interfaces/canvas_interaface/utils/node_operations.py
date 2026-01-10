@@ -7,7 +7,7 @@ from app.interfaces.canvas_interaface.widgets.message_manager import MessageMana
 from app.nodes.backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
 from app.nodes.branch_node import create_branch_node
 from app.nodes.dynamic_code_node import create_dynamic_code_node
-from app.nodes.multimedia_node import create_chart_node
+from app.nodes.multimedia_node import create_media_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.status_node import StatusNode
@@ -70,10 +70,10 @@ class NodeOperations:
         self.graph.register_node(branch_node)
         self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
         # 注册图表绘制节点
-        echart_node = create_chart_node(self.parent)
-        echart_node.__name__ = "EchartsNode"
-        self.graph.register_node(echart_node)
-        self.node_type_map[echart_node.FULL_PATH] = f"visualize.{echart_node.__name__}"
+        media_node = create_media_node(self.parent)
+        media_node.__name__ = "MediaNode"
+        self.graph.register_node(media_node)
+        self.node_type_map[media_node.FULL_PATH] = f"visualize.{media_node.__name__}"
 
     def register_components(self):
         try:
@@ -117,7 +117,7 @@ class NodeOperations:
         # 节点右键菜单注册
         nodes_menu = self.graph.get_context_menu('nodes')
         for special_node in [
-            "visualize.EchartsNode", "dynamic.DYNAMIC_CODE", "control_flow.ControlFlowIterateNode",
+            "visualize.MediaNode", "dynamic.DYNAMIC_CODE", "control_flow.ControlFlowIterateNode",
             "control_flow.ControlFlowLoopNode", "control_flow.ControlFlowBranchNode"
         ]:
             nodes_menu.add_command('运行此节点', lambda graph, node: self.parent.run_node(node),

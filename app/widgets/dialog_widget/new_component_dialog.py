@@ -6,6 +6,7 @@ from app.scan_components import ComponentScanner
 
 
 class NewComponentDialog(MessageBoxBase):
+
     def __init__(self, parent=None, default_name="", default_category="", default_description=""):
         super().__init__(parent)
         self._default_category = default_category

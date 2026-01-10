@@ -410,7 +410,7 @@ class PortWidget(QWidget):
 
         src = Path(file_path)
         # 确保工作流上传目录存在
-        upload_root = canvas_file_dump_path() / "workflows" / self.main_window.workflow_name / "uploads" / self.node.persistent_id
+        upload_root = self.main_window.file_path.parent / "workspace" / self.node.persistent_id / "upload"
         upload_root.mkdir(exist_ok=True, parents=True)
 
         # 清理文件名并构建目标路径

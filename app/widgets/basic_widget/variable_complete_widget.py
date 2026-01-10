@@ -3,14 +3,14 @@ import re
 from pypinyin import lazy_pinyin, Style
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QKeyEvent, QFont, QSyntaxHighlighter, QTextCharFormat, QColor, QPalette, QCursor
+from PyQt5.QtGui import QKeyEvent, QFont, QSyntaxHighlighter, QTextCharFormat, QColor, QPalette, QCursor, QFontMetrics
 from PyQt5.QtGui import QTextCursor
-from PyQt5.QtWidgets import QListWidget
+from PyQt5.QtWidgets import QListWidget, QAbstractItemView
 from qfluentwidgets import TextEdit, LineEdit
 
 
 # -----------------------
-# 高亮器类：用于高亮 $变量$
+# 高亮器类：保持不变
 # -----------------------
 class VariableHighlighter(QSyntaxHighlighter):
     def __init__(self, parent=None):
@@ -21,14 +21,13 @@ class VariableHighlighter(QSyntaxHighlighter):
         self.variable_format.setFontWeight(QFont.Bold)
 
     def highlightBlock(self, text):
-        # 使用正则匹配 $...$，非贪婪
         pattern = re.compile(r'\$[^$\n]+\$')
         for match in pattern.finditer(text):
             self.setFormat(match.start(), match.end() - match.start(), self.variable_format)
 
 
 # -----------------------
-# 轻量级变量补全弹窗
+# 优化后的补全弹窗
 # -----------------------
 class VariableCompletionPopup(QListWidget):
     itemSelected = pyqtSignal(str)
@@ -37,27 +36,87 @@ class VariableCompletionPopup(QListWidget):
         super().__init__(parent)
         self.use_qcursor = use_qcursor
         self.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
-        self.setFocusPolicy(Qt.NoFocus)  # 建议不抢焦点，让键盘事件留在编辑器
+        self.setFocusPolicy(Qt.NoFocus)
+
+        # 核心设置
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  # 禁用横向滚动
+        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)  # 平滑滚动
+        self.setTextElideMode(Qt.ElideNone)  # 确保文字不打省略号
+
+        self.setFont(QFont('Consolas', 11))
+        self._setup_style()
+
+        self.itemClicked.connect(lambda item: self.itemSelected.emit(item.text()))
+
+    def _setup_style(self):
+        """现代化深色主题 QSS"""
         self.setStyleSheet("""
             QListWidget {
-                background-color: #19232D;
-                color: #FFFFFF;
-                border: 1px solid #32414B;
+                background-color: #252526;
+                color: #D4D4D4;
+                border: 1px solid #454545;
+                border-radius: 6px;
                 outline: 0;
                 padding: 4px;
             }
-            QListWidget::item { padding: 4px; }
+            QListWidget::item {
+                padding: 6px 10px;
+                border-radius: 4px;
+                margin-bottom: 1px;
+            }
+            QListWidget::item:hover {
+                background-color: #2A2D2E;
+            }
             QListWidget::item:selected {
-                background-color: #2A4C66;
+                background-color: #094771;
                 color: #FFFFFF;
-                border: 1px solid #50A1C5;
+            }
+
+            /* 现代滚动条样式 */
+            QScrollBar:vertical {
+                border: none;
+                background: transparent;
+                width: 10px;
+                margin: 2px 2px 2px 2px;
+            }
+            QScrollBar::handle:vertical {
+                background: #4F4F4F;
+                min-height: 20px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #606060;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
             }
         """)
-        self.setFont(QFont('Consolas', 11))
-        self.setMinimumWidth(250)
-        self.itemClicked.connect(lambda item: self.itemSelected.emit(item.text()))
+
+    def update_size(self):
+        """根据内容动态计算宽度和高度"""
+        fm = QFontMetrics(self.font())
+        max_width = 250
+        # 遍历所有项，找到最宽的内容
+        for i in range(self.count()):
+            text_w = fm.width(self.item(i).text()) + 40  # 加上padding和滚动条预留空间
+            if text_w > max_width:
+                max_width = text_w
+
+        # 限制最大宽度，防止内容过长撑破屏幕
+        max_width = min(max_width, 600)
+
+        # 计算高度（最多显示8行）
+        item_height = 32  # 大致的单行高度
+        display_count = min(self.count(), 8)
+        total_height = display_count * item_height + 10
+
+        self.setFixedSize(max_width, total_height)
 
     def show_at_cursor(self, editor):
+        self.update_size()  # 显示前重新计算尺寸
         if not self.use_qcursor:
             rect = editor.cursorRect()
             pos = editor.mapToGlobal(rect.bottomLeft())
@@ -68,9 +127,10 @@ class VariableCompletionPopup(QListWidget):
 
 
 # -----------------------
-# 核心逻辑混合类 (Mixin) 用于减少重复代码
+# 核心逻辑混合类 (Mixin)
 # -----------------------
 class CompletionMixin:
+    # ... (保持原有的 init_completion, _get_context_info, _filter_variables 内容不变)
     def init_completion(self, get_var_func):
         self.get_variable_list_func = get_var_func
         self._completing = False
@@ -79,45 +139,32 @@ class CompletionMixin:
         self._input_timer.timeout.connect(self._trigger_completion)
 
     def _get_context_info(self):
-        """获取当前光标在 $ 表达式中的位置信息"""
         cursor = self.textCursor() if hasattr(self, 'textCursor') else None
         pos = cursor.position() if cursor else self.cursorPosition()
         text = self.toPlainText() if hasattr(self, 'toPlainText') else self.text()
-
-        # 寻找当前行开始
         line_start = text.rfind('\n', 0, pos) + 1
         current_line_prefix = text[line_start:pos]
-
-        # 寻找左侧最近的 $
         dollar_pos = current_line_prefix.rfind('$')
-        if dollar_pos == -1:
-            return None, 0
-
+        if dollar_pos == -1: return None, 0
         abs_dollar_pos = line_start + dollar_pos
         prefix = text[abs_dollar_pos + 1: pos]
         return abs_dollar_pos, prefix
 
     def _filter_variables(self, prefix):
         all_vars = self.get_variable_list_func()
-        if not prefix:
-            return all_vars
-
+        if not prefix: return all_vars
         prefix_l = prefix.lower()
         scored_items = []
         for var in all_vars:
             var_l = var.lower()
-            # 1. 直接匹配开头 (最高优先级)
             if var_l.startswith(prefix_l):
                 score = 0
-            # 2. 汉字包含匹配
             elif prefix_l in var_l:
                 score = 1
-            # 3. 拼音匹配
             else:
                 pinyin_list = lazy_pinyin(var, style=Style.NORMAL)
                 pinyin_str = "".join(pinyin_list).lower()
                 first_letters = "".join([p[0] for p in pinyin_list if p]).lower()
-
                 if pinyin_str.startswith(prefix_l) or first_letters.startswith(prefix_l):
                     score = 2
                 elif prefix_l in pinyin_str:
@@ -125,8 +172,6 @@ class CompletionMixin:
                 else:
                     continue
             scored_items.append((score, var))
-
-        # 按得分排序，得分越低越靠前
         scored_items.sort(key=lambda x: (x[0], x[1]))
         return [item[1] for item in scored_items]
 
@@ -144,8 +189,8 @@ class CompletionMixin:
         self.popup.clear()
         self.popup.addItems(filtered)
         self.popup.setCurrentRow(0)
-        if not self.popup.isVisible():
-            self.popup.show_at_cursor(self)
+        # 即使已经显示，也要更新位置和大小，因为内容变了
+        self.popup.show_at_cursor(self)
 
     def handle_key_event(self, event):
         if self.popup.isVisible():
@@ -163,17 +208,15 @@ class CompletionMixin:
                 self.popup.setCurrentRow(min(self.popup.count() - 1, self.popup.currentRow() + 1))
                 return True
 
-        # 输入 $ 立即触发，其他字符延迟触发
         if event.text() == '$':
             QTimer.singleShot(10, self._trigger_completion)
         elif event.text() or event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
             self._input_timer.start(100)
-
         return False
 
 
 # -----------------------
-# 优化后的 TextEdit
+# TextEdit 与 LineEdit 类（保持逻辑，仅结构复用）
 # -----------------------
 class VariableCompletionTextEdit(TextEdit, CompletionMixin):
     def __init__(self, get_variable_list_func, use_qcursor=False, parent=None):
@@ -184,8 +227,7 @@ class VariableCompletionTextEdit(TextEdit, CompletionMixin):
         self.highlighter = VariableHighlighter(self.document())
 
     def keyPressEvent(self, event):
-        if self.handle_key_event(event):
-            return
+        if self.handle_key_event(event): return
         super().keyPressEvent(event)
 
     def _apply_completion(self, var_name):
@@ -193,31 +235,23 @@ class VariableCompletionTextEdit(TextEdit, CompletionMixin):
         cursor = self.textCursor()
         pos = cursor.position()
         text = self.toPlainText()
-
         dollar_pos, _ = self._get_context_info()
         if dollar_pos is not None:
-            # 检查右侧是否已经有 $
             has_right_dollar = (pos < len(text) and text[pos] == '$')
-
-            # 选中并替换从 $ 之后到当前光标的内容
             cursor.setPosition(dollar_pos + 1)
             cursor.setPosition(pos, QTextCursor.KeepAnchor)
-
             completion = var_name if has_right_dollar else f"{var_name}$"
             cursor.insertText(completion)
             self.setTextCursor(cursor)
-
         self.popup.hide()
         self._completing = False
 
     def focusOutEvent(self, event):
+        # 稍微加长延迟，防止点击滚动条时消失
         QTimer.singleShot(200, self.popup.hide)
         super().focusOutEvent(event)
 
 
-# -----------------------
-# 优化后的 LineEdit
-# -----------------------
 class VariableCompletionLineEdit(LineEdit, CompletionMixin):
     def __init__(self, get_variable_list_func, use_qcursor=False, parent=None):
         super().__init__(parent)
@@ -226,26 +260,21 @@ class VariableCompletionLineEdit(LineEdit, CompletionMixin):
         self.init_completion(get_variable_list_func)
 
     def keyPressEvent(self, event):
-        if self.handle_key_event(event):
-            return
+        if self.handle_key_event(event): return
         super().keyPressEvent(event)
 
     def _apply_completion(self, var_name):
         self._completing = True
         pos = self.cursorPosition()
         text = self.text()
-
         dollar_pos, _ = self._get_context_info()
         if dollar_pos is not None:
             has_right_dollar = (pos < len(text) and text[pos] == '$')
-
             left_part = text[:dollar_pos + 1]
             right_part = text[pos:]
-
             completion = var_name if has_right_dollar else f"{var_name}$"
             self.setText(left_part + completion + right_part)
             self.setCursorPosition(dollar_pos + 1 + len(completion))
-
         self.popup.hide()
         self._completing = False
 

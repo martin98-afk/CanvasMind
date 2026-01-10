@@ -5,10 +5,9 @@ from pathlib import Path
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint, QTimer
-from PyQt5.QtWidgets import QWidget, QGraphicsProxyWidget, QApplication, QTextEdit, QLineEdit
+from PyQt5.QtWidgets import QWidget, QApplication, QTextEdit, QLineEdit
 from loguru import logger
-from lsprotocol.types import TextEdit
-from qfluentwidgets import FluentIcon, LineEdit
+from qfluentwidgets import FluentIcon
 
 from app.components.base import GlobalVariableContext
 from app.interfaces.canvas_interaface.constants import TEMPLATE_START_SIZES
@@ -27,7 +26,7 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
 from app.utils.config import Settings
-from app.widgets.category_filter import CategoryFilterDialog
+from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 
 
@@ -192,6 +191,12 @@ class CanvasPage(QWidget):
     @property
     def log_window(self):
         return self.ui_manager.log_window
+
+    def rename_node_vars(self, old_name, new_name):
+        old_names, newe_names = self.global_variables.rename_node_vars(old_name, new_name)
+        for old_name, new_name in zip(old_names, newe_names):
+            self.global_variables_changed.emit(old_name, "delete")
+            self.global_variables_changed.emit(new_name, "add")
 
     def show_intervention_dialog(self, title, message, schema, callback):
         self.canvas_runner.show_intervention_dialog(title, message, schema, callback)
