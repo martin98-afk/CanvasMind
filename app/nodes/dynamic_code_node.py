@@ -12,7 +12,6 @@ from PyQt5 import QtCore
 from loguru import logger
 
 from app.components.base import PropertyType, GlobalVariableContext, ArgumentType, ComponentMessage
-from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.glue_code_templates import GLUE_CODE_TEMPLATES
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE

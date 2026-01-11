@@ -13,13 +13,15 @@ from PyQt5.QtGui import QImage
 from loguru import logger
 
 # 导入业务相关的组件协议
-from app.components.base import PROGRESS_MARKER, ComponentMessage
+from app.components.base import PROGRESS_MARKER, ComponentMessage, PropertyType
 from app.utils.node_logger import NodeLogHandler
 from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
+from app.widgets.node_widget.html_widget import HtmlWidgetWrapper
 
 # 导入图像预览控件
 # 确保该路径指向你之前优化过的那个 ImageWidgetWrapper 所在的模块
 from app.widgets.node_widget.image_widget import ImageWidgetWrapper
+from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 
 
 class NodeSignals(QObject):
@@ -108,7 +110,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
                 try:
                     self.log_capture.log_window.add_log_entry(message)
                 except Exception as e:
-                    logger.error(f"Error sending log to window: {e}")
+                    logger.exception(f"Error sending log to window: {e}")
 
     def _parse_and_filter_logs(self, raw_text):
         """
@@ -133,7 +135,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
                     # 拦截成功后，该行不进入常规 UI 日志面板，保持日志整洁
                     continue
                 except Exception as e:
-                    logger.error(f"解析拦截消息失败: {e}")
+                    logger.exception(f"解析拦截消息失败: {e}")
 
             clean_lines.append(line)
 
@@ -217,7 +219,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
             handler = getattr(self, handler_name, self._handle_unknown_method)
             handler(msg.params, msg)
         except Exception as e:
-            logger.error(f"消息路由失败: {e}")
+            logger.exception(f"消息路由失败: {e}")
 
     def _get_var_key(self, port_name):
         """生成全局变量映射 Key"""
@@ -234,7 +236,8 @@ class BasicNodeWithGlobalProperty(NodeObject):
         """
         try:
             if self._output_values is None: self._output_values = {}
-
+            extra = getattr(msg, 'extra', {})
+            should_display = extra.get('display', False)
             for port_name, info in params.items():
                 new_data = info.get("data")
                 data_type = info.get("data_type", "str")
@@ -242,11 +245,29 @@ class BasicNodeWithGlobalProperty(NodeObject):
                 # --- 动态图像流处理判断 ---
                 is_image = (data_type == "image") or \
                            (isinstance(new_data, str) and new_data.startswith("data:image"))
-
-                if is_image:
-                    self._update_inline_image_widget(port_name, new_data)
-                    # 图像流通常仅作 UI 预览，不需要实时同步庞大的 Base64 字符串到全局变量
-                    continue
+                # 可视化实时输出逻辑
+                if should_display:
+                    if is_image:
+                        self._update_inline_image_widget(port_name, new_data)
+                        # 图像流通常仅作 UI 预览，不需要实时同步庞大的 Base64 字符串到全局变量
+                        continue
+                    current_full_data = self._output_values.get(port_name)
+                    if data_type == "str":
+                        self._update_inline_text_widget(port_name, current_full_data)
+                    elif current_full_data is not None and data_type == "list":
+                        self._update_inline_chart_widget(port_name, current_full_data)
+                elif f"preview_{port_name}" in self.model._custom_prop:
+                    self.model._custom_prop.pop(f"preview_{port_name}")
+                    self.view.remove_widget(self._inline_image_widgets.pop(f"preview_{port_name}"))
+                    self.view.draw_node()
+                elif f"chart_{port_name}" in self.model._custom_prop:
+                    self.model._custom_prop.pop(f"chart_{port_name}")
+                    self.view.remove_widget(self._inline_image_widgets.pop(f"chart_{port_name}"))
+                    self.view.draw_node()
+                elif f"text_{port_name}" in self.model._custom_prop:
+                    self.model._custom_prop.pop(f"text_{port_name}")
+                    self.view.remove_widget(self._inline_image_widgets.pop(f"text_{port_name}"))
+                    self.view.draw_node()
 
                 # --- 标准数据增量同步逻辑 ---
                 old_val = self._output_values.get(port_name)
@@ -272,7 +293,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
             self.signals.stream_data_updated.emit(None)
 
         except Exception as e:
-            logger.error(f"流式结果处理失败: {e}")
+            logger.exception(f"流式结果处理失败: {e}")
 
     def _update_inline_image_widget(self, port_name, image_data):
         """
@@ -280,20 +301,35 @@ class BasicNodeWithGlobalProperty(NodeObject):
         """
         # 1. 如果数据是 Base64 格式，则先转换为 QImage
         processed_val = image_data
-        if isinstance(image_data, str) and image_data.startswith("data:image"):
-            try:
-                # 剥离 data:image/png;base64, 部分
-                _, encoded = image_data.split(",", 1)
-                img_bytes = base64.b64decode(encoded)
-                processed_val = QImage.fromData(img_bytes)
-            except Exception as e:
-                logger.error(f"预览图像 Base64 解码失败: {e}")
-                return
+        # 1. 处理数据格式
+        if isinstance(image_data, str):
+            # 场景 A: Base64 格式
+            if image_data.startswith("data:image"):
+                try:
+                    _, encoded = image_data.split(",", 1)
+                    img_bytes = base64.b64decode(encoded)
+                    processed_val = QImage.fromData(img_bytes)
+                except Exception as e:
+                    logger.exception(f"预览图像 Base64 解码失败: {e}")
+                    return
 
+            # 场景 B: 本地文件路径
+            elif os.path.exists(image_data):
+                try:
+                    # 直接尝试加载路径
+                    img = QImage(image_data)
+                    if img.isNull():
+                        logger.warning(f"无法从路径加载有效图像: {image_data}")
+                        return
+                    processed_val = img
+                except Exception as e:
+                    logger.exception(f"从本地路径加载图像失败: {e}")
+                    return
+
+        widget_name = f"preview_{port_name}"
         # 2. 判断是否已存在该端口的预览控件
-        if port_name not in self._inline_image_widgets:
+        if widget_name not in self._inline_image_widgets:
             # 动态创建一个 ImageWidgetWrapper
-            widget_name = f"preview_{port_name}"
             image_wrapper = ImageWidgetWrapper(
                 parent=self.view,
                 name=widget_name,
@@ -304,15 +340,85 @@ class BasicNodeWithGlobalProperty(NodeObject):
             # 将控件添加到节点 UI。指定 tab 为 'Preview'，若不存在会自动创建
             if widget_name in self.model._custom_prop:
                 self.model._custom_prop.pop(widget_name)
+            self.view.set_proxy_mode(False)
             self.add_custom_widget(image_wrapper, tab='Preview')
-            self._inline_image_widgets[port_name] = image_wrapper
+            self._inline_image_widgets[widget_name] = image_wrapper
 
             # 重要：动态添加 Widget 后必须强制节点重绘，否则节点尺寸不会撑开
             self.view.draw_node()
             logger.info(f"节点已动态添加图像预览控件: {port_name}")
         else:
             # 已存在控件，直接更新其值
-            self._inline_image_widgets[port_name].set_value(processed_val)
+            self._inline_image_widgets[widget_name].set_value(processed_val)
+
+    def _update_inline_text_widget(self, port_name, text_content):
+        """更新实时文本框"""
+        widget_key = f"text_{port_name}"
+        if widget_key not in self._inline_image_widgets:  # 这里可以统一用一个字典管理或新开一个
+            text_widget = TextWidgetWrapper(
+                parent=self.view, name=widget_key, default=f"输出预览: {port_name}",
+                type=PropertyType.MULTILINE, window=self.parent_window
+            )
+            self.add_custom_widget(text_widget, tab='Visual')
+            self._inline_image_widgets[widget_key] = text_widget
+            self.view.draw_node()
+        else:
+            self._inline_image_widgets[widget_key].set_value(text_content)
+
+    def _update_inline_chart_widget(self, port_name, list_data):
+        """更新 ECharts 图表"""
+        widget_key = f"chart_{port_name}"
+
+        # 生成 ECharts HTML (复用你提供的 pyecharts 逻辑)
+        html_content = self._generate_echarts_html(port_name, list_data)
+
+        if widget_key not in self._inline_image_widgets:
+            chart_widget = HtmlWidgetWrapper(
+                parent=self.view,
+                name=widget_key,
+                default=html_content,
+                window=self.parent_window
+            )
+            if widget_key in self.model._custom_prop:
+                self.model._custom_prop.pop(widget_key)
+            self.view.set_proxy_mode(False)
+            self.add_custom_widget(chart_widget, tab='Visual')
+            self._inline_image_widgets[widget_key] = chart_widget
+            self.view.draw_node()
+        else:
+            self._inline_image_widgets[widget_key].set_value(html_content)
+
+    def _generate_echarts_html(self, title, data):
+        """将列表数据转换为 pyecharts HTML 字符串"""
+        from pyecharts import options as opts
+        from pyecharts.charts import Line
+        from pyecharts.globals import ThemeType
+
+        if not isinstance(data, list) or len(data) == 0:
+            return ""
+
+        x_data = list(range(1, len(data) + 1))
+
+        chart = Line(init_opts=opts.InitOpts(
+            width="500px", height="280px",  # 适应小窗
+            theme=ThemeType.DARK,
+            bg_color="transparent"
+        ))
+        chart.add_xaxis(x_data)
+        chart.add_yaxis(
+            series_name=title,
+            y_axis=data,
+            is_smooth=True,
+            linestyle_opts=opts.LineStyleOpts(width=2),
+            label_opts=opts.LabelOpts(is_show=False)
+        )
+        chart.set_global_opts(
+            title_opts=opts.TitleOpts(title=title, title_textstyle_opts=opts.TextStyleOpts(font_size=12, color="#eee")),
+            legend_opts=opts.LegendOpts(is_show=False),
+            xaxis_opts=opts.AxisOpts(type_="value"),
+            yaxis_opts=opts.AxisOpts(splitline_opts=opts.SplitLineOpts(is_show=True))
+        )
+        return chart.render_embed()
 
     # =========================== 变量同步与节流逻辑 =================================
 

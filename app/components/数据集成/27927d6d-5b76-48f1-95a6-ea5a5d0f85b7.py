@@ -26,4 +26,17 @@ class Component(BaseComponent):
     ]
 
     def run(self, params, inputs=None):
+        file_path = params.dict().get("file_upload")
+        if file_path.endswith("png") or file_path.endswith("jpg") or file_path.endswith("jpeg"):
+            # 使用特定格式通知主进程拦截
+            self.emit_custom_message(
+                method="stream.output",
+                params={
+                    "file": {
+                        "data": file_path,
+                        "data_type": "image"
+                    }
+                },
+                extra={"display": True}
+            )
         return {"file": "upload_file_placeholder"}
