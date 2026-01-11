@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import QObject, pyqtSignal, Qt
-from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
+from PyQt5.QtCore import Qt
+
+from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NoStatusNode
+from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
-from app.widgets.node_widget.html_widget import HtmlWidgetWrapper
 from app.widgets.node_widget.universal_display_widget import UniversalWidgetWrapper
 
 
 def create_media_node(parent_window):
 
-    class MediaNode(CustomBaseNode, NoStatusNode, BasicNodeWithGlobalProperty):
+    class MediaNode(CustomBaseNode, NoStatusNode):
         category: str = "可视化"
         __identifier__ = 'visualize'
         NODE_NAME = '多媒体展示节点'
@@ -49,7 +50,7 @@ def create_media_node(parent_window):
                 # 无论如何都更新 HTML 内容
                 media_widget.set_value(html)
 
-                # ⭐ 只有在 execute 触发时，should_play 才会为 True
+                # 只有在 execute 触发时，should_play 才会为 True
                 if should_play:
                     media_widget.get_custom_widget().play()
 
@@ -82,7 +83,6 @@ def create_media_node(parent_window):
                 self._trigger_media_update(should_play=False)
 
         def execute_sync(self, *args, **kwargs):
-            self.init_logger()
             html_val = ""
             port = self.get_input("data")
             if port and port.connected_ports():
@@ -92,6 +92,5 @@ def create_media_node(parent_window):
 
             # ✅ 只有在这里，我们显式传入 True 触发播放
             self.signals.htmlReady.emit(html_val, True)
-            self.clear_output_value()
 
     return MediaNode

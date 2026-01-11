@@ -14,13 +14,14 @@ from qfluentwidgets import MessageBox
 # --- 其他原有导入 ---
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext, \
     COMPONENT_IMPORT_CODE, resource_path
-from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
+from app.nodes.status_node import StatusNode
 from app.scan_components import ComponentScanner
 from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import draw_square_port, draw_special_outputport, \
     _safe_load_pickle, kill_proc_tree  # 假设 resource_path 也在 utils
+from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 # 导入代码编辑器组件
@@ -33,54 +34,10 @@ from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 from app.widgets.node_widget.variable_combo_widget import VarComboBoxWidgetWrapper
 
 
-def _is_import_error(proc_or_result, error_file_path):
-    """判断是否为 ImportError"""
-    if os.path.exists(error_file_path):
-        try:
-            with open(error_file_path, 'rb') as f:
-                error_info = pickle.load(f)
-            return error_info.get("type") == "ImportError"
-        except Exception:
-            pass
-    # 回退：检查 stderr（如果 proc 已结束）
-    if hasattr(proc_or_result, 'stderr') and proc_or_result.stderr:
-        return "ImportError" in proc_or_result.stderr
-    return False
-
-
-def _install_requirements(python_executable, requirements_str, logger=logger):
-    """安装依赖包"""
-    if not requirements_str.strip():
-        logger.warning("组件 requirements 为空，跳过安装。")
-        return
-    packages = [pkg.strip() for pkg in requirements_str.split(',') if pkg.strip()]
-    if not packages:
-        return
-    logger.info(f"检测到 ImportError，开始安装依赖: {packages}")
-    for pkg in packages:
-        try:
-            logger.info(f"正在安装 {pkg} ...")
-            subprocess.run(
-                [python_executable, "-m", "pip", "install", pkg],
-                capture_output=True,
-                text=True,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                check=True,
-                timeout=300
-            )
-            logger.info(f"✅ 安装 {pkg} 成功。")
-        except subprocess.TimeoutExpired:
-            logger.error(f"❌ 安装 {pkg} 超时。")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"❌ 安装 {pkg} 失败: {e.stderr}")
-        except Exception as e:
-            logger.error(f"❌ 安装 {pkg} 异常: {e}")
-
-
 def create_node_class(full_path, file_path, parent_window=None):
     """返回一个高性能、支持独立环境执行的动态节点类"""
 
-    class DynamicNode(CustomBaseNode, BasicNodeWithGlobalProperty):
+    class DynamicNode(CustomBaseNode, StatusNode):
         __identifier__ = 'dynamic'
         NODE_NAME = parent_window.component_map[full_path].name
         FULL_PATH = full_path
@@ -360,6 +317,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             在独立Python环境中执行组件
             :param check_cancel: 可选回调函数，返回 True 表示应取消执行
             """
+            self.clear_output_value()
             if not hasattr(self, "log_capture"):
                 self.init_logger()
             if python_executable is None:
@@ -500,7 +458,9 @@ def create_node_class(full_path, file_path, parent_window=None):
                     for port in comp_obj.outputs:
                         if port.type != ArgumentType.UPLOAD:
                             self.set_output_value(port.name, output.get(port.name))
-                    self._trigger_ui_update()
+                        else:
+                            self.set_output_value(port.name, self.model.get_property(f"{port.name}_upload"))
+                    self._sync_buffer_to_global()
                     return output
                 elif os.path.exists(error_path):
                     error_info = _safe_load_pickle(error_path)

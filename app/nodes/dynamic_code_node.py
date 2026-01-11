@@ -8,22 +8,22 @@ import time
 import uuid
 from pathlib import Path
 
-from NodeGraphQt import BaseNode
 from PyQt5 import QtCore
 from loguru import logger
 
 from app.components.base import PropertyType, GlobalVariableContext, ArgumentType, ComponentMessage
-from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
+from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.scheduler.expression_engine import ExpressionEngine
-from app.utils.utils import resource_path, draw_special_outputport, canvas_file_dump_path, _safe_load_pickle, \
-    kill_proc_tree
-from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
-from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
-from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
-from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
-from .status_node import StatusNode
 from app.templates.glue_code_templates import GLUE_CODE_TEMPLATES
+from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
+from app.utils.utils import draw_special_outputport, _safe_load_pickle, \
+    kill_proc_tree
+from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
+from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
+from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
+from .status_node import StatusNode
+from ..widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 
 # 在 app/components 下创建 .temp 目录（隐藏目录）
 TEMP_COMPONENTS_DIR = Path(__file__).parent.parent / "components" / ".temp"
@@ -52,7 +52,7 @@ _TEMP_COMPONENT_TEMPLATE = '''{import_code}class DynamicComponent(BaseComponent)
 
 def create_dynamic_code_node(parent_window=None):
 
-    class DynamicCodeNode(CustomBaseNode, StatusNode, BasicNodeWithGlobalProperty):
+    class DynamicCodeNode(CustomBaseNode, StatusNode):
         __identifier__ = 'dynamic'
         NODE_NAME = "代码编辑"
         FULL_PATH = f"代码执行/{NODE_NAME}"
@@ -437,6 +437,7 @@ def create_dynamic_code_node(parent_window=None):
         # === 关键：重写 execute_sync，使用动态代码模板 ===
         def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None, global_variable=None):
             try:
+                self.clear_output_value()
                 self.init_logger()
                 temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
                 temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
@@ -546,7 +547,7 @@ def create_dynamic_code_node(parent_window=None):
                     for port in self.output_ports():
                         if port.name() in output:
                             self.set_output_value(port.name(), output[port.name()])
-                    self._trigger_ui_update()
+                    self._sync_buffer_to_global()
                     return output
                 elif os.path.exists(error_path):
                     error_info = _safe_load_pickle(error_path)

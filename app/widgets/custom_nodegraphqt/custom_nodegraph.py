@@ -22,6 +22,7 @@ from loguru import logger
 from qtpy import QtGui, QtCore, QtWidgets
 
 from app.nodes.sticky_note import StickyNoteNode
+from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomLivePipeItem, CustomPipeItem
@@ -608,6 +609,57 @@ class CustomNodeGraph(NodeGraph):
             return
         self.node_selected.emit(node)
 
+    def copy_nodes(self, nodes=None):
+        """
+        Copy nodes to the clipboard as a JSON formatted ``str``.
+
+        See Also:
+            :meth:`NodeGraph.cut_nodes`
+
+        Args:
+            nodes (list[NodeGraphQt.BaseNode]):
+                list of nodes (default: selected nodes).
+        """
+        nodes = nodes or self.selected_nodes()
+        if not nodes:
+            return False
+        clipboard = QtWidgets.QApplication.clipboard()
+        serial_data = self._serialize(nodes)
+        serial_str = json.dumps(serialize_for_json(serial_data))
+        if serial_str:
+            clipboard.setText(serial_str)
+            return True
+        return False
+
+    def paste_nodes(self, adjust_graph_style=True):
+        """
+        Pastes nodes copied from the clipboard.
+
+        Args:
+            adjust_graph_style (bool): if true adjust the node graph properties
+                                        other wise only the nodes are pasted.
+        Returns:
+            list[NodeGraphQt.BaseNode]: list of pasted node instances.
+        """
+        clipboard = QtWidgets.QApplication.clipboard()
+        cb_text = clipboard.text()
+        if not cb_text:
+            return
+
+        try:
+            serial_data = deserialize_from_json(json.loads(cb_text))
+        except json.decoder.JSONDecodeError as e:
+            print('ERROR: Can\'t Decode Clipboard Data:\n'
+                  '"{}"'.format(cb_text))
+            return
+
+        self._undo_stack.beginMacro('pasted nodes')
+        self.clear_selection()
+        nodes = self._deserialize(serial_data, relative_pos=True, adjust_graph_style=adjust_graph_style)
+        [n.set_selected(True) for n in nodes]
+        self._undo_stack.endMacro()
+        return nodes
+
     def _deserialize(self, data, relative_pos=False, pos=None, adjust_graph_style=True):
         """
         deserialize node data.
@@ -689,6 +741,7 @@ class CustomNodeGraph(NodeGraph):
                     try:
                         node.model.set_property(prop, val)
                     except:
+                        node.model.add_property(prop, val)
                         logger.warning(traceback.format_exc())
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
