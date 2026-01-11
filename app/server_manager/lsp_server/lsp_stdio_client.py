@@ -4,6 +4,7 @@ import time
 import json
 import os
 import queue
+from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, QProcess, QTimer, QByteArray
@@ -34,6 +35,8 @@ class LspClientManager(QThread):
     def __init__(self, python_path: Optional[str] = None, parent: Optional[QObject] = None):
         super().__init__(parent)
         self.python_path = str(python_path) if python_path else "python"
+        # 自动获取当前工作目录作为根目录，或者传入实际路径
+        self.project_root = str(Path(__file__).parent.parent.parent.parent)
         self.process: Optional[QProcess] = None
         self.version = 0
         self.uri = "file:///tmp/editor.py"
@@ -111,6 +114,7 @@ class LspClientManager(QThread):
                     "plugins": {
                         "jedi": {
                             "environment": self.python_path,
+                            "extra_paths": [self.project_root],
                             "fast_parser": True,
                         },
                         "jedi_completion": {
