@@ -3,6 +3,8 @@ import time
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 
+from app.utils.utils import get_pinyin_search_keys
+
 try:
     from pypinyin import pinyin, Style
 except ImportError:
@@ -154,12 +156,6 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.setFixedSize(420, 450)
         self.search_line.installEventFilter(self)
 
-    def _get_pinyin_keys(self, text):
-        if not pinyin or not text: return ""
-        first = "".join([i[0][0] for i in pinyin(text, style=Style.FIRST_LETTER)])
-        full = "".join([i[0] for i in pinyin(text, style=Style.NORMAL)])
-        return f"{first} {full}".lower()
-
     def update_cache(self):
         """仅在节点定义发生变化或初始化时调用一次，大幅提升响应速度"""
         self._cached_data = []
@@ -170,7 +166,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
         for i in range(root.childCount()):
             cat_item = root.child(i)
             cat_name = cat_item.text(0)
-            cat_pinyin = self._get_pinyin_keys(cat_name)
+            cat_pinyin = get_pinyin_search_keys(cat_name)
 
             for j in range(cat_item.childCount()):
                 node_item = cat_item.child(j)
@@ -178,7 +174,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
                 node_id = node_item.data(0, Qt.UserRole + 1)
                 node_type = self._graph.parent().node_type_map.get(node_id)  # 这里的映射路径根据你实际调整
 
-                py_keys = self._get_pinyin_keys(node_name)
+                py_keys = get_pinyin_search_keys(node_name)
 
                 self._cached_data.append({
                     "type": "node",
@@ -196,7 +192,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
                     "id": t_name,
                     "name": t_name,
                     "category": "Template 模板",
-                    "search_keys": f"{t_name} 模板 {self._get_pinyin_keys(t_name)}".lower()
+                    "search_keys": f"{t_name} 模板 {get_pinyin_search_keys(t_name)}".lower()
                 })
 
     def populate_ui(self):
