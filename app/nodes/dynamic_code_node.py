@@ -52,7 +52,7 @@ _TEMP_COMPONENT_TEMPLATE = '''{import_code}class DynamicComponent(BaseComponent)
 
 def create_dynamic_code_node(parent_window=None):
 
-    class DynamicCodeNode(CustomBaseNode, StatusNode, BasicNodeWithGlobalProperty):
+    class DynamicCodeNode(CustomBaseNode, StatusNode):
         __identifier__ = 'dynamic'
         NODE_NAME = "代码编辑"
         FULL_PATH = f"代码执行/{NODE_NAME}"

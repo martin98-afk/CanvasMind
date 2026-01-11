@@ -85,7 +85,6 @@ class NodeOperations:
             # 普通节点
             for full_path, comp_cls in component_map.items():
                 node_class = create_node_class(full_path, file_map.get(full_path), self.parent)
-                node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
                 node_class.__name__ = f"StatusDynamicNode_{comp_cls.uuid}"
                 node_class_names.append(node_class.__name__)
                 self.graph.register_node(node_class)

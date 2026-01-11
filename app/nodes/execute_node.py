@@ -14,7 +14,7 @@ from qfluentwidgets import MessageBox
 # --- 其他原有导入 ---
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext, \
     COMPONENT_IMPORT_CODE, resource_path
-from app.nodes.base_node import BasicNodeWithGlobalProperty
+from app.nodes.status_node import StatusNode
 from app.scan_components import ComponentScanner
 from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
@@ -81,7 +81,7 @@ def _install_requirements(python_executable, requirements_str, logger=logger):
 def create_node_class(full_path, file_path, parent_window=None):
     """返回一个高性能、支持独立环境执行的动态节点类"""
 
-    class DynamicNode(CustomBaseNode, BasicNodeWithGlobalProperty):
+    class DynamicNode(CustomBaseNode, StatusNode):
         __identifier__ = 'dynamic'
         NODE_NAME = parent_window.component_map[full_path].name
         FULL_PATH = full_path

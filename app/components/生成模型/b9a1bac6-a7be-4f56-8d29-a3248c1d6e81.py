@@ -61,9 +61,12 @@ class SDTextToImageComponent(BaseComponent):
             step=1.0,
         ),
         "cfg": PropertyDefinition(
-            type=PropertyType.FLOAT,
-            default=7.5,
+            type=PropertyType.RANGE,
+            default="7.0",
             label="提示词引导系数(CFG)",
+            min=0.0,
+            max=100.0,
+            step=1.0,
         ),
         "seed": PropertyDefinition(
             type=PropertyType.INT,
