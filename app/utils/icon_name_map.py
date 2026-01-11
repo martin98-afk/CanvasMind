@@ -19,6 +19,7 @@ ICON_NAME_TO_FILE = {
     "logoico": "logoico.ico",
     "ls": "ls.svg",
     "Miniconda": "Miniconda.svg",
+    "node_base": "node_base.png",
     "number": "number.svg",
     "Picture": "Picture.svg",
     "python": "python.svg",

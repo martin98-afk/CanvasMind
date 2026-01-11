@@ -1,5 +1,6 @@
 # /app/interfaces/canvas_interface/node_operations.py
 import uuid
+
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon
 
@@ -7,13 +8,13 @@ from app.interfaces.canvas_interaface.widgets.message_manager import MessageMana
 from app.nodes.backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
 from app.nodes.branch_node import create_branch_node
 from app.nodes.dynamic_code_node import create_dynamic_code_node
-from app.nodes.multimedia_node import create_media_node
 from app.nodes.execute_node import create_node_class
+from app.nodes.multimedia_node import create_media_node
 from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
-from app.nodes.status_node import StatusNode
 from app.nodes.sticky_note import StickyNoteNode
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_icon
+from app.widgets.custom_nodegraphqt.graph_menu import setup_graph_menu
 from .logger import get_logger
 
 logger = get_logger("NodeOperations")
@@ -95,6 +96,7 @@ class NodeOperations:
             logger.exception("register_components 执行失败！")  # ← 关键
 
     def setup_context_menu(self):
+        setup_graph_menu(self.graph, self.parent.nav_panel, self.parent)
         # 画布右键菜单注册
         graph_menu = self.graph.get_context_menu('graph')
         graph_menu.add_command('运行工作流', self.parent.canvas_runner.run_workflow, 'Ctrl+R')

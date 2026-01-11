@@ -114,6 +114,10 @@ class CanvasPage(QWidget):
         self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
         self._connect_signals()
 
+    @property
+    def nav_panel(self):
+        return self.ui_manager.nav_panel
+
     # 代理方法
     @property
     def running_projects_changed(self):
