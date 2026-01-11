@@ -21,7 +21,7 @@ from app.utils.utils import get_icon
 
 class LSPCodeEditor(CodeEditor):
     lsp_signal = pyqtSignal(str)
-    CODE_PREFIX = """from app.components import BaseComponent, ArgumentType, PropertyType, PortDefinition, PropertyDefinition, ConnectionType\n\n\n"""
+    CODE_PREFIX = """from app.components.base import BaseComponent, ArgumentType, PropertyType, PortDefinition, PropertyDefinition, ConnectionType\n\n\n"""
 
     def __init__(self, parent=None, code_parent=None, python_exe_path=None, dialog=None):
         super().__init__()
@@ -68,7 +68,7 @@ class LSPCodeEditor(CodeEditor):
             folding=True,
             markers=True,
             automatic_completions=True,
-            automatic_completions_after_chars=1,
+            automatic_completions_after_chars=2,
             completions_hint=True,
             completions_hint_after_ms=500,
             hover_hints=True,
@@ -77,7 +77,7 @@ class LSPCodeEditor(CodeEditor):
             underline_errors=True,
             highlight_current_line=True,
         )
-
+        self.auto_completion_characters = ["."]
         # 按钮
         btn_text = "缩小" if dialog else "放大"
         self.fullscreen_button = TransparentToolButton(get_icon(btn_text), parent=self)
@@ -85,6 +85,7 @@ class LSPCodeEditor(CodeEditor):
         self._update_button_position()
 
         # --- 关键：监听内容变更 ---
+        self.cursorPositionChanged.connect(self._on_cursor_position_changed)
         self.document().contentsChange.connect(self._on_document_contents_change)
 
     def _init_timers(self):
@@ -302,48 +303,58 @@ class LSPCodeEditor(CodeEditor):
 
     def _on_lsp_completions_ready(self, completion_items: List[Dict]):
         """
-        处理补全结果：修正锚点（point）位置，防止点（.）被覆盖
+        处理补全结果：极致防吞点逻辑
         """
         cursor = self.textCursor()
         current_pos = cursor.position()
         text = self.toPlainText()
 
-        # 计算补全起始位置（锚点）：
-        # 如果光标前是字母/数字，则锚点是该单词起始位置；
-        # 如果光标前是点（.），则锚点就是光标当前位置。
+        # 1. 基础起始位置计算
         start_pos = current_pos
         while start_pos > 0 and (text[start_pos - 1].isalnum() or text[start_pos - 1] == '_'):
             start_pos -= 1
+
+        # 2. 核心修复：点号守卫
+        # 如果光标就在点号后面，强制将 start_pos 设为当前位置
+        # 这样替换范围的长度就是 0，不会触碰点号
+        is_dot_trigger = False
+        if current_pos > 0 and text[current_pos - 1] == '.':
+            start_pos = current_pos
+            is_dot_trigger = True
 
         clean_items = []
         for item in completion_items:
             label = item.get('label', '')
             kind = item.get('kind', 1)
 
-            # 基础文本处理
-            base_text = item.get('insertText', label)
-            if '(' in base_text:
-                base_text = base_text.split('(')[0]
+            # 获取插入文本
+            insert_text = item.get('insertText', label)
 
-            insert_text = base_text
+            # 3. 如果是点号触发，且 insertText 开头有句点，则去掉它
+            # 防止出现 np..array 或替换逻辑误判
+            if is_dot_trigger and insert_text.startswith('.'):
+                insert_text = insert_text[1:]
+
+            # 处理括号逻辑
             insert_format = 1
+            if kind in (2, 3):  # Method, Function
+                base_text = insert_text
+                if '(' in base_text:
+                    base_text = base_text.split('(')[0]
 
-            # 智能括号
-            if kind in (2, 3):
+                # 检查是否需要参数
                 has_args = False
-                params_match = re.search(r'\((.*)\)', label)
-                if params_match:
-                    params_text = params_match.group(1).strip()
-                    if params_text and params_text != 'self':
-                        has_args = True
+                detail = item.get('detail', '')
+                if '(' in detail and '()' not in detail:
+                    has_args = True
 
                 if has_args:
                     insert_text = f"{base_text}($1)"
                     insert_format = 2
                 else:
                     insert_text = f"{base_text}()"
-                    insert_format = 1
 
+            # 构造 Spyder 格式
             item_data = {
                 'label': label,
                 'insertText': insert_text,
@@ -353,7 +364,7 @@ class LSPCodeEditor(CodeEditor):
                 'kind': kind,
                 'documentation': item.get('documentation', ''),
                 'detail': item.get('detail', ''),
-                'point': start_pos,  # 重要：此处设为起始位置，保证不吞点
+                'point': start_pos,  # 统一使用修正后的锚点
                 'resolve': True
             }
 
@@ -362,10 +373,16 @@ class LSPCodeEditor(CodeEditor):
 
             clean_items.append(item_data)
 
-        # completion_args 同样需要使用 start_pos
+        # 4. 这里的锚点必须与 item 里的 point 完全一致
         self.completion_args = (start_pos, True)
+
         try:
-            self.process_completion({"params": clean_items})
+            # 检查是否有有效项
+            if clean_items:
+                self.process_completion({"params": clean_items})
+            else:
+                if self.completion_widget:
+                    self.completion_widget.hide()
         except Exception as e:
             logger.error(f"Error processing completions: {e}")
 
@@ -538,11 +555,32 @@ class LSPCodeEditor(CodeEditor):
         font = QFont(self._font_family, self._current_font_size)
         self.set_font(font)
 
+    def _on_cursor_position_changed(self):
+        if not self._lsp_ready:
+            return
+
+        cursor = self.textCursor()
+        pos = cursor.position()
+        text = self.toPlainText()
+
+        # 逻辑：如果光标左侧紧挨着 '(' 或者 ','，就说明可能需要签名提示
+        if pos > 0:
+            prev_char = text[pos - 1]
+            if prev_char in ('(', ','):
+                # 使用定时器防抖，避免光标快速移动时频繁请求
+                self._signature_timer.start(100)
 
     def keyPressEvent(self, event):
         key = event.key()
         txt = event.text()
-
+        # 在字符已经进入文档后，再判断
+        if self._lsp_ready:
+            # 如果刚才输入的是左括号或逗号
+            if txt in ('(', ','):
+                self._signature_timer.start(50)
+            # 或者是回车（有时在函数参数里换行也需要提示）
+            elif key in (Qt.Key_Return, Qt.Key_Enter):
+                self._signature_timer.start(50)
         if key in (Qt.Key_Return, Qt.Key_Enter) and not event.modifiers():
             cursor = self.textCursor()
             block = cursor.block()
@@ -575,7 +613,6 @@ class LSPCodeEditor(CodeEditor):
             self.format_document()
             return
 
-        if txt in ('(', ',') and self._lsp_ready: self._signature_timer.start(50)
         if txt and self._lsp_ready: self._hover_timer.start(300)
 
         super().keyPressEvent(event)

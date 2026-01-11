@@ -15,7 +15,7 @@ from app.interfaces.canvas_interaface import CanvasPage
 from app.scan_components import ComponentScanner
 from app.scheduler.node_recommendation_engine import NodeRecommendationEngine
 from app.utils.config import Settings
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, get_pinyin_search_keys
 from app.widgets.card_widget.workflow_card import WorkflowCard, ActionCard
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
 from app.widgets.side_dock_area.plugins.canvas_node_log.main_widget import LogToolWindow
@@ -148,6 +148,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self.setObjectName("workflow_canvas_gallery_page")
         self.config = Settings.get_instance()
         self.parent_window = parent
+        self._pinyin_cache = {}
         self.opened_workflows = {}
         self._is_loading = False
         self._filter_text = ""
@@ -213,6 +214,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self.search_line_edit.setPlaceholderText("搜索画布名称...")
         self.search_line_edit.setFixedWidth(220)
         self.search_line_edit.textChanged.connect(self._on_search_changed)
+        self.search_line_edit.searchSignal.connect(self._on_search_changed)
+        self.search_line_edit.clearSignal.connect(self._on_search_changed)
 
         top_bar.addStretch()
         top_bar.addWidget(self.search_line_edit)
@@ -457,9 +460,14 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 ctime_ts = info.get('ctime_ts', 0)
                 mtime_ts = info.get('mtime_ts', 0)
                 name = wf_path.parent.name
+                if self._filter_text:
+                    # 从缓存获取拼音数据，减少计算开销
+                    if name not in self._pinyin_cache:
+                        self._pinyin_cache[name] = get_pinyin_search_keys(name)
 
-                if self._filter_text and self._filter_text not in name.lower():
-                    continue
+                    search_keys = self._pinyin_cache[name]
+                    if self._filter_text not in search_keys:
+                        continue
 
                 file_with_info.append((wf_path, ctime_ts, mtime_ts, name))
 
@@ -638,7 +646,9 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 self.flow_layout.removeWidget(old_card)
                 old_card.hide()
                 old_card.deleteLater()
-
+            old_name = src_path.parent.name
+            if old_name in self._pinyin_cache:
+                del self._pinyin_cache[old_name]
             InfoBar.success("重命名成功", f"已重命名为 {new_name}", parent=self)
             self._schedule_refresh()
         except Exception as e:

@@ -11,6 +11,7 @@ from qfluentwidgets import FluentIcon as FIF, TransparentToggleToolButton, Round
 from qfluentwidgets import TreeWidget, SearchLineEdit, FluentStyleSheet, DropDownPushButton
 
 from app.scan_components import ComponentScanner
+from app.utils.utils import get_pinyin_search_keys
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 
 
@@ -69,6 +70,8 @@ class DraggableTreePanel(QWidget):
         self.search_box.setClearButtonEnabled(True)
         FluentStyleSheet.LINE_EDIT.apply(self.search_box)
         self.search_box.textChanged.connect(self._on_search_text_changed)
+        self.search_box.searchSignal.connect(self._on_search_text_changed)
+        self.search_box.clearSignal.connect(self._on_search_text_changed)
         self.search_box.hide()  # 初始隐藏
 
         # 组件树
@@ -256,15 +259,19 @@ class DraggableTreeWidget(TreeWidget):
             if not isinstance(name, str):
                 name = comp_cls.NODE_NAME
 
-            last_used = self.get_last_used_time(full_path)
-            is_fav = self.is_favorite(full_path)
+            # --- 预计算拼音关键词 ---
+            py_keys = get_pinyin_search_keys(name)
+            cat_py = get_pinyin_search_keys(category)
+            search_metadata = f"{name} {category} {py_keys} {cat_py}".lower()
+            # ---------------------------
 
             all_components.append({
                 'full_path': full_path,
                 'name': name,
                 'category': category,
-                'last_used': last_used,
-                'is_fav': is_fav
+                'last_used': self.get_last_used_time(full_path),
+                'is_fav': self.is_favorite(full_path),
+                'search_metadata': search_metadata
             })
 
         # 应用筛选
@@ -347,8 +354,9 @@ class DraggableTreeWidget(TreeWidget):
 
                     group_item.setExpanded(True)
 
+
         else:
-            # 按类别分组
+            filtered.sort(key=lambda x: (x['category'], x['name']))
             categories = {}
             for comp in filtered:
                 category = comp['category']
@@ -362,6 +370,9 @@ class DraggableTreeWidget(TreeWidget):
 
                 comp_item = QTreeWidgetItem([comp['name']])
                 comp_item.setData(0, Qt.UserRole + 1, comp['full_path'])
+                # --- 绑定拼音元数据 ---
+                comp_item.setData(0, Qt.UserRole + 2, comp['search_metadata'])
+                # -------------------------
                 if comp['is_fav']:
                     comp_item.setText(0, f"★ {comp_item.text(0)}")
                 cat_item.addChild(comp_item)
@@ -590,24 +601,34 @@ class DraggableTreeWidget(TreeWidget):
         self.refresh_components()
 
     def filter_items(self, keyword: str):
+        """支持拼音和元数据的增强过滤"""
         keyword = keyword.strip().lower()
         if not keyword:
             for item in self._all_items:
                 item.setHidden(False)
-                if item.parent():
-                    item.parent().setExpanded(True)
+                if item.parent(): item.parent().setExpanded(True)
             return
 
+        # 先全部隐藏
         for item in self._all_items:
             item.setHidden(True)
 
+        # 遍历叶子节点检查匹配
         for item in self._all_items:
+            # 只针对组件（有父级的项）进行匹配，类别项根据子项自动显示
             if not item.parent():
                 continue
-            name = item.text(0).lower()
-            if keyword in name:
+
+            # 获取存储的拼音元数据
+            search_data = item.data(0, Qt.UserRole + 2)
+            if not search_data:
+                search_data = item.text(0).lower()
+
+            if keyword in search_data:
                 item.setHidden(False)
-                parent = item.parent()
-                if parent:
-                    parent.setHidden(False)
-                    parent.setExpanded(True)
+                # 递归显示并展开父级
+                p = item.parent()
+                while p:
+                    p.setHidden(False)
+                    p.setExpanded(True)
+                    p = p.parent()

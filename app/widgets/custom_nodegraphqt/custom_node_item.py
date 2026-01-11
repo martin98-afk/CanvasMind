@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from NodeGraphQt.constants import NodeEnum, ICON_NODE_BASE, ITEM_CACHE_MODE, PortTypeEnum, LayoutDirectionEnum, \
+from NodeGraphQt.constants import NodeEnum, ITEM_CACHE_MODE, PortTypeEnum, LayoutDirectionEnum, \
     Z_VAL_NODE
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_base import NodeItem
@@ -19,17 +19,18 @@ class RenameSignal(QtCore.QObject):
 
 class CustomNodeItem(NodeItem):
     _align = None
+    ICON_NODE_BASE = ":/icons/node_base.png"
 
     def __init__(self, name='node', parent=None):
         super(NodeItem, self).__init__(name, parent)
-        pixmap = QtGui.QPixmap(ICON_NODE_BASE)
+        pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
         if pixmap.size().height() > NodeEnum.ICON_SIZE.value:
             pixmap = pixmap.scaledToHeight(
                 28,
                 QtCore.Qt.SmoothTransformation
             )
         self.rename_signal = RenameSignal()
-        self._properties['icon'] = ICON_NODE_BASE
+        self._properties['icon'] = self.ICON_NODE_BASE
         self._icon_item = QtWidgets.QGraphicsPixmapItem(pixmap, self)
         self._icon_item.setTransformationMode(QtCore.Qt.SmoothTransformation)
         self._text_item = NodeTextItem(self.name, self)
@@ -93,7 +94,7 @@ class CustomNodeItem(NodeItem):
             pixmap = QtGui.QPixmap(value)
         else:
             # fallback to default
-            pixmap = QtGui.QPixmap(ICON_NODE_BASE)
+            pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
 
         # 缩放逻辑保持不变
         if not pixmap.isNull():
@@ -103,7 +104,7 @@ class CustomNodeItem(NodeItem):
                 pixmap = pixmap.scaledToWidth(28, QtCore.Qt.SmoothTransformation)
         else:
             # 如果加载失败，使用默认图标
-            pixmap = QtGui.QPixmap(ICON_NODE_BASE)
+            pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
             if pixmap.height() > 28:
                 pixmap = pixmap.scaledToHeight(28, QtCore.Qt.SmoothTransformation)
             if pixmap.width() > 28:

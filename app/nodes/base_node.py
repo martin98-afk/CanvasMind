@@ -240,15 +240,12 @@ class BasicNodeWithGlobalProperty(NodeObject):
                 data_type = info.get("data_type", "str")
 
                 # --- 动态图像流处理判断 ---
-                # 逻辑：如果数据显式声明为 image，或者内容是 Base64 图像
                 is_image = (data_type == "image") or \
                            (isinstance(new_data, str) and new_data.startswith("data:image"))
 
                 if is_image:
                     self._update_inline_image_widget(port_name, new_data)
-                    # 图像流通常仅作 UI 预览，不一定需要实时同步庞大的 Base64 字符串到全局变量中
-                    # 如果需要下游节点继续处理该数据，可以取消下面这一行的注释
-                    # self._output_values[port_name] = new_data
+                    # 图像流通常仅作 UI 预览，不需要实时同步庞大的 Base64 字符串到全局变量
                     continue
 
                 # --- 标准数据增量同步逻辑 ---

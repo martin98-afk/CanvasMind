@@ -20,6 +20,10 @@ from pathlib import Path
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtGui import QIcon
 from loguru import logger
+try:
+    from pypinyin import pinyin, Style
+except ImportError:
+    pinyin = None
 
 from app.utils.icon_name_map import ICON_NAME_TO_FILE
 
@@ -43,6 +47,17 @@ ANSI_COLOR_MAP = {
     '97': '#ffffff',  # 亮白
 }
 _ICON_CACHE = {}   # 缓存图标名 → QIcon 实例
+
+
+def get_pinyin_search_keys(text):
+    """生成拼音全拼和首字母缩写"""
+    if not pinyin or not text:
+        return ""
+    # 提取首字母 (Style.FIRST_LETTER)
+    first_letters = "".join([i[0][0] for i in pinyin(text, style=Style.FIRST_LETTER)])
+    # 提取全拼 (Style.NORMAL)
+    full_pinyin = "".join([i[0] for i in pinyin(text, style=Style.NORMAL)])
+    return f"{first_letters} {full_pinyin}".lower()
 
 
 def kill_proc_tree(pid):

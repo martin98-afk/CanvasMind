@@ -218,6 +218,7 @@ class NodeVariable(BaseModel):
 
 
 class GlobalVariableContext(BaseModel):
+    """全局变量上下文管理器，支持点号和路径访问"""
     env: ExecutionEnvironment = Field(default_factory=ExecutionEnvironment)
     custom: OrderedDict[str, CustomVariable] = Field(default_factory=OrderedDict)
     node_vars: OrderedDict[str, NodeVariable] = Field(default_factory=OrderedDict)
@@ -978,8 +979,19 @@ class DataHandler:
 
 # ========= 组件基类  =========
 class BaseComponent(ABC):
-    """所有组件必须继承此类"""
-    # 组件配置（子类需要定义）
+    """所有自定义组件的基类。
+
+    继承此类并实现 `run` 方法来定义组件逻辑。组件支持自动参数校验、
+    进度推送、人工干预请求以及数据预览。
+
+    Attributes:
+        name (str): 组件显示名称。
+        category (str): 组件分类（如：数据处理、机器学习）。
+        description (str): 组件功能描述。
+        inputs (List[PortDefinition]): 输入端口列表。
+        outputs (List[PortDefinition]): 输出端口列表。
+        properties (Dict[str, PropertyDefinition]): UI 属性配置。
+    """
     name: str = ""
     category: str = ""
     description: str = ""
@@ -987,15 +999,25 @@ class BaseComponent(ABC):
     inputs: List[PortDefinition] = []
     outputs: List[PortDefinition] = []
     properties: Dict[str, PropertyDefinition] = {}
-    logger = logger
+    logger: logger = logger
     global_variable: GlobalVariableContext = GlobalVariableContext()
 
     @abstractmethod
     def run(self, params: BaseModel, inputs: BaseModel = None) -> Dict[str, Any]:
-        """
-        params: 节点属性（来自UI）
-        inputs: 上游输入（key=输入端口名）
-        return: 输出数据（key=输出端口名）
+        """"组件的核心执行逻辑。
+
+        Args:
+            params: 经过校验的属性参数对象。可以通过 `params.key` 或 `params['key']` 访问。
+            inputs: 经过校验的输入端口数据对象。可以通过 `inputs.port_name` 访问。
+
+        Returns:
+            Dict[str, Any]: 字典格式的输出结果，Key 必须与 `outputs` 定义的端口名一致。
+
+        Example:
+            >>> def run(self, params, inputs):
+            >>>     data = inputs.input_data
+            >>>     threshold = params.threshold
+            >>>     return {"output_data": data[data > threshold]}
         """
         pass
 
@@ -1105,8 +1127,12 @@ class BaseComponent(ABC):
 
     # ----------------中间结果流式返回----------------
     def emit_custom_message(self, method: str, params: Dict[str, Any], level=MessageLevel.INFO):
-        """
-        规范化的通信接口
+        """发送自定义协议消息至 UI 端。
+
+        Args:
+            method: 方法标识符，如 'stream.output', 'global_variable.clear'
+            params: 参数负载字典
+            level: 消息严重等级
         """
         msg = ComponentMessage(
             method=method,
@@ -1117,8 +1143,18 @@ class BaseComponent(ABC):
         print(f"{PROGRESS_MARKER}{msg.json()}", flush=True)
 
     def ask_user(self, title: str, message: str, schema: Dict[str, Any] = None) -> Any:
-        """
-        人工干预接口
+        """在组件执行过程中请求人工干预。此方法会阻塞线程直到用户提交。
+
+        Args:
+            title (str): 弹窗标题。
+            message (str): 给用户的提示信息。
+            schema (Dict[str, Any], optional): 动态表单定义，用于收集用户输入，样例："text": {"label": "生成文本确认", "default": "测试文本"}。
+
+        Returns:
+            Any: 用户在 UI 界面提交的数据。
+
+        Raises:
+            ComponentError: 人工干预超时或读取结果失败。
         """
         request_id = str(uuid.uuid4())
         # 获取当前运行目录，这个目录在 execute 脚本中会被设置到环境变量
