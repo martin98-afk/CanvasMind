@@ -168,13 +168,14 @@ class TorchClassifierTrainer(BaseComponent):
             train_losses.append(train_loss)
             accuracies.append(acc)
 
-            if (epoch + 1) % 50 == 0:
+            if (epoch + 1) % 300 == 0:
                 self.emit_custom_message(
                 method="stream.output",
                     params={
                         "training_loss": {"data": train_loss, "data_type": "list"},
                         "accuracy": {"data": acc, "data_type": "list"},
-                    }
+                    },
+                    extra={"display": True}
                 )
                 self.logger.info(f"Epoch [{epoch+1}/{epochs}], Loss: {train_loss:.4f}, Acc: {acc:.2f}%")
 

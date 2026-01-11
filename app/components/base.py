@@ -542,6 +542,10 @@ class PortDefinition(BaseModel):
 class ModelMixin(BaseModel):
     """为输入模型添加 .get() 和 [] 访问方法，兼容字典用法"""
 
+    class Config:
+        # 允许模型接收定义之外的字段
+        extra = 'allow'
+
     def get(self, key: str, default=None):
         # 直接查 __dict__，不触发任何钩子
         if key in self.__dict__:
@@ -1126,7 +1130,7 @@ class BaseComponent(ABC):
         return create_model(model_name, __base__=base_classes, **fields)
 
     # ----------------中间结果流式返回----------------
-    def emit_custom_message(self, method: str, params: Dict[str, Any], level=MessageLevel.INFO):
+    def emit_custom_message(self, method: str, params: Dict[str, Any], level=MessageLevel.INFO, extra={}):
         """发送自定义协议消息至 UI 端。
 
         Args:
@@ -1137,7 +1141,8 @@ class BaseComponent(ABC):
         msg = ComponentMessage(
             method=method,
             params=params,
-            level=level
+            level=level,
+            extra=extra
         )
         # 通过 stdout 发送加密/编码后的 JSON，防止业务日志干扰
         print(f"{PROGRESS_MARKER}{msg.json()}", flush=True)

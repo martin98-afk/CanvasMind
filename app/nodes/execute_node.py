@@ -20,7 +20,7 @@ from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import draw_square_port, draw_special_outputport, \
-    _safe_load_pickle, kill_proc_tree  # 假设 resource_path 也在 utils
+    _safe_load_pickle, kill_proc_tree, serialize_for_json  # 假设 resource_path 也在 utils
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
@@ -130,7 +130,8 @@ def create_node_class(full_path, file_path, parent_window=None):
         def _enable_debug_mode(self):
             """启用调试模式，添加代码编辑器"""
             self.current_code = self.get_current_code()
-
+            if "debug_code" in self.model._custom_prop:
+                self.model._custom_prop.pop("debug_code")
             # 创建代码编辑器控件
             self._debug_widget = CodeEditorWidgetWrapper(
                 parent=self.view,
@@ -144,6 +145,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             self._debug_widget.valueChanged.connect(self._save_debug_code)
 
             # 添加到节点属性面板
+            self.view.set_proxy_mode(False)
             self.add_custom_widget(self._debug_widget, tab='Debug')
 
             logger.info(f"节点 {self.NODE_NAME} ({self.id}) 启用调试模式。")
@@ -324,7 +326,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 raise Exception("未指定Python执行环境。")
 
             # === 收集参数 ===
-            params = {}
+            params = serialize_for_json(self.model._custom_prop)
             # === 组件参数 ===
             properties = comp_obj.get_properties()
             for prop_name, prop_def in properties.items():
