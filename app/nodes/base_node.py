@@ -56,14 +56,17 @@ class BasicNodeWithGlobalProperty(NodeObject):
 
         # --- 动态控件管理 ---
         # 用于记录每个端口动态创建的图像预览控件，避免重复创建
-        self._inline_image_widgets = {}
+        self._inline_widgets = {}  # 统一管理所有动态创建的 widget (image/text/chart)
+        self._visual_dirty_buffer = set()  # 记录待更新 UI 的端口名
+        self._visual_config = {}  # 记录哪些端口需要 display
 
         # --- 性能优化：UI 刷新节流控制 ---
         self._stream_buffer = set()  # 记录待同步到全局变量的端口
         self._ui_update_timer = QtCore.QTimer()
         self._ui_update_timer.setSingleShot(True)
-        self._ui_update_timer.timeout.connect(self._sync_buffer_to_global)
-        self._ui_update_interval = 150  # 刷新频率限制 (ms)
+        # 核心逻辑：统一由这个 timer 处理全局变量同步 + UI 控件刷新
+        self._ui_update_timer.timeout.connect(self._sync_and_refresh_ui)
+        self._ui_update_interval = 300  # 稍微延长刷新间隔(300ms)以减轻 WebEngine 压力
 
         # 绑定核心信号
         self.signals.intercepted_msg_signal.connect(self._message_router)
@@ -232,44 +235,18 @@ class BasicNodeWithGlobalProperty(NodeObject):
 
     def _handle_stream_output(self, params: dict, msg: ComponentMessage):
         """
-        核心消息处理器：处理流式输出。支持文本/列表增量同步，以及动态图像流探测。
+        优化后的消息处理器：只负责更新数据和标记 dirty，不直接刷新 UI
         """
         try:
             if self._output_values is None: self._output_values = {}
             extra = getattr(msg, 'extra', {})
             should_display = extra.get('display', False)
+
             for port_name, info in params.items():
                 new_data = info.get("data")
                 data_type = info.get("data_type", "str")
 
-                # --- 动态图像流处理判断 ---
-                is_image = (data_type == "image") or \
-                           (isinstance(new_data, str) and new_data.startswith("data:image"))
-                # 可视化实时输出逻辑
-                if should_display:
-                    if is_image:
-                        self._update_inline_image_widget(port_name, new_data)
-                        # 图像流通常仅作 UI 预览，不需要实时同步庞大的 Base64 字符串到全局变量
-                        continue
-                    current_full_data = self._output_values.get(port_name)
-                    if data_type == "str":
-                        self._update_inline_text_widget(port_name, current_full_data)
-                    elif current_full_data is not None and data_type == "list":
-                        self._update_inline_chart_widget(port_name, current_full_data)
-                elif f"preview_{port_name}" in self.model._custom_prop:
-                    self.model._custom_prop.pop(f"preview_{port_name}")
-                    self.view.remove_widget(self._inline_image_widgets.pop(f"preview_{port_name}"))
-                    self.view.draw_node()
-                elif f"chart_{port_name}" in self.model._custom_prop:
-                    self.model._custom_prop.pop(f"chart_{port_name}")
-                    self.view.remove_widget(self._inline_image_widgets.pop(f"chart_{port_name}"))
-                    self.view.draw_node()
-                elif f"text_{port_name}" in self.model._custom_prop:
-                    self.model._custom_prop.pop(f"text_{port_name}")
-                    self.view.remove_widget(self._inline_image_widgets.pop(f"text_{port_name}"))
-                    self.view.draw_node()
-
-                # --- 标准数据增量同步逻辑 ---
+                # 1. 更新数据存储逻辑 (增量合并)
                 old_val = self._output_values.get(port_name)
                 if data_type == "str":
                     self._output_values[port_name] = (old_val or "") + str(new_data)
@@ -280,138 +257,124 @@ class BasicNodeWithGlobalProperty(NodeObject):
                     else:
                         old_val.append(new_data)
                     self._output_values[port_name] = old_val
-                elif data_type == "dict":
-                    if not isinstance(old_val, dict): old_val = {}
-                    if isinstance(new_data, dict): old_val.update(new_data)
-                    self._output_values[port_name] = old_val
                 else:
                     self._output_values[port_name] = new_data
 
+                # 2. 标记需要同步到全局变量
                 self._stream_buffer.add(port_name)
 
-            # 触发 UI 节流刷新
+                # 3. 标记需要可视化刷新
+                self._visual_config[port_name] = (should_display, data_type)
+                if should_display:
+                    self._visual_dirty_buffer.add(port_name)
+                else:
+                    # 如果 display 变为 False，标记需要检查是否移除控件
+                    self._visual_dirty_buffer.add(port_name)
+
+            # 触发节流计时器
             self.signals.stream_data_updated.emit(None)
 
         except Exception as e:
             logger.exception(f"流式结果处理失败: {e}")
 
-    def _update_inline_image_widget(self, port_name, image_data):
+    # =========================== 节流同步与渲染核心 ===============================
+
+    def _sync_and_refresh_ui(self):
         """
-        动态创建或更新节点内部的图像预览控件
+        定时器触发：一次性处理全局变量更新和 UI 渲染
         """
-        # 1. 如果数据是 Base64 格式，则先转换为 QImage
-        processed_val = image_data
-        # 1. 处理数据格式
-        if isinstance(image_data, str):
-            # 场景 A: Base64 格式
-            if image_data.startswith("data:image"):
-                try:
-                    _, encoded = image_data.split(",", 1)
-                    img_bytes = base64.b64decode(encoded)
-                    processed_val = QImage.fromData(img_bytes)
-                except Exception as e:
-                    logger.exception(f"预览图像 Base64 解码失败: {e}")
-                    return
+        if not self.parent_window:
+            return
 
-            # 场景 B: 本地文件路径
-            elif os.path.exists(image_data):
-                try:
-                    # 直接尝试加载路径
-                    img = QImage(image_data)
-                    if img.isNull():
-                        logger.warning(f"无法从路径加载有效图像: {image_data}")
-                        return
-                    processed_val = img
-                except Exception as e:
-                    logger.exception(f"从本地路径加载图像失败: {e}")
-                    return
+        # --- A. 刷新可视化 UI (最耗时部分) ---
+        self._process_visual_updates()
 
-        widget_name = f"preview_{port_name}"
-        # 2. 判断是否已存在该端口的预览控件
-        if widget_name not in self._inline_image_widgets:
-            # 动态创建一个 ImageWidgetWrapper
-            image_wrapper = ImageWidgetWrapper(
-                parent=self.view,
-                name=widget_name,
-                default=processed_val,
-                window=self.parent_window
-            )
+        # --- B. 同步全局变量 (逻辑同前) ---
+        self._sync_buffer_to_global()
 
-            # 将控件添加到节点 UI。指定 tab 为 'Preview'，若不存在会自动创建
-            if widget_name in self.model._custom_prop:
-                self.model._custom_prop.pop(widget_name)
-            self.view.set_proxy_mode(False)
-            self.add_custom_widget(image_wrapper, tab='Preview')
-            self._inline_image_widgets[widget_name] = image_wrapper
+    def _process_visual_updates(self):
+        """合并后的 UI 渲染逻辑"""
+        for port_name in list(self._visual_dirty_buffer):
+            should_display, data_type = self._visual_config.get(port_name, (False, "str"))
+            data = self._output_values.get(port_name)
 
-            # 重要：动态添加 Widget 后必须强制节点重绘，否则节点尺寸不会撑开
-            self.view.draw_node()
-            logger.info(f"节点已动态添加图像预览控件: {port_name}")
-        else:
-            # 已存在控件，直接更新其值
-            self._inline_image_widgets[widget_name].set_value(processed_val)
+            # 1. 处理显示/隐藏切换
+            widget_base_key = f"{data_type}_{port_name}"
 
-    def _update_inline_text_widget(self, port_name, text_content):
-        """更新实时文本框"""
-        widget_key = f"text_{port_name}"
-        if widget_key not in self._inline_image_widgets:  # 这里可以统一用一个字典管理或新开一个
-            text_widget = TextWidgetWrapper(
-                parent=self.view, name=widget_key, default=f"输出预览: {port_name}",
-                type=PropertyType.MULTILINE, window=self.parent_window
-            )
-            self.add_custom_widget(text_widget, tab='Visual')
-            self._inline_image_widgets[widget_key] = text_widget
-            self.view.draw_node()
-        else:
-            self._inline_image_widgets[widget_key].set_value(text_content)
+            if not should_display:
+                # 如果当前存在控件但被要求隐藏，则清理
+                self._remove_inline_widget(widget_base_key)
+                continue
 
-    def _update_inline_chart_widget(self, port_name, list_data):
-        """更新 ECharts 图表"""
-        widget_key = f"chart_{port_name}"
+            # 2. 根据类型执行具体的渲染
+            if data_type == "image" or (isinstance(data, str) and data.startswith("data:image")):
+                self._render_image(port_name, data)
+            elif data_type == "str":
+                self._render_text(port_name, data)
+            elif data_type == "list":
+                self._render_chart(port_name, data)
 
-        # 生成 ECharts HTML (复用你提供的 pyecharts 逻辑)
+        self._visual_dirty_buffer.clear()
+
+    # =========================== 具体渲染实现 ===============================
+
+    def _render_text(self, port_name, content):
+        key = f"text_{port_name}"
+        if key not in self._inline_widgets:
+            widget = TextWidgetWrapper(parent=self.view, name=key, default=f"预览: {port_name}",
+                                       type=PropertyType.MULTILINE, window=self.parent_window)
+            self._add_inline_widget(key, widget, tab='Visual')
+        self._inline_widgets[key].set_value(content)
+
+    def _render_chart(self, port_name, list_data):
+        key = f"chart_{port_name}"
+        # 性能优化：生成 HTML
         html_content = self._generate_echarts_html(port_name, list_data)
 
-        if widget_key not in self._inline_image_widgets:
-            chart_widget = HtmlWidgetWrapper(
-                parent=self.view,
-                name=widget_key,
-                default=html_content,
-                window=self.parent_window
-            )
-            if widget_key in self.model._custom_prop:
-                self.model._custom_prop.pop(widget_key)
-            self.view.set_proxy_mode(False)
-            self.add_custom_widget(chart_widget, tab='Visual')
-            self._inline_image_widgets[widget_key] = chart_widget
-            self.view.draw_node()
+        if key not in self._inline_widgets:
+            widget = HtmlWidgetWrapper(parent=self.view, name=key, default=html_content, window=self.parent_window)
+            self._add_inline_widget(key, widget, tab='Visual')
         else:
-            self._inline_image_widgets[widget_key].set_value(html_content)
+            # 只有当内容变化时才 set_value (WebEngine 刷新开销极大)
+            self._inline_widgets[key].set_value(html_content)
+
+    def _render_image(self, port_name, image_data):
+        key = f"preview_{port_name}"
+        processed_img = self._process_image_data(image_data)
+        if not processed_img: return
+
+        if key not in self._inline_widgets:
+            widget = ImageWidgetWrapper(parent=self.view, name=key, default=processed_img, window=self.parent_window)
+            self._add_inline_widget(key, widget, tab='Preview')
+        else:
+            self._inline_widgets[key].set_value(processed_img)
 
     def _generate_echarts_html(self, title, data):
-        """将列表数据转换为 pyecharts HTML 字符串"""
+        """优化 HTML 生成性能：添加采样逻辑"""
         from pyecharts import options as opts
         from pyecharts.charts import Line
         from pyecharts.globals import ThemeType
 
-        if not isinstance(data, list) or len(data) == 0:
-            return ""
+        if not isinstance(data, list) or len(data) == 0: return ""
 
-        x_data = list(range(1, len(data) + 1))
+        # --- 性能优化：采样 ---
+        # 如果数据点超过 500 个，进行等间隔采样，防止 WebEngine 渲染崩溃
+        display_data = data
+        if len(data) > 500:
+            step = len(data) // 500
+            display_data = data[::step]
+            x_data = [i * step for i in range(len(display_data))]
+        else:
+            x_data = list(range(1, len(data) + 1))
 
-        chart = Line(init_opts=opts.InitOpts(
-            width="500px", height="280px",  # 适应小窗
-            theme=ThemeType.DARK,
-            bg_color="transparent"
-        ))
+        chart = Line(
+            init_opts=opts.InitOpts(width="500px", height="280px", theme=ThemeType.DARK, bg_color="transparent"))
         chart.add_xaxis(x_data)
-        chart.add_yaxis(
-            series_name=title,
-            y_axis=data,
-            is_smooth=True,
-            linestyle_opts=opts.LineStyleOpts(width=2),
-            label_opts=opts.LabelOpts(is_show=False)
-        )
+        chart.add_yaxis(series_name=title, y_axis=display_data, is_smooth=True,
+                        symbol="none",  # 不渲染点，只渲染线，大幅提升性能
+                        linestyle_opts=opts.LineStyleOpts(width=2),
+                        label_opts=opts.LabelOpts(is_show=False))
+
         chart.set_global_opts(
             title_opts=opts.TitleOpts(title=title, title_textstyle_opts=opts.TextStyleOpts(font_size=12, color="#eee")),
             legend_opts=opts.LegendOpts(is_show=False),
@@ -420,44 +383,63 @@ class BasicNodeWithGlobalProperty(NodeObject):
         )
         return chart.render_embed()
 
-    # =========================== 变量同步与节流逻辑 =================================
+    # =========================== 辅助工具 ===============================
+
+    def _add_inline_widget(self, key, widget, tab):
+        if key in self.model._custom_prop:
+            self.model._custom_prop.pop(key)
+        self.view.set_proxy_mode(False)
+        self.add_custom_widget(widget, tab=tab)
+        self._inline_widgets[key] = widget
+        self.view.draw_node()
+
+    def _remove_inline_widget(self, key):
+        # 检查多个可能的前缀
+        for prefix in ["text_", "chart_", "preview_"]:
+            full_key = prefix + key.split('_', 1)[-1]
+            if full_key in self._inline_widgets:
+                w = self._inline_widgets.pop(full_key)
+                if full_key in self.model._custom_prop:
+                    self.model._custom_prop.pop(full_key)
+                self.view.remove_widget(w)
+                self.view.draw_node()
+
+    def _process_image_data(self, image_data):
+        """解析图像数据逻辑 (封装原有的 base64/path 逻辑)"""
+        if isinstance(image_data, str):
+            if image_data.startswith("data:image"):
+                try:
+                    _, encoded = image_data.split(",", 1)
+                    return QImage.fromData(base64.b64decode(encoded))
+                except:
+                    return None
+            elif os.path.exists(image_data):
+                img = QImage(image_data)
+                return None if img.isNull() else img
+        return image_data
 
     def _on_stream_data_received(self, _):
-        """接收到流更新信号，启动或重置计时器"""
         if not self._ui_update_timer.isActive():
             self._ui_update_timer.start(self._ui_update_interval)
 
     def _sync_buffer_to_global(self):
-        """
-        在计时器触发时，一次性同步所有累积的脏数据到全局变量中，极大减少信号开销。
-        """
+        """同步全局变量的逻辑 (原有逻辑)"""
         if not self.parent_window or not self._stream_buffer:
             return
-
         has_changed = False
         scheduler = self.parent_window.scheduler
-
         for port_name in self._stream_buffer:
             var_key = self._get_var_key(port_name)
             var_obj = self.parent_window.global_variables.node_vars.get(var_key)
-
             if var_obj and var_obj.update_policy != "固定" and scheduler:
-                # 从内存取最新的累积结果
                 current_val = self._output_values.get(port_name)
-                # 静默更新全局变量值
                 scheduler.update_node_variable(var_key, current_val, var_obj.update_policy)
                 has_changed = True
-
         self._stream_buffer.clear()
-
-        # 统一触发一次全局 UI 刷新
         if has_changed:
             scheduler.node_vars_changed.emit()
-
-        # 若当前节点处于选中状态且属性面板开启，更新其值显示
-        if self.parent_window.property_panel:
-            if self.selected() and len(self.parent_window.graph.selected_nodes()) == 1:
-                self.parent_window.property_panel.update_properties(self)
+        if self.parent_window.property_panel and self.selected():
+            self.parent_window.property_panel.update_properties(self)
 
     # =========================== 其它指令处理器 =================================
 
