@@ -283,22 +283,13 @@ def serialize_for_json(obj, large_list_threshold=1000):
             return obj.serialize()
         except:
             return str(obj)
-    elif hasattr(obj, '__dict__'):
-        # 通用对象：保存类名和 __dict__
-        try:
-            return {
-                "__type__": f"{obj.__class__.__module__}.{obj.__class__.__name__}",
-                "__data__": serialize_for_json(obj.__dict__)
-            }
-        except Exception:
-            return str(obj)
     else:
         # 其他类型：尝试转为字符串
         try:
             json.dumps(obj)  # 测试是否可序列化
             return obj
         except (TypeError, ValueError):
-            return str(obj)
+            return None
 
 
 def deserialize_from_json(obj):
@@ -384,9 +375,6 @@ def deserialize_from_json(obj):
             else:
                 print(f"Unknown ndarray format: {format_type}")
                 return obj
-        elif "__type__" in obj and "__data__" in obj:
-            # 通用对象（通常不重建，只保留字典）
-            return obj["__data__"]
         else:
             return {k: deserialize_from_json(v) for k, v in obj.items()}
     elif isinstance(obj, list):

@@ -296,14 +296,17 @@ class BasicNodeWithGlobalProperty(NodeObject):
         # 2. 判断是否已存在该端口的预览控件
         if port_name not in self._inline_image_widgets:
             # 动态创建一个 ImageWidgetWrapper
+            widget_name = f"preview_{port_name}"
             image_wrapper = ImageWidgetWrapper(
                 parent=self.view,
-                name=f"preview_{port_name}",
+                name=widget_name,
                 default=processed_val,
                 window=self.parent_window
             )
 
             # 将控件添加到节点 UI。指定 tab 为 'Preview'，若不存在会自动创建
+            if widget_name in self.model._custom_prop:
+                self.model._custom_prop.pop(widget_name)
             self.add_custom_widget(image_wrapper, tab='Preview')
             self._inline_image_widgets[port_name] = image_wrapper
 
