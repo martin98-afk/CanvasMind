@@ -16,27 +16,20 @@ ConnectionType = base_module.ConnectionType
 
 
 class SDTextToImageComponent(BaseComponent):
-    name = "SD基础生成器"
+    name = "K采样器"
     category = "生成模型"
     description = "集成式 Stable Diffusion 文本生成图像节点 (MVP)"
     requirements = "diffusers,torch,transformers,accelerate,Pillow"
     
-    inputs = [] # T2I 不需要输入连线，全靠属性
+    inputs = [
+        PortDefinition(name="prompt", label="正向提示词", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="negative_prompt", label="负向提示词", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
+    ]
     outputs = [
         PortDefinition(name="output_image", label="生成的图像", type=ArgumentType.IMAGE),
     ]
     
     properties = {
-        "prompt": PropertyDefinition(
-            type=PropertyType.MULTILINE,
-            default="a professional photograph of a futuristic city, sunset, 8k uhd",
-            label="正向提示词",
-        ),
-        "negative_prompt": PropertyDefinition(
-            type=PropertyType.MULTILINE,
-            default="low quality, bad anatomy, text, water mark",
-            label="负向提示词",
-        ),
         "model_id": PropertyDefinition(
             type=PropertyType.CHOICE,
             default="runwayml/stable-diffusion-v1-5",
@@ -47,17 +40,17 @@ class SDTextToImageComponent(BaseComponent):
             type=PropertyType.RANGE,
             default="512.0",
             label="宽度",
-            min=296.0,
+            min=300.0,
             max=1000.0,
-            step=8.0,
+            step=10.0,
         ),
         "heig": PropertyDefinition(
             type=PropertyType.RANGE,
             default="512.0",
             label="高度",
-            min=296.0,
+            min=300.0,
             max=1000.0,
-            step=8.0,
+            step=10.0,
         ),
         "steps": PropertyDefinition(
             type=PropertyType.RANGE,
@@ -84,14 +77,14 @@ class SDTextToImageComponent(BaseComponent):
         from diffusers import StableDiffusionPipeline
 
         # 1. 参数解析
-        model_id = params.get("model_id")
-        prompt = params.get("prompt")
-        n_prompt = params.get("negative_prompt")
-        width = params.get("wid", 512)
-        height = params.get("heig", 512)
-        steps = params.get("steps", 20)
-        cfg = params.get("cfg", 7.5)
-        seed = params.get("seed", -1)
+        model_id = params.model_id
+        prompt = inputs.prompt
+        n_prompt = inputs.negative_prompt
+        width = params.wid
+        height = params.heig
+        steps = params.steps
+        cfg = params.cfg
+        seed = params.seed
 
         # 2. 种子处理
         if seed == -1:
@@ -119,8 +112,8 @@ class SDTextToImageComponent(BaseComponent):
         image = pipe(
             prompt=prompt,
             negative_prompt=n_prompt,
-            width=int(width),
-            height=int(height),
+            width=int(width // 8 * 8),
+            height=int(height // 8 * 8),
             num_inference_steps=int(steps),
             guidance_scale=cfg,
             generator=generator

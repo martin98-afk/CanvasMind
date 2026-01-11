@@ -14,13 +14,14 @@ from qfluentwidgets import MessageBox
 # --- 其他原有导入 ---
 from app.components.base import ArgumentType, PropertyType, ConnectionType, GlobalVariableContext, \
     COMPONENT_IMPORT_CODE, resource_path
-from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
+from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.scan_components import ComponentScanner
 from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import draw_square_port, draw_special_outputport, \
     _safe_load_pickle, kill_proc_tree  # 假设 resource_path 也在 utils
+from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 # 导入代码编辑器组件
@@ -501,6 +502,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                     for port in comp_obj.outputs:
                         if port.type != ArgumentType.UPLOAD:
                             self.set_output_value(port.name, output.get(port.name))
+                        else:
+                            self.set_output_value(port.name, self.model.get_property(f"{port.name}_upload"))
                     self._sync_buffer_to_global()
                     return output
                 elif os.path.exists(error_path):

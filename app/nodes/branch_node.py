@@ -1,13 +1,15 @@
 import re
+
 from PyQt5 import QtCore
 
 from app.components.base import PropertyType, GlobalVariableContext
-from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
+from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import StatusNode, NodeStatus
 from app.scheduler.expression_engine import ExpressionEngine
-from app.utils.utils import resource_path, draw_square_port
-from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
+from app.utils.utils import draw_square_port
+from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
+from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 
 

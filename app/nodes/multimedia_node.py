@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import QObject, pyqtSignal, Qt
-from app.nodes.base_node import BasicNodeWithGlobalProperty, CustomBaseNode
+from PyQt5.QtCore import Qt
+
+from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NoStatusNode
+from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
-from app.widgets.node_widget.html_widget import HtmlWidgetWrapper
 from app.widgets.node_widget.universal_display_widget import UniversalWidgetWrapper
 
 

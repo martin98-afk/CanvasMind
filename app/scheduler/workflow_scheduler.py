@@ -50,7 +50,7 @@ class WorkflowScheduler(QObject):
     def set_node_status(self, node, status):
         self.node_status_changed.emit(node.id, status)
 
-    def update_node_variable_silent(self, name, value, policy):
+    def update_node_variable(self, name, value, policy):
         """静默更新，不发送信号"""
         node_var_obj = self.parent.global_variables.node_vars.get(name)
         if not node_var_obj:

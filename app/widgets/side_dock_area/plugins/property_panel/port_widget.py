@@ -443,7 +443,10 @@ class PortWidget(QWidget):
             return
 
         # --- 关键修改：只要没发生实质性报错，就更新输出值 ---
-        self.node._output_values[port_name] = str(dst)
+        try:
+            self.node.model.add_property(f"{port_name}_upload", str(dst))
+        except:
+            self.node.model.set_property(f"{port_name}_upload", str(dst))
 
         # 提示用户
         InfoBar.success("文件已就绪", f"路径已同步: {dst.name}", parent=self.main_window, duration=2000)
