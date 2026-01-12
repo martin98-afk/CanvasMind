@@ -19,7 +19,7 @@ from qfluentwidgets import (
     ComboBox, PrimaryPushButton, LineEdit, TableWidget,
     FluentIcon, InfoBar, SearchLineEdit, TextEdit, MessageBox,
     BodyLabel, StateToolTip, StrongBodyLabel, SimpleCardWidget,
-    TransparentToolButton, IconWidget, CaptionLabel, SegmentedWidget, MessageBoxBase
+    TransparentToolButton, IconWidget, CaptionLabel, SegmentedWidget, MessageBoxBase, Pivot
 )
 
 from app.utils.config import Settings
@@ -121,7 +121,7 @@ class SSHAddrDialog(MessageBoxBase):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.h_edit = LineEdit();
-        self.h_edit.setPlaceholderText("IP 地址 / 主机名")
+        self.h_edit.setPlaceholderText("IP 地址: 端口名")
         self.u_edit = LineEdit();
         self.u_edit.setPlaceholderText("用户名")
         self.p_edit = LineEdit();
@@ -131,9 +131,9 @@ class SSHAddrDialog(MessageBoxBase):
         self.path_edit.setPlaceholderText("远程 Python 路径 (如 /usr/bin/python3)")
         self.name_edit = LineEdit();
         self.name_edit.setPlaceholderText("环境别名 (可选)")
-        self.widget.setMinimumWidth(350)
+        self.widget.setMinimumWidth(450)
         # 将组件添加到 MessageBox 的 content 布局中
-        for w in [self.h_edit, self.u_edit, self.p_edit, self.path_edit, self.name_edit]:
+        for w in [self.name_edit, self.h_edit, self.u_edit, self.p_edit, self.path_edit]:
             self.viewLayout.addWidget(w)
 
     def get_info(self):
@@ -176,7 +176,7 @@ class EnvManagerUI(QWidget):
         self.mainLayout.setContentsMargins(16, 16, 16, 16)
 
         # 模式切换选择器
-        self.pivot = SegmentedWidget(self)
+        self.pivot = Pivot(self)
         self.pivot.addItem("local", "本地环境", lambda: self.on_mode_changed("local"))
         self.pivot.addItem("remote", "远程 SSH 环境", lambda: self.on_mode_changed("remote"))
 
@@ -212,7 +212,7 @@ class EnvManagerUI(QWidget):
         titleVBox = QVBoxLayout()
 
         envIcon = IconWidget(get_icon("python"), self)
-        envIcon.setFixedSize(24, 24)
+        envIcon.setFixedSize(32, 32)
         self.titleLabel = StrongBodyLabel("环境管理", self)
         self.pyVersionLabel = CaptionLabel("Python 版本: --", self)
         titleVBox.addWidget(self.titleLabel)

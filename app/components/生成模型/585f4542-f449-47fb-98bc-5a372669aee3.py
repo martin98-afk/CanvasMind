@@ -89,6 +89,14 @@ class KSamplerComponent(BaseComponent):
             default=5,
             label="预览频率(步)",
         ),
+        "denoise": PropertyDefinition(
+            type=PropertyType.RANGE,
+            default="1.00",
+            label="去噪强度",
+            min=0.0,
+            max=1.0,
+            step=0.01,
+        ),
     }
 
     def _get_scheduler(self, name, config):
@@ -142,7 +150,7 @@ class KSamplerComponent(BaseComponent):
     def run(self, params, inputs=None):
         import torch
         import numpy as np
-        from diffusers import StableDiffusionPipeline
+        from diffusers import StableDiffusionImg2ImgPipeline, StableDiffusionPipeline
         from PIL import Image
 
         # 1. 解析参数
@@ -152,24 +160,20 @@ class KSamplerComponent(BaseComponent):
         width = int(float(params.get("wid", 512)) // 8 * 8)
         height = int(float(params.get("heig", 512)) // 8 * 8)
         steps = int(float(params.get("steps", 20)))
+        preview_step = int(params.preview_step)
         cfg = float(params.get("cfg", 7.0))
         seed = int(params.get("seed", -1))
+        denoise = float(params.get("denoise", 1.0))
         scheduler_name = params.get("scheduler", "Euler a")
 
         if seed == -1:
             seed = np.random.randint(0, 2**16 - 1)
         generator = torch.Generator("cuda").manual_seed(int(seed))
 
-        # 2. 转换输入的 Latent (从字节流还原)
-        latent_ndarray = inputs.get("latent_in")
-        latents = None
-        if latent_ndarray is not None:
-            self.logger.info("检测到输入 Latent，正在载入...")
-            # 转回 Torch 张量送入显存
-            latents = torch.from_numpy(latent_ndarray).to("cuda", dtype=torch.float16)
-
-        # 3. 加载模型
+        # 2. 模型加载与缓存
+        # 无论文生图还是图生图，共用一套权重，根据需要转换 Pipeline 类型
         if model_id not in self._pipeline_cache:
+            self.logger.info(f"正在加载模型: {model_id}")
             pipe = StableDiffusionPipeline.from_pretrained(
                 model_id, torch_dtype=torch.float16, safety_checker=None
             ).to("cuda")
@@ -179,41 +183,67 @@ class KSamplerComponent(BaseComponent):
 
         pipe.scheduler = self._get_scheduler(scheduler_name, pipe.scheduler.config)
 
-        # 4. 实时回调
+        # 3. 核心逻辑：判断是 Text2Img 还是 Img2Img (Latent重绘)
+        latent_ndarray = inputs.get("latent_in")
+        
+        # 准备执行参数
+        pipe_args = {
+            "prompt": prompt,
+            "negative_prompt": n_prompt,
+            "num_inference_steps": steps,
+            "guidance_scale": cfg,
+            "generator": generator,
+            "output_type": "latent",
+        }
+
+        # 实时回调
         def callback(pipe_ref, step, timestep, callback_kwargs):
-            if step % 5 == 0:
+            if step % preview_step == 0:
                 self._send_preview(callback_kwargs.get("latents"), pipe_ref)
             return callback_kwargs
+        
+        pipe_args["callback_on_step_end"] = callback
+        pipe_args["callback_on_step_end_tensor_inputs"] = ['latents']
 
-        # 5. 执行采样
-        self.logger.info("开始执行 K-Sampling...")
-        # output_type="latent" 让它返回 Tensor 而不是 PIL 图像
-        output = pipe(
-            prompt=prompt,
-            negative_prompt=n_prompt,
-            width=width,
-            height=height,
-            num_inference_steps=steps,
-            guidance_scale=cfg,
-            generator=generator,
-            latents=latents,
-            callback_on_step_end=callback,
-            callback_on_step_end_tensor_inputs=['latents'],
-            output_type="latent"
-        ).images # 这里的 .images 实际上是 Tensor [1, 4, h/8, w/8]
+        if latent_ndarray is not None and denoise < 1.0:
+            # --- 图生图 / Latent 重绘模式 ---
+            self.logger.info(f"进入潜空间重绘模式, Denoise: {denoise}")
+            # 将 NumPy 转回 Tensor
+            init_latents = torch.from_numpy(latent_ndarray).to("cuda", dtype=torch.float16)
+            
+            # 使用 Img2Img 的逻辑，但直接传入 Latents
+            # 我们需要临时将 pipe 转为 Img2ImgPipeline (共享组件，不增加内存)
+            img2img_pipe = StableDiffusionImg2ImgPipeline(**pipe.components)
+            
+            # 在 Img2Img 中，denoise 决定了跳过多少步
+            # 注意：diffusers 的 Img2Img 接受 image 参数，可以是 Tensor 格式的 Latents
+            # 必须缩放回像素值空间或直接处理，这里直接传 Latent Tensor 是可以的
+            result_latent = img2img_pipe(
+                image=init_latents, 
+                strength=denoise, 
+                **pipe_args
+            ).images
+        else:
+            # --- 文生图 / 全噪声模式 ---
+            self.logger.info("进入全噪声采样模式")
+            if latent_ndarray is not None:
+                # 如果 denoise=1.0，直接使用输入的噪声
+                pipe_args["latents"] = torch.from_numpy(latent_ndarray).to("cuda", dtype=torch.float16)
+            else:
+                # 否则由 pipe 生成随机噪声
+                pipe_args["width"] = width
+                pipe_args["height"] = height
+            
+            result_latent = pipe(**pipe_args).images
 
-        # 6. 生成最终结果
-        # A. 生成预览图（用于本节点的 Image 显示）
+        # 4. 结果处理
         with torch.no_grad():
-            final_img_tensor = pipe.vae.decode(output / 0.18215).sample
-            final_img_tensor = (final_img_tensor / 2 + 0.5).clamp(0, 1).cpu().permute(0, 2, 3, 1).float().numpy()
-            final_image = Image.fromarray((final_img_tensor[0] * 255).astype(np.uint8))
-
-        # B. 转换 Latent 为 NumPy 字节流（用于输出给下游节点）
-        # 必须先 .cpu().numpy()
-        latent_out_bytes = output.cpu().numpy()
+            # 解码预览图
+            decoded = pipe.vae.decode(result_latent / 0.18215).sample
+            decoded = (decoded / 2 + 0.5).clamp(0, 1).cpu().permute(0, 2, 3, 1).float().numpy()
+            final_image = Image.fromarray((decoded[0] * 255).astype(np.uint8))
 
         return {
             "output_image": final_image,
-            "latent_out": latent_out_bytes
+            "latent_out": result_latent.cpu().numpy()
         }
