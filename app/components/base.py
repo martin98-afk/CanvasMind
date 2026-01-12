@@ -654,15 +654,18 @@ class DataHandler:
             else:
                 return ""
         if (input_type.is_file() or input_type.is_image()) and not Path(input_value).exists():
-            stem_node_id = input_value.split('\\')[-3]
-            file_name = input_value.split('\\')[-1]
+            input_value = re.sub(r"\\", "/", input_value)
+            stem_node_id = Path(input_value).parent.parent.stem
+            file_name = Path(input_value).name
             if (Path(f"../{stem_node_id}/upload") / file_name).exists():
                 input_value = str(Path(f"../{stem_node_id}/upload") / file_name)
             elif (Path("inputs") / Path(input_value).name).exists():
                 input_value = str(Path("inputs") / file_name)
             elif (Path(self.workflow_path).parent.parent.parent / input_value).exists():
                 input_value = str(Path(self.workflow_path).parent.parent.parent / input_value)
-        print(input_value)
+            elif (Path(f"../{stem_node_id}/result") / file_name).exists():
+                input_value = str(Path(f"../{stem_node_id}/result") / file_name)
+
         try:
             if input_type == ArgumentType.TEXT:
                 return str(input_value)

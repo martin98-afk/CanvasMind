@@ -574,8 +574,6 @@ def create_node_class(full_path, file_path, parent_window=None):
             """
             核心逻辑：读取 pkl，递归遍历所有数据，将远程路径字符串替换为本地路径
             """
-            print(remote_root)
-            print(local_root)
             if not os.path.exists(pkl_path):
                 return
 
