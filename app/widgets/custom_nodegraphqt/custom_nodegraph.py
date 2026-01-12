@@ -742,7 +742,6 @@ class CustomNodeGraph(NodeGraph):
                         node.model.set_property(prop, val)
                     except:
                         node.model.add_property(prop, val)
-                        logger.warning(traceback.format_exc())
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
                             node.view.widgets[prop].set_value(val)

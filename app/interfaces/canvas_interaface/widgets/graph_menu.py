@@ -156,6 +156,12 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.setFixedSize(420, 450)
         self.search_line.installEventFilter(self)
 
+    def set_category_filter(self, categories):
+        self._selected_categories = set(categories)
+        # 立即更新缓存并重新填充UI，保证下次打开菜单时是最新的
+        self.update_cache()
+        self.populate_ui()
+
     def update_cache(self):
         """仅在节点定义发生变化或初始化时调用一次，大幅提升响应速度"""
         self._cached_data = []
@@ -292,29 +298,3 @@ class CustomGraphMenu(QtWidgets.QWidget):
                     self.list_widget.setFocus()
                     return True
         return super(CustomGraphMenu, self).eventFilter(source, event)
-
-
-def setup_graph_menu(graph, left_panel, parent):
-    """注入函数"""
-    # 保证单例，避免重复创建
-    if not hasattr(setup_graph_menu, "_instance"):
-        setup_graph_menu._instance = CustomGraphMenu(graph, left_panel, parent)
-
-    search_menu = setup_graph_menu._instance
-    viewer = graph.viewer()
-    scene_view = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
-
-    original_context_menu_event = scene_view.contextMenuEvent
-
-    def custom_context_menu_event(event):
-        # 检查是否点击了 Item
-        item = scene_view.itemAt(event.pos())
-        if item is None:
-            search_menu.show_at_cursor(event.globalPos())
-            event.accept()
-        else:
-            # 在节点上点击，弹出节点原生菜单
-            original_context_menu_event(event)
-
-    scene_view.contextMenuEvent = custom_context_menu_event
-    return search_menu

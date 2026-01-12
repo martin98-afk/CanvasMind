@@ -14,7 +14,7 @@ from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.sticky_note import StickyNoteNode
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_icon
-from app.widgets.custom_nodegraphqt.graph_menu import setup_graph_menu
+from app.interfaces.canvas_interaface.widgets.graph_menu import CustomGraphMenu
 from .logger import get_logger
 
 logger = get_logger("NodeOperations")
@@ -26,6 +26,7 @@ class NodeOperations:
         self.graph = graph
         self.recommendation_engine = recommendation_engine
         self.thread_pool = thread_pool
+        self.graph_menu = None
         self._node_id_cache_valid = False  # 标记缓存是否有效
         self._clipboard_data = None
         self._current_recommendation_task = None  # 用于取消旧任务（可选）
@@ -95,21 +96,43 @@ class NodeOperations:
         except Exception as e:
             logger.exception("register_components 执行失败！")  # ← 关键
 
+    def setup_graph_menu(self):
+        """注入函数"""
+        # 保证单例，避免重复创建
+        left_panel = self.parent.nav_panel
+        self.graph_menu = CustomGraphMenu(self.graph, self.parent.nav_panel, self.parent)
+        left_panel.draggable_tree.filter_changed_signal.connect(self.graph_menu.set_category_filter)
+        initial_cats = left_panel.draggable_tree.tree._selected_categories
+        self.graph_menu.set_category_filter(initial_cats)
+
+        viewer = self.graph.viewer()
+        scene_view = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
+
+        original_context_menu_event = scene_view.contextMenuEvent
+
+        def custom_context_menu_event(event):
+            # 检查是否点击了 Item
+            item = scene_view.itemAt(event.pos())
+            if item is None:
+                self.graph_menu.show_at_cursor(event.globalPos())
+                event.accept()
+            else:
+                # 在节点上点击，弹出节点原生菜单
+                original_context_menu_event(event)
+
+        scene_view.contextMenuEvent = custom_context_menu_event
+
     def setup_context_menu(self):
-        setup_graph_menu(self.graph, self.parent.nav_panel, self.parent)
+        self.setup_graph_menu()
         # 画布右键菜单注册
         graph_menu = self.graph.get_context_menu('graph')
         graph_menu.add_command('运行工作流', self.parent.canvas_runner.run_workflow, 'Ctrl+R')
         graph_menu.add_command('保存工作流', self.parent.save_full_workflow, 'Ctrl+S')
-        graph_menu.add_separator()
         graph_menu.add_command("添加注释", lambda: self.create_next_node("general.StickyNote"))
         graph_menu.add_command('撤销', self.parent._undo, 'Ctrl+Z')
         graph_menu.add_command('重做', self.parent._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
         graph_menu.add_command('自动布局', self.parent._auto_layout_selected, 'Ctrl+L')
-        edit_menu = graph_menu.add_menu('编辑')
-        edit_menu.add_command('全选', lambda graph: graph.select_all())
-        edit_menu.add_command('取消选择', lambda graph: graph.clear_selection(), 'Ctrl+D')
-        edit_menu.add_command(
+        graph_menu.add_command(
             '删除选中', lambda graph: (
                 self.parent.node_operations.delete_selected_nodes(graph),
                 self.parent.property_panel.update_properties(None)

@@ -201,6 +201,10 @@ class CanvasPage(QWidget):
     def scheduler(self):
         return self.canvas_runner._scheduler
 
+    @property
+    def env_data(self):
+        return self.environment_manager.env_data
+
     def rename_node_vars(self, old_name, new_name):
         old_name = re.sub(r'\s+', '_', old_name)
         new_name = re.sub(r'\s+', '_', new_name)
@@ -265,7 +269,7 @@ class CanvasPage(QWidget):
         return self.node_operations.select_nodes_by_name(name_list)
 
     def connect_kernel(self, python_exe):
-        if python_exe:
+        if python_exe and self.env_data.get("type") != "ssh":
             if self.ipython_kernel.kernel_manager.python_exe_path != python_exe or \
                     not self.ipython_kernel.kernel_manager.get_kernel_info().get("is_alive"):
                 self.ipython_kernel.kernel_manager.shutdown_kernel()

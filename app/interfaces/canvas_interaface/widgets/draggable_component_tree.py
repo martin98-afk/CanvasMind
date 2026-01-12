@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QMimeData, QRectF, QPoint
 from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont, QPainterPath, QFontMetrics
 from PyQt5.QtWidgets import QTreeWidgetItem, QWidget, QVBoxLayout, QHBoxLayout
@@ -17,6 +18,7 @@ from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 
 class DraggableTreePanel(QWidget):
     """带搜索框的组件树面板"""
+    filter_changed_signal = QtCore.pyqtSignal(set)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -116,6 +118,7 @@ class DraggableTreePanel(QWidget):
         """类别选择变化回调"""
         self.tree._selected_categories = selected_categories
         self.tree.refresh_components()
+        self.filter_changed_signal.emit(selected_categories)
 
     def _on_time_toggled(self, checked):
         """时间排序切换"""
