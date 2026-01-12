@@ -67,6 +67,7 @@ def sftp_download_dir(sftp, remote_dir, local_dir):
                 sftp_download_dir(sftp, remote_path, local_path)
             else:
                 try:
+                    print(f"正在下载 {remote_path}...")
                     sftp.get(remote_path, local_path)
                 except:
                     pass

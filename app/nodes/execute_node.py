@@ -428,6 +428,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                     for port in comp_obj.outputs:
                         if port.type != ArgumentType.UPLOAD:
                             self.set_output_value(port.name, output.get(port.name))
+                        else:
+                            self.set_output_value(port.name, self.model.get_property(f"{port.name}_upload"))
                     self._sync_buffer_to_global()
                     return output
                 elif os.path.exists(error_path):
@@ -440,8 +442,15 @@ def create_node_class(full_path, file_path, parent_window=None):
 
         def _execute_via_ssh(self, comp_obj, env_data, local_script_path, local_comp_path, params_path, result_path,
                              log_file_path, error_path, check_cancel):
-            """远程 SSH 执行逻辑"""
-            remote_run_dir = f"/tmp/workspace/{self.persistent_id}"
+            """远程 SSH 执行逻辑 - 针对日志文件流式读取优化"""
+            remote_root = "/tmp/workspace"
+            upload_dir = f"{remote_root}/{self.persistent_id}/upload"
+            result_dir = f"{remote_root}/{self.persistent_id}/result"
+            remote_run_dir = f"{remote_root}/{self.persistent_id}/run_scripts"
+            log_path = f"{remote_root}/node_logs/{self.persistent_id}.log"
+
+            # 本地对应路径
+            local_node_workspace = self.CACHE_PATH / "workspace" / self.persistent_id
 
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -456,33 +465,31 @@ def create_node_class(full_path, file_path, parent_window=None):
                 )
                 sftp = ssh.open_sftp()
 
-                # 1. 准备远程目录并上传文件
-                try:
-                    sftp.mkdir(remote_run_dir)
-                    sftp.mkdir(f"{remote_run_dir}/upload")
-                except:
-                    pass
+                # 1. 准备远程目录
+                ssh.exec_command(f"mkdir -p {upload_dir} {result_dir} {remote_run_dir} {remote_root}/node_logs")
 
-                self._log_message(self.persistent_id, f"🚀 正在同步脚本到远程服务器 {env_data['host']}...")
-                # 将节点文件夹内所有文件上传到远程目录
-                for file_path in (self.CACHE_PATH / "workspace" / self.persistent_id / "upload").rglob("*"):
-                    if file_path.is_dir():
-                        continue
-                    sftp.put(str(file_path), f"{remote_run_dir}/upload/{file_path.name}" )
+                # 2. 上传文件
+                # 上传 upload 文件夹内的内容
+                local_upload_dir = local_node_workspace / "upload"
+                if local_upload_dir.exists():
+                    for file in local_upload_dir.rglob("*"):
+                        if file.is_file():
+                            remote_file_path = f"{upload_dir}/{file.name}"
+                            sftp.put(str(file), remote_file_path)
+
                 sftp.put(str(local_comp_path), f"{remote_run_dir}/component.py")
                 sftp.put(str(params_path), f"{remote_run_dir}/params.pkl")
-                # 上传 base.py
-                sftp.put(resource_path("app/components/base.py"), f"/tmp/workspace/base.py")
-
-                # 2. 生成适合远程路径的执行脚本
-                # 在远程，我们希望所有文件都在 remote_run_dir 下，且 workflow_path 为 /tmp
+                sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}/base.py")
+                if os.path.exists(log_file_path):
+                    sftp.put(log_file_path, log_path)
+                # 3. 生成执行脚本
                 remote_script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
-                    class_name=comp_obj.__name__,  # 这里应根据 comp_obj 动态
+                    class_name=comp_obj.__name__,
                     file_path=f"{remote_run_dir}/component.py",
                     params_path=f"{remote_run_dir}/params.pkl",
                     result_path=f"{remote_run_dir}/result.pkl",
                     error_path=f"{remote_run_dir}/error.pkl",
-                    log_file_path=f"{remote_run_dir}/node.log",
+                    log_file_path=log_path,
                     node_id=self.persistent_id,
                     workflow_path="/tmp"
                 )
@@ -490,60 +497,114 @@ def create_node_class(full_path, file_path, parent_window=None):
                     f.write(remote_script_content)
                 sftp.put(str(local_script_path), f"{remote_run_dir}/exec_script.py")
 
-                # 3. 执行
+                # 4. 执行
                 python_exe = env_data['path']
-                cmd = f"export PYTHONPATH=/tmp/workspace:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
+                cmd = f"export PYTHONPATH={remote_root}:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
+                # 注意：即便没有 stdout，也建议读取它以防缓冲区满导致进程挂起
                 stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
 
-                # 4. 实时轮询输出
+                # 轮询直到进程结束
                 while not stdout.channel.exit_status_ready():
                     if check_cancel and check_cancel():
                         ssh.close()
                         raise Exception("远程执行被用户取消")
-                    try:
-                        sftp.get(f"{remote_run_dir}/node.log", str(log_file_path))
-                    except:
-                        pass
-                    if os.path.exists(log_file_path):
-                        with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                            lf.seek(self.last_log_pos)
-                            new_content = lf.read()
-                            if new_content:
-                                # --- 关键修改 ---
-                                self._log_message(self.persistent_id, new_content)
-                                self.last_log_pos = lf.tell()
-                    time.sleep(0.1)
 
-                # 5. 下载结果文件
-                self._log_message(self.persistent_id, "📥 正在回传执行结果...")
+                    # 只有当远程日志文件产生时才尝试读取
+                    try:
+                        # 使用 open 而非 get，避免全量下载
+                        with sftp.open(log_path, 'r') as f:
+                            f.seek(self.last_log_pos)  # 跳到上次读取的位置
+                            new_data = f.read().decode('utf-8', errors='ignore')
+                            if new_data:
+                                self._log_message(self.persistent_id, new_data)
+                                # 增量写入本地日志文件
+                                with open(log_file_path, 'a', encoding='utf-8') as lf:
+                                    lf.write(new_data)
+                                self.last_log_pos += len(new_data)  # 更新偏移量
+                    except IOError:
+                        # 脚本可能还没开始写日志，忽略
+                        pass
+
+                    time.sleep(0.5)  # 适当降低轮询频率，减少 IO 开销
+
+                # 5. 下载结果并替换路径
+                self._log_message(self.persistent_id, "📥 执行完成，正在同步结果...")
+
+                # 下载并处理 result.pkl
+                remote_pkl = f"{remote_run_dir}/result.pkl"
                 try:
-                    sftp.get(f"{remote_run_dir}/result.pkl", str(result_path))
+                    sftp.get(remote_pkl, str(result_path))
+                    # 路径替换：将远程路径前缀换为本地路径前缀
+                    self._replace_remote_paths(
+                        result_path, f"{remote_root}/{self.persistent_id}", str(local_node_workspace)
+                    )
                 except:
                     os.remove(result_path)
+                # 下载日志文件
+                try:
+                    sftp.get(log_path, log_file_path)
+                except:
+                    pass
+
+
+                # 下载错误文件
                 try:
                     sftp.get(f"{remote_run_dir}/error.pkl", str(error_path))
                 except:
                     os.remove(error_path)
+
+                # 下载结果文件夹 result/
+                local_res_dir = local_node_workspace / "result"
+                local_res_dir.mkdir(parents=True, exist_ok=True)
                 try:
-                    sftp.get(f"{remote_run_dir}/node.log", str(log_file_path))
+                    sftp_download_dir(sftp, result_dir, local_res_dir)
                 except:
                     pass
-                # 将远程所有结果文件下载到本地
-                # sftp_download_dir(
-                #     sftp,
-                #     f"{remote_run_dir}/result",
-                #     self.CACHE_PATH / "workspace" / self.persistent_id / "result"
-                # )
-                # 清理远程临时文件
-                # try:
-                #     ssh.exec_command(f"rm -rf {remote_run_dir}")
-                # except:
-                #     pass
+
+                # 6. 清理
+                ssh.exec_command(f"rm -rf {remote_run_dir}")
 
             except Exception as e:
                 raise Exception(f"远程执行失败: {str(e)}")
             finally:
+                if 'sftp' in locals(): sftp.close()
                 ssh.close()
+
+        def _replace_remote_paths(self, pkl_path, remote_root, local_root):
+            """
+            核心逻辑：读取 pkl，递归遍历所有数据，将远程路径字符串替换为本地路径
+            """
+            print(remote_root)
+            print(local_root)
+            if not os.path.exists(pkl_path):
+                return
+
+            try:
+                with open(pkl_path, 'rb') as f:
+                    data = pickle.load(f)
+
+                # 统一路径格式
+                rem_p = remote_root.replace('\\', '/')
+                loc_p = local_root.replace('\\', '/').rstrip('/')
+
+                def walk_and_replace(obj):
+                    if isinstance(obj, str):
+                        # 如果字符串中包含远程路径部分，执行替换
+                        if rem_p in obj:
+                            return obj.replace(rem_p, loc_p)
+                        return obj
+                    elif isinstance(obj, list):
+                        return [walk_and_replace(item) for item in obj]
+                    elif isinstance(obj, dict):
+                        return {k: walk_and_replace(v) for k, v in obj.items()}
+                    return obj
+
+                new_data = walk_and_replace(data)
+
+                with open(pkl_path, 'wb') as f:
+                    pickle.dump(new_data, f)
+            except Exception as e:
+                logger.error(f"路径替换失败: {e}")
 
         def _execute_via_ipython(
                 self, temp_script_path, result_path, error_path, log_file_path,

@@ -636,6 +636,7 @@ class DataHandler:
         self.node_id = node_id
         self.workflow_path = workflow_path
         self.logger = logger_instance or logger
+        Path("./result").mkdir(parents=True, exist_ok=True)
         # 可以在这里添加更多与数据处理相关的状态或配置
 
     def read_input_data(self, input_name: str, input_value: Any, input_type: ArgumentType) -> Any:
@@ -661,6 +662,7 @@ class DataHandler:
                 input_value = str(Path("inputs") / file_name)
             elif (Path(self.workflow_path).parent.parent.parent / input_value).exists():
                 input_value = str(Path(self.workflow_path).parent.parent.parent / input_value)
+        print(input_value)
         try:
             if input_type == ArgumentType.TEXT:
                 return str(input_value)
