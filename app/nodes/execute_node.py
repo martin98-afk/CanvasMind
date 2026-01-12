@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 import time
+import paramiko  # 确保环境已安装 paramiko
 
 from PyQt5 import QtCore
 from loguru import logger
@@ -20,11 +21,10 @@ from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import draw_square_port, draw_special_outputport, \
-    _safe_load_pickle, kill_proc_tree, serialize_for_json  # 假设 resource_path 也在 utils
+    _safe_load_pickle, kill_proc_tree, serialize_for_json, sftp_download_dir
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
-# 导入代码编辑器组件
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
@@ -41,7 +41,7 @@ def create_node_class(full_path, file_path, parent_window=None):
         __identifier__ = 'dynamic'
         NODE_NAME = parent_window.component_map[full_path].name
         FULL_PATH = full_path
-        FILE_PATH = file_path  # 现在 FILE_PATH 是真实的组件文件路径
+        FILE_PATH = file_path
         CACHE_PATH = parent_window.file_path.parent.resolve()
 
         def __init__(self, qgraphics_item=None):
@@ -52,15 +52,11 @@ def create_node_class(full_path, file_path, parent_window=None):
             if hasattr(ComponentScanner().get_component_by_uuid(self.uuid), "icon"):
                 self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
             self.view.set_align("center")
-            # 重命名节点自动同步全局变量名
             self.view.rename_signal.rename.connect(parent_window.rename_node_vars)
-            # --- 调试模式新增 ---
             self._debug_enabled = False
             self._debug_widget = None
             self._debug_code_content = ""
-            # --- /调试模式新增 ---
 
-            # === 动态生成属性 ===
             self._generate_parms_widget()
             for port_name, label, connection in ComponentScanner().get_component_by_uuid(self.uuid).get_inputs():
                 if connection == ConnectionType.SINGLE:
@@ -68,7 +64,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 else:
                     self.add_input(port_name, True, painter_func=draw_square_port)
             QtCore.QTimer.singleShot(0, self.build_outputs)
-            
+
         @property
         def uuid(self):
             return self.model.type_.split("StatusDynamicNode_")[1]
@@ -314,20 +310,21 @@ def create_node_class(full_path, file_path, parent_window=None):
                 self.persistent_id, self._log_message, self.CACHE_PATH, use_file_logging=True
             )
 
-        def execute_sync(self, comp_obj, kernel_manager=None, python_executable=None, check_cancel=None, global_variable=None):
+        def execute_sync(self, comp_obj, kernel_manager=None, check_cancel=None, global_variable=None, **kwargs):
             """
-            在独立Python环境中执行组件
-            :param check_cancel: 可选回调函数，返回 True 表示应取消执行
+            在本地或远程Python环境中执行组件
             """
             self.clear_output_value()
             if not hasattr(self, "log_capture"):
                 self.init_logger()
-            if python_executable is None:
-                raise Exception("未指定Python执行环境。")
 
-            # === 收集参数 ===
+            # 从环境管理器获取当前选中的完整 env_data
+            env_data = self.parent_window.env_data
+            if not env_data:
+                raise Exception("未检测到有效的执行环境，请先在环境管理器中选择。")
+
+            # === 收集参数与输入 (保持原有逻辑) ===
             params = serialize_for_json(self.model._custom_prop)
-            # === 组件参数 ===
             properties = comp_obj.get_properties()
             for prop_name, prop_def in properties.items():
                 prop_type = prop_def.get("type", PropertyType.TEXT)
@@ -338,10 +335,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                 else:
                     params[prop_name] = self.get_property(prop_name) if self.has_property(prop_name) else default
 
-            # === 全局变量 创建表达式引擎并求值 ===
             gv = GlobalVariableContext()
             gv.deserialize(global_variable)
-            # === 收集 inputs_raw ===
             inputs_raw = {}
             input_vars = {}
             for input_port in self.input_ports():
@@ -349,112 +344,85 @@ def create_node_class(full_path, file_path, parent_window=None):
                 connected = input_port.connected_ports()
                 if connected:
                     if input_port.model.multi_connection:
-                        inputs_raw[port_name] = [
-                                upstream.node()._output_values.get(upstream.name()) for upstream in connected
-                            ]
-                        safe_key = f"input_{port_name}"
-                        input_vars[safe_key] = inputs_raw[port_name]
-                        for upstream in connected:
-                            safe_name = upstream.node().name().replace(" ", "_")
-                            safe_key = f"input_{safe_name}__{upstream.name()}"
-                            input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
+                        inputs_raw[port_name] = [upstream.node()._output_values.get(upstream.name()) for upstream in
+                                                 connected]
+                        input_vars[f"input_{port_name}"] = inputs_raw[port_name]
                     else:
-                        inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
-                        # 当前节点输入端口key
-                        safe_key = f"input_{port_name}"
-                        input_vars[safe_key] = inputs_raw[port_name]
-                        safe_name = connected[0].node().name().replace(" ", "_")
-                        # 上游节点输出端口key
-                        safe_key = f"input_{safe_name}__{connected[0].name()}"
-                        input_vars[safe_key] = inputs_raw[port_name]
+                        val = connected[0].node()._output_values.get(connected[0].name())
+                        inputs_raw[port_name] = val
+                        input_vars[f"input_{port_name}"] = val
                     if port_name in self.column_select:
                         inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
 
-            # === 创建表达式引擎（带全局变量）===
             expr_engine = ExpressionEngine(global_vars_context=gv)
 
-            # === 递归求值 params，传入 input_vars ===
-            def _evaluate_with_inputs(value, engine, input_vars_dict):
-                if isinstance(value, str):
-                    return engine.evaluate_template(value, local_vars=input_vars_dict)
-                elif isinstance(value, list):
-                    return [_evaluate_with_inputs(v, engine, input_vars_dict) for v in value]
-                elif isinstance(value, dict):
-                    return {k: _evaluate_with_inputs(v, engine, input_vars_dict) for k, v in value.items()}
-                else:
-                    return value
+            def _evaluate(value):
+                if isinstance(value, str): return expr_engine.evaluate_template(value, local_vars=input_vars)
+                if isinstance(value, list): return [_evaluate(v) for v in value]
+                if isinstance(value, dict): return {k: _evaluate(v) for k, v in value.items()}
+                return value
 
-            params = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in params.items()}
-            inputs = {k: _evaluate_with_inputs(v, expr_engine, input_vars) for k, v in inputs_raw.items()}
-            # ✅ 关键修改：使用持久化运行目录，而非临时目录
+            params = {k: _evaluate(v) for k, v in params.items()}
+            inputs = {k: _evaluate(v) for k, v in inputs_raw.items()}
+
+            # === 准备本地运行目录 ===
             run_id = f"run_{self.persistent_id}"
             run_dir = self.CACHE_PATH / "run_scripts" / run_id
             shutil.rmtree(run_dir, ignore_errors=True)
             run_dir.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(resource_path("app/components/base.py"), str(run_dir.parent / "base.py"))
-            temp_script_path = run_dir / "exec_script.py"
-            temp_component_path = run_dir / "component.py"
+
+            local_script_path = run_dir / "exec_script.py"
+            local_comp_path = run_dir / "component.py"
             params_path = run_dir / "params.pkl"
             result_path = run_dir / "result.pkl"
             error_path = run_dir / "error.pkl"
-            # ✅ 复用 NodeLogHandler 的持久化日志路径
             log_file_path = self.log_capture.get_log_file_path()
 
-            # 保存参数
             with open(params_path, 'wb') as f:
                 pickle.dump((params, inputs, global_variable), f)
-            if self._debug_widget is not None:
-                # debug 模式 直接使用当前编辑器代码
-                with open(temp_component_path, 'w', encoding='utf-8') as f:
-                    f.write(self.current_code)
-            else:
-                current_version = self.get_property("version")
-                if current_version == comp_obj._version or current_version == "latest":
-                    temp_component_path = self.FILE_PATH
-                else:
-                    component_code = self.get_current_code()
-                    with open(temp_component_path, 'w', encoding='utf-8') as f:
-                        f.write(component_code)
 
-            # 生成执行脚本
-            # 注意：这里仍然使用原始的 FILE_PATH，执行的是保存后的代码
-            script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
-                class_name=comp_obj.__name__,
-                file_path=str(temp_component_path.resolve()),  # 使用历史版本文件
-                params_path=str(params_path.resolve()),
-                result_path=str(result_path.resolve()),
-                error_path=str(error_path.resolve()),
-                log_file_path=str(log_file_path.resolve()),
-                node_id=self.persistent_id,
-                workflow_path=str(self.CACHE_PATH)
-            )
-            with open(temp_script_path, 'w', encoding='utf-8') as f:
-                f.write(script_content)
+            component_code = self.current_code if self._debug_widget else self.get_current_code()
+            with open(local_comp_path, 'w', encoding='utf-8') as f:
+                f.write(component_code)
+
+            # === 分支：本地还是远程 ===
             self.last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
-            try:
-                if kernel_manager is not None:
-                    # 使用 IPython 内核执行
-                    self._execute_via_ipython(
-                        temp_script_path=temp_script_path,
-                        result_path=result_path,
-                        error_path=error_path,
-                        log_file_path=log_file_path,
-                        check_cancel=check_cancel,
-                        kernel_manager=kernel_manager
-                    )
+            if env_data.get('type') == 'ssh':
+                # 远程 SSH 执行
+                self._execute_via_ssh(comp_obj, env_data, local_script_path, local_comp_path, params_path, result_path,
+                                      log_file_path, error_path, check_cancel)
+            else:
+                # 本地执行 (Subprocess 或 IPython)
+                python_exe = env_data['path']
+                # 注意：本地执行脚本中的路径需要是本地绝对路径
+                script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
+                    class_name=comp_obj.__name__,
+                    file_path=str(local_comp_path.resolve()),
+                    params_path=str(params_path.resolve()),
+                    result_path=str(result_path.resolve()),
+                    error_path=str(error_path.resolve()),
+                    log_file_path=str(log_file_path.resolve()),
+                    node_id=self.persistent_id,
+                    workflow_path=str(self.CACHE_PATH)
+                )
+                with open(local_script_path, 'w', encoding='utf-8') as f:
+                    f.write(script_content)
+                if kernel_manager:
+                    self._execute_via_ipython(local_script_path, result_path, error_path, log_file_path, check_cancel,
+                                              kernel_manager)
                 else:
-                    # 回退到 subprocess（兼容模式）
-                    self._execute_via_subprocess(
-                        python_executable, temp_script_path, log_file_path, check_cancel
-                    )
-                # === 读取剩余日志 ===
-                with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                    lf.seek(self.last_log_pos)
-                    new_content = lf.read()
-                    if new_content:
-                        self._log_message(self.persistent_id, new_content)
-                        self.last_log_pos = lf.tell()
-                # === 处理最终结果 ===
+                    self._execute_via_subprocess(python_exe, local_script_path, log_file_path, check_cancel)
+
+            # === 后续处理结果 (通用) ===
+            # === 读取剩余日志 ===
+            with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                lf.seek(self.last_log_pos)
+                new_content = lf.read()
+                if new_content:
+                    self._log_message(self.persistent_id, new_content)
+                    self.last_log_pos = lf.tell()
+            try:
                 if os.path.exists(result_path):
                     output = _safe_load_pickle(result_path)
                     for port in comp_obj.outputs:
@@ -468,9 +436,173 @@ def create_node_class(full_path, file_path, parent_window=None):
                     error_info = _safe_load_pickle(error_path)
                     raise Exception(error_info['traceback'])
                 else:
-                    raise Exception("未知错误")
+                    raise Exception("节点运行结束，但未发现结果或错误反馈文件。")
             finally:
                 shutil.rmtree(run_dir, ignore_errors=True)
+
+        def _execute_via_ssh(self, comp_obj, env_data, local_script_path, local_comp_path, params_path, result_path,
+                             log_file_path, error_path, check_cancel):
+            """远程 SSH 执行逻辑 - 针对日志文件流式读取优化"""
+            remote_root = "/tmp/workspace"
+            upload_dir = f"{remote_root}/{self.persistent_id}/upload"
+            result_dir = f"{remote_root}/{self.persistent_id}/result"
+            remote_run_dir = f"{remote_root}/{self.persistent_id}/run_scripts"
+            log_path = f"{remote_root}/node_logs/{self.persistent_id}.log"
+
+            # 本地对应路径
+            local_node_workspace = self.CACHE_PATH / "workspace" / self.persistent_id
+
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+            try:
+                ssh.connect(
+                    hostname=env_data['host'],
+                    port=int(env_data.get('port', 22)),
+                    username=env_data['user'],
+                    password=env_data['pwd'],
+                    timeout=15
+                )
+                sftp = ssh.open_sftp()
+
+                # 1. 准备远程目录
+                ssh.exec_command(f"mkdir -p {upload_dir} {result_dir} {remote_run_dir} {remote_root}/node_logs")
+
+                # 2. 上传文件
+                # 上传 upload 文件夹内的内容
+                local_upload_dir = local_node_workspace / "upload"
+                if local_upload_dir.exists():
+                    for file in local_upload_dir.rglob("*"):
+                        if file.is_file():
+                            remote_file_path = f"{upload_dir}/{file.name}"
+                            sftp.put(str(file), remote_file_path)
+
+                sftp.put(str(local_comp_path), f"{remote_run_dir}/component.py")
+                sftp.put(str(params_path), f"{remote_run_dir}/params.pkl")
+                sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}/base.py")
+                if os.path.exists(log_file_path):
+                    sftp.put(log_file_path, log_path)
+                # 3. 生成执行脚本
+                remote_script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
+                    class_name=comp_obj.__name__,
+                    file_path=f"{remote_run_dir}/component.py",
+                    params_path=f"{remote_run_dir}/params.pkl",
+                    result_path=f"{remote_run_dir}/result.pkl",
+                    error_path=f"{remote_run_dir}/error.pkl",
+                    log_file_path=log_path,
+                    node_id=self.persistent_id,
+                    workflow_path="/tmp"
+                )
+                with open(local_script_path, 'w', encoding='utf-8') as f:
+                    f.write(remote_script_content)
+                sftp.put(str(local_script_path), f"{remote_run_dir}/exec_script.py")
+
+                # 4. 执行
+                python_exe = env_data['path']
+                cmd = f"export PYTHONPATH={remote_root}:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
+                # 注意：即便没有 stdout，也建议读取它以防缓冲区满导致进程挂起
+                stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
+
+                # 轮询直到进程结束
+                while not stdout.channel.exit_status_ready():
+                    if check_cancel and check_cancel():
+                        ssh.close()
+                        raise Exception("远程执行被用户取消")
+
+                    # 只有当远程日志文件产生时才尝试读取
+                    try:
+                        # 使用 open 而非 get，避免全量下载
+                        with sftp.open(log_path, 'r') as f:
+                            f.seek(self.last_log_pos)  # 跳到上次读取的位置
+                            new_data = f.read().decode('utf-8', errors='ignore')
+                            if new_data:
+                                self._log_message(self.persistent_id, new_data)
+                                # 增量写入本地日志文件
+                                with open(log_file_path, 'a', encoding='utf-8') as lf:
+                                    lf.write(new_data)
+                                self.last_log_pos += len(new_data)  # 更新偏移量
+                    except IOError:
+                        # 脚本可能还没开始写日志，忽略
+                        pass
+
+                    time.sleep(0.5)  # 适当降低轮询频率，减少 IO 开销
+
+                # 5. 下载结果并替换路径
+                self._log_message(self.persistent_id, "📥 执行完成，正在同步结果...")
+
+                # 下载并处理 result.pkl
+                remote_pkl = f"{remote_run_dir}/result.pkl"
+                try:
+                    sftp.get(remote_pkl, str(result_path))
+                    # 路径替换：将远程路径前缀换为本地路径前缀
+                    self._replace_remote_paths(
+                        result_path, f"{remote_root}/{self.persistent_id}", str(local_node_workspace)
+                    )
+                except:
+                    os.remove(result_path)
+                # 下载日志文件
+                try:
+                    sftp.get(log_path, log_file_path)
+                except:
+                    pass
+
+
+                # 下载错误文件
+                try:
+                    sftp.get(f"{remote_run_dir}/error.pkl", str(error_path))
+                except:
+                    os.remove(error_path)
+
+                # 下载结果文件夹 result/
+                local_res_dir = local_node_workspace / "result"
+                local_res_dir.mkdir(parents=True, exist_ok=True)
+                try:
+                    sftp_download_dir(sftp, result_dir, local_res_dir)
+                except:
+                    pass
+
+                # 6. 清理
+                ssh.exec_command(f"rm -rf {remote_run_dir}")
+
+            except Exception as e:
+                raise Exception(f"远程执行失败: {str(e)}")
+            finally:
+                if 'sftp' in locals(): sftp.close()
+                ssh.close()
+
+        def _replace_remote_paths(self, pkl_path, remote_root, local_root):
+            """
+            核心逻辑：读取 pkl，递归遍历所有数据，将远程路径字符串替换为本地路径
+            """
+            if not os.path.exists(pkl_path):
+                return
+
+            try:
+                with open(pkl_path, 'rb') as f:
+                    data = pickle.load(f)
+
+                # 统一路径格式
+                rem_p = remote_root.replace('\\', '/')
+                loc_p = local_root.replace('\\', '/').rstrip('/')
+
+                def walk_and_replace(obj):
+                    if isinstance(obj, str):
+                        # 如果字符串中包含远程路径部分，执行替换
+                        if rem_p in obj:
+                            return obj.replace(rem_p, loc_p)
+                        return obj
+                    elif isinstance(obj, list):
+                        return [walk_and_replace(item) for item in obj]
+                    elif isinstance(obj, dict):
+                        return {k: walk_and_replace(v) for k, v in obj.items()}
+                    return obj
+
+                new_data = walk_and_replace(data)
+
+                with open(pkl_path, 'wb') as f:
+                    pickle.dump(new_data, f)
+            except Exception as e:
+                logger.error(f"路径替换失败: {e}")
 
         def _execute_via_ipython(
                 self, temp_script_path, result_path, error_path, log_file_path,

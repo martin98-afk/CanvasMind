@@ -636,6 +636,7 @@ class DataHandler:
         self.node_id = node_id
         self.workflow_path = workflow_path
         self.logger = logger_instance or logger
+        Path("./result").mkdir(parents=True, exist_ok=True)
         # 可以在这里添加更多与数据处理相关的状态或配置
 
     def read_input_data(self, input_name: str, input_value: Any, input_type: ArgumentType) -> Any:
@@ -653,13 +654,17 @@ class DataHandler:
             else:
                 return ""
         if (input_type.is_file() or input_type.is_image()) and not Path(input_value).exists():
+            input_value = re.sub(r"\\", "/", input_value)
             stem_node_id = Path(input_value).parent.parent.stem
-            if (Path(f"../{stem_node_id}/upload") / Path(input_value).name).exists():
-                input_value = str(Path(f"../{stem_node_id}/upload") / Path(input_value).name)
+            file_name = Path(input_value).name
+            if (Path(f"../{stem_node_id}/upload") / file_name).exists():
+                input_value = str(Path(f"../{stem_node_id}/upload") / file_name)
             elif (Path("inputs") / Path(input_value).name).exists():
-                input_value = str(Path("inputs") / Path(input_value).name)
+                input_value = str(Path("inputs") / file_name)
             elif (Path(self.workflow_path).parent.parent.parent / input_value).exists():
                 input_value = str(Path(self.workflow_path).parent.parent.parent / input_value)
+            elif (Path(f"../{stem_node_id}/result") / file_name).exists():
+                input_value = str(Path(f"../{stem_node_id}/result") / file_name)
 
         try:
             if input_type == ArgumentType.TEXT:
@@ -815,7 +820,7 @@ class DataHandler:
 
     def _read_file_data(self, data: Any) -> Path:
         """读取任意文件内容（路径、bytes、str），返回临时路径"""
-        temp_dir = Path(".").resolve()
+        temp_dir = Path("./result").resolve()
         if isinstance(data, (str, Path)):
             path = Path(data)
             if path.is_file():
@@ -911,7 +916,7 @@ class DataHandler:
 
     def _store_sklearn_model(self, model: Any) -> str:
         """存储sklearn模型到节点专属目录"""
-        temp_dir = Path(".").resolve()
+        temp_dir = Path("./result").resolve()
         model_path = temp_dir / f"model_{self.node_id}.pkl"
         with open(model_path.resolve(), 'wb') as f:
             pickle.dump(model, f)
@@ -922,7 +927,7 @@ class DataHandler:
         torch = self._get_torch()
         if torch is None:
             raise ComponentError("torch 未安装", "MISSING_DEPENDENCY")
-        temp_dir = Path(".").resolve()
+        temp_dir = Path("./result").resolve()
         model_path = str(temp_dir / f"model_{self.node_id}.pt2")
         with open(model_path, 'wb') as f:
             torch.export.save(model, f)
@@ -934,14 +939,14 @@ class DataHandler:
             image = Image.fromarray(image)
         elif not isinstance(image, Image.Image):
             raise ComponentError(f"无法存储图像数据: {type(image)}")
-        temp_dir = Path(".").resolve()
+        temp_dir = Path("./result").resolve()
         image_path = temp_dir / f"image_{self.node_id}.png"
         image.save(image_path.resolve(), 'PNG')
         return str(image_path)
 
     def _store_file_data(self, data: Any, output_name: str = "output_file") -> str:
         """存储任意文件数据，使用 output_name 作为文件名"""
-        temp_dir = Path(".").resolve()
+        temp_dir = Path("./result").resolve()
         # 保留扩展名：如果 output_name 有后缀，直接用；否则尝试推断或默认 .bin
         filename = Path(output_name).name or "output_file"
         if "{{now}}" in filename:

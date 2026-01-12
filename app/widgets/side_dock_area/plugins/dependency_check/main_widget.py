@@ -5,8 +5,8 @@ from urllib.parse import urlparse
 
 # 依赖校验核心库
 try:
-    from packaging.specifiers import SpecifierSet, InvalidSpecifier
-    from packaging.version import Version, InvalidVersion
+    from packaging.specifiers import SpecifierSet
+    from packaging.version import Version
 except ImportError:
     SpecifierSet = None
     Version = None
@@ -24,6 +24,7 @@ from app.scan_components import ComponentScanner
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.plugins.dependency_check.remote_install_thread import RemoteInstallThread
 
 
 class DependencyToolWindow(ToolWindow):
@@ -32,9 +33,9 @@ class DependencyToolWindow(ToolWindow):
     default_position = DockPosition.TOP
 
     def setup_ui(self):
-        self.mgr = self.homepage.parent.package_manager.mgr
         self.config = Settings.get_instance()
         self._process = None
+        self._remote_thread = None
         self.installed_pkgs = {}
         self.badge = None
 
@@ -98,13 +99,25 @@ class DependencyToolWindow(ToolWindow):
             self.homepage.env_changed.connect(self.run_check)
 
     def get_current_python_exe(self):
-        return self.homepage.get_current_python_exe()
+        """
+        获取当前环境数据。
+        可能是本地路径字符串，也可能是 SSH 信息字典。
+        """
+        return self.homepage.env_data
 
     def run_check(self):
-        if self.loading_ring.isVisible(): return
+        if self.loading_ring.isVisible():
+            return
+        env_data = self.get_current_python_exe()
+        if not env_data:
+            self.status_label.setText("未选择环境")
+            return
+
         self.loading_ring.show()
         self.refresh_btn.setEnabled(False)
-        self.thread = PackageListThread(self.get_current_python_exe())
+
+        # PackageListThread 已经过升级，支持字典格式的 env_data
+        self.thread = PackageListThread(env_data)
         self.thread.packages_loaded.connect(self._on_env_loaded)
         self.thread.error_occurred.connect(self._on_env_error)
         self.thread.start()
@@ -122,10 +135,12 @@ class DependencyToolWindow(ToolWindow):
     def _on_env_error(self, e):
         self.loading_ring.hide()
         self.refresh_btn.setEnabled(True)
+        self.status_label.setText(f"环境加载失败: {str(e)}")
 
     def _analyze_conflict_sources(self, node_data_list):
         """分析并找出导致死锁的冲突节点"""
-        if not SpecifierSet: return []
+        if not SpecifierSet:
+            return []
         conflicting_nodes = []
         try:
             # 1. 检查互斥的 ==
@@ -135,11 +150,13 @@ class DependencyToolWindow(ToolWindow):
                 for s in s_set:
                     if s.operator == "==":
                         v = Version(s.version)
-                        if v not in exact_map: exact_map[v] = []
+                        if v not in exact_map:
+                            exact_map[v] = []
                         exact_map[v].append(d)
 
             if len(exact_map) > 1:
-                for nodes in exact_map.values(): conflicting_nodes.extend(nodes)
+                for nodes in exact_map.values():
+                    conflicting_nodes.extend(nodes)
                 return conflicting_nodes
 
             # 2. 检查边界死锁 (Lower > Upper)
@@ -149,9 +166,11 @@ class DependencyToolWindow(ToolWindow):
                 for s in s_set:
                     v = Version(s.version)
                     if s.operator in (">", ">="):
-                        if h_val is None or v > h_val: h_val, h_data = v, d
+                        if h_val is None or v > h_val:
+                            h_val, h_data = v, d
                     elif s.operator in ("<", "<="):
-                        if l_val is None or v < l_val: l_val, l_data = v, d
+                        if l_val is None or v < l_val:
+                            l_val, l_data = v, d
             if h_val and l_val and h_val > l_val:
                 return [h_data, l_data]
 
@@ -174,9 +193,11 @@ class DependencyToolWindow(ToolWindow):
         req_summary = {}
         nodes = self.homepage.graph.all_nodes()
         for node in nodes:
-            if "StatusDynamicNode_" not in node.model.type_: continue
+            if "StatusDynamicNode_" not in node.model.type_:
+                continue
             comp_cls = ComponentScanner().get_component_by_uuid(node.uuid)
-            if not comp_cls or not hasattr(comp_cls, 'requirements'): continue
+            if not comp_cls or not hasattr(comp_cls, 'requirements'):
+                continue
 
             reqs = [r.strip() for r in comp_cls.requirements.split(",") if r.strip()]
             for req_str in reqs:
@@ -186,7 +207,6 @@ class DependencyToolWindow(ToolWindow):
                     spec = match.group(2).strip()
                     if name not in req_summary:
                         req_summary[name] = {"node_data": []}
-                    # 记录节点对象以便跳转
                     req_summary[name]["node_data"].append({
                         "node_name": node.name(),
                         "spec": spec,
@@ -200,10 +220,8 @@ class DependencyToolWindow(ToolWindow):
             self.table.insertRow(row)
             current_v_str = self.installed_pkgs.get(name)
 
-            # --- 【修复】去重汇总逻辑 ---
-            # 提取所有非空的 spec，并使用 set 去重
             raw_specs = [d['spec'] for d in info['node_data'] if d['spec']]
-            unique_specs = sorted(list(set(raw_specs)))  # 排序保证显示稳定
+            unique_specs = sorted(list(set(raw_specs)))
             combined_spec_str = ",".join(unique_specs)
 
             status_text = "就绪"
@@ -218,7 +236,6 @@ class DependencyToolWindow(ToolWindow):
                     if conflict_sources:
                         status_text = "冲突"
                         status_color = Qt.red
-                        # 生成带跳转功能的按钮
                         action_widget = self._make_info_btn(name, conflict_sources, "发现逻辑冲突(点击跳转)")
                     elif not current_v_str:
                         status_text = "缺失"
@@ -253,7 +270,8 @@ class DependencyToolWindow(ToolWindow):
             if action_widget:
                 self.table.setCellWidget(row, 4, action_widget)
 
-            if status_text != "就绪": error_count += 1
+            if status_text != "就绪":
+                error_count += 1
 
         self.table.setUpdatesEnabled(True)
         self._update_ui_state(error_count, fix_list)
@@ -272,11 +290,8 @@ class DependencyToolWindow(ToolWindow):
         return btn
 
     def _make_info_btn(self, name, conflict_sources, title=""):
-        """【增强】带跳转功能的冲突详情按钮"""
         btn = TransparentToolButton(FluentIcon.INFO, self)
         btn.setIconSize(QSize(14, 14))
-
-        # 1. 构建 ToolTip 信息
         msg = f"{title}\n以下节点的要求互斥：\n"
         seen = set()
         conflict_nodes = []
@@ -285,17 +300,12 @@ class DependencyToolWindow(ToolWindow):
             if line not in seen:
                 msg += line + "\n"
                 seen.add(line)
-            # 2. 收集节点视图用于跳转
             node_obj = src.get('node_obj')
             if node_obj and hasattr(node_obj, '_view'):
                 conflict_nodes.append(node_obj)
-
         btn.setToolTip(msg)
-
-        # 3. 绑定点击跳转事件
         if conflict_nodes:
             btn.clicked.connect(lambda: self.homepage.center_to(conflict_nodes))
-
         return btn
 
     def _update_ui_state(self, error_count, fix_list):
@@ -309,38 +319,56 @@ class DependencyToolWindow(ToolWindow):
             self.status_label.setStyleSheet("color: #107C10;")
             self.install_all_btn.hide()
 
-        if self.button:
-            if error_count > 0:
-                InfoBar.error(
-                    "环境异常", f"请修复 {error_count} 项异常",
-                    duration=-1, parent=self.homepage,
-                    position=InfoBarPosition.TOP_RIGHT
-                )
-
     def install_packages(self, pkg_specs):
-        python_exe = self.get_current_python_exe()
+        env_data = self.get_current_python_exe()
+        if not env_data:
+            return
+
         cmd = ["-m", "pip", "install"] + pkg_specs + ["--upgrade"]
         mirrors = self.config.mirrors.value
         if mirrors:
             for m in mirrors:
                 cmd.extend(["--extra-index-url", m, "--trusted-host", urlparse(m).hostname])
+
         self.loading_ring.show()
-        self.status_label.setText("正在安装...")
+        self.status_label.setText("正在安装依赖...")
         self.setEnabled(False)
 
-        self._process = QProcess(self)
-        self._process.setProcessChannelMode(QProcess.MergedChannels)
-        self._process.finished.connect(self._on_install_finished)
-        self._process.start(str(python_exe), cmd)
+        # 分支逻辑：处理 SSH 远程安装
+        if isinstance(env_data, dict) and env_data.get('type') == 'ssh':
+            self._remote_thread = RemoteInstallThread(env_data, cmd)
+            self._remote_thread.finished_signal.connect(self._on_remote_install_finished)
+            self._remote_thread.start()
+        else:
+            # 原有的本地执行逻辑
+            self._process = QProcess(self)
+            self._process.setProcessChannelMode(QProcess.MergedChannels)
+            self._process.finished.connect(self._on_install_finished)
+            self._process.start(str(env_data), cmd)
+
+    def _on_remote_install_finished(self, success, message):
+        """远程安装回调"""
+        self.setEnabled(True)
+        self.loading_ring.hide()
+        if not success:
+            InfoBar.error(
+                "远程安装失败", message,
+                duration=5000, parent=self.homepage,
+                position=InfoBarPosition.TOP_RIGHT
+            )
+            self.status_label.setText("安装失败，详情见通知栏")
+        else:
+            self.status_label.setText("远程安装完成，正在重新扫描...")
+            QTimer.singleShot(1000, self.run_check)
 
     def _on_install_finished(self):
+        """本地安装回调"""
         self.setEnabled(True)
         self.loading_ring.hide()
         if self._process.exitCode() != 0:
-            self.status_label.setText("安装失败，请尝试在安装包管理界面手动安装...")
+            self.status_label.setText("安装失败，请手动检查环境")
             return
-        self.loading_ring.hide()
-        self.status_label.setText("安装完成，正在重新扫描依赖...")
+        self.status_label.setText("安装完成，正在重新扫描...")
         self.status_label.setStyleSheet("color: #107C10;")
         QTimer.singleShot(1000, self.run_check)
 

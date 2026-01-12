@@ -7,6 +7,7 @@ import pickle
 import re
 import sys
 import time
+import stat
 from collections import defaultdict, deque
 from typing import List, Optional, Union
 
@@ -48,6 +49,30 @@ ANSI_COLOR_MAP = {
 }
 _ICON_CACHE = {}   # 缓存图标名 → QIcon 实例
 
+
+def sftp_download_dir(sftp, remote_dir, local_dir):
+    """通过sftp下载远程目录下的所有文件"""
+    # 确保本地目录存在
+    if not os.path.exists(local_dir):
+        os.makedirs(local_dir)
+
+    # 遍历远程目录
+    try:
+        for item in sftp.listdir_attr(remote_dir):
+            remote_path = os.path.join(remote_dir, item.filename).replace('\\', '/')
+            local_path = os.path.join(local_dir, item.filename)
+
+            if stat.S_ISDIR(item.st_mode):
+                # 如果是文件夹，递归调用
+                sftp_download_dir(sftp, remote_path, local_path)
+            else:
+                try:
+                    print(f"正在下载 {remote_path}...")
+                    sftp.get(remote_path, local_path)
+                except:
+                    pass
+    except:
+        pass
 
 def get_pinyin_search_keys(text):
     """生成拼音全拼和首字母缩写"""
