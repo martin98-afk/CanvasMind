@@ -500,7 +500,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                 # 4. 执行
                 python_exe = env_data['path']
                 cmd = f"export PYTHONPATH={remote_root}:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
-                # 注意：即便没有 stdout，也建议读取它以防缓冲区满导致进程挂起
                 stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
 
                 # 轮询直到进程结束
@@ -511,7 +510,6 @@ def create_node_class(full_path, file_path, parent_window=None):
 
                     # 只有当远程日志文件产生时才尝试读取
                     try:
-                        # 使用 open 而非 get，避免全量下载
                         with sftp.open(log_path, 'r') as f:
                             f.seek(self.last_log_pos)  # 跳到上次读取的位置
                             new_data = f.read().decode('utf-8', errors='ignore')
@@ -545,8 +543,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                     sftp.get(log_path, log_file_path)
                 except:
                     pass
-
-
                 # 下载错误文件
                 try:
                     sftp.get(f"{remote_run_dir}/error.pkl", str(error_path))
