@@ -72,7 +72,7 @@ def run_component_in_subprocess(
         # === 3. 执行组件 ===
         comp_instance = comp_class()
         comp_instance.logger = logger
-        output = comp_instance.execute(params, inputs, global_variable, NODE_ID)
+        output = comp_instance.execute(params, inputs, global_variable, NODE_ID, ".")
     except ImportError as e:
         error_info = {
             "error": str(e),

@@ -143,6 +143,4 @@ scikit-learn~=1.7.2
 tomli_w~=1.2.0
 markdown
 orjson
-google-api-python-client
-google-auth-httplib2
-google-auth-oauthlib
+paramiko
