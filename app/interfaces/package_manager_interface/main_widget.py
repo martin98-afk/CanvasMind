@@ -258,12 +258,13 @@ class EnvManagerUI(QWidget):
 
         envIcon = IconWidget(get_icon("python"), self)
         envIcon.setFixedSize(32, 32)
-        self.titleLabel = StrongBodyLabel("环境管理", self)
+        statusInfoLayout = QVBoxLayout()
         self.pyVersionLabel = CaptionLabel("Python 版本: --", self)
-        titleVBox.addWidget(self.titleLabel)
-        titleVBox.addWidget(self.pyVersionLabel)
+        self.remoteDetailLabel = CaptionLabel("连接信息: 本地环境", self)  # 复用此标签显示连接地址
+        statusInfoLayout.addWidget(self.pyVersionLabel)
+        statusInfoLayout.addWidget(self.remoteDetailLabel)
         self.titleLayout.addWidget(envIcon)
-        self.titleLayout.addLayout(titleVBox)
+        self.titleLayout.addLayout(statusInfoLayout)
         self.titleLayout.addStretch(1)
         self.titleLayout.addWidget(self.pivot)
         rightLayout.addLayout(self.titleLayout)
@@ -327,9 +328,7 @@ class EnvManagerUI(QWidget):
         rpTop.addWidget(self.installDefaultBtn)
         rpTop.addWidget(self.delSshBtn)
 
-        self.remoteDetailLabel = CaptionLabel("地址: --")
         rpLayout.addLayout(rpTop)
-        rpLayout.addWidget(self.remoteDetailLabel)
 
         self.configStack.addWidget(self.localPanel)
         self.configStack.addWidget(self.remotePanel)
@@ -466,14 +465,19 @@ class EnvManagerUI(QWidget):
         combo = self.envCombo if self.configStack.currentIndex() == 0 else self.remoteEnvCombo
         data = combo.currentData()
         if not data: return
+
         self.current_env_data = data
         self.current_env = data["name"]
+
         if data["type"] == "local":
             self.mgr.refresh_env_config()
+            self.remoteDetailLabel.setText("路径: " + data["path"])  # 本地显示路径
             self.config.set(self.config.current_env_selected, data["name"])
             self.config.save_config()
         else:
-            self.remoteDetailLabel.setText(f"地址: {data['host']}:{data.get('port', 22)}")
+            # 远程显示地址
+            self.remoteDetailLabel.setText(f"地址: {data['host']}:{data.get('port', 22)}  |  用户: {data['user']}")
+
         self.load_packages(data)
 
     def load_packages(self, env_name_or_data):

@@ -520,7 +520,13 @@ def create_dynamic_code_node(parent_window=None):
                                                   check_cancel, kernel_manager)
                     else:
                         self._execute_via_subprocess(python_exe, local_script_path, log_file_path, check_cancel)
-
+                # === 读取剩余日志 ===
+                with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                    lf.seek(self.last_log_pos)
+                    new_content = lf.read()
+                    if new_content:
+                        self._log_message(self.persistent_id, new_content)
+                        self.last_log_pos = lf.tell()
                 # 后续结果处理
                 if result_path.exists():
                     output = _safe_load_pickle(result_path)

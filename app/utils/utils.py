@@ -2,6 +2,7 @@
 import tarfile
 import uuid
 
+import paramiko
 import psutil
 import base64
 import json
@@ -69,6 +70,54 @@ class SafeUnpickler(pickle.Unpickler):
         except ImportError:
             # 如果本地找不到 numpy 等模块，就返回一个占位类
             return MissingModulePlaceholder
+
+
+def ssh_send_file(env_data, local_path, remote_path):
+    """
+    通用 SSH 文件发送函数
+    :param env_data: 环境配置字典 (包含 host, port, user, pwd)
+    :param local_path: 本地文件路径
+    :param remote_path: 远程目标绝对路径
+    :return: bool 是否发送成功
+    """
+    if not isinstance(env_data, dict) or env_data.get('type') != 'ssh':
+        logger.error("无效的 SSH 环境配置")
+        return False
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        # 1. 建立连接
+        ssh.connect(
+            hostname=env_data['host'],
+            port=int(env_data.get('port', 22)),
+            username=env_data['user'],
+            password=env_data['pwd'],
+            timeout=15
+        )
+
+        # 2. 处理路径与创建远程目录
+        # 强制将路径转换为 Linux 风格
+        remote_path = remote_path.replace('\\', '/')
+        remote_dir = os.path.dirname(remote_path)
+
+        # 使用 mkdir -p 一次性创建多级目录
+        ssh.exec_command(f"mkdir -p {remote_dir}")
+
+        # 3. SFTP 上传
+        sftp = ssh.open_sftp()
+        sftp.put(str(local_path), remote_path)
+
+        sftp.close()
+        logger.info(f"文件已成功发送至远程: {remote_path}")
+        return True
+
+    except Exception as e:
+        logger.error(f"SSH 文件发送失败: {e}")
+        return False
+    finally:
+        ssh.close()
 
 
 def sftp_download_dir(sftp, remote_dir, local_dir, ssh=None):
