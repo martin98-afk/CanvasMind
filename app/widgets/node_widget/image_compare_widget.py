@@ -2,11 +2,12 @@
 import numpy as np
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from PIL import Image
-from PyQt5.QtCore import Qt, QSize, QRect, QPoint, pyqtSignal
-from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen, QCursor
+from PyQt5.QtCore import Qt, QSize, QRect, QPoint
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen
 from Qt import QtWidgets, QtCore
 
 from app.widgets.node_widget.base import CustomNodeBaseWidget
+
 
 class ImageCompareWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(object)

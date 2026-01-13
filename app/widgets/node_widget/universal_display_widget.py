@@ -13,6 +13,7 @@ from app.widgets.node_widget.media_widget import VideoPlayWidget, AudioPlayWidge
 
 
 class UniversalDisplayWidget(QtWidgets.QWidget):
+    """多功能可视化插件，现支持图像对比、图像展示、语音播放、视频播放、html渲染等功能"""
     valueChanged = QtCore.Signal(object)
     sizeHintChanged = QtCore.Signal()
 
@@ -70,17 +71,16 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
 
     def set_value(self, value):
         # 1. 处理清空逻辑 (非常重要)
-        if value is None or value == "" or value == []:
-            # 找到 HTML 视图（作为默认空白页）
-            widget = self._get_or_create_view("html", HtmlWidget)
-            self.stack.setCurrentWidget(widget)
+        if value is None or value == "" or (isinstance(value, list) and len(value) == 0):
+            # 遍历所有缓存的 Widget，全部重置为 None
+            for widget in self._view_cache.values():
+                widget.set_value(None)
 
-            # 关键：只重置当前显示的这个，确保它变小
-            widget.set_value("<center><small>等待输入...</small></center>")
+            # 切换到 html 默认页
+            html_widget = self._get_or_create_view("html", HtmlWidget)
+            self.stack.setCurrentWidget(html_widget)
+            html_widget.set_value("<center><small>等待输入...</small></center>")
 
-            self._stop_inactive_media("html")
-
-            # 强制刷新尺寸
             self.updateGeometry()
             self.sizeHintChanged.emit()
             return
@@ -94,28 +94,18 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
 
         if matched_strategy:
             view_id = matched_strategy['id']
-            widget = self._get_or_create_view(view_id, matched_strategy['class'])
+            target_widget = self._get_or_create_view(view_id, matched_strategy['class'])
+            for v_id, widget in self._view_cache.items():
+                if v_id != view_id:
+                    # 将不显示的图片控件设为 None，释放它们的尺寸
+                    if isinstance(widget, (ImageWidget, ImageCompareWidget)):
+                        widget.set_value(None)
 
-            # 切换前，如果我们要切换到一个“新”的显示类型，
-            # 最好让之前的 Widget 也重置（可选，但能解决你说的“占位”问题）
-            # for v in self._view_cache.values():
-            #     if v != widget: v.set_value(None)
-
-            self.stack.setCurrentWidget(widget)
-            widget.set_value(value)
-            self._stop_inactive_media(view_id)
+            self.stack.setCurrentWidget(target_widget)
+            target_widget.set_value(value)
 
             self.updateGeometry()
             self.sizeHintChanged.emit()
-
-    def _stop_inactive_media(self, active_id):
-        """如果切换了页面，停止其他页面的视频/音频，节省 CPU"""
-        for v_id, widget in self._view_cache.items():
-            if v_id != active_id and hasattr(widget, 'stop'):
-                try:
-                    widget.stop()
-                except:
-                    pass
 
     def play(self):
         """统一播放接口"""

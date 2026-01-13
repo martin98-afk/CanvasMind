@@ -3,7 +3,7 @@ import numpy as np
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from PIL import Image
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor
+from PyQt5.QtGui import QImage, QPixmap, QPainter
 from Qt import QtWidgets, QtCore
 
 from app.widgets.node_widget.base import CustomNodeBaseWidget

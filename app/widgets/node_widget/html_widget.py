@@ -45,7 +45,9 @@ class HtmlWidget(QtWidgets.QWidget):
             layout.addWidget(self.fallback)
 
     def set_value(self, html: str):
-        self._html = html or ""
+        if not isinstance(html, str):
+            # 如果不是字符串，强转为字符串，或者设为空
+            html = str(html) if html is not None else ""
         if HAS_WEBENGINE:
             self.view.setHtml(self._html, QtCore.QUrl("https://chart.local/"))
             content_w, content_h = self._extract_size_from_html(html)
