@@ -1,6 +1,6 @@
 [Setup]
 AppName=CanvasMind
-AppVersion=v0.2.7
+AppVersion=v0.2.8
 DefaultDirName={autopf}\CanvasMind
 DefaultGroupName=CanvasMind
 OutputBaseFilename=CanvasMind_installer

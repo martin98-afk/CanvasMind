@@ -556,9 +556,11 @@ def create_dynamic_code_node(parent_window=None):
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             try:
                 ssh.connect(hostname=env_data['host'], port=int(env_data.get('port', 22)),
-                            username=env_data['user'], password=env_data['pwd'], timeout=15)
+                            username=env_data['user'], password=env_data['pwd'], timeout=15, compress=True)
                 sftp = ssh.open_sftp()
-
+                transport = ssh.get_transport()
+                # 设置窗口大小（默认 2MB 左右，可以加大）
+                transport.set_keepalive(30)
                 # 1. 准备目录
                 ssh.exec_command(f"mkdir -p {upload_dir} {result_dir} {remote_run_dir} {remote_root}/node_logs")
                 # 上传本地 Workspace 下的 upload 内容
@@ -570,7 +572,8 @@ def create_dynamic_code_node(parent_window=None):
                 sftp.put(str(local_comp_path), f"{remote_run_dir}/component.py")
                 sftp.put(str(params_path), f"{remote_run_dir}/params.pkl")
                 sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}/base.py")
-                sftp.put(log_file_path, log_path)
+                if os.path.exists(log_file_path):
+                    sftp.put(log_file_path, log_path)
                 # 3. 生成适合远程的执行脚本
                 remote_script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
                     class_name="DynamicComponent",
@@ -626,7 +629,7 @@ def create_dynamic_code_node(parent_window=None):
                 local_res_dir = local_node_workspace / "result"
                 local_res_dir.mkdir(parents=True, exist_ok=True)
                 try:
-                    sftp_download_dir(sftp, result_path, local_res_dir)
+                    sftp_download_dir(sftp, result_dir, local_res_dir, ssh=ssh)
                 except:
                     pass
 

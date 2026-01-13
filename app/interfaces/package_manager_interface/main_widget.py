@@ -793,6 +793,6 @@ class EnvManagerUI(QWidget):
         self.logEdit.append(f'<span style="color:{color};">{text}</span>')
         self.logEdit.moveCursor(QTextCursor.End)
         # 获取滚动条对象
-        scrollbar = self.log_edit.verticalScrollBar()
+        scrollbar = self.logEdit.verticalScrollBar()
         # 强制设置到最大值
         scrollbar.setValue(scrollbar.maximum())

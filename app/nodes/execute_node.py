@@ -461,8 +461,12 @@ def create_node_class(full_path, file_path, parent_window=None):
                     port=int(env_data.get('port', 22)),
                     username=env_data['user'],
                     password=env_data['pwd'],
-                    timeout=15
+                    timeout=15,
+                    compress=True  # 开启 zlib 压缩
                 )
+                transport = ssh.get_transport()
+                # 设置窗口大小（默认 2MB 左右，可以加大）
+                transport.set_keepalive(30)
                 sftp = ssh.open_sftp()
 
                 # 1. 准备远程目录
@@ -550,7 +554,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 local_res_dir = local_node_workspace / "result"
                 local_res_dir.mkdir(parents=True, exist_ok=True)
                 try:
-                    sftp_download_dir(sftp, result_dir, local_res_dir)
+                    sftp_download_dir(sftp, result_dir, local_res_dir, ssh=ssh)
                 except:
                     pass
 

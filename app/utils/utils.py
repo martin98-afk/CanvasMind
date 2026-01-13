@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import tarfile
+import uuid
+
 import psutil
 import base64
 import json
@@ -50,28 +53,69 @@ ANSI_COLOR_MAP = {
 _ICON_CACHE = {}   # 缓存图标名 → QIcon 实例
 
 
-def sftp_download_dir(sftp, remote_dir, local_dir):
-    """通过sftp下载远程目录下的所有文件"""
+def sftp_download_dir(sftp, remote_dir, local_dir, ssh=None):
+    """
+    通过 sftp 下载远程目录。
+    如果文件数量超过 3 个，自动切换为打包传输模式以提高速度。
+    """
     # 确保本地目录存在
     if not os.path.exists(local_dir):
         os.makedirs(local_dir)
 
-    # 遍历远程目录
     try:
-        for item in sftp.listdir_attr(remote_dir):
+        # 获取远程目录列表
+        items = sftp.listdir_attr(remote_dir)
+
+        # 如果提供了 ssh 对象，且目录项超过 3 个，则打包下载
+        if ssh and len(items) > 3:
+            # 1. 生成唯一的临时压缩包名
+            temp_filename = f"transfer_{uuid.uuid4().hex}.tar.gz"
+            remote_parent = os.path.dirname(remote_dir)
+            dir_name = os.path.basename(remote_dir)
+            remote_tar_path = f"/tmp/{temp_filename}"
+            local_tar_path = os.path.join(local_dir, temp_filename)
+
+            # 2. 远程打包 (-C 切换路径可以避免压缩包里包含多层父目录)
+            # tar -czf 压缩包路径 -C 父目录 文件夹名
+            cmd = f"tar -czf {remote_tar_path} -C {remote_parent} {dir_name}"
+            stdin, stdout, stderr = ssh.exec_command(cmd)
+
+            # 等待命令执行完成
+            if stdout.channel.recv_exit_status() == 0:
+                try:
+                    # 3. 下载单文件压缩包
+                    sftp.get(remote_tar_path, local_tar_path)
+
+                    # 4. 本地解压
+                    with tarfile.open(local_tar_path, "r:gz") as tar:
+                        # 解压到 local_dir 的父目录，因为压缩包内已经含有了文件夹名
+                        tar.extractall(path=os.path.dirname(local_dir))
+
+                    # 5. 清理：删除本地和远程的压缩包
+                    os.remove(local_tar_path)
+                    ssh.exec_command(f"rm {remote_tar_path}")
+                    return  # 打包任务完成，直接返回
+                except Exception as e:
+                    print(f"打包下载失败，回退到普通模式: {e}")
+            else:
+                print("远程打包失败，回退到普通模式")
+
+        # --- 普通模式：递归下载 ---
+        for item in items:
             remote_path = os.path.join(remote_dir, item.filename).replace('\\', '/')
             local_path = os.path.join(local_dir, item.filename)
 
             if stat.S_ISDIR(item.st_mode):
                 # 如果是文件夹，递归调用
-                sftp_download_dir(sftp, remote_path, local_path)
+                sftp_download_dir(sftp, remote_path, local_path, ssh=ssh)
             else:
                 try:
                     sftp.get(remote_path, local_path)
                 except:
                     pass
-    except:
-        pass
+    except Exception as e:
+        print(f"SFTP 操作异常: {e}")
+
 
 def get_pinyin_search_keys(text):
     """生成拼音全拼和首字母缩写"""
