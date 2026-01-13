@@ -16,6 +16,18 @@ class NodeStatus:
     NODE_STATUS_FAILED = "failed"  # 运行失败
     NODE_STATUS_DISABLED = "disabled"  # 节点被禁用
 
+
+@dataclass
+class NodeStatusColors:
+    # 状态色 (R, G, B)
+    # 莫兰迪色系：降低了鲜艳度，增加了灰色调，视觉更舒适
+    SUCCESS = (39, 174, 96)     # 翡翠绿 (深绿但透亮)
+    RUNNING = (41, 128, 185)    # 伯利兹蓝 (稳重的专业蓝)
+    FAILED = (192, 57, 43)      # 茜草红 (深沉的警示红)
+    PENDING = (127, 140, 141)   # 凉石灰 (冷色调灰)
+    DISABLED = (44, 62, 80)     # 湿沥青 (近乎黑的深蓝灰)
+    DEFAULT = (32, 32, 35)      # 默认背景色
+
 # ----------------------------
 # 自定义节点类（支持状态显示）- 淡色版本
 # ----------------------------
@@ -59,19 +71,30 @@ class StatusNode(BasicNodeWithGlobalProperty):
         self._update_status_color()
 
     def _update_status_color(self):
-        """根据状态更新节点颜色（使用淡色）"""
-        if self._status == NodeStatus.NODE_STATUS_UNRUN or self._status == NodeStatus.NODE_STATUS_DISABLED:
-            # 恢复原始颜色
-            self.set_color(*self._original_color)
-        elif self._status == NodeStatus.NODE_STATUS_RUNNING:
-            # 淡蓝色 - 运行中
-            self.set_color(30, 60, 90)  # 深蓝底色，确保白字清晰
-        elif self._status == NodeStatus.NODE_STATUS_SUCCESS:
-            # 淡绿色 - 成功
-            self.set_color(25, 70, 45)  # 深绿底色，确保白字清晰
-        elif self._status == NodeStatus.NODE_STATUS_FAILED:
-            # 淡红色 - 失败
-            self.set_color(80, 30, 30)  # 深红底色，确保白字清晰
-        elif self._status == NodeStatus.NODE_STATUS_PENDING:
-            # 淡灰色 - 等待运行
-            self.set_color(60, 60, 60)
+        """
+        根据状态更新节点外观。
+        不仅仅是修改 color，还会触发重绘，使 Header 的辉光发生变化。
+        """
+        # 映射表提升性能
+        status_map = {
+            NodeStatus.NODE_STATUS_UNRUN: self._original_color,
+            NodeStatus.NODE_STATUS_DISABLED: NodeStatusColors.DISABLED,
+            NodeStatus.NODE_STATUS_RUNNING: NodeStatusColors.RUNNING,
+            NodeStatus.NODE_STATUS_SUCCESS: NodeStatusColors.SUCCESS,
+            NodeStatus.NODE_STATUS_FAILED: NodeStatusColors.FAILED,
+            NodeStatus.NODE_STATUS_PENDING: NodeStatusColors.PENDING
+        }
+
+        target_color = status_map.get(self._status, self._original_color)
+
+        # 将颜色应用到 properties 中 (NodeGraphQt 的 color 属性)
+        # 这样 paint 函数可以实时获取到
+        self.set_color(*target_color)
+
+        # 强制更新边框颜色作为辅助醒目提醒 (可选)
+        if self._status == NodeStatus.NODE_STATUS_FAILED:
+            self.border_color = (255, 0, 0, 255)  # 只有失败时才给醒目的红框
+        else:
+            self.border_color = (46, 57, 66, 255)  # 恢复默认边框
+
+        self.update()

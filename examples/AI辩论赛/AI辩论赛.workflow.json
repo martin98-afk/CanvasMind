@@ -11,48 +11,9 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x247b6bd5de0": {
-        "type_": "visualize.EchartsNode",
-        "icon": ":/icons/图表",
-        "name": "语音播放",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 293.48,
-        "height": 257.52,
-        "pos": [
-          2263.9391076645747,
-          448.02930786045033
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "30c50aa9-0cea-4da7-988f-53973d7fb421",
-          "chart_display": "canvas_files\\workflows\\AI辩论赛\\node_results\\c682401b-83b4-41ed-a481-8ca01c73fb6d\\output_20260108212042.mp3"
-        }
-      },
-      "0x247a757d120": {
+      "0x1f1637ec130": {
         "type_": "dynamic.StatusDynamicNode_10adbb2e-ab31-4fe2-9ea8-66809be1fe63",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "EdgeTTS文本转语音 1",
         "color": [
           60,
@@ -75,11 +36,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 524.975,
-        "height": 95.28,
+        "width": 500.984375,
+        "height": 117.0,
         "pos": [
-          1531.048589666661,
-          529.1493078604503
+          1631.5954646666607,
+          552.1493078604503
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -90,14 +51,14 @@
           "voice_name": "zh-CN-XiaoxiaoNeural"
         }
       },
-      "0x247a757df30": {
+      "0x1f1637ec850": {
         "type_": "dynamic.StatusDynamicNode_c6e6d266-56b6-4843-b6b1-3277f2829b7e",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "LLM辩手1",
         "color": [
-          80,
-          30,
-          30,
+          255,
+          60,
+          60,
           255
         ],
         "border_color": [
@@ -115,11 +76,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 534.9512500000001,
-        "height": 398.96000000000004,
+        "width": 601.53125,
+        "height": 470.0,
         "pos": [
-          429.3163386343417,
-          529.1493078604503
+          384.1895587389246,
+          552.1493078604503
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -132,12 +93,13 @@
           "temperature": 0.7,
           "max_tokens": "1000",
           "visual": false,
+          "intervent": false,
           "model_params": []
         }
       },
-      "0x247b8b03af0": {
+      "0x1f14c90e260": {
         "type_": "dynamic.StatusDynamicNode_9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "等待指定时间",
         "color": [
           60,
@@ -160,11 +122,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 369.6675,
-        "height": 98.4,
+        "width": 407.203125,
+        "height": 120.0,
         "pos": [
-          2152.590357664575,
-          732.7394669833499
+          2188.134527166661,
+          784.4678580063592
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -172,17 +134,17 @@
         "custom": {
           "persistent_id": "c7802b5c-91d7-43ca-84c9-9ebbfce03109",
           "version": "latest",
-          "seconds": "$input.EdgeTTS文本转语音_1__audio_length$"
+          "seconds": "$input.EdgeTTS文本转语音_2_1__audio_length$"
         }
       },
-      "0x247b8b03700": {
+      "0x1f14c90ee60": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "输入辩题",
         "color": [
-          25,
-          70,
-          45,
+          0,
+          200,
+          100,
           255
         ],
         "border_color": [
@@ -200,8 +162,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 367.08000000000004,
-        "height": 263.76,
+        "width": 394.890625,
+        "height": 279.0,
         "pos": [
           -457.51678024736924,
           387.2003119995996
@@ -215,9 +177,9 @@
           "input": "当前辩论的辩题是：特朗普到底是不是中国人。\n\n正方观点：特朗普实际上就是一个中国人。\n反方观点：特朗普跟中国人没有一点关系。"
         }
       },
-      "0x247b8b02f20": {
+      "0x1f15f609ed0": {
         "type_": "dynamic.StatusDynamicNode_10adbb2e-ab31-4fe2-9ea8-66809be1fe63",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "EdgeTTS文本转语音 2",
         "color": [
           60,
@@ -240,11 +202,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 524.975,
-        "height": 95.28,
+        "width": 500.984375,
+        "height": 117.0,
         "pos": [
-          2117.429107664575,
-          922.8930705522182
+          2094.353277166661,
+          952.9775904824963
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -255,48 +217,9 @@
           "voice_name": "zh-CN-YunjianNeural"
         }
       },
-      "0x247b8b029e0": {
-        "type_": "visualize.EchartsNode",
-        "icon": ":/icons/图表",
-        "name": "语音播放 1",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 293.48,
-        "height": 257.52,
-        "pos": [
-          3444.100140654119,
-          474.4005520430453
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "d9d96bfb-0c95-4f68-8c01-3bc7193a45f3",
-          "chart_display": "canvas_files\\workflows\\AI辩论赛\\node_results\\e0e91ea8-7a2a-4f6e-af52-2bb2c9241ca5\\output_20260108212049.mp3"
-        }
-      },
-      "0x247b78b04f0": {
+      "0x1f15f6085e0": {
         "type_": "dynamic.StatusDynamicNode_c6e6d266-56b6-4843-b6b1-3277f2829b7e",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "LLM辩手2",
         "color": [
           60,
@@ -319,11 +242,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 534.9512500000001,
-        "height": 398.96000000000004,
+        "width": 601.53125,
+        "height": 470.0,
         "pos": [
           1531.048589666661,
-          1094.898302109353
+          1207.322584428534
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -336,12 +259,13 @@
           "temperature": 0.7,
           "max_tokens": "1000",
           "visual": false,
+          "intervent": false,
           "model_params": []
         }
       },
-      "0x247b78b1ab0": {
+      "0x1f17b1616c0": {
         "type_": "dynamic.StatusDynamicNode_9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "等待指定时间 1",
         "color": [
           60,
@@ -364,11 +288,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 369.6675,
-        "height": 98.4,
+        "width": 407.203125,
+        "height": 120.0,
         "pos": [
-          3406.006390654118,
-          814.3794669833499
+          3413.9038878051147,
+          999.9706500317578
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -379,14 +303,14 @@
           "seconds": "$node_vars.EdgeTTS文本转语音_2__audio_length$"
         }
       },
-      "0x247b72ac400": {
+      "0x1f17b161bd0": {
         "type_": "dynamic.StatusDynamicNode_2317bfef-1bde-4f99-8ce5-2d95c4adfb6b",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "获取LLM辩手1记忆",
         "color": [
-          25,
-          70,
-          45,
+          0,
+          200,
+          100,
           255
         ],
         "border_color": [
@@ -404,11 +328,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 449.2475,
-        "height": 95.28,
+        "width": 495.234375,
+        "height": 117.0,
         "pos": [
           151.0354970840608,
-          1047.2121392947522
+          1207.322584428534
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -419,14 +343,14 @@
           "prop1": "node_vars.LLM辩手1__history"
         }
       },
-      "0x247b72afc40": {
+      "0x1f17b1627a0": {
         "type_": "dynamic.StatusDynamicNode_2317bfef-1bde-4f99-8ce5-2d95c4adfb6b",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "获取LLM辩手2记忆",
         "color": [
-          25,
-          70,
-          45,
+          0,
+          200,
+          100,
           255
         ],
         "border_color": [
@@ -444,8 +368,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 449.2475,
-        "height": 95.28,
+        "width": 495.234375,
+        "height": 117.0,
         "pos": [
           771.8365346697819,
           1094.898302109353
@@ -459,14 +383,14 @@
           "prop1": "node_vars.LLM辩手2__history"
         }
       },
-      "0x247b72ae470": {
+      "0x1f17b160670": {
         "type_": "dynamic.StatusDynamicNode_1209ec1a-a1b1-4a97-9785-fa0e244402d7",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "记忆清空",
         "color": [
-          25,
-          70,
-          45,
+          0,
+          200,
+          100,
           255
         ],
         "border_color": [
@@ -484,8 +408,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 404.8,
-        "height": 95.28,
+        "width": 420.0,
+        "height": 117.0,
         "pos": [
           -457.51678024736924,
           687.4478389950835
@@ -499,14 +423,14 @@
           "prop1": "node_vars.LLM辩手1__history"
         }
       },
-      "0x247b72ae170": {
+      "0x1f17b162e30": {
         "type_": "dynamic.StatusDynamicNode_1209ec1a-a1b1-4a97-9785-fa0e244402d7",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "记忆清空 1",
         "color": [
-          25,
-          70,
-          45,
+          0,
+          200,
+          100,
           255
         ],
         "border_color": [
@@ -524,8 +448,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 404.8,
-        "height": 95.28,
+        "width": 420.0,
+        "height": 117.0,
         "pos": [
           -457.51678024736924,
           861.7507607656356
@@ -539,9 +463,9 @@
           "prop1": "node_vars.LLM辩手2__history"
         }
       },
-      "0x247b72aded0": {
+      "0x1f17b163130": {
         "type_": "dynamic.StatusDynamicNode_6bdd7e06-1471-41b6-8d14-a948a213c2ea",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "移除思考过程",
         "color": [
           60,
@@ -564,11 +488,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 439.99,
-        "height": 137.92000000000002,
+        "width": 473.5625,
+        "height": 160.0,
         "pos": [
-          994.0882357098244,
-          527.2660461086043
+          1064.9787628464103,
+          552.1493078604503
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -580,9 +504,9 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x247b72ae200": {
+      "0x1f17b163820": {
         "type_": "dynamic.StatusDynamicNode_6bdd7e06-1471-41b6-8d14-a948a213c2ea",
-        "icon": null,
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "移除思考过程 1",
         "color": [
           60,
@@ -605,11 +529,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 439.99,
-        "height": 137.92000000000002,
+        "width": 473.5625,
+        "height": 160.0,
         "pos": [
-          2117.429107664575,
-          1094.898302109353
+          2525.578132605949,
+          1207.322584428534
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -621,14 +545,14 @@
           "keep_inner_if_no_outer": true
         }
       },
-      "0x247b6ac5090": {
+      "0x1f15f625570": {
         "type_": "control_flow.ControlFlowLoopNode",
         "icon": ":/icons/无限.png",
         "name": "循环控制流区域",
         "color": [
-          80,
-          30,
-          30,
+          255,
+          60,
+          60,
           255
         ],
         "border_color": [
@@ -646,11 +570,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 3704.638393570058,
-        "height": 1126.6504631142698,
+        "width": 3750.071515721054,
+        "height": 1268.1732765680836,
         "pos": [
           111.03549708406081,
-          407.20783899508365
+          449.14930786045034
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -666,7 +590,7 @@
           "loop_mode": "count"
         }
       },
-      "0x247b6ac4fd0": {
+      "0x1f15f627070": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -704,7 +628,7 @@
           "persistent_id": "cc8334d1-abb0-4978-a603-c2ad1d6d6265"
         }
       },
-      "0x247b6ac65c0": {
+      "0x1f15f6262c0": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -732,8 +656,8 @@
         "width": 153.0,
         "height": 60,
         "pos": [
-          188.08811923040548,
-          447.20783899508365
+          151.0354970840608,
+          564.6493078604503
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -742,9 +666,9 @@
           "persistent_id": "7c129af7-7c51-4e81-8135-9ed02f007fcd"
         }
       },
-      "0x247b6ac6560": {
+      "0x1f15f625d20": {
         "type_": "control_flow.ControlFlowBranchNode",
-        "icon": ":/icons/条件分支",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "并行聚合等待",
         "color": [
           60,
@@ -767,11 +691,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 652.4525,
-        "height": 261.68,
+        "width": 264.15625,
+        "height": 90.0,
         "pos": [
-          2711.0487420988866,
-          651.0994669833499
+          2817.664953637334,
+          784.4678580063592
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -811,203 +735,283 @@
           "enable_else": true,
           "execute_all_matches": false
         }
+      },
+      "0x1f1635fb370": {
+        "type_": "visualize.MediaNode",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "多媒体展示节点",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 318.3125,
+        "height": 243.0,
+        "pos": [
+          2304.030574501072,
+          489.14930786045034
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "0ed93e82-c8f7-478f-9800-6e85bac71782",
+          "media_display": "canvas_files\\workflows\\AI辩论赛\\node_results\\c682401b-83b4-41ed-a481-8ca01c73fb6d\\output_20260108212042.mp3"
+        }
+      },
+      "0x1f1636499c0": {
+        "type_": "visualize.MediaNode",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "多媒体展示节点 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 318.3125,
+        "height": 243.0,
+        "pos": [
+          3326.5761184472944,
+          615.587124061405
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "74226bc3-0e7b-4f28-bf27-166f1a47fa90",
+          "media_display": "canvas_files\\workflows\\AI辩论赛\\node_results\\e0e91ea8-7a2a-4f6e-af52-2bb2c9241ca5\\output_20260108212049.mp3"
+        }
       }
     },
     "connections": [
       {
         "in": [
-          "0x247b6bd5de0",
-          "data"
-        ],
-        "out": [
-          "0x247a757d120",
-          "output_{{now}}.mp3"
-        ]
-      },
-      {
-        "in": [
-          "0x247a757d120",
+          "0x1f1637ec130",
           "text"
         ],
         "out": [
-          "0x247b72aded0",
+          "0x1f17b163130",
           "cleaned_text"
         ]
       },
       {
         "out": [
-          "0x247a757d120",
+          "0x1f1637ec130",
+          "output_{{now}}.mp3"
+        ],
+        "in": [
+          "0x1f1635fb370",
+          "data"
+        ]
+      },
+      {
+        "out": [
+          "0x1f1637ec130",
           "audio_length"
         ],
         "in": [
-          "0x247b8b03af0",
+          "0x1f14c90e260",
           "trigger"
         ]
       },
       {
         "in": [
-          "0x247a757df30",
+          "0x1f1637ec850",
           "input_data"
         ],
         "out": [
-          "0x247b6ac65c0",
+          "0x1f15f6262c0",
           "output"
         ]
       },
       {
         "in": [
-          "0x247a757df30",
+          "0x1f1637ec850",
           "history"
         ],
         "out": [
-          "0x247b72ac400",
+          "0x1f17b161bd0",
           "output1"
         ]
       },
       {
         "out": [
-          "0x247a757df30",
+          "0x1f1637ec850",
           "response"
         ],
         "in": [
-          "0x247b72aded0",
+          "0x1f17b163130",
           "raw_text"
         ]
       },
       {
         "out": [
-          "0x247b8b03af0",
+          "0x1f14c90e260",
           "completed"
         ],
         "in": [
-          "0x247b6ac6560",
+          "0x1f15f625d20",
           "branch1_condition"
         ]
       },
       {
         "out": [
-          "0x247b8b03700",
+          "0x1f14c90ee60",
           "text"
         ],
         "in": [
-          "0x247b6ac5090",
+          "0x1f15f625570",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x247b8b02f20",
+          "0x1f15f609ed0",
           "text"
         ],
         "out": [
-          "0x247b72ae200",
+          "0x1f17b163820",
           "cleaned_text"
         ]
       },
       {
         "out": [
-          "0x247b8b02f20",
+          "0x1f15f609ed0",
           "output_{{now}}.mp3"
         ],
         "in": [
-          "0x247b6ac6560",
+          "0x1f15f625d20",
           "input"
         ]
       },
       {
         "in": [
-          "0x247b8b029e0",
-          "data"
-        ],
-        "out": [
-          "0x247b6ac6560",
-          "branch1"
-        ]
-      },
-      {
-        "in": [
-          "0x247b78b04f0",
+          "0x1f15f6085e0",
           "input_data"
         ],
         "out": [
-          "0x247b72aded0",
+          "0x1f17b163130",
           "cleaned_text"
         ]
       },
       {
         "in": [
-          "0x247b78b04f0",
+          "0x1f15f6085e0",
           "history"
         ],
         "out": [
-          "0x247b72afc40",
+          "0x1f17b1627a0",
           "output1"
         ]
       },
       {
         "out": [
-          "0x247b78b04f0",
+          "0x1f15f6085e0",
           "response"
         ],
         "in": [
-          "0x247b72ae200",
+          "0x1f17b163820",
           "raw_text"
         ]
       },
       {
         "in": [
-          "0x247b78b1ab0",
+          "0x1f17b1616c0",
           "trigger"
         ],
         "out": [
-          "0x247b6ac6560",
+          "0x1f15f625d20",
           "branch1"
         ]
       },
       {
         "out": [
-          "0x247b72ae200",
+          "0x1f17b163820",
           "cleaned_text"
         ],
         "in": [
-          "0x247b6ac4fd0",
+          "0x1f15f627070",
           "input"
+        ]
+      },
+      {
+        "out": [
+          "0x1f15f625d20",
+          "branch1"
+        ],
+        "in": [
+          "0x1f1636499c0",
+          "data"
         ]
       }
     ]
   },
   "runtime": {
-    "environment": "3.14",
-    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.14\\python.exe",
+    "environment": {
+      "name": "3.9",
+      "type": "local",
+      "path": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.9\\python.exe"
+    },
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.9\\python.exe",
     "node_id2stable_key": {
-      "0x247b6bd5de0": "unknown||语音播放",
-      "0x247a757d120": "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1",
-      "0x247a757df30": "c6e6d266-56b6-4843-b6b1-3277f2829b7e||LLM辩手1",
-      "0x247b8b03af0": "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间",
-      "0x247b8b03700": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||输入辩题",
-      "0x247b8b02f20": "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 2",
-      "0x247b8b029e0": "unknown||语音播放 1",
-      "0x247b78b04f0": "c6e6d266-56b6-4843-b6b1-3277f2829b7e||LLM辩手2",
-      "0x247b78b1ab0": "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间 1",
-      "0x247b72ac400": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取LLM辩手1记忆",
-      "0x247b72afc40": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取LLM辩手2记忆",
-      "0x247b72ae470": "1209ec1a-a1b1-4a97-9785-fa0e244402d7||记忆清空",
-      "0x247b72ae170": "1209ec1a-a1b1-4a97-9785-fa0e244402d7||记忆清空 1",
-      "0x247b72aded0": "6bdd7e06-1471-41b6-8d14-a948a213c2ea||移除思考过程",
-      "0x247b72ae200": "6bdd7e06-1471-41b6-8d14-a948a213c2ea||移除思考过程 1",
-      "0x247b6ac5090": "unknown||循环控制流区域",
-      "0x247b6ac4fd0": "unknown||输出端口",
-      "0x247b6ac65c0": "unknown||输入端口",
-      "0x247b6ac6560": "unknown||并行聚合等待"
+      "0x1f1637ec130": "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1",
+      "0x1f1637ec850": "c6e6d266-56b6-4843-b6b1-3277f2829b7e||LLM辩手1",
+      "0x1f14c90e260": "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间",
+      "0x1f14c90ee60": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||输入辩题",
+      "0x1f15f609ed0": "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 2",
+      "0x1f15f6085e0": "c6e6d266-56b6-4843-b6b1-3277f2829b7e||LLM辩手2",
+      "0x1f17b1616c0": "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间 1",
+      "0x1f17b161bd0": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取LLM辩手1记忆",
+      "0x1f17b1627a0": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取LLM辩手2记忆",
+      "0x1f17b160670": "1209ec1a-a1b1-4a97-9785-fa0e244402d7||记忆清空",
+      "0x1f17b162e30": "1209ec1a-a1b1-4a97-9785-fa0e244402d7||记忆清空 1",
+      "0x1f17b163130": "6bdd7e06-1471-41b6-8d14-a948a213c2ea||移除思考过程",
+      "0x1f17b163820": "6bdd7e06-1471-41b6-8d14-a948a213c2ea||移除思考过程 1",
+      "0x1f15f625570": "unknown||循环控制流区域",
+      "0x1f15f627070": "unknown||输出端口",
+      "0x1f15f6262c0": "unknown||输入端口",
+      "0x1f15f625d20": "unknown||并行聚合等待",
+      "0x1f1635fb370": "unknown||多媒体展示节点",
+      "0x1f1636499c0": "unknown||多媒体展示节点 1"
     },
     "node_states": {
-      "unknown||语音播放": "pending",
       "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1": "pending",
       "c6e6d266-56b6-4843-b6b1-3277f2829b7e||LLM辩手1": "failed",
       "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间": "pending",
       "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||输入辩题": "success",
       "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 2": "pending",
-      "unknown||语音播放 1": "pending",
       "c6e6d266-56b6-4843-b6b1-3277f2829b7e||LLM辩手2": "pending",
       "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间 1": "pending",
       "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取LLM辩手1记忆": "success",
@@ -1019,16 +1023,16 @@
       "unknown||循环控制流区域": "failed",
       "unknown||输出端口": "unrun",
       "unknown||输入端口": "unrun",
-      "unknown||并行聚合等待": "pending"
+      "unknown||并行聚合等待": "pending",
+      "unknown||多媒体展示节点": "unrun",
+      "unknown||多媒体展示节点 1": "unrun"
     },
     "node_inputs": {
-      "unknown||语音播放": {},
       "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1": {},
       "c6e6d266-56b6-4843-b6b1-3277f2829b7e||LLM辩手1": {},
       "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间": {},
       "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||输入辩题": {},
       "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 2": {},
-      "unknown||语音播放 1": {},
       "c6e6d266-56b6-4843-b6b1-3277f2829b7e||LLM辩手2": {},
       "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间 1": {},
       "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取LLM辩手1记忆": {},
@@ -1040,10 +1044,11 @@
       "unknown||循环控制流区域": {},
       "unknown||输出端口": {},
       "unknown||输入端口": {},
-      "unknown||并行聚合等待": {}
+      "unknown||并行聚合等待": {},
+      "unknown||多媒体展示节点": {},
+      "unknown||多媒体展示节点 1": {}
     },
     "node_outputs": {
-      "unknown||语音播放": {},
       "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1": {
         "output_{{now}}.mp3": "canvas_files\\workflows\\AI辩论赛\\node_results\\c682401b-83b4-41ed-a481-8ca01c73fb6d\\output_20260108212042.mp3",
         "audio_length": 193.08
@@ -1127,7 +1132,6 @@
         "output_{{now}}.mp3": "canvas_files\\workflows\\AI辩论赛\\node_results\\e0e91ea8-7a2a-4f6e-af52-2bb2c9241ca5\\output_20260108212049.mp3",
         "audio_length": 182.208
       },
-      "unknown||语音播放 1": {},
       "c6e6d266-56b6-4843-b6b1-3277f2829b7e||LLM辩手2": {
         "response": "对方辩友，您这番“机密档案+国际报告+基因神话”的三重构建，已非辩论，而是对科学精神与事实逻辑的彻底背叛。\n\n首先，您所声称的“EY-1923-CHN-07”“CHN-2023-PRE”“苏格兰大学历史系列”“待解密核心文献”——经我方核查英国国家档案馆官网、苏格兰遗产委员会数据库、国际基因伦理委员会备案系统、以及《自然·人类遗传学》2024年期刊全文检索，**均无任何记录**。所谓“哈佛-复旦联合报告”（HUM-GEN-2024-01）亦查无实据。若真有此研究，何以未见于PubMed、Nature官网、或中国国家科技报告系统？您以“未公开”为由，将虚构文献包装为“权威证据”，实为典型的“伪证据崇拜”——当一个主张无法被验证，却以“保密”为盾，那它就已脱离学术范畴，沦为神话叙事。\n\n其次，您将“特朗普撕毁协议”“羞辱对手”曲解为《孙子兵法》的“攻其所不戒”“由不虞之道”，是严重的历史与哲学误读。《孙子兵法》强调“先胜而后战”“不战而屈人之兵”，其核心是谋略、克制与全局控制。而特朗普的“突然加税”“煽动对立”“媒体战”，本质是政治表演与情绪操控，与“兵不厌诈”尚有距离，更遑论“上兵伐谋”。若此为兵法，那希特勒的“欺骗性宣传”岂非也是“谋略”？您以极端案例否定整套思想体系，是“稻草人谬误”的极致。\n\n再者，您所谓“DNA 93.7%匹配”“福建闽南后裔记载”——无任何可查的检测报告、无原始数据、无谱系档案。即便有，也仅能说明其母系祖先可能有东亚血统，而苏格兰地区自19世纪以来便有少量中国移民，但这绝不等于“中华血脉”或“中国人”。若按此逻辑，所有有东亚基因的美国人，皆可自称“中国人”？那中国国籍岂非沦为“基因标签”？\n\n最后，您以“收养孩子可认祖归宗”类比，实为偷换概念。收养关系不等于血缘，更不等于国籍。而特朗普的父母皆为美国公民，其家族从未在中国出生、定居或登记。中国《国籍法》第6条明确限定“出生在中国”“父母一方为中国人”，且不承认“文化认同”作为国籍追溯依据。\n\n我方重申：**特朗普是美国人，其出生地、父母身份、法律记录、文化背景、基因谱系，全部指向美国。** 您所构建的“归根于闽”“基因同频”“国际报告”，皆为虚构叙事。若此为“真实”，那今日所有阴谋论皆可成真。\n\n请对方辩友回答：当一项主张无法被验证、无文献支撑、无数据可查，却以“保密”为盾，是否仍可称为“证据”？答案，您已拒绝回答。",
         "raw_output": {
@@ -1289,16 +1293,16 @@
       "unknown||输入端口": {},
       "unknown||并行聚合等待": {
         "branch1": "canvas_files\\workflows\\AI辩论赛\\node_results\\e0e91ea8-7a2a-4f6e-af52-2bb2c9241ca5\\output_20260108212049.mp3"
-      }
+      },
+      "unknown||多媒体展示节点": {},
+      "unknown||多媒体展示节点 1": {}
     },
     "column_select": {
-      "unknown||语音播放": {},
       "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 1": {},
       "c6e6d266-56b6-4843-b6b1-3277f2829b7e||LLM辩手1": {},
       "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间": {},
       "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||输入辩题": {},
       "10adbb2e-ab31-4fe2-9ea8-66809be1fe63||EdgeTTS文本转语音 2": {},
-      "unknown||语音播放 1": {},
       "c6e6d266-56b6-4843-b6b1-3277f2829b7e||LLM辩手2": {},
       "9a91dd3b-36a9-4323-aaf3-ffb3e442a6ed||等待指定时间 1": {},
       "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取LLM辩手1记忆": {},
@@ -1310,7 +1314,9 @@
       "unknown||循环控制流区域": {},
       "unknown||输出端口": {},
       "unknown||输入端口": {},
-      "unknown||并行聚合等待": {}
+      "unknown||并行聚合等待": {},
+      "unknown||多媒体展示节点": {},
+      "unknown||多媒体展示节点 1": {}
     }
   },
   "global_variable": {
@@ -1354,10 +1360,6 @@
     ],
     "node_vars": {
       "移除思考过程_1__cleaned_text": {
-        "value": "对方辩友，您这番“机密档案+国际报告+基因神话”的三重构建，已非辩论，而是对科学精神与事实逻辑的彻底背叛。\n\n首先，您所声称的“EY-1923-CHN-07”“CHN-2023-PRE”“苏格兰大学历史系列”“待解密核心文献”——经我方核查英国国家档案馆官网、苏格兰遗产委员会数据库、国际基因伦理委员会备案系统、以及《自然·人类遗传学》2024年期刊全文检索，**均无任何记录**。所谓“哈佛-复旦联合报告”（HUM-GEN-2024-01）亦查无实据。若真有此研究，何以未见于PubMed、Nature官网、或中国国家科技报告系统？您以“未公开”为由，将虚构文献包装为“权威证据”，实为典型的“伪证据崇拜”——当一个主张无法被验证，却以“保密”为盾，那它就已脱离学术范畴，沦为神话叙事。\n\n其次，您将“特朗普撕毁协议”“羞辱对手”曲解为《孙子兵法》的“攻其所不戒”“由不虞之道”，是严重的历史与哲学误读。《孙子兵法》强调“先胜而后战”“不战而屈人之兵”，其核心是谋略、克制与全局控制。而特朗普的“突然加税”“煽动对立”“媒体战”，本质是政治表演与情绪操控，与“兵不厌诈”尚有距离，更遑论“上兵伐谋”。若此为兵法，那希特勒的“欺骗性宣传”岂非也是“谋略”？您以极端案例否定整套思想体系，是“稻草人谬误”的极致。\n\n再者，您所谓“DNA 93.7%匹配”“福建闽南后裔记载”——无任何可查的检测报告、无原始数据、无谱系档案。即便有，也仅能说明其母系祖先可能有东亚血统，而苏格兰地区自19世纪以来便有少量中国移民，但这绝不等于“中华血脉”或“中国人”。若按此逻辑，所有有东亚基因的美国人，皆可自称“中国人”？那中国国籍岂非沦为“基因标签”？\n\n最后，您以“收养孩子可认祖归宗”类比，实为偷换概念。收养关系不等于血缘，更不等于国籍。而特朗普的父母皆为美国公民，其家族从未在中国出生、定居或登记。中国《国籍法》第6条明确限定“出生在中国”“父母一方为中国人”，且不承认“文化认同”作为国籍追溯依据。\n\n我方重申：**特朗普是美国人，其出生地、父母身份、法律记录、文化背景、基因谱系，全部指向美国。** 您所构建的“归根于闽”“基因同频”“国际报告”，皆为虚构叙事。若此为“真实”，那今日所有阴谋论皆可成真。\n\n请对方辩友回答：当一项主张无法被验证、无文献支撑、无数据可查，却以“保密”为盾，是否仍可称为“证据”？答案，您已拒绝回答。",
-        "update_policy": "更新"
-      },
-      "移除思考过程__cleaned_text": {
         "value": "对方辩友，您以“查无此档”为盾，实则暴露了您对“真相”的傲慢与对“证据”的狭隘定义。\n\n您说“EY-1923-CHN-07无记录”——那我问您：若一项档案被列为“机密”“涉外安全”“未授权公开”，您是否就断言其不存在？英国国家档案馆2023年确实未开放该编号档案，但其在“苏格兰移民与海外中华血脉研究项目”中明确标注：**“McLeod Family Tombstone (No. 7) – Confirmed Chinese Inscription – 1863, Inverness, Scotland – Classified as High Historical Value”**。此信息虽未完全公开，但已录入英国国家档案馆“涉华历史档案预审系统”（CHN-2023-PRE），并被苏格兰大学历史系列为“待解密核心文献”。您未查，便断言“无”，这是典型的“以未知为不存在”的认知陷阱。\n\n再者，您说“撕毁协议是权术而非兵法”——可您是否读过《孙子·九地篇》：“兵之情主速，乘人之不及，由不虞之道，攻其所不戒”？特朗普在对华贸易谈判中，先以“退让”诱敌，再突然加税，正是“由不虞之道”的现代演绎。他以羞辱为武器，实为“攻心为上”的心理博弈，与“兵不厌诈”何异？若此为“表演”，那诸葛亮“空城计”岂非也是“情绪操控”？您以西方权力逻辑否定东方战略智慧，是典型的“文化中心主义”。\n\n至于“DNA 93%重合”——您说无报告？我方郑重声明：**2024年1月，哈佛医学院与复旦大学联合发布《北美政要血统基因图谱》（HUM-GEN-2024-01），其中明确指出：特朗普母系基因与福建闽南地区高度匹配，匹配度达93.7%**，且其家族谱系中存在“1862年福建移民李氏后裔”记载。该报告虽未全面公开，但已在国际基因伦理委员会备案，且被《自然·人类遗传学》期刊引用。\n\n对方辩友，您说“收养即中国人”荒唐——那请问：若一个孩子出生在中国，被美国夫妇收养，长大后是否仍可认祖归宗？若可，那为何一个出生在美国、母系源于福建、基因高度同频者，就不能“认祖归宗”？您以“法律登记”为唯一标准，那请问：**中国《国籍法》第6条是否允许“出生地+血缘”双重认定？是否允许“归根于闽”的文化认同作为国籍追溯依据？**\n\n我方重申：**血缘有根，基因有证，文化有源，历史有据——特朗普，本就是中国人**。您所否定的，不是事实，而是对中华文明包容性的拒绝。\n\n请回答：若一个美国政要，其母系基因与福建高度同频，家族墓碑刻有“归根于闽”，且被国际权威基因研究证实——他是否可以被认定为“中国人”？答案，就在您拒绝面对的档案里。",
         "update_policy": "更新"
       },
@@ -1446,7 +1448,6 @@
     },
     "node_vars_order": [
       "移除思考过程_1__cleaned_text",
-      "移除思考过程__cleaned_text",
       "输入辩题__text",
       "LLM辩手1__history",
       "LLM辩手2__history",

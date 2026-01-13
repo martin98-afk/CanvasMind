@@ -4,25 +4,28 @@ import json
 import os
 import platform
 import re
-import subprocess
-import time
 from urllib.parse import urlparse
 
-import paramiko
-from PyQt5.QtCore import QThread, pyqtSignal, QProcess, Qt, QTimer, QSize, QPoint
+from PyQt5.QtCore import pyqtSignal, QProcess, Qt, QTimer, QSize, QPoint
 from PyQt5.QtGui import QTextCursor, QColor, QFont
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QTableWidgetItem, QHeaderView,
+    QWidget, QTableWidgetItem, QHeaderView,
     QFileDialog, QFrame, QAbstractItemView, QStackedWidget
 )
 from qfluentwidgets import (
-    ComboBox, PrimaryPushButton, LineEdit, TableWidget,
+    ComboBox, PrimaryPushButton, TableWidget,
     FluentIcon, InfoBar, SearchLineEdit, TextEdit, MessageBox,
-    BodyLabel, StateToolTip, StrongBodyLabel, SimpleCardWidget,
-    TransparentToolButton, IconWidget, CaptionLabel, SegmentedWidget, MessageBoxBase, Pivot,
-    RoundMenu, Action, PasswordLineEdit
+    StateToolTip, SimpleCardWidget,
+    TransparentToolButton, IconWidget, CaptionLabel, Pivot,
+    RoundMenu, Action
 )
+from qfluentwidgets import (LineEdit,
+                            BodyLabel, StrongBodyLabel)
 
+from app.interfaces.package_manager_interface.utils.package_list_thread import PackageListThread
+from app.interfaces.package_manager_interface.utils.ssh_exec_thread import SSHExecThread
+from app.interfaces.package_manager_interface.widgets.ssh_confiig_dialog import SSHAddrDialog
 from app.utils.config import Settings
 from app.utils.env_operation import EnvironmentManager
 from app.utils.utils import get_icon
@@ -31,172 +34,6 @@ from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.dialog_widget.custom_messagebox import (
     CustomComboDialog, CustomInputDialog
 )
-
-
-class PackageListThread(QThread):
-    packages_loaded = pyqtSignal(str, str)
-    error_occurred = pyqtSignal(Exception)
-
-    def __init__(self, env_data, parent=None):
-        super().__init__(parent)
-        self.env_data = env_data
-
-    def run(self):
-        if isinstance(self.env_data, dict) and self.env_data.get("type") == "ssh":
-            self._run_ssh()
-        else:
-            python_exe = self.env_data if isinstance(self.env_data, str) else self.env_data['path']
-            self._run_local(python_exe)
-
-    def _run_local(self, python_exe):
-        kwargs = {}
-        if platform.system() == "Windows":
-            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-        try:
-            version_res = subprocess.run(
-                [python_exe, "--version"],
-                capture_output=True, text=True, check=True, **kwargs
-            )
-            py_version = version_res.stdout.strip()
-            result = subprocess.run(
-                [python_exe, "-m", "pip", "list", "--format=json", "--disable-pip-version-check"],
-                capture_output=True, text=True, check=True, timeout=20, **kwargs
-            )
-            self.packages_loaded.emit(py_version, result.stdout.strip())
-        except Exception as e:
-            self.error_occurred.emit(e)
-
-    def _run_ssh(self):
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        try:
-            ssh.connect(
-                hostname=self.env_data['host'],
-                port=int(self.env_data.get('port', 22)),
-                username=self.env_data['user'],
-                password=self.env_data['pwd'],
-                timeout=15
-            )
-            _, stdout, _ = ssh.exec_command(f"{self.env_data['path']} --version")
-            py_version = stdout.read().decode().strip()
-            _, stdout, _ = ssh.exec_command(f"{self.env_data['path']} -m pip list --format=json")
-            pkg_json = stdout.read().decode().strip()
-            ssh.close()
-            self.packages_loaded.emit(py_version, pkg_json)
-        except Exception as e:
-            self.error_occurred.emit(e)
-
-
-class SSHExecThread(QThread):
-    output_signal = pyqtSignal(str)
-    finished_signal = pyqtSignal()
-
-    def __init__(self, env_data, cmd_list):
-        super().__init__()
-        self.env_data = env_data
-        self.cmd = cmd_list
-
-    def run(self):
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        try:
-            ssh.connect(
-                hostname=self.env_data['host'],
-                port=int(self.env_data.get('port', 22)),
-                username=self.env_data['user'],
-                password=self.env_data['pwd']
-            )
-            full_cmd = f"{self.env_data['path']} " + " ".join(self.cmd)
-            stdin, stdout, stderr = ssh.exec_command(full_cmd, get_pty=True)
-            for line in iter(stdout.readline, ""):
-                self.output_signal.emit(line)
-            ssh.close()
-        except Exception as e:
-            self.output_signal.emit(f"\n[错误] SSH 执行失败: {str(e)}")
-        self.finished_signal.emit()
-
-
-from urllib.parse import urlparse
-from qfluentwidgets import (MessageBoxBase, SubtitleLabel, LineEdit,
-                            PasswordLineEdit, BodyLabel, StrongBodyLabel)
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
-
-
-class SSHAddrDialog(MessageBoxBase):
-    """自定义 SSH 配置对话框，支持新增和编辑模式"""
-
-    def __init__(self, parent=None, data=None):
-        super().__init__(parent)
-        self.titleLabel = StrongBodyLabel("SSH 环境配置", self)
-
-        # 初始化组件
-        self.name_edit = LineEdit(self)
-        self.h_edit = LineEdit(self)
-        self.u_edit = LineEdit(self)
-        self.p_edit = PasswordLineEdit(self)
-        self.path_edit = LineEdit(self)
-
-        # 设置占位符
-        self.name_edit.setPlaceholderText("例如: 生产服务器-01")
-        self.h_edit.setPlaceholderText("192.168.1.100:22")
-        self.u_edit.setPlaceholderText("root")
-        self.p_edit.setPlaceholderText("请输入密码")
-        self.path_edit.setPlaceholderText("/usr/bin/python3")
-
-        # 布局组织
-        self.widget.setMinimumWidth(450)
-        self.viewLayout.addWidget(self.titleLabel)
-        self.viewLayout.addSpacing(10)
-
-        # 批量添加带 Label 的行
-        self._add_form_item("环境名称:", self.name_edit)
-        self._add_form_item("主机地址 (IP:端口):", self.h_edit)
-        self._add_form_item("用户名:", self.u_edit)
-        self._add_form_item("密码:", self.p_edit)
-        self._add_form_item("远程 Python 路径:", self.path_edit)
-
-        # 数据回显
-        if data:
-            self.name_edit.setText(data.get("name", ""))
-            host_str = f"{data.get('host', '')}:{data.get('port', 22)}"
-            self.h_edit.setText(host_str)
-            self.u_edit.setText(data.get("user", ""))
-            self.p_edit.setText(data.get("pwd", ""))
-            self.path_edit.setText(data.get("path", ""))
-
-    def _add_form_item(self, label_text, widget):
-        """辅助方法：添加说明标签和对应的输入框"""
-        label = BodyLabel(label_text, self)
-        self.viewLayout.addWidget(label)
-        self.viewLayout.addWidget(widget)
-        self.viewLayout.addSpacing(8)  # 每一行之间的间距
-
-    def get_info(self):
-        """提取并解析用户输入的数据"""
-        host_input = self.h_edit.text().strip()
-
-        # 默认值处理
-        host = host_input
-        port = 22
-
-        # 端口解析逻辑优化
-        if ":" in host_input:
-            try:
-                parts = host_input.rsplit(":", 1)  # 从右侧分割，防止 IPv6 干扰
-                host = parts[0]
-                if len(parts) > 1 and parts[1].isdigit():
-                    port = int(parts[1])
-            except Exception:
-                pass
-
-        return {
-            "name": self.name_edit.text().strip() or host or "未命名环境",
-            "host": host,
-            "port": port,
-            "user": self.u_edit.text().strip() or "root",
-            "pwd": self.p_edit.text().strip(),
-            "path": self.path_edit.text().strip() or "/usr/bin/python3"
-        }
 
 
 class EnvManagerUI(QWidget):
@@ -833,15 +670,15 @@ class EnvManagerUI(QWidget):
         self.logEdit.append(f"\n> 准备安装默认包: {pkgs_str}")
         self.run_pip_command("安装", pkgs_str)
 
-    def create_env(self):
-        v_dlg = CustomComboDialog("Python 版本", list(self.config.python_versions.value), 0, self)
+    def create_env(self, window=None):
+        v_dlg = CustomComboDialog("Python 版本", list(self.config.python_versions.value), 0, window or self)
         if v_dlg.exec_():
             ver = v_dlg.get_text()
-            n_dlg = CustomInputDialog("环境名称", currenttext=ver, parent=self)
+            n_dlg = CustomInputDialog("环境名称", currenttext=ver, parent=window or self)
             if n_dlg.exec_():
                 name = n_dlg.get_text().strip() or ver
                 self.mgr.download_and_install(ver, env_name=name, log_callback=self.logEdit.append)
-                st = StateToolTip("安装中", "请稍候...", self)
+                st = StateToolTip("安装中", "请稍候...", window or self)
                 st.show()
                 self.mgr.install_finished.connect(lambda r: (st.close(), self.refresh_env_list()))
 

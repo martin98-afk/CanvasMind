@@ -29,7 +29,7 @@ from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 class NodeSignals(QObject):
     """节点核心信号管理器"""
     intercepted_msg_signal = QtCore.pyqtSignal(dict)
-    htmlReady = QtCore.pyqtSignal(str, bool)
+    htmlReady = QtCore.pyqtSignal(object, bool)
     stream_data_updated = QtCore.pyqtSignal(object)
 
 
@@ -70,12 +70,18 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self._ui_update_timer.timeout.connect(self._sync_and_refresh_ui)
         self._ui_update_interval = 300  # 稍微延长刷新间隔(300ms)以减轻 WebEngine 压力
 
-        # 绑定核心信号
-        self.signals.intercepted_msg_signal.connect(self._message_router)
-        self.signals.stream_data_updated.connect(self._on_stream_data_received)
-
         # 初始化持久化 ID
         self.model.add_property("persistent_id", str(uuid.uuid4()))
+        # 记录节点是否被折叠
+        self.model.add_property("_collapsed", False)
+
+        # 绑定核心信号
+        if hasattr(self.view, "collapsed_toggle"):
+            self.view.collapsed_toggle.connect(
+                lambda toggled: self.model.set_property("_collapsed", toggled)
+            )
+        self.signals.intercepted_msg_signal.connect(self._message_router)
+        self.signals.stream_data_updated.connect(self._on_stream_data_received)
 
     @property
     def persistent_id(self):

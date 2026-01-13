@@ -52,7 +52,10 @@ def create_node_class(full_path, file_path, parent_window=None):
             if hasattr(ComponentScanner().get_component_by_uuid(self.uuid), "icon"):
                 self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
             self.view.set_align("center")
-            self.view.rename_signal.rename.connect(parent_window.rename_node_vars)
+            self.view.rename_signal.connect(parent_window.rename_node_vars)
+            self.view.run_signal.connect(lambda: parent_window.run_node(self))
+            self.view.delete_signal.connect(lambda: parent_window.delete_node(self))
+            self.view.debug_signal.connect(self._toggle_debug_mode)
             self._debug_enabled = False
             self._debug_widget = None
             self._debug_code_content = ""

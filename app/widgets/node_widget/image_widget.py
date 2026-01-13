@@ -3,7 +3,7 @@ import numpy as np
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from PIL import Image
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor
+from PyQt5.QtGui import QImage, QPixmap, QPainter
 from Qt import QtWidgets, QtCore
 
 from app.widgets.node_widget.base import CustomNodeBaseWidget
@@ -96,9 +96,6 @@ class ImageWidget(QtWidgets.QWidget):
         if self._q_image:
             # 使用 drawImage 直接绘制到当前 rect，Qt 会自动处理高质量缩放
             painter.drawImage(rect, self._q_image)
-        else:
-            painter.setPen(Qt.gray)
-            painter.drawText(rect, Qt.AlignCenter, "No Image Data")
 
     def sizeHint(self):
         return self._current_size

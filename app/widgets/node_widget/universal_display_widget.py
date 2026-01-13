@@ -1,17 +1,23 @@
 # -*- coding: utf-8 -*-
 import os
-
 import numpy as np
+from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from PIL import Image
 from Qt import QtWidgets, QtCore
-from app.widgets.node_widget.base import CustomNodeBaseWidget
-from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
+
+from .base import CustomNodeBaseWidget
+from .data_table_widget import DataTableWidget
 from .html_widget import HtmlWidget
+from .image_compare_widget import ImageCompareWidget
+from .image_gallery_widget import ImageGalleryWidget
 from .image_widget import ImageWidget
 from app.widgets.node_widget.media_widget import VideoPlayWidget, AudioPlayWidget
+from .json_tree_widget import JsonTreeWidget
+from .pdf_widget import PdfWidget
 
 
 class UniversalDisplayWidget(QtWidgets.QWidget):
+    """多功能可视化插件，现支持图像对比、图像展示、语音播放、视频播放、html渲染等功能"""
     valueChanged = QtCore.Signal(object)
     sizeHintChanged = QtCore.Signal()
 
@@ -23,88 +29,132 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
         self.stack = QtWidgets.QStackedWidget()
         self.layout.addWidget(self.stack)
 
-        self.html_view = HtmlWidget(parent)
-        self.image_view = ImageWidget(parent)
-        self.video_view = VideoPlayWidget(parent)  # 新增媒体控件
-        self.audio_view = AudioPlayWidget(parent)
+        # 缓存实例，实现延迟加载 { "type_name": widget_instance }
+        self._view_cache = {}
 
-        self.stack.addWidget(self.html_view)  # Index 0
-        self.stack.addWidget(self.image_view)  # Index 1
-        self.stack.addWidget(self.video_view)  # Index 2
-        self.stack.addWidget(self.audio_view)
+        # 注册显示策略配置
+        # priority: 优先级，越小越先匹配
+        self._strategies = [
+            # 1. 优先处理多图 (3张及以上)
+            {"id": "gallery", "class": ImageGalleryWidget, "check": self._is_gallery_data, "priority": 1},
+            # 2. 处理双图对比
+            {"id": "compare", "class": ImageCompareWidget, "check": self._is_compare_data, "priority": 2},
+            # 3. 处理 PDF
+            {"id": "pdf", "class": PdfWidget, "check": self._is_pdf_path, "priority": 3},
+            # 4. 单张图
+            {"id": "image", "class": ImageWidget, "check": self._is_image_data, "priority": 4},
+            # 5. 视频
+            {"id": "video", "class": VideoPlayWidget, "check": self._is_video_path, "priority": 5},
+            # 6. 音频
+            {"id": "audio", "class": AudioPlayWidget, "check": self._is_audio_path, "priority": 6},
+            # 7. 表格
+            {"id": "table", "class": DataTableWidget, "check": self._is_table_data, "priority": 7},
+            # 8. json
+            {"id": "json", "class": JsonTreeWidget, "check": self._is_json_data, "priority": 8},
+            # 9. html
+            {"id": "html", "class": HtmlWidget, "check": lambda x: isinstance(x, str), "priority": 99},
+        ]
 
-        self.html_view.sizeHintChanged.connect(self.sizeHintChanged.emit)
-        self.image_view.sizeHintChanged.connect(self.sizeHintChanged.emit)
-        self.video_view.sizeHintChanged.connect(self.sizeHintChanged.emit)
-        self.audio_view.sizeHintChanged.connect(self.sizeHintChanged.emit)
+    # --- 数据类型判断逻辑 (策略) ---
+    def _is_gallery_data(self, value):
+        """判断是否为 3 张及以上的图像列表"""
+        if isinstance(value, (list, tuple)) and len(value) >= 3:
+            # 检查第一个元素是否是图像
+            return self._is_image_data(value[0])
+        return False
 
-    def sizeHint(self):
-        # 返回当前正在显示的页面的尺寸
-        return self.stack.currentWidget().sizeHint()
+    def _is_pdf_path(self, value):
+        """判断是否为 PDF 路径"""
+        if isinstance(value, str) and value.lower().endswith('.pdf'):
+            # 路径可以不存在（为了加载工作流时的健壮性），由 Widget 内部处理不存在的情况
+            return True
+        return False
 
-    def play(self):
-        if self.stack.currentIndex() == 2:
-            self.video_view.play()
-        elif self.stack.currentIndex() == 3:
-            self.audio_view.play()
+    # 只处理正好 2 张图
+    def _is_compare_data(self, value):
+        return isinstance(value, (list, tuple)) and len(value) == 2 and self._is_image_data(value[0])
 
-    def show_html(self, html_str):
-        self.stack.setCurrentIndex(0)
-        self.html_view.set_value(html_str)
-        self.sizeHintChanged.emit()
+    def _is_image_data(self, value):
+        if isinstance(value, (np.ndarray, Image.Image)): return True
+        if isinstance(value, str):
+            ext = os.path.splitext(value)[1].lower()
+            return ext in ['.jpg', '.jpeg', '.png', '.bmp', '.webp']
+        return False
 
-    def show_image(self, img_data):
-        self.stack.setCurrentIndex(1)
-        self.image_view.set_value(img_data)
-        self.sizeHintChanged.emit()
+    def _is_video_path(self, value):
+        if not isinstance(value, str) or not os.path.exists(value): return False
+        return os.path.splitext(value)[1].lower() in ['.mp4', '.avi', '.mov', '.mkv']
 
-    def show_video(self, file_path):
-        self.stack.setCurrentIndex(2)
-        self.video_view.set_value(file_path)
-        self.sizeHintChanged.emit()
+    def _is_audio_path(self, value):
+        if not isinstance(value, str) or not os.path.exists(value): return False
+        return os.path.splitext(value)[1].lower() in ['.mp3', '.wav', '.ogg', '.flac']
 
-    def show_audio(self, file_path):
-        self.stack.setCurrentIndex(3)
-        self.audio_view.set_value(file_path)
-        self.sizeHintChanged.emit()
+    def _is_table_data(self, value):
+        # 如果是列表且元素是字典，判定为表格
+        return isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict)
 
-    def get_value(self):
-        idx = self.stack.currentIndex()
-        if idx == 0: return self.html_view.get_value()
-        if idx == 1: return self.image_view.get_value()
-        if idx == 2: return self.video_view.get_value()
-        if idx == 3: return self.audio_view.get_value()
-        return None
+    def _is_json_data(self, value):
+        # 字典或者是普通列表
+        return isinstance(value, (dict, list))
+    # --- 核心调度逻辑 ---
+    def _get_or_create_view(self, strategy_id, widget_class):
+        """根据 ID 延迟实例化控件"""
+        if strategy_id not in self._view_cache:
+            widget = widget_class(self.parent())
+            self.stack.addWidget(widget)
+            # 统一绑定尺寸变化信号
+            if hasattr(widget, 'sizeHintChanged'):
+                widget.sizeHintChanged.connect(self.sizeHintChanged.emit)
+            self._view_cache[strategy_id] = widget
+        return self._view_cache[strategy_id]
 
     def set_value(self, value):
-        # 1. 检查是否是多媒体文件路径
-        if isinstance(value, str) and os.path.exists(value):
-            ext = os.path.splitext(value)[1].lower()
-            image_exts = ['.jpg', '.jpeg', '.png', '.bmp', '.webp']
+        # 1. 处理清空逻辑
+        if value is None or value == "" or (isinstance(value, list) and len(value) == 0):
+            # 遍历所有缓存的 Widget，全部重置为 None
+            for widget in self._view_cache.values():
+                widget.set_value(None)
 
-            if ext in self.video_view.EXTS:
-                self.show_video(value)
-                return
-            elif ext in self.audio_view.EXTS:
-                self.show_audio(value)
-                return
-            elif ext in image_exts:
-                self.show_image(value)
-                return
+            self.updateGeometry()
+            self.sizeHintChanged.emit()
+            return
 
-        # 2. 检查是否是图像内存数据 (numpy/PIL)
-        if isinstance(value, (np.ndarray, Image.Image)):
-            self.show_image(value)
+        # 2. 正常匹配逻辑
+        matched_strategy = None
+        for strategy in sorted(self._strategies, key=lambda x: x['priority']):
+            if strategy['check'](value):
+                matched_strategy = strategy
+                break
 
-        # 3. 检查是否是 HTML 字符串
-        elif isinstance(value, str) and value:
-            self.show_html(value)
+        if matched_strategy:
+            view_id = matched_strategy['id']
+            target_widget = self._get_or_create_view(view_id, matched_strategy['class'])
+            for v_id, widget in self._view_cache.items():
+                if v_id != view_id:
+                    # 将不显示的图片控件设为 None，释放它们的尺寸
+                    if isinstance(widget, (ImageWidget, ImageCompareWidget)):
+                        widget.set_value(None)
 
-        else:
-            self.show_html("<center>无有效数据</center>")
-            self.show_image(None)
-            self.show_audio(None)
-            self.show_video(None)
+            self.stack.setCurrentWidget(target_widget)
+            target_widget.set_value(value)
+
+            self.updateGeometry()
+            self.sizeHintChanged.emit()
+
+    def play(self):
+        """统一播放接口"""
+        curr = self.stack.currentWidget()
+        if curr and hasattr(curr, 'play'):
+            curr.play()
+
+    def sizeHint(self):
+        if self.stack.currentWidget():
+            return self.stack.currentWidget().sizeHint()
+        return QtCore.QSize(200, 150)
+
+    def get_value(self):
+        curr = self.stack.currentWidget()
+        return curr.get_value() if curr and hasattr(curr, 'get_value') else None
 
 
 class UniversalWidgetWrapper(CustomNodeBaseWidget):
@@ -118,19 +168,16 @@ class UniversalWidgetWrapper(CustomNodeBaseWidget):
 
         widget.valueChanged.connect(self.on_value_changed)
         widget.sizeHintChanged.connect(self._update_node)
+        self._update_timer = QtCore.QTimer()
+        self._update_timer.setSingleShot(True)
+        self._update_timer.timeout.connect(self._real_update_node)
 
     def _update_node(self):
-        if self.node and self.node.graph is not None:
-            # 强制关闭代理模式更新节点大小
-            self.node.view.set_proxy_mode(False)
-            # 强制让代理容器更新尺寸
-            # NodeGraphQt 的节点内部有一个 proxy 容器
-            view = self.node.view
-            # 这种方法可以强制刷新节点内的 Widget 布局
-            if hasattr(view, 'update'):
-                view.update()
+        self._update_timer.start(50)
 
-            # 重新计算节点高度以包裹 Widget
+    def _real_update_node(self):
+        if self.node and self.node.graph is not None:
+            self.node.view.set_proxy_mode(False)
             self.node.view.draw_node()
 
     def set_value(self, value):

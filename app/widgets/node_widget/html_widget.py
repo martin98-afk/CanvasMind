@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import re
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
-from PyQt5.QtCore import Qt
-from Qt import QtWidgets, QtCore
+from PyQt5.QtCore import Qt, QSize, QUrl, pyqtSignal
+from Qt import QtWidgets
 from loguru import logger
 
 from app.widgets.node_widget.base import CustomNodeBaseWidget
@@ -18,44 +18,54 @@ except ImportError:
 
 
 class HtmlWidget(QtWidgets.QWidget):
-    valueChanged = QtCore.Signal(str)
-    sizeHintChanged = QtCore.Signal()
+    valueChanged = pyqtSignal(str)
+    sizeHintChanged = pyqtSignal()
 
     def __init__(self, parent=None, default_html=""):
         super().__init__(parent)
+        # 初始化 HTML 内容
         self._html = default_html or "<center>等待图表...</center>"
+
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         if HAS_WEBENGINE:
             self.view = QWebEngineView(self)
+            # 允许背景透明
             self.view.setAttribute(Qt.WA_TranslucentBackground)
             self.view.page().setBackgroundColor(Qt.transparent)
             self.view.setContextMenuPolicy(Qt.NoContextMenu)
             layout.addWidget(self.view)
-            self.set_value(self._html)
+            # 初始加载
+            self.view.setHtml(self._html, QUrl("https://chart.local/"))
         else:
             self.fallback = QtWidgets.QLabel("需 QtWebEngine 支持图表")
-            self.fallback.setAlignment(QtCore.Qt.AlignCenter)
-            self.fallback.setSizePolicy(
-                QtWidgets.QSizePolicy.Expanding,
-                QtWidgets.QSizePolicy.Expanding
-            )
+            self.fallback.setAlignment(Qt.AlignCenter)
             layout.addWidget(self.fallback)
 
     def set_value(self, html: str):
-        self._html = html or ""
+        """修复：确保更新了内容并重新加载"""
+        new_html = str(html) if html is not None else ""
+        if new_html == self._html:
+            return
+
+        self._html = new_html  # 必须更新成员变量
+
         if HAS_WEBENGINE:
-            self.view.setHtml(self._html, QtCore.QUrl("https://chart.local/"))
-            content_w, content_h = self._extract_size_from_html(html)
+            # 修复：使用传入的 new_html 而不是旧的 self._html
+            self.view.setHtml(self._html, QUrl("https://chart.local/"))
+
+            # 根据内容动态调整 WebEngineView 的最小尺寸
+            content_w, content_h = self._extract_size_from_html(self._html)
             self.view.setMinimumSize(content_w, content_h)
+
         self.updateGeometry()
         self.sizeHintChanged.emit()
         self.valueChanged.emit(self._html)
 
     def _extract_size_from_html(self, html: str):
-        """从 HTML 中提取 style="width:...px;height:...px" 的尺寸"""
+        """从 HTML 提取尺寸，增加容错"""
         width_match = re.search(r'width\s*:\s*(\d+)px', html, re.IGNORECASE)
         height_match = re.search(r'height\s*:\s*(\d+)px', html, re.IGNORECASE)
 
@@ -70,9 +80,8 @@ class HtmlWidget(QtWidgets.QWidget):
         return self._html
 
     def sizeHint(self):
-        # 注意：sizeHint 在初次布局时使用，但后续会被真实尺寸覆盖
         w, h = self._extract_size_from_html(self._html)
-        return QtCore.QSize(w, h)
+        return QSize(w, h)
 
 
 class HtmlWidgetWrapper(CustomNodeBaseWidget):

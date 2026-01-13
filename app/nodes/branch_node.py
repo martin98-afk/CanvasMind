@@ -14,7 +14,7 @@ from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 
 
 def create_branch_node(parent_window):
-    class ConditionalBranchNode(CustomBaseNode, StatusNode, BasicNodeWithGlobalProperty):
+    class ConditionalBranchNode(CustomBaseNode, StatusNode):
         category: str = "控制流"
         __identifier__ = 'control_flow'
         NODE_NAME = '条件分支'
@@ -26,11 +26,9 @@ def create_branch_node(parent_window):
             super().__init__(CustomNodeItem)
             self.set_icon(":/icons/条件分支")
             self.model.port_deletion_allowed = True
-            self._node_logs = ""
-            self._output_values = {}
-            self._input_values = {}
-            self.column_select = {}
-
+            self.view.rename_signal.connect(parent_window.rename_node_vars)
+            self.view.run_signal.connect(lambda: parent_window.run_node(self))
+            self.view.delete_signal.connect(lambda: parent_window.delete_node(self))
             # 条件索引 → 实际输出端口名的映射
             self._condition_index_to_port = {}
 
