@@ -525,9 +525,6 @@ def create_node_class(full_path, file_path, parent_window=None):
 
                     time.sleep(0.5)  # 适当降低轮询频率，减少 IO 开销
 
-                # 5. 下载结果并替换路径
-                self._log_message(self.persistent_id, "📥 执行完成，正在同步结果...")
-
                 # 下载并处理 result.pkl
                 remote_pkl = f"{remote_run_dir}/result.pkl"
                 try:

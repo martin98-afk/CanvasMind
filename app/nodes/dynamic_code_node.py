@@ -561,10 +561,6 @@ def create_dynamic_code_node(parent_window=None):
 
                 # 1. 准备目录
                 ssh.exec_command(f"mkdir -p {upload_dir} {result_dir} {remote_run_dir} {remote_root}/node_logs")
-
-                # 2. 同步文件
-                self._log_message(self.persistent_id, f"🚀 正在同步动态代码到远程 {env_data['host']}...")
-
                 # 上传本地 Workspace 下的 upload 内容
                 local_up = local_node_workspace / "upload"
                 if local_up.exists():
@@ -573,7 +569,7 @@ def create_dynamic_code_node(parent_window=None):
 
                 sftp.put(str(local_comp_path), f"{remote_run_dir}/component.py")
                 sftp.put(str(params_path), f"{remote_run_dir}/params.pkl")
-                sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}//base.py")
+                sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}/base.py")
                 sftp.put(log_file_path, log_path)
                 # 3. 生成适合远程的执行脚本
                 remote_script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
@@ -584,7 +580,7 @@ def create_dynamic_code_node(parent_window=None):
                     error_path=f"{remote_run_dir}/error.pkl",
                     log_file_path=log_path,
                     node_id=self.persistent_id,
-                    workflow_path=remote_root
+                    workflow_path="/tmp"
                 )
                 with open(local_script_path, 'w', encoding='utf-8') as f:
                     f.write(remote_script_content)
@@ -592,7 +588,7 @@ def create_dynamic_code_node(parent_window=None):
 
                 # 4. 执行
                 python_exe = env_data['path']
-                cmd = f"export PYTHONPATH={remote_root}:{remote_root}:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
+                cmd = f"export PYTHONPATH={remote_root}:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
                 stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
 
                 # 5. 增量日志流式回传
@@ -612,8 +608,6 @@ def create_dynamic_code_node(parent_window=None):
                         pass
                     time.sleep(0.5)
 
-                # 6. 回传结果与替换路径
-                self._log_message(self.persistent_id, "📥 正在同步远程结果...")
                 try:
                     sftp.get(f"{remote_run_dir}/result.pkl", str(result_path))
                     self._replace_remote_paths(result_path, f"{remote_root}/{self.persistent_id}", str(local_node_workspace))

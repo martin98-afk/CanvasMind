@@ -58,7 +58,7 @@ class LogToolWindow(ToolWindow):
         self.log_layout = QVBoxLayout(self.container)
         self.log_layout.setContentsMargins(5, 5, 5, 5)
         self.log_layout.setSpacing(5)
-        self.log_layout.addStretch()  # ← 关键：顶部 stretch
+        self.log_layout.addStretch(1)  # ← 关键：顶部 stretch
         self.log_layout.setAlignment(Qt.AlignBottom)
         self.scroll_area.setWidget(self.container)
 
@@ -147,4 +147,4 @@ class LogToolWindow(ToolWindow):
                     widget.deleteLater()
 
         # 重新添加 stretch（保持底部对齐）
-        self.log_layout.addStretch()
+        self.log_layout.addStretch(1)
