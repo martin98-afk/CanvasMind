@@ -19,6 +19,7 @@ class CustomNodeSignals(QtCore.QObject):
     run_triggered = QtCore.pyqtSignal()
     node_delete_triggered = QtCore.pyqtSignal()
     node_debug_triggered = QtCore.pyqtSignal()
+    collapsed_toggle = QtCore.pyqtSignal(bool)
 
 
 class NodeActionButton(QtWidgets.QGraphicsItem):
@@ -140,6 +141,7 @@ class CustomNodeItem(NodeItem):
         self.run_signal = self.custom_signals.run_triggered
         self.delete_signal = self.custom_signals.node_delete_triggered
         self.debug_signal = self.custom_signals.node_debug_triggered
+        self.collapsed_toggle = self.custom_signals.collapsed_toggle
 
         self._init_base_components()
         self._init_custom_buttons()
@@ -210,6 +212,7 @@ class CustomNodeItem(NodeItem):
     def toggle_collapse(self):
         """执行折叠状态切换逻辑"""
         self._is_collapsed = not self._is_collapsed
+        self.collapsed_toggle.emit(self._is_collapsed)
         self._collapse_btn.icon_type = "expand" if self._is_collapsed else "collapse"
 
         self._update_elements_visibility()
@@ -334,14 +337,6 @@ class CustomNodeItem(NodeItem):
 
     def _calc_size_horizontal(self):
         """动态尺寸计算算法优化"""
-        if self._is_collapsed:
-            tw = self._text_item.boundingRect().width()
-            return max(tw + 140, 180), 32
-
-        # 考虑字体宽度
-        fm = QtGui.QFontMetrics(self._text_item.font())
-        text_w = max(self._text_item.boundingRect().width(), fm.horizontalAdvance(self.name))
-
         # 端口占位
         p_in_w = p_out_w = p_in_h = p_out_h = 0.0
         for port, text in self._input_items.items():
@@ -352,6 +347,14 @@ class CustomNodeItem(NodeItem):
             if port.isVisible():
                 p_out_w = max(p_out_w, text.boundingRect().width() + 25)
                 p_out_h += port.boundingRect().height() + 4
+
+        if self._is_collapsed:
+            tw = self._text_item.boundingRect().width()
+            return max(tw + 140, 180), max(p_in_h, p_out_h)
+
+        # 考虑字体宽度
+        fm = QtGui.QFontMetrics(self._text_item.font())
+        text_w = max(self._text_item.boundingRect().width(), fm.horizontalAdvance(self.name))
 
         # 挂件占位
         w_width = w_height = 0.0

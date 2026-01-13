@@ -747,6 +747,8 @@ class CustomNodeGraph(NodeGraph):
                             node.view.widgets[prop].set_value(val)
                     elif isinstance(node, StickyNoteNode):
                         node.set_property(prop, val)
+                if node.get_property('_collapsed'):
+                    node._view.toggle_collapse()
 
                 nodes[n_id] = node
 
