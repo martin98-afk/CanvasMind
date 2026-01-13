@@ -11,7 +11,6 @@ from qtpy import QtGui, QtCore
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
-from app.interfaces.canvas_interaface.widgets.draggable_component_tree import DraggableTreePanel
 from .canvas_left_panel import LeftPanel
 from ..constants import BUTTONS_CONTAINER_X_OFFSET, DEFAULT_SPLITTER_SIZES, PIPELINE_STYLE, PIPELINE_DIRECTION, \
     MAX_VISIBLE_QUICK_BUTTONS, GRID_STYLE, HIDE_SPLITTER_SIZES
