@@ -21,7 +21,7 @@ from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import draw_square_port, draw_special_outputport, \
-    _safe_load_pickle, kill_proc_tree, serialize_for_json, sftp_download_dir
+    _safe_load_pickle, kill_proc_tree, serialize_for_json, sftp_download_dir, replace_remote_paths
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
@@ -534,7 +534,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 try:
                     sftp.get(remote_pkl, str(result_path))
                     # 路径替换：将远程路径前缀换为本地路径前缀
-                    self._replace_remote_paths(
+                    replace_remote_paths(
                         result_path, f"{remote_root}/{self.persistent_id}", str(local_node_workspace)
                     )
                 except:
@@ -566,40 +566,6 @@ def create_node_class(full_path, file_path, parent_window=None):
             finally:
                 if 'sftp' in locals(): sftp.close()
                 ssh.close()
-
-        def _replace_remote_paths(self, pkl_path, remote_root, local_root):
-            """
-            核心逻辑：读取 pkl，递归遍历所有数据，将远程路径字符串替换为本地路径
-            """
-            if not os.path.exists(pkl_path):
-                return
-
-            try:
-                with open(pkl_path, 'rb') as f:
-                    data = pickle.load(f)
-
-                # 统一路径格式
-                rem_p = remote_root.replace('\\', '/')
-                loc_p = local_root.replace('\\', '/').rstrip('/')
-
-                def walk_and_replace(obj):
-                    if isinstance(obj, str):
-                        # 如果字符串中包含远程路径部分，执行替换
-                        if rem_p in obj:
-                            return obj.replace(rem_p, loc_p)
-                        return obj
-                    elif isinstance(obj, list):
-                        return [walk_and_replace(item) for item in obj]
-                    elif isinstance(obj, dict):
-                        return {k: walk_and_replace(v) for k, v in obj.items()}
-                    return obj
-
-                new_data = walk_and_replace(data)
-
-                with open(pkl_path, 'wb') as f:
-                    pickle.dump(new_data, f)
-            except Exception as e:
-                logger.error(f"路径替换失败: {e}")
 
         def _execute_via_ipython(
                 self, temp_script_path, result_path, error_path, log_file_path,

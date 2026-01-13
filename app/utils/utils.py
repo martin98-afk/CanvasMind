@@ -53,6 +53,24 @@ ANSI_COLOR_MAP = {
 _ICON_CACHE = {}   # 缓存图标名 → QIcon 实例
 
 
+# 定义一个占位类，用于替代本地缺失的模块类
+class MissingModulePlaceholder:
+    def __init__(self, *args, **kwargs):
+        pass
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
+
+class SafeUnpickler(pickle.Unpickler):
+    """自定义 Unpickler，当模块不存在时返回占位符而不是崩溃"""
+    def find_class(self, module, name):
+        try:
+            return super().find_class(module, name)
+        except ImportError:
+            # 如果本地找不到 numpy 等模块，就返回一个占位类
+            return MissingModulePlaceholder
+
+
 def sftp_download_dir(sftp, remote_dir, local_dir, ssh=None):
     """
     通过 sftp 下载远程目录。
@@ -115,6 +133,50 @@ def sftp_download_dir(sftp, remote_dir, local_dir, ssh=None):
                     pass
     except Exception as e:
         print(f"SFTP 操作异常: {e}")
+
+
+def replace_remote_paths(pkl_path, remote_root, local_root):
+    """
+    核心逻辑：使用 SafeUnpickler 加载，防止缺失 Numpy 导致崩溃
+    """
+    if not os.path.exists(pkl_path):
+        return
+
+    try:
+        # 1. 以二进制读取文件
+        with open(pkl_path, 'rb') as f:
+            # 使用自定义的 SafeUnpickler
+            unpickler = SafeUnpickler(f)
+            data = unpickler.load()
+
+        # 2. 统一路径格式
+        rem_p = remote_root.replace('\\', '/')
+        loc_p = local_root.replace('\\', '/').rstrip('/')
+
+        def walk_and_replace(obj):
+            if isinstance(obj, str):
+                if rem_p in obj:
+                    return obj.replace(rem_p, loc_p)
+                return obj
+            elif isinstance(obj, list):
+                return [walk_and_replace(item) for item in obj]
+            elif isinstance(obj, dict):
+                return {k: walk_and_replace(v) for k, v in obj.items()}
+            # 如果是占位类对象，尝试遍历它的内部属性（如果有路径存进属性里了）
+            elif isinstance(obj, MissingModulePlaceholder):
+                for k, v in obj.__dict__.items():
+                    obj.__dict__[k] = walk_and_replace(v)
+                return obj
+            return obj
+
+        new_data = walk_and_replace(data)
+
+        # 3. 写回文件
+        with open(pkl_path, 'wb') as f:
+            pickle.dump(new_data, f)
+
+    except Exception as e:
+        logger.error(f"路径替换失败: {e}")
 
 
 def get_pinyin_search_keys(text):

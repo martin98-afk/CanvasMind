@@ -17,7 +17,7 @@ from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.glue_code_templates import GLUE_CODE_TEMPLATES
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.utils import draw_special_outputport, _safe_load_pickle, \
-    kill_proc_tree, sftp_download_dir
+    kill_proc_tree, sftp_download_dir, replace_remote_paths
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
@@ -613,7 +613,9 @@ def create_dynamic_code_node(parent_window=None):
 
                 try:
                     sftp.get(f"{remote_run_dir}/result.pkl", str(result_path))
-                    self._replace_remote_paths(result_path, f"{remote_root}/{self.persistent_id}", str(local_node_workspace))
+                    replace_remote_paths(
+                        result_path, f"{remote_root}/{self.persistent_id}", str(local_node_workspace)
+                    )
                 except:
                     os.remove(result_path)
                 try:
@@ -640,27 +642,6 @@ def create_dynamic_code_node(parent_window=None):
             finally:
                 if 'sftp' in locals(): sftp.close()
                 ssh.close()
-
-        def _replace_remote_paths(self, pkl_path, remote_root, local_root):
-            """递归替换 pkl 中的远程路径前缀"""
-            if not os.path.exists(pkl_path): return
-            try:
-                with open(pkl_path, 'rb') as f:
-                    data = pickle.load(f)
-                rem_p = remote_root.replace('\\', '/')
-                loc_p = local_root.replace('\\', '/').rstrip('/')
-
-                def walk(obj):
-                    if isinstance(obj, str): return obj.replace(rem_p, loc_p) if rem_p in obj else obj
-                    if isinstance(obj, list): return [walk(i) for i in obj]
-                    if isinstance(obj, dict): return {k: walk(v) for k, v in obj.items()}
-                    return obj
-
-                new_data = walk(data)
-                with open(pkl_path, 'wb') as f:
-                    pickle.dump(new_data, f)
-            except Exception as e:
-                logger.error(f"结果路径替换失败: {e}")
 
         def _execute_via_ipython(
                 self, temp_script_path, result_path, error_path, log_file_path,

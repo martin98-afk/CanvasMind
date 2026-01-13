@@ -238,6 +238,8 @@ class EnvManagerUI(QWidget):
         self.searchEdit.setPlaceholderText("搜索包名 (Ctrl+F)")
         self.searchEdit.setFixedWidth(240)
         self.searchEdit.textChanged.connect(self.on_search_text_changed)
+        self.searchEdit.searchSignal.connect(self.on_search_text_changed)
+        self.searchEdit.clearSignal.connect(self.on_search_text_changed)
         searchLayout.addWidget(listIcon)
         searchLayout.addWidget(StrongBodyLabel("已安装包列表", self))
         searchLayout.addStretch(1)
@@ -523,36 +525,108 @@ class EnvManagerUI(QWidget):
             self.packageEdit.setPlaceholderText("选择本地文件(支持多个)或文件夹...")
 
     def _repopulate_table(self, pkgs):
-        self.packageTable.setRowCount(0)
+        """优化版：分批次加载表格，防止主线程卡死"""
+        self.packageTable.setUpdatesEnabled(False)  # 关键：停止界面重绘
         self.packageTable.setSortingEnabled(False)
-        for row, pkg in enumerate(pkgs):
-            self.packageTable.insertRow(row)
-            name, ver = pkg.get("name", ""), pkg.get("version", "")
+        self.packageTable.setRowCount(len(pkgs))  # 一次性分配内存，不要一个个 insertRow
+
+        # 记录待处理的数据
+        self._pending_pkgs = pkgs
+        self._current_populate_index = 0
+        self._batch_size = 20  # 每批处理 20 行，你可以根据流畅度调整
+
+        # 清理之前的定时器（如果有）
+        if hasattr(self, '_populate_timer'):
+            self._populate_timer.stop()
+        else:
+            self._populate_timer = QTimer(self)
+            self._populate_timer.timeout.connect(self._populate_batch)
+
+        self._populate_timer.start(1)  # 1ms 后开始首批处理
+
+    def _populate_batch(self):
+        """分批填充逻辑"""
+        start = self._current_populate_index
+        end = min(start + self._batch_size, len(self._pending_pkgs))
+
+        font = QFont("Segoe UI", 9)
+        gray_color = QColor(150, 150, 150)
+
+        for i in range(start, end):
+            pkg = self._pending_pkgs[i]
+            name = pkg.get("name", "")
+            ver = pkg.get("version", "")
+
+            # 名称项
             n_item = QTableWidgetItem(name)
+            n_item.setFont(font)
+            self.packageTable.setItem(i, 0, n_item)
+
+            # 版本项
             v_item = QTableWidgetItem(ver)
-            v_item.setForeground(QColor(150, 150, 150))
-            self.packageTable.setItem(row, 0, n_item)
-            self.packageTable.setItem(row, 1, v_item)
-            bw = QWidget()
-            bl = QHBoxLayout(bw)
-            bl.setContentsMargins(0, 0, 0, 0)
-            bl.setSpacing(4)
-            ub = TransparentToolButton(get_icon("更新"), self)
-            ub.setToolTip("更新此包")
-            ub.clicked.connect(functools.partial(self.on_update_package_clicked, name))
-            db = TransparentToolButton(FluentIcon.DELETE, self)
-            db.setToolTip("卸载此包")
-            db.clicked.connect(functools.partial(self.on_uninstall_package_clicked, name))
-            bl.addWidget(ub)
-            bl.addWidget(db)
-            self.packageTable.setCellWidget(row, 2, bw)
-        self.packageTable.setSortingEnabled(True)
+            v_item.setFont(font)
+            v_item.setForeground(gray_color)
+            self.packageTable.setItem(i, 1, v_item)
+
+            # --- 优化：只有在需要时才创建 Widget ---
+            # 如果包很多，创建 Widget 是最慢的步骤
+            self.packageTable.setCellWidget(i, 2, self._create_action_group(name))
+
+        self._current_populate_index = end
+
+        # 检查是否全部完成
+        if end >= len(self._pending_pkgs):
+            self._populate_timer.stop()
+            self.packageTable.setSortingEnabled(True)
+            self.packageTable.setUpdatesEnabled(True)  # 恢复重绘
+            # 手动刷新一次布局
+            self.packageTable.viewport().update()
+        else:
+            # 如果没做完，让出 CPU 给主进程处理 UI 事件，下一帧继续
+            pass
+
+    def _create_action_group(self, name):
+        """辅助函数：创建操作按钮组"""
+        bw = QWidget()
+        bl = QHBoxLayout(bw)
+        bl.setContentsMargins(4, 0, 4, 0)
+        bl.setSpacing(4)
+        bl.setAlignment(Qt.AlignCenter)
+
+        ub = TransparentToolButton(get_icon("更新"), bw)
+        ub.setToolTip(f"更新 {name}")
+        ub.setFixedSize(26, 26)
+        ub.setIconSize(QSize(14, 14))
+        ub.clicked.connect(functools.partial(self.on_update_package_clicked, name))
+
+        db = TransparentToolButton(FluentIcon.DELETE, bw)
+        db.setToolTip(f"卸载 {name}")
+        db.setFixedSize(26, 26)
+        db.setIconSize(QSize(14, 14))
+        db.clicked.connect(functools.partial(self.on_uninstall_package_clicked, name))
+
+        bl.addWidget(ub)
+        bl.addWidget(db)
+        return bw
 
     def on_search_text_changed(self, text):
+        """搜索防抖处理"""
+        if hasattr(self, '_search_timer'):
+            self._search_timer.stop()
+        else:
+            self._search_timer = QTimer(self)
+            self._search_timer.setSingleShot(True)
+            self._search_timer.timeout.connect(lambda: self._do_search(self.searchEdit.text()))
+
+        self._search_timer.start(200)  # 输入停止 200ms 后才执行过滤
+
+    def _do_search(self, text):
         t = text.strip().lower()
+        self.packageTable.setUpdatesEnabled(False)
         for r in range(self.packageTable.rowCount()):
             it = self.packageTable.item(r, 0)
             self.packageTable.setRowHidden(r, t not in it.text().lower() if it else False)
+        self.packageTable.setUpdatesEnabled(True)
 
     def run_pip_command(self, action=None, package_input=None):
         if not self.current_env_data: return
