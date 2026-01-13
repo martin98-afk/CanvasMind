@@ -6,10 +6,14 @@ from PIL import Image
 from Qt import QtWidgets, QtCore
 
 from .base import CustomNodeBaseWidget
+from .data_table_widget import DataTableWidget
 from .html_widget import HtmlWidget
 from .image_compare_widget import ImageCompareWidget
+from .image_gallery_widget import ImageGalleryWidget
 from .image_widget import ImageWidget
 from app.widgets.node_widget.media_widget import VideoPlayWidget, AudioPlayWidget
+from .json_tree_widget import JsonTreeWidget
+from .pdf_widget import PdfWidget
 
 
 class UniversalDisplayWidget(QtWidgets.QWidget):
@@ -31,16 +35,44 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
         # 注册显示策略配置
         # priority: 优先级，越小越先匹配
         self._strategies = [
-            {"id": "compare", "class": ImageCompareWidget, "check": self._is_compare_data, "priority": 1},
-            {"id": "image", "class": ImageWidget, "check": self._is_image_data, "priority": 2},
-            {"id": "video", "class": VideoPlayWidget, "check": self._is_video_path, "priority": 3},
-            {"id": "audio", "class": AudioPlayWidget, "check": self._is_audio_path, "priority": 4},
+            # 1. 优先处理多图 (3张及以上)
+            {"id": "gallery", "class": ImageGalleryWidget, "check": self._is_gallery_data, "priority": 1},
+            # 2. 处理双图对比
+            {"id": "compare", "class": ImageCompareWidget, "check": self._is_compare_data, "priority": 2},
+            # 3. 处理 PDF
+            {"id": "pdf", "class": PdfWidget, "check": self._is_pdf_path, "priority": 3},
+            # 4. 单张图
+            {"id": "image", "class": ImageWidget, "check": self._is_image_data, "priority": 4},
+            # 5. 视频
+            {"id": "video", "class": VideoPlayWidget, "check": self._is_video_path, "priority": 5},
+            # 6. 音频
+            {"id": "audio", "class": AudioPlayWidget, "check": self._is_audio_path, "priority": 6},
+            # 7. 表格
+            {"id": "table", "class": DataTableWidget, "check": self._is_table_data, "priority": 7},
+            # 8. json
+            {"id": "json", "class": JsonTreeWidget, "check": self._is_json_data, "priority": 8},
+            # 9. html
             {"id": "html", "class": HtmlWidget, "check": lambda x: isinstance(x, str), "priority": 99},
         ]
 
     # --- 数据类型判断逻辑 (策略) ---
+    def _is_gallery_data(self, value):
+        """判断是否为 3 张及以上的图像列表"""
+        if isinstance(value, (list, tuple)) and len(value) >= 3:
+            # 检查第一个元素是否是图像
+            return self._is_image_data(value[0])
+        return False
+
+    def _is_pdf_path(self, value):
+        """判断是否为 PDF 路径"""
+        if isinstance(value, str) and value.lower().endswith('.pdf'):
+            # 路径可以不存在（为了加载工作流时的健壮性），由 Widget 内部处理不存在的情况
+            return True
+        return False
+
+    # 只处理正好 2 张图
     def _is_compare_data(self, value):
-        return isinstance(value, (list, tuple)) and len(value) >= 2 and self._is_image_data(value[0])
+        return isinstance(value, (list, tuple)) and len(value) == 2 and self._is_image_data(value[0])
 
     def _is_image_data(self, value):
         if isinstance(value, (np.ndarray, Image.Image)): return True
@@ -57,6 +89,13 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
         if not isinstance(value, str) or not os.path.exists(value): return False
         return os.path.splitext(value)[1].lower() in ['.mp3', '.wav', '.ogg', '.flac']
 
+    def _is_table_data(self, value):
+        # 如果是列表且元素是字典，判定为表格
+        return isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict)
+
+    def _is_json_data(self, value):
+        # 字典或者是普通列表
+        return isinstance(value, (dict, list))
     # --- 核心调度逻辑 ---
     def _get_or_create_view(self, strategy_id, widget_class):
         """根据 ID 延迟实例化控件"""
@@ -70,16 +109,11 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
         return self._view_cache[strategy_id]
 
     def set_value(self, value):
-        # 1. 处理清空逻辑 (非常重要)
+        # 1. 处理清空逻辑
         if value is None or value == "" or (isinstance(value, list) and len(value) == 0):
             # 遍历所有缓存的 Widget，全部重置为 None
             for widget in self._view_cache.values():
                 widget.set_value(None)
-
-            # 切换到 html 默认页
-            html_widget = self._get_or_create_view("html", HtmlWidget)
-            self.stack.setCurrentWidget(html_widget)
-            html_widget.set_value("<center><small>等待输入...</small></center>")
 
             self.updateGeometry()
             self.sizeHintChanged.emit()

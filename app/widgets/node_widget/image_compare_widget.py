@@ -123,8 +123,6 @@ class ImageCompareWidget(QtWidgets.QWidget):
         painter.fillRect(rect, Qt.black)
 
         if not self._image_a and not self._image_b:
-            painter.setPen(Qt.gray)
-            painter.drawText(rect, Qt.AlignCenter, "No Image Data")
             return
 
         # 1. 绘制底层图片 (Image A)
