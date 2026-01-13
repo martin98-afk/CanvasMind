@@ -31,6 +31,15 @@ class ImageCompareWidget(QtWidgets.QWidget):
     def _convert_to_qimage(self, data):
         if data is None: return None
         try:
+            # --- 处理字符串路径 ---
+            if isinstance(data, str):
+                q_img = QImage(data)
+                if q_img.isNull():
+                    print(f"图片加载失败，路径无效或格式不支持: {data}")
+                    return None
+                return q_img
+            # --------------------------
+
             if isinstance(data, np.ndarray):
                 if data.ndim == 2:
                     h, w = data.shape
@@ -44,6 +53,8 @@ class ImageCompareWidget(QtWidgets.QWidget):
                 return QImage(rgb_img.tobytes(), data.size[0], data.size[1], QImage.Format_RGB888).copy()
             elif isinstance(data, QImage):
                 return data
+            elif isinstance(data, QPixmap):
+                return data.toImage()
             return None
         except Exception as e:
             print(f"转换失败: {e}")

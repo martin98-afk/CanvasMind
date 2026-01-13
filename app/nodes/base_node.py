@@ -29,7 +29,7 @@ from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 class NodeSignals(QObject):
     """节点核心信号管理器"""
     intercepted_msg_signal = QtCore.pyqtSignal(dict)
-    htmlReady = QtCore.pyqtSignal(str, bool)
+    htmlReady = QtCore.pyqtSignal(object, bool)
     stream_data_updated = QtCore.pyqtSignal(object)
 
 

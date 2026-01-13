@@ -27,7 +27,7 @@ def create_media_node(parent_window):
             self.view.set_align("center")
 
             # 添加输入端口
-            self.add_input('data', False)
+            self.add_input('data', True)
 
             # 添加图表控件
             media_widget = UniversalWidgetWrapper(
@@ -55,16 +55,39 @@ def create_media_node(parent_window):
                     media_widget.get_custom_widget().play()
 
         def _trigger_media_update(self, should_play=False):
-            """统一触发 HTML 更新，默认不播放"""
-            html_val = ""
+            """统一触发更新"""
             port = self.get_input("data")
-            if port and port.connected_ports():
-                connected = port.connected_ports()[0]
-                upstream_node = connected.node()
-                html_val = upstream_node._output_values.get(connected.name(), "")
+            if not port:
+                return
 
-            # 发送数据和播放标识
-            self.signals.htmlReady.emit(html_val, should_play)
+            connected_ports = port.connected_ports()
+
+            if not connected_ports:
+                # 当没有连线时，显式发送 None
+                self.signals.htmlReady.emit(None, False)
+                return
+
+            # 获取所有连接过来的数据
+            results = []
+            for cp in connected_ports:
+                upstream_node = cp.node()
+                # 获取上游节点的输出值
+                val = upstream_node._output_values.get(cp.name())
+                if val is not None:
+                    results.append(val)
+
+            # 决定发送什么数据
+            if len(results) == 1:
+                # 单个数据，直接发送
+                data_to_send = results[0]
+            elif len(results) >= 2:
+                # 多个数据，发送列表（对比控件会处理前两个）
+                data_to_send = results
+            else:
+                data_to_send = ""
+
+            # 发送信号
+            self.signals.htmlReady.emit(data_to_send, should_play)
 
         def on_input_connected(self, in_port, out_port):
             super().on_input_connected(in_port, out_port)
@@ -83,14 +106,15 @@ def create_media_node(parent_window):
                 self._trigger_media_update(should_play=False)
 
         def execute_sync(self, *args, **kwargs):
-            html_val = ""
             port = self.get_input("data")
-            if port and port.connected_ports():
-                connected = port.connected_ports()[0]
-                upstream_node = connected.node()
-                html_val = upstream_node._output_values.get(connected.name(), "")
+            results = []
+            if port:
+                for cp in port.connected_ports():
+                    val = cp.node()._output_values.get(cp.name())
+                    if val is not None:
+                        results.append(val)
 
-            # ✅ 只有在这里，我们显式传入 True 触发播放
-            self.signals.htmlReady.emit(html_val, True)
+            data_to_send = results if len(results) >= 2 else (results[0] if results else "")
+            self.signals.htmlReady.emit(data_to_send, True)
 
     return MediaNode
