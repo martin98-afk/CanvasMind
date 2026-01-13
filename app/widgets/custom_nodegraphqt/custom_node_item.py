@@ -124,7 +124,7 @@ class CustomNodeItem(NodeItem):
     完全重构了绘制路径，解决了 LOD 残留和对齐的所有顽疾。
     """
     _align = None
-    ICON_NODE_BASE = ":/icons/node_base.png"
+    ICON_NODE_BASE = ":/icons/同心圆.svg"
 
     def __init__(self, name='', parent=None):
         super(CustomNodeItem, self).__init__(name, parent)
@@ -392,7 +392,11 @@ class CustomNodeItem(NodeItem):
 
     @icon.setter
     def icon(self, value=None):
-        """动态设置图标 Setter"""
+        """
+        核心修复：将图标路径写回 _properties，这样 NodeGraphQt 才能在保存时找到它。
+        """
+        self._properties['icon'] = value  # <--- 关键修复：保存数据
+
         if isinstance(value, QtGui.QIcon):
             pixmap = value.pixmap(24, 24)
         elif isinstance(value, str):

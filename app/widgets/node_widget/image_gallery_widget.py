@@ -23,7 +23,7 @@ class GalleryImageItem(QtWidgets.QWidget):
         painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
         rect = self.rect()
-        painter.fillRect(rect, Qt.black)
+        painter.fillRect(rect, Qt.transparent)
 
         if self._q_image and not self._q_image.isNull():
             # 关键：像 ImageWidget 一样直接 drawImage 绘制原图

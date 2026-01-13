@@ -17,7 +17,7 @@ class CustomPipeItem(PipeItem):
         super(CustomPipeItem, self).__init__()
         # --- 修正：定义一个更细的笔用于 hover 区域 ---
         self._hover_pen = QtGui.QPen()
-        self._hover_pen.setWidth(8)
+        self._hover_pen.setWidth(15)
         self._hover_pen.setCapStyle(QtCore.Qt.RoundCap)
         self._hover_pen.setJoinStyle(QtCore.Qt.MiterJoin)
         # --- 结束修正 ---
