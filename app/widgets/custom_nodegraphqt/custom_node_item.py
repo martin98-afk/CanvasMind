@@ -1,425 +1,428 @@
-from collections import OrderedDict
-
-from NodeGraphQt.constants import NodeEnum, ITEM_CACHE_MODE, PortTypeEnum, LayoutDirectionEnum, \
-    Z_VAL_NODE
+# -*- coding: utf-8 -*-
+from NodeGraphQt.constants import (
+    NodeEnum, PortTypeEnum,
+    LayoutDirectionEnum
+)
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_base import NodeItem
-from NodeGraphQt.qgraphics.node_overlay_disabled import XDisabledItem
 from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
-from PyQt5 import QtWidgets
-from Qt import QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 from qtpy import QtGui
 
 from app.utils.config import Settings
 
 
-class RenameSignal(QtCore.QObject):
-    rename = QtCore.Signal(str, str) # old name, new name
+class CustomNodeSignals(QtCore.QObject):
+    """
+    自定义信号类，负责节点交互触发的事件分发。
+    """
+    rename = QtCore.pyqtSignal(str, str)
+    run_triggered = QtCore.pyqtSignal()
+    node_delete_triggered = QtCore.pyqtSignal()
+    node_debug_triggered = QtCore.pyqtSignal()
+
+
+class NodeActionButton(QtWidgets.QGraphicsItem):
+    """
+    矢量图标按钮组件，支持运行、调试、删除、折叠等矢量图形绘制。
+    """
+
+    def __init__(self, parent, icon_type, tooltip, color, hover_color):
+        super(NodeActionButton, self).__init__(parent)
+        self.setAcceptHoverEvents(True)
+        self.icon_type = icon_type  # 'collapse', 'expand', 'run', 'debug', 'close'
+        self.setToolTip(tooltip)
+        self.color = QtGui.QColor(color)
+        self.hover_color = QtGui.QColor(hover_color)
+        self._hovered = False
+        self.clicked_func = None
+        self._rect = QtCore.QRectF(0, 0, 16, 16)
+
+    def boundingRect(self):
+        return self._rect
+
+    def paint(self, painter, option, widget):
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+
+        # 绘制背景圆形反馈
+        if self._hovered:
+            painter.setBrush(self.hover_color)
+            painter.setPen(QtCore.Qt.NoPen)
+            painter.drawRoundedRect(self._rect, 3, 3)
+
+        # 矢量图标绘制设置
+        pen = QtGui.QPen(QtGui.QColor(255, 255, 255, 220), 1.5)
+        pen.setCapStyle(QtCore.Qt.RoundCap)
+        painter.setPen(pen)
+        painter.setBrush(QtCore.Qt.NoBrush)
+
+        m = 4.5  # 矢量图标内部边距
+        r = self._rect
+        cx, cy = r.center().x(), r.center().y()
+
+        # 使用 QPointF 避免浮点数类型转换报错
+        if self.icon_type == 'collapse':
+            painter.drawLine(QtCore.QPointF(r.left() + m, cy),
+                             QtCore.QPointF(r.right() - m, cy))
+        elif self.icon_type == 'expand':
+            painter.drawLine(QtCore.QPointF(r.left() + m, cy),
+                             QtCore.QPointF(r.right() - m, cy))
+            painter.drawLine(QtCore.QPointF(cx, r.top() + m),
+                             QtCore.QPointF(cx, r.bottom() - m))
+        elif self.icon_type == 'run':
+            path = QtGui.QPainterPath()
+            path.moveTo(r.left() + m + 1, r.top() + m)
+            path.lineTo(r.right() - m + 1, cy)
+            path.lineTo(r.left() + m + 1, r.bottom() - m)
+            path.closeSubpath()
+            painter.setBrush(QtGui.QColor(255, 255, 255, 200))
+            painter.drawPath(path)
+        elif self.icon_type == 'debug':
+            painter.drawEllipse(QtCore.QRectF(cx - 3.5, cy - 3.5, 7, 7))
+            painter.drawPoint(QtCore.QPointF(cx, cy))
+        elif self.icon_type == 'close':
+            painter.drawLine(QtCore.QPointF(r.left() + m, r.top() + m),
+                             QtCore.QPointF(r.right() - m, r.bottom() - m))
+            painter.drawLine(QtCore.QPointF(r.right() - m, r.top() + m),
+                             QtCore.QPointF(r.left() + m, r.bottom() - m))
+        painter.restore()
+
+    def hoverEnterEvent(self, event):
+        self._hovered = True
+        self.update()
+
+    def hoverLeaveEvent(self, event):
+        self._hovered = False
+        self.update()
+
+    def mousePressEvent(self, event):
+        event.accept()
+        if self.clicked_func:
+            self.clicked_func()
 
 
 class CustomNodeItem(NodeItem):
+    """
+    高度定制化的节点图形项，具有高级灰色质感和居中标题布局。
+    """
     _align = None
     ICON_NODE_BASE = ":/icons/node_base.png"
 
     def __init__(self, name='node', parent=None):
-        super(NodeItem, self).__init__(name, parent)
+        # 必须正确调用父类构造，防止 _properties 字典未初始化
+        super(CustomNodeItem, self).__init__(name, parent)
+        self.setAcceptHoverEvents(True)
+        self._is_collapsed = False
+
+        # 初始化自定义信号系统
+        self.custom_signals = CustomNodeSignals()
+        self.rename_signal = self.custom_signals.rename
+        self.run_signal = self.custom_signals.run_triggered
+        self.delete_signal = self.custom_signals.node_delete_triggered
+        self.debug_signal = self.custom_signals.node_debug_triggered
+
+        # 组件初始化
+        self._init_base_components()
+        self._init_custom_buttons()
+
+    def _init_base_components(self):
+        """初始化节点基础显示组件"""
+        # 加载并缩放节点图标
         pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
-        if pixmap.size().height() > NodeEnum.ICON_SIZE.value:
-            pixmap = pixmap.scaledToHeight(
-                28,
-                QtCore.Qt.SmoothTransformation
-            )
-        self.rename_signal = RenameSignal()
-        self._properties['icon'] = self.ICON_NODE_BASE
-        self._icon_item = QtWidgets.QGraphicsPixmapItem(pixmap, self)
+        if pixmap.size().height() > 28:
+            pixmap = pixmap.scaledToHeight(28, QtCore.Qt.SmoothTransformation)
+        self._icon_item.setPixmap(pixmap)
         self._icon_item.setTransformationMode(QtCore.Qt.SmoothTransformation)
+
+        # 节点标题设置
         self._text_item = NodeTextItem(self.name, self)
-        font = QtGui.QFont()
-        font.setPointSize(16)  # 推荐 10~12
-        font.setBold(True)  # 可选
+        font = QtGui.QFont("Segoe UI", 10, QtGui.QFont.Bold)
         self._text_item.setFont(font)
-        self._x_item = XDisabledItem(self, 'DISABLED')
-        self._input_items = OrderedDict()
-        self._output_items = OrderedDict()
-        self._widgets = OrderedDict()
-        self._proxy_mode = False
-        self.setZValue(Z_VAL_NODE)
+
+        # 代理文字显示设置
         self._proxy_text_item = QtWidgets.QGraphicsTextItem(self.name, self)
-        proxy_font = QtGui.QFont()
-        proxy_font.setPointSize(35)  # 大号字体，可调
-        proxy_font.setBold(True)
-        self._proxy_text_item.setFont(proxy_font)
-        self._proxy_text_item.setVisible(False)  # 初始隐藏
+        self._proxy_text_item.setFont(QtGui.QFont("Arial", 35, QtGui.QFont.Bold))
+        self._proxy_text_item.setVisible(False)
+
+    def _init_custom_buttons(self):
+        """初始化节点抬头交互按钮"""
+        # 左侧折叠按钮
+        self._collapse_btn = NodeActionButton(
+            self, "collapse", "折叠/展开", "#444444", "#666666"
+        )
+        self._collapse_btn.clicked_func = self.toggle_collapse
+
+        # 右侧快捷功能组
+        self._run_btn = NodeActionButton(
+            self, "run", "执行", "#27ae60", "#2ecc71"
+        )
+        self._run_btn.clicked_func = self.run_signal.emit
+
+        self._mute_btn = NodeActionButton(
+            self, "debug", "调试", "#f39c12", "#f1c40f"
+        )
+        self._mute_btn.clicked_func = self.debug_signal.emit
+
+        self._close_btn = NodeActionButton(
+            self, "close", "删除", "#c0392b", "#e74c3c"
+        )
+        self._close_btn.clicked_func = self.delete_signal.emit
+
+        self._set_action_btns_visible(False)
+
+    def _set_action_btns_visible(self, visible):
+        """显示/隐藏右侧功能按钮"""
+        self._run_btn.setVisible(visible)
+        self._mute_btn.setVisible(visible)
+        self._close_btn.setVisible(visible)
+
+    def toggle_collapse(self):
+        """执行节点折叠状态切换"""
+        self._is_collapsed = not self._is_collapsed
+        self._collapse_btn.icon_type = "expand" if self._is_collapsed else "collapse"
+
+        # 隐藏/显示节点内挂件
+        visible = not self._is_collapsed
+        for w in self._widgets.values():
+            w.widget().setVisible(visible)
+
+        # 重新触发布局绘制
+        if self.layout_direction == LayoutDirectionEnum.HORIZONTAL.value:
+            self._draw_node_horizontal()
+        else:
+            self._draw_node_vertical()
+        self.update()
+
+    def hoverEnterEvent(self, event):
+        if not self._proxy_mode:
+            self._set_action_btns_visible(True)
+        super(CustomNodeItem, self).hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        self._set_action_btns_visible(False)
+        super(CustomNodeItem, self).hoverLeaveEvent(event)
+
+    def _paint_horizontal(self, painter, option, widget):
+        """绘制水平布局下的高级感背景"""
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        rect = self.boundingRect()
+        radius = 4.0
+
+        # 1. 绘制工业白灰色主体背景
+        body_color = QtGui.QColor(55, 55, 58)
+        painter.setBrush(body_color)
+        painter.setPen(QtGui.QPen(QtGui.QColor(30, 30, 30), 1.2))
+        painter.drawRoundedRect(rect, radius, radius)
+
+        # 2. 绘制抬头 Header 色块
+        header_height = max(self._text_item.boundingRect().height() + 4, 24.0)
+        header_rect = QtCore.QRectF(rect.left(), rect.top(), rect.width(), header_height)
+        h_color = QtGui.QColor(*self.color)
+        if not self.selected:
+            h_color.setAlpha(200)
+
+        path = QtGui.QPainterPath()
+        path.addRoundedRect(header_rect, radius, radius)
+        painter.setBrush(h_color)
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.drawPath(path)
+
+        # 补齐底部圆角区域（展开模式）
+        if not self._is_collapsed:
+            painter.drawRect(QtCore.QRectF(
+                rect.left(), rect.top() + header_height - radius, rect.width(), radius))
+
+        # 3. 选中边框高亮
+        if self.selected:
+            painter.setBrush(QtCore.Qt.NoBrush)
+            painter.setPen(QtGui.QPen(QtGui.QColor(*NodeEnum.SELECTED_BORDER_COLOR.value), 2.0))
+            painter.drawRoundedRect(rect, radius, radius)
+        painter.restore()
+
+    def _draw_node_horizontal(self):
+        """核心布局更新逻辑"""
+        MIN_HEADER_HEIGHT = 24.0
+        text_rect = self._text_item.boundingRect()
+        header_height = max(text_rect.height() + 4.0, MIN_HEADER_HEIGHT)
+
+        if not self._proxy_mode:
+            v_offset = (header_height - text_rect.height()) / 2.0
+            port_text_visible = not self._is_collapsed
+
+            # 修正：遍历 values() 隐藏端口文本，防止 unpack 报错
+            for text in self._input_items.values():
+                text.setVisible(port_text_visible)
+            for text in self._output_items.values():
+                text.setVisible(port_text_visible)
+
+            self._set_base_size(add_h=header_height)
+            self._set_text_color(self.text_color)
+
+            # --- 物理对齐逻辑 ---
+            rect = self.boundingRect()
+
+            # 1. 标题文字居中对齐
+            text_x = (rect.width() - text_rect.width()) / 2
+            self._text_item.setPos(text_x, v_offset)
+
+            # 2. 节点图标和折叠按钮紧靠在一起 (折叠按钮x=4, 图标紧随其后)
+            # 左侧按钮占位约 20px, 图标位置固定在左侧按钮后方
+            self._icon_item.setPos(rect.left() + 24, v_offset - 1.5)
+
+            # 3. HTML/挂件位置更新
+            self.align_widgets(v_offset=header_height + 10.0)
+
+        self.align_ports(v_offset=header_height)
+
+        # --- 功能按钮定位 ---
+        rect = self.boundingRect()
+        btn_y = rect.top() + (header_height - 16) / 2
+
+        # 折叠按钮在最左侧
+        self._collapse_btn.setPos(rect.left() + 4, btn_y)
+
+        # 右侧功能按钮组紧凑对齐
+        spacing = 18
+        self._close_btn.setPos(rect.right() - 20, btn_y)
+        self._mute_btn.setPos(rect.right() - 20 - spacing, btn_y)
+        self._run_btn.setPos(rect.right() - 20 - spacing * 2, btn_y)
+
+        self.update()
+        if self._proxy_mode:
+            self._update_proxy_text_position()
+
+    def _calc_size_horizontal(self):
+        """动态计算节点宽高，兼容 HTML 预览和挂件高度"""
+        if self._is_collapsed:
+            tw = self._text_item.boundingRect().width()
+            return max(tw + 120, 160), 24
+
+        font_metrics = QtGui.QFontMetrics(self._text_item.font())
+        text_w = max(self._text_item.boundingRect().width(),
+                     font_metrics.horizontalAdvance(self.name))
+        text_h = self._text_item.boundingRect().height()
+
+        # 端口尺寸计算
+        p_in_w = p_out_w = p_in_h = p_out_h = 0.0
+        port_width = 0.0
+        for port, text in self._input_items.items():
+            if not port.isVisible(): continue
+            port_width = port.boundingRect().width()
+            if text.isVisible():
+                p_in_w = max(p_in_w, text.boundingRect().width())
+            p_in_h += port.boundingRect().height()
+
+        for port, text in self._output_items.items():
+            if not port.isVisible(): continue
+            port_width = port.boundingRect().width()
+            if text.isVisible():
+                p_out_w = max(p_out_w, text.boundingRect().width())
+            p_out_h += port.boundingRect().height()
+
+        # 挂件 (HTML预览等) 尺寸计算
+        widget_width = widget_height = 0.0
+        for widget in self._widgets.values():
+            if not widget.isVisible(): continue
+            real_widget = widget.widget()
+            w_size = real_widget.sizeHint() if real_widget else widget.boundingRect().size()
+            widget_width = max(widget_width, w_size.width())
+            widget_height += w_size.height() + 10
+
+        # 计算最终总宽度 (预留按钮和端口空间)
+        width = max(port_width + (p_in_w + p_out_w) + max(text_w, widget_width) + 80,
+                    self._proxy_text_item.boundingRect().width() + 20)
+        # 计算最终总高度
+        height = max(text_h + 10, p_in_h, p_out_h, widget_height) + 30
+        return width, height
 
     def _set_text_color(self, color=None):
-        """
-        set text color.
-
-        Args:
-            color (tuple): color value in (r, g, b, a).
-        """
-        for port, text in self._input_items.items():
-            text.setDefaultTextColor(QtGui.QColor("white"))
-        for port, text in self._output_items.items():
-            text.setDefaultTextColor(QtGui.QColor("white"))
+        """设置所有文字颜色"""
+        for text in self._input_items.values():
+            text.setDefaultTextColor(QtGui.QColor(220, 220, 220))
+        for text in self._output_items.values():
+            text.setDefaultTextColor(QtGui.QColor(220, 220, 220))
         self._text_item.setDefaultTextColor(QtGui.QColor("white"))
         self._proxy_text_item.setDefaultTextColor(QtGui.QColor("white"))
 
+    def mousePressEvent(self, event):
+        """处理鼠标点击事件，支持右键直接选中节点"""
+        if event.button() == QtCore.Qt.RightButton:
+            scene = self.scene()
+            if scene:
+                scene.clearSelection()
+                event.accept()
+                self.setSelected(True)
+        super(CustomNodeItem, self).mousePressEvent(event)
+
     @property
     def icon(self):
-        return self._properties['icon']
+        # 修正：确保从 _properties 安全读取
+        return self._properties.get('icon', self.ICON_NODE_BASE)
+
+    @icon.setter
+    def icon(self, value=None):
+        """设置节点图标并动态更新显示"""
+        if isinstance(value, QtGui.QIcon):
+            pixmap = value.pixmap(24, 24)
+        elif isinstance(value, str):
+            pixmap = QtGui.QPixmap(value)
+        else:
+            pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
+
+        if not pixmap.isNull():
+            pixmap = pixmap.scaled(24, 24, QtCore.Qt.KeepAspectRatio,
+                                   QtCore.Qt.SmoothTransformation)
+        self._icon_item.setPixmap(pixmap)
+        if self.scene():
+            self.post_init()
+        self.update()
 
     @AbstractNodeItem.name.setter
     def name(self, name=''):
-        self.rename_signal.rename.emit(self.name, name)
+        """设置节点名称并同步到图形项"""
+        self.rename_signal.emit(self.name, name)
         AbstractNodeItem.name.fset(self, name)
         if name == self._text_item.toPlainText():
             return
         self._text_item.setPlainText(name)
         self._proxy_text_item.setPlainText(name)
         if self.scene():
-            self.align_label()
-        self.update()
-
-    @icon.setter
-    def icon(self, value=None):
-        self._properties['icon'] = value
-
-        # 确定最终使用的 pixmap
-        if isinstance(value, QtGui.QIcon):
-            # 从 QIcon 提取 QPixmap（推荐使用标准大小）
-            pixmap = value.pixmap(28, 28)  # 或根据需要调整
-        elif isinstance(value, str):
-            # 从路径加载
-            pixmap = QtGui.QPixmap(value)
-        else:
-            # fallback to default
-            pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
-
-        # 缩放逻辑保持不变
-        if not pixmap.isNull():
-            if pixmap.height() > 28:
-                pixmap = pixmap.scaledToHeight(28, QtCore.Qt.SmoothTransformation)
-            if pixmap.width() > 28:
-                pixmap = pixmap.scaledToWidth(28, QtCore.Qt.SmoothTransformation)
-        else:
-            # 如果加载失败，使用默认图标
-            pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
-            if pixmap.height() > 28:
-                pixmap = pixmap.scaledToHeight(28, QtCore.Qt.SmoothTransformation)
-            if pixmap.width() > 28:
-                pixmap = pixmap.scaledToWidth(28, QtCore.Qt.SmoothTransformation)
-
-        self._icon_item.setPixmap(pixmap)
-        if self.scene():
-            self.post_init()
-
+            self._draw_node_horizontal()
         self.update()
 
     def paint(self, painter, option, widget):
-        """
-        Draws the node base not the ports.
-
-        Args:
-            painter (QtGui.QPainter): painter used for drawing the item.
-            option (QtGui.QStyleOptionGraphicsItem):
-                used to describe the parameters needed to draw.
-            widget (QtWidgets.QWidget): not used.
-        """
+        """绘制节点主入口"""
         self.auto_switch_mode()
         if self.viewer() is None:
             return
-        if self.layout_direction is LayoutDirectionEnum.HORIZONTAL.value:
+        if self.layout_direction == LayoutDirectionEnum.HORIZONTAL.value:
             self._paint_horizontal(painter, option, widget)
-        elif self.layout_direction is LayoutDirectionEnum.VERTICAL.value:
-            self._paint_vertical(painter, option, widget)
         else:
-            raise RuntimeError('Node graph layout direction not valid!')
+            self._paint_vertical(painter, option, widget)
 
     def _add_port(self, port):
-        """
-        Adds a port qgraphics item into the node.
-
-        Args:
-            port (PortItem): port item.
-
-        Returns:
-            PortItem: port qgraphics item.
-        """
+        """向节点添加端口图形项"""
         text = QtWidgets.QGraphicsTextItem(port.name, self)
-        text.setFont(QtGui.QFont("Arial", 10))
-        text.setDefaultTextColor(QtGui.QColor("white"))  # 设置字体颜色
+        text.setFont(QtGui.QFont("Arial", 9))
+        text.setDefaultTextColor(QtGui.QColor(200, 200, 200))
         text.setVisible(port.display_name)
-        # 禁用缓存，确保始终使用高质量渲染，解决长按时字体模糊扭曲问题
         text.setCacheMode(QtWidgets.QGraphicsItem.NoCache)
         if port.port_type == PortTypeEnum.IN.value:
             self._input_items[port] = text
         elif port.port_type == PortTypeEnum.OUT.value:
             self._output_items[port] = text
-        if self.scene():
-            self.post_init()
         return port
 
-    def _paint_horizontal(self, painter, option, widget):
-
-        painter.save()
-        painter.setPen(QtCore.Qt.NoPen)
-        painter.setBrush(QtCore.Qt.NoBrush)
-
-        # base background.
-        margin = 1.0
-        rect = self.boundingRect()
-        rect = QtCore.QRectF(rect.left() + margin,
-                             rect.top() + margin,
-                             rect.width() - (margin * 2),
-                             rect.height() - (margin * 2))
-
-        radius = 4.0
-        painter.setBrush(QtGui.QColor(*self.color))
-        painter.drawRoundedRect(rect, radius, radius)
-
-        # light overlay on background when selected.
-        if self.selected:
-            painter.setBrush(QtGui.QColor(*NodeEnum.SELECTED_COLOR.value))
-            painter.drawRoundedRect(rect, radius, radius)
-
-        # === 优化：节点名背景区域 ===
-        MIN_HEADER_HEIGHT = 16.0  # 可根据需要调整，推荐 22~26
-        header_height = max(self._text_item.boundingRect().height(), MIN_HEADER_HEIGHT)
-
-        # 背景区域：从顶部开始，固定高度
-        header_rect = QtCore.QRectF(
-            rect.left() + 2.0,  # 略微内缩
-            rect.top() + 1.0,
-            rect.width() - 4.0,  # 两侧留空
-            header_height
-        )
-
-        if self.selected:
-            painter.setBrush(QtGui.QColor(*NodeEnum.SELECTED_COLOR.value))
-        else:
-            painter.setBrush(QtGui.QColor(0, 0, 0, 80))
-        painter.drawRoundedRect(header_rect, 3.0, 3.0)
-
-        # node border
-        if self.selected:
-            border_width = 1.2
-            border_color = QtGui.QColor(*NodeEnum.SELECTED_BORDER_COLOR.value)
-        else:
-            border_width = 0.8
-            border_color = QtGui.QColor(*self.border_color)
-
-        border_rect = QtCore.QRectF(rect.left(), rect.top(),
-                                    rect.width(), rect.height())
-
-        pen = QtGui.QPen(border_color, border_width)
-        pen.setCosmetic(self.viewer().get_zoom() < 0.0)
-        path = QtGui.QPainterPath()
-        path.addRoundedRect(border_rect, radius, radius)
-        painter.setBrush(QtCore.Qt.NoBrush)
-        painter.setPen(pen)
-        painter.drawPath(path)
-
-        painter.restore()
-
-    def _draw_node_horizontal(self):
-        # === 新增：使用与 paint 一致的标题高度 ===
-        MIN_HEADER_HEIGHT = 16.0
-        text_height = self._text_item.boundingRect().height()
-        header_height = max(text_height + 4.0, MIN_HEADER_HEIGHT)
-
-        if not self._proxy_mode:
-            label_v_offset = (header_height - text_height) / 2.0
-            # update port text visibility
-            for port, text in self._input_items.items():
-                if port.isVisible():
-                    text.setVisible(port.display_name)
-            for port, text in self._output_items.items():
-                if port.isVisible():
-                    text.setVisible(port.display_name)
-
-            # setup base size —— 确保总高度至少包含标题
-            self._set_base_size(add_h=header_height)
-
-            # set colors and tooltip
-            self._set_text_color(self.text_color)
-            self._tooltip_disable(self.disabled)
-
-            # --- align all items with new header offset ---
-            self.align_label(v_offset=label_v_offset)
-            self.align_icon(h_offset=6, v_offset=label_v_offset - 1.5)
-
-            self.align_widgets(v_offset=header_height + 8.0)  # ⬅️ widgets 下移
-
-        self.align_ports(v_offset=header_height)  # ⬅️ ports 下移
-        self.update()
-        if self._proxy_mode:
-            self._update_proxy_text_position()
-
-    def remove_widget(self, widget):
-        widget = self._widgets.pop(widget.get_name(), None)
-        widget.setParent(None)
-        widget.deleteLater()
-
-    def set_align(self, align):
-        self._align = align
-
-    def mousePressEvent(self, event):
-        # 如果是右键，先选中自己（关键！）
-        if event.button() == QtCore.Qt.RightButton:
-            # 清除其他选择，只选中当前节点
-            scene = self.scene()
-            if scene:
-                scene.clearSelection()
-                event.accept()
-                self.setSelected(True)
-        # 其他逻辑交给父类（包括左键、菜单弹出等）
-        super().mousePressEvent(event)
-
-    def _calc_size_horizontal(self):
-        # width, height from node name text.
-        font = self._text_item.font()
-        font_metrics = QtGui.QFontMetrics(font)
-        text_w = max(self._text_item.boundingRect().width(), font_metrics.horizontalAdvance(self.name))
-        text_h = self._text_item.boundingRect().height()
-
-        # width, height from node ports.
-        port_width = 0.0
-        p_input_text_width = 0.0
-        p_output_text_width = 0.0
-        p_input_height = 0.0
-        p_output_height = 0.0
-        for port, text in self._input_items.items():
-            if not port.isVisible():
-                continue
-            if not port_width:
-                port_width = port.boundingRect().width()
-            t_width = text.boundingRect().width()
-            if text.isVisible() and t_width > p_input_text_width:
-                p_input_text_width = text.boundingRect().width()
-            p_input_height += port.boundingRect().height()
-        for port, text in self._output_items.items():
-            if not port.isVisible():
-                continue
-            if not port_width:
-                port_width = port.boundingRect().width()
-            t_width = text.boundingRect().width()
-            if text.isVisible() and t_width > p_output_text_width:
-                p_output_text_width = text.boundingRect().width()
-            p_output_height += port.boundingRect().height()
-
-        port_text_width = p_input_text_width + p_output_text_width
-
-        # width, height from node embedded widgets.
-        widget_width = 0.0
-        widget_height = 0.0
-        for widget in self._widgets.values():
-            if not widget.isVisible():
-                continue
-            # ✅ 关键：直接调用 widget.widget().sizeHint()
-            real_widget = widget.widget()
-            if real_widget is not None:
-                w_size = real_widget.sizeHint()
-                w_width = w_size.width()
-                w_height = w_size.height()
-                if w_width > widget_width:
-                    widget_width = w_width
-                widget_height += w_height + 8
-            else:
-                w_width = widget.boundingRect().width()
-                w_height = widget.boundingRect().height()
-                if w_width > widget_width:
-                    widget_width = w_width
-                widget_height += w_height + 8
-
-        side_padding = 0.0
-        if all([widget_width, p_input_text_width, p_output_text_width]):
-            port_text_width = max([p_input_text_width, p_output_text_width])
-            port_text_width *= 2
-        if widget_width:
-            side_padding = 20
-        # 节点宽度计算, 端口宽+端口文本宽+max（节点文本宽,自定义控件宽）+边距，最后与代理文本宽度取最大
-        width = max(
-            port_width + max(port_text_width, 40) + max([text_w, widget_width]) + side_padding,
-            self._proxy_text_item.boundingRect().width() + 20
-        )
-        height = max([text_h, p_input_height, p_output_height, widget_height])
-        height *= 1.04
-        width *= 0.92
-        return width, height
-
-    def _align_widgets_horizontal(self, v_offset):
-        if not self._widgets:
-            return
-        rect = self.boundingRect()
-        y = rect.y() + v_offset
-        inputs = [p for p in self.inputs if p.isVisible()]
-        outputs = [p for p in self.outputs if p.isVisible()]
-        for widget in self._widgets.values():
-            if not widget.isVisible():
-                continue
-            # ✅ 关键：使用 widget.widget().sizeHint() 获取真实尺寸
-            real_widget = widget.widget()
-            if real_widget is not None:
-                w_size = real_widget.sizeHint()
-                widget_width = w_size.width()
-                widget_height = w_size.height()
-            else:
-                # fallback（理论上不会走到这里）
-                br = widget.boundingRect()
-                widget_width = br.width()
-                widget_height = br.height()
-
-            if self._align == 'left':
-                x = rect.left() + 10
-                widget.widget().setTitleAlign('left')
-            elif self._align == 'right':
-                x = rect.right() - widget_width - 10
-                widget.widget().setTitleAlign('right')
-            elif self._align == 'center':
-                x = rect.center().x() - (widget_width / 2)
-                widget.widget().setTitleAlign('center')
-            else:
-                if not inputs:
-                    x = rect.left() + 10
-                    widget.widget().setTitleAlign('left')
-                elif not outputs:
-                    x = rect.right() - widget_width - 10
-                    widget.widget().setTitleAlign('right')
-                else:
-                    x = rect.center().x() - (widget_width / 2)
-                    widget.widget().setTitleAlign('center')
-
-            widget.setPos(x, y)
-            y += widget_height + 8  # 使用真实高度
-
     def auto_switch_mode(self):
-        """
-        Decide whether to draw the node with proxy mode.
-        (this is called at the start in the "self.paint()" function.)
-        """
-        if ITEM_CACHE_MODE is QtWidgets.QGraphicsItem.ItemCoordinateCache:
-            return
+        """根据画布缩放级别动态切换 LOD 模式"""
         if self.viewer() is None:
             return
         rect = self.sceneBoundingRect()
-        l = self.viewer().mapToGlobal(
-            self.viewer().mapFromScene(rect.topLeft()))
-        r = self.viewer().mapToGlobal(
-            self.viewer().mapFromScene(rect.topRight()))
-        # width is the node width in screen
-        width = r.x() - l.x()
-
-        self.set_proxy_mode(width < Settings.get_instance().node_proxy_size.value)
-
-    def _update_proxy_text_position(self):
-        if not self._proxy_mode:
-            return
-        rect = self.boundingRect()
-        text_rect = self._proxy_text_item.boundingRect()
-        x = rect.center().x() - text_rect.width() / 2
-        y = rect.center().y() - text_rect.height() / 2
-        self._proxy_text_item.setPos(x, y)
+        l = self.viewer().mapToGlobal(self.viewer().mapFromScene(rect.topLeft()))
+        r = self.viewer().mapToGlobal(self.viewer().mapFromScene(rect.topRight()))
+        self.set_proxy_mode((r.x() - l.x()) < Settings.get_instance().node_proxy_size.value)
 
     def set_proxy_mode(self, mode):
         """
@@ -467,3 +470,41 @@ class CustomNodeItem(NodeItem):
         if mode:
             self._proxy_text_item.setPlainText(self.name)
             self._update_proxy_text_position()
+
+    def _update_proxy_text_position(self):
+        """更新 LOD 代理文本到节点中心位置"""
+        rect = self.boundingRect()
+        text_rect = self._proxy_text_item.boundingRect()
+        self._proxy_text_item.setPos(
+            rect.center().x() - text_rect.width() / 2,
+            rect.center().y() - text_rect.height() / 2
+        )
+
+    def remove_widget(self, widget):
+        """从节点移除挂件"""
+        w = self._widgets.pop(widget.get_name(), None)
+        if w:
+            w.setParent(None)
+            w.deleteLater()
+
+    def set_align(self, align):
+        """设置对齐方式"""
+        self._align = align
+
+    def _align_widgets_horizontal(self, v_offset):
+        """水平布局下对齐节点内挂件"""
+        if not self._widgets:
+            return
+        rect = self.boundingRect()
+        y = rect.y() + v_offset
+        for widget in self._widgets.values():
+            if not widget.isVisible():
+                continue
+            real_widget = widget.widget()
+            w_size = real_widget.sizeHint() if real_widget else widget.boundingRect().size()
+            width = w_size.width()
+
+            # 默认为居中对齐，确保 ComfyUI 挂件视觉美感
+            x = rect.center().x() - (width / 2)
+            widget.setPos(x, y)
+            y += (w_size.height() if real_widget else widget.boundingRect().height()) + 8
