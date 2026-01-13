@@ -91,7 +91,7 @@ class ImageWidget(QtWidgets.QWidget):
         rect = self.rect()
 
         # 绘制背景
-        painter.fillRect(rect, Qt.black)
+        painter.fillRect(rect, Qt.transparent)
 
         if self._q_image:
             # 使用 drawImage 直接绘制到当前 rect，Qt 会自动处理高质量缩放

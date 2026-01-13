@@ -238,7 +238,7 @@ class NodeOperations:
             node = self.graph.create_node(node_type)
         QTimer.singleShot(0, lambda: self.parent.property_panel.update_properties(node))
         if icon_path and isinstance(icon_path, str):
-            node.set_icon(icon_path)
+            node.icon = icon_path
         if selected_nodes:
             node_x = selected_nodes[0].x_pos()
             node_y = selected_nodes[0].y_pos()

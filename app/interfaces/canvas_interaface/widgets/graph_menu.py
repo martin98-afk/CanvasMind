@@ -82,6 +82,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
         super(CustomGraphMenu, self).__init__(parent)
         self._graph = graph
         self._left_panel = left_panel
+        self.parent = parent
         self._cached_data = []  # 核心：缓存所有节点数据
 
         # 1. 窗口属性设置
@@ -265,7 +266,8 @@ class CustomGraphMenu(QtWidgets.QWidget):
             if data["type"] == "node":
                 self._graph.begin_undo("Create Node")
                 # 这里根据你实际的 create_node 签名修改，有些需要 node_type 字符串
-                self._graph.create_node(data["id"], pos=[scene_pos.x(), scene_pos.y()])
+                node = self._graph.create_node(data["id"], pos=[scene_pos.x(), scene_pos.y()])
+                self.parent.on_selection_changed()
                 self._graph.end_undo()
             elif data["type"] == "template":
                 self._left_panel.template_container.load_template(

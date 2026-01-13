@@ -120,7 +120,7 @@ class ImageCompareWidget(QtWidgets.QWidget):
         painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
         rect = self.rect()
-        painter.fillRect(rect, Qt.black)
+        painter.fillRect(rect, Qt.transparent)
 
         if not self._image_a and not self._image_b:
             return
