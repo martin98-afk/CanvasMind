@@ -118,6 +118,10 @@ class CanvasPage(QWidget):
     def nav_panel(self):
         return self.ui_manager.nav_panel
 
+    @property
+    def dependency_checker(self):
+        return self.ui_manager.dependency_checker
+
     # 代理方法
     @property
     def running_projects_changed(self):

@@ -26,6 +26,7 @@ class EnvironmentManager:
         self.env_data = self.env_combo.currentData()
         QTimer.singleShot(0, self.parent.connect_kernel)
         self.parent.env_changed.emit(self.env_data.get("path"))
+        self.parent.dependency_checker.run_check()
         MessageManager.info("环境切换", f"当前运行环境: {current_text}", self.parent)
 
     def get_current_python_exe(self):
