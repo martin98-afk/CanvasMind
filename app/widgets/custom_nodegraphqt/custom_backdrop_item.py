@@ -100,7 +100,7 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
 
         self._icon_item.setPixmap(pixmap)
         if self.scene():
-            self.post_init()
+            self.post_init(self)
 
         self.update()
 

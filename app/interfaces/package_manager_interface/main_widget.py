@@ -670,15 +670,15 @@ class EnvManagerUI(QWidget):
         self.logEdit.append(f"\n> 准备安装默认包: {pkgs_str}")
         self.run_pip_command("安装", pkgs_str)
 
-    def create_env(self):
-        v_dlg = CustomComboDialog("Python 版本", list(self.config.python_versions.value), 0, self)
+    def create_env(self, window=None):
+        v_dlg = CustomComboDialog("Python 版本", list(self.config.python_versions.value), 0, window or self)
         if v_dlg.exec_():
             ver = v_dlg.get_text()
-            n_dlg = CustomInputDialog("环境名称", currenttext=ver, parent=self)
+            n_dlg = CustomInputDialog("环境名称", currenttext=ver, parent=window or self)
             if n_dlg.exec_():
                 name = n_dlg.get_text().strip() or ver
                 self.mgr.download_and_install(ver, env_name=name, log_callback=self.logEdit.append)
-                st = StateToolTip("安装中", "请稍候...", self)
+                st = StateToolTip("安装中", "请稍候...", window or self)
                 st.show()
                 self.mgr.install_finished.connect(lambda r: (st.close(), self.refresh_env_list()))
 

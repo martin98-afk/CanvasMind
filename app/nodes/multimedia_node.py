@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt
 
-from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NoStatusNode
-from app.utils.utils import draw_special_outputport
+from app.utils.utils import draw_square_port
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.universal_display_widget import UniversalWidgetWrapper
@@ -26,7 +25,7 @@ def create_media_node(parent_window):
             self.view.run_signal.connect(lambda: parent_window.run_node(self))
             self.view.delete_signal.connect(lambda: parent_window.delete_node(self))
             # 添加输入端口
-            self.add_input('data', True, painter_func=draw_special_outputport)
+            self.add_input('data', True, painter_func=draw_square_port)
 
             # 添加图表控件
             media_widget = UniversalWidgetWrapper(
