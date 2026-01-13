@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt
 
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NoStatusNode
+from app.utils.utils import draw_special_outputport
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.universal_display_widget import UniversalWidgetWrapper
@@ -21,13 +22,11 @@ def create_media_node(parent_window):
             super().__init__(CustomNodeItem)
             self.set_icon(":/icons/多媒体.svg")
             self.model.port_deletion_allowed = False
-            self._node_logs = ""
-            self._output_values = {}
-            self._input_values = {}
             self.view.set_align("center")
-
+            self.view.run_signal.connect(lambda: parent_window.run_node(self))
+            self.view.delete_signal.connect(lambda: parent_window.delete_node(self))
             # 添加输入端口
-            self.add_input('data', True)
+            self.add_input('data', True, painter_func=draw_special_outputport)
 
             # 添加图表控件
             media_widget = UniversalWidgetWrapper(
