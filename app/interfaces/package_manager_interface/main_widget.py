@@ -20,7 +20,7 @@ from qfluentwidgets import (
     FluentIcon, InfoBar, SearchLineEdit, TextEdit, MessageBox,
     BodyLabel, StateToolTip, StrongBodyLabel, SimpleCardWidget,
     TransparentToolButton, IconWidget, CaptionLabel, SegmentedWidget, MessageBoxBase, Pivot,
-    RoundMenu, Action
+    RoundMenu, Action, PasswordLineEdit
 )
 
 from app.utils.config import Settings
@@ -116,29 +116,46 @@ class SSHExecThread(QThread):
         self.finished_signal.emit()
 
 
+from urllib.parse import urlparse
+from qfluentwidgets import (MessageBoxBase, SubtitleLabel, LineEdit,
+                            PasswordLineEdit, BodyLabel, StrongBodyLabel)
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
+
+
 class SSHAddrDialog(MessageBoxBase):
     """自定义 SSH 配置对话框，支持新增和编辑模式"""
 
     def __init__(self, parent=None, data=None):
         super().__init__(parent)
         self.titleLabel = StrongBodyLabel("SSH 环境配置", self)
-        self.h_edit = LineEdit()
-        self.h_edit.setPlaceholderText("IP 地址: 端口")
-        self.u_edit = LineEdit()
-        self.u_edit.setPlaceholderText("用户名")
-        self.p_edit = LineEdit()
-        self.p_edit.setPlaceholderText("密码")
-        self.p_edit.setEchoMode(LineEdit.Password)
-        self.path_edit = LineEdit()
-        self.path_edit.setPlaceholderText("远程 Python 路径 (如 /usr/bin/python3)")
-        self.name_edit = LineEdit()
-        self.name_edit.setPlaceholderText("环境别名")
 
+        # 初始化组件
+        self.name_edit = LineEdit(self)
+        self.h_edit = LineEdit(self)
+        self.u_edit = LineEdit(self)
+        self.p_edit = PasswordLineEdit(self)
+        self.path_edit = LineEdit(self)
+
+        # 设置占位符
+        self.name_edit.setPlaceholderText("例如: 生产服务器-01")
+        self.h_edit.setPlaceholderText("192.168.1.100:22")
+        self.u_edit.setPlaceholderText("root")
+        self.p_edit.setPlaceholderText("请输入密码")
+        self.path_edit.setPlaceholderText("/usr/bin/python3")
+
+        # 布局组织
         self.widget.setMinimumWidth(450)
         self.viewLayout.addWidget(self.titleLabel)
-        for w in [self.name_edit, self.h_edit, self.u_edit, self.p_edit, self.path_edit]:
-            self.viewLayout.addWidget(w)
+        self.viewLayout.addSpacing(10)
 
+        # 批量添加带 Label 的行
+        self._add_form_item("环境名称:", self.name_edit)
+        self._add_form_item("主机地址 (IP:端口):", self.h_edit)
+        self._add_form_item("用户名:", self.u_edit)
+        self._add_form_item("密码:", self.p_edit)
+        self._add_form_item("远程 Python 路径:", self.path_edit)
+
+        # 数据回显
         if data:
             self.name_edit.setText(data.get("name", ""))
             host_str = f"{data.get('host', '')}:{data.get('port', 22)}"
@@ -147,23 +164,38 @@ class SSHAddrDialog(MessageBoxBase):
             self.p_edit.setText(data.get("pwd", ""))
             self.path_edit.setText(data.get("path", ""))
 
+    def _add_form_item(self, label_text, widget):
+        """辅助方法：添加说明标签和对应的输入框"""
+        label = BodyLabel(label_text, self)
+        self.viewLayout.addWidget(label)
+        self.viewLayout.addWidget(widget)
+        self.viewLayout.addSpacing(8)  # 每一行之间的间距
+
     def get_info(self):
+        """提取并解析用户输入的数据"""
         host_input = self.h_edit.text().strip()
+
+        # 默认值处理
         host = host_input
         port = 22
+
+        # 端口解析逻辑优化
         if ":" in host_input:
-            parts = host_input.split(":")
-            host = parts[0]
-            if len(parts) > 1 and parts[1].isdigit():
-                port = int(parts[1])
+            try:
+                parts = host_input.rsplit(":", 1)  # 从右侧分割，防止 IPv6 干扰
+                host = parts[0]
+                if len(parts) > 1 and parts[1].isdigit():
+                    port = int(parts[1])
+            except Exception:
+                pass
 
         return {
+            "name": self.name_edit.text().strip() or host or "未命名环境",
             "host": host,
-            "user": self.u_edit.text().strip(),
+            "port": port,
+            "user": self.u_edit.text().strip() or "root",
             "pwd": self.p_edit.text().strip(),
-            "path": self.path_edit.text().strip() or "python3",
-            "name": self.name_edit.text().strip() or host,
-            "port": port
+            "path": self.path_edit.text().strip() or "/usr/bin/python3"
         }
 
 
@@ -206,6 +238,8 @@ class EnvManagerUI(QWidget):
         self.searchEdit.setPlaceholderText("搜索包名 (Ctrl+F)")
         self.searchEdit.setFixedWidth(240)
         self.searchEdit.textChanged.connect(self.on_search_text_changed)
+        self.searchEdit.searchSignal.connect(self.on_search_text_changed)
+        self.searchEdit.clearSignal.connect(self.on_search_text_changed)
         searchLayout.addWidget(listIcon)
         searchLayout.addWidget(StrongBodyLabel("已安装包列表", self))
         searchLayout.addStretch(1)
@@ -224,12 +258,13 @@ class EnvManagerUI(QWidget):
 
         envIcon = IconWidget(get_icon("python"), self)
         envIcon.setFixedSize(32, 32)
-        self.titleLabel = StrongBodyLabel("环境管理", self)
+        statusInfoLayout = QVBoxLayout()
         self.pyVersionLabel = CaptionLabel("Python 版本: --", self)
-        titleVBox.addWidget(self.titleLabel)
-        titleVBox.addWidget(self.pyVersionLabel)
+        self.remoteDetailLabel = CaptionLabel("连接信息: 本地环境", self)  # 复用此标签显示连接地址
+        statusInfoLayout.addWidget(self.pyVersionLabel)
+        statusInfoLayout.addWidget(self.remoteDetailLabel)
         self.titleLayout.addWidget(envIcon)
-        self.titleLayout.addLayout(titleVBox)
+        self.titleLayout.addLayout(statusInfoLayout)
         self.titleLayout.addStretch(1)
         self.titleLayout.addWidget(self.pivot)
         rightLayout.addLayout(self.titleLayout)
@@ -278,7 +313,7 @@ class EnvManagerUI(QWidget):
         self.refreshRemoteBtn.setToolTip("刷新包列表")
         self.refreshRemoteBtn.clicked.connect(lambda: self.load_packages(self.current_env_data))
 
-        self.installDefaultBtn = TransparentToolButton(FluentIcon.SETTING, self)
+        self.installDefaultBtn = TransparentToolButton(get_icon("工具包"), self)
         self.installDefaultBtn.setToolTip("安装默认依赖包")
         self.installDefaultBtn.clicked.connect(self.install_default_packages)
 
@@ -293,9 +328,7 @@ class EnvManagerUI(QWidget):
         rpTop.addWidget(self.installDefaultBtn)
         rpTop.addWidget(self.delSshBtn)
 
-        self.remoteDetailLabel = CaptionLabel("地址: --")
         rpLayout.addLayout(rpTop)
-        rpLayout.addWidget(self.remoteDetailLabel)
 
         self.configStack.addWidget(self.localPanel)
         self.configStack.addWidget(self.remotePanel)
@@ -376,7 +409,7 @@ class EnvManagerUI(QWidget):
     def select_local_files(self):
         """批量选择 .whl 或压缩包"""
         files, _ = QFileDialog.getOpenFileNames(
-            self, "选择本地安装包", "", "Python Packages (*.whl *.tar.gz *.zip);;All Files (*)"
+            self, "选择本地安装包", "", "Python Packages (*.whl *.tar.gz *.zip);All Files (*)"
         )
         if files:
             # 用分号拼接多个路径
@@ -432,14 +465,19 @@ class EnvManagerUI(QWidget):
         combo = self.envCombo if self.configStack.currentIndex() == 0 else self.remoteEnvCombo
         data = combo.currentData()
         if not data: return
+
         self.current_env_data = data
         self.current_env = data["name"]
+
         if data["type"] == "local":
             self.mgr.refresh_env_config()
+            self.remoteDetailLabel.setText("路径: " + data["path"])  # 本地显示路径
             self.config.set(self.config.current_env_selected, data["name"])
             self.config.save_config()
         else:
-            self.remoteDetailLabel.setText(f"地址: {data['host']}:{data.get('port', 22)}")
+            # 远程显示地址
+            self.remoteDetailLabel.setText(f"地址: {data['host']}:{data.get('port', 22)}  |  用户: {data['user']}")
+
         self.load_packages(data)
 
     def load_packages(self, env_name_or_data):
@@ -491,36 +529,108 @@ class EnvManagerUI(QWidget):
             self.packageEdit.setPlaceholderText("选择本地文件(支持多个)或文件夹...")
 
     def _repopulate_table(self, pkgs):
-        self.packageTable.setRowCount(0)
+        """优化版：分批次加载表格，防止主线程卡死"""
+        self.packageTable.setUpdatesEnabled(False)  # 关键：停止界面重绘
         self.packageTable.setSortingEnabled(False)
-        for row, pkg in enumerate(pkgs):
-            self.packageTable.insertRow(row)
-            name, ver = pkg.get("name", ""), pkg.get("version", "")
+        self.packageTable.setRowCount(len(pkgs))  # 一次性分配内存，不要一个个 insertRow
+
+        # 记录待处理的数据
+        self._pending_pkgs = pkgs
+        self._current_populate_index = 0
+        self._batch_size = 20  # 每批处理 20 行，你可以根据流畅度调整
+
+        # 清理之前的定时器（如果有）
+        if hasattr(self, '_populate_timer'):
+            self._populate_timer.stop()
+        else:
+            self._populate_timer = QTimer(self)
+            self._populate_timer.timeout.connect(self._populate_batch)
+
+        self._populate_timer.start(1)  # 1ms 后开始首批处理
+
+    def _populate_batch(self):
+        """分批填充逻辑"""
+        start = self._current_populate_index
+        end = min(start + self._batch_size, len(self._pending_pkgs))
+
+        font = QFont("Segoe UI", 9)
+        gray_color = QColor(150, 150, 150)
+
+        for i in range(start, end):
+            pkg = self._pending_pkgs[i]
+            name = pkg.get("name", "")
+            ver = pkg.get("version", "")
+
+            # 名称项
             n_item = QTableWidgetItem(name)
+            n_item.setFont(font)
+            self.packageTable.setItem(i, 0, n_item)
+
+            # 版本项
             v_item = QTableWidgetItem(ver)
-            v_item.setForeground(QColor(150, 150, 150))
-            self.packageTable.setItem(row, 0, n_item)
-            self.packageTable.setItem(row, 1, v_item)
-            bw = QWidget()
-            bl = QHBoxLayout(bw)
-            bl.setContentsMargins(0, 0, 0, 0)
-            bl.setSpacing(4)
-            ub = TransparentToolButton(get_icon("更新"), self)
-            ub.setToolTip("更新此包")
-            ub.clicked.connect(functools.partial(self.on_update_package_clicked, name))
-            db = TransparentToolButton(FluentIcon.DELETE, self)
-            db.setToolTip("卸载此包")
-            db.clicked.connect(functools.partial(self.on_uninstall_package_clicked, name))
-            bl.addWidget(ub)
-            bl.addWidget(db)
-            self.packageTable.setCellWidget(row, 2, bw)
-        self.packageTable.setSortingEnabled(True)
+            v_item.setFont(font)
+            v_item.setForeground(gray_color)
+            self.packageTable.setItem(i, 1, v_item)
+
+            # --- 优化：只有在需要时才创建 Widget ---
+            # 如果包很多，创建 Widget 是最慢的步骤
+            self.packageTable.setCellWidget(i, 2, self._create_action_group(name))
+
+        self._current_populate_index = end
+
+        # 检查是否全部完成
+        if end >= len(self._pending_pkgs):
+            self._populate_timer.stop()
+            self.packageTable.setSortingEnabled(True)
+            self.packageTable.setUpdatesEnabled(True)  # 恢复重绘
+            # 手动刷新一次布局
+            self.packageTable.viewport().update()
+        else:
+            # 如果没做完，让出 CPU 给主进程处理 UI 事件，下一帧继续
+            pass
+
+    def _create_action_group(self, name):
+        """辅助函数：创建操作按钮组"""
+        bw = QWidget()
+        bl = QHBoxLayout(bw)
+        bl.setContentsMargins(4, 0, 4, 0)
+        bl.setSpacing(4)
+        bl.setAlignment(Qt.AlignCenter)
+
+        ub = TransparentToolButton(get_icon("更新"), bw)
+        ub.setToolTip(f"更新 {name}")
+        ub.setFixedSize(26, 26)
+        ub.setIconSize(QSize(14, 14))
+        ub.clicked.connect(functools.partial(self.on_update_package_clicked, name))
+
+        db = TransparentToolButton(FluentIcon.DELETE, bw)
+        db.setToolTip(f"卸载 {name}")
+        db.setFixedSize(26, 26)
+        db.setIconSize(QSize(14, 14))
+        db.clicked.connect(functools.partial(self.on_uninstall_package_clicked, name))
+
+        bl.addWidget(ub)
+        bl.addWidget(db)
+        return bw
 
     def on_search_text_changed(self, text):
+        """搜索防抖处理"""
+        if hasattr(self, '_search_timer'):
+            self._search_timer.stop()
+        else:
+            self._search_timer = QTimer(self)
+            self._search_timer.setSingleShot(True)
+            self._search_timer.timeout.connect(lambda: self._do_search(self.searchEdit.text()))
+
+        self._search_timer.start(200)  # 输入停止 200ms 后才执行过滤
+
+    def _do_search(self, text):
         t = text.strip().lower()
+        self.packageTable.setUpdatesEnabled(False)
         for r in range(self.packageTable.rowCount()):
             it = self.packageTable.item(r, 0)
             self.packageTable.setRowHidden(r, t not in it.text().lower() if it else False)
+        self.packageTable.setUpdatesEnabled(True)
 
     def run_pip_command(self, action=None, package_input=None):
         if not self.current_env_data: return
@@ -541,16 +651,16 @@ class EnvManagerUI(QWidget):
         if current_source == "在线源":
             if not raw_input and current_action != "卸载": return
             if current_action == "安装":
-                cmd.extend(["install"]);
-                self._add_mirror_sources(cmd);
+                cmd.extend(["install"])
+                self._add_mirror_sources(cmd)
                 cmd.append(raw_input)
             elif current_action == "强制重装":
-                cmd.extend(["install", "--force-reinstall"]);
-                self._add_mirror_sources(cmd);
+                cmd.extend(["install", "--force-reinstall"])
+                self._add_mirror_sources(cmd)
                 cmd.append(raw_input)
             elif current_action == "更新":
-                cmd.extend(["install", "-U"]);
-                self._add_mirror_sources(cmd);
+                cmd.extend(["install", "-U"])
+                self._add_mirror_sources(cmd)
                 cmd.append(raw_input)
             elif current_action == "卸载":
                 cmd.extend(["uninstall", "-y", raw_input])
@@ -560,6 +670,8 @@ class EnvManagerUI(QWidget):
             cmd.append("install")
             if current_action == "离线安装":
                 cmd.append("--no-index")
+            else:
+                self._add_mirror_sources(cmd)
 
             # 处理多文件/文件夹逻辑
             paths = raw_input.split(";")
@@ -589,9 +701,16 @@ class EnvManagerUI(QWidget):
 
     def _add_mirror_sources(self, cmd):
         mirrors = self.mgr.config.mirrors.value
-        if mirrors:
-            primary = mirrors[0]
-            cmd.extend(["-i", primary, "--trusted-host", urlparse(primary).hostname])
+        if not mirrors:
+            return
+
+        for i, url in enumerate(mirrors):
+            # 第一个用 -i，后续用 --extra-index-url
+            flag = "-i" if i == 0 else "--extra-index-url"
+
+            parsed = urlparse(url)
+            if parsed.hostname:
+                cmd.extend([flag, url, "--trusted-host", parsed.hostname])
 
     def on_update_package_clicked(self, package_name):
         self.run_pip_command("更新", package_name)
@@ -751,3 +870,7 @@ class EnvManagerUI(QWidget):
     def _log_color(self, text, color):
         self.logEdit.append(f'<span style="color:{color};">{text}</span>')
         self.logEdit.moveCursor(QTextCursor.End)
+        # 获取滚动条对象
+        scrollbar = self.logEdit.verticalScrollBar()
+        # 强制设置到最大值
+        scrollbar.setValue(scrollbar.maximum())

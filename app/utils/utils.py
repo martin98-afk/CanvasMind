@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+import tarfile
+import uuid
+
+import paramiko
 import psutil
 import base64
 import json
@@ -50,29 +54,179 @@ ANSI_COLOR_MAP = {
 _ICON_CACHE = {}   # 缓存图标名 → QIcon 实例
 
 
-def sftp_download_dir(sftp, remote_dir, local_dir):
-    """通过sftp下载远程目录下的所有文件"""
+# 定义一个占位类，用于替代本地缺失的模块类
+class MissingModulePlaceholder:
+    def __init__(self, *args, **kwargs):
+        pass
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
+
+class SafeUnpickler(pickle.Unpickler):
+    """自定义 Unpickler，当模块不存在时返回占位符而不是崩溃"""
+    def find_class(self, module, name):
+        try:
+            return super().find_class(module, name)
+        except ImportError:
+            # 如果本地找不到 numpy 等模块，就返回一个占位类
+            return MissingModulePlaceholder
+
+
+def ssh_send_file(env_data, local_path, remote_path):
+    """
+    通用 SSH 文件发送函数
+    :param env_data: 环境配置字典 (包含 host, port, user, pwd)
+    :param local_path: 本地文件路径
+    :param remote_path: 远程目标绝对路径
+    :return: bool 是否发送成功
+    """
+    if not isinstance(env_data, dict) or env_data.get('type') != 'ssh':
+        logger.error("无效的 SSH 环境配置")
+        return False
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        # 1. 建立连接
+        ssh.connect(
+            hostname=env_data['host'],
+            port=int(env_data.get('port', 22)),
+            username=env_data['user'],
+            password=env_data['pwd'],
+            timeout=15
+        )
+
+        # 2. 处理路径与创建远程目录
+        # 强制将路径转换为 Linux 风格
+        remote_path = remote_path.replace('\\', '/')
+        remote_dir = os.path.dirname(remote_path)
+
+        # 使用 mkdir -p 一次性创建多级目录
+        ssh.exec_command(f"mkdir -p {remote_dir}")
+
+        # 3. SFTP 上传
+        sftp = ssh.open_sftp()
+        sftp.put(str(local_path), remote_path)
+
+        sftp.close()
+        logger.info(f"文件已成功发送至远程: {remote_path}")
+        return True
+
+    except Exception as e:
+        logger.error(f"SSH 文件发送失败: {e}")
+        return False
+    finally:
+        ssh.close()
+
+
+def sftp_download_dir(sftp, remote_dir, local_dir, ssh=None):
+    """
+    通过 sftp 下载远程目录。
+    如果文件数量超过 3 个，自动切换为打包传输模式以提高速度。
+    """
     # 确保本地目录存在
     if not os.path.exists(local_dir):
         os.makedirs(local_dir)
 
-    # 遍历远程目录
     try:
-        for item in sftp.listdir_attr(remote_dir):
+        # 获取远程目录列表
+        items = sftp.listdir_attr(remote_dir)
+
+        # 如果提供了 ssh 对象，且目录项超过 3 个，则打包下载
+        if ssh and len(items) > 3:
+            # 1. 生成唯一的临时压缩包名
+            temp_filename = f"transfer_{uuid.uuid4().hex}.tar.gz"
+            remote_parent = os.path.dirname(remote_dir)
+            dir_name = os.path.basename(remote_dir)
+            remote_tar_path = f"/tmp/{temp_filename}"
+            local_tar_path = os.path.join(local_dir, temp_filename)
+
+            # 2. 远程打包 (-C 切换路径可以避免压缩包里包含多层父目录)
+            # tar -czf 压缩包路径 -C 父目录 文件夹名
+            cmd = f"tar -czf {remote_tar_path} -C {remote_parent} {dir_name}"
+            stdin, stdout, stderr = ssh.exec_command(cmd)
+
+            # 等待命令执行完成
+            if stdout.channel.recv_exit_status() == 0:
+                try:
+                    # 3. 下载单文件压缩包
+                    sftp.get(remote_tar_path, local_tar_path)
+
+                    # 4. 本地解压
+                    with tarfile.open(local_tar_path, "r:gz") as tar:
+                        # 解压到 local_dir 的父目录，因为压缩包内已经含有了文件夹名
+                        tar.extractall(path=os.path.dirname(local_dir))
+
+                    # 5. 清理：删除本地和远程的压缩包
+                    os.remove(local_tar_path)
+                    ssh.exec_command(f"rm {remote_tar_path}")
+                    return  # 打包任务完成，直接返回
+                except Exception as e:
+                    print(f"打包下载失败，回退到普通模式: {e}")
+            else:
+                print("远程打包失败，回退到普通模式")
+
+        # --- 普通模式：递归下载 ---
+        for item in items:
             remote_path = os.path.join(remote_dir, item.filename).replace('\\', '/')
             local_path = os.path.join(local_dir, item.filename)
 
             if stat.S_ISDIR(item.st_mode):
                 # 如果是文件夹，递归调用
-                sftp_download_dir(sftp, remote_path, local_path)
+                sftp_download_dir(sftp, remote_path, local_path, ssh=ssh)
             else:
                 try:
-                    print(f"正在下载 {remote_path}...")
                     sftp.get(remote_path, local_path)
                 except:
                     pass
-    except:
-        pass
+    except Exception as e:
+        print(f"SFTP 操作异常: {e}")
+
+
+def replace_remote_paths(pkl_path, remote_root, local_root):
+    """
+    核心逻辑：使用 SafeUnpickler 加载，防止缺失 Numpy 导致崩溃
+    """
+    if not os.path.exists(pkl_path):
+        return
+
+    try:
+        # 1. 以二进制读取文件
+        with open(pkl_path, 'rb') as f:
+            # 使用自定义的 SafeUnpickler
+            unpickler = SafeUnpickler(f)
+            data = unpickler.load()
+
+        # 2. 统一路径格式
+        rem_p = remote_root.replace('\\', '/')
+        loc_p = local_root.replace('\\', '/').rstrip('/')
+
+        def walk_and_replace(obj):
+            if isinstance(obj, str):
+                if rem_p in obj:
+                    return obj.replace(rem_p, loc_p)
+                return obj
+            elif isinstance(obj, list):
+                return [walk_and_replace(item) for item in obj]
+            elif isinstance(obj, dict):
+                return {k: walk_and_replace(v) for k, v in obj.items()}
+            # 如果是占位类对象，尝试遍历它的内部属性（如果有路径存进属性里了）
+            elif isinstance(obj, MissingModulePlaceholder):
+                for k, v in obj.__dict__.items():
+                    obj.__dict__[k] = walk_and_replace(v)
+                return obj
+            return obj
+
+        new_data = walk_and_replace(data)
+
+        # 3. 写回文件
+        with open(pkl_path, 'wb') as f:
+            pickle.dump(new_data, f)
+
+    except Exception as e:
+        logger.error(f"路径替换失败: {e}")
+
 
 def get_pinyin_search_keys(text):
     """生成拼音全拼和首字母缩写"""

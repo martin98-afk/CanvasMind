@@ -3,6 +3,7 @@ import json
 import os
 import pickle
 import re
+import tempfile
 import uuid
 import base64
 
@@ -15,6 +16,7 @@ from loguru import logger
 # 导入业务相关的组件协议
 from app.components.base import PROGRESS_MARKER, ComponentMessage, PropertyType
 from app.utils.node_logger import NodeLogHandler
+from app.utils.utils import ssh_send_file
 from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
 from app.widgets.node_widget.html_widget import HtmlWidgetWrapper
 
@@ -472,11 +474,34 @@ class BasicNodeWithGlobalProperty(NodeObject):
         message = params.get("message", "")
         response_file = params.get("response_file")
         schema = params.get("schema")
-        os.makedirs(os.path.dirname(response_file), exist_ok=True)
+
+        # 获取环境数据
+        env_data = getattr(self.parent_window, 'env_data', None)
+        is_ssh = env_data and env_data.get('type') == 'ssh'
 
         def on_confirmed(result_data):
-            with open(response_file, 'wb') as f:
-                pickle.dump(result_data, f)
+            if is_ssh:
+                # --- SSH 模式 ---
+                # 1. 创建本地临时文件
+                temp_path = os.path.join(tempfile.gettempdir(), f"ask_{uuid.uuid4().hex}.pkl")
+                try:
+                    with open(temp_path, 'wb') as f:
+                        pickle.dump(result_data, f)
+
+                    # 2. 调用公用函数发送
+                    success = ssh_send_file(env_data, temp_path, response_file)
+
+                    if not success:
+                        logger.error("远程回传人工干预结果失败")
+                finally:
+                    # 3. 清理临时文件
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+            else:
+                # --- 本地模式 ---
+                os.makedirs(os.path.dirname(response_file), exist_ok=True)
+                with open(response_file, 'wb') as f:
+                    pickle.dump(result_data, f)
 
         self.parent_window.show_intervention_dialog(title, message, schema, on_confirmed)
 

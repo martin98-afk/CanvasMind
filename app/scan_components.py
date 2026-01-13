@@ -396,6 +396,7 @@ class ComponentScanner:
         if comp_cls is None:
             raise ValueError("未找到有效组件类（缺少 category 属性）")
 
+        current_uuid = py_file.stem  # 文件名是 UUID
         if is_fallback:
             version = fallback_version
         else:
@@ -421,7 +422,19 @@ class ComponentScanner:
 
         component_name = getattr(comp_cls, 'name', py_file.stem)
         full_path = f"{comp_cls.category}/{component_name}"
+        base_full_path = f"{comp_cls.category}/{component_name}"
+        conflicting_uuid = None
+        for existing_path, cls in comp_map.items():
+            if existing_path == full_path and getattr(cls, 'uuid', None) != current_uuid:
+                conflicting_uuid = cls.uuid
+                break
 
+        if conflicting_uuid:
+            # 路径冲突，追加 UUID 前 8 位作为区分
+            full_path = f"{base_full_path} ({current_uuid[:4]})"
+            logger.warning(f"检测到路径冲突: {base_full_path}，已重命名为: {full_path}")
+
+        # 写入缓存
         comp_map[full_path] = comp_cls
         file_map[full_path] = py_file
-        self._uuid_map[py_file.stem] = comp_cls
+        self._uuid_map[current_uuid] = comp_cls

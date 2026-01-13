@@ -359,16 +359,16 @@ class CustomNodeItem(NodeItem):
             if not widget.isVisible():
                 continue
             # ✅ 关键：使用 widget.widget().sizeHint() 获取真实尺寸
-            # real_widget = widget.widget()
-            # if real_widget is not None:
-            #     w_size = real_widget.sizeHint()
-            #     widget_width = w_size.width()
-            #     widget_height = w_size.height()
-            # else:
+            real_widget = widget.widget()
+            if real_widget is not None:
+                w_size = real_widget.sizeHint()
+                widget_width = w_size.width()
+                widget_height = w_size.height()
+            else:
                 # fallback（理论上不会走到这里）
-            br = widget.boundingRect()
-            widget_width = br.width()
-            widget_height = br.height()
+                br = widget.boundingRect()
+                widget_width = br.width()
+                widget_height = br.height()
 
             if self._align == 'left':
                 x = rect.left() + 10

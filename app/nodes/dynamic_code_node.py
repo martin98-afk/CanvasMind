@@ -17,7 +17,7 @@ from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.glue_code_templates import GLUE_CODE_TEMPLATES
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.utils import draw_special_outputport, _safe_load_pickle, \
-    kill_proc_tree, sftp_download_dir
+    kill_proc_tree, sftp_download_dir, replace_remote_paths
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
@@ -520,7 +520,13 @@ def create_dynamic_code_node(parent_window=None):
                                                   check_cancel, kernel_manager)
                     else:
                         self._execute_via_subprocess(python_exe, local_script_path, log_file_path, check_cancel)
-
+                # === 读取剩余日志 ===
+                with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                    lf.seek(self.last_log_pos)
+                    new_content = lf.read()
+                    if new_content:
+                        self._log_message(self.persistent_id, new_content)
+                        self.last_log_pos = lf.tell()
                 # 后续结果处理
                 if result_path.exists():
                     output = _safe_load_pickle(result_path)
@@ -556,15 +562,13 @@ def create_dynamic_code_node(parent_window=None):
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             try:
                 ssh.connect(hostname=env_data['host'], port=int(env_data.get('port', 22)),
-                            username=env_data['user'], password=env_data['pwd'], timeout=15)
+                            username=env_data['user'], password=env_data['pwd'], timeout=15, compress=True)
                 sftp = ssh.open_sftp()
-
+                transport = ssh.get_transport()
+                # 设置窗口大小（默认 2MB 左右，可以加大）
+                transport.set_keepalive(30)
                 # 1. 准备目录
                 ssh.exec_command(f"mkdir -p {upload_dir} {result_dir} {remote_run_dir} {remote_root}/node_logs")
-
-                # 2. 同步文件
-                self._log_message(self.persistent_id, f"🚀 正在同步动态代码到远程 {env_data['host']}...")
-
                 # 上传本地 Workspace 下的 upload 内容
                 local_up = local_node_workspace / "upload"
                 if local_up.exists():
@@ -573,8 +577,9 @@ def create_dynamic_code_node(parent_window=None):
 
                 sftp.put(str(local_comp_path), f"{remote_run_dir}/component.py")
                 sftp.put(str(params_path), f"{remote_run_dir}/params.pkl")
-                sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}//base.py")
-                sftp.put(log_file_path, log_path)
+                sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}/base.py")
+                if os.path.exists(log_file_path):
+                    sftp.put(log_file_path, log_path)
                 # 3. 生成适合远程的执行脚本
                 remote_script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
                     class_name="DynamicComponent",
@@ -584,7 +589,7 @@ def create_dynamic_code_node(parent_window=None):
                     error_path=f"{remote_run_dir}/error.pkl",
                     log_file_path=log_path,
                     node_id=self.persistent_id,
-                    workflow_path=remote_root
+                    workflow_path="/tmp"
                 )
                 with open(local_script_path, 'w', encoding='utf-8') as f:
                     f.write(remote_script_content)
@@ -592,7 +597,7 @@ def create_dynamic_code_node(parent_window=None):
 
                 # 4. 执行
                 python_exe = env_data['path']
-                cmd = f"export PYTHONPATH={remote_root}:{remote_root}:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
+                cmd = f"export PYTHONPATH={remote_root}:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
                 stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
 
                 # 5. 增量日志流式回传
@@ -612,11 +617,11 @@ def create_dynamic_code_node(parent_window=None):
                         pass
                     time.sleep(0.5)
 
-                # 6. 回传结果与替换路径
-                self._log_message(self.persistent_id, "📥 正在同步远程结果...")
                 try:
                     sftp.get(f"{remote_run_dir}/result.pkl", str(result_path))
-                    self._replace_remote_paths(result_path, f"{remote_root}/{self.persistent_id}", str(local_node_workspace))
+                    replace_remote_paths(
+                        result_path, f"{remote_root}/{self.persistent_id}", str(local_node_workspace)
+                    )
                 except:
                     os.remove(result_path)
                 try:
@@ -632,7 +637,7 @@ def create_dynamic_code_node(parent_window=None):
                 local_res_dir = local_node_workspace / "result"
                 local_res_dir.mkdir(parents=True, exist_ok=True)
                 try:
-                    sftp_download_dir(sftp, result_path, local_res_dir)
+                    sftp_download_dir(sftp, result_dir, local_res_dir, ssh=ssh)
                 except:
                     pass
 
@@ -643,27 +648,6 @@ def create_dynamic_code_node(parent_window=None):
             finally:
                 if 'sftp' in locals(): sftp.close()
                 ssh.close()
-
-        def _replace_remote_paths(self, pkl_path, remote_root, local_root):
-            """递归替换 pkl 中的远程路径前缀"""
-            if not os.path.exists(pkl_path): return
-            try:
-                with open(pkl_path, 'rb') as f:
-                    data = pickle.load(f)
-                rem_p = remote_root.replace('\\', '/')
-                loc_p = local_root.replace('\\', '/').rstrip('/')
-
-                def walk(obj):
-                    if isinstance(obj, str): return obj.replace(rem_p, loc_p) if rem_p in obj else obj
-                    if isinstance(obj, list): return [walk(i) for i in obj]
-                    if isinstance(obj, dict): return {k: walk(v) for k, v in obj.items()}
-                    return obj
-
-                new_data = walk(data)
-                with open(pkl_path, 'wb') as f:
-                    pickle.dump(new_data, f)
-            except Exception as e:
-                logger.error(f"结果路径替换失败: {e}")
 
         def _execute_via_ipython(
                 self, temp_script_path, result_path, error_path, log_file_path,
