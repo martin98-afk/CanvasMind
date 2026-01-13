@@ -23,6 +23,9 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 
 <img src="images/宣传图2.png" width="100%" height="100%"><br>
 
+<img src="images/宣传图3.png" width="100%" height="100%"><br>
+
+
 ---
 
 ## 🌟 Why Choose CanvasMind?
@@ -34,6 +37,7 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 | No custom logic | **Embedded code editor** for writing Python components freely |
 | Execution = endpoint | **One-click export** to standalone projects (API, CLI, Docker) |
 | AI disconnected from canvas | **Deep LLM integration**: yellow jump / purple create buttons for canvas-aware intelligent completion |
+| Fixed Runtime Environment | Supports remote execution via SSH: Features integrated Python environment management for SSH servers and supports dispatching nodes to the server-side for execution. |
 
 ---
 
