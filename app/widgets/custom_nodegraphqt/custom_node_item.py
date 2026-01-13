@@ -24,7 +24,8 @@ class CustomNodeSignals(QtCore.QObject):
 
 class NodeActionButton(QtWidgets.QGraphicsItem):
     """
-    矢量图标按钮组件，支持运行、调试、删除、折叠等矢量图形绘制。
+    增强版矢量图标按钮组件。
+    尺寸增加至 22x22，图标线条加粗，优化了 ComfyUI 风格的交互质感。
     """
 
     def __init__(self, parent, icon_type, tooltip, color, hover_color):
@@ -32,11 +33,15 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
         self.setAcceptHoverEvents(True)
         self.icon_type = icon_type  # 'collapse', 'expand', 'run', 'debug', 'close'
         self.setToolTip(tooltip)
+
+        # 颜色处理
         self.color = QtGui.QColor(color)
         self.hover_color = QtGui.QColor(hover_color)
         self._hovered = False
         self.clicked_func = None
-        self._rect = QtCore.QRectF(0, 0, 16, 16)
+
+        # --- 尺寸从 16x16 增加到 22x22 ---
+        self._rect = QtCore.QRectF(0, 0, 22, 22)
 
     def boundingRect(self):
         return self._rect
@@ -45,47 +50,60 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
         painter.save()
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
-        # 绘制背景圆形反馈
+        # 1. 绘制背景反馈 (ComfyUI 风格：悬停时圆角更柔和)
         if self._hovered:
             painter.setBrush(self.hover_color)
             painter.setPen(QtCore.Qt.NoPen)
-            painter.drawRoundedRect(self._rect, 3, 3)
+            painter.drawRoundedRect(self._rect, 5, 5)  # 圆角稍微加大
 
-        # 矢量图标绘制设置
-        pen = QtGui.QPen(QtGui.QColor(255, 255, 255, 220), 1.5)
+        # 2. 矢量图标笔触设置 (线条加粗到 2.0，更显眼)
+        pen_width = 2.0
+        pen = QtGui.QPen(QtGui.QColor(255, 255, 255, 240), pen_width)
         pen.setCapStyle(QtCore.Qt.RoundCap)
         painter.setPen(pen)
         painter.setBrush(QtCore.Qt.NoBrush)
 
-        m = 4.5  # 矢量图标内部边距
+        # 3. 矢量图标内部边距 (根据 22 尺寸调整)
+        m = 6.5
         r = self._rect
         cx, cy = r.center().x(), r.center().y()
 
-        # 使用 QPointF 避免浮点数类型转换报错
+        # 使用 QPointF 确保高精度绘制
         if self.icon_type == 'collapse':
             painter.drawLine(QtCore.QPointF(r.left() + m, cy),
                              QtCore.QPointF(r.right() - m, cy))
+
         elif self.icon_type == 'expand':
+            # 加号
             painter.drawLine(QtCore.QPointF(r.left() + m, cy),
                              QtCore.QPointF(r.right() - m, cy))
             painter.drawLine(QtCore.QPointF(cx, r.top() + m),
                              QtCore.QPointF(cx, r.bottom() - m))
+
         elif self.icon_type == 'run':
+            # 播放三角形 - 适当填充，增加显眼度
             path = QtGui.QPainterPath()
-            path.moveTo(r.left() + m + 1, r.top() + m)
-            path.lineTo(r.right() - m + 1, cy)
-            path.lineTo(r.left() + m + 1, r.bottom() - m)
+            # 让三角形稍微往右偏一点点，视觉上更居中
+            path.moveTo(r.left() + m + 1, r.top() + m - 1)
+            path.lineTo(r.right() - m + 2, cy)
+            path.lineTo(r.left() + m + 1, r.bottom() - m + 1)
             path.closeSubpath()
-            painter.setBrush(QtGui.QColor(255, 255, 255, 200))
+            painter.setBrush(QtGui.QColor(255, 255, 255, 210))
             painter.drawPath(path)
+
         elif self.icon_type == 'debug':
-            painter.drawEllipse(QtCore.QRectF(cx - 3.5, cy - 3.5, 7, 7))
-            painter.drawPoint(QtCore.QPointF(cx, cy))
+            # 调试图标：外部圆圈 + 内部支点
+            painter.drawEllipse(QtCore.QRectF(cx - 5, cy - 5, 10, 10))
+            painter.setBrush(QtGui.QColor(255, 255, 255, 240))
+            painter.drawEllipse(QtCore.QRectF(cx - 1.5, cy - 1.5, 3, 3))
+
         elif self.icon_type == 'close':
+            # 叉号图标
             painter.drawLine(QtCore.QPointF(r.left() + m, r.top() + m),
                              QtCore.QPointF(r.right() - m, r.bottom() - m))
             painter.drawLine(QtCore.QPointF(r.right() - m, r.top() + m),
                              QtCore.QPointF(r.left() + m, r.bottom() - m))
+
         painter.restore()
 
     def hoverEnterEvent(self, event):
@@ -97,6 +115,7 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
         self.update()
 
     def mousePressEvent(self, event):
+        # 拦截点击事件，不传递给节点
         event.accept()
         if self.clicked_func:
             self.clicked_func()
@@ -109,7 +128,7 @@ class CustomNodeItem(NodeItem):
     _align = None
     ICON_NODE_BASE = ":/icons/node_base.png"
 
-    def __init__(self, name='node', parent=None):
+    def __init__(self, name='', parent=None):
         # 必须正确调用父类构造，防止 _properties 字典未初始化
         super(CustomNodeItem, self).__init__(name, parent)
         self.setAcceptHoverEvents(True)
@@ -130,14 +149,14 @@ class CustomNodeItem(NodeItem):
         """初始化节点基础显示组件"""
         # 加载并缩放节点图标
         pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
-        if pixmap.size().height() > 28:
-            pixmap = pixmap.scaledToHeight(28, QtCore.Qt.SmoothTransformation)
+        if pixmap.size().height() > 30:
+            pixmap = pixmap.scaledToHeight(30, QtCore.Qt.SmoothTransformation)
         self._icon_item.setPixmap(pixmap)
         self._icon_item.setTransformationMode(QtCore.Qt.SmoothTransformation)
 
         # 节点标题设置
         self._text_item = NodeTextItem(self.name, self)
-        font = QtGui.QFont("Segoe UI", 10, QtGui.QFont.Bold)
+        font = QtGui.QFont("Segoe UI", 15, QtGui.QFont.Bold)
         self._text_item.setFont(font)
 
         # 代理文字显示设置
@@ -204,41 +223,53 @@ class CustomNodeItem(NodeItem):
         super(CustomNodeItem, self).hoverLeaveEvent(event)
 
     def _paint_horizontal(self, painter, option, widget):
-        """绘制水平布局下的高级感背景"""
         painter.save()
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
         rect = self.boundingRect()
-        radius = 4.0
+        radius = 5.0
 
-        # 1. 绘制工业白灰色主体背景
-        body_color = QtGui.QColor(55, 55, 58)
-        painter.setBrush(body_color)
-        painter.setPen(QtGui.QPen(QtGui.QColor(30, 30, 30), 1.2))
+        # 1. 主体背景（高级白灰色）
+        painter.setBrush(QtGui.QColor(60, 60, 63))
+        painter.setPen(QtGui.QPen(QtGui.QColor(30, 30, 30, 150), 1.0))
         painter.drawRoundedRect(rect, radius, radius)
 
-        # 2. 绘制抬头 Header 色块
-        header_height = max(self._text_item.boundingRect().height() + 4, 24.0)
-        header_rect = QtCore.QRectF(rect.left(), rect.top(), rect.width(), header_height)
-        h_color = QtGui.QColor(*self.color)
-        if not self.selected:
-            h_color.setAlpha(200)
+        # 2. 抬头 Header 辉光渲染
+        header_h = max(self._text_item.boundingRect().height() + 6, 26.0)
+        header_rect = QtCore.QRectF(rect.left(), rect.top(), rect.width(), header_h)
+
+        base_h_color = QtGui.QColor(*self.color)
+
+        # --- 辉光效果：垂直渐变 ---
+        gradient = QtGui.QLinearGradient(header_rect.topLeft(), header_rect.bottomLeft())
+        gradient.setColorAt(0, base_h_color.lighter(130))  # 顶部亮（发光感）
+        gradient.setColorAt(0.5, base_h_color)  # 中间原始色
+        gradient.setColorAt(1, base_h_color.darker(120))  # 底部深（立体感）
 
         path = QtGui.QPainterPath()
         path.addRoundedRect(header_rect, radius, radius)
-        painter.setBrush(h_color)
+        painter.setBrush(gradient)
         painter.setPen(QtCore.Qt.NoPen)
         painter.drawPath(path)
 
-        # 补齐底部圆角区域（展开模式）
-        if not self._is_collapsed:
-            painter.drawRect(QtCore.QRectF(
-                rect.left(), rect.top() + header_height - radius, rect.width(), radius))
+        # 3. 顶部边缘高光线（1px 辉光核心）
+        top_glow_line = QtCore.QRectF(rect.left() + radius, rect.top() + 1, rect.width() - radius * 2, 1)
+        painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 100), 1.0))
+        painter.drawRect(top_glow_line)
 
-        # 3. 选中边框高亮
+        # 4. 补齐 Header 底部衔接
+        if not self._is_collapsed:
+            painter.setBrush(base_h_color.darker(120))
+            painter.drawRect(QtCore.QRectF(rect.left(), rect.top() + header_h - radius, rect.width(), radius))
+
+        # 5. 边框发光（与状态色一致）
         if self.selected:
-            painter.setBrush(QtCore.Qt.NoBrush)
-            painter.setPen(QtGui.QPen(QtGui.QColor(*NodeEnum.SELECTED_BORDER_COLOR.value), 2.0))
-            painter.drawRoundedRect(rect, radius, radius)
+            # 选中时加粗金光
+            painter.setPen(QtGui.QPen(QtGui.QColor(*NodeEnum.SELECTED_BORDER_COLOR.value), 2.5))
+        else:
+            painter.setPen(QtGui.QPen(QtGui.QColor(30, 30, 30), 1.0))
+
+        painter.setBrush(QtCore.Qt.NoBrush)
+        painter.drawRoundedRect(rect, radius, radius)
         painter.restore()
 
     def _draw_node_horizontal(self):
@@ -284,10 +315,10 @@ class CustomNodeItem(NodeItem):
         self._collapse_btn.setPos(rect.left() + 4, btn_y)
 
         # 右侧功能按钮组紧凑对齐
-        spacing = 18
-        self._close_btn.setPos(rect.right() - 20, btn_y)
-        self._mute_btn.setPos(rect.right() - 20 - spacing, btn_y)
-        self._run_btn.setPos(rect.right() - 20 - spacing * 2, btn_y)
+        spacing = 26
+        self._close_btn.setPos(rect.right() - 28, btn_y)
+        self._mute_btn.setPos(rect.right() - 28 - spacing, btn_y)
+        self._run_btn.setPos(rect.right() - 28 - spacing * 2, btn_y)
 
         self.update()
         if self._proxy_mode:
@@ -331,10 +362,10 @@ class CustomNodeItem(NodeItem):
             widget_height += w_size.height() + 10
 
         # 计算最终总宽度 (预留按钮和端口空间)
-        width = max(port_width + (p_in_w + p_out_w) + max(text_w, widget_width) + 80,
-                    self._proxy_text_item.boundingRect().width() + 20)
+        width = max(port_width + (p_in_w + p_out_w) + max(text_w, widget_width) + 60,
+                    self._proxy_text_item.boundingRect().width() + 10)
         # 计算最终总高度
-        height = max(text_h + 10, p_in_h, p_out_h, widget_height) + 30
+        height = max(text_h + 10, p_in_h, p_out_h, widget_height) + 10
         return width, height
 
     def _set_text_color(self, color=None):

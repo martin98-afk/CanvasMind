@@ -65,13 +65,13 @@ class StatusNode(BasicNodeWithGlobalProperty):
             self.set_color(*self._original_color)
         elif self._status == NodeStatus.NODE_STATUS_RUNNING:
             # 淡蓝色 - 运行中
-            self.set_color(30, 60, 90)  # 深蓝底色，确保白字清晰
+            self.set_color(0, 160, 255)  # 深蓝底色，确保白字清晰
         elif self._status == NodeStatus.NODE_STATUS_SUCCESS:
             # 淡绿色 - 成功
-            self.set_color(25, 70, 45)  # 深绿底色，确保白字清晰
+            self.set_color(0, 200, 100)  # 深绿底色，确保白字清晰
         elif self._status == NodeStatus.NODE_STATUS_FAILED:
             # 淡红色 - 失败
-            self.set_color(80, 30, 30)  # 深红底色，确保白字清晰
+            self.set_color(255, 60, 60)  # 深红底色，确保白字清晰
         elif self._status == NodeStatus.NODE_STATUS_PENDING:
             # 淡灰色 - 等待运行
             self.set_color(60, 60, 60)
