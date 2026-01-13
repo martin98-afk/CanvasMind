@@ -57,6 +57,10 @@ class CanvasUISetUp:
         return self.side_dock_area.get_tool_instance("属性面板")
 
     @property
+    def dependency_checker(self):
+        return self.side_dock_area.get_tool_instance("依赖检查")
+
+    @property
     def llm_chatter(self):
         return self.side_dock_area.get_tool_instance("大模型对话")
 
