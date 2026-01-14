@@ -315,7 +315,8 @@ class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
 
     def _update_node(self):
         if self.node.graph is not None:
-            QtCore.QTimer.singleShot(0, self.node.graph.viewer().force_update)
+            self.node.view.set_proxy_mode(False)
+            self.node.view.draw_node()
 
     def get_port_func(self):
         vars = [f"input.{port.name()}" for port in self.node.input_ports()]

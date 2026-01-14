@@ -328,7 +328,6 @@ def create_branch_node(parent_window):
                     node.set_disabled(False)
                 else:
                     node.set_disabled(True)
-                    parent_window.set_node_status(node, NodeStatus.NODE_STATUS_DISABLED)
                     if hasattr(node, '_output_values'):
                         node._output_values = {}
 
