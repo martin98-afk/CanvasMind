@@ -21,7 +21,7 @@ from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import draw_square_port, draw_special_outputport, \
-    _safe_load_pickle, kill_proc_tree, serialize_for_json, sftp_download_dir, replace_remote_paths
+    _safe_load_pickle, kill_proc_tree, serialize_for_json, sftp_download_dir, replace_remote_paths, sftp_upload_dir
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
@@ -51,13 +51,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.set_property("version", "latest")
             if hasattr(ComponentScanner().get_component_by_uuid(self.uuid), "icon"):
                 self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
-            self.view.set_align("center")
-            self.view.rename_signal.connect(parent_window.rename_node_vars)
-            self.view.debug_signal.connect(self._toggle_debug_mode)
-            self._debug_enabled = False
-            self._debug_widget = None
-            self._debug_code_content = ""
-
+            # 组件ui构建
             self._generate_parms_widget()
             for port_name, label, connection in ComponentScanner().get_component_by_uuid(self.uuid).get_inputs():
                 if connection == ConnectionType.SINGLE:
@@ -65,6 +59,12 @@ def create_node_class(full_path, file_path, parent_window=None):
                 else:
                     self.add_input(port_name, True, painter_func=draw_square_port)
             QtCore.QTimer.singleShot(0, self.build_outputs)
+            # 调试模式缓存
+            self._debug_enabled = False
+            self._debug_widget = None
+            self._debug_code_content = ""
+            # 调试模式信号连接
+            self.view.debug_signal.connect(self._toggle_debug_mode)
 
         @property
         def uuid(self):
@@ -81,7 +81,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
         def refresh_node_outports(self):
             self.set_port_deletion_allowed(True)
-            # 2. 记录当前所有输出端口的连线状态：{port_name: [connected_downstream_ports]}
+            # 1. 记录当前所有输出端口的连线状态：{port_name: [connected_downstream_ports]}
             expected_names = [
                 port_name for port_name, _ in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs()
             ]
@@ -94,7 +94,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             for port_name in expected_names:
                 self.delete_output(port_name)
 
-            # 4. 按 expected_names 顺序重建输出端口
+            # 2. 按 expected_names 顺序重建输出端口
             for name in expected_names:
                 node_name = re.sub(r'\s+', '_', self.name())
                 if f"{node_name}__{name}" in parent_window.global_variables.node_vars:
@@ -102,7 +102,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 else:
                     self.add_output(name)
 
-            # 5. 恢复连线：仅当“旧端口名 == 新端口名”且新端口存在
+            # 3. 恢复连线：仅当“旧端口名 == 新端口名”且新端口存在
             new_ports = {p.name(): p for p in self.output_ports()}
             for old_name, connected_list in current_connections.items():
                 if old_name in new_ports:
@@ -477,10 +477,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 # 上传 upload 文件夹内的内容
                 local_upload_dir = local_node_workspace / "upload"
                 if local_upload_dir.exists():
-                    for file in local_upload_dir.rglob("*"):
-                        if file.is_file():
-                            remote_file_path = f"{upload_dir}/{file.name}"
-                            sftp.put(str(file), remote_file_path)
+                    sftp_upload_dir(sftp, local_upload_dir, upload_dir)
 
                 sftp.put(str(local_comp_path), f"{remote_run_dir}/component.py")
                 sftp.put(str(params_path), f"{remote_run_dir}/params.pkl")
@@ -506,10 +503,13 @@ def create_node_class(full_path, file_path, parent_window=None):
                 python_exe = env_data['path']
                 cmd = f"export PYTHONPATH={remote_root}:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
                 stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
-
+                stdout.channel.setblocking(0)
                 # 轮询直到进程结束
+                start_time = time.time()
+                timeout = parent_window.config.node_run_timeout.value  # 5分钟
                 while not stdout.channel.exit_status_ready():
                     if check_cancel and check_cancel():
+                        ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
                         ssh.close()
                         raise Exception("远程执行被用户取消")
 
@@ -527,7 +527,10 @@ def create_node_class(full_path, file_path, parent_window=None):
                     except IOError:
                         # 脚本可能还没开始写日志，忽略
                         pass
-
+                    if time.time() - start_time > timeout:
+                        ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
+                        ssh.close()
+                        raise Exception("节点执行超时")
                     time.sleep(0.5)  # 适当降低轮询频率，减少 IO 开销
 
                 # 下载并处理 result.pkl

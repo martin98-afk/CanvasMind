@@ -17,7 +17,7 @@ from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.glue_code_templates import GLUE_CODE_TEMPLATES
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.utils import draw_special_outputport, _safe_load_pickle, \
-    kill_proc_tree, sftp_download_dir, replace_remote_paths
+    kill_proc_tree, sftp_download_dir, replace_remote_paths, sftp_upload_dir
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
@@ -66,9 +66,6 @@ def create_dynamic_code_node(parent_window=None):
             self._view.set_align("center")
             self.set_icon(":/icons/代码执行")
             self.model.port_deletion_allowed = True
-            # 重命名节点自动同步全局变量名
-            self.view.set_align("center")
-            self.view.rename_signal.connect(parent_window.rename_node_vars)
             # 定时器：分离 input / output / property update
             self._input_sync_timer = QtCore.QTimer()
             self._input_sync_timer.setSingleShot(True)
@@ -572,8 +569,7 @@ def create_dynamic_code_node(parent_window=None):
                 # 上传本地 Workspace 下的 upload 内容
                 local_up = local_node_workspace / "upload"
                 if local_up.exists():
-                    for f in local_up.rglob("*"):
-                        if f.is_file(): sftp.put(str(f), f"{upload_dir}/{f.name}")
+                    sftp_upload_dir(sftp, local_up, upload_dir)
 
                 sftp.put(str(local_comp_path), f"{remote_run_dir}/component.py")
                 sftp.put(str(params_path), f"{remote_run_dir}/params.pkl")
@@ -599,10 +595,13 @@ def create_dynamic_code_node(parent_window=None):
                 python_exe = env_data['path']
                 cmd = f"export PYTHONPATH={remote_root}:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
                 stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
-
-                # 5. 增量日志流式回传
+                stdout.channel.setblocking(0)
+                # 轮询直到进程结束
+                start_time = time.time()
+                timeout = parent_window.config.node_run_timeout.value  # 5分钟
                 while not stdout.channel.exit_status_ready():
                     if check_cancel and check_cancel():
+                        ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
                         ssh.close()
                         raise Exception("远程执行被用户取消")
                     try:
@@ -615,6 +614,10 @@ def create_dynamic_code_node(parent_window=None):
                                 self.last_log_pos += len(new_data)
                     except IOError:
                         pass
+                    if time.time() - start_time > timeout:
+                        ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
+                        ssh.close()
+                        raise Exception("节点执行超时")
                     time.sleep(0.5)
 
                 try:

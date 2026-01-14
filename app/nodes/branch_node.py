@@ -27,7 +27,6 @@ def create_branch_node(parent_window):
             self.parent_window = parent_window
             self.set_icon(":/icons/条件分支")
             self.model.port_deletion_allowed = True
-            self.view.rename_signal.connect(self.parent_window.rename_node_vars)
             # 条件索引 → 实际输出端口名的映射
             self._condition_index_to_port = {}
 
