@@ -450,6 +450,7 @@ def create_dynamic_code_node(parent_window=None):
                 run_dir = self.CACHE_PATH / "run_scripts" / run_id
                 shutil.rmtree(run_dir, ignore_errors=True)
                 run_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(resource_path("app/components/base.py"), str(run_dir.parent / "base.py"))
 
                 local_script_path = run_dir / "exec_script.py"
                 local_comp_path = run_dir / "component.py"  # 为了SSH内部一致性，改名为component.py

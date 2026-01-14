@@ -510,16 +510,17 @@ class EnvManagerUI(QWidget):
 
         # 2. 如果是正常的在线搜素安装
         elif ui_source == "在线搜索":
+            raw_input = raw_input.split(" ") if raw_input else []
             if current_action == "卸载":
-                cmd = ["-m", "pip", "uninstall", "-y", raw_input]
+                cmd = ["-m", "pip", "uninstall", "-y"] + raw_input
             elif current_action == "强制重装":
-                cmd.extend(["--force-reinstall", raw_input])
+                cmd.extend(["--force-reinstall"] + raw_input)
                 self._add_mirror_sources(cmd)
             elif current_action == "更新":
-                cmd.extend(["-U", raw_input])
+                cmd.extend(["-U"] + raw_input)
                 self._add_mirror_sources(cmd)
             else:  # 普通安装
-                cmd.append(raw_input)
+                cmd.extend(raw_input)
                 self._add_mirror_sources(cmd)
 
         # 3. 如果是本地 whl/zip 文件安装

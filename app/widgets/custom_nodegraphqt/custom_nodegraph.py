@@ -769,7 +769,8 @@ class CustomNodeGraph(NodeGraph):
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
                             node.view.widgets[prop].set_value(val)
-
+                if '_collapsed' in n_data.get('custom', {}) and node.get_property('_collapsed'):
+                    node._view.toggle_collapse()
                 nodes[n_id] = node
         node_objs = nodes.values()
         if relative_pos:
