@@ -191,16 +191,6 @@ class CanvasUISetUp:
         self.code_node.clicked.connect(lambda: self.parent.create_next_node("dynamic.DYNAMIC_CODE"))
         self.node_layout.addWidget(self.code_node)
 
-        self.tool_node = TransparentToolButton(get_icon("工具"), parent=self.parent.canvas_widget)
-        self.tool_node.setIconSize(QSize(18, 18))
-        self.tool_node.setFixedSize(24, 24)
-        self.tool_node.setToolTip("创建工具调用")
-        self.tool_node.clicked.connect(
-            lambda: self.parent.create_next_node("dynamic.StatusDynamicNode_大模型组件_工具调用",
-                                          icon_path="icons/工具.svg")
-        )
-        self.node_layout.addWidget(self.tool_node)
-
         # === 分隔线 ===
         self.node_layout.addWidget(CardSeparator(self.nodes_container))
 

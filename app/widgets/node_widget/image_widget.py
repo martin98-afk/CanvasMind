@@ -2,8 +2,8 @@
 import numpy as np
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from PIL import Image
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QImage, QPixmap, QPainter
+from PyQt5.QtCore import Qt, QSize, QRect
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QFont
 from Qt import QtWidgets, QtCore
 
 from app.widgets.node_widget.base import CustomNodeBaseWidget
@@ -11,7 +11,6 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 class ImageWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(object)
-    # 专门增加一个信号，通知节点大小发生了变化
     sizeHintChanged = QtCore.Signal()
 
     def __init__(self, parent=None, default_image=None):
@@ -19,10 +18,14 @@ class ImageWidget(QtWidgets.QWidget):
         self._image_data = None
         self._q_image = None
 
-        # 设定显示限制（可以根据需要调整）
+        self._text_area_height = 20
+        self._orig_w = 0
+        self._orig_h = 0
+
         self._min_width = 200
-        self._max_width = 500  # 最大显示宽度，防止图片太大撑破屏幕
-        self._current_size = QSize(200, 150)  # 初始默认大小
+        self._max_width = 500
+        # 初始默认大小（不含文字区）
+        self._current_size = QSize(200, 150)
 
         self.setAttribute(Qt.WA_OpaquePaintEvent)
         if default_image:
@@ -59,22 +62,23 @@ class ImageWidget(QtWidgets.QWidget):
 
         if new_q_img and not new_q_img.isNull():
             self._q_image = new_q_img
-            # --- 关键逻辑：计算等比例缩放后的 Widget 大小 ---
-            orig_size = new_q_img.size()
-            target_w = max(self._min_width, min(orig_size.width(), self._max_width))
-            scale_ratio = target_w / float(orig_size.width())
-            target_h = int(orig_size.height() * scale_ratio)
+            self._orig_w = new_q_img.width()
+            self._orig_h = new_q_img.height()
 
-            self._current_size = QSize(target_w, target_h)
+            target_w = max(self._min_width, min(self._orig_w, self._max_width))
+            scale_ratio = target_w / float(self._orig_w)
+            target_h = int(self._orig_h * scale_ratio)
+
+            # 有图像：总高度 = 图片高度 + 文字区域高度
+            self._current_size = QSize(target_w, target_h + self._text_area_height)
         else:
+            # 无图像：清除数据，并恢复默认大小（不加文字高度）
             self._q_image = None
+            self._orig_w = 0
+            self._orig_h = 0
             self._current_size = QSize(200, 150)
 
-        # 更新 Widget 本身的几何属性
         self.setFixedSize(self._current_size)
-        self.updateGeometry()
-
-        # 通知 Wrapper 和 NodeGraph 更新布局
         self.sizeHintChanged.emit()
         self.update()
         self.valueChanged.emit(self._image_data)
@@ -84,24 +88,40 @@ class ImageWidget(QtWidgets.QWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        # 开启高质量渲染提示
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        painter.setRenderHint(QPainter.TextAntialiasing)
 
         rect = self.rect()
-
-        # 绘制背景
         painter.fillRect(rect, Qt.transparent)
 
+        # 核心逻辑：只有当 _q_image 存在时才绘制图片和文字
         if self._q_image:
-            # 使用 drawImage 直接绘制到当前 rect，Qt 会自动处理高质量缩放
-            painter.drawImage(rect, self._q_image)
+            # 1. 绘制图片（预留底部文字空间）
+            image_rect = QRect(0, 0, rect.width(), rect.height() - self._text_area_height)
+            painter.drawImage(image_rect, self._q_image)
+
+            # 2. 绘制尺寸文字
+            text_rect = QRect(0, rect.height() - self._text_area_height, rect.width(), self._text_area_height)
+            painter.setPen(QColor(200, 200, 200))
+            font = painter.font()
+            font.setPointSize(9)
+            painter.setFont(font)
+
+            info_text = f"{self._orig_w} x {self._orig_h}"
+            painter.drawText(text_rect, Qt.AlignCenter, info_text)
+        else:
+            # 无图像时：可以在这里画一个简单的占位符，或者什么都不画
+            painter.setPen(QColor(80, 80, 80))
+            painter.drawText(rect, Qt.AlignCenter, "No Image")
 
     def sizeHint(self):
         return self._current_size
 
 
 class ImageWidgetWrapper(CustomNodeBaseWidget):
+    """Wrapper 部分逻辑无需修改"""
+
     def __init__(self, parent=None, name="", default=None, window=None):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET)
@@ -113,9 +133,7 @@ class ImageWidgetWrapper(CustomNodeBaseWidget):
         widget.sizeHintChanged.connect(self._update_node)
 
     def _update_node(self):
-        """更新节点 UI 布局"""
         if self.node and self.node.graph is not None:
-            # 停止代理模式以强制重绘
             self.node.view.set_proxy_mode(False)
             self.node.view.draw_node()
 

@@ -120,6 +120,23 @@ def ssh_send_file(env_data, local_path, remote_path):
         ssh.close()
 
 
+def sftp_upload_dir(sftp, local_dir, remote_dir):
+    for root, dirs, files in os.walk(local_dir):
+        # 计算相对路径并创建远程目录
+        rel_path = os.path.relpath(root, local_dir)
+        target_dir = os.path.join(remote_dir, rel_path).replace("\\", "/")
+
+        try:
+            sftp.mkdir(target_dir)
+        except IOError:  # 目录已存在
+            pass
+
+        for f in files:
+            local_file = os.path.join(root, f)
+            remote_file = os.path.join(target_dir, f).replace("\\", "/")
+            sftp.put(local_file, remote_file)
+
+
 def sftp_download_dir(sftp, remote_dir, local_dir, ssh=None):
     """
     通过 sftp 下载远程目录。

@@ -226,7 +226,7 @@ class DependencyToolWindow(ToolWindow):
                 cmd.extend(["--extra-index-url", m, "--trusted-host", urlparse(m).hostname])
 
         # 2. 初始化日志
-        self.current_run_id = f"依赖修复@{uuid.uuid4()}"
+        self.current_run_id = f"依赖修复@{uuid.uuid4().hex[:8]}"
         log_win = self._get_log_window()
         if log_win:
             log_win.start_run(self.current_run_id)

@@ -60,7 +60,6 @@ class HtmlWidget(QtWidgets.QWidget):
             content_w, content_h = self._extract_size_from_html(self._html)
             self.view.setMinimumSize(content_w, content_h)
 
-        self.updateGeometry()
         self.sizeHintChanged.emit()
         self.valueChanged.emit(self._html)
 

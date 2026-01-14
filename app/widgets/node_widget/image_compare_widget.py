@@ -85,6 +85,7 @@ class ImageCompareWidget(QtWidgets.QWidget):
             self._current_size = QSize(200, 150)
 
         self.setFixedSize(self._current_size)
+        self.updateGeometry()
         self.sizeHintChanged.emit()
         self.update()
 
@@ -160,6 +161,7 @@ class ImageCompareWidget(QtWidgets.QWidget):
 
     def sizeHint(self):
         return self._current_size
+
 
 class ImageCompareWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", default=None, window=None):

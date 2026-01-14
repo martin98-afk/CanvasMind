@@ -19,11 +19,10 @@ def create_media_node(parent_window):
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
+            self.parent_window = parent_window
             self.set_icon(":/icons/多媒体.svg")
             self.model.port_deletion_allowed = False
             self.view.set_align("center")
-            self.view.run_signal.connect(lambda: parent_window.run_node(self))
-            self.view.delete_signal.connect(lambda: parent_window.delete_node(self))
             # 添加输入端口
             self.add_input('data', True, painter_func=draw_square_port)
 
