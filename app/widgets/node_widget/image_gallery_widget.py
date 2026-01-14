@@ -31,6 +31,7 @@ class GalleryImageItem(QtWidgets.QWidget):
 
 
 class ImageGalleryWidget(QtWidgets.QScrollArea):
+    valueChanged = QtCore.Signal(object)
     sizeHintChanged = QtCore.Signal()
 
     def __init__(self, parent=None):
@@ -48,7 +49,8 @@ class ImageGalleryWidget(QtWidgets.QScrollArea):
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
         # 初始默认大小
-        self.setFixedSize(200, 150)
+        self._current_size = QSize(200, 150)
+        self.setFixedSize(self._current_size)
         self.setStyleSheet("background-color: transparent; border: none;")
 
     def _clear(self):
@@ -112,20 +114,20 @@ class ImageGalleryWidget(QtWidgets.QScrollArea):
             # 动态计算总高度和宽度
             total_h = max(150, min(500, rows * (item_w + 10) + 20))
             total_w = cols * (item_w + 10) + 25
-
-            self.setFixedSize(total_w, total_h)
-            self.updateGeometry()
+            self._current_size = QSize(total_w, total_h)
+            self.setFixedSize(self._current_size)
             self.sizeHintChanged.emit()
+            self.update()
 
     def set_value_none(self):
         """恢复最初大小并强制内部容器收缩"""
-        # 关键：先清空，再重置 FixedSize
-        self.container.hide()
-        self.setFixedSize(200, 150)
-        # 强制内部容器也变小，否则 ScrollArea 可能回缩失败
-        self.container.resize(180, 130)
-        self.updateGeometry()
+        # 更新 Widget 本身的几何属性
+        self._current_size = QSize(200, 150)
+        self.setFixedSize(self._current_size)
+
+        # 通知 Wrapper 和 NodeGraph 更新布局
         self.sizeHintChanged.emit()
+        self.update()
 
     def sizeHint(self):
-        return self.size()
+        return self._current_size

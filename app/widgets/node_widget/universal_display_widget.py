@@ -132,7 +132,7 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
             for v_id, widget in self._view_cache.items():
                 if v_id != view_id:
                     # 将不显示的图片控件设为 None，释放它们的尺寸
-                    if isinstance(widget, (ImageWidget, ImageCompareWidget)):
+                    if isinstance(widget, (ImageWidget, ImageCompareWidget, ImageGalleryWidget)):
                         widget.set_value(None)
 
             self.stack.setCurrentWidget(target_widget)

@@ -72,7 +72,6 @@ class ImageWidget(QtWidgets.QWidget):
 
         # 更新 Widget 本身的几何属性
         self.setFixedSize(self._current_size)
-        self.updateGeometry()
 
         # 通知 Wrapper 和 NodeGraph 更新布局
         self.sizeHintChanged.emit()
