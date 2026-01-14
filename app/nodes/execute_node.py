@@ -346,13 +346,24 @@ def create_node_class(full_path, file_path, parent_window=None):
                 connected = input_port.connected_ports()
                 if connected:
                     if input_port.model.multi_connection:
-                        inputs_raw[port_name] = [upstream.node()._output_values.get(upstream.name()) for upstream in
-                                                 connected]
-                        input_vars[f"input_{port_name}"] = inputs_raw[port_name]
+                        inputs_raw[port_name] = [
+                            upstream.node()._output_values.get(upstream.name()) for upstream in connected
+                        ]
+                        safe_key = f"input_{port_name}"
+                        input_vars[safe_key] = inputs_raw[port_name]
+                        for upstream in connected:
+                            safe_name = upstream.node().name().replace(" ", "_")
+                            safe_key = f"input_{safe_name}__{upstream.name()}"
+                            input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
                     else:
-                        val = connected[0].node()._output_values.get(connected[0].name())
-                        inputs_raw[port_name] = val
-                        input_vars[f"input_{port_name}"] = val
+                        inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
+                        # 当前节点输入端口key
+                        safe_key = f"input_{port_name}"
+                        input_vars[safe_key] = inputs_raw[port_name]
+                        safe_name = connected[0].node().name().replace(" ", "_")
+                        # 上游节点输出端口key
+                        safe_key = f"input_{safe_name}__{connected[0].name()}"
+                        input_vars[safe_key] = inputs_raw[port_name]
                     if port_name in self.column_select:
                         inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
 

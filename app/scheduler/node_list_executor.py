@@ -9,6 +9,7 @@ from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, QTimer
 from loguru import logger
 
 from app.nodes.backdrop_node import ControlFlowBackdrop
+from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
 from app.scheduler.backdrop_executor import BackdropExecutor
 from app.scheduler.execution_context import ExecutionContext
@@ -78,7 +79,9 @@ class NodeListExecutor(QRunnable):
         for node in nodes:
             if self.ctx.is_cancelled() or self._error_occurred: break
             self.ctx.wait_if_paused()
-            if node.get_property("disabled"): continue
+            if node.get_property("disabled"):
+                self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_DISABLED)
+                continue
             self._execute_node_logic(node, component_map)
 
     def _run_graph_parallel(self, nodes, component_map):
@@ -130,6 +133,8 @@ class NodeListExecutor(QRunnable):
         try:
             if not node.get_property("disabled"):
                 self._execute_node_logic(node, component_map)
+            else:
+                self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_DISABLED)
             return node
         except Exception as e:
             self._error_occurred = True

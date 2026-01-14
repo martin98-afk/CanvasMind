@@ -31,6 +31,7 @@ class NodeSignals(QObject):
     intercepted_msg_signal = QtCore.pyqtSignal(dict)
     htmlReady = QtCore.pyqtSignal(object, bool)
     stream_data_updated = QtCore.pyqtSignal(object)
+    portsReady = QtCore.pyqtSignal()
 
 
 class BasicNodeWithGlobalProperty(NodeObject):

@@ -217,7 +217,9 @@ class BackdropExecutor(QObject):
             for node in nodes:
                 if self.ctx.is_cancelled(): break
                 self.ctx.wait_if_paused()
-                if node.get_property("disabled"): continue
+                if node.get_property("disabled"):
+                    self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_DISABLED)
+                    continue
                 self._run_single_subnode(node, iteration_tag)
 
         # 收集结果用于表达式判断
@@ -246,6 +248,9 @@ class BackdropExecutor(QObject):
             def submit(n):
                 if self.ctx.is_cancelled(): return
                 self.ctx.wait_if_paused()
+                if node.get_property("disabled"):
+                    self.scheduler.set_node_status(n, NodeStatus.NODE_STATUS_DISABLED)
+                    return
                 f = executor.submit(self._run_single_subnode, n, iteration_tag)
                 futures[f] = n
 

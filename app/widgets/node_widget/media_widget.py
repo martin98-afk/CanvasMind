@@ -2,11 +2,13 @@
 import os
 
 from PyQt5 import QtGui
-from PyQt5.QtCore import QSize, Qt, QTimer
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QTimer
 from PyQt5.QtCore import QUrl
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent, QAbstractVideoSurface, QVideoFrame, QAbstractVideoBuffer
 from Qt import QtWidgets, QtCore
-from qfluentwidgets import FluentIcon, IconWidget, PushButton
+from qfluentwidgets import IconWidget, FluentIcon
 from qfluentwidgets.multimedia import SimpleMediaPlayBar
 
 from app.widgets.basic_widget.video_player_window import VideoPlayerWindow
@@ -93,31 +95,27 @@ class AudioPlayWidget(QtWidgets.QWidget):
         super().closeEvent(event)
 
 
-class ThumbnailSurface(QAbstractVideoSurface):
+class CachedVideoSurface(QAbstractVideoSurface):
+    """负责在第一遍播放时捕获并预缩放图片"""
     frameCaptured = QtCore.Signal(QtGui.QImage)
 
     def supportedPixelFormats(self, handleType):
-        return [QVideoFrame.Format_RGB32, QVideoFrame.Format_ARGB32, QVideoFrame.Format_BGR32]
+        return [QVideoFrame.Format_RGB32, QVideoFrame.Format_ARGB32]
 
     def present(self, frame):
         if frame.isValid():
             clone_frame = QVideoFrame(frame)
             if clone_frame.map(QAbstractVideoBuffer.ReadOnly):
                 try:
-                    image = clone_frame.image()
-                    if image.isNull():
-                        image = QtGui.QImage(clone_frame.bits(), clone_frame.width(),
-                                             clone_frame.height(), clone_frame.bytesPerLine(),
-                                             QVideoFrame.imageFormatFromPixelFormat(clone_frame.pixelFormat()))
+                    image = clone_frame.image().copy()
                     if not image.isNull():
-                        self.frameCaptured.emit(image.copy())
+                        self.frameCaptured.emit(image)
                 finally:
                     clone_frame.unmap()
             return True
         return False
 
 
-# --- 主控件优化版 ---
 class VideoPlayWidget(QtWidgets.QFrame):
     valueChanged = QtCore.Signal(object)
     sizeHintChanged = QtCore.Signal()
@@ -126,127 +124,149 @@ class VideoPlayWidget(QtWidgets.QFrame):
         super().__init__(parent)
         self._file_path = None
         self._player_window = None
-
-        # 1. 【核心：锁定大小】
         self._fixed_size = QSize(280, 158)
+
+        # --- 性能变量 ---
+        self._frame_cache = []
+        self._is_caching = False
+        self._current_frame_idx = 0
+        self._fps_limit = 12
+        self._max_cache_frames = 150  # 限制缓存长度防止内存溢出
+
         self.setFixedSize(self._fixed_size)
         self.setCursor(Qt.PointingHandCursor)
-
         self.setObjectName("VideoPlayWidget")
+        # 确保圆角和溢出隐藏
         self.setStyleSheet("""
             #VideoPlayWidget { 
-                background-color: #1A1A1A; 
-                border: 1px solid #333; 
+                background: #000; 
                 border-radius: 8px; 
+                border: 1px solid #333;
             }
             #VideoPlayWidget:hover { border: 1px solid #00A6FF; }
         """)
 
-        # 2. 布局逻辑
-        self.main_layout = QtWidgets.QStackedLayout(self)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-
-        # --- A界面：预览展示区 ---
-        self.preview_container = QtWidgets.QWidget()
-        self.preview_container.setFixedSize(self._fixed_size)
-
-        # 图片层
-        self.img_label = QtWidgets.QLabel(self.preview_container)
+        # --- UI 层级构建 ---
+        # 1. 底层：视频帧显示层
+        self.img_label = QtWidgets.QLabel(self)
         self.img_label.setFixedSize(self._fixed_size)
         self.img_label.setScaledContents(True)
-        self.img_label.setStyleSheet("background: #000; border-radius: 6px;")
+        self.img_label.setAttribute(Qt.WA_TransparentForMouseEvents)  # 关键：不拦截鼠标
 
-        # 蒙版层
-        self.overlay = QtWidgets.QFrame(self.preview_container)
+        # 2. 中层：半透明遮罩层 (默认隐藏)
+        self.overlay = QtWidgets.QFrame(self)
         self.overlay.setFixedSize(self._fixed_size)
-        self.overlay.setStyleSheet("background: rgba(0, 0, 0, 120); border-radius: 6px;")
+        self.overlay.setStyleSheet("background: rgba(0, 0, 0, 100); border-radius: 8px;")
+        self.overlay.hide()
+        self.overlay.setAttribute(Qt.WA_TransparentForMouseEvents)  # 关键：不拦截鼠标
 
-        # 播放图标层
-        self.play_icon = IconWidget(FluentIcon.PLAY, self.preview_container)
+        # 3. 顶层：播放图标 (默认隐藏)
+        self.play_icon = IconWidget(FluentIcon.PLAY, self)
         self.play_icon.setFixedSize(50, 50)
         self.play_icon.setStyleSheet("qproperty-color: white; background: transparent;")
+        self.play_icon.move((self._fixed_size.width() - 50) // 2, (self._fixed_size.height() - 50) // 2)
+        self.play_icon.hide()
+        self.play_icon.setAttribute(Qt.WA_TransparentForMouseEvents)  # 关键：不拦截鼠标
 
-        # 【核心：鼠标穿透】 让预览区的所有东西都不拦截点击，把点击交给最外层的 VideoPlayWidget
-        self.preview_container.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.img_label.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.play_icon.setAttribute(Qt.WA_TransparentForMouseEvents)
+        # --- 后台组件 ---
+        self.media_player = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+        self.surface = CachedVideoSurface()
+        self.media_player.setVideoOutput(self.surface)
+        self.media_player.setMuted(True)
 
-        # 居中图标
-        ix = (self._fixed_size.width() - 50) // 2
-        iy = (self._fixed_size.height() - 50) // 2
-        self.play_icon.move(ix, iy)
-
-        self.main_layout.addWidget(self.preview_container)  # Index 0
-
-        # --- B界面：降级按钮区 ---
-        self.button_page = QtWidgets.QWidget()
-        self.btn_layout = QtWidgets.QVBoxLayout(self.button_page)
-        self.fallback_btn = PushButton(FluentIcon.PLAY, "播放视频", self)
-        self.btn_layout.addWidget(self.fallback_btn)
-
-        self.main_layout.addWidget(self.button_page)  # Index 1
-
-        # 3. 后台逻辑
-        self.thumbnail_player = QMediaPlayer(None, QMediaPlayer.VideoSurface)
-        self.surface = ThumbnailSurface()
-        self.thumbnail_player.setVideoOutput(self.surface)
+        self.playback_timer = QTimer(self)
+        self.playback_timer.timeout.connect(self._update_next_frame)
 
         self.surface.frameCaptured.connect(self._on_frame_captured)
-        self.fallback_btn.clicked.connect(self.play)
+        self.media_player.mediaStatusChanged.connect(self._on_media_status_changed)
 
-        self.fallback_timer = QTimer(self)
-        self.fallback_timer.setSingleShot(True)
-        self.fallback_timer.timeout.connect(lambda: self.main_layout.setCurrentIndex(1))
+    # --- 交互逻辑 ---
+    def enterEvent(self, event):
+        """鼠标移入：显示图标和遮罩"""
+        self.overlay.show()
+        self.play_icon.show()
+        # 如果缓存好了，鼠标移入时才开始动（ComfyUI 常用性能优化）
+        if self._frame_cache:
+            self.playback_timer.start(int(1000 / self._fps_limit))
+        super().enterEvent(event)
 
-    # --- 【核心修复：统一点击处理】 ---
+    def leaveEvent(self, event):
+        """鼠标移出：隐藏图标和遮罩"""
+        self.overlay.hide()
+        self.play_icon.hide()
+        # 鼠标移出停止播放预览，省电省资源
+        self.playback_timer.stop()
+        super().leaveEvent(event)
+
     def mousePressEvent(self, event):
-        # 如果当前显示的是预览图（Index 0），点击整个组件都会触发播放
-        if self.main_layout.currentIndex() == 0:
-            if event.button() == Qt.LeftButton:
-                self.play()
+        """点击弹出播放窗口"""
+        if event.button() == Qt.LeftButton:
+            self.open_player_window()
         super().mousePressEvent(event)
 
-    def set_value(self, file_path):
-        self._file_path = file_path
-        if not file_path or not os.path.exists(file_path):
-            self.hide()
-            self._fixed_size = QSize(200, 150)
-            self.setFixedSize(self._fixed_size)
-            self.sizeHintChanged.emit()
-            self.update()
-            return
-
-        self._fixed_size = QSize(280, 158)
-        self.setFixedSize(self._fixed_size)
-        self.show()
-        # 始终保持固定大小，防止节点跳变
-        self.setFixedSize(self._fixed_size)
-        self.main_layout.setCurrentIndex(1)
-
-        self.thumbnail_player.setMedia(QMediaContent(QUrl.fromLocalFile(file_path)))
-        self.thumbnail_player.setMuted(True)
-        self.thumbnail_player.play()
-        self.fallback_timer.start(2500)
-        self.sizeHintChanged.emit()
-        self.update()
-
-    def _on_frame_captured(self, image):
-        self.fallback_timer.stop()
-        self.thumbnail_player.stop()
-
-        # 缩放图片到固定大小再显示，防止撑开
-        pixmap = QtGui.QPixmap.fromImage(image)
-        self.img_label.setPixmap(
-            pixmap.scaled(self._fixed_size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation))
-
-        self.main_layout.setCurrentIndex(0)
-
-    def play(self):
+    def open_player_window(self):
         if not self._file_path: return
         if not self._player_window:
             self._player_window = VideoPlayerWindow()
         self._player_window.play_file(self._file_path)
 
+    # --- 核心缓存逻辑 ---
+    def set_value(self, file_path):
+        if self._file_path == file_path: return
+        self._file_path = file_path
+
+        self.playback_timer.stop()
+        self.media_player.stop()
+        self._frame_cache.clear()
+        self._current_frame_idx = 0
+        self.img_label.clear()
+
+        if file_path and os.path.exists(file_path):
+            self._is_caching = True
+            # 加载新视频时显示加载图标或第一帧
+            self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(file_path)))
+            self.media_player.play()
+
+        self.valueChanged.emit(file_path)
+
+    def _on_frame_captured(self, image):
+        if not self._is_caching: return
+
+        # 高质量预缩放（决定预览清晰度）
+        pixmap = QtGui.QPixmap.fromImage(image).scaled(
+            self._fixed_size * 1.5,  # 稍微多一点像素保证缩放清晰
+            Qt.KeepAspectRatioByExpanding,
+            Qt.SmoothTransformation
+        )
+
+        self._frame_cache.append(pixmap)
+        # 第一遍缓存时实时显示
+        if len(self._frame_cache) % 2 == 0:  # 降低缓存时的刷新频率，减少卡顿
+            self.img_label.setPixmap(pixmap)
+
+        if len(self._frame_cache) >= self._max_cache_frames:
+            self._finish_caching()
+
+    def _on_media_status_changed(self, status):
+        if status == QMediaPlayer.EndOfMedia:
+            self._finish_caching()
+
+    def _finish_caching(self):
+        self._is_caching = False
+        self.media_player.stop()
+        # 缓存完成后，如果鼠标正好在上面，就开始播放
+        if self.underMouse():
+            self.playback_timer.start(int(1000 / self._fps_limit))
+
+    def _update_next_frame(self):
+        if not self._frame_cache: return
+        self._current_frame_idx = (self._current_frame_idx + 1) % len(self._frame_cache)
+        self.img_label.setPixmap(self._frame_cache[self._current_frame_idx])
+
     def sizeHint(self):
         return self._fixed_size
+
+    def closeEvent(self, event):
+        self.playback_timer.stop()
+        self.media_player.stop()
+        super().closeEvent(event)
