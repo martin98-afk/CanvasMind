@@ -25,7 +25,7 @@ def create_branch_node(parent_window):
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
             self.parent_window = parent_window
-            self.set_icon(":/icons/条件分支")
+            self.set_icon(":/icons/条件分支.svg")
             self.model.port_deletion_allowed = True
             self.view.rename_signal.connect(parent_window.rename_node_vars)
             # 条件索引 → 实际输出端口名的映射
@@ -230,15 +230,27 @@ def create_branch_node(parent_window):
                 port_name = input_port.name()
                 connected = input_port.connected_ports()
                 if connected:
-                    val_list = [upstream.node()._output_values.get(upstream.name()) for upstream in connected]
-                    inputs_raw[port_name] = val_list
-                    # 主数据端口放入表达式上下文
-                    if port_name == "input":
-                        input_vars["input_input"] = val_list
+                    if input_port.model.multi_connection:
+                        inputs_raw[port_name] = [
+                            upstream.node()._output_values.get(upstream.name()) for upstream in connected
+                        ]
+                        safe_key = f"input_{port_name}"
+                        input_vars[safe_key] = inputs_raw[port_name]
                         for upstream in connected:
                             safe_name = upstream.node().name().replace(" ", "_")
                             safe_key = f"input_{safe_name}__{upstream.name()}"
                             input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
+                    else:
+                        inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
+                        # 当前节点输入端口key
+                        safe_key = f"input_{port_name}"
+                        input_vars[safe_key] = inputs_raw[port_name]
+                        safe_name = connected[0].node().name().replace(" ", "_")
+                        # 上游节点输出端口key
+                        safe_key = f"input_{safe_name}__{connected[0].name()}"
+                        input_vars[safe_key] = inputs_raw[port_name]
+                    if port_name in self.column_select:
+                        inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
 
             expr_engine = ExpressionEngine(global_vars_context=gv)
             conditions = self.get_property("conditions") or []

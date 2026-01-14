@@ -4,6 +4,7 @@ import json
 import os
 import platform
 import re
+from pathlib import Path
 from urllib.parse import urlparse
 
 from PyQt5.QtCore import pyqtSignal, QProcess, Qt, QTimer, QSize, QPoint
@@ -54,7 +55,7 @@ class EnvManagerUI(QWidget):
         self.pkgs_data = []
         self.config = Settings.get_instance()
 
-        self.ssh_config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ssh_envs_cache.json")
+        self.ssh_config_file = str(Path(__file__).parent.parent.parent /"ssh_envs_cache.json")
 
         self.mainLayout = QVBoxLayout(self)
         self.mainLayout.setContentsMargins(16, 16, 16, 16)

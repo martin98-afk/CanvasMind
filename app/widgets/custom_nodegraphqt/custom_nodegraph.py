@@ -778,42 +778,68 @@ class CustomNodeGraph(NodeGraph):
         elif pos:
             self._viewer.move_nodes([n.view for n in node_objs], pos=pos)
             [setattr(n.model, 'pos', n.view.xy_pos) for n in node_objs]
-        QtCore.QTimer.singleShot(100, lambda: self.build_connections(data, nodes))
+        QtCore.QTimer.singleShot(150, lambda: self.build_connections(data, nodes))
 
         return node_objs
 
-    def build_connections(self, data, nodes):
+    def build_connections(self, data, nodes, attempts=0):
         """
-        Internal method to build connections after nodes are added.
-        This should be called with signals blocked and updates disabled.
+        带重试机制的连接构建器。
+
+        Args:
+            data (dict): 原始序列化数据。
+            nodes (dict): 当前已创建的节点字典 {id: node_obj}。
+            attempts (int): 当前重试次数。
         """
-        # build the connections.
-        for connection in data.get('connections', []):
+        max_attempts = 10  # 最大重试次数
+        retry_interval = 100  # 每次重试间隔 (ms)
+
+        pending_connections = []
+        all_connections = data.get('connections', [])
+
+        for connection in all_connections:
             in_nid, in_pname = connection.get('in', ('', ''))
             out_nid, out_pname = connection.get('out', ('', ''))
 
-            # 直接从 nodes 字典获取，避免额外查找
             in_node = nodes.get(in_nid)
             out_node = nodes.get(out_nid)
 
             if not in_node or not out_node:
-                # 如果数据不一致，记录警告或跳过
-                # logger.warning(f"Connection references non-existent nodes: in={in_nid}, out={out_nid}")
                 continue
 
+            # 核心检查：尝试获取端口
             in_port = in_node.inputs().get(in_pname)
             out_port = out_node.outputs().get(out_pname)
 
             if in_port and out_port:
-                allow_connection = any([not in_port.model.connected_ports,
-                                        in_port.model.multi_connection])
-                if allow_connection:
+                # 端口已就绪，尝试连接
+                if not in_port.model.connected_ports or in_port.model.multi_connection:
+                    try:
+                        in_port.connect_to(out_port)
+                        in_node.on_input_connected(in_port, out_port)
+                    except Exception as e:
+                        print(f"Connection failed: {e}")
+            else:
+                # 端口还没出来，加入待处理列表
+                pending_connections.append(connection)
 
-                    in_port.connect_to(out_port) # 直接连接，不经过 undo 命令
+        # 如果还有没连上的线，并且没超过最大尝试次数
+        if pending_connections and attempts < max_attempts:
+            # 构造一个临时的 data 结构用于下次重试
+            retry_data = {'connections': pending_connections}
 
-                # 在连接建立后调用回调
-                in_node.on_input_connected(in_port, out_port)
+            # 延迟重试
+            QtCore.QTimer.singleShot(
+                retry_interval,
+                lambda: self.build_connections(retry_data, nodes, attempts + 1)
+            )
+        else:
+            # 全部连完或彻底失败后的清理工作
+            if pending_connections:
+                print(f"Warning: Failed to connect {len(pending_connections)} lines after {max_attempts} attempts.")
 
-        self._viewer.setUpdatesEnabled(True)
-        self._viewer.scene().blockSignals(False)
-        [n.view.draw_node() for n in nodes.values()]
+            # 恢复 UI 更新
+            self._viewer.setUpdatesEnabled(True)
+            self._viewer.scene().blockSignals(False)
+            for n in nodes.values():
+                n.view.draw_node()
