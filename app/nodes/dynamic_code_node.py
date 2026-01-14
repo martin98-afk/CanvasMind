@@ -69,8 +69,6 @@ def create_dynamic_code_node(parent_window=None):
             # 重命名节点自动同步全局变量名
             self.view.set_align("center")
             self.view.rename_signal.connect(parent_window.rename_node_vars)
-            self.view.run_signal.connect(lambda: parent_window.run_node(self))
-            self.view.delete_signal.connect(lambda: parent_window.delete_node(self))
             # 定时器：分离 input / output / property update
             self._input_sync_timer = QtCore.QTimer()
             self._input_sync_timer.setSingleShot(True)

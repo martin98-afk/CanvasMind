@@ -80,6 +80,9 @@ class BasicNodeWithGlobalProperty(NodeObject):
             self.view.collapsed_toggle.connect(
                 lambda toggled: self.model.set_property("_collapsed", toggled)
             )
+            self.view.center_signal.connect(lambda: self.parent_window.center_to([self]))
+            self.view.delete_signal.connect(lambda: self.parent_window.delete_node(self))
+            self.view.run_signal.connect(lambda: self.parent_window.run_node(self))
         self.signals.intercepted_msg_signal.connect(self._message_router)
         self.signals.stream_data_updated.connect(self._on_stream_data_received)
 

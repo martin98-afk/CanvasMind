@@ -15,10 +15,11 @@ class CustomNodeSignals(QtCore.QObject):
     """
     自定义信号类，负责节点交互触发的事件分发。
     """
-    rename = QtCore.pyqtSignal(str, str)
+    rename_triggered = QtCore.pyqtSignal(str, str)
     run_triggered = QtCore.pyqtSignal()
     node_delete_triggered = QtCore.pyqtSignal()
     node_debug_triggered = QtCore.pyqtSignal()
+    node_center_triggered = QtCore.pyqtSignal()
     collapsed_toggle = QtCore.pyqtSignal(bool)
 
 
@@ -96,6 +97,26 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
                 painter.drawLine(QtCore.QPointF(cx + 4 * i, cy), QtCore.QPointF(cx + 6.5 * i, cy - 1))
                 painter.drawLine(QtCore.QPointF(cx + 4 * i, cy + 3), QtCore.QPointF(cx + 7 * i, cy + 3))
                 painter.drawLine(QtCore.QPointF(cx + 4 * i, cy + 6), QtCore.QPointF(cx + 6.5 * i, cy + 7))
+        elif self.icon_type == 'zoom':
+            o = 8.0
+            l = 5.0
+
+            # 左上折角 (顶点在左上，向右和向下延伸)
+            painter.drawLine(QtCore.QPointF(cx - o, cy - o), QtCore.QPointF(cx - o + l, cy - o))
+            painter.drawLine(QtCore.QPointF(cx - o, cy - o), QtCore.QPointF(cx - o, cy - o + l))
+
+            # 右上折角 (顶点在右上，向左和向下延伸)
+            painter.drawLine(QtCore.QPointF(cx + o, cy - o), QtCore.QPointF(cx + o - l, cy - o))
+            painter.drawLine(QtCore.QPointF(cx + o, cy - o), QtCore.QPointF(cx + o, cy - o + l))
+
+            # 左下折角 (顶点在左下，向右和向上延伸)
+            painter.drawLine(QtCore.QPointF(cx - o, cy + o), QtCore.QPointF(cx - o + l, cy + o))
+            painter.drawLine(QtCore.QPointF(cx - o, cy + o), QtCore.QPointF(cx - o, cy + o - l))
+
+            # 右下折角 (顶点在右下，向左和向上延伸)
+            painter.drawLine(QtCore.QPointF(cx + o, cy + o), QtCore.QPointF(cx + o - l, cy + o))
+            painter.drawLine(QtCore.QPointF(cx + o, cy + o), QtCore.QPointF(cx + o, cy + o - l))
+            painter.drawPoint(QtCore.QPointF(cx, cy))
         elif self.icon_type == 'close':
             painter.drawLine(QtCore.QPointF(r.left() + m, r.top() + m),
                              QtCore.QPointF(r.right() - m, r.bottom() - m))
@@ -137,7 +158,8 @@ class CustomNodeItem(NodeItem):
 
         # 初始化自定义信号
         self.custom_signals = CustomNodeSignals()
-        self.rename_signal = self.custom_signals.rename
+        self.center_signal = self.custom_signals.node_center_triggered
+        self.rename_signal = self.custom_signals.rename_triggered
         self.run_signal = self.custom_signals.run_triggered
         self.delete_signal = self.custom_signals.node_delete_triggered
         self.debug_signal = self.custom_signals.node_debug_triggered
@@ -164,6 +186,9 @@ class CustomNodeItem(NodeItem):
 
     def _init_custom_buttons(self):
         """初始化抬头悬浮功能组"""
+        self._center_btn = NodeActionButton(self, "zoom", "聚焦节点", "#3498db", "#2980b9")
+        self._center_btn.clicked_func = self.center_signal.emit
+
         self._collapse_btn = NodeActionButton(self, "collapse", "折叠/展开", "#2C2C2E", "#444446")
         self._collapse_btn.clicked_func = self.toggle_collapse
 
@@ -185,16 +210,16 @@ class CustomNodeItem(NodeItem):
 
     def _set_action_btns_visible(self, visible):
         """控制悬浮功能按钮的可见性"""
-        actual = visible if not self._proxy_mode else False
-        self._run_btn.setVisible(actual)
-        self._mute_btn.setVisible(actual)
-        self._close_btn.setVisible(actual)
+        self._center_btn.setVisible(visible)  # 控制可见
+        self._run_btn.setVisible(visible)
+        self._mute_btn.setVisible(visible)
+        self._close_btn.setVisible(visible)
 
     def _update_elements_visibility(self):
-        """超级状态机：统一管理所有子元素的绘制显隐，彻底杜绝渲染残留"""
-        # 1. 挂件与端口文本的逻辑 (非折叠 & 非代理模式才显示)
+        """统一管理所有子元素的绘制显隐"""
         is_drawing_content = not self._is_collapsed and not self._proxy_mode
 
+        # 1. 挂件与端口文本
         for w in self._widgets.values():
             w.widget().setVisible(is_drawing_content)
 
@@ -204,7 +229,7 @@ class CustomNodeItem(NodeItem):
         # 2. 基础组件
         self._text_item.setVisible(not self._proxy_mode)
         self._icon_item.setVisible(not self._proxy_mode)
-        self._collapse_btn.setVisible(not self._proxy_mode)
+        self._collapse_btn.setVisible(not self._proxy_mode) # 折叠按钮通常在 proxy 下隐藏以保持简洁
 
         # 3. 代理组件
         self._proxy_text_item.setVisible(self._proxy_mode)
@@ -233,7 +258,7 @@ class CustomNodeItem(NodeItem):
         super(CustomNodeItem, self).hoverLeaveEvent(event)
 
     def _paint_horizontal(self, painter, option, widget):
-        """极致渲染：磨砂黑底座 + 霓虹渐变 Header + 1px 高光边框"""
+        """极致渲染：磨砂黑底座 + 层次感灰色边框 + 霓虹渐变 Header"""
         painter.save()
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
@@ -241,14 +266,14 @@ class CustomNodeItem(NodeItem):
         full_rect = self.boundingRect()
         rect = QtCore.QRectF(full_rect.left(), full_rect.top() + 32,
                              full_rect.width(), full_rect.height() - 32)
-        radius = 12.0  # 增大圆角更显现代感
+        radius = 20.0  # 使用之前建议的更圆润的半径
 
         # 1. 绘制深色磨砂底座
-        painter.setBrush(QtGui.QColor(32, 32, 35, 250))
+        painter.setBrush(QtGui.QColor(32, 32, 35, 255))
         painter.setPen(QtCore.Qt.NoPen)
         painter.drawRoundedRect(rect, radius, radius)
 
-        # 2. 绘制 Header (ComfyUI 霓虹发光渐变)
+        # 2. 绘制 Header (逻辑保持不变)
         header_h = max(self._text_item.boundingRect().height() + 8, 30.0)
         header_rect = QtCore.QRectF(rect.left(), rect.top(), rect.width(), header_h)
         base_color = QtGui.QColor(*self.color)
@@ -257,27 +282,42 @@ class CustomNodeItem(NodeItem):
         gradient.setColorAt(0, base_color.lighter(115))
         gradient.setColorAt(1, base_color)
 
-        # 绘制顶部圆角 Header，如果展开则底部切平
         painter.setBrush(gradient)
         if not self._is_collapsed:
             path = QtGui.QPainterPath()
-            path.addRoundedRect(header_rect, radius, radius)
-            # 遮盖底部的圆角以衔接主体
-            painter.fillPath(path, gradient)
-            painter.fillRect(QtCore.QRectF(rect.left(), rect.top() + header_h - 10, rect.width(), 10), base_color)
+            path.moveTo(header_rect.bottomLeft())
+            path.lineTo(header_rect.left(), header_rect.top() + radius)
+            path.arcTo(header_rect.left(), header_rect.top(), radius * 2, radius * 2, 180, -90)
+            path.lineTo(header_rect.right() - radius, header_rect.top())
+            path.arcTo(header_rect.right() - radius * 2, header_rect.top(), radius * 2, radius * 2, 90, -90)
+            path.lineTo(header_rect.bottomRight())
+            path.closeSubpath()
+            painter.drawPath(path)
         else:
             painter.drawRoundedRect(header_rect, radius, radius)
 
-        # 3. 绘制 1px 丝绸高光边框 (增强立体感)
-        highlight_pen = QtGui.QPen(QtGui.QColor(255, 255, 255, 45), 1.0)
-        painter.setPen(highlight_pen)
-        painter.setBrush(QtCore.Qt.NoBrush)
-        painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), radius, radius)
-
-        # 4. 选中状态：增强对比度
+        # --- 3. 核心修改：绘制有层次感的灰色边框 ---
         if self.selected:
+            # 选中状态：保持原有的高亮选中颜色
+            painter.setBrush(QtCore.Qt.NoBrush)
             painter.setPen(QtGui.QPen(QtGui.QColor(*NodeEnum.SELECTED_BORDER_COLOR.value), 2.5))
             painter.drawRoundedRect(rect, radius, radius)
+        else:
+            # 非选中状态：双层灰色效果
+            painter.setBrush(QtCore.Qt.NoBrush)
+
+            # 第一层：深灰色外廓线 (定义形状)
+            # 使用比底色略亮的暗灰色
+            outer_gray = QtGui.QPen(QtGui.QColor(60, 60, 65, 255), 1.2)
+            painter.setPen(outer_gray)
+            painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), radius, radius)
+
+            # 第二层：浅灰色内高光 (增加层次感/立体感)
+            # 在顶部和左侧模拟微弱的光照
+            inner_highlight = QtGui.QPen(QtGui.QColor(255, 255, 255, 35), 0.8)
+            painter.setPen(inner_highlight)
+            # 稍微缩小矩形范围，形成内嵌感
+            painter.drawRoundedRect(rect.adjusted(1.5, 1.5, -1.5, -1.5), radius - 1.0, radius - 1.0)
 
         painter.restore()
 
@@ -286,49 +326,45 @@ class CustomNodeItem(NodeItem):
         self._paint_horizontal(painter, option, widget)
 
     def _draw_node_horizontal(self):
-        """核心布局引擎：彻底解决端口对齐、移除左侧幽灵文本、对齐悬浮按钮"""
-        # 关键：通知几何变化，解决动态端口位置更新问题
         self.prepareGeometryChange()
 
         text_rect = self._text_item.boundingRect()
         header_height = max(text_rect.height() + 8.0, 30.0)
 
-        # 刷新所有组件显隐
+        # 刷新所有组件显隐状态
         self._update_elements_visibility()
 
+        # 【关键修改】：将 _set_base_size 移出 if not self._proxy_mode 块
+        # 无论是否在代理模式，都要确保节点物理尺寸正确
+        self._set_base_size(add_h=header_height)
+
         if not self._proxy_mode:
-            # 物理尺寸同步
-            self._set_base_size(add_h=header_height)
+            # ... 原有的布局代码 (文字、图标、折叠按钮对齐) ...
             self._set_text_color(self.text_color)
-
             rect = self.boundingRect()
-            body_top = rect.top() + 32  # 避开悬浮区
-
-            # 1. 标题文字：强制计算 X/Y，杜绝残留
+            body_top = rect.top() + 32
             tx = (rect.width() - text_rect.width()) / 2
             ty = body_top + (header_height - text_rect.height()) / 2
             self._text_item.setPos(tx, ty)
-
-            # 2. 图标与折叠按钮对齐
             self._icon_item.setPos(rect.left() + 38, body_top + (header_height - 24) / 2)
             self._collapse_btn.setPos(rect.left() + 6, body_top + (header_height - 28) / 2)
-
-            # 3. 挂件对齐逻辑
             self.align_widgets(v_offset=header_height + 12.0)
+        else:
+            # 代理模式下的逻辑
+            self._update_proxy_text_position()
 
-        # 4. 端口对齐：重要逻辑
+        # 端口永远需要对齐（内部逻辑会自动处理可见性）
         self.align_ports(v_offset=header_height)
 
-        # 5. 右侧功能按钮：悬浮于 Header 正上方
+        # 按钮位置计算 (确保按钮位置也基于正确的物理尺寸)
         rect = self.boundingRect()
-        btn_y = (rect.top() + 32) - 30  # 位于 Header 顶边线之上
+        btn_y = (rect.top() + 32) - 30
         spacing = 32
         self._close_btn.setPos(rect.right() - 32, btn_y)
         self._mute_btn.setPos(rect.right() - 32 - spacing, btn_y)
         self._run_btn.setPos(rect.right() - 32 - spacing * 2, btn_y)
+        self._center_btn.setPos(rect.right() - 32 - spacing * 3, btn_y)
 
-        if self._proxy_mode:
-            self._update_proxy_text_position()
         self.update()
 
     def _draw_node_vertical(self):
@@ -336,35 +372,43 @@ class CustomNodeItem(NodeItem):
         self._draw_node_horizontal()
 
     def _calc_size_horizontal(self):
-        """动态尺寸计算算法优化"""
-        # 端口占位
+        """
+        动态尺寸计算算法优化。
+        修改点：尺寸计算不再受 proxy_mode 导致的隐藏影响，只受折叠状态影响。
+        """
+        # 端口占位逻辑
         p_in_w = p_out_w = p_in_h = p_out_h = 0.0
-        for port, text in self._input_items.items():
-            if port.isVisible():
-                p_in_w = max(p_in_w, text.boundingRect().width() + 25)
-                p_in_h += port.boundingRect().height() + 4
-        for port, text in self._output_items.items():
-            if port.isVisible():
-                p_out_w = max(p_out_w, text.boundingRect().width() + 25)
-                p_out_h += port.boundingRect().height() + 4
 
+        # 即使端口在渲染上不可见(proxy模式)，但在逻辑上它是存在的
+        for port, text in self._input_items.items():
+            # 这里原本是 if port.isVisible(): 改为始终计算(除非你将来需要逻辑隐藏端口)
+            p_in_w = max(p_in_w, text.boundingRect().width() + 25)
+            p_in_h += port.boundingRect().height() + 4
+
+        for port, text in self._output_items.items():
+            p_out_w = max(p_out_w, text.boundingRect().width() + 25)
+            p_out_h += port.boundingRect().height() + 4
+
+        # 如果是折叠模式，返回折叠后的尺寸
         if self._is_collapsed:
             tw = self._text_item.boundingRect().width()
-            return max(tw + 140, 180), max(p_in_h, p_out_h)
+            return max(tw + 140, 180), max(p_in_h, p_out_h, 40)
 
-        # 考虑字体宽度
+        # 非折叠模式下（包括 proxy_mode），我们需要保持完整的尺寸
         fm = QtGui.QFontMetrics(self._text_item.font())
         text_w = max(self._text_item.boundingRect().width(), fm.horizontalAdvance(self.name))
 
-        # 挂件占位
+        # 挂件占位逻辑
         w_width = w_height = 0.0
         for widget in self._widgets.values():
-            if widget.isVisible():
-                sz = widget.widget().sizeHint() if widget.widget() else widget.boundingRect().size()
-                w_width = max(w_width, sz.width())
-                w_height += sz.height() + 10
+            # 【关键修改】：不再判断 widget.isVisible()
+            # 因为在 proxy 模式下 widget 被隐藏了，但我们依然需要它占据宽度
+            real = widget.widget()
+            sz = real.sizeHint() if real else widget.boundingRect().size()
+            w_width = max(w_width, sz.width())
+            w_height += sz.height() + 10
 
-        # 总宽度 = 端口边距 + 内部最大宽度 + 缓冲
+        # 总宽度计算
         width = max(text_w + 120, p_in_w + p_out_w + w_width + 40, 200)
         height = max(p_in_h, p_out_h, w_height) + 20
         return width, height
