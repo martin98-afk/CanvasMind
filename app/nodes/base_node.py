@@ -84,7 +84,6 @@ class BasicNodeWithGlobalProperty(NodeObject):
             self.view.center_signal.connect(lambda: self.parent_window.center_to([self]))
             self.view.delete_signal.connect(lambda: self.parent_window.delete_node(self))
             self.view.run_signal.connect(lambda: self.parent_window.run_node(self))
-            self.view.rename_signal.connect(lambda on, nn: self.parent_window.rename_node_vars(on, nn))
         self.signals.intercepted_msg_signal.connect(self._message_router)
         self.signals.stream_data_updated.connect(self._on_stream_data_received)
 

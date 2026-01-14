@@ -123,7 +123,7 @@ def ssh_send_file(env_data, local_path, remote_path):
 def sftp_upload_dir(sftp, local_dir, remote_dir):
     for root, dirs, files in os.walk(local_dir):
         # 计算相对路径并创建远程目录
-        rel_path = os.relpath(root, local_dir)
+        rel_path = os.path.relpath(root, local_dir)
         target_dir = os.path.join(remote_dir, rel_path).replace("\\", "/")
 
         try:

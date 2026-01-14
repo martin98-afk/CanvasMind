@@ -198,7 +198,7 @@ class EnvManagerUI(QWidget):
         layout.addWidget(StrongBodyLabel("命令控制台"))
         cl = QHBoxLayout()
         self.sourceCombo = ComboBox(self)
-        self.sourceCombo.addItems(["在线源", "本地包"])
+        self.sourceCombo.addItems(["在线搜索", "本地文件"])
         self.sourceCombo.currentIndexChanged.connect(self._update_action_combo)
         self.actionCombo = ComboBox(self)
         cl.addWidget(self.sourceCombo, 1)
@@ -231,17 +231,31 @@ class EnvManagerUI(QWidget):
         self._update_action_combo()
 
     def show_file_selection_menu(self):
-        """显示文件/文件夹选择菜单"""
         menu = RoundMenu(parent=self)
-        act_files = Action(FluentIcon.DOCUMENT, "选择多个文件", self)
-        act_folder = Action(FluentIcon.FOLDER, "选择整个文件夹", self)
+
+        act_req = Action(FluentIcon.DOCUMENT, "选择 requirements.txt", self)
+        act_files = Action(FluentIcon.ADD, "选择多个 .whl 安装包", self)
+        act_folder = Action(FluentIcon.FOLDER, "选择安装包文件夹", self)
+
+        act_req.triggered.connect(self.select_requirements_file)
         act_files.triggered.connect(self.select_local_files)
         act_folder.triggered.connect(self.select_local_folder)
+
+        menu.addAction(act_req)
+        menu.addSeparator()
         menu.addAction(act_files)
         menu.addAction(act_folder)
-        # 在按钮正下方弹出
+
         pos = self.fileSelectBtn.mapToGlobal(QPoint(0, self.fileSelectBtn.height()))
         menu.exec(pos)
+
+    def select_requirements_file(self):
+        file, _ = QFileDialog.getOpenFileName(
+            self, "选择 Requirements 文件", "", "Text Files (*.txt);;All Files (*)"
+        )
+        if file:
+            self.packageEdit.setText(file)
+            self.actionCombo.setCurrentText("Requirements安装 (联网)")
 
     def select_local_files(self):
         """批量选择 .whl 或压缩包"""
@@ -356,14 +370,17 @@ class EnvManagerUI(QWidget):
     def _update_action_combo(self):
         current_source = self.sourceCombo.currentText()
         self.actionCombo.clear()
-        if current_source == "在线源":
+
+        if current_source == "在线搜索":  # 原“在线源”
             self.fileSelectBtn.hide()
             self.actionCombo.addItems(["安装", "强制重装", "更新", "卸载"])
             self.packageEdit.setPlaceholderText("输入包名，例如 numpy")
-        elif current_source == "本地包":
+
+        elif current_source == "本地文件":  # 原“本地包”
             self.fileSelectBtn.show()
-            self.actionCombo.addItems(["离线安装", "联网安装"])
-            self.packageEdit.setPlaceholderText("选择本地文件(支持多个)或文件夹...")
+            # 明确区分：whl是离线/联网，txt是Requirements联网
+            self.actionCombo.addItems(["联网安装 (Whl/Zip)", "离线安装 (Whl/Zip)", "Requirements安装 (联网)"])
+            self.packageEdit.setPlaceholderText("选择本地 .whl 或 requirements.txt 文件...")
 
     def _repopulate_table(self, pkgs):
         """优化版：分批次加载表格，防止主线程卡死"""
@@ -472,65 +489,60 @@ class EnvManagerUI(QWidget):
     def run_pip_command(self, action=None, package_input=None):
         if not self.current_env_data: return
 
-        is_from_ui_btn = action is None
         ui_action = self.actionCombo.currentText()
         ui_source = self.sourceCombo.currentText()
 
         current_action = action or ui_action
         raw_input = package_input or self.packageEdit.text().strip()
-        current_source = ui_source if is_from_ui_btn else "在线源"
 
-        if self.current_env_data["type"] == "local":
-            if not self.mgr.ensure_pip(self.current_env_data["path"], log_callback=self.logEdit.append): return
+        if not raw_input and "卸载" not in current_action: return
 
-        cmd = ["-m", "pip"]
+        cmd = ["-m", "pip", "install"]  # 大部分情况都是 install
 
-        if current_source == "在线源":
-            if not raw_input and current_action != "卸载": return
-            if current_action == "安装":
-                cmd.extend(["install"])
-                self._add_mirror_sources(cmd)
-                cmd.append(raw_input)
+        # --- 核心逻辑判断 ---
+
+        # 1. 如果是 Requirements 安装
+        if "Requirements" in current_action:
+            cmd.extend(["-r", raw_input])
+            self._add_mirror_sources(cmd)  # 必须联网镜像
+
+        # 2. 如果是正常的在线搜素安装
+        elif ui_source == "在线搜索":
+            if current_action == "卸载":
+                cmd = ["-m", "pip", "uninstall", "-y", raw_input]
             elif current_action == "强制重装":
-                cmd.extend(["install", "--force-reinstall"])
+                cmd.extend(["--force-reinstall", raw_input])
                 self._add_mirror_sources(cmd)
-                cmd.append(raw_input)
             elif current_action == "更新":
-                cmd.extend(["install", "-U"])
+                cmd.extend(["-U", raw_input])
                 self._add_mirror_sources(cmd)
+            else:  # 普通安装
                 cmd.append(raw_input)
-            elif current_action == "卸载":
-                cmd.extend(["uninstall", "-y", raw_input])
+                self._add_mirror_sources(cmd)
+
+        # 3. 如果是本地 whl/zip 文件安装
         else:
-            # 本地包逻辑处理
-            if not raw_input: return
-            cmd.append("install")
-            if current_action == "离线安装":
+            if "离线" in current_action:
                 cmd.append("--no-index")
             else:
                 self._add_mirror_sources(cmd)
 
-            # 处理多文件/文件夹逻辑
+            # 处理多路径
             paths = raw_input.split(";")
             final_packages = []
             for p in paths:
                 p = p.strip()
                 if not p: continue
                 if os.path.isdir(p):
-                    # 如果是目录，搜索内部所有支持的包
                     for item in os.listdir(p):
                         if item.lower().endswith(('.whl', '.tar.gz', '.zip')):
                             final_packages.append(os.path.join(p, item))
                 else:
                     final_packages.append(p)
-
-            if not final_packages:
-                self._log_color("[错误] 未找到有效的安装包文件", "#e06c75")
-                return
-
             cmd.extend(final_packages)
 
-        self._log_color(f"\n$ pip command: {current_action} {' '.join(cmd[2:])}", "#c678dd")
+        # 执行
+        self._log_color(f"\n$ pip command: {' '.join(cmd[2:])}", "#c678dd")
         if self.current_env_data["type"] == "local":
             self._start_process(self.current_env_data["path"], cmd)
         else:

@@ -65,6 +65,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             self._debug_code_content = ""
             # 调试模式信号连接
             self.view.debug_signal.connect(self._toggle_debug_mode)
+            self.view.rename_signal.connect(parent_window.rename_node_vars)
 
         @property
         def uuid(self):
