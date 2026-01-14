@@ -25,6 +25,7 @@ from qfluentwidgets import (LineEdit,
 
 from app.interfaces.package_manager_interface.utils.package_list_thread import PackageListThread
 from app.interfaces.package_manager_interface.utils.ssh_exec_thread import SSHExecThread
+from app.interfaces.package_manager_interface.utils.ssh_upload_and_exec_thread import SSHUploadAndExecThread
 from app.interfaces.package_manager_interface.widgets.ssh_confiig_dialog import SSHAddrDialog
 from app.utils.config import Settings
 from app.utils.env_operation import EnvironmentManager
@@ -543,7 +544,28 @@ class EnvManagerUI(QWidget):
 
         # 执行
         self._log_color(f"\n$ pip command: {' '.join(cmd[2:])}", "#c678dd")
-        if self.current_env_data["type"] == "local":
+        # --- 核心逻辑：如果是远程环境且选择了本地文件 ---
+        if self.current_env_data["type"] == "ssh" and ui_source == "本地文件":
+            # 1. 解析出真正的本地文件列表
+            paths = [p.strip() for p in raw_input.split(";") if p.strip()]
+            if not paths: return
+
+            self.execBtn.setEnabled(False)
+            self._log_color(f"\n[远程任务] 准备同步本地文件至 {self.current_env_data['host']}...", "#61afef")
+
+            # 2. 启动“上传+执行”复合线程
+            is_req = "Requirements" in current_action
+            self._ssh_upload_thread = SSHUploadAndExecThread(
+                self.current_env_data,
+                paths,
+                current_action,
+                is_requirements=is_req
+            )
+            self._ssh_upload_thread.output_signal.connect(lambda x: self.logEdit.insertPlainText(x))
+            self._ssh_upload_thread.finished_signal.connect(self.on_finished)
+            self._ssh_upload_thread.start()
+            return
+        elif self.current_env_data["type"] == "local":
             self._start_process(self.current_env_data["path"], cmd)
         else:
             self._start_ssh_process(cmd)
