@@ -328,8 +328,8 @@ def create_branch_node(parent_window):
                     node.set_disabled(False)
                 else:
                     node.set_disabled(True)
-                    if hasattr(node, '_output_values'):
-                        node._output_values = {}
+                #     if hasattr(node, '_output_values'):
+                #         node._output_values = {}
 
             # 设置输出
             self.clear_output_value()
