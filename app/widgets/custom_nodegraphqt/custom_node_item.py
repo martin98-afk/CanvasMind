@@ -393,15 +393,15 @@ class CustomNodeItem(NodeItem):
         # 计算端口所需的空间
         for port, text in self._input_items.items():
             p_in_w = max(p_in_w, text.boundingRect().width() + 40)  # 稍微多留一点余量
-            p_in_h += port.boundingRect().height() + 6
+            p_in_h += port.boundingRect().height() + 3
         for port, text in self._output_items.items():
             p_out_w = max(p_out_w, text.boundingRect().width() + 40)
-            p_out_h += port.boundingRect().height() + 6
+            p_out_h += port.boundingRect().height() + 3
 
         # 如果折叠了，返回最小高度
         if self._is_collapsed:
             width = max(self._text_item.boundingRect().width() + 100, 180)
-            return width, 40
+            return width, max(p_in_h, p_out_h, 40)
 
         # 计算 Widget 所需的空间
         w_width = w_height = 0.0
