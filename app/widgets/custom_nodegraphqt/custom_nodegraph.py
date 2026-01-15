@@ -767,13 +767,16 @@ class CustomNodeGraph(NodeGraph):
                 self.add_node(node, n_data.get('pos'), inherite_graph_style=adjust_graph_style)
                 # set custom properties.
                 for prop, val in n_data.get('custom', {}).items():
-                    node.model.set_property(prop, val)
+                    try:
+                        node.model.set_property(prop, val)
+                    except:
+                        pass
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
                             node.view.widgets[prop].set_value(val)
                 if '_collapsed' in n_data.get('custom', {}) and node.get_property('_collapsed'):
                     node._view.toggle_collapse()
-                if '_exec_mode' in n_data.get('custom', {}):
+                if '_exec_mode' in n_data.get('custom', {}) and hasattr(node._view, '_toggle_exec_mode'):
                     node._view._toggle_exec_mode(node.get_property('_exec_mode'))
                 nodes[n_id] = node
         node_objs = nodes.values()
