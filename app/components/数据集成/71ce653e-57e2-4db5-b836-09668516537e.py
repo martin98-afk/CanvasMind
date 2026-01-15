@@ -75,8 +75,8 @@ class Component(BaseComponent):
             # 按采样率跳过帧
             if frame_idx % sample_rate == 0:
                 # OpenCV 默认是 BGR，转换为 RGB 更通用
-                save_path = Path(f"{frame_idx}.jpg").resolve()
-                cv2.imwrite(save_path, frame)
+                save_path = Path(f"result/{frame_idx}.jpg").resolve()
+                cv2.imwrite(f"result/{frame_idx}.jpg", frame)
                 frames.append(str(save_path))
                 total_read += 1
 
