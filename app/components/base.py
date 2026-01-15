@@ -70,6 +70,86 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType\n\n\n"""
 
 
+# ==================== 组件基础端口、属性设置 ====================
+class ConnectionType(str, Enum):
+    """连接类型"""
+    SINGLE = "单输入"
+    MULTIPLE = "多输入"
+
+
+class PropertyType(str, Enum):
+    """属性类型"""
+    TEXT = "文本"
+    MULTILINE = "多行文本"
+    LONGTEXT = "长文本"
+    FILE = "文件选择"
+    INT = "整数"
+    FLOAT = "浮点数"
+    RANGE = "范围"
+    BOOL = "复选框"
+    CHOICE = "下拉框"
+    VARIABLE = "动态变量"
+    DYNAMICFORM = "动态表单"
+
+
+class PropertyDefinition(BaseModel):
+    """属性定义"""
+    type: PropertyType = PropertyType.TEXT
+    default: Any = ""
+    label: str = ""
+    choices: List[str] = Field(default_factory=list)
+    filter: str = "All Files (*)"  # 用于文件类型过滤
+    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义
+    min: float = Field(default=0.0, description="最小值")
+    max: float = Field(default=100.0, description="最大值")
+    step: float = Field(default=1.0, description="步长")
+
+    class Config:
+        # 允许递归引用
+        arbitrary_types_allowed = True
+
+
+class ArgumentType(str, Enum):
+    """参数类型"""
+    TEXT = "文本"
+    INT = "整数"
+    FLOAT = "浮点数"
+    BOOL = "布尔值"
+    ARRAY = "列表"
+    CSV = "csv"
+    JSON = "json"
+    EXCEL = "excel"
+    FILE = "文件"
+    UPLOAD = "上传"
+    SKLEARNMODEL = "sklearn模型"
+    TORCHMODEL = "torch模型"
+    IMAGE = "图片"
+
+    # 验证是否是文件类型
+    def is_file(self):
+        return self in [ArgumentType.FILE, ArgumentType.EXCEL, ArgumentType.SKLEARNMODEL,
+                        ArgumentType.TORCHMODEL, ArgumentType.UPLOAD]
+
+    def is_number(self):
+        return self in [ArgumentType.INT, ArgumentType.FLOAT]
+
+    def is_array(self):
+        return self in [ArgumentType.ARRAY]
+
+    def is_bool(self):
+        return self == ArgumentType.BOOL
+
+    def is_image(self):
+        return self == ArgumentType.IMAGE
+
+
+class PortDefinition(BaseModel):
+    """端口定义"""
+    name: str
+    label: str
+    type: ArgumentType = ArgumentType.TEXT
+    connection: ConnectionType = ConnectionType.SINGLE
+
 # ==================== 中间消息通信协议 ====================
 
 class MessageLevel(str, Enum):
@@ -459,84 +539,6 @@ class GlobalVariableContext(BaseModel):
                 return self.node_vars[path].value
             raise KeyError(f"Key '{path}' not found")
 
-
-class ConnectionType(str, Enum):
-    """连接类型"""
-    SINGLE = "单输入"
-    MULTIPLE = "多输入"
-
-
-class PropertyType(str, Enum):
-    """属性类型"""
-    TEXT = "文本"
-    MULTILINE = "多行文本"
-    LONGTEXT = "长文本"
-    INT = "整数"
-    FLOAT = "浮点数"
-    RANGE = "范围"
-    BOOL = "复选框"
-    CHOICE = "下拉框"
-    VARIABLE = "动态变量"
-    DYNAMICFORM = "动态表单"
-
-
-class PropertyDefinition(BaseModel):
-    """属性定义"""
-    type: PropertyType = PropertyType.TEXT
-    default: Any = ""
-    label: str = ""
-    choices: List[str] = Field(default_factory=list)
-    filter: str = "All Files (*)"  # 用于文件类型过滤
-    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义
-    min: float = Field(default=0.0, description="最小值")
-    max: float = Field(default=100.0, description="最大值")
-    step: float = Field(default=1.0, description="步长")
-
-    class Config:
-        # 允许递归引用
-        arbitrary_types_allowed = True
-
-
-class ArgumentType(str, Enum):
-    """参数类型"""
-    TEXT = "文本"
-    INT = "整数"
-    FLOAT = "浮点数"
-    BOOL = "布尔值"
-    ARRAY = "列表"
-    CSV = "csv"
-    JSON = "json"
-    EXCEL = "excel"
-    FILE = "文件"
-    UPLOAD = "上传"
-    SKLEARNMODEL = "sklearn模型"
-    TORCHMODEL = "torch模型"
-    IMAGE = "图片"
-
-    # 验证是否是文件类型
-    def is_file(self):
-        return self in [ArgumentType.FILE, ArgumentType.EXCEL, ArgumentType.SKLEARNMODEL,
-                        ArgumentType.TORCHMODEL, ArgumentType.UPLOAD]
-
-    def is_number(self):
-        return self in [ArgumentType.INT, ArgumentType.FLOAT]
-
-    def is_array(self):
-        return self in [ArgumentType.ARRAY]
-
-    def is_bool(self):
-        return self == ArgumentType.BOOL
-
-    def is_image(self):
-        return self == ArgumentType.IMAGE
-
-
-class PortDefinition(BaseModel):
-    """端口定义"""
-    name: str
-    label: str
-    type: ArgumentType = ArgumentType.TEXT
-    connection: ConnectionType = ConnectionType.SINGLE
 
 # ======= 构造pydantic输入、参数解析 ========
 class ModelMixin(BaseModel):

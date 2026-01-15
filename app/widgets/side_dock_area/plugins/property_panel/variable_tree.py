@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QTreeWidgetItem,
     QHeaderView, QStyledItemDelegate, QFrame, QHBoxLayout, QLabel, QStyle
 )
+from loguru import logger
 # === Fluent Widgets ===
 from qfluentwidgets import (
     TreeWidget, RoundMenu, Action, TextEdit, isDarkTheme, FluentIcon as FIF, BodyLabel, CardWidget, IconWidget
@@ -513,6 +514,7 @@ class VariableTreeWidget(TreeWidget):
         item = self.itemAt(pos);
         if not item: return
         obj, name = item.data(1, ROLE_RAW_VALUE), item.text(0)
+        print(obj)
         menu = RoundMenu(parent=self)
         menu.addAction(Action(FIF.INFO, "查看详情", triggered=lambda: self._show_detail_popup(item, obj)))
         menu.addAction(Action(FIF.COPY, "复制值", triggered=lambda: QApplication.clipboard().setText(str(obj))))
@@ -534,12 +536,24 @@ class VariableTreeWidget(TreeWidget):
         self._popup.show_near(QRect(self.viewport().mapToGlobal(rect.topLeft()), rect.size()))
 
     def _open_explorer(self, path):
+        # 1. 获取绝对路径（解决相对路径打不开的问题）
+        # 2. 标准化路径（将 / 转为 \，解决第一个路径的问题）
+        norm_path = os.path.normpath(os.path.abspath(path))
+
+        # 3. 检查文件是否存在
+        if not os.path.exists(norm_path):
+            logger.error(f"路径不存在: {norm_path}")
+            return
+
         if sys.platform == "win32":
-            subprocess.run(["explorer", "/select,", path])
+            # Windows 特有：/select, 后面紧跟路径。
+            # 注意：subprocess.run 会自动处理列表中的空格，不需要额外加双引号
+            subprocess.run(["explorer", "/select,", norm_path])
         elif sys.platform == "darwin":
-            subprocess.run(["open", "-R", path])
+            subprocess.run(["open", "-R", norm_path])
         else:
-            subprocess.run(["xdg-open", os.path.dirname(path)])
+            # Linux 只有选中功能较难通用，通常直接打开所在目录
+            subprocess.run(["xdg-open", os.path.dirname(norm_path)])
 
     def _open_spyder_editor(self, data, title):
         if not HAS_SPYDER: return
