@@ -109,7 +109,7 @@ class DataTableWidget(QtWidgets.QTableWidget):
         self._current_size = QtCore.QSize(600, 400)
         self.setFixedSize(self._current_size)
         self.sizeHintChanged.emit()
-        self.update()
+        self.updateGeometry()
         # 提取表头
         headers = list(data_list[0].keys())
         self.setColumnCount(len(headers))
