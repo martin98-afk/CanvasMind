@@ -45,13 +45,12 @@ def execute_node(
             from app.scan_components import ComponentScanner
             comp_cls = ComponentScanner().get_component_by_uuid(node.uuid)
 
-        run_mode = scheduler.parent.config.canvas_run_mode.value
         # 真正的业务执行
         results = node.execute_sync(
             comp_cls,
             python_executable=python_exe,
             check_cancel=execution_context.check_cancel,
-            kernel_manager=kernel_manager if run_mode == "ipython运行" else None,
+            kernel_manager=kernel_manager,
             global_variable=global_variable.serialize()
         )
 

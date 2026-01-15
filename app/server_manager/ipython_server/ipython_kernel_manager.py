@@ -74,6 +74,17 @@ class IPythonKernelManager:
 
         self.kernel_client.execute(code, silent=hidden)
 
+    def interrupt_kernel(self):
+        """中断正在运行的代码"""
+        if self.kernel_manager and self.kernel_manager.is_alive():
+            try:
+                # QtKernelManager 提供的标准接口
+                self.kernel_manager.interrupt_kernel()
+                return True
+            except Exception as e:
+                logger.error(f"中断 kernel 失败: {e}")
+        return False
+
     def shutdown_kernel(self):
         """关闭内核"""
         if self.kernel_client:

@@ -421,7 +421,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 )
                 with open(local_script_path, 'w', encoding='utf-8') as f:
                     f.write(script_content)
-                if kernel_manager:
+                if self.view.current_mode == "ipython":
                     self._execute_via_ipython(local_script_path, result_path, error_path, log_file_path, check_cancel,
                                               kernel_manager)
                 else:
@@ -587,26 +587,26 @@ def create_node_class(full_path, file_path, parent_window=None):
                 self, temp_script_path, result_path, error_path, log_file_path,
                 check_cancel, kernel_manager
         ):
-            # 清空变量，防止污染
-            run_code = f'%reset -f'
-            kernel_manager.execute_code(run_code, hidden=True)
-
-            # 执行 %run -i
+            # 读取模板生成的代码并执行
             with open(temp_script_path, 'r', encoding='utf-8') as f:
                 code = f.read()
-            kernel_manager.execute_code(code, hidden=True)
 
-            # 轮询结果文件
+            # 注意：在 IPython 中，直接执行 run_node() 函数名
+            # 我们将代码块发送给内核执行
+            kernel_manager.execute_code(code, hidden=True)
+            # 轮询结果文件 (保持原逻辑不变)
             start_time = time.time()
-            timeout = parent_window.config.node_run_timeout.value  # 5分钟
+            timeout = parent_window.config.node_run_timeout.value
 
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
-                    try:
-                        kernel_manager.restart_kernel()  # now=True 表示立即重启（不等待）
-                        self._log_message(self.persistent_id, "✅ 内核已重启，执行已终止。")
-                    except Exception as e:
-                        self._log_message(self.persistent_id, f"⚠️ 内核重启失败: {e}")
+                    # 如果用户取消，此时才考虑是否重启内核（慎用）
+                    success = kernel_manager.interrupt_kernel()
+                    if not success:
+                        self._log_message(self.persistent_id, "⚠️ 中断失败，强制重启内核...")
+                        kernel_manager.restart_kernel()
+                    else:
+                        self._log_message(self.persistent_id, "✅ 中断信号已发送。")
                     raise Exception("执行被用户取消")
                 try:
                     if os.path.exists(log_file_path):
@@ -614,16 +614,14 @@ def create_node_class(full_path, file_path, parent_window=None):
                             lf.seek(self.last_log_pos)
                             new_content = lf.read()
                             if new_content:
-                                # --- 关键修改 ---
                                 self._log_message(self.persistent_id, new_content)
                                 self.last_log_pos = lf.tell()
                 except Exception:
                     pass
                 if time.time() - start_time > timeout:
                     raise Exception(f"❌ 节点执行超时（{timeout} 秒）")
-
                 time.sleep(0.1)
-            self._log_message(self.persistent_id, "✅ 节点在ipython环境执行完成")
+            self._log_message(self.persistent_id, "✅ 节点执行完成 (内存驻留模式已开启)")
 
         def _execute_via_subprocess(
                 self, python_executable, temp_script_path, log_file_path, check_cancel

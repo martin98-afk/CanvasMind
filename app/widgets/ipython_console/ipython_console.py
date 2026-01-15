@@ -137,6 +137,10 @@ class EmbeddedIPythonConsole(QWidget):
         """执行代码"""
         self.console.execute(code, hidden)
 
+    def interrupt_kernel(self):
+        """中断正在运行的代码"""
+        return self.kernel_manager.interrupt_kernel()
+
     def start_kernel(self, python_exe_path=None):
         """启动内核"""
         if python_exe_path is None:
