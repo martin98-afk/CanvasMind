@@ -41,8 +41,7 @@ class FileSelectWidget(QtWidgets.QWidget):
         self.path_edit.setFixedWidth(200)
 
         # 浏览按钮 (根据模式选择图标或 ToolTip)
-        icon_name = "文件夹选择" if self._is_folder_mode else "文件选择"
-        self.btn_browse = TransparentToolButton(get_icon(icon_name))
+        self.btn_browse = TransparentToolButton(get_icon("文件选择"))
         self.btn_browse.setIconSize(QtCore.QSize(30, 30))
         self.btn_browse.setToolTip(placeholder)
         self.btn_browse.clicked.connect(self._on_browse)
