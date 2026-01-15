@@ -49,6 +49,7 @@ class Component(BaseComponent):
         """
         import cv2
         import os
+        from pathlib import Path
 
         video_path = inputs.video_path
         if not os.path.exists(video_path):
@@ -74,8 +75,9 @@ class Component(BaseComponent):
             # 按采样率跳过帧
             if frame_idx % sample_rate == 0:
                 # OpenCV 默认是 BGR，转换为 RGB 更通用
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frames.append(frame_rgb)
+                save_path = Path(f"{frame_idx}.jpg").resolve()
+                cv2.imwrite(save_path, frame)
+                frames.append(str(save_path))
                 total_read += 1
 
                 # 检查是否达到最大帧数限制

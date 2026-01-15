@@ -17,9 +17,9 @@ ConnectionType = base_module.ConnectionType
 
 class Component(BaseComponent):
     name = "Base64 转图片"
-    category = "数据转换"
+    category = "图像处理"
     description = "将 Base64 编码的字符串解码为图像文件"
-    requirements = ""
+    requirements = "Pillow"
     inputs = [
         PortDefinition(name="input1", label="Base64 字符串", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]

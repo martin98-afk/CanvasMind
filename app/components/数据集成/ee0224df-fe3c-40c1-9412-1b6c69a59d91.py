@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
-import pathlib
-base_path = pathlib.Path(__file__).parent.parent / "base.py"
+from pathlib import Path
+base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -16,17 +16,21 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "图片转base64编码"
-    category = "数据转换"
-    description = ""
+    name = "获取全局变量"
+    category = "数据集成"
+    description = "用于获取当前画布全局变量的具体数值"
     requirements = ""
     inputs = [
-        PortDefinition(name="input1", label="输入1", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="output1", label="输出1", type=ArgumentType.TEXT),
+        PortDefinition(name="output1", label="输出1", type=ArgumentType.JSON),
     ]
     properties = {
+        "prop1": PropertyDefinition(
+            type=PropertyType.VARIABLE,
+            default="全局变量",
+            label="属性1",
+        ),
     }
 
     def run(self, params, inputs=None):
@@ -35,12 +39,6 @@ class Component(BaseComponent):
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
-        import base64
-        from io import BytesIO
-        buffer = BytesIO()
-        inputs.input1.save(buffer, format=inputs.input1.format if inputs.input1.format else "PNG")
-        img_bytes = buffer.getvalue()
-        base64str = base64.b64encode(img_bytes).decode("utf-8")
         return {
-            "output1": base64str
+            "output1": self.global_variable.get(params.prop1)
         }

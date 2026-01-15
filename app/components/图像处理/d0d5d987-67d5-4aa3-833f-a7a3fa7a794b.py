@@ -15,29 +15,18 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType
 
 
-class DynamicComponent(BaseComponent):
-    name = "图像resize"
-    category = "数据处理"
-    description = "由用户动态生成的组件"
-    requirements = "Pillow"
-
+class Component(BaseComponent):
+    name = "图片转base64编码"
+    category = "图像处理"
+    description = ""
+    requirements = ""
     inputs = [
-        PortDefinition(name="input1", label="input1", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
+        PortDefinition(name="input1", label="输入1", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="output1", label="output1", type=ArgumentType.IMAGE),
+        PortDefinition(name="output1", label="输出1", type=ArgumentType.TEXT),
     ]
     properties = {
-        "w": PropertyDefinition(
-            type=PropertyType.INT,
-            default=512,
-            label="调整后宽",
-        ),
-        "h": PropertyDefinition(
-            type=PropertyType.INT,
-            default=512,
-            label="调整后高",
-        ),
     }
 
     def run(self, params, inputs=None):
@@ -46,7 +35,12 @@ class DynamicComponent(BaseComponent):
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
-        from PIL import Image
+        import base64
+        from io import BytesIO
+        buffer = BytesIO()
+        inputs.input1.save(buffer, format=inputs.input1.format if inputs.input1.format else "PNG")
+        img_bytes = buffer.getvalue()
+        base64str = base64.b64encode(img_bytes).decode("utf-8")
         return {
-            "output1": inputs.input1.resize((params.w, params.h), Image.Resampling.NEAREST)
+            "output1": base64str
         }
