@@ -25,7 +25,7 @@ def create_branch_node(parent_window):
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
             self.parent_window = parent_window
-            self.set_icon(":/icons/条件分支.svg")
+            self.set_icon(":/icons/条件分支.png")
             self.model.port_deletion_allowed = True
             self.view.rename_signal.connect(parent_window.rename_node_vars)
             # 条件索引 → 实际输出端口名的映射

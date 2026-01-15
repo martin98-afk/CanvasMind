@@ -48,7 +48,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
         super().__init__(qgraphics_item)
         self.signals = NodeSignals()
         self.parent_window = None
-
+        self.set_icon(":/icons/同心圆.svg")
         # --- 核心数据存储 ---
         self._output_values = {}
         self._input_values = {}
@@ -75,12 +75,15 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self.model.add_property("persistent_id", str(uuid.uuid4()))
         # 记录节点是否被折叠
         self.model.add_property("_collapsed", False)
-
+        self.model.add_property("_exec_mode", "subprocess")
         # 绑定核心信号
         if hasattr(self.view, "collapsed_toggle"):
             self.view.set_align("center")
             self.view.collapsed_toggle.connect(
                 lambda toggled: self.model.set_property("_collapsed", toggled)
+            )
+            self.view.exec_mode_signal.connect(
+                lambda mode: self.model.set_property("_exec_mode", mode)
             )
             self.view.center_signal.connect(lambda: self.parent_window.center_to([self]))
             self.view.delete_signal.connect(lambda: self.parent_window.delete_node(self))

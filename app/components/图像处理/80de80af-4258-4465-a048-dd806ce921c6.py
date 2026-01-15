@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class Component(BaseComponent):
     name = "图片转array"
-    category = "数据转换"
+    category = "图像处理"
     description = "将输入的图片转换为 NumPy 数组格式"
     requirements = "numpy, pillow"
     inputs = [

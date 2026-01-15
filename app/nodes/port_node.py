@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import uuid
+
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 from NodeGraphQt.qgraphics.node_port_in import PortInputNodeItem
 from NodeGraphQt.qgraphics.node_port_out import PortOutputNodeItem
@@ -6,7 +8,7 @@ from NodeGraphQt.qgraphics.node_port_out import PortOutputNodeItem
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 
 
-class CustomPortInputNode(PortInputNode, BasicNodeWithGlobalProperty):
+class CustomPortInputNode(PortInputNode):
     __identifier__ = 'control_flow'
     category = "控制流"
     NODE_NAME = '输入端口'
@@ -15,6 +17,7 @@ class CustomPortInputNode(PortInputNode, BasicNodeWithGlobalProperty):
 
     def __init__(self, qgraphics_item=None, parent_port=None):
         super(CustomPortInputNode, self).__init__(qgraphics_item or PortInputNodeItem)
+        self.model.add_property("persistent_id", str(uuid.uuid4()))
         self._parent_port = parent_port
         self.add_output()
         self._output_values = {}
@@ -26,7 +29,7 @@ class CustomPortInputNode(PortInputNode, BasicNodeWithGlobalProperty):
         return self._output_values.get(name)
 
 
-class CustomPortOutputNode(PortOutputNode, BasicNodeWithGlobalProperty):
+class CustomPortOutputNode(PortOutputNode):
     __identifier__ = 'control_flow'
     category = "控制流"
     NODE_NAME = '输出端口'
@@ -35,6 +38,7 @@ class CustomPortOutputNode(PortOutputNode, BasicNodeWithGlobalProperty):
 
     def __init__(self, qgraphics_item=None, parent_port=None):
         super(CustomPortOutputNode, self).__init__(qgraphics_item or PortOutputNodeItem)
+        self.model.add_property("persistent_id", str(uuid.uuid4()))
         self._parent_port = parent_port
         self.add_input(multi_input=True)
         self._input_values = {}

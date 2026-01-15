@@ -136,12 +136,13 @@ class Component(BaseComponent):
         # 7. 开始训练
         try:
             results = model.train(
-                data=str(data_yaml),
+                data=str(data_yaml.resolve()),
                 epochs=params.epochs,
                 imgsz=params.img_size,
                 batch=params.batch_size,
                 device=device,
                 save=True,
+                amp=False,
                 save_period=10,
                 project=Path("runs"),
                 name=params.task_name

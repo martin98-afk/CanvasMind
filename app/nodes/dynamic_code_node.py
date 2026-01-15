@@ -531,7 +531,7 @@ def create_dynamic_code_node(parent_window=None):
                     with open(local_script_path, 'w', encoding='utf-8') as f:
                         f.write(script_content)
 
-                    if kernel_manager:
+                    if self.model.get_property("_exec_mode") == "ipython":
                         self._execute_via_ipython(local_script_path, result_path, error_path, log_file_path,
                                                   check_cancel, kernel_manager)
                     else:
