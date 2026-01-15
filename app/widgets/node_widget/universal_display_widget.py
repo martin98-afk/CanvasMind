@@ -138,9 +138,6 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
             self.stack.setCurrentWidget(target_widget)
             target_widget.set_value(value)
 
-            self.updateGeometry()
-            self.sizeHintChanged.emit()
-
     def play(self):
         """统一播放接口"""
         curr = self.stack.currentWidget()

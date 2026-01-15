@@ -81,13 +81,13 @@ class JsonTreeWidget(QtWidgets.QTreeWidget):
             self._current_size = QSize(200, 150)
             self.setFixedSize(self._current_size)
             self.sizeHintChanged.emit()
-            self.update()
+            self.updateGeometry()
             return
         self.setVisible(True)
         self._current_size = QtCore.QSize(500, 400)
         self.setFixedSize(self._current_size)
         self.sizeHintChanged.emit()
-        self.update()
+        self.updateGeometry()
         self.setUpdatesEnabled(False)
         self._populate_tree(data, self.invisibleRootItem())
         self.expandToDepth(1)  # 默认展开一两层，不要全部展开以免数据量大时混乱

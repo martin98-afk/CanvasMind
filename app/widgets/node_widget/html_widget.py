@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize, QUrl, pyqtSignal
 from Qt import QtWidgets
 from loguru import logger
@@ -61,6 +62,7 @@ class HtmlWidget(QtWidgets.QWidget):
             self.view.setMinimumSize(content_w, content_h)
 
         self.sizeHintChanged.emit()
+        self.updateGeometry()
         self.valueChanged.emit(self._html)
 
     def _extract_size_from_html(self, html: str):
@@ -93,9 +95,15 @@ class HtmlWidgetWrapper(CustomNodeBaseWidget):
         widget.valueChanged.connect(self.on_value_changed)
         # ✅ 监听尺寸请求
         widget.sizeHintChanged.connect(self._update_node)
+        self._update_timer = QtCore.QTimer()
+        self._update_timer.setSingleShot(True)
+        self._update_timer.timeout.connect(self._real_update_node)
 
     def _update_node(self):
-        if self.node.graph is not None:
+        self._update_timer.start(50)
+
+    def _real_update_node(self):
+        if self.node and self.node.graph is not None:
             self.node.view.set_proxy_mode(False)
             self.node.view.draw_node()
 

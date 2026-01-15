@@ -8,7 +8,7 @@ from qfluentwidgets import (CardWidget, BodyLabel, ProgressBar, TransparentToolB
                             StrongBodyLabel, ComboBox, SpinBox, SmoothScrollArea,
                             IconWidget, FluentIcon, CaptionLabel)
 
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, get_port_node
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
 from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
 from app.widgets.side_dock_area.plugins.property_panel.internal_node_list import InternalNodeList
@@ -327,12 +327,21 @@ class FlowControlPanelWidget(QWidget):
             if key in ['loop_nums', 'max_iterations']:
                 self.update_data(self.current_node)
 
+    def _get_input_data(self, backdrop):
+        data = []
+        for input_port in backdrop.input_ports():
+            for out_port in input_port.connected_ports():
+                upstream = get_port_node(out_port)
+                if upstream and hasattr(upstream, '_output_values'):
+                    data.append(upstream._output_values.get(out_port.name(), None))
+        return data if len(data) != 1 else data[0]
+
     def _calculate_total(self, node, flow_type):
         if flow_type == "loop":
             mode = node.model.get_property("loop_mode")
             return node.model.get_property("loop_nums") if mode == 'count' else node.model.get_property(
                 "max_iterations")
-        return node.model.get_property("loop_nums") or 0
+        return len(self._get_input_data(node)) or 0
 
     def _on_internal_node_clicked(self, item):
         row = self._backdrop_internal_nodes_list.row(item)

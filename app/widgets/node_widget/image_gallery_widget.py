@@ -117,7 +117,7 @@ class ImageGalleryWidget(QtWidgets.QScrollArea):
             self._current_size = QSize(total_w, total_h)
             self.setFixedSize(self._current_size)
             self.sizeHintChanged.emit()
-            self.update()
+            self.updateGeometry()
 
     def set_value_none(self):
         """恢复最初大小并强制内部容器收缩"""
@@ -127,7 +127,7 @@ class ImageGalleryWidget(QtWidgets.QScrollArea):
 
         # 通知 Wrapper 和 NodeGraph 更新布局
         self.sizeHintChanged.emit()
-        self.update()
+        self.updateGeometry()
 
     def sizeHint(self):
         return self._current_size
