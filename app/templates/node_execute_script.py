@@ -55,6 +55,9 @@ def run_node():
     sys.stderr = StreamToLogger(raw_logger.error)
 
     try:
+        node_output_dir = Path(WORKFLOW_PATH) / "workspace" / NODE_ID
+        node_output_dir.mkdir(parents=True, exist_ok=True)
+        os.chdir(str(node_output_dir))
         # 2. 内存复用逻辑（类与实例）
         comp_instance = None
         module = sys.modules.get(UNIQUE_MODULE_KEY)
