@@ -1,131 +1,165 @@
 # coding:utf-8
-from PyQt5.QtCore import Qt, QPoint, QSize
-from PyQt5.QtGui import QPainter, QColor, QPen, QFont
+import sys
+from PyQt5.QtCore import Qt, QPoint, QSize, QRect
+from PyQt5.QtGui import QPainter, QColor, QPen, QFont, QBrush
 from PyQt5.QtWidgets import (
     QComboBox, QStyle, QStyleOptionComboBox, QStyleFactory,
-    QStyledItemDelegate
+    QStyledItemDelegate, QAbstractItemView, QFrame
 )
-from qfluentwidgets import FluentStyleSheet, isDarkTheme, themeColor
+from qfluentwidgets import isDarkTheme, themeColor
 
 
-class FluentComboBoxDelegate(QStyledItemDelegate):
+class ProfessionalComboBoxDelegate(QStyledItemDelegate):
+    """
+    专业级下拉项委托：强化选中标记（左侧竖条 + 背景高亮）
+    """
+
     def sizeHint(self, option, index):
-        original = super().sizeHint(option, index)
-        # 强制高度为 36px，宽度保持不变
-        return QSize(original.width(), 36)
+        return QSize(super().sizeHint(option, index).width(), 34)
 
     def paint(self, painter, option, index):
-        if option.state & QStyle.State_Selected:
-            painter.fillRect(option.rect, themeColor())
-            painter.setPen(Qt.white)
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # 1. 获取状态逻辑
+        view = option.widget
+        if not view:
+            return super().paint(painter, option, index)
+
+        # 向上查找 ComboBox 实例以获取当前选中索引
+        combo = view.parent()
+        while combo and not isinstance(combo, QComboBox):
+            combo = combo.parent()
+
+        is_current = (index.row() == combo.currentIndex()) if combo else False
+        is_hover = (option.state & QStyle.State_Selected)
+
+        rect = option.rect
+
+        # 2. 绘制背景层
+        if is_hover:
+            # 悬停背景：浅灰色
+            bg_color = QColor(255, 255, 255, 15) if isDarkTheme() else QColor(0, 0, 0, 10)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(bg_color)
+            painter.drawRoundedRect(rect.adjusted(4, 2, -4, -2), 5, 5)
+
+        if is_current:
+            # 选中背景：主题色半透明
+            bg_color = themeColor()
+            bg_color.setAlpha(45)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(bg_color)
+            painter.drawRoundedRect(rect.adjusted(4, 2, -4, -2), 5, 5)
+
+        # 3. 绘制左侧选中标记 (竖条指示器)
+        if is_current:
+            painter.setBrush(themeColor())
+            painter.setPen(Qt.NoPen)
+            # 绘制高度比例协调的圆角竖条
+            indicator_rect = QRect(rect.x() + 7, rect.y() + 8, 4, rect.height() - 16)
+            painter.drawRoundedRect(indicator_rect, 2, 2)
+
+        # 4. 绘制文本内容
+        if is_current:
+            # 选中项文字：加粗，颜色高亮
+            painter.setPen(QColor(255, 255, 255) if isDarkTheme() else themeColor())
+            painter.setFont(QFont('Segoe UI', 10, QFont.Bold))
         else:
-            painter.setPen(Qt.white if isDarkTheme() else Qt.black)
-        painter.setFont(QFont('Consolas', 12))
-        painter.drawText(option.rect, Qt.AlignVCenter | Qt.AlignLeft, str(index.data()))
+            # 非选中项文字
+            painter.setPen(QColor(210, 210, 210) if isDarkTheme() else QColor(50, 50, 50))
+            painter.setFont(QFont('Segoe UI', 10))
+
+        # 文字整体向右偏移，为左侧指示条留出呼吸空间
+        text_rect = rect.adjusted(24, 0, -10, 0)
+        painter.drawText(text_rect, Qt.AlignVCenter | Qt.AlignLeft, str(index.data()))
+
+        painter.restore()
 
 
 class CustomComboBox(QComboBox):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # 关键：绕过 Fusion 的下拉 bug
-        from PyQt5.QtWidgets import QStyleFactory
+        # 强制使用 Windows 风格以获得最佳的 UI 可控性
         self.setStyle(QStyleFactory.create("Windows"))
+        self.setItemDelegate(ProfessionalComboBoxDelegate(self))
 
-        font = QFont('Consolas', 12)
-        self.setFont(font)
-        FluentStyleSheet.COMBO_BOX.apply(self)
-        self.setStyleSheet(self._getFluentStyle())
-
-        # 设置最大可见项
-        self.setMaxVisibleItems(8)
-        self.setFixedHeight(32)
-        # 设置 delegate
-        self.setItemDelegate(FluentComboBoxDelegate(self))
-
-        # ✅ 现代深色滚动条样式（仅下拉列表）
+        # 下拉列表配置
         view = self.view()
-        scrollbar_style = """
-            QScrollBar:vertical {
-                background: transparent;
-                width: 8px;
-                margin: 0px 0px 0px 0px;
-                border: none;
-            }
-            QScrollBar::handle:vertical {
-                background: rgba(255, 255, 255, 80);
-                min-height: 20px;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: rgba(255, 255, 255, 160);
-            }
-            QScrollBar::handle:vertical:pressed {
-                background: rgba(255, 255, 255, 200);
-            }
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {
-                height: 0px;
-                background: none;
-            }
-            QScrollBar::add-page:vertical,
-            QScrollBar::sub-page:vertical {
-                background: none;
-            }
-            QScrollBar::corner {
-                background: transparent;
-            }
-        """
-        view.setStyleSheet(scrollbar_style)
+        view.setFrameShape(QFrame.NoFrame)
+        # 允许下拉框圆角区域透明
+        view.viewport().setAttribute(Qt.WA_TranslucentBackground)
 
-        # 可选：设置下拉窗口背景（保持与滚动条协调）
-        popup = view.window()
-        if popup:
-            popup.setStyleSheet("QFrame { background-color: #2d2d2d; border: 1px solid #444; border-radius: 6px; }")
+        self.setFixedHeight(35)
+        self._setup_style()
 
-    def _getFluentStyle(self):
-        bg = "#ffffff" if not isDarkTheme() else "rgba(32, 32, 32, 100)"
-        border = "#d3d3d3" if not isDarkTheme() else "#3c3c3c"
-        text = "#000000" if not isDarkTheme() else "#ffffff"
-        theme_hex = themeColor().name()
-        return f"""
+    def _setup_style(self):
+        dark = isDarkTheme()
+        t_color = themeColor().name()
+
+        # 定义颜色变量
+        bg = "#2D2D2D" if dark else "#FFFFFF"
+        border = "#1A1A1A" if dark else "#DCDCDC"
+        text = "#FFFFFF" if dark else "#000000"
+        popup_bg = "#252525" if dark else "#FFFFFF"
+
+        self.setStyleSheet(f"""
             QComboBox {{
                 background-color: {bg};
                 border: 1px solid {border};
-                border-radius: 4px;
-                padding: 4px 20px 4px 10px;
+                border-radius: 6px;
+                padding: 2px 30px 2px 12px;
                 color: {text};
-                font-size: 14px;
-                min-height: 20px;
+                font-family: 'Segoe UI', 'Microsoft YaHei';
+                font-size: 15px;
             }}
             QComboBox:hover {{
-                border-color: {theme_hex};
+                border: 1px solid {t_color};
+                background-color: {"#353535" if dark else "#F9F9F9"};
+            }}
+            QComboBox:on {{
+                border-bottom-left-radius: 0px;
+                border-bottom-right-radius: 0px;
             }}
             QComboBox::drop-down {{
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-                border-left: 1px solid {border};
-                border-top-right-radius: 4px;
-                border-bottom-right-radius: 4px;
+                border: none;
+                width: 30px;
             }}
-            QComboBox::down-arrow {{ image: none; }}
-        """
+            /* 下拉框容器样式 */
+            QAbstractItemView {{
+                background-color: {popup_bg};
+                border: 1px solid {t_color if dark else border};
+                border-radius: 6px;
+                outline: 0px;
+                padding: 4px 0px;
+            }}
+        """)
+
+        # 滚动条美化
+        self.view().verticalScrollBar().setStyleSheet("""
+            QScrollBar:vertical { background: transparent; width: 4px; margin-right: 2px; }
+            QScrollBar::handle:vertical { background: rgba(120, 120, 120, 100); border-radius: 2px; }
+            QScrollBar::add-line, QScrollBar::sub-line { height: 0px; }
+        """)
 
     def paintEvent(self, event):
+        """ 绘制工业感十足的 V 型细线箭头 """
         super().paintEvent(event)
         painter = QPainter(self)
-        painter.setRenderHints(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # 计算箭头位置
         opt = QStyleOptionComboBox()
         self.initStyleOption(opt)
         rect = self.style().subControlRect(QStyle.CC_ComboBox, opt, QStyle.SC_ComboBoxArrow, self)
-        cx, cy = rect.center().x(), rect.center().y()
-        color = QColor("#646464") if not isDarkTheme() else QColor("#ffffff")
-        painter.setPen(QPen(color, 1.5))
-        painter.setBrush(color)
-        points = [
-            QPoint(cx - 5, cy - 2),
-            QPoint(cx + 5, cy - 2),
-            QPoint(cx, cy + 3)
-        ]
-        painter.drawPolygon(points)
+
+        # 箭头颜色交互：悬停变色
+        color = themeColor() if self.underMouse() else (
+            QColor(160, 160, 160) if isDarkTheme() else QColor(100, 100, 100))
+        painter.setPen(QPen(color, 1.6, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+
+        center = rect.center()
+        # 绘制简练的 V 型线
+        painter.drawLine(center.x() - 4, center.y() - 1, center.x(), center.y() + 3)
+        painter.drawLine(center.x(), center.y() + 3, center.x() + 4, center.y() - 1)

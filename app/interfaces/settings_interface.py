@@ -196,15 +196,15 @@ class SettingInterface(ScrollArea):
     def setup_canvas_run_settings(self):
         """画布详细设置"""
         self.canvasGroup = SettingCardGroup(" 画布运行设置", self.view)
-        self.runModeCard = OptionsSettingCard(
-            self.cfg.canvas_run_mode,
-            get_icon("运行模式"),
-            "画布运行方式",
-            "选择画布节点运行方式，ipython：在同一环境下运行，初始化慢、执行快、可调试，有环境污染风险；subprocess：独立环境运行，初始化、执行慢，无环境污染风险。",
-            texts=["ipython运行", "subprocess运行"],
-            parent=self.canvasGroup
-        )
-        self.runModeCard.optionChanged.connect(self.onConfigChanged)
+        # self.runModeCard = OptionsSettingCard(
+        #     self.cfg.canvas_run_mode,
+        #     get_icon("运行模式"),
+        #     "画布运行方式",
+        #     "选择画布节点运行方式，ipython：在同一环境下运行，初始化慢、执行快、可调试，有环境污染风险；subprocess：独立环境运行，初始化、执行慢，无环境污染风险。",
+        #     texts=["ipython运行", "subprocess运行"],
+        #     parent=self.canvasGroup
+        # )
+        # self.runModeCard.optionChanged.connect(self.onConfigChanged)
 
         self.nodeTimeoutCard = RangeSettingCard(
             self.cfg.node_run_timeout,
@@ -233,7 +233,7 @@ class SettingInterface(ScrollArea):
         )
         self.parallelNumCard.valueChanged.connect(self.onConfigChanged)
 
-        self.canvasGroup.addSettingCard(self.runModeCard)
+        # self.canvasGroup.addSettingCard(self.runModeCard)
         self.canvasGroup.addSettingCard(self.nodeTimeoutCard)
         self.canvasGroup.addSettingCard(self.runParallelCard)
         self.canvasGroup.addSettingCard(self.parallelNumCard)

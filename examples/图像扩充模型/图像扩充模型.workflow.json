@@ -1,0 +1,787 @@
+{
+  "version": "1.0",
+  "graph": {
+    "graph": {
+      "layout_direction": 0,
+      "acyclic": true,
+      "pipe_collision": false,
+      "pipe_slicing": true,
+      "pipe_style": 2,
+      "accept_connection_types": "{}",
+      "reject_connection_types": "{}"
+    },
+    "nodes": {
+      "0x1492324a440": {
+        "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
+        "icon": ":/icons/同心圆.svg",
+        "name": "文件上传",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 585.828125,
+        "height": 468.0,
+        "pos": [
+          -40.96064719936544,
+          120.25546245651304
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "385eb210-ecb4-4806-8d26-94cad76a9ecf",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "file_upload": "canvas_files\\workflows\\图像扩充模型\\workspace\\385eb210-ecb4-4806-8d26-94cad76a9ecf\\upload\\e01a964558f44bd44773a8bf440e2cf2.jpeg",
+          "preview_file": null
+        }
+      },
+      "0x1492324a860": {
+        "type_": "dynamic.StatusDynamicNode_55e89122-98ec-431c-b539-d39b13c0e039",
+        "icon": ":/icons/同心圆.svg",
+        "name": "图像尺寸调整",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 425.453125,
+        "height": 285.0,
+        "pos": [
+          752.855140702799,
+          146.9933613246228
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "e2aca9ac-a116-4e8e-ba16-265da71be907",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "w": 512,
+          "h": 512,
+          "keep_ratio": false,
+          "fill_color": "black"
+        }
+      },
+      "0x1492324b880": {
+        "type_": "visualize.MediaNode",
+        "icon": ":/icons/多媒体.svg",
+        "name": "多媒体展示节点",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 593.3125,
+        "height": 593.0,
+        "pos": [
+          1308.2544169228888,
+          -841.4729114614033
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "260be3ad-2baa-4fca-9f34-ac6767883feb",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\e2aca9ac-a116-4e8e-ba16-265da71be907\\result\\image_e2aca9ac-a116-4e8e-ba16-265da71be907_resized_image.png"
+        }
+      },
+      "0x1492324bc70": {
+        "type_": "dynamic.StatusDynamicNode_3ad2c11e-e33f-48b7-ba30-060551477952",
+        "icon": ":/icons/同心圆.svg",
+        "name": "图像扩图填充",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 417.875,
+        "height": 343.0,
+        "pos": [
+          1484.9649120286062,
+          146.9933613246228
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "ce617379-f4c2-4082-9053-ad89c8287f36",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "left": 200,
+          "right": 200,
+          "top": 200,
+          "bottom": 200,
+          "feathering": 50,
+          "debug_code": "# -*- coding: utf-8 -*-\nimport importlib.util\nfrom pathlib import Path\nbase_path = Path(__file__).parent.parent / \"base.py\"\nspec = importlib.util.spec_from_file_location(\"base\", str(base_path))\nbase_module = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(base_module)\n\n# 导入所需项目\nBaseComponent = base_module.BaseComponent\nPortDefinition = base_module.PortDefinition\nPropertyDefinition = base_module.PropertyDefinition\nPropertyType = base_module.PropertyType\nArgumentType = base_module.ArgumentType\nConnectionType = base_module.ConnectionType\n\n\nclass ImagePadForOutpainting(BaseComponent):\n    name = \"图像扩图填充\"\n    category = \"图像处理\"\n    description = \"为图像添加边距，生成用于扩图的画布和遮罩\"\n    requirements = \"Pillow\"\n    \n    inputs = [\n        PortDefinition(name=\"image\", label=\"输入图像\", type=ArgumentType.IMAGE),\n    ]\n    outputs = [\n        PortDefinition(name=\"padded_image\", label=\"扩图画布\", type=ArgumentType.IMAGE),\n        PortDefinition(name=\"mask\", label=\"遮罩图\", type=ArgumentType.IMAGE),\n    ]\n    \n    properties = {\n        \"left\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=0,\n            label=\"左扩展\",\n        ),\n        \"right\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=0,\n            label=\"右扩展\",\n        ),\n        \"top\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=0,\n            label=\"上扩展\",\n        ),\n        \"bottom\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=0,\n            label=\"下扩展\",\n        ),\n        \"feathering\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=20,\n            label=\"边缘羽化\",\n        ),\n    }\n\n    def run(self, params, inputs=None):\n        from PIL import Image, ImageOps, ImageFilter\n        import numpy as np\n\n        # 1. 获取输入图像并转为 RGB（防止 RGBA 导致的透明度干扰）\n        src_img = inputs.get(\"image\")\n        if src_img is None:\n            raise ValueError(\"未检测到输入图像\")\n        \n        src_img = src_img.convert(\"RGB\") \n        \n        left = int(params.get(\"left\", 0))\n        right = int(params.get(\"right\", 0))\n        top = int(params.get(\"top\", 0))\n        bottom = int(params.get(\"bottom\", 0))\n        \n        new_width = src_img.width + left + right\n        new_height = src_img.height + top + bottom\n\n        # 2. 创建扩图后的画布 (Padded Image)\n        # 建议默认用黑色，因为采样器对黑色背景的重绘更稳定\n        fill_color = (0, 0, 0) if params.get(\"fill_color\") == \"black\" else (255, 255, 255)\n        padded_img = Image.new(\"RGB\", (new_width, new_height), fill_color)\n        \n        # 将原图粘贴到中心指定位置\n        # padded_img.paste(src_img, (left, top))\n\n        # 3. 创建遮罩 (Mask) \n        # 逻辑：原图区域为黑色(0, 0, 0)，需要扩绘的区域为白色(255, 255, 255)\n        # 注意：这里先创建一个全白的图\n        mask = Image.new(\"L\", (new_width, new_height), 255)\n        \n        # 在原图对应的位置，画一个纯黑的矩形\n        # 这样采样器就知道：黑色的地方不要动，白色的地方重新画\n        black_rect = Image.new(\"L\", (src_img.width, src_img.height), 0)\n        mask.paste(black_rect, (left, top))\n\n        # 4. 可选：对遮罩边缘做微量羽化，防止扩图处有硬连接痕迹\n        mask = mask.filter(ImageFilter.GaussianBlur(radius=5))\n\n        # 【核心修正】：为了让 UI 预览正常，将 L 模式的遮罩转回 RGB 输出\n        # 否则某些低代码前端会将灰度图识别错误\n        mask_rgb = mask.convert(\"RGB\")\n        print(src_img.size)\n        return {\n            \"padded_image\": src_img, # 这是一个中间有原图，四周是黑边的图\n            \"mask\": mask_rgb            # 这是一个中间是黑块，四周是白边的图\n        }"
+        }
+      },
+      "0x14907e34ee0": {
+        "type_": "visualize.MediaNode",
+        "icon": ":/icons/多媒体.svg",
+        "name": "多媒体展示节点 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 593.3125,
+        "height": 593.0,
+        "pos": [
+          2109.32207500852,
+          -1120.6988491952595
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "e35347a5-a82f-43f4-93da-043e356bdc9e",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\ce617379-f4c2-4082-9053-ad89c8287f36\\result\\image_ce617379-f4c2-4082-9053-ad89c8287f36_padded_image.png"
+        }
+      },
+      "0x14907e35510": {
+        "type_": "visualize.MediaNode",
+        "icon": ":/icons/多媒体.svg",
+        "name": "多媒体展示节点 2",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 593.3125,
+        "height": 593.0,
+        "pos": [
+          2109.32207500852,
+          -450.43203163500914
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "249790a8-986c-4164-89de-ef790718b037",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\ce617379-f4c2-4082-9053-ad89c8287f36\\result\\image_ce617379-f4c2-4082-9053-ad89c8287f36_mask.png"
+        }
+      },
+      "0x14907e34b80": {
+        "type_": "dynamic.StatusDynamicNode_7709d64e-30d4-4db0-b08c-2ae983988848",
+        "icon": ":/icons/同心圆.svg",
+        "name": "局部重绘采样器",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 614.21875,
+        "height": 777.0,
+        "pos": [
+          2109.32207500852,
+          314.42947079326404
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "b41e182f-6146-417c-9675-1a3dbcbda394",
+          "_collapsed": false,
+          "_exec_mode": "ipython",
+          "version": "latest",
+          "model_id": "runwayml/stable-diffusion-inpainting",
+          "scheduler": "Euler a",
+          "steps": 33.0,
+          "cfg": 7.0,
+          "denoise": 1.0,
+          "seed": -1,
+          "preview_step": 5,
+          "preview_output": null
+        }
+      },
+      "0x14907e37370": {
+        "type_": "visualize.MediaNode",
+        "icon": ":/icons/多媒体.svg",
+        "name": "多媒体展示节点 3",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 593.3125,
+        "height": 603.0,
+        "pos": [
+          3797.3280509128367,
+          146.9933613246228
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "e09a9781-471c-4ab8-a377-b897bde268c1",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "media_display": null
+        }
+      },
+      "0x14907e377f0": {
+        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+        "icon": ":/icons/同心圆.svg",
+        "name": "正向提示词",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 389.890625,
+        "height": 279.0,
+        "pos": [
+          1484.9649120286062,
+          598.5419049559772
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "2317a883-a9bf-415c-be89-43b042847065",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "input": "Cinematic wide shot of majestic snow-capped mountains, crystal clear lake reflection, sunrise lighting, hyper-realistic, 8k resolution"
+        }
+      },
+      "0x14907e603d0": {
+        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+        "icon": ":/icons/同心圆.svg",
+        "name": "负向提示词",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 389.890625,
+        "height": 279.0,
+        "pos": [
+          1484.9649120286062,
+          949.4312263299084
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "9bbf21b5-a4e6-4880-aa57-ada56406d498",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "input": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, missing arms, long neck, humpbacked, deformed, disfigured, poorly drawn face, mutation, mutated, extra limbs, mutated hands, fused fingers, too many fingers, floating limbs, disconnected limbs, malformed hands, out of focus, long body."
+        }
+      },
+      "0x14907e37fa0": {
+        "type_": "dynamic.StatusDynamicNode_4b0dd991-a604-4913-9fda-3f8b0ca1e55a",
+        "icon": ":/icons/同心圆.svg",
+        "name": "AI图像超分",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 418.8125,
+        "height": 115.0,
+        "pos": [
+          3196.8564477373407,
+          314.42947079326404
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "9ae2af8c-0fb4-45d3-a35f-e0cd7b4a6d4d",
+          "_collapsed": false,
+          "_exec_mode": "ipython",
+          "version": "latest",
+          "tile_size": 512
+        }
+      },
+      "0x14907e37c70": {
+        "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
+        "icon": ":/icons/同心圆.svg",
+        "name": "文件上传 1",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 208.8125,
+        "height": 83.0,
+        "pos": [
+          2860.506092955337,
+          598.5419049559772
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "faebe2c4-1e5c-4d10-aee0-0a3838f068bf",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "file_upload": "canvas_files\\workflows\\图像扩充模型\\workspace\\faebe2c4-1e5c-4d10-aee0-0a3838f068bf\\upload\\RealESRGAN_x4plus.pth"
+        }
+      }
+    },
+    "connections": [
+      {
+        "out": [
+          "0x1492324a440",
+          "file"
+        ],
+        "in": [
+          "0x1492324a860",
+          "image"
+        ]
+      },
+      {
+        "out": [
+          "0x1492324a860",
+          "resized_image"
+        ],
+        "in": [
+          "0x1492324b880",
+          "data"
+        ]
+      },
+      {
+        "out": [
+          "0x1492324a860",
+          "resized_image"
+        ],
+        "in": [
+          "0x1492324bc70",
+          "image"
+        ]
+      },
+      {
+        "out": [
+          "0x1492324bc70",
+          "padded_image"
+        ],
+        "in": [
+          "0x14907e34ee0",
+          "data"
+        ]
+      },
+      {
+        "out": [
+          "0x1492324bc70",
+          "padded_image"
+        ],
+        "in": [
+          "0x14907e34b80",
+          "image"
+        ]
+      },
+      {
+        "out": [
+          "0x1492324bc70",
+          "padded_image"
+        ],
+        "in": [
+          "0x14907e37370",
+          "data"
+        ]
+      },
+      {
+        "out": [
+          "0x1492324bc70",
+          "mask"
+        ],
+        "in": [
+          "0x14907e35510",
+          "data"
+        ]
+      },
+      {
+        "out": [
+          "0x1492324bc70",
+          "mask"
+        ],
+        "in": [
+          "0x14907e34b80",
+          "mask"
+        ]
+      },
+      {
+        "in": [
+          "0x14907e34b80",
+          "prompt"
+        ],
+        "out": [
+          "0x14907e377f0",
+          "text"
+        ]
+      },
+      {
+        "in": [
+          "0x14907e34b80",
+          "negative_prompt"
+        ],
+        "out": [
+          "0x14907e603d0",
+          "text"
+        ]
+      },
+      {
+        "out": [
+          "0x14907e34b80",
+          "output_image"
+        ],
+        "in": [
+          "0x14907e37fa0",
+          "image_in"
+        ]
+      },
+      {
+        "in": [
+          "0x14907e37370",
+          "data"
+        ],
+        "out": [
+          "0x14907e37fa0",
+          "image_out"
+        ]
+      },
+      {
+        "in": [
+          "0x14907e37fa0",
+          "model"
+        ],
+        "out": [
+          "0x14907e37c70",
+          "file"
+        ]
+      }
+    ]
+  },
+  "runtime": {
+    "environment": {
+      "name": "3.11",
+      "type": "local",
+      "path": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe"
+    },
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe",
+    "node_id2stable_key": {
+      "0x1492324a440": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传",
+      "0x1492324a860": "55e89122-98ec-431c-b539-d39b13c0e039||图像尺寸调整",
+      "0x1492324b880": "unknown||多媒体展示节点",
+      "0x1492324bc70": "3ad2c11e-e33f-48b7-ba30-060551477952||图像扩图填充",
+      "0x14907e34ee0": "unknown||多媒体展示节点 1",
+      "0x14907e35510": "unknown||多媒体展示节点 2",
+      "0x14907e34b80": "7709d64e-30d4-4db0-b08c-2ae983988848||局部重绘采样器",
+      "0x14907e37370": "unknown||多媒体展示节点 3",
+      "0x14907e377f0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||正向提示词",
+      "0x14907e603d0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||负向提示词",
+      "0x14907e37fa0": "4b0dd991-a604-4913-9fda-3f8b0ca1e55a||AI图像超分",
+      "0x14907e37c70": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1"
+    },
+    "node_states": {
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传": "success",
+      "55e89122-98ec-431c-b539-d39b13c0e039||图像尺寸调整": "success",
+      "unknown||多媒体展示节点": "success",
+      "3ad2c11e-e33f-48b7-ba30-060551477952||图像扩图填充": "success",
+      "unknown||多媒体展示节点 1": "success",
+      "unknown||多媒体展示节点 2": "success",
+      "7709d64e-30d4-4db0-b08c-2ae983988848||局部重绘采样器": "success",
+      "unknown||多媒体展示节点 3": "success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||正向提示词": "success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||负向提示词": "success",
+      "4b0dd991-a604-4913-9fda-3f8b0ca1e55a||AI图像超分": "success",
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1": "success"
+    },
+    "node_inputs": {
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传": {},
+      "55e89122-98ec-431c-b539-d39b13c0e039||图像尺寸调整": {},
+      "unknown||多媒体展示节点": {},
+      "3ad2c11e-e33f-48b7-ba30-060551477952||图像扩图填充": {},
+      "unknown||多媒体展示节点 1": {},
+      "unknown||多媒体展示节点 2": {},
+      "7709d64e-30d4-4db0-b08c-2ae983988848||局部重绘采样器": {},
+      "unknown||多媒体展示节点 3": {},
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||正向提示词": {},
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||负向提示词": {},
+      "4b0dd991-a604-4913-9fda-3f8b0ca1e55a||AI图像超分": {},
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1": {}
+    },
+    "node_outputs": {
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传": {
+        "file": "canvas_files\\workflows\\图像扩充模型\\workspace\\385eb210-ecb4-4806-8d26-94cad76a9ecf\\upload\\e01a964558f44bd44773a8bf440e2cf2.jpeg"
+      },
+      "55e89122-98ec-431c-b539-d39b13c0e039||图像尺寸调整": {
+        "resized_image": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\e2aca9ac-a116-4e8e-ba16-265da71be907\\result\\image_e2aca9ac-a116-4e8e-ba16-265da71be907_resized_image.png"
+      },
+      "unknown||多媒体展示节点": {},
+      "3ad2c11e-e33f-48b7-ba30-060551477952||图像扩图填充": {
+        "padded_image": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\ce617379-f4c2-4082-9053-ad89c8287f36\\result\\image_ce617379-f4c2-4082-9053-ad89c8287f36_padded_image.png",
+        "mask": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\ce617379-f4c2-4082-9053-ad89c8287f36\\result\\image_ce617379-f4c2-4082-9053-ad89c8287f36_mask.png"
+      },
+      "unknown||多媒体展示节点 1": {},
+      "unknown||多媒体展示节点 2": {},
+      "7709d64e-30d4-4db0-b08c-2ae983988848||局部重绘采样器": {
+        "output": "data:image/jpeg;base64,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",
+        "output_image": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\b41e182f-6146-417c-9675-1a3dbcbda394\\result\\image_b41e182f-6146-417c-9675-1a3dbcbda394_output_image.png",
+        "latent_out": null
+      },
+      "unknown||多媒体展示节点 3": {},
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||正向提示词": {
+        "text": "Cinematic wide shot of majestic snow-capped mountains, crystal clear lake reflection, sunrise lighting, hyper-realistic, 8k resolution"
+      },
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||负向提示词": {
+        "text": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, missing arms, long neck, humpbacked, deformed, disfigured, poorly drawn face, mutation, mutated, extra limbs, mutated hands, fused fingers, too many fingers, floating limbs, disconnected limbs, malformed hands, out of focus, long body."
+      },
+      "4b0dd991-a604-4913-9fda-3f8b0ca1e55a||AI图像超分": {
+        "image_out": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\9ae2af8c-0fb4-45d3-a35f-e0cd7b4a6d4d\\result\\image_9ae2af8c-0fb4-45d3-a35f-e0cd7b4a6d4d_image_out.png"
+      },
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1": {
+        "file": "canvas_files\\workflows\\图像扩充模型\\workspace\\faebe2c4-1e5c-4d10-aee0-0a3838f068bf\\upload\\RealESRGAN_x4plus.pth"
+      }
+    },
+    "column_select": {
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传": {},
+      "55e89122-98ec-431c-b539-d39b13c0e039||图像尺寸调整": {},
+      "unknown||多媒体展示节点": {},
+      "3ad2c11e-e33f-48b7-ba30-060551477952||图像扩图填充": {},
+      "unknown||多媒体展示节点 1": {},
+      "unknown||多媒体展示节点 2": {},
+      "7709d64e-30d4-4db0-b08c-2ae983988848||局部重绘采样器": {},
+      "unknown||多媒体展示节点 3": {},
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||正向提示词": {},
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||负向提示词": {},
+      "4b0dd991-a604-4913-9fda-3f8b0ca1e55a||AI图像超分": {},
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1": {}
+    }
+  },
+  "global_variable": {
+    "env": {
+      "user_id": null,
+      "canvas_id": null,
+      "session_id": null,
+      "run_id": null,
+      "metadata": {
+        "TZ": "Asia/Shanghai",
+        "LANG": "en_US.UTF-8",
+        "LC_ALL": "en_US.UTF-8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "0",
+        "PYTHONPATH": ".",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONWARNINGS": "ignore"
+      }
+    },
+    "custom": {},
+    "custom_order": [],
+    "node_vars": {},
+    "node_vars_order": []
+  }
+}

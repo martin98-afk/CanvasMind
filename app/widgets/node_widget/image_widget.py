@@ -80,7 +80,7 @@ class ImageWidget(QtWidgets.QWidget):
 
         self.setFixedSize(self._current_size)
         self.sizeHintChanged.emit()
-        self.update()
+        self.updateGeometry()
         self.valueChanged.emit(self._image_data)
 
     def get_value(self):
@@ -131,8 +131,14 @@ class ImageWidgetWrapper(CustomNodeBaseWidget):
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
         widget.sizeHintChanged.connect(self._update_node)
+        self._update_timer = QtCore.QTimer()
+        self._update_timer.setSingleShot(True)
+        self._update_timer.timeout.connect(self._real_update_node)
 
     def _update_node(self):
+        self._update_timer.start(50)
+
+    def _real_update_node(self):
         if self.node and self.node.graph is not None:
             self.node.view.set_proxy_mode(False)
             self.node.view.draw_node()

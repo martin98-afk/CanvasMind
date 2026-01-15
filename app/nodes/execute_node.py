@@ -28,8 +28,10 @@ from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
+from app.widgets.node_widget.file_select_widget import FileSelectWrapper
 from app.widgets.node_widget.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.node_widget.range_widget import RangeWidgetWrapper
+from app.widgets.node_widget.spinbox_widget import NumberWidgetWrapper
 from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 from app.widgets.node_widget.variable_combo_widget import VarComboBoxWidgetWrapper
 
@@ -199,6 +201,14 @@ def create_node_class(full_path, file_path, parent_window=None):
                         CheckBoxWidgetWrapper(parent=self.view, name=prop_name, text=label, state=default),
                         tab="properties"
                     )
+                elif prop_type in (PropertyType.INT, PropertyType.FLOAT):
+                    self.add_custom_widget(
+                        NumberWidgetWrapper(
+                            parent=self.view, name=prop_name, label=label, default=default,
+                            type=prop_type.name.lower(),
+                        ),
+                        tab="properties"
+                    )
                 elif prop_type == PropertyType.CHOICE:
                     choices = prop_def.get("choices", [])
                     if choices:
@@ -272,6 +282,16 @@ def create_node_class(full_path, file_path, parent_window=None):
                         tab="properties"
                     )
                     self.set_property(prop_name, "无")
+                elif prop_type == PropertyType.FILE:
+                    self.add_custom_widget(
+                        FileSelectWrapper(
+                            parent=self.view,
+                            name=prop_name,
+                            label=label,
+                            default=default,
+                            window=parent_window
+                        ), tab='Properties'
+                    )
                 else:
                     self.add_custom_widget(
                         TextWidgetWrapper(

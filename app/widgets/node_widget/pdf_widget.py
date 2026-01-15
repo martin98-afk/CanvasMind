@@ -65,6 +65,7 @@ class PdfWidget(QtWidgets.QWidget):
             self.view.setUrl(file_url)
 
         self.sizeHintChanged.emit()
+        self.updateGeometry()
 
     def sizeHint(self):
         return self._current_size

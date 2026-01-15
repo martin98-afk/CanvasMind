@@ -137,7 +137,7 @@ class KSamplerComponent(BaseComponent):
                 self.emit_custom_message(
                     method="stream.output",
                     params={
-                        "output_image": {
+                        "output": {
                             "data": f"data:image/jpeg;base64,{img_str}",
                             "data_type": "image"
                         }

@@ -371,45 +371,6 @@ class CustomNodeItem(NodeItem):
         painter.drawRoundedRect(rect, radius, radius)
         painter.restore()
 
-    def _draw_node_horizontal(self):
-        self.prepareGeometryChange()
-        header_h = max(self._text_item.boundingRect().height() + 10.0, 34.0)
-        self._update_elements_visibility();
-        self._set_base_size(add_h=header_h)
-        rect = self.get_node_body_rect()
-
-        if not self._proxy_mode:
-            self._set_text_color(self.text_color)
-            tw = self._text_item.boundingRect().width()
-            th = self._text_item.boundingRect().height()
-
-            # --- 修正居中逻辑：计算整体宽度并布局 ---
-            icon_w = 20  # 预留 Icon 宽度
-            spacing = 8
-            total_content_w = icon_w + spacing + tw
-            start_x = rect.center().x() - total_content_w / 2 - spacing
-
-            # 设置 Icon 位置 (确保在文字左侧)
-            self._icon_item.setPos(start_x, rect.top() + (header_h - 20) / 2)
-            # 设置文字位置
-            self._text_item.setPos(start_x + icon_w + spacing, rect.top() + (header_h - th) / 2)
-
-            self._collapse_btn.setPos(rect.left() + 6, rect.top() + (header_h - 28) / 2)
-            self._exec_mode_btn.setPos(rect.right() - 34, rect.top() + (header_h - 28) / 2)
-
-            self.align_widgets(v_offset=header_h + 12.0)
-        else:
-            self._update_proxy_text_position()
-
-        self.align_ports(v_offset=header_h + 2.0)
-        btn_y = rect.top() - 32;
-        spacing = 32
-        self._close_btn.setPos(rect.right() - 28, btn_y);
-        self._mute_btn.setPos(rect.right() - 28 - spacing, btn_y)
-        self._run_btn.setPos(rect.right() - 28 - spacing * 2, btn_y);
-        self._center_btn.setPos(rect.right() - 28 - spacing * 3, btn_y)
-        self.update()
-
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.MiddleButton: event.ignore(); return
         if event.button() == QtCore.Qt.RightButton:
@@ -425,24 +386,93 @@ class CustomNodeItem(NodeItem):
         self._draw_node_horizontal();
         self.update()
 
+    # 2. 优化尺寸计算逻辑，确保即使隐藏也能拿到正确尺寸
     def _calc_size_horizontal(self):
         p_in_w = p_out_w = p_in_h = p_out_h = 0.0
+
+        # 计算端口所需的空间
         for port, text in self._input_items.items():
-            p_in_w = max(p_in_w, text.boundingRect().width() + 30);
-            p_in_h += port.boundingRect().height() + 6
+            p_in_w = max(p_in_w, text.boundingRect().width() + 40)  # 稍微多留一点余量
+            p_in_h += port.boundingRect().height() + 3
         for port, text in self._output_items.items():
-            p_out_w = max(p_out_w, text.boundingRect().width() + 30);
-            p_out_h += port.boundingRect().height() + 6
-        if self._is_collapsed: return max(self._text_item.boundingRect().width() + 160, 200), max(p_in_h, p_out_h, 40)
+            p_out_w = max(p_out_w, text.boundingRect().width() + 40)
+            p_out_h += port.boundingRect().height() + 3
+
+        # 如果折叠了，返回最小高度
+        if self._is_collapsed:
+            width = max(self._text_item.boundingRect().width() + 100, 180)
+            return width, max(p_in_h, p_out_h, 40)
+
+        # 计算 Widget 所需的空间
         w_width = w_height = 0.0
         for widget in self._widgets.values():
-            real = widget.widget();
-            sz = real.sizeHint() if real else widget.boundingRect().size()
-            w_width = max(w_width, sz.width());
-            w_height += sz.height() + 10
-        width = max(self._text_item.boundingRect().width() + 160, p_in_w + p_out_w + w_width + 40, 220)
-        height = max(p_in_h, p_out_h, w_height) + 25
+            real = widget.widget()
+            if real:
+                # 即使隐藏了，sizeHint 通常依然有效
+                # 如果 real.sizeHint() 在隐藏时返回 0，需要取其真实 geometry 或缓存值
+                sz = real.sizeHint()
+                w_width = max(w_width, sz.width())
+                w_height += sz.height() + 10
+            else:
+                sz = widget.boundingRect().size()
+                w_width = max(w_width, sz.width())
+                w_height += sz.height() + 10
+
+        # 最终宽度：取 (标题宽度, 左右端口+中间控件) 的最大值
+        width = max(self._text_item.boundingRect().width() + 120,
+                    p_in_w + p_out_w + w_width + 20,
+                    200)
+
+        # 最终高度：取 (输入高度, 输出高度, 控件高度) 的最大值
+        height = max(p_in_h, p_out_h, w_height) + 15
         return width, height
+
+    # 3. 修正绘制流程中的 prepareGeometryChange
+    def _draw_node_horizontal(self):
+        # 必须在修改任何影响 boundingRect 的属性前调用
+        self.prepareGeometryChange()
+
+        header_h = max(self._text_item.boundingRect().height() + 10.0, 34.0)
+
+        # 1. 优先计算并设置基础尺寸 (这会调用 _calc_size_horizontal)
+        self._set_base_size(add_h=header_h)
+
+        # 2. 获取更新后的 rect
+        rect = self.get_node_body_rect()
+
+        if not self._proxy_mode:
+            self._set_text_color(self.text_color)
+            tw = self._text_item.boundingRect().width()
+            th = self._text_item.boundingRect().height()
+
+            # 文字居中排布逻辑
+            icon_w = 20
+            spacing = 8
+            total_content_w = icon_w + spacing + tw
+            start_x = rect.center().x() - total_content_w / 2
+
+            self._icon_item.setPos(start_x, rect.top() + (header_h - 20) / 2)
+            self._text_item.setPos(start_x + icon_w + spacing, rect.top() + (header_h - th) / 2)
+
+            self._collapse_btn.setPos(rect.left() + 6, rect.top() + (header_h - 28) / 2)
+            self._exec_mode_btn.setPos(rect.right() - 34, rect.top() + (header_h - 28) / 2)
+
+            # 对齐 Widget
+            self.align_widgets(v_offset=header_h + 10.0)
+        else:
+            # Proxy 模式下更新文字位置
+            self._update_proxy_text_position()
+
+        # 无论是否是 proxy，都对齐端口以保持连接线位置正确
+        self.align_ports(v_offset=header_h + 2.0)
+
+        # 更新顶部操作按钮位置
+        btn_y = rect.top() - 32
+        spacing = 32
+        self._close_btn.setPos(rect.right() - 28, btn_y)
+        self._mute_btn.setPos(rect.right() - 28 - spacing, btn_y)
+        self._run_btn.setPos(rect.right() - 28 - spacing * 2, btn_y)
+        self._center_btn.setPos(rect.right() - 28 - spacing * 3, btn_y)
 
     def _set_text_color(self, color=None):
         muted = QtGui.QColor(225, 225, 225)
@@ -459,11 +489,18 @@ class CustomNodeItem(NodeItem):
         self.set_proxy_mode((r.x() - l.x()) < Settings.get_instance().node_proxy_size.value)
 
     def set_proxy_mode(self, mode):
-        if mode is self._proxy_mode: return
-        self._proxy_mode = mode;
+        if mode is self._proxy_mode:
+            return
+        self._proxy_mode = mode
+
+        # 核心修复：更新元素可见性后，必须重新计算节点大小并排布
         self._update_elements_visibility()
-        if hasattr(self, '_x_item'): self._x_item.proxy_mode = mode
-        if mode: self._update_proxy_text_position()
+
+        if hasattr(self, '_x_item'):
+            self._x_item.proxy_mode = mode
+
+        # 重新计算尺寸并重绘
+        self._draw_node_horizontal()
         self.update()
 
     def _update_proxy_text_position(self):

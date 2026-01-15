@@ -307,6 +307,8 @@ class SampleModelCardView(SimpleCardWidget):
              "key": "自动组件生成"},
             {"icon": get_icon("多轮对话"), "title": "AI辩论赛", "content": "结合大模型、TTS和并行执行实现的AI之间就一辩题讨论的对话智能体",
              "key": "AI辩论赛"},
+            {"icon": get_icon("AI绘画"), "title": "AI扩图", "content": "结合Stable Diffusion、AI超分辨率实现的图像扩充模型",
+             "key": "图像扩充模型"},
             {"icon": get_icon("更新"), "title": "循环迭代样例", "content": "循环、迭代节点使用方法",
              "key": "循环、迭代样例模型"},
             {"icon": get_icon("逻辑回归A"), "title": "机器学习样例", "content": "常见机器学习流程，模型训练、模型推理、文件压缩",

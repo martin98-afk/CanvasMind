@@ -6,74 +6,127 @@ from Qt import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QImage, QPainter
 
+# -*- coding: utf-8 -*-
+import os
+import numpy as np
+from PIL import Image
+from Qt import QtWidgets, QtCore, QtGui
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QImage, QPainter
+
 
 class GalleryImageItem(QtWidgets.QWidget):
-    """Gallery 中的单个图像块，采用与 ImageWidget 一致的绘图逻辑以保证清晰度"""
+    """单个图像块"""
 
     def __init__(self, q_img, size, parent=None):
         super().__init__(parent)
         self._q_image = q_img
+        self._fixed_size = size
         self.setFixedSize(size)
         self.setAttribute(Qt.WA_OpaquePaintEvent)
 
+    def update_size(self, new_size):
+        self._fixed_size = new_size
+        self.setFixedSize(new_size)
+        self.update()
+
     def paintEvent(self, event):
         painter = QPainter(self)
-        # 核心：使用高质量渲染提示
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
         rect = self.rect()
-        painter.fillRect(rect, Qt.transparent)
-
         if self._q_image and not self._q_image.isNull():
-            # 关键：像 ImageWidget 一样直接 drawImage 绘制原图
             painter.drawImage(rect, self._q_image)
+        else:
+            painter.fillRect(rect, Qt.black)
 
 
-class ImageGalleryWidget(QtWidgets.QScrollArea):
+class ImageGalleryWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(object)
     sizeHintChanged = QtCore.Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWidgetResizable(True)
 
-        # 内部容器
+        # 数据存储
+        self._image_list_data = []  # 存储原始 QImage 列表
+        self._cols = 2
+        self._item_w = 150
+
+        # 布局
+        self.main_layout = QtWidgets.QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+
+        # 1. 控制栏
+        self.ctrl_bar = QtWidgets.QWidget()
+        self.ctrl_bar.setFixedHeight(30)
+        self.ctrl_bar.setStyleSheet("background: rgba(40, 40, 40, 150); color: #ccc; font-size: 10px;")
+        ctrl_layout = QtWidgets.QHBoxLayout(self.ctrl_bar)
+        ctrl_layout.setContentsMargins(5, 0, 5, 0)
+
+        # 列数控制
+        ctrl_layout.addWidget(QtWidgets.QLabel("Cols:"))
+        self.spin_cols = QtWidgets.QSpinBox()
+        self.spin_cols.setRange(1, 10)
+        self.spin_cols.setValue(self._cols)
+        self.spin_cols.setFixedWidth(40)
+        self.spin_cols.valueChanged.connect(self._on_config_changed)
+        ctrl_layout.addWidget(self.spin_cols)
+
+        # 大小控制
+        ctrl_layout.addWidget(QtWidgets.QLabel("Size:"))
+        self.slider_size = QtWidgets.QSlider(Qt.Horizontal)
+        self.slider_size.setRange(50, 400)
+        self.slider_size.setValue(self._item_w)
+        self.slider_size.valueChanged.connect(self._on_config_changed)
+        ctrl_layout.addWidget(self.slider_size)
+
+        # 2. 滚动区域
+        self.scroll_area = QtWidgets.QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setStyleSheet("background-color: transparent; border: none;")
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
         self.container = QtWidgets.QWidget()
         self.grid_layout = QtWidgets.QGridLayout(self.container)
         self.grid_layout.setSpacing(10)
         self.grid_layout.setContentsMargins(10, 10, 10, 10)
-        self.setWidget(self.container)
+        self.grid_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
 
-        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.scroll_area.setWidget(self.container)
 
-        # 初始默认大小
-        self._current_size = QSize(200, 150)
+        self.main_layout.addWidget(self.ctrl_bar)
+        self.main_layout.addWidget(self.scroll_area)
+
+        # 初始大小
+        self._current_size = QSize(350, 250)
         self.setFixedSize(self._current_size)
-        self.setStyleSheet("background-color: transparent; border: none;")
+        self.ctrl_bar.setVisible(False)
 
-    def _clear(self):
-        """清理布局并销毁子控件"""
+    def _on_config_changed(self):
+        """当列数或大小时改变时刷新布局"""
+        self._cols = self.spin_cols.value()
+        self._item_w = self.slider_size.value()
+        self._refresh_gallery()
+
+    def _clear_layout(self):
         while self.grid_layout.count():
             item = self.grid_layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
-        # 重置容器大小限制，允许回缩
-        self.container.setMinimumSize(0, 0)
-        self.container.setMaximumSize(16777215, 16777215)
+            w = item.widget()
+            if w:
+                w.deleteLater()
 
     def _convert_to_qimage(self, data):
-        """采用与 ImageWidget 完全一致的转换逻辑"""
         if data is None: return None
         try:
             if isinstance(data, np.ndarray):
+                h, w = data.shape[:2]
                 if data.ndim == 2:
-                    h, w = data.shape
                     return QImage(data.data, w, h, w, QImage.Format_Grayscale8).copy()
                 else:
-                    h, w, c = data.shape
+                    c = data.shape[2]
                     fmt = QImage.Format_RGB888 if c == 3 else QImage.Format_RGBA8888
                     return QImage(data.data, w, h, c * w, fmt).copy()
             elif isinstance(data, Image.Image):
@@ -84,50 +137,53 @@ class ImageGalleryWidget(QtWidgets.QScrollArea):
             elif isinstance(data, str) and os.path.exists(data):
                 return QImage(data)
         except Exception as e:
-            print(f"Gallery 转换失败: {e}")
+            print(f"Gallery Convert Error: {e}")
         return None
 
     def set_value(self, image_list):
-        self._clear()
+        """设置新数据"""
+        self._image_list_data = []
+        if isinstance(image_list, (list, tuple)):
+            for img in image_list:
+                q_img = self._convert_to_qimage(img)
+                if q_img:
+                    self._image_list_data.append(q_img)
 
-        if not isinstance(image_list, (list, tuple)) or not image_list:
-            self.set_value_none()
-            return
-        self.container.show()
-        cols = 2
-        item_w = 180  # 单张图的逻辑显示宽度
-        item_size = QSize(item_w, item_w)
+        # 只有有图时才显示控制栏
+        has_images = len(self._image_list_data) > 0
+        self.ctrl_bar.setVisible(has_images)
+        self._refresh_gallery()
 
-        count = 0
-        for img_data in image_list:
-            q_img = self._convert_to_qimage(img_data)
-            if q_img:
-                # 使用自定义绘制 Item 代替 QLabel
-                item_widget = GalleryImageItem(q_img, item_size)
-                self.grid_layout.addWidget(item_widget, count // cols, count % cols)
-                count += 1
+    def _refresh_gallery(self):
+        """根据当前的 _cols 和 _item_w 重新构建布局"""
+        self._clear_layout()
 
-        if count == 0:
-            self.set_value_none()
-        else:
-            rows = (count + cols - 1) // cols
-            # 动态计算总高度和宽度
-            total_h = max(150, min(500, rows * (item_w + 10) + 20))
-            total_w = cols * (item_w + 10) + 25
-            self._current_size = QSize(total_w, total_h)
+        if not self._image_list_data:
+            self._current_size = QSize(200, 150)
             self.setFixedSize(self._current_size)
             self.sizeHintChanged.emit()
-            self.update()
+            return
 
-    def set_value_none(self):
-        """恢复最初大小并强制内部容器收缩"""
-        # 更新 Widget 本身的几何属性
-        self._current_size = QSize(200, 150)
+        item_size = QSize(self._item_w, self._item_w)
+        for i, q_img in enumerate(self._image_list_data):
+            item_widget = GalleryImageItem(q_img, item_size)
+            self.grid_layout.addWidget(item_widget, i // self._cols, i % self._cols)
+
+        # 计算总高度和宽度，用于更新 Node 节点的大小
+        rows = (len(self._image_list_data) + self._cols - 1) // self._cols
+
+        # 计算理想宽度：列数 * (项宽 + 间距) + 边距 + 滚动条预留
+        ideal_w = self._cols * (self._item_w + self.grid_layout.spacing()) + 30
+        # 计算理想高度：行数 * (项高 + 间距) + 边距 + 控制栏高度
+        ideal_h = rows * (self._item_w + self.grid_layout.spacing()) + 50
+
+        # 限制最大显示尺寸，防止 Node 过大
+        target_w = max(200, min(800, ideal_w))
+        target_h = max(150, min(600, ideal_h))
+
+        self._current_size = QSize(target_w, target_h)
         self.setFixedSize(self._current_size)
-
-        # 通知 Wrapper 和 NodeGraph 更新布局
         self.sizeHintChanged.emit()
-        self.update()
 
     def sizeHint(self):
         return self._current_size
