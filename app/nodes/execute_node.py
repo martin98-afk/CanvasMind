@@ -18,6 +18,7 @@ from app.components.base import ArgumentType, PropertyType, ConnectionType, Glob
 from app.nodes.status_node import StatusNode
 from app.scan_components import ComponentScanner
 from app.scheduler.expression_engine import ExpressionEngine
+from app.templates.node_cleanup_script import CLEANUP_CODE
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import draw_square_port, draw_special_outputport, \
@@ -53,6 +54,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.set_property("version", "latest")
             if hasattr(ComponentScanner().get_component_by_uuid(self.uuid), "icon"):
                 self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
+            self.view.exec_mode_signal.connect(self._clear_ipython_memory_context)
             # 组件ui构建
             self._generate_parms_widget()
             for port_name, label, connection in ComponentScanner().get_component_by_uuid(self.uuid).get_inputs():
@@ -602,6 +604,24 @@ def create_node_class(full_path, file_path, parent_window=None):
             finally:
                 if 'sftp' in locals(): sftp.close()
                 ssh.close()
+
+        def _clear_ipython_memory_context(self, mode):
+            """在 IPython 内核中执行清理脚本，彻底删除模块和实例引用"""
+            logger.info(f"节点 {self.NODE_NAME} 模式切换至: {mode}，已尝试清理残留内存。")
+            # 检查 parent_window 是否有可用的 kernel_manager
+            km = self.parent_window.ipython_kernel.kernel_manager
+            if km and mode == "subprocess":
+                unique_key = f"dynamic_mod_{self.persistent_id}"
+
+                # 构建清理代码
+                # 1. 从 sys.modules 删除模块
+                # 2. 显式触发垃圾回收
+                cleanup_code = CLEANUP_CODE.format(unique_key=unique_key)
+                try:
+                    # 使用 hidden=True 避免在用户控制台输出日志
+                    km.execute_code(cleanup_code, hidden=True)
+                except Exception as e:
+                    logger.warning(f"清理节点 {self.persistent_id} 内存失败: {e}")
 
         def _execute_via_ipython(
                 self, temp_script_path, result_path, error_path, log_file_path,

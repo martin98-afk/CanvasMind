@@ -23,6 +23,7 @@ from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
 from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
 from .status_node import StatusNode
+from ..templates.node_cleanup_script import CLEANUP_CODE
 from ..widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 
 # 在 app/components 下创建 .temp 目录（隐藏目录）
@@ -67,6 +68,7 @@ def create_dynamic_code_node(parent_window=None):
             self.set_icon(":/icons/代码执行.svg")
             self.model.port_deletion_allowed = True
             self.view.rename_signal.connect(parent_window.rename_node_vars)
+            self.view.exec_mode_signal.connect(self._clear_ipython_memory_context)
             # 定时器：分离 input / output / property update
             self._input_sync_timer = QtCore.QTimer()
             self._input_sync_timer.setSingleShot(True)
@@ -670,6 +672,24 @@ def create_dynamic_code_node(parent_window=None):
             finally:
                 if 'sftp' in locals(): sftp.close()
                 ssh.close()
+
+        def _clear_ipython_memory_context(self, mode):
+            """在 IPython 内核中执行清理脚本，彻底删除模块和实例引用"""
+            logger.info(f"节点 {self.NODE_NAME} 模式切换至: {mode}，已尝试清理残留内存。")
+            # 检查 parent_window 是否有可用的 kernel_manager
+            km = self.parent_window.ipython_kernel.kernel_manager
+            if km and mode == "subprocess":
+                unique_key = f"dynamic_mod_{self.persistent_id}"
+
+                # 构建清理代码
+                # 1. 从 sys.modules 删除模块
+                # 2. 显式触发垃圾回收
+                cleanup_code = CLEANUP_CODE.format(unique_key=unique_key)
+                try:
+                    # 使用 hidden=True 避免在用户控制台输出日志
+                    km.execute_code(cleanup_code, hidden=True)
+                except Exception as e:
+                    logger.warning(f"清理节点 {self.persistent_id} 内存失败: {e}")
 
         def _execute_via_ipython(
                 self, temp_script_path, result_path, error_path, log_file_path,

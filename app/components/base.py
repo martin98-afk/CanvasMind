@@ -116,10 +116,11 @@ class ArgumentType(str, Enum):
     INT = "整数"
     FLOAT = "浮点数"
     BOOL = "布尔值"
-    ARRAY = "列表"
+    ARRAY = "列表/ARRAY"
     CSV = "csv"
     JSON = "json"
     EXCEL = "excel"
+    OBJECT = "内存对象"
     FILE = "文件"
     UPLOAD = "上传"
     SKLEARNMODEL = "sklearn模型"
@@ -636,12 +637,18 @@ class DataHandler:
     负责根据类型读取输入和存储输出。
     """
 
-    def __init__(self, node_id: Optional[str] = None, workflow_path: Optional[str] = None, logger_instance=None):
+    def __init__(self,
+                 node_id: Optional[str] = None,
+                 workflow_path: Optional[str] = None,
+                 logger_instance=None,
+                 component_instance=None,
+                 ):
         self.node_id = node_id or "default_node"
         self.workflow_path = workflow_path
         self.logger = logger_instance or logger
         self.result_dir = Path("./result").resolve()
         self.result_dir.mkdir(parents=True, exist_ok=True)
+        self.component_instance = component_instance
 
     # --- 辅助方法：生成唯一文件名 ---
     def _get_save_path(self, output_name: str, prefix: str, extension: str) -> Path:
@@ -746,6 +753,8 @@ class DataHandler:
                 return self._read_image_data(input_value)
             elif input_type == ArgumentType.FILE:
                 return self._read_file_data(input_value)
+            elif input_type == ArgumentType.OBJECT:
+                return self._fetch_from_memory(input_value)
             else:
                 return input_value
         except Exception as e:
@@ -834,6 +843,30 @@ class DataHandler:
             dst.write_text(str(data), encoding='utf-8')
         return dst
 
+    def _fetch_from_memory(self, ref_str: str) -> Any:
+        """从内存中根据 'INSTANCE_node_id.attr' 字符串获取对象"""
+        if not isinstance(ref_str, str) or "." not in ref_str:
+            self.logger.warning(f"无效的内存引用格式: {ref_str}")
+            return ref_str
+
+        try:
+            instance_name, attr_name = ref_str.split('.', 1)
+            node_id = instance_name.replace("INSTANCE_", "")
+            module_key = f"dynamic_mod_{node_id}"
+
+            if module_key in sys.modules:
+                module = sys.modules[module_key]
+                instance = getattr(module, instance_name, None)
+                if instance:
+                    obj = getattr(instance, attr_name, None)
+                    self.logger.info(f"成功从内存加载对象: {ref_str}")
+                    return obj
+
+            self.logger.error(f"无法在内存模块 {module_key} 中找到实例")
+            return None
+        except Exception as e:
+            raise ComponentError(f"解析内存对象失败: {e}")
+
     def _process_multiple_inputs(self, input_name: str, input_values: List[Any], input_type: ArgumentType) -> List[Any]:
         if input_values is None: return []
         return [self.read_input_data(input_name, val, input_type) for val in input_values]
@@ -867,6 +900,8 @@ class DataHandler:
                 return self._store_image_data(output_value, output_name)
             elif output_type == ArgumentType.FILE:
                 return self._store_file_data(output_value, output_name)
+            elif output_type == ArgumentType.OBJECT:
+                return self._store_to_memory(output_name, output_value)
             else:
                 return output_value
         except Exception as e:
@@ -950,6 +985,18 @@ class DataHandler:
         else:
             file_path.write_text(str(data), encoding='utf-8')
         return str(file_path)
+
+    def _store_to_memory(self, output_name: str, value: Any) -> str:
+        """将对象存入当前实例，并返回引用字符串"""
+        if self.component_instance is None:
+            raise ComponentError("未绑定组件实例，无法存储内存对象")
+
+        # 为了防止冲突，属性名可以加个前缀
+        attr_name = f"_mem_{output_name}"
+        setattr(self.component_instance, attr_name, value)
+
+        # 返回格式：INSTANCE_node_id.attr_name
+        return f"INSTANCE_{self.node_id}.{attr_name}"
 
     def _get_torch(self):
         """懒加载 torch"""
@@ -1195,7 +1242,9 @@ class BaseComponent(ABC):
     ) -> Dict[str, Any]:
         """执行组件，包含错误处理和数据类型转换"""
         self.node_id = node_id
-        self.data_handler = DataHandler(node_id=node_id, workflow_path=workflow_path, logger_instance=self.logger)
+        self.data_handler = DataHandler(
+            node_id=node_id, workflow_path=workflow_path, logger_instance=self.logger, component_instance=self
+        )
         try:
             if global_vars is not None:
                 self.global_variable.deserialize(global_vars)
