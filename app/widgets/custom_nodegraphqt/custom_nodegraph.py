@@ -656,6 +656,7 @@ class CustomNodeGraph(NodeGraph):
         self._undo_stack.beginMacro('pasted nodes')
         self.clear_selection()
         nodes = self._deserialize(serial_data, relative_pos=True, adjust_graph_style=adjust_graph_style)
+        if nodes is None: return
         [n.set_selected(True) for n in nodes]
         self._undo_stack.endMacro()
         return nodes
@@ -674,6 +675,7 @@ class CustomNodeGraph(NodeGraph):
         Returns:
             list[NodeGraphQt.Nodes]: list of node instances.
         """
+        if isinstance(data, str): return
         self._viewer.scene().blockSignals(True)
         self._viewer.setUpdatesEnabled(False)
 

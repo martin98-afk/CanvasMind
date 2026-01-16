@@ -33,7 +33,7 @@ class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
             text_color = QtGui.QColor("#FFFFFF")
             sub_text_color = QtGui.QColor("#A0CFFF")
         elif is_hovered:
-            # 悬浮时的背景色（稍微浅一点的灰色）
+            # 悬浮时的背景色
             bg_color = QtGui.QColor("#3E3E42")
             text_color = QtGui.QColor("#FFFFFF")
             sub_text_color = QtGui.QColor("#999999")
@@ -45,7 +45,6 @@ class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
         # 绘制圆角背景
         painter.setPen(Qt.NoPen)
         painter.setBrush(bg_color)
-        # 稍微收缩矩形，产生间距感
         margin = 4
         rect = option.rect.adjusted(margin, 2, -margin, -2)
         painter.drawRoundedRect(rect, 6, 6)
@@ -73,7 +72,7 @@ class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
         painter.restore()
 
     def sizeHint(self, option, index):
-        return QtCore.QSize(0, 40)  # 稍微增加高度，点击感更好
+        return QtCore.QSize(0, 40)
 
 
 class CustomGraphMenu(QtWidgets.QWidget):
@@ -85,6 +84,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self._left_panel = left_panel
         self.parent = parent
         self._cached_data = []
+        self._selected_categories = set()
 
         # 1. 窗口属性
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
@@ -97,11 +97,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.container = QtWidgets.QFrame()
         self.container.setObjectName("SearchContainer")
         self.container.setStyleSheet("""
-            #SearchContainer {
-                background: #252526;
-                border: 1px solid #454545;
-                border-radius: 8px;
-            }
+            #SearchContainer { background: #252526; border: 1px solid #454545; border-radius: 8px; }
         """)
 
         # 阴影
@@ -117,7 +113,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.container_layout.setContentsMargins(8, 8, 8, 8)
         self.container_layout.setSpacing(8)
 
-        # --- 3. 封装搜索栏 Header (为了方便移动位置) ---
+        # --- 3. 搜索栏 Header ---
         self.header_widget = QtWidgets.QWidget()
         self.header_layout = QtWidgets.QHBoxLayout(self.header_widget)
         self.header_layout.setContentsMargins(0, 0, 0, 0)
@@ -148,14 +144,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.list_widget.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
         self.list_widget.setStyleSheet("QListWidget { background: transparent; border: none; outline: none; }")
 
-        # 自定义滚动条
-        self.list_widget.verticalScrollBar().setStyleSheet("""
-            QScrollBar:vertical { background: transparent; width: 8px; }
-            QScrollBar::handle:vertical { background: #4F4F4F; border-radius: 4px; min-height: 20px; }
-            QScrollBar::add-line, QScrollBar::sub-line { height: 0px; }
-        """)
-
-        # 默认布局：搜索框在顶部 (index 0)，列表在底部 (index 1)
+        # 默认布局
         self.container_layout.addWidget(self.header_widget)
         self.container_layout.addWidget(self.list_widget)
 
@@ -175,37 +164,47 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
     def set_category_filter(self, categories):
         self._selected_categories = set(categories)
-        # 立即更新缓存并重新填充UI，保证下次打开菜单时是最新的
         self.update_cache()
         self.populate_ui()
 
     def update_cache(self):
-        """仅在节点定义发生变化或初始化时调用一次，大幅提升响应速度"""
+        """递归遍历所有层级，并确保使用正确的 node_type 标识符"""
         self._cached_data = []
         tree_widget = self._left_panel.draggable_tree.tree
         root = tree_widget.invisibleRootItem()
 
-        # 遍历节点
-        for i in range(root.childCount()):
-            cat_item = root.child(i)
-            cat_name = cat_item.text(0)
-            cat_pinyin = get_pinyin_search_keys(cat_name)
+        def collect_nodes(parent_item):
+            for i in range(parent_item.childCount()):
+                item = parent_item.child(i)
+                node_id = item.data(0, Qt.UserRole + 1)  # 这是 full_path
 
-            for j in range(cat_item.childCount()):
-                node_item = cat_item.child(j)
-                node_name = node_item.text(0)
-                node_id = node_item.data(0, Qt.UserRole + 1)
-                node_type = self._graph.parent().node_type_map.get(node_id)  # 这里的映射路径根据你实际调整
+                if node_id:  # 说明是真正的组件节点
+                    # --- 完全照搬你原来的建点逻辑来获取 ID ---
+                    node_type = self._graph.parent().node_type_map.get(node_id)
 
-                py_keys = get_pinyin_search_keys(node_name)
+                    # 递归获取完整分类路径字符串
+                    path_parts = []
+                    p = item.parent()
+                    while p and p != root:
+                        path_parts.insert(0, p.text(0))
+                        p = p.parent()
+                    cat_full_str = "/".join(path_parts)
 
-                self._cached_data.append({
-                    "type": "node",
-                    "id": node_type,
-                    "name": node_name,
-                    "category": cat_name,
-                    "search_keys": f"{node_name} {cat_name} {node_id} {py_keys} {cat_pinyin}".lower()
-                })
+                    node_name = item.text(0).replace("★ ", "")
+                    py_keys = get_pinyin_search_keys(node_name)
+                    cat_py = get_pinyin_search_keys(cat_full_str)
+
+                    self._cached_data.append({
+                        "type": "node",
+                        "id": node_type,  # <--- 存入真正的 node_type
+                        "name": node_name,
+                        "category": cat_full_str,
+                        "search_keys": f"{node_name} {cat_full_str} {node_id} {py_keys} {cat_py}".lower()
+                    })
+                else:  # 说明是中间目录，继续递归
+                    collect_nodes(item)
+
+        collect_nodes(root)
 
         # 遍历模板
         if hasattr(self._left_panel.template_container, 'get_templates'):
@@ -219,10 +218,13 @@ class CustomGraphMenu(QtWidgets.QWidget):
                 })
 
     def populate_ui(self):
-        """根据缓存填充 UI"""
         self.list_widget.clear()
-        self.list_widget.setUpdatesEnabled(False)  # 批量更新优化
+        self.list_widget.setUpdatesEnabled(False)
         for data in self._cached_data:
+            if self._selected_categories:
+                root_cat = data["category"].split("/")[0]
+                if root_cat not in self._selected_categories:
+                    continue
             item = QtWidgets.QListWidgetItem(data["name"])
             item.setData(Qt.UserRole, data)
             self.list_widget.addItem(item)
@@ -233,73 +235,42 @@ class CustomGraphMenu(QtWidgets.QWidget):
     def filter_list(self, text):
         search_text = text.lower().strip()
         self.list_widget.setUpdatesEnabled(False)
-
         first_visible = -1
         for i in range(self.list_widget.count()):
             item = self.list_widget.item(i)
             data = item.data(Qt.UserRole)
-            # 简单的匹配逻辑
             is_visible = search_text in data["search_keys"]
             item.setHidden(not is_visible)
             if is_visible and first_visible == -1:
                 first_visible = i
-
         self.list_widget.setUpdatesEnabled(True)
         if first_visible != -1:
             self.list_widget.setCurrentRow(first_visible)
 
     def show_at_cursor(self, pos):
-        """核心优化：动态调整位置和 UI 结构"""
-        if not self._cached_data:
-            self.update_cache()
-            self.populate_ui()
-
-        # 坐标转换逻辑
+        self.update_cache()
+        self.populate_ui()
         viewer = self._graph.viewer()
         scene_viewer = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
         self._spawn_pos = scene_viewer.mapFromGlobal(pos)
-
-        # 重置状态
         self.search_line.setText("")
-        for i in range(self.list_widget.count()):
-            self.list_widget.item(i).setHidden(False)
         self.list_widget.setCurrentRow(0)
 
-        # --- 计算屏幕边界 ---
         menu_w, menu_h = self.width(), self.height()
         screen_rect = QtWidgets.QApplication.desktop().availableGeometry(pos)
+        target_x, target_y = pos.x() - 20, pos.y() - 20
 
-        target_x = pos.x() - 20
-        target_y = pos.y() - 20  # 默认向下弹出的起始偏移
-
-        is_upward = False
-
-        # 检查下方空间是否足够
         if target_y + menu_h > screen_rect.bottom():
-            # 空间不足，改为向上弹出
-            is_upward = True
             target_y = pos.y() - menu_h + 20
-            # 阴影反向
             self.shadow.setYOffset(-5)
-        else:
-            # 空间足够，向下弹出
-            is_upward = False
-            self.shadow.setYOffset(5)
-
-        # 左右边界修正
-        target_x = max(screen_rect.left() + 5, min(target_x, screen_rect.right() - menu_w - 5))
-        target_y = max(screen_rect.top() + 5, min(target_y, screen_rect.bottom() - 5))
-
-        # --- 动态调整布局顺序 ---
-        if is_upward:
-            # 向上弹出：列表在 index 0 (上)，搜索框在 index 1 (下)
             self.container_layout.insertWidget(0, self.list_widget)
             self.container_layout.insertWidget(1, self.header_widget)
         else:
-            # 向下弹出：搜索框在 index 0 (上)，列表在 index 1 (下)
+            self.shadow.setYOffset(5)
             self.container_layout.insertWidget(0, self.header_widget)
             self.container_layout.insertWidget(1, self.list_widget)
 
+        target_x = max(screen_rect.left() + 5, min(target_x, screen_rect.right() - menu_w - 5))
         self.move(QtCore.QPoint(target_x, target_y))
         self.show()
         self.raise_()
@@ -315,8 +286,8 @@ class CustomGraphMenu(QtWidgets.QWidget):
         try:
             if data["type"] == "node":
                 self._graph.begin_undo("Create Node")
-                # 这里根据你实际的 create_node 签名修改，有些需要 node_type 字符串
-                node = self._graph.create_node(data["id"], pos=[scene_pos.x(), scene_pos.y()])
+                # 这里 data["id"] 现在是真正的 node_type 字符串了
+                self._graph.create_node(data["id"], pos=[scene_pos.x(), scene_pos.y()])
                 self.parent.on_selection_changed()
                 self._graph.end_undo()
             elif data["type"] == "template":
@@ -325,7 +296,6 @@ class CustomGraphMenu(QtWidgets.QWidget):
                 )
         except Exception as e:
             print(f"Error creating node: {e}")
-
         self.close()
 
     def on_return_pressed(self):
@@ -339,18 +309,13 @@ class CustomGraphMenu(QtWidgets.QWidget):
                 self.close()
                 return True
             if source is self.search_line:
-                # 优化：根据布局方向调整上下键逻辑
-                # 获取当前 header 是否在底部
                 is_bottom = self.container_layout.indexOf(self.header_widget) == 1
-
                 if event.key() == Qt.Key_Down:
-                    if is_bottom:  # 如果搜索框在下面，按向下应该没反应或循环
-                        return False
-                    self.list_widget.setFocus()
+                    if is_bottom: return False
+                    self.list_widget.setFocus();
                     return True
                 elif event.key() == Qt.Key_Up:
-                    if not is_bottom:  # 如果搜索框在上面，按向上没反应
-                        return False
-                    self.list_widget.setFocus()
+                    if not is_bottom: return False
+                    self.list_widget.setFocus();
                     return True
         return super(CustomGraphMenu, self).eventFilter(source, event)
