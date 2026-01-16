@@ -159,7 +159,7 @@ class CanvasUISetUp:
         self.iterate_node.setFixedSize(24, 24)
         self.iterate_node.setToolTip("创建迭代")
         self.iterate_node.clicked.connect(
-            lambda: self.parent.create_backdrop_node("ControlFlowIterateNode")
+            lambda: self.parent.create_backdrop_node("control_flow.ControlFlowIterateNode")
         )
         self.node_layout.addWidget(self.iterate_node)
 
@@ -167,7 +167,7 @@ class CanvasUISetUp:
         self.loop_node.setIconSize(QSize(18, 18))
         self.loop_node.setFixedSize(24, 24)
         self.loop_node.setToolTip("创建循环")
-        self.loop_node.clicked.connect(lambda: self.parent.create_backdrop_node("ControlFlowLoopNode"))
+        self.loop_node.clicked.connect(lambda: self.parent.create_backdrop_node("control_flow.ControlFlowLoopNode"))
         self.node_layout.addWidget(self.loop_node)
 
         self.branch_node = TransparentToolButton(get_icon("条件分支"), parent=self.parent.canvas_widget)
@@ -195,7 +195,7 @@ class CanvasUISetUp:
         self.note_node.setIconSize(QSize(18, 18))
         self.note_node.setFixedSize(24, 24)
         self.note_node.setToolTip("创建注释节点")
-        self.note_node.clicked.connect(lambda: self.parent.create_next_node("general.StickyNote"))
+        self.note_node.clicked.connect(lambda: self.parent.create_backdrop_node("general.StickyNote", init_io=False))
         self.node_layout.addWidget(self.note_node)
 
         # === 分隔线 ===
@@ -346,7 +346,7 @@ class CanvasUISetUp:
                }
            """)
         name_label.setText(self.parent.workflow_name)
-        name_label.textChanged.connect(self.update_workflow_name)
+        name_label.editingFinished.connect(self.update_workflow_name)
         self._update_name_label_width(name_label)
         name_layout = QHBoxLayout(self.name_container)
         name_layout.setContentsMargins(0, 0, 0, 0)

@@ -322,8 +322,8 @@ class CanvasPage(QWidget):
     def create_next_node(self, key, icon_path=None):
         self.node_operations.create_next_node(key, icon_path)
 
-    def create_backdrop_node(self, key):
-        self.node_operations.create_backdrop_node(key)
+    def create_backdrop_node(self, key, init_io=True):
+        self.node_operations.create_backdrop_node(key, init_io)
 
     def _schedule_property_update(self, nodes):
         if self._pending_property_update:

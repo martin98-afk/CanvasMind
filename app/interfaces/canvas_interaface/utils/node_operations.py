@@ -254,7 +254,7 @@ class NodeOperations:
 
         return node
 
-    def create_backdrop_node(self, key):
+    def create_backdrop_node(self, key, init_io=True):
         selected_nodes = self.graph.selected_nodes()
         input_port_node = None
         output_port_node = None
@@ -275,54 +275,56 @@ class NodeOperations:
         viewport_center = viewer.viewport().rect().center()
         scene_center = viewer.mapToScene(viewport_center)
         center_x, center_y = scene_center.x(), scene_center.y()
-
-        if not selected_nodes:
-            input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
-            output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-            input_port_node.set_pos(center_x - 500, center_y - input_port_node.view.height)
-            output_port_node.set_pos(center_x + 500, center_y + output_port_node.view.height + 200)
-            nodes_to_wrap = [input_port_node, output_port_node]
-        else:
-            unconnected_inputs = []
-            unconnected_outputs = []
-            for node in other_nodes:
-                for input_port in node.input_ports():
-                    if not input_port.connected_ports():
-                        unconnected_inputs.append((node, input_port))
-                for output_port in node.output_ports():
-                    if not output_port.connected_ports():
-                        unconnected_outputs.append((node, output_port))
-
-            if not input_port_node:
+        if init_io:
+            if not selected_nodes:
                 input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
-                if other_nodes:
-                    min_x = min(n.x_pos() for n in other_nodes)
-                    avg_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
-                    input_port_node.set_pos(min_x - 300, avg_y - input_port_node.view.height / 2)
-                else:
-                    input_port_node.set_pos(center_x - 250, center_y - input_port_node.view.height / 2)
-
-            if not output_port_node:
                 output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-                if other_nodes:
-                    max_x = max(n.x_pos() + n.view.width for n in other_nodes)
-                    avg_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
-                    output_port_node.set_pos(max_x + 150, avg_y - output_port_node.view.height / 2)
-                else:
-                    output_port_node.set_pos(center_x + 250, center_y - output_port_node.view.height / 2)
+                input_port_node.set_pos(center_x - 500, center_y - input_port_node.view.height)
+                output_port_node.set_pos(center_x + 500, center_y + output_port_node.view.height + 200)
+                nodes_to_wrap = [input_port_node, output_port_node]
+            else:
+                unconnected_inputs = []
+                unconnected_outputs = []
+                for node in other_nodes:
+                    for input_port in node.input_ports():
+                        if not input_port.connected_ports():
+                            unconnected_inputs.append((node, input_port))
+                    for output_port in node.output_ports():
+                        if not output_port.connected_ports():
+                            unconnected_outputs.append((node, output_port))
 
-            nodes_to_wrap = other_nodes + [input_port_node, output_port_node]
+                if not input_port_node:
+                    input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
+                    if other_nodes:
+                        min_x = min(n.x_pos() for n in other_nodes)
+                        avg_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
+                        input_port_node.set_pos(min_x - 300, avg_y - input_port_node.view.height / 2)
+                    else:
+                        input_port_node.set_pos(center_x - 250, center_y - input_port_node.view.height / 2)
+
+                if not output_port_node:
+                    output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
+                    if other_nodes:
+                        max_x = max(n.x_pos() + n.view.width for n in other_nodes)
+                        avg_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
+                        output_port_node.set_pos(max_x + 150, avg_y - output_port_node.view.height / 2)
+                    else:
+                        output_port_node.set_pos(center_x + 250, center_y - output_port_node.view.height / 2)
+
+                nodes_to_wrap = other_nodes + [input_port_node, output_port_node]
+        else:
+            nodes_to_wrap = other_nodes
 
         if not nodes_to_wrap:
             MessageManager.warning("创建失败", "没有可包裹的节点！", self.parent)
             return
 
-        backdrop_node = self.graph.create_node(f"control_flow.{key}")
+        backdrop_node = self.graph.create_node(key)
         backdrop_node.wrap_nodes(nodes_to_wrap)
         [node.set_selected(True) for node in nodes_to_wrap]
         QTimer.singleShot(0, lambda: self.parent.property_panel.update_properties(backdrop_node))
 
-        if key == "ControlFlowIterateNode":
+        if "ControlFlowIterateNode" in key:
             backdrop_node.model.set_property("loop_nums", 3)
 
     def delete_node(self, node):

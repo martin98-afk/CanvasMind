@@ -377,7 +377,7 @@ class ComponentScanner:
         if py_file.stem in self._uuid_map:
             old_file = self._uuid_map[py_file.stem]
             if old_file != py_file:
-                new_file = py_file.with_name(f"{py_file.stem}_old_{uuid.uuid4()}.py")
+                new_file = py_file.with_name(f"{uuid.uuid4()}.py")
                 py_file.rename(new_file)
                 logger.warning(f"组件文件已存在，已自动重命名：{py_file} -> {new_file}")
                 py_file = new_file

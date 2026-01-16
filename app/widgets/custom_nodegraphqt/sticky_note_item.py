@@ -1,4 +1,14 @@
 # -*- coding: utf-8 -*-
+import json
+import time
+
+from NodeGraphQt.constants import (
+    Z_VAL_NODE, ICON_NODE_BASE, Z_VAL_BACKDROP
+)
+from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
+from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
+from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
+from qtpy import QtCore, QtGui
 from qtpy import QtWidgets
 
 
@@ -253,29 +263,19 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
 # ------------------------------------------------------------------------------
 # 4.StickyNoteItem (防误触核心)
 # ------------------------------------------------------------------------------
-# -*- coding: utf-8 -*-
-import json
-import time
-from qtpy import QtCore, QtGui, QtWidgets
 
-from NodeGraphQt.constants import (
-    Z_VAL_NODE, ICON_NODE_BASE, NodeEnum, Z_VAL_BACKDROP
-)
-from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
-from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
-from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
-
-
-# ------------------------------------------------------------------------------
-# 优化后的 StickyNoteItem
-# ------------------------------------------------------------------------------
 class StickyNoteItem(BackdropNodeItem):
     def __init__(self, name='Sticky Note', text='', parent=None):
+        # 1. 先声明关键变量为 None，防止父类初始化时触发布局报错
+        self._text_item = None
+        self._icon_item = None
+        self.btn_lock = None
+        self._text_blocks = []
+
         super(StickyNoteItem, self).__init__(name, text, parent)
 
-        # 1. 基础参数
+        # 2. 基础参数
         self._header_height = 30.0
-        self._text_blocks = []
         self._locked = False
         self.node = None
 
@@ -283,41 +283,42 @@ class StickyNoteItem(BackdropNodeItem):
         self._last_click_time = 0
         self._double_click_threshold = 0.25
 
-        # 2. 层级与标志位
-        # 设置为底层，但要保证能被 itemAt 探测到
+        # 3. 层级与标志位
         self.setZValue(Z_VAL_BACKDROP)
         self.setFlag(self.ItemClipsChildrenToShape, False)
         self.setFlag(self.ItemIsSelectable, True)
-        # 允许右键点击被识别
+
+        # 显式接受右键，确保场景能识别到该 Item，从而让你的劫持逻辑 itemAt 能抓到它
         self.setAcceptedMouseButtons(QtCore.Qt.LeftButton | QtCore.Qt.RightButton)
 
-        # 3. 标题与图标 (整合 ControlFlow 逻辑)
+        # 4. 初始化 UI 组件
         self._text_item = NodeTextItem(self.name, self)
-        font = QtGui.QFont("Microsoft YaHei UI", 12)
+        font = QtGui.QFont("Microsoft YaHei UI", 25)
         font.setBold(True)
         self._text_item.setFont(font)
         self._text_item.setDefaultTextColor(QtGui.QColor(255, 255, 255))
 
-        # 修正 scaled 参数顺序：(width, height, AspectRatioMode, TransformationMode)
-        pixmap = QtGui.QPixmap(ICON_NODE_BASE).scaled(
+        pixmap = QtGui.QPixmap(":/icons/文本注释.svg").scaled(
             20, 20,
             QtCore.Qt.IgnoreAspectRatio,
             QtCore.Qt.SmoothTransformation
         )
         self._icon_item = QtWidgets.QGraphicsPixmapItem(pixmap, self)
-
-        # 4. 功能按钮
         self.btn_lock = ActionButton("🔓", (80, 80, 80), self.toggle_lock, self)
 
+        # 5. 初次布局更新
         self._update_layout()
 
     def boundingRect(self):
-        """确保缩放后，全区域都在交互范围内"""
+        """实时返回宽高，解决缩放后点击失效"""
         return QtCore.QRectF(0, 0, self._width, self._height)
 
     def _update_layout(self):
-        """更新 UI 元素位置"""
-        # self._icon_item.setPos(10, (self._header_height - 20) / 2)
+        """更新 UI 元素位置 (增加安全检查)"""
+        if not self._text_item or not self._icon_item or not self.btn_lock:
+            return
+
+        self._icon_item.setPos(10, (self._header_height - 20) / 2)
         t_rect = self._text_item.boundingRect()
         self._text_item.setPos((self._width - t_rect.width()) / 2, 0)
         self.btn_lock.setPos(self._width - 25, 5)
@@ -327,7 +328,6 @@ class StickyNoteItem(BackdropNodeItem):
         self.btn_lock.label = "🔒" if self._locked else "🔓"
         self.btn_lock.update()
         self.setFlag(self.ItemIsMovable, not self._locked)
-        # 锁定状态下关闭选中，彻底允许画布穿透
         self.setFlag(self.ItemIsSelectable, not self._locked)
         for b in self._text_blocks:
             b.setFlag(b.ItemIsMovable, not self._locked)
@@ -340,46 +340,47 @@ class StickyNoteItem(BackdropNodeItem):
             return
 
         pos = event.pos()
-        # 判定点击了哪个子项 (探测按钮、文本块等)
+        # 探测点击到的具体物体
         item = self.scene().itemAt(event.scenePos(), QtGui.QTransform())
 
-        # 情况 A: 点击了标题栏 -> 执行 Backdrop 默认逻辑 (允许移动和常规选中)
-        if pos.y() < self._header_height:
-            super(StickyNoteItem, self).mousePressEvent(event)
-            return
-
-        # 情况 B: 点击了内部已有的文本框、按钮、引线等
-        if item and item != self and item != self._sizer:
-            super(StickyNoteItem, self).mousePressEvent(event)
-            return
-
-        # 情况 C: 点击背景躯干区域
-        if event.button() == QtCore.Qt.LeftButton:
-            curr_time = time.time()
-            # 1. 模拟双击判定 (为了穿透框选，我们不能依赖系统 doubleClickEvent)
-            if (curr_time - self._last_click_time) < self._double_click_threshold:
-                # 判定为双击：新建文本框
-                self.add_text_block("双击编辑...", pos)
-                self._last_click_time = 0
-                # 【关键】此处 accept 且不调用 super，防止 Backdrop 选中内部所有节点
-                event.accept()
-                return
-
-                # 2. 单击判定：执行“忽略”，允许画布框选穿透
-            self._last_click_time = curr_time
-            # 临时关闭可选中性，防止画布把这次点击当作“选中 Backdrop”
-            self.setFlag(self.ItemIsSelectable, False)
-            # 执行 ignore，事件穿透到场景
-            event.ignore()
-            # 注意：ignore 后，Backdrop 的 mousePress 不会触发，因此不会全选内部节点
-
-        elif event.button() == QtCore.Qt.RightButton:
-            # 【关键修复】右键点击必须 accept，否则画布 itemAt 会返回 None，导致弹出画布菜单
-            # 并且不调用 super，防止 Backdrop 触发它自己的右键选中逻辑
+        # --- 右键处理 (修复画布菜单劫持问题) ---
+        if event.button() == QtCore.Qt.RightButton:
+            # 必须 accept，这样场景认为点击了 Item，你的 contextMenuEvent 劫持逻辑中 itemAt 就不为 None
             event.accept()
+            # 停止向下传递，防止 Backdrop 的右键默认逻辑执行
+            return
+
+        # --- 左键处理 ---
+        # 1. 点击标题栏：执行正常选中/移动
+        if pos.y() < self._header_height:
+            self.setFlag(self.ItemIsSelectable, True)
+            super(StickyNoteItem, self).mousePressEvent(event)
+            return
+
+        # 2. 点击内部已有的 UI 元素 (按钮、文本块、引线锚点)
+        if item and item != self and item != self._sizer:
+            self.setFlag(self.ItemIsSelectable, True)
+            super(StickyNoteItem, self).mousePressEvent(event)
+            return
+
+        # 3. 点击背景躯干区域：
+        curr_time = time.time()
+        # 判定双击 (模拟)
+        if (curr_time - self._last_click_time) < self._double_click_threshold:
+            self.add_text_block("双击编辑...", pos)
+            self._last_click_time = 0
+            # 【核心修复】这里 accept 且不调用 super，这样 Backdrop 就没机会去全选内部节点
+            event.accept()
+            return
+
+            # 判定单击：透传给画布框选
+        self._last_click_time = curr_time
+        self.setFlag(self.ItemIsSelectable, False)
+        # ignore() 发送给画布，触发框选，同时因为没调 super()，不会全选内部
+        event.ignore()
 
     def mouseDoubleClickEvent(self, event):
-        """处理标题双击编辑标题名"""
+        """标题栏双击改名"""
         if event.pos().y() < self._header_height:
             items = self.scene().items(event.scenePos())
             if self._text_item in items:
@@ -390,7 +391,7 @@ class StickyNoteItem(BackdropNodeItem):
         super(StickyNoteItem, self).mouseDoubleClickEvent(event)
 
     def on_sizer_pos_changed(self, pos):
-        """缩放手柄拖动"""
+        """缩放更新"""
         self.prepareGeometryChange()
         super(StickyNoteItem, self).on_sizer_pos_changed(pos)
         self._update_layout()
@@ -400,7 +401,6 @@ class StickyNoteItem(BackdropNodeItem):
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
         rect = self.boundingRect()
 
-        # 背景
         c = self.color
         alpha = 40 if self._locked else 80
         bg_color = QtGui.QColor(c[0], c[1], c[2], alpha)
@@ -410,12 +410,13 @@ class StickyNoteItem(BackdropNodeItem):
 
         # 标题栏
         header_color = QtGui.QColor(c[0], c[1], c[2], 200)
-        header_rect = QtCore.QRectF(0, 0, rect.width(), self._header_height)
+        header_height = max(self._text_item.boundingRect().height(), self._header_height)
+        header_rect = QtCore.QRectF(0, 0, rect.width(), header_height)
         painter.setBrush(header_color)
         painter.drawRoundedRect(header_rect, 5, 5)
-        painter.drawRect(QtCore.QRectF(0, self._header_height - 5, rect.width(), 5))
+        painter.drawRect(QtCore.QRectF(0, header_height - 5, rect.width(), 5))
 
-        # 引线
+        # 绘制内部文本块的引线
         painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 120), 1.2, QtCore.Qt.DashLine))
         for b in self._text_blocks:
             if b.anchor_pin and b.anchor_pin.scene():
@@ -423,17 +424,18 @@ class StickyNoteItem(BackdropNodeItem):
                 p2 = b.anchor_pin.pos()
                 painter.drawLine(p1, p2)
 
-        # 选中描边 (仅限非锁定状态)
-        if self.isSelected() and not self._locked:
+        # 选中描边
+        if self.selected and not self._locked:
             painter.setBrush(QtCore.Qt.NoBrush)
             painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 200), 1.5))
             painter.drawRoundedRect(rect, 5, 5)
 
         painter.restore()
 
-    # --- 数据序列化与 Proxy Setter (支持 Node 对象操作) ---
+    # --- 基础功能 ---
 
-    def add_text_block(self, text, pos, width=200, font_size=14):
+    def add_text_block(self, text, pos, width=200, font_size=20):
+        # 确保引用正确
         block = NoteTextBlock(text, pos, width, font_size, self)
         self._text_blocks.append(block)
         self.on_text_block_changed()
@@ -491,6 +493,6 @@ class StickyNoteItem(BackdropNodeItem):
     @AbstractNodeItem.name.setter
     def name(self, name=''):
         AbstractNodeItem.name.fset(self, name)
-        if self._text_item.toPlainText() != name:
+        if self._text_item and self._text_item.toPlainText() != name:
             self._text_item.setPlainText(name)
             self._update_layout()
