@@ -165,7 +165,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         self._check_for_removals()
 
     def _is_node_significantly_inside(self, node, node_threshold=0.3, backdrop_threshold=0.2):
-        if node.type_ in ("control_flow.CustomPortInputNode", "control_flow.CustomPortOutputNode"):
+        if node.type_ in ("control_flow.CustomPortInputNode", "control_flow.CustomPortOutputNode", "general.StickyNote"):
             return False
 
         backdrop_rect = self._get_backdrop_scene_rect()
