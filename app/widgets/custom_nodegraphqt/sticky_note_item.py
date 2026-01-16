@@ -40,11 +40,11 @@ class ActionButton(QtWidgets.QGraphicsRectItem):
 
 
 # ------------------------------------------------------------------------------
-# 2. 锚点 Pin
+# 2. 锚点 Pin (相对父级固定)
 # ------------------------------------------------------------------------------
 class NoteAnchorPin(QtWidgets.QGraphicsRectItem):
-    def __init__(self, parent_block):
-        super(NoteAnchorPin, self).__init__(QtCore.QRectF(-7, -7, 14, 14))
+    def __init__(self, parent_note_item, parent_block):
+        super(NoteAnchorPin, self).__init__(QtCore.QRectF(-7, -7, 14, 14), parent_note_item)
         self.parent_block = parent_block
         self.setZValue(Z_VAL_NODE + 20)
         self.setFlags(self.ItemIsMovable | self.ItemIsSelectable | self.ItemSendsGeometryChanges)
@@ -52,8 +52,8 @@ class NoteAnchorPin(QtWidgets.QGraphicsRectItem):
         self.setPen(QtGui.QPen(QtCore.Qt.white, 2))
 
     def itemChange(self, change, value):
-        if change == self.ItemPositionChange and self.parent_block.parentItem():
-            self.parent_block.parentItem().update()
+        if change == self.ItemPositionChange and self.parentItem():
+            self.parentItem().update()
         return super(NoteAnchorPin, self).itemChange(change, value)
 
     def mousePressEvent(self, event):
@@ -65,7 +65,7 @@ class NoteAnchorPin(QtWidgets.QGraphicsRectItem):
 
 
 # ------------------------------------------------------------------------------
-# 3. 文本块 (核心：支持 8 向缩放手柄)
+# 3. 文本块 (修复：双击编辑 + 8向缩放 + 相对引线)
 # ------------------------------------------------------------------------------
 class NoteTextBlock(QtWidgets.QGraphicsTextItem):
     def __init__(self, text, pos, width=200, font_size=14, parent=None):
@@ -78,15 +78,15 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
         self.setFont(font)
         self.setDefaultTextColor(QtGui.QColor(255, 255, 255, 230))
 
+        # 初始状态：可选中、可移动
         self.setFlags(self.ItemIsSelectable | self.ItemIsMovable | self.ItemSendsGeometryChanges)
         self.setAcceptHoverEvents(True)
 
         self.anchor_pin = None
-        self._resize_margin = 10.0
-        self._resizing = False
-        self._resize_dir = [0, 0]  # [x_dir, y_dir] -> -1, 0, 1
+        self._is_resizing = False
+        self._resize_dir = [0, 0]
+        self._resize_margin = 12.0
 
-        # 按钮
         self.btn_sub = ActionButton("−", (60, 60, 60), lambda: self.change_size(-1), self)
         self.btn_add = ActionButton("+", (60, 60, 60), lambda: self.change_size(1), self)
         self.btn_lnk = ActionButton("➚", (0, 100, 100), self.create_anchor, self)
@@ -100,84 +100,6 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
         for i, btn in enumerate(self._btns):
             btn.setPos(w - (4 - i) * 24, -26)
 
-    def _get_resize_dir(self, pos):
-        """检测鼠标在哪个边界或角上"""
-        rect = self.boundingRect()
-        margin = self._resize_margin
-        x, y = pos.x(), pos.y()
-
-        dir_x, dir_y = 0, 0
-        if x < margin:
-            dir_x = -1
-        elif x > rect.width() - margin:
-            dir_x = 1
-
-        if y < margin:
-            dir_y = -1
-        elif y > rect.height() - margin:
-            dir_y = 1
-
-        return dir_x, dir_y
-
-    def _get_cursor(self, dx, dy):
-        if (dx == 1 and dy == 1) or (dx == -1 and dy == -1): return QtCore.Qt.SizeFDiagCursor
-        if (dx == -1 and dy == 1) or (dx == 1 and dy == -1): return QtCore.Qt.SizeBDiagCursor
-        if dx != 0: return QtCore.Qt.SizeHorCursor
-        if dy != 0: return QtCore.Qt.SizeVerCursor
-        return QtCore.Qt.ArrowCursor
-
-    def hoverMoveEvent(self, event):
-        dx, dy = self._get_resize_dir(event.pos())
-        self.setCursor(self._get_cursor(dx, dy))
-        super(NoteTextBlock, self).hoverMoveEvent(event)
-
-    def mousePressEvent(self, event):
-        dx, dy = self._get_resize_dir(event.pos())
-        if dx != 0 or dy != 0:
-            self._resizing = True
-            self._resize_dir = [dx, dy]
-            self.setFlag(self.ItemIsMovable, False)
-            event.accept()
-        else:
-            super(NoteTextBlock, self).mousePressEvent(event)
-
-    def mouseMoveEvent(self, event):
-        if self._resizing:
-            self.prepareGeometryChange()
-            dx, dy = self._resize_dir
-            pos = event.pos()
-            scene_pos = event.scenePos()
-
-            new_width = self.textWidth()
-            curr_pos = self.pos()
-
-            # 处理水平缩放 (左/右/角)
-            if dx == 1:  # 右边缘
-                new_width = max(60, pos.x())
-            elif dx == -1:  # 左边缘
-                diff = pos.x()
-                if self.textWidth() - diff > 60:
-                    # 转换坐标偏移到父级空间
-                    move_vec = self.mapToParent(QtCore.QPointF(diff, 0)) - self.mapToParent(QtCore.QPointF(0, 0))
-                    self.setPos(curr_pos + move_vec)
-                    new_width = self.textWidth() - diff
-
-            # 处理垂直偏移 (上/下)
-            if dy == -1:  # 顶边缘
-                move_vec = self.mapToParent(QtCore.QPointF(0, pos.y())) - self.mapToParent(QtCore.QPointF(0, 0))
-                self.setPos(self.pos() + move_vec)
-
-            self.setTextWidth(new_width)
-            self._update_toolbar_pos()
-        else:
-            super(NoteTextBlock, self).mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        self._resizing = False
-        self.setFlag(self.ItemIsMovable, True)
-        self.parentItem().on_text_block_changed()
-        super(NoteTextBlock, self).mouseReleaseEvent(event)
-
     def change_size(self, delta):
         f = self.font()
         f.setPointSize(max(6, f.pointSize() + delta))
@@ -187,14 +109,15 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
 
     def create_anchor(self):
         if self.anchor_pin: self.remove_pin()
-        self.anchor_pin = NoteAnchorPin(self)
-        self.scene().addItem(self.anchor_pin)
-        self.anchor_pin.setPos(self.scenePos() + QtCore.QPointF(self.textWidth() + 40, 0))
+        # 父级设为 BackdropItem
+        self.anchor_pin = NoteAnchorPin(self.parentItem(), self)
+        # 本地坐标定位
+        self.anchor_pin.setPos(self.pos() + QtCore.QPointF(self.textWidth() + 40, 20))
         self.parentItem().on_text_block_changed()
 
     def remove_pin(self):
         if self.anchor_pin:
-            if self.scene(): self.scene().removeItem(self.anchor_pin)
+            self.scene().removeItem(self.anchor_pin)
             self.anchor_pin = None
             self.parentItem().on_text_block_changed()
 
@@ -205,54 +128,142 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
         self.scene().removeItem(self)
         p.on_text_block_changed()
 
-    def get_edge_point(self, target_scene_pos):
+    def get_edge_point(self, pin_local_pos):
         """引线从边缘出发的计算逻辑"""
-        rect = self.sceneBoundingRect()
+        rect = self.boundingRect()
         center = rect.center()
-        dx = target_scene_pos.x() - center.x()
-        dy = target_scene_pos.y() - center.y()
+        # 计算 Pin 相对于文字块内部中心的偏移
+        p_in_block = pin_local_pos - self.pos()
+        dx = p_in_block.x() - center.x()
+        dy = p_in_block.y() - center.y()
+
         if abs(dx / rect.width()) > abs(dy / rect.height()):
-            return QtCore.QPointF(rect.right() if dx > 0 else rect.left(), center.y())
+            return self.pos() + QtCore.QPointF(rect.right() if dx > 0 else rect.left(), center.y())
         else:
-            return QtCore.QPointF(center.x(), rect.bottom() if dy > 0 else rect.top())
+            return self.pos() + QtCore.QPointF(center.x(), rect.bottom() if dy > 0 else rect.top())
+
+    # --- 交互与缩放逻辑 ---
+    def hoverMoveEvent(self, event):
+        if self.textInteractionFlags() & QtCore.Qt.TextEditorInteraction:
+            self.setCursor(QtCore.Qt.IBeamCursor)
+            return
+
+        rect = self.boundingRect()
+        m = self._resize_margin
+        x, y = event.pos().x(), event.pos().y()
+        dx, dy = 0, 0
+        if x < m:
+            dx = -1
+        elif x > rect.width() - m:
+            dx = 1
+        if y < m:
+            dy = -1
+        elif y > rect.height() - m:
+            dy = 1
+
+        if dx != 0 or dy != 0:
+            if (dx == 1 and dy == 1) or (dx == -1 and dy == -1):
+                self.setCursor(QtCore.Qt.SizeFDiagCursor)
+            elif (dx == -1 and dy == 1) or (dx == 1 and dy == -1):
+                self.setCursor(QtCore.Qt.SizeBDiagCursor)
+            elif dx != 0:
+                self.setCursor(QtCore.Qt.SizeHorCursor)
+            else:
+                self.setCursor(QtCore.Qt.SizeVerCursor)
+        else:
+            self.setCursor(QtCore.Qt.ArrowCursor)
+        super(NoteTextBlock, self).hoverMoveEvent(event)
+
+    def mousePressEvent(self, event):
+        # 如果正在编辑，让基类处理光标定位
+        if self.textInteractionFlags() & QtCore.Qt.TextEditorInteraction:
+            super(NoteTextBlock, self).mousePressEvent(event)
+            return
+
+        rect = self.boundingRect()
+        m = self._resize_margin
+        x, y = event.pos().x(), event.pos().y()
+        dx, dy = 0, 0
+        if x < m:
+            dx = -1
+        elif x > rect.width() - m:
+            dx = 1
+        if y < m:
+            dy = -1
+        elif y > rect.height() - m:
+            dy = 1
+
+        if dx != 0 or dy != 0:
+            self._is_resizing = True
+            self._resize_dir = [dx, dy]
+            self.setFlag(self.ItemIsMovable, False)
+            event.accept()
+        else:
+            super(NoteTextBlock, self).mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._is_resizing:
+            self.prepareGeometryChange()
+            dx, dy = self._resize_dir
+            pos = event.pos()
+            if dx == 1:
+                self.setTextWidth(max(60, pos.x()))
+            elif dx == -1:
+                diff = pos.x()
+                if self.textWidth() - diff > 60:
+                    self.setX(self.x() + diff)
+                    self.setTextWidth(self.textWidth() - diff)
+            if dy == -1: self.setY(self.y() + pos.y())
+            self._update_toolbar_pos()
+        else:
+            super(NoteTextBlock, self).mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self._is_resizing:
+            self._is_resizing = False
+            self.setFlag(self.ItemIsMovable, True)
+        self.parentItem().on_text_block_changed()
+        super(NoteTextBlock, self).mouseReleaseEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        # 核心修复：进入编辑模式
+        if event.button() == QtCore.Qt.LeftButton:
+            self.setFlag(self.ItemIsMovable, False)  # 编辑时必须禁用移动
+            self.setTextInteractionFlags(QtCore.Qt.TextEditorInteraction)
+            self.setFocus()
+            # 重新发送点击事件以确保光标定位
+            event.accept()
+        super(NoteTextBlock, self).mouseDoubleClickEvent(event)
+
+    def focusOutEvent(self, event):
+        # 核心修复：退出编辑模式
+        self.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
+        self.setFlag(self.ItemIsMovable, True)
+        self.parentItem().on_text_block_changed()
+        super(NoteTextBlock, self).focusOutEvent(event)
 
     def itemChange(self, change, value):
         if change == self.ItemSelectedChange:
             for btn in self._btns: btn.setVisible(bool(value))
         if change == self.ItemPositionChange and self.parentItem():
+            self.parentItem().update()
             QtCore.QTimer.singleShot(1, self.parentItem().on_text_block_changed)
         return super(NoteTextBlock, self).itemChange(change, value)
-
-    def mouseDoubleClickEvent(self, event):
-        self.setTextInteractionFlags(QtCore.Qt.TextEditorInteraction)
-        self.setFocus()
-        super(NoteTextBlock, self).mouseDoubleClickEvent(event)
-
-    def focusOutEvent(self, event):
-        self.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
-        self.parentItem().on_text_block_changed()
-        super(NoteTextBlock, self).focusOutEvent(event)
 
     def paint(self, painter, option, widget):
         if self.isSelected():
             painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 100), 1, QtCore.Qt.DashLine))
             painter.drawRect(self.boundingRect())
-            # 工具栏背景
+            # 按钮区域背景
             bg_rect = QtCore.QRectF(self.textWidth() - 98, -28, 98, 24)
             painter.setBrush(QtGui.QColor(20, 20, 20, 220))
             painter.setPen(QtCore.Qt.NoPen)
             painter.drawRoundedRect(bg_rect, 4, 4)
-            # 8向缩放提示：绘制四个角的微型方块
-            painter.setBrush(QtGui.QColor(0, 255, 255, 200))
-            r = self.boundingRect()
-            m = 4
-            for pt in [r.topLeft(), r.topRight(), r.bottomLeft(), r.bottomRight()]:
-                painter.drawRect(QtCore.QRectF(pt.x() - m / 2, pt.y() - m / 2, m, m))
         super(NoteTextBlock, self).paint(painter, option, widget)
 
 
 # ------------------------------------------------------------------------------
-# 4. 注释节点视图 (StickyNoteItem)
+# 4. 主画布节点视图 (StickyNoteItem)
 # ------------------------------------------------------------------------------
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 
@@ -271,14 +282,12 @@ class StickyNoteItem(BackdropNodeItem):
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
         rect = QtCore.QRectF(0, 0, self._width, self._height)
 
-        # 背景
         bg_color = QtGui.QColor(*self.color)
         bg_color.setAlpha(160)
         painter.setBrush(bg_color)
         painter.setPen(QtCore.Qt.NoPen)
         painter.drawRoundedRect(rect, 10, 10)
 
-        # 标题栏
         header_rect = QtCore.QRectF(0, 0, self._width, self._header_height)
         painter.setBrush(QtGui.QColor(0, 0, 0, 100))
         painter.drawRoundedRect(header_rect, 10, 10)
@@ -287,22 +296,20 @@ class StickyNoteItem(BackdropNodeItem):
         # 绘制边缘引线
         painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 150), 1.5, QtCore.Qt.DashLine))
         for b in self._text_blocks:
-            if b.anchor_pin and b.anchor_pin.scene():
-                pin_pos = b.anchor_pin.scenePos()
-                p1 = self.mapFromScene(b.get_edge_point(pin_pos))
-                p2 = self.mapFromScene(pin_pos)
+            if isinstance(b, NoteTextBlock) and b.anchor_pin:
+                p1 = b.get_edge_point(b.anchor_pin.pos())
+                p2 = b.anchor_pin.pos()
                 painter.drawLine(p1, p2)
 
-        # 选中边框
         if self.selected:
             painter.setBrush(QtCore.Qt.NoBrush)
             painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 180), 1.5))
             painter.drawRoundedRect(rect, 10, 10)
 
         painter.setPen(QtGui.QColor(255, 255, 255, 220))
-        f = painter.font()
-        f.setBold(True)
-        painter.setFont(f)
+        font = painter.font()
+        font.setBold(True)
+        painter.setFont(font)
         painter.drawText(header_rect.adjusted(15, 0, 0, 0), QtCore.Qt.AlignVCenter, self.name)
         painter.restore()
 
@@ -318,18 +325,20 @@ class StickyNoteItem(BackdropNodeItem):
         if not self.node: return
         data = []
         for b in self._text_blocks:
-            anchor_pos = [b.anchor_pin.scenePos().x(), b.anchor_pin.scenePos().y()] if b.anchor_pin else None
+            anchor_pos = [b.anchor_pin.pos().x(), b.anchor_pin.pos().y()] if b.anchor_pin else None
             data.append({
-                'text': b.toPlainText(), 'x': b.pos().x(), 'y': b.pos().y(),
-                'w': b.textWidth(), 'size': b.font().pointSize(), 'anchor': anchor_pos
+                'type': 'text', 'text': b.toPlainText(),
+                'x': b.pos().x(), 'y': b.pos().y(),
+                'w': b.textWidth(), 'size': b.font().pointSize(),
+                'anchor': anchor_pos
             })
         self.node.set_property('notes_json', json.dumps(data), push_undo=False)
-        self.update()
 
     def load_data(self, json_str):
         if not json_str: return
         for b in self._text_blocks:
-            if b.anchor_pin: self.scene().removeItem(b.anchor_pin)
+            if isinstance(b, NoteTextBlock) and b.anchor_pin:
+                self.scene().removeItem(b.anchor_pin)
             self.scene().removeItem(b)
         self._text_blocks = []
         try:
@@ -338,8 +347,7 @@ class StickyNoteItem(BackdropNodeItem):
                 block = self.add_text_block(item['text'], QtCore.QPointF(item['x'], item['y']), item.get('w', 200),
                                             item['size'])
                 if item.get('anchor'):
-                    block.anchor_pin = NoteAnchorPin(block)
-                    self.scene().addItem(block.anchor_pin)
+                    block.anchor_pin = NoteAnchorPin(self, block)
                     block.anchor_pin.setPos(item['anchor'][0], item['anchor'][1])
         except:
             pass
