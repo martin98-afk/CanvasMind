@@ -473,7 +473,7 @@ def create_dynamic_code_node(parent_window=None):
                 gv.deserialize(global_variable)
                 inputs_raw = {}
                 input_vars = {}
-                for input_port in self.input_ports():
+                for i, input_port in enumerate(self.input_ports()):
                     port_name = input_port.name()
                     connected = input_port.connected_ports()
                     if connected:
@@ -498,6 +498,8 @@ def create_dynamic_code_node(parent_window=None):
                             input_vars[safe_key] = inputs_raw[port_name]
                         if port_name in self.column_select:
                             inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
+                    else:
+                        inputs_raw[port_name] = gv.get(self.get_property("input_ports")[i]["var"])
 
                 expr_engine = ExpressionEngine(global_vars_context=gv)
 

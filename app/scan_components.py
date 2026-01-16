@@ -363,39 +363,42 @@ class ComponentScanner:
                 logger.error(f"当前组件文件加载失败 {py_file}: {e}")
 
     def _do_load_component_from_file(
-        self,
-        py_file: Path,
-        code: str,
-        comp_map: Dict,
-        file_map: Dict,
-        is_fallback: bool = False,
-        fallback_version: str = ""
+            self,
+            py_file: Path,
+            code: str,
+            comp_map: Dict,
+            file_map: Dict,
+            is_fallback: bool = False,
+            fallback_version: str = ""
     ):
         if not code.strip():
             raise ValueError("组件代码为空")
-        # 处理uuid冲突，情况：开发时移动了组件文件，在exe安装后旧文件不会被删除，可能触发uuid冲突，进行自动重命名
-        if py_file.stem in self._uuid_map:
-            old_file = self._uuid_map[py_file.stem]
-            if old_file != py_file:
-                new_file = py_file.with_name(f"{uuid.uuid4()}.py")
-                py_file.rename(new_file)
-                logger.warning(f"组件文件已存在，已自动重命名：{py_file} -> {new_file}")
-                py_file = new_file
+
+        # 1. 动态加载模块
         source_lines = code.splitlines(keepends=True)
+        # 假设 COMPONENT_IMPORT_CODE 是预定义的导入块
         start = len(COMPONENT_IMPORT_CODE.split("\n")) - 1
         clean_code = ''.join(source_lines[start:])
+
         unique_id = f"{hash(clean_code)}_{py_file.stem}"
         module_name = f"dynamic_component_{unique_id}"
+
         if module_name in sys.modules:
             del sys.modules[module_name]
 
         spec = importlib.util.spec_from_file_location(module_name, py_file)
         if spec is None:
-            raise RuntimeError("无法创建模块 spec")
+            raise RuntimeError(f"无法创建模块 spec: {py_file}")
+
         module = importlib.util.module_from_spec(spec)
         sys.modules[module_name] = module
-        spec.loader.exec_module(module)
+        try:
+            spec.loader.exec_module(module)
+        except Exception as e:
+            logger.error(f"模块执行失败: {e}")
+            raise
 
+        # 2. 提取组件类
         comp_cls = None
         for name, obj in inspect.getmembers(module, inspect.isclass):
             if getattr(obj, 'category', ""):
@@ -403,9 +406,37 @@ class ComponentScanner:
                 break
 
         if comp_cls is None:
-            raise ValueError("未找到有效组件类（缺少 category 属性）")
+            raise ValueError(f"文件 {py_file.name} 中未找到有效组件类（缺少 category 属性）")
 
-        current_uuid = py_file.stem  # 文件名是 UUID
+        # 3. 【核心优化】处理 UUID 冲突但 Category 不同的情况
+        current_uuid = py_file.stem
+        current_category = getattr(comp_cls, 'category', 'Default')
+
+        if current_uuid in self._uuid_map:
+            existing_comp = self._uuid_map[current_uuid]
+            if existing_comp.category != current_category:
+                # 触发重命名逻辑
+                new_uuid = str(uuid.uuid4())
+                new_py_file = py_file.with_name(f"{new_uuid}.py")
+
+                logger.warning(f"检测到 UUID 冲突 (UUID: {current_uuid}) 但 Category 不同 "
+                               f"({existing_comp.category} vs {current_category})。正在重命名文件...")
+
+                # 重命名历史记录文件 (如果有)
+                old_hist_path = ComponentHistoryManager.get_history_file_path(py_file)
+                if old_hist_path.exists():
+                    new_hist_path = ComponentHistoryManager.get_history_file_path(new_py_file)
+                    old_hist_path.rename(new_hist_path)
+
+                # 重命名主文件
+                py_file.rename(new_py_file)
+
+                # 更新变量以供后续逻辑使用
+                py_file = new_py_file
+                current_uuid = new_uuid
+                logger.info(f"组件已重命名为新 UUID: {current_uuid}")
+
+        # 4. 版本与历史处理
         if is_fallback:
             version = fallback_version
         else:
@@ -416,34 +447,37 @@ class ComponentScanner:
             else:
                 version = histories[-1]["version"]
 
+        # 5. 注入元数据
         comp_cls._version = version
         comp_cls._source_file = py_file
         comp_cls._source_code = code
-        comp_cls.uuid = py_file.stem
+        comp_cls.uuid = current_uuid  # 确保使用的是最终确定的 UUID
         comp_cls._is_fallback = is_fallback
 
+        # 加载历史数据到类属性
         hist_path = ComponentHistoryManager.get_history_file_path(py_file)
+        comp_cls._history_file = []
         if hist_path.exists():
-            with open(hist_path, 'r', encoding='utf-8') as f:
-                comp_cls._history_file = json.load(f)
-        else:
-            comp_cls._history_file = []
+            try:
+                with open(hist_path, 'r', encoding='utf-8') as f:
+                    comp_cls._history_file = json.load(f)
+            except Exception as e:
+                logger.error(f"加载历史文件失败: {e}")
 
+        # 6. 处理路径冲突 (Category/Name 相同但 UUID 不同)
         component_name = getattr(comp_cls, 'name', py_file.stem)
-        full_path = f"{comp_cls.category}/{component_name}"
-        base_full_path = f"{comp_cls.category}/{component_name}"
-        conflicting_uuid = None
+        base_full_path = f"{current_category}/{component_name}"
+        full_path = base_full_path
+
         for existing_path, cls in comp_map.items():
             if existing_path == full_path and getattr(cls, 'uuid', None) != current_uuid:
-                conflicting_uuid = cls.uuid
+                full_path = f"{base_full_path} ({current_uuid[:4]})"
+                logger.warning(f"检测到显示路径冲突: {base_full_path}，已重命名显示名为: {full_path}")
                 break
 
-        if conflicting_uuid:
-            # 路径冲突，追加 UUID 前 8 位作为区分
-            full_path = f"{base_full_path} ({current_uuid[:4]})"
-            logger.warning(f"检测到路径冲突: {base_full_path}，已重命名为: {full_path}")
-
-        # 写入缓存
+        # 7. 写入最终缓存
         comp_map[full_path] = comp_cls
         file_map[full_path] = py_file
         self._uuid_map[current_uuid] = comp_cls
+
+        return comp_cls
