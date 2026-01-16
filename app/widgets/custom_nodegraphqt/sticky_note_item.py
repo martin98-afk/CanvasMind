@@ -1,147 +1,403 @@
 # -*- coding: utf-8 -*-
-from NodeGraphQt.constants import ICON_NODE_BASE, NodeEnum
-from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
-from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
-from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
+import json
 from qtpy import QtCore, QtGui, QtWidgets
+from NodeGraphQt.constants import Z_VAL_NODE
 
 
 # ------------------------------------------------------------------------------
-# 1. 文本编辑组件 - 解决 set_property 触发问题
+# 1. 功能按钮类 (Action Button)
 # ------------------------------------------------------------------------------
+class ActionButton(QtWidgets.QGraphicsRectItem):
+    def __init__(self, label, color, func, parent=None):
+        super(ActionButton, self).__init__(QtCore.QRectF(0, 0, 20, 20), parent)
+        self.label = label
+        self.func = func
+        self.base_color = QtGui.QColor(*color)
+        self.setAcceptHoverEvents(True)
+        self.setBrush(self.base_color)
+        self.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 60), 1))
+        # 长按连续触发计时器
+        self._timer = QtCore.QTimer()
+        self._timer.timeout.connect(self.func)
+        self._is_pressed = False
 
-class EditableTextItem(QtWidgets.QGraphicsTextItem):
-    def __init__(self, parent=None):
-        super(EditableTextItem, self).__init__(parent)
-        self.setTabChangesFocus(True)
+    def paint(self, painter, option, widget):
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setBrush(self.brush())
+        painter.setPen(self.pen())
+        painter.drawRoundedRect(self.rect(), 4, 4)
+        painter.setPen(QtCore.Qt.white)
+        f = painter.font()
+        f.setBold(True)
+        painter.setFont(f)
+        painter.drawText(self.rect(), QtCore.Qt.AlignCenter, self.label)
 
-    def focusOutEvent(self, event):
-        super(EditableTextItem, self).focusOutEvent(event)
-        self.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
-        view_item = self.parentItem()
-        if view_item:
-            # 这里的获取路径已经过加固
-            node = getattr(view_item, 'node', None)
-            if not node:
-                try:
-                    node = view_item.graph.get_node_by_id(view_item.id)
-                except:
-                    pass
+    def mousePressEvent(self, event):
+        event.accept()
+        self.func()
+        # 如果是加减按钮，启动长按计时器
+        if self.label in ["+", "−"]:
+            self._timer.start(200) # 200ms 后开始连续触发
+        self._is_pressed = True
 
-            if node and node.get_property('note_text') != self.toPlainText():
-                node.set_property('note_text', self.toPlainText(), push_undo=True)
+    def mouseReleaseEvent(self, event):
+        self._timer.stop()
+        self._is_pressed = False
+        super(ActionButton, self).mouseReleaseEvent(event)
+
+    def hoverEnterEvent(self, event):
+        self.setBrush(self.base_color.lighter(120))
+
+    def hoverLeaveEvent(self, event):
+        self.setBrush(self.base_color)
 
 
 # ------------------------------------------------------------------------------
-# 2. 视图层 (UI) - 修复形状匹配与缩放
+# 2. 锚点 Pin
 # ------------------------------------------------------------------------------
+class NoteAnchorPin(QtWidgets.QGraphicsRectItem):
+    def __init__(self, parent_note_item, parent_block):
+        super(NoteAnchorPin, self).__init__(QtCore.QRectF(-7, -7, 14, 14), parent_note_item)
+        self.parent_block = parent_block
+        self.setZValue(Z_VAL_NODE + 20)
+        self.setFlags(self.ItemIsMovable | self.ItemIsSelectable | self.ItemSendsGeometryChanges)
+        self.setBrush(QtGui.QColor(0, 255, 255))
+        self.setPen(QtGui.QPen(QtCore.Qt.white, 2))
+
+    def itemChange(self, change, value):
+        if change == self.ItemPositionChange and self.parentItem():
+            self.parentItem().update()
+        return super(NoteAnchorPin, self).itemChange(change, value)
+
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.RightButton:
+            self.parent_block.remove_pin()
+            event.accept()
+            return
+        super(NoteAnchorPin, self).mousePressEvent(event)
 
 
-class StickyNoteItem(BackdropNodeItem):
-    """注释节点，可以调整大小、编辑文本"""
+# ------------------------------------------------------------------------------
+# 3. 文本块 (支持 8 向缩放)
+# ------------------------------------------------------------------------------
+class NoteTextBlock(QtWidgets.QGraphicsTextItem):
+    def __init__(self, text, pos, width=200, font_size=14, parent=None):
+        super(NoteTextBlock, self).__init__(parent)
+        self.setPlainText(text)
+        self.setPos(pos)
+        self.setTextWidth(width)
+        font = QtGui.QFont("Microsoft YaHei UI", font_size)
+        self.setFont(font)
+        self.setDefaultTextColor(QtGui.QColor(255, 255, 255, 230))
+        self.setFlags(self.ItemIsSelectable | self.ItemIsMovable | self.ItemSendsGeometryChanges)
+        self.setAcceptHoverEvents(True)
+        self.anchor_pin = None
+        self._is_resizing = False
+        self._resize_dir = [0, 0]
+        self._resize_margin = 12.0
+        self.btn_sub = ActionButton("−", (60, 60, 60), lambda: self.change_size(-1), self)
+        self.btn_add = ActionButton("+", (60, 60, 60), lambda: self.change_size(1), self)
+        self.btn_lnk = ActionButton("➚", (0, 100, 100), self.create_anchor, self)
+        self.btn_del = ActionButton("✕", (120, 40, 40), self.remove_self, self)
+        self._btns = [self.btn_sub, self.btn_add, self.btn_lnk, self.btn_del]
+        for btn in self._btns: btn.hide()
+        self._update_toolbar_pos()
 
-    def __init__(self, name='Sticky Note', text='', parent=None):
-        super(StickyNoteItem, self).__init__(name, parent)
-        # 【核心设置 1】：开启子项裁剪，防止文本超出节点圆角边框
-        self.setFlag(QtWidgets.QGraphicsItem.ItemClipsChildrenToShape, True)
-        # 【核心设置 2】：设置文本项
-        # 标题
-        self._text_item = NodeTextItem(self.name, self)
-        font = QtGui.QFont()
-        font.setPointSize(16)  # 推荐 10~12
-        font.setBold(True)  # 可选
-        self._text_item.setFont(font)
-        self._text_item.setDefaultTextColor(QtGui.QColor("white"))
-        # 注释文本
-        self._note_item = EditableTextItem(self)
-        self._note_item.setPlainText(text)
+    def _update_toolbar_pos(self):
+        w = self.textWidth()
+        for i, btn in enumerate(self._btns):
+            btn.setPos(w - (4 - i) * 24, -26)
 
-        font = QtGui.QFont("Microsoft YaHei", 14)
-        if not QtGui.QFontInfo(font).exactMatch():
-            font = QtGui.QFont("Arial", 14)
-        self._note_item.setFont(font)
-        self._note_item.setDefaultTextColor(QtGui.QColor(255, 255, 255, 210))
+    def change_size(self, delta):
+        f = self.font()
+        f.setPointSize(max(6, f.pointSize() + delta))
+        self.prepareGeometryChange()
+        self.setFont(f)
+        self.parentItem().on_text_block_changed()
 
-        # 边距设置
-        self._note_item.document().setDocumentMargin(12)
-        self._note_item.setZValue(self.zValue() + 0.1)
-        self.node = None
+    def create_anchor(self):
+        if self.anchor_pin: self.remove_pin()
+        self.anchor_pin = NoteAnchorPin(self.parentItem(), self)
+        self.anchor_pin.setPos(self.pos() + QtCore.QPointF(self.textWidth() + 40, 20))
+        self.parentItem().on_text_block_changed()
 
-    def set_text(self, text):
-        if self._note_item.toPlainText() != text:
-            self._note_item.setPlainText(text)
+    def remove_pin(self):
+        if self.anchor_pin:
+            self.scene().removeItem(self.anchor_pin)
+            self.anchor_pin = None
+            self.parentItem().on_text_block_changed()
+
+    def remove_self(self):
+        self.remove_pin()
+        p = self.parentItem()
+        if self in p._text_blocks: p._text_blocks.remove(self)
+        self.scene().removeItem(self)
+        p.on_text_block_changed()
+
+    def get_edge_point(self, pin_local_pos):
+        rect = self.boundingRect()
+        center = rect.center()
+        p_in_block = pin_local_pos - self.pos()
+        dx, dy = p_in_block.x() - center.x(), p_in_block.y() - center.y()
+        if abs(dx / rect.width()) > abs(dy / rect.height()):
+            return self.pos() + QtCore.QPointF(rect.right() if dx > 0 else rect.left(), center.y())
+        else:
+            return self.pos() + QtCore.QPointF(center.x(), rect.bottom() if dy > 0 else rect.top())
+
+    def hoverMoveEvent(self, event):
+        if self.textInteractionFlags() & QtCore.Qt.TextEditorInteraction:
+            self.setCursor(QtCore.Qt.IBeamCursor)
+            return
+        rect = self.boundingRect()
+        m, x, y = self._resize_margin, event.pos().x(), event.pos().y()
+        dx, dy = 0, 0
+        if x < m:
+            dx = -1
+        elif x > rect.width() - m:
+            dx = 1
+        if y < m:
+            dy = -1
+        elif y > rect.height() - m:
+            dy = 1
+        if dx != 0 or dy != 0:
+            if (dx == 1 and dy == 1) or (dx == -1 and dy == -1):
+                self.setCursor(QtCore.Qt.SizeFDiagCursor)
+            elif (dx == -1 and dy == 1) or (dx == 1 and dy == -1):
+                self.setCursor(QtCore.Qt.SizeBDiagCursor)
+            elif dx != 0:
+                self.setCursor(QtCore.Qt.SizeHorCursor)
+            else:
+                self.setCursor(QtCore.Qt.SizeVerCursor)
+        else:
+            self.setCursor(QtCore.Qt.ArrowCursor)
+        super(NoteTextBlock, self).hoverMoveEvent(event)
+
+    def mousePressEvent(self, event):
+        if self.textInteractionFlags() & QtCore.Qt.TextEditorInteraction:
+            super(NoteTextBlock, self).mousePressEvent(event)
+            return
+        rect = self.boundingRect()
+        m, x, y = self._resize_margin, event.pos().x(), event.pos().y()
+        dx, dy = 0, 0
+        if x < m:
+            dx = -1
+        elif x > rect.width() - m:
+            dx = 1
+        if y < m:
+            dy = -1
+        elif y > rect.height() - m:
+            dy = 1
+        if dx != 0 or dy != 0:
+            self._is_resizing = True
+            self._resize_dir = [dx, dy]
+            self.setFlag(self.ItemIsMovable, False)
+            event.accept()
+        else:
+            super(NoteTextBlock, self).mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._is_resizing:
+            self.prepareGeometryChange()
+            dx, dy = self._resize_dir
+            pos = event.pos()
+            if dx == 1:
+                self.setTextWidth(max(60, pos.x()))
+            elif dx == -1:
+                diff = pos.x()
+                if self.textWidth() - diff > 60:
+                    self.setX(self.x() + diff);
+                    self.setTextWidth(self.textWidth() - diff)
+            if dy == -1: self.setY(self.y() + pos.y())
+            self._update_toolbar_pos()
+        else:
+            super(NoteTextBlock, self).mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self._is_resizing:
+            self._is_resizing = False
+            self.setFlag(self.ItemIsMovable, True)
+        self.parentItem().on_text_block_changed()
+        super(NoteTextBlock, self).mouseReleaseEvent(event)
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
-            # 双击时，如果点击位置在标题栏下方，才触发编辑
-            if event.pos().y() > 30:
-                self._note_item.setTextInteractionFlags(QtCore.Qt.TextEditorInteraction)
-                self._note_item.setFocus()
+            self.setFlag(self.ItemIsMovable, False)
+            self.setTextInteractionFlags(QtCore.Qt.TextEditorInteraction)
+            self.setFocus()
+            event.accept()
+        super(NoteTextBlock, self).mouseDoubleClickEvent(event)
+
+    def focusOutEvent(self, event):
+        self.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
+        self.setFlag(self.ItemIsMovable, True)
+        self.parentItem().on_text_block_changed()
+        super(NoteTextBlock, self).focusOutEvent(event)
+
+    def itemChange(self, change, value):
+        if change == self.ItemSelectedChange:
+            for btn in self._btns: btn.setVisible(bool(value))
+        if change == self.ItemPositionChange and self.parentItem():
+            self.parentItem().update()
+            QtCore.QTimer.singleShot(1, self.parentItem().on_text_block_changed)
+        return super(NoteTextBlock, self).itemChange(change, value)
+
+    def paint(self, painter, option, widget):
+        if self.isSelected():
+            painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 100), 1, QtCore.Qt.DashLine))
+            painter.drawRect(self.boundingRect())
+            bg_rect = QtCore.QRectF(self.textWidth() - 98, -28, 98, 24)
+            painter.setBrush(QtGui.QColor(20, 20, 20, 220))
+            painter.setPen(QtCore.Qt.NoPen)
+            painter.drawRoundedRect(bg_rect, 4, 4)
+        super(NoteTextBlock, self).paint(painter, option, widget)
+
+
+# ------------------------------------------------------------------------------
+# 4. 优化后的 StickyNoteItem (防误触核心)
+# ------------------------------------------------------------------------------
+from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
+
+
+class StickyNoteItem(BackdropNodeItem):
+    def __init__(self, name='Sticky Note', parent=None):
+        super(StickyNoteItem, self).__init__(name, parent)
+        self._text_blocks = []
+        self._header_height = 35
+        self._locked = False  # 是否锁定节点
+        self.setZValue(Z_VAL_NODE - 50)  # 置于极低层级
+        self.setFlag(self.ItemClipsChildrenToShape, False)
+        self.node = None
+
+        # 增加一个锁定按钮在标题栏
+        self.btn_lock = ActionButton("🔓", (80, 80, 80), self.toggle_lock, self)
+        self.btn_lock.setPos(5, 7)
+
+    def toggle_lock(self):
+        self._locked = not self._locked
+        self.btn_lock.label = "🔒" if self._locked else "🔓"
+        self.btn_lock.update()
+        # 锁定后，背景不再响应拖拽
+        self.setFlag(self.ItemIsMovable, not self._locked)
+        # 锁定后，内部文字也无法移动
+        for b in self._text_blocks:
+            b.setFlag(b.ItemIsMovable, not self._locked)
+            b.setFlag(b.ItemIsSelectable, not self._locked)
+        self.update()
+
+    def mousePressEvent(self, event):
+        """核心：通过点击位置和锁定状态控制事件透传"""
+        if self._locked:
+            event.ignore()  # 锁定状态下，事件全部透传给画布
+            return
+
+        # 1. 检查是否点在标题栏
+        if event.pos().y() < self._header_height:
+            # 点击标题栏：执行原 Backdrop 逻辑（允许移动、选中内部节点）
+            super(StickyNoteItem, self).mousePressEvent(event)
+        else:
+            # 2. 点击背景躯干：不触发全选节点，且允许事件透传
+            # 检查点击位置下方是否有我们的 NoteTextBlock 或 ActionButton
+            item = self.scene().itemAt(event.scenePos(), QtGui.QTransform())
+            if item == self or item == self._sizer:
+                # 点在纯背景上：忽略此事件，让它可以透传到下方的普通节点
+                event.ignore()
+            else:
+                # 点在内部的文字或按钮上：正常处理
+                super(StickyNoteItem, self).mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._locked:
+            event.ignore()
+            return
+        super(StickyNoteItem, self).mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self._locked:
+            event.ignore()
+            return
+        super(StickyNoteItem, self).mouseReleaseEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        if self._locked:
+            event.ignore()
+            return
+        # 只有在标题栏下方的空白处双击才新建
+        if event.pos().y() > self._header_height:
+            item = self.scene().itemAt(event.scenePos(), QtGui.QTransform())
+            if item == self:
+                self.add_text_block("双击编辑...", event.pos())
                 event.accept()
                 return
         super(StickyNoteItem, self).mouseDoubleClickEvent(event)
 
     def paint(self, painter, option, widget):
-        """绘制逻辑：实时匹配形状"""
-        # --- 1. 自动同步文本宽度与节点宽度 ---
-        margin = 2
-        header_height = 32
-        # 设置文本项的位置
-        self._note_item.setPos(margin, header_height)
-        # 【核心设置 2】：强制文本宽度等于节点宽度（减去边距），实现自动换行
-        # 这里必须在每次 paint 时或 resize 时调用
-        self._note_item.setTextWidth(max(10, self._width - margin * 2))
-
-        # --- 2. 绘图 ---
         painter.save()
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
-
         rect = QtCore.QRectF(0, 0, self._width, self._height)
 
-        # 背景
+        # 背景 (锁定状态下更透明)
+        alpha = 60 if self._locked else 160
         bg_color = QtGui.QColor(*self.color)
-        bg_color.setAlpha(170)
+        bg_color.setAlpha(alpha)
         painter.setBrush(bg_color)
-        painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 30), 1))
+        painter.setPen(QtCore.Qt.NoPen)
         painter.drawRoundedRect(rect, 10, 10)
 
         # 标题栏
-        header_rect = QtCore.QRectF(0, 0, self._width, header_height)
-        painter.setBrush(QtGui.QColor(0, 0, 0, 60))
-        painter.setPen(QtCore.Qt.NoPen)
-        path = QtGui.QPainterPath()
-        path.addRoundedRect(header_rect, 10, 10)
-        painter.drawPath(path)
+        header_rect = QtCore.QRectF(0, 0, self._width, self._header_height)
+        painter.setBrush(QtGui.QColor(0, 0, 0, 100))
+        painter.drawRoundedRect(header_rect, 10, 10)
+        painter.drawRect(QtCore.QRectF(0, self._header_height - 5, self._width, 5))
 
-        # 右下角缩放手柄装饰
-        painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 80), 2))
-        handle_size = 12
-        for i in range(2):
-            offset = i * 5
-            painter.drawLine(
-                QtCore.QPointF(self._width - handle_size + offset, self._height - 3),
-                QtCore.QPointF(self._width - 3, self._height - handle_size + offset)
-            )
+        # 引线
+        painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 120), 1.5, QtCore.Qt.DashLine))
+        for b in self._text_blocks:
+            if b.anchor_pin and b.anchor_pin.scene():
+                p1 = b.get_edge_point(b.anchor_pin.pos())
+                p2 = b.anchor_pin.pos()
+                painter.drawLine(p1, p2)
 
-        if self.selected:
+        # 选中描边 (锁定不显示)
+        if self.selected and not self._locked:
             painter.setBrush(QtCore.Qt.NoBrush)
-            painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 200), 2))
+            painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 180), 1.5))
             painter.drawRoundedRect(rect, 10, 10)
 
+        painter.setPen(QtGui.QColor(255, 255, 255, 220))
+        font = painter.font()
+        font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(header_rect.adjusted(35, 0, 0, 0), QtCore.Qt.AlignVCenter, self.name)
         painter.restore()
 
-    def _align_label(self):
-        rect = self.boundingRect()
-        text_rect = self._text_item.boundingRect()
-        x = rect.center().x() - (text_rect.width() / 2)
-        self._text_item.setPos(x, rect.y())
-
-    @AbstractNodeItem.name.setter
-    def name(self, name=''):
-        AbstractNodeItem.name.fset(self, name)
-        if name == self._text_item.toPlainText():
-            return
-        self._text_item.setPlainText(name)
-        if self.scene():
-            self._align_label()
+    def on_text_block_changed(self):
+        if not self.node: return
+        data = []
+        for b in self._text_blocks:
+            anchor_pos = [b.anchor_pin.pos().x(), b.anchor_pin.pos().y()] if b.anchor_pin else None
+            data.append({'type': 'text', 'text': b.toPlainText(), 'x': b.pos().x(), 'y': b.pos().y(),
+                         'w': b.textWidth(), 'size': b.font().pointSize(), 'anchor': anchor_pos})
+        self.node.set_property('notes_json', json.dumps(data), push_undo=False)
         self.update()
+
+    def load_data(self, json_str):
+        if not json_str: return
+        for b in self._text_blocks:
+            if b.anchor_pin: self.scene().removeItem(b.anchor_pin)
+            self.scene().removeItem(b)
+        self._text_blocks = []
+        try:
+            data = json.loads(json_str)
+            for item in data:
+                block = self.add_text_block(item['text'], QtCore.QPointF(item['x'], item['y']), item.get('w', 200),
+                                            item['size'])
+                if item.get('anchor'):
+                    block.anchor_pin = NoteAnchorPin(self, block)
+                    block.anchor_pin.setPos(item['anchor'][0], item['anchor'][1])
+        except:
+            pass
+
+    def add_text_block(self, text, pos, width=200, font_size=14):
+        block = NoteTextBlock(text, pos, width, font_size, self)
+        self._text_blocks.append(block)
+        return block

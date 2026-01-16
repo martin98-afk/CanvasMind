@@ -191,6 +191,13 @@ class CanvasUISetUp:
         self.code_node.clicked.connect(lambda: self.parent.create_next_node("dynamic.DYNAMIC_CODE"))
         self.node_layout.addWidget(self.code_node)
 
+        self.note_node = TransparentToolButton(get_icon("文本注释"), parent=self.parent.canvas_widget)
+        self.note_node.setIconSize(QSize(18, 18))
+        self.note_node.setFixedSize(24, 24)
+        self.note_node.setToolTip("创建注释节点")
+        self.note_node.clicked.connect(lambda: self.parent.create_next_node("general.StickyNote"))
+        self.node_layout.addWidget(self.note_node)
+
         # === 分隔线 ===
         self.node_layout.addWidget(CardSeparator(self.nodes_container))
 

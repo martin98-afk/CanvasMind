@@ -7,6 +7,7 @@ import os
 import sys
 import threading
 import traceback
+import uuid
 from collections import defaultdict
 from pathlib import Path
 from typing import Tuple, Dict, Type, Optional, List
@@ -372,6 +373,14 @@ class ComponentScanner:
     ):
         if not code.strip():
             raise ValueError("组件代码为空")
+        # 处理uuid冲突，情况：开发时移动了组件文件，在exe安装后旧文件不会被删除，可能触发uuid冲突，进行自动重命名
+        if py_file.stem in self._uuid_map:
+            old_file = self._uuid_map[py_file.stem]
+            if old_file != py_file:
+                new_file = py_file.with_name(f"{py_file.stem}_old_{uuid.uuid4()}.py")
+                py_file.rename(new_file)
+                logger.warning(f"组件文件已存在，已自动重命名：{py_file} -> {new_file}")
+                py_file = new_file
         source_lines = code.splitlines(keepends=True)
         start = len(COMPONENT_IMPORT_CODE.split("\n")) - 1
         clean_code = ''.join(source_lines[start:])

@@ -2,6 +2,7 @@
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
+from qfluentwidgets import TransparentToolButton, FluentIcon
 
 from app.utils.utils import get_pinyin_search_keys
 
@@ -83,13 +84,13 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self._graph = graph
         self._left_panel = left_panel
         self.parent = parent
-        self._cached_data = []  # 核心：缓存所有节点数据
+        self._cached_data = []
 
-        # 1. 窗口属性设置
+        # 1. 窗口属性
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
-        # 2. 布局与样式
+        # 2. 主布局
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.main_layout.setContentsMargins(10, 10, 10, 10)
 
@@ -102,50 +103,61 @@ class CustomGraphMenu(QtWidgets.QWidget):
                 border-radius: 8px;
             }
         """)
-        # 添加阴影效果
-        shadow = QtWidgets.QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(20)
-        shadow.setXOffset(0)
-        shadow.setYOffset(5)
-        shadow.setColor(QtGui.QColor(0, 0, 0, 150))
-        self.container.setGraphicsEffect(shadow)
 
-        container_layout = QtWidgets.QVBoxLayout(self.container)
-        container_layout.setContentsMargins(8, 8, 8, 8)
-        container_layout.setSpacing(8)
+        # 阴影
+        self.shadow = QtWidgets.QGraphicsDropShadowEffect(self)
+        self.shadow.setBlurRadius(20)
+        self.shadow.setXOffset(0)
+        self.shadow.setYOffset(5)
+        self.shadow.setColor(QtGui.QColor(0, 0, 0, 150))
+        self.container.setGraphicsEffect(self.shadow)
 
-        # 搜索框
+        # 容器布局
+        self.container_layout = QtWidgets.QVBoxLayout(self.container)
+        self.container_layout.setContentsMargins(8, 8, 8, 8)
+        self.container_layout.setSpacing(8)
+
+        # --- 3. 封装搜索栏 Header (为了方便移动位置) ---
+        self.header_widget = QtWidgets.QWidget()
+        self.header_layout = QtWidgets.QHBoxLayout(self.header_widget)
+        self.header_layout.setContentsMargins(0, 0, 0, 0)
+        self.header_layout.setSpacing(2)
+
+        self.filter_button = TransparentToolButton(FluentIcon.FILTER, self)
+        self.filter_button.clicked.connect(self.show_category_filter)
+
         self.search_line = QtWidgets.QLineEdit()
         self.search_line.setPlaceholderText("🔍 输入搜索 (拼音/简称/类别)...")
         self.search_line.setStyleSheet("""
             QLineEdit {
                 background: #323233; color: #FFFFFF;
                 border: 1px solid #3C3C3C; border-radius: 4px;
-                padding: 8px 12px; font-size: 14px; selection-background-color: #007ACC;
+                padding: 8px 12px; font-size: 14px;
             }
             QLineEdit:focus { border: 1px solid #007ACC; }
         """)
-        container_layout.addWidget(self.search_line)
 
-        # 列表
+        self.header_layout.addWidget(self.filter_button)
+        self.header_layout.addWidget(self.search_line)
+
+        # --- 4. 列表组件 ---
         self.list_widget = QtWidgets.QListWidget()
         self.list_widget.setItemDelegate(NodeItemDelegate())
         self.list_widget.setMouseTracking(True)
-        # 确保鼠标移动时立即重绘项
         self.list_widget.setAttribute(QtCore.Qt.WA_Hover)
         self.list_widget.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
-        self.list_widget.setStyleSheet("""
-            QListWidget {
-                background: transparent; border: none; outline: none;
-            }
-        """)
+        self.list_widget.setStyleSheet("QListWidget { background: transparent; border: none; outline: none; }")
+
         # 自定义滚动条
         self.list_widget.verticalScrollBar().setStyleSheet("""
             QScrollBar:vertical { background: transparent; width: 8px; }
             QScrollBar::handle:vertical { background: #4F4F4F; border-radius: 4px; min-height: 20px; }
             QScrollBar::add-line, QScrollBar::sub-line { height: 0px; }
         """)
-        container_layout.addWidget(self.list_widget)
+
+        # 默认布局：搜索框在顶部 (index 0)，列表在底部 (index 1)
+        self.container_layout.addWidget(self.header_widget)
+        self.container_layout.addWidget(self.list_widget)
 
         self.main_layout.addWidget(self.container)
 
@@ -156,6 +168,10 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
         self.setFixedSize(420, 450)
         self.search_line.installEventFilter(self)
+
+    def show_category_filter(self):
+        pos = self.filter_button.mapToGlobal(self.filter_button.rect().bottomLeft())
+        self._left_panel.draggable_tree.category_filter_dialog.show_at(pos)
 
     def set_category_filter(self, categories):
         self._selected_categories = set(categories)
@@ -233,24 +249,58 @@ class CustomGraphMenu(QtWidgets.QWidget):
             self.list_widget.setCurrentRow(first_visible)
 
     def show_at_cursor(self, pos):
-        # 1. 如果缓存为空则更新（通常只在第一次或刷新时执行）
+        """核心优化：动态调整位置和 UI 结构"""
         if not self._cached_data:
             self.update_cache()
             self.populate_ui()
 
-        # 2. 坐标转换
+        # 坐标转换逻辑
         viewer = self._graph.viewer()
         scene_viewer = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
         self._spawn_pos = scene_viewer.mapFromGlobal(pos)
 
-        # 3. 重置 UI 状态
+        # 重置状态
         self.search_line.setText("")
         for i in range(self.list_widget.count()):
             self.list_widget.item(i).setHidden(False)
         self.list_widget.setCurrentRow(0)
 
-        # 4. 窗口定位
-        self.move(pos - QtCore.QPoint(20, 20))  # 稍微偏移让光标处于搜索框内
+        # --- 计算屏幕边界 ---
+        menu_w, menu_h = self.width(), self.height()
+        screen_rect = QtWidgets.QApplication.desktop().availableGeometry(pos)
+
+        target_x = pos.x() - 20
+        target_y = pos.y() - 20  # 默认向下弹出的起始偏移
+
+        is_upward = False
+
+        # 检查下方空间是否足够
+        if target_y + menu_h > screen_rect.bottom():
+            # 空间不足，改为向上弹出
+            is_upward = True
+            target_y = pos.y() - menu_h + 20
+            # 阴影反向
+            self.shadow.setYOffset(-5)
+        else:
+            # 空间足够，向下弹出
+            is_upward = False
+            self.shadow.setYOffset(5)
+
+        # 左右边界修正
+        target_x = max(screen_rect.left() + 5, min(target_x, screen_rect.right() - menu_w - 5))
+        target_y = max(screen_rect.top() + 5, min(target_y, screen_rect.bottom() - 5))
+
+        # --- 动态调整布局顺序 ---
+        if is_upward:
+            # 向上弹出：列表在 index 0 (上)，搜索框在 index 1 (下)
+            self.container_layout.insertWidget(0, self.list_widget)
+            self.container_layout.insertWidget(1, self.header_widget)
+        else:
+            # 向下弹出：搜索框在 index 0 (上)，列表在 index 1 (下)
+            self.container_layout.insertWidget(0, self.header_widget)
+            self.container_layout.insertWidget(1, self.list_widget)
+
+        self.move(QtCore.QPoint(target_x, target_y))
         self.show()
         self.raise_()
         self.activateWindow()
@@ -289,13 +339,17 @@ class CustomGraphMenu(QtWidgets.QWidget):
                 self.close()
                 return True
             if source is self.search_line:
+                # 优化：根据布局方向调整上下键逻辑
+                # 获取当前 header 是否在底部
+                is_bottom = self.container_layout.indexOf(self.header_widget) == 1
+
                 if event.key() == Qt.Key_Down:
+                    if is_bottom:  # 如果搜索框在下面，按向下应该没反应或循环
+                        return False
                     self.list_widget.setFocus()
-                    self.list_widget.setCurrentRow(self.list_widget.currentRow())
                     return True
                 elif event.key() == Qt.Key_Up:
-                    # 如果在最顶端按上，可以保持在搜索框
-                    if self.list_widget.currentRow() <= 0:
+                    if not is_bottom:  # 如果搜索框在上面，按向上没反应
                         return False
                     self.list_widget.setFocus()
                     return True

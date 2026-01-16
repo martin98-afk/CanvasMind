@@ -86,6 +86,8 @@ class NodeOperations:
             node_class_names = []
             # 普通节点
             for full_path, comp_cls in component_map.items():
+                if f"StatusDynamicNode_{comp_cls.uuid}" in node_class_names:
+                    continue
                 node_class = create_node_class(full_path, file_map.get(full_path), self.parent)
                 node_class.__name__ = f"StatusDynamicNode_{comp_cls.uuid}"
                 node_class_names.append(node_class.__name__)

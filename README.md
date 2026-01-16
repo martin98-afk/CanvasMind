@@ -54,6 +54,16 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 - **Backdrop Grouping** – Visually group related nodes using Backdrop nodes  
 - **Context Menus** – Full right-click menu for node operations  
 
+### ⚡ Distributed & Hybrid Execution Engine
+*   **Parallel DAG Execution** – Independent branches are executed concurrently via a high-performance task scheduler, maximizing CPU/GPU utilization across the workflow.
+*   **Hybrid Runtime Orchestration** – Supports seamless mixing of execution environments:
+    *   **Interactive IPython Kernel**: Leveraging local persistent sessions for rapid debugging and state retention.
+    *   **Remote SSH Workers**: Transparently dispatching heavy-compute nodes (e.g., Model Training/Inference) to high-performance servers with automated environment syncing.
+*   **Selective In-Memory Persistence (Caching)** – Users can toggle "Pin to Memory" for specific nodes; results are cached in the active process RAM to eliminate redundant re-computation and I/O overhead during iterative tuning.
+*   **Intelligent Topological Dispatch** – Automatically resolves dependencies and routes tasks to the optimal target (Local/Remote/IPython) based on node configuration.
+*   **Unified State Management** – Real-time visualization of node status (Queued / Running / Success / Failed) across all distributed workers on a single canvas.
+*   **High-Speed Data Serialization** – Utilizes `pyarrow` and `pickle` for low-latency data transfer between local and remote environments.
+
 ### 🧠 Intelligent Node Recommendation ✨
 - **Type-Aware Suggestions** – Automatically match compatible downstream components based on output port types  
 - **Multi-Port Grouping** – Recommendations grouped by source port for clarity  
@@ -64,13 +74,7 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 - **Yellow Jump Buttons**: When the LLM references an existing node, a yellow `[Node Name](jump)` button appears—click to instantly navigate to that node on the canvas.  
 - **Purple Create Buttons**: When recommending a new capability, a purple `[Component Name](create)` button is generated—click to instantiate the component from your library and auto-connect it.  
 - **Multimodal Context Injection**: Automatically passes node JSON, variable states, and base64-encoded images to the LLM for precise, actionable suggestions.  
-- **Canvas-Aware Completion**: Supports simultaneous references to multiple existing nodes (yellow) and recommendations for missing components (purple), enabling end-to-end workflow completion.  
-
-### ⚡ Asynchronous Execution Engine
-- **Non-Blocking Execution** – Uses `QThreadPool` to keep the UI responsive  
-- **Real-Time Status Visualization** – Node states shown via color (idle / running / success / failure)  
-- **Topological Scheduling** – Automatically resolves dependencies and executes in correct order  
-- **Efficient Serialization** – Uses `pickle` and `pyarrow` for fast data passing and storage  
+- **Canvas-Aware Completion**: Supports simultaneous references to multiple existing nodes (yellow) and recommendations for missing components (purple), enabling end-to-end workflow completion.
 
 ### 🔁 Advanced Control Flow ✨
 - **Conditional Branching** – Enable/disable branches based on `$...$` expressions (`if/else` logic)  
@@ -139,36 +143,6 @@ pyinstaller --onedir --windowed --add-data "app;app" --add-data "icons;icons" -i
 
 ## 🧪 Component Development
 
-### Create a New Component
-
-1. **Create a file in `components/`**
-
-```python
-# components/data/my_component.py
-class MyComponent(BaseComponent):
-    name = "My Processor"
-    category = "Data"
-    description = "Example component"
-    requirements = "pandas>=1.3.0"
-    inputs = [{"name": "input_data", "type": "TEXT"}]
-    outputs = [{"name": "output_data", "type": "TEXT"}]
-    properties = {"param1": {"type": "TEXT", "default": "hello"}}
-
-    def run(self, params, inputs=None):
-        """
-        params: node properties from UI
-        inputs: upstream data (key = input port name)
-        return: output data (key = output port name)
-        """
-        input_data = inputs.get("input_data") if inputs else None
-        param1 = params.get("param1", "default_value")
-        result = f"Processed: {input_data} + {param1}"
-        return {"output_data": result}
-```
-
-2. **Auto-Loading** – Components are automatically scanned and added to the panel  
-3. **Auto Dependency Install** – If a component fails due to missing packages, CanvasMind installs them from the `requirements` field and retries  
-
 ### Supported Port Types
 
 | Type              | Description         | Example                   |
@@ -189,16 +163,17 @@ class MyComponent(BaseComponent):
 
 ### Supported Property Types
 
-| Type             | Description        | Example                   |
-|------------------|--------------------|---------------------------|
-| `TEXT`           | Text input         | Short strings             |
-| `LONGTEXT`       | Long text input    | Code snippets, prompts    |
-| `INT` / `FLOAT`  | Numeric input      | Thresholds, counts        |
-| `BOOL`           | Toggle             | Enable/disable flags      |
-| `CHOICE`         | Dropdown           | Predefined options        |
-| `DYNAMICFORM`    | Dynamic form       | Variable-length lists     |
-| `RANGE`          | Numeric range      | Min/max sliders           |
-
+| Type            | Description     | Example                |
+|-----------------|-----------------|------------------------|
+| `TEXT`          | Text input      | Short strings          |
+| `LONGTEXT`      | Long text input | Code snippets, prompts |
+| `INT` / `FLOAT` | Numeric input   | Thresholds, counts     |
+| `BOOL`          | Toggle          | Enable/disable flags   |
+| `CHOICE`        | Dropdown        | Predefined options     |
+| `DYNAMICFORM`   | Dynamic form    | Variable-length lists  |
+| `RANGE`         | Numeric range   | Min/max sliders        |
+| `VARIABLE`      | variable selector | global_variable        | 
+| `FILE SELECT`   | Select file     | canvas_files/model.pth    |
 ---
 
 ## 🎮 Canvas Usage Guide
@@ -304,24 +279,6 @@ model_xxxxxxxx/
 
 ---
 
-## 🔮 Roadmap
-
-### 1. **Enhanced Code Editor**
-- Integrate **LSP (Language Server Protocol)** to replace Jedi-based static completion
-
-### 2. **Remote Execution**
-- Submit workflows to **remote servers / Kubernetes / Ray clusters**  
-- Local = orchestration only; execution = distributed  
-- Ideal for LLMs and big data workloads
-
-### 3. **Parallel Execution**
-- **Problem**: Current execution is serial → underutilizes CPU/GPU  
-- **Solution**:
-  - Parallel execution of independent nodes  
-  - GPU-aware scheduling (e.g., assign PyTorch models to specific devices)
-
----
-
 ## 📊 Feature Status (✅ Implemented | ⏳ Planned)
 
 - ✅ Visual canvas (NodeGraphQt)  
@@ -331,9 +288,9 @@ model_xxxxxxxx/
 - ✅ Intelligent node recommendations  
 - ✅ One-click export (CLI + API)  
 - ✅ Multi-environment management  
-- ✅ **LLM context integration (yellow jump / purple create buttons)**  
+- ✅ **LLM context integration (yellow jump / purple create buttons)**
+- ✅ Parallel & remote execution  
 - ⏳ Code-to-canvas auto-creation (from editor → new node)  
-- ⏳ Parallel & remote execution  
 
 ---
 
