@@ -7,7 +7,7 @@ from app.widgets.custom_nodegraphqt.sticky_note_item import StickyNoteItem
 
 class StickyNoteNode(BackdropNode):
     __identifier__ = 'general'
-    NODE_NAME = '超级注释'
+    NODE_NAME = '注释节点'
 
     def __init__(self):
         super(StickyNoteNode, self).__init__(qgraphics_views=StickyNoteItem)
