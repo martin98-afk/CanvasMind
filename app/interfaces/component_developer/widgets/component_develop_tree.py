@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import copy
+import json
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
@@ -22,9 +23,13 @@ from app.utils.utils import get_icon
 from app.widgets.dialog_widget.new_component_dialog import NewComponentDialog
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 
+# 定义角色标识，区分文件夹和组件
+ROLE_FULL_PATH = Qt.UserRole + 1
+ROLE_IS_FOLDER = Qt.UserRole + 2
+
 
 class ComponentTreeWidget(TreeWidget):
-    """组件树控件 - 支持右键菜单、搜索、快捷键、类别筛选"""
+    """组件树控件 - 支持无限级节点、右键菜单、搜索、快捷键、类别筛选"""
     component_selected = pyqtSignal(str)
     component_created = pyqtSignal(dict)
     component_pasted = pyqtSignal(str)
@@ -47,78 +52,101 @@ class ComponentTreeWidget(TreeWidget):
         """刷新组件列表，并保持当前类别筛选状态"""
         try:
             self._components, self._file_map = ComponentScanner().get_components()
-            self.show_selected_category()  # 👈 保留筛选状态
+            self.show_selected_category()
         except Exception as e:
             self._show_error(f"刷新组件失败: {e}")
 
     def show_selected_category(self):
-        """根据当前筛选条件构建树（统一入口）"""
+        """支持无限级路径构建树（如 A/B/C/组件）"""
         self.clear()
         self._all_items.clear()
 
         if not self._components:
             return
 
-        category_to_comps = {}
-        for full_path, comp_cls in self._components.items():
-            category, name = full_path.split("/")
-            if not isinstance(name, str):
-                name = str(name)
+        # 缓存文件夹节点，避免重复创建
+        path_nodes = {}
 
-            if self._selected_categories and category not in self._selected_categories:
+        # 按路径排序，确保父目录先处理
+        sorted_paths = sorted(self._components.keys())
+
+        for full_path in sorted_paths:
+            parts = full_path.split("/")
+
+            # 1. 第一级类别过滤
+            if self._selected_categories and parts[0] not in self._selected_categories:
                 continue
 
-            if category not in category_to_comps:
-                category_to_comps[category] = []
-            category_to_comps[category].append((full_path, name))
+            current_parent = None
+            path_acc = ""
 
-        # 按分类名排序
-        for category in sorted(category_to_comps.keys()):
-            cat_item = QTreeWidgetItem([category])
-            self.addTopLevelItem(cat_item)
-            self._all_items.append(cat_item)
+            # 2. 递归构建中间目录
+            for i in range(len(parts) - 1):
+                part_name = parts[i]
+                path_acc = "/".join(parts[:i + 1])
 
-            comps = sorted(category_to_comps[category], key=lambda x: x[1])
-            for full_path, name in comps:
-                comp_item = QTreeWidgetItem([name])
-                comp_item.setData(0, Qt.UserRole + 1, full_path)
-                cat_item.addChild(comp_item)
-                self._all_items.append(comp_item)
+                if path_acc not in path_nodes:
+                    folder_item = QTreeWidgetItem([part_name])
+                    folder_item.setData(0, ROLE_IS_FOLDER, True)
+                    folder_item.setIcon(0, FluentIcon.FOLDER.icon())
 
-            cat_item.setExpanded(True)
+                    if current_parent:
+                        current_parent.addChild(folder_item)
+                    else:
+                        self.addTopLevelItem(folder_item)
+
+                    path_nodes[path_acc] = folder_item
+                    self._all_items.append(folder_item)
+
+                current_parent = path_nodes[path_acc]
+
+            # 3. 创建组件叶子节点
+            comp_name = parts[-1]
+            comp_item = QTreeWidgetItem([comp_name])
+            comp_item.setData(0, ROLE_FULL_PATH, full_path)
+            comp_item.setData(0, ROLE_IS_FOLDER, False)
+
+            if current_parent:
+                current_parent.addChild(comp_item)
+            else:
+                self.addTopLevelItem(comp_item)
+
+            self._all_items.append(comp_item)
+
+        self.expandAll()
 
     def filter_items(self, keyword: str):
-        """根据关键词过滤树节点（模糊匹配）"""
+        """根据关键词过滤（支持多级展示）"""
         keyword = keyword.strip().lower()
-        if not keyword:
-            for item in self._all_items:
-                item.setHidden(False)
-                if item.parent():
-                    item.parent().setExpanded(True)
-            return
 
+        # 隐藏所有项
         for item in self._all_items:
             item.setHidden(True)
 
-        for item in self._all_items:
-            if not item.parent():  # 分类项
-                continue
-            name = item.text(0).lower()
-            category = item.parent().text(0).lower()
-            if keyword in name or keyword in category or keyword in f"{category}/{name}":
+        if not keyword:
+            for item in self._all_items:
                 item.setHidden(False)
-                parent = item.parent()
-                if parent:
-                    parent.setHidden(False)
-                    parent.setExpanded(True)
+            return
+
+        for item in self._all_items:
+            # 只在组件节点上匹配
+            if not item.data(0, ROLE_IS_FOLDER):
+                name = item.text(0).lower()
+                full_path = (item.data(0, ROLE_FULL_PATH) or "").lower()
+
+                if keyword in name or keyword in full_path:
+                    # 匹配成功，递归显示并展开父节点
+                    curr = item
+                    while curr:
+                        curr.setHidden(False)
+                        curr.setExpanded(True)
+                        curr = curr.parent()
 
     def expand_all_categories(self):
-        for i in range(self.topLevelItemCount()):
-            self.topLevelItem(i).setExpanded(True)
+        self.expandAll()
 
     def collapse_all_categories(self):
-        for i in range(self.topLevelItemCount()):
-            self.topLevelItem(i).setExpanded(False)
+        self.collapseAll()
 
     def set_current_editing_component(self, full_path: str):
         self._current_editing_component = full_path
@@ -129,12 +157,7 @@ class ComponentTreeWidget(TreeWidget):
             return
 
         for item in self._all_items:
-            if not item.parent():
-                continue
-            if item.data(0, Qt.UserRole + 1) == self._current_editing_component:
-                parent = item.parent()
-                if parent:
-                    parent.setExpanded(True)
+            if not item.data(0, ROLE_IS_FOLDER) and item.data(0, ROLE_FULL_PATH) == self._current_editing_component:
                 self.setCurrentItem(item)
                 self.scrollToItem(item, QTreeWidget.EnsureVisible)
                 item.setSelected(True)
@@ -167,25 +190,37 @@ class ComponentTreeWidget(TreeWidget):
 
         super().keyPressEvent(event)
 
+    def _is_component(self, item: QTreeWidgetItem) -> bool:
+        return item is not None and not item.data(0, ROLE_IS_FOLDER)
+
     def _get_selected_component_item(self) -> Optional[QTreeWidgetItem]:
         item = self.currentItem()
-        return item if item and item.parent() else None
+        return item if self._is_component(item) else None
 
-    def _get_selected_category_item(self) -> Optional[QTreeWidgetItem]:
+    def _get_selected_category_path(self) -> str:
+        """获取选中节点的分类全路径"""
         item = self.currentItem()
-        return item if item and not item.parent() else (item.parent() if item else None)
+        if not item: return ""
+
+        # 如果选中的是组件，取它的父节点
+        curr = item if item.data(0, ROLE_IS_FOLDER) else item.parent()
+        path_parts = []
+        while curr:
+            path_parts.insert(0, curr.text(0))
+            curr = curr.parent()
+        return "/".join(path_parts)
 
     def _show_context_menu(self, position):
         menu = RoundMenu(parent=self)
         item = self.itemAt(position)
 
-        if item and item.parent():  # 组件
+        if self._is_component(item):
             menu.addActions([
                 Action("✏️ 编辑组件", triggered=self._edit_component),
                 Action("📋 复制组件 (Ctrl+C)", triggered=self._copy_component),
                 Action("🗑️ 删除组件 (Delete)", triggered=self._delete_component),
             ])
-        else:  # 空白或分类
+        else:
             menu.addAction(Action("🆕 新建组件", triggered=self._create_new_component))
             if self._copied_component:
                 menu.addAction(Action("📌 粘贴组件 (Ctrl+V)", triggered=self._paste_component))
@@ -195,16 +230,11 @@ class ComponentTreeWidget(TreeWidget):
 
     def _edit_component(self):
         item = self._get_selected_component_item()
-        if not item:
-            return
-        full_path = item.data(0, Qt.UserRole + 1)
-        self.component_selected.emit(full_path)
+        if not item: return
+        self.component_selected.emit(item.data(0, ROLE_FULL_PATH))
 
     def _create_new_component(self):
-        category = ""
-        cat_item = self._get_selected_category_item()
-        if cat_item:
-            category = cat_item.text(0)
+        category = self._get_selected_category_path()
         dialog = NewComponentDialog(self.parent_window, default_category=category)
         if dialog.exec_() == QDialog.Accepted:
             self.component_created.emit(dialog.get_component_info())
@@ -214,20 +244,11 @@ class ComponentTreeWidget(TreeWidget):
         if not item:
             self._show_warning("请先选中一个组件")
             return
-        full_path = item.data(0, Qt.UserRole + 1)
+        full_path = item.data(0, ROLE_FULL_PATH)
         orig_cls = self._components.get(full_path)
-        if not orig_cls:
-            self._show_warning("无法复制该组件")
-            return
+        if not orig_cls: return
 
-        # ✅ 动态创建新类（不共享原类）
-        new_cls = type(
-            orig_cls.__name__,  # 类名
-            orig_cls.__bases__,  # 基类
-            dict(orig_cls.__dict__)  # 复制所有类属性（浅拷贝，但够用）
-        )
-
-        # ✅ 深拷贝可变属性（如 list/dict），避免共享
+        new_cls = type(orig_cls.__name__, orig_cls.__bases__, dict(orig_cls.__dict__))
         for attr_name, attr_value in orig_cls.__dict__.items():
             if isinstance(attr_value, (list, dict)):
                 setattr(new_cls, attr_name, copy.deepcopy(attr_value))
@@ -236,42 +257,24 @@ class ComponentTreeWidget(TreeWidget):
         self._show_success("组件已复制 (Ctrl+C)")
 
     def _paste_component(self):
-        if not self._copied_component:
-            self._show_warning("剪贴板中没有可粘贴的组件")
-            return
-
-        category = ""
-        cat_item = self._get_selected_category_item()
-        if cat_item:
-            category = cat_item.text(0)
-
+        if not self._copied_component: return
+        category = self._get_selected_category_path()
         dialog = NewComponentDialog(
             self.parent_window,
             default_name=self._copied_component.name,
             default_category=category,
             default_description=getattr(self._copied_component, 'description', '')
         )
-        dialog.setWindowTitle("粘贴组件 - 设置新组件信息")
         if dialog.exec_() == QDialog.Accepted:
             info = dialog.get_component_info()
-            self._copied_component.name = info["name"]
-            self._copied_component.category = info["category"]
-            self._copied_component.description = info.get("description", "")
             self.component_pasted.emit(f"{info['category']}/{info['name']}")
 
     def _delete_component(self):
         item = self._get_selected_component_item()
-        if not item:
-            self._show_warning("请先选中一个组件")
-            return
-
-        full_path = item.data(0, Qt.UserRole + 1)
-        category = item.parent().text(0)
-        name = item.text(0)
-
-        msg_box = MessageBox("删除组件", f"确定删除 {category}/{name} 吗？此操作不可逆！", self.window())
-        if not msg_box.exec():
-            return
+        if not item: return
+        full_path = item.data(0, ROLE_FULL_PATH)
+        msg_box = MessageBox("删除组件", f"确定删除 {full_path} 吗？", self.window())
+        if not msg_box.exec(): return
 
         try:
             file_path = self._file_map.get(full_path)
@@ -294,7 +297,7 @@ class ComponentTreeWidget(TreeWidget):
 
 
 class ComponentTreePanel(QWidget):
-    """带搜索框和控制按钮的组件树面板"""
+    """带搜索框和控制按钮的组件树面板 - 完整保留所有 UI 按钮"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -309,20 +312,25 @@ class ComponentTreePanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # 控制栏
+        # ✅ 完整保留你的控制栏
         top_layout = QHBoxLayout()
         top_layout.setContentsMargins(5, 5, 5, 2)
+
         self.category_button = DropDownPushButton(FluentIcon.BOOK_SHELF, "类别", self)
         self.category_button.setToolTip("类别筛选")
         self.category_button.clicked.connect(self._show_category_dialog)
+
+        # 展开/折叠/跳转按钮
         self.expand_all_btn = TransparentToolButton(get_icon("expand_all"), self)
         self.expand_all_btn.setToolTip("展开所有分类")
         self.expand_all_btn.setFixedSize(25, 32)
         self.expand_all_btn.clicked.connect(self.tree.expand_all_categories)
+
         self.collapse_all_btn = TransparentToolButton(get_icon("collapse_all"), self)
         self.collapse_all_btn.setToolTip("折叠所有分类")
         self.collapse_all_btn.setFixedSize(25, 32)
         self.collapse_all_btn.clicked.connect(self.tree.collapse_all_categories)
+
         self.jump_to_current_btn = TransparentToolButton(get_icon("location"), self)
         self.jump_to_current_btn.setToolTip("跳转到当前编辑的组件")
         self.jump_to_current_btn.setFixedSize(25, 32)
@@ -351,12 +359,12 @@ class ComponentTreePanel(QWidget):
     def _init_components_and_categories(self):
         self.tree.refresh_components()
         ComponentScanner.register_on_change(self._on_scanner_updated)
-        categories = {getattr(cls, 'category', 'General') for cls in self.tree._components.values()}
+        # 取第一段路径作为筛选大类
+        categories = {path.split("/")[0] for path in self.tree._components.keys()}
         self.category_filter_dialog = CategoryFilterDialog(sorted(categories), self)
         self.category_filter_dialog.categories_changed.connect(self._on_categories_changed)
 
     def _on_scanner_updated(self):
-        """当 ComponentScanner 自动重载后，同步更新树（保持筛选状态）"""
         self.tree.refresh_components()
         self.tree.expand_all_categories()
 
@@ -369,18 +377,14 @@ class ComponentTreePanel(QWidget):
         self.tree._selected_categories = selected_categories
         self.tree.show_selected_category()
 
-    # 代理常用接口
     @property
-    def component_selected(self):
-        return self.tree.component_selected
+    def component_selected(self): return self.tree.component_selected
 
     @property
-    def component_created(self):
-        return self.tree.component_created
+    def component_created(self): return self.tree.component_created
 
     @property
-    def component_pasted(self):
-        return self.tree.component_pasted
+    def component_pasted(self): return self.tree.component_pasted
 
     def set_current_editing_component(self, full_path: str):
         self.tree.set_current_editing_component(full_path)
