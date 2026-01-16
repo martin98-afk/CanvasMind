@@ -970,11 +970,15 @@ class DataHandler:
     def _store_file_data(self, data: Any, output_name: str) -> str:
         """通用文件存储，保留原有 {{now}} 逻辑"""
         # 自动推断扩展名
-        ext = ".dat"
-        if isinstance(data, str):
-            ext = ".txt"
-        elif isinstance(data, bytes):
-            ext = ".bin"
+        # 获取输出自带后缀
+        if "." in output_name:
+            ext = output_name.split(".")[-1]
+        else:
+            ext = ".dat"
+            if isinstance(data, str):
+                ext = ".txt"
+            elif isinstance(data, bytes):
+                ext = ".bin"
 
         file_path = self._get_save_path(output_name, "file", ext)
 
