@@ -1,4 +1,5 @@
 # /app/interfaces/canvas_interface/node_operations.py
+import shutil
 import uuid
 
 from PyQt5.QtCore import QTimer
@@ -346,23 +347,82 @@ class NodeOperations:
         if "ControlFlowIterateNode" in key:
             backdrop_node.model.set_property("loop_nums", 3)
 
+    def _delete_node_workspace_async(self, node_ids):
+        """
+        异步删除节点的工作目录，防止 IO 阻塞主线程
+        :param node_ids: list of node ids
+        """
+        if not node_ids:
+            return
+
+        def cleanup_task():
+            # 获取基础路径，假设你的工程路径在 self.parent.file_path
+            base_path = self.parent.file_path.parent / "workspace"
+            for n_id in node_ids:
+                workspace_path = base_path / str(n_id)
+                log_file = self.parent.file_path.parent / "node_logs" / f"node_{n_id}.log"
+                try:
+                    if log_file.exists():
+                        log_file.unlink()
+                    if workspace_path.exists() and workspace_path.is_dir():
+                        shutil.rmtree(workspace_path)
+                        logger.info(f"Successfully deleted workspace: {workspace_path}")
+                except Exception as e:
+                    logger.error(f"Failed to delete workspace for node {n_id}: {e}")
+
+        # 使用类中已有的 thread_pool 执行
+        self.thread_pool.start(cleanup_task)
+
     def delete_node(self, node):
-        if node and node.id in self.parent.node_status:
-            del self.parent.node_status[node.id]
-        # 删除节点后，使缓存无效
+        """删除单个节点"""
+        if not node:
+            return
+
+        node_id = node.get_property("persistent_id")
+        # 1. 清理状态缓存
+        if node_id in self.parent.node_status:
+            del self.parent.node_status[node_id]
+
+        # 2. 异步删除本地目录 (传入列表)
+        self._delete_node_workspace_async([node_id])
+
+        # 3. 图表操作
         self._invalidate_node_cache()
         self.graph.delete_node(node)
         self.parent.property_panel.update_properties(None)
 
     def delete_selected_nodes(self, graph):
-        for node in graph.selected_nodes():
+        """批量删除选中节点（性能优化版）"""
+        selected_nodes = graph.selected_nodes()
+        if not selected_nodes:
+            return
+
+        node_ids_to_delete = []
+
+        for node in selected_nodes:
+            # 收集 ID
+            node_ids_to_delete.append(node.get_property("persistent_id"))
+
+            # 处理特殊节点的连接清理
             if isinstance(node, ControlFlowBackdrop):
                 for port in node.input_ports():
                     port.clear_connections(push_undo=True, emit_signal=True)
                 for port in node.output_ports():
                     port.clear_connections(push_undo=True, emit_signal=True)
-        graph.delete_nodes(graph.selected_nodes())
+
+            # 清理状态缓存
+            if node.get_property("persistent_id") in self.parent.node_status:
+                del self.parent.node_status[node.get_property("persistent_id")]
+
+        # 1. 批量异步删除本地磁盘文件
+        self._delete_node_workspace_async(node_ids_to_delete)
+
+        # 2. 批量从画布删除
+        graph.delete_nodes(selected_nodes)
+
+        # 3. 更新 UI 和缓存
         self._invalidate_node_cache()
+        self.parent.property_panel.update_properties(None)
 
     def _copy_selected_nodes(self):
         selected_nodes = self.graph.selected_nodes()
