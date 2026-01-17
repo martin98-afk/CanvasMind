@@ -205,7 +205,7 @@ class NumberWidgetWrapper(CustomNodeBaseWidget):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
-        self.set_label(f"{label}")
+        self.set_label(f"{label}({name})")
         self.type = type
 
         # --- 修复方案：不要赋值给 self.widget，使用局部变量 ---
