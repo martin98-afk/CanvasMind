@@ -327,7 +327,7 @@ class CustomNodeItem(NodeItem):
         painter.save();
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
         rect = self.get_node_body_rect();
-        radius = 12.0
+        radius = 16.0
 
         if self.selected:
             glow_color = QtGui.QColor(*COLOR_SELECTED_GLOW)

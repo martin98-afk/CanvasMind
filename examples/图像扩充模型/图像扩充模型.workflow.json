@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1db11933fa0": {
+      "0x1473cef8a90": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": ":/icons/同心圆.svg",
         "name": "文件上传",
@@ -54,7 +54,7 @@
           "preview_file": null
         }
       },
-      "0x1db11940400": {
+      "0x147399936d0": {
         "type_": "dynamic.StatusDynamicNode_55e89122-98ec-431c-b539-d39b13c0e039",
         "icon": ":/icons/同心圆.svg",
         "name": "图像尺寸调整",
@@ -79,7 +79,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 425.0,
+        "width": 425.453125,
         "height": 285.0,
         "pos": [
           752.855140702799,
@@ -99,7 +99,7 @@
           "fill_color": "black"
         }
       },
-      "0x1db11941450": {
+      "0x1473ce8fc10": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点",
@@ -124,8 +124,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 293.0,
-        "height": 223.0,
+        "width": 593.3125,
+        "height": 593.0,
         "pos": [
           1308.2544169228888,
           -841.4729114614033
@@ -140,7 +140,7 @@
           "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\e2aca9ac-a116-4e8e-ba16-265da71be907\\result\\image_e2aca9ac-a116-4e8e-ba16-265da71be907_resized_image.png"
         }
       },
-      "0x1db119418a0": {
+      "0x147475ba690": {
         "type_": "dynamic.StatusDynamicNode_3ad2c11e-e33f-48b7-ba30-060551477952",
         "icon": ":/icons/同心圆.svg",
         "name": "图像扩图填充",
@@ -165,11 +165,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 418.0,
+        "width": 417.875,
         "height": 343.0,
         "pos": [
-          1484.9649120286062,
-          146.9933613246228
+          1469.9177372064742,
+          149.49065263017383
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -187,7 +187,7 @@
           "debug_code": "# -*- coding: utf-8 -*-\nimport importlib.util\nfrom pathlib import Path\nbase_path = Path(__file__).parent.parent / \"base.py\"\nspec = importlib.util.spec_from_file_location(\"base\", str(base_path))\nbase_module = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(base_module)\n\n# 导入所需项目\nBaseComponent = base_module.BaseComponent\nPortDefinition = base_module.PortDefinition\nPropertyDefinition = base_module.PropertyDefinition\nPropertyType = base_module.PropertyType\nArgumentType = base_module.ArgumentType\nConnectionType = base_module.ConnectionType\n\n\nclass ImagePadForOutpainting(BaseComponent):\n    name = \"图像扩图填充\"\n    category = \"图像处理\"\n    description = \"为图像添加边距，生成用于扩图的画布和遮罩\"\n    requirements = \"Pillow\"\n    \n    inputs = [\n        PortDefinition(name=\"image\", label=\"输入图像\", type=ArgumentType.IMAGE),\n    ]\n    outputs = [\n        PortDefinition(name=\"padded_image\", label=\"扩图画布\", type=ArgumentType.IMAGE),\n        PortDefinition(name=\"mask\", label=\"遮罩图\", type=ArgumentType.IMAGE),\n    ]\n    \n    properties = {\n        \"left\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=0,\n            label=\"左扩展\",\n        ),\n        \"right\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=0,\n            label=\"右扩展\",\n        ),\n        \"top\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=0,\n            label=\"上扩展\",\n        ),\n        \"bottom\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=0,\n            label=\"下扩展\",\n        ),\n        \"feathering\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=20,\n            label=\"边缘羽化\",\n        ),\n    }\n\n    def run(self, params, inputs=None):\n        from PIL import Image, ImageOps, ImageFilter\n        import numpy as np\n\n        # 1. 获取输入图像并转为 RGB（防止 RGBA 导致的透明度干扰）\n        src_img = inputs.get(\"image\")\n        if src_img is None:\n            raise ValueError(\"未检测到输入图像\")\n        \n        src_img = src_img.convert(\"RGB\") \n        \n        left = int(params.get(\"left\", 0))\n        right = int(params.get(\"right\", 0))\n        top = int(params.get(\"top\", 0))\n        bottom = int(params.get(\"bottom\", 0))\n        \n        new_width = src_img.width + left + right\n        new_height = src_img.height + top + bottom\n\n        # 2. 创建扩图后的画布 (Padded Image)\n        # 建议默认用黑色，因为采样器对黑色背景的重绘更稳定\n        fill_color = (0, 0, 0) if params.get(\"fill_color\") == \"black\" else (255, 255, 255)\n        padded_img = Image.new(\"RGB\", (new_width, new_height), fill_color)\n        \n        # 将原图粘贴到中心指定位置\n        # padded_img.paste(src_img, (left, top))\n\n        # 3. 创建遮罩 (Mask) \n        # 逻辑：原图区域为黑色(0, 0, 0)，需要扩绘的区域为白色(255, 255, 255)\n        # 注意：这里先创建一个全白的图\n        mask = Image.new(\"L\", (new_width, new_height), 255)\n        \n        # 在原图对应的位置，画一个纯黑的矩形\n        # 这样采样器就知道：黑色的地方不要动，白色的地方重新画\n        black_rect = Image.new(\"L\", (src_img.width, src_img.height), 0)\n        mask.paste(black_rect, (left, top))\n\n        # 4. 可选：对遮罩边缘做微量羽化，防止扩图处有硬连接痕迹\n        mask = mask.filter(ImageFilter.GaussianBlur(radius=5))\n\n        # 【核心修正】：为了让 UI 预览正常，将 L 模式的遮罩转回 RGB 输出\n        # 否则某些低代码前端会将灰度图识别错误\n        mask_rgb = mask.convert(\"RGB\")\n        print(src_img.size)\n        return {\n            \"padded_image\": src_img, # 这是一个中间有原图，四周是黑边的图\n            \"mask\": mask_rgb            # 这是一个中间是黑块，四周是白边的图\n        }"
         }
       },
-      "0x1db119429e0": {
+      "0x1473ce29050": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点 1",
@@ -212,11 +212,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 293.0,
-        "height": 223.0,
+        "width": 593.3125,
+        "height": 593.0,
         "pos": [
           2109.32207500852,
-          -1120.6988491952595
+          -1360.017986363662
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -228,7 +228,7 @@
           "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\ce617379-f4c2-4082-9053-ad89c8287f36\\result\\image_ce617379-f4c2-4082-9053-ad89c8287f36_padded_image.png"
         }
       },
-      "0x1db11942ec0": {
+      "0x147475a6d10": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点 2",
@@ -253,11 +253,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 293.0,
-        "height": 223.0,
+        "width": 593.3125,
+        "height": 593.0,
         "pos": [
           2109.32207500852,
-          -450.43203163500914
+          -689.7511688034115
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -269,7 +269,7 @@
           "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\ce617379-f4c2-4082-9053-ad89c8287f36\\result\\image_ce617379-f4c2-4082-9053-ad89c8287f36_mask.png"
         }
       },
-      "0x1db11943400": {
+      "0x147475a6050": {
         "type_": "dynamic.StatusDynamicNode_7709d64e-30d4-4db0-b08c-2ae983988848",
         "icon": ":/icons/同心圆.svg",
         "name": "局部重绘采样器",
@@ -294,11 +294,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 618.0,
+        "width": 614.21875,
         "height": 486.0,
         "pos": [
-          2109.32207500852,
-          314.42947079326404
+          2094.2749001863885,
+          558.1734682664047
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -318,7 +318,7 @@
           "preview_output": null
         }
       },
-      "0x1db1197ce80": {
+      "0x147475d2890": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点 3",
@@ -343,8 +343,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 293.0,
-        "height": 223.0,
+        "width": 593.3125,
+        "height": 603.0,
         "pos": [
           4277.958857316946,
           146.9933613246228
@@ -359,7 +359,7 @@
           "media_display": null
         }
       },
-      "0x1db1197d330": {
+      "0x147399ba150": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "正向提示词",
@@ -384,11 +384,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 390.0,
+        "width": 389.890625,
         "height": 279.0,
         "pos": [
-          1484.9649120286062,
-          598.5419049559772
+          1469.9177372064742,
+          601.0391962615283
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -401,7 +401,7 @@
           "input": "Cinematic wide shot of majestic snow-capped mountains, crystal clear lake reflection, sunrise lighting, hyper-realistic, 8k resolution"
         }
       },
-      "0x1db1197e440": {
+      "0x1473ce6f210": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "负向提示词",
@@ -426,11 +426,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 390.0,
+        "width": 389.890625,
         "height": 279.0,
         "pos": [
-          1484.9649120286062,
-          949.4312263299084
+          1469.9177372064742,
+          951.9285176354595
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -443,7 +443,7 @@
           "input": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, missing arms, long neck, humpbacked, deformed, disfigured, poorly drawn face, mutation, mutated, extra limbs, mutated hands, fused fingers, too many fingers, floating limbs, disconnected limbs, malformed hands, out of focus, long body."
         }
       },
-      "0x1db1197c8e0": {
+      "0x14739a152d0": {
         "type_": "dynamic.StatusDynamicNode_4b0dd991-a604-4913-9fda-3f8b0ca1e55a",
         "icon": ":/icons/同心圆.svg",
         "name": "AI图像超分",
@@ -468,11 +468,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 428.0,
+        "width": 418.8125,
         "height": 115.0,
         "pos": [
-          3340.040933514723,
-          328.72152023837043
+          3324.4142033925955,
+          316.3307090790246
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -485,7 +485,7 @@
           "tile_size": 512
         }
       },
-      "0x1db1197f970": {
+      "0x1473ce9a310": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": ":/icons/同心圆.svg",
         "name": "文件上传 1",
@@ -510,11 +510,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 212.0,
+        "width": 208.8125,
         "height": 83.0,
         "pos": [
-          3007.263591093995,
-          515.929470793264
+          3071.4320202747795,
+          487.29883135525085
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -527,14 +527,14 @@
           "file_upload": "canvas_files\\workflows\\图像扩充模型\\workspace\\faebe2c4-1e5c-4d10-aee0-0a3838f068bf\\upload\\RealESRGAN_x4plus.pth"
         }
       },
-      "0x1db119a3b50": {
+      "0x147475b8bd0": {
         "type_": "general.StickyNote",
         "icon": null,
-        "name": "超级注释",
+        "name": "图像超分",
         "color": [
-          45,
-          45,
-          45,
+          193,
+          193,
+          26,
           255
         ],
         "border_color": [
@@ -552,10 +552,49 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 1154.6048789008837,
-        "height": 772.0368404627447,
+        "width": 1149.3770355309634,
+        "height": 897.5050813408354,
         "pos": [
-          2933.7071399343954,
+          2918.080409812267,
+          30.4853371759732
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "backdrop_text": "",
+          "notes_json": "[{\"text\": \"\\u8d85\\u5206\\u6a21\\u578b\\uff1aRealESRGAN_x4plus.pth\\n\\u4e0b\\u8f7d\\u5730\\u5740\\uff1a\\n[qualcomm/Real-ESRGAN-x4plus](https://huggingface.co/lllyasviel/Annotators/resolve/main/RealESRGAN_x4plus.pth?download=true)\\n\", \"x\": 167.98743949089703, \"y\": 652.4180478626399, \"w\": 495.21026647568715, \"size\": 21, \"anchor\": {\"pos\": [284.75994035815256, 544.8134941792777], \"target_pid\": \"faebe2c4-1e5c-4d10-aee0-0a3838f068bf\", \"offset\": [131.40832989564024, 88.0]}}]"
+        }
+      },
+      "0x147475ba550": {
+        "type_": "general.StickyNote",
+        "icon": null,
+        "name": "图像局部重采样",
+        "color": [
+          12,
+          71,
+          166,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 1307.1554195716162,
+        "height": 1237.3041854014702,
+        "pos": [
+          1433.7667861695131,
           42.876148335319016
         ],
         "layout_direction": 0,
@@ -563,138 +602,138 @@
         "subgraph_session": {},
         "custom": {
           "backdrop_text": "",
-          "notes_json": "[{\"type\": \"text\", \"text\": \"\\u8d85\\u5206\\u6a21\\u578b\\uff1aRealESRGAN_x4plus.pth\\n\\u4e0b\\u8f7d\\u5730\\u5740\\uff1a\\nhttps://huggingface.co/lllyasviel/Annotators/resolve/main/RealESRGAN_x4plus.pth?download=true\", \"x\": 373.5104195989438, \"y\": 501.78865309447656, \"w\": 778.4989853573711, \"size\": 21, \"anchor\": [229.3696551476596, 559.5248665527647]}]"
+          "notes_json": ""
         }
       }
     },
     "connections": [
       {
         "out": [
-          "0x1db11933fa0",
+          "0x1473cef8a90",
           "file"
         ],
         "in": [
-          "0x1db11940400",
+          "0x147399936d0",
           "image"
         ]
       },
       {
         "out": [
-          "0x1db11940400",
+          "0x147399936d0",
           "resized_image"
         ],
         "in": [
-          "0x1db11941450",
+          "0x1473ce8fc10",
           "data"
         ]
       },
       {
         "out": [
-          "0x1db11940400",
+          "0x147399936d0",
           "resized_image"
         ],
         "in": [
-          "0x1db119418a0",
+          "0x147475ba690",
           "image"
         ]
       },
       {
         "out": [
-          "0x1db119418a0",
+          "0x147475ba690",
           "padded_image"
         ],
         "in": [
-          "0x1db119429e0",
+          "0x1473ce29050",
           "data"
         ]
       },
       {
         "out": [
-          "0x1db119418a0",
+          "0x147475ba690",
           "padded_image"
         ],
         "in": [
-          "0x1db11943400",
+          "0x147475a6050",
           "image"
         ]
       },
       {
         "out": [
-          "0x1db119418a0",
+          "0x147475ba690",
           "padded_image"
         ],
         "in": [
-          "0x1db1197ce80",
+          "0x147475d2890",
           "data"
         ]
       },
       {
         "out": [
-          "0x1db119418a0",
+          "0x147475ba690",
           "mask"
         ],
         "in": [
-          "0x1db11942ec0",
+          "0x147475a6d10",
           "data"
         ]
       },
       {
         "out": [
-          "0x1db119418a0",
+          "0x147475ba690",
           "mask"
         ],
         "in": [
-          "0x1db11943400",
+          "0x147475a6050",
           "mask"
         ]
       },
       {
         "in": [
-          "0x1db11943400",
+          "0x147475a6050",
           "prompt"
         ],
         "out": [
-          "0x1db1197d330",
+          "0x147399ba150",
           "text"
         ]
       },
       {
         "in": [
-          "0x1db11943400",
+          "0x147475a6050",
           "negative_prompt"
         ],
         "out": [
-          "0x1db1197e440",
+          "0x1473ce6f210",
           "text"
         ]
       },
       {
         "out": [
-          "0x1db11943400",
+          "0x147475a6050",
           "output_image"
         ],
         "in": [
-          "0x1db1197c8e0",
+          "0x14739a152d0",
           "image_in"
         ]
       },
       {
         "in": [
-          "0x1db1197ce80",
+          "0x147475d2890",
           "data"
         ],
         "out": [
-          "0x1db1197c8e0",
+          "0x14739a152d0",
           "image_out"
         ]
       },
       {
         "in": [
-          "0x1db1197c8e0",
+          "0x14739a152d0",
           "model"
         ],
         "out": [
-          "0x1db1197f970",
+          "0x1473ce9a310",
           "file"
         ]
       }
@@ -702,25 +741,26 @@
   },
   "runtime": {
     "environment": {
-      "name": "3.12",
+      "name": "3.11",
       "type": "local",
-      "path": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.12\\python.exe"
+      "path": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe"
     },
-    "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.12\\python.exe",
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe",
     "node_id2stable_key": {
-      "0x1db11933fa0": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传",
-      "0x1db11940400": "55e89122-98ec-431c-b539-d39b13c0e039||图像尺寸调整",
-      "0x1db11941450": "unknown||多媒体展示节点",
-      "0x1db119418a0": "3ad2c11e-e33f-48b7-ba30-060551477952||图像扩图填充",
-      "0x1db119429e0": "unknown||多媒体展示节点 1",
-      "0x1db11942ec0": "unknown||多媒体展示节点 2",
-      "0x1db11943400": "7709d64e-30d4-4db0-b08c-2ae983988848||局部重绘采样器",
-      "0x1db1197ce80": "unknown||多媒体展示节点 3",
-      "0x1db1197d330": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||正向提示词",
-      "0x1db1197e440": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||负向提示词",
-      "0x1db1197c8e0": "4b0dd991-a604-4913-9fda-3f8b0ca1e55a||AI图像超分",
-      "0x1db1197f970": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1",
-      "0x1db119a3b50": "unknown||超级注释"
+      "0x1473cef8a90": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传",
+      "0x147399936d0": "55e89122-98ec-431c-b539-d39b13c0e039||图像尺寸调整",
+      "0x1473ce8fc10": "unknown||多媒体展示节点",
+      "0x147475ba690": "3ad2c11e-e33f-48b7-ba30-060551477952||图像扩图填充",
+      "0x1473ce29050": "unknown||多媒体展示节点 1",
+      "0x147475a6d10": "unknown||多媒体展示节点 2",
+      "0x147475a6050": "7709d64e-30d4-4db0-b08c-2ae983988848||局部重绘采样器",
+      "0x147475d2890": "unknown||多媒体展示节点 3",
+      "0x147399ba150": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||正向提示词",
+      "0x1473ce6f210": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||负向提示词",
+      "0x14739a152d0": "4b0dd991-a604-4913-9fda-3f8b0ca1e55a||AI图像超分",
+      "0x1473ce9a310": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1",
+      "0x147475b8bd0": "unknown||图像超分",
+      "0x147475ba550": "unknown||图像局部重采样"
     },
     "node_states": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传": "success",
@@ -735,7 +775,8 @@
       "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||负向提示词": "success",
       "4b0dd991-a604-4913-9fda-3f8b0ca1e55a||AI图像超分": "success",
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1": "success",
-      "unknown||超级注释": "unrun"
+      "unknown||图像超分": "unrun",
+      "unknown||图像局部重采样": "unrun"
     },
     "node_inputs": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传": {},
@@ -750,7 +791,8 @@
       "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||负向提示词": {},
       "4b0dd991-a604-4913-9fda-3f8b0ca1e55a||AI图像超分": {},
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1": {},
-      "unknown||超级注释": {}
+      "unknown||图像超分": {},
+      "unknown||图像局部重采样": {}
     },
     "node_outputs": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传": {
@@ -784,7 +826,8 @@
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1": {
         "file": "canvas_files\\workflows\\图像扩充模型\\workspace\\faebe2c4-1e5c-4d10-aee0-0a3838f068bf\\upload\\RealESRGAN_x4plus.pth"
       },
-      "unknown||超级注释": {}
+      "unknown||图像超分": {},
+      "unknown||图像局部重采样": {}
     },
     "column_select": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传": {},
@@ -799,7 +842,8 @@
       "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||负向提示词": {},
       "4b0dd991-a604-4913-9fda-3f8b0ca1e55a||AI图像超分": {},
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1": {},
-      "unknown||超级注释": {}
+      "unknown||图像超分": {},
+      "unknown||图像局部重采样": {}
     }
   },
   "global_variable": {
