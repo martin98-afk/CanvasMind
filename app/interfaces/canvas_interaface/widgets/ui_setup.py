@@ -346,7 +346,7 @@ class CanvasUISetUp:
                }
            """)
         name_label.setText(self.parent.workflow_name)
-        name_label.editingFinished.connect(self.update_workflow_name)
+        name_label.textChanged.connect(self.update_workflow_name)
         self._update_name_label_width(name_label)
         name_layout = QHBoxLayout(self.name_container)
         name_layout.setContentsMargins(0, 0, 0, 0)

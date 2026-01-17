@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
 import time
-import re  # 新增
-from qtpy import QtCore, QtGui, QtWidgets
-from qtpy.QtCore import QUrl  # 新增
-from qtpy.QtGui import QDesktopServices  # 新增
+import re  
+from qtpy.QtCore import QUrl  
+from qtpy.QtGui import QDesktopServices  
 
 from NodeGraphQt.constants import (
     Z_VAL_NODE, Z_VAL_BACKDROP
@@ -758,16 +757,25 @@ class StickyNoteItem(BackdropNodeItem):
         painter.drawRoundedRect(header_rect, 5, 5)
         painter.drawRect(QtCore.QRectF(0, header_height - 5, rect.width(), 5))
 
-        painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 120), 2.0, QtCore.Qt.DashLine))
+        # --- 修改开始 ---
+        # 预先定义好线的样式
+        line_pen = QtGui.QPen(QtGui.QColor(0, 255, 255, 120), 2.0, QtCore.Qt.DashLine)
+
         for b in self._text_blocks:
             if b.anchor_pin and b.anchor_pin.scene():
                 p1 = b.get_edge_point(b.anchor_pin.pos())
                 p2 = b.anchor_pin.pos()
+
+                # 【关键修复】每次画线前，都要显式设置画笔！
+                # 否则如果上一次循环画了红点把笔设为了 NoPen，这里就会画不出线
+                painter.setPen(line_pen)
                 painter.drawLine(p1, p2)
+
                 if b.anchor_pin._target_item:
                     painter.setBrush(QtGui.QColor(255, 50, 50))
-                    painter.setPen(QtCore.Qt.NoPen)
+                    painter.setPen(QtCore.Qt.NoPen)  # 这里把笔设没了，必须在下次循环前恢复
                     painter.drawEllipse(p2, 3, 3)
+        # --- 修改结束 ---
 
         if self.selected and not self._locked:
             painter.setBrush(QtCore.Qt.NoBrush)

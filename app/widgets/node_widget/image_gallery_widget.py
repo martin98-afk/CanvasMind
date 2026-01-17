@@ -178,8 +178,8 @@ class ImageGalleryWidget(QtWidgets.QWidget):
         ideal_h = rows * (self._item_w + self.grid_layout.spacing()) + 50
 
         # 限制最大显示尺寸，防止 Node 过大
-        target_w = max(200, min(800, ideal_w))
-        target_h = max(150, min(600, ideal_h))
+        target_w = max(200, min(10000, ideal_w))
+        target_h = max(150, min(1000, ideal_h))
 
         self._current_size = QSize(target_w, target_h)
         self.setFixedSize(self._current_size)
