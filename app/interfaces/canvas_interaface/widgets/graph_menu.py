@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt
 from qfluentwidgets import TransparentToolButton, FluentIcon
 
 from app.utils.utils import get_pinyin_search_keys
+from app.widgets.basic_widget.style_sheet import StyleSheet
 
 try:
     from pypinyin import pinyin, Style
@@ -143,6 +144,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.list_widget.setAttribute(QtCore.Qt.WA_Hover)
         self.list_widget.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
         self.list_widget.setStyleSheet("QListWidget { background: transparent; border: none; outline: none; }")
+        StyleSheet.QLIST.apply(self.list_widget)
 
         # 默认布局
         self.container_layout.addWidget(self.header_widget)

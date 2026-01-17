@@ -167,7 +167,7 @@ class DependencyToolWindow(ToolWindow):
                         status_text, status_color = "缺失", Qt.red
                         fix_list.append(f"{name}{combined_spec_str}")
                         action_widget = self._make_btn(FluentIcon.DOWNLOAD, "安装", name, combined_spec_str)
-                    elif Version(current_v_str) not in c_spec:
+                    elif not c_spec.contains(current_v_str, prereleases=True):
                         status_text, status_color = "不匹配", QColor("#D83B01")
                         fix_list.append(f"{name}{combined_spec_str}")
                         action_widget = self._make_btn(FluentIcon.SYNC, "修复", name, combined_spec_str)

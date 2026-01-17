@@ -26,10 +26,6 @@ from .status_node import StatusNode
 from ..templates.node_cleanup_script import CLEANUP_CODE
 from ..widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 
-# 在 app/components 下创建 .temp 目录（隐藏目录）
-TEMP_COMPONENTS_DIR = Path(__file__).parent.parent / "components" / ".temp"
-TEMP_COMPONENTS_DIR.mkdir(exist_ok=True)
-
 
 _TEMP_COMPONENT_TEMPLATE = '''{import_code}class DynamicComponent(BaseComponent):
     name = "动态代码组件"
@@ -447,9 +443,9 @@ def create_dynamic_code_node(parent_window=None):
 
                 # 准备路径
                 temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
-                temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
                 run_id = f"run_{self.persistent_id}"
                 run_dir = self.CACHE_PATH / "run_scripts" / run_id
+                temp_component_path = run_dir / temp_component_name
                 shutil.rmtree(run_dir, ignore_errors=True)
                 run_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(resource_path("app/components/base.py"), str(run_dir.parent / "base.py"))

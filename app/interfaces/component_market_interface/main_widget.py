@@ -16,7 +16,7 @@ from app.interfaces.component_market_interface.utils.utils import GenericWorker,
 from app.interfaces.component_market_interface.widgets.component_card import ComponentCard
 from app.scan_components import ComponentScanner
 from app.server_manager.cloud_bakup.component_cloud_manager import ComponentCloudManager
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, resource_path
 from app.widgets.basic_widget.style_sheet import StyleSheet
 
 
@@ -475,7 +475,7 @@ class PluginManagerCenter(QWidget):
     def install_component(self, data, silent=False):
         source = data.get('组件源码')
         if not source: return
-        target = Path("app/components") / data['组件类别'] / f"{data['组件id']}.py"
+        target = Path(resource_path("app/components")) / data['组件类别'] / f"{data['组件id']}.py"
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(source, encoding="utf-8")
