@@ -60,6 +60,7 @@ class DynamicComponent(BaseComponent):
             result = result.split(",", 1)[1]
         img_data = base64.b64decode(result)
         mask_img = Image.open(BytesIO(img_data)).convert("L")  # 灰度图，0=透明，255=绘制
+        mask_img = mask_img.point(lambda x: 255 if x > 0 else 0)
         # 将原图 RGBA 拆分为 RGB + A
         rgb_img = img.convert("RGB")
         # 使用 inverted_mask 作为 alpha 通道合成（或直接乘）

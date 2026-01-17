@@ -4,7 +4,7 @@ import base64
 from PyQt5.QtCore import Qt, QPoint, QPointF, QByteArray, QBuffer
 from PyQt5.QtGui import (
     QImage, QPixmap, QPainter, QPen, QColor, QMouseEvent,
-    QKeyEvent, QCursor
+    QKeyEvent, QCursor, qRgb
 )
 from PyQt5.QtWidgets import QWidget, QApplication, QVBoxLayout, QPushButton, QHBoxLayout
 
@@ -130,25 +130,10 @@ class MaskCanvas(QWidget):
 
         # 2. 绘制蒙版层 (Overlay)
         if self.show_mask:
-            # 使用 CompositionMode 实现高性能染色
-            # 仅在需要重绘时才应该生成 overlay，为了性能，我们直接绘制 mask_image
-            # 并利用 setCompositionMode 改变颜色是比较复杂的，这里用简易方案：
-            # 绘制原始 mask_image (alpha通道)，然后用指定的颜色填充非透明区域
-
-            # 方案：直接画 mask_image，但是在 mask 像素存在的地方画上 mask_color
-            # 为了效率，我们可以在 paintEvent 外部维护一个 colored_mask，或者
-            # 这里简单地使用 SourceOver 绘制 mask_image (假设 mask_image 已经是 colored)
-            # 但为了橡皮擦方便，mask_image 存的是 Alpha 或 纯色。
-
-            # ComfyUI 风格渲染：
-            # 我们直接绘制 Mask Image，但需要在 Mask 上应用颜色。
             # 简单方法：Mask Image 实际上保存的是 ARGB。
             painter.drawImage(0, 0, self.mask_image)
 
         # 3. 绘制笔刷预览 (只有在不绘制时显示圆圈，防止延迟)
-        # 需要反向变换笔刷大小以便在缩放后看起来大小一致?
-        # 不，通常笔刷是相对于图片的像素大小 (ComfyUI逻辑)
-        # 所以在 translate/scale 的上下文中绘制圆圈即可
         if self.underMouse() and not self.is_panning:
             painter.setPen(QPen(Qt.white, 1 / self.scale_factor, Qt.SolidLine))  # 保持线条细度
             painter.setBrush(Qt.NoBrush)
@@ -166,10 +151,7 @@ class MaskCanvas(QWidget):
 
     def draw_checkerboard(self, painter):
         """绘制透明背景棋盘格"""
-        bg_color1 = QColor(200, 200, 200)
         bg_color2 = QColor(160, 160, 160)
-        grid_size = 20
-
         # 简单绘制全屏背景，不做复杂的视差滚动，提高性能
         painter.fillRect(self.rect(), bg_color2)
         # 若需要更精细的背景可在此扩展，但对于大图蒙版，纯灰底通常更护眼
@@ -279,10 +261,6 @@ class MaskCanvas(QWidget):
                 self.mask_color = QColor(0, 0, 0, 150)
             else:
                 self.mask_color = QColor(255, 0, 100, 120)
-            # 颜色变了，需要重新渲染当前的mask图层颜色（稍微复杂，这里暂略，主要影响新画的笔触）
-            # 简单做法：遍历像素太慢。通常应该把Mask存为只有Alpha的图，绘制时用颜色填充。
-            # 为了演示方便，我们这里只改变后续笔刷颜色。若要实时改变已画颜色，需要重构 mask 存储方式为 Alpha8。
-
         elif key == Qt.Key_R:  # Reset View
             self.fit_to_view()
             self.update()
@@ -370,7 +348,6 @@ class MaskCanvas(QWidget):
         buffer.close()
         b64 = bytes(byte_array.toBase64()).decode("utf-8")
         return f"data:image/png;base64,{b64}"
-
 
 # ==========================================
 # 测试代码

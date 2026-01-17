@@ -301,8 +301,9 @@ class BasicNodeWithGlobalProperty(NodeObject):
     def hide_inline_widgets(self):
         """隐藏指定类型的动态控件"""
         for widget_base_key in self._inline_widgets.keys():
-            self._inline_widgets[widget_base_key].hide()
             self.view.remove_widget(self._inline_widgets[widget_base_key])
+            self._inline_widgets.get(widget_base_key).deleteLater()
+        self._inline_widgets.clear()
         self.view.draw_node()
 
     def _sync_and_refresh_ui(self):
@@ -350,7 +351,8 @@ class BasicNodeWithGlobalProperty(NodeObject):
             widget = TextWidgetWrapper(parent=self.view, name=key, default=f"预览: {port_name}",
                                        type=PropertyType.MULTILINE, window=self.parent_window)
             self._add_inline_widget(key, widget, tab='Visual')
-        self._inline_widgets[key].set_value(content)
+        else:
+            self._inline_widgets[key].set_value(content)
 
     def _render_chart(self, port_name, list_data):
         key = f"chart_{port_name}"

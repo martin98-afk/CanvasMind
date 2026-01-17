@@ -36,7 +36,7 @@ class InterventionDialog(MessageBoxBase):
     def _add_shortcut_hint(self):
         hint_text = (
             "<b>快捷键说明:</b><br>"
-            "• 左键拖动：绘制蒙版 • 右键拖动：擦除<br>• 滚轮 / [ ]：调整笔刷大小; • C：清空; F：填充; • M：切换蒙版预览 &nbsp;&nbsp;<br>"
+            "• 左键拖动：绘制蒙版 • CTRL+Z：撤销 ; • [ ]：调整笔刷大小; • C：清空; S: 切换笔刷颜色;<br>"
         )
         hint_label = BodyLabel(hint_text)
         hint_label.setStyleSheet("font-size: 11px; color: #888;")
