@@ -766,8 +766,6 @@ class CustomNodeGraph(NodeGraph):
                         node.model.set_property(prop, val)
                     except:
                         pass
-                    if prop == "_exec_mode":
-                        node._view._toggle_exec_mode(val)
                     if prop == "_collapsed" and val:
                         node._view.toggle_collapse()
                     if isinstance(node, BaseNode):
