@@ -11,10 +11,11 @@ from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.multimedia_node import create_media_node
 from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
-from app.nodes.sticky_note import StickyNoteNode
+from app.nodes.sticky_note import create_sticky_note_node
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_icon
 from app.interfaces.canvas_interaface.widgets.graph_menu import CustomGraphMenu
+from app.widgets.custom_nodegraphqt.sticky_note_item import StickyNoteItem
 from .logger import get_logger
 
 logger = get_logger("NodeOperations")
@@ -63,7 +64,7 @@ class NodeOperations:
         output_port_node.__name__ = "ControlFlowOutputPort"
         self.graph.register_node(output_port_node)
         # 注释节点
-        sticky_note = StickyNoteNode
+        sticky_note = create_sticky_note_node(self.graph, self.parent)
         sticky_note.__name__ = "StickyNote"
         self.graph.register_node(sticky_note)
         # 注册分支节点
@@ -100,7 +101,6 @@ class NodeOperations:
 
     def setup_graph_menu(self):
         """注入函数"""
-        # 保证单例，避免重复创建
         left_panel = self.parent.nav_panel
         self.graph_menu = CustomGraphMenu(self.graph, self.parent.nav_panel, self.parent)
         left_panel.draggable_tree.filter_changed_signal.connect(self.graph_menu.set_category_filter)
@@ -113,13 +113,36 @@ class NodeOperations:
         original_context_menu_event = scene_view.contextMenuEvent
 
         def custom_context_menu_event(event):
-            # 检查是否点击了 Item
+            # 获取点击位置的 Item
             item = scene_view.itemAt(event.pos())
+
+            show_custom_bg_menu = False
+
             if item is None:
+                # 1. 点在完全空白处 -> 显示自定义菜单
+                show_custom_bg_menu = True
+
+            elif isinstance(item, StickyNoteItem):
+                # 2. 点在 StickyNoteItem 上
+                # 需要将 View 的坐标转为 Item 的局部坐标来判断点击位置
+                # event.pos() 是 View 坐标 -> mapToScene -> mapFromScene
+                scene_pos = scene_view.mapToScene(event.pos())
+                local_pos = item.mapFromScene(scene_pos)
+
+                # 如果点击的是 Header 区域，显示原生菜单（比如删除节点）
+                # 如果点击的是 躯干区域，显示自定义背景菜单
+                if local_pos.y() > item._header_height:
+                    show_custom_bg_menu = True
+                else:
+                    show_custom_bg_menu = False
+
+            # 执行显示逻辑
+            if show_custom_bg_menu:
+                # 如果你想在 Note 上右键时，能把这个 Note 的引用传给菜单（例如“在此添加文本”），可以在这里处理
                 self.graph_menu.show_at_cursor(event.globalPos())
                 event.accept()
             else:
-                # 在节点上点击，弹出节点原生菜单
+                # 其他情况（点击了普通节点、Note的标题栏、Note内部的文字块）-> 原生逻辑
                 original_context_menu_event(event)
 
         scene_view.contextMenuEvent = custom_context_menu_event

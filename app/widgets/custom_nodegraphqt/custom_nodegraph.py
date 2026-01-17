@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
-import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu
 from NodeGraphQt.base.menu import BaseMenu
 from NodeGraphQt.constants import (
-    LayoutDirectionEnum,
     PipeLayoutEnum,
     ViewerEnum,
     Z_VAL_PIPE,
@@ -18,10 +16,8 @@ from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
 from Qt import QtGui, QtCore, QtWidgets
-from loguru import logger
 from qtpy import QtGui, QtCore, QtWidgets
 
-from app.nodes.sticky_note import StickyNoteNode
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
@@ -83,30 +79,33 @@ class CustomNodeViewer(NodeViewer):
     def __init__(self, parent=None, undo_stack=None):
         super(CustomNodeViewer, self).__init__(parent)
         self.setScene(CustomNodeScene(self))
-
         # --- 性能优化：初始开启抗锯齿 ---
         self.setRenderHint(QtGui.QPainter.Antialiasing, True)
         self.setRenderHint(QtGui.QPainter.TextAntialiasing, True)
         self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, True)
 
         # --- 性能优化：微调 View 参数 ---
-        self.setOptimizationFlag(QtWidgets.QGraphicsView.DontAdjustForAntialiasing)
+        # 视口更新模式：BoundingRect 是最安全的，SmartViewportUpdate 有时会闪烁
         self.setViewportUpdateMode(QtWidgets.QGraphicsView.BoundingRectViewportUpdate)
+
+        # 背景是动态网格（随视口移动），CacheBackground 反而会降低性能（因为每次移动都要重绘缓存）。
         self.setCacheMode(QtWidgets.QGraphicsView.CacheBackground)
+
+        # 优化拖动时的重绘策略
+        self.setOptimizationFlag(QtWidgets.QGraphicsView.DontAdjustForAntialiasing)
 
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
+        huge_size = 50000
+        self.setSceneRect(-huge_size, -huge_size, huge_size * 2, huge_size * 2)
+
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setAcceptDrops(True)
         self.resize(850, 800)
 
-        self._scene_range = QtCore.QRectF(
-            0, 0, self.size().width(), self.size().height())
-        self._update_scene()
-        self._last_size = self.size()
-
-        self._layout_direction = LayoutDirectionEnum.HORIZONTAL.value
-
+        # --- 内部状态初始化 ---
         self._pipe_layout = PipeLayoutEnum.CURVED.value
         self._panning = False
         self._detached_port = None
@@ -747,7 +746,7 @@ class CustomNodeGraph(NodeGraph):
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
                             node.view.widgets[prop].set_value(val)
-                    elif isinstance(node, StickyNoteNode):
+                    elif node.type_ == "general.StickyNote":
                         node.set_property(prop, val)
                 if node.get_property('_collapsed'):
                     node._view.toggle_collapse()

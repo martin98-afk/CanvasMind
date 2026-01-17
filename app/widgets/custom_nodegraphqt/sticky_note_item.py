@@ -3,13 +3,13 @@ import json
 import time
 
 from NodeGraphQt.constants import (
-    Z_VAL_NODE, ICON_NODE_BASE, Z_VAL_BACKDROP
+    Z_VAL_NODE, Z_VAL_BACKDROP
 )
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
-from qtpy import QtCore, QtGui
-from qtpy import QtWidgets
+from qfluentwidgets import ColorDialog
+from qtpy import QtCore, QtGui, QtWidgets
 
 
 # ------------------------------------------------------------------------------
@@ -24,7 +24,6 @@ class ActionButton(QtWidgets.QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setBrush(self.base_color)
         self.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 60), 1))
-        # 长按连续触发计时器
         self._timer = QtCore.QTimer()
         self._timer.timeout.connect(self.func)
         self._is_pressed = False
@@ -43,9 +42,8 @@ class ActionButton(QtWidgets.QGraphicsRectItem):
     def mousePressEvent(self, event):
         event.accept()
         self.func()
-        # 如果是加减按钮，启动长按计时器
         if self.label in ["+", "−"]:
-            self._timer.start(200) # 200ms 后开始连续触发
+            self._timer.start(200)
         self._is_pressed = True
 
     def mouseReleaseEvent(self, event):
@@ -61,7 +59,7 @@ class ActionButton(QtWidgets.QGraphicsRectItem):
 
 
 # ------------------------------------------------------------------------------
-# 2. 锚点 Pin
+# 2. 锚点 Pin (增加目标吸附与位置更新逻辑)
 # ------------------------------------------------------------------------------
 class NoteAnchorPin(QtWidgets.QGraphicsRectItem):
     def __init__(self, parent_note_item, parent_block):
@@ -69,12 +67,20 @@ class NoteAnchorPin(QtWidgets.QGraphicsRectItem):
         self.parent_block = parent_block
         self.setZValue(Z_VAL_NODE + 20)
         self.setFlags(self.ItemIsMovable | self.ItemIsSelectable | self.ItemSendsGeometryChanges)
-        self.setBrush(QtGui.QColor(0, 255, 255))
+
+        # --- 新增属性 ---
+        self._target_item = None  # 记录吸附的节点 Item 对象
+        self._target_offset = QtCore.QPointF(0, 0)  # 记录相对于目标节点的偏移
+
+        # 样式
+        self.default_brush = QtGui.QColor(0, 255, 255)
+        self.locked_brush = QtGui.QColor(255, 50, 50)  # 吸附成功变红
+        self.setBrush(self.default_brush)
         self.setPen(QtGui.QPen(QtCore.Qt.white, 2))
 
     def itemChange(self, change, value):
         if change == self.ItemPositionChange and self.parentItem():
-            self.parentItem().update()
+            self.parentItem().update()  # 移动时刷新父级连线
         return super(NoteAnchorPin, self).itemChange(change, value)
 
     def mousePressEvent(self, event):
@@ -82,11 +88,96 @@ class NoteAnchorPin(QtWidgets.QGraphicsRectItem):
             self.parent_block.remove_pin()
             event.accept()
             return
+        # 按下时如果是吸附状态，可以选择解绑，这里简单处理为允许直接拖拽调整
         super(NoteAnchorPin, self).mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        super(NoteAnchorPin, self).mouseMoveEvent(event)
+        # 拖拽时，如果底下有节点，变色提示
+        colliding = [
+            i for i in self.scene().items(self.scenePos())
+            if isinstance(i, AbstractNodeItem) and i != self.parentItem()
+        ]
+        self.setBrush(self.locked_brush if colliding else self.default_brush)
+
+    def mouseReleaseEvent(self, event):
+        super(NoteAnchorPin, self).mouseReleaseEvent(event)
+
+        # 松开时检测吸附
+        current_scene_pos = self.scenePos()
+        colliding_items = self.scene().items(current_scene_pos)
+
+        target = None
+        for item in colliding_items:
+            # 排除自身所在的 StickyNote
+            if isinstance(item, AbstractNodeItem) and item != self.parentItem():
+                target = item
+                break
+
+        if target:
+            # 计算吸附点（最近边缘）
+            rect = target.sceneBoundingRect()
+            snapped_pos = self._get_closest_point_on_rect(rect, current_scene_pos)
+
+            # 设置新位置 (转为父级坐标)
+            self.setPos(self.parentItem().mapFromScene(snapped_pos))
+
+            # 绑定目标
+            self._target_item = target
+            # 记录偏移量：吸附点 - 目标左上角
+            self._target_offset = snapped_pos - target.scenePos()
+
+            self.setBrush(self.locked_brush)
+        else:
+            # 解绑
+            self._target_item = None
+            self.setBrush(self.default_brush)
+
+        self.parentItem().update()
+
+    def _get_closest_point_on_rect(self, rect, pos):
+        """计算吸附点"""
+        x, y = pos.x(), pos.y()
+        left, right, top, bottom = rect.left(), rect.right(), rect.top(), rect.bottom()
+
+        clamp_x = max(left, min(x, right))
+        clamp_y = max(top, min(y, bottom))
+
+        dl, dr = abs(x - left), abs(x - right)
+        dt, db = abs(y - top), abs(y - bottom)
+        m = min(dl, dr, dt, db)
+
+        if m == dl: return QtCore.QPointF(left, clamp_y)
+        if m == dr: return QtCore.QPointF(right, clamp_y)
+        if m == dt: return QtCore.QPointF(clamp_x, top)
+        return QtCore.QPointF(clamp_x, bottom)
+
+    def update_position_from_target(self):
+        """实时跟随逻辑：根据目标位置反算自身位置"""
+        if not self._target_item:
+            return
+
+        # 安全检查：如果目标节点被删除了，解绑
+        if self._target_item.scene() != self.scene():
+            self._target_item = None
+            self.setBrush(self.default_brush)
+            return
+
+        # 1. 计算目标此时此刻的世界坐标吸附点
+        target_pos = self._target_item.scenePos()
+        target_snap_point = target_pos + self._target_offset
+
+        # 2. 将该点转换为 StickyNote 内部坐标
+        # mapFromScene 会自动处理 StickyNote 自身的移动
+        new_local_pos = self.parentItem().mapFromScene(target_snap_point)
+
+        # 3. 如果位置有变化，则更新
+        if (new_local_pos - self.pos()).manhattanLength() > 0.1:
+            self.setPos(new_local_pos)
 
 
 # ------------------------------------------------------------------------------
-# 3. 文本块 (支持 8 向缩放)
+# 3. 文本块 - 保持不变
 # ------------------------------------------------------------------------------
 class NoteTextBlock(QtWidgets.QGraphicsTextItem):
     def __init__(self, text, pos, width=200, font_size=14, parent=None):
@@ -261,37 +352,40 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
 
 
 # ------------------------------------------------------------------------------
-# 4.StickyNoteItem (防误触核心)
+# 4. StickyNoteItem (增加定时器实现实时跟随)
 # ------------------------------------------------------------------------------
 
 class StickyNoteItem(BackdropNodeItem):
+
     def __init__(self, name='Sticky Note', text='', parent=None):
-        # 1. 先声明关键变量为 None，防止父类初始化时触发布局报错
         self._text_item = None
         self._icon_item = None
         self.btn_lock = None
+        self.btn_color = None
         self._text_blocks = []
 
         super(StickyNoteItem, self).__init__(name, text, parent)
 
-        # 2. 基础参数
+        # --- 核心新增：同步定时器 ---
+        # 不需要 set_graph，自己监视自己
+        self._sync_timer = QtCore.QTimer()
+        self._sync_timer.setInterval(30)  # 30ms 刷新率 (约30fps)
+        self._sync_timer.timeout.connect(self._sync_pins)
+        # 默认启动，开销极小
+        self._sync_timer.start()
+        # ------------------------
+
         self._header_height = 30.0
         self._locked = False
         self.node = None
-
-        # 模拟双击判定计时
         self._last_click_time = 0
         self._double_click_threshold = 0.25
 
-        # 3. 层级与标志位
         self.setZValue(Z_VAL_BACKDROP)
         self.setFlag(self.ItemClipsChildrenToShape, False)
         self.setFlag(self.ItemIsSelectable, True)
-
-        # 显式接受右键，确保场景能识别到该 Item，从而让你的劫持逻辑 itemAt 能抓到它
         self.setAcceptedMouseButtons(QtCore.Qt.LeftButton | QtCore.Qt.RightButton)
 
-        # 4. 初始化 UI 组件
         self._text_item = NodeTextItem(self.name, self)
         font = QtGui.QFont("Microsoft YaHei UI", 25)
         font.setBold(True)
@@ -299,29 +393,61 @@ class StickyNoteItem(BackdropNodeItem):
         self._text_item.setDefaultTextColor(QtGui.QColor(255, 255, 255))
 
         pixmap = QtGui.QPixmap(":/icons/文本注释.svg").scaled(
-            20, 20,
+            28, 28,
             QtCore.Qt.IgnoreAspectRatio,
             QtCore.Qt.SmoothTransformation
         )
         self._icon_item = QtWidgets.QGraphicsPixmapItem(pixmap, self)
         self.btn_lock = ActionButton("🔓", (80, 80, 80), self.toggle_lock, self)
+        self.btn_color = ActionButton("🎨", (80, 80, 80), self.change_color, self)
 
-        # 5. 初次布局更新
         self._update_layout()
 
+    # --- 新增：定时同步函数 ---
+    def _sync_pins(self):
+        """定时检查所有 Pin 的目标位置并更新"""
+        # 如果当前场景不显示，或没有文本块，就跳过
+        if not self.scene() or not self.isVisible() or not self._text_blocks:
+            return
+
+        need_update = False
+        for block in self._text_blocks:
+            pin = block.anchor_pin
+            # 如果 Pin 存在且绑定了目标节点
+            if pin and pin._target_item:
+                old_pos = pin.pos()
+                pin.update_position_from_target()
+                if pin.pos() != old_pos:
+                    need_update = True
+
+        # 只有在位置真正改变时才重绘，节省性能
+        if need_update:
+            self.update()
+
+    # --- ItemChange: 处理 StickyNote 自身移动时的 Pin 位置补偿 ---
+    def itemChange(self, change, value):
+        """
+        当 StickyNote 自身被拖动时，
+        如果 Pin 吸附了外部节点，Pin 必须反向移动以保持世界坐标不变。
+        update_position_from_target 里的 mapFromScene 自动处理了这个逻辑。
+        """
+        if change == self.ItemPositionChange:
+            # 手动触发一次同步，保证拖拽自身时的平滑度
+            self._sync_pins()
+        return super(StickyNoteItem, self).itemChange(change, value)
+
     def boundingRect(self):
-        """实时返回宽高，解决缩放后点击失效"""
         return QtCore.QRectF(0, 0, self._width, self._height)
 
     def _update_layout(self):
-        """更新 UI 元素位置 (增加安全检查)"""
-        if not self._text_item or not self._icon_item or not self.btn_lock:
+        if not self._text_item or not self._icon_item or not self.btn_lock or not self.btn_color:
             return
 
-        self._icon_item.setPos(10, (self._header_height - 20) / 2)
+        self._icon_item.setPos(10, (self._header_height - 10) / 2)
         t_rect = self._text_item.boundingRect()
         self._text_item.setPos((self._width - t_rect.width()) / 2, 0)
         self.btn_lock.setPos(self._width - 25, 5)
+        self.btn_color.setPos(self._width - 50, 5)
 
     def toggle_lock(self):
         self._locked = not self._locked
@@ -334,53 +460,66 @@ class StickyNoteItem(BackdropNodeItem):
             b.setFlag(b.ItemIsSelectable, not self._locked)
         self.update()
 
+    def change_color(self):
+        """弹出颜色选择框并更改节点颜色"""
+        current_rgb = self.color
+        current_color = QtGui.QColor(*current_rgb)
+
+        # 弹出对话框
+        new_color = QtWidgets.QColorDialog.getColor(
+            current_color,
+            None,
+            "选择注释背景颜色",
+            QtWidgets.QColorDialog.ShowAlphaChannel
+        )
+
+        if new_color.isValid():
+            # 更新 Item 内部颜色属性 (AbstractNodeItem property)
+            # NodeGraphQt 通常使用 (r, g, b) 或 (r, g, b, a) 元组
+            c_tuple = (new_color.red(), new_color.green(), new_color.blue())
+            self.color = c_tuple
+
+            # 强制重绘
+            self.update()
+
+            # 如果绑定了 Node 对象，同步更新 Node 属性以持久化
+            if self.node:
+                self.node.set_color(c_tuple[0], c_tuple[1], c_tuple[2])
+
     def mousePressEvent(self, event):
         if self._locked:
             event.ignore()
             return
 
         pos = event.pos()
-        # 探测点击到的具体物体
         item = self.scene().itemAt(event.scenePos(), QtGui.QTransform())
 
-        # --- 右键处理 (修复画布菜单劫持问题) ---
         if event.button() == QtCore.Qt.RightButton:
-            # 必须 accept，这样场景认为点击了 Item，你的 contextMenuEvent 劫持逻辑中 itemAt 就不为 None
             event.accept()
-            # 停止向下传递，防止 Backdrop 的右键默认逻辑执行
             return
 
-        # --- 左键处理 ---
-        # 1. 点击标题栏：执行正常选中/移动
         if pos.y() < self._header_height:
             self.setFlag(self.ItemIsSelectable, True)
             super(StickyNoteItem, self).mousePressEvent(event)
             return
 
-        # 2. 点击内部已有的 UI 元素 (按钮、文本块、引线锚点)
         if item and item != self and item != self._sizer:
             self.setFlag(self.ItemIsSelectable, True)
             super(StickyNoteItem, self).mousePressEvent(event)
             return
 
-        # 3. 点击背景躯干区域：
         curr_time = time.time()
-        # 判定双击 (模拟)
         if (curr_time - self._last_click_time) < self._double_click_threshold:
             self.add_text_block("双击编辑...", pos)
             self._last_click_time = 0
-            # 【核心修复】这里 accept 且不调用 super，这样 Backdrop 就没机会去全选内部节点
             event.accept()
             return
 
-            # 判定单击：透传给画布框选
         self._last_click_time = curr_time
         self.setFlag(self.ItemIsSelectable, False)
-        # ignore() 发送给画布，触发框选，同时因为没调 super()，不会全选内部
         event.ignore()
 
     def mouseDoubleClickEvent(self, event):
-        """标题栏双击改名"""
         if event.pos().y() < self._header_height:
             items = self.scene().items(event.scenePos())
             if self._text_item in items:
@@ -391,7 +530,6 @@ class StickyNoteItem(BackdropNodeItem):
         super(StickyNoteItem, self).mouseDoubleClickEvent(event)
 
     def on_sizer_pos_changed(self, pos):
-        """缩放更新"""
         self.prepareGeometryChange()
         super(StickyNoteItem, self).on_sizer_pos_changed(pos)
         self._update_layout()
@@ -408,7 +546,6 @@ class StickyNoteItem(BackdropNodeItem):
         painter.setPen(QtCore.Qt.NoPen)
         painter.drawRoundedRect(rect, 5, 5)
 
-        # 标题栏
         header_color = QtGui.QColor(c[0], c[1], c[2], 200)
         header_height = max(self._text_item.boundingRect().height(), self._header_height)
         header_rect = QtCore.QRectF(0, 0, rect.width(), header_height)
@@ -416,15 +553,20 @@ class StickyNoteItem(BackdropNodeItem):
         painter.drawRoundedRect(header_rect, 5, 5)
         painter.drawRect(QtCore.QRectF(0, header_height - 5, rect.width(), 5))
 
-        # 绘制内部文本块的引线
-        painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 120), 1.2, QtCore.Qt.DashLine))
+        # 绘制引线
+        painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 120), 2.0, QtCore.Qt.DashLine))
         for b in self._text_blocks:
             if b.anchor_pin and b.anchor_pin.scene():
                 p1 = b.get_edge_point(b.anchor_pin.pos())
                 p2 = b.anchor_pin.pos()
                 painter.drawLine(p1, p2)
 
-        # 选中描边
+                # 可选：绘制连接圆点
+                if b.anchor_pin._target_item:
+                    painter.setBrush(QtGui.QColor(255, 50, 50))
+                    painter.setPen(QtCore.Qt.NoPen)
+                    painter.drawEllipse(p2, 3, 3)
+
         if self.selected and not self._locked:
             painter.setBrush(QtCore.Qt.NoBrush)
             painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 200), 1.5))
@@ -432,10 +574,7 @@ class StickyNoteItem(BackdropNodeItem):
 
         painter.restore()
 
-    # --- 基础功能 ---
-
     def add_text_block(self, text, pos, width=200, font_size=20):
-        # 确保引用正确
         block = NoteTextBlock(text, pos, width, font_size, self)
         self._text_blocks.append(block)
         self.on_text_block_changed()
