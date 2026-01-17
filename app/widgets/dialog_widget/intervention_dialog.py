@@ -29,10 +29,18 @@ class InterventionDialog(MessageBoxBase):
 
         # 3. 动态根据 schema 生成表单
         self._setup_dynamic_form()
-
         # 设置对话框宽度
         self.widget.setMinimumWidth(700)
         self.widget.setMinimumHeight(600)
+
+    def _add_shortcut_hint(self):
+        hint_text = (
+            "<b>快捷键说明:</b><br>"
+            "• 左键拖动：绘制蒙版 • 右键拖动：擦除<br>• 滚轮 / [ ]：调整笔刷大小; • C：清空; F：填充; • M：切换蒙版预览 &nbsp;&nbsp;<br>"
+        )
+        hint_label = BodyLabel(hint_text)
+        hint_label.setStyleSheet("font-size: 11px; color: #888;")
+        self.viewLayout.addWidget(hint_label)
 
     def _setup_dynamic_form(self):
         for field_name, prop_def in self.schema.items():
@@ -73,7 +81,7 @@ class InterventionDialog(MessageBoxBase):
                 self.inputs[field_name] = (widget, "value")
             elif prop_type == "image":
                 if prop_def.get("enable_mask"):
-                    # 启用蒙版绘制模式
+                    self._add_shortcut_hint()
                     default_img = default or ""
                     if not isinstance(default_img, str):
                         default_img = ""
@@ -83,7 +91,7 @@ class InterventionDialog(MessageBoxBase):
                     scroll.setWidgetResizable(True)
                     scroll.setMinimumHeight(400)
                     self.viewLayout.addWidget(scroll)
-                    self.inputs[field_name] = (canvas, "get_alpha_as_base64")
+                    self.inputs[field_name] = (canvas, "get_mask_base64")  # ← 注意方法名
                 else:
                     # 普通图片显示（只读预览，不支持绘制）
                     # 可选：用 QLabel 显示缩略图
