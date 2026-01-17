@@ -1,41 +1,41 @@
-# -*- coding: utf-8 -*-
+# -- coding: utf-8 --
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 from qfluentwidgets import TransparentToolButton, FluentIcon
 
-from app.utils.utils import get_pinyin_search_keys
+from app.utils.utils import get_pinyin_search_keys, get_icon
 from app.widgets.basic_widget.style_sheet import StyleSheet
 
-try:
-    from pypinyin import pinyin, Style
-except ImportError:
-    pinyin = None
+
+class MenuMode:
+    CREATE = 0
+    NAVIGATE = 1
 
 
 class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
-    """优化后的绘制器：支持平滑悬浮效果"""
-
     def paint(self, painter, option, index):
+        data = index.data(Qt.UserRole)
+        if not data or data.get("_is_placeholder", False):
+            # 占位 item：不绘制任何内容
+            return
+
         painter.save()
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
-        data = index.data(Qt.UserRole)
         display_text = index.data(Qt.DisplayRole)
         category = data.get("category", "")
+        item_type = data.get("type", "")
 
-        # 核心逻辑：判断当前状态
         is_selected = option.state & QtWidgets.QStyle.State_Selected
         is_hovered = option.state & QtWidgets.QStyle.State_MouseOver
 
-        # 颜色配置
         if is_selected:
             bg_color = QtGui.QColor("#007ACC")
             text_color = QtGui.QColor("#FFFFFF")
             sub_text_color = QtGui.QColor("#A0CFFF")
         elif is_hovered:
-            # 悬浮时的背景色
-            bg_color = QtGui.QColor("#3E3E42")
+            bg_color = QtGui.QColor(255, 255, 255, 20)
             text_color = QtGui.QColor("#FFFFFF")
             sub_text_color = QtGui.QColor("#999999")
         else:
@@ -43,42 +43,37 @@ class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
             text_color = QtGui.QColor("#CCCCCC")
             sub_text_color = QtGui.QColor("#666666")
 
-        # 绘制圆角背景
         painter.setPen(Qt.NoPen)
         painter.setBrush(bg_color)
-        margin = 4
-        rect = option.rect.adjusted(margin, 2, -margin, -2)
-        painter.drawRoundedRect(rect, 6, 6)
+        rect = option.rect.adjusted(4, 2, -4, -2)
+        painter.drawRoundedRect(rect, 8, 8)
 
-        # 绘制主文字（节点名）
+        if is_selected and item_type == "instance":
+            painter.setBrush(QtGui.QColor("#4EC9B0"))
+            painter.drawRoundedRect(rect.left(), rect.top() + 8, 3, rect.height() - 16, 1, 1)
+
         font = painter.font()
         font.setPointSize(10)
-        font.setBold(True if is_selected else False)
+        font.setBold(is_selected)
         painter.setFont(font)
         painter.setPen(text_color)
-
-        # 计算文字绘制区域
-        title_rect = option.rect.adjusted(15, 0, -120, 0)
+        title_rect = option.rect.adjusted(15, 0, -140, 0)
         painter.drawText(title_rect, Qt.AlignVCenter | Qt.AlignLeft, display_text)
 
-        # 绘制副文字（类别）
-        font.setPointSize(9)
+        font.setPointSize(8)
         font.setBold(False)
         painter.setFont(font)
         painter.setPen(sub_text_color)
-
         cat_rect = option.rect.adjusted(10, 0, -15, 0)
         painter.drawText(cat_rect, Qt.AlignVCenter | Qt.AlignRight, category)
 
         painter.restore()
 
     def sizeHint(self, option, index):
-        return QtCore.QSize(0, 40)
+        return QtCore.QSize(0, 42)
 
 
 class CustomGraphMenu(QtWidgets.QWidget):
-    """自定义画布菜单"""
-
     def __init__(self, graph, left_panel, parent):
         super(CustomGraphMenu, self).__init__(parent)
         self._graph = graph
@@ -86,238 +81,306 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.parent = parent
         self._cached_data = []
         self._selected_categories = set()
+        self._current_mode = MenuMode.CREATE
+        self._is_upward_mode = False
+        self._spawn_pos = QtCore.QPoint(0, 0)
+        self._visible_items = []  # 存储过滤后的有效数据
 
-        # 1. 窗口属性
+        # 窗口属性
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
-        # 2. 主布局
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.main_layout.setContentsMargins(10, 10, 10, 10)
 
         self.container = QtWidgets.QFrame()
         self.container.setObjectName("SearchContainer")
         self.container.setStyleSheet("""
-            #SearchContainer { background: #252526; border: 1px solid #454545; border-radius: 8px; }
+            #SearchContainer { 
+                background: #252526; 
+                border: 1px solid #454545; 
+                border-radius: 12px; 
+            }
         """)
 
-        # 阴影
         self.shadow = QtWidgets.QGraphicsDropShadowEffect(self)
-        self.shadow.setBlurRadius(20)
+        self.shadow.setBlurRadius(25)
         self.shadow.setXOffset(0)
-        self.shadow.setYOffset(5)
-        self.shadow.setColor(QtGui.QColor(0, 0, 0, 150))
+        self.shadow.setYOffset(8)
+        self.shadow.setColor(QtGui.QColor(0, 0, 0, 180))
         self.container.setGraphicsEffect(self.shadow)
 
-        # 容器布局
         self.container_layout = QtWidgets.QVBoxLayout(self.container)
-        self.container_layout.setContentsMargins(8, 8, 8, 8)
+        self.container_layout.setContentsMargins(10, 10, 10, 10)
         self.container_layout.setSpacing(8)
 
-        # --- 3. 搜索栏 Header ---
+        # Header
         self.header_widget = QtWidgets.QWidget()
         self.header_layout = QtWidgets.QHBoxLayout(self.header_widget)
         self.header_layout.setContentsMargins(0, 0, 0, 0)
-        self.header_layout.setSpacing(2)
+        self.header_layout.setSpacing(6)
 
         self.filter_button = TransparentToolButton(FluentIcon.FILTER, self)
         self.filter_button.clicked.connect(self.show_category_filter)
 
+        self.mode_button = TransparentToolButton(get_icon("节点库"), self)
+        self.mode_button.setToolTip("切换搜索模式 (Tab)")
+        self.mode_button.clicked.connect(self.toggle_mode)
+
         self.search_line = QtWidgets.QLineEdit()
-        self.search_line.setPlaceholderText("🔍 输入搜索 (拼音/简称/类别)...")
+        self.search_line.setPlaceholderText("🔍 搜索库节点...")
         self.search_line.setStyleSheet("""
             QLineEdit {
                 background: #323233; color: #FFFFFF;
-                border: 1px solid #3C3C3C; border-radius: 4px;
-                padding: 8px 12px; font-size: 14px;
+                border: 1px solid #3C3C3C; border-radius: 6px;
+                padding: 8px 12px; font-size: 13px;
             }
-            QLineEdit:focus { border: 1px solid #007ACC; }
+            QLineEdit:focus { border: 1px solid #007ACC; background: #3c3c3c; }
         """)
 
+        self.header_layout.addWidget(self.mode_button)
         self.header_layout.addWidget(self.filter_button)
         self.header_layout.addWidget(self.search_line)
 
-        # --- 4. 列表组件 ---
+        # ListWidget（恢复使用）
         self.list_widget = QtWidgets.QListWidget()
         self.list_widget.setItemDelegate(NodeItemDelegate())
         self.list_widget.setMouseTracking(True)
-        self.list_widget.setAttribute(QtCore.Qt.WA_Hover)
         self.list_widget.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
-        self.list_widget.setStyleSheet("QListWidget { background: transparent; border: none; outline: none; }")
+        self.list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         StyleSheet.QLIST.apply(self.list_widget)
 
-        # 默认布局
         self.container_layout.addWidget(self.header_widget)
         self.container_layout.addWidget(self.list_widget)
-
         self.main_layout.addWidget(self.container)
 
-        # 事件绑定
         self.search_line.textChanged.connect(self.filter_list)
         self.list_widget.itemClicked.connect(self.on_item_confirmed)
         self.search_line.returnPressed.connect(self.on_return_pressed)
-
-        self.setFixedSize(420, 450)
         self.search_line.installEventFilter(self)
 
-    def show_category_filter(self):
-        pos = self.filter_button.mapToGlobal(self.filter_button.rect().bottomLeft())
-        self._left_panel.draggable_tree.category_filter_dialog.show_at(pos)
+        self.setFixedSize(440, 480)
 
-    def set_category_filter(self, categories):
-        self._selected_categories = set(categories)
+    def toggle_mode(self):
+        self._current_mode = MenuMode.NAVIGATE if self._current_mode == MenuMode.CREATE else MenuMode.CREATE
+        if self._current_mode == MenuMode.NAVIGATE:
+            self.search_line.setPlaceholderText("📍 定位当前图中节点...")
+            self.filter_button.setEnabled(False)
+            self.mode_button.setIcon(get_icon("location"))
+        else:
+            self.search_line.setPlaceholderText("🔍 搜索库节点...")
+            self.filter_button.setEnabled(True)
+            self.mode_button.setIcon(get_icon("节点库"))
         self.update_cache()
         self.populate_ui()
+        self.search_line.setText("")
+        self.search_line.setFocus()
 
     def update_cache(self):
-        """递归遍历所有层级，并确保使用正确的 node_type 标识符"""
+        if self._current_mode == MenuMode.CREATE:
+            self._update_create_cache()
+        else:
+            self._update_navigate_cache()
+
+    def _update_navigate_cache(self):
+        self._cached_data = []
+        all_nodes = self._graph.all_nodes()
+        for node in all_nodes:
+            name = node.name()
+            node_type = "/".join(getattr(node, 'FULL_PATH', "Node").split("/")[:-1])
+            py_keys = get_pinyin_search_keys(name)
+            self._cached_data.append({
+                "type": "instance",
+                "node_ptr": node,
+                "name": name,
+                "category": f"{node_type}",
+                "search_keys": f"{name} {node_type} {py_keys}".lower()
+            })
+
+    def _update_create_cache(self):
         self._cached_data = []
         tree_widget = self._left_panel.draggable_tree.tree
         root = tree_widget.invisibleRootItem()
-
         def collect_nodes(parent_item):
             for i in range(parent_item.childCount()):
                 item = parent_item.child(i)
-                node_id = item.data(0, Qt.UserRole + 1)  # 这是 full_path
-
-                if node_id:  # 说明是真正的组件节点
-                    # --- 完全照搬你原来的建点逻辑来获取 ID ---
+                node_id = item.data(0, Qt.UserRole + 1)
+                if node_id:
                     node_type = self._graph.parent().node_type_map.get(node_id)
-
-                    # 递归获取完整分类路径字符串
                     path_parts = []
                     p = item.parent()
                     while p and p != root:
                         path_parts.insert(0, p.text(0))
                         p = p.parent()
                     cat_full_str = "/".join(path_parts)
-
                     node_name = item.text(0).replace("★ ", "")
                     py_keys = get_pinyin_search_keys(node_name)
-                    cat_py = get_pinyin_search_keys(cat_full_str)
-
                     self._cached_data.append({
                         "type": "node",
-                        "id": node_type,  # <--- 存入真正的 node_type
+                        "id": node_type,
                         "name": node_name,
                         "category": cat_full_str,
-                        "search_keys": f"{node_name} {cat_full_str} {node_id} {py_keys} {cat_py}".lower()
+                        "search_keys": f"{node_name} {cat_full_str} {node_id} {py_keys}".lower()
                     })
-                else:  # 说明是中间目录，继续递归
+                else:
                     collect_nodes(item)
-
         collect_nodes(root)
 
-        # 遍历模板
-        if hasattr(self._left_panel.template_container, 'get_templates'):
-            for t_name in self._left_panel.template_container.get_templates():
-                self._cached_data.append({
-                    "type": "template",
-                    "id": t_name,
-                    "name": t_name,
-                    "category": "Template 模板",
-                    "search_keys": f"{t_name} 模板 {get_pinyin_search_keys(t_name)}".lower()
-                })
+    def _get_max_visible_items(self):
+        # 列表区域高度 ≈ 480 - header(≈40) - margins(20) - spacing(8) ≈ 412px
+        # 每项 42px → 最多 9~10 项
+        return 10
 
     def populate_ui(self):
-        self.list_widget.clear()
-        self.list_widget.setUpdatesEnabled(False)
+        # 先过滤
+        self._visible_items = []
         for data in self._cached_data:
-            if self._selected_categories:
+            if self._current_mode == MenuMode.CREATE and self._selected_categories:
                 root_cat = data["category"].split("/")[0]
                 if root_cat not in self._selected_categories:
                     continue
+            self._visible_items.append(data)
+
+        self._update_list_widget()
+
+    def _update_list_widget(self):
+        self.list_widget.clear()
+        items_to_show = self._visible_items.copy()
+
+        if self._is_upward_mode:
+            max_items = self._get_max_visible_items()
+            actual_count = len(items_to_show)
+            if actual_count < max_items:
+                placeholder_count = max_items - actual_count
+                # 插入占位 item（不可见、不可交互）
+                for _ in range(placeholder_count):
+                    placeholder = QtWidgets.QListWidgetItem()
+                    placeholder.setData(Qt.UserRole, {"_is_placeholder": True})
+                    self.list_widget.addItem(placeholder)
+
+        # 添加真实 item
+        for data in items_to_show:
             item = QtWidgets.QListWidgetItem(data["name"])
             item.setData(Qt.UserRole, data)
             self.list_widget.addItem(item)
-        self.list_widget.setUpdatesEnabled(True)
+
         if self.list_widget.count() > 0:
-            self.list_widget.setCurrentRow(0)
+            # 向下模式：选中第一个
+            # 向上模式：选中第一个真实 item（跳过占位）
+            first_real_index = 0
+            if self._is_upward_mode:
+                first_real_index = max(0, self.list_widget.count() - len(self._visible_items))
+            self.list_widget.setCurrentRow(first_real_index)
+
+    def set_category_filter(self, categories):
+        self._selected_categories = set(categories)
+        if self._current_mode == MenuMode.CREATE:
+            self.update_cache()
+            self.populate_ui()
+
+    def set_graph(self, graph):
+        self._graph = graph
 
     def filter_list(self, text):
         search_text = text.lower().strip()
-        self.list_widget.setUpdatesEnabled(False)
-        first_visible = -1
-        for i in range(self.list_widget.count()):
-            item = self.list_widget.item(i)
-            data = item.data(Qt.UserRole)
-            is_visible = search_text in data["search_keys"]
-            item.setHidden(not is_visible)
-            if is_visible and first_visible == -1:
-                first_visible = i
-        self.list_widget.setUpdatesEnabled(True)
-        if first_visible != -1:
-            self.list_widget.setCurrentRow(first_visible)
+        self._visible_items = []
+        for data in self._cached_data:
+            if self._current_mode == MenuMode.CREATE and self._selected_categories:
+                root_cat = data["category"].split("/")[0]
+                if root_cat not in self._selected_categories:
+                    continue
+            if search_text in data["search_keys"]:
+                self._visible_items.append(data)
+        self._update_list_widget()
+
+    def on_item_confirmed(self, item):
+        data = item.data(Qt.UserRole)
+        if not data or data.get("_is_placeholder"):
+            return  # 忽略占位项
+
+        viewer = self._graph.viewer()
+        if self._current_mode == MenuMode.CREATE:
+            scene_viewer = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
+            scene_pos = scene_viewer.mapToScene(self._spawn_pos)
+            self._graph.begin_undo("Create Node")
+            self._graph.create_node(data["id"], pos=[scene_pos.x(), scene_pos.y()])
+            self.parent.on_selection_changed()
+            self._graph.end_undo()
+        else:
+            node = data.get("node_ptr")
+            if node:
+                self._graph.clear_selection()
+                node.set_selected(True)
+                self._graph.fit_to_selection()
+        self.close()
 
     def show_at_cursor(self, pos):
+        # 先更新缓存（不依赖方向）
         self.update_cache()
-        self.populate_ui()
+
+        # === 第一步：确定弹出方向 ===
+        screen_rect = QtWidgets.QApplication.desktop().availableGeometry(pos)
+        menu_width = self.width()
+        menu_height = self.height()
+
+        target_x = pos.x() - 20
+        target_y = pos.y() + 10
+
+        if target_y - menu_height < screen_rect.top():
+            self._is_upward_mode = False
+        else:
+            self._is_upward_mode = True
+            target_y = pos.y() - menu_height - 10
+
+        # 边界保护
+        if target_x + menu_width > screen_rect.right():
+            target_x = screen_rect.right() - menu_width
+        if target_x < screen_rect.left():
+            target_x = screen_rect.left()
+
+        # === 第二步：根据新方向重建 UI ===
+        self.populate_ui()  # populate_ui 会读取 self._is_upward_mode
+
+        # === 第三步：设置位置和 focus ===
         viewer = self._graph.viewer()
         scene_viewer = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
         self._spawn_pos = scene_viewer.mapFromGlobal(pos)
         self.search_line.setText("")
-        self.list_widget.setCurrentRow(0)
 
-        menu_w, menu_h = self.width(), self.height()
-        screen_rect = QtWidgets.QApplication.desktop().availableGeometry(pos)
-        target_x, target_y = pos.x() - 20, pos.y() - 20
+        # 调整 header 和 list 顺序
+        self.container_layout.removeWidget(self.header_widget)
+        self.container_layout.removeWidget(self.list_widget)
 
-        if target_y + menu_h > screen_rect.bottom():
-            target_y = pos.y() - menu_h + 20
-            self.shadow.setYOffset(-5)
-            self.container_layout.insertWidget(0, self.list_widget)
-            self.container_layout.insertWidget(1, self.header_widget)
+        if self._is_upward_mode:
+            self.container_layout.addWidget(self.list_widget)
+            self.container_layout.addWidget(self.header_widget)
         else:
-            self.shadow.setYOffset(5)
-            self.container_layout.insertWidget(0, self.header_widget)
-            self.container_layout.insertWidget(1, self.list_widget)
+            self.container_layout.addWidget(self.header_widget)
+            self.container_layout.addWidget(self.list_widget)
 
-        target_x = max(screen_rect.left() + 5, min(target_x, screen_rect.right() - menu_w - 5))
-        self.move(QtCore.QPoint(target_x, target_y))
+        self.move(target_x, target_y)
         self.show()
-        self.raise_()
-        self.activateWindow()
         self.search_line.setFocus()
-
-    def on_item_confirmed(self, item):
-        data = item.data(Qt.UserRole)
-        viewer = self._graph.viewer()
-        scene_viewer = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
-        scene_pos = scene_viewer.mapToScene(self._spawn_pos)
-
-        try:
-            if data["type"] == "node":
-                self._graph.begin_undo("Create Node")
-                # 这里 data["id"] 现在是真正的 node_type 字符串了
-                self._graph.create_node(data["id"], pos=[scene_pos.x(), scene_pos.y()])
-                self.parent.on_selection_changed()
-                self._graph.end_undo()
-            elif data["type"] == "template":
-                self._left_panel.template_container.load_template(
-                    data["id"], pos=[scene_pos.x(), scene_pos.y()]
-                )
-        except Exception as e:
-            print(f"Error creating node: {e}")
-        self.close()
 
     def on_return_pressed(self):
         current_item = self.list_widget.currentItem()
         if current_item and not current_item.isHidden():
             self.on_item_confirmed(current_item)
 
+    def show_category_filter(self):
+        pos = self.filter_button.mapToGlobal(self.filter_button.rect().bottomLeft())
+        self._left_panel.draggable_tree.category_filter_dialog.show_at(pos)
+
     def eventFilter(self, source, event):
         if event.type() == QtCore.QEvent.KeyPress:
+            if event.key() == Qt.Key_Tab:
+                self.toggle_mode()
+                return True
             if event.key() == Qt.Key_Escape:
                 self.close()
                 return True
             if source is self.search_line:
-                is_bottom = self.container_layout.indexOf(self.header_widget) == 1
-                if event.key() == Qt.Key_Down:
-                    if is_bottom: return False
-                    self.list_widget.setFocus();
-                    return True
-                elif event.key() == Qt.Key_Up:
-                    if not is_bottom: return False
-                    self.list_widget.setFocus();
+                if event.key() in [Qt.Key_Down, Qt.Key_Up]:
+                    self.list_widget.setFocus()
                     return True
         return super(CustomGraphMenu, self).eventFilter(source, event)

@@ -1,7 +1,6 @@
 import os
-import tempfile
 import uuid
-import subprocess
+
 from loguru import logger
 
 
@@ -15,9 +14,13 @@ class IPythonKernelManager:
         self.connection_file = None
 
     def start_kernel(self, python_exe_path=None):
-        """启动内核"""
+        import os
         if python_exe_path:
             self.python_exe_path = python_exe_path
+
+        # Windows: 确保使用 python.exe 而非 pythonw.exe
+        if os.name == 'nt' and self.python_exe_path and self.python_exe_path.endswith('pythonw.exe'):
+            self.python_exe_path = self.python_exe_path.replace('pythonw.exe', 'python.exe')
 
         if not self.python_exe_path or not os.path.exists(self.python_exe_path):
             raise ValueError(f"Python解释器路径不存在: {self.python_exe_path}")
@@ -26,6 +29,7 @@ class IPythonKernelManager:
 
         try:
             from qtconsole.manager import QtKernelManager
+            import tempfile, uuid, os, subprocess
 
             self.connection_file = os.path.join(
                 tempfile.gettempdir(),
@@ -40,18 +44,20 @@ class IPythonKernelManager:
             env['PYTHONEXECUTABLE'] = self.python_exe_path
             env.pop('PYTHONHOME', None)
             env['PYTHONUNBUFFERED'] = '1'
-            env['MPLBACKEND'] = 'Agg'  # 使用非GUI后端
+            env['MPLBACKEND'] = 'Agg'
 
             self.kernel_manager = QtKernelManager(connection_file=self.connection_file)
 
-            # 设置子进程创建标志以避免显示控制台窗口
-            if os.name == 'nt':  # Windows系统
-                # 创建不显示控制台的进程
+            # === 关键：Windows 中断支持 ===
+            if os.name == 'nt':
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                 startupinfo.wShowWindow = subprocess.SW_HIDE
-                extra_arguments = {'startupinfo': startupinfo}
-            else:  # Linux/Mac系统
+                extra_arguments = {
+                    'startupinfo': startupinfo,
+                    'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+                }
+            else:
                 extra_arguments = {'start_new_session': True}
 
             self.kernel_manager.start_kernel(
@@ -61,7 +67,6 @@ class IPythonKernelManager:
             )
             self.kernel_client = self.kernel_manager.client()
             self.kernel_client.start_channels()
-
             return True
         except Exception as e:
             logger.error(f"启动 kernel 失败: {e}")

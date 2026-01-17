@@ -55,7 +55,7 @@ class FuturisticCard(QFrame):
 
         # 1. 顶部 HUD
         self.header_hud = QWidget()
-        self.header_hud.setFixedHeight(35)
+        self.header_hud.setFixedHeight(40)
         header_layout = QHBoxLayout(self.header_hud)
         header_layout.setContentsMargins(18, 0, 10, 0)
 
@@ -162,7 +162,7 @@ class PropertyPanel(QWidget):
     - 批量处理 setUpdatesEnabled 状态，消除动画过程中的闪烁。
     """
 
-    def __init__(self, main_window, parent=None, max_history=3, header_height=35):
+    def __init__(self, main_window, parent=None, max_history=3, header_height=40):
         super().__init__(parent)
         self.main_window = main_window
         self._max_history = max_history
