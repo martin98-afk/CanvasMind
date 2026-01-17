@@ -255,13 +255,37 @@ class CustomPipeItem(PipeItem):
 
     def shape(self):
         """
-        Defines the shape used for hover detection.
+        重写碰撞检测形状。
+        技巧：在生成线的碰撞形状后，减去首尾两端的圆形区域。
+        这样在端口附近点击时，不会判定为点击了线，而是直接穿透给端口。
         """
+        path = self.path()
+        if path.elementCount() == 0:
+            return super(CustomPipeItem, self).shape()
+
+        # 1. 生成原本的宽线条碰撞区
         stroker = QtGui.QPainterPathStroker()
         stroker.setWidth(self._hover_pen.width())
         stroker.setCapStyle(self._hover_pen.capStyle())
         stroker.setJoinStyle(self._hover_pen.joinStyle())
-        return stroker.createStroke(self.path())
+        pipe_shape = stroker.createStroke(path)
+
+        # 2. 定义挖孔逻辑
+        # 获取路径的首尾点（即连接端口的位置）
+        start_pos = path.pointAtPercent(0.0)
+        end_pos = path.pointAtPercent(1.0)
+
+        # 定义一个“安全半径”，在这个半径内点击，算作点击端口，不算点击线
+        # 建议比端口视觉半径大一点，比如 12-15px
+        safe_radius = 5.0
+
+        cutout = QtGui.QPainterPath()
+        cutout.addEllipse(start_pos, safe_radius, safe_radius)
+        cutout.addEllipse(end_pos, safe_radius, safe_radius)
+
+        # 3. 从线的形状中减去端口区域 (Subtraction)
+        # 这样鼠标在端口附近时，shape() 覆盖不到，事件就会漏下去给 PortItem
+        return pipe_shape.subtracted(cutout)
 
     def activate(self):
         self._active = True
@@ -270,8 +294,9 @@ class CustomPipeItem(PipeItem):
             width=3,
             style=PipeEnum.DRAW_TYPE_DEFAULT.value
         )
-        self.setZValue(Z_VAL_NODE + 0.5)
-        # 可选：激活时自动开始流动
+        # 修正：不要用 Z_VAL_NODE + 0.5，这会遮挡端口
+        # 使用 Z_VAL_PIPE + 2 (确保比未选中的线高，但比节点低)
+        self.setZValue(Z_VAL_PIPE + 2)
         self.start_flow()
 
     def highlight(self):
@@ -281,19 +306,16 @@ class CustomPipeItem(PipeItem):
             width=2,
             style=PipeEnum.DRAW_TYPE_DEFAULT.value
         )
-        self.setZValue(Z_VAL_NODE + 0.5)
+        # 修正：同上
+        self.setZValue(Z_VAL_PIPE + 2)
         self.start_flow()
 
     def reset(self):
-        """
-        reset the pipe state and styling.
-        """
         self._active = False
         self._highlight = False
         self.set_pipe_styling(color=self.color, width=2, style=self.style)
         self._draw_direction_pointer()
         self.setZValue(Z_VAL_PIPE)
-        # 可选：重置时停止流动
         self.stop_flow()
 
 

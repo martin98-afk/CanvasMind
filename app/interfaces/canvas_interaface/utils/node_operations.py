@@ -265,7 +265,7 @@ class NodeOperations:
                 input_port_node = node
             elif node.type_ == "control_flow.ControlFlowOutputPort":
                 output_port_node = node
-            elif isinstance(node, ControlFlowBackdrop):
+            elif isinstance(node, ControlFlowBackdrop) and init_io:
                 MessageManager.error("错误", "当前版本不支持嵌套循环或迭代结构！", self.parent)
                 return
             else:
@@ -314,10 +314,6 @@ class NodeOperations:
                 nodes_to_wrap = other_nodes + [input_port_node, output_port_node]
         else:
             nodes_to_wrap = other_nodes
-
-        if not nodes_to_wrap:
-            MessageManager.warning("创建失败", "没有可包裹的节点！", self.parent)
-            return
 
         backdrop_node = self.graph.create_node(key)
         backdrop_node.wrap_nodes(nodes_to_wrap)
