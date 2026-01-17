@@ -96,12 +96,6 @@ class CustomNodeViewer(NodeViewer):
 
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-
-        huge_size = 50000
-        self.setSceneRect(-huge_size, -huge_size, huge_size * 2, huge_size * 2)
-
-        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setAcceptDrops(True)
         self.resize(850, 800)
 

@@ -8,12 +8,11 @@ from NodeGraphQt.constants import (
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
-from qfluentwidgets import ColorDialog
 from qtpy import QtCore, QtGui, QtWidgets
 
 
 # ------------------------------------------------------------------------------
-# 1. 功能按钮类 (Action Button)
+# 1. 功能按钮类 (Action Button) - 无变化
 # ------------------------------------------------------------------------------
 class ActionButton(QtWidgets.QGraphicsRectItem):
     def __init__(self, label, color, func, parent=None):
@@ -59,7 +58,7 @@ class ActionButton(QtWidgets.QGraphicsRectItem):
 
 
 # ------------------------------------------------------------------------------
-# 2. 锚点 Pin (增加目标吸附与位置更新逻辑)
+# 2. 锚点 Pin (修改：吸附前检查 persistent_id)
 # ------------------------------------------------------------------------------
 class NoteAnchorPin(QtWidgets.QGraphicsRectItem):
     def __init__(self, parent_note_item, parent_block):
@@ -68,19 +67,17 @@ class NoteAnchorPin(QtWidgets.QGraphicsRectItem):
         self.setZValue(Z_VAL_NODE + 20)
         self.setFlags(self.ItemIsMovable | self.ItemIsSelectable | self.ItemSendsGeometryChanges)
 
-        # --- 新增属性 ---
-        self._target_item = None  # 记录吸附的节点 Item 对象
-        self._target_offset = QtCore.QPointF(0, 0)  # 记录相对于目标节点的偏移
+        self._target_item = None
+        self._target_offset = QtCore.QPointF(0, 0)
 
-        # 样式
         self.default_brush = QtGui.QColor(0, 255, 255)
-        self.locked_brush = QtGui.QColor(255, 50, 50)  # 吸附成功变红
+        self.locked_brush = QtGui.QColor(255, 50, 50)
         self.setBrush(self.default_brush)
         self.setPen(QtGui.QPen(QtCore.Qt.white, 2))
 
     def itemChange(self, change, value):
         if change == self.ItemPositionChange and self.parentItem():
-            self.parentItem().update()  # 移动时刷新父级连线
+            self.parentItem().update()
         return super(NoteAnchorPin, self).itemChange(change, value)
 
     def mousePressEvent(self, event):
@@ -88,12 +85,12 @@ class NoteAnchorPin(QtWidgets.QGraphicsRectItem):
             self.parent_block.remove_pin()
             event.accept()
             return
-        # 按下时如果是吸附状态，可以选择解绑，这里简单处理为允许直接拖拽调整
         super(NoteAnchorPin, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         super(NoteAnchorPin, self).mouseMoveEvent(event)
-        # 拖拽时，如果底下有节点，变色提示
+        # 视觉提示：只有当且仅当下面有节点，且该节点有 persistent_id 时才变色（可选）
+        # 为了性能，Move 阶段只做简单碰撞检测
         colliding = [
             i for i in self.scene().items(self.scenePos())
             if isinstance(i, AbstractNodeItem) and i != self.parentItem()
@@ -102,82 +99,89 @@ class NoteAnchorPin(QtWidgets.QGraphicsRectItem):
 
     def mouseReleaseEvent(self, event):
         super(NoteAnchorPin, self).mouseReleaseEvent(event)
+        self.perform_snap()
 
-        # 松开时检测吸附
+        # 强制触发保存
+        if self.parentItem():
+            self.parentItem().on_text_block_changed()
+
+    def perform_snap(self):
+        """执行吸附逻辑"""
+        if not self.scene(): return
+
         current_scene_pos = self.scenePos()
         colliding_items = self.scene().items(current_scene_pos)
 
-        target = None
+        target_view_item = None
+
+        # 1. 寻找碰撞的 GraphicsItem
         for item in colliding_items:
-            # 排除自身所在的 StickyNote
-            if isinstance(item, AbstractNodeItem) and item != self.parentItem():
-                target = item
+            if isinstance(item, AbstractNodeItem) and (not isinstance(item, StickyNoteItem)):
+                target_view_item = item
                 break
 
-        if target:
-            # 计算吸附点（最近边缘）
-            rect = target.sceneBoundingRect()
+        # 2. 【核心校验】检查是否有 persistent_id
+        valid_target = False
+        if target_view_item:
+            # 调用父级 StickyNote 的辅助方法，通过 View 找 Node
+            node_obj = self.parentItem().get_node_by_view(target_view_item)
+            if node_obj:
+                # 获取 persistent_id
+                pid = node_obj.get_property('persistent_id')
+                if pid:
+                    valid_target = True
+                else:
+                    print("StickyNote: Target node has no 'persistent_id', ignore snap.")
+            else:
+                # 可能是还没有绑定 Node 对象的纯 Item，或者 helper 没找到
+                print("StickyNote: Cannot find Node object for item.")
+
+        if valid_target and target_view_item:
+            # 执行吸附物理计算
+            rect = target_view_item.sceneBoundingRect()
             snapped_pos = self._get_closest_point_on_rect(rect, current_scene_pos)
 
-            # 设置新位置 (转为父级坐标)
             self.setPos(self.parentItem().mapFromScene(snapped_pos))
-
-            # 绑定目标
-            self._target_item = target
-            # 记录偏移量：吸附点 - 目标左上角
-            self._target_offset = snapped_pos - target.scenePos()
-
+            self._target_item = target_view_item
+            self._target_offset = snapped_pos - target_view_item.scenePos()
             self.setBrush(self.locked_brush)
         else:
-            # 解绑
+            # 不合法或没撞到，解绑
             self._target_item = None
             self.setBrush(self.default_brush)
 
         self.parentItem().update()
 
     def _get_closest_point_on_rect(self, rect, pos):
-        """计算吸附点"""
         x, y = pos.x(), pos.y()
         left, right, top, bottom = rect.left(), rect.right(), rect.top(), rect.bottom()
-
         clamp_x = max(left, min(x, right))
         clamp_y = max(top, min(y, bottom))
-
         dl, dr = abs(x - left), abs(x - right)
         dt, db = abs(y - top), abs(y - bottom)
         m = min(dl, dr, dt, db)
-
         if m == dl: return QtCore.QPointF(left, clamp_y)
         if m == dr: return QtCore.QPointF(right, clamp_y)
         if m == dt: return QtCore.QPointF(clamp_x, top)
         return QtCore.QPointF(clamp_x, bottom)
 
     def update_position_from_target(self):
-        """实时跟随逻辑：根据目标位置反算自身位置"""
-        if not self._target_item:
-            return
-
-        # 安全检查：如果目标节点被删除了，解绑
+        if not self._target_item: return
         if self._target_item.scene() != self.scene():
             self._target_item = None
             self.setBrush(self.default_brush)
             return
 
-        # 1. 计算目标此时此刻的世界坐标吸附点
         target_pos = self._target_item.scenePos()
         target_snap_point = target_pos + self._target_offset
-
-        # 2. 将该点转换为 StickyNote 内部坐标
-        # mapFromScene 会自动处理 StickyNote 自身的移动
         new_local_pos = self.parentItem().mapFromScene(target_snap_point)
 
-        # 3. 如果位置有变化，则更新
         if (new_local_pos - self.pos()).manhattanLength() > 0.1:
             self.setPos(new_local_pos)
 
 
 # ------------------------------------------------------------------------------
-# 3. 文本块 - 保持不变
+# 3. 文本块 - 无变化
 # ------------------------------------------------------------------------------
 class NoteTextBlock(QtWidgets.QGraphicsTextItem):
     def __init__(self, text, pos, width=200, font_size=14, parent=None):
@@ -352,7 +356,7 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
 
 
 # ------------------------------------------------------------------------------
-# 4. StickyNoteItem (增加定时器实现实时跟随)
+# 4. StickyNoteItem
 # ------------------------------------------------------------------------------
 
 class StickyNoteItem(BackdropNodeItem):
@@ -366,14 +370,10 @@ class StickyNoteItem(BackdropNodeItem):
 
         super(StickyNoteItem, self).__init__(name, text, parent)
 
-        # --- 核心新增：同步定时器 ---
-        # 不需要 set_graph，自己监视自己
         self._sync_timer = QtCore.QTimer()
-        self._sync_timer.setInterval(30)  # 30ms 刷新率 (约30fps)
+        self._sync_timer.setInterval(30)
         self._sync_timer.timeout.connect(self._sync_pins)
-        # 默认启动，开销极小
         self._sync_timer.start()
-        # ------------------------
 
         self._header_height = 30.0
         self._locked = False
@@ -403,38 +403,167 @@ class StickyNoteItem(BackdropNodeItem):
 
         self._update_layout()
 
-    # --- 新增：定时同步函数 ---
+    # --- 辅助方法：View <-> Node 转换 ---
+
+    def get_node_by_view(self, item_view):
+        """通过 GraphicsItem 查找对应的逻辑 Node 对象"""
+        if not self.node: return None
+        # self.node 是 StickyNote 对应的 Node 对象
+        # self.node.graph 是 Graph 对象
+        graph = self.node.graph
+        if not graph: return None
+
+        # 遍历 Graph 中的所有 Node，找到 view 匹配的那个
+        for n in graph.all_nodes():
+            if n.view == item_view:
+                return n
+        return None
+
+    def get_view_by_persistent_id(self, pid):
+        """通过 persistent_id 查找对应的 GraphicsItem"""
+        if not self.node: return None
+        graph = self.node.graph
+        if not graph: return None
+
+        for n in graph.all_nodes():
+            if n.get_property('persistent_id') == pid:
+                return n.view
+        return None
+
+    # ------------------------------------
+
     def _sync_pins(self):
-        """定时检查所有 Pin 的目标位置并更新"""
-        # 如果当前场景不显示，或没有文本块，就跳过
         if not self.scene() or not self.isVisible() or not self._text_blocks:
             return
 
         need_update = False
         for block in self._text_blocks:
             pin = block.anchor_pin
-            # 如果 Pin 存在且绑定了目标节点
             if pin and pin._target_item:
                 old_pos = pin.pos()
                 pin.update_position_from_target()
                 if pin.pos() != old_pos:
                     need_update = True
-
-        # 只有在位置真正改变时才重绘，节省性能
         if need_update:
             self.update()
 
-    # --- ItemChange: 处理 StickyNote 自身移动时的 Pin 位置补偿 ---
     def itemChange(self, change, value):
-        """
-        当 StickyNote 自身被拖动时，
-        如果 Pin 吸附了外部节点，Pin 必须反向移动以保持世界坐标不变。
-        update_position_from_target 里的 mapFromScene 自动处理了这个逻辑。
-        """
         if change == self.ItemPositionChange:
-            # 手动触发一次同步，保证拖拽自身时的平滑度
             self._sync_pins()
         return super(StickyNoteItem, self).itemChange(change, value)
+
+    def on_text_block_changed(self):
+        """保存数据：将目标节点的 persistent_id 保存下来"""
+        if not self.node: return
+        data = []
+        for b in self._text_blocks:
+            pin_data = None
+            if b.anchor_pin:
+                pin = b.anchor_pin
+                target_pid = None
+
+                # 获取 persistent_id
+                if pin._target_item:
+                    target_node = self.get_node_by_view(pin._target_item)
+                    if target_node:
+                        target_pid = target_node.get_property('persistent_id')
+
+                # 保存偏移量
+                offset = [pin._target_offset.x(), pin._target_offset.y()]
+
+                pin_data = {
+                    'pos': [pin.pos().x(), pin.pos().y()],
+                    'target_pid': target_pid,  # 保存 PID
+                    'offset': offset
+                }
+
+            data.append({
+                'text': b.toPlainText(),
+                'x': b.pos().x(),
+                'y': b.pos().y(),
+                'w': b.textWidth(),
+                'size': b.font().pointSize(),
+                'anchor': pin_data
+            })
+        self.node.set_property('notes_json', json.dumps(data), push_undo=False)
+
+    def load_data(self, json_str):
+        if not json_str: return
+
+        for b in self._text_blocks:
+            if b.anchor_pin:
+                try:
+                    self.scene().removeItem(b.anchor_pin)
+                except:
+                    pass
+            try:
+                self.scene().removeItem(b)
+            except:
+                pass
+        self._text_blocks = []
+
+        try:
+            data = json.loads(json_str)
+            for item in data:
+                block = self.add_text_block(item['text'], QtCore.QPointF(item['x'], item['y']),
+                                            item.get('w', 200), item['size'])
+                anchor_info = item.get('anchor')
+                if anchor_info:
+                    pin = NoteAnchorPin(self, block)
+                    block.anchor_pin = pin
+
+                    if isinstance(anchor_info, dict):
+                        pos = anchor_info.get('pos', [0, 0])
+                        pin.setPos(pos[0], pos[1])
+
+                        # 读取 persistent_id
+                        pin._temp_target_pid = anchor_info.get('target_pid')
+
+                        # 读取偏移
+                        off = anchor_info.get('offset', [0, 0])
+                        pin._target_offset = QtCore.QPointF(off[0], off[1])
+
+            # 延迟执行重连
+            QtCore.QTimer.singleShot(200, self._rebind_pins_delayed)
+
+        except Exception as e:
+            print("StickyNote Load Error:", e)
+
+    def _rebind_pins_delayed(self):
+        """延迟执行：通过 persistent_id 重连"""
+        if not self.scene(): return
+
+        updated = False
+
+        for block in self._text_blocks:
+            pin = block.anchor_pin
+            if not pin: continue
+            if pin._target_item: continue
+
+            target_view = None
+
+            # 1. 尝试通过 PID 找回 (精准)
+            if hasattr(pin, '_temp_target_pid') and pin._temp_target_pid:
+                target_view = self.get_view_by_persistent_id(pin._temp_target_pid)
+
+            # 2. 绑定
+            if target_view:
+                pin._target_item = target_view
+                pin.setBrush(pin.locked_brush)
+                # 理论上应该重新计算 offset 以防微小位移，但相信保存时的 offset 也行
+                # pin._target_offset = pin.scenePos() - target_view.scenePos()
+                updated = True
+
+            if hasattr(pin, '_temp_target_pid'):
+                del pin._temp_target_pid
+
+        self.update()
+        if updated:
+            self.on_text_block_changed()
+
+    # ----------------------------------------------------
+    # 以下 UI/事件保持不变
+    # ----------------------------------------------------
 
     def boundingRect(self):
         return QtCore.QRectF(0, 0, self._width, self._height)
@@ -442,7 +571,6 @@ class StickyNoteItem(BackdropNodeItem):
     def _update_layout(self):
         if not self._text_item or not self._icon_item or not self.btn_lock or not self.btn_color:
             return
-
         self._icon_item.setPos(10, (self._header_height - 10) / 2)
         t_rect = self._text_item.boundingRect()
         self._text_item.setPos((self._width - t_rect.width()) / 2, 0)
@@ -461,60 +589,41 @@ class StickyNoteItem(BackdropNodeItem):
         self.update()
 
     def change_color(self):
-        """弹出颜色选择框并更改节点颜色"""
         current_rgb = self.color
         current_color = QtGui.QColor(*current_rgb)
-
-        # 弹出对话框
         new_color = QtWidgets.QColorDialog.getColor(
-            current_color,
-            None,
-            "选择注释背景颜色",
-            QtWidgets.QColorDialog.ShowAlphaChannel
+            current_color, None, "选择注释背景颜色", QtWidgets.QColorDialog.ShowAlphaChannel
         )
-
         if new_color.isValid():
-            # 更新 Item 内部颜色属性 (AbstractNodeItem property)
-            # NodeGraphQt 通常使用 (r, g, b) 或 (r, g, b, a) 元组
             c_tuple = (new_color.red(), new_color.green(), new_color.blue())
             self.color = c_tuple
-
-            # 强制重绘
             self.update()
-
-            # 如果绑定了 Node 对象，同步更新 Node 属性以持久化
             if self.node:
                 self.node.set_color(c_tuple[0], c_tuple[1], c_tuple[2])
 
     def mousePressEvent(self, event):
         if self._locked:
-            event.ignore()
+            event.ignore();
             return
-
         pos = event.pos()
         item = self.scene().itemAt(event.scenePos(), QtGui.QTransform())
-
         if event.button() == QtCore.Qt.RightButton:
-            event.accept()
+            event.accept();
             return
-
         if pos.y() < self._header_height:
             self.setFlag(self.ItemIsSelectable, True)
-            super(StickyNoteItem, self).mousePressEvent(event)
+            super(StickyNoteItem, self).mousePressEvent(event);
             return
-
         if item and item != self and item != self._sizer:
             self.setFlag(self.ItemIsSelectable, True)
-            super(StickyNoteItem, self).mousePressEvent(event)
+            super(StickyNoteItem, self).mousePressEvent(event);
             return
-
         curr_time = time.time()
         if (curr_time - self._last_click_time) < self._double_click_threshold:
             self.add_text_block("双击编辑...", pos)
             self._last_click_time = 0
-            event.accept()
+            event.accept();
             return
-
         self._last_click_time = curr_time
         self.setFlag(self.ItemIsSelectable, False)
         event.ignore()
@@ -525,7 +634,7 @@ class StickyNoteItem(BackdropNodeItem):
             if self._text_item in items:
                 self._text_item.set_editable(True)
                 self._text_item.setFocus()
-                event.accept()
+                event.accept();
                 return
         super(StickyNoteItem, self).mouseDoubleClickEvent(event)
 
@@ -538,7 +647,6 @@ class StickyNoteItem(BackdropNodeItem):
         painter.save()
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
         rect = self.boundingRect()
-
         c = self.color
         alpha = 40 if self._locked else 80
         bg_color = QtGui.QColor(c[0], c[1], c[2], alpha)
@@ -553,15 +661,12 @@ class StickyNoteItem(BackdropNodeItem):
         painter.drawRoundedRect(header_rect, 5, 5)
         painter.drawRect(QtCore.QRectF(0, header_height - 5, rect.width(), 5))
 
-        # 绘制引线
         painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 120), 2.0, QtCore.Qt.DashLine))
         for b in self._text_blocks:
             if b.anchor_pin and b.anchor_pin.scene():
                 p1 = b.get_edge_point(b.anchor_pin.pos())
                 p2 = b.anchor_pin.pos()
                 painter.drawLine(p1, p2)
-
-                # 可选：绘制连接圆点
                 if b.anchor_pin._target_item:
                     painter.setBrush(QtGui.QColor(255, 50, 50))
                     painter.setPen(QtCore.Qt.NoPen)
@@ -571,7 +676,6 @@ class StickyNoteItem(BackdropNodeItem):
             painter.setBrush(QtCore.Qt.NoBrush)
             painter.setPen(QtGui.QPen(QtGui.QColor(0, 255, 255, 200), 1.5))
             painter.drawRoundedRect(rect, 5, 5)
-
         painter.restore()
 
     def add_text_block(self, text, pos, width=200, font_size=20):
@@ -579,41 +683,6 @@ class StickyNoteItem(BackdropNodeItem):
         self._text_blocks.append(block)
         self.on_text_block_changed()
         return block
-
-    def on_text_block_changed(self):
-        if not self.node: return
-        data = []
-        for b in self._text_blocks:
-            anchor_pos = [b.anchor_pin.pos().x(), b.anchor_pin.pos().y()] if b.anchor_pin else None
-            data.append({
-                'text': b.toPlainText(), 'x': b.pos().x(), 'y': b.pos().y(),
-                'w': b.textWidth(), 'size': b.font().pointSize(), 'anchor': anchor_pos
-            })
-        self.node.set_property('notes_json', json.dumps(data), push_undo=False)
-
-    def load_data(self, json_str):
-        if not json_str: return
-        for b in self._text_blocks:
-            if b.anchor_pin:
-                try:
-                    self.scene().removeItem(b.anchor_pin)
-                except:
-                    pass
-            try:
-                self.scene().removeItem(b)
-            except:
-                pass
-        self._text_blocks = []
-        try:
-            data = json.loads(json_str)
-            for item in data:
-                block = self.add_text_block(item['text'], QtCore.QPointF(item['x'], item['y']),
-                                            item.get('w', 200), item['size'])
-                if item.get('anchor'):
-                    block.anchor_pin = NoteAnchorPin(self, block)
-                    block.anchor_pin.setPos(item['anchor'][0], item['anchor'][1])
-        except:
-            pass
 
     @AbstractNodeItem.width.setter
     def width(self, width=0.0):
