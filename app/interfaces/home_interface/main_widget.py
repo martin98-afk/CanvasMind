@@ -373,6 +373,13 @@ class ResourceLinkCardView(SimpleCardWidget):
         )
 
         self.linkCardView.addCard(
+            get_icon("bilibili"),
+            "视频介绍",
+            "哔哩哔哩中发布的 Canvas Mind 相关介绍视频",
+            "https://www.bilibili.com/video/BV13Sr6BiEAB/?spm_id_from=333.1387.collection.video_card.click&vd_source=730f7f3382f460e22f17a3b2c58f0256"
+        )
+
+        self.linkCardView.addCard(
             FluentIcon.CODE,
             "流程图样例",
             "获取官方画布样例文件",

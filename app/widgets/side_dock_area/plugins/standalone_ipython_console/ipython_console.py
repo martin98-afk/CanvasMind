@@ -21,6 +21,9 @@ class IPythonConsoleToolWindow(ToolWindow):
     def kernel_manager(self):
         return self.console.get_kernel_manager()
 
+    def interrupt_kernel(self):
+        self.console.interrupt_kernel()
+
     def start_kernel(self, python_exe: str):
         return self.console.start_kernel(python_exe)
 

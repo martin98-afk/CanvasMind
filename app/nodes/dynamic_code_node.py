@@ -26,10 +26,6 @@ from .status_node import StatusNode
 from ..templates.node_cleanup_script import CLEANUP_CODE
 from ..widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 
-# 在 app/components 下创建 .temp 目录（隐藏目录）
-TEMP_COMPONENTS_DIR = Path(__file__).parent.parent / "components" / ".temp"
-TEMP_COMPONENTS_DIR.mkdir(exist_ok=True)
-
 
 _TEMP_COMPONENT_TEMPLATE = '''{import_code}class DynamicComponent(BaseComponent):
     name = "动态代码组件"
@@ -447,9 +443,9 @@ def create_dynamic_code_node(parent_window=None):
 
                 # 准备路径
                 temp_component_name = f"dynamic_{uuid.uuid4().hex}.py"
-                temp_component_path = TEMP_COMPONENTS_DIR / temp_component_name
                 run_id = f"run_{self.persistent_id}"
                 run_dir = self.CACHE_PATH / "run_scripts" / run_id
+                temp_component_path = run_dir / temp_component_name
                 shutil.rmtree(run_dir, ignore_errors=True)
                 run_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(resource_path("app/components/base.py"), str(run_dir.parent / "base.py"))
@@ -515,7 +511,8 @@ def create_dynamic_code_node(parent_window=None):
                     pickle.dump(({}, inputs, global_variable), f)
 
                 self.last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
-
+                self.timeout_enabled = parent_window.config.node_run_timeout_toggle.value
+                self.timeout_seconds = parent_window.config.node_run_timeout.value
                 # === 分支执行 ===
                 if env_data.get('type') == 'ssh':
                     self._execute_via_ssh(env_data, local_script_path, local_comp_path, params_path, result_path,
@@ -621,7 +618,6 @@ def create_dynamic_code_node(parent_window=None):
                 stdout.channel.setblocking(0)
                 # 轮询直到进程结束
                 start_time = time.time()
-                timeout = parent_window.config.node_run_timeout.value  # 5分钟
                 while not stdout.channel.exit_status_ready():
                     if check_cancel and check_cancel():
                         ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
@@ -637,10 +633,10 @@ def create_dynamic_code_node(parent_window=None):
                                 self.last_log_pos += len(new_data)
                     except IOError:
                         pass
-                    if time.time() - start_time > timeout:
+                    if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
                         ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
                         ssh.close()
-                        raise Exception("节点执行超时")
+                        raise Exception(f"节点执行超时{self.timeout_seconds}秒")
                     time.sleep(0.5)
 
                 try:
@@ -708,12 +704,10 @@ def create_dynamic_code_node(parent_window=None):
 
             # 轮询结果文件
             start_time = time.time()
-            timeout = parent_window.config.node_run_timeout.value  # 5分钟
-
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
                     try:
-                        kernel_manager.restart_kernel()  # now=True 表示立即重启（不等待）
+                        kernel_manager.interrupt_kernel()  # now=True 表示立即重启（不等待）
                         self._log_message(self.persistent_id, "✅ 内核已重启，执行已终止。")
                     except Exception as e:
                         self._log_message(self.persistent_id, f"⚠️ 内核重启失败: {e}")
@@ -728,8 +722,9 @@ def create_dynamic_code_node(parent_window=None):
                                 self.last_log_pos = lf.tell()
                 except Exception:
                     pass
-                if time.time() - start_time > timeout:
-                    raise Exception(f"❌ 节点执行超时（{timeout} 秒）")
+                if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
+                    kernel_manager.interrupt_kernel()
+                    raise Exception(f"❌ 节点执行超时（{self.timeout_seconds} 秒）")
 
                 time.sleep(0.1)
             self._log_message(self.persistent_id, "✅ 节点在ipython环境执行完成")
@@ -750,14 +745,13 @@ def create_dynamic_code_node(parent_window=None):
             )
 
             start_time = time.time()
-            timeout = parent_window.config.node_run_timeout.value
             while proc.poll() is None:
                 if check_cancel and check_cancel():
                     kill_proc_tree(proc.pid)
                     raise Exception("执行已被用户取消")
-                if time.time() - start_time > timeout:
+                if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
                     kill_proc_tree(proc.pid)
-                    raise Exception(f"❌ 节点执行超时（{timeout} 秒）")
+                    raise Exception(f"❌ 节点执行超时（{self.timeout_seconds} 秒）")
                 # 增量读取日志，实时输出
                 try:
                     if os.path.exists(log_file_path):

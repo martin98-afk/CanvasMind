@@ -11,6 +11,7 @@
     <file>Sync.svg</file>
     <file>ai模型.svg</file>
     <file>banner.png</file>
+    <file>bilibili.svg</file>
     <file>collapse_all.svg</file>
     <file>console.svg</file>
     <file>dataframe.svg</file>
@@ -100,6 +101,7 @@
     <file>自动保存.svg</file>
     <file>自定义变量.svg</file>
     <file>节点变量.svg</file>
+    <file>节点库.svg</file>
     <file>表格.svg</file>
     <file>调试.svg</file>
     <file>运行.svg</file>

@@ -57,7 +57,11 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.view.exec_mode_signal.connect(self._clear_ipython_memory_context)
             # 组件ui构建
             self._generate_parms_widget()
-            for port_name, label, connection in ComponentScanner().get_component_by_uuid(self.uuid).get_inputs():
+            self.object_io = False # 用于判断当前节点是否存在内存对象传递，内存对象传递运行模式必须是ipython
+            for port_name, label, connection, port_type in ComponentScanner().get_component_by_uuid(self.uuid).get_inputs():
+                if port_type == ArgumentType.OBJECT:
+                    self.object_io = True
+                    self.view._toggle_exec_mode("ipython")
                 if connection == ConnectionType.SINGLE:
                     self.add_input(port_name)
                 else:
@@ -76,7 +80,10 @@ def create_node_class(full_path, file_path, parent_window=None):
             return self.model.type_.split("StatusDynamicNode_")[1]
 
         def build_outputs(self):
-            for port_name, label in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs():
+            for port_name, label, port_type in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs():
+                if port_type == ArgumentType.OBJECT:
+                    self.object_io = True
+                    self.view._toggle_exec_mode("ipython")
                 self.delete_output(port_name)
                 name = re.sub(r'\s+', '_', self.name())
                 if f"{name}__{port_name}" in parent_window.global_variables.node_vars:
@@ -423,6 +430,8 @@ def create_node_class(full_path, file_path, parent_window=None):
 
             # === 分支：本地还是远程 ===
             self.last_log_pos = os.path.getsize(log_file_path) if os.path.exists(log_file_path) else 0
+            self.timeout_enabled = parent_window.config.node_run_timeout_toggle.value
+            self.timeout_seconds = parent_window.config.node_run_timeout.value
             if env_data.get('type') == 'ssh':
                 # 远程 SSH 执行
                 self._execute_via_ssh(comp_obj, env_data, local_script_path, local_comp_path, params_path, result_path,
@@ -540,7 +549,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                 stdout.channel.setblocking(0)
                 # 轮询直到进程结束
                 start_time = time.time()
-                timeout = parent_window.config.node_run_timeout.value  # 5分钟
                 while not stdout.channel.exit_status_ready():
                     if check_cancel and check_cancel():
                         ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
@@ -561,10 +569,10 @@ def create_node_class(full_path, file_path, parent_window=None):
                     except IOError:
                         # 脚本可能还没开始写日志，忽略
                         pass
-                    if time.time() - start_time > timeout:
+                    if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
                         ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
                         ssh.close()
-                        raise Exception("节点执行超时")
+                        raise Exception(f"节点执行超时{self.timeout_seconds}秒")
                     time.sleep(0.5)  # 适当降低轮询频率，减少 IO 开销
 
                 # 下载并处理 result.pkl
@@ -636,8 +644,6 @@ def create_node_class(full_path, file_path, parent_window=None):
             kernel_manager.execute_code(code, hidden=True)
             # 轮询结果文件 (保持原逻辑不变)
             start_time = time.time()
-            timeout = parent_window.config.node_run_timeout.value
-
             while not (result_path.exists() or error_path.exists()):
                 if check_cancel and check_cancel():
                     # 如果用户取消，此时才考虑是否重启内核（慎用）
@@ -658,8 +664,9 @@ def create_node_class(full_path, file_path, parent_window=None):
                                 self.last_log_pos = lf.tell()
                 except Exception:
                     pass
-                if time.time() - start_time > timeout:
-                    raise Exception(f"❌ 节点执行超时（{timeout} 秒）")
+                if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
+                    kernel_manager.interrupt_kernel()
+                    raise Exception(f"❌ 节点执行超时（{self.timeout_seconds} 秒）")
                 time.sleep(0.1)
             self._log_message(self.persistent_id, "✅ 节点执行完成 (内存驻留模式已开启)")
 
@@ -679,14 +686,13 @@ def create_node_class(full_path, file_path, parent_window=None):
             )
 
             start_time = time.time()
-            timeout = parent_window.config.node_run_timeout.value
             while proc.poll() is None:
                 if check_cancel and check_cancel():
                     kill_proc_tree(proc.pid)
                     raise Exception("执行已被用户取消")
-                if time.time() - start_time > timeout:
+                if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
                     kill_proc_tree(proc.pid)
-                    raise Exception(f"❌ 节点执行超时（{timeout} 秒）")
+                    raise Exception(f"❌ 节点执行超时（{self.timeout_seconds} 秒）")
                 # 增量读取日志，实时输出
                 try:
                     if os.path.exists(log_file_path):

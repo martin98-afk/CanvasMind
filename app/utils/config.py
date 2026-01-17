@@ -63,8 +63,7 @@ class Settings(QConfig):
     )
 
     # ========== 画布运行设置 ==========
-    canvas_run_mode = OptionsConfigItem("CanvasRun", "RunMode", "subprocess运行",
-                                        OptionsValidator(["ipython运行", "subprocess运行"]))
+    node_run_timeout_toggle = ConfigItem("CanvasRun", "RunTimeoutToggle", False, BoolValidator())
     node_run_timeout = RangeConfigItem("CanvasRun", "RunTimeout", 300, RangeValidator(120, 3000))
     run_parallel = ConfigItem("CanvasRun", "RunParallel", True, BoolValidator())
     run_parallel_max_workers = RangeConfigItem("CanvasRun", "RunParallelMaxWorkers", 2, RangeValidator(1, 10))

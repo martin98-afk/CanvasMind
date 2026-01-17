@@ -139,3 +139,4 @@ markdown
 orjson
 paramiko
 watchfiles
+simplejson
