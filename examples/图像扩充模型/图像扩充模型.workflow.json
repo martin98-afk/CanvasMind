@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x246a718a810": {
+      "0x1473cef8a90": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": ":/icons/同心圆.svg",
         "name": "文件上传",
@@ -54,7 +54,7 @@
           "preview_file": null
         }
       },
-      "0x246a715ea50": {
+      "0x147399936d0": {
         "type_": "dynamic.StatusDynamicNode_55e89122-98ec-431c-b539-d39b13c0e039",
         "icon": ":/icons/同心圆.svg",
         "name": "图像尺寸调整",
@@ -99,7 +99,7 @@
           "fill_color": "black"
         }
       },
-      "0x246a71dd2d0": {
+      "0x1473ce8fc10": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点",
@@ -140,7 +140,7 @@
           "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\e2aca9ac-a116-4e8e-ba16-265da71be907\\result\\image_e2aca9ac-a116-4e8e-ba16-265da71be907_resized_image.png"
         }
       },
-      "0x246a71dca50": {
+      "0x147475ba690": {
         "type_": "dynamic.StatusDynamicNode_3ad2c11e-e33f-48b7-ba30-060551477952",
         "icon": ":/icons/同心圆.svg",
         "name": "图像扩图填充",
@@ -187,7 +187,7 @@
           "debug_code": "# -*- coding: utf-8 -*-\nimport importlib.util\nfrom pathlib import Path\nbase_path = Path(__file__).parent.parent / \"base.py\"\nspec = importlib.util.spec_from_file_location(\"base\", str(base_path))\nbase_module = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(base_module)\n\n# 导入所需项目\nBaseComponent = base_module.BaseComponent\nPortDefinition = base_module.PortDefinition\nPropertyDefinition = base_module.PropertyDefinition\nPropertyType = base_module.PropertyType\nArgumentType = base_module.ArgumentType\nConnectionType = base_module.ConnectionType\n\n\nclass ImagePadForOutpainting(BaseComponent):\n    name = \"图像扩图填充\"\n    category = \"图像处理\"\n    description = \"为图像添加边距，生成用于扩图的画布和遮罩\"\n    requirements = \"Pillow\"\n    \n    inputs = [\n        PortDefinition(name=\"image\", label=\"输入图像\", type=ArgumentType.IMAGE),\n    ]\n    outputs = [\n        PortDefinition(name=\"padded_image\", label=\"扩图画布\", type=ArgumentType.IMAGE),\n        PortDefinition(name=\"mask\", label=\"遮罩图\", type=ArgumentType.IMAGE),\n    ]\n    \n    properties = {\n        \"left\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=0,\n            label=\"左扩展\",\n        ),\n        \"right\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=0,\n            label=\"右扩展\",\n        ),\n        \"top\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=0,\n            label=\"上扩展\",\n        ),\n        \"bottom\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=0,\n            label=\"下扩展\",\n        ),\n        \"feathering\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=20,\n            label=\"边缘羽化\",\n        ),\n    }\n\n    def run(self, params, inputs=None):\n        from PIL import Image, ImageOps, ImageFilter\n        import numpy as np\n\n        # 1. 获取输入图像并转为 RGB（防止 RGBA 导致的透明度干扰）\n        src_img = inputs.get(\"image\")\n        if src_img is None:\n            raise ValueError(\"未检测到输入图像\")\n        \n        src_img = src_img.convert(\"RGB\") \n        \n        left = int(params.get(\"left\", 0))\n        right = int(params.get(\"right\", 0))\n        top = int(params.get(\"top\", 0))\n        bottom = int(params.get(\"bottom\", 0))\n        \n        new_width = src_img.width + left + right\n        new_height = src_img.height + top + bottom\n\n        # 2. 创建扩图后的画布 (Padded Image)\n        # 建议默认用黑色，因为采样器对黑色背景的重绘更稳定\n        fill_color = (0, 0, 0) if params.get(\"fill_color\") == \"black\" else (255, 255, 255)\n        padded_img = Image.new(\"RGB\", (new_width, new_height), fill_color)\n        \n        # 将原图粘贴到中心指定位置\n        # padded_img.paste(src_img, (left, top))\n\n        # 3. 创建遮罩 (Mask) \n        # 逻辑：原图区域为黑色(0, 0, 0)，需要扩绘的区域为白色(255, 255, 255)\n        # 注意：这里先创建一个全白的图\n        mask = Image.new(\"L\", (new_width, new_height), 255)\n        \n        # 在原图对应的位置，画一个纯黑的矩形\n        # 这样采样器就知道：黑色的地方不要动，白色的地方重新画\n        black_rect = Image.new(\"L\", (src_img.width, src_img.height), 0)\n        mask.paste(black_rect, (left, top))\n\n        # 4. 可选：对遮罩边缘做微量羽化，防止扩图处有硬连接痕迹\n        mask = mask.filter(ImageFilter.GaussianBlur(radius=5))\n\n        # 【核心修正】：为了让 UI 预览正常，将 L 模式的遮罩转回 RGB 输出\n        # 否则某些低代码前端会将灰度图识别错误\n        mask_rgb = mask.convert(\"RGB\")\n        print(src_img.size)\n        return {\n            \"padded_image\": src_img, # 这是一个中间有原图，四周是黑边的图\n            \"mask\": mask_rgb            # 这是一个中间是黑块，四周是白边的图\n        }"
         }
       },
-      "0x246a71dfc90": {
+      "0x1473ce29050": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点 1",
@@ -228,7 +228,7 @@
           "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\ce617379-f4c2-4082-9053-ad89c8287f36\\result\\image_ce617379-f4c2-4082-9053-ad89c8287f36_padded_image.png"
         }
       },
-      "0x246a7205390": {
+      "0x147475a6d10": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点 2",
@@ -269,7 +269,7 @@
           "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\图像扩充模型\\workspace\\ce617379-f4c2-4082-9053-ad89c8287f36\\result\\image_ce617379-f4c2-4082-9053-ad89c8287f36_mask.png"
         }
       },
-      "0x246a7206510": {
+      "0x147475a6050": {
         "type_": "dynamic.StatusDynamicNode_7709d64e-30d4-4db0-b08c-2ae983988848",
         "icon": ":/icons/同心圆.svg",
         "name": "局部重绘采样器",
@@ -318,7 +318,7 @@
           "preview_output": null
         }
       },
-      "0x246a71a5390": {
+      "0x147475d2890": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点 3",
@@ -359,7 +359,7 @@
           "media_display": null
         }
       },
-      "0x246a71d3b90": {
+      "0x147399ba150": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "正向提示词",
@@ -401,7 +401,7 @@
           "input": "Cinematic wide shot of majestic snow-capped mountains, crystal clear lake reflection, sunrise lighting, hyper-realistic, 8k resolution"
         }
       },
-      "0x246a7221f50": {
+      "0x1473ce6f210": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "负向提示词",
@@ -443,7 +443,7 @@
           "input": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, missing arms, long neck, humpbacked, deformed, disfigured, poorly drawn face, mutation, mutated, extra limbs, mutated hands, fused fingers, too many fingers, floating limbs, disconnected limbs, malformed hands, out of focus, long body."
         }
       },
-      "0x246a7226c50": {
+      "0x14739a152d0": {
         "type_": "dynamic.StatusDynamicNode_4b0dd991-a604-4913-9fda-3f8b0ca1e55a",
         "icon": ":/icons/同心圆.svg",
         "name": "AI图像超分",
@@ -485,7 +485,7 @@
           "tile_size": 512
         }
       },
-      "0x246a7228d90": {
+      "0x1473ce9a310": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": ":/icons/同心圆.svg",
         "name": "文件上传 1",
@@ -508,7 +508,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 208.8125,
         "height": 83.0,
@@ -527,7 +527,7 @@
           "file_upload": "canvas_files\\workflows\\图像扩充模型\\workspace\\faebe2c4-1e5c-4d10-aee0-0a3838f068bf\\upload\\RealESRGAN_x4plus.pth"
         }
       },
-      "0x246a722a550": {
+      "0x147475b8bd0": {
         "type_": "general.StickyNote",
         "icon": null,
         "name": "图像超分",
@@ -563,10 +563,10 @@
         "subgraph_session": {},
         "custom": {
           "backdrop_text": "",
-          "notes_json": "[{\"text\": \"\\u8d85\\u5206\\u6a21\\u578b\\uff1aRealESRGAN_x4plus.pth\\n\\u4e0b\\u8f7d\\u5730\\u5740\\uff1a\\nhttps://huggingface.co/lllyasviel/Annotators/resolve/main/RealESRGAN_x4plus.pth?download=true\", \"x\": 110.70374972962918, \"y\": 696.2562960630489, \"w\": 778.4989853573711, \"size\": 21, \"anchor\": {\"pos\": [688.2411985781055, 615.6881310904315], \"target_pid\": \"faebe2c4-1e5c-4d10-aee0-0a3838f068bf\", \"offset\": [133.266645619055, 88.0]}}]"
+          "notes_json": "[{\"text\": \"\\u8d85\\u5206\\u6a21\\u578b\\uff1aRealESRGAN_x4plus.pth\\n\\u4e0b\\u8f7d\\u5730\\u5740\\uff1a\\n[qualcomm/Real-ESRGAN-x4plus](https://huggingface.co/lllyasviel/Annotators/resolve/main/RealESRGAN_x4plus.pth?download=true)\\n\", \"x\": 167.98743949089703, \"y\": 652.4180478626399, \"w\": 495.21026647568715, \"size\": 21, \"anchor\": {\"pos\": [284.75994035815256, 544.8134941792777], \"target_pid\": \"faebe2c4-1e5c-4d10-aee0-0a3838f068bf\", \"offset\": [131.40832989564024, 88.0]}}]"
         }
       },
-      "0x246a722b4d0": {
+      "0x147475ba550": {
         "type_": "general.StickyNote",
         "icon": null,
         "name": "图像局部重采样",
@@ -609,131 +609,131 @@
     "connections": [
       {
         "out": [
-          "0x246a718a810",
+          "0x1473cef8a90",
           "file"
         ],
         "in": [
-          "0x246a715ea50",
+          "0x147399936d0",
           "image"
         ]
       },
       {
         "out": [
-          "0x246a715ea50",
+          "0x147399936d0",
           "resized_image"
         ],
         "in": [
-          "0x246a71dd2d0",
+          "0x1473ce8fc10",
           "data"
         ]
       },
       {
         "out": [
-          "0x246a715ea50",
+          "0x147399936d0",
           "resized_image"
         ],
         "in": [
-          "0x246a71dca50",
+          "0x147475ba690",
           "image"
         ]
       },
       {
         "out": [
-          "0x246a71dca50",
+          "0x147475ba690",
           "padded_image"
         ],
         "in": [
-          "0x246a71dfc90",
+          "0x1473ce29050",
           "data"
         ]
       },
       {
         "out": [
-          "0x246a71dca50",
+          "0x147475ba690",
           "padded_image"
         ],
         "in": [
-          "0x246a7206510",
+          "0x147475a6050",
           "image"
         ]
       },
       {
         "out": [
-          "0x246a71dca50",
+          "0x147475ba690",
           "padded_image"
         ],
         "in": [
-          "0x246a71a5390",
+          "0x147475d2890",
           "data"
         ]
       },
       {
         "out": [
-          "0x246a71dca50",
+          "0x147475ba690",
           "mask"
         ],
         "in": [
-          "0x246a7205390",
+          "0x147475a6d10",
           "data"
         ]
       },
       {
         "out": [
-          "0x246a71dca50",
+          "0x147475ba690",
           "mask"
         ],
         "in": [
-          "0x246a7206510",
+          "0x147475a6050",
           "mask"
         ]
       },
       {
         "in": [
-          "0x246a7206510",
+          "0x147475a6050",
           "prompt"
         ],
         "out": [
-          "0x246a71d3b90",
+          "0x147399ba150",
           "text"
         ]
       },
       {
         "in": [
-          "0x246a7206510",
+          "0x147475a6050",
           "negative_prompt"
         ],
         "out": [
-          "0x246a7221f50",
+          "0x1473ce6f210",
           "text"
         ]
       },
       {
         "out": [
-          "0x246a7206510",
+          "0x147475a6050",
           "output_image"
         ],
         "in": [
-          "0x246a7226c50",
+          "0x14739a152d0",
           "image_in"
         ]
       },
       {
         "in": [
-          "0x246a71a5390",
+          "0x147475d2890",
           "data"
         ],
         "out": [
-          "0x246a7226c50",
+          "0x14739a152d0",
           "image_out"
         ]
       },
       {
         "in": [
-          "0x246a7226c50",
+          "0x14739a152d0",
           "model"
         ],
         "out": [
-          "0x246a7228d90",
+          "0x1473ce9a310",
           "file"
         ]
       }
@@ -747,20 +747,20 @@
     },
     "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe",
     "node_id2stable_key": {
-      "0x246a718a810": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传",
-      "0x246a715ea50": "55e89122-98ec-431c-b539-d39b13c0e039||图像尺寸调整",
-      "0x246a71dd2d0": "unknown||多媒体展示节点",
-      "0x246a71dca50": "3ad2c11e-e33f-48b7-ba30-060551477952||图像扩图填充",
-      "0x246a71dfc90": "unknown||多媒体展示节点 1",
-      "0x246a7205390": "unknown||多媒体展示节点 2",
-      "0x246a7206510": "7709d64e-30d4-4db0-b08c-2ae983988848||局部重绘采样器",
-      "0x246a71a5390": "unknown||多媒体展示节点 3",
-      "0x246a71d3b90": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||正向提示词",
-      "0x246a7221f50": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||负向提示词",
-      "0x246a7226c50": "4b0dd991-a604-4913-9fda-3f8b0ca1e55a||AI图像超分",
-      "0x246a7228d90": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1",
-      "0x246a722a550": "unknown||图像超分",
-      "0x246a722b4d0": "unknown||图像局部重采样"
+      "0x1473cef8a90": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传",
+      "0x147399936d0": "55e89122-98ec-431c-b539-d39b13c0e039||图像尺寸调整",
+      "0x1473ce8fc10": "unknown||多媒体展示节点",
+      "0x147475ba690": "3ad2c11e-e33f-48b7-ba30-060551477952||图像扩图填充",
+      "0x1473ce29050": "unknown||多媒体展示节点 1",
+      "0x147475a6d10": "unknown||多媒体展示节点 2",
+      "0x147475a6050": "7709d64e-30d4-4db0-b08c-2ae983988848||局部重绘采样器",
+      "0x147475d2890": "unknown||多媒体展示节点 3",
+      "0x147399ba150": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||正向提示词",
+      "0x1473ce6f210": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||负向提示词",
+      "0x14739a152d0": "4b0dd991-a604-4913-9fda-3f8b0ca1e55a||AI图像超分",
+      "0x1473ce9a310": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传 1",
+      "0x147475b8bd0": "unknown||图像超分",
+      "0x147475ba550": "unknown||图像局部重采样"
     },
     "node_states": {
       "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文件上传": "success",

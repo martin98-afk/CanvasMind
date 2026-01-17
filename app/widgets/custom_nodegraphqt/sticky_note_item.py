@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 import json
 import time
+import re  # 新增
+from qtpy import QtCore, QtGui, QtWidgets
+from qtpy.QtCore import QUrl  # 新增
+from qtpy.QtGui import QDesktopServices  # 新增
 
 from NodeGraphQt.constants import (
     Z_VAL_NODE, Z_VAL_BACKDROP
@@ -9,6 +13,26 @@ from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
 from qtpy import QtCore, QtGui, QtWidgets
+
+
+def simple_markdown_to_html(text):
+    """简易 Markdown 转 HTML，支持链接和换行"""
+    if not text:
+        return ""
+
+    # 1. 转义 HTML 特殊字符，防止 XSS 或渲染错误
+    html = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    # 2. 处理 URL 链接: [text](url) -> <a href="url">text</a>
+    # 链接颜色设为浅蓝色，去掉了下划线，看着更像 ComfyUI 风格
+    link_pattern = r'\[([^\]]+)\]\(([^)]+)\)'
+    link_html = r'<a href="\2" style="color: #4facfe; text-decoration: underline;">\1</a>'
+    html = re.sub(link_pattern, link_html, html)
+
+    # 3. 处理换行符 \n -> <br>
+    html = html.replace("\n", "<br>")
+
+    return html
 
 
 # ------------------------------------------------------------------------------
@@ -186,18 +210,31 @@ class NoteAnchorPin(QtWidgets.QGraphicsRectItem):
 class NoteTextBlock(QtWidgets.QGraphicsTextItem):
     def __init__(self, text, pos, width=200, font_size=14, parent=None):
         super(NoteTextBlock, self).__init__(parent)
-        self.setPlainText(text)
+
+        # 核心：保存原始文本 (Markdown)
+        self._raw_text = text
+
+        # 初始化设置
         self.setPos(pos)
         self.setTextWidth(width)
         font = QtGui.QFont("Microsoft YaHei UI", font_size)
         self.setFont(font)
         self.setDefaultTextColor(QtGui.QColor(255, 255, 255, 230))
+
+        # 默认不允许编辑，处于“展示模式”
         self.setFlags(self.ItemIsSelectable | self.ItemIsMovable | self.ItemSendsGeometryChanges)
         self.setAcceptHoverEvents(True)
+        self.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
+
+        # 渲染 HTML (展示模式)
+        self.setHtml(simple_markdown_to_html(self._raw_text))
+
         self.anchor_pin = None
         self._is_resizing = False
         self._resize_dir = [0, 0]
         self._resize_margin = 12.0
+
+        # 按钮栏
         self.btn_sub = ActionButton("−", (60, 60, 60), lambda: self.change_size(-1), self)
         self.btn_add = ActionButton("+", (60, 60, 60), lambda: self.change_size(1), self)
         self.btn_lnk = ActionButton("➚", (0, 100, 100), self.create_anchor, self)
@@ -216,8 +253,10 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
         f.setPointSize(max(6, f.pointSize() + delta))
         self.prepareGeometryChange()
         self.setFont(f)
+        # 字体变了，需要通知父级更新 json，但不影响文本内容
         self.parentItem().on_text_block_changed()
 
+    # --- 引线/删除相关 (保持不变) ---
     def create_anchor(self):
         if self.anchor_pin: self.remove_pin()
         self.anchor_pin = NoteAnchorPin(self.parentItem(), self)
@@ -247,10 +286,21 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
         else:
             return self.pos() + QtCore.QPointF(center.x(), rect.bottom() if dy > 0 else rect.top())
 
+    # --- 交互核心逻辑 ---
+
     def hoverMoveEvent(self, event):
+        # 如果正在编辑，显示输入光标
         if self.textInteractionFlags() & QtCore.Qt.TextEditorInteraction:
             self.setCursor(QtCore.Qt.IBeamCursor)
             return
+
+        # 如果是展示模式，检测是否悬停在链接上
+        anchor = self.document().documentLayout().anchorAt(event.pos())
+        if anchor:
+            self.setCursor(QtCore.Qt.PointingHandCursor)
+            return
+
+        # 否则处理边缘缩放光标
         rect = self.boundingRect()
         m, x, y = self._resize_margin, event.pos().x(), event.pos().y()
         dx, dy = 0, 0
@@ -262,6 +312,7 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
             dy = -1
         elif y > rect.height() - m:
             dy = 1
+
         if dx != 0 or dy != 0:
             if (dx == 1 and dy == 1) or (dx == -1 and dy == -1):
                 self.setCursor(QtCore.Qt.SizeFDiagCursor)
@@ -276,9 +327,21 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
         super(NoteTextBlock, self).hoverMoveEvent(event)
 
     def mousePressEvent(self, event):
+        # 1. 如果正在编辑文本，走默认逻辑
         if self.textInteractionFlags() & QtCore.Qt.TextEditorInteraction:
             super(NoteTextBlock, self).mousePressEvent(event)
             return
+
+        # 2. 检测是否点击了链接 (展示模式下)
+        # document().documentLayout().anchorAt(pos) 可以检测指定位置是否有 <a href>
+        anchor = self.document().documentLayout().anchorAt(event.pos())
+        if anchor:
+            # 打开网页
+            QDesktopServices.openUrl(QUrl(anchor))
+            event.accept()
+            return
+
+        # 3. 处理边缘缩放
         rect = self.boundingRect()
         m, x, y = self._resize_margin, event.pos().x(), event.pos().y()
         dx, dy = 0, 0
@@ -290,12 +353,14 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
             dy = -1
         elif y > rect.height() - m:
             dy = 1
+
         if dx != 0 or dy != 0:
             self._is_resizing = True
             self._resize_dir = [dx, dy]
             self.setFlag(self.ItemIsMovable, False)
             event.accept()
         else:
+            # 4. 普通点击 (拖拽移动)
             super(NoteTextBlock, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -308,7 +373,7 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
             elif dx == -1:
                 diff = pos.x()
                 if self.textWidth() - diff > 60:
-                    self.setX(self.x() + diff);
+                    self.setX(self.x() + diff)
                     self.setTextWidth(self.textWidth() - diff)
             if dy == -1: self.setY(self.y() + pos.y())
             self._update_toolbar_pos()
@@ -319,29 +384,61 @@ class NoteTextBlock(QtWidgets.QGraphicsTextItem):
         if self._is_resizing:
             self._is_resizing = False
             self.setFlag(self.ItemIsMovable, True)
-        self.parentItem().on_text_block_changed()
+            self.parentItem().on_text_block_changed()
         super(NoteTextBlock, self).mouseReleaseEvent(event)
 
     def mouseDoubleClickEvent(self, event):
+        # 双击进入编辑模式
         if event.button() == QtCore.Qt.LeftButton:
+            # 切换为显示原始 Markdown 文本，方便编辑
+            self.setPlainText(self._raw_text)
+
             self.setFlag(self.ItemIsMovable, False)
             self.setTextInteractionFlags(QtCore.Qt.TextEditorInteraction)
             self.setFocus()
+
+            # 恢复光标为输入型
+            self.setCursor(QtCore.Qt.IBeamCursor)
             event.accept()
+
         super(NoteTextBlock, self).mouseDoubleClickEvent(event)
 
     def focusOutEvent(self, event):
-        self.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
-        self.setFlag(self.ItemIsMovable, True)
-        self.parentItem().on_text_block_changed()
+        # 失去焦点：退出编辑模式，保存并渲染 HTML
+        if self.textInteractionFlags() & QtCore.Qt.TextEditorInteraction:
+            # 1. 保存当前编辑框里的内容为新的 raw_text
+            self._raw_text = self.toPlainText()
+
+            # 2. 切换回 HTML 渲染
+            self.setHtml(simple_markdown_to_html(self._raw_text))
+
+            # 3. 恢复交互标记
+            self.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
+            self.setFlag(self.ItemIsMovable, True)
+
+            # 4. 触发保存逻辑
+            self.parentItem().on_text_block_changed()
+
         super(NoteTextBlock, self).focusOutEvent(event)
+
+    # --- 数据相关 ---
+
+    def toPlainText(self):
+        # 覆写 toPlainText，确保外部获取数据时拿到的是 _raw_text (Markdown)
+        # 因为如果处于 HTML 模式，基类的 toPlainText() 会返回去掉标签的纯文本，丢失格式
+        if self.textInteractionFlags() & QtCore.Qt.TextEditorInteraction:
+            # 编辑模式下，基类的内容就是 raw text
+            return super(NoteTextBlock, self).toPlainText()
+        else:
+            # 展示模式下，返回内存里存的 markdown
+            return self._raw_text
 
     def itemChange(self, change, value):
         if change == self.ItemSelectedChange:
             for btn in self._btns: btn.setVisible(bool(value))
         if change == self.ItemPositionChange and self.parentItem():
             self.parentItem().update()
-            QtCore.QTimer.singleShot(1, self.parentItem().on_text_block_changed)
+            # 这里不用 timer 了，父级有 timer 统一处理
         return super(NoteTextBlock, self).itemChange(change, value)
 
     def paint(self, painter, option, widget):
