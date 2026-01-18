@@ -96,7 +96,7 @@ class NodeOperations:
                 node_class_names.append(node_class.__name__)
                 self.graph.register_node(node_class)
                 self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
-                self.node_uuid_map[node_class.uuid] = f"dynamic.{node_class.__name__}"
+                self.node_uuid_map[comp_cls.uuid] = f"dynamic.{node_class.__name__}"
                 self.name2type[comp_cls.name] = f"dynamic.{node_class.__name__}"
 
         except Exception as e:

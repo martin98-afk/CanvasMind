@@ -113,6 +113,9 @@ class ComponentDeveloperPage(QWidget):
     def sync_basic_info_to_code(self):
         return self.sync_ui_to_code._sync_basic_info_to_code()
 
+    def load_component(self, full_path=None, component=None, uuid=None):
+        return self.storage_manager._load_component(full_path, component, uuid)
+
     def save_component(self, delete_original_file=True):
         return self.storage_manager._save_component(delete_original_file)
 
