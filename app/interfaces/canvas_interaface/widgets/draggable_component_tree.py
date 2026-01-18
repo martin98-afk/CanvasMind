@@ -98,14 +98,8 @@ class DraggableTreePanel(QWidget):
 
     def _init_categories(self):
         """初始化类别列表"""
-        categories = set()
-        for full_path, comp_cls in self.parent_window.component_map.items():
-            # 兼容多层路径，取第一层作为大类筛选
-            category = full_path.split("/")[0]
-            categories.add(category)
-
         # 创建类别筛选对话框
-        self.category_filter_dialog = CategoryFilterDialog(sorted(categories), self.parent_window)
+        self.category_filter_dialog = CategoryFilterDialog(self.parent_window)
         self.category_filter_dialog.categories_changed.connect(self._on_categories_changed)
 
     def _show_category_dialog(self):
