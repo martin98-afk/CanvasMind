@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class DynamicComponent(BaseComponent):
-    name = "蒙版绘制"
+    name = "遮罩绘制"
     category = "生成模型/图像重绘"
     description = "运行时会弹出ui提示框，显示图像，供用户进行蒙版绘制，绘制完返回alpha通道图像"
     requirements = "Pillow"
