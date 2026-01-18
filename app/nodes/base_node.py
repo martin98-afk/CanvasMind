@@ -7,6 +7,9 @@ import tempfile
 import uuid
 import base64
 
+from pyecharts import options as opts
+from pyecharts.charts import Line
+from pyecharts.globals import ThemeType
 from NodeGraphQt import NodeObject
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
@@ -295,6 +298,14 @@ class BasicNodeWithGlobalProperty(NodeObject):
 
     # =========================== 节流同步与渲染核心 ===============================
 
+    def hide_inline_widgets(self):
+        """隐藏指定类型的动态控件"""
+        for widget_base_key in self._inline_widgets.keys():
+            self.view.remove_widget(self._inline_widgets[widget_base_key])
+            self._inline_widgets.get(widget_base_key).deleteLater()
+        self._inline_widgets.clear()
+        self.view.draw_node()
+
     def _sync_and_refresh_ui(self):
         """
         定时器触发：一次性处理全局变量更新和 UI 渲染
@@ -340,7 +351,8 @@ class BasicNodeWithGlobalProperty(NodeObject):
             widget = TextWidgetWrapper(parent=self.view, name=key, default=f"预览: {port_name}",
                                        type=PropertyType.MULTILINE, window=self.parent_window)
             self._add_inline_widget(key, widget, tab='Visual')
-        self._inline_widgets[key].set_value(content)
+        else:
+            self._inline_widgets[key].set_value(content)
 
     def _render_chart(self, port_name, list_data):
         key = f"chart_{port_name}"
@@ -361,16 +373,12 @@ class BasicNodeWithGlobalProperty(NodeObject):
 
         if key not in self._inline_widgets:
             widget = ImageWidgetWrapper(parent=self.view, name=key, default=processed_img, window=self.parent_window)
-            self._add_inline_widget(key, widget, tab='Preview')
+            self._add_inline_widget(key, widget, tab='Visual')
         else:
             self._inline_widgets[key].set_value(processed_img)
 
     def _generate_echarts_html(self, title, data):
         """优化 HTML 生成性能：添加采样逻辑"""
-        from pyecharts import options as opts
-        from pyecharts.charts import Line
-        from pyecharts.globals import ThemeType
-
         if not isinstance(data, list) or len(data) == 0: return ""
 
         # --- 性能优化：采样 ---

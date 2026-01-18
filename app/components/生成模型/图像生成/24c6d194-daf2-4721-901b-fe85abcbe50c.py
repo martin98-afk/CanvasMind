@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class KSamplerComponent(BaseComponent):
     name = "K采样器"
-    category = "生成模型"
+    category = "生成模型/图像生成"
     description = "复现 ComfyUI 核心采样逻辑，支持实时预览和多种采样器"
     requirements = "diffusers,torch,transformers,accelerate,Pillow,numpy"
     

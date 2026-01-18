@@ -433,6 +433,7 @@ def create_dynamic_code_node(parent_window=None):
         # === 关键：重写 execute_sync，使用动态代码模板 ===
         def execute_sync(self, comp_obj, kernel_manager=None, check_cancel=None, global_variable=None, **kwargs):
             try:
+                self.hide_inline_widgets()
                 self.clear_output_value()
                 self.init_logger()
 

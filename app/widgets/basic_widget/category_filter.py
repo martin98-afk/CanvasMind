@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
+import threading
 
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QApplication
 )
@@ -10,6 +11,8 @@ from qfluentwidgets import (
     FluentIcon, setFont
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
+
+from app.scan_components import ComponentScanner
 
 try:
     from pypinyin import lazy_pinyin
@@ -21,7 +24,7 @@ except ImportError:
 class CategoryFilterDialog(QWidget):
     categories_changed = pyqtSignal(set)
 
-    def __init__(self, categories, parent=None, selected_categories=None, direction="auto", max_visible=8):
+    def __init__(self, parent=None, selected_categories=None, direction="auto", max_visible=8):
         super().__init__(parent)
         # 窗口标志
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
@@ -36,7 +39,8 @@ class CategoryFilterDialog(QWidget):
         self.FIXED_EXTRA_H = 185  # 除去列表外，搜素框+按钮+底部的固定高度总和
 
         self.setFixedWidth(self.WIN_WIDTH)
-
+        self.scanner = ComponentScanner()
+        categories = {path.split("/")[0] for path in self.scanner.get_components()[0].keys()}
         self.all_categories = categories
         self.selected_categories = set(selected_categories) if selected_categories else set()
         self.checkbox_map = {}
@@ -204,7 +208,44 @@ class CategoryFilterDialog(QWidget):
         for cb in self.checkbox_map.values():
             if not cb.isHidden(): cb.setChecked(False)
 
+    def refresh_categories(self):
+        """重新获取分类并刷新界面"""
+        # 确保在主线程执行 UI 更新 (Scanner 可能在后台线程触发)
+        if threading.current_thread() != threading.main_thread():
+            QTimer.singleShot(0, self.refresh_categories)
+            return
+
+        comp_map, _ = self.scanner.get_components()
+        # 获取最新的全部分类并排序
+        new_all_categories = sorted({path.split("/")[0] for path in comp_map.keys()})
+
+        self.all_categories = set(new_all_categories)
+        # 剔除已不存在的分类
+        self.selected_categories &= self.all_categories
+
+        self._precompute_pinyin()
+
+        # 清理旧组件
+        self.checkbox_map.clear()
+        while self.flow_layout.count():
+            item = self.flow_layout.takeAt(0)
+            item.deleteLater()
+
+        # 重新生成 CheckBox
+        for cat in new_all_categories:
+            cb = CheckBox(cat, self.content_widget)
+            cb.setFixedWidth(self.ITEM_WIDTH)
+            cb.setChecked(cat in self.selected_categories)
+            # 使用默认参数保存当前循环的 cat，避免闭包陷阱
+            cb.stateChanged.connect(lambda state, c=cat: self._on_toggled(c, state))
+            self.checkbox_map[cat] = cb
+            self.flow_layout.addWidget(cb)
+
+        self._update_stat_text()
+        self._on_search_or_filter_changed()
+
     def show_at(self, pos):
+        self.refresh_categories()
         # 初始化尺寸
         self._on_search_or_filter_changed()
         self.show()

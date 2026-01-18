@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class Component(BaseComponent):
     name = "图像转视频生成器"
-    category = "生成模型"
+    category = "生成模型/视频生成"
     description = "使用 Stable Video Diffusion 将静态图像转换为短视频"
     requirements = "diffusers,torch,transformers"
     inputs = [

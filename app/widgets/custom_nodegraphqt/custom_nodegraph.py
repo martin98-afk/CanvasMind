@@ -737,15 +737,15 @@ class CustomNodeGraph(NodeGraph):
                         node.model.set_property(prop, val)
                     except:
                         node.model.add_property(prop, val)
+                    if prop == "_exec_mode":
+                        node._view._toggle_exec_mode(val)
+                    if prop == "_collapsed" and val:
+                        node._view.toggle_collapse()
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
                             node.view.widgets[prop].set_value(val)
                     elif node.type_ == "general.StickyNote":
                         node.set_property(prop, val)
-                if node.get_property('_collapsed'):
-                    node._view.toggle_collapse()
-                if '_exec_mode' in n_data.get('custom', {}):
-                    node._view._toggle_exec_mode(node.get_property('_exec_mode'))
 
                 nodes[n_id] = node
 
@@ -766,13 +766,11 @@ class CustomNodeGraph(NodeGraph):
                         node.model.set_property(prop, val)
                     except:
                         pass
+                    if prop == "_collapsed" and val:
+                        node._view.toggle_collapse()
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
                             node.view.widgets[prop].set_value(val)
-                if '_collapsed' in n_data.get('custom', {}) and node.get_property('_collapsed'):
-                    node._view.toggle_collapse()
-                if '_exec_mode' in n_data.get('custom', {}) and hasattr(node._view, '_toggle_exec_mode'):
-                    node._view._toggle_exec_mode(node.get_property('_exec_mode'))
                 nodes[n_id] = node
         node_objs = nodes.values()
         if relative_pos:

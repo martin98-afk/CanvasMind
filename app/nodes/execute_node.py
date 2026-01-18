@@ -345,6 +345,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             """
             在本地或远程Python环境中执行组件
             """
+            self.hide_inline_widgets()
             self.clear_output_value()
             if not hasattr(self, "log_capture"):
                 self.init_logger()

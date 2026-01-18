@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import ast
+import base64
 import io
 import json
 import os
@@ -959,6 +960,20 @@ class DataHandler:
                 if image.max() <= 1.0: image = image * 255
                 image = image.astype(np.uint8)
             image = Image.fromarray(image)
+        elif isinstance(image, str) and os.path.exists(image) and image.endswith((".png", ".jpg", ".jpeg")):
+            try:
+                image = Image.open(image)
+            except:
+                self.logger.error(f"无法打开图像文件: {image}")
+        # base64字符串
+        elif isinstance(image, str) and len(image) % 4 == 0 and len(image) > 200:
+            try:
+                image = base64.b64decode(image)
+                image = Image.open(io.BytesIO(image))
+            except:
+                pass
+        elif isinstance(image, bytes):
+            image = Image.open(io.BytesIO(image))
 
         if not isinstance(image, Image.Image):
             raise ComponentError(f"无效的图像存储类型: {type(image)}")

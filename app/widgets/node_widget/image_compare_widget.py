@@ -63,11 +63,11 @@ class ImageCompareWidget(QtWidgets.QWidget):
             else:
                 base_img, top_img = self.parent_widget._image_b, self.parent_widget._image_a
 
-            # 1. 绘制底层
+            # 1. 绘制底层图像
             if base_img:
                 painter.drawImage(rect, base_img)
 
-            # 2. 绘制顶层 (含裁剪和透明度)
+            # 2. 绘制顶层图像（带裁剪和透明度）
             if top_img:
                 slider_x = int(rect.width() * self._slider_pos)
                 painter.save()
@@ -79,12 +79,28 @@ class ImageCompareWidget(QtWidgets.QWidget):
 
                 # 3. 绘制分割线
                 line_color = QColor(0, 180, 255) if self._is_dragging else QColor(255, 255, 255, 200)
-                painter.setPen(QPen(line_color, 2))
+                pen = QPen(line_color, 2)
+                painter.setPen(pen)
                 painter.drawLine(slider_x, 0, slider_x, rect.height())
-                # 手柄
+
+                # 4. 绘制手柄（圆形 + 横线）
+                center_y = rect.height() // 2
+                handle_radius = 10
+
+                # 圆形背景
                 painter.setBrush(line_color)
                 painter.setPen(Qt.NoPen)
-                painter.drawEllipse(QPoint(slider_x, rect.height() // 2), 10, 10)
+                painter.drawEllipse(QPoint(slider_x, center_y), handle_radius, handle_radius)
+
+                # 中间横线（专业对比风格）
+                painter.setPen(QPen(Qt.black, 2))  # 黑色横线，增强对比；可按需调整颜色/粗细
+                line_length = 8
+                painter.drawLine(
+                    slider_x - line_length // 2,
+                    center_y,
+                    slider_x + line_length // 2,
+                    center_y
+                )
 
     def __init__(self, parent=None):
         super().__init__(parent)

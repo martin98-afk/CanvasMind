@@ -67,11 +67,11 @@ class WorkflowLoader(QThread):
     """异步加载工作流的线程类"""
     finished = pyqtSignal(dict, dict, dict, dict)  # graph_data, runtime_data, node_status_data
 
-    def __init__(self, file_path, graph, node_type_map):
+    def __init__(self, file_path, graph, node_uuid_map):
         super().__init__()
         self.file_path = file_path
         self.graph = graph
-        self.node_type_map = node_type_map
+        self.node_uuid_map = node_uuid_map
 
     def run(self):
         """在后台线程中加载工作流"""
@@ -88,21 +88,20 @@ class WorkflowLoader(QThread):
             nodes_data = graph_data.get("nodes", {})
             for index, (node_id, node_data) in enumerate(nodes_data.items()):
                 node_type = node_data.get("type_", "")
-                if node_type in self.node_type_map.values():
-                    # 找到对应的 full_path
-                    full_path = None
-                    for path, node_type_name in self.node_type_map.items():
+                node_uuid = None
+                if node_type in self.node_uuid_map.values():
+                    for uuid, node_type_name in self.node_uuid_map.items():
                         if node_type_name == node_type:
-                            full_path = path
+                            node_uuid = uuid
                             break
+                node_uuid = node_uuid or "unknown"
+                node_name = node_data.get("name", "Unknown")
+                stable_key = f"{node_uuid}||{node_name}"
+                node_status_data[stable_key] = {
+                    key: value.get(stable_key)
+                    for key, value in runtime_data.items() if key not in ("environment", "environment_exe", "node_id2stable_key")
+                }| {"custom_property": node_data.get("custom", {})}
 
-                    if full_path:
-                        node_name = node_data.get("name", "Unknown")
-                        stable_key = f"{get_node_uuid(full_path)}||{node_name}"
-                        node_status_data[stable_key] = {
-                            key: value.get(stable_key)
-                            for key, value in runtime_data.items() if key not in ("environment", "environment_exe", "node_id2stable_key")
-                        }| {"custom_property": node_data.get("custom", {})}
             self.finished.emit(graph_data, runtime_data, node_status_data, global_variable)
         except Exception as e:
             traceback.print_exc()

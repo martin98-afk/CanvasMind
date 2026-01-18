@@ -28,9 +28,9 @@ GLUE_CODE_TEMPLATES = {
         title="数据核对", 
         message="请核对以下解析结果是否正确",
         schema={
-            "is_correct": {"type": PropertyType.BOOL, "label": "结果正确", "default": True},
-            "adjust_value": {"type": PropertyType.FLOAT, "label": "修正偏差值", "default": 0.0},
-            "choices": {"type": PropertyType.CHOICE, "choices": ["选项1", "选项2", "选项3"], "default": "选项1"},
+            "is_correct": {"type": "bool", "label": "结果正确", "default": True},
+            "adjust_value": {"type": "float", "label": "修正偏差值", "default": 0.0},
+            "choices": {"type": "choice", "choices": ["选项1", "选项2", "选项3"], "default": "选项1"},
             "text": {"label": "生成文本确认", "default": "测试文本"}
         }
     )

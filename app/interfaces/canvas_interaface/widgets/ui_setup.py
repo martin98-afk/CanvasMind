@@ -39,7 +39,7 @@ class CanvasUISetUp:
         self.splitter.addWidget(self.parent.canvas_widget)
         self.splitter.addWidget(self.side_dock_area)
         self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
-
+        self.last_right_width = DEFAULT_SPLITTER_SIZES[2]  # 默认右侧栏展开宽度
         # 设置分割器的拉伸因子，确保画布区域优先扩展
         self.splitter.setStretchFactor(0, 0)  # 左侧导航不拉伸
         self.splitter.setStretchFactor(1, 1)  # 中间画布拉伸（主要区域）
@@ -51,6 +51,30 @@ class CanvasUISetUp:
         self.create_environment_selector()
         self.create_floating_buttons()
         self.create_floating_nodes()
+
+    def hide_splitter(self):
+        """只隐藏右侧栏，保留左侧和中间的状态"""
+        sizes = self.splitter.sizes()
+        # 索引 2 是右侧栏 SideDockArea
+        if sizes[2] > 0:
+            self.last_right_width = sizes[2]  # 记忆用户拖动后的宽度
+
+        sizes[2] = 0
+        self.splitter.setSizes(sizes)
+        # 也可以显式隐藏控件，防止 splitter 的 handle (分割线) 依然可以被拖动
+        self.side_dock_area.hide()
+
+    def show_splitter(self):
+        """只恢复右侧栏，不触碰左侧栏的状态"""
+        self.side_dock_area.show()
+        sizes = self.splitter.sizes()
+
+        # 恢复记忆的宽度，如果记忆值为0则给个默认值
+        sizes[2] = self.last_right_width if self.last_right_width > 50 else 300
+
+        # 为了保证中间画布依然占据主要空间，需要动态调整
+        # 如果左侧和中间当前都是0（极端情况），则手动分配
+        self.splitter.setSizes(sizes)
 
     @property
     def property_panel(self):
@@ -71,16 +95,6 @@ class CanvasUISetUp:
     @property
     def log_window(self):
         return self.side_dock_area.get_tool_instance("模型日志")
-
-    def hide_splitter(self):
-        """强制 splitter 回到默认尺寸，无视用户拖动历史"""
-        self.splitter.setSizes(HIDE_SPLITTER_SIZES)
-        self.splitter.update()
-
-    def show_splitter(self):
-        """强制 splitter 恢复到默认尺寸"""
-        self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
-        self.splitter.update()
 
     def create_environment_selector(self):
         container = QWidget(self.parent.canvas_widget)

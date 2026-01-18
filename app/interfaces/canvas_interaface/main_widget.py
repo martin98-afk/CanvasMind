@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+import shutil
 import traceback
 from pathlib import Path
 
@@ -42,7 +43,7 @@ class CanvasPage(QWidget):
         self.parent = parent
         self.manager = manager
         self.file_path = object_name
-        self.workflow_name = object_name.stem.split(".")[0] if object_name else "未命名工作流"
+        self.workflow_name = ".".join(object_name.stem.split(".")[:-1]) if object_name else "未命名工作流"
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
         self.config = Settings.get_instance()
         self._pending_property_update = None
@@ -168,6 +169,10 @@ class CanvasPage(QWidget):
         return self.node_operations.node_type_map
 
     @property
+    def node_uuid_map(self):
+        return self.node_operations.node_uuid_map
+
+    @property
     def registered_nodes(self):
         return self.node_operations._registered_nodes
 
@@ -228,12 +233,8 @@ class CanvasPage(QWidget):
         self.canvas_runner.show_intervention_dialog(title, message, schema, callback)
 
     def show_category_dialog(self, categories, tag):
-        all_categories = set()
-        for full_path, comp_cls in self.component_map.items():
-            category = getattr(comp_cls, 'category', 'General')
-            all_categories.add(category)
         pos = tag.mapToGlobal(QPoint(0, 0))
-        category_filter_dialog = CategoryFilterDialog(sorted(all_categories), self, categories, "auto")
+        category_filter_dialog = CategoryFilterDialog(self, categories)
         category_filter_dialog.categories_changed.connect(self.ui_manager.nav_panel.draggable_tree._on_categories_changed)
         category_filter_dialog.show_at(pos)
 
@@ -708,6 +709,9 @@ class CanvasPage(QWidget):
 
     # --- 画布关闭逻辑 ---
     def close_current_canvas(self):
+        # 如果新建后画布没有保存，就当前画布临时目录
+        if not self.file_path.exists():
+            self.clean_canvas()
         # 1. 停止并断开所有定时器
         self._auto_saver.stop()
         self.ipython_kernel.stop_kernel()
@@ -719,3 +723,18 @@ class CanvasPage(QWidget):
         self.canvas_deleted.emit()
         self.parent.removeInterface(self)
         self.deleteLater()  # 关键：触发 Qt 对象销毁
+
+    def clean_canvas(self):
+        """
+        异步删除节点的工作目录，防止 IO 阻塞主线程
+        :param node_ids: list of node ids
+        """
+
+        def cleanup_task():
+            # 获取基础路径，假设你的工程路径在 self.parent.file_path
+            base_path = self.file_path.parent
+            if base_path.exists():
+                shutil.rmtree(base_path)
+
+        # 使用类中已有的 thread_pool 执行
+        self.thread_pool.start(cleanup_task)

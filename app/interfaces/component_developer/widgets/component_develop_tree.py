@@ -360,8 +360,8 @@ class ComponentTreePanel(QWidget):
         self.tree.refresh_components()
         ComponentScanner.register_on_change(self._on_scanner_updated)
         # 取第一段路径作为筛选大类
-        categories = {path.split("/")[0] for path in self.tree._components.keys()}
-        self.category_filter_dialog = CategoryFilterDialog(sorted(categories), self)
+
+        self.category_filter_dialog = CategoryFilterDialog(self)
         self.category_filter_dialog.categories_changed.connect(self._on_categories_changed)
 
     def _on_scanner_updated(self):

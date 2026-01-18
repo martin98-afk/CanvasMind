@@ -4,19 +4,72 @@ import time
 import traceback
 from pathlib import Path
 
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt, QRectF
+from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt, QRectF, QRunnable, pyqtSlot
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QProgressDialog, QApplication, QGraphicsProxyWidget, QLabel
 
 from app.scan_components import ComponentScanner
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from .logger import get_logger
-from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
-from .utils import ThumbnailGenerator, WorkflowLoader
+from .utils import WorkflowLoader
+from ..widgets.message_manager import MessageManager
 
 logger = get_logger("CanvasIO")
 
 
+# ────────────────────────────────
+# 辅助类：用于在线程间传递结果
+# ────────────────────────────────
+class FinishLoadingWorker(QObject):
+    finished = pyqtSignal(object, object)  # (restored_data: dict | None, target_env: str | None)
+
+
+class FinishLoadingTask(QRunnable):
+    def __init__(self, graph, runtime_data, node_status_data, env_manager, worker: FinishLoadingWorker):
+        super().__init__()
+        self.graph = graph
+        self.runtime_data = runtime_data
+        self.node_status_data = node_status_data
+        self.env_manager = env_manager
+        self.worker = worker
+
+    @pyqtSlot()
+    def run(self):
+        try:
+            target_env = self.runtime_data.get("environment")
+
+            restored = {}
+            for node in self.graph.all_nodes():
+                full_path = getattr(node, 'FULL_PATH', 'unknown')
+                node_comp_cls = ComponentScanner().get_component(full_path)
+                stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"
+
+                ns = self.node_status_data.get(stable_key, {})
+                node_inputs = ns.get("node_inputs", {}) or {}
+                node_outputs = ns.get("node_outputs", {}) or {}
+                column_select = ns.get("column_select", {}) or {}
+                status_str = ns.get("node_states", "unrun") or "unrun"
+
+                input_vals = deserialize_from_json(node_inputs)
+                output_vals = deserialize_from_json(node_outputs)
+
+                restored[node.id] = {
+                    "input_values": input_vals,
+                    "output_values": output_vals,
+                    "column_select": column_select,
+                    "status_str": status_str,
+                }
+
+            self.worker.finished.emit(restored, target_env)
+
+        except Exception as e:
+            logger.error(f"FinishLoadingTask failed: {traceback.format_exc()}")
+            self.worker.finished.emit(None, None)
+
+
+# ────────────────────────────────
+# 主类：CanvasIO
+# ────────────────────────────────
 class CanvasIO(QObject):
     canvas_saved = pyqtSignal(Path)
 
@@ -70,22 +123,17 @@ class CanvasIO(QObject):
         """在主线程中安全生成缩略图（临时替换 WebEngineView）"""
 
         scene = self.graph.viewer().scene()
-        chart_widgets_backup = {}  # 保存原始 widget
+        chart_widgets_backup = {}
 
         try:
-            # 1. 找到所有图表节点，临时替换其 widget
             for node in self.graph.all_nodes():
                 if node.model.type_.startswith("visualize"):
                     view = node.view
-                    # 找到嵌入的 ChartWidget（通过 proxy widget）
                     for item in view.childItems():
                         if isinstance(item, QGraphicsProxyWidget):
                             proxy = item
                             original_widget = proxy.widget()
-                            if original_widget and hasattr(original_widget, 'view') and hasattr(original_widget.view,
-                                                                                                'page'):
-                                # 确认是 QWebEngineView
-                                # 创建占位符
+                            if original_widget and hasattr(original_widget, 'view') and hasattr(original_widget.view, 'page'):
                                 placeholder = QLabel("[图表预览]")
                                 placeholder.setAlignment(Qt.AlignCenter)
                                 placeholder.setStyleSheet("""
@@ -93,12 +141,9 @@ class CanvasIO(QObject):
                                     color: #aaa;
                                     border: 1px solid #444;
                                 """)
-                                # 保存原始 widget
                                 chart_widgets_backup[proxy] = original_widget
-                                # 替换
                                 proxy.setWidget(placeholder)
 
-            # 2. 计算场景边界
             rect = QRectF()
             for node in self.graph.all_nodes():
                 item_rect = node.view.sceneBoundingRect()
@@ -115,7 +160,6 @@ class CanvasIO(QObject):
                 scene.render(painter, target=QRectF(image.rect()), source=rect)
                 painter.end()
 
-            # 3. 保存
             base_name = os.path.splitext(os.path.splitext(workflow_path)[0])[0]
             png_path = base_name + ".png"
             image.save(png_path, "PNG")
@@ -125,7 +169,6 @@ class CanvasIO(QObject):
             logger.error(f"缩略图生成失败: {e}")
             return ""
         finally:
-            # 4. 恢复原始 widget
             for proxy, original_widget in chart_widgets_backup.items():
                 proxy.setWidget(original_widget)
 
@@ -135,7 +178,7 @@ class CanvasIO(QObject):
             self.parent.canvas_saved.emit(self.parent.file_path)
 
     def load_full_workflow(self, file_path):
-        self.workflow_loader = WorkflowLoader(file_path, self.graph, self.parent.node_type_map)
+        self.workflow_loader = WorkflowLoader(file_path, self.graph, self.parent.node_uuid_map)
         self.workflow_loader.finished.connect(
             lambda gd, rd, ns, gv: self._on_workflow_loaded(gd, rd, ns, gv))
         self.workflow_loader.start()
@@ -147,7 +190,7 @@ class CanvasIO(QObject):
             total_nodes = len(nodes_data)
             if total_nodes == 0:
                 self.graph.deserialize_session(graph_data)
-                self._finish_loading(runtime_data, node_status_data)
+                self._start_finish_loading(runtime_data, node_status_data)
                 return
 
             progress = QProgressDialog("正在加载节点...", "取消", 0, total_nodes, self.parent)
@@ -175,31 +218,49 @@ class CanvasIO(QObject):
                 self.graph.add_node = original_add_node
                 progress.close()
 
-            self._finish_loading(runtime_data, node_status_data)
+            self._start_finish_loading(runtime_data, node_status_data)
         except Exception as e:
             logger.error(f"❌ 加载失败: {traceback.format_exc()}")
             MessageManager.error("加载失败", f"工作流加载失败: {str(e)}", self.parent)
 
-    def _finish_loading(self, runtime_data, node_status_data):
-        env = runtime_data.get("environment")
-        if env:
+    def _start_finish_loading(self, runtime_data, node_status_data):
+        worker = FinishLoadingWorker()
+        worker.finished.connect(self._on_finish_loading_in_main_thread)
+
+        task = FinishLoadingTask(
+            graph=self.graph,
+            runtime_data=runtime_data,
+            node_status_data=node_status_data,
+            env_manager=self.env_manager,
+            worker=worker
+        )
+        task.setAutoDelete(True)
+        task.worker_ref = worker  # 防止 worker 被 GC
+
+        self.parent.thread_pool.start(task)
+
+    @pyqtSlot(object, object)
+    def _on_finish_loading_in_main_thread(self, restored_data, target_env):
+        if restored_data is None:
+            MessageManager.error("加载失败", "工作流后处理失败！", self.parent)
+            return
+
+        # --- 主线程 UI 更新 ---
+        if target_env:
             for i in range(self.env_manager.env_combo.count()):
-                if self.env_manager.env_combo.itemData(i) == env:
+                if self.env_manager.env_combo.itemData(i) == target_env:
                     self.env_manager.env_combo.setCurrentIndex(i)
                     break
 
+        from app.nodes.status_node import NodeStatus
         for node in self.graph.all_nodes():
-            node_comp_cls = ComponentScanner().get_component(getattr(node, 'FULL_PATH', 'unknown'))
-            stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"
-            node_status = node_status_data.get(stable_key, {})
-            node_inputs = node_status.get("node_inputs", {}) if node_status.get("node_inputs", {}) else {}
-            node_outputs = node_status.get("node_outputs", {}) if node_status.get("node_outputs", {}) else {}
-            column_select = node_status.get("column_select", {}) if node_status.get("column_select", {}) else {}
-            node._input_values = deserialize_from_json(node_inputs)
-            node._output_values = deserialize_from_json(node_outputs)
-            node.column_select = column_select
-            status_str = node_status.get("node_states", "unrun") or "unrun"
-            from app.nodes.status_node import NodeStatus
+            data = restored_data.get(node.id)
+            if not data:
+                continue
+            node._input_values = data["input_values"]
+            node._output_values = data["output_values"]
+            node.column_select = data["column_select"]
+            status_str = data["status_str"]
             status_enum = getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
             self.node_status[node.id] = status_enum
             if hasattr(node, 'status'):
