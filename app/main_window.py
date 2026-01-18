@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QSize, Qt, QTimer
@@ -19,6 +20,7 @@ from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
 from app.interfaces.workflow_manager import WorkflowCanvasGalleryPage
+from app.plugins.plugin_manager import NodePluginManager
 # --- 核心服务 ---
 from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.utils.config import Settings
@@ -72,6 +74,10 @@ class LowCodeWindow(FluentWindow):
         # ------------启动监听器
         ComponentUsageTracker()   # 日志使用情况监督
         ComponentScanner()        # 日志实时监控服务
+        # ------------插件预加载
+        plugin_manager = NodePluginManager()
+        plugin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins"))
+        plugin_manager.load_plugins(plugin_dir)
         # ------------加载配置
         self.config = Settings.get_instance()
         self.config.save()  # 确保默认配置落盘

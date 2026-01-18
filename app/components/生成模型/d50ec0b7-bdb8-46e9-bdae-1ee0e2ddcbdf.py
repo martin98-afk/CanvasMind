@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -39,13 +39,50 @@ class KSamplerComponent(BaseComponent):
             label="采样器 (SD1.5/XL选此)",
             choices=["Euler a", "Euler", "DPM++ 2M Karras", "DDIM", "PNDM"]
         ),
-        "steps": PropertyDefinition(type=PropertyType.RANGE, default=20.0, label="迭代步数", min=1.0, max=100.0, step=1.0),
-        "cfg": PropertyDefinition(type=PropertyType.RANGE, default=7.0, label="CFG Scale", min=0.0, max=20.0, step=0.5),
-        "seed": PropertyDefinition(type=PropertyType.INT, default=-1, label="随机种子"),
-        "denoise": PropertyDefinition(type=PropertyType.RANGE, default=1.00, label="去噪强度", min=0.0, max=1.0, step=0.01),
-        "preview_step": PropertyDefinition(type=PropertyType.INT, default=5, label="预览频率(步)"),
-        "wid": PropertyDefinition(type=PropertyType.INT, default=512, label="宽度"),
-        "heig": PropertyDefinition(type=PropertyType.INT, default=512, label="高度"),
+        "steps": PropertyDefinition(
+            type=PropertyType.RANGE,
+            default="20.0",
+            label="迭代步数",
+            min=1.0,
+            max=100.0,
+            step=1.0,
+        ),
+        "cfg": PropertyDefinition(
+            type=PropertyType.RANGE,
+            default="7.0",
+            label="CFG Scale",
+            min=0.0,
+            max=20.0,
+            step=0.5,
+        ),
+        "seed": PropertyDefinition(
+            type=PropertyType.INT,
+            default=-1,
+            label="随机种子",
+        ),
+        "denoise": PropertyDefinition(
+            type=PropertyType.RANGE,
+            default="1.00",
+            label="去噪强度",
+            min=0.0,
+            max=1.0,
+            step=0.01,
+        ),
+        "preview_step": PropertyDefinition(
+            type=PropertyType.INT,
+            default=5,
+            label="预览频率(步)",
+        ),
+        "wid": PropertyDefinition(
+            type=PropertyType.INT,
+            default=512,
+            label="宽度",
+        ),
+        "heig": PropertyDefinition(
+            type=PropertyType.INT,
+            default=512,
+            label="高度",
+        ),
     }
 
     def _get_scheduler(self, name, config, is_sd3=False):
@@ -92,10 +129,9 @@ class KSamplerComponent(BaseComponent):
                 pil_img.save(buffered, format="JPEG", quality=70)
                 img_str = base64.b64encode(buffered.getvalue()).decode()
                 
-                self.emit_custom_message(
-                    method="stream.output",
+                self.emit_message(
+                    method="display_image",
                     params={"output": {"data": f"data:image/jpeg;base64,{img_str}", "data_type": "image"}},
-                    extra={"display": True}
                 )
         except Exception:
             pass

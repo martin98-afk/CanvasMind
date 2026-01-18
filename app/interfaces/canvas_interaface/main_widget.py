@@ -229,9 +229,6 @@ class CanvasPage(QWidget):
                     old_names + [input_proxy_old_name], new_names + [input_proxy_new_name]
                 )
 
-    def show_intervention_dialog(self, title, message, schema, callback):
-        self.canvas_runner.show_intervention_dialog(title, message, schema, callback)
-
     def show_category_dialog(self, categories, tag):
         pos = tag.mapToGlobal(QPoint(0, 0))
         category_filter_dialog = CategoryFilterDialog(self, categories)

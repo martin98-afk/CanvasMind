@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -29,8 +29,8 @@ class Component(BaseComponent):
         file_path = params.dict().get("file_upload")
         if file_path.endswith("png") or file_path.endswith("jpg") or file_path.endswith("jpeg"):
             # 使用特定格式通知主进程拦截
-            self.emit_custom_message(
-                method="stream.output",
+            self.emit_message(
+                method="display_image",
                 params={
                     "file": {
                         "data": file_path,

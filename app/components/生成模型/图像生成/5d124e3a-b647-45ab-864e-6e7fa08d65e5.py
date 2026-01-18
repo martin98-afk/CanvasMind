@@ -75,9 +75,8 @@ class DynamicComponent(BaseComponent):
             preview_img.save(preview_buffer, format="JPEG", quality=85)
             preview_b64 = base64.b64encode(preview_buffer.getvalue()).decode()
             self.emit_custom_message(
-                method="stream.output",
+                method="display_image",
                 params={"output": {"data": f"data:image/jpeg;base64,{preview_b64}", "data_type": "image"}},
-                extra={"display": True}
             )
         return {
             "masked_image": preview_img,

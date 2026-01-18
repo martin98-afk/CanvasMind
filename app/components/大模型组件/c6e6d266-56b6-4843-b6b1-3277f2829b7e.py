@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -158,13 +158,16 @@ class Component(BaseComponent):
                 messages.append({"role": "assistant", "content": reply})
             # 进行人工结果干预
             if params.intervent:
-                reply = self.ask_user(
-                    title="请确认生成结果",
-                    message="",
-                    schema={
-                        "reply": {
-                            "label": "当前生成结果",
-                            "default": reply
+                reply = self.emit_interactive_message(
+                    method="ask_user",
+                    params={
+                        "title":"请确认生成结果",
+                        "message":"",
+                        "schema":{
+                            "reply": {
+                                "label": "当前生成结果",
+                                "default": reply
+                            }
                         }
                     }
                 ).get("reply")

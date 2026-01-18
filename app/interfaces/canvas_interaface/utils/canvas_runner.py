@@ -2,7 +2,6 @@ from PyQt5.QtCore import pyqtSignal, QObject, QTimer
 from qtpy import QtCore
 
 from app.scheduler.workflow_scheduler import WorkflowScheduler
-from app.widgets.dialog_widget.intervention_dialog import InterventionDialog
 
 
 class CanvasRunner(QObject):
@@ -112,35 +111,3 @@ class CanvasRunner(QObject):
         if self._scheduler and self._scheduler._executor:
             return self._scheduler._executor.ctx.is_paused()
         return False
-
-    def show_intervention_dialog(self, title, message, schema, callback):
-        """
-        弹出人工干预对话框
-        :param callback: 这是一个函数，当用户点击确定时调用，传入结果字典
-        """
-        # 确保在主线程弹出 UI
-        if QtCore.QThread.currentThread() != self.thread():
-            # 如果在子线程，使用信号或者 metaObject 触发
-            QtCore.QMetaObject.invokeMethod(self, "show_intervention_dialog",
-                                            QtCore.Qt.BlockingQueuedConnection,
-                                            QtCore.Q_ARG(str, title),
-                                            QtCore.Q_ARG(str, message),
-                                            QtCore.Q_ARG(dict, schema),
-                                            QtCore.Q_ARG(object, callback))
-            return
-
-        # 创建并显示对话框
-        dialog = InterventionDialog(title, message, schema, self.parent)
-
-        # 也可以修改按钮文本
-        dialog.yesButton.setText("确认并继续")
-        dialog.cancelButton.hide()
-
-        if dialog.exec():
-            # 用户点击了“确认”
-            result_data = dialog.get_result()
-            callback(result_data)
-        else:
-            # 用户取消了，这里可以不写回文件，或者写回一个特殊标记
-            # 节点端检测到超时或特定标记会抛出异常终止
-            pass

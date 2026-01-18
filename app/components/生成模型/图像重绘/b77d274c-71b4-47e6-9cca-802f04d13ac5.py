@@ -114,10 +114,9 @@ class InpaintSamplerComponent(BaseComponent):
                 pil_img.save(buffered, format="JPEG", quality=70)
                 img_str = base64.b64encode(buffered.getvalue()).decode()
                 
-                self.emit_custom_message(
-                    method="stream.output",
+                self.emit_message(
+                    method="display_image",
                     params={"output": {"data": f"data:image/jpeg;base64,{img_str}", "data_type": "image"}},
-                    extra={"display": True}
                 )
         except Exception: pass
 
