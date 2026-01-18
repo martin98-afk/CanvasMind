@@ -378,13 +378,16 @@ class ComponentTreePanel(QWidget):
         self.tree.show_selected_category()
 
     @property
-    def component_selected(self): return self.tree.component_selected
+    def component_selected(self):
+        return self.tree.component_selected
 
     @property
-    def component_created(self): return self.tree.component_created
+    def component_created(self):
+        return self.tree.component_created
 
     @property
-    def component_pasted(self): return self.tree.component_pasted
+    def component_pasted(self):
+        return self.tree.component_pasted
 
     def set_current_editing_component(self, full_path: str):
         self.tree.set_current_editing_component(full_path)

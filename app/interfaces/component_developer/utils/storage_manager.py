@@ -71,9 +71,14 @@ class ComponentStorageManager:
             if uuid is not None:
                 component = self.scanner.get_component_by_uuid(uuid)
             component = component or self.scanner.get_component(full_path)
-            self.parent.component_tree.set_current_editing_component(f"{component.category}/{component.name}")
+            full_path = full_path or f"{component.category}/{component.name}"
+            if full_path:
+                category = "/".join(full_path.split("/")[:-1])
+            else:
+                category = getattr(component, 'category', '')
+            self.parent.component_tree.set_current_editing_component(full_path)
             self.parent.name_edit.setText(getattr(component, 'name', ''))
-            self.parent.category_edit.setText(getattr(component, 'category', ''))
+            self.parent.category_edit.setText(category)
             self.parent.description_edit.setText(getattr(component, 'description', ''))
             self.parent.requirements_edit.setText(getattr(component, 'requirements', '').replace(',', '\n'))
             inputs = getattr(component, 'inputs', [])

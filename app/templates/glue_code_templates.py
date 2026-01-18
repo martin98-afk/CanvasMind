@@ -24,14 +24,17 @@ GLUE_CODE_TEMPLATES = {
         "name": "人工干预",
         "code": '''def run(self, params, inputs):
     # 逻辑处理...
-    result = self.ask_user(
-        title="数据核对", 
-        message="请核对以下解析结果是否正确",
-        schema={
-            "is_correct": {"type": "bool", "label": "结果正确", "default": True},
-            "adjust_value": {"type": "float", "label": "修正偏差值", "default": 0.0},
-            "choices": {"type": "choice", "choices": ["选项1", "选项2", "选项3"], "default": "选项1"},
-            "text": {"label": "生成文本确认", "default": "测试文本"}
+    result = self.emit_interactive_message(
+        method="ask_user",
+        params={
+            "title":"数据核对", 
+            "message":"请核对以下解析结果是否正确",
+            "schema":{
+                "is_correct": {"type": "bool", "label": "结果正确", "default": True},
+                "adjust_value": {"type": "float", "label": "修正偏差值", "default": 0.0},
+                "choices": {"type": "choice", "choices": ["选项1", "选项2", "选项3"], "default": "选项1"},
+                "text": {"label": "生成文本确认", "default": "测试文本"}
+            }
         }
     )
     return {
@@ -45,8 +48,8 @@ GLUE_CODE_TEMPLATES = {
     params: {mode: "parse" 或 "serialize"}
     inputs: {"input_data": str 或 dict}
     """
-    self.emit_custom_message(
-        method="global_variable.clear",
+    self.emit_message(
+        method="clear_global_variable",
         params={
                 "type": "node_vars",
                 "value": "变量名"
@@ -61,8 +64,8 @@ GLUE_CODE_TEMPLATES = {
     params: {mode: "parse" 或 "serialize"}
     inputs: {"input_data": str 或 dict}
     """
-    self.emit_custom_message(
-        method="global_variable.add",
+    self.emit_message(
+        method="add_global_variable",
         params={"value": "output1"}
     )
     return {"output1": "test"}
@@ -75,8 +78,8 @@ GLUE_CODE_TEMPLATES = {
     params: {mode: "parse" 或 "serialize"}
     inputs: {"input_data": str 或 dict}
     """
-    self.emit_custom_message(
-        method="global_variable.delete",
+    self.emit_message(
+        method="delete_global_variable",
         params={"value": "output1"}
     )
     return {"output1": "test"}
@@ -93,9 +96,10 @@ GLUE_CODE_TEMPLATES = {
     import time
     count = 0 
     while True:
-        self.emit_custom_message(
+        self.emit_message(
             method="stream.output",
-            params={"output1": {"data": count, "data_type": "str"}}
+            params={"output1": {"data": count, "data_type": "str"}},
+            extra={"display": True} # 控制是否在节点上展示实时控件
         )
         count += 1
         time.sleep(1)

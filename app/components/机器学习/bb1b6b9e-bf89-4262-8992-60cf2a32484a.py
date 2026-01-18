@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -170,10 +170,10 @@ class TorchClassifierTrainer(BaseComponent):
 
             if (epoch + 1) % 300 == 0:
                 self.emit_custom_message(
-                method="stream.output",
+                    method="stream.output",
                     params={
-                        "training_loss": {"data": train_loss, "data_type": "list"},
-                        "accuracy": {"data": acc, "data_type": "list"},
+                        "training_loss": {"data": train_loss, "data_type": "list", "plugin": "display_list"},
+                        "accuracy": {"data": acc, "data_type": "list", "plugin": "display_list"},
                     },
                     extra={"display": True}
                 )

@@ -134,15 +134,13 @@ class KSamplerComponent(BaseComponent):
                 img_str = base64.b64encode(buffered.getvalue()).decode()
                 
                 # 构建流式协议消息
-                self.emit_custom_message(
-                    method="stream.output",
+                self.emit_message(
+                    method="display_image",
                     params={
                         "output": {
-                            "data": f"data:image/jpeg;base64,{img_str}",
-                            "data_type": "image"
+                            "data": f"data:image/jpeg;base64,{img_str}"
                         }
-                    },
-                    extra={"display": True}
+                    }
                 )
         except Exception as e:
             pass

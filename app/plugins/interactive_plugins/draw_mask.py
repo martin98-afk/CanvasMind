@@ -1,12 +1,20 @@
 # -*- coding: utf-8 -*-
 import base64
+import os
+import pickle
+import tempfile
+import uuid
 
 from PyQt5.QtCore import Qt, QPoint, QPointF, QByteArray, QBuffer
 from PyQt5.QtGui import (
     QImage, QPixmap, QPainter, QPen, QColor, QMouseEvent,
-    QKeyEvent, QCursor, qRgb
+    QKeyEvent, QCursor
 )
-from PyQt5.QtWidgets import QWidget, QApplication, QVBoxLayout, QPushButton, QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QScrollArea
+from qfluentwidgets import MessageBoxBase, SubtitleLabel, BodyLabel
+
+from app.plugins.base import InteractivePlugin
+from app.utils.utils import ssh_send_file
 
 
 class UndoCommand:
@@ -349,46 +357,84 @@ class MaskCanvas(QWidget):
         b64 = bytes(byte_array.toBase64()).decode("utf-8")
         return f"data:image/png;base64,{b64}"
 
-# ==========================================
-# 测试代码
-# ==========================================
-if __name__ == "__main__":
-    import sys
 
-    # 创建一个测试用的 Base64 图片 (简单的红点图)
-    # 实际使用时直接传入你的图片 base64
-    img = QImage(800, 600, QImage.Format_RGB32)
-    img.fill(QColor("gray"))
-    p = QPainter(img)
-    p.setBrush(Qt.blue)
-    p.drawRect(200, 200, 400, 200)
-    p.end()
-    ba = QByteArray()
-    buf = QBuffer(ba)
-    img.save(buf, "PNG")
-    b64_str = str(ba.toBase64(), 'utf-8')
+class MaskDrawDialog(MessageBoxBase):
+    """
+    自适应动态表单对话框，用于人工干预
+    """
+    def __init__(self, title: str, image: str, parent=None):
+        super().__init__(parent)
+        self.inputs = {}
+        self.image = image
+        # 1. 标题
+        self.titleLabel = SubtitleLabel(title)
+        self.viewLayout.addWidget(self.titleLabel)
 
-    app = QApplication(sys.argv)
+        # 3. 动态根据 schema 生成表单
+        self._setup_ui()
+        # 设置对话框宽度
+        self.widget.setMinimumWidth(800)
+        self.widget.setMinimumHeight(700)
 
-    window = QWidget()
-    layout = QVBoxLayout(window)
+    def _add_shortcut_hint(self):
+        hint_text = (
+            "<b>快捷键说明:</b><br>"
+            "• 左键拖动：绘制蒙版 • CTRL+Z：撤销 ; • [ ]：调整笔刷大小; • C：清空; S: 切换笔刷颜色;<br>"
+        )
+        hint_label = BodyLabel(hint_text)
+        hint_label.setStyleSheet("font-size: 11px; color: #888;")
+        self.viewLayout.addWidget(hint_label)
 
-    canvas = MaskCanvas(b64_str)
+    def _setup_ui(self):
+        self._add_shortcut_hint()
+        canvas = MaskCanvas(self.image)
+        scroll = QScrollArea()
+        scroll.setWidget(canvas)
+        scroll.setWidgetResizable(True)
+        scroll.setMinimumHeight(400)
+        self.viewLayout.addWidget(scroll)
+        self.inputs["mask"] = (canvas, "get_mask_base64")  # ← 注意方法名
 
-    # 添加说明
-    info = QHBoxLayout()
-    btn_clear = QPushButton("Clear (C)")
-    btn_clear.clicked.connect(canvas.clear_mask)
-    info.addWidget(btn_clear)
-    info.addWidget(QPushButton("Zoom: Scroll"))
-    info.addWidget(QPushButton("Pan: Middle / Space+Left"))
-    info.addWidget(QPushButton("Size: [ ]"))
-    info.addWidget(QPushButton("Undo: Ctrl+Z"))
+    def get_result(self):
+        """解析所有控件的值并返回字典"""
+        result = {}
+        for field_name, (widget, getter_name) in self.inputs.items():
+            getter = getattr(widget, getter_name)
+            # 处理可调用对象或直接属性
+            val = getter() if callable(getter) else getter
+            result[field_name] = val
+        return result
 
-    layout.addWidget(canvas)
-    layout.addLayout(info)
 
-    window.resize(1000, 800)
-    window.show()
+class DrawMaskPlugin(InteractivePlugin):
+    plugin_id = "draw_mask"  # 对应 method: "ui.ask"
 
-    sys.exit(app.exec_())
+    def handle(self, node, params, msg=None):
+        title = params.get("title", "人工干预")
+        response_file = params.get("response_file")
+        image = params.get("schema").get("image")
+
+        env_data = getattr(node.parent_window, 'env_data', None)
+        is_ssh = env_data and env_data.get('type') == 'ssh'
+
+        def on_confirmed(result_data):
+            if is_ssh:
+                temp_path = os.path.join(tempfile.gettempdir(), f"ask_{uuid.uuid4().hex}.pkl")
+                with open(temp_path, 'wb') as f:
+                    pickle.dump(result_data, f)
+                ssh_send_file(env_data, temp_path, response_file)
+                if os.path.exists(temp_path): os.remove(temp_path)
+            else:
+                os.makedirs(os.path.dirname(response_file), exist_ok=True)
+                with open(response_file, 'wb') as f:
+                    pickle.dump(result_data, f)
+
+        # 创建并显示对话框
+        dialog = MaskDrawDialog(title, image, node.parent_window)
+        dialog.yesButton.setText("确认并继续")
+        dialog.cancelButton.hide()
+
+        if dialog.exec():
+            # 用户点击了“确认”
+            result_data = dialog.get_result()
+            on_confirmed(result_data)

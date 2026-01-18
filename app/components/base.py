@@ -1177,7 +1177,7 @@ class BaseComponent(ABC):
         return create_model(model_name, __base__=base_classes, **fields)
 
     # ----------------中间结果流式返回----------------
-    def emit_custom_message(self, method: str, params: Dict[str, Any], level=MessageLevel.INFO, extra={}):
+    def emit_message(self, method: str, params: Dict[str, Any], level=MessageLevel.INFO, extra={}):
         """发送自定义协议消息至 UI 端。
 
         Args:
@@ -1194,7 +1194,8 @@ class BaseComponent(ABC):
         # 通过 stdout 发送加密/编码后的 JSON，防止业务日志干扰
         print(f"{PROGRESS_MARKER}{msg.json()}", flush=True)
 
-    def ask_user(self, title: str, message: str, schema: Dict[str, Any] = None) -> Any:
+    def emit_interactive_message(
+            self, method: str, params: Dict[str, Any], level=MessageLevel.INFO, extra={}) -> Any:
         """在组件执行过程中请求人工干预。此方法会阻塞线程直到用户提交。
 
         Args:
@@ -1214,13 +1215,12 @@ class BaseComponent(ABC):
         response_path = run_dir / f"response_{request_id}.pkl"
 
         # 1. 发送指令给 UI (通过日志流)
-        self.emit_custom_message("ui.ask", {
+        emit_messages = {
             "request_id": request_id,
-            "title": title,
-            "message": message,
-            "schema": schema,
-            "response_file": str(response_path) # 告知 UI 结果写到哪
-        }, level=MessageLevel.WARNING)
+            "response_file": str(response_path),
+        }
+        emit_messages.update(params)
+        self.emit_message(method, emit_messages, level=level, extra=extra)
 
         self.logger.info(f"等待人工干预 [ID: {request_id}]...")
 
@@ -1244,11 +1244,11 @@ class BaseComponent(ABC):
 
     def update_progress(self, percent: int, status_text: str = ""):
         """快捷方式：更新进度"""
-        self.emit_custom_message("ui.progress", {"value": percent, "text": status_text})
+        self.emit_message("ui.progress", {"value": percent, "text": status_text})
 
     def send_preview(self, data_type: str, payload: Any):
         """快捷方式：发送数据预览"""
-        self.emit_custom_message("data.preview", {"type": data_type, "data": payload})
+        self.emit_message("data.preview", {"type": data_type, "data": payload})
 
     # ---------------- 执行包装器 ----------------
     def execute(

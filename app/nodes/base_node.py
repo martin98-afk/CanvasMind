@@ -1,32 +1,18 @@
 # -*- coding: utf-8 -*-
 import json
-import os
-import pickle
 import re
-import tempfile
 import uuid
-import base64
 
-from pyecharts import options as opts
-from pyecharts.charts import Line
-from pyecharts.globals import ThemeType
 from NodeGraphQt import NodeObject
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
-from PyQt5.QtGui import QImage
 from loguru import logger
 
 # 导入业务相关的组件协议
-from app.components.base import PROGRESS_MARKER, ComponentMessage, PropertyType
+from app.components.base import PROGRESS_MARKER, ComponentMessage
+from app.plugins.plugin_manager import NodePluginManager
 from app.utils.node_logger import NodeLogHandler
-from app.utils.utils import ssh_send_file
 from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
-from app.widgets.node_widget.html_widget import HtmlWidgetWrapper
-
-# 导入图像预览控件
-# 确保该路径指向你之前优化过的那个 ImageWidgetWrapper 所在的模块
-from app.widgets.node_widget.image_widget import ImageWidgetWrapper
-from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
 
 
 class NodeSignals(QObject):
@@ -52,6 +38,9 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self.signals = NodeSignals()
         self.parent_window = None
         self.set_icon(":/icons/同心圆.svg")
+
+        # 1. 启动插件管理器并自动加载
+        self.plugin_manager = NodePluginManager()
         # --- 核心数据存储 ---
         self._output_values = {}
         self._input_values = {}
@@ -92,7 +81,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
             self.view.delete_signal.connect(lambda: self.parent_window.delete_node(self))
             self.view.run_signal.connect(lambda: self.parent_window.run_node(self))
         self.signals.intercepted_msg_signal.connect(self._message_router)
-        self.signals.stream_data_updated.connect(self._on_stream_data_received)
+        self.signals.stream_data_updated.connect(lambda _: self._ui_update_timer.start(300))
 
     @property
     def persistent_id(self):
@@ -228,20 +217,60 @@ class BasicNodeWithGlobalProperty(NodeObject):
     # =========================== 消息分发与动态控件处理 ===============================
 
     def _message_router(self, msg_dict: dict):
-        """
-        分发处理来自拦截协议的消息
-        """
-        try:
-            msg = ComponentMessage(**msg_dict)
-            parts = msg.method.split(".")
-            namespace = parts[0] if len(parts) > 1 else "default"
-            action = parts[1] if len(parts) > 1 else parts[0]
+        """根据消息 Method 调度插件"""
+        msg = ComponentMessage(**msg_dict)
 
-            handler_name = f"_handle_{namespace}_{action}"
-            handler = getattr(self, handler_name, self._handle_unknown_method)
-            handler(msg.params, msg)
-        except Exception as e:
-            logger.exception(f"消息路由失败: {e}")
+        # 优先查找通用插件 (如 ui.ask)
+        plugin = self.plugin_manager.get_plugin(msg.method)
+        if plugin:
+            plugin.handle(self, msg.params, msg)
+        elif msg.method == "stream.output" or msg.method == "stream_output":
+            self._handle_stream_output(msg.params, msg)
+
+    def _process_visual_updates(self):
+        """根据 Data Type 调度显示插件"""
+        for port_name in list(self._visual_dirty_buffer):
+            should_display, plugin_type = self._visual_config.get(port_name, (False, "str"))
+            data = self._output_values.get(port_name)
+
+            if not should_display:
+                self._remove_inline_widget(port_name)
+                continue
+
+            # 调用特定数据类型的插件
+            plugin = self.plugin_manager.get_plugin(plugin_type)
+            if plugin:
+                plugin.handle(self, {port_name: {"data": data}})
+        self._visual_dirty_buffer.clear()
+
+    # =========================== 内部流转逻辑 ===============================
+
+    def _handle_stream_output(self, params: dict, msg: ComponentMessage):
+        """只负责把数据存起来，并标记 dirty"""
+        extra = getattr(msg, 'extra', {})
+        for port_name, info in params.items():
+            d_type = info.get("data_type", "str")
+            plugin_type = info.get("plugin", None)
+            # 数据存储与合并...
+            self._output_values[port_name] = self._merge_data(port_name, info.get("data"), d_type)
+            # 记录配置
+            self._visual_config[port_name] = (extra.get('display', False), plugin_type)
+            self._visual_dirty_buffer.add(port_name)
+            self._stream_buffer.add(port_name)
+        self.signals.stream_data_updated.emit(None)
+
+    def _merge_data(self, port_name, new_data, data_type):
+        """简单的数据合并逻辑"""
+        old = self._output_values.get(port_name)
+        if data_type == "str": return (old or "") + str(new_data)
+        if data_type == "list":
+            if not isinstance(old, list): old = []
+            if isinstance(new_data, list):
+                old.extend(new_data)
+            else:
+                old.append(new_data)
+            return old
+        return new_data
 
     def _get_var_key(self, port_name):
         """生成全局变量映射 Key"""
@@ -252,202 +281,8 @@ class BasicNodeWithGlobalProperty(NodeObject):
             safe_port_name = re.sub(pattern, replacement, safe_port_name)
         return f"{safe_name}__{safe_port_name}"
 
-    def _handle_stream_output(self, params: dict, msg: ComponentMessage):
-        """
-        优化后的消息处理器：只负责更新数据和标记 dirty，不直接刷新 UI
-        """
-        try:
-            if self._output_values is None: self._output_values = {}
-            extra = getattr(msg, 'extra', {})
-            should_display = extra.get('display', False)
-
-            for port_name, info in params.items():
-                new_data = info.get("data")
-                data_type = info.get("data_type", "str")
-
-                # 1. 更新数据存储逻辑 (增量合并)
-                old_val = self._output_values.get(port_name)
-                if data_type == "str":
-                    self._output_values[port_name] = (old_val or "") + str(new_data)
-                elif data_type == "list":
-                    if not isinstance(old_val, list): old_val = []
-                    if isinstance(new_data, list):
-                        old_val.extend(new_data)
-                    else:
-                        old_val.append(new_data)
-                    self._output_values[port_name] = old_val
-                else:
-                    self._output_values[port_name] = new_data
-
-                # 2. 标记需要同步到全局变量
-                self._stream_buffer.add(port_name)
-
-                # 3. 标记需要可视化刷新
-                self._visual_config[port_name] = (should_display, data_type)
-                if should_display:
-                    self._visual_dirty_buffer.add(port_name)
-                else:
-                    # 如果 display 变为 False，标记需要检查是否移除控件
-                    self._visual_dirty_buffer.add(port_name)
-
-            # 触发节流计时器
-            self.signals.stream_data_updated.emit(None)
-
-        except Exception as e:
-            logger.exception(f"流式结果处理失败: {e}")
-
-    # =========================== 节流同步与渲染核心 ===============================
-
-    def hide_inline_widgets(self):
-        """隐藏指定类型的动态控件"""
-        for widget_base_key in self._inline_widgets.keys():
-            self.view.remove_widget(self._inline_widgets[widget_base_key])
-            self._inline_widgets.get(widget_base_key).deleteLater()
-        self._inline_widgets.clear()
-        self.view.draw_node()
-
-    def _sync_and_refresh_ui(self):
-        """
-        定时器触发：一次性处理全局变量更新和 UI 渲染
-        """
-        if not self.parent_window:
-            return
-
-        # --- A. 刷新可视化 UI (最耗时部分) ---
-        self._process_visual_updates()
-
-        # --- B. 同步全局变量 (逻辑同前) ---
-        self._sync_buffer_to_global()
-
-    def _process_visual_updates(self):
-        """合并后的 UI 渲染逻辑"""
-        for port_name in list(self._visual_dirty_buffer):
-            should_display, data_type = self._visual_config.get(port_name, (False, "str"))
-            data = self._output_values.get(port_name)
-
-            # 1. 处理显示/隐藏切换
-            widget_base_key = f"{data_type}_{port_name}"
-
-            if not should_display:
-                # 如果当前存在控件但被要求隐藏，则清理
-                self._remove_inline_widget(widget_base_key)
-                continue
-
-            # 2. 根据类型执行具体的渲染
-            if data_type == "image" or (isinstance(data, str) and data.startswith("data:image")):
-                self._render_image(port_name, data)
-            elif data_type == "str":
-                self._render_text(port_name, data)
-            elif data_type == "list":
-                self._render_chart(port_name, data)
-
-        self._visual_dirty_buffer.clear()
-
-    # =========================== 具体渲染实现 ===============================
-
-    def _render_text(self, port_name, content):
-        key = f"text_{port_name}"
-        if key not in self._inline_widgets:
-            widget = TextWidgetWrapper(parent=self.view, name=key, default=f"预览: {port_name}",
-                                       type=PropertyType.MULTILINE, window=self.parent_window)
-            self._add_inline_widget(key, widget, tab='Visual')
-        else:
-            self._inline_widgets[key].set_value(content)
-
-    def _render_chart(self, port_name, list_data):
-        key = f"chart_{port_name}"
-        # 性能优化：生成 HTML
-        html_content = self._generate_echarts_html(port_name, list_data)
-
-        if key not in self._inline_widgets:
-            widget = HtmlWidgetWrapper(parent=self.view, name=key, default=html_content, window=self.parent_window)
-            self._add_inline_widget(key, widget, tab='Visual')
-        else:
-            # 只有当内容变化时才 set_value (WebEngine 刷新开销极大)
-            self._inline_widgets[key].set_value(html_content)
-
-    def _render_image(self, port_name, image_data):
-        key = f"preview_{port_name}"
-        processed_img = self._process_image_data(image_data)
-        if not processed_img: return
-
-        if key not in self._inline_widgets:
-            widget = ImageWidgetWrapper(parent=self.view, name=key, default=processed_img, window=self.parent_window)
-            self._add_inline_widget(key, widget, tab='Visual')
-        else:
-            self._inline_widgets[key].set_value(processed_img)
-
-    def _generate_echarts_html(self, title, data):
-        """优化 HTML 生成性能：添加采样逻辑"""
-        if not isinstance(data, list) or len(data) == 0: return ""
-
-        # --- 性能优化：采样 ---
-        # 如果数据点超过 500 个，进行等间隔采样，防止 WebEngine 渲染崩溃
-        display_data = data
-        if len(data) > 500:
-            step = len(data) // 500
-            display_data = data[::step]
-            x_data = [i * step for i in range(len(display_data))]
-        else:
-            x_data = list(range(1, len(data) + 1))
-
-        chart = Line(
-            init_opts=opts.InitOpts(width="500px", height="280px", theme=ThemeType.DARK, bg_color="transparent"))
-        chart.add_xaxis(x_data)
-        chart.add_yaxis(series_name=title, y_axis=display_data, is_smooth=True,
-                        symbol="none",  # 不渲染点，只渲染线，大幅提升性能
-                        linestyle_opts=opts.LineStyleOpts(width=2),
-                        label_opts=opts.LabelOpts(is_show=False))
-
-        chart.set_global_opts(
-            title_opts=opts.TitleOpts(title=title, title_textstyle_opts=opts.TextStyleOpts(font_size=12, color="#eee")),
-            legend_opts=opts.LegendOpts(is_show=False),
-            xaxis_opts=opts.AxisOpts(type_="value"),
-            yaxis_opts=opts.AxisOpts(splitline_opts=opts.SplitLineOpts(is_show=True))
-        )
-        return chart.render_embed()
-
-    # =========================== 辅助工具 ===============================
-
-    def _add_inline_widget(self, key, widget, tab):
-        if key in self.model._custom_prop:
-            self.model._custom_prop.pop(key)
-        self.view.set_proxy_mode(False)
-        self.add_custom_widget(widget, tab=tab)
-        self._inline_widgets[key] = widget
-        self.view.draw_node()
-
-    def _remove_inline_widget(self, key):
-        # 检查多个可能的前缀
-        for prefix in ["text_", "chart_", "preview_"]:
-            full_key = prefix + key.split('_', 1)[-1]
-            if full_key in self._inline_widgets:
-                w = self._inline_widgets.pop(full_key)
-                if full_key in self.model._custom_prop:
-                    self.model._custom_prop.pop(full_key)
-                self.view.remove_widget(w)
-                self.view.draw_node()
-
-    def _process_image_data(self, image_data):
-        """解析图像数据逻辑 (封装原有的 base64/path 逻辑)"""
-        if isinstance(image_data, str):
-            if image_data.startswith("data:image"):
-                try:
-                    _, encoded = image_data.split(",", 1)
-                    return QImage.fromData(base64.b64decode(encoded))
-                except:
-                    return None
-            elif os.path.exists(image_data):
-                img = QImage(image_data)
-                return None if img.isNull() else img
-        return image_data
-
-    def _on_stream_data_received(self, _):
-        if not self._ui_update_timer.isActive():
-            self._ui_update_timer.start(self._ui_update_interval)
-
     def _sync_buffer_to_global(self):
-        """同步全局变量的逻辑 (原有逻辑)"""
+        """同步全局变量的逻辑"""
         if not self.parent_window or not self._stream_buffer:
             return
         has_changed = False
@@ -465,67 +300,30 @@ class BasicNodeWithGlobalProperty(NodeObject):
         if self.parent_window.property_panel and self.selected():
             self.parent_window.property_panel.update_properties(self)
 
-    # =========================== 其它指令处理器 =================================
+    # =========================== UI 辅助 (供插件调用) ===============================
 
-    def _handle_global_variable_clear(self, params: dict, msg: ComponentMessage):
-        value = params.get("value", "")
-        if value.startswith(params.get("type", "")):
-            value = value.split("node_vars.")[1]
-        if self.parent_window:
-            self.parent_window._on_global_variables_changed(
-                var_type="node_vars", var_name=value, action="clear"
-            )
+    def _add_inline_widget(self, key, widget, tab):
+        if key in self.model._custom_prop:
+            self.model._custom_prop.pop(key)
+        self.view.set_proxy_mode(False)
+        self.add_custom_widget(widget, tab=tab)
+        self._inline_widgets[key] = widget
+        self.view.draw_node()
 
-    def _handle_global_variable_add(self, params: dict, msg: ComponentMessage):
-        value = params.get("value", "")
-        if value and self.parent_window:
-            self.parent_window.property_panel._add_output_to_global_variable(
-                node=self, port_name=value,
-            )
+    def _remove_inline_widget(self, port_name):
+        for k in list(self._inline_widgets.keys()):
+            if k.endswith(f"_{port_name}"):
+                w = self._inline_widgets.pop(k)
+                self.view.remove_widget(w)
 
-    def _handle_global_variable_delete(self, params: dict, msg: ComponentMessage):
-        value = params.get("value", "")
-        if value and self.parent_window:
-            self.parent_window.property_panel._delete_output_from_global_variable(
-                node=self, port_name=value,
-            )
+    def hide_inline_widgets(self):
+        """隐藏指定类型的动态控件"""
+        for widget_base_key in self._inline_widgets.keys():
+            self.view.remove_widget(self._inline_widgets[widget_base_key])
+            self._inline_widgets.get(widget_base_key).deleteLater()
+        self._inline_widgets.clear()
+        self.view.draw_node()
 
-    def _handle_ui_ask(self, params: dict, msg: ComponentMessage):
-        """处理人工干预对话框请求"""
-        title = params.get("title", "人工干预")
-        message = params.get("message", "")
-        response_file = params.get("response_file")
-        schema = params.get("schema")
-
-        # 获取环境数据
-        env_data = getattr(self.parent_window, 'env_data', None)
-        is_ssh = env_data and env_data.get('type') == 'ssh'
-
-        def on_confirmed(result_data):
-            if is_ssh:
-                # --- SSH 模式 ---
-                # 1. 创建本地临时文件
-                temp_path = os.path.join(tempfile.gettempdir(), f"ask_{uuid.uuid4().hex}.pkl")
-                try:
-                    with open(temp_path, 'wb') as f:
-                        pickle.dump(result_data, f)
-
-                    # 2. 调用公用函数发送
-                    success = ssh_send_file(env_data, temp_path, response_file)
-
-                    if not success:
-                        logger.error("远程回传人工干预结果失败")
-                finally:
-                    # 3. 清理临时文件
-                    if os.path.exists(temp_path):
-                        os.remove(temp_path)
-            else:
-                # --- 本地模式 ---
-                os.makedirs(os.path.dirname(response_file), exist_ok=True)
-                with open(response_file, 'wb') as f:
-                    pickle.dump(result_data, f)
-
-        self.parent_window.show_intervention_dialog(title, message, schema, on_confirmed)
-
-    def _handle_unknown_method(self, params: dict, msg: ComponentMessage):
-        logger.warning(f"收到未知指令: {msg.method}")
+    def _sync_and_refresh_ui(self):
+        self._process_visual_updates()
+        self._sync_buffer_to_global()

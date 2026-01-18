@@ -49,13 +49,17 @@ class DynamicComponent(BaseComponent):
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
         mime = "image/jpeg" if format.upper() in ("JPG", "JPEG") else "image/png"
         base64_image = f"data:{mime};base64,{img_str}"
-        result = self.ask_user(
-            title="数据核对", 
-            message="请核对以下解析结果是否正确",
-            schema={
-                "image": {"type": "image", "label": "绘制蒙版", "default": base64_image, "enable_mask": True},
+        # 触发ui出现遮罩绘制窗口
+        result = self.emit_interactive_message(
+            method="draw_mask",
+            params={
+                "title": "请绘制图像遮罩",
+                "schema": {
+                    "image": base64_image,
+                }
             }
-        )["image"]
+        )["mask"]
+        
         if result.startswith("data:"):
             result = result.split(",", 1)[1]
         img_data = base64.b64decode(result)
@@ -74,10 +78,9 @@ class DynamicComponent(BaseComponent):
             preview_buffer = BytesIO()
             preview_img.save(preview_buffer, format="JPEG", quality=85)
             preview_b64 = base64.b64encode(preview_buffer.getvalue()).decode()
-            self.emit_custom_message(
-                method="stream.output",
+            self.emit_message(
+                method="display_image",
                 params={"output": {"data": f"data:image/jpeg;base64,{preview_b64}", "data_type": "image"}},
-                extra={"display": True}
             )
         return {
             "masked_image": preview_img,
