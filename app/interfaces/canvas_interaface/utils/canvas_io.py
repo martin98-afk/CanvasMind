@@ -178,7 +178,7 @@ class CanvasIO(QObject):
             self.parent.canvas_saved.emit(self.parent.file_path)
 
     def load_full_workflow(self, file_path):
-        self.workflow_loader = WorkflowLoader(file_path, self.graph, self.parent.node_type_map)
+        self.workflow_loader = WorkflowLoader(file_path, self.graph, self.parent.node_uuid_map)
         self.workflow_loader.finished.connect(
             lambda gd, rd, ns, gv: self._on_workflow_loaded(gd, rd, ns, gv))
         self.workflow_loader.start()

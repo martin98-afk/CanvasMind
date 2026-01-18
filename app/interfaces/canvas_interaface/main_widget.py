@@ -169,6 +169,10 @@ class CanvasPage(QWidget):
         return self.node_operations.node_type_map
 
     @property
+    def node_uuid_map(self):
+        return self.node_operations.node_uuid_map
+
+    @property
     def registered_nodes(self):
         return self.node_operations._registered_nodes
 
