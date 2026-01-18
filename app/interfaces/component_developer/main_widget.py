@@ -101,6 +101,12 @@ class ComponentDeveloperPage(QWidget):
     def current_template_code(self):
         return self.ui_manager._current_template_code
 
+    def show_splitter(self):
+        self.ui_manager.show_splitter()
+
+    def hide_splitter(self):
+        self.ui_manager.hide_splitter()
+
     def save_component_by_full_path(self, full_path: str, new_code: str):
         return self.storage_manager.save_component_by_full_path(full_path, new_code)
 
