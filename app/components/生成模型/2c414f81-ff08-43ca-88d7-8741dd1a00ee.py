@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -19,7 +19,7 @@ class ModelLoaderComponent(BaseComponent):
     name = "模型加载器"
     category = "生成模型"
     description = "通过文件选择器加载本地模型（文件夹或单文件）"
-    requirements = "diffusers,torch,transformers,accelerate,safetensors,omegaconf"
+    requirements = "diffusers,torch,transformers,accelerate,safetensors,omegaconf,modelscope"
 
     inputs = [
         
@@ -81,10 +81,17 @@ class ModelLoaderComponent(BaseComponent):
             if os.path.isfile(model_path):
                 if model_path.endswith((".safetensors", ".ckpt", ".bin")):
                     self.logger.info("检测到单文件模型，使用 from_single_file 加载...")
-                    pipe = StableDiffusionPipeline.from_single_file(
-                        model_path, 
-                        **common_args
-                    )
+                    try:
+                        pipe = StableDiffusionPipeline.from_single_file(
+                            model_path, 
+                            **common_args
+                        )
+                    except:
+                        # qwen系列模型
+                        from modelscope import DiffusionPipeline
+                        pipe = DiffusionPipeline.from_pretrained(
+                            model_path, **common_args
+                        )
                 else:
                     raise ValueError(f"不支持的文件格式: {model_path}")
 
