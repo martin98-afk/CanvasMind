@@ -4,413 +4,358 @@ import os
 import pickle
 import tempfile
 import uuid
+from collections import deque
 
 from PyQt5.QtCore import Qt, QPoint, QPointF, QByteArray, QBuffer
 from PyQt5.QtGui import (
-    QImage, QPixmap, QPainter, QPen, QColor, QMouseEvent,
-    QKeyEvent, QCursor
+    QImage, QPixmap, QPainter, QPen, QColor
 )
-from PyQt5.QtWidgets import QWidget, QScrollArea
-from qfluentwidgets import MessageBoxBase, SubtitleLabel, BodyLabel
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel
+)
+from qfluentwidgets import MessageBoxBase, SubtitleLabel, ToolButton, Slider, FluentIcon
 
 from app.plugins.base import InteractivePlugin
-from app.utils.utils import ssh_send_file
-
-
-class UndoCommand:
-    """简单的撤销命令类，存储图像状态"""
-
-    def __init__(self, image: QImage):
-        self.image = image.copy()
+from app.utils.utils import get_icon, ssh_send_file
 
 
 class MaskCanvas(QWidget):
-    """
-    专业级蒙版绘制控件 (ComfyUI Style)
-    功能：无限缩放/移动、撤销/重做、画笔/橡皮、自定义蒙版颜色
-    """
-
-    def __init__(self, base64_image: str = None, parent=None):
+    def __init__(self, base64_image=None, parent=None):
         super().__init__(parent)
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.StrongFocus)
 
-        # --- 核心数据 ---
         self.original_pixmap = None
         self.mask_image = None
-
-        # --- 视图变换参数 ---
         self.scale_factor = 1.0
         self.offset = QPointF(0, 0)
-        self.min_scale = 0.1
-        self.max_scale = 20.0
+        self.first_show = True
 
-        # --- 交互状态 ---
+        self.draw_mode = "brush"  # brush, eraser, fill
+        self.brush_size = 40
+        self.mask_color = QColor(255, 0, 100, 160)
+
         self.is_drawing = False
         self.is_panning = False
         self.last_mouse_pos = QPoint()
-        self.draw_mode = "brush"  # brush / eraser
+        self.mouse_now = QPoint()
 
-        # --- 工具设置 ---
-        self.brush_size = 30
-        self.mask_color = QColor(255, 0, 100, 120)  # ComfyUI 风格的紫红色半透明
-        self.show_mask = True
-
-        # --- 撤销/重做栈 ---
         self.undo_stack = []
-        self.redo_stack = []
-        self.max_history = 20
 
-        # --- 初始化加载 ---
         if base64_image:
-            self.load_base64_image(base64_image)
-        else:
-            # 默认占位（如果未提供图片）
-            self.resize(512, 512)
+            self.load_image(base64_image)
 
-    def load_base64_image(self, base64_str: str):
-        """加载 Base64 图片并初始化画布"""
+    def load_image(self, b64):
         try:
-            if "," in base64_str:
-                base64_str = base64_str.split(",")[-1]
-            image_data = base64.b64decode(base64_str)
-            self.original_pixmap = QPixmap()
-            self.original_pixmap.loadFromData(image_data)
-
-            # 初始化 mask (ARGB32 Premultiplied 性能更好)
-            self.mask_image = QImage(self.original_pixmap.size(), QImage.Format_ARGB32_Premultiplied)
+            if "," in b64: b64 = b64.split(",")[-1]
+            data = base64.b64decode(b64)
+            img = QImage.fromData(data)
+            self.original_pixmap = QPixmap.fromImage(img)
+            # 使用高性能 ARGB 格式
+            self.mask_image = QImage(img.size(), QImage.Format_ARGB32_Premultiplied)
             self.mask_image.fill(Qt.transparent)
+        except:
+            pass
 
-            # 初始视图自适应
-            self.fit_to_view()
-            self.undo_stack.clear()
-            self.redo_stack.clear()
-            self.update()
-        except Exception as e:
-            print(f"Error loading image: {e}")
-
-    # ==========================================
-    # 视图控制 (Zoom & Pan)
-    # ==========================================
-    def fit_to_view(self):
-        """将图片自适应显示在窗口中心"""
-        if not self.original_pixmap:
-            return
-        img_w = self.original_pixmap.width()
-        img_h = self.original_pixmap.height()
-        win_w = self.width()
-        win_h = self.height()
-
-        scale_w = win_w / img_w
-        scale_h = win_h / img_h
-        self.scale_factor = min(scale_w, scale_h) * 0.9  # 留一点边距
-
-        # 居中计算
-        center_x = (win_w - img_w * self.scale_factor) / 2
-        center_y = (win_h - img_h * self.scale_factor) / 2
-        self.offset = QPointF(center_x, center_y)
-
-    def map_to_image(self, widget_pos: QPoint) -> QPointF:
-        """将窗口坐标映射回图片像素坐标"""
-        return (QPointF(widget_pos) - self.offset) / self.scale_factor
-
-    # ==========================================
-    # 绘制事件 (Paint)
-    # ==========================================
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform)
-
-        # 绘制背景 (棋盘格，表示透明)
-        self.draw_checkerboard(painter)
-
-        if not self.original_pixmap:
-            painter.drawText(self.rect(), Qt.AlignCenter, "No Image Loaded")
-            return
-
-        # 应用变换矩阵 (Zoom & Pan)
-        painter.translate(self.offset)
-        painter.scale(self.scale_factor, self.scale_factor)
-
-        # 1. 绘制原图
-        painter.drawPixmap(0, 0, self.original_pixmap)
-
-        # 2. 绘制蒙版层 (Overlay)
-        if self.show_mask:
-            # 简单方法：Mask Image 实际上保存的是 ARGB。
-            painter.drawImage(0, 0, self.mask_image)
-
-        # 3. 绘制笔刷预览 (只有在不绘制时显示圆圈，防止延迟)
-        if self.underMouse() and not self.is_panning:
-            painter.setPen(QPen(Qt.white, 1 / self.scale_factor, Qt.SolidLine))  # 保持线条细度
-            painter.setBrush(Qt.NoBrush)
-
-            # 获取鼠标在图片系的位置
-            local_pos = self.map_to_image(self.mapFromGlobal(QCursor.pos()))
-
-            # 绘制圆圈
-            radius = self.brush_size / 2
-            painter.drawEllipse(local_pos, radius, radius)
-
-            # 再画一个黑色轮廓增强对比度
-            painter.setPen(QPen(Qt.black, 1 / self.scale_factor, Qt.DashLine))
-            painter.drawEllipse(local_pos, radius, radius)
-
-    def draw_checkerboard(self, painter):
-        """绘制透明背景棋盘格"""
-        bg_color2 = QColor(160, 160, 160)
-        # 简单绘制全屏背景，不做复杂的视差滚动，提高性能
-        painter.fillRect(self.rect(), bg_color2)
-        # 若需要更精细的背景可在此扩展，但对于大图蒙版，纯灰底通常更护眼
-
-    # ==========================================
-    # 交互事件 (Mouse & Key)
-    # ==========================================
-    def wheelEvent(self, event):
-        """滚轮缩放"""
-        zoom_in = event.angleDelta().y() > 0
-        multiplier = 1.15 if zoom_in else 1 / 1.15
-
-        new_scale = self.scale_factor * multiplier
-        new_scale = max(self.min_scale, min(new_scale, self.max_scale))
-
-        # 以鼠标为中心缩放
-        mouse_pos = event.pos()
-        # 公式: offset = mouse - (mouse - old_offset) * (new_scale / old_scale)
-        delta = QPointF(mouse_pos) - self.offset
-        self.offset = QPointF(mouse_pos) - delta * (new_scale / self.scale_factor)
-        self.scale_factor = new_scale
-
+    def fit_view(self):
+        if not self.original_pixmap or self.width() <= 0: return
+        iw, ih = self.original_pixmap.width(), self.original_pixmap.height()
+        ww, wh = self.width(), self.height()
+        self.scale_factor = min(ww / iw, wh / ih) * 0.95
+        self.offset = QPointF((ww - iw * self.scale_factor) / 2, (wh - ih * self.scale_factor) / 2)
         self.update()
 
-    def mousePressEvent(self, event: QMouseEvent):
-        self.last_mouse_pos = event.pos()
+    def resizeEvent(self, event):
+        if self.first_show and self.width() > 100:
+            self.fit_view()
+            self.first_show = False
+        super().resizeEvent(event)
 
-        # 中键 或 (空格+左键) -> 平移
-        if event.button() == Qt.MiddleButton or (
-                event.button() == Qt.LeftButton and event.modifiers()):
-            self.is_panning = True
-            self.setCursor(Qt.ClosedHandCursor)
-            return
+    def to_img_pos(self, p):
+        return (QPointF(p) - self.offset) / self.scale_factor
 
-        # 左键/右键 -> 绘制
-        if event.button() in (Qt.LeftButton, Qt.RightButton):
-            if not self.original_pixmap: return
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor(15, 15, 15))
 
-            # 保存当前状态到撤销栈
-            self.push_undo()
+        if not self.original_pixmap: return
 
-            self.is_drawing = True
-            self.draw_mode = "eraser" if event.button() == Qt.RightButton else "brush"
+        # 1. 绘制底图和蒙版
+        painter.save()
+        painter.translate(self.offset)
+        painter.scale(self.scale_factor, self.scale_factor)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, self.scale_factor < 1.0)
+        painter.drawPixmap(0, 0, self.original_pixmap)
+        painter.drawImage(0, 0, self.mask_image)
+        painter.restore()
 
-            img_pos = self.map_to_image(event.pos())
-            self.paint_on_mask(img_pos)
-            self.update()
+        # 2. 画笔圆圈实时预览 (始终跟随)
+        if not self.is_panning and self.draw_mode != "fill":
+            painter.setRenderHint(QPainter.Antialiasing)
+            r = (self.brush_size * self.scale_factor) / 2
+            painter.setPen(QPen(Qt.white, 1.2))
+            painter.drawEllipse(self.mouse_now, r, r)
+            painter.setPen(QPen(Qt.black, 1.0, Qt.DotLine))
+            painter.drawEllipse(self.mouse_now, r + 1, r + 1)
 
-    def mouseMoveEvent(self, event: QMouseEvent):
-        current_pos = event.pos()
-
+    def mouseMoveEvent(self, e):
+        self.mouse_now = e.pos()
         if self.is_panning:
-            delta = current_pos - self.last_mouse_pos
-            self.offset += QPointF(delta)
-            self.last_mouse_pos = current_pos
-            self.update()
+            self.offset += QPointF(e.pos() - self.last_mouse_pos)
+            self.last_mouse_pos = e.pos()
+        elif self.is_drawing:
+            p1 = self.to_img_pos(self.last_mouse_pos)
+            p2 = self.to_img_pos(e.pos())
+            self.draw_line(p1, p2)
+            self.last_mouse_pos = e.pos()
+        self.update()
+
+    def mousePressEvent(self, e):
+        self.last_mouse_pos = e.pos()
+        if e.button() == Qt.MiddleButton or (e.button() == Qt.LeftButton and e.modifiers() & Qt.AltModifier):
+            self.is_panning = True
             return
 
-        if self.is_drawing:
-            # 插值绘制线条，防止快速移动断层
-            start_pos = self.map_to_image(self.last_mouse_pos)
-            end_pos = self.map_to_image(current_pos)
-            self.paint_line_on_mask(start_pos, end_pos)
-            self.last_mouse_pos = current_pos
-            self.update()
-        else:
-            # 仅更新光标位置
-            self.update()
-
-    def mouseReleaseEvent(self, event: QMouseEvent):
-        if event.button() == Qt.MiddleButton or self.is_panning:
-            self.is_panning = False
-            self.setCursor(Qt.ArrowCursor)
-
-        if event.button() in (Qt.LeftButton, Qt.RightButton):
-            self.is_drawing = False
-
-    def keyPressEvent(self, event: QKeyEvent):
-        key = event.key()
-
-        # 笔刷大小调整 [ ]
-        if key == Qt.Key_BracketLeft:
-            self.brush_size = max(1, self.brush_size - 5)
-            self.update()
-        elif key == Qt.Key_BracketRight:
-            self.brush_size = min(500, self.brush_size + 5)
-            self.update()
-
-        # 撤销/重做 (Ctrl+Z, Ctrl+Y/Shift+Z)
-        elif event.modifiers() & Qt.ControlModifier:
-            if key == Qt.Key_Z:
-                self.undo()
-            elif key == Qt.Key_Y or (key == Qt.Key_Z and event.modifiers() & Qt.ShiftModifier):
-                self.redo()
-
-        # 功能快捷键
-        elif key == Qt.Key_C:
-            self.clear_mask()
-        elif key == Qt.Key_F:  # Fill
-            self.fill_mask()
-        elif key == Qt.Key_M:  # Toggle Visibility
-            self.show_mask = not self.show_mask
-            self.update()
-        elif key == Qt.Key_S:  # Switch Color (方便在亮色/暗色图上切换)
-            current = self.mask_color
-            if current.red() > 100:  # 如果是红粉色，切成半透明黑
-                self.mask_color = QColor(0, 0, 0, 150)
+        if e.button() == Qt.LeftButton:
+            self.push_undo()
+            img_pos = self.to_img_pos(e.pos())
+            if self.draw_mode == "fill":
+                self.flood_fill(img_pos.toPoint())
             else:
-                self.mask_color = QColor(255, 0, 100, 120)
-        elif key == Qt.Key_R:  # Reset View
-            self.fit_to_view()
+                self.is_drawing = True
+                self.draw_at(img_pos)
             self.update()
 
-    # ==========================================
-    # 绘制逻辑 (Mask Manipulation)
-    # ==========================================
-    def paint_on_mask(self, pos: QPointF):
-        """画一个点"""
-        painter = QPainter(self.mask_image)
-        painter.setRenderHint(QPainter.Antialiasing, True)
+    def mouseReleaseEvent(self, e):
+        self.is_drawing = False
+        self.is_panning = False
 
+    def wheelEvent(self, e):
+        delta = 1.15 if e.angleDelta().y() > 0 else 1 / 1.15
+        new_scale = max(0.01, min(self.scale_factor * delta, 50.0))
+        self.offset = QPointF(e.pos()) - (QPointF(e.pos()) - self.offset) * (new_scale / self.scale_factor)
+        self.scale_factor = new_scale
+        self.update()
+
+    def draw_at(self, pos):
+        p = QPainter(self.mask_image)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setCompositionMode(
+            QPainter.CompositionMode_SourceOver if self.draw_mode == "brush" else QPainter.CompositionMode_Clear)
+        p.setBrush(self.mask_color)
+        p.setPen(Qt.NoPen)
+        p.drawEllipse(pos, self.brush_size / 2, self.brush_size / 2)
+
+    def draw_line(self, p1, p2):
+        p = QPainter(self.mask_image)
+        p.setRenderHint(QPainter.Antialiasing)
         if self.draw_mode == "brush":
-            painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(self.mask_color)
-            painter.drawEllipse(pos, self.brush_size / 2, self.brush_size / 2)
-        else:  # Eraser
-            painter.setCompositionMode(QPainter.CompositionMode_Clear)
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(Qt.transparent)  # 任何颜色都行，关键是 CompositionMode_Clear
-            painter.drawEllipse(pos, self.brush_size / 2, self.brush_size / 2)
+            p.setCompositionMode(QPainter.CompositionMode_SourceOver)
+            pen = QPen(self.mask_color, self.brush_size, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+        else:
+            p.setCompositionMode(QPainter.CompositionMode_Clear)
+            pen = QPen(Qt.transparent, self.brush_size, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+        p.setPen(pen)
+        p.drawLine(p1, p2)
 
-        painter.end()
+    def flood_fill(self, start_pt):
+        """种子填充：点击透明区域则填充"""
+        w, h = self.mask_image.width(), self.mask_image.height()
+        if not (0 <= start_pt.x() < w and 0 <= start_pt.y() < h): return
 
-    def paint_line_on_mask(self, start: QPointF, end: QPointF):
-        """画线条（解决快速移动断触问题）"""
-        painter = QPainter(self.mask_image)
-        painter.setRenderHint(QPainter.Antialiasing, True)
+        # 获取点击位置颜色
+        target_color = self.mask_image.pixelColor(start_pt)
+        if target_color.alpha() > 10: return  # 如果点在已有蒙版上，不处理
 
-        pen_color = self.mask_color if self.draw_mode == "brush" else QColor(0, 0, 0, 0)
-        mode = QPainter.CompositionMode_SourceOver if self.draw_mode == "brush" else QPainter.CompositionMode_Clear
+        # BFS 填充
+        fill_color = self.mask_color
+        q = deque([start_pt])
 
-        painter.setCompositionMode(mode)
-        pen = QPen(pen_color, self.brush_size, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-        painter.setPen(pen)
-        painter.drawLine(start, end)
-        painter.end()
+        # 性能考虑：小图直接填，大图建议后期用 mask 连通域
+        # 下面演示逻辑为快速填充整个连通的透明区域
+        visited = set()
 
-    # ==========================================
-    # 撤销/重做逻辑
-    # ==========================================
+        p = QPainter(self.mask_image)
+        p.setCompositionMode(QPainter.CompositionMode_SourceOver)
+        p.setPen(fill_color)
+
+        # 简单高效的 Scanline 填充替代方案：如果是在封闭圆圈内，这里填满。
+        # 这里用简化的算法演示，实际在大图上请确保效率
+        pixel_to_fill = []
+        target_alpha = 0
+
+        queue = deque([(start_pt.x(), start_pt.y())])
+        processed = set([(start_pt.x(), start_pt.y())])
+
+        while queue:
+            x, y = queue.popleft()
+            pixel_to_fill.append(QPoint(x, y))
+            if len(pixel_to_fill) > 500000: break  # 防止死循环或溢出
+
+            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in processed:
+                    c = self.mask_image.pixelColor(nx, ny)
+                    if c.alpha() <= 10:
+                        processed.add((nx, ny))
+                        queue.append((nx, ny))
+
+        for pt in pixel_to_fill:
+            self.mask_image.setPixelColor(pt, fill_color)
+
     def push_undo(self):
-        if self.mask_image:
-            # 限制栈大小
-            if len(self.undo_stack) >= self.max_history:
-                self.undo_stack.pop(0)
-            self.undo_stack.append(UndoCommand(self.mask_image))
-            self.redo_stack.clear()  # 新的操作会清空重做栈
+        if len(self.undo_stack) > 30: self.undo_stack.pop(0)
+        self.undo_stack.append(self.mask_image.copy())
 
     def undo(self):
         if self.undo_stack:
-            command = self.undo_stack.pop()
-            self.redo_stack.append(UndoCommand(self.mask_image))
-            self.mask_image = command.image.copy()
+            self.mask_image = self.undo_stack.pop()
             self.update()
 
-    def redo(self):
-        if self.redo_stack:
-            command = self.redo_stack.pop()
-            self.undo_stack.append(UndoCommand(self.mask_image))
-            self.mask_image = command.image.copy()
-            self.update()
-
-    def clear_mask(self):
+    def clear(self):
+        """修复 AttributeError 的关键函数"""
         self.push_undo()
         self.mask_image.fill(Qt.transparent)
         self.update()
 
-    def fill_mask(self):
-        self.push_undo()
-        self.mask_image.fill(self.mask_color)
-        self.update()
 
-    # ==========================================
-    # 输出
-    # ==========================================
-    def get_mask_base64(self) -> str:
-        """提取 Mask 的 Base64（仅 Alpha 通道，转为黑白 PNG）"""
-        alpha_img = self.mask_image.convertToFormat(QImage.Format_Grayscale8)
-        byte_array = QByteArray()
-        buffer = QBuffer(byte_array)
-        buffer.open(QBuffer.WriteOnly)
-        alpha_img.save(buffer, "PNG")
-        buffer.close()
-        b64 = bytes(byte_array.toBase64()).decode("utf-8")
-        return f"data:image/png;base64,{b64}"
+class ComfyToolButton(ToolButton):
+
+    def __init__(self, icon, tip, parent=None):
+        super().__init__(parent)
+        if icon:
+            self.setIcon(icon)
+        else:
+            self.setText(tip[:1])  # 回退文字
+
+        self.setToolTip(tip)
+        self.setFixedSize(45, 45)
+        self.setCheckable(True)
+        self.setStyleSheet("""
+            QToolButton {
+                background: rgba(40, 40, 40, 180);
+                border: 1px solid rgba(255, 255, 255, 30);
+                border-radius: 8px;
+                color: white;
+            }
+            QToolButton:hover { background: rgba(80, 80, 80, 200); }
+            QToolButton:checked { background: #ff0064; border: 1px solid white; }
+        """)
+
+
+class ComfyEditor(QWidget):
+    def __init__(self, image_b64, parent=None):
+        super().__init__(parent)
+        self.canvas = MaskCanvas(image_b64, self)
+
+        # 主布局
+        self.lyt = QHBoxLayout(self)
+        self.lyt.setContentsMargins(0, 0, 0, 0)
+        self.lyt.addWidget(self.canvas)
+
+        # 左悬浮面板
+        self.left_panel = QFrame(self)
+        self.left_panel.setStyleSheet("background: transparent;")
+        lp_lyt = QVBoxLayout(self.left_panel)
+
+        self.btn_brush = ComfyToolButton(get_icon("brush"), "画笔 (B)")
+        self.btn_eraser = ComfyToolButton(get_icon("eraser"), "橡皮 (E)")
+        self.btn_fill = ComfyToolButton(get_icon("fill"), "填充 (F)")
+
+        self.btn_brush.setChecked(True)
+        lp_lyt.addWidget(self.btn_brush)
+        lp_lyt.addWidget(self.btn_eraser)
+        lp_lyt.addWidget(self.btn_fill)
+
+        # 笔刷滑块
+        self.sld = Slider(Qt.Vertical)
+        self.sld.setRange(2, 300)
+        self.sld.setValue(40)
+        self.sld.setStyleSheet("QSlider::handle:vertical { background: #ff0064; }")
+        lp_lyt.addSpacing(10)
+        lp_lyt.addWidget(self.sld, 0, Qt.AlignHCenter)
+        lp_lyt.addWidget(QLabel("画笔大小"), 0, Qt.AlignHCenter)
+
+        # 右悬浮面板
+        self.right_panel = QFrame(self)
+        rp_lyt = QVBoxLayout(self.right_panel)
+        rp_lyt.setSpacing(10)
+        self.btn_undo = ComfyToolButton(FluentIcon.LEFT_ARROW, "撤销 (Ctrl+Z)")
+        self.btn_reset = ComfyToolButton(get_icon("缩放"), "居中 (R)")
+        self.btn_clear = ComfyToolButton(FluentIcon.DELETE, "清空 (C)")
+
+        self.btn_undo.setCheckable(False)
+        self.btn_reset.setCheckable(False)
+        self.btn_clear.setCheckable(False)
+
+        rp_lyt.addWidget(self.btn_undo)
+        rp_lyt.addWidget(self.btn_reset)
+        rp_lyt.addWidget(self.btn_clear)
+        rp_lyt.addStretch()
+
+        # 信号
+        self.btn_brush.clicked.connect(lambda: self.set_mode("brush"))
+        self.btn_eraser.clicked.connect(lambda: self.set_mode("eraser"))
+        self.btn_fill.clicked.connect(lambda: self.set_mode("fill"))
+        self.btn_undo.clicked.connect(self.canvas.undo)
+        self.btn_reset.clicked.connect(self.canvas.fit_view)
+        self.btn_clear.clicked.connect(self.canvas.clear)
+        self.sld.valueChanged.connect(lambda v: setattr(self.canvas, 'brush_size', v))
+
+    def set_mode(self, m):
+        self.canvas.draw_mode = m
+        self.btn_brush.setChecked(m == "brush")
+        self.btn_eraser.setChecked(m == "eraser")
+        self.btn_fill.setChecked(m == "fill")
+
+    def resizeEvent(self, e):
+        self.left_panel.setGeometry(20, 20, 60, 450)
+        self.right_panel.setGeometry(self.width() - 80, 20, 60, 300)
+        super().resizeEvent(e)
 
 
 class MaskDrawDialog(MessageBoxBase):
-    """
-    自适应动态表单对话框，用于人工干预
-    """
-    def __init__(self, title: str, image: str, parent=None):
+    def __init__(self, title, image, parent=None):
         super().__init__(parent)
-        self.inputs = {}
-        self.image = image
-        # 1. 标题
         self.titleLabel = SubtitleLabel(title)
         self.viewLayout.addWidget(self.titleLabel)
 
-        # 3. 动态根据 schema 生成表单
-        self._setup_ui()
-        # 设置对话框宽度
-        self.widget.setMinimumWidth(800)
-        self.widget.setMinimumHeight(700)
+        self.editor = ComfyEditor(image)
+        self.editor.setMinimumSize(1100, 750)
+        self.viewLayout.addWidget(self.editor)
 
-    def _add_shortcut_hint(self):
-        hint_text = (
-            "<b>快捷键说明:</b><br>"
-            "• 左键拖动：绘制蒙版 • CTRL+Z：撤销 ; • [ ]：调整笔刷大小; • C：清空; S: 切换笔刷颜色;<br>"
-        )
-        hint_label = BodyLabel(hint_text)
-        hint_label.setStyleSheet("font-size: 11px; color: #888;")
-        self.viewLayout.addWidget(hint_label)
+        self.widget.setMinimumWidth(1150)
 
-    def _setup_ui(self):
-        self._add_shortcut_hint()
-        canvas = MaskCanvas(self.image)
-        scroll = QScrollArea()
-        scroll.setWidget(canvas)
-        scroll.setWidgetResizable(True)
-        scroll.setMinimumHeight(400)
-        self.viewLayout.addWidget(scroll)
-        self.inputs["mask"] = (canvas, "get_mask_base64")  # ← 注意方法名
+        # 底部按钮只留确认
+        self.cancelButton.hide()
+        self.yesButton.setText("完成并保存蒙版")
+        self.yesButton.setMinimumHeight(45)
+        self.yesButton.setStyleSheet("""
+            QPushButton {
+                background-color: #ff0064;
+                color: white;
+                font-size: 16px;
+                font-weight: bold;
+                border-radius: 10px;
+            }
+            QPushButton:hover { background-color: #ff3385; }
+        """)
+        self.buttonLayout.insertStretch(0, 1)  # 居中按钮
 
     def get_result(self):
-        """解析所有控件的值并返回字典"""
-        result = {}
-        for field_name, (widget, getter_name) in self.inputs.items():
-            getter = getattr(widget, getter_name)
-            # 处理可调用对象或直接属性
-            val = getter() if callable(getter) else getter
-            result[field_name] = val
-        return result
+        # 处理结果并转为 Base64
+        mask = self.editor.canvas.mask_image.convertToFormat(QImage.Format_Grayscale8)
+        ba = QByteArray()
+        buf = QBuffer(ba)
+        mask.save(buf, "PNG")
+        return {"mask": f"data:image/png;base64,{bytes(ba.toBase64()).decode()}"}
 
 
 class DrawMaskPlugin(InteractivePlugin):
-    plugin_id = "draw_mask"  # 对应 method: "ui.ask"
+    plugin_id = "draw_mask"
 
     def handle(self, node, params, msg=None):
-        title = params.get("title", "人工干预")
+        title = params.get("title", "ComfyUI 交互蒙版")
         response_file = params.get("response_file")
         image = params.get("schema").get("image")
 
@@ -429,12 +374,6 @@ class DrawMaskPlugin(InteractivePlugin):
                 with open(response_file, 'wb') as f:
                     pickle.dump(result_data, f)
 
-        # 创建并显示对话框
         dialog = MaskDrawDialog(title, image, node.parent_window)
-        dialog.yesButton.setText("确认并继续")
-        dialog.cancelButton.hide()
-
         if dialog.exec():
-            # 用户点击了“确认”
-            result_data = dialog.get_result()
-            on_confirmed(result_data)
+            on_confirmed(dialog.get_result())

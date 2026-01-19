@@ -36,15 +36,6 @@ class InterventionDialog(MessageBoxBase):
         self.widget.setMinimumWidth(700)
         self.widget.setMinimumHeight(600)
 
-    def _add_shortcut_hint(self):
-        hint_text = (
-            "<b>快捷键说明:</b><br>"
-            "• 左键拖动：绘制蒙版 • CTRL+Z：撤销 ; • [ ]：调整笔刷大小; • C：清空; S: 切换笔刷颜色;<br>"
-        )
-        hint_label = BodyLabel(hint_text)
-        hint_label.setStyleSheet("font-size: 11px; color: #888;")
-        self.viewLayout.addWidget(hint_label)
-
     def _setup_dynamic_form(self):
         for field_name, prop_def in self.schema.items():
             label_text = prop_def.get("label", field_name)
@@ -82,28 +73,6 @@ class InterventionDialog(MessageBoxBase):
                     widget.setValue(float(default or 0))
                 self.viewLayout.addWidget(widget)
                 self.inputs[field_name] = (widget, "value")
-            # elif prop_type == "image":
-            #     if prop_def.get("enable_mask"):
-            #         self._add_shortcut_hint()
-            #         default_img = default or ""
-            #         if not isinstance(default_img, str):
-            #             default_img = ""
-            #         canvas = MaskCanvas(default_img)
-            #         scroll = QScrollArea()
-            #         scroll.setWidget(canvas)
-            #         scroll.setWidgetResizable(True)
-            #         scroll.setMinimumHeight(400)
-            #         self.viewLayout.addWidget(scroll)
-            #         self.inputs[field_name] = (canvas, "get_mask_base64")  # ← 注意方法名
-            #     else:
-            #         # 普通图片显示（只读预览，不支持绘制）
-            #         # 可选：用 QLabel 显示缩略图
-            #         image_data = base64.b64decode(default_img.split(",")[-1])  # 支持 data:image/png;base64,...
-            #         self.original_pixmap = QPixmap()
-            #         self.original_pixmap.loadFromData(image_data)
-            #         widget = QLabel()
-            #         widget.setPixmap(self.original_pixmap)
-            #         self.viewLayout.addWidget(widget)
             else:  # 默认文本 LineEdit
                 widget = TextEdit()
                 widget.setText(str(default or ""))

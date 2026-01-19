@@ -115,7 +115,7 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
             for widget in self._view_cache.values():
                 widget.set_value(None)
 
-            self.updateGeometry()
+            self.update()
             self.sizeHintChanged.emit()
             return
 
