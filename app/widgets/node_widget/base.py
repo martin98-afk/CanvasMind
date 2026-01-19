@@ -97,9 +97,7 @@ class _NodeGroupBox(QtWidgets.QWidget):
         sp = widget.sizePolicy()
         h_policy = sp.horizontalPolicy()
 
-        # 判断是否为“固定宽度”控件
-        # Fixed: 绝对固定
-        # Maximum: 不能超过某个宽度 (通常意味着不想被拉伸)
+        # 判断是否为“固定宽度”控件 Fixed: 绝对固定 Maximum: 不能超过某个宽度 (通常意味着不想被拉伸)
         center_policies = [
             QtWidgets.QSizePolicy.Fixed,
             QtWidgets.QSizePolicy.Maximum
@@ -118,44 +116,7 @@ class _NodeGroupBox(QtWidgets.QWidget):
             self.layout.addWidget(widget)
 
     def _apply_child_style(self, widget):
-        input_bg = "#222222"
-        input_border = "#333333"
-        text_color = "#eeeeee"
-
         widget.setAttribute(QtCore.Qt.WA_StyledBackground, True)
-
-        child_style = f"""
-            QLineEdit, QSpinBox, QDoubleSpinBox {{
-                background-color: {input_bg};
-                color: {text_color};
-                border: 1px solid {input_border};
-                border-radius: 10px;
-                padding: 4px 8px;
-                selection-background-color: #444444;
-            }}
-            QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
-                border: 1px solid #666666;
-                background-color: #2a2a2a;
-            }}
-            QPushButton {{
-                background-color: #353535;
-                color: {text_color};
-                border: 1px solid #111;
-                border-radius: 4px;
-                padding: 4px;
-            }}
-            QPushButton:pressed {{
-                background-color: #151515;
-            }}
-            QTextEdit, QPlainTextEdit {{
-                background-color: {input_bg};
-                color: {text_color};
-                border: 1px solid {input_border};
-                border-radius: 8px;
-            }}
-        """
-        current_style = widget.styleSheet()
-        widget.setStyleSheet(current_style + child_style)
 
     def get_node_widget(self):
         if self.layout.count() > 1:

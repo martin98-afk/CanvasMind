@@ -70,8 +70,8 @@ class HtmlWidget(QtWidgets.QWidget):
         width_match = re.search(r'width\s*:\s*(\d+)px', html, re.IGNORECASE)
         height_match = re.search(r'height\s*:\s*(\d+)px', html, re.IGNORECASE)
 
-        width = int(width_match.group(1)) if width_match else 200
-        height = int(height_match.group(1)) if height_match else 150
+        width = int(width_match.group(1)) + 20 if width_match else 200
+        height = int(height_match.group(1)) + 20 if height_match else 150
         return width, height
 
     def get_value(self) -> str:

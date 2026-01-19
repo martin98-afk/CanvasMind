@@ -447,6 +447,7 @@ class CustomNodeItem(NodeItem):
         super(CustomNodeItem, self).hoverLeaveEvent(event)
 
     def _calc_size_horizontal(self, ignore_user_size=False):
+        # 1. 计算端口区域高度
         p_input_h = 0.0
         p_output_h = 0.0
         if self._input_items:
@@ -455,6 +456,7 @@ class CustomNodeItem(NodeItem):
             p_output_h = (len(self._output_items) * 22.0) + 10.0
         port_height = max(p_input_h, p_output_h)
 
+        # 2. 计算端口宽度
         in_txt_w = 0.0
         out_txt_w = 0.0
         for text in self._input_items.values():
@@ -463,6 +465,7 @@ class CustomNodeItem(NodeItem):
             out_txt_w = max(out_txt_w, text.boundingRect().width())
         p_width = in_txt_w + out_txt_w + 50.0
 
+        # 3. 计算控件区域高度
         widget_height = 0.0
         w_width = 0.0
 
@@ -480,12 +483,14 @@ class CustomNodeItem(NodeItem):
             if widget_height > 0:
                 widget_height += 10.0
         else:
+            # 折叠时，控件高度和宽度归零
             widget_height = 0.0
             w_width = 0.0
 
         self._port_height = port_height
         self._widget_height = widget_height
 
+        # 4. 计算内容的最小包围尺寸
         min_width = max(
             self._text_item.boundingRect().width() + 120,
             p_width,
@@ -495,16 +500,30 @@ class CustomNodeItem(NodeItem):
 
         header_height = max(self._text_item.boundingRect().height() + 10.0, 34.0)
         final_port_height = max(port_height, 10.0) if not self._is_collapsed else port_height
+        # 极简模式下保留一点点高度，或者完全贴合
         if self._is_collapsed and final_port_height == 0:
             final_port_height = 5.0
 
         min_height = header_height + final_port_height + widget_height
 
+        # =========================================================
+        # 核心修改点在这里
+        # =========================================================
+
+        # 情况A: 如果节点是折叠状态，强制返回计算出的最小尺寸（忽略用户之前的 resize）
+        # 这样无论之前拉多大，折叠后都会缩回最小状态
+        if self._is_collapsed:
+            return min_width, min_height
+
+        # 情况B: 调用方强制要求忽略用户尺寸（用于计算基准）
         if ignore_user_size:
             return min_width, min_height
 
+        # 情况C: 展开状态，取“最小内容尺寸”和“用户手动拖拽尺寸”的最大值
+        # 这样展开后，会自动恢复到用户之前拖拽的大小
         final_width = max(min_width, self._user_width)
         final_height = max(min_height, self._user_height)
+
         return final_width, final_height
 
     def _draw_node_horizontal(self):
