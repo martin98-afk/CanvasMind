@@ -92,6 +92,7 @@ class PropertyType(str, Enum):
     CHOICE = "下拉框"
     VARIABLE = "动态变量"
     DYNAMICFORM = "动态表单"
+    DYNAMICTREE = "动态树"
 
 
 class PropertyDefinition(BaseModel):
@@ -1163,7 +1164,11 @@ class BaseComponent(ABC):
                 item_model = _create_dynamic_form_model(prop_name, prop_def.schema or {})
                 field_type = List[item_model]  # type: ignore
                 default_val = []  # 默认空列表
-
+            elif prop_def.type == PropertyType.DYNAMICTREE:
+                field_type = Dict[str, Any]
+                # 使用 Field 并指定默认工厂为 dict
+                fields[prop_name] = (field_type, Field(default_factory=dict))
+                default_val = {}
             else:  # TEXT 等
                 field_type = str
                 default_val = prop_def.default if prop_def.default != "" else ""

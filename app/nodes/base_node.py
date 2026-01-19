@@ -318,11 +318,12 @@ class BasicNodeWithGlobalProperty(NodeObject):
 
     def hide_inline_widgets(self):
         """隐藏指定类型的动态控件"""
-        for widget_base_key in self._inline_widgets.keys():
-            self.view.remove_widget(self._inline_widgets[widget_base_key])
-            self._inline_widgets.get(widget_base_key).deleteLater()
-        self._inline_widgets.clear()
-        self.view.draw_node()
+        if len(self._inline_widgets) > 0:
+            for widget_base_key in self._inline_widgets.keys():
+                self.view.remove_widget(self._inline_widgets[widget_base_key])
+                self._inline_widgets.get(widget_base_key).deleteLater()
+            self._inline_widgets.clear()
+            self.view.draw_node()
 
     def _sync_and_refresh_ui(self):
         self._process_visual_updates()
