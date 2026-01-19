@@ -3,6 +3,7 @@ import os
 import numpy as np
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from PIL import Image
+from PyQt5.QtCore import QTimer
 from Qt import QtWidgets, QtCore
 
 from app.widgets.node_widget.base import CustomNodeBaseWidget
@@ -169,15 +170,9 @@ class UniversalWidgetWrapper(CustomNodeBaseWidget):
     def _sync_node_geometry(self):
         if not self.node or not self.node.view:
             return
-
-        # CustomNodeBaseWidget 本身就是 Proxy 对象
-        self.setGeometry(self.boundingRect())
-
         view = self.node.view
         view.set_proxy_mode(False)
-        view.prepareGeometryChange()
-        view.draw_node()
-        view.update()
+        QTimer.singleShot(50, view.draw_node)
 
     def set_value(self, value):
         self.get_custom_widget().set_value(value)

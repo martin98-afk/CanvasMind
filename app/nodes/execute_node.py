@@ -29,6 +29,7 @@ from app.widgets.node_widget.propeprty_widgets.checkbox_widget import CheckBoxWi
 from app.widgets.node_widget.propeprty_widgets.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.propeprty_widgets.combobox_widget import ComboBoxWidgetWrapper
 from app.widgets.node_widget.propeprty_widgets.dynamic_form_widget import DynamicFormWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.dynamic_tree_widget import DynamicTreeWidgetWrapper
 from app.widgets.node_widget.propeprty_widgets.file_select_widget import FileSelectWrapper
 from app.widgets.node_widget.propeprty_widgets.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.node_widget.propeprty_widgets.range_widget import RangeWidgetWrapper
@@ -253,6 +254,14 @@ def create_node_class(full_path, file_path, parent_window=None):
                         default=default_val
                     )
                     self.add_custom_widget(widget, tab='Properties')
+                elif prop_type == PropertyType.DYNAMICTREE:
+                    self.add_custom_widget(
+                        DynamicTreeWidgetWrapper(
+                            parent=self.view, name=prop_name, label=label
+                        ),
+                        tab="properties"
+                    )
+
                 elif prop_type == PropertyType.DYNAMICFORM:
                     raw_schema = prop_def.get("schema", {})
                     processed_schema = {}
