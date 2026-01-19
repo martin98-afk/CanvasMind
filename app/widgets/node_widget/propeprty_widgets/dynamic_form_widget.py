@@ -1,18 +1,16 @@
 # -*- coding: utf-8 -*-
-from NodeGraphQt import NodeBaseWidget
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
-from PyQt5.QtCore import QSize
-from Qt import QtWidgets, QtCore, QtGui
+from Qt import QtWidgets, QtCore
 from qfluentwidgets import FluentIcon, TransparentPushButton, TransparentToolButton
 
 from app.components.base import PropertyType
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
 from app.widgets.node_widget.base import CustomNodeBaseWidget
-from app.widgets.node_widget.checkbox_widget import CheckBoxWidget
-from app.widgets.node_widget.longtext_dialog import LongTextWidget
-from app.widgets.node_widget.range_widget import RangeWidget
-from app.widgets.node_widget.variable_combo_widget import VarComboBoxWidget
+from app.widgets.node_widget.propeprty_widgets.checkbox_widget import CheckBoxWidget
+from app.widgets.node_widget.propeprty_widgets.longtext_dialog import LongTextWidget
+from app.widgets.node_widget.propeprty_widgets.range_widget import RangeWidget
+from app.widgets.node_widget.propeprty_widgets.variable_combo_widget import VarComboBoxWidget
 
 
 class FormFieldWidget(QtWidgets.QWidget):

@@ -5,13 +5,13 @@ from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from PIL import Image
 from Qt import QtWidgets, QtCore
 
-from .base import CustomNodeBaseWidget
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 from .data_table_widget import DataTableWidget
 from .html_widget import HtmlWidget
 from .image_compare_widget import ImageCompareWidget
 from .image_gallery_widget import ImageGalleryWidget
 from .image_widget import ImageWidget
-from app.widgets.node_widget.media_widget import VideoPlayWidget, AudioPlayWidget
+from app.widgets.node_widget.display_widgets.media_widget import VideoPlayWidget, AudioPlayWidget
 from .json_tree_widget import JsonTreeWidget
 from .pdf_widget import PdfWidget
 

@@ -329,18 +329,6 @@ class MaskDrawDialog(MessageBoxBase):
         # 底部按钮只留确认
         self.cancelButton.hide()
         self.yesButton.setText("完成并保存蒙版")
-        self.yesButton.setMinimumHeight(45)
-        self.yesButton.setStyleSheet("""
-            QPushButton {
-                background-color: #ff0064;
-                color: white;
-                font-size: 16px;
-                font-weight: bold;
-                border-radius: 10px;
-            }
-            QPushButton:hover { background-color: #ff3385; }
-        """)
-        self.buttonLayout.insertStretch(0, 1)  # 居中按钮
 
     def get_result(self):
         # 处理结果并转为 Base64
@@ -375,6 +363,5 @@ class DrawMaskPlugin(InteractivePlugin):
                     pickle.dump(result_data, f)
 
         dialog = MaskDrawDialog(title, image, node.parent_window)
-        dialog.cancelButton.hide()
         if dialog.exec():
             on_confirmed(dialog.get_result())

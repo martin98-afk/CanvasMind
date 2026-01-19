@@ -5,7 +5,7 @@ from app.nodes.status_node import NoStatusNode
 from app.utils.utils import draw_square_port
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
-from app.widgets.node_widget.universal_display_widget import UniversalWidgetWrapper
+from app.widgets.node_widget.display_widgets.universal_display_widget import UniversalWidgetWrapper
 
 
 def create_media_node(parent_window):

@@ -25,16 +25,16 @@ from app.utils.utils import draw_square_port, draw_special_outputport, \
     _safe_load_pickle, kill_proc_tree, serialize_for_json, sftp_download_dir, replace_remote_paths, sftp_upload_dir
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
-from app.widgets.node_widget.checkbox_widget import CheckBoxWidgetWrapper
-from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
-from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
-from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
-from app.widgets.node_widget.file_select_widget import FileSelectWrapper
-from app.widgets.node_widget.longtext_dialog import LongTextWidgetWrapper
-from app.widgets.node_widget.range_widget import RangeWidgetWrapper
-from app.widgets.node_widget.spinbox_widget import NumberWidgetWrapper
-from app.widgets.node_widget.text_edit_widget import TextWidgetWrapper
-from app.widgets.node_widget.variable_combo_widget import VarComboBoxWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.checkbox_widget import CheckBoxWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.code_editor_widget import CodeEditorWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.combobox_widget import ComboBoxWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.dynamic_form_widget import DynamicFormWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.file_select_widget import FileSelectWrapper
+from app.widgets.node_widget.propeprty_widgets.longtext_dialog import LongTextWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.range_widget import RangeWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.spinbox_widget import NumberWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.text_edit_widget import TextWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.variable_combo_widget import VarComboBoxWidgetWrapper
 
 
 def create_node_class(full_path, file_path, parent_window=None):
