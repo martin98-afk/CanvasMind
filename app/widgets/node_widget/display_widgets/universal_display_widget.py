@@ -172,7 +172,7 @@ class UniversalWidgetWrapper(CustomNodeBaseWidget):
             return
         view = self.node.view
         view.set_proxy_mode(False)
-        QTimer.singleShot(1000, view.draw_node)
+        QTimer.singleShot(50, view.draw_node)
 
     def set_value(self, value):
         self.get_custom_widget().set_value(value)

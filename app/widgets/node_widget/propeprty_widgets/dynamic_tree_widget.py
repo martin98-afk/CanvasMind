@@ -56,7 +56,6 @@ class JsonTreeNode(QtWidgets.QWidget):
         # 3. 类型切换
         self.type_combo = CustomComboBox(self)
         self.type_combo.addItems(self.TYPES)
-        self.type_combo.setFixedWidth(100)
         self.type_combo.currentTextChanged.connect(self._on_type_changed)
         row_layout.addWidget(self.type_combo)
 
@@ -284,6 +283,7 @@ class JsonTreeWidget(QtWidgets.QWidget):
 
     def set_data(self, data):
         if not isinstance(data, dict): return
+        if data == self.get_data(): return
         self.root_nodes = []
         # 清空旧布局项
         while self.container_layout.count():
