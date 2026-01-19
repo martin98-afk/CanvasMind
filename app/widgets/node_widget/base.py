@@ -53,7 +53,6 @@ class _NodeGroupBox(QtWidgets.QWidget):
             self._label_item.setFont(l_font)
 
     def _apply_style(self):
-        text_color = "rgba(220, 220, 220, 255)"
         label_color = "rgba(170, 170, 170, 255)"
 
         style = f"""

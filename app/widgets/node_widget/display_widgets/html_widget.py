@@ -59,11 +59,11 @@ class HtmlWidget(QtWidgets.QWidget):
 
             # 根据内容动态调整 WebEngineView 的最小尺寸
             content_w, content_h = self._extract_size_from_html(self._html)
-            self.view.setMinimumSize(content_w, content_h)
+            self.view.setFixedSize(content_w, content_h)
 
-        self.sizeHintChanged.emit()
-        self.updateGeometry()
-        self.valueChanged.emit(self._html)
+            self.sizeHintChanged.emit()
+            self.updateGeometry()
+            self.valueChanged.emit(self._html)
 
     def _extract_size_from_html(self, html: str):
         """从 HTML 提取尺寸，增加容错"""
@@ -72,10 +72,7 @@ class HtmlWidget(QtWidgets.QWidget):
 
         width = int(width_match.group(1)) if width_match else 200
         height = int(height_match.group(1)) if height_match else 150
-        # 添加内边距（避免贴边）
-        padding_w = 20
-        padding_h = 20  # 标题栏高度
-        return width + padding_w, height + padding_h
+        return width, height
 
     def get_value(self) -> str:
         return self._html

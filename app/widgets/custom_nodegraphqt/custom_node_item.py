@@ -296,6 +296,17 @@ class CustomNodeItem(NodeItem):
 
         self._proxy_text_item = QtWidgets.QGraphicsTextItem(self.name, self)
         self._proxy_text_item.setFont(QtGui.QFont(font_type, 36, QtGui.QFont.Bold))
+
+        # 获取文档对象并设置选项
+        document = self._proxy_text_item.document()
+        option = document.defaultTextOption()
+
+        # 设置换行模式：WrapAtWordBoundaryOrAnywhere 既能在单词边界换行，也能在长单词中间强制换行
+        option.setWrapMode(QtGui.QTextOption.WrapAtWordBoundaryOrAnywhere)
+        # 设置对齐方式：水平居中
+        option.setAlignment(QtCore.Qt.AlignCenter)
+
+        document.setDefaultTextOption(option)
         self._proxy_text_item.setVisible(False)
 
     def _init_custom_buttons(self):
@@ -716,8 +727,26 @@ class CustomNodeItem(NodeItem):
 
     def _update_proxy_text_position(self):
         rect = self.get_node_body_rect()
+
+        # 定义边距
+        margin = 10.0
+        # 计算文本允许的最大宽度
+        target_width = rect.width() - (margin * 2)
+        if target_width < 10: target_width = 10  # 防止极小宽度导致报错
+
+        # 关键：设置文本宽度，这将触发自动换行计算
+        self._proxy_text_item.setTextWidth(target_width)
+
+        # 获取换行后的实际文本边界
         tr = self._proxy_text_item.boundingRect()
-        self._proxy_text_item.setPos(rect.center().x() - tr.width() / 2, rect.center().y() - tr.height() / 2)
+
+        # 计算位置：
+        # X: 节点左侧 + 边距 (因为 setTextWidth 已经固定了宽度)
+        # Y: 节点中心Y - 文本高度的一半 (垂直居中)
+        x_pos = rect.left() + margin
+        y_pos = rect.center().y() - (tr.height() / 2)
+
+        self._proxy_text_item.setPos(x_pos, y_pos)
 
     def _draw_node_vertical(self):
         self._draw_node_horizontal()

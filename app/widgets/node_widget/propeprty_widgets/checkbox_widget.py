@@ -13,6 +13,7 @@ class CheckBoxWidget(QtWidgets.QWidget):
         super().__init__()
         self._value = state if isinstance(state, bool) else state in ("true", 1, "True", "1")
         label = BodyLabel(text)
+        label.setStyleSheet("color: rgba(170, 170, 170, 255);")
         self.checkbox = SwitchButton("")
         self.checkbox.setFixedHeight(32)
         self.checkbox._offText = self.checkbox.tr("")
