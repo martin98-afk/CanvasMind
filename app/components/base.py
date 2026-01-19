@@ -888,9 +888,9 @@ class DataHandler:
             elif output_type == ArgumentType.ARRAY:
                 return output_value
             elif output_type == ArgumentType.CSV:
-                return self._store_csv_data(output_value, output_name)
+                return self._store_csv_data(output_value)
             elif output_type == ArgumentType.JSON:
-                return self._store_json_data(output_value, output_name)
+                return self._store_json_data(output_value)
             elif output_type == ArgumentType.EXCEL:
                 return self._store_excel_data(output_value, output_name)
             elif output_type == ArgumentType.SKLEARNMODEL:
@@ -909,20 +909,22 @@ class DataHandler:
             self.logger.error(f"存储输出 '{output_name}' 失败: {e}")
             raise ComponentError(f"存储输出 {output_name} 失败: {str(e)}", "OUTPUT_STORE_ERROR")
 
-    def _store_csv_data(self, data: Any, output_name: str) -> str:
-        file_path = self._get_save_path(output_name, "data", ".csv")
-        if isinstance(data, pd.DataFrame):
-            data.to_csv(file_path, index=False)
-        elif isinstance(data, (str, Path)) and os.path.exists(data):
-            shutil.copy2(data, file_path)
+    def _store_csv_data(self, data: pd.DataFrame) -> Union[pd.DataFrame, str, Path]:
+        """存储CSV数据"""
+        if isinstance(data, (pd.DataFrame, pd.Series)):
+            return data
+        elif isinstance(data, (str, Path)):
+            if os.path.exists(data):
+                return pd.read_csv(data)
+            else:
+                # 如果是CSV字符串
+                import io
+                return pd.read_csv(io.StringIO(data))
         else:
-            # 尝试将列表或字典转为 DF
-            pd.DataFrame(data).to_csv(file_path, index=False)
-        return str(file_path)
+            raise ComponentError(f"无法存储CSV数据: {type(data)}")
 
-    def _store_json_data(self, data: Any, output_name: str) -> Any:
-        # 如果是较大的 JSON，建议也存为文件，这里根据常规逻辑直接返回对象
-        # 如需强制存文件，可参考 _store_csv_data
+    def _store_json_data(self, data: Any) -> Any:
+        """存储JSON数据（直接返回）"""
         return data
 
     def _store_excel_data(self, data: Any, output_name: str) -> str:

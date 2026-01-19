@@ -289,8 +289,7 @@ class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
         view = self.node.view
         view.set_proxy_mode(False)
         view.prepareGeometryChange()
-        if hasattr(view, '_draw_node_horizontal'):
-            view._draw_node_horizontal()
+        view.draw_node()
         view.update()
 
     def get_port_func(self):

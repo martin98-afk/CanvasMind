@@ -300,20 +300,28 @@ class SettingInterface(ScrollArea):
         # 连接配置变化信号，自动保存
         self.pipelayoutCard.optionChanged.connect(self.onConfigChanged)
 
-        self.pipeDirectionCard = OptionsSettingCard(
-            self.cfg.canvas_direction,
+        self.canvasFontCard = OptionsSettingCard(
+            self.cfg.canvas_font_type,
             get_icon("画布"),
-            "流程图延展方向",
+            "画布显示字体设置",
             "",
-            texts=["水平", "垂直"],
+            texts=[
+                "Segoe UI",  # Windows 标准现代化字体
+                "Arial",  # 最通用的无衬线字体
+                "Roboto",  # 谷歌风格，现代感强
+                "Inter",  # 很多 UI 设计师的首选 (ComfyUI 风格)
+                "Consolas",  # 等宽字体，有科技感/代码感
+                "Microsoft YaHei"  # 微软雅黑的英文名，确保中文显示依然美观
+            ],
             parent=self.canvasGroup
         )
         # 连接配置变化信号，自动保存
-        self.pipeDirectionCard.optionChanged.connect(self.onConfigChanged)
+        self.canvasFontCard.optionChanged.connect(self.onConfigChanged)
+
+        self.canvasGroup.addSettingCard(self.canvasFontCard)
         self.canvasGroup.addSettingCard(self.showGridCard)
         self.canvasGroup.addSettingCard(self.NodeProxyCard)
         self.canvasGroup.addSettingCard(self.pipelayoutCard)
-        self.canvasGroup.addSettingCard(self.pipeDirectionCard)
 
         self.vBoxLayout.addWidget(self.canvasGroup)
 

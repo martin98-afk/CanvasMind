@@ -28,7 +28,6 @@ class ComponentStorageManager:
         self._current_component_code = ""  # 存储当前加载的代码
         self.base_dir = Path(resource_path("app/components/custom"))
         self.scanner = ComponentScanner()
-        self.scanner.register_on_change(self.reload_current_component)
 
     def _on_component_created(self, component_info):
         self.parent.requirements_edit.setText("")
@@ -53,12 +52,6 @@ class ComponentStorageManager:
         self._current_component_code = template
         self.editor.replace_text_preserving_view(template)
         self._current_component_file = None
-
-    def reload_current_component(self):
-        if self._current_component_file:
-            file_map = {value: key for key, value in self.scanner.get_file_maps().items()}
-            full_path = file_map.get(Path(self._current_component_file))
-            self._load_component(full_path)
 
     def _load_component_filepath(self, component_path: Path):
         file_map = {value: key for key, value in self.scanner.get_file_maps().items()}
@@ -164,7 +157,9 @@ class ComponentStorageManager:
                     current_signature=current_signature
                 )
                 self.parent._load_history_list(self._current_component_file)
-
+            QTimer.singleShot(
+                1000, lambda: self._load_component(full_path=f"{category}/{name}", uuid=self._current_component_file.stem)
+            )
             MessageManager.success("组件保存成功！", "", self.parent)
         except Exception as e:
             logger.error(traceback.format_exc())

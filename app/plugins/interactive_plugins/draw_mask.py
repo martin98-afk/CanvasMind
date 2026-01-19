@@ -375,5 +375,6 @@ class DrawMaskPlugin(InteractivePlugin):
                     pickle.dump(result_data, f)
 
         dialog = MaskDrawDialog(title, image, node.parent_window)
+        dialog.cancelButton.hide()
         if dialog.exec():
             on_confirmed(dialog.get_result())

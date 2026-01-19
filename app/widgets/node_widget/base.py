@@ -2,6 +2,8 @@ from NodeGraphQt.constants import ViewerEnum, Z_VAL_NODE_WIDGET
 from NodeGraphQt.errors import NodeWidgetError
 from qtpy import QtWidgets, QtCore
 
+from app.utils.config import Settings
+
 
 class _NodeGroupBox(QtWidgets.QGroupBox):
 
@@ -10,20 +12,41 @@ class _NodeGroupBox(QtWidgets.QGroupBox):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(1)
         self._label = label
+
+        # 应用初始字体
+        self._update_font()
+
         self.setTitle(label)
+
+    def _get_font_family(self):
+        """从设置中获取字体名称"""
+        try:
+            return Settings().get_instance().canvas_font_type.value
+        except Exception:
+            return "Arial"  # 回退默认字体
+
+    def _update_font(self):
+        """统一设置控件的字体对象"""
+        font_name = self._get_font_family()
+        font = self.font()
+        font.setFamily(font_name)
+        self.setFont(font)
 
     def setTitle(self, text):
         self._label = text
         margin = (0, 2, 0, 0) if text else (0, 0, 0, 0)
         self.layout().setContentsMargins(*margin)
         super(_NodeGroupBox, self).setTitle(text)
-        # 重新应用样式以适应新的标题
+        # 重新应用样式以适应新的标题和字体
         self.setTitleAlign(self._current_align if hasattr(self, '_current_align') else 'center')
 
     def setTitleAlign(self, align='center'):
         self._current_align = align
+        font_family = self._get_font_family()
+
         text_color = tuple(map(lambda i, j: i - j, (255, 255, 255),
                                ViewerEnum.BACKGROUND_COLOR.value))
+
         style_dict = {
             'QGroupBox': {
                 'background-color': 'rgba(0, 0, 0, 0)',
@@ -33,22 +56,23 @@ class _NodeGroupBox(QtWidgets.QGroupBox):
                 'padding-left': '1px',
                 'padding-right': '1px',
                 'font-size': '12pt',
-                'font-weight': 'bold'
+                'font-weight': 'bold',
+                'font-family': font_family  # 注入字体
             },
             'QGroupBox::title': {
                 'color': 'rgba({0}, {1}, {2}, 200)'.format(*text_color),
                 'padding': '0px',
                 'font-size': '12pt',
-                'font-weight': 'bold'
+                'font-weight': 'bold',
+                'font-family': font_family  # 注入字体
             }
         }
 
         if self.title():
-            style_dict['QGroupBox']['padding-top'] = '14px'
+            style_dict['QGroupBox']['padding-top'] = '18px'
         else:
             style_dict['QGroupBox']['padding-top'] = '2px'
 
-        # 根据对齐方式设置标题位置，但不强制限制宽度
         if align == 'center':
             style_dict['QGroupBox::title']['subcontrol-origin'] = 'margin'
             style_dict['QGroupBox::title']['subcontrol-position'] = 'top center'
@@ -71,30 +95,32 @@ class _NodeGroupBox(QtWidgets.QGroupBox):
         self.setStyleSheet(stylesheet)
 
     def add_node_widget(self, widget):
+        # 尝试给子控件也应用相同字体
+        font_name = self._get_font_family()
+        font = widget.font()
+        font.setFamily(font_name)
+        widget.setFont(font)
+
         self.layout().addWidget(widget)
 
     def get_node_widget(self):
         return self.layout().itemAt(0).widget()
 
     def minimumSizeHint(self):
-        """重写最小尺寸提示，确保标题有足够空间，但不影响子控件布局"""
+        # 这里的 self.fontMetrics() 会根据 self.setFont 设置的字体自动更新
         size = super(_NodeGroupBox, self).minimumSizeHint()
         if self.title():
-            # 只为标题文本提供最小宽度，不影响子控件
             font_metrics = self.fontMetrics()
             title_width = font_metrics.horizontalAdvance(self.title())
-            # 设置一个合理的最小宽度，但不要强制子控件适应
             min_width = max(size.width(), title_width + 20)
             size.setWidth(min_width)
         return size
 
     def sizeHint(self):
-        """重写尺寸提示，优化布局，但保持子控件的独立布局"""
         size = super(_NodeGroupBox, self).sizeHint()
         if self.title():
             font_metrics = self.fontMetrics()
             title_width = font_metrics.horizontalAdvance(self.title())
-            # 仅在必要时调整宽度，让子控件决定实际布局
             preferred_width = max(size.width(), title_width + 20)
             size.setWidth(preferred_width)
         return size

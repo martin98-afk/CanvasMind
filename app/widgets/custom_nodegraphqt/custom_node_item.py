@@ -219,17 +219,17 @@ class CustomNodeItem(NodeItem):
     def _init_base_components(self):
         pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
         if not pixmap.isNull():
-            pixmap = pixmap.scaled(28, 28, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+            pixmap = pixmap.scaled(35, 35, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
             self._icon_item.setPixmap(pixmap)
         self._properties['icon'] = self.ICON_NODE_BASE
         # 确保 Icon 层级足够
         self._icon_item.setZValue(self.zValue() + 1)
-
+        font_type = Settings().get_instance().canvas_font_type.value
         self._text_item = NodeTextItem(self.name, self)
-        self._text_item.setFont(QtGui.QFont("Segoe UI", 13, QtGui.QFont.DemiBold))
+        self._text_item.setFont(QtGui.QFont(font_type, 14, QtGui.QFont.DemiBold))
 
         self._proxy_text_item = QtWidgets.QGraphicsTextItem(self.name, self)
-        self._proxy_text_item.setFont(QtGui.QFont("Segoe UI", 36, QtGui.QFont.Bold))
+        self._proxy_text_item.setFont(QtGui.QFont(font_type, 36, QtGui.QFont.Bold))
         self._proxy_text_item.setVisible(False)
 
     def _init_custom_buttons(self):
@@ -447,11 +447,11 @@ class CustomNodeItem(NodeItem):
 
             # 文字居中排布逻辑
             icon_w = 20
-            spacing = 8
+            spacing = 4
             total_content_w = icon_w + spacing + tw
             start_x = rect.center().x() - total_content_w / 2
 
-            self._icon_item.setPos(start_x, rect.top() + (header_h - 20) / 2)
+            self._icon_item.setPos(start_x, rect.top() + (header_h - 18) / 2)
             self._text_item.setPos(start_x + icon_w + spacing, rect.top() + (header_h - th) / 2)
 
             self._collapse_btn.setPos(rect.left() + 6, rect.top() + (header_h - 28) / 2)
