@@ -7,12 +7,12 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import (
     LineEdit, PushButton,
     TableWidget, ComboBox, InfoBar, FluentIcon, MessageBoxBase, SubtitleLabel,
-    DoubleSpinBox, TransparentToolButton, SwitchButton, EditableComboBox, Slider, SpinBox, CompactSpinBox,
+    DoubleSpinBox, TransparentToolButton, SwitchButton, EditableComboBox, Slider, CompactSpinBox,
     CompactDoubleSpinBox
 )
 
 from app.components.base import PropertyType, PropertyDefinition
-from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
+from app.widgets.node_widget.propeprty_widgets.longtext_dialog import LongTextEditorDialog
 from app.widgets.side_dock_area.plugins.component_info.config_table import ConfigTableSpace
 
 

@@ -2,21 +2,19 @@
 import os
 
 import cv2
-from PyQt5 import QtGui
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QRect
 from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer, QSize
 from PyQt5.QtCore import QUrl
-from PyQt5.QtGui import QPainter, QColor, QImage
+from PyQt5.QtGui import QImage
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import *
 from PyQt5.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QFrame, QSlider
 from PyQt5.QtWidgets import QWidget, QComboBox
 from Qt import QtWidgets, QtCore
-from qfluentwidgets import BodyLabel
+from qfluentwidgets import ToolButton, FluentIcon
 from qfluentwidgets.multimedia import SimpleMediaPlayBar
 
 from app.widgets.basic_widget.combo_widget import CustomComboBox
-from app.widgets.basic_widget.range_slider import RangeSlider
 
 
 class AudioPlayWidget(QtWidgets.QWidget):
@@ -100,17 +98,17 @@ class AudioPlayWidget(QtWidgets.QWidget):
         super().closeEvent(event)
 
 
-# --- 1. 后台加载线程 (逻辑保持不变，依然是极致性能的核心) ---
+# --- 1. 后台加载线程 (改为采样间隔控制) ---
 class VideoLoaderThread(QThread):
-    # (width, height, fps, step, duration)
-    meta_ready = pyqtSignal(int, int, float, int, float)
+    # (width, height, fps, actual_step, duration, total_extracted_count)
+    meta_ready = pyqtSignal(int, int, float, int, float, int)
     frame_ready = pyqtSignal(bytes)
 
-    def __init__(self, file_path, max_width=512, max_frames=120, range_pct=(0.0, 1.0)):
+    def __init__(self, file_path, max_width=512, frame_step=1, range_pct=(0.0, 1.0)):
         super().__init__()
         self.file_path = file_path
         self.max_width = max_width
-        self.max_frames = max_frames
+        self.frame_step = max(1, frame_step)
         self.range_pct = range_pct
         self._is_running = True
 
@@ -125,19 +123,18 @@ class VideoLoaderThread(QThread):
         if fps <= 0: fps = 24.0
 
         duration = total_frames / fps
-
         start_frame = int(total_frames * self.range_pct[0])
         end_frame = int(total_frames * self.range_pct[1])
-        slice_count = max(1, end_frame - start_frame)
+
+        # 计算采样总数
+        total_to_extract = (end_frame - start_frame) // self.frame_step
 
         # 分辨率计算
         aspect_ratio = raw_h / raw_w if raw_w > 0 else 0.5625
         target_w = self.max_width
         target_h = int(target_w * aspect_ratio)
 
-        step = max(1, slice_count // self.max_frames)
-        # 将总时长 duration 发回给 UI
-        self.meta_ready.emit(target_w, target_h, fps, step, duration)
+        self.meta_ready.emit(target_w, target_h, fps, self.frame_step, duration, total_to_extract)
 
         current_f = start_frame
         count = 0
@@ -147,15 +144,17 @@ class VideoLoaderThread(QThread):
             cap.set(cv2.CAP_PROP_POS_FRAMES, current_f)
             ret, frame = cap.read()
             if not ret: break
+
             try:
                 frame = cv2.resize(frame, (target_w, target_h), interpolation=cv2.INTER_NEAREST)
                 _, encoded_img = cv2.imencode('.jpg', frame, encode_param)
                 self.frame_ready.emit(encoded_img.tobytes())
             except:
                 pass
-            count += 1
-            current_f += step
-            if count >= self.max_frames or current_f >= end_frame: break
+
+            current_f += self.frame_step
+            if current_f >= end_frame: break
+
         cap.release()
 
     def stop(self):
@@ -163,60 +162,94 @@ class VideoLoaderThread(QThread):
         self.wait()
 
 
-# --- 5. 配置面板 ---
+# --- 2. 配置面板 (采样数 -> 采样间隔) ---
 class ComfyConfigPanel(QtWidgets.QFrame):
     reloadRequested = pyqtSignal(int, int, tuple)
     speedChanged = pyqtSignal(float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("background: #222; border-bottom: 1px solid #333;")
+        self.setStyleSheet("background: #222; border-bottom: 1px solid #333; color: #EEE;")
         layout = QVBoxLayout(self)
         layout.setContentsMargins(6, 6, 6, 6)
         layout.setSpacing(4)
 
-        # 第一行：分辨率 + 采样数量
+        # 第一行：分辨率 + 播放倍速
         row1 = QHBoxLayout()
         self.combo_res = CustomComboBox()
         self.combo_res.addItems(["低", "中", "高", "原生"])
         self.combo_res.setCurrentIndex(1)
-        self.slider_speed = ComfySlider("播放速度", 0.5, 3.0, 1.0, is_float=True, suffix="x")
-
-        row1.addWidget(BodyLabel("分辨率:"))
+        self.slider_speed = ComfySlider("倍速", 0.5, 3.0, 1.0, is_float=True, suffix="x")
+        row1.addWidget(QLabel("分辨率:"))
         row1.addWidget(self.combo_res)
         row1.addWidget(self.slider_speed)
 
-        # 第二行：视频剪辑范围
-        row2 = QHBoxLayout()
-        self.range_slider = RangeSlider()
-        row2.addWidget(BodyLabel("剪辑:"))
-        row2.addWidget(self.range_slider, 1)
-
-        # 第三行：播放速度
-        row3 = QHBoxLayout()
-        self.slider_frames = ComfySlider("采样数", 20, 200, 100, suffix="帧")
-        row3.addWidget(self.slider_frames)
+        # 第三行：采样间隔 (控制流畅度)
+        self.slider_step = ComfySlider("采样间隔", 1, 30, 2, suffix="帧/步")
 
         layout.addLayout(row1)
-        layout.addLayout(row2)
-        layout.addLayout(row3)
+        layout.addWidget(self.slider_step)
 
         self.combo_res.currentIndexChanged.connect(self._request_reload)
-        self.slider_frames.valueConfirmed.connect(lambda: self._request_reload())
-        self.range_slider.sliderMoved.connect(self._request_reload)
+        self.slider_step.valueConfirmed.connect(lambda: self._request_reload())
         self.slider_speed.valueChanged.connect(self.speedChanged.emit)
 
     def _request_reload(self):
-        # 映射分辨率
-        idx = self.combo_res.currentIndex()
         widths = [320, 512, 720, 1920]
-        w = widths[idx]
-        f = self.slider_frames.slider.value()
-        r = (self.range_slider.min_val, self.range_slider.max_val)
-        self.reloadRequested.emit(w, f, r)
+        w = widths[self.combo_res.currentIndex()]
+        step = int(self.slider_step.slider.value())
+        r = (0.0, 1.0)  # 简化逻辑，实际可从 range_slider 获取
+        self.reloadRequested.emit(w, step, r)
 
 
-# --- 6. 辅助滑块组件 (ComfySlider) ---
+# --- 3. 播放控制条 (新增) ---
+class PlayControlBar(QWidget):
+    seekRequested = pyqtSignal(int)
+    playPauseToggled = pyqtSignal(bool)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(30)
+        self.setStyleSheet("background: #111; color: #AAA; font-size: 10px;")
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(5, 0, 5, 0)
+        layout.setSpacing(8)
+
+        # 播放/暂停按钮
+        self.btn_play = ToolButton(FluentIcon.PAUSE)  # 使用符号简单表示
+        self.btn_play.setFixedSize(24, 24)
+        self.btn_play.setCheckable(True)
+        self.btn_play.setChecked(True)
+
+        # 进度条
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setStyleSheet("""
+            QSlider::handle:horizontal { background: #444; width: 12px; margin: -2px 0; border-radius: 6px; }
+            QSlider::groove:horizontal { background: #333; height: 4px; }
+        """)
+
+        # 帧数显示
+        self.lbl_frames = QLabel("0 / 0")
+
+        layout.addWidget(self.btn_play)
+        layout.addWidget(self.slider, 1)
+        layout.addWidget(self.lbl_frames)
+
+        self.btn_play.toggled.connect(self._on_btn_toggled)
+        self.slider.sliderMoved.connect(self.seekRequested.emit)
+        self.slider.sliderPressed.connect(lambda: self.playPauseToggled.emit(False))
+
+    def _on_btn_toggled(self, checked):
+        self.btn_play.setIcon(FluentIcon.PAUSE if checked else FluentIcon.PLAY)
+        self.playPauseToggled.emit(checked)
+
+    def update_info(self, current, total):
+        self.slider.setMaximum(max(0, total - 1))
+        self.slider.setValue(current)
+        self.lbl_frames.setText(f"{current} / {total}")
+
+
+# --- 4. 辅助滑块 (保持不变) ---
 class ComfySlider(QtWidgets.QWidget):
     valueChanged = pyqtSignal(float)
     valueConfirmed = pyqtSignal(float)
@@ -229,124 +262,148 @@ class ComfySlider(QtWidgets.QWidget):
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(int(min_v * self.factor), int(max_v * self.factor))
         self.slider.setValue(int(default_v * self.factor))
-        self.lbl_val = BodyLabel()
-        layout.addWidget(BodyLabel(label_text))
+        self.lbl_val = QLabel(f"{default_v}{suffix}")
+        layout.addWidget(QLabel(label_text))
         layout.addWidget(self.slider, 1)
         layout.addWidget(self.lbl_val)
-        self.slider.valueChanged.connect(
-            lambda v: (self.lbl_val.setText(f"{v / self.factor:.1f}{suffix}" if is_float else f"{v}{suffix}"),
-                       self.valueChanged.emit(v / self.factor)))
+        self.slider.valueChanged.connect(lambda v: (
+            self.lbl_val.setText(f"{v / self.factor:.1f}{suffix}" if is_float else f"{v}{suffix}"),
+            self.valueChanged.emit(v / self.factor)))
         self.slider.sliderReleased.connect(lambda: self.valueConfirmed.emit(self.slider.value() / self.factor))
-        self.lbl_val.setText(f"{default_v}{suffix}")
 
 
-# --- 7. 主视频播放控件 ---
+# --- 5. 主视频播放控件 ---
 class VideoPlayWidget(QFrame):
     sizeHintChanged = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._file_path = None
-        self.setFixedSize(200, 150)  # 默认节点大小
+        self.setStyleSheet("VideoPlayWidget { background: transparent; border: none; }")
+        self.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
 
-        self.layout = QtWidgets.QVBoxLayout(self)
+        self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
 
-        # 1. 新的滑块控制面板
+        # 1. 顶部配置面板
         self.config_bar = ComfyConfigPanel(self)
         self.config_bar.reloadRequested.connect(self._trigger_reload)
         self.config_bar.speedChanged.connect(self._update_speed)
         self.layout.addWidget(self.config_bar)
 
-        # 2. 图片区
-        self.img_label = QtWidgets.QLabel(self)
+        # 2. 中间图片区
+        self.img_label = QLabel(self)
         self.img_label.setScaledContents(True)
         self.img_label.setAlignment(Qt.AlignCenter)
-        self.img_label.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
+        self.img_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.layout.addWidget(self.img_label, 1)
+
+        # 3. 底部播放控制条
+        self.control_bar = PlayControlBar(self)
+        self.control_bar.seekRequested.connect(self._seek_to_frame)
+        self.control_bar.playPauseToggled.connect(self._toggle_playback)
+        self.layout.addWidget(self.control_bar)
 
         # 内部状态
         self._compressed_cache = []
         self._loader_thread = None
         self._current_idx = 0
-        self._base_interval = 100
-        self._speed_multiplier = 1.0
+        self._base_interval = 40
+        self._file_path = None
 
         self.playback_timer = QTimer(self)
         self.playback_timer.timeout.connect(self._next_frame)
-        self.config_bar.hide()
 
-    def set_value(self, file_path):
-        if file_path is None:
+    def _trigger_reload(self, width, step, range_pct):
+        if not self._file_path:
             self._reset_state()
             return
-        if self._file_path == file_path: return
-        self._file_path = file_path
+
         self.config_bar.show()
-        self.config_bar._request_reload()  # 使用默认参数加载
         self.img_label.show()
-
-    def _reset_state(self):
-        self._file_path = None
+        self.control_bar.show()
         self.playback_timer.stop()
-        if self._loader_thread: self._loader_thread.stop()
-        self.img_label.clear()
-        self._compressed_cache = []
-        self.config_bar.hide()
-        self.img_label.hide()
-        self.setFixedSize(200, 150)
-        self.sizeHintChanged.emit()
+        if self._loader_thread:
+            self._loader_thread.stop()
 
-    def _trigger_reload(self, width, frames, range_pct):
-        if not self._file_path: return
-        self.playback_timer.stop()
-        if self._loader_thread: self._loader_thread.stop()
         self._compressed_cache = []
         self._current_idx = 0
         self.img_label.setText("Loading...")
 
-        self._loader_thread = VideoLoaderThread(self._file_path, width, frames, range_pct)
+        self._loader_thread = VideoLoaderThread(self._file_path, width, step, range_pct)
         self._loader_thread.meta_ready.connect(self._on_meta_ready)
         self._loader_thread.frame_ready.connect(self._on_frame_buffer)
         self._loader_thread.start()
 
-    def _on_meta_ready(self, w, h, fps, step, duration):
-        # 更新滑块的总时长显示
-        panel_h = self.config_bar.sizeHint().height()  # 自动获取面板高度
-        total_h = h + panel_h
-        self.config_bar.range_slider.set_duration(duration)
-        self._base_interval = int((1000 * step) / fps)
-        # 调整大小并通知父级
-        self.setFixedSize(w, total_h)
-        self.sizeHintChanged.emit()
+    def _on_meta_ready(self, w, h, fps, step, duration, total_count):
+        # 计算每一帧预览图应该播放的时间间隔
+        # 比如视频30fps, step是2, 那预览图每帧间隔就是 (1000/30)*2 = 66ms
+        self._base_interval = int((1000 / fps) * step)
+        self._update_speed(self.config_bar.slider_speed.slider.value() / 100.0)
+
+        # 调整 UI 尺寸 (面板 + 图片 + 控制条)
+        panel_h = self.config_bar.sizeHint().height()
+        ctrl_h = self.control_bar.height()
+        self.setFixedSize(w, h + panel_h + ctrl_h)
         self.updateGeometry()
+        self.sizeHintChanged.emit()
 
     def _on_frame_buffer(self, jpeg_bytes):
         self._compressed_cache.append(jpeg_bytes)
-        if len(self._compressed_cache) == 2:
-            self.playback_timer.start(self._base_interval)
-        if len(self._compressed_cache) == 1:
-            self._render(jpeg_bytes)
+        total = len(self._compressed_cache)
 
-    def _update_speed(self, val):
-        self.playback_timer.setInterval(max(10, int(self._base_interval / val)))
+        # 缓冲到前几帧就开始播放
+        if total == 1:
+            self._render(jpeg_bytes)
+        if total == 5 and self.control_bar.btn_play.isChecked():
+            self.playback_timer.start()
+
+        self.control_bar.update_info(self._current_idx, total)
 
     def _next_frame(self):
         if not self._compressed_cache: return
         self._current_idx = (self._current_idx + 1) % len(self._compressed_cache)
         self._render(self._compressed_cache[self._current_idx])
+        self.control_bar.update_info(self._current_idx, len(self._compressed_cache))
 
     def _render(self, jpeg_data):
         img = QImage.fromData(jpeg_data)
         if not img.isNull():
             self.img_label.setPixmap(QPixmap.fromImage(img))
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and self._file_path:
-            self.clicked.emit(self._file_path)
-        super().mousePressEvent(event)
+    def _seek_to_frame(self, idx):
+        # 拖动进度条时停止播放并跳转
+        self.playback_timer.stop()
+        self.control_bar.btn_play.setChecked(False)
+        if 0 <= idx < len(self._compressed_cache):
+            self._current_idx = idx
+            self._render(self._compressed_cache[idx])
+            self.control_bar.update_info(idx, len(self._compressed_cache))
 
-    def closeEvent(self, event):
-        self._reset_state()
-        super().closeEvent(event)
+    def _toggle_playback(self, playing):
+        if playing and self._compressed_cache:
+            self.playback_timer.start()
+        else:
+            self.playback_timer.stop()
+
+    def _update_speed(self, val):
+        interval = max(10, int(self._base_interval / val))
+        self.playback_timer.setInterval(interval)
+
+    def set_value(self, file_path):
+        self._file_path = file_path
+        self.config_bar._request_reload()
+
+    def _reset_state(self):
+        self._file_path = None
+        self.playback_timer.stop()
+        if self._loader_thread:
+            self._loader_thread.stop()
+        self.img_label.clear()
+        self._compressed_cache = []
+        self.config_bar.hide()
+        self.img_label.hide()
+        self.control_bar.hide()
+        self.setFixedSize(200, 150)
+        self.updateGeometry()
+        self.sizeHintChanged.emit()

@@ -5,13 +5,13 @@ from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from PIL import Image
 from Qt import QtWidgets, QtCore
 
-from .base import CustomNodeBaseWidget
+from app.widgets.node_widget.base import CustomNodeBaseWidget
 from .data_table_widget import DataTableWidget
 from .html_widget import HtmlWidget
 from .image_compare_widget import ImageCompareWidget
 from .image_gallery_widget import ImageGalleryWidget
 from .image_widget import ImageWidget
-from app.widgets.node_widget.media_widget import VideoPlayWidget, AudioPlayWidget
+from app.widgets.node_widget.display_widgets.media_widget import VideoPlayWidget, AudioPlayWidget
 from .json_tree_widget import JsonTreeWidget
 from .pdf_widget import PdfWidget
 
@@ -115,7 +115,7 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
             for widget in self._view_cache.values():
                 widget.set_value(None)
 
-            self.updateGeometry()
+            self.update()
             self.sizeHintChanged.emit()
             return
 
@@ -164,23 +164,23 @@ class UniversalWidgetWrapper(CustomNodeBaseWidget):
         self.set_custom_widget(widget)
 
         widget.valueChanged.connect(self.on_value_changed)
-        widget.sizeHintChanged.connect(self._update_node)
-        self._update_timer = QtCore.QTimer()
-        self._update_timer.setSingleShot(True)
-        self._update_timer.timeout.connect(self._real_update_node)
+        widget.sizeHintChanged.connect(self._sync_node_geometry)
 
-    def _update_node(self):
-        self._update_timer.start(50)
+    def _sync_node_geometry(self):
+        if not self.node or not self.node.view:
+            return
 
-    def _real_update_node(self):
-        if self.node and self.node.graph is not None:
-            self.node.view.set_proxy_mode(False)
-            self.node.view.draw_node()
+        # CustomNodeBaseWidget 本身就是 Proxy 对象
+        self.setGeometry(self.boundingRect())
+
+        view = self.node.view
+        view.set_proxy_mode(False)
+        view.prepareGeometryChange()
+        view.draw_node()
+        view.update()
 
     def set_value(self, value):
         self.get_custom_widget().set_value(value)
-        # 设置值后也要触发重绘
-        self._update_node()
 
     def get_value(self):
         return self.get_custom_widget().get_value()

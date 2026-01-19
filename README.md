@@ -315,3 +315,14 @@ This project is licensed under the [GPLv3 License](LICENSE).
 - [NodeGraphQt](https://github.com/jchanvfx/NodeGraphQt) – Node graph framework  
 - [PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets) – Fluent Design UI library  
 - [Loguru](https://github.com/Delgan/loguru) – Elegant Python logging
+
+
+## Star History
+
+<a href="https://www.star-history.com/#martin98-afk/CanvasMind&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=martin98-afk/CanvasMind&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=martin98-afk/CanvasMind&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=martin98-afk/CanvasMind&type=date&legend=top-left" />
+ </picture>
+</a>

@@ -4,7 +4,7 @@ from pyecharts.charts import Line
 from pyecharts.globals import ThemeType
 
 from app.plugins.base import DisplayPlugin
-from app.widgets.node_widget.html_widget import HtmlWidgetWrapper
+from app.widgets.node_widget.display_widgets.html_widget import HtmlWidgetWrapper
 
 
 class ChartDisplayPlugin(DisplayPlugin):

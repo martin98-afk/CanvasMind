@@ -42,7 +42,7 @@ class LowCodeWindow(FluentWindow):
     def _init_window(self):
         self.setAttribute(Qt.WA_TranslucentBackground)
         setTheme(Theme.DARK)
-        self.setWindowIcon(get_icon("logo3"))
+        self.setWindowIcon(get_icon("logoico"))
         self.setWindowTitle("Canvas Mind")
 
         # 窗口尺寸

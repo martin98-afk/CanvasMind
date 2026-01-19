@@ -31,7 +31,7 @@ from app.interfaces.package_manager_interface.utils.ssh_upload_and_exec_thread i
 from app.interfaces.package_manager_interface.widgets.ssh_confiig_dialog import SSHAddrDialog
 from app.utils.config import Settings
 from app.utils.env_operation import EnvironmentManager
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, resource_path
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.dialog_widget.custom_messagebox import (
@@ -56,7 +56,7 @@ class EnvManagerUI(QWidget):
         self.pkgs_data = []
         self.config = Settings.get_instance()
 
-        self.ssh_config_file = str(Path(__file__).parent.parent.parent / "ssh_envs_cache.json")
+        self.ssh_config_file = str(Path(resource_path("envs")) / "ssh_envs_cache.json")
 
         self.mainLayout = QVBoxLayout(self)
         self.mainLayout.setContentsMargins(16, 16, 16, 16)

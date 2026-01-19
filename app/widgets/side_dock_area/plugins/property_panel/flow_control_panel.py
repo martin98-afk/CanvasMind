@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import re
 
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtCore import QSize
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame
 from qfluentwidgets import (CardWidget, BodyLabel, ProgressBar, TransparentToolButton,
                             StrongBodyLabel, ComboBox, SpinBox, SmoothScrollArea,
@@ -10,7 +10,7 @@ from qfluentwidgets import (CardWidget, BodyLabel, ProgressBar, TransparentToolB
 
 from app.utils.utils import get_icon, get_port_node
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
-from app.widgets.node_widget.longtext_dialog import LongTextEditorDialog
+from app.widgets.node_widget.propeprty_widgets.longtext_dialog import LongTextEditorDialog
 from app.widgets.side_dock_area.plugins.property_panel.internal_node_list import InternalNodeList
 from app.widgets.side_dock_area.plugins.property_panel.port_widget import PortWidget
 

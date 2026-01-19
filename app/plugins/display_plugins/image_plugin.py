@@ -3,7 +3,7 @@ import base64
 from PyQt5.QtGui import QImage
 
 from app.plugins.base import DisplayPlugin
-from app.widgets.node_widget.image_widget import ImageWidgetWrapper
+from app.widgets.node_widget.display_widgets.image_widget import ImageWidgetWrapper
 
 
 class ImageDisplayPlugin(DisplayPlugin):

@@ -6,7 +6,6 @@ import shutil
 import subprocess
 import time
 import uuid
-from pathlib import Path
 
 import paramiko
 from PyQt5 import QtCore
@@ -19,9 +18,9 @@ from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.utils import draw_special_outputport, _safe_load_pickle, \
     kill_proc_tree, sftp_download_dir, replace_remote_paths, sftp_upload_dir
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
-from app.widgets.node_widget.code_editor_widget import CodeEditorWidgetWrapper
-from app.widgets.node_widget.combobox_widget import ComboBoxWidgetWrapper
-from app.widgets.node_widget.dynamic_form_widget import DynamicFormWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.code_editor_widget import CodeEditorWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.combobox_widget import ComboBoxWidgetWrapper
+from app.widgets.node_widget.propeprty_widgets.dynamic_form_widget import DynamicFormWidgetWrapper
 from .status_node import StatusNode
 from ..templates.node_cleanup_script import CLEANUP_CODE
 from ..widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
