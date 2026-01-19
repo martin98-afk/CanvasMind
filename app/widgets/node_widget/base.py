@@ -138,24 +138,6 @@ class _NodeGroupBox(QtWidgets.QWidget):
                 border: 1px solid #666666;
                 background-color: #2a2a2a;
             }}
-            QComboBox {{
-                background-color: {input_bg};
-                color: {text_color};
-                border: 1px solid {input_border};
-                border-radius: 10px;
-                padding: 4px 8px;
-            }}
-            QComboBox::drop-down {{
-                border: none;
-                width: 20px;
-            }}
-            QComboBox::down-arrow {{
-                width: 0; height: 0;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 5px solid #888;
-                margin-right: 6px;
-            }}
             QPushButton {{
                 background-color: #353535;
                 color: {text_color};

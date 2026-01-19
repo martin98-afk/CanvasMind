@@ -224,7 +224,7 @@ class ImageCompareWrapper(CustomNodeBaseWidget):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
-
+        self.set_label_visible(False)
         self.widget = ImageCompareWidget(parent=window)
         self.set_custom_widget(self.widget)
 

@@ -126,7 +126,7 @@ class ImageWidgetWrapper(CustomNodeBaseWidget):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
-
+        self.set_label_visible(False)
         widget = ImageWidget(default_image=default, parent=window)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
@@ -141,7 +141,7 @@ class ImageWidgetWrapper(CustomNodeBaseWidget):
     def _real_update_node(self):
         if self.node and self.node.graph is not None:
             self.node.view.set_proxy_mode(False)
-            self.node.view.draw_node()
+            self.node.view._draw_node_horizontal()
 
     def get_value(self):
         return self.get_custom_widget().get_value()

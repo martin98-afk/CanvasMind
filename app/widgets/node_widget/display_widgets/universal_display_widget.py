@@ -160,7 +160,7 @@ class UniversalWidgetWrapper(CustomNodeBaseWidget):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
-
+        self.set_label_visible(False)
         widget = UniversalDisplayWidget(window)
         self.set_custom_widget(widget)
 
@@ -172,7 +172,7 @@ class UniversalWidgetWrapper(CustomNodeBaseWidget):
             return
         view = self.node.view
         view.set_proxy_mode(False)
-        QTimer.singleShot(50, view.draw_node)
+        QTimer.singleShot(0, view._draw_node_horizontal)
 
     def set_value(self, value):
         self.get_custom_widget().set_value(value)
