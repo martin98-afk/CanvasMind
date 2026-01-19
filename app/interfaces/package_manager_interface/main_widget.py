@@ -706,7 +706,14 @@ class EnvManagerUI(QWidget):
                 self.mgr.download_and_install(ver, env_name=name, log_callback=self.logEdit.append)
                 st = StateToolTip("安装中", "请稍候...", window or self)
                 st.show()
-                self.mgr.install_finished.connect(lambda r: (st.close(), self.refresh_env_list()))
+                self.mgr.install_finished.connect(
+                    lambda r: (
+                        st.close(),
+                        self.refresh_env_list(),
+                        self.env_changed.emit()
+                    )
+                )
+
 
     def clone_env(self):
         envs = self.mgr.list_envs()
@@ -720,7 +727,13 @@ class EnvManagerUI(QWidget):
                 self.mgr.clone_env(src, tar, log_callback=self.logEdit.append)
                 st = StateToolTip("克隆中", "请稍候...", self)
                 st.show()
-                self.mgr.install_finished.connect(lambda r: (st.close(), self.refresh_env_list()))
+                self.mgr.install_finished.connect(
+                    lambda r: (
+                        st.close(),
+                        self.refresh_env_list(),
+                        self.env_changed.emit()
+                    )
+                )
 
     def delete_env(self):
         if not self.current_env: return
@@ -728,7 +741,13 @@ class EnvManagerUI(QWidget):
             self.mgr.remove_env(self.current_env)
             st = StateToolTip("删除中", "请稍候...", self)
             st.show()
-            self.mgr.remove_finished.connect(lambda r: (st.close(), self.refresh_env_list()))
+            self.mgr.remove_finished.connect(
+                    lambda r: (
+                        st.close(),
+                        self.refresh_env_list(),
+                        self.env_changed.emit()
+                    )
+                )
 
     def _log_color(self, text, color):
         self.logEdit.append(f'<span style="color:{color};">{text}</span>')
