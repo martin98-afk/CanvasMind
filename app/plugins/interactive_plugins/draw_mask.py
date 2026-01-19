@@ -321,7 +321,7 @@ class MaskDrawDialog(MessageBoxBase):
         self.viewLayout.addWidget(self.titleLabel)
 
         self.editor = ComfyEditor(image)
-        self.editor.setMinimumSize(1100, 750)
+        self.editor.setMinimumSize(1100, 650)
         self.viewLayout.addWidget(self.editor)
 
         self.widget.setMinimumWidth(1150)

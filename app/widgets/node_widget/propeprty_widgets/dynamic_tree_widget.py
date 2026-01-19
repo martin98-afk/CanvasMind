@@ -6,6 +6,33 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 
 
+class TreeContainer(QtWidgets.QWidget):
+    """
+    专门用于包裹子节点的容器，负责绘制左侧的层级引导线
+    """
+
+    def __init__(self, parent=None):
+        super(TreeContainer, self).__init__(parent)
+
+    def paintEvent(self, event):
+        if not self.isVisible():
+            return
+
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+
+        # 设置线条颜色（半透明白色或深灰色，根据你的主题调整）
+        color = QtGui.QColor(255, 255, 255, 40)  # 40 是透明度
+        pen = QtGui.QPen(color, 1)
+        pen.setStyle(QtCore.Qt.SolidLine)  # 也可以用 DashLine
+        painter.setPen(pen)
+
+        # 线条绘制在左侧 10px 处（对应父级 20px 缩进的一半）
+        # 顶部预留一点距离，看起来更自然
+        x = 10
+        painter.drawLine(x, 0, x, self.height())
+
+
 class JsonTreeNode(QtWidgets.QWidget):
     removed = QtCore.Signal(object)
     changed = QtCore.Signal()
@@ -24,12 +51,11 @@ class JsonTreeNode(QtWidgets.QWidget):
     def _init_ui(self):
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.setSpacing(0)  # 紧凑布局
+        self.main_layout.setSpacing(0)
 
         # --- 节点控制行 ---
         self.row_widget = QtWidgets.QWidget()
         row_layout = QtWidgets.QHBoxLayout(self.row_widget)
-        # 注意：此处不再使用 level*15 的 margin，改用子容器缩进
         row_layout.setContentsMargins(2, 2, 2, 2)
         row_layout.setSpacing(6)
 
@@ -45,7 +71,7 @@ class JsonTreeNode(QtWidgets.QWidget):
             self.key_label = QtWidgets.QLabel("Item:")
             self.key_label.setStyleSheet("color: #aaaaaa; font-family: Consolas; font-size: 11px;")
             row_layout.addWidget(self.key_label)
-            self.key_edit = None  # 数组项没有 key_edit
+            self.key_edit = None
         else:
             self.key_edit = LineEdit(self)
             self.key_edit.setPlaceholderText("Key")
@@ -63,16 +89,14 @@ class JsonTreeNode(QtWidgets.QWidget):
         self.value_stack = QtWidgets.QStackedWidget()
         self.value_stack.setFixedHeight(32)
 
-        # Type: String/Number
         self.val_edit = LineEdit()
+        self.val_edit.setMinimumWidth(150)
         self.val_edit.setPlaceholderText("Value")
         self.val_edit.textChanged.connect(lambda: self.changed.emit())
         self.value_stack.addWidget(self.val_edit)
 
-        # Type: Boolean
         self.bool_switch = SwitchButton()
         self.bool_switch.checkedChanged.connect(lambda: self.changed.emit())
-        # 包裹一层防止 SwitchButton 拉伸太丑
         bool_container = QtWidgets.QWidget()
         bool_l = QtWidgets.QHBoxLayout(bool_container)
         bool_l.setContentsMargins(5, 0, 0, 0)
@@ -80,7 +104,6 @@ class JsonTreeNode(QtWidgets.QWidget):
         bool_l.addStretch()
         self.value_stack.addWidget(bool_container)
 
-        # Type: Object/Array (Add Button)
         self.btn_add_child = TransparentToolButton(FluentIcon.ADD, self)
         self.btn_add_child.setFixedSize(28, 28)
         self.btn_add_child.clicked.connect(lambda: self.add_child())
@@ -88,7 +111,6 @@ class JsonTreeNode(QtWidgets.QWidget):
 
         row_layout.addWidget(self.value_stack, 1)
 
-        # 5. 删除按钮
         self.btn_remove = TransparentToolButton(FluentIcon.DELETE, self)
         self.btn_remove.setFixedSize(24, 24)
         self.btn_remove.clicked.connect(lambda: self.removed.emit(self))
@@ -96,11 +118,10 @@ class JsonTreeNode(QtWidgets.QWidget):
 
         self.main_layout.addWidget(self.row_widget)
 
-        # --- 子节点容器 (核心：缩进在这里实现) ---
-        self.child_container = QtWidgets.QWidget()
+        # --- 修改点：使用自定义的 TreeContainer ---
+        self.child_container = TreeContainer(self)
         self.child_layout = QtWidgets.QVBoxLayout(self.child_container)
-        # 关键修复：左侧留出 20 像素缩进，且上边距设为 0
-        self.child_layout.setContentsMargins(20, 0, 0, 0)
+        self.child_layout.setContentsMargins(20, 0, 0, 0)  # 20px 缩进
         self.child_layout.setSpacing(2)
         self.main_layout.addWidget(self.child_container)
         self.child_container.hide()
@@ -111,11 +132,9 @@ class JsonTreeNode(QtWidgets.QWidget):
             self.btn_expand.setVisible(True)
             self.child_container.show()
         else:
-            # 关键修复：切换回普通类型时，清理所有已存在的子节点
             self.clear_all_children()
             self.btn_expand.setVisible(False)
             self.child_container.hide()
-
             if type_str == "Boolean":
                 self.value_stack.setCurrentIndex(1)
             else:
@@ -125,7 +144,6 @@ class JsonTreeNode(QtWidgets.QWidget):
         self.sizeChanged.emit()
 
     def clear_all_children(self):
-        """递归清理子节点防止幽灵数据和组件"""
         for child in self.child_nodes[:]:
             self.remove_child(child)
         self.child_nodes = []
@@ -135,13 +153,14 @@ class JsonTreeNode(QtWidgets.QWidget):
         self.child_container.setVisible(self.is_expanded)
         icon = FluentIcon.CHEVRON_DOWN_MED if self.is_expanded else FluentIcon.CHEVRON_RIGHT_MED
         self.btn_expand.setIcon(icon)
+        self.updateGeometry()
         self.sizeChanged.emit()
 
     def add_child(self, key="", value=None):
         is_parent_array = self.type_combo.currentText() == "Array"
         child = JsonTreeNode(parent=self, level=self.level + 1, is_array_item=is_parent_array)
 
-        if key and self.key_edit:
+        if key and not is_parent_array:
             child.key_edit.setText(str(key))
 
         child.removed.connect(self.remove_child)
@@ -154,7 +173,6 @@ class JsonTreeNode(QtWidgets.QWidget):
         if value is not None:
             child.set_value(value)
 
-        # 展开父级
         if not self.is_expanded:
             self.toggle_expand()
 
@@ -234,6 +252,7 @@ class JsonTreeWidget(QtWidgets.QWidget):
         self.btn_add_root.clicked.connect(lambda: self.add_root())
         self.main_layout.addWidget(self.btn_add_root)
 
+        # 根容器不需要画线，所以直接用普通的 QWidget
         self.container_widget = QtWidgets.QWidget()
         self.container_layout = QtWidgets.QVBoxLayout(self.container_widget)
         self.container_layout.setContentsMargins(0, 0, 0, 0)
@@ -268,7 +287,6 @@ class JsonTreeWidget(QtWidgets.QWidget):
         self._on_size_changed()
 
     def _on_size_changed(self):
-        # 强制布局刷新计算尺寸
         self.container_layout.activate()
         self.main_layout.activate()
         self.updateGeometry()
@@ -284,18 +302,20 @@ class JsonTreeWidget(QtWidgets.QWidget):
     def set_data(self, data):
         if not isinstance(data, dict): return
         if data == self.get_data(): return
-        self.root_nodes = []
-        # 清空旧布局项
+
+        # 批量操作防止多次重绘
+        self.blockSignals(True)
         while self.container_layout.count():
             item = self.container_layout.takeAt(0)
             if item.widget(): item.widget().deleteLater()
+        self.root_nodes = []
 
         for k, v in data.items():
             self.add_root(k, v)
+        self.blockSignals(False)
         self._on_size_changed()
 
     def sizeHint(self):
-        # 动态计算高度
         h = self.btn_add_root.height() + self.container_layout.sizeHint().height() + 20
         return QtCore.QSize(350, h)
 

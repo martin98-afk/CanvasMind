@@ -14,7 +14,6 @@ class ComboBoxWidget(QtWidgets.QWidget):
         self.items = list(items) if items else []
         self._value = self.items[0] if self.items else ""
         self.combobox = CustomComboBox(self)
-        # self.combobox.setMaxVisibleItems(12)
         if self.items:
             self.combobox.addItems(self.items)
             self.combobox.setCurrentText(self._value)

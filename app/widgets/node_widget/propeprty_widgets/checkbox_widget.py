@@ -1,6 +1,6 @@
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
-from qfluentwidgets import CheckBox  # 使用 Fluent Design 风格的 CheckBox
+from qfluentwidgets import CheckBox, SwitchButton, BodyLabel  # 使用 Fluent Design 风格的 CheckBox
 
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
@@ -12,12 +12,18 @@ class CheckBoxWidget(QtWidgets.QWidget):
     def __init__(self, text="", state=False, parent=None):
         super().__init__()
         self._value = state if isinstance(state, bool) else state in ("true", 1, "True", "1")
-        self.checkbox = CheckBox(text)
+        label = BodyLabel(text)
+        self.checkbox = SwitchButton("")
+        self.checkbox.setFixedHeight(32)
+        self.checkbox._offText = self.checkbox.tr("")
+        self.checkbox._onText = self.checkbox.tr("")
         self.checkbox.setChecked(self._value)
-        self.checkbox.stateChanged.connect(self._on_state_changed)
+        self.checkbox.checkedChanged.connect(self._on_state_changed)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(label)
+        layout.addStretch(1)
         layout.addWidget(self.checkbox)
 
     def _on_state_changed(self, state):
@@ -43,9 +49,10 @@ class CheckBoxWidgetWrapper(CustomNodeBaseWidget):
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
         self.set_label(f"{name}")
-        widget = CheckBoxWidget(text=text, state=state, parent=parent)
+        widget = CheckBoxWidget(text=f"{text}({name})", state=state, parent=parent)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
+        self.set_label_visible(False)
 
     def get_value(self):
         return self.get_custom_widget().get_value()

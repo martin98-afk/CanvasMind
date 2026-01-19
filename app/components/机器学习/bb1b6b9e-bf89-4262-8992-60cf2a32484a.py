@@ -169,7 +169,7 @@ class TorchClassifierTrainer(BaseComponent):
             accuracies.append(acc)
 
             if (epoch + 1) % 300 == 0:
-                self.emit_custom_message(
+                self.emit_message(
                     method="stream.output",
                     params={
                         "training_loss": {"data": train_loss, "data_type": "list", "plugin": "display_list"},

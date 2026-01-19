@@ -38,7 +38,6 @@ class FileSelectWidget(QtWidgets.QWidget):
         # 根据模式设置不同的提示语
         placeholder = "选择文件夹..." if self._is_folder_mode else "选择文件..."
         self.path_edit.setPlaceholderText(placeholder)
-        self.path_edit.setFixedWidth(200)
 
         # 浏览按钮 (根据模式选择图标或 ToolTip)
         self.btn_browse = TransparentToolButton(get_icon("文件选择"))
