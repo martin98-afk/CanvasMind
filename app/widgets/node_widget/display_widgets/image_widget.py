@@ -80,7 +80,7 @@ class ImageWidget(QtWidgets.QWidget):
 
         self.setFixedSize(self._current_size)
         self.sizeHintChanged.emit()
-        self.update()
+        self.updateGeometry()
         self.valueChanged.emit(self._image_data)
 
     def get_value(self):

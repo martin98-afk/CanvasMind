@@ -549,33 +549,47 @@ class CustomNodeItem(NodeItem):
         padding_x = 10.0
         spacing_y = 8.0
         bottom_padding = 10.0
+
+        # 计算可用空间
         available_height_total = node_height - start_y - bottom_padding
 
         total_fixed_height = 0
         expandable_widgets = []
 
-        # 第一次遍历：计算固定高度和可拉伸控件
+        # 第一次遍历：找出哪些控件需要拉伸 (Expanding)
         for widget in self._widgets.values():
             if not widget.isVisible(): continue
-            real = widget.widget()
+            real = widget.widget()  # ProxyWidget 内部的 _NodeGroupBox
+            # 简化逻辑：如果是 QWidget，检查 Policy
             if real:
-                policy = real.sizePolicy().verticalPolicy()
-                is_expanding = (policy == QtWidgets.QSizePolicy.Expanding or
-                                policy == QtWidgets.QSizePolicy.MinimumExpanding)
                 h = real.sizeHint().height()
+
+                # 获取实际包含的子控件 (你的 _NodeGroupBox.get_node_widget)
+                actual_widget = None
+                if hasattr(real, 'get_node_widget'):
+                    actual_widget = real.get_node_widget()
+
+                is_expanding = False
+                if actual_widget:
+                    policy = actual_widget.sizePolicy().verticalPolicy()
+                    is_expanding = (policy == QtWidgets.QSizePolicy.Expanding or
+                                    policy == QtWidgets.QSizePolicy.MinimumExpanding)
+
                 if is_expanding:
                     expandable_widgets.append((widget, real))
+
                 total_fixed_height += h + spacing_y
             else:
                 h = widget.boundingRect().height()
                 total_fixed_height += h + spacing_y
 
+        # 计算分配给每个拉伸控件的额外高度
         extra_space = max(0, available_height_total - total_fixed_height)
         extra_per_widget = 0
         if expandable_widgets:
             extra_per_widget = extra_space / len(expandable_widgets)
 
-        # 第二次遍历：应用布局
+        # 第二次遍历：应用位置和尺寸
         current_y = start_y
         for widget in self._widgets.values():
             if not widget.isVisible(): continue
@@ -585,9 +599,18 @@ class CustomNodeItem(NodeItem):
             h = 0
             if real_widget:
                 h = real_widget.sizeHint().height()
-                policy = real_widget.sizePolicy().verticalPolicy()
-                is_expanding = (policy == QtWidgets.QSizePolicy.Expanding or
-                                policy == QtWidgets.QSizePolicy.MinimumExpanding)
+
+                # 重新判断是否 Expanding 以决定是否加高度
+                actual_widget = None
+                if hasattr(real_widget, 'get_node_widget'):
+                    actual_widget = real_widget.get_node_widget()
+
+                is_expanding = False
+                if actual_widget:
+                    policy = actual_widget.sizePolicy().verticalPolicy()
+                    is_expanding = (policy == QtWidgets.QSizePolicy.Expanding or
+                                    policy == QtWidgets.QSizePolicy.MinimumExpanding)
+
                 if is_expanding:
                     h += extra_per_widget
             else:
@@ -715,4 +738,21 @@ class CustomNodeItem(NodeItem):
 
     def remove_widget(self, widget):
         w = self._widgets.pop(widget.get_name(), None)
-        if w: w.setParent(None); w.deleteLater()
+        if w:
+            w.setParent(None)
+            w.deleteLater()
+
+            # 【关键修复】删除控件时，重置用户手动设置的高度
+            # 这样节点就会自动“回缩”到剩余内容所需的最小尺寸
+            self._user_height = 0
+
+            # 同时也建议重置宽度，防止宽度过大留白，看你需求
+            # self._user_width = 0
+
+            # 更新 Model，确保持久化数据也同步重置
+            if hasattr(self, '_node') and self._node:
+                self._node.model.set_property('height', 0.0)
+
+            # 强制刷新布局
+            self._draw_node_horizontal()
+            self.update()

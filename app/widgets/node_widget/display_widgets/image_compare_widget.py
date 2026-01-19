@@ -204,7 +204,7 @@ class ImageCompareWidget(QtWidgets.QWidget):
             self._current_size = QSize(200, 150)
 
         self.setFixedSize(self._current_size)
-        self.view.update()
+        self.updateGeometry()
         self.sizeHintChanged.emit()
 
     def set_swap(self, state):

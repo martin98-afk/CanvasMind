@@ -21,6 +21,8 @@ class TextWidget(QtWidgets.QWidget):
                 use_qcursor=True, parent=self
             )
             self.summary_label.textChanged.connect(lambda: self._on_text_changed(self.summary_label.toPlainText()))
+            self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+            self.summary_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         else:
             self.summary_label = VariableCompletionLineEdit(
                 get_variable_list_func=lambda func=get_port_func: global_vars.get_vars(func()),
