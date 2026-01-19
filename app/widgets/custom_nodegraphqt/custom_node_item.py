@@ -295,7 +295,7 @@ class CustomNodeItem(NodeItem):
         self._text_item.setFont(QtGui.QFont(font_type, 14, QtGui.QFont.DemiBold))
 
         self._proxy_text_item = QtWidgets.QGraphicsTextItem(self.name, self)
-        self._proxy_text_item.setFont(QtGui.QFont(font_type, 36, QtGui.QFont.Bold))
+        self._proxy_text_item.setFont(QtGui.QFont(font_type, 32, QtGui.QFont.Bold))
 
         # 获取文档对象并设置选项
         document = self._proxy_text_item.document()
@@ -374,8 +374,6 @@ class CustomNodeItem(NodeItem):
             text.setVisible(ports_visible)
         self._text_item.setVisible(not self._proxy_mode)
         self._icon_item.setVisible(not self._proxy_mode)
-        self._collapse_btn.setVisible(not self._proxy_mode)
-        self._exec_mode_btn.setVisible(not self._proxy_mode)
         self._proxy_text_item.setVisible(self._proxy_mode)
         self._resize_handle.setVisible(widgets_visible)
 
@@ -558,7 +556,6 @@ class CustomNodeItem(NodeItem):
             self._text_item.setPos(start_x + icon_w + spacing, rect.top() + (header_h - th) / 2)
 
             self._collapse_btn.setPos(rect.left() + 6, rect.top() + (header_h - 28) / 2)
-            self._exec_mode_btn.setPos(rect.right() - 34, rect.top() + (header_h - 28) / 2)
 
             if not self._is_collapsed:
                 widget_start_y = rect.top() + header_h + self._port_height + 5.0
@@ -566,6 +563,7 @@ class CustomNodeItem(NodeItem):
         else:
             self._update_proxy_text_position()
 
+        self._exec_mode_btn.setPos(rect.right() - 34, rect.top() + (header_h - 28) / 2)
         btn_y = rect.top() - 32
         spacing = 32
         self._close_btn.setPos(rect.right() - 28, btn_y)

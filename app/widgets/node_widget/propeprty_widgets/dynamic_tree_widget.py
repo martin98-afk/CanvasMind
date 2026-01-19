@@ -75,7 +75,8 @@ class JsonTreeNode(QtWidgets.QWidget):
         else:
             self.key_edit = LineEdit(self)
             self.key_edit.setPlaceholderText("Key")
-            self.key_edit.setFixedWidth(100)
+            self.key_edit.setMinimumWidth(100)
+            self.key_edit.setMaximumWidth(200)
             self.key_edit.textChanged.connect(lambda: self.changed.emit())
             row_layout.addWidget(self.key_edit)
 
