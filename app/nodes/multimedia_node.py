@@ -22,7 +22,6 @@ def create_media_node(parent_window):
             self.parent_window = parent_window
             self.set_icon(":/icons/多媒体.svg")
             self.model.port_deletion_allowed = False
-            self.view.set_align("center")
             # 添加输入端口
             self.add_input('data', True, painter_func=draw_square_port)
 

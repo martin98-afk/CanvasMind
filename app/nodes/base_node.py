@@ -70,7 +70,6 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self.model.add_property("_exec_mode", "subprocess")
         # 绑定核心信号
         if hasattr(self.view, "collapsed_toggle"):
-            self.view.set_align("center")
             self.view.collapsed_toggle.connect(
                 lambda toggled: self.model.set_property("_collapsed", toggled)
             )
@@ -92,6 +91,16 @@ class BasicNodeWithGlobalProperty(NodeObject):
         """获取符合 Python 变量命名的节点名"""
         pattern = r'\s+'
         return re.sub(pattern, '_', self.name())
+
+    def set_property(self, name, value, push_undo=True):
+        # 2. 拦截 set_property
+        super(BasicNodeWithGlobalProperty, self).set_property(name, value, push_undo=True)
+
+        # 当 width 或 height 改变时，通知 Item 更新
+        if name in ['width', 'height']:
+            if self.view and hasattr(self.view, 'update_size_from_property'):
+                # 调用 Item 的方法来更新 _user_width/_user_height
+                self.view.update_size_from_property(name, value)
 
     # =========================== 日志与协议解析逻辑 =================================
 

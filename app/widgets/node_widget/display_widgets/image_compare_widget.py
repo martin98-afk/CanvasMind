@@ -204,7 +204,7 @@ class ImageCompareWidget(QtWidgets.QWidget):
             self._current_size = QSize(200, 150)
 
         self.setFixedSize(self._current_size)
-        self.view.update()
+        self.updateGeometry()
         self.sizeHintChanged.emit()
 
     def set_swap(self, state):
@@ -224,7 +224,7 @@ class ImageCompareWrapper(CustomNodeBaseWidget):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
-
+        self.set_label_visible(False)
         self.widget = ImageCompareWidget(parent=window)
         self.set_custom_widget(self.widget)
 

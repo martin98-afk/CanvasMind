@@ -59,23 +59,20 @@ class HtmlWidget(QtWidgets.QWidget):
 
             # 根据内容动态调整 WebEngineView 的最小尺寸
             content_w, content_h = self._extract_size_from_html(self._html)
-            self.view.setMinimumSize(content_w, content_h)
+            self.view.setFixedSize(content_w, content_h)
 
-        self.sizeHintChanged.emit()
-        self.updateGeometry()
-        self.valueChanged.emit(self._html)
+            self.sizeHintChanged.emit()
+            self.updateGeometry()
+            self.valueChanged.emit(self._html)
 
     def _extract_size_from_html(self, html: str):
         """从 HTML 提取尺寸，增加容错"""
         width_match = re.search(r'width\s*:\s*(\d+)px', html, re.IGNORECASE)
         height_match = re.search(r'height\s*:\s*(\d+)px', html, re.IGNORECASE)
 
-        width = int(width_match.group(1)) if width_match else 200
-        height = int(height_match.group(1)) if height_match else 150
-        # 添加内边距（避免贴边）
-        padding_w = 20
-        padding_h = 20  # 标题栏高度
-        return width + padding_w, height + padding_h
+        width = int(width_match.group(1)) + 20 if width_match else 200
+        height = int(height_match.group(1)) + 20 if height_match else 150
+        return width, height
 
     def get_value(self) -> str:
         return self._html
@@ -90,6 +87,7 @@ class HtmlWidgetWrapper(CustomNodeBaseWidget):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
+        self.set_label_visible(False)
         widget = HtmlWidget(default_html=default, parent=window)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
@@ -105,7 +103,7 @@ class HtmlWidgetWrapper(CustomNodeBaseWidget):
     def _real_update_node(self):
         if self.node and self.node.graph is not None:
             self.node.view.set_proxy_mode(False)
-            self.node.view.draw_node()
+            self.node.view._draw_node_horizontal()
 
     def get_value(self):
         return self.get_custom_widget().get_value()

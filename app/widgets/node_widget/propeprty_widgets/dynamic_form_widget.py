@@ -4,6 +4,7 @@ from Qt import QtWidgets, QtCore
 from qfluentwidgets import FluentIcon, TransparentPushButton, TransparentToolButton
 
 from app.components.base import PropertyType
+from app.utils.utils import str_to_bool
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
 from app.widgets.node_widget.base import CustomNodeBaseWidget
@@ -60,7 +61,6 @@ class FormFieldWidget(QtWidgets.QWidget):
             # 根据类型创建控件
             if field_type == PropertyType.LONGTEXT.name:
                 widget = LongTextWidget(parent=self.home, default_text=default, get_port_func=get_port_func)
-                widget.summary_label.setFixedWidth(180)
                 widget.valueChanged.connect(self.changed)
                 widget.set_value(default)
                 self.fields[key] = widget
@@ -90,7 +90,7 @@ class FormFieldWidget(QtWidgets.QWidget):
                 input_row.addWidget(widget)
 
             elif field_type == PropertyType.BOOL.name:
-                widget = CheckBoxWidget(text=label, state=bool(default), parent=self)
+                widget = CheckBoxWidget(text=label, state=str_to_bool(default), parent=self)
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
                 input_row.addWidget(widget)
@@ -101,7 +101,6 @@ class FormFieldWidget(QtWidgets.QWidget):
                     get_variable_list_func=lambda func=get_port_func: gv.get_vars(func()) if gv else [],
                     use_qcursor=True, parent=self.home
                 )
-                widget.setFixedWidth(180)
                 widget.setPlaceholderText(label)
                 widget.setText(str(default))
                 widget.textChanged.connect(self.changed)

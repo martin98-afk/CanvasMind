@@ -163,9 +163,12 @@ class CanvasExporter:
                 new_nodes_data[node.id] = node_data
 
             # 导出连接
-            original_conns = self.parent.graph.serialize_session()["connections"]
+            original_conns = self.parent.graph.serialize_session().get("connections")
             node_ids = {n.id for n in nodes_to_export}
-            new_conns = [c for c in original_conns if c["out"][0] in node_ids and c["in"][0] in node_ids]
+            if original_conns:
+                new_conns = [c for c in original_conns if c["out"][0] in node_ids and c["in"][0] in node_ids]
+            else:
+                new_conns = []
 
             # 构建 project_spec.json
             project_spec = {"version": "1.0", "graph_name": project_name, "inputs": {}, "outputs": {}}

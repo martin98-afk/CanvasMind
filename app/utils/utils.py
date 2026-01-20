@@ -382,6 +382,13 @@ def get_icon(icon_name: str) -> QIcon:
     return QIcon()
 
 
+def str_to_bool(value):
+    """可靠的布尔值转换"""
+    if isinstance(value, bool):
+        return value
+    return str(value).lower() in ("true", "1", "yes", "on")
+
+
 def serialize_for_json(obj, large_list_threshold=1000):
     """递归将对象转换为 JSON 可序列化格式"""
     if isinstance(obj, dict):

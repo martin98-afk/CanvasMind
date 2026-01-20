@@ -130,7 +130,7 @@ class VariableCompletionPopup(QListWidget):
 # 核心逻辑混合类 (Mixin)
 # -----------------------
 class CompletionMixin:
-    # ... (保持原有的 init_completion, _get_context_info, _filter_variables 内容不变)
+
     def init_completion(self, get_var_func):
         self.get_variable_list_func = get_var_func
         self._completing = False

@@ -13,7 +13,7 @@ from PyQt5.QtGui import (
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel
 )
-from qfluentwidgets import MessageBoxBase, SubtitleLabel, ToolButton, Slider, FluentIcon
+from qfluentwidgets import MessageBoxBase, SubtitleLabel, ToolButton, Slider, FluentIcon, StrongBodyLabel
 
 from app.plugins.base import InteractivePlugin
 from app.utils.utils import get_icon, ssh_send_file
@@ -269,12 +269,12 @@ class ComfyEditor(QWidget):
 
         # 笔刷滑块
         self.sld = Slider(Qt.Vertical)
-        self.sld.setRange(2, 300)
-        self.sld.setValue(40)
+        self.sld.setRange(2, 80)
+        self.sld.setValue(30)
         self.sld.setStyleSheet("QSlider::handle:vertical { background: #ff0064; }")
         lp_lyt.addSpacing(10)
         lp_lyt.addWidget(self.sld, 0, Qt.AlignHCenter)
-        lp_lyt.addWidget(QLabel("画笔大小"), 0, Qt.AlignHCenter)
+        lp_lyt.addWidget(StrongBodyLabel("画笔大小"), 0, Qt.AlignHCenter)
 
         # 右悬浮面板
         self.right_panel = QFrame(self)
@@ -321,7 +321,7 @@ class MaskDrawDialog(MessageBoxBase):
         self.viewLayout.addWidget(self.titleLabel)
 
         self.editor = ComfyEditor(image)
-        self.editor.setMinimumSize(1100, 750)
+        self.editor.setMinimumSize(1100, 600)
         self.viewLayout.addWidget(self.editor)
 
         self.widget.setMinimumWidth(1150)

@@ -161,6 +161,7 @@ class ImageGalleryWidget(QtWidgets.QWidget):
         if not self._image_list_data:
             self._current_size = QSize(200, 150)
             self.setFixedSize(self._current_size)
+            self.updateGeometry()
             self.sizeHintChanged.emit()
             return
 
@@ -183,6 +184,7 @@ class ImageGalleryWidget(QtWidgets.QWidget):
 
         self._current_size = QSize(target_w, target_h)
         self.setFixedSize(self._current_size)
+        self.updateGeometry()
         self.sizeHintChanged.emit()
 
     def sizeHint(self):

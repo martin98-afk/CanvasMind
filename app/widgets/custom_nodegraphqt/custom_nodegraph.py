@@ -18,6 +18,7 @@ from NodeGraphQt.widgets.viewer import NodeViewer
 from Qt import QtGui, QtCore, QtWidgets
 from qtpy import QtGui, QtCore, QtWidgets
 
+from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
@@ -671,7 +672,7 @@ class CustomNodeGraph(NodeGraph):
         if isinstance(data, str): return
         self._viewer.scene().blockSignals(True)
         self._viewer.setUpdatesEnabled(False)
-
+        node_resize_memory = Settings.get_instance().canvas_resize_memory.value
         # Recursive function to convert last lists to sets
         def convert_last_list_to_set(d):
             for key, value in d.items():
@@ -723,6 +724,7 @@ class CustomNodeGraph(NodeGraph):
         # 处理非 backdrop 节点
         for n_id, n_data in non_backdrop_nodes_data.items():
             identifier = n_data['type_']
+            node_width, node_height = n_data.get('width'), n_data.get('height')
             node = self._node_factory.create_node_instance(identifier)
             if node:
                 node.NODE_NAME = n_data.get('name', node.NODE_NAME)
@@ -746,7 +748,9 @@ class CustomNodeGraph(NodeGraph):
                             node.view.widgets[prop].set_value(val)
                     elif node.type_ == "general.StickyNote":
                         node.set_property(prop, val)
-
+                # 决定是否还原节点最后保存时缩放大小
+                if node_resize_memory:
+                    node.view._sync_size_from_model(node_width, node_height)
                 nodes[n_id] = node
 
         # 处理 backdrop 节点（放到最后）
@@ -771,6 +775,8 @@ class CustomNodeGraph(NodeGraph):
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
                             node.view.widgets[prop].set_value(val)
+                if node_resize_memory and hasattr(node.view, '_sync_size_from_model'):
+                    node.view._sync_size_from_model(node_width, node_height)
                 nodes[n_id] = node
         node_objs = nodes.values()
         if relative_pos:

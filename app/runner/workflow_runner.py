@@ -444,6 +444,8 @@ def evaluate_model_inputs(inputs, local_vars):
     return inputs
 
 def evaluate_model_params(params, local_vars):
+    if isinstance(params, str):
+        return expr_engine.evaluate_template(params, local_vars=local_vars)
     for k, v in params.items():
         if isinstance(v, dict):
             params[k] = evaluate_model_params(v, local_vars)
