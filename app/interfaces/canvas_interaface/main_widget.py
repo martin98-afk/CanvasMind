@@ -43,7 +43,8 @@ class CanvasPage(QWidget):
         self.parent = parent
         self.manager = manager
         self.file_path = object_name
-        self.workflow_name = ".".join(object_name.stem.split(".")[:-1]) if object_name else "未命名工作流"
+        # 国际化工作流名称
+        self.workflow_name = ".".join(object_name.stem.split(".")[:-1]) if object_name else self.tr("未命名工作流")
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
         self.config = Settings.get_instance()
         self._pending_property_update = None
@@ -232,7 +233,8 @@ class CanvasPage(QWidget):
     def show_category_dialog(self, categories, tag):
         pos = tag.mapToGlobal(QPoint(0, 0))
         category_filter_dialog = CategoryFilterDialog(self, categories)
-        category_filter_dialog.categories_changed.connect(self.ui_manager.nav_panel.draggable_tree._on_categories_changed)
+        category_filter_dialog.categories_changed.connect(
+            self.ui_manager.nav_panel.draggable_tree._on_categories_changed)
         category_filter_dialog.show_at(pos)
 
     def _on_global_variables_changed(self, var_type: str, var_name: str, action: str):
@@ -261,8 +263,11 @@ class CanvasPage(QWidget):
         elif action.startswith("create"):
             self.node_operations.create_next_node_using_name(content)
         elif action.startswith("generate"):
-            question = (f"历史对话上下文：{self.ui_manager.llm_chatter.session_manager.get_current_session().messages}\n\n"
-                        f"你的任务是结合历史对啊信息生成这个 {content} 组件的代码")
+            # LLM prompt 通常保持业务逻辑，但UI反馈可国际化
+            question = self.tr("历史对话上下文：{}\n\n你的任务是结合历史信息生成这个 {} 组件的代码").format(
+                self.ui_manager.llm_chatter.session_manager.get_current_session().messages,
+                content
+            )
             self.parent.switchTo(self.parent.develop_page)
             self.parent.develop_page.llm_context_provider.send_preset_generate_llm_request(question)
 
@@ -351,17 +356,17 @@ class CanvasPage(QWidget):
         self.pause_btn.show()
         self.stop_btn.show()
         self.pause_btn.setIcon(FluentIcon.PAUSE)
-        self.pause_btn.setToolTip("暂停工作流")
+        self.pause_btn.setToolTip(self.tr("暂停工作流"))
 
     def _on_workflow_paused(self):
         """进入暂停：pause 按钮变为 resume"""
         self.pause_btn.setIcon(FluentIcon.PLAY)
-        self.pause_btn.setToolTip("继续工作流")
+        self.pause_btn.setToolTip(self.tr("继续工作流"))
 
     def _on_workflow_resumed(self):
         """恢复执行：pause 按钮变回 pause"""
         self.pause_btn.setIcon(FluentIcon.PAUSE)
-        self.pause_btn.setToolTip("暂停工作流")
+        self.pause_btn.setToolTip(self.tr("暂停工作流"))
 
     def _on_workflow_cancelled(self):
         """停止/取消：恢复 run 按钮"""
@@ -373,7 +378,7 @@ class CanvasPage(QWidget):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
-        MessageManager.success("完成", "工作流执行完成!", self)
+        MessageManager.success(self.tr("完成"), self.tr("工作流执行完成!"), self)
 
     def _on_workflow_error(self, msg=""):
         self.run_btn.show()
@@ -384,8 +389,10 @@ class CanvasPage(QWidget):
         node = self.node_operations._get_node_by_id_cached(node_id)
         if node:
             node._output_values = {}
-            MessageManager.error('错误', f'节点 "{node.name()}" 执行失败！', self)
-            # 直接调用 set_node_status，恢复即时更新
+            # 国际化错误弹窗
+            title = self.tr("错误")
+            content = self.tr('节点 "{}" 执行失败！').format(node.name())
+            MessageManager.error(title, content, self)
             QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED))
 
         self.run_btn.show()
@@ -395,7 +402,6 @@ class CanvasPage(QWidget):
     def on_node_started_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)
         if node:
-            # 直接调用 set_node_status，恢复即时更新
             QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING))
 
     def _connect_signals(self):
@@ -405,7 +411,7 @@ class CanvasPage(QWidget):
         ComponentScanner.register_on_change(self.node_operations.register_components, False)
         # 画布上按钮信号
         self.ui_manager.run_btn.clicked.connect(self.canvas_runner.run_workflow)
-        self.ui_manager.pause_btn.clicked.connect(self._on_pause_resume_clicked)  # 新增
+        self.ui_manager.pause_btn.clicked.connect(self._on_pause_resume_clicked)
         self.ui_manager.stop_btn.clicked.connect(self.canvas_runner.stop_workflow)
         self.ui_manager.save_btn.clicked.connect(lambda: self.save_full_workflow())
         self.ui_manager.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
@@ -435,11 +441,9 @@ class CanvasPage(QWidget):
 
     # 断开信号
     def _disconnect_signals(self):
-        # 原有
         ComponentScanner.unregister_on_change(self.node_operations.register_components)
         ComponentScanner.unregister_on_change(self.nav_view.refresh_components)
 
-        # 新增：断开 UI 按钮信号
         try:
             self.ui_manager.run_btn.clicked.disconnect(self.canvas_runner.run_workflow)
             self.ui_manager.pause_btn.clicked.disconnect(self._on_pause_resume_clicked)
@@ -448,9 +452,8 @@ class CanvasPage(QWidget):
             self.ui_manager.export_model_btn.clicked.disconnect()
             self.ui_manager.close_btn.clicked.disconnect()
         except TypeError:
-            pass  # 未连接则忽略
+            pass
 
-        # 断开 Runner 信号
         self.canvas_runner.workflow_started.disconnect(self._on_workflow_started)
         self.canvas_runner.workflow_paused.disconnect(self._on_workflow_paused)
         self.canvas_runner.workflow_resumed.disconnect(self._on_workflow_resumed)
@@ -461,12 +464,10 @@ class CanvasPage(QWidget):
         self.canvas_runner.property_changed.disconnect()
         self.canvas_runner.node_vars_changed.disconnect()
 
-        # 断开配置信号
         self.config.canvas_grid_mode.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
         self.config.canvas_pipelayout.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
         self.config.canvas_direction.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
 
-        # 断开环境/变量信号
         try:
             self.env_combo.currentIndexChanged.disconnect(self.on_environment_changed)
             self.env_changed.disconnect(self.connect_kernel)
@@ -477,15 +478,13 @@ class CanvasPage(QWidget):
     # --- 画布按键信号 ---
     def _canvas_key_press_event(self, event):
         focused_widget = QApplication.focusWidget()
-        if focused_widget :
+        if focused_widget:
             if hasattr(focused_widget, 'code_editor'):
-                # 是代码编辑器获得焦点
                 QApplication.sendEvent(focused_widget.code_editor, event)
                 return
             elif isinstance(focused_widget, (QTextEdit, QLineEdit)):
                 QApplication.sendEvent(focused_widget, event)
                 return
-
 
         self.canvas_widget.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
         self.canvas_widget.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
@@ -497,17 +496,18 @@ class CanvasPage(QWidget):
             super(NodeViewer, self.canvas_widget).keyPressEvent(event)
             return
 
-        # show cursor text
+        # 国际化悬浮提示文字
         overlay_text = None
         self.canvas_widget._cursor_text.setVisible(False)
         if not self.canvas_widget.ALT_state:
             if self.canvas_widget.SHIFT_state:
-                overlay_text = '\n    SHIFT:\n    扩展节点选择'
+                overlay_text = self.tr("\n    SHIFT:\n    扩展节点选择")
             elif self.canvas_widget.CTRL_state:
-                overlay_text = '\n    CTRL:\n    取消节点选择'
+                overlay_text = self.tr("\n    CTRL:\n    取消节点选择")
         elif self.canvas_widget.ALT_state and self.canvas_widget.SHIFT_state:
             if self.canvas_widget.pipe_slicing:
-                overlay_text = '\n    ALT + SHIFT:\n    连线删除模式'
+                overlay_text = self.tr("\n    ALT + SHIFT:\n    连线删除模式")
+
         if overlay_text:
             self.canvas_widget._cursor_text.setPlainText(overlay_text)
             self.canvas_widget._cursor_text.setFont(QtGui.QFont('Arial', 10))
@@ -534,7 +534,7 @@ class CanvasPage(QWidget):
         self.graph.clear_selection()
         for node in nodes:
             if node not in self.graph.all_nodes():
-                MessageManager.warning("错误", "原节点不存在！", self)
+                MessageManager.warning(self.tr("错误"), self.tr("原节点不存在！"), self)
                 return
             node.set_selected(True)
         self.graph.fit_to_selection()
@@ -576,7 +576,6 @@ class CanvasPage(QWidget):
                 node.status = status
             except:
                 pass
-        # 优化：只高亮目标节点相关的连接线
         self._highlight_node_connections(node, status)
         if status == NodeStatus.NODE_STATUS_SUCCESS:
             self.on_node_finished_simple(node)
@@ -589,7 +588,6 @@ class CanvasPage(QWidget):
         default_width = 2
         default_style = PipeEnum.DRAW_TYPE_DEFAULT.value
 
-        # 1. 重置与当前节点相关的所有连接线
         if not hasattr(node, "input_ports"):
             return
         for input_port in node.input_ports():
@@ -603,7 +601,6 @@ class CanvasPage(QWidget):
                 if pipe:
                     pipe.set_pipe_styling(color=default_color, width=default_width, style=default_style)
 
-        # 2. 如果状态是运行中，则高亮
         if status == NodeStatus.NODE_STATUS_RUNNING:
             input_color = (64, 158, 255, 255)  # 蓝色
             output_color = (50, 205, 50, 255)  # 绿色
@@ -626,7 +623,6 @@ class CanvasPage(QWidget):
         return None
 
     def on_node_finished_simple(self, node):
-        # 优化：只在只选中该节点时更新其属性面板
         if node and node.selected() and len(self.graph.selected_nodes()) == 1:
             QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
 
@@ -640,9 +636,7 @@ class CanvasPage(QWidget):
 
     def on_selection_changed(self):
         selected_nodes = self.graph.selected_nodes()
-        # 原有属性面板逻辑
         if selected_nodes:
-            # 展示控制流面板
             backdrop_internal_nodes = []
             for node in selected_nodes:
                 if isinstance(node, ControlFlowBackdrop):
@@ -654,17 +648,13 @@ class CanvasPage(QWidget):
                         self._schedule_property_update(node)
                         self.property_panel.reset_current_components()
                         return
-            # 展示选中节点列表
             if len(selected_nodes) > 1:
-                # 过滤掉在backdrop内部的节点，只保留顶层节点（包括backdrop本身）
                 top_level_nodes = [n for n in selected_nodes if n not in backdrop_internal_nodes]
                 self._schedule_property_update(top_level_nodes)
-            # 展示单独节点面板
             elif isinstance(selected_nodes[0], BasicNodeWithGlobalProperty):
                 self._schedule_property_update(selected_nodes[0])
                 self.property_panel.reset_current_components()
                 QtCore.QTimer.singleShot(0, lambda: self.node_operations._request_recommendations(selected_nodes[0]))
-            # 展示全局变量面板
             else:
                 self.nav_view.clear_recommendations()
                 self.property_panel.reset_current_components()
@@ -684,18 +674,18 @@ class CanvasPage(QWidget):
             if self.graph.undo_stack().canUndo():
                 self.graph.undo_stack().undo()
             else:
-                MessageManager.info("提示", "没有可撤销的操作", self)
+                MessageManager.info(self.tr("提示"), self.tr("没有可撤销的操作"), self)
         except Exception as e:
-            logger.warning(f"撤销失败: {e}")
+            logger.warning(self.tr("撤销失败: {}").format(e))
 
     def _redo(self):
         try:
             if self.graph.undo_stack().canRedo():
                 self.graph.undo_stack().redo()
             else:
-                MessageManager.info("提示", "没有可重做的操作", self)
+                MessageManager.info(self.tr("提示"), self.tr("没有可重做的操作"), self)
         except Exception as e:
-            logger.warning(f"重做失败: {e}")
+            logger.warning(self.tr("重做失败: {}").format(e))
 
     def _auto_layout_selected(self, graph, node=None):
         selected = self.graph.selected_nodes()
@@ -706,33 +696,22 @@ class CanvasPage(QWidget):
 
     # --- 画布关闭逻辑 ---
     def close_current_canvas(self):
-        # 如果新建后画布没有保存，就当前画布临时目录
         if not self.file_path.exists():
             self.clean_canvas()
-        # 1. 停止并断开所有定时器
         self._auto_saver.stop()
         self.ipython_kernel.stop_kernel()
         self._disconnect_signals()
         self.ui_manager.destroy_all()
         self.canvas_runner.stop_workflow()
-        # ===== 7. 销毁 UI 控件（确保 parent=None）=====
         self.graph.deleteLater()
-        # 8. 发射信号 & 移除自身
         self.canvas_deleted.emit()
         self.parent.removeInterface(self)
-        self.deleteLater()  # 关键：触发 Qt 对象销毁
+        self.deleteLater()
 
     def clean_canvas(self):
-        """
-        异步删除节点的工作目录，防止 IO 阻塞主线程
-        :param node_ids: list of node ids
-        """
-
         def cleanup_task():
-            # 获取基础路径，假设你的工程路径在 self.parent.file_path
             base_path = self.file_path.parent
             if base_path.exists():
                 shutil.rmtree(base_path)
 
-        # 使用类中已有的 thread_pool 执行
         self.thread_pool.start(cleanup_task)

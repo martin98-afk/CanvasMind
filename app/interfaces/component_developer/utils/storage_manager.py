@@ -93,18 +93,19 @@ class ComponentStorageManager:
             self.parent.property_editor.set_properties(properties)
 
             source_file = getattr(component, '_source_file', None)
-            source_code = self.extract_class_source_from_file(source_file, component.__name__)
-            source_code = self.parent.apply_component_info_to_code(
-                source_code, {
-                    "name": getattr(component, 'name', ''),
-                    "category": getattr(component, 'category', ''),
-                    "description": getattr(component, 'description', ''),
-                    "requirements": getattr(component, 'requirements', '')
-                }
-            )
+            if component is not None:
+                source_code = self.extract_class_source_from_file(source_file, component.__name__)
+                source_code = self.parent.apply_component_info_to_code(
+                    source_code, {
+                        "name": getattr(component, 'name', ''),
+                        "category": getattr(component, 'category', ''),
+                        "description": getattr(component, 'description', ''),
+                        "requirements": getattr(component, 'requirements', '')
+                    }
+                )
+                self._current_component_code = source_code
+                self.parent.code_editor.set_code(source_code)
             self._current_component_file = Path(source_file)
-            self._current_component_code = source_code
-            self.parent.code_editor.set_code(source_code)
 
             # ⚠️ 不再调用 _sync_basic_info_to_code（会覆盖代码！）
             if self._current_component_file:

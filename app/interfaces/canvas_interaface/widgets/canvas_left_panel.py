@@ -22,8 +22,8 @@ class LeftPanel(QWidget):
         self.template_container = SubgraphTemplatePanel(parent)
 
         # Add tabs
-        self.addSubInterface(self.draggable_tree, 'draggableTree', '组件树')
-        self.addSubInterface(self.template_container, 'templateManager', '模板库')
+        self.addSubInterface(self.draggable_tree, 'draggableTree', self.tr('组件树'))
+        self.addSubInterface(self.template_container, 'templateManager', self.tr('模板库'))
 
         # Connect signal and initialize the current tab
         self.stackedWidget.currentChanged.connect(self.onCurrentIndexChanged)
