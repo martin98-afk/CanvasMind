@@ -749,7 +749,7 @@ class CustomNodeGraph(NodeGraph):
                     elif node.type_ == "general.StickyNote":
                         node.set_property(prop, val)
                 # 决定是否还原节点最后保存时缩放大小
-                if node_resize_memory:
+                if node_resize_memory and hasattr(node.view, '_sync_size_from_model'):
                     node.view._sync_size_from_model(node_width, node_height)
                 nodes[n_id] = node
 

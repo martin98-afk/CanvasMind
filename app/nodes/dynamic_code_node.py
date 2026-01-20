@@ -392,6 +392,7 @@ def create_dynamic_code_node(parent_window=None):
 
         def format_code(self, add_import=True):
             # === 1. 收集参数（不变）===
+            self.object_io = False
             user_code = self.get_property("code") or ""
             requirements = self.get_property("requirements") or ""
             type_dict = {item.value: item.name for item in ArgumentType}
@@ -399,6 +400,8 @@ def create_dynamic_code_node(parent_window=None):
             input_defs = []
             for port, port_def in zip(self.input_ports(), self.get_property("input_ports")):
                 name = port.name()
+                if type_dict[port_def["type"]] == "OBJECT":
+                    self.object_io = True
                 input_defs.append(
                     f'        PortDefinition(name="{name}", label="{name}", type=ArgumentType.{type_dict[port_def["type"]]}, connection=ConnectionType.SINGLE),'
                 )
@@ -406,6 +409,8 @@ def create_dynamic_code_node(parent_window=None):
             output_defs = []
             for port, port_def in zip(self.output_ports(), self.get_property("output_ports")):
                 name = port.name()
+                if type_dict[port_def["type"]] == "OBJECT":
+                    self.object_io = True
                 output_defs.append(
                     f'        PortDefinition(name="{name}", label="{name}", type=ArgumentType.{type_dict[port_def["type"]]}),')
 
@@ -526,12 +531,13 @@ def create_dynamic_code_node(parent_window=None):
                         error_path=str(error_path.resolve()),
                         log_file_path=str(log_file_path.resolve()),
                         node_id=self.persistent_id,
-                        workflow_path=str(self.CACHE_PATH)
+                        workflow_path=str(self.CACHE_PATH),
+                        is_memory_resident=self.view.current_mode == "ipython"
                     )
                     with open(local_script_path, 'w', encoding='utf-8') as f:
                         f.write(script_content)
 
-                    if self.model.get_property("_exec_mode") == "ipython":
+                    if self.model.get_property("_exec_mode") == "ipython" or self.object_io:
                         self._execute_via_ipython(local_script_path, result_path, error_path, log_file_path,
                                                   check_cancel, kernel_manager)
                     else:
@@ -604,7 +610,8 @@ def create_dynamic_code_node(parent_window=None):
                     error_path=f"{remote_run_dir}/error.pkl",
                     log_file_path=log_path,
                     node_id=self.persistent_id,
-                    workflow_path="/tmp"
+                    workflow_path="/tmp",
+                    is_memory_resident=True
                 )
                 with open(local_script_path, 'w', encoding='utf-8') as f:
                     f.write(remote_script_content)
