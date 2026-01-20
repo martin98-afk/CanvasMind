@@ -166,7 +166,7 @@ def create_dynamic_code_node(parent_window=None):
                 z_value=3
             )
             self.add_custom_widget(self.output_widget, tab='Properties')
-            template_items = [f"{key}:{info['name']}" for key, info in GLUE_CODE_TEMPLATES.items()]
+            template_items = [info['name'] for key, info in GLUE_CODE_TEMPLATES.items()]
             self.glue_templates_widget = ComboBoxWidgetWrapper(
                 parent=self.view,
                 name="glue_code_template",

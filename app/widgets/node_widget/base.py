@@ -57,6 +57,7 @@ class _NodeGroupBox(QtWidgets.QWidget):
 
         style = f"""
             QWidget {{
+                font-family: "{self._get_font_family()}";
                 background-color: transparent;
             }}
             QLabel {{
@@ -79,6 +80,24 @@ class _NodeGroupBox(QtWidgets.QWidget):
         # 调整边距：无论是否有标题，都保持底部间距以维持隔离感
         self.layout.setContentsMargins(0, 0, 0, 0)
 
+    def _apply_unified_font(self, widget):
+        """
+        统一设置字体逻辑：获取当前配置并递归应用
+        """
+        font_name = self._get_font_family()
+
+        # 1. 基础设置逻辑 (你要求的格式)
+        font = widget.font()
+        font.setFamily(font_name)
+        # 如果需要统一大小，可以在这里设置，例如 font.setPointSize(10)
+        widget.setFont(font)
+
+        # 2. 递归处理：确保复合控件（如带子控件的容器）内部也统一
+        for child in widget.findChildren(QtWidgets.QWidget):
+            child_font = child.font()
+            child_font.setFamily(font_name)
+            child.setFont(child_font)
+
     def add_node_widget(self, widget):
         """
         核心修改：添加控件时智能判断对齐方式
@@ -89,10 +108,7 @@ class _NodeGroupBox(QtWidgets.QWidget):
         font.setFamily(font_name)
         font.setPointSize(10)
         widget.setFont(font)
-
-        # 2. 注入样式
-        self._apply_child_style(widget)
-
+        self._apply_unified_font(widget)
         # 3. 智能布局逻辑
         sp = widget.sizePolicy()
         h_policy = sp.horizontalPolicy()
@@ -114,9 +130,6 @@ class _NodeGroupBox(QtWidgets.QWidget):
         else:
             # 否则，使用默认行为 (通常是 Fill / Stretch)
             self.layout.addWidget(widget)
-
-    def _apply_child_style(self, widget):
-        widget.setAttribute(QtCore.Qt.WA_StyledBackground, True)
 
     def get_node_widget(self):
         if self.layout.count() > 1:

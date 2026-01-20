@@ -316,14 +316,7 @@ class SettingInterface(ScrollArea):
             get_icon("画布"),
             "画布显示字体设置",
             "",
-            texts=[
-                "Segoe UI",  # Windows 标准现代化字体
-                "Arial",  # 最通用的无衬线字体
-                "Roboto",  # 谷歌风格，现代感强
-                "Inter",  # 很多 UI 设计师的首选 (ComfyUI 风格)
-                "Consolas",  # 等宽字体，有科技感/代码感
-                "Microsoft YaHei"  # 微软雅黑的英文名，确保中文显示依然美观
-            ],
+            texts=self.cfg.canvas_font_type.options,
             parent=self.canvasGroup
         )
         # 连接配置变化信号，自动保存

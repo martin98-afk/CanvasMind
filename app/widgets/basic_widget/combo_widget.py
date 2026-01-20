@@ -8,6 +8,8 @@ from PyQt5.QtWidgets import (
 )
 from qfluentwidgets import isDarkTheme, themeColor
 
+from app.utils.config import Settings
+
 
 class ProfessionalComboBoxDelegate(QStyledItemDelegate):
     """
@@ -97,7 +99,9 @@ class CustomComboBox(QComboBox):
     def _setup_style(self):
         dark = isDarkTheme()
         t_color = themeColor().name()
-
+        font = self.font()
+        font.setFamily(Settings.get_instance().canvas_font_type.value)
+        self.setFont(font)
         # 定义颜色变量
         bg = "#2D2D2D" if dark else "#FFFFFF"
         border = "#1A1A1A" if dark else "#DCDCDC"

@@ -19,6 +19,7 @@ from qfluentwidgets import (
 )
 
 from app.scan_components import ComponentScanner
+from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.new_component_dialog import NewComponentDialog
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
@@ -305,7 +306,34 @@ class ComponentTreePanel(QWidget):
         self.tree = ComponentTreeWidget(self.parent_window)
         self.category_filter_dialog = None
         self._setup_ui()
+        self._init_unified_font()
         self._init_components_and_categories()
+
+    def _init_unified_font(self):
+        """
+        在基类中统一配置字体
+        """
+        # 1. 获取字体名称 (这里替换为你实际获取配置的代码)
+        try:
+            font_name = Settings.get_instance().canvas_font_type.value
+        except Exception:
+            font_name = "Microsoft YaHei"  # 默认字体
+
+        # 2. 方案 A：使用 setFont (基础设置)
+        font = self.font()
+        font.setFamily(font_name)
+        self.setFont(font)
+
+        # 3. 方案 B：使用 StyleSheet (强制穿透解决嵌套控件无效问题)
+        self.setStyleSheet(f"""
+            LeftPanel, QWidget {{
+                font-family: "{font_name}";
+            }}
+            /* 针对某些特殊控件的补充（如按钮、标签） */
+            QLabel, QPushButton, QLineEdit, QComboBox, QTreeWidget, QTableWidget TreeWidget{{
+                font-family: "{font_name}";
+            }}
+        """)
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)

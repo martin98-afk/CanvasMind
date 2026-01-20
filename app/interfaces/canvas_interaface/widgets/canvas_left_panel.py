@@ -5,6 +5,7 @@ from qfluentwidgets import SegmentedWidget
 
 from app.interfaces.canvas_interaface.widgets.draggable_component_tree import DraggableTreePanel
 from app.interfaces.canvas_interaface.widgets.subgraph_template_container import SubgraphTemplatePanel
+from app.utils.config import Settings
 
 
 class LeftPanel(QWidget):
@@ -12,6 +13,7 @@ class LeftPanel(QWidget):
 
     def __init__(self, parent=None):
         super().__init__()
+        self._init_unified_font()
         self.container = SegmentedWidget(self)
         self.stackedWidget = QStackedWidget(self)
         self.vBoxLayout = QVBoxLayout(self)
@@ -31,6 +33,32 @@ class LeftPanel(QWidget):
         self.vBoxLayout.setContentsMargins(0, 0, 0, 0)
         self.vBoxLayout.addWidget(self.container)
         self.vBoxLayout.addWidget(self.stackedWidget, 1)
+
+    def _init_unified_font(self):
+        """
+        在基类中统一配置字体
+        """
+        # 1. 获取字体名称 (这里替换为你实际获取配置的代码)
+        try:
+            font_name = Settings.get_instance().canvas_font_type.value
+        except Exception:
+            font_name = "Microsoft YaHei"  # 默认字体
+
+        # 2. 方案 A：使用 setFont (基础设置)
+        font = self.font()
+        font.setFamily(font_name)
+        self.setFont(font)
+
+        # 3. 方案 B：使用 StyleSheet (强制穿透解决嵌套控件无效问题)
+        self.setStyleSheet(f"""
+            LeftPanel, QWidget {{
+                font-family: "{font_name}";
+            }}
+            /* 针对某些特殊控件的补充（如按钮、标签） */
+            QLabel, QPushButton, QLineEdit, QComboBox, QTreeWidget, QTableWidget TreeWidget{{
+                font-family: "{font_name}";
+            }}
+        """)
 
     def addSubInterface(self, widget: QWidget, objectName: str, text: str):
         self.stackedWidget.addWidget(widget)

@@ -51,6 +51,30 @@ class CanvasUISetUp:
         self.create_environment_selector()
         self.create_floating_buttons()
         self.create_floating_nodes()
+        self._init_unified_font()
+
+    def _init_unified_font(self):
+        """
+        在基类中统一配置字体
+        """
+        # 1. 获取字体名称 (这里替换为你实际获取配置的代码)
+        try:
+            font_name = self.parent.canvas_font_type.value
+        except Exception:
+            font_name = "Microsoft YaHei"  # 默认字体
+
+        # 2. 方案 A：使用 setFont (基础设置)
+        font = self.parent.font()
+        font.setFamily(font_name)
+        self.parent.setFont(font)
+
+        # 3. 方案 B：使用 StyleSheet (强制穿透解决嵌套控件无效问题)
+        self.parent.setStyleSheet(f"""
+            /* 针对某些特殊控件的补充（如按钮、标签） */
+            QLabel, QPushButton, QLineEdit, QComboBox, QTreeWidget, QTableWidget TreeWidget{{
+                font-family: "{font_name}";
+            }}
+        """)
 
     def hide_splitter(self):
         """只隐藏右侧栏，保留左侧和中间的状态"""
