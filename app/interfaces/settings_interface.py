@@ -268,6 +268,17 @@ class SettingInterface(ScrollArea):
     def setup_canvas_display_settings(self):
         """画布详细设置"""
         self.canvasGroup = SettingCardGroup(" 画布显示设置", self.view)
+
+        self.nodeResizeMemoryCard = SwitchSettingCard(
+            get_icon("画布"),
+            "节点缩放记忆",
+            "用于控制画布加载时是否还原上一次保存时的节点缩放情况，如果还原则使用节点原始大小加载",
+            configItem=self.cfg.canvas_resize_memory,
+            parent=self.canvasGroup
+        )
+        # 连接配置变化信号，自动保存
+        self.nodeResizeMemoryCard.checkedChanged.connect(self.onConfigChanged)
+
         self.showGridCard = OptionsSettingCard(
             self.cfg.canvas_grid_mode,
             get_icon("画布"),
@@ -317,7 +328,7 @@ class SettingInterface(ScrollArea):
         )
         # 连接配置变化信号，自动保存
         self.canvasFontCard.optionChanged.connect(self.onConfigChanged)
-
+        self.canvasGroup.addSettingCard(self.nodeResizeMemoryCard)
         self.canvasGroup.addSettingCard(self.canvasFontCard)
         self.canvasGroup.addSettingCard(self.showGridCard)
         self.canvasGroup.addSettingCard(self.NodeProxyCard)

@@ -392,23 +392,16 @@ class CustomNodeItem(NodeItem):
     # -----------------------------------------------------------
     # 尺寸同步：在 paint 首次调用时同步 Model 里的 width/height
     # -----------------------------------------------------------
-    def _sync_size_from_model(self):
+    def _sync_size_from_model(self, width, height):
         if self._size_initialized: return
-        # 尝试获取关联的 Node 对象
-        # NodeItem.node 属性会返回 self._node (但它是 protected)
-        # 这里为了稳妥，直接访问 NodeItem.__init__ 里可能没被赋初始值的 _node
-        # 但通常 paint 调用时 _node 已经存在
-        if hasattr(self, '_node') and self._node:
-            w = self._node.get_property('width')
-            h = self._node.get_property('height')
-            if w is not None and h is not None:
-                # 只有大于0的值才有效
-                if float(w) > 0 and float(h) > 0:
-                    self._user_width = float(w)
-                    self._user_height = float(h)
-                    self._size_initialized = True
-                    # 重新计算一次布局
-                    self._draw_node_horizontal()
+        if width is not None and height is not None:
+            # 只有大于0的值才有效
+            if float(width) > 0 and float(height) > 0:
+                self._user_width = float(width)
+                self._user_height = float(height)
+                self._size_initialized = True
+                # 重新计算一次布局
+                self._draw_node_horizontal()
 
     def resize_node_by_user(self, dx, dy):
         calc_w, calc_h = self._calc_size_horizontal(ignore_user_size=True)
@@ -657,7 +650,7 @@ class CustomNodeItem(NodeItem):
         # 【关键修复】在 paint 中进行一次延迟的尺寸同步
         # 因为 deserialization 过程中，Model 的属性写入可能晚于 Item 的初始化
         if not self._size_initialized:
-            self._sync_size_from_model()
+            self._sync_size_from_model(self.width, self.height)
 
         painter.save()
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
