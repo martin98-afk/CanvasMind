@@ -2,6 +2,7 @@ from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
 from qfluentwidgets import CheckBox, SwitchButton, BodyLabel  # 使用 Fluent Design 风格的 CheckBox
 
+from app.utils.utils import str_to_bool
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
@@ -29,16 +30,15 @@ class CheckBoxWidget(QtWidgets.QWidget):
 
     def _on_state_changed(self, state):
         # Qt 的 state 是 int（0/2），但我们转为 bool
-        new_value = state == QtCore.Qt.Checked
-        if new_value != self._value:
-            self._value = new_value
+        if state != self._value:
+            self._value = state
             self.valueChanged.emit(self._value)
 
     def get_value(self):
         return self._value
 
     def set_value(self, value):
-        value = bool(value)
+        value = str_to_bool(value)
         if value != self._value:
             self._value = value
             self.checkbox.setChecked(value)

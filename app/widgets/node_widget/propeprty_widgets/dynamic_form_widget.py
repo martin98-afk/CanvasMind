@@ -4,6 +4,7 @@ from Qt import QtWidgets, QtCore
 from qfluentwidgets import FluentIcon, TransparentPushButton, TransparentToolButton
 
 from app.components.base import PropertyType
+from app.utils.utils import str_to_bool
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
 from app.widgets.node_widget.base import CustomNodeBaseWidget
@@ -89,7 +90,7 @@ class FormFieldWidget(QtWidgets.QWidget):
                 input_row.addWidget(widget)
 
             elif field_type == PropertyType.BOOL.name:
-                widget = CheckBoxWidget(text=label, state=bool(default), parent=self)
+                widget = CheckBoxWidget(text=label, state=str_to_bool(default), parent=self)
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
                 input_row.addWidget(widget)
