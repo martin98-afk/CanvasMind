@@ -353,7 +353,8 @@ class EnvironmentManager(QObject):
         self._scan_envs()
 
         if self._current_log_callback: self._current_log_callback(f"环境 {env_name} 创建成功 ✅")
-        QTimer.singleShot(1000, lambda: self._install_default_packages(env_name, python_exe))
+        self.install_finished.emit("success")
+        # QTimer.singleShot(1000, lambda: self._install_default_packages(env_name, python_exe))
 
     def _validate_env_health(self, env_name):
         """简单验证 Python 是否能运行"""
