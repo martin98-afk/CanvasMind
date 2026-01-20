@@ -388,6 +388,7 @@ class CustomNodeItem(NodeItem):
             text.setVisible(ports_visible)
         self._text_item.setVisible(not self._proxy_mode)
         self._icon_item.setVisible(not self._proxy_mode)
+        self._exec_mode_btn.setVisible(not self._proxy_mode)
         self._proxy_text_item.setVisible(self._proxy_mode)
         self._resize_handle.setVisible(widgets_visible)
 
@@ -489,7 +490,7 @@ class CustomNodeItem(NodeItem):
 
         min_width = max(self._text_item.boundingRect().width() + 120, p_width, w_width + 20, 200)
         header_height = max(self._text_item.boundingRect().height() + 10.0, 34.0)
-        final_port_height = max(port_height, 10.0) if not self._is_collapsed else (5.0 if self._is_collapsed else 0)
+        final_port_height = max(port_height, 10.0)
         min_height = header_height + final_port_height + widget_height
 
         # 2. 决策最终尺寸
@@ -532,6 +533,7 @@ class CustomNodeItem(NodeItem):
             self._icon_item.setPos(start_x, rect.top() + (header_h - 18) / 2)
             self._text_item.setPos(start_x + icon_w + spacing, rect.top() + (header_h - th) / 2)
             self._collapse_btn.setPos(rect.left() + 6, rect.top() + (header_h - 28) / 2)
+            self._exec_mode_btn.setPos(rect.right() - 34, rect.top() + (header_h - 28) / 2)
 
             if not self._is_collapsed:
                 widget_start_y = rect.top() + header_h + self._port_height + 5.0
@@ -539,7 +541,6 @@ class CustomNodeItem(NodeItem):
         else:
             self._update_proxy_text_position()
 
-        self._exec_mode_btn.setPos(rect.right() - 34, rect.top() + (header_h - 28) / 2)
         btn_y = rect.top() - 32
         spacing = 32
         self._close_btn.setPos(rect.right() - 28, btn_y)

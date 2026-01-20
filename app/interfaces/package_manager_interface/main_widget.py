@@ -5,12 +5,13 @@ import os
 import platform
 import re
 import shutil
+import uuid
 from pathlib import Path
 from urllib.parse import urlparse
 
 from PyQt5.QtCore import pyqtSignal, QProcess, Qt, QTimer, QSize, QPoint
 from PyQt5.QtGui import QTextCursor, QColor, QFont
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem
 from PyQt5.QtWidgets import (
     QWidget, QTableWidgetItem, QHeaderView,
     QFileDialog, QFrame, QAbstractItemView, QStackedWidget
@@ -20,15 +21,15 @@ from qfluentwidgets import (
     FluentIcon, InfoBar, SearchLineEdit, TextEdit, MessageBox,
     StateToolTip, SimpleCardWidget,
     TransparentToolButton, IconWidget, CaptionLabel, Pivot,
-    RoundMenu, Action, SwitchButton
+    RoundMenu, Action, SwitchButton, ListWidget
 )
-from qfluentwidgets import (LineEdit,
-                            BodyLabel, StrongBodyLabel)
+from qfluentwidgets import (LineEdit, BodyLabel, StrongBodyLabel)
 
 from app.interfaces.package_manager_interface.utils.package_list_thread import PackageListThread
 from app.interfaces.package_manager_interface.utils.ssh_exec_thread import SSHExecThread
 from app.interfaces.package_manager_interface.utils.ssh_upload_and_exec_thread import SSHUploadAndExecThread
 from app.interfaces.package_manager_interface.widgets.ssh_confiig_dialog import SSHAddrDialog
+from app.interfaces.package_manager_interface.widgets.task_card import TaskCardWidget
 from app.utils.config import Settings
 from app.utils.env_operation import EnvironmentManager
 from app.utils.utils import get_icon, resource_path
@@ -50,126 +51,42 @@ class EnvManagerUI(QWidget):
         StyleSheet.PACKAGE_MANAGER.apply(self)
 
         self.mgr = EnvironmentManager()
-        self.process = None
+        self.config = Settings.get_instance()
+
         self.current_env = None
         self.current_env_data = None
         self.pkgs_data = []
-        self.config = Settings.get_instance()
-
         self.ssh_config_file = str(Path(resource_path("envs")) / "ssh_envs_cache.json")
 
+        self.tasks = {}
+        self.current_viewing_task_id = None
+
+        self._init_ui()
+
+        self.pivot.setCurrentItem("local")
+        self.on_mode_changed("local")
+
+    def _init_ui(self):
         self.mainLayout = QVBoxLayout(self)
         self.mainLayout.setContentsMargins(16, 16, 16, 16)
 
         self.pivot = Pivot(self)
-        self.pivot.addItem("local", "本地环境", lambda: self.on_mode_changed("local"))
-        self.pivot.addItem("remote", "远程 SSH 环境", lambda: self.on_mode_changed("remote"))
+        self.pivot.addItem("local", self.tr("本地环境"), lambda: self.on_mode_changed("local"))
+        self.pivot.addItem("remote", self.tr("远程 SSH"), lambda: self.on_mode_changed("remote"))
 
         self.splitter = ModernSplitter(Qt.Horizontal)
         self.splitter.setHandleWidth(5)
 
-        leftWidget = QWidget()
-        leftLayout = QVBoxLayout(leftWidget)
-        leftLayout.setContentsMargins(0, 0, 5, 0)
-        searchLayout = QHBoxLayout()
-        listIcon = IconWidget(FluentIcon.LIBRARY, self)
-        listIcon.setFixedSize(24, 24)
-        self.searchEdit = SearchLineEdit(self)
-        self.searchEdit.setPlaceholderText("搜索包名 (Ctrl+F)")
-        self.searchEdit.setFixedWidth(240)
-        self.searchEdit.textChanged.connect(self.on_search_text_changed)
-        self.searchEdit.searchSignal.connect(self.on_search_text_changed)
-        self.searchEdit.clearSignal.connect(self.on_search_text_changed)
-        searchLayout.addWidget(listIcon)
-        searchLayout.addWidget(StrongBodyLabel("已安装包列表", self))
-        searchLayout.addStretch(1)
-        searchLayout.addWidget(self.searchEdit)
-
-        self.packageTable = TableWidget(self)
-        self._setup_package_table()
-        leftLayout.addLayout(searchLayout)
-        leftLayout.addWidget(self.packageTable)
+        leftWidget = self._create_left_panel()
 
         self.rightCard = SimpleCardWidget(self)
         rightLayout = QVBoxLayout(self.rightCard)
 
-        self.titleLayout = QHBoxLayout()
-        titleVBox = QVBoxLayout()
-
-        envIcon = IconWidget(get_icon("python"), self)
-        envIcon.setFixedSize(32, 32)
-        statusInfoLayout = QVBoxLayout()
-        self.pyVersionLabel = CaptionLabel("Python 版本: --", self)
-        self.remoteDetailLabel = CaptionLabel("连接信息: 本地环境", self)
-        statusInfoLayout.addWidget(self.pyVersionLabel)
-        statusInfoLayout.addWidget(self.remoteDetailLabel)
-        self.titleLayout.addWidget(envIcon)
-        self.titleLayout.addLayout(statusInfoLayout)
-        self.titleLayout.addStretch(1)
-        self.titleLayout.addWidget(self.pivot)
-        rightLayout.addLayout(self.titleLayout)
+        rightLayout.addLayout(self._create_header())
 
         self.configStack = QStackedWidget(self)
-
-        self.localPanel = QWidget()
-        lpLayout = QHBoxLayout(self.localPanel)
-        lpLayout.setContentsMargins(0, 0, 0, 0)
-        self.envCombo = ComboBox(self)
-        self.envCombo.currentIndexChanged.connect(self.on_env_changed)
-
-        self.refreshLocalBtn = TransparentToolButton(FluentIcon.SYNC, self)
-        self.refreshLocalBtn.setToolTip("刷新包列表")
-        self.refreshLocalBtn.clicked.connect(lambda: self.load_packages(self.current_env_data))
-
-        self.newEnvBtn = TransparentToolButton(FluentIcon.ADD, self)
-        self.newEnvBtn.clicked.connect(self.create_env)
-        self.cloneEnvBtn = TransparentToolButton(FluentIcon.COPY, self)
-        self.cloneEnvBtn.clicked.connect(self.clone_env)
-        self.deleteEnvBtn = TransparentToolButton(FluentIcon.DELETE, self)
-        self.deleteEnvBtn.clicked.connect(self.delete_env)
-
-        lpLayout.addWidget(self.envCombo, 1)
-        lpLayout.addWidget(self.refreshLocalBtn)
-        lpLayout.addWidget(self.newEnvBtn)
-        lpLayout.addWidget(self.cloneEnvBtn)
-        lpLayout.addWidget(self.deleteEnvBtn)
-
-        self.remotePanel = QWidget()
-        rpLayout = QVBoxLayout(self.remotePanel)
-        rpLayout.setContentsMargins(0, 0, 0, 0)
-        rpTop = QHBoxLayout()
-        self.remoteEnvCombo = ComboBox(self)
-        self.remoteEnvCombo.currentIndexChanged.connect(self.on_env_changed)
-
-        self.addSshBtn = TransparentToolButton(FluentIcon.ADD, self)
-        self.addSshBtn.setToolTip("添加 SSH 环境")
-        self.addSshBtn.clicked.connect(self.add_ssh_env_dialog)
-
-        self.editSshBtn = TransparentToolButton(FluentIcon.EDIT, self)
-        self.editSshBtn.setToolTip("编辑选中的 SSH 环境")
-        self.editSshBtn.clicked.connect(self.edit_ssh_env_dialog)
-
-        self.refreshRemoteBtn = TransparentToolButton(FluentIcon.SYNC, self)
-        self.refreshRemoteBtn.setToolTip("刷新包列表")
-        self.refreshRemoteBtn.clicked.connect(lambda: self.load_packages(self.current_env_data))
-
-        self.installDefaultBtn = TransparentToolButton(get_icon("工具包"), self)
-        self.installDefaultBtn.setToolTip("安装默认依赖包")
-        self.installDefaultBtn.clicked.connect(self.install_default_packages)
-
-        self.delSshBtn = TransparentToolButton(FluentIcon.DELETE, self)
-        self.delSshBtn.setToolTip("删除 SSH 环境")
-        self.delSshBtn.clicked.connect(self.delete_ssh_env)
-
-        rpTop.addWidget(self.remoteEnvCombo, 1)
-        rpTop.addWidget(self.refreshRemoteBtn)
-        rpTop.addWidget(self.addSshBtn)
-        rpTop.addWidget(self.editSshBtn)
-        rpTop.addWidget(self.installDefaultBtn)
-        rpTop.addWidget(self.delSshBtn)
-
-        rpLayout.addLayout(rpTop)
-
+        self._init_local_panel()
+        self._init_remote_panel()
         self.configStack.addWidget(self.localPanel)
         self.configStack.addWidget(self.remotePanel)
         rightLayout.addWidget(self.configStack)
@@ -182,58 +99,120 @@ class EnvManagerUI(QWidget):
         self.splitter.setStretchFactor(1, 5)
         self.mainLayout.addWidget(self.splitter)
 
-        self.pivot.setCurrentItem("local")
-        self.on_mode_changed("local")
+    def _create_left_panel(self):
+        leftWidget = QWidget()
+        leftLayout = QVBoxLayout(leftWidget)
+        leftLayout.setContentsMargins(0, 0, 5, 0)
 
-    def is_uv_installed(self):
-        """检查本地系统是否安装了 uv"""
-        return shutil.which("uv") is not None
+        searchLayout = QHBoxLayout()
+        listIcon = IconWidget(FluentIcon.LIBRARY, self)
+        listIcon.setFixedSize(24, 24)
+        self.searchEdit = SearchLineEdit(self)
+        self.searchEdit.setPlaceholderText(self.tr("搜索包名 (Ctrl+F)"))
+        self.searchEdit.setFixedWidth(240)
+        self.searchEdit.textChanged.connect(self.on_search_text_changed)
+        self.searchEdit.searchSignal.connect(self.on_search_text_changed)
+        self.searchEdit.clearSignal.connect(self.on_search_text_changed)
+        searchLayout.addWidget(listIcon)
+        searchLayout.addWidget(StrongBodyLabel(self.tr("已安装包列表"), self))
+        searchLayout.addStretch(1)
+        searchLayout.addWidget(self.searchEdit)
 
-    def install_uv_logic(self):
-        """自动下载并安装 uv"""
-        self._log_color("\n> 正在启动 uv 自动安装程序...", "#61afef")
-        self.execBtn.setEnabled(False)
+        self.packageTable = TableWidget(self)
+        self._setup_package_table()
+        leftLayout.addLayout(searchLayout)
+        leftLayout.addWidget(self.packageTable)
+        return leftWidget
 
-        if platform.system() == "Windows":
-            # Windows: 使用 PowerShell 官方脚本
-            cmd = ["powershell", "-Command", "irm https://astral.sh/uv/install.ps1 | iex"]
-        else:
-            # Unix: 使用 curl 脚本
-            cmd = ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"]
+    def _create_header(self):
+        self.titleLayout = QHBoxLayout()
 
-        self.process = QProcess(self)
-        self.process.setProcessChannelMode(QProcess.MergedChannels)
-        self.process.readyReadStandardOutput.connect(self.on_ready_read)
-        self.process.finished.connect(self._on_uv_install_finished)
-        self.process.start(cmd[0], cmd[1:])
+        envIcon = IconWidget(get_icon("python"), self)
+        envIcon.setFixedSize(32, 32)
+        statusInfoLayout = QVBoxLayout()
+        self.pyVersionLabel = CaptionLabel(self.tr("Python 版本: --"), self)
+        self.remoteDetailLabel = CaptionLabel(self.tr("连接信息: 本地环境"), self)
+        statusInfoLayout.addWidget(self.pyVersionLabel)
+        statusInfoLayout.addWidget(self.remoteDetailLabel)
 
-    def _on_uv_install_finished(self):
-        self.execBtn.setEnabled(True)
-        self._log_color("[提示] uv 安装尝试结束。如果系统提示已安装，请重启软件以生效路径。", "#98c379")
-        if self.is_uv_installed():
-            InfoBar.success("安装成功", "uv 已就绪，可以开始使用极速安装模式", parent=self)
-        else:
-            InfoBar.warning("安装提示", "安装已完成，如果仍无法检测，请手动添加 uv 路径到环境变量并重启。", parent=self)
+        self.titleLayout.addWidget(envIcon)
+        self.titleLayout.addLayout(statusInfoLayout)
+        self.titleLayout.addStretch(1)
+        self.titleLayout.addWidget(self.pivot)
+        return self.titleLayout
 
-    def _setup_package_table(self):
-        self.packageTable.setColumnCount(3)
-        self.packageTable.setHorizontalHeaderLabels(["名称", "版本", "操作"])
-        self.packageTable.verticalHeader().hide()
-        self.packageTable.setAlternatingRowColors(True)
-        self.packageTable.setSelectionBehavior(QAbstractItemView.SelectRows)
-        header = self.packageTable.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.resizeSection(1, 120)
-        header.resizeSection(2, 90)
+    def _init_local_panel(self):
+        self.localPanel = QWidget()
+        lpLayout = QHBoxLayout(self.localPanel)
+        lpLayout.setContentsMargins(0, 0, 0, 0)
+        self.envCombo = ComboBox(self)
+        self.envCombo.currentIndexChanged.connect(self.on_env_changed)
+
+        self.refreshLocalBtn = TransparentToolButton(FluentIcon.SYNC, self)
+        self.refreshLocalBtn.setToolTip(self.tr("刷新包列表"))
+        self.refreshLocalBtn.clicked.connect(lambda: self.load_packages(self.current_env_data))
+
+        self.newEnvBtn = TransparentToolButton(FluentIcon.ADD, self)
+        self.newEnvBtn.clicked.connect(self.create_env)
+        self.cloneEnvBtn = TransparentToolButton(FluentIcon.COPY, self)
+        self.cloneEnvBtn.clicked.connect(self.clone_env)
+        self.installDefaultBtn = TransparentToolButton(get_icon("工具包"), self)
+        self.installDefaultBtn.setToolTip(self.tr("安装默认依赖包"))
+        self.installDefaultBtn.clicked.connect(self.install_default_packages)
+        self.deleteEnvBtn = TransparentToolButton(FluentIcon.DELETE, self)
+        self.deleteEnvBtn.clicked.connect(self.delete_env)
+
+        lpLayout.addWidget(self.envCombo, 1)
+        lpLayout.addWidget(self.refreshLocalBtn)
+        lpLayout.addWidget(self.newEnvBtn)
+        lpLayout.addWidget(self.cloneEnvBtn)
+        lpLayout.addWidget(self.installDefaultBtn)
+        lpLayout.addWidget(self.deleteEnvBtn)
+
+    def _init_remote_panel(self):
+        self.remotePanel = QWidget()
+        rpLayout = QVBoxLayout(self.remotePanel)
+        rpLayout.setContentsMargins(0, 0, 0, 0)
+        rpTop = QHBoxLayout()
+        self.remoteEnvCombo = ComboBox(self)
+        self.remoteEnvCombo.currentIndexChanged.connect(self.on_env_changed)
+
+        self.addSshBtn = TransparentToolButton(FluentIcon.ADD, self)
+        self.addSshBtn.setToolTip(self.tr("添加 SSH 环境"))
+        self.addSshBtn.clicked.connect(self.add_ssh_env_dialog)
+
+        self.editSshBtn = TransparentToolButton(FluentIcon.EDIT, self)
+        self.editSshBtn.setToolTip(self.tr("编辑 SSH 环境"))
+        self.editSshBtn.clicked.connect(self.edit_ssh_env_dialog)
+
+        self.refreshRemoteBtn = TransparentToolButton(FluentIcon.SYNC, self)
+        self.refreshRemoteBtn.setToolTip(self.tr("刷新包列表"))
+        self.refreshRemoteBtn.clicked.connect(lambda: self.load_packages(self.current_env_data))
+
+        self.installDefaultBtn = TransparentToolButton(get_icon("工具包"), self)
+        self.installDefaultBtn.setToolTip(self.tr("安装默认依赖包"))
+        self.installDefaultBtn.clicked.connect(self.install_default_packages)
+
+        self.delSshBtn = TransparentToolButton(FluentIcon.DELETE, self)
+        self.delSshBtn.setToolTip(self.tr("删除 SSH 环境"))
+        self.delSshBtn.clicked.connect(self.delete_ssh_env)
+
+        rpTop.addWidget(self.remoteEnvCombo, 1)
+        rpTop.addWidget(self.refreshRemoteBtn)
+        rpTop.addWidget(self.addSshBtn)
+        rpTop.addWidget(self.editSshBtn)
+        rpTop.addWidget(self.installDefaultBtn)
+        rpTop.addWidget(self.delSshBtn)
+
+        rpLayout.addLayout(rpTop)
 
     def _init_pip_console(self, layout):
         layout.addWidget(QFrame(frameShape=QFrame.HLine, styleSheet="color:#e5e5e5;"))
 
-        # 增加控制台标题和 uv 开关
         headerLayout = QHBoxLayout()
-        headerLayout.addWidget(StrongBodyLabel("命令控制台"))
+        headerLayout.addWidget(StrongBodyLabel(self.tr("任务与命令控制台")))
         headerLayout.addStretch(1)
-        uv_label = StrongBodyLabel("使用 uv 极速安装")
+        uv_label = StrongBodyLabel(self.tr("使用 uv 极速安装"))
         self.uvSwitch = SwitchButton(self)
         self.uvSwitch.setChecked(True)
         headerLayout.addWidget(uv_label)
@@ -242,7 +221,7 @@ class EnvManagerUI(QWidget):
 
         cl = QHBoxLayout()
         self.sourceCombo = ComboBox(self)
-        self.sourceCombo.addItems(["在线搜索", "本地文件"])
+        self.sourceCombo.addItems([self.tr("在线搜索"), self.tr("本地文件")])
         self.sourceCombo.currentIndexChanged.connect(self._update_action_combo)
         self.actionCombo = ComboBox(self)
         cl.addWidget(self.sourceCombo, 1)
@@ -251,10 +230,10 @@ class EnvManagerUI(QWidget):
 
         self.packageEdit = LineEdit(self)
         self.packageEdit.setClearButtonEnabled(True)
-        self.packageEdit.setPlaceholderText("输入包名...")
+        self.packageEdit.setPlaceholderText(self.tr("请输入包名，例如 numpy..."))
 
         self.fileSelectBtn = TransparentToolButton(FluentIcon.FOLDER, self)
-        self.fileSelectBtn.setToolTip("选择本地安装包或文件夹")
+        self.fileSelectBtn.setToolTip(self.tr("选择文件/文件夹"))
         self.fileSelectBtn.clicked.connect(self.show_file_selection_menu)
         self.fileSelectBtn.hide()
 
@@ -263,25 +242,382 @@ class EnvManagerUI(QWidget):
         self.pkgLayout.addWidget(self.fileSelectBtn)
         layout.addLayout(self.pkgLayout)
 
-        self.execBtn = PrimaryPushButton("执行命令", self, icon=FluentIcon.PLAY)
+        self.execBtn = PrimaryPushButton(self.tr("发布任务"), self, icon=FluentIcon.PLAY)
         self.execBtn.clicked.connect(lambda: self.run_pip_command())
         layout.addWidget(self.execBtn)
 
-        layout.addWidget(BodyLabel("终端输出:"))
+        layout.addWidget(BodyLabel(self.tr("任务列表与日志:")))
+
+        self.consoleSplitter = ModernSplitter(Qt.Horizontal)
+        self.consoleSplitter.setHandleWidth(3)
+
+        self.taskListWidget = ListWidget(self)
+        self.taskListWidget.setFrameShape(QFrame.NoFrame)
+        self.taskListWidget.setFixedWidth(280)
+        self.taskListWidget.itemClicked.connect(self._on_task_item_clicked)
+        self.taskListWidget.hide()
+
         self.logEdit = TextEdit(self)
         self.logEdit.setReadOnly(True)
         self.logEdit.setStyleSheet("background-color:#282c34;color:#abb2bf;font-family:Consolas;")
-        layout.addWidget(self.logEdit, 1)
+
+        self.consoleSplitter.addWidget(self.taskListWidget)
+        self.consoleSplitter.addWidget(self.logEdit)
+        self.consoleSplitter.setStretchFactor(1, 1)
+
+        layout.addWidget(self.consoleSplitter, 1)
+
         self._update_action_combo()
+
+    # --- API ---
+    def get_current_python_exe(self):
+        """
+        获取当前选中的 Python 解释器路径
+        供外部模块 (如 CodeEditorWidget) 调用
+        """
+        if self.current_env_data and "path" in self.current_env_data:
+            return self.current_env_data.get("path")
+
+        # 兜底逻辑
+        if self.current_env:
+            return str(self.mgr.get_python_exe(self.current_env))
+
+        return "python"
+
+    def change_env(self, env_name):
+        """
+        外部请求切换环境
+        """
+        envs = self.mgr.list_envs()
+        if env_name in envs:
+            idx = self.envCombo.findText(f"[Local] {env_name}")
+            if idx >= 0:
+                self.pivot.setCurrentItem("local")
+                self.on_mode_changed("local")
+                self.envCombo.setCurrentIndex(idx)
+
+    # --- End API ---
+
+    def create_task(self, name, env_data, worker, is_remote=False):
+        if self.taskListWidget.isHidden():
+            self.taskListWidget.show()
+            self.consoleSplitter.setSizes([280, 700])
+
+        task_id = str(uuid.uuid4())
+
+        item = QListWidgetItem(self.taskListWidget)
+        item.setSizeHint(QSize(260, 80))
+
+        env_name = env_data.get("name", "Unknown")
+        card = TaskCardWidget(task_id, name, env_name, self.taskListWidget)
+        card.cancel_signal.connect(self.cancel_task)
+
+        self.taskListWidget.setItemWidget(item, card)
+        self.taskListWidget.setCurrentItem(item)
+
+        self.tasks[task_id] = {
+            'id': task_id,
+            'name': name,
+            'worker': worker,
+            'log': [],
+            'env': env_data,
+            'item': item,
+            'card': card,
+            'status': 'running',
+            'is_remote': is_remote
+        }
+
+        if is_remote:
+            worker.output_signal.connect(lambda text: self.on_task_log(task_id, text))
+            worker.finished_signal.connect(lambda: self.on_task_finished(task_id))
+            worker.start()
+        else:
+            worker.readyReadStandardOutput.connect(lambda: self.on_local_process_output(task_id))
+            worker.finished.connect(lambda exit_code=0, status=None: self.on_task_finished(task_id))
+            worker.start()
+
+        self._switch_log_view(task_id)
+
+        start_msg = f"> {self.tr('任务')} '{name}' {self.tr('已启动')}，{self.tr('环境')}: [{env_name}]..."
+        self._log_color(start_msg, "#61afef", task_id)
+        card.set_status(self.tr("运行中..."), "#009faa")
+
+    def cancel_task(self, task_id):
+        if task_id not in self.tasks: return
+        task = self.tasks[task_id]
+        if task['status'] != 'running': return
+
+        worker = task['worker']
+        self._log_color(f"\n[{self.tr('警告')}] {self.tr('用户取消了该任务')}。", "#e06c75", task_id)
+
+        if task['is_remote']:
+            if hasattr(worker, 'terminate'):
+                worker.terminate()
+                worker.wait()
+        else:
+            if worker.state() != QProcess.NotRunning:
+                worker.kill()
+
+        task['status'] = 'cancelled'
+        task['card'].set_status(self.tr("已取消"), "#e06c75", finished=True)
+        self.on_task_finished(task_id, forced_status=self.tr("已取消"))
+
+    def on_local_process_output(self, task_id):
+        if task_id not in self.tasks: return
+        task = self.tasks[task_id]
+        process = task['worker']
+        data = process.readAllStandardOutput().data().decode("utf-8", errors="ignore")
+        self.on_task_log(task_id, data)
+
+    def on_task_log(self, task_id, text):
+        if task_id not in self.tasks: return
+
+        # 1. 存入缓冲区
+        self.tasks[task_id]['log'].append(text)
+
+        # 2. 如果当前正在看这个任务，立即显示
+        if self.current_viewing_task_id == task_id:
+            self._append_log_chunk(text)
+
+    def _append_log_chunk(self, text):
+        """
+        智能追加日志：
+        如果是 HTML 样式的状态信息，使用 append (自动换行);
+        如果是普通文本（进程输出），使用 insertPlainText (保留原始流式换行)
+        """
+        if text.strip().startswith("<span"):
+            # HTML 状态信息，作为新段落追加
+            self.logEdit.append(text)
+        else:
+            # 普通文本流，插入光标处
+            self.logEdit.insertPlainText(text)
+        self.logEdit.moveCursor(QTextCursor.End)
+
+    def on_task_finished(self, task_id, forced_status=None):
+        if task_id not in self.tasks: return
+        task = self.tasks[task_id]
+
+        if task['status'] == 'finished' and not forced_status:
+            return
+
+        status_text = forced_status or self.tr("完成")
+        color = "#e06c75" if forced_status == self.tr("已取消") else "#98c379"
+
+        if not task['is_remote'] and not forced_status:
+            exit_code = task['worker'].exitCode()
+            if exit_code != 0:
+                status_text = self.tr("失败")
+                color = "#e06c75"
+
+        task['status'] = 'finished'
+        task['card'].set_status(status_text, color, finished=True)
+        self._log_color(f"\n[{status_text}]", color, task_id)
+
+        if self.current_env_data and task['env']['name'] == self.current_env_data['name']:
+            self.load_packages(self.current_env_data)
+
+    def _on_task_item_clicked(self, item):
+        for tid, data in self.tasks.items():
+            if data['item'] == item:
+                self._switch_log_view(tid)
+                break
+
+    def _switch_log_view(self, task_id):
+        """切换视图时，逐条回放日志以保留格式"""
+        self.current_viewing_task_id = task_id
+        self.logEdit.clear()
+
+        if task_id in self.tasks:
+            # 遍历历史记录，使用智能追加函数
+            for chunk in self.tasks[task_id]['log']:
+                self._append_log_chunk(chunk)
+
+    def _log_color(self, text, color, task_id=None):
+        html = f'<span style="color:{color};">{text}</span>'
+        target_id = task_id or self.current_viewing_task_id
+
+        if target_id and target_id in self.tasks:
+            self.on_task_log(target_id, html)
+        elif not target_id:
+            self.logEdit.append(html)
+
+    def is_uv_installed(self):
+        return shutil.which("uv") is not None
+
+    def install_uv_logic(self):
+        if platform.system() == "Windows":
+            cmd = ["powershell", "-Command", "irm https://astral.sh/uv/install.ps1 | iex"]
+        else:
+            cmd = ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"]
+
+        process = QProcess(self)
+        process.setProgram(cmd[0])
+        process.setArguments(cmd[1:])
+
+        fake_env = {"name": "System", "type": "local"}
+        self.create_task(self.tr("安装 uv"), fake_env, process, is_remote=False)
+
+    def run_pip_command(self, action=None, package_input=None):
+        if not self.current_env_data: return
+
+        # === 关键修复：解决 Windows 文件占用 (OS Error 32) ===
+        # 在执行安装/卸载任务前，强制停止正在运行的包列表刷新线程。
+        # 如果不停止，后台的 'pip list' 进程可能正占用 .pyd 等文件，导致 uv 无法写入。
+        if hasattr(self, '_pkg_thread') and self._pkg_thread.isRunning():
+            # 只有在本地环境时才会有严重的文件锁冲突，但统一停止比较安全
+            self._pkg_thread.terminate()
+            self._pkg_thread.wait()
+            self.pyVersionLabel.setText(self.tr("列表刷新已暂停，准备执行任务..."))
+        # ==================================================
+
+        use_uv = self.uvSwitch.isChecked() and self.current_env_data["type"] == "local"
+        if use_uv and not self.is_uv_installed():
+            res = MessageBox(self.tr("未检测到 uv"), self.tr("是否立即安装 uv 以启用加速功能？"), self).exec()
+            if res:
+                self.install_uv_logic()
+            else:
+                self.uvSwitch.setChecked(False)
+            return
+
+        ui_action = self.actionCombo.currentText()
+        ui_source = self.sourceCombo.currentText()
+        current_action = action or ui_action
+        raw_input = package_input or self.packageEdit.text().strip()
+
+        if not raw_input and self.tr("卸载") not in current_action: return
+
+        cmd_result = self._generate_pip_command(use_uv, current_action, ui_source, raw_input)
+        if not cmd_result: return
+        executable, args, upload_files = cmd_result
+
+        display_name = f"{current_action} {raw_input}"
+        if len(display_name) > 25:
+            display_name = display_name[:25] + "..."
+
+        if self.current_env_data["type"] == "ssh":
+            if upload_files:
+                is_req = self.tr("Requirements") in current_action
+                worker = SSHUploadAndExecThread(
+                    self.current_env_data, upload_files, current_action, is_requirements=is_req
+                )
+                self.create_task(display_name, self.current_env_data, worker, is_remote=True)
+            else:
+                worker = SSHExecThread(self.current_env_data, args)
+                self.create_task(display_name, self.current_env_data, worker, is_remote=True)
+        else:
+            process = QProcess(self)
+            process.setProcessChannelMode(QProcess.MergedChannels)
+            if platform.system() == "Windows":
+                from PyQt5.QtCore import QProcessEnvironment
+                process.setProcessEnvironment(QProcessEnvironment.systemEnvironment())
+
+            process.setProgram(executable)
+            process.setArguments(args)
+            self.create_task(display_name, self.current_env_data, process, is_remote=False)
+
+    def _generate_pip_command(self, use_uv, action, source, input_text):
+        upload_files = None
+
+        if use_uv:
+            executable = "uv"
+            if self.tr("卸载") in action:
+                # 修复：uv pip uninstall 不支持 -y 参数，直接移除
+                cmd = ["pip", "uninstall", "--python", self.current_env_data["path"]]
+            else:
+                cmd = ["pip", "install", "--python", self.current_env_data["path"]]
+        else:
+            executable = self.current_env_data.get("path", "python")
+            if self.tr("卸载") in action:
+                # 标准 pip 需要 -y 来跳过确认
+                cmd = ["-m", "pip", "uninstall", "-y"]
+            else:
+                cmd = ["-m", "pip", "install"]
+
+        if self.tr("Requirements") in action:
+            cmd.extend(["-r", input_text])
+            self._add_mirror_sources(cmd)
+            if self.current_env_data["type"] == "ssh" and source == self.tr("本地文件"):
+                upload_files = [input_text]
+        elif source == self.tr("在线搜索"):
+            input_list = input_text.split(" ") if input_text else []
+            if self.tr("卸载") in action:
+                cmd.extend(input_list)
+            elif action == self.tr("强制重装"):
+                cmd.extend(["--force-reinstall"] + input_list)
+                self._add_mirror_sources(cmd)
+            elif action == self.tr("更新"):
+                cmd.extend(["-U"] + input_list)
+                self._add_mirror_sources(cmd)
+            else:
+                cmd.extend(input_list)
+                self._add_mirror_sources(cmd)
+        else:
+            if self.tr("离线") in action:
+                cmd.append("--no-index")
+            else:
+                self._add_mirror_sources(cmd)
+
+            paths = [p.strip() for p in input_text.split(";") if p.strip()]
+            final_packages = []
+
+            for p in paths:
+                if os.path.isdir(p):
+                    for item in os.listdir(p):
+                        if item.lower().endswith(('.whl', '.tar.gz', '.zip')):
+                            final_packages.append(os.path.join(p, item))
+                else:
+                    final_packages.append(p)
+
+            if self.current_env_data["type"] == "ssh":
+                upload_files = paths
+            else:
+                cmd.extend(final_packages)
+
+        return executable, cmd, upload_files
+
+    def _add_mirror_sources(self, cmd):
+        mirrors = self.mgr.config.mirrors.value
+        if not mirrors: return
+        for i, url in enumerate(mirrors):
+            flag = "-i" if i == 0 else "--extra-index-url"
+            parsed = urlparse(url)
+            if parsed.hostname:
+                cmd.extend([flag, url, "--trusted-host", parsed.hostname])
+
+    def _setup_package_table(self):
+        self.packageTable.setColumnCount(3)
+        self.packageTable.setHorizontalHeaderLabels([self.tr("名称"), self.tr("版本"), self.tr("操作")])
+        self.packageTable.verticalHeader().hide()
+        self.packageTable.setAlternatingRowColors(True)
+        self.packageTable.setSelectionBehavior(QAbstractItemView.SelectRows)
+        header = self.packageTable.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.resizeSection(1, 120)
+        header.resizeSection(2, 90)
+
+    def _update_action_combo(self):
+        current_source = self.sourceCombo.currentText()
+        self.actionCombo.clear()
+        if current_source == self.tr("在线搜索"):
+            self.fileSelectBtn.hide()
+            self.actionCombo.addItems([self.tr("安装"), self.tr("强制重装"), self.tr("更新"), self.tr("卸载")])
+            self.packageEdit.setPlaceholderText(self.tr("请输入包名，例如 numpy"))
+        elif current_source == self.tr("本地文件"):
+            self.fileSelectBtn.show()
+            self.actionCombo.addItems(
+                [self.tr("安装 (Whl/Zip)"), self.tr("离线安装 (Whl/Zip)"), self.tr("Requirements 安装")])
+            self.packageEdit.setPlaceholderText(self.tr("请选择本地 .whl 或 requirements.txt 文件..."))
 
     def show_file_selection_menu(self):
         menu = RoundMenu(parent=self)
-        act_req = Action(FluentIcon.DOCUMENT, "选择 requirements.txt", self)
-        act_files = Action(FluentIcon.ADD, "选择多个 .whl 安装包", self)
-        act_folder = Action(FluentIcon.FOLDER, "选择安装包文件夹", self)
+        act_req = Action(FluentIcon.DOCUMENT, self.tr("选择 requirements.txt"), self)
+        act_files = Action(FluentIcon.ADD, self.tr("选择安装包 (whl/tar.gz)"), self)
+        act_folder = Action(FluentIcon.FOLDER, self.tr("选择文件夹"), self)
+
         act_req.triggered.connect(self.select_requirements_file)
         act_files.triggered.connect(self.select_local_files)
         act_folder.triggered.connect(self.select_local_folder)
+
         menu.addAction(act_req)
         menu.addSeparator()
         menu.addAction(act_files)
@@ -291,21 +627,21 @@ class EnvManagerUI(QWidget):
 
     def select_requirements_file(self):
         file, _ = QFileDialog.getOpenFileName(
-            self, "选择 Requirements 文件", "", "Text Files (*.txt);;All Files (*)"
+            self, self.tr("选择 Requirements 文件"), "", "Text Files (*.txt);;All Files (*)"
         )
         if file:
             self.packageEdit.setText(file)
-            self.actionCombo.setCurrentText("Requirements安装 (联网)")
+            self.actionCombo.setCurrentText(self.tr("Requirements 安装"))
 
     def select_local_files(self):
         files, _ = QFileDialog.getOpenFileNames(
-            self, "选择本地安装包", "", "Python Packages (*.whl *.tar.gz *.zip);All Files (*)"
+            self, self.tr("选择安装包"), "", "Python Packages (*.whl *.tar.gz *.zip);All Files (*)"
         )
         if files:
             self.packageEdit.setText(";".join(files))
 
     def select_local_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "选择包含安装包的文件夹")
+        folder = QFileDialog.getExistingDirectory(self, self.tr("选择文件夹"))
         if folder:
             self.packageEdit.setText(folder)
 
@@ -324,16 +660,6 @@ class EnvManagerUI(QWidget):
                     env["type"] = "ssh"
                     all_envs.append(env)
         return all_envs
-
-    def get_current_python_exe(self):
-        if self.current_env_data:
-            return self.current_env_data.get("path")
-        return str(self.mgr.get_python_exe(self.current_env))
-
-    def change_env(self, env_name):
-        envs = self.mgr.list_envs()
-        if env_name in envs:
-            self.envCombo.setCurrentText(f"[Local] {env_name}")
 
     def refresh_env_list(self):
         self.envCombo.blockSignals(True)
@@ -354,34 +680,36 @@ class EnvManagerUI(QWidget):
         if not data: return
         self.current_env_data = data
         self.current_env = data["name"]
+
         if data["type"] == "local":
             self.mgr.refresh_env_config()
-            self.remoteDetailLabel.setText("路径: " + data["path"])
+            self.remoteDetailLabel.setText(f"{self.tr('路径')}: {data['path']}")
             self.config.set(self.config.current_env_selected, data["name"])
             self.config.save_config()
         else:
-            self.remoteDetailLabel.setText(f"地址: {data['host']}:{data.get('port', 22)}  |  用户: {data['user']}")
+            self.remoteDetailLabel.setText(
+                f"{self.tr('地址')}: {data['host']}:{data.get('port', 22)} | User: {data['user']}")
+
         self.load_packages(data)
 
-    def load_packages(self, env_name_or_data):
-        if not env_name_or_data: return
-        if isinstance(env_name_or_data, str):
-            env_data = {"type": "local", "name": env_name_or_data,
-                        "path": str(self.mgr.get_python_exe(env_name_or_data))}
-        else:
-            env_data = env_name_or_data
-        self.pyVersionLabel.setText("正在获取包列表...")
-        self._log_color(f"> 正在同步环境: {env_data['name']} ...", "#61afef")
+    def load_packages(self, env_data):
+        if not env_data: return
+        if isinstance(env_data, str):
+            env_data = {"type": "local", "name": env_data,
+                        "path": str(self.mgr.get_python_exe(env_data))}
+
+        self.pyVersionLabel.setText(self.tr("正在加载包列表..."))
         if hasattr(self, '_pkg_thread') and self._pkg_thread.isRunning():
             self._pkg_thread.terminate()
             self._pkg_thread.wait()
+
         self._pkg_thread = PackageListThread(env_data)
         self._pkg_thread.packages_loaded.connect(self.on_load_packages)
         self._pkg_thread.error_occurred.connect(self.on_load_packages_error)
         self._pkg_thread.start()
 
     def on_load_packages(self, py_version, package_list):
-        self.pyVersionLabel.setText(f"基础环境: {py_version}")
+        self.pyVersionLabel.setText(f"Python: {py_version}")
         self.packageTable.setRowCount(0)
         try:
             match = re.search(r"\[.*\]", package_list, re.S)
@@ -390,23 +718,10 @@ class EnvManagerUI(QWidget):
             pkgs = []
         self.pkgs_data = pkgs
         self._repopulate_table(pkgs)
-        self._log_color(f"[完成] 共加载 {len(pkgs)} 个包", "#98c379")
 
     def on_load_packages_error(self, e):
-        self.pyVersionLabel.setText("获取版本失败")
-        self._log_color(f"[错误] {str(e)}", "#e06c75")
-
-    def _update_action_combo(self):
-        current_source = self.sourceCombo.currentText()
-        self.actionCombo.clear()
-        if current_source == "在线搜索":
-            self.fileSelectBtn.hide()
-            self.actionCombo.addItems(["安装", "强制重装", "更新", "卸载"])
-            self.packageEdit.setPlaceholderText("输入包名，例如 numpy")
-        elif current_source == "本地文件":
-            self.fileSelectBtn.show()
-            self.actionCombo.addItems(["联网安装 (Whl/Zip)", "离线安装 (Whl/Zip)", "Requirements安装 (联网)"])
-            self.packageEdit.setPlaceholderText("选择本地 .whl 或 requirements.txt 文件...")
+        self.pyVersionLabel.setText(self.tr("加载版本失败"))
+        self.logEdit.append(f'<span style="color:#e06c75;">[Error] {str(e)}</span>')
 
     def _repopulate_table(self, pkgs):
         self.packageTable.setUpdatesEnabled(False)
@@ -453,18 +768,22 @@ class EnvManagerUI(QWidget):
         bl.setSpacing(4)
         bl.setAlignment(Qt.AlignCenter)
         ub = TransparentToolButton(get_icon("更新"), bw)
-        ub.setToolTip(f"更新 {name}")
+        ub.setToolTip(f"{self.tr('更新')} {name}")
         ub.setFixedSize(26, 26)
         ub.setIconSize(QSize(14, 14))
-        ub.clicked.connect(functools.partial(self.on_update_package_clicked, name))
+        ub.clicked.connect(functools.partial(self.run_pip_command, self.tr("更新"), name))
         db = TransparentToolButton(FluentIcon.DELETE, bw)
-        db.setToolTip(f"卸载 {name}")
+        db.setToolTip(f"{self.tr('卸载')} {name}")
         db.setFixedSize(26, 26)
         db.setIconSize(QSize(14, 14))
         db.clicked.connect(functools.partial(self.on_uninstall_package_clicked, name))
         bl.addWidget(ub)
         bl.addWidget(db)
         return bw
+
+    def on_uninstall_package_clicked(self, package_name):
+        if MessageBox(self.tr("确认"), f"{self.tr('确定卸载')} {package_name}?", self).exec():
+            self.run_pip_command(self.tr("卸载"), package_name)
 
     def on_search_text_changed(self, text):
         if hasattr(self, '_search_timer'):
@@ -482,135 +801,6 @@ class EnvManagerUI(QWidget):
             it = self.packageTable.item(r, 0)
             self.packageTable.setRowHidden(r, t not in it.text().lower() if it else False)
         self.packageTable.setUpdatesEnabled(True)
-
-    def run_pip_command(self, action=None, package_input=None):
-        if not self.current_env_data: return
-
-        # UV 检测与安装引导
-        use_uv = self.uvSwitch.isChecked() and self.current_env_data["type"] == "local"
-        if use_uv and not self.is_uv_installed():
-            res = MessageBox("未检测到 uv", "启用 uv 需要安装相关组件，是否现在安装？", self).exec()
-            if res:
-                self.install_uv_logic()
-            else:
-                self.uvSwitch.setChecked(False)
-            return
-
-        ui_action = self.actionCombo.currentText()
-        ui_source = self.sourceCombo.currentText()
-        current_action = action or ui_action
-        raw_input = package_input or self.packageEdit.text().strip()
-
-        if not raw_input and "卸载" not in current_action: return
-
-        # 命令构造
-        if use_uv:
-            executable = "uv"
-            if "卸载" in current_action:
-                cmd = ["pip", "uninstall", "-y", "--python", self.current_env_data["path"]]
-            else:
-                cmd = ["pip", "install", "--python", self.current_env_data["path"]]
-        else:
-            executable = self.current_env_data.get("path", "python")
-            if "卸载" in current_action:
-                cmd = ["-m", "pip", "uninstall", "-y"]
-            else:
-                cmd = ["-m", "pip", "install"]
-
-        # 处理安装内容参数 (与 pip 高度兼容)
-        if "Requirements" in current_action:
-            cmd.extend(["-r", raw_input])
-            self._add_mirror_sources(cmd)
-        elif ui_source == "在线搜索":
-            raw_input_list = raw_input.split(" ") if raw_input else []
-            if "卸载" in current_action:
-                cmd.extend(raw_input_list)
-            elif current_action == "强制重装":
-                cmd.extend(["--force-reinstall"] + raw_input_list)
-                self._add_mirror_sources(cmd)
-            elif current_action == "更新":
-                cmd.extend(["-U"] + raw_input_list)
-                self._add_mirror_sources(cmd)
-            else:
-                cmd.extend(raw_input_list)
-                self._add_mirror_sources(cmd)
-        else:
-            # 本地文件模式
-            if "离线" in current_action:
-                cmd.append("--no-index")
-            else:
-                self._add_mirror_sources(cmd)
-            paths = raw_input.split(";")
-            final_packages = []
-            for p in paths:
-                p = p.strip()
-                if not p: continue
-                if os.path.isdir(p):
-                    for item in os.listdir(p):
-                        if item.lower().endswith(('.whl', '.tar.gz', '.zip')):
-                            final_packages.append(os.path.join(p, item))
-                else:
-                    final_packages.append(p)
-            cmd.extend(final_packages)
-
-        # 执行逻辑
-        self._log_color(f"\n$ {'uv' if use_uv else 'pip'} command: {' '.join(cmd if use_uv else cmd[2:])}", "#c678dd")
-
-        if self.current_env_data["type"] == "ssh" and ui_source == "本地文件":
-            paths = [p.strip() for p in raw_input.split(";") if p.strip()]
-            if not paths: return
-            self.execBtn.setEnabled(False)
-            self._log_color(f"\n[远程任务] 准备同步本地文件至 {self.current_env_data['host']}...", "#61afef")
-            is_req = "Requirements" in current_action
-            self._ssh_upload_thread = SSHUploadAndExecThread(
-                self.current_env_data, paths, current_action, is_requirements=is_req
-            )
-            self._ssh_upload_thread.output_signal.connect(lambda x: self.logEdit.insertPlainText(x))
-            self._ssh_upload_thread.finished_signal.connect(self.on_finished)
-            self._ssh_upload_thread.start()
-        elif self.current_env_data["type"] == "local":
-            self._start_process(executable, cmd)
-        else:
-            self._start_ssh_process(cmd)
-
-    def _add_mirror_sources(self, cmd):
-        mirrors = self.mgr.config.mirrors.value
-        if not mirrors: return
-        for i, url in enumerate(mirrors):
-            flag = "-i" if i == 0 else "--extra-index-url"
-            parsed = urlparse(url)
-            if parsed.hostname:
-                cmd.extend([flag, url, "--trusted-host", parsed.hostname])
-
-    def on_update_package_clicked(self, package_name):
-        self.run_pip_command("更新", package_name)
-
-    def on_uninstall_package_clicked(self, package_name):
-        if MessageBox("确认卸载", f"确定卸载包 {package_name}？", self).exec():
-            self.run_pip_command("卸载", package_name)
-
-    def _start_process(self, executable, cmd):
-        if self.process and self.process.state() != QProcess.NotRunning:
-            self.process.kill()
-        self.process = QProcess(self)
-        self.process.setProcessChannelMode(QProcess.MergedChannels)
-        self.process.readyReadStandardOutput.connect(self.on_ready_read)
-        self.process.finished.connect(self.on_finished)
-        if platform.system() == "Windows":
-            from PyQt5.QtCore import QProcessEnvironment
-            self.process.setProcessEnvironment(QProcessEnvironment.systemEnvironment())
-        self.process.start(executable, cmd)
-        self.execBtn.setEnabled(False)
-
-    def on_ready_read(self):
-        data = self.process.readAllStandardOutput().data().decode("utf-8", errors="ignore")
-        self.logEdit.insertPlainText(data)
-        self.logEdit.moveCursor(QTextCursor.End)
-
-    def on_finished(self):
-        self.logEdit.append("\n[完成]")
-        self.execBtn.setEnabled(True)
-        if self.current_env_data: self.load_packages(self.current_env_data)
 
     def on_mode_changed(self, mode):
         if mode == "local":
@@ -668,7 +858,7 @@ class EnvManagerUI(QWidget):
     def delete_ssh_env(self):
         if self.remoteEnvCombo.currentIndex() == -1: return
         name = self.remoteEnvCombo.currentData()["name"]
-        if MessageBox("确认删除", f"确定删除 SSH 配置 {name}？", self).exec():
+        if MessageBox(self.tr("确认"), f"{self.tr('确定删除 SSH 配置')} {name}?", self).exec():
             if os.path.exists(self.ssh_config_file):
                 with open(self.ssh_config_file, 'r', encoding='utf-8') as f:
                     ssh_list = json.load(f)
@@ -677,55 +867,76 @@ class EnvManagerUI(QWidget):
                     json.dump(ssh_list, f, ensure_ascii=False, indent=4)
             self.refresh_remote_envs()
 
-    def _start_ssh_process(self, cmd):
-        self.execBtn.setEnabled(False)
-        self._ssh_thread = SSHExecThread(self.current_env_data, cmd)
-        self._ssh_thread.output_signal.connect(lambda x: self.logEdit.insertPlainText(x))
-        self._ssh_thread.finished_signal.connect(self.on_finished)
-        self._ssh_thread.start()
-
     def install_default_packages(self):
         if not self.current_env_data:
-            InfoBar.warning("警告", "请先选择环境", parent=self)
+            InfoBar.warning(self.tr("警告"), self.tr("请先选择环境"), parent=self)
             return
         pkgs = self.config.default_packages.value
         if not pkgs:
-            InfoBar.warning("提示", "未配置默认安装包列表", parent=self)
+            InfoBar.warning(self.tr("提示"), self.tr("未配置默认安装包"), parent=self)
             return
         pkgs_str = " ".join(pkgs)
-        self.logEdit.append(f"\n> 准备安装默认包: {pkgs_str}")
-        self.run_pip_command("安装", pkgs_str)
+        self.run_pip_command(self.tr("安装"), pkgs_str)
 
     def create_env(self, window=None):
-        v_dlg = CustomComboDialog("Python 版本", list(self.config.python_versions.value), 0, window or self)
+        v_dlg = CustomComboDialog(self.tr("选择 Python 版本"), list(self.config.python_versions.value), 0,
+                                  window or self)
         if v_dlg.exec_():
             ver = v_dlg.get_text()
-            n_dlg = CustomInputDialog("环境名称", currenttext=ver, parent=window or self)
+            n_dlg = CustomInputDialog(self.tr("环境名称"), currenttext=ver, parent=window or self)
             if n_dlg.exec_():
                 name = n_dlg.get_text().strip() or ver
-                self.mgr.download_and_install(ver, env_name=name, log_callback=self.logEdit.append)
-                st = StateToolTip("安装中", "请稍候...", window or self)
-                st.show()
-                self.mgr.install_finished.connect(
-                    lambda r: (
-                        st.close(),
-                        self.refresh_env_list(),
-                        self.env_changed.emit()
-                    )
-                )
+                self.logEdit.append(f"> {self.tr('正在创建环境')} {name}...")
 
+                # 定义创建完成后的回调逻辑
+                def _on_creation_finished(result):
+                    st.close()
+                    # 假设 result 为 True 表示成功 (根据你的信号定义，如果是对象则需调整判断)
+                    if result:
+                        self.refresh_env_list()
+                        self.env_changed.emit()
+
+                        # 1. 自动切换到新创建的环境
+                        self.logEdit.append(f"> {self.tr('环境创建成功，正在切换')}...")
+                        self.change_env(name)
+
+                        # 2. 检查并安装默认包
+                        pkgs = self.config.default_packages.value
+                        if pkgs:
+                            self.logEdit.append(f"> {self.tr('检测到默认包配置，开始发布自动安装任务')}...")
+                            # 这里直接调用现有的安装默认包逻辑，它会自动读取 current_env_data 并创建任务
+                            self.install_default_packages()
+                        else:
+                            self.logEdit.append(f"> {self.tr('未配置默认包，流程结束')}。")
+                    else:
+                        self.logEdit.append(f"<span style='color:#e06c75;'>{self.tr('环境创建失败')}</span>")
+
+                # 先断开之前的连接，防止多次触发（如果 mgr 是常驻对象）
+                try:
+                    self.mgr.install_finished.disconnect()
+                except TypeError:
+                    pass
+
+                    # 连接新的回调
+                self.mgr.install_finished.connect(_on_creation_finished)
+
+                # 开始下载并安装
+                self.mgr.download_and_install(ver, env_name=name, log_callback=self.logEdit.append)
+
+                st = StateToolTip(self.tr("正在安装"), self.tr("请稍候..."), window or self)
+                st.show()
 
     def clone_env(self):
         envs = self.mgr.list_envs()
         if not envs: return
-        s_dlg = CustomComboDialog("源环境", envs, 0, self)
+        s_dlg = CustomComboDialog(self.tr("源环境"), envs, 0, self)
         if s_dlg.exec_():
             src = s_dlg.get_text()
-            t_dlg = CustomInputDialog("新环境名", currenttext=f"{src}_clone", parent=self)
+            t_dlg = CustomInputDialog(self.tr("新环境名称"), currenttext=f"{src}_clone", parent=self)
             if t_dlg.exec_():
                 tar = t_dlg.get_text().strip()
                 self.mgr.clone_env(src, tar, log_callback=self.logEdit.append)
-                st = StateToolTip("克隆中", "请稍候...", self)
+                st = StateToolTip(self.tr("正在克隆"), self.tr("请稍候..."), self)
                 st.show()
                 self.mgr.install_finished.connect(
                     lambda r: (
@@ -737,20 +948,14 @@ class EnvManagerUI(QWidget):
 
     def delete_env(self):
         if not self.current_env: return
-        if MessageBox("确认", f"删除环境 {self.current_env}？", self).exec():
+        if MessageBox(self.tr("确认"), f"{self.tr('删除环境')} {self.current_env}?", self).exec():
             self.mgr.remove_env(self.current_env)
-            st = StateToolTip("删除中", "请稍候...", self)
+            st = StateToolTip(self.tr("正在删除"), self.tr("请稍候..."), self)
             st.show()
             self.mgr.remove_finished.connect(
-                    lambda r: (
-                        st.close(),
-                        self.refresh_env_list(),
-                        self.env_changed.emit()
-                    )
+                lambda r: (
+                    st.close(),
+                    self.refresh_env_list(),
+                    self.env_changed.emit()
                 )
-
-    def _log_color(self, text, color):
-        self.logEdit.append(f'<span style="color:{color};">{text}</span>')
-        self.logEdit.moveCursor(QTextCursor.End)
-        scrollbar = self.logEdit.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
+            )

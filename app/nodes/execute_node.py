@@ -84,7 +84,6 @@ def create_node_class(full_path, file_path, parent_window=None):
             for port_name, label, port_type in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs():
                 if port_type == ArgumentType.OBJECT:
                     self.object_io = True
-                    self.view._toggle_exec_mode("ipython")
                 self.delete_output(port_name)
                 name = re.sub(r'\s+', '_', self.name())
                 if f"{name}__{port_name}" in parent_window.global_variables.node_vars:
@@ -458,11 +457,12 @@ def create_node_class(full_path, file_path, parent_window=None):
                     error_path=str(error_path.resolve()),
                     log_file_path=str(log_file_path.resolve()),
                     node_id=self.persistent_id,
-                    workflow_path=str(self.CACHE_PATH)
+                    workflow_path=str(self.CACHE_PATH),
+                    is_memory_resident=self.view.current_mode == "ipython"
                 )
                 with open(local_script_path, 'w', encoding='utf-8') as f:
                     f.write(script_content)
-                if self.view.current_mode == "ipython":
+                if self.view.current_mode == "ipython" or self.object_io:
                     self._execute_via_ipython(local_script_path, result_path, error_path, log_file_path, check_cancel,
                                               kernel_manager)
                 else:
@@ -546,7 +546,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                     error_path=f"{remote_run_dir}/error.pkl",
                     log_file_path=log_path,
                     node_id=self.persistent_id,
-                    workflow_path="/tmp"
+                    workflow_path="/tmp",
+                    is_memory_resident=True
                 )
                 with open(local_script_path, 'w', encoding='utf-8') as f:
                     f.write(remote_script_content)
@@ -678,7 +679,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                     kernel_manager.interrupt_kernel()
                     raise Exception(f"❌ 节点执行超时（{self.timeout_seconds} 秒）")
                 time.sleep(0.1)
-            self._log_message(self.persistent_id, "✅ 节点执行完成 (内存驻留模式已开启)")
+            self._log_message(self.persistent_id, "✅ 节点执行完成")
 
         def _execute_via_subprocess(
                 self, python_executable, temp_script_path, log_file_path, check_cancel

@@ -61,7 +61,7 @@ class LowCodeWindow(FluentWindow):
         self.window_height = int(0.85 * self.desktop_h)
 
         # 初始化位置
-        self.move(self.desktop_w // 2 - self.window_width // 2, self.desktop_h // 2 - self.window_height // 2)
+        self.move(self.desktop_w // 2 - self.width() // 2, self.desktop_h // 2 - self.height() // 2)
         self.navigationInterface.setExpandWidth(175)
 
     def _setup_splash_and_startup(self):

@@ -10,6 +10,7 @@ import shutil
 import sys
 import time
 import traceback
+import types
 import uuid
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -106,6 +107,7 @@ class PropertyDefinition(BaseModel):
     min: float = Field(default=0.0, description="最小值")
     max: float = Field(default=100.0, description="最大值")
     step: float = Field(default=1.0, description="步长")
+    description: str = ""
 
     class Config:
         # 允许递归引用
@@ -153,6 +155,7 @@ class PortDefinition(BaseModel):
     label: str
     type: ArgumentType = ArgumentType.TEXT
     connection: ConnectionType = ConnectionType.SINGLE
+    description: str = ""
 
 # ==================== 中间消息通信协议 ====================
 
@@ -846,27 +849,53 @@ class DataHandler:
         return dst
 
     def _fetch_from_memory(self, ref_str: str) -> Any:
-        """从内存中根据 'INSTANCE_node_id.attr' 字符串获取对象"""
+        """
+        从内存中获取对象。
+        支持两种格式：
+        1. INSTANCE_{node_id}.attr  -> 从驻留的组件实例中取
+        2. DATA_{node_id}.attr      -> 从独立的数据容器中取 (当组件不驻留时)
+        """
         if not isinstance(ref_str, str) or "." not in ref_str:
             self.logger.warning(f"无效的内存引用格式: {ref_str}")
             return ref_str
 
         try:
-            instance_name, attr_name = ref_str.split('.', 1)
-            node_id = instance_name.replace("INSTANCE_", "")
+            object_name, attr_name = ref_str.split('.', 1)
+
+            # 解析 node_id
+            # 兼容 INSTANCE_xxx 和 DATA_xxx 两种前缀
+            if object_name.startswith("INSTANCE_"):
+                node_id = object_name.replace("INSTANCE_", "")
+            elif object_name.startswith("DATA_"):
+                node_id = object_name.replace("DATA_", "")
+            else:
+                # 尝试通过正则提取最后的ID部分 (备用逻辑)
+                node_id = object_name.split("_")[-1]
+
             module_key = f"dynamic_mod_{node_id}"
 
+            # 1. 检查模块是否存在
             if module_key in sys.modules:
                 module = sys.modules[module_key]
-                instance = getattr(module, instance_name, None)
-                if instance:
-                    obj = getattr(instance, attr_name, None)
-                    self.logger.info(f"成功从内存加载对象: {ref_str}")
-                    return obj
+                # 2. 获取宿主对象 (Instance 或 DataContainer)
+                host_object = getattr(module, object_name, None)
 
-            self.logger.error(f"无法在内存模块 {module_key} 中找到实例")
+                if host_object:
+                    if hasattr(host_object, attr_name):
+                        obj = getattr(host_object, attr_name)
+                        # self.logger.info(f"成功从内存加载: {ref_str}")
+                        return obj
+                    else:
+                        self.logger.error(f"对象 {object_name} 中不存在属性 {attr_name}")
+                else:
+                    self.logger.error(f"模块 {module_key} 中未找到对象 {object_name}")
+            else:
+                self.logger.error(f"内存中未找到模块 {module_key} (可能是节点未运行或数据已丢失)")
+
             return None
+
         except Exception as e:
+            self.logger.error(f"解析内存对象失败: {e}")
             raise ComponentError(f"解析内存对象失败: {e}")
 
     def _process_multiple_inputs(self, input_name: str, input_values: List[Any], input_type: ArgumentType) -> List[Any]:
@@ -1009,16 +1038,57 @@ class DataHandler:
         return str(file_path)
 
     def _store_to_memory(self, output_name: str, value: Any) -> str:
-        """将对象存入当前实例，并返回引用字符串"""
-        if self.component_instance is None:
-            raise ComponentError("未绑定组件实例，无法存储内存对象")
+        """
+        将对象存入内存。
+        策略：
+        1. 如果组件开启了驻留(IS_MEMORY_RESIDENT=True)，直接挂载到组件实例上。
+        2. 如果组件未驻留，则强制创建一个模块和数据容器来存放此对象。
+        """
 
-        # 为了防止冲突，属性名可以加个前缀
-        attr_name = f"_mem_{output_name}"
-        setattr(self.component_instance, attr_name, value)
+        module_key = f"dynamic_mod_{self.node_id}"
+        instance_name = f"INSTANCE_{self.node_id}"
+        data_container_name = f"DATA_{self.node_id}"
 
-        # 返回格式：INSTANCE_node_id.attr_name
-        return f"INSTANCE_{self.node_id}.{attr_name}"
+        target_obj = None
+        target_obj_name = ""
+
+        # 步骤 1: 确保模块存在于 sys.modules
+        if module_key in sys.modules:
+            module = sys.modules[module_key]
+        else:
+            # 如果模块不存在（说明组件脚本里没存，或者 is_memory_resident=False）
+            # 我们手动创建一个模块作为“数据仓库”
+            module = types.ModuleType(module_key)
+            sys.modules[module_key] = module
+            # self.logger.debug(f"已为数据存储创建独立模块: {module_key}")
+
+        # 步骤 2: 确定挂载目标 (组件实例 OR 独立数据容器)
+
+        # 优先尝试获取现有的组件实例
+        if hasattr(module, instance_name):
+            target_obj = getattr(module, instance_name)
+            target_obj_name = instance_name
+        else:
+            # 如果没有组件实例，则使用/创建独立的数据容器
+            if hasattr(module, data_container_name):
+                target_obj = getattr(module, data_container_name)
+            else:
+                # 创建一个简单的对象作为容器
+                target_obj = types.SimpleNamespace()
+                setattr(module, data_container_name, target_obj)
+
+            target_obj_name = data_container_name
+
+        # 步骤 3: 挂载数据
+        # 属性名加个前缀防止冲突，或者直接用 output_name
+        attr_name = f"out_{output_name}"
+        setattr(target_obj, attr_name, value)
+
+        # 步骤 4: 返回引用字符串 (格式: 对象名.属性名)
+        ref_str = f"{target_obj_name}.{attr_name}"
+
+        self.logger.info(f"对象已存入内存: {ref_str} (模块: {module_key})")
+        return ref_str
 
     def _get_torch(self):
         """懒加载 torch"""
