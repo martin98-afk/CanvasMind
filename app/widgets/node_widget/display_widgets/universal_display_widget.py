@@ -183,15 +183,8 @@ class UniversalWidgetWrapper(CustomNodeBaseWidget):
         if widget:
             widget.adjustSize()
 
-            # 2. 使用我们之前在 CustomNodeItem 中添加的接口
-        # fit_to_content: 会清除用户手动拉伸的空白，紧贴内容 (推荐用于媒体切换)
-        # update_layout: 仅刷新，保留用户手动拉伸的大小
-
         # 这里使用 fit_to_content，效果是：图片变大，节点变大；图片变小，节点自动缩回。
-        if hasattr(view, 'fit_to_content'):
-            # 使用 timer 确保在 Qt 事件循环下一帧执行，防止布局未完成
-            QTimer.singleShot(0, view.fit_to_content)
-        elif hasattr(view, 'update_layout'):
+        if hasattr(view, 'update_layout'):
             QTimer.singleShot(0, view.update_layout)
         else:
             # 回退方案

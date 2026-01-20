@@ -1,7 +1,9 @@
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
+from PyQt5.QtGui import QFont
 from Qt import QtWidgets, QtCore
 from qfluentwidgets import CheckBox, SwitchButton, BodyLabel  # 使用 Fluent Design 风格的 CheckBox
 
+from app.utils.config import Settings
 from app.utils.utils import str_to_bool
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
@@ -14,6 +16,7 @@ class CheckBoxWidget(QtWidgets.QWidget):
         super().__init__()
         self._value = state if isinstance(state, bool) else state in ("true", 1, "True", "1")
         label = BodyLabel(text)
+        label.setFont(QFont(Settings.get_instance().canvas_font_type.value))
         label.setStyleSheet("color: rgba(170, 170, 170, 255);")
         self.checkbox = SwitchButton("")
         self.checkbox.setFixedHeight(32)

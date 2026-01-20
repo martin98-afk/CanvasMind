@@ -60,13 +60,13 @@ class SubgraphTemplatePanel(QWidget):
         top_layout.setSpacing(0)
         top_layout.addStretch()
 
-        self.filter_btn = TransparentPushButton("筛选标签", self, FluentIcon.FILTER)
+        self.filter_btn = TransparentPushButton(self.tr("筛选标签"), self, FluentIcon.FILTER)
         self.filter_btn.setIconSize(QSize(16, 16))
         self.filter_btn.setFixedHeight(36)
         self.filter_btn.clicked.connect(self._show_tag_filter)
         top_layout.addWidget(self.filter_btn)
 
-        add_env_btn = TransparentPushButton(text="添加为模板", parent=self, icon=FluentIcon.ADD)
+        add_env_btn = TransparentPushButton(text=self.tr("添加为模板"), parent=self, icon=FluentIcon.ADD)
         add_env_btn.setIconSize(QSize(16, 16))
         add_env_btn.setFixedHeight(36)
         add_env_btn.clicked.connect(self.add_template)
@@ -127,7 +127,7 @@ class SubgraphTemplatePanel(QWidget):
             templates = all_templates
 
         if not templates:
-            label = BodyLabel("暂无子图模板")
+            label = BodyLabel(self.tr("暂无子图模板"))
             label.setAlignment(Qt.AlignCenter)
             self.container_layout.addWidget(label)
         else:
@@ -204,13 +204,13 @@ class SubgraphTemplatePanel(QWidget):
         apply_btn = TransparentToolButton(get_icon("导入"), self)
         apply_btn.setIconSize(QSize(16, 16))
         apply_btn.setFixedSize(28, 28)
-        apply_btn.setToolTip("应用模板")
+        apply_btn.setToolTip(self.tr("应用模板"))
         apply_btn.clicked.connect(lambda _, t=tid: self.apply_template(t))
 
         delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
         delete_btn.setIconSize(QSize(16, 16))
         delete_btn.setFixedSize(28, 28)
-        delete_btn.setToolTip("删除模板")
+        delete_btn.setToolTip(self.tr("删除模板"))
         delete_btn.clicked.connect(lambda _, t=tid: self.delete_template(t))
 
         btn_layout.addWidget(delete_btn)
@@ -231,7 +231,7 @@ class SubgraphTemplatePanel(QWidget):
             placeholder.fill(Qt.transparent)
             painter = QPainter(placeholder)
             painter.setPen(Qt.gray)
-            painter.drawText(placeholder.rect(), Qt.AlignCenter, "预览图丢失")
+            painter.drawText(placeholder.rect(), Qt.AlignCenter, self.tr("预览图丢失"))
             painter.end()
             img_label.setOriginalPixmap(placeholder)
 
@@ -256,11 +256,11 @@ class SubgraphTemplatePanel(QWidget):
         add_tag_btn = TransparentToolButton(FluentIcon.ADD, self)
         add_tag_btn.setIconSize(QSize(12, 12))
         add_tag_btn.setFixedSize(20, 20)
-        add_tag_btn.setToolTip("添加标签")
+        add_tag_btn.setToolTip(self.tr("添加标签"))
 
         def on_add_tag():
             dialog = CustomEditableComboDialog(
-                "添加标签", "标签名（如：预处理、检测）",
+                self.tr("添加标签"), self.tr("标签名（如：预处理、检测）"),
                 items=self._get_all_tags(), parent=self.parent
             )
             if dialog.exec():
@@ -283,8 +283,8 @@ class SubgraphTemplatePanel(QWidget):
         # 右键菜单
         def show_context_menu(pos):
             menu = RoundMenu(parent=self)
-            menu.addAction(Action(FluentIcon.ACCEPT_MEDIUM, "应用", triggered=lambda: self.apply_template(tid)))
-            menu.addAction(Action(FluentIcon.DELETE, "删除", triggered=lambda: self.delete_template(tid)))
+            menu.addAction(Action(FluentIcon.ACCEPT_MEDIUM, self.tr("应用"), triggered=lambda: self.apply_template(tid)))
+            menu.addAction(Action(FluentIcon.DELETE, self.tr("删除"), triggered=lambda: self.delete_template(tid)))
             menu.exec_(card.mapToGlobal(pos))
 
         card.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -350,7 +350,7 @@ class SubgraphTemplatePanel(QWidget):
     def _show_tag_filter(self):
         all_tags = self._get_all_tags()
         if not all_tags:
-            MessageManager.info("提示", "暂无可用标签", self.parent)
+            MessageManager.info(self.tr("提示"), self.tr("暂无可用标签"), self.parent)
             return
 
         dialog = CategoryFilterDialog(
@@ -373,16 +373,16 @@ class SubgraphTemplatePanel(QWidget):
     def add_template(self):
         graph = getattr(self.parent, 'graph', None)
         if not graph:
-            MessageManager.error("错误", "无法获取画布", self.parent)
+            MessageManager.error(self.tr("错误"), self.tr("无法获取画布"), self.parent)
             return
 
         selected_nodes = graph.selected_nodes()
         if not selected_nodes:
-            MessageManager.warning("提示", "请先选择节点", self.parent)
+            MessageManager.warning(self.tr("提示"), self.tr("请先选择节点"), self.parent)
             return
 
         default_name = f"{getattr(self.parent, 'workflow_name', '未命名')}子图"
-        template_name_dialog = CustomInputDialog("请输入模板名称", "模板名称", default_name, parent=self.parent)
+        template_name_dialog = CustomInputDialog("请输入模板名称", self.tr("模板名称"), default_name, parent=self.parent)
         if not template_name_dialog.exec():
             return
         template_name = template_name_dialog.get_text().strip()

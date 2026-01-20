@@ -38,27 +38,27 @@ class DraggableTreePanel(QWidget):
         control_layout.setSpacing(4)
 
         # 类别选择按钮
-        self.category_button = DropDownPushButton(FIF.BOOK_SHELF, "类别", self)
+        self.category_button = DropDownPushButton(FIF.BOOK_SHELF, self.tr("类别"), self)
         self.category_button.setFixedHeight(28)
-        self.category_button.setToolTip("类别筛选")
+        self.category_button.setToolTip(self.tr("类别筛选"))
         self.category_button.clicked.connect(lambda: self._show_category_dialog())
 
         # 时间排序按钮
         self.time_toggle = TransparentToggleToolButton(FIF.HISTORY, self)
         self.time_toggle.setFixedSize(24, 28)
-        self.time_toggle.setToolTip("按最后使用时间排序")
+        self.time_toggle.setToolTip(self.tr("按最后使用时间排序"))
         self.time_toggle.toggled.connect(self._on_time_toggled)
 
         # 收藏按钮
         self.favorite_toggle = TransparentToggleToolButton(FIF.EXPRESSIVE_INPUT_ENTRY, self)
         self.favorite_toggle.setFixedSize(24, 28)
-        self.favorite_toggle.setToolTip("只显示收藏组件")
+        self.favorite_toggle.setToolTip(self.tr("只显示收藏组件"))
         self.favorite_toggle.toggled.connect(self._on_favorite_toggled)
 
         # 搜索 toggle 按钮
         self.search_toggle = TransparentToggleToolButton(FIF.SEARCH, self)
         self.search_toggle.setFixedSize(24, 28)
-        self.search_toggle.setToolTip("搜索组件")
+        self.search_toggle.setToolTip(self.tr("搜索组件"))
         self.search_toggle.toggled.connect(self._on_search_toggled)
 
         control_layout.addWidget(self.category_button)
@@ -68,7 +68,7 @@ class DraggableTreePanel(QWidget):
 
         # 搜索框（默认隐藏）
         self.search_box = SearchLineEdit(self)
-        self.search_box.setPlaceholderText("🔍 搜索组件...")
+        self.search_box.setPlaceholderText(self.tr("🔍 搜索组件..."))
         self.search_box.setClearButtonEnabled(True)
         FluentStyleSheet.LINE_EDIT.apply(self.search_box)
         self.search_box.textChanged.connect(self._on_search_text_changed)
@@ -93,19 +93,17 @@ class DraggableTreePanel(QWidget):
             self.search_box.setFocus()
         else:
             self.search_box.hide()
-            self.search_box.clear()  # 可选：清空搜索以重置过滤
-            self.tree.filter_items("")  # 重置过滤
+            self.search_box.clear()
+            self.tree.filter_items("")
 
     def _init_categories(self):
         """初始化类别列表"""
-        # 创建类别筛选对话框
         self.category_filter_dialog = CategoryFilterDialog(self.parent_window)
         self.category_filter_dialog.categories_changed.connect(self._on_categories_changed)
 
     def _show_category_dialog(self):
         """显示类别筛选对话框"""
         if self.category_filter_dialog:
-            # 计算位置，让对话框出现在按钮下方
             pos = self.category_button.mapToGlobal(QPoint(10, self.category_button.height()))
             self.category_filter_dialog.show_at(pos)
 
@@ -137,13 +135,12 @@ class DraggableTreeWidget(TreeWidget):
         self.setDragEnabled(True)
         self.setAcceptDrops(False)
         self.setDragDropMode(TreeWidget.DragOnly)
-        self._all_items = []  # 用于搜索
-        self._usage_stats = self._load_usage_stats()  # 使用统计
-        self._favorites = self._load_favorites()  # 收藏夹
-        # 筛选状态
+        self._all_items = []
+        self._usage_stats = self._load_usage_stats()
+        self._favorites = self._load_favorites()
         self._show_time_sorted = False
         self._show_only_favorites = False
-        self._selected_categories = set()  # 当前选中的类别
+        self._selected_categories = set()
 
         self._init_components()
 
@@ -184,7 +181,6 @@ class DraggableTreeWidget(TreeWidget):
             pass
 
     def record_usage(self, full_path):
-        """仅当组件被添加到画布时才记录使用"""
         timestamp = datetime.now().isoformat()
         if full_path not in self._usage_stats:
             self._usage_stats[full_path] = []
@@ -217,9 +213,11 @@ class DraggableTreeWidget(TreeWidget):
     def clear_recommendations(self):
         root = self.invisibleRootItem()
         i = 0
+        # 使用特定标识符匹配推荐项
+        rec_prefix = self.tr("🎯")
         while i < root.childCount():
             item = root.child(i)
-            if item.text(0).startswith("🎯"):
+            if item.text(0).startswith(rec_prefix):
                 root.removeChild(item)
             else:
                 i += 1
@@ -231,7 +229,8 @@ class DraggableTreeWidget(TreeWidget):
             return
 
         for port_name, port_label, color, rec_list in recommendations:
-            title = f"🎯{port_label or port_name}推荐"
+            label = port_label or port_name
+            title = self.tr("🎯{}推荐").format(label)
             rec_item = QTreeWidgetItem([title])
             rec_item.setFlags(rec_item.flags() & ~Qt.ItemIsSelectable)
             self.insertTopLevelItem(0, rec_item)
@@ -245,24 +244,20 @@ class DraggableTreeWidget(TreeWidget):
             rec_item.setExpanded(True)
 
     def build_filtered_tree(self):
-        """根据当前筛选条件构建树 - 已增加多层级支持"""
+        """根据当前筛选条件构建树"""
         self.clear()
         self._all_items = []
 
-        # 获取所有组件
-        all_components = []
         comp_map, file_map = ComponentScanner().get_components()
+        all_components = []
         for full_path, comp_cls in comp_map.items():
             parts = full_path.split("/")
             category = parts[0]
             name = parts[-1]
-
             if not isinstance(name, str):
                 name = comp_cls.NODE_NAME
 
-            # --- 预计算拼音关键词 ---
             py_keys = get_pinyin_search_keys(name)
-            # 搜索元数据包含完整路径，确保多层级可搜
             search_metadata = f"{full_path} {py_keys}".lower()
 
             all_components.append({
@@ -274,7 +269,6 @@ class DraggableTreeWidget(TreeWidget):
                 'search_metadata': search_metadata
             })
 
-        # 应用筛选
         filtered = []
         for comp in all_components:
             if self._selected_categories and comp['category'] not in self._selected_categories:
@@ -284,20 +278,25 @@ class DraggableTreeWidget(TreeWidget):
             filtered.append(comp)
 
         if self._show_time_sorted:
-            # 时间排序模式保持原样（扁平化分组）
             filtered.sort(key=lambda x: x['last_used'] or datetime.min, reverse=True)
-            groups = {'最近使用': [], '近一周': [], '近一月': [], '未使用': []}  # 简化分组示例
+            # 翻译分组标题
+            groups = {
+                self.tr('最近使用'): [],
+                self.tr('近一周'): [],
+                self.tr('近一月'): [],
+                self.tr('未使用'): []
+            }
             now = datetime.now()
             for comp in filtered:
                 last_used = comp['last_used']
                 if not last_used:
-                    groups['未使用'].append(comp)
+                    groups[self.tr('未使用')].append(comp)
                 elif (now - last_used).days <= 1:
-                    groups['最近使用'].append(comp)
+                    groups[self.tr('最近使用')].append(comp)
                 elif (now - last_used).days <= 7:
-                    groups['近一周'].append(comp)
+                    groups[self.tr('近一周')].append(comp)
                 else:
-                    groups['近一月'].append(comp)
+                    groups[self.tr('近一月')].append(comp)
 
             for group_name, items in groups.items():
                 if items:
@@ -306,24 +305,24 @@ class DraggableTreeWidget(TreeWidget):
                     self.addTopLevelItem(group_item)
                     self._all_items.append(group_item)
                     for comp in items:
-                        comp_item = QTreeWidgetItem([comp['name']])
+                        display_name = comp['name']
+                        if comp['is_fav']:
+                            display_name = f"★ {display_name}"
+                        comp_item = QTreeWidgetItem([display_name])
                         comp_item.setData(0, Qt.UserRole + 1, comp['full_path'])
                         comp_item.setData(0, Qt.UserRole + 2, comp['search_metadata'])
-                        if comp['is_fav']: comp_item.setText(0, f"★ {comp_item.text(0)}")
                         group_item.addChild(comp_item)
                         self._all_items.append(comp_item)
                     group_item.setExpanded(True)
         else:
-            # 默认模式：支持多层级目录
             filtered.sort(key=lambda x: x['full_path'])
-            path_nodes = {}  # 缓存路径节点
+            path_nodes = {}
 
             for comp in filtered:
                 parts = comp['full_path'].split("/")
                 current_parent = None
                 path_acc = ""
 
-                # 递归构建中间目录
                 for i in range(len(parts) - 1):
                     part_name = parts[i]
                     path_acc = "/".join(parts[:i + 1])
@@ -337,12 +336,13 @@ class DraggableTreeWidget(TreeWidget):
                         self._all_items.append(folder_item)
                     current_parent = path_nodes[path_acc]
 
-                # 创建组件叶子节点
-                comp_item = QTreeWidgetItem([comp['name']])
+                display_name = comp['name']
+                if comp['is_fav']:
+                    display_name = f"★ {display_name}"
+
+                comp_item = QTreeWidgetItem([display_name])
                 comp_item.setData(0, Qt.UserRole + 1, comp['full_path'])
                 comp_item.setData(0, Qt.UserRole + 2, comp['search_metadata'])
-                if comp['is_fav']:
-                    comp_item.setText(0, f"★ {comp_item.text(0)}")
 
                 if current_parent:
                     current_parent.addChild(comp_item)
@@ -360,11 +360,11 @@ class DraggableTreeWidget(TreeWidget):
         try:
             self.build_filtered_tree()
         except Exception as e:
-            logger.error(f"刷新组件失败: {e}")
+            logger.error(self.tr("刷新组件失败: {}").format(e))
 
     def startDrag(self, supportedActions):
         item = self.currentItem()
-        if item and item.parent():  # 确保是叶子节点（组件）
+        if item and item.parent():
             full_path = item.data(0, Qt.UserRole + 1)
             if not full_path:
                 return
@@ -373,14 +373,13 @@ class DraggableTreeWidget(TreeWidget):
             mime_data = QMimeData()
             mime_data.setText(full_path)
             drag.setMimeData(mime_data)
-            LOGIC_WIDTH, LOGIC_HEIGHT = 180, 120  # 和 create_drag_preview 中的 base 尺寸一致
+            LOGIC_WIDTH, LOGIC_HEIGHT = 180, 120
             preview = self.create_drag_preview(full_path)
             drag.setPixmap(preview)
-            drag.setHotSpot(QPoint(LOGIC_WIDTH // 2 - 12, 3 * LOGIC_HEIGHT // 4))  # 👈 保持你原来的坐标
+            drag.setHotSpot(QPoint(LOGIC_WIDTH // 2 - 12, 3 * LOGIC_HEIGHT // 4))
             drag.exec_(Qt.CopyAction)
 
     def create_drag_preview(self, full_path):
-        """完全保留你原有的预览渲染逻辑"""
         comp_map, file_map = ComponentScanner().get_components()
         comp_cls = comp_map.get(full_path)
         if not comp_cls or comp_cls.__name__.startswith("ControlFlow"):
@@ -401,7 +400,6 @@ class DraggableTreeWidget(TreeWidget):
 
             width, height = base_width, base_height
 
-            # === 背景 ===
             path = QPainterPath()
             path.addRoundedRect(0, 0, width - 1, height - 1, 10, 10)
             painter.setPen(QPen(QColor("#4A90E2"), 1.5))
@@ -429,8 +427,8 @@ class DraggableTreeWidget(TreeWidget):
             font.setPointSize(10)
             font.setBold(False)
             painter.setFont(font)
-            category = getattr(comp_cls, 'category', 'General')
-            painter.drawText(QRectF(12, 38, width - 24, 20), Qt.AlignLeft, f"📁 {category}")
+            category = getattr(comp_cls, 'category', self.tr('General'))
+            painter.drawText(QRectF(12, 38, width - 24, 20), Qt.AlignLeft, self.tr("📁 {}").format(category))
 
             # === 3. 描述 ===
             desc_lines = []
@@ -470,15 +468,15 @@ class DraggableTreeWidget(TreeWidget):
             outputs = getattr(comp_cls, 'get_outputs', lambda: [])()
             usage_count = len(self._usage_stats.get(full_path, []))
             bottom_y = height - 22
-            font.setPointSize(10);
-            font.setBold(True);
+            font.setPointSize(10)
+            font.setBold(True)
             painter.setFont(font)
             if inputs:
                 painter.setPen(QColor("#2ECC71"))
                 painter.drawText(QRectF(12, bottom_y, 80, 20), Qt.AlignLeft, f"◂ {len(inputs)}")
             if usage_count > 0:
                 painter.setPen(QColor("#F39C12"))
-                usage_text = f"🕒 {usage_count}次"
+                usage_text = self.tr("🕒 {}次").format(usage_count)
                 fm = QFontMetrics(font)
                 tw = fm.horizontalAdvance(usage_text) if hasattr(fm, 'horizontalAdvance') else fm.width(usage_text)
                 painter.drawText(QRectF((width - tw) / 2, bottom_y, tw, 20), Qt.AlignLeft, usage_text)
@@ -487,18 +485,17 @@ class DraggableTreeWidget(TreeWidget):
                 painter.drawText(QRectF(width - 92, bottom_y, 80, 20), Qt.AlignRight, f"{len(outputs)} ▸")
 
             if self.is_favorite(full_path):
-                painter.setPen(QColor("#FFD700"));
-                font.setPointSize(14);
+                painter.setPen(QColor("#FFD700"))
+                font.setPointSize(14)
                 painter.setFont(font)
                 painter.drawText(QRectF(width - 24, 10, 20, 20), Qt.AlignCenter, "★")
             painter.end()
             return pixmap
         except Exception as e:
-            logger.error(f"预览图渲染失败: {e}")
+            logger.error(self.tr("预览图渲染失败: {}").format(e))
             return self.get_default_preview(full_path)
 
     def get_default_preview(self, name):
-        """保留原样"""
         pixmap = QPixmap(120, 60)
         pixmap.fill(Qt.transparent)
         painter = QPainter(pixmap)
@@ -509,8 +506,8 @@ class DraggableTreeWidget(TreeWidget):
         painter.setBrush(QColor("#2D2D2D"))
         painter.drawPath(path)
         painter.setPen(Qt.black)
-        font = QFont();
-        font.setPointSize(10);
+        font = QFont()
+        font.setPointSize(10)
         painter.setFont(font)
         display_name = name.split("/")[-1]
         if len(display_name) > 12: display_name = display_name[:12] + "..."
@@ -519,14 +516,19 @@ class DraggableTreeWidget(TreeWidget):
         return pixmap
 
     def contextMenuEvent(self, event):
-        """保留原样"""
         item = self.itemAt(event.pos())
         if item and item.parent():
             full_path = item.data(0, Qt.UserRole + 1)
-            if not full_path: return  # 过滤文件夹项
+            if not full_path: return
             menu = RoundMenu(parent=self)
             is_fav = self.is_favorite(full_path)
-            menu.addAction(Action("❌ 移除收藏" if is_fav else "⭐ 添加收藏",
+
+            # 翻译右键菜单动作
+            remove_text = self.tr("❌ 移除收藏")
+            add_text = self.tr("⭐ 添加收藏")
+            action_text = remove_text if is_fav else add_text
+
+            menu.addAction(Action(action_text,
                                   triggered=lambda: self._toggle_favorite(full_path, item, is_fav)))
             menu.exec_(event.globalPos())
 
@@ -542,7 +544,6 @@ class DraggableTreeWidget(TreeWidget):
         self.refresh_components()
 
     def filter_items(self, keyword: str):
-        """完全保留搜索拼音逻辑，仅增加多级父节点显示逻辑"""
         keyword = keyword.strip().lower()
         if not keyword:
             for item in self._all_items:
@@ -554,13 +555,11 @@ class DraggableTreeWidget(TreeWidget):
             item.setHidden(True)
 
         for item in self._all_items:
-            # 仅对带有组件路径的叶子节点进行匹配
             search_data = item.data(0, Qt.UserRole + 2)
             if not search_data: continue
 
             if keyword in search_data:
                 item.setHidden(False)
-                # 递归显示并展开所有父级
                 p = item.parent()
                 while p:
                     p.setHidden(False)

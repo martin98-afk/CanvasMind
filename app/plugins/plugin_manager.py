@@ -18,11 +18,9 @@ class NodePluginManager:
     def load_plugins(self, root_dir):
         """
         递归扫描目录并加载所有继承自 BaseNodePlugin 的类
-        :param root_dir: 插件根目录的绝对路径 (例如: /path/to/app/plugins)
+        :param root_dir: 插件根目录的绝对路径
         """
-        # 1. 确定根包名 (假设你的根目录叫 app)
-        # 我们需要把绝对路径转换成 python 的路径，如 app.plugins.display.image
-        # 先找到 "app" 所在的索引位置
+        # 1. 确定根包名
         parts = root_dir.replace("\\", "/").split("/")
         try:
             # 这里自动寻找 'app' 目录作为包名起始点，你可以根据实际情况调整
@@ -50,7 +48,6 @@ class NodePluginManager:
                         for name, obj in inspect.getmembers(module):
                             if inspect.isclass(obj):
                                 # 检查是否定义了 plugin_id 且不是基类本身
-                                # 注意：这里通过 hasattr 检查，避免循环引用基类文件
                                 if hasattr(obj, "plugin_id") and obj.plugin_id:
                                     # 过滤掉基类
                                     if name not in ["DisplayPlugin", "InteractivePlugin", "BaseNodePlugin"]:

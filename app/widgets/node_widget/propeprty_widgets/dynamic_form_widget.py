@@ -50,8 +50,7 @@ class FormFieldWidget(QtWidgets.QWidget):
             sub_layout.setSpacing(2)
 
             # 标签
-            label_widget = QtWidgets.QLabel(f"{label} ({name}):" if name else f"{label}:")
-            label_widget.setStyleSheet("QLabel { font-weight: bold; color: white; font-size: 11px; }")
+            label_widget = QtWidgets.QLabel(f"{label} ({name}):" if name else f"{label}:", self)
             sub_layout.addWidget(label_widget)
 
             # 输入框容器
@@ -64,7 +63,7 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.valueChanged.connect(self.changed)
                 widget.set_value(default)
                 self.fields[key] = widget
-                input_row.addWidget(widget)
+                input_row.addWidget(widget, 1)
 
             elif field_type == PropertyType.CHOICE.name:
                 widget = CustomComboBox(parent=self.home)
@@ -72,13 +71,13 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.setCurrentText(str(default) if default else defn.get("choices", [""])[0])
                 widget.currentTextChanged.connect(self.changed)
                 self.fields[key] = widget
-                input_row.addWidget(widget)
+                input_row.addWidget(widget, 1)
 
             elif field_type == PropertyType.VARIABLE.name:
                 widget = VarComboBoxWidget(main_window=self.home, type=default, parent=self)
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
-                input_row.addWidget(widget)
+                input_row.addWidget(widget, 1)
 
             elif field_type == PropertyType.RANGE.name:
                 widget = RangeWidget(
@@ -87,7 +86,7 @@ class FormFieldWidget(QtWidgets.QWidget):
                 )
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
-                input_row.addWidget(widget)
+                input_row.addWidget(widget, 1)
 
             elif field_type == PropertyType.BOOL.name:
                 widget = CheckBoxWidget(text=label, state=str_to_bool(default), parent=self)
@@ -105,7 +104,7 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.setText(str(default))
                 widget.textChanged.connect(self.changed)
                 self.fields[key] = widget
-                input_row.addWidget(widget)
+                input_row.addWidget(widget, 1)
 
             sub_layout.addLayout(input_row)
             layout.addLayout(sub_layout)

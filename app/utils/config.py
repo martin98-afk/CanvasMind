@@ -83,14 +83,37 @@ class Settings(QConfig):
     canvas_font_type = OptionsConfigItem(
         "CanvasDisplay",
         "FontType",
-        "Segoe UI",  # 默认值改为现代 UI 常用的 Segoe UI
+        "Segoe UI",  # 默认值
         OptionsValidator([
-            "Segoe UI",  # Windows 标准现代化字体
-            "Arial",  # 最通用的无衬线字体
-            "Roboto",  # 谷歌风格，现代感强
-            "Inter",  # 很多 UI 设计师的首选 (ComfyUI 风格)
-            "Consolas",  # 等宽字体，有科技感/代码感
-            "Microsoft YaHei"  # 微软雅黑的英文名，确保中文显示依然美观
+            # --- 无衬线字体 (Modern/Clean) ---
+            "Segoe UI",  # Windows 现代 UI 标准
+            "Inter",  # 现代 UI 设计师首选，极简且清晰
+            "Roboto",  # 谷歌风格，安卓标准字体
+            "Arial",  # 最通用的网页无衬线字体
+            "Helvetica",  # 经典排版字体 (Mac 系统核心)
+            "Montserrat",  # 几何感强，适合做标题
+
+            # --- 等宽字体 (Tech/Code/Cyberpunk) ---
+            "Consolas",  # 经典代码字体，易读性极高
+            "Fira Code",  # 带有编程连字的现代代码字体
+            "JetBrains Mono",  # 极具工业美感的等宽字体
+            "Courier New",  # 复古打字机风格
+
+            # --- 衬线字体 (Elegant/Classic) ---
+            "Georgia",  # 屏幕显示效果最好的衬线体，优雅稳重
+            "Times New Roman",  # 传统、正式、学院风
+            "Playfair Display",  # 高端、杂志质感的艺术大标题
+
+            # --- 艺术与特殊风格 ---
+            "Impact",  # 极其粗犷，适合做表情包或强调标题
+            "Comic Sans MS",  # 轻松、手写、非正式风格
+            "Copperplate",  # 带有古典雕刻感的全大写字体
+
+            # --- 中文优化 (CJK Support) ---
+            "Microsoft YaHei",  # 微软雅黑，Windows 中文首选
+            "PingFang SC",  # 苹果苹方，Mac 中文首选
+            "Noto Sans SC",  # 思源黑体，最通用的开源中文
+            "KaiTi",  # 楷体，具有中国书法韵味
         ])
     )
     canvas_direction = OptionsConfigItem("CanvasDisplay", "Direction", "水平", OptionsValidator(["水平", "垂直"]))

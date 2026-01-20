@@ -249,7 +249,7 @@ class JsonTreeWidget(QtWidgets.QWidget):
         self.main_layout.setContentsMargins(2, 2, 2, 2)
         self.main_layout.setSpacing(4)
 
-        self.btn_add_root = TransparentPushButton(FluentIcon.ADD, "Add Root Property", self)
+        self.btn_add_root = TransparentPushButton(FluentIcon.ADD, "添加根节点", self)
         self.btn_add_root.clicked.connect(lambda: self.add_root())
         self.main_layout.addWidget(self.btn_add_root)
 

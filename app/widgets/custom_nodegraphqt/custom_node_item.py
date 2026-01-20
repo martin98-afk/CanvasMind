@@ -40,6 +40,7 @@ class NodeResizeHandle(QtWidgets.QGraphicsItem):
         self.setZValue(Z_VAL_NODE_WIDGET + 20)
         self.setCursor(QtCore.Qt.SizeFDiagCursor)
         self.setAcceptHoverEvents(True)
+        self.setToolTip("拖拽缩放 / 双击恢复自适应")
         self._hovered = False
         self._prev_pos = None
         self._icon_path = QtGui.QPainterPath()
@@ -54,7 +55,15 @@ class NodeResizeHandle(QtWidgets.QGraphicsItem):
     def paint(self, painter, option, widget):
         painter.save()
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        color = QtGui.QColor(255, 255, 255, 200 if self._hovered else 80)
+
+        # 如果父节点处于手动缩放模式，手柄高亮显示
+        is_manual = False
+        if hasattr(self.parentItem(), '_user_width'):
+            is_manual = self.parentItem()._user_width > 0 or self.parentItem()._user_height > 0
+
+        color = QtGui.QColor(255, 180, 0, 255 if self._hovered else 180) if is_manual else \
+            QtGui.QColor(255, 255, 255, 200 if self._hovered else 80)
+
         pen = QtGui.QPen(color, 2.0)
         pen.setCapStyle(QtCore.Qt.RoundCap)
         painter.setPen(pen)
@@ -92,6 +101,16 @@ class NodeResizeHandle(QtWidgets.QGraphicsItem):
             event.accept()
         else:
             super(NodeResizeHandle, self).mouseMoveEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        """双击手柄恢复自动大小"""
+        if event.button() == QtCore.Qt.LeftButton:
+            node = self.parentItem()
+            if hasattr(node, 'reset_to_auto_size'):
+                node.reset_to_auto_size()
+            event.accept()
+        else:
+            super(NodeResizeHandle, self).mouseDoubleClickEvent(event)
 
 
 class CustomDisabledItem(QtWidgets.QGraphicsItem):
@@ -268,11 +287,11 @@ class CustomNodeItem(NodeItem):
         self._x_item.setZValue(Z_VAL_NODE_WIDGET + 20)
 
         # -------------------
-        # 初始化尺寸变量
+        # 初始化尺寸变量 (0 代表自适应模式)
         # -------------------
         self._user_width = 0.0
         self._user_height = 0.0
-        self._size_initialized = False  # 标记是否已经从 Model 同步过尺寸
+        self._size_initialized = False
 
         self._init_base_components()
         self._init_custom_buttons()
@@ -297,15 +316,10 @@ class CustomNodeItem(NodeItem):
         self._proxy_text_item = QtWidgets.QGraphicsTextItem(self.name, self)
         self._proxy_text_item.setFont(QtGui.QFont(font_type, 32, QtGui.QFont.Bold))
 
-        # 获取文档对象并设置选项
         document = self._proxy_text_item.document()
         option = document.defaultTextOption()
-
-        # 设置换行模式：WrapAtWordBoundaryOrAnywhere 既能在单词边界换行，也能在长单词中间强制换行
         option.setWrapMode(QtGui.QTextOption.WrapAtWordBoundaryOrAnywhere)
-        # 设置对齐方式：水平居中
         option.setAlignment(QtCore.Qt.AlignCenter)
-
         document.setDefaultTextOption(option)
         self._proxy_text_item.setVisible(False)
 
@@ -389,38 +403,51 @@ class CustomNodeItem(NodeItem):
         self._draw_node_horizontal()
         self.update()
 
-    # -----------------------------------------------------------
-    # 尺寸同步：在 paint 首次调用时同步 Model 里的 width/height
-    # -----------------------------------------------------------
     def _sync_size_from_model(self, width, height):
         if self._size_initialized: return
         if width is not None and height is not None:
-            # 只有大于0的值才有效
             if float(width) > 0 and float(height) > 0:
                 self._user_width = float(width)
                 self._user_height = float(height)
                 self._size_initialized = True
-                # 重新计算一次布局
                 self._draw_node_horizontal()
 
+    def reset_to_auto_size(self):
+        """恢复自动调节大小模式"""
+        self._user_width = 0.0
+        self._user_height = 0.0
+        self._properties['width'] = 0.0
+        self._properties['height'] = 0.0
+        if hasattr(self, '_node') and self._node:
+            self._node.model.set_property('width', 0.0)
+            self._node.model.set_property('height', 0.0)
+        self.size_changed.emit(0.0, 0.0)
+        self._draw_node_horizontal()
+        self.update()
+
     def resize_node_by_user(self, dx, dy):
-        calc_w, calc_h = self._calc_size_horizontal(ignore_user_size=True)
-        if self._user_width == 0: self._user_width = calc_w
-        if self._user_height == 0: self._user_height = calc_h
+        # 1. 计算当前的最小内容边界
+        min_w, min_h = self._calc_size_horizontal(ignore_user_size=True)
+
+        # 2. 如果之前是自适应模式，从当前实际尺寸开始计算
+        if self._user_width <= 0: self._user_width = self._width
+        if self._user_height <= 0: self._user_height = self._height
 
         self._user_width += dx
         self._user_height += dy
 
-        if self._user_width < calc_w: self._user_width = calc_w
-        if self._user_height < calc_h: self._user_height = calc_h
+        # 3. 核心逻辑：触碰/缩进边界自动恢复自适应
+        # 设置一个缓冲阈值(如5像素)，当用户缩到最小或者更小时，解除手动尺寸锁定
+        if self._user_width <= (min_w + 5):
+            self._user_width = 0.0
+        if self._user_height <= (min_h + 5):
+            self._user_height = 0.0
 
-        # 保存到 _properties，确保 JSON 序列化时包含
+        # 4. 更新属性
         self._properties['width'] = self._user_width
         self._properties['height'] = self._user_height
 
-        # 同时尝试更新 NodeObject 的 model（如果 NodeObject 已经连接）
         if hasattr(self, '_node') and self._node:
-            # 注意：这里我们只更新 model，不触发 set_property 信号以免循环
             self._node.model.set_property('width', self._user_width)
             self._node.model.set_property('height', self._user_height)
 
@@ -438,84 +465,42 @@ class CustomNodeItem(NodeItem):
         super(CustomNodeItem, self).hoverLeaveEvent(event)
 
     def _calc_size_horizontal(self, ignore_user_size=False):
-        # 1. 计算端口区域高度
-        p_input_h = 0.0
-        p_output_h = 0.0
-        if self._input_items:
-            p_input_h = (len(self._input_items) * 22.0) + 10.0
-        if self._output_items:
-            p_output_h = (len(self._output_items) * 22.0) + 10.0
+        # 1. 计算内容所需尺寸
+        p_input_h = (len(self._input_items) * 22.0) + 10.0 if self._input_items else 0.0
+        p_output_h = (len(self._output_items) * 22.0) + 10.0 if self._output_items else 0.0
         port_height = max(p_input_h, p_output_h)
 
-        # 2. 计算端口宽度
-        in_txt_w = 0.0
-        out_txt_w = 0.0
-        for text in self._input_items.values():
-            in_txt_w = max(in_txt_w, text.boundingRect().width())
-        for text in self._output_items.values():
-            out_txt_w = max(out_txt_w, text.boundingRect().width())
+        in_txt_w = max([t.boundingRect().width() for t in self._input_items.values()] + [0])
+        out_txt_w = max([t.boundingRect().width() for t in self._output_items.values()] + [0])
         p_width = in_txt_w + out_txt_w + 50.0
 
-        # 3. 计算控件区域高度
         widget_height = 0.0
         w_width = 0.0
-
         if not self._is_collapsed:
             for widget in self._widgets.values():
                 real = widget.widget()
-                if real:
-                    sz = real.sizeHint()
-                    w_width = max(w_width, sz.width())
-                    widget_height += sz.height() + 8.0
-                else:
-                    sz = widget.boundingRect().size()
-                    w_width = max(w_width, sz.width())
-                    widget_height += sz.height() + 8.0
-            if widget_height > 0:
-                widget_height += 10.0
-        else:
-            # 折叠时，控件高度和宽度归零
-            widget_height = 0.0
-            w_width = 0.0
+                sz = real.sizeHint() if real else widget.boundingRect().size()
+                w_width = max(w_width, sz.width())
+                widget_height += sz.height() + 8.0
+            if widget_height > 0: widget_height += 10.0
 
         self._port_height = port_height
         self._widget_height = widget_height
 
-        # 4. 计算内容的最小包围尺寸
-        min_width = max(
-            self._text_item.boundingRect().width() + 120,
-            p_width,
-            w_width + 20,
-            200
-        )
-
+        min_width = max(self._text_item.boundingRect().width() + 120, p_width, w_width + 20, 200)
         header_height = max(self._text_item.boundingRect().height() + 10.0, 34.0)
-        final_port_height = max(port_height, 10.0) if not self._is_collapsed else port_height
-        # 极简模式下保留一点点高度，或者完全贴合
-        if self._is_collapsed and final_port_height == 0:
-            final_port_height = 5.0
-
+        final_port_height = max(port_height, 10.0) if not self._is_collapsed else (5.0 if self._is_collapsed else 0)
         min_height = header_height + final_port_height + widget_height
 
-        # =========================================================
-        # 核心修改点在这里
-        # =========================================================
-
-        # 情况A: 如果节点是折叠状态，强制返回计算出的最小尺寸（忽略用户之前的 resize）
-        # 这样无论之前拉多大，折叠后都会缩回最小状态
-        if self._is_collapsed:
+        # 2. 决策最终尺寸
+        if self._is_collapsed or ignore_user_size:
             return min_width, min_height
 
-        # 情况B: 调用方强制要求忽略用户尺寸（用于计算基准）
-        if ignore_user_size:
-            return min_width, min_height
+        # 如果 _user_width > 0 则是手动模式，否则是自动模式
+        final_w = max(min_width, self._user_width) if self._user_width > 0 else min_width
+        final_h = max(min_height, self._user_height) if self._user_height > 0 else min_height
 
-        # 情况C: 展开状态，取“最小内容尺寸”和“用户手动拖拽尺寸”的最大值
-        # 这样展开后，会自动恢复到用户之前拖拽的大小
-        final_width = max(min_width, self._user_width)
-        final_height = max(min_height, self._user_height)
-
-        return final_width, final_height
+        return final_w, final_h
 
     def _draw_node_horizontal(self):
         self.prepareGeometryChange()
@@ -526,7 +511,6 @@ class CustomNodeItem(NodeItem):
         self._height = height
 
         self.align_ports(v_offset=header_h)
-
         rect = self.get_node_body_rect()
 
         if not self._is_collapsed and not self._proxy_mode:
@@ -547,7 +531,6 @@ class CustomNodeItem(NodeItem):
 
             self._icon_item.setPos(start_x, rect.top() + (header_h - 18) / 2)
             self._text_item.setPos(start_x + icon_w + spacing, rect.top() + (header_h - th) / 2)
-
             self._collapse_btn.setPos(rect.left() + 6, rect.top() + (header_h - 28) / 2)
 
             if not self._is_collapsed:
@@ -566,89 +549,46 @@ class CustomNodeItem(NodeItem):
 
     def _align_widgets_stacked(self, start_y, node_width, node_height):
         if not self._widgets: return
-
-        padding_x = 10.0
-        spacing_y = 8.0
-        bottom_padding = 10.0
-
-        # 计算可用空间
+        padding_x, spacing_y, bottom_padding = 10.0, 8.0, 10.0
         available_height_total = node_height - start_y - bottom_padding
-
         total_fixed_height = 0
         expandable_widgets = []
 
-        # 第一次遍历：找出哪些控件需要拉伸 (Expanding)
         for widget in self._widgets.values():
             if not widget.isVisible(): continue
-            real = widget.widget()  # ProxyWidget 内部的 _NodeGroupBox
-            # 简化逻辑：如果是 QWidget，检查 Policy
+            real = widget.widget()
             if real:
                 h = real.sizeHint().height()
-
-                # 获取实际包含的子控件 (你的 _NodeGroupBox.get_node_widget)
-                actual_widget = None
-                if hasattr(real, 'get_node_widget'):
-                    actual_widget = real.get_node_widget()
-
-                is_expanding = False
+                actual_widget = real.get_node_widget() if hasattr(real, 'get_node_widget') else None
                 if actual_widget:
                     policy = actual_widget.sizePolicy().verticalPolicy()
-                    is_expanding = (policy == QtWidgets.QSizePolicy.Expanding or
-                                    policy == QtWidgets.QSizePolicy.MinimumExpanding)
-
-                if is_expanding:
-                    expandable_widgets.append((widget, real))
-
+                    if policy in [QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.MinimumExpanding]:
+                        expandable_widgets.append((widget, real))
                 total_fixed_height += h + spacing_y
             else:
-                h = widget.boundingRect().height()
-                total_fixed_height += h + spacing_y
+                total_fixed_height += widget.boundingRect().height() + spacing_y
 
-        # 计算分配给每个拉伸控件的额外高度
-        extra_space = max(0, available_height_total - total_fixed_height)
-        extra_per_widget = 0
-        if expandable_widgets:
-            extra_per_widget = extra_space / len(expandable_widgets)
-
-        # 第二次遍历：应用位置和尺寸
+        extra_per_widget = max(0, available_height_total - total_fixed_height) / len(
+            expandable_widgets) if expandable_widgets else 0
         current_y = start_y
         for widget in self._widgets.values():
             if not widget.isVisible(): continue
-            proxy_widget = widget
             real_widget = widget.widget()
+            h = (real_widget.sizeHint().height() if real_widget else widget.boundingRect().height())
 
-            h = 0
-            if real_widget:
-                h = real_widget.sizeHint().height()
-
-                # 重新判断是否 Expanding 以决定是否加高度
-                actual_widget = None
-                if hasattr(real_widget, 'get_node_widget'):
-                    actual_widget = real_widget.get_node_widget()
-
-                is_expanding = False
-                if actual_widget:
-                    policy = actual_widget.sizePolicy().verticalPolicy()
-                    is_expanding = (policy == QtWidgets.QSizePolicy.Expanding or
-                                    policy == QtWidgets.QSizePolicy.MinimumExpanding)
-
-                if is_expanding:
+            if real_widget and hasattr(real_widget, 'get_node_widget'):
+                actual_widget = real_widget.get_node_widget()
+                if actual_widget and actual_widget.sizePolicy().verticalPolicy() in [QtWidgets.QSizePolicy.Expanding,
+                                                                                     QtWidgets.QSizePolicy.MinimumExpanding]:
                     h += extra_per_widget
-            else:
-                h = proxy_widget.boundingRect().height()
 
-            proxy_widget.setPos(self.boundingRect().x() + 5 + padding_x, current_y)
+            widget.setPos(self.boundingRect().x() + 5 + padding_x, current_y)
             target_width = node_width - (padding_x * 2)
-
             if real_widget:
                 real_widget.setFixedSize(int(target_width), int(h))
-                real_widget.resize(int(target_width), int(h))
-
             current_y += h + spacing_y
 
     def _paint_horizontal(self, painter, option, widget):
-        # 【关键修复】在 paint 中进行一次延迟的尺寸同步
-        # 因为 deserialization 过程中，Model 的属性写入可能晚于 Item 的初始化
         if not self._size_initialized:
             self._sync_size_from_model(self.width, self.height)
 
@@ -677,7 +617,6 @@ class CustomNodeItem(NodeItem):
         head_grad = QtGui.QLinearGradient(header_rect.topLeft(), header_rect.bottomLeft())
         head_grad.setColorAt(0, base_color.lighter(110))
         head_grad.setColorAt(1, base_color)
-
         painter.setBrush(head_grad)
 
         path = QtGui.QPainterPath()
@@ -695,7 +634,6 @@ class CustomNodeItem(NodeItem):
             *COLOR_BORDER_NORMAL)
         painter.setPen(QtGui.QPen(border_color, 2.5 if self.selected else 1.2))
         painter.drawRoundedRect(rect, radius, radius)
-
         painter.restore()
 
     def mousePressEvent(self, event):
@@ -718,7 +656,7 @@ class CustomNodeItem(NodeItem):
         for text in list(self._input_items.values()) + list(self._output_items.values()):
             text.setDefaultTextColor(muted)
         self._text_item.setDefaultTextColor(QtCore.Qt.white)
-        self._proxy_text_item.setDefaultTextColor(QtGui.QColor(255, 255, 255, 120))
+        self._proxy_text_item.setDefaultTextColor(QtGui.QColor(255, 255, 255, 180))
 
     def auto_switch_mode(self):
         if self.viewer() is None: return
@@ -737,26 +675,11 @@ class CustomNodeItem(NodeItem):
 
     def _update_proxy_text_position(self):
         rect = self.get_node_body_rect()
-
-        # 定义边距
         margin = 10.0
-        # 计算文本允许的最大宽度
-        target_width = rect.width() - (margin * 2)
-        if target_width < 10: target_width = 10  # 防止极小宽度导致报错
-
-        # 关键：设置文本宽度，这将触发自动换行计算
+        target_width = max(10, rect.width() - (margin * 2))
         self._proxy_text_item.setTextWidth(target_width)
-
-        # 获取换行后的实际文本边界
         tr = self._proxy_text_item.boundingRect()
-
-        # 计算位置：
-        # X: 节点左侧 + 边距 (因为 setTextWidth 已经固定了宽度)
-        # Y: 节点中心Y - 文本高度的一半 (垂直居中)
-        x_pos = rect.left() + margin
-        y_pos = rect.center().y() - (tr.height() / 2)
-
-        self._proxy_text_item.setPos(x_pos, y_pos)
+        self._proxy_text_item.setPos(rect.left() + margin, rect.center().y() - (tr.height() / 2))
 
     def _draw_node_vertical(self):
         self._draw_node_horizontal()
@@ -780,18 +703,7 @@ class CustomNodeItem(NodeItem):
         if w:
             w.setParent(None)
             w.deleteLater()
-
-            # 【关键修复】删除控件时，重置用户手动设置的高度
-            # 这样节点就会自动“回缩”到剩余内容所需的最小尺寸
-            self._user_height = 0
-
-            # 同时也建议重置宽度，防止宽度过大留白，看你需求
-            # self._user_width = 0
-
-            # 更新 Model，确保持久化数据也同步重置
-            if hasattr(self, '_node') and self._node:
-                self._node.model.set_property('height', 0.0)
-
-            # 强制刷新布局
+            # 如果之前处于手动模式，且删除后内容极少，保持手动尺寸；
+            # 如果处于自动模式，调用 _draw_node_horizontal 会自动收缩
             self._draw_node_horizontal()
             self.update()

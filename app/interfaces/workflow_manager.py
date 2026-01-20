@@ -56,11 +56,7 @@ def _migrate_legacy_workflow_structure(workflow_dirs: List[Path]):
 
 
 def _normalize_canvas_folder(folder: Path):
-    """
-    规范化画布文件夹内容：
-    - 确保 .workflow.json 命名为 {folder.name}.workflow.json
-    - 确保 .png 命名为 {folder.name}.png（如果存在）
-    """
+    """规范化画布文件夹内容"""
     if not folder.is_dir():
         return
 
@@ -136,16 +132,21 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     running_projects_changed = pyqtSignal(str, str)
     node_request_edit = pyqtSignal(str)
 
-    SideDockRegistry.register("运行画布", PropertyToolWindow.name, PropertyToolWindow)
-    SideDockRegistry.register("运行画布", VariableExplorerToolWindow.name, VariableExplorerToolWindow)
-    SideDockRegistry.register("运行画布", DependencyToolWindow.name, DependencyToolWindow)
-    SideDockRegistry.register("运行画布", OpenAIChatToolWindow.name, OpenAIChatToolWindow)
-    SideDockRegistry.register("运行画布", IPythonConsoleToolWindow.name, IPythonConsoleToolWindow)
-    SideDockRegistry.register("运行画布", LogToolWindow.name, LogToolWindow)
+    # 注册侧边栏组件 - 这里的名称通常也需要翻译以便在UI显示
+    # 注意：SideDockRegistry 内部逻辑如果依赖这些字符串作为 Key，请确保翻译只影响显示层
+    def register_side_docks(self):
+        category = self.tr("运行画布")
+        SideDockRegistry.register(category, PropertyToolWindow.name, PropertyToolWindow)
+        SideDockRegistry.register(category, VariableExplorerToolWindow.name, VariableExplorerToolWindow)
+        SideDockRegistry.register(category, DependencyToolWindow.name, DependencyToolWindow)
+        SideDockRegistry.register(category, OpenAIChatToolWindow.name, OpenAIChatToolWindow)
+        SideDockRegistry.register(category, IPythonConsoleToolWindow.name, IPythonConsoleToolWindow)
+        SideDockRegistry.register(category, LogToolWindow.name, LogToolWindow)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("workflow_canvas_gallery_page")
+        self.register_side_docks()  # 调用注册
         self.config = Settings.get_instance()
         self.parent_window = parent
         self._pinyin_cache = {}
@@ -196,9 +197,15 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         top_bar = QHBoxLayout()
         top_bar.setSpacing(16)
         top_bar.setContentsMargins(50, 0, 70, 0)
-        sort_label = CaptionLabel("排序字段：", self)
+
+        # 国际化标签
+        sort_label = CaptionLabel(self.tr("排序字段："), self)
         self.sort_field_combo = ComboBox(self)
-        self.sort_field_combo.addItems(["修改时间", "创建时间", "画布名称"])
+        self.sort_field_combo.addItems([
+            self.tr("修改时间"),
+            self.tr("创建时间"),
+            self.tr("画布名称")
+        ])
         self.sort_field_combo.setCurrentIndex(0)
         self.sort_field_combo.setFixedWidth(100)
         self.sort_field_combo.currentIndexChanged.connect(self._on_sort_changed)
@@ -207,11 +214,11 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self.sort_order_button.setIcon(get_icon("降序"))
         self.sort_order_button.setIconSize(QSize(20, 20))
         self.sort_order_button.setChecked(False)
-        self.sort_order_button.setToolTip("点击切换排序方向")
+        self.sort_order_button.setToolTip(self.tr("点击切换排序方向"))
         self.sort_order_button.clicked.connect(self._on_sort_order_changed)
 
         self.search_line_edit = SearchLineEdit(self)
-        self.search_line_edit.setPlaceholderText("搜索画布名称...")
+        self.search_line_edit.setPlaceholderText(self.tr("搜索画布名称..."))
         self.search_line_edit.setFixedWidth(220)
         self.search_line_edit.textChanged.connect(self._on_search_changed)
         self.search_line_edit.searchSignal.connect(self._on_search_changed)
@@ -272,7 +279,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             min_value = scrollbar.minimum()
 
             if (current_value >= max_value - 5 and event.angleDelta().y() < 0) or \
-               (max_value == 0 and event.angleDelta().y() < 0 and self.current_page < self.total_pages - 1):
+                    (max_value == 0 and event.angleDelta().y() < 0 and self.current_page < self.total_pages - 1):
                 if self.current_page < self.total_pages - 1:
                     new_page_index = self.current_page + 1
                     self.pips_pager.setCurrentIndex(new_page_index)
@@ -280,7 +287,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                     return True
 
             elif (current_value <= min_value + 5 and event.angleDelta().y() > 0) or \
-                 (max_value == 0 and event.angleDelta().y() > 0 and self.current_page > 0):
+                    (max_value == 0 and event.angleDelta().y() > 0 and self.current_page > 0):
                 if self.current_page > 0:
                     new_page_index = self.current_page - 1
                     self.pips_pager.setCurrentIndex(new_page_index)
@@ -298,10 +305,10 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         is_ascending = self.sort_order_button.isChecked()
         if is_ascending:
             self.sort_order_button.setIcon(get_icon("升序"))
-            self.sort_order_button.setToolTip("当前：升序（点击切换为降序）")
+            self.sort_order_button.setToolTip(self.tr("当前：升序（点击切换为降序）"))
         else:
             self.sort_order_button.setIcon(get_icon("降序"))
-            self.sort_order_button.setToolTip("当前：降序（点击切换为升序）")
+            self.sort_order_button.setToolTip(self.tr("当前：降序（点击切换为升序）"))
         self._on_sort_changed()
 
     def _calculate_cards_per_page(self) -> int:
@@ -461,7 +468,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 mtime_ts = info.get('mtime_ts', 0)
                 name = wf_path.parent.name
                 if self._filter_text:
-                    # 从缓存获取拼音数据，减少计算开销
                     if name not in self._pinyin_cache:
                         self._pinyin_cache[name] = get_pinyin_search_keys(name)
 
@@ -525,18 +531,19 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
+            # "模型" 是图标名，通常不需要翻译，但 label 参数 file_path.parent.name 是动态的
             self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.parent.name, parent=self)
             self.opened_workflows[file_path] = canvas_page
 
         self.parent_window.switchTo(self.opened_workflows[file_path])
 
     def new_canvas(self, window=None, from_template=False):
-        name_dialog = CustomInputDialog("新建画布", "请输入画布名称", parent=window or self)
+        name_dialog = CustomInputDialog(self.tr("新建画布"), self.tr("请输入画布名称"), parent=window or self)
         if not name_dialog.exec():
             return
         base_name = name_dialog.get_text().strip()
         if not base_name:
-            InfoBar.warning("名称无效", "画布名称不能为空", parent=window or self)
+            InfoBar.warning(self.tr("名称无效"), self.tr("画布名称不能为空"), parent=window or self)
             return
 
         counter = 0
@@ -572,7 +579,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     def import_canvas(self):
         folder_path = QFileDialog.getExistingDirectory(
             self,
-            "选择要导入的画布文件夹",
+            self.tr("选择要导入的画布文件夹"),
             str(self.workflow_dir[0])
         )
         if not folder_path:
@@ -580,12 +587,12 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
         src_folder = Path(folder_path)
         if not src_folder.is_dir():
-            InfoBar.error("无效目录", "请选择有效的画布文件夹", parent=self)
+            InfoBar.error(self.tr("无效目录"), self.tr("请选择有效的画布文件夹"), parent=self)
             return
 
         wf_files = list(src_folder.glob("*.workflow.json"))
         if not wf_files:
-            InfoBar.error("无效画布", "所选文件夹中未找到 .workflow.json 文件", parent=self)
+            InfoBar.error(self.tr("无效画布"), self.tr("所选文件夹中未找到 .workflow.json 文件"), parent=self)
             return
 
         base_name = src_folder.name
@@ -598,32 +605,29 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
         try:
             shutil.copytree(src_folder, dest_folder)
-            _normalize_canvas_folder(dest_folder)  # ✅ 同步 .json 和 .png 名称
+            _normalize_canvas_folder(dest_folder)
 
-            # 更新时间戳
             now = datetime.now().timestamp()
             for f in dest_folder.iterdir():
                 if f.is_file():
                     os.utime(f, (now, now))
 
-            InfoBar.success("导入成功", f"已导入画布 “{dest_folder.name}”", parent=self)
+            InfoBar.success(self.tr("导入成功"), self.tr("已导入画布 “{}”").format(dest_folder.name), parent=self)
             self._schedule_refresh()
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            InfoBar.error("导入失败", f"无法复制文件夹：{str(e)}", parent=self)
+            InfoBar.error(self.tr("导入失败"), self.tr("无法复制文件夹：{}").format(e), parent=self)
 
     def edit_workflow(self, src_path: Path):
         src_folder = src_path.parent
         old_name = src_folder.name
 
-        dialog = CustomInputDialog("重命名画布", "请输入新名称", old_name, self)
+        dialog = CustomInputDialog(self.tr("重命名画布"), self.tr("请输入新名称"), old_name, self)
         if not dialog.exec():
             return
         new_name = dialog.get_text().strip()
         if not new_name:
-            InfoBar.warning("名称无效", "画布名称不能为空", parent=self)
+            InfoBar.warning(self.tr("名称无效"), self.tr("画布名称不能为空"), parent=self)
             return
 
         counter = 0
@@ -635,7 +639,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
         try:
             shutil.move(str(src_folder), str(new_folder))
-            _normalize_canvas_folder(new_folder)  # ✅ 同步名称
+            _normalize_canvas_folder(new_folder)
 
             if src_path in self.opened_workflows:
                 self.parent_window.removeInterface(self.opened_workflows[src_path])
@@ -646,24 +650,26 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 self.flow_layout.removeWidget(old_card)
                 old_card.hide()
                 old_card.deleteLater()
-            old_name = src_path.parent.name
-            if old_name in self._pinyin_cache:
-                del self._pinyin_cache[old_name]
-            InfoBar.success("重命名成功", f"已重命名为 {new_name}", parent=self)
+
+            old_name_key = src_path.parent.name
+            if old_name_key in self._pinyin_cache:
+                del self._pinyin_cache[old_name_key]
+
+            InfoBar.success(self.tr("重命名成功"), self.tr("已重命名为 {}").format(new_name), parent=self)
             self._schedule_refresh()
         except Exception as e:
-            InfoBar.error("重命名失败", str(e), parent=self)
+            InfoBar.error(self.tr("重命名失败"), str(e), parent=self)
 
     def duplicate_workflow(self, src_path: Path):
         src_folder = src_path.parent
         old_name = src_folder.name
 
-        dialog = CustomInputDialog("复制画布", "请输入新画布名称", old_name + "_copy", self)
+        dialog = CustomInputDialog(self.tr("复制画布"), self.tr("请输入新画布名称"), old_name + "_copy", self)
         if not dialog.exec():
             return
         new_name = dialog.get_text().strip()
         if not new_name:
-            InfoBar.warning("名称无效", "画布名称不能为空", parent=self)
+            InfoBar.warning(self.tr("名称无效"), self.tr("画布名称不能为空"), parent=self)
             return
 
         counter = 0
@@ -675,25 +681,29 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
         try:
             shutil.copytree(src_folder, new_folder)
-            _normalize_canvas_folder(new_folder)  # ✅ 同步名称
+            _normalize_canvas_folder(new_folder)
 
-            InfoBar.success("复制成功", f"已创建 {new_name}", parent=self)
+            InfoBar.success(self.tr("复制成功"), self.tr("已创建 {}").format(new_name), parent=self)
             self._schedule_refresh()
         except Exception as e:
-            InfoBar.error("复制失败", str(e), parent=self)
+            InfoBar.error(self.tr("复制失败"), str(e), parent=self)
 
     def delete_workflow(self, file_path: Path):
-        from qfluentwidgets import MessageBox, InfoBar
+        from qfluentwidgets import MessageBox
 
         name = file_path.parent.name
-        w = MessageBox("确认删除", f"确定要删除画布 \"{name}\" 吗？\n此操作不可恢复！", self)
+        # 使用 tr() 格式化确认消息
+        title = self.tr("确认删除")
+        content = self.tr("确定要删除画布 \"{}\" 吗？\n此操作不可恢复！").format(name)
+
+        w = MessageBox(title, content, self)
         if not w.exec():
             return
 
         try:
             shutil.rmtree(file_path.parent)
 
-            InfoBar.success("删除成功", f"画布 '{name}' 已删除", parent=self)
+            InfoBar.success(self.tr("删除成功"), self.tr("画布 '{}' 已删除").format(name), parent=self)
 
             if file_path in self.opened_workflows:
                 self.parent_window.removeInterface(self.opened_workflows[file_path])
@@ -707,7 +717,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
             self._schedule_refresh()
         except Exception as e:
-            InfoBar.error("删除失败", str(e), parent=self)
+            InfoBar.error(self.tr("删除失败"), str(e), parent=self)
 
     def _on_canvas_saved(self, workflow_path: Path):
         try:
@@ -724,7 +734,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             if card:
                 card.update_file_info(file_info)
         except Exception as e:
-            print(f"更新卡片信息失败: {e}")
+            logger.error(f"Update card info failed: {e}")
 
         card = self._card_map.get(workflow_path)
         if card and hasattr(card, 'refresh_preview'):

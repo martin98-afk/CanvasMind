@@ -5,13 +5,14 @@ import warnings
 import matplotlib
 import qtconsole.client
 from PyQt5.QtGui import QPalette, QColor
+from qfluentwidgets import FluentTranslator
 
 from app.utils.utils import get_icon
 
 warnings.filterwarnings("ignore")
 
 from app.utils import icons_rc
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QLocale
 from PyQt5.QtWidgets import QApplication
 
 from app.main_window import LowCodeWindow
