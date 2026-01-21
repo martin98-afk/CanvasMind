@@ -737,6 +737,7 @@ class EnvManagerUI(QWidget):
             self._pkg_thread.terminate()
             self._pkg_thread.wait()
 
+        self._log_color(f"> 正在同步环境: {env_data['name']} ...", "#61afef")
         self._pkg_thread = PackageListThread(env_data)
         self._pkg_thread.packages_loaded.connect(self.on_load_packages)
         self._pkg_thread.error_occurred.connect(self.on_load_packages_error)
@@ -752,6 +753,7 @@ class EnvManagerUI(QWidget):
             pkgs = []
         self.pkgs_data = pkgs
         self._repopulate_table(pkgs)
+        self._log_color(f"[完成] 共加载 {len(pkgs)} 个包", "#98c379")
 
     def on_load_packages_error(self, e):
         self.pyVersionLabel.setText(self.tr("加载版本失败"))
