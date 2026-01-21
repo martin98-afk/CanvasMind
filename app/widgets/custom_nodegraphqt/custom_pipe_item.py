@@ -258,6 +258,7 @@ class CustomPipeItem(PipeItem):
         if not self._running:
             self.set_pipe_styling(color=PipeEnum.HIGHLIGHT_COLOR.value, width=4, style=self.style)
         self.update()
+        self.setZValue(Z_VAL_PIPE + 10)
         self.start_flow()
 
     def hoverEnterEvent(self, event):

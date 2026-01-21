@@ -34,7 +34,14 @@ class FileSelectWidget(QtWidgets.QWidget):
 
         # 路径显示框
         self.path_edit = LineEdit(parent=self)
+        self.path_edit.clearButton.show()
         self.path_edit.setReadOnly(True)
+        self.path_edit.clearButton.clicked.connect(
+            lambda: (
+                self.valueChanged.emit(""),
+                self.path_edit.clear()
+            )
+        )
         # 根据模式设置不同的提示语
         placeholder = "选择文件夹..." if self._is_folder_mode else "选择文件..."
         self.path_edit.setPlaceholderText(placeholder)
@@ -60,7 +67,7 @@ class FileSelectWidget(QtWidgets.QWidget):
         if self._is_folder_mode:
             # --- 文件夹选择模式 ---
             dir_path = QtWidgets.QFileDialog.getExistingDirectory(
-                self,
+                self.parent,
                 "Select Directory",
                 start_dir,
                 QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks
@@ -71,7 +78,7 @@ class FileSelectWidget(QtWidgets.QWidget):
         else:
             # --- 文件选择模式 ---
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-                self,
+                self.parent,
                 "Select File",
                 start_dir,
                 self._file_filter

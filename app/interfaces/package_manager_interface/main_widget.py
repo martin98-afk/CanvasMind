@@ -408,20 +408,40 @@ class EnvManagerUI(QWidget):
         if task['status'] == 'finished' and not forced_status:
             return
 
-        status_text = forced_status or self.tr("完成")
-        color = "#e06c75" if forced_status == self.tr("已取消") else "#98c379"
+        # 获取完整日志文本
+        full_log = "".join(task['log'])
+        exit_code = 0 if task['is_remote'] else task['worker'].exitCode()
 
-        if not task['is_remote'] and not forced_status:
-            exit_code = task['worker'].exitCode()
-            if exit_code != 0:
-                status_text = self.tr("失败")
-                color = "#e06c75"
+        # 判定是否触发了元数据损坏错误
+        is_metadata_error = "uninstall-no-record-file" in full_log or "METADATA" in full_log
+
+        status_text = forced_status or self.tr("完成")
+        color = "#e06c75" if (forced_status == self.tr("已取消") or exit_code != 0) else "#98c379"
+
+        if exit_code != 0 and not forced_status:
+            status_text = self.tr("失败")
+
+            # --- 自动修复逻辑开始 ---
+            if is_metadata_error:
+                self._log_color(f"\n[系统检测] 发现损坏的包元数据，正在尝试自动修复...", "#d19a66", task_id)
+                cleaned = self._cleanup_broken_package_metadata(full_log, task['env'].get('path', ''))
+                if cleaned:
+                    for f in cleaned:
+                        self._log_color(f" -> 已移除损坏的目录: {f}", "#d19a66", task_id)
+                    self._log_color("修复完成，请尝试重新执行任务。", "#98c379", task_id)
+                    task['card'].set_status(self.tr("已修复，请重试"), "#d19a66", finished=True)
+                else:
+                    self._log_color("未找到可清理的目录，请手动检查 site-packages。", "#e06c75", task_id)
+            # --- 自动修复逻辑结束 ---
 
         task['status'] = 'finished'
-        task['card'].set_status(status_text, color, finished=True)
+        if not is_metadata_error:  # 如果已经设为“已修复”，就不覆盖状态
+            task['card'].set_status(status_text, color, finished=True)
+
         self._log_color(f"\n[{status_text}]", color, task_id)
 
-        if self.current_env_data and task['env']['name'] == self.current_env_data['name']:
+        # 只有成功时才刷新列表，减少文件锁竞争
+        if exit_code == 0 and self.current_env_data and task['env']['name'] == self.current_env_data['name']:
             self.load_packages(self.current_env_data)
 
     def _on_task_item_clicked(self, item):
@@ -729,6 +749,10 @@ class EnvManagerUI(QWidget):
 
     def load_packages(self, env_data):
         if not env_data: return
+        for task in self.tasks.values():
+            if task['status'] == 'running' and not task['is_remote']:
+                self._log_color("> 任务执行中，暂缓刷新列表以防止文件冲突。", "#abb2bf")
+                return
         if isinstance(env_data, str):
             env_data = {"type": "local", "name": env_data, "path": str(self.mgr.get_python_exe(env_data))}
 
@@ -975,3 +999,51 @@ class EnvManagerUI(QWidget):
             self.mgr.remove_finished.connect(
                 lambda r: (st.close(), self.refresh_env_list(), self.env_changed.emit())
             )
+
+    def _cleanup_broken_package_metadata(self, log_text, env_path):
+        """
+        解析错误日志，定位损坏的包元数据文件夹并删除
+        """
+        # 匹配规则 1: uv 的 uninstall-no-record-file 错误
+        # 匹配规则 2: os error 2 (系统找不到指定的文件) 指向的 METADATA 路径
+        patterns = [
+            r"Cannot uninstall ([\w\-\.]+) None",
+            r"failed to open file `(.+?\.dist-info)\\METADATA`"
+        ]
+
+        site_packages = os.path.join(os.path.dirname(env_path), "Lib", "site-packages")
+        if not os.path.exists(site_packages):
+            # 针对某些环境结构的适配
+            site_packages = os.path.join(os.path.dirname(os.path.dirname(env_path)), "Lib", "site-packages")
+
+        cleaned_folders = []
+
+        # 尝试根据路径直接匹配 (最准确)
+        if "METADATA" in log_text:
+            match = re.search(r"[`'](.+?\.dist-info)[\\/]METADATA[`']", log_text)
+            if match:
+                folder_path = match.group(1)
+                if os.path.exists(folder_path):
+                    try:
+                        shutil.rmtree(folder_path)
+                        cleaned_folders.append(os.path.basename(folder_path))
+                    except Exception as e:
+                        self._log_color(f"清理失败: {str(e)}", "#e06c75")
+
+        # 尝试根据包名模糊匹配
+        if "uninstall-no-record-file" in log_text:
+            match = re.search(r"Cannot uninstall ([\w\-\.]+)", log_text)
+            if match:
+                pkg_name = match.group(1).replace("-", "_").lower()
+                if os.path.exists(site_packages):
+                    for folder in os.listdir(site_packages):
+                        # 寻找该包对应的 .dist-info 文件夹
+                        if folder.lower().startswith(pkg_name) and folder.endswith(".dist-info"):
+                            full_path = os.path.join(site_packages, folder)
+                            try:
+                                shutil.rmtree(full_path)
+                                cleaned_folders.append(folder)
+                            except:
+                                pass
+
+        return cleaned_folders

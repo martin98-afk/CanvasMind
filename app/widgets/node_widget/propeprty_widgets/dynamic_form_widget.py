@@ -9,6 +9,7 @@ from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 from app.widgets.node_widget.propeprty_widgets.checkbox_widget import CheckBoxWidget
+from app.widgets.node_widget.propeprty_widgets.file_select_widget import FileSelectWidget
 from app.widgets.node_widget.propeprty_widgets.longtext_dialog import LongTextWidget
 from app.widgets.node_widget.propeprty_widgets.range_widget import RangeWidget
 from app.widgets.node_widget.propeprty_widgets.variable_combo_widget import VarComboBoxWidget
@@ -93,7 +94,10 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
                 input_row.addWidget(widget)
-
+            elif field_type == PropertyType.FILE.name:
+                widget = FileSelectWidget(parent=self.home, default_ext=default)
+                self.fields[key] = widget
+                input_row.addWidget(widget, 1)
             else:
                 gv = getattr(self.home, 'global_variables', None)
                 widget = VariableCompletionLineEdit(
