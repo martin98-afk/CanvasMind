@@ -108,7 +108,7 @@ class CustomPipeItem(PipeItem):
         # 4. 绘制流光动画 (亮白色)
         if getattr(self, '_flow_running', False):
             painter.save()
-            bright_white = QtGui.QColor(255, 255, 255, 210)
+            bright_white = QtGui.QColor(0, 0, 0, 180)
             f_pen = QtGui.QPen(bright_white, 2.0)
             f_pen.setDashPattern([10, 15])
             f_pen.setDashOffset(-self._current_flow_offset)
@@ -269,6 +269,23 @@ class CustomPipeItem(PipeItem):
         self._is_hovered = False
         self.update()
         super(CustomPipeItem, self).hoverLeaveEvent(event)
+
+    def boundingRect(self):
+        # 获取路径本身的矩形
+        rect = self.path().boundingRect()
+        # 预留足够的空间给发光层 (16.5 是你 glow 计算出的最大增量)
+        # 我们这里给个 20.0 保证安全
+        margin = 20.0
+        rect.adjust(-margin, -margin, margin, margin)
+        return rect
+
+    def shape(self):
+        # 同样扩大碰撞检测和重绘区域的形状
+        path = QtGui.QPainterPath()
+        # 使用旋转/加宽后的路径作为形状
+        stroker = QtGui.QPainterPathStroker()
+        stroker.setWidth(self.pen().widthF() + 20.0)
+        return stroker.createStroke(self.path())
 
 
 class CustomLivePipeItem(CustomPipeItem, LivePipeItem):
