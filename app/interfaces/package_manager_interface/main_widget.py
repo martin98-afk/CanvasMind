@@ -59,7 +59,8 @@ class EnvManagerUI(QWidget):
         self.ssh_config_file = str(Path(resource_path("envs")) / "ssh_envs_cache.json")
 
         self.tasks = {}
-        self.current_viewing_task_id = None
+        self.main_log = []  # 主日志缓冲区
+        self.current_viewing_task_id = None  # None 表示主控制台
 
         self._init_ui()
 
@@ -254,6 +255,13 @@ class EnvManagerUI(QWidget):
         self.taskListWidget = ListWidget(self)
         self.taskListWidget.setFrameShape(QFrame.NoFrame)
         self.taskListWidget.setFixedWidth(280)
+
+        # 添加主控制台固定项
+        self.mainConsoleItem = QListWidgetItem(self.taskListWidget)
+        self.mainConsoleItem.setText(f" > {self.tr('系统主控制台')}")
+        self.mainConsoleItem.setData(Qt.UserRole, "MAIN_LOG_ENTRY")
+        self.mainConsoleItem.setSizeHint(QSize(260, 40))
+
         self.taskListWidget.itemClicked.connect(self._on_task_item_clicked)
         self.taskListWidget.hide()
 
@@ -417,6 +425,11 @@ class EnvManagerUI(QWidget):
             self.load_packages(self.current_env_data)
 
     def _on_task_item_clicked(self, item):
+        # 检查是否点击了主控制台
+        if item.data(Qt.UserRole) == "MAIN_LOG_ENTRY":
+            self._switch_log_view(None)
+            return
+
         for tid, data in self.tasks.items():
             if data['item'] == item:
                 self._switch_log_view(tid)
@@ -427,26 +440,57 @@ class EnvManagerUI(QWidget):
         self.current_viewing_task_id = task_id
         self.logEdit.clear()
 
-        if task_id in self.tasks:
+        if task_id is None:
+            # 回放主日志
+            for chunk in self.main_log:
+                self._append_log_chunk(chunk)
+        elif task_id in self.tasks:
             # 遍历历史记录，使用智能追加函数
             for chunk in self.tasks[task_id]['log']:
                 self._append_log_chunk(chunk)
 
     def _log_color(self, text, color, task_id=None):
         html = f'<span style="color:{color};">{text}</span>'
-        target_id = task_id or self.current_viewing_task_id
 
-        if target_id and target_id in self.tasks:
-            self.on_task_log(target_id, html)
-        elif not target_id:
-            self.logEdit.append(html)
+        if task_id and task_id in self.tasks:
+            # 分发到具体任务
+            self.on_task_log(task_id, html)
+        else:
+            # 记录到主控制台缓冲区
+            self.main_log.append(html)
+            # 如果当前正在看主控制台，则立即显示
+            if self.current_viewing_task_id is None:
+                self._append_log_chunk(html)
+
+    def get_uv_path(self):
+        """
+        获取 uv 的路径，支持在 PATH 找不到时检查默认安装目录
+        """
+        # 1. 首先检查环境变量 PATH
+        uv_in_path = shutil.which("uv")
+        if uv_in_path:
+            return uv_in_path
+
+        # 2. 如果 PATH 找不到，检查默认安装位置 (Windows)
+        if platform.system() == "Windows":
+            default_path = Path.home() / ".local" / "bin" / "uv.exe"
+            if default_path.exists():
+                return str(default_path)
+        else:
+            # Linux/macOS 默认位置
+            default_path = Path.home() / ".local" / "bin" / "uv"
+            if default_path.exists():
+                return str(default_path)
+
+        return None
 
     def is_uv_installed(self):
-        return shutil.which("uv") is not None
+        return self.get_uv_path() is not None
 
     def install_uv_logic(self):
+        # 修复权限报错：添加 -ExecutionPolicy Bypass
         if platform.system() == "Windows":
-            cmd = ["powershell", "-Command", "irm https://astral.sh/uv/install.ps1 | iex"]
+            cmd = ["powershell", "-ExecutionPolicy", "Bypass", "-Command", "irm https://astral.sh/uv/install.ps1 | iex"]
         else:
             cmd = ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"]
 
@@ -461,14 +505,10 @@ class EnvManagerUI(QWidget):
         if not self.current_env_data: return
 
         # === 关键修复：解决 Windows 文件占用 (OS Error 32) ===
-        # 在执行安装/卸载任务前，强制停止正在运行的包列表刷新线程。
-        # 如果不停止，后台的 'pip list' 进程可能正占用 .pyd 等文件，导致 uv 无法写入。
         if hasattr(self, '_pkg_thread') and self._pkg_thread.isRunning():
-            # 只有在本地环境时才会有严重的文件锁冲突，但统一停止比较安全
             self._pkg_thread.terminate()
             self._pkg_thread.wait()
             self.pyVersionLabel.setText(self.tr("列表刷新已暂停，准备执行任务..."))
-        # ==================================================
 
         use_uv = self.uvSwitch.isChecked() and self.current_env_data["type"] == "local"
         if use_uv and not self.is_uv_installed():
@@ -519,16 +559,15 @@ class EnvManagerUI(QWidget):
         upload_files = None
 
         if use_uv:
-            executable = "uv"
+            # 关键修复：使用 get_uv_path 获取绝对路径，而不是简单的 "uv"
+            executable = self.get_uv_path() or "uv"
             if self.tr("卸载") in action:
-                # 修复：uv pip uninstall 不支持 -y 参数，直接移除
                 cmd = ["pip", "uninstall", "--python", self.current_env_data["path"]]
             else:
                 cmd = ["pip", "install", "--python", self.current_env_data["path"]]
         else:
             executable = self.current_env_data.get("path", "python")
             if self.tr("卸载") in action:
-                # 标准 pip 需要 -y 来跳过确认
                 cmd = ["-m", "pip", "uninstall", "-y"]
             else:
                 cmd = ["-m", "pip", "install"]
@@ -648,11 +687,7 @@ class EnvManagerUI(QWidget):
     def get_all_environments(self):
         all_envs = []
         for env in self.mgr.list_envs():
-            all_envs.append({
-                "name": env,
-                "type": "local",
-                "path": str(self.mgr.get_python_exe(env))
-            })
+            all_envs.append({"name": env, "type": "local", "path": str(self.mgr.get_python_exe(env))})
         if os.path.exists(self.ssh_config_file):
             with open(self.ssh_config_file, 'r', encoding='utf-8') as f:
                 ssh_list = json.load(f)
@@ -695,14 +730,14 @@ class EnvManagerUI(QWidget):
     def load_packages(self, env_data):
         if not env_data: return
         if isinstance(env_data, str):
-            env_data = {"type": "local", "name": env_data,
-                        "path": str(self.mgr.get_python_exe(env_data))}
+            env_data = {"type": "local", "name": env_data, "path": str(self.mgr.get_python_exe(env_data))}
 
         self.pyVersionLabel.setText(self.tr("正在加载包列表..."))
         if hasattr(self, '_pkg_thread') and self._pkg_thread.isRunning():
             self._pkg_thread.terminate()
             self._pkg_thread.wait()
 
+        self._log_color(f"> 正在同步环境: {env_data['name']} ...", "#61afef")
         self._pkg_thread = PackageListThread(env_data)
         self._pkg_thread.packages_loaded.connect(self.on_load_packages)
         self._pkg_thread.error_occurred.connect(self.on_load_packages_error)
@@ -718,10 +753,11 @@ class EnvManagerUI(QWidget):
             pkgs = []
         self.pkgs_data = pkgs
         self._repopulate_table(pkgs)
+        self._log_color(f"[完成] 共加载 {len(pkgs)} 个包", "#98c379")
 
     def on_load_packages_error(self, e):
         self.pyVersionLabel.setText(self.tr("加载版本失败"))
-        self.logEdit.append(f'<span style="color:#e06c75;">[Error] {str(e)}</span>')
+        self._log_color(f"[Error] {str(e)}", "#e06c75")
 
     def _repopulate_table(self, pkgs):
         self.packageTable.setUpdatesEnabled(False)
@@ -886,43 +922,31 @@ class EnvManagerUI(QWidget):
             n_dlg = CustomInputDialog(self.tr("环境名称"), currenttext=ver, parent=window or self)
             if n_dlg.exec_():
                 name = n_dlg.get_text().strip() or ver
-                self.logEdit.append(f"> {self.tr('正在创建环境')} {name}...")
+                self._log_color(f"> {self.tr('正在创建环境')} {name}...", "#abb2bf")
 
-                # 定义创建完成后的回调逻辑
                 def _on_creation_finished(result):
                     st.close()
-                    # 假设 result 为 True 表示成功 (根据你的信号定义，如果是对象则需调整判断)
                     if result:
                         self.refresh_env_list()
                         self.env_changed.emit()
-
-                        # 1. 自动切换到新创建的环境
-                        self.logEdit.append(f"> {self.tr('环境创建成功，正在切换')}...")
+                        self._log_color(f"> {self.tr('环境创建成功，正在切换')}...", "#98c379")
                         self.change_env(name)
-
-                        # 2. 检查并安装默认包
                         pkgs = self.config.default_packages.value
                         if pkgs:
-                            self.logEdit.append(f"> {self.tr('检测到默认包配置，开始发布自动安装任务')}...")
-                            # 这里直接调用现有的安装默认包逻辑，它会自动读取 current_env_data 并创建任务
+                            self._log_color(f"> {self.tr('检测到默认包配置，开始发布自动安装任务')}...", "#61afef")
                             self.install_default_packages()
                         else:
-                            self.logEdit.append(f"> {self.tr('未配置默认包，流程结束')}。")
+                            self._log_color(f"> {self.tr('未配置默认包，流程结束')}。", "#abb2bf")
                     else:
-                        self.logEdit.append(f"<span style='color:#e06c75;'>{self.tr('环境创建失败')}</span>")
+                        self._log_color(self.tr('环境创建失败'), "#e06c75")
 
-                # 先断开之前的连接，防止多次触发（如果 mgr 是常驻对象）
                 try:
                     self.mgr.install_finished.disconnect()
                 except TypeError:
                     pass
 
-                    # 连接新的回调
                 self.mgr.install_finished.connect(_on_creation_finished)
-
-                # 开始下载并安装
-                self.mgr.download_and_install(ver, env_name=name, log_callback=self.logEdit.append)
-
+                self.mgr.download_and_install(ver, env_name=name, log_callback=lambda m: self._log_color(m, "#abb2bf"))
                 st = StateToolTip(self.tr("正在安装"), self.tr("请稍候..."), window or self)
                 st.show()
 
@@ -935,15 +959,11 @@ class EnvManagerUI(QWidget):
             t_dlg = CustomInputDialog(self.tr("新环境名称"), currenttext=f"{src}_clone", parent=self)
             if t_dlg.exec_():
                 tar = t_dlg.get_text().strip()
-                self.mgr.clone_env(src, tar, log_callback=self.logEdit.append)
+                self.mgr.clone_env(src, tar, log_callback=lambda m: self._log_color(m, "#abb2bf"))
                 st = StateToolTip(self.tr("正在克隆"), self.tr("请稍候..."), self)
                 st.show()
                 self.mgr.install_finished.connect(
-                    lambda r: (
-                        st.close(),
-                        self.refresh_env_list(),
-                        self.env_changed.emit()
-                    )
+                    lambda r: (st.close(), self.refresh_env_list(), self.env_changed.emit())
                 )
 
     def delete_env(self):
@@ -953,9 +973,5 @@ class EnvManagerUI(QWidget):
             st = StateToolTip(self.tr("正在删除"), self.tr("请稍候..."), self)
             st.show()
             self.mgr.remove_finished.connect(
-                lambda r: (
-                    st.close(),
-                    self.refresh_env_list(),
-                    self.env_changed.emit()
-                )
+                lambda r: (st.close(), self.refresh_env_list(), self.env_changed.emit())
             )

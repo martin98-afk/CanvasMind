@@ -26,6 +26,9 @@ class _NodeGroupBox(QtWidgets.QWidget):
 
         # 标题 Label
         self._label_item = QtWidgets.QLabel(label)
+        sp = self._label_item.sizePolicy()
+        sp.setRetainSizeWhenHidden(False)
+        self._label_item.setSizePolicy(sp)
         self._label_item.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self.layout.addWidget(self._label_item)
 

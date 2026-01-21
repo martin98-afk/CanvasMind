@@ -583,37 +583,36 @@ class CanvasPage(QWidget):
     def _highlight_node_connections(self, node, status):
         """优化的连接线高亮方法"""
         viewer = self.graph.viewer()
-        from NodeGraphQt.constants import PipeEnum
-        default_color = PipeEnum.COLOR.value
-        default_width = 2
-        default_style = PipeEnum.DRAW_TYPE_DEFAULT.value
 
+        # 状态判断：是否处于运行中
+        # 假设你的 NodeStatus 定义中包含 NODE_STATUS_RUNNING
+        is_running = (status == NodeStatus.NODE_STATUS_RUNNING)
         if not hasattr(node, "input_ports"):
             return
-        for input_port in node.input_ports():
-            for out_port in input_port.connected_ports():
-                pipe = self._find_pipe_by_ports(out_port, input_port, viewer.all_pipes())
+        # 1. 先处理输入端口
+        for port in node.input_ports():
+            for connected_port in port.connected_ports():
+                # 找到连接线：注意参数顺序 (源端口, 目标端口)
+                # 输入端口的连接，源通常是对方的输出端口
+                pipe = self._find_pipe_by_ports(connected_port, port, viewer.all_pipes())
                 if pipe:
-                    pipe.set_pipe_styling(color=default_color, width=default_width, style=default_style)
-        for output_port in node.output_ports():
-            for in_port in output_port.connected_ports():
-                pipe = self._find_pipe_by_ports(output_port, in_port, viewer.all_pipes())
-                if pipe:
-                    pipe.set_pipe_styling(color=default_color, width=default_width, style=default_style)
+                    if is_running:
+                        pipe.running(type="input")
+                    else:
+                        if hasattr(pipe, 'reset'):
+                            pipe.reset()
 
-        if status == NodeStatus.NODE_STATUS_RUNNING:
-            input_color = (64, 158, 255, 255)  # 蓝色
-            output_color = (50, 205, 50, 255)  # 绿色
-            for input_port in node.input_ports():
-                for out_port in input_port.connected_ports():
-                    pipe = self._find_pipe_by_ports(out_port, input_port, viewer.all_pipes())
-                    if pipe:
-                        pipe.set_pipe_styling(color=input_color, width=default_width, style=default_style)
-            for output_port in node.output_ports():
-                for in_port in output_port.connected_ports():
-                    pipe = self._find_pipe_by_ports(output_port, in_port, viewer.all_pipes())
-                    if pipe:
-                        pipe.set_pipe_styling(color=output_color, width=default_width, style=default_style)
+        # 2. 再处理输出端口
+        for port in node.output_ports():
+            for connected_port in port.connected_ports():
+                # 输出端口的连接，源是自己
+                pipe = self._find_pipe_by_ports(port, connected_port, viewer.all_pipes())
+                if pipe:
+                    if is_running:
+                        pipe.running(type="output")
+                    else:
+                        if hasattr(pipe, 'reset'):
+                            pipe.reset()
 
     def _find_pipe_by_ports(self, out_port, in_port, pipes):
         """根据输入输出端口查找对应的连接线"""

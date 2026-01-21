@@ -192,7 +192,12 @@ class ImageCompareWidget(QtWidgets.QWidget):
 
         # 计算尺寸
         ref_img = self._image_a or self._image_b
+
+        # --- 修改开始 ---
         if ref_img and not ref_img.isNull():
+            # 有图片时：显示控件并计算尺寸
+            self.setVisible(True)
+
             orig_size = ref_img.size()
             target_w = max(self._min_width, min(orig_size.width(), self._max_width))
             scale_ratio = target_w / float(orig_size.width())
@@ -201,11 +206,14 @@ class ImageCompareWidget(QtWidgets.QWidget):
             total_h = target_h + (30 if has_two_images else 0)
             self._current_size = QSize(target_w, total_h)
         else:
-            self._current_size = QSize(200, 150)
+            # 无图片时：隐藏控件并将尺寸设为 0
+            self.setVisible(False)
+            self._current_size = QSize(0, 0)
+        # --- 修改结束 ---
 
         self.setFixedSize(self._current_size)
         self.updateGeometry()
-        self.sizeHintChanged.emit()
+        self.sizeHintChanged.emit()  # 通知 NodeGraphQt 更新节点形状
 
     def set_swap(self, state):
         self._swap_layers = state

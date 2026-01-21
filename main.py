@@ -4,8 +4,8 @@ import sys
 import warnings
 import matplotlib
 import qtconsole.client
+from PyQt5.QtCore import QTranslator  # 必须导入这个
 from PyQt5.QtGui import QPalette, QColor
-from qfluentwidgets import FluentTranslator
 
 from app.utils.utils import get_icon
 
@@ -60,13 +60,31 @@ def create_application():
     return app
 
 
+def load_localization(app,  language="en"):
+    translator = QTranslator()
+    language_map = {
+        'en': 'en_US',
+        'zh': 'zh_CN'
+     }
+    qm_path = os.path.join('resource', 'i18n', f'{language_map[language]}.qm')
+
+    # 3. 加载并安装
+    if os.path.exists(qm_path):
+        if translator.load(qm_path):
+            app.installTranslator(translator)
+            print(f"✅ 成功加载翻译: {qm_path}")
+        else:
+            print(f"❌ 文件存在但加载失败 (格式错误?): {qm_path}")
+    else:
+        print(f"❌ 找不到翻译文件: {qm_path}")
+
 # ----------------------------
 # 启动应
 # ----------------------------
 if __name__ == '__main__':
     os.environ['PYTHONIOENCODING'] = 'utf-8'
     app = create_application()
-
+    # load_localization(app)
     # 创建并显示主窗口
     try:
         window = LowCodeWindow()
