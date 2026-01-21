@@ -256,14 +256,13 @@ class BasicNodeWithGlobalProperty(NodeObject):
 
     def _handle_stream_output(self, params: dict, msg: ComponentMessage):
         """只负责把数据存起来，并标记 dirty"""
-        extra = getattr(msg, 'extra', {})
         for port_name, info in params.items():
             d_type = info.get("data_type", "str")
             plugin_type = info.get("plugin", None)
             # 数据存储与合并...
             self._output_values[port_name] = self._merge_data(port_name, info.get("data"), d_type)
             # 记录配置
-            self._visual_config[port_name] = (extra.get('display', False), plugin_type)
+            self._visual_config[port_name] = (False if plugin_type is None else True, plugin_type)
             self._visual_dirty_buffer.add(port_name)
             self._stream_buffer.add(port_name)
         self.signals.stream_data_updated.emit(None)

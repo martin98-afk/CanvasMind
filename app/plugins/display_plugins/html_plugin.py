@@ -6,6 +6,13 @@ from app.widgets.node_widget.display_widgets.html_widget import HtmlWidgetWrappe
 
 class ChartDisplayPlugin(DisplayPlugin):
     plugin_id = "display_html"
+    plugin_name = "HTML展示插件"
+    plugin_desc = "用于在节点上展示指定html内容"
+    plugin_template ="""self.emit_message(
+            method="display_html",
+            params={"content": "<html_content>"}
+        )
+"""
 
     def render(self, node, port_name, data):
         key = f"html_{port_name}"

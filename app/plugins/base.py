@@ -6,6 +6,9 @@ class BaseNodePlugin(ABC):
     """所有插件的基类"""
     # 插件唯一标识，对应 ComponentMessage 中的 method 或 data_type
     plugin_id = ""
+    plugin_name = ""
+    plugin_desc = ""
+    plugin_template = ""
 
     @abstractmethod
     def handle(self, node, params, msg=None):

@@ -82,7 +82,6 @@ class Component(BaseComponent):
             }
         ),
     }
-
     def run(self, params, inputs):
         import json
         from openai import OpenAI

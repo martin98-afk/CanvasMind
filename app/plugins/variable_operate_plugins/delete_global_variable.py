@@ -2,8 +2,15 @@
 from app.plugins.base import VariableOperatePlugin
 
 
-class AskPlugin(VariableOperatePlugin):
+class DeleteVariablePlugin(VariableOperatePlugin):
     plugin_id = "delete_global_variable"
+    plugin_name = "删除全局变量"
+    plugin_desc = "将本节点的指定端口从全局变量中删除"
+    plugin_template = """self.emit_message(
+            method="delete_global_variable",
+            params={"value": "port_name"}
+        )
+"""
 
     def operate(self, node, params):
         value = params.get("value", "")

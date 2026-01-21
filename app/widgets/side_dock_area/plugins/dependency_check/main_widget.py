@@ -16,7 +16,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QHeaderView, QAbstractItemView, QTableWidgetItem
 from qfluentwidgets import (
     TableWidget, PrimaryPushButton, TransparentToolButton,
-    StrongBodyLabel, FluentIcon, InfoBar, CaptionLabel, IndeterminateProgressRing, InfoBarPosition
+    StrongBodyLabel, FluentIcon, CaptionLabel, IndeterminateProgressRing
 )
 
 from app.interfaces.package_manager_interface import PackageListThread

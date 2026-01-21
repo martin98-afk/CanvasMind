@@ -174,8 +174,7 @@ class TorchClassifierTrainer(BaseComponent):
                     params={
                         "training_loss": {"data": train_loss, "data_type": "list", "plugin": "display_list"},
                         "accuracy": {"data": acc, "data_type": "list", "plugin": "display_list"},
-                    },
-                    extra={"display": True}
+                    }
                 )
                 self.logger.info(f"Epoch [{epoch+1}/{epochs}], Loss: {train_loss:.4f}, Acc: {acc:.2f}%")
 
