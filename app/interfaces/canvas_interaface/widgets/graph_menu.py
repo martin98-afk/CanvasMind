@@ -229,7 +229,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
     def _get_max_visible_items(self):
         # 列表区域高度 ≈ 480 - header(≈40) - margins(20) - spacing(8) ≈ 412px
         # 每项 42px → 最多 9~10 项
-        return 10
+        return 9
 
     def populate_ui(self):
         # 先过滤

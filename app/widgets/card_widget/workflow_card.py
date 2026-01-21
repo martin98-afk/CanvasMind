@@ -79,7 +79,7 @@ class WorkflowCard(CardWidget):
         self.setFixedSize(400, 330)
         self.setBorderRadius(12)
 
-        self.workflow_name = file_path.stem.split(".")[0]
+        self.workflow_name = ".".join(file_path.stem.split(".")[:-1])
         self._setup_ui()
         # ✅ 点击卡片任意位置打开画布
         self.setCursor(Qt.PointingHandCursor)
@@ -208,7 +208,7 @@ class WorkflowCard(CardWidget):
         self.image_label.setFixedSize(300, 180)  # ✅ 统一占位尺寸
 
     def _get_preview_path(self) -> Path:
-        base_name = self.file_path.parent / self.file_path.stem.split(".")[0]
+        base_name = self.file_path.parent / self.workflow_name
         return base_name.with_suffix(".png")
 
     def refresh_preview(self):

@@ -65,17 +65,7 @@ def load_localization(app,  language="en"):
     translator = QTranslator()
     language_map = {
         'en': 'en_US',
-        'zh': 'zh_CN',
-        'ja': 'ja_JP',
-        'ko': 'ko_KR',
-        'fr': 'fr_FR',
-        'de': 'de_DE',
-        'ru': 'ru_RU',
-        'es': 'es_ES',
-        'pt': 'pt_PT',
-        'it': 'it_IT',
-        'tr': 'tr_TR',
-        'ar': 'ar_AR',
+        'zh': 'zh_CN'
      }
     qm_path = os.path.join('resource', 'i18n', f'{language_map[language]}.qm')
 
