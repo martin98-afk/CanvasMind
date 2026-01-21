@@ -111,8 +111,16 @@ class CustomPipeItem(PipeItem):
             painter.restore()
 
     def _draw_path_horizontal(self, start_port, pos1, pos2, path):
-        if pos1 == pos2: return
+        if pos1 == pos2:
+            return
+
+        def calc_node_height(node):
+            if hasattr(node, "view"):
+                return node.view.boundingRect().height()
+            return node.boundingRect().height()
+
         layout = self.viewer_pipe_layout()
+        # 获取水平和垂直距离
         if layout == PipeLayoutEnum.CURVED.value:
             dx = pos2.x() - pos1.x()
             # 改进的贝塞尔曲线算法：处理回头路
@@ -126,9 +134,80 @@ class CustomPipeItem(PipeItem):
                 cp1 = QtCore.QPointF(pos1.x() - ctr_offset, pos1.y())
                 cp2 = QtCore.QPointF(pos2.x() + ctr_offset, pos2.y())
             path.cubicTo(cp1, cp2, pos2)
-            self.setPath(path)
-        else:
-            super(CustomPipeItem, self)._draw_path_horizontal(start_port, pos1, pos2, path)
+        elif layout == PipeLayoutEnum.ANGLE.value:
+            dx = abs(pos1.x() - pos2.x())
+            points = [pos1]
+
+            side_margin = min(40.0, dx * 0.4) if dx > 5 else 5.0
+
+            is_forward = False
+            if start_port.port_type == PortTypeEnum.OUT.value:
+                is_forward = pos2.x() > pos1.x() + (side_margin * 2)
+            else:
+                is_forward = pos2.x() < pos1.x() - (side_margin * 2)
+
+            if is_forward:
+                # 正常向前的折线
+                mid_x = pos1.x() + (pos2.x() - pos1.x()) / 2
+                points.append(QtCore.QPointF(mid_x, pos1.y()))
+                points.append(QtCore.QPointF(mid_x, pos2.y()))
+            else:
+                # -------------------------------------------------------
+                # [修正逻辑]：向上固定100，向下维持节点高度
+                # -------------------------------------------------------
+                node_h = calc_node_height(start_port.node)
+
+                if pos1.y() > pos2.y():
+                    # 起始节点在结束节点【上方】，需要向上避让
+                    y_offset = -100
+                else:
+                    # 起始节点在结束节点【下方】，需要向下避让，使用原来的节点高度
+                    y_offset = node_h
+
+                # 根据端口类型计算绕行点
+                direct = 1 if start_port.port_type == PortTypeEnum.OUT.value else -1
+
+                p1_ext = QtCore.QPointF(pos1.x() + side_margin * direct, pos1.y())
+                p1_bypass = QtCore.QPointF(pos1.x() + side_margin * direct, pos1.y() + y_offset)
+                p2_bypass = QtCore.QPointF(pos2.x() - side_margin * direct, pos1.y() + y_offset)
+                p2_ext = QtCore.QPointF(pos2.x() - side_margin * direct, pos2.y())
+
+                points.extend([p1_ext, p1_bypass, p2_bypass, p2_ext])
+
+            points.append(pos2)
+
+            # 过滤极近点并绘制圆角
+            clean_points = [points[0]]
+            for i in range(1, len(points)):
+                if (points[i] - clean_points[-1]).manhattanLength() > 0.5:
+                    clean_points.append(points[i])
+
+            self._draw_rounded_path(path, clean_points, radius=16.0)
+
+        self.setPath(path)
+
+    def _draw_rounded_path(self, path, points, radius=10.0):
+        """
+        带安全检查的圆角绘制
+        """
+        if not points:
+            return
+        if len(points) < 3:
+            # 如果只有一两个点，直接画线，没法做圆角
+            path.moveTo(points[0])
+            for p in points[1:]:
+                path.lineTo(p)
+            return
+
+        path.moveTo(points[0])
+        for i in range(1, len(points) - 1):
+            p1 = points[i - 1]
+            p2 = points[i]
+            p3 = points[i + 1]
+
+            # 计算两段线段的长度
+            d12 = math.sqrt((p2.x() - p1.x()) ** 2 + (p2.y() - p1.y()) ** 2)
+            d23 = math.sqrt((p3.x() - p2.x()) ** 2 + (p3.y() - p2.y()) ** 2)
 
     def hoverEnterEvent(self, event):
         self._is_hovered = True
