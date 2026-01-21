@@ -144,7 +144,8 @@ class CustomPipeItem(PipeItem):
         # 2. 折线模式 (还原避让逻辑)
         elif layout == PipeLayoutEnum.ANGLE.value:
             def calc_node_height(node):
-                if hasattr(node, "view"): return node.view.boundingRect().height()
+                if hasattr(node, "view"):  # NodeGraphQt 内部通常可以通过 view 获取
+                    return node.view.boundingRect().height()
                 return node.boundingRect().height()
 
             dx = abs(pos1.x() - pos2.x())
@@ -164,7 +165,7 @@ class CustomPipeItem(PipeItem):
             else:
                 # 避让逻辑
                 node_h = calc_node_height(start_port.node)
-                y_offset = -100 if pos1.y() > pos2.y() else node_h
+                y_offset = -130 if pos1.y() > pos2.y() else node_h
                 direct = 1 if start_port.port_type == PortTypeEnum.OUT.value else -1
 
                 p1_ext = QtCore.QPointF(pos1.x() + side_margin * direct, pos1.y())
@@ -274,19 +275,39 @@ class CustomPipeItem(PipeItem):
     def boundingRect(self):
         # 获取路径本身的矩形
         rect = self.path().boundingRect()
-        # 预留足够的空间给发光层 (16.5 是你 glow 计算出的最大增量)
-        # 我们这里给个 20.0 保证安全
+        # 预留足够的空间给发光层 (16.5 是 glow 计算出的最大增量)
         margin = 20.0
         rect.adjust(-margin, -margin, margin, margin)
         return rect
 
     def shape(self):
-        # 同样扩大碰撞检测和重绘区域的形状
-        path = QtGui.QPainterPath()
-        # 使用旋转/加宽后的路径作为形状
+        path = self.path()
+        if path.isEmpty():
+            return super(CustomPipeItem, self).shape()
+
+        # 1. 创建原本的宽大点击区域 (与你之前的逻辑一致)
         stroker = QtGui.QPainterPathStroker()
         stroker.setWidth(self.pen().widthF() + 20.0)
-        return stroker.createStroke(self.path())
+        stroke_path = stroker.createStroke(path)
+
+        # 2. 定义端口处的“安全半径”
+        port_safety_radius = 15.0
+
+        # 3. 创建需要挖空的区域
+        cutout = QtGui.QPainterPath()
+
+        # 获取路径的起点 (0.0) 和终点 (1.0)
+        start_pt = path.pointAtPercent(0.0)
+        cutout.addEllipse(start_pt, port_safety_radius, port_safety_radius)
+
+        if path.length() > 0:
+            end_pt = path.pointAtPercent(1.0)
+            cutout.addEllipse(end_pt, port_safety_radius, port_safety_radius)
+
+        # 4. 核心运算：从线的点击形状中“减去”端口区域
+        final_shape = stroke_path.subtracted(cutout)
+
+        return final_shape
 
 
 class CustomLivePipeItem(CustomPipeItem, LivePipeItem):
