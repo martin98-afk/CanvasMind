@@ -98,7 +98,7 @@ GLUE_CODE_TEMPLATES = {
     while True:
         self.emit_message(
             method="stream.output",
-            params={"output1": {"data": count, "data_type": "str"}},
+            params={"output1": {"data": count, "data_type": "list"}},
             extra={"display": True} # 控制是否在节点上展示实时控件
         )
         count += 1

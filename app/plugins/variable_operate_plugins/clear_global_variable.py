@@ -2,8 +2,18 @@
 from app.plugins.base import VariableOperatePlugin
 
 
-class AskPlugin(VariableOperatePlugin):
+class ClearVariablePlugin(VariableOperatePlugin):
     plugin_id = "clear_global_variable"  # 对应 method: "ui.ask"
+    plugin_name = "清空指定节点变量"
+    plugin_desc = "从全局变量中删除指定变量的数据"
+    plugin_template = """self.emit_message(
+            method="clear_global_variable",
+            params={
+                "type": "node_vars",
+                "value": "变量名"
+            }
+        )
+    """
 
     def operate(self, node, params):
         value = params.get("value", "")

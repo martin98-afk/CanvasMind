@@ -341,9 +341,24 @@ class MaskDrawDialog(MessageBoxBase):
 
 class DrawMaskPlugin(InteractivePlugin):
     plugin_id = "draw_mask"
+    plugin_name = "绘制图像遮罩"
+    plugin_desc = "将指定图片用 ComfyUI 绘制图像遮罩弹窗打开，绘制完会返回绘制结果。"
+    plugin_template = """buffered = BytesIO()
+        # 自动处理 RGBA 模式保存为 PNG（避免 JPEG 无法保存 alpha）
+        format = "PNG"  # 强制含透明通道的图用 PNG
+        img.save(buffered, format=format)
+        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        mime = "image/jpeg" if format.upper() in ("JPG", "JPEG") else "image/png"
+        base64_image = f"data:{mime};base64,{img_str}"
+        # 触发ui出现遮罩绘制窗口
+        result = self.emit_interactive_message(
+            method="draw_mask",
+            params={"title": "请绘制图像遮罩","schema": {"image": base64_image,}}
+        )["mask"]   # 输出结果会带前缀 data:{mime};base64, 建议后续转换用split(',')获取图像数据
+"""
 
     def handle(self, node, params, msg=None):
-        title = params.get("title", "ComfyUI 交互蒙版")
+        title = params.get("title", "绘制遮罩")
         response_file = params.get("response_file")
         image = params.get("schema").get("image")
 
