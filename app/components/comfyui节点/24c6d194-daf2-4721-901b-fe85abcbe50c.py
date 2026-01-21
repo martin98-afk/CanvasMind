@@ -124,47 +124,46 @@ class ComfyKSamplerWithPreview(BaseComponent):
         preview_step = int(params.get("preview_step", 3))
         seed = int(params.get("seed", -1))
         if seed == -1: seed = np.random.randint(2**16)
-
-        # 3. 显存管理
-        mm.load_models_gpu([model])
-
-        # 4. 实时预览回调
-        def preview_callback(step, x0, x, total_steps):
-            if step % preview_step == 0:
-                with torch.no_grad():
-                    try:
-                        decoded = vae.decode(x0)
-                        # 使用暴力降维函数
-                        pil_img = tensor_to_pil(decoded).resize((512, 512))
-                        
-                        buffered = io.BytesIO()
-                        pil_img.save(buffered, format="JPEG", quality=60)
-                        img_str = base64.b64encode(buffered.getvalue()).decode()
-                        self.emit_message(
-                            method="display_image",
-                            params={"output": {"data": f"data:image/jpeg;base64,{img_str}"}}
-                        )
-                    except Exception as e:
-                        print(f"预览转换失败: {e}")
-
-        # 5. 调用采样 (Hook 模式)
-        import comfy.sample
-        sampler_node = nodes.KSampler()
-        original_sample = comfy.sample.sample
-        def hooked_sample(*args, **kwargs):
-            kwargs['callback'] = preview_callback
-            return original_sample(*args, **kwargs)
-
-        comfy.sample.sample = hooked_sample
-        try:
-            # 这里的 latent["samples"] 确保是 (1, 4, 64, 64)
-            result = sampler_node.sample(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent, denoise)
-        finally:
-            comfy.sample.sample = original_sample
-
-        # 6. 最终解码 (修复 decode_tiled 报错)
-        final_latent = result[0]
         with torch.no_grad():
+            # 3. 显存管理
+            mm.load_models_gpu([model])
+    
+            # 4. 实时预览回调
+            def preview_callback(step, x0, x, total_steps):
+                if step % preview_step == 0:
+                    with torch.no_grad():
+                        try:
+                            decoded = vae.decode(x0)
+                            # 使用暴力降维函数
+                            pil_img = tensor_to_pil(decoded).resize((512, 512))
+                            
+                            buffered = io.BytesIO()
+                            pil_img.save(buffered, format="JPEG", quality=60)
+                            img_str = base64.b64encode(buffered.getvalue()).decode()
+                            self.emit_message(
+                                method="display_image",
+                                params={"output": {"data": f"data:image/jpeg;base64,{img_str}"}}
+                            )
+                        except Exception as e:
+                            print(f"预览转换失败: {e}")
+    
+            # 5. 调用采样 (Hook 模式)
+            import comfy.sample
+            sampler_node = nodes.KSampler()
+            original_sample = comfy.sample.sample
+            def hooked_sample(*args, **kwargs):
+                kwargs['callback'] = preview_callback
+                return original_sample(*args, **kwargs)
+    
+            comfy.sample.sample = hooked_sample
+            try:
+                # 这里的 latent["samples"] 确保是 (1, 4, 64, 64)
+                result = sampler_node.sample(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent, denoise)
+            finally:
+                comfy.sample.sample = original_sample
+    
+            # 6. 最终解码 (修复 decode_tiled 报错)
+            final_latent = result[0]
             self.logger.info("正在执行最终 Tiled 解码...")
             # 移除 tile_terp，只传核心参数
             final_pixels = vae.decode_tiled(
@@ -175,21 +174,21 @@ class ComfyKSamplerWithPreview(BaseComponent):
             )
             # 使用同样的暴力降维处理最终图
             final_image = tensor_to_pil(final_pixels)
-        try:
-            self.logger.info("执行显存回收...")
-            # 将所有模型从 GPU 挪到 CPU（内存）
-            mm.unload_all_models()
-            
-            # 软清理缓存（ComfyUI 内部机制）
-            mm.soft_empty_cache()
-            
-            # 强力清理 PyTorch 缓存（真正的显存释放）
-            import torch
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect() # 清理进程间通信残留
-            
-        except Exception as e:
-            self.logger.warning(f"显存回收时出现小问题: {e}")
+            try:
+                self.logger.info("执行显存回收...")
+                # 将所有模型从 GPU 挪到 CPU（内存）
+                mm.unload_all_models()
+                
+                # 软清理缓存（ComfyUI 内部机制）
+                mm.soft_empty_cache()
+                
+                # 强力清理 PyTorch 缓存（真正的显存释放）
+                import torch
+                torch.cuda.empty_cache()
+                torch.cuda.ipc_collect() # 清理进程间通信残留
+                
+            except Exception as e:
+                self.logger.warning(f"显存回收时出现小问题: {e}")
         return {
             "latent": final_latent,
             "image": final_image
