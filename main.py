@@ -4,7 +4,7 @@ import sys
 import warnings
 import matplotlib
 import qtconsole.client
-from PyQt5.QtCore import QTranslator  # 必须导入这个
+from PyQt5.QtCore import QTranslator, QCoreApplication  # 必须导入这个
 from PyQt5.QtGui import QPalette, QColor
 
 from app.utils.utils import get_icon
@@ -68,6 +68,7 @@ def load_localization(app,  language="en"):
      }
     qm_path = os.path.join('resource', 'i18n', f'{language_map[language]}.qm')
 
+
     # 3. 加载并安装
     if os.path.exists(qm_path):
         if translator.load(qm_path):
@@ -78,13 +79,16 @@ def load_localization(app,  language="en"):
     else:
         print(f"❌ 找不到翻译文件: {qm_path}")
 
+    test_text = QCoreApplication.translate("CanvasPage", "未命名工作流")
+    print(f"测试翻译结果: {test_text}")
+
 # ----------------------------
 # 启动应
 # ----------------------------
 if __name__ == '__main__':
     os.environ['PYTHONIOENCODING'] = 'utf-8'
     app = create_application()
-    # load_localization(app)
+    load_localization(app)
     # 创建并显示主窗口
     try:
         window = LowCodeWindow()

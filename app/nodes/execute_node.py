@@ -62,7 +62,6 @@ def create_node_class(full_path, file_path, parent_window=None):
             for port_name, label, connection, port_type in ComponentScanner().get_component_by_uuid(self.uuid).get_inputs():
                 if port_type == ArgumentType.OBJECT:
                     self.object_io = True
-                    self.view._toggle_exec_mode("ipython")
                 if connection == ConnectionType.SINGLE:
                     self.add_input(port_name)
                 else:
@@ -468,14 +467,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 else:
                     self._execute_via_subprocess(python_exe, local_script_path, log_file_path, check_cancel)
 
-            # === 后续处理结果 (通用) ===
-            # === 读取剩余日志 ===
-            with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                lf.seek(self.last_log_pos)
-                new_content = lf.read()
-                if new_content:
-                    self._log_message(self.persistent_id, new_content)
-                    self.last_log_pos = lf.tell()
+
             try:
                 if os.path.exists(result_path):
                     output = _safe_load_pickle(result_path)
@@ -492,6 +484,15 @@ def create_node_class(full_path, file_path, parent_window=None):
                 else:
                     raise Exception("节点运行结束，但未发现结果或错误反馈文件。")
             finally:
+                time.sleep(0.1)
+                # === 后续处理结果 (通用) ===
+                # === 读取剩余日志 ===
+                with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                    lf.seek(self.last_log_pos)
+                    new_content = lf.read()
+                    if new_content:
+                        self._log_message(self.persistent_id, new_content)
+                        self.last_log_pos = lf.tell()
                 shutil.rmtree(run_dir, ignore_errors=True)
 
         def _execute_via_ssh(self, comp_obj, env_data, local_script_path, local_comp_path, params_path, result_path,
