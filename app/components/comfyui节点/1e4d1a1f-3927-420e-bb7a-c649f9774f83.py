@@ -29,6 +29,12 @@ class Component(BaseComponent):
     ]
     
     properties = {
+        "model_type": PropertyDefinition(
+            type=PropertyType.CHOICE,
+            default="Standard(SD/Flux)",
+            label="模型架构",
+            choices=["Standard(SD/Flux)", "Wan"]
+        ),
         "ckpt_path": PropertyDefinition(
             type=PropertyType.FILE,
             default="",
@@ -57,13 +63,12 @@ class Component(BaseComponent):
 
     def run(self, params, inputs=None):
         self.ensure_comfy_exist()
-        import sys
         import os
         
         import comfy.model_management
         import comfy.sd
         import folder_paths
-        import nodes # 导入 ComfyUI 内置节点库
+        m_type = params.model_type
         ckpt_path = params.ckpt_path
         clip_path = params.clip_path
         vae_path = params.vae_path
@@ -75,24 +80,51 @@ class Component(BaseComponent):
         # 调用 ComfyUI 的核心加载函数
         # 它会自动识别是 SD1.5, SDXL 还是其他，并返回封装好的 Patcher 对象
         embedding_directory=folder_paths.get_folder_paths("embeddings")
-        out = comfy.sd.load_checkpoint_guess_config(
-            ckpt_path, 
-            output_vae=True, 
-            output_clip=True, 
-            embedding_directory=folder_paths.get_folder_paths("embeddings")
-        )
-        model, clip, vae = out[0], out[1], out[2]
-        if clip is None and clip_path and os.path.exists(clip_path):
-            self.logger.info(f"正在从外部路径加载 CLIP: {clip_path}")
-            # 使用 ComfyUI 的 CLIP 加载器
-            # type="stable_diffusion" 是通用类型，如果是 SDXL/Flux 需要特定处理
-            clip = comfy.sd.load_clip(
-                ckpt_paths=[clip_path], 
+        if m_type == "Wan":
+            self.logger.info("正在以 Wan2.1 模式加载模型...")
+            
+            # 1. 加载 DiT 模型 (Wan 2.1 建议使用专用的加载方式)
+            # 注意：Wan 2.1 通常不包含在 guess_config 里，建议直接加载
+            model = comfy.sd.load_diffusion_model(ckpt_path)
+
+            # 2. 关键修复：加载 T5 CLIP
+            # 必须指定 clip_type 为 WAN，否则会报 size mismatch 错误
+            if clip_path and os.path.exists(clip_path):
+                self.logger.info(f"正在加载 Wan 专用 T5: {clip_path}")
+                # 显式指定 WAN 类型，这会初始化 256384 大小的词表
+                clip = comfy.sd.load_clip(
+                    ckpt_paths=[clip_path], 
+                    embedding_directory=embedding_directory,
+                    clip_type=comfy.sd.CLIPType.WAN 
+                )
+            
+            # 3. 加载 3D VAE
+            if vae_path and os.path.exists(vae_path):
+                self.logger.info(f"正在加载 Wan 专用 VAE: {vae_path}")
+                vae_sd = comfy.utils.load_torch_file(vae_path)
+                # Wan 的 VAE 也是特殊的，ComfyUI 内部会自动处理
+                vae = comfy.sd.VAE(sd=vae_sd)
+
+        else:
+            # 标准加载逻辑 (SD1.5, SDXL, Flux)
+            self.logger.info("正在以标准模式加载模型...")
+            out = comfy.sd.load_checkpoint_guess_config(
+                ckpt_path, output_vae=True, output_clip=True, 
                 embedding_directory=folder_paths.get_folder_paths("embeddings")
             )
-        if vae_path and os.path.exists(vae_path):
-                sd = comfy.utils.load_torch_file(vae_path)
-                vae = comfy.sd.VAE(sd=sd)
+            model, clip, vae = out[0], out[1], out[2]
+
+            if clip is None and clip_path and os.path.exists(clip_path):
+                self.logger.info(f"正在从外部路径加载 CLIP: {clip_path}")
+                # 使用 ComfyUI 的 CLIP 加载器
+                # type="stable_diffusion" 是通用类型，如果是 SDXL/Flux 需要特定处理
+                clip = comfy.sd.load_clip(
+                    ckpt_paths=[clip_path], 
+                    embedding_directory=folder_paths.get_folder_paths("embeddings")
+                )
+            if vae_path and os.path.exists(vae_path):
+                    sd = comfy.utils.load_torch_file(vae_path)
+                    vae = comfy.sd.VAE(sd=sd)
         return {
             "model": model,
             "clip": clip,

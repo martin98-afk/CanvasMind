@@ -22,6 +22,11 @@ class ComfyUIConfig(BaseComponent):
     description = "自动初始化ComfyUI环境并设置显存管理策略"
     
     properties = {
+        "comfy_extension": PropertyDefinition(
+            type=PropertyType.FILE,
+            default="folder",
+            label="comfy路径",
+        ),
         "vram_mode": PropertyDefinition(
             type=PropertyType.CHOICE,
             default="normal",
@@ -46,7 +51,7 @@ class ComfyUIConfig(BaseComponent):
         ),
     }
 
-    def ensure_comfy_exist(self):
+    def ensure_comfy_exist(self, params):
         import os
         import sys
         import subprocess
@@ -54,7 +59,7 @@ class ComfyUIConfig(BaseComponent):
         # 1. 获取预设路径或默认路径
         # 优先从全局变量获取，如果没有则设定一个默认克隆位置（例如当前目录下的 ComfyUI_Repo）
         if "comfy_extension" not in self.global_variable.custom:
-            target_path = None
+            target_path = params.comfy_extension
         else:
             target_path = self.global_variable.comfy_extension
         default_clone_path = os.path.abspath("./ComfyUI_Repo")
@@ -102,7 +107,7 @@ class ComfyUIConfig(BaseComponent):
         return target_path
 
     def run(self, params, inputs=None):
-        self.ensure_comfy_exist()
+        self.ensure_comfy_exist(params)
         import comfy.model_management as mm
         import comfy.options
         

@@ -312,7 +312,6 @@ class CustomNodeItem(NodeItem):
         self._init_custom_buttons()
 
         self._resize_handle = NodeResizeHandle(self)
-        self._resize_handle.setVisible(True)
 
         self._port_height = 0.0
         self._widget_height = 0.0
@@ -405,7 +404,9 @@ class CustomNodeItem(NodeItem):
         self._icon_item.setVisible(not self._proxy_mode)
         self._exec_mode_btn.setVisible(not self._proxy_mode)
         self._proxy_text_item.setVisible(self._proxy_mode)
-        self._resize_handle.setVisible(widgets_visible)
+        # proxy模式下可见，折叠下不可见
+        resize_visible = not self._is_collapsed
+        self._resize_handle.setVisible(resize_visible)
 
     def toggle_collapse(self):
         self._is_collapsed = not self._is_collapsed
@@ -528,11 +529,8 @@ class CustomNodeItem(NodeItem):
         self.align_ports(v_offset=header_h)
         rect = self.get_node_body_rect()
 
-        if not self._is_collapsed and not self._proxy_mode:
+        if not self._is_collapsed:
             self._resize_handle.setPos(rect.width() - 15, rect.height() - 15)
-            self._resize_handle.setVisible(True)
-        else:
-            self._resize_handle.setVisible(False)
 
         if not self._proxy_mode:
             self._set_text_color(self.text_color)

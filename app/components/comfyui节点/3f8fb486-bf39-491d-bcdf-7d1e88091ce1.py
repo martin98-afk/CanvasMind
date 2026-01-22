@@ -61,6 +61,6 @@ class ComfySD3CLIPLoader(BaseComponent):
         clip = comfy.sd.load_clip(
             ckpt_paths=[params.get("clip_l"), params.get("clip_g"), params.get("t5xxl")],
             embedding_directory=None,
-            model_type=comfy.sd.CLIPType.SD3 # 明确指定 SD3 类型
+            clip_type=comfy.sd.CLIPType.SD3 # 明确指定 SD3 类型
         )
         return {"clip": clip}
