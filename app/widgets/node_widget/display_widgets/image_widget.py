@@ -52,6 +52,9 @@ class ImageWidget(QtWidgets.QWidget):
             pass
         return None
 
+    def get_value(self):
+        return self._image_data
+
     def set_value(self, data):
         self._image_data = data
         new_q_img = self._convert_to_qimage(data)
