@@ -22,6 +22,7 @@ class FormFieldWidget(QtWidgets.QWidget):
     """
     removed = QtCore.Signal(object)
     changed = QtCore.Signal()
+    fixed_height = True
 
     def __init__(self, schema, home=None, parent=None, get_port_func=lambda: [], index=1):
         super(FormFieldWidget, self).__init__(parent)

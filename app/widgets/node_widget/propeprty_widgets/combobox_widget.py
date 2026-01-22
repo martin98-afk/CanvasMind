@@ -8,6 +8,7 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 class ComboBoxWidget(QtWidgets.QWidget):
     """节点内选择框（在 QGraphicsProxyWidget 中可靠弹出）"""
     valueChanged = QtCore.Signal(str)
+    fixed_height = True
 
     def __init__(self, items=[], parent=None):
         super().__init__()

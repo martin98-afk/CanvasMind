@@ -85,7 +85,7 @@ class JsonTreeWidget(QtWidgets.QTreeWidget):
             return
         self.setVisible(True)
         self._current_size = QtCore.QSize(500, 400)
-        self.setFixedSize(self._current_size)
+        self.setMinimumSize(self._current_size)
         self.sizeHintChanged.emit()
         self.updateGeometry()
         self.setUpdatesEnabled(False)

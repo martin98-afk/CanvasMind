@@ -10,6 +10,7 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 class RangeWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(object)
+    fixed_height = True
 
     def __init__(self, min_val=0, max_val=100, step=1, default=0, parent=None):
         super().__init__(parent)

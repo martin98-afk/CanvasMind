@@ -11,6 +11,7 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 class FileSelectWidget(QtWidgets.QWidget):
     """文件/文件夹选择控件：左侧路径显示(不可编辑) + 右侧浏览按钮"""
     valueChanged = QtCore.Signal(str)
+    fixed_height = True
 
     def __init__(self, parent=None, default_ext=""):
         super().__init__(parent)
