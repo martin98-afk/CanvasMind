@@ -178,7 +178,6 @@ class ComponentMessage(BaseModel):
     params: Dict[str, Any] = {}  # 参数负载
 
     # 上下文元数据
-    level: MessageLevel = MessageLevel.INFO
     extra: Optional[Dict[str, Any]] = None  # 预留扩展空间
 
 
