@@ -22,7 +22,6 @@ class FormFieldWidget(QtWidgets.QWidget):
     """
     removed = QtCore.Signal(object)
     changed = QtCore.Signal()
-    fixed_height = True
 
     def __init__(self, schema, home=None, parent=None, get_port_func=lambda: [], index=1):
         super(FormFieldWidget, self).__init__(parent)
@@ -154,6 +153,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
     """
     sizeHintChanged = QtCore.Signal()
     valueChanged = QtCore.Signal(object)
+    fixed_height = True
 
     def __init__(self, schema, parent=None, label=None, get_port_func=lambda: []):
         super(DynamicFormWidget, self).__init__()
