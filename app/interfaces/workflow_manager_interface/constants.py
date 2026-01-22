@@ -11,9 +11,10 @@ from app.widgets.side_dock_area.tool_window import DockPosition
 category = "运行画布"
 
 SideDockRegistry.register(category, PropertyToolWindow.name, PropertyToolWindow)
+SideDockRegistry.register(category, DependencyToolWindow.name, DependencyToolWindow)
 SideDockRegistry.register(category, PluginTemplateToolWindow.name, PluginTemplateToolWindow, DockPosition.TOP)
 SideDockRegistry.register(category, VariableExplorerToolWindow.name, VariableExplorerToolWindow)
-SideDockRegistry.register(category, DependencyToolWindow.name, DependencyToolWindow)
+
 SideDockRegistry.register(category, OpenAIChatToolWindow.name, OpenAIChatToolWindow)
 SideDockRegistry.register(category, IPythonConsoleToolWindow.name, IPythonConsoleToolWindow)
 SideDockRegistry.register(category, LogToolWindow.name, LogToolWindow)

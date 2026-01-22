@@ -76,7 +76,7 @@ class GlowPortItem(PortItem):
             painter.drawEllipse(center, glow_radius, glow_radius)
 
         # B. 绘制外边框 (Ring)
-        pen_width = 1.5 if lod > 0.7 else 1.5 / lod
+        pen_width = 2.5 if lod > 0.7 else 2.5 / lod
         if self._hovered:
             # 悬浮时边框变白发亮
             painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 255), pen_width))
