@@ -1,0 +1,1049 @@
+{
+  "version": "1.0",
+  "graph": {
+    "graph": {
+      "layout_direction": 0,
+      "acyclic": true,
+      "pipe_collision": false,
+      "pipe_slicing": true,
+      "pipe_style": 1,
+      "accept_connection_types": "{}",
+      "reject_connection_types": "{}"
+    },
+    "nodes": {
+      "0x13494bd8710": {
+        "type_": "dynamic.StatusDynamicNode_b4e3a0b6-7a51-4f9c-b731-a11ef72debfe",
+        "icon": ":/icons/同心圆.svg",
+        "name": "ComfyUI全局配置",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 345,
+        "height": 365.0,
+        "pos": [
+          158.58802096035345,
+          -38.92185341898503
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "590781fa-0807-4b58-a16d-9d3ba4a3e6cb",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "comfy_extension": "D:/work/ComfyUI-master",
+          "vram_mode": "normal",
+          "use_fp8": true,
+          "vae_tiling": true,
+          "preview_method": "latent2rgb"
+        }
+      },
+      "0x1349515a910": {
+        "type_": "dynamic.StatusDynamicNode_1e4d1a1f-3927-420e-bb7a-c649f9774f83",
+        "icon": ":/icons/同心圆.svg",
+        "name": "模型加载器",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 260,
+        "height": 439.0,
+        "pos": [
+          684.9860307668346,
+          -38.92185341898502
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "d6f0993e-0281-4478-843e-54c5ddeb9648",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "model_type": "Wan",
+          "ckpt_path": "D:/work/CanvasMind/local_models/wan2.2/wan2.2_ti2v_5B_fp16.safetensors",
+          "clip_path": "D:/work/CanvasMind/local_models/wan2.2/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "vae_path": "D:/work/CanvasMind/local_models/wan2.2/wan2.2_vae.safetensors"
+        }
+      },
+      "0x13495186b10": {
+        "type_": "dynamic.StatusDynamicNode_af4c1324-4d47-4376-ab98-0cf3a5af2bb0",
+        "icon": ":/icons/同心圆.svg",
+        "name": "Wan2.2视频潜空间生成",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 327.78125,
+        "height": 340.0,
+        "pos": [
+          959.3084286965177,
+          -1129.664440977737
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "8dc5fce2-5521-4d07-9384-c2c98db02dfa",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "widt": 700,
+          "heigh": 1400,
+          "length": 121,
+          "batch_size": 1
+        }
+      },
+      "0x13495190e10": {
+        "type_": "dynamic.StatusDynamicNode_da847ab1-3c62-4173-9c8e-eb967e8c5364",
+        "icon": ":/icons/同心圆.svg",
+        "name": "正向提示词",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 352.7736168299191,
+        "height": 338.62265133228277,
+        "pos": [
+          1355.8073068671588,
+          291.24239174256405
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "07ba6708-6bfb-472d-8650-00c6e7d8ac08",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "text": "A cinematic video of a stunning young woman with a voluptuous and curvy figure performing an energetic K-pop dance cover in a brightly lit modern dance studio. Her long hair flows as she moves. High quality, 4k, photorealistic, soft lighting, sharp focus on body movement."
+        }
+      },
+      "0x134951934d0": {
+        "type_": "dynamic.StatusDynamicNode_da847ab1-3c62-4173-9c8e-eb967e8c5364",
+        "icon": ":/icons/同心圆.svg",
+        "name": "负向提示词",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 276,
+        "height": 315.0,
+        "pos": [
+          1394.1941152821184,
+          689.3360308065784
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "15b44528-22be-4396-8653-8818f400f50a",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "text": "nsfw, nude, deformed, distorted, disfigured, poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, disconnected limbs, mutation, mutated, ugly, disgusting, blurry, amputation."
+        }
+      },
+      "0x13495199d50": {
+        "type_": "dynamic.StatusDynamicNode_23326454-a008-4029-a9dd-4eec694c60f6",
+        "icon": ":/icons/同心圆.svg",
+        "name": "Wan视频采样器",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 562.2437765695331,
+        "height": 1348.882435156654,
+        "pos": [
+          2487.470769765458,
+          140.5218787765568
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "6f619ab9-03ae-4931-b72d-065fd5f5abd8",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "steps": 30,
+          "cfg": 5.0,
+          "sampler_name": "uni_pc",
+          "scheduler": "simple",
+          "denoise": 1.0,
+          "seed": 3,
+          "preview_step": 5,
+          "progress_progress": 100,
+          "preview_output": null
+        }
+      },
+      "0x134951b1890": {
+        "type_": "visualize.MediaNode",
+        "icon": ":/icons/多媒体.svg",
+        "name": "多媒体展示节点",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 270,
+        "height": 647.0,
+        "pos": [
+          3345.217884854833,
+          418.3773590387498
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "a1f860cd-798e-4646-a769-f9fd90c0bb69",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "media_display": "E:\\CanvasMind\\CanvasMind\\canvas_files\\workflows\\wan图生视频实例\\workspace\\6f619ab9-03ae-4931-b72d-065fd5f5abd8\\result\\image_6f619ab9-03ae-4931-b72d-065fd5f5abd8_first_frame_image.png"
+        }
+      },
+      "0x134951b2e10": {
+        "type_": "dynamic.StatusDynamicNode_8e0b0b20-bba8-450b-9360-982310aec977",
+        "icon": ":/icons/同心圆.svg",
+        "name": "Wan视频解码器",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 263.390625,
+        "height": 236.0,
+        "pos": [
+          3529.184436945515,
+          -70.64314687355912
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "e120f773-5b73-4a7e-b417-6730be8405f3",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "fps": 16,
+          "tile_size": 512
+        }
+      },
+      "0x134951bd0d0": {
+        "type_": "dynamic.StatusDynamicNode_62a55a10-3a07-42a7-98f3-c59f6f19572d",
+        "icon": ":/icons/同心圆.svg",
+        "name": "显存管理",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 205.4375,
+        "height": 122.0,
+        "pos": [
+          1877.5374847553564,
+          548.4783896627907
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "9756eb3b-bbc3-4569-b29c-119ea6b483d5",
+          "_collapsed": true,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "reserved": 6.4,
+          "mode": "auto",
+          "auto_max_reserved": 0.0,
+          "clean_gpu_before": true,
+          "seed": 0
+        }
+      },
+      "0x134951d0990": {
+        "type_": "dynamic.StatusDynamicNode_1cf7ea0d-ebba-43fa-8acb-6f1fb8e1b517",
+        "icon": ":/icons/同心圆.svg",
+        "name": "尾帧编码",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 263.390625,
+        "height": 122.0,
+        "pos": [
+          1355.8073068671588,
+          -289.7729397370674
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "4344b254-fdea-4e4e-9eb3-00e9e4ffdb8b",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest"
+        }
+      },
+      "0x134951d23d0": {
+        "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
+        "icon": ":/icons/同心圆.svg",
+        "name": "首帧图像",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 270.0,
+        "height": 584.0,
+        "pos": [
+          307.8792133378511,
+          -1077.8804342211715
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "0d344d3f-10b3-49bd-83db-d265e1fe74b5",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "file_upload": "canvas_files\\workflows\\wan图生视频实例\\workspace\\0d344d3f-10b3-49bd-83db-d265e1fe74b5\\upload\\6fa7b53c03503d2c0ffe00884a6e2631.jpeg",
+          "preview_file": null
+        }
+      },
+      "0x134951d3710": {
+        "type_": "dynamic.StatusDynamicNode_1cf7ea0d-ebba-43fa-8acb-6f1fb8e1b517",
+        "icon": ":/icons/同心圆.svg",
+        "name": "首帧编码",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 276.25,
+        "height": 122.0,
+        "pos": [
+          1355.8073068671588,
+          -527.2519553480713
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "25a278d7-a592-41d5-b4a7-7053506c9f16",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest"
+        }
+      },
+      "0x134951e1450": {
+        "type_": "visualize.MediaNode",
+        "icon": ":/icons/多媒体.svg",
+        "name": "多媒体展示节点 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 532,
+        "height": 1247.0,
+        "pos": [
+          4002.548726991985,
+          -70.64314687355912
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "f12044ff-e629-448e-a4d0-c76ecf9403af",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "media_display": null
+        }
+      },
+      "0x134951e2b50": {
+        "type_": "dynamic.StatusDynamicNode_4217e25f-690d-4888-ba17-6a0e2f2c5d3a",
+        "icon": ":/icons/同心圆.svg",
+        "name": "Wan视频遮罩生成器",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 302.109375,
+        "height": 195.0,
+        "pos": [
+          2168.3627265971813,
+          -527.2519553480713
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "550d8300-d818-49f6-b40f-e1a9133a676b",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "fix_middle": 0.0,
+          "fix_start": true,
+          "fix_end": false
+        }
+      },
+      "0x134951ec0d0": {
+        "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
+        "icon": ":/icons/同心圆.svg",
+        "name": "尾帧图像",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 270.0,
+        "height": 282.0,
+        "pos": [
+          271.28814590507073,
+          -423.4331850792503
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "1b1d0ed1-e787-471f-9f7b-fcab45079a3b",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "file_upload": "canvas_files\\workflows\\wan图生视频实例\\workspace\\1b1d0ed1-e787-471f-9f7b-fcab45079a3b\\upload\\image_6f619ab9-03ae-4931-b72d-065fd5f5abd8_first_frame_image.png",
+          "preview_file": null
+        }
+      }
+    },
+    "connections": [
+      {
+        "out": [
+          "0x1349515a910",
+          "model"
+        ],
+        "in": [
+          "0x13495199d50",
+          "model"
+        ]
+      },
+      {
+        "out": [
+          "0x1349515a910",
+          "clip"
+        ],
+        "in": [
+          "0x13495190e10",
+          "clip"
+        ]
+      },
+      {
+        "out": [
+          "0x1349515a910",
+          "clip"
+        ],
+        "in": [
+          "0x134951934d0",
+          "clip"
+        ]
+      },
+      {
+        "out": [
+          "0x1349515a910",
+          "vae"
+        ],
+        "in": [
+          "0x13495199d50",
+          "vae"
+        ]
+      },
+      {
+        "out": [
+          "0x1349515a910",
+          "vae"
+        ],
+        "in": [
+          "0x134951b2e10",
+          "vae"
+        ]
+      },
+      {
+        "out": [
+          "0x1349515a910",
+          "vae"
+        ],
+        "in": [
+          "0x134951d0990",
+          "vae"
+        ]
+      },
+      {
+        "out": [
+          "0x1349515a910",
+          "vae"
+        ],
+        "in": [
+          "0x134951d3710",
+          "vae"
+        ]
+      },
+      {
+        "out": [
+          "0x13495186b10",
+          "latent"
+        ],
+        "in": [
+          "0x134951d0990",
+          "video_latent"
+        ]
+      },
+      {
+        "out": [
+          "0x13495186b10",
+          "latent"
+        ],
+        "in": [
+          "0x134951d3710",
+          "video_latent"
+        ]
+      },
+      {
+        "out": [
+          "0x13495186b10",
+          "latent"
+        ],
+        "in": [
+          "0x134951e2b50",
+          "latent"
+        ]
+      },
+      {
+        "out": [
+          "0x13495190e10",
+          "conditioning"
+        ],
+        "in": [
+          "0x13495199d50",
+          "positive"
+        ]
+      },
+      {
+        "out": [
+          "0x134951934d0",
+          "conditioning"
+        ],
+        "in": [
+          "0x134951bd0d0",
+          "anything"
+        ]
+      },
+      {
+        "in": [
+          "0x13495199d50",
+          "negative"
+        ],
+        "out": [
+          "0x134951bd0d0",
+          "output"
+        ]
+      },
+      {
+        "in": [
+          "0x13495199d50",
+          "latent"
+        ],
+        "out": [
+          "0x134951e2b50",
+          "latent"
+        ]
+      },
+      {
+        "out": [
+          "0x13495199d50",
+          "latent"
+        ],
+        "in": [
+          "0x134951b2e10",
+          "latent"
+        ]
+      },
+      {
+        "out": [
+          "0x13495199d50",
+          "first_frame_image"
+        ],
+        "in": [
+          "0x134951b1890",
+          "data"
+        ]
+      },
+      {
+        "out": [
+          "0x134951b2e10",
+          "video_path"
+        ],
+        "in": [
+          "0x134951e1450",
+          "data"
+        ]
+      },
+      {
+        "in": [
+          "0x134951d0990",
+          "image"
+        ],
+        "out": [
+          "0x134951ec0d0",
+          "file"
+        ]
+      },
+      {
+        "out": [
+          "0x134951d0990",
+          "latent"
+        ],
+        "in": [
+          "0x134951e2b50",
+          "end_frame_latent"
+        ]
+      },
+      {
+        "out": [
+          "0x134951d23d0",
+          "file"
+        ],
+        "in": [
+          "0x134951d3710",
+          "image"
+        ]
+      },
+      {
+        "out": [
+          "0x134951d3710",
+          "latent"
+        ],
+        "in": [
+          "0x134951e2b50",
+          "start_frame_latent"
+        ]
+      }
+    ]
+  },
+  "runtime": {
+    "environment": {
+      "name": "3.13test",
+      "type": "local",
+      "path": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.13test\\python.exe"
+    },
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.13test\\python.exe",
+    "node_id2stable_key": {
+      "0x13494bd8710": "b4e3a0b6-7a51-4f9c-b731-a11ef72debfe||ComfyUI全局配置",
+      "0x1349515a910": "1e4d1a1f-3927-420e-bb7a-c649f9774f83||模型加载器",
+      "0x13495186b10": "af4c1324-4d47-4376-ab98-0cf3a5af2bb0||Wan2.2视频潜空间生成",
+      "0x13495190e10": "da847ab1-3c62-4173-9c8e-eb967e8c5364||正向提示词",
+      "0x134951934d0": "da847ab1-3c62-4173-9c8e-eb967e8c5364||负向提示词",
+      "0x13495199d50": "23326454-a008-4029-a9dd-4eec694c60f6||Wan视频采样器",
+      "0x134951b1890": "unknown||多媒体展示节点",
+      "0x134951b2e10": "8e0b0b20-bba8-450b-9360-982310aec977||Wan视频解码器",
+      "0x134951bd0d0": "62a55a10-3a07-42a7-98f3-c59f6f19572d||显存管理",
+      "0x134951d0990": "1cf7ea0d-ebba-43fa-8acb-6f1fb8e1b517||尾帧编码",
+      "0x134951d23d0": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||首帧图像",
+      "0x134951d3710": "1cf7ea0d-ebba-43fa-8acb-6f1fb8e1b517||首帧编码",
+      "0x134951e1450": "unknown||多媒体展示节点 1",
+      "0x134951e2b50": "4217e25f-690d-4888-ba17-6a0e2f2c5d3a||Wan视频遮罩生成器",
+      "0x134951ec0d0": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||尾帧图像"
+    },
+    "node_states": {
+      "b4e3a0b6-7a51-4f9c-b731-a11ef72debfe||ComfyUI全局配置": "success",
+      "1e4d1a1f-3927-420e-bb7a-c649f9774f83||模型加载器": "success",
+      "af4c1324-4d47-4376-ab98-0cf3a5af2bb0||Wan2.2视频潜空间生成": "success",
+      "da847ab1-3c62-4173-9c8e-eb967e8c5364||正向提示词": "success",
+      "da847ab1-3c62-4173-9c8e-eb967e8c5364||负向提示词": "success",
+      "23326454-a008-4029-a9dd-4eec694c60f6||Wan视频采样器": "success",
+      "unknown||多媒体展示节点": "success",
+      "8e0b0b20-bba8-450b-9360-982310aec977||Wan视频解码器": "success",
+      "62a55a10-3a07-42a7-98f3-c59f6f19572d||显存管理": "success",
+      "1cf7ea0d-ebba-43fa-8acb-6f1fb8e1b517||尾帧编码": "success",
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||首帧图像": "success",
+      "1cf7ea0d-ebba-43fa-8acb-6f1fb8e1b517||首帧编码": "success",
+      "unknown||多媒体展示节点 1": "success",
+      "4217e25f-690d-4888-ba17-6a0e2f2c5d3a||Wan视频遮罩生成器": "success",
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||尾帧图像": "success"
+    },
+    "node_inputs": {
+      "b4e3a0b6-7a51-4f9c-b731-a11ef72debfe||ComfyUI全局配置": {},
+      "1e4d1a1f-3927-420e-bb7a-c649f9774f83||模型加载器": {},
+      "af4c1324-4d47-4376-ab98-0cf3a5af2bb0||Wan2.2视频潜空间生成": {},
+      "da847ab1-3c62-4173-9c8e-eb967e8c5364||正向提示词": {},
+      "da847ab1-3c62-4173-9c8e-eb967e8c5364||负向提示词": {},
+      "23326454-a008-4029-a9dd-4eec694c60f6||Wan视频采样器": {},
+      "unknown||多媒体展示节点": {},
+      "8e0b0b20-bba8-450b-9360-982310aec977||Wan视频解码器": {},
+      "62a55a10-3a07-42a7-98f3-c59f6f19572d||显存管理": {},
+      "1cf7ea0d-ebba-43fa-8acb-6f1fb8e1b517||尾帧编码": {},
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||首帧图像": {},
+      "1cf7ea0d-ebba-43fa-8acb-6f1fb8e1b517||首帧编码": {},
+      "unknown||多媒体展示节点 1": {},
+      "4217e25f-690d-4888-ba17-6a0e2f2c5d3a||Wan视频遮罩生成器": {},
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||尾帧图像": {}
+    },
+    "node_outputs": {
+      "b4e3a0b6-7a51-4f9c-b731-a11ef72debfe||ComfyUI全局配置": {},
+      "1e4d1a1f-3927-420e-bb7a-c649f9774f83||模型加载器": {
+        "model": "DATA_d6f0993e-0281-4478-843e-54c5ddeb9648.out_model",
+        "clip": "DATA_d6f0993e-0281-4478-843e-54c5ddeb9648.out_clip",
+        "vae": "DATA_d6f0993e-0281-4478-843e-54c5ddeb9648.out_vae"
+      },
+      "af4c1324-4d47-4376-ab98-0cf3a5af2bb0||Wan2.2视频潜空间生成": {
+        "latent": "DATA_8dc5fce2-5521-4d07-9384-c2c98db02dfa.out_latent"
+      },
+      "da847ab1-3c62-4173-9c8e-eb967e8c5364||正向提示词": {
+        "conditioning": "DATA_07ba6708-6bfb-472d-8650-00c6e7d8ac08.out_conditioning"
+      },
+      "da847ab1-3c62-4173-9c8e-eb967e8c5364||负向提示词": {
+        "conditioning": "DATA_15b44528-22be-4396-8653-8818f400f50a.out_conditioning"
+      },
+      "23326454-a008-4029-a9dd-4eec694c60f6||Wan视频采样器": {
+        "latent": "DATA_6f619ab9-03ae-4931-b72d-065fd5f5abd8.out_latent",
+        "first_frame_image": "E:\\CanvasMind\\CanvasMind\\canvas_files\\workflows\\wan图生视频实例\\workspace\\6f619ab9-03ae-4931-b72d-065fd5f5abd8\\result\\image_6f619ab9-03ae-4931-b72d-065fd5f5abd8_first_frame_image.png"
+      },
+      "unknown||多媒体展示节点": {},
+      "8e0b0b20-bba8-450b-9360-982310aec977||Wan视频解码器": {
+        "video_path": "D:\\work\\ComfyUI-master\\temp_output\\wan_video_6b2bbcda.mp4"
+      },
+      "62a55a10-3a07-42a7-98f3-c59f6f19572d||显存管理": {
+        "output": "DATA_9756eb3b-bbc3-4569-b29c-119ea6b483d5.out_output",
+        "seed": 0,
+        "reserved_gb": 11.51
+      },
+      "1cf7ea0d-ebba-43fa-8acb-6f1fb8e1b517||尾帧编码": {
+        "latent": "DATA_4344b254-fdea-4e4e-9eb3-00e9e4ffdb8b.out_latent"
+      },
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||首帧图像": {
+        "file": "canvas_files\\workflows\\wan图生视频实例\\workspace\\0d344d3f-10b3-49bd-83db-d265e1fe74b5\\upload\\6fa7b53c03503d2c0ffe00884a6e2631.jpeg"
+      },
+      "1cf7ea0d-ebba-43fa-8acb-6f1fb8e1b517||首帧编码": {
+        "latent": "DATA_25a278d7-a592-41d5-b4a7-7053506c9f16.out_latent"
+      },
+      "unknown||多媒体展示节点 1": {},
+      "4217e25f-690d-4888-ba17-6a0e2f2c5d3a||Wan视频遮罩生成器": {
+        "latent": "DATA_550d8300-d818-49f6-b40f-e1a9133a676b.out_latent"
+      },
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||尾帧图像": {
+        "file": "canvas_files\\workflows\\wan图生视频实例\\workspace\\1b1d0ed1-e787-471f-9f7b-fcab45079a3b\\upload\\image_6f619ab9-03ae-4931-b72d-065fd5f5abd8_first_frame_image.png"
+      }
+    },
+    "column_select": {
+      "b4e3a0b6-7a51-4f9c-b731-a11ef72debfe||ComfyUI全局配置": {},
+      "1e4d1a1f-3927-420e-bb7a-c649f9774f83||模型加载器": {},
+      "af4c1324-4d47-4376-ab98-0cf3a5af2bb0||Wan2.2视频潜空间生成": {},
+      "da847ab1-3c62-4173-9c8e-eb967e8c5364||正向提示词": {},
+      "da847ab1-3c62-4173-9c8e-eb967e8c5364||负向提示词": {},
+      "23326454-a008-4029-a9dd-4eec694c60f6||Wan视频采样器": {},
+      "unknown||多媒体展示节点": {},
+      "8e0b0b20-bba8-450b-9360-982310aec977||Wan视频解码器": {},
+      "62a55a10-3a07-42a7-98f3-c59f6f19572d||显存管理": {},
+      "1cf7ea0d-ebba-43fa-8acb-6f1fb8e1b517||尾帧编码": {},
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||首帧图像": {},
+      "1cf7ea0d-ebba-43fa-8acb-6f1fb8e1b517||首帧编码": {},
+      "unknown||多媒体展示节点 1": {},
+      "4217e25f-690d-4888-ba17-6a0e2f2c5d3a||Wan视频遮罩生成器": {},
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||尾帧图像": {}
+    }
+  },
+  "global_variable": {
+    "env": {
+      "user_id": null,
+      "canvas_id": null,
+      "session_id": null,
+      "run_id": null,
+      "metadata": {
+        "TZ": "Asia/Shanghai",
+        "LANG": "en_US.UTF-8",
+        "LC_ALL": "en_US.UTF-8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "0",
+        "PYTHONPATH": ".",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONWARNINGS": "ignore"
+      }
+    },
+    "custom": {
+      "comfy_extension": {
+        "value": "D:/work/ComfyUI-master",
+        "description": null,
+        "read_only": false
+      }
+    },
+    "custom_order": [
+      "comfy_extension"
+    ],
+    "node_vars": {
+      "Wan视频采样器__first_frame_image": {
+        "value": "E:\\CanvasMind\\CanvasMind\\canvas_files\\workflows\\wan图生视频实例\\workspace\\6f619ab9-03ae-4931-b72d-065fd5f5abd8\\result\\image_6f619ab9-03ae-4931-b72d-065fd5f5abd8_first_frame_image.png",
+        "update_policy": "更新"
+      },
+      "Wan视频解码器__video_path": {
+        "value": "D:\\work\\ComfyUI-master\\temp_output\\wan_video_aae15a94.mp4",
+        "update_policy": "固定"
+      }
+    },
+    "node_vars_order": [
+      "Wan视频采样器__first_frame_image",
+      "Wan视频解码器__video_path"
+    ]
+  }
+}

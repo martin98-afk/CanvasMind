@@ -22,14 +22,11 @@ class ComfyWanVideoSampler(BaseComponent):
     description = "专为 Wan 优化的视频采样器，支持首尾帧 Latent 注入和实时单帧预览"
     
     inputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT),
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT),
-        PortDefinition(name="positive", label="正向提示词", type=ArgumentType.OBJECT),
-        PortDefinition(name="negative", label="负向提示词", type=ArgumentType.OBJECT),
-        PortDefinition(name="latent", label="视频画布(空Latent)", type=ArgumentType.OBJECT),
-        # 视频专用输入
-        PortDefinition(name="start_frame_latent", label="首帧Latent", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="end_frame_latent", label="尾帧Latent", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="positive", label="正向提示词", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="negative", label="负向提示词", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent", label="视频画布(空Latent)", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="latent", label="视频LATENT", type=ArgumentType.OBJECT),
@@ -37,19 +34,49 @@ class ComfyWanVideoSampler(BaseComponent):
     ]
     
     properties = {
-        "steps": PropertyDefinition(type=PropertyType.INT, default=30, label="步数"),
-        "cfg": PropertyDefinition(type=PropertyType.RANGE, default="6.0", label="CFG", min=0.0, max=20.0, step=0.5),
+        "steps": PropertyDefinition(
+            type=PropertyType.INT,
+            default=30,
+            label="步数",
+        ),
+        "cfg": PropertyDefinition(
+            type=PropertyType.RANGE,
+            default="6.0",
+            label="CFG",
+            min=0.0,
+            max=20.0,
+            step=0.5,
+        ),
         "sampler_name": PropertyDefinition(
-            type=PropertyType.CHOICE, default="uni_pc", label="采样器",
+            type=PropertyType.CHOICE,
+            default="uni_pc",
+            label="采样器",
             choices=["uni_pc", "euler", "euler_ancestral", "dpmpp_2m"]
         ),
         "scheduler": PropertyDefinition(
-            type=PropertyType.CHOICE, default="simple", label="调度器",
+            type=PropertyType.CHOICE,
+            default="simple",
+            label="调度器",
             choices=["simple", "normal", "karras", "sgm_uniform"]
         ),
-        "denoise": PropertyDefinition(type=PropertyType.RANGE, default="1.00", label="去噪强度", min=0.0, max=1.0, step=0.01),
-        "seed": PropertyDefinition(type=PropertyType.INT, default=-1, label="种子"),
-        "preview_step": PropertyDefinition(type=PropertyType.INT, default=5, label="预览频率(步)"),
+        "denoise": PropertyDefinition(
+            type=PropertyType.RANGE,
+            default="1.00",
+            label="去噪强度",
+            min=0.0,
+            max=1.0,
+            step=0.01,
+        ),
+        "seed": PropertyDefinition(
+            type=PropertyType.INT,
+            default=-1,
+            label="种子",
+        ),
+        "preview_step": PropertyDefinition(
+            type=PropertyType.INT,
+            default=5,
+            label="预览频率(步)",
+        ),
     }
 
     def ensure_comfy_exist(self):
@@ -84,23 +111,6 @@ class ComfyWanVideoSampler(BaseComponent):
         positive = inputs.get("positive")
         negative = inputs.get("negative")
         latent = inputs.get("latent")
-        
-        # 深度拷贝采样画布
-        video_samples = latent["samples"].clone() 
-        start_latent = inputs.get("start_frame_latent")
-        end_latent = inputs.get("end_frame_latent")
-
-        # 首尾帧注入逻辑
-        if start_latent is not None:
-            s_samples = start_latent["samples"]
-            if s_samples.ndim == 4: s_samples = s_samples.unsqueeze(2)
-            video_samples[:, :, 0:1, :, :] = s_samples[:, :, 0:1, :, :]
-
-        if end_latent is not None:
-            e_samples = end_latent["samples"]
-            if e_samples.ndim == 4: e_samples = e_samples.unsqueeze(2)
-            video_samples[:, :, -1:, :, :] = e_samples[:, :, 0:1, :, :]
-
         steps = int(params.get("steps", 30))
         cfg = float(params.get("cfg", 6.0))
         sampler_name = params.get("sampler_name", "uni_pc")
@@ -162,7 +172,7 @@ class ComfyWanVideoSampler(BaseComponent):
             try:
                 result = sampler_node.sample(
                     model, seed, steps, cfg, sampler_name, scheduler, 
-                    positive, negative, {"samples": video_samples}, denoise
+                    positive, negative, latent, denoise
                 )
             finally:
                 comfy.sample.sample = original_sample

@@ -47,6 +47,8 @@ class SampleModelCardView(SimpleCardWidget):
              "key": "AI辩论赛"},
             {"icon": get_icon("AI绘画"), "title": self.tr("AI扩图"), "content": self.tr("SD+超分图像扩充"),
              "key": "图像扩充模型"},
+            {"icon": get_icon("智能视频"), "title": self.tr("WAN文图生视频"), "content": self.tr("基于comfyui使用wan模型进行文图生视频"),
+             "key": "wan图生视频实例"},
             {"icon": get_icon("更新"), "title": self.tr("循环迭代"), "content": self.tr("循环/迭代节点用法"),
              "key": "循环、迭代样例模型"},
             {"icon": get_icon("逻辑回归A"), "title": self.tr("机器学习"), "content": self.tr("训练与推理流程"),
