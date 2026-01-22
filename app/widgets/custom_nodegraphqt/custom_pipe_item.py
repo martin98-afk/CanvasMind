@@ -1,11 +1,12 @@
 #!/usr/bin/python
 import math
-from PyQt5 import QtGui, QtWidgets, QtCore
+
 from NodeGraphQt.constants import (
     PipeLayoutEnum, PortTypeEnum, PipeEnum,
-    Z_VAL_PIPE, ITEM_CACHE_MODE
+    Z_VAL_PIPE, Z_VAL_PORT
 )
 from NodeGraphQt.qgraphics.pipe import PipeItem, LivePipeItem
+from PyQt5 import QtGui, QtCore
 
 
 # ==========================================================
@@ -251,7 +252,7 @@ class CustomPipeItem(PipeItem):
     def activate(self):
         self._active = True
         self.set_pipe_styling(color=PipeEnum.ACTIVE_COLOR.value, width=5, style=self.style)
-        self.setZValue(Z_VAL_PIPE + 10)
+        self.setZValue(Z_VAL_PORT-0.5)
         self.start_flow()
 
     def highlight(self):
@@ -259,7 +260,7 @@ class CustomPipeItem(PipeItem):
         if not self._running:
             self.set_pipe_styling(color=PipeEnum.HIGHLIGHT_COLOR.value, width=4, style=self.style)
         self.update()
-        self.setZValue(Z_VAL_PIPE + 10)
+        self.setZValue(Z_VAL_PORT-0.5)
         self.start_flow()
 
     def hoverEnterEvent(self, event):
