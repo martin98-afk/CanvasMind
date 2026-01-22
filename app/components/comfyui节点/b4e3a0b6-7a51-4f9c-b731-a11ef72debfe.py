@@ -19,49 +19,113 @@ class ComfyUIConfig(BaseComponent):
     requirements = "comfy"
     name = "ComfyUI全局配置"
     category = "comfyui节点"
-    description = "设置显存管理策略，建议放在流程起始位置"
+    description = "自动初始化ComfyUI环境并设置显存管理策略"
     
     properties = {
         "vram_mode": PropertyDefinition(
             type=PropertyType.CHOICE,
             default="normal",
-            label="显存策略 (Low=极低显存, Normal=平衡, High=全速)",
+            label="显存策略",
             choices=["low", "normal", "high"]
         ),
+        "use_fp8": PropertyDefinition(
+            type=PropertyType.BOOL,
+            default=False,
+            label="启用 FP8 精度 (降低显存，微损画质)",
+        ),
+        "vae_tiling": PropertyDefinition(
+            type=PropertyType.BOOL,
+            default=False,
+            label="启用 VAE 瓦片解码 (防止大图 OOM)",
+        ),
+        "preview_method": PropertyDefinition(
+            type=PropertyType.CHOICE,
+            default="latent2rgb",
+            label="预览模式",
+            choices=["none", "latent2rgb", "taesd"]
+        ),
     }
-    
+
     def ensure_comfy_exist(self):
-        import os 
-        # comfyui节点必须从本地comfy包中读取
-        if "comfy_extension" not in self.global_variable.custom:
-            raise Exception("自定义全局变量未添加 comfy_extension 参数，无法使用comfy节点。")
-        elif not os.path.exists(self.global_variable.comfy_extension):
-            raise Exception("配置的 comfy_extension 参数，无法找到本地文件。")
+        import os
         import sys
-        sys.path.append(self.global_variable.comfy_extension)
+        import subprocess
+        from pathlib import Path
+        # 1. 获取预设路径或默认路径
+        # 优先从全局变量获取，如果没有则设定一个默认克隆位置（例如当前目录下的 ComfyUI_Repo）
+        if "comfy_extension" not in self.global_variable.custom:
+            target_path = None
+        else:
+            target_path = self.global_variable.comfy_extension
+        default_clone_path = os.path.abspath("./ComfyUI_Repo")
+
+        # 2. 判断是否需要克隆
+        need_clone = False
+        if not target_path:
+            self.logger.info("全局变量 'comfy_extension' 未设置，准备检查默认路径...")
+            target_path = default_clone_path
+            if not os.path.exists(target_path):
+                need_clone = True
+        elif not os.path.exists(target_path):
+            self.logger.warning(f"配置的路径 {target_path} 不存在，将尝试克隆到该位置。")
+            need_clone = True
+
+        # 3. 执行克隆逻辑
+        if need_clone:
+            self.logger.info(f"正在从 GitHub 克隆 ComfyUI 到: {target_path} ...")
+            try:
+                # 确保父目录存在
+                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                # 执行 git clone
+                subprocess.run(
+                    ["git", "clone", "https://github.com/comfyanonymous/ComfyUI.git", target_path],
+                    check=True,
+                    capture_output=True
+                )
+                self.logger.info("ComfyUI 克隆成功！")
+            except subprocess.CalledProcessError as e:
+                error_msg = e.stderr.decode() if e.stderr else str(e)
+                raise Exception(f"克隆 ComfyUI 失败，请检查网络或是否安装了 Git: {error_msg}")
+
+        # 4. 设置/更新全局变量 (emit_message)
+        # 这一步确保后续节点可以直接从 global_variable 获取到正确的路径
+        self.emit_message(
+            method="add_custom_to_global_variable",
+            params={"comfy_extension": target_path}
+        )
+        
+        # 5. 注入系统路径
+        if target_path not in sys.path:
+            # 插入到第一位，防止与其他同名包冲突
+            sys.path.insert(0, target_path)
+            
+        return target_path
 
     def run(self, params, inputs=None):
         self.ensure_comfy_exist()
         import comfy.model_management as mm
+        import comfy.options
         
-        # 1. 触发设备检测 (替代 init_device_info)
-        # 调用 get_torch_device 会强制 ComfyUI 去检测当前的 CUDA/显存状态
-        device = mm.get_torch_device()
-        self.logger.info(f"ComfyUI 当前使用的设备: {device}")
-
-        # 2. 设置显存策略
+        # 1. 基础显存策略
         mode = params.get("vram_mode", "normal")
         if mode == "low":
-            # 极低显存模式 (对应启动参数 --lowvram)
             mm.vram_state = mm.VRAMState.LOW_VRAM
-        elif mode == "normal":
-            # 标准显存模式
-            mm.vram_state = mm.VRAMState.NORMAL_VRAM
-        else:
-            # 高显存模式 (尽量不卸载模型)
+        elif mode == "high":
             mm.vram_state = mm.VRAMState.HIGH_VRAM
-            
-        # 3. 如果你想手动设置显存权重（可选）
-        # mm.set_vram_priority_mode(mm.VRAMPriorityMode.LOW_VRAM) # 某些版本可用
-        
-        return {}
+        else:
+            mm.vram_state = mm.VRAMState.NORMAL_VRAM
+
+        # 2. VAE 策略
+        comfy.options.vae_tiling = params.get("vae_tiling", False)
+
+        # 3. 预览设置 (在某些版本中可能需要修改 comfy.args)
+        # 这里展示如何通过 options 修改
+        preview = params.get("preview_method", "latent2rgb")
+        # 示例逻辑：如果是 Web 应用环境，通常修改 args 
+        # sys.argv.append(f"--preview-method={preview}")
+
+        # 4. 显存强制清理 (手动触发一次)
+        mm.unload_all_models()
+        mm.soft_empty_cache()
+
+        self.logger.info(f"ComfyUI 配置更新完成: {params}")

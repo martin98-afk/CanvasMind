@@ -257,6 +257,35 @@ def validate_env_value(key: str, value: Any) -> str:
 
 
 # ==================== 执行环境 ====================
+class ModelMixin(BaseModel):
+    """为输入模型添加 .get() 和 [] 访问方法，兼容字典用法"""
+
+    class Config:
+        # 允许模型接收定义之外的字段
+        extra = 'allow'
+
+    def get(self, key: str, default=None):
+        # 直接查 __dict__，不触发任何钩子
+        if key in self.__dict__:
+            value = self.__dict__[key]
+            return value if value is not None else default
+        return default
+
+    def __getattr__(self, item: str):
+        # get() 不再调用 hasattr，所以不会递归
+        return self.get(item)
+
+    def __getitem__(self, key: str):
+        if key in self.__dict__:
+            value = self.__dict__[key]
+            if value is not None:
+                return value
+        raise KeyError(key)
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.__dict__ and self.__dict__[key] is not None
+
+
 class ExecutionEnvironment(BaseModel):
     user_id: Optional[str] = None
     canvas_id: Optional[str] = None
@@ -548,34 +577,6 @@ class GlobalVariableContext(BaseModel):
 
 
 # ======= 构造pydantic输入、参数解析 ========
-class ModelMixin(BaseModel):
-    """为输入模型添加 .get() 和 [] 访问方法，兼容字典用法"""
-
-    class Config:
-        # 允许模型接收定义之外的字段
-        extra = 'allow'
-
-    def get(self, key: str, default=None):
-        # 直接查 __dict__，不触发任何钩子
-        if key in self.__dict__:
-            value = self.__dict__[key]
-            return value if value is not None else default
-        return default
-
-    def __getattr__(self, item: str):
-        # get() 不再调用 hasattr，所以不会递归
-        return self.get(item)
-
-    def __getitem__(self, key: str):
-        if key in self.__dict__:
-            value = self.__dict__[key]
-            if value is not None:
-                return value
-        raise KeyError(key)
-
-    def __contains__(self, key: str) -> bool:
-        return key in self.__dict__ and self.__dict__[key] is not None
-
 
 def _parse_default_value(default_str: str, target_type: type) -> Any:
     """安全解析默认值"""

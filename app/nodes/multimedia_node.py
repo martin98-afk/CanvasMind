@@ -2,9 +2,9 @@
 from PyQt5.QtCore import Qt
 
 from app.nodes.status_node import NoStatusNode
-from app.utils.utils import draw_square_port
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
+from app.widgets.custom_nodegraphqt.custom_port_item import draw_square_port
 from app.widgets.node_widget.display_widgets.universal_display_widget import UniversalWidgetWrapper
 
 

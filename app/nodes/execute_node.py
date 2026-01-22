@@ -21,10 +21,10 @@ from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.node_cleanup_script import CLEANUP_CODE
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.node_logger import NodeLogHandler
-from app.utils.utils import draw_square_port, draw_special_outputport, \
-    _safe_load_pickle, kill_proc_tree, serialize_for_json, sftp_download_dir, replace_remote_paths, sftp_upload_dir
+from app.utils.utils import _safe_load_pickle, kill_proc_tree, serialize_for_json, sftp_download_dir, replace_remote_paths, sftp_upload_dir
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
+from app.widgets.custom_nodegraphqt.custom_port_item import draw_special_outputport, draw_square_port
 from app.widgets.node_widget.propeprty_widgets.checkbox_widget import CheckBoxWidgetWrapper
 from app.widgets.node_widget.propeprty_widgets.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.propeprty_widgets.combobox_widget import ComboBoxWidgetWrapper

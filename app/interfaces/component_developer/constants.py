@@ -7,11 +7,13 @@ from app.widgets.side_dock_area.plugins.plugin_template_tool.main_widget import 
 from app.widgets.side_dock_area.registry import SideDockRegistry
 from app.widgets.side_dock_area.tool_window import DockPosition
 
-SideDockRegistry.register("组件开发", ComponentInfoWindow.name, ComponentInfoWindow, DockPosition.TOP)
-SideDockRegistry.register("组件开发", PluginTemplateToolWindow.name, PluginTemplateToolWindow, DockPosition.TOP)
-SideDockRegistry.register("组件开发", MultiConsoleToolWindow.name, MultiConsoleToolWindow, DockPosition.TOP)
-SideDockRegistry.register("组件开发", ComponentHistoryToolWindow.name, ComponentHistoryToolWindow, DockPosition.BOTTOM)
-SideDockRegistry.register("组件开发", OpenAIChatToolWindow.name, OpenAIChatToolWindow, DockPosition.BOTTOM)
+
+category = "组件开发"
+SideDockRegistry.register(category, ComponentInfoWindow.name, ComponentInfoWindow, DockPosition.TOP)
+SideDockRegistry.register(category, PluginTemplateToolWindow.name, PluginTemplateToolWindow, DockPosition.TOP)
+SideDockRegistry.register(category, MultiConsoleToolWindow.name, MultiConsoleToolWindow, DockPosition.TOP)
+SideDockRegistry.register(category, ComponentHistoryToolWindow.name, ComponentHistoryToolWindow, DockPosition.BOTTOM)
+SideDockRegistry.register(category, OpenAIChatToolWindow.name, OpenAIChatToolWindow, DockPosition.BOTTOM)
 
 
 

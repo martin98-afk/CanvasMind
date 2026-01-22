@@ -4,125 +4,25 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Set
 
-from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal, QMutex, QMutexLocker, QSize, QEvent, QObject
+from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal, QSize, QEvent, QObject
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QFrame, QHBoxLayout
+from loguru import logger
 from qfluentwidgets import (
     FlowLayout, InfoBar, SmoothScrollArea,
     PipsPager, PipsScrollButtonDisplayMode, ComboBox, CaptionLabel, SearchLineEdit, TransparentToggleToolButton
 )
 
+from .constants import *
 from app.interfaces.canvas_interaface import CanvasPage
+from app.interfaces.workflow_manager_interface.utils.utils import _migrate_legacy_workflow_structure, \
+    WorkflowFileInfoScanner, _normalize_canvas_folder
 from app.scan_components import ComponentScanner
 from app.scheduler.node_recommendation_engine import NodeRecommendationEngine
 from app.utils.config import Settings
 from app.utils.utils import get_icon, get_pinyin_search_keys
-from app.widgets.card_widget.workflow_card import WorkflowCard, ActionCard
+from app.interfaces.workflow_manager_interface.widgets.workflow_card import WorkflowCard, ActionCard
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
-from app.widgets.side_dock_area.plugins.canvas_node_log.main_widget import LogToolWindow
-from app.widgets.side_dock_area.plugins.dependency_check.main_widget import DependencyToolWindow
-from app.widgets.side_dock_area.plugins.llm_chatter.main_widget import OpenAIChatToolWindow
-from app.widgets.side_dock_area.plugins.property_panel.main_widget import PropertyToolWindow
-from app.widgets.side_dock_area.plugins.standalone_ipython_console.ipython_console import IPythonConsoleToolWindow
-from app.widgets.side_dock_area.plugins.standalone_variable_explorer.variable_explorer import VariableExplorerToolWindow
-from app.widgets.side_dock_area.registry import SideDockRegistry
 
-
-def _migrate_legacy_workflow_structure(workflow_dirs: List[Path]):
-    """将旧版平铺结构自动迁移到新版：每个画布一个子文件夹"""
-    for root in workflow_dirs:
-        legacy_files = [
-            f for f in root.iterdir()
-            if f.is_file() and f.suffix == '.json' and f.name.endswith('.workflow.json')
-        ]
-        for wf_file in legacy_files:
-            name = wf_file.stem
-            if name.endswith('.workflow'):
-                name = name[:-9]
-            if not name:
-                continue
-
-            canvas_folder = root / name
-            canvas_folder.mkdir(exist_ok=True)
-
-            new_wf_path = canvas_folder / wf_file.name
-            if not new_wf_path.exists():
-                shutil.move(str(wf_file), str(new_wf_path))
-
-            png_file = root / f"{name}.png"
-            if png_file.exists():
-                new_png_path = canvas_folder / f"{name}.png"
-                if not new_png_path.exists():
-                    shutil.move(str(png_file), str(new_png_path))
-
-
-def _normalize_canvas_folder(folder: Path):
-    """规范化画布文件夹内容"""
-    if not folder.is_dir():
-        return
-
-    # 处理 .workflow.json
-    wf_files = list(folder.glob("*.workflow.json"))
-    if wf_files:
-        expected_wf = folder / f"{folder.name}.workflow.json"
-        if not expected_wf.exists():
-            wf_files[0].rename(expected_wf)
-
-    # 处理 .png
-    png_files = list(folder.glob("*.png"))
-    if png_files:
-        expected_png = folder / f"{folder.name}.png"
-        if not expected_png.exists():
-            png_files[0].rename(expected_png)
-
-
-class WorkflowFileInfoScanner(QThread):
-    scan_finished = pyqtSignal(list, dict)
-
-    def __init__(self, workflow_dir: List[Path]):
-        super().__init__()
-        self.workflow_dir = workflow_dir
-        self._mutex = QMutex()
-        self._should_stop = False
-
-    def stop(self):
-        with QMutexLocker(self._mutex):
-            self._should_stop = True
-
-    def run(self):
-        should_stop = False
-        with QMutexLocker(self._mutex):
-            should_stop = self._should_stop
-        if should_stop:
-            return
-
-        workflow_files = []
-        file_info_map = {}
-        for path in self.workflow_dir:
-            if path.exists():
-                workflow_files.extend(list(path.rglob("*.workflow.json")))
-
-        for wf_path in workflow_files:
-            with QMutexLocker(self._mutex):
-                if self._should_stop:
-                    return
-
-            try:
-                stat = wf_path.stat()
-                file_info_map[str(wf_path)] = {
-                    'ctime': datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M"),
-                    'mtime': datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M"),
-                    'size_kb': stat.st_size // 1024,
-                    'mtime_ts': stat.st_mtime,
-                    'ctime_ts': stat.st_ctime,
-                }
-            except Exception:
-                pass
-
-        with QMutexLocker(self._mutex):
-            if self._should_stop:
-                return
-
-        self.scan_finished.emit(workflow_files, file_info_map)
 
 
 class WorkflowCanvasGalleryPage(QWidget, QObject):
@@ -132,21 +32,9 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     running_projects_changed = pyqtSignal(str, str)
     node_request_edit = pyqtSignal(str)
 
-    # 注册侧边栏组件 - 这里的名称通常也需要翻译以便在UI显示
-    # 注意：SideDockRegistry 内部逻辑如果依赖这些字符串作为 Key，请确保翻译只影响显示层
-    def register_side_docks(self):
-        category = self.tr("运行画布")
-        SideDockRegistry.register(category, PropertyToolWindow.name, PropertyToolWindow)
-        SideDockRegistry.register(category, VariableExplorerToolWindow.name, VariableExplorerToolWindow)
-        SideDockRegistry.register(category, DependencyToolWindow.name, DependencyToolWindow)
-        SideDockRegistry.register(category, OpenAIChatToolWindow.name, OpenAIChatToolWindow)
-        SideDockRegistry.register(category, IPythonConsoleToolWindow.name, IPythonConsoleToolWindow)
-        SideDockRegistry.register(category, LogToolWindow.name, LogToolWindow)
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("workflow_canvas_gallery_page")
-        self.register_side_docks()  # 调用注册
         self.config = Settings.get_instance()
         self.parent_window = parent
         self._pinyin_cache = {}

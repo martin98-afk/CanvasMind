@@ -65,7 +65,7 @@ GLUE_CODE_TEMPLATES = {
     inputs: {"input_data": str 或 dict}
     """
     self.emit_message(
-        method="add_global_variable",
+        method="add_output_to_global_variable",
         params={"value": "output1"}
     )
     return {"output1": "test"}
@@ -79,7 +79,7 @@ GLUE_CODE_TEMPLATES = {
     inputs: {"input_data": str 或 dict}
     """
     self.emit_message(
-        method="delete_global_variable",
+        method="delete_output_from_global_variable",
         params={"value": "output1"}
     )
     return {"output1": "test"}

@@ -1,11 +1,10 @@
 from datetime import datetime
-from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
 
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont, QPixmap
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QWidget, QLabel
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QWidget
 from qfluentwidgets import CardWidget, BodyLabel, FluentIcon, TransparentToolButton, ImageLabel, PushButton, \
     SimpleCardWidget
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
