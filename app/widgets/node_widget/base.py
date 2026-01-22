@@ -112,27 +112,24 @@ class _NodeGroupBox(QtWidgets.QWidget):
         font.setPointSize(10)
         widget.setFont(font)
         self._apply_unified_font(widget)
-        # 3. 智能布局逻辑
+        # 智能布局逻辑
         sp = widget.sizePolicy()
         h_policy = sp.horizontalPolicy()
-
-        # 判断是否为“固定宽度”控件 Fixed: 绝对固定 Maximum: 不能超过某个宽度 (通常意味着不想被拉伸)
-        center_policies = [
-            QtWidgets.QSizePolicy.Fixed,
-            QtWidgets.QSizePolicy.Maximum
-        ]
-
-        # 额外检查：有些控件虽然策略是 Preferred，但手动设置了 setFixedWidth
-        # 如果 minWidth == maxWidth 且不为 0 或无限大，则认为是固定宽
-        is_explicit_fixed = (widget.minimumWidth() == widget.maximumWidth() and
-                             0 < widget.minimumWidth() < 16777215)
+        if hasattr(widget, "fixed_height") and widget.fixed_height:
+            widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            stretch = 0
+        else:
+            widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+            self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+            stretch = 1
+        center_policies = [QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Maximum]
+        is_explicit_fixed = (widget.minimumWidth() == widget.maximumWidth() and 0 < widget.minimumWidth() < 16777215)
 
         if h_policy in center_policies or is_explicit_fixed:
-            # 【关键点】如果是固定大小，添加 AlignCenter 标志
             self.layout.addWidget(widget, 0, QtCore.Qt.AlignCenter)
         else:
-            # 否则，使用默认行为 (通常是 Fill / Stretch)
-            self.layout.addWidget(widget)
+            self.layout.addWidget(widget, stretch)  # 这里的 1 代表拉伸权重
 
     def get_node_widget(self):
         if self.layout.count() > 1:

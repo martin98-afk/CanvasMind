@@ -11,6 +11,7 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 class CheckBoxWidget(QtWidgets.QWidget):
     """节点内显示：复选框"""
     valueChanged = QtCore.Signal(bool)
+    fixed_height = True
 
     def __init__(self, text="", state=False, parent=None):
         super().__init__()

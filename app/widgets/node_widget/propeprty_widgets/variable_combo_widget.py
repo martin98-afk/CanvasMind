@@ -10,6 +10,7 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 class VarComboBoxWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(str)
+    fixed_height = True
 
     def __init__(self, main_window=None, type="全局变量", parent=None):
         super().__init__()

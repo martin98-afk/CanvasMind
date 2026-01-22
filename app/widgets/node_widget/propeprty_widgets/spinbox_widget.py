@@ -173,6 +173,7 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 class SpinBoxWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(object)
+    fixed_height = True
 
     def __init__(self, parent=None, default=0, type="float"):
         super().__init__(parent)

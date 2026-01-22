@@ -9,7 +9,7 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 class TextWidget(QtWidgets.QWidget):
     """节点内显示：摘要 + 编辑按钮"""
     valueChanged = QtCore.Signal(str)
-
+    fixed_height = False
     def __init__(self, parent=None, type=None, default_text="", get_port_func=lambda: []):
         super().__init__(parent)
         self.parent = parent
@@ -24,6 +24,7 @@ class TextWidget(QtWidgets.QWidget):
             self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
             self.summary_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         else:
+            self.fixed_height = True
             self.summary_label = VariableCompletionLineEdit(
                 get_variable_list_func=lambda func=get_port_func: global_vars.get_vars(func()),
                 use_qcursor=True, parent=self

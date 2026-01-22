@@ -468,11 +468,9 @@ class CustomNodeViewer(NodeViewer):
             super(NodeViewer, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        # 修复点：使用 CustomNodeViewer 的父类 (NodeViewer) 而不是 NodeViewer 的父类
-        # 这样才能继承 NodeViewer 中定义的 中键平移(Panning) 逻辑
         super(CustomNodeViewer, self).mouseMoveEvent(event)
 
-        # 2. 如果是左键拖动节点（非平移、非框选、非切线）
+        # 1. 基础条件判断
         is_dragging_nodes = (
                 self.LMB_state and
                 not self.ALT_state and
@@ -485,6 +483,15 @@ class CustomNodeViewer(NodeViewer):
                 i for i in self.scene().selectedItems()
                 if isinstance(i, AbstractNodeItem)
             ]
+
+            # --- 新增：核心拦截逻辑 ---
+            # 如果选中的节点中，有任何一个正在执行缩放操作，则不触发对齐
+            if any(getattr(n, '_is_resizing', False) for n in selected_nodes):
+                if self._snap_lines_item.isVisible():
+                    self._snap_lines_item.hide()
+                return  # 直接跳过对齐逻辑
+            # ------------------------
+
             self._handle_snapping(selected_nodes)
         else:
             if self._snap_lines_item.isVisible():

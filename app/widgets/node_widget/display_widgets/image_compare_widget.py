@@ -1,106 +1,115 @@
 # -*- coding: utf-8 -*-
+import os
+
 import numpy as np
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from PIL import Image
+from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import Qt, QSize, QRect, QPoint
-from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen
-from Qt import QtWidgets, QtCore
-from qfluentwidgets import PushButton, BodyLabel
+from PyQt5.QtGui import QImage, QPainter, QColor, QPen, QPixmap
+from Qt import QtWidgets
+from qfluentwidgets import PushButton, BodyLabel, StrongBodyLabel
 
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
-class ImageCompareWidget(QtWidgets.QWidget):
-    valueChanged = QtCore.Signal(object)
-    sizeHintChanged = QtCore.Signal()
+class ImageView(QtWidgets.QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.p = parent
+        self._slider_pos = 0.5
+        self._is_dragging = False
+        self.setMouseTracking(True)
+        # 设置策略，允许在节点内垂直/水平双向拉伸
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
-    class ImageView(QtWidgets.QWidget):
-        """内部绘图区，处理图像渲染和对比线拖拽"""
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
-        def __init__(self, parent):
-            super().__init__(parent)
-            self.parent_widget = parent
-            self._slider_pos = 0.5
-            self._is_dragging = False
-            self.setMouseTracking(True)
+        rect = self.rect()
+        # 无图像时绘制深色背景
+        if not self.p._image_a and not self.p._image_b:
+            painter.fillRect(rect, QColor(25, 25, 25))
+            painter.setPen(QColor(80, 80, 80))
+            painter.drawText(rect, Qt.AlignCenter, "No Image Data")
+            return
 
-        def mousePressEvent(self, event):
-            if event.button() == Qt.LeftButton:
-                slider_x = int(self.width() * self._slider_pos)
-                if abs(event.x() - slider_x) < 20:
-                    self._is_dragging = True
-                    self.update()
+        # 确定层级
+        img_base = self.p._image_a if not self.p._swap_layers else self.p._image_b
+        img_top = self.p._image_b if not self.p._swap_layers else self.p._image_a
 
-        def mouseMoveEvent(self, event):
-            slider_x = int(self.width() * self._slider_pos)
-            if abs(event.x() - slider_x) < 10 or self._is_dragging:
-                self.setCursor(Qt.SplitHCursor)
-            else:
-                self.setCursor(Qt.ArrowCursor)
+        # 计算保持比例的绘图区域 (Letterbox)
+        ref_img = img_base or img_top
+        img_size = ref_img.size()
+        img_size.scale(rect.size(), Qt.KeepAspectRatio)
 
-            if self._is_dragging:
-                pos = event.x() / float(self.width())
-                self._slider_pos = max(0.0, min(1.0, pos))
-                self.update()
+        draw_rect = QRect(
+            (rect.width() - img_size.width()) // 2,
+            (rect.height() - img_size.height()) // 2,
+            img_size.width(),
+            img_size.height()
+        )
 
-        def mouseReleaseEvent(self, event):
-            self._is_dragging = False
+        # 1. 绘制底层
+        if img_base:
+            painter.drawImage(draw_rect, img_base)
+
+        # 2. 绘制顶层（带裁剪和透明度）
+        if img_top:
+            # 分割线 X 坐标基于 draw_rect 宽度计算
+            slider_x_in_draw = int(draw_rect.width() * self._slider_pos)
+            abs_slider_x = draw_rect.x() + slider_x_in_draw
+
+            painter.save()
+            painter.setOpacity(self.p._opacity)
+            # 裁剪区：从当前的 slider 位置裁剪到控件最右侧
+            clip_rect = QRect(abs_slider_x, 0, rect.width() - abs_slider_x, rect.height())
+            painter.setClipRect(clip_rect)
+            painter.drawImage(draw_rect, img_top)
+            painter.restore()
+
+            # 3. 绘制分割线
+            line_color = QColor(0, 180, 255) if self._is_dragging else QColor(255, 255, 255, 180)
+            painter.setPen(QPen(line_color, 2))
+            painter.drawLine(abs_slider_x, draw_rect.y(), abs_slider_x, draw_rect.bottom())
+
+            # 4. 绘制对比手柄
+            center_y = draw_rect.center().y()
+            painter.setBrush(line_color)
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(QPoint(abs_slider_x, center_y), 8, 8)
+            painter.setPen(QPen(Qt.black, 2))
+            painter.drawLine(abs_slider_x - 4, center_y, abs_slider_x + 4, center_y)
+
+    def mouseMoveEvent(self, event):
+        # 将鼠标坐标转换为 0-1 的比例
+        if self._is_dragging:
+            pos = event.x() / float(self.width() if self.width() > 0 else 1)
+            self.p.view._slider_pos = max(0.0, min(1.0, pos))
             self.update()
 
-        def paintEvent(self, event):
-            painter = QPainter(self)
-            painter.setRenderHint(QPainter.Antialiasing)
-            painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        # 改变光标形状
+        slider_x = int(self.width() * self._slider_pos)
+        if abs(event.x() - slider_x) < 15:
+            self.setCursor(Qt.SplitHCursor)
+        else:
+            self.setCursor(Qt.ArrowCursor)
 
-            rect = self.rect()
-            if not self.parent_widget._image_a and not self.parent_widget._image_b:
-                painter.fillRect(rect, QColor(30, 30, 30))
-                return
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._is_dragging = True
+            self.update()
 
-            # 决定层级
-            if not self.parent_widget._swap_layers:
-                base_img, top_img = self.parent_widget._image_a, self.parent_widget._image_b
-            else:
-                base_img, top_img = self.parent_widget._image_b, self.parent_widget._image_a
+    def mouseReleaseEvent(self, event):
+        self._is_dragging = False
+        self.update()
 
-            # 1. 绘制底层图像
-            if base_img:
-                painter.drawImage(rect, base_img)
 
-            # 2. 绘制顶层图像（带裁剪和透明度）
-            if top_img:
-                slider_x = int(rect.width() * self._slider_pos)
-                painter.save()
-                painter.setOpacity(self.parent_widget._opacity)
-                clip_rect = QRect(slider_x, 0, rect.width() - slider_x, rect.height())
-                painter.setClipRect(clip_rect)
-                painter.drawImage(rect, top_img)
-                painter.restore()
-
-                # 3. 绘制分割线
-                line_color = QColor(0, 180, 255) if self._is_dragging else QColor(255, 255, 255, 200)
-                pen = QPen(line_color, 2)
-                painter.setPen(pen)
-                painter.drawLine(slider_x, 0, slider_x, rect.height())
-
-                # 4. 绘制手柄（圆形 + 横线）
-                center_y = rect.height() // 2
-                handle_radius = 10
-
-                # 圆形背景
-                painter.setBrush(line_color)
-                painter.setPen(Qt.NoPen)
-                painter.drawEllipse(QPoint(slider_x, center_y), handle_radius, handle_radius)
-
-                # 中间横线（专业对比风格）
-                painter.setPen(QPen(Qt.black, 2))  # 黑色横线，增强对比；可按需调整颜色/粗细
-                line_length = 8
-                painter.drawLine(
-                    slider_x - line_length // 2,
-                    center_y,
-                    slider_x + line_length // 2,
-                    center_y
-                )
+class ImageCompareWidget(QtWidgets.QWidget):
+    valueChanged = QtCore.pyqtSignal(object)
+    sizeHintChanged = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -108,112 +117,90 @@ class ImageCompareWidget(QtWidgets.QWidget):
         self._image_b = None
         self._opacity = 1.0
         self._swap_layers = False
+        self._hint_size = QSize(250, 180)
 
-        self._min_width = 200
-        self._max_width = 500
-        self._current_size = QSize(200, 150)
-
-        # UI 布局
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
 
-        # 1. 控制栏 (当图片无效或只有一张时隐藏)
+        # 1. 控制栏
         self.ctrl_bar = QtWidgets.QWidget()
         self.ctrl_bar.setFixedHeight(30)
-        self.ctrl_bar.setStyleSheet("background: rgba(40, 40, 40, 150);")
+        self.ctrl_bar.setStyleSheet("background: rgba(45, 45, 45, 220); border-bottom: 1px solid #111;")
         ctrl_layout = QtWidgets.QHBoxLayout(self.ctrl_bar)
-        ctrl_layout.setContentsMargins(5, 0, 5, 0)
+        ctrl_layout.setContentsMargins(8, 0, 8, 0)
 
         self.btn_swap = PushButton("交换图片")
         self.btn_swap.setCheckable(True)
         self.btn_swap.setFixedWidth(50)
-        self.btn_swap.setStyleSheet("font-size: 10px; height: 18px; color: white;")
+        self.btn_swap.setStyleSheet("font-size: 9px; height: 18px; color: white;")
         self.btn_swap.toggled.connect(self.set_swap)
 
-        slider_label = BodyLabel("透明度:")
-        slider_label.setStyleSheet("font-size: 10px; color: white;")
         self.slider_opacity = QtWidgets.QSlider(Qt.Horizontal)
         self.slider_opacity.setRange(0, 100)
         self.slider_opacity.setValue(100)
         self.slider_opacity.setFixedHeight(15)
         self.slider_opacity.valueChanged.connect(self._on_opacity_changed)
+
         ctrl_layout.addWidget(self.btn_swap)
-        ctrl_layout.addWidget(slider_label)
+        ctrl_layout.addWidget(StrongBodyLabel("透明度:", self))
         ctrl_layout.addWidget(self.slider_opacity)
 
         # 2. 图像视图区
-        self.view = self.ImageView(self)
+        self.view = ImageView(self)
 
         self.layout.addWidget(self.ctrl_bar)
         self.layout.addWidget(self.view)
 
-        self.ctrl_bar.setVisible(False)  # 初始隐藏
+        self.ctrl_bar.setVisible(False)
 
     def _convert_to_qimage(self, data):
         if data is None: return None
         try:
-            if isinstance(data, str):
-                return QImage(data)
+            if isinstance(data, str) and os.path.exists(data): return QImage(data)
             if isinstance(data, np.ndarray):
                 h, w = data.shape[:2]
-                if data.ndim == 2:
-                    return QImage(data.data, w, h, w, QImage.Format_Grayscale8).copy()
-                else:
-                    c = data.shape[2]
-                    fmt = QImage.Format_RGB888 if c == 3 else QImage.Format_RGBA8888
-                    return QImage(data.data, w, h, c * w, fmt).copy()
-            elif isinstance(data, Image.Image):
+                fmt = QImage.Format_Grayscale8 if data.ndim == 2 else (
+                    QImage.Format_RGB888 if data.shape[2] == 3 else QImage.Format_RGBA8888)
+                step = w if data.ndim == 2 else data.shape[2] * w
+                return QImage(data.data, w, h, step, fmt).copy()
+            if isinstance(data, Image.Image):
                 rgb_img = data.convert('RGBA')
                 return QImage(rgb_img.tobytes(), data.size[0], data.size[1], QImage.Format_RGBA8888).copy()
-            elif isinstance(data, QImage):
-                return data
-            elif isinstance(data, QPixmap):
-                return data.toImage()
-            return None
-        except Exception as e:
-            print(f"Convert Error: {e}")
-            return None
+            if isinstance(data, QImage): return data
+            if isinstance(data, QPixmap): return data.toImage()
+        except:
+            pass
+        return None
 
     def set_value(self, data):
-        """设置数据，控制交互按钮显隐"""
-        has_two_images = False
+        """完全重置并设置新图"""
+        self._image_a = None
+        self._image_b = None
+        has_two = False
+
         if isinstance(data, (list, tuple)) and len(data) >= 2:
             self._image_a = self._convert_to_qimage(data[0])
             self._image_b = self._convert_to_qimage(data[1])
-            if self._image_a and self._image_b:
-                has_two_images = True
-        else:
+            if self._image_a and self._image_b: has_two = True
+        elif data is not None:
             self._image_a = self._convert_to_qimage(data)
-            self._image_b = None
 
-        # 控制交互按钮显隐
-        self.ctrl_bar.setVisible(has_two_images)
+        self.ctrl_bar.setVisible(has_two)
 
-        # 计算尺寸
-        ref_img = self._image_a or self._image_b
-
-        # --- 修改开始 ---
-        if ref_img and not ref_img.isNull():
-            # 有图片时：显示控件并计算尺寸
-            self.setVisible(True)
-
-            orig_size = ref_img.size()
-            target_w = max(self._min_width, min(orig_size.width(), self._max_width))
-            scale_ratio = target_w / float(orig_size.width())
-            target_h = int(orig_size.height() * scale_ratio)
-            # 总高度 = 图片高度 + 控制栏高度(如果显示)
-            total_h = target_h + (30 if has_two_images else 0)
-            self._current_size = QSize(target_w, total_h)
+        # 初始尺寸建议
+        ref = self._image_a or self._image_b
+        if ref:
+            ratio = ref.width() / float(ref.height())
+            target_h = 200
+            self._hint_size = QSize(int(target_h * ratio), target_h + (30 if has_two else 0))
         else:
-            # 无图片时：隐藏控件并将尺寸设为 0
-            self.setVisible(False)
-            self._current_size = QSize(0, 0)
-        # --- 修改结束 ---
+            self._hint_size = QSize(250, 180)
 
-        self.setFixedSize(self._current_size)
         self.updateGeometry()
-        self.sizeHintChanged.emit()  # 通知 NodeGraphQt 更新节点形状
+        self.sizeHintChanged.emit()
+        self.view.update()
+        self.valueChanged.emit(data)
 
     def set_swap(self, state):
         self._swap_layers = state
@@ -224,7 +211,7 @@ class ImageCompareWidget(QtWidgets.QWidget):
         self.view.update()
 
     def sizeHint(self):
-        return self._current_size
+        return self._hint_size
 
 
 class ImageCompareWrapper(CustomNodeBaseWidget):
@@ -233,22 +220,27 @@ class ImageCompareWrapper(CustomNodeBaseWidget):
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
         self.set_label_visible(False)
-        self.widget = ImageCompareWidget(parent=window)
-        self.set_custom_widget(self.widget)
+
+        # 实例化控件
+        self.custom_widget = ImageCompareWidget(parent=window)
+        # 包装类也要设置 Expanding 策略
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+
+        self.set_custom_widget(self.custom_widget)
 
         if default:
-            self.widget.set_value(default)
+            self.custom_widget.set_value(default)
 
-        self.widget.sizeHintChanged.connect(self._update_node)
+        self.custom_widget.sizeHintChanged.connect(self._update_node)
 
     def _update_node(self):
         if self.node and self.node.graph is not None:
-            self.node.view.set_proxy_mode(False)
+            # 这里的 draw_node() 会触发 ProxyWidget 重新根据内容调整节点高度
             self.node.view.draw_node()
 
     def set_value(self, value):
-        self.get_custom_widget().set_value(value)
+        self.custom_widget.set_value(value)
 
     def get_value(self):
-        w = self.get_custom_widget()
+        w = self.custom_widget
         return (w._image_a, w._image_b, w._opacity, w._swap_layers)

@@ -42,6 +42,7 @@ class LongTextEditorDialog(MessageBoxBase):
 class LongTextWidget(QtWidgets.QWidget):
     """节点内显示：摘要 + 编辑按钮"""
     valueChanged = QtCore.Signal(str)
+    fixed_height = True
 
     def __init__(self, parent=None, default_text="", get_port_func=lambda: []):
         super().__init__(parent)

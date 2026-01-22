@@ -85,9 +85,21 @@ class NodeResizeHandle(QtWidgets.QGraphicsItem):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self._prev_pos = event.scenePos()
+            # 通知父节点进入缩放模式
+            node = self.parentItem()
+            if hasattr(node, '_is_resizing'):
+                node._is_resizing = True
             event.accept()
         else:
             super(NodeResizeHandle, self).mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            # 通知父节点退出缩放模式
+            node = self.parentItem()
+            if hasattr(node, '_is_resizing'):
+                node._is_resizing = False
+        super(NodeResizeHandle, self).mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
         if event.buttons() & QtCore.Qt.LeftButton:
@@ -271,6 +283,7 @@ class CustomNodeItem(NodeItem):
     ICON_NODE_BASE = ":/icons/同心圆.svg"
 
     def __init__(self, name='', parent=None):
+        self._is_resizing = False  # 初始化缩放状态锁
         super(CustomNodeItem, self).__init__(name, parent)
         self.setAcceptHoverEvents(True)
         self._is_collapsed = False
@@ -454,7 +467,6 @@ class CustomNodeItem(NodeItem):
             self._node.model.set_property('width', self._user_width)
             self._node.model.set_property('height', self._user_height)
 
-        self.size_changed.emit(self._user_width, self._user_height)
         self._draw_node_horizontal()
         self.update()
 
