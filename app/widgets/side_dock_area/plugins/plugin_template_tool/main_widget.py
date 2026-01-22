@@ -157,6 +157,7 @@ class PluginTemplateToolWindow(ToolWindow):
         # --- 滚动卡片列表 ---
         self.scroll_area = SingleDirectionScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setMinimumWidth(350)
         self.scroll_area.setStyleSheet("border: none; background: transparent;")
 
         self.container = QWidget()
