@@ -79,8 +79,6 @@ def load_localization(app,  language="en"):
     else:
         print(f"❌ 找不到翻译文件: {qm_path}")
 
-    test_text = QCoreApplication.translate("CanvasPage", "未命名工作流")
-    print(f"测试翻译结果: {test_text}")
 
 # ----------------------------
 # 启动应
@@ -88,7 +86,7 @@ def load_localization(app,  language="en"):
 if __name__ == '__main__':
     os.environ['PYTHONIOENCODING'] = 'utf-8'
     app = create_application()
-    load_localization(app)
+    # load_localization(app)
     # 创建并显示主窗口
     try:
         window = LowCodeWindow()

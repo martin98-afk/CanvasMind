@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
-import sys
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import QSize, Qt, QTimer, QTranslator, QLocale
+from PyQt5.QtCore import QSize, Qt, QTimer
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QPlainTextEdit, QApplication, QDesktopWidget
 from loguru import logger
@@ -21,7 +20,7 @@ from app.interfaces.home_interface import HomeInterface
 from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
-from app.interfaces.workflow_manager import WorkflowCanvasGalleryPage
+from app.interfaces.workflow_manager_interface.main_widget import WorkflowCanvasGalleryPage
 from app.plugins.plugin_manager import NodePluginManager
 
 # --- 核心服务 ---

@@ -9,8 +9,9 @@ from PyQt5.QtWidgets import QUndoCommand
 from qtpy import QtCore
 
 from app.nodes.status_node import StatusNode
-from app.utils.utils import draw_square_port, resource_path, topological_sort
+from app.utils.utils import resource_path, topological_sort
 from app.widgets.custom_nodegraphqt.custom_backdrop_item import ControlFlowBackdropNodeItem
+from app.widgets.custom_nodegraphqt.custom_port_item import draw_square_port
 
 
 # ──────────────── Undo/Redo Command ────────────────

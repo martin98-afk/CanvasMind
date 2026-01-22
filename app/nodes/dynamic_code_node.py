@@ -15,7 +15,7 @@ from app.components.base import PropertyType, GlobalVariableContext, ArgumentTyp
 from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.glue_code_templates import GLUE_CODE_TEMPLATES
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
-from app.utils.utils import draw_special_outputport, _safe_load_pickle, \
+from app.utils.utils import _safe_load_pickle, \
     kill_proc_tree, sftp_download_dir, replace_remote_paths, sftp_upload_dir
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.propeprty_widgets.code_editor_widget import CodeEditorWidgetWrapper
@@ -24,7 +24,7 @@ from app.widgets.node_widget.propeprty_widgets.dynamic_form_widget import Dynami
 from .status_node import StatusNode
 from ..templates.node_cleanup_script import CLEANUP_CODE
 from ..widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
-
+from ..widgets.custom_nodegraphqt.custom_port_item import draw_special_outputport
 
 _TEMP_COMPONENT_TEMPLATE = '''{import_code}class DynamicComponent(BaseComponent):
     name = "动态代码组件"

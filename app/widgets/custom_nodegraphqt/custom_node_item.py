@@ -6,9 +6,11 @@ from NodeGraphQt.constants import (
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_base import NodeItem
 from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
+from NodeGraphQt.qgraphics.port import CustomPortItem, PortItem
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 from app.utils.config import Settings
+from app.widgets.custom_nodegraphqt.custom_port_item import GlowPortItem
 
 # ==============================================================================
 # 高级感配色常量 (ComfyUI Style)
@@ -708,3 +710,57 @@ class CustomNodeItem(NodeItem):
             # 如果处于自动模式，调用 _draw_node_horizontal 会自动收缩
             self._draw_node_horizontal()
             self.update()
+
+    def add_input(self, name='input', multi_port=False, display_name=True,
+                  locked=False, painter_func=None):
+        """
+        Adds a port qgraphics item into the node with the "port_type" set as
+        IN_PORT.
+
+        Args:
+            name (str): name for the port.
+            multi_port (bool): allow multiple connections.
+            display_name (bool): display the port name.
+            locked (bool): locked state.
+            painter_func (function): custom paint function.
+
+        Returns:
+            PortItem: input port qgraphics item.
+        """
+        if painter_func:
+            port = CustomPortItem(self, painter_func)
+        else:
+            port = GlowPortItem(self)
+        port.name = name
+        port.port_type = PortTypeEnum.IN.value
+        port.multi_connection = multi_port
+        port.display_name = display_name
+        port.locked = locked
+        return self._add_port(port)
+
+    def add_output(self, name='output', multi_port=False, display_name=True,
+                   locked=False, painter_func=None):
+        """
+        Adds a port qgraphics item into the node with the "port_type" set as
+        OUT_PORT.
+
+        Args:
+            name (str): name for the port.
+            multi_port (bool): allow multiple connections.
+            display_name (bool): display the port name.
+            locked (bool): locked state.
+            painter_func (function): custom paint function.
+
+        Returns:
+            PortItem: output port qgraphics item.
+        """
+        if painter_func:
+            port = CustomPortItem(self, painter_func)
+        else:
+            port = GlowPortItem(self)
+        port.name = name
+        port.port_type = PortTypeEnum.OUT.value
+        port.multi_connection = multi_port
+        port.display_name = display_name
+        port.locked = locked
+        return self._add_port(port)
