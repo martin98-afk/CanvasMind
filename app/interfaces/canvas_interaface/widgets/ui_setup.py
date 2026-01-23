@@ -228,21 +228,16 @@ class CanvasUISetUp:
         self.name_container = QWidget(self.parent.canvas_widget)
         self.name_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
 
-        name_label = LineEdit(self.name_container)
-        name_label.setStyleSheet(
+        self.name_label = LineEdit(self.name_container)
+        self.name_label.setStyleSheet(
             "LineEdit { background: transparent; border: none; color: white; font-size: 18px; font-weight: bold; }")
-        name_label.setText(self.parent.workflow_name)
-        name_label.textChanged.connect(self.update_workflow_name)
+        self.name_label.setText(self.parent.workflow_name)
+        self.name_label.setReadOnly(True)
 
         layout = QHBoxLayout(self.name_container)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(name_label)
+        layout.addWidget(self.name_label)
         self.name_container.show()
-        self.update_position()
-
-    def update_workflow_name(self, text):
-        self.parent.workflow_name = text
-        # 实时重排
         self.update_position()
 
     def _refresh_quick_buttons(self):

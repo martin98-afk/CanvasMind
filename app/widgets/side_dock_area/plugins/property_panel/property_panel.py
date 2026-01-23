@@ -3,8 +3,8 @@ from collections import OrderedDict
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QPropertyAnimation, QRect, QParallelAnimationGroup, QEasingCurve, pyqtProperty, \
-    pyqtSignal, QTimer, QPointF, QRectF
-from PyQt5.QtGui import QPainter, QColor, QLinearGradient, QBrush, QPen, QFont, QPainterPath
+    pyqtSignal, QTimer, QRectF
+from PyQt5.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath
 from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame, QGraphicsOpacityEffect)
 from qfluentwidgets import SmoothScrollArea, StrongBodyLabel, IconWidget, FluentIcon, TransparentToolButton
 

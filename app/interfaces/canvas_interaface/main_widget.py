@@ -106,7 +106,7 @@ class CanvasPage(QWidget):
         self.node_operations.setup_context_menu()
 
         # 6. 延迟启动内核 (内核启动最慢，建议按需启动或延迟500ms)
-        QTimer.singleShot(500, self.connect_kernel)
+        self.connect_kernel()
         self.ui_manager.update_position()
 
     @property
@@ -270,12 +270,12 @@ class CanvasPage(QWidget):
             return
         return self.node_operations.select_nodes_by_name(name_list)
 
-    def connect_kernel(self, python_exe):
+    def connect_kernel(self):
         # 直接通过 runner 获取当前画布对应的主 ID 并启动
-        if python_exe and self.env_data.get("type") != "ssh":
+        if self.env_data and self.env_data.get("type") != "ssh":
             main_id = self.get_console_id()
             self.ipython_kernel.stop_kernel(main_id)
-            self.ipython_kernel.start_kernel(python_exe, console_id=main_id)
+            self.ipython_kernel.start_kernel(self.env_data.get("path"), console_id=main_id)
 
     def run_from(self, node):
         self.canvas_runner.run_from(node)
