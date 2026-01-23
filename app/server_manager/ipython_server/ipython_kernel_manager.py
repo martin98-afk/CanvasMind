@@ -15,6 +15,11 @@ class IPythonKernelManager:
 
     def start_kernel(self, python_exe_path=None):
         import os
+        # 如果已经启动，健康且pythonexe 路径一致，则不重新启动，重新启动必须先手动调用shutdown_kernel，再start_kernel方便管理
+        if python_exe_path and (self.python_exe_path != python_exe_path or not self.is_alive()):
+            self.shutdown_kernel()
+        else:
+            return True
         if python_exe_path:
             self.python_exe_path = python_exe_path
 
@@ -24,8 +29,6 @@ class IPythonKernelManager:
 
         if not self.python_exe_path or not os.path.exists(self.python_exe_path):
             raise ValueError(f"Python解释器路径不存在: {self.python_exe_path}")
-
-        self.shutdown_kernel()
 
         try:
             from qtconsole.manager import QtKernelManager
@@ -158,6 +161,13 @@ class MultiKernelManager:
         kernel = self.get_kernel(kernel_id)
         if kernel:
             return kernel.execute_code(code, hidden)
+        raise ValueError(f"Kernel {kernel_id} not found")
+
+    def interrupt_kernel(self, kernel_id):
+        """中断指定内核"""
+        kernel = self.get_kernel(kernel_id)
+        if kernel:
+            return kernel.interrupt_kernel()
         raise ValueError(f"Kernel {kernel_id} not found")
 
     def shutdown_kernel(self, kernel_id):

@@ -466,8 +466,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                                               kernel_manager)
                 else:
                     self._execute_via_subprocess(python_exe, local_script_path, log_file_path, check_cancel)
-
-
             try:
                 if os.path.exists(result_path):
                     output = _safe_load_pickle(result_path)
@@ -618,7 +616,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
                 # 6. 清理
                 ssh.exec_command(f"rm -rf {remote_run_dir}")
-
+                self._log_message(self.persistent_id, "✅ 节点在ssh远程环境执行完成")
             except Exception as e:
                 raise Exception(f"远程执行失败: {str(e)}")
             finally:
@@ -680,7 +678,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                     kernel_manager.interrupt_kernel()
                     raise Exception(f"❌ 节点执行超时（{self.timeout_seconds} 秒）")
                 time.sleep(0.1)
-            self._log_message(self.persistent_id, "✅ 节点执行完成")
+            self._log_message(self.persistent_id, "✅ 节点在ipython环境执行完成")
 
         def _execute_via_subprocess(
                 self, python_executable, temp_script_path, log_file_path, check_cancel

@@ -3,8 +3,8 @@ from collections import OrderedDict
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QPropertyAnimation, QRect, QParallelAnimationGroup, QEasingCurve, pyqtProperty, \
-    pyqtSignal, QTimer, QPointF, QRectF
-from PyQt5.QtGui import QPainter, QColor, QLinearGradient, QBrush, QPen, QFont, QPainterPath
+    pyqtSignal, QTimer, QRectF
+from PyQt5.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath
 from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame, QGraphicsOpacityEffect)
 from qfluentwidgets import SmoothScrollArea, StrongBodyLabel, IconWidget, FluentIcon, TransparentToolButton
 
@@ -425,7 +425,6 @@ class PropertyPanel(QWidget):
         if self.global_panel_widget: self.global_panel_widget.copy_as_expression(prefix, var_name)
 
     def _add_output_to_global_variable(self, node, port_name):
-        self.update_properties(None)
         self.global_panel_widget.add_output_to_global_var(self.main_window, node, port_name)
 
     def _delete_output_from_global_variable(self, node, port_name):
