@@ -1,70 +1,19 @@
-import json
 import os
-import time
+import os
 import traceback
 from pathlib import Path
 
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt, QRectF, QRunnable, pyqtSlot, QEventLoop
+from PyQt5.QtCore import QObject, pyqtSignal, Qt, QRectF, pyqtSlot, QEventLoop
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QProgressDialog, QApplication, QGraphicsProxyWidget, QLabel
+from PyQt5.QtWidgets import QApplication, QGraphicsProxyWidget, QLabel, QProgressDialog
 
 from app.scan_components import ComponentScanner
-from app.utils.utils import serialize_for_json, deserialize_from_json
 from .logger import get_logger
-from .utils import WorkflowLoader
+from .utils import WorkflowLoader, SaveTask, FinishLoadingWorker, FinishLoadingTask
 from ..widgets.message_manager import MessageManager
 from ..widgets.progress_overlay import ModernProgressOverlay
 
 logger = get_logger("CanvasIO")
-
-
-# ────────────────────────────────
-# 辅助类：用于在线程间传递结果
-# ────────────────────────────────
-class FinishLoadingWorker(QObject):
-    finished = pyqtSignal(object, object)  # (restored_data: dict | None, target_env: str | None)
-
-
-class FinishLoadingTask(QRunnable):
-    def __init__(self, graph, runtime_data, node_status_data, worker: FinishLoadingWorker):
-        super().__init__()
-        self.graph = graph
-        self.runtime_data = runtime_data
-        self.node_status_data = node_status_data
-        self.worker = worker
-
-    @pyqtSlot()
-    def run(self):
-        try:
-            target_env = self.runtime_data.get("environment")
-
-            restored = {}
-            for node in self.graph.all_nodes():
-                full_path = getattr(node, 'FULL_PATH', 'unknown')
-                node_comp_cls = ComponentScanner().get_component(full_path)
-                stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"
-
-                ns = self.node_status_data.get(stable_key, {})
-                node_inputs = ns.get("node_inputs", {}) or {}
-                node_outputs = ns.get("node_outputs", {}) or {}
-                column_select = ns.get("column_select", {}) or {}
-                status_str = ns.get("node_states", "unrun") or "unrun"
-
-                input_vals = deserialize_from_json(node_inputs)
-                output_vals = deserialize_from_json(node_outputs)
-
-                restored[node.id] = {
-                    "input_values": input_vals,
-                    "output_values": output_vals,
-                    "column_select": column_select,
-                    "status_str": status_str,
-                }
-
-            self.worker.finished.emit(restored, target_env)
-
-        except Exception as e:
-            logger.error(f"FinishLoadingTask failed: {traceback.format_exc()}")
-            self.worker.finished.emit(None, None)
 
 
 # ────────────────────────────────
@@ -76,56 +25,109 @@ class CanvasIO(QObject):
 
     def __init__(self, graph, global_variables, parent):
         super().__init__(parent)
-        self.canvas_env = None  # 用于恢复画布保存时的env环境
+        self.canvas_env = None
         self.graph = graph
         self.global_variables = global_variables
         self.parent = parent
         self.node_status = parent.node_status
+        self._save_progress = None  # 保存进度的遮罩引用
 
     def save_full_workflow(self, file_path, show_info=True):
-        graph_data = self.graph.serialize_session()
-        for node_data in graph_data["nodes"].values():
-            node_data["custom"].pop("global_variable", None)
+        """
+        优化后的保存流程：
+        1. 主线程：提取数据 (Data Extraction)
+        2. 子线程：序列化与写入 (Serialization & IO)
+        3. 主线程：生成缩略图并提示 (Callback)
+        """
+        logger.info(f"开始准备保存数据: {file_path}")
 
-        runtime = {
-            "environment": self.parent.environment_manager.env_combo.currentData(),
-            "environment_exe": self.parent.environment_manager.get_current_python_exe(),
-            "node_id2stable_key": {},
-            "node_states": {},
-            "node_inputs": {},
-            "node_outputs": {},
-            "column_select": {}
-        }
-        for node in self.graph.all_nodes():
-            node_comp_cls = ComponentScanner().get_component(getattr(node, 'FULL_PATH', 'unknown'))
-            stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"
-            runtime["node_id2stable_key"][node.id] = stable_key
-            runtime["node_states"][stable_key] = self.node_status.get(node.id, "unrun")
-            runtime["node_inputs"][stable_key] = getattr(node, '_input_values', {})
-            runtime["node_outputs"][stable_key] = getattr(node, '_output_values', {})
-            runtime["column_select"][stable_key] = getattr(node, 'column_select', {})
-        full_data = {
-            "version": "1.0",
-            "graph": graph_data,
-            "runtime": runtime,
-            "global_variable": self.global_variables.serialize()
-        }
-        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
-        time.sleep(0.1)
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(serialize_for_json(full_data), f, indent=2, ensure_ascii=False)
+        # [步骤1] 主线程提取数据
+        # 必须在主线程执行，因为涉及访问 QGraphicsItem 等 UI 对象
+        try:
+            QApplication.processEvents()  # 强制刷新一下UI显示遮罩
 
-        QTimer.singleShot(100, lambda: self.do_generate_thumbnail(file_path))
-        if show_info:
-            MessageManager.success("保存成功", "工作流保存成功！", self.parent)
+            graph_data = self.graph.serialize_session()
+            for node_data in graph_data["nodes"].values():
+                node_data["custom"].pop("global_variable", None)
+
+            runtime = {
+                "environment": self.parent.environment_manager.env_combo.currentData(),
+                "environment_exe": self.parent.environment_manager.get_current_python_exe(),
+                "node_id2stable_key": {},
+                "node_states": {},
+                "node_inputs": {},
+                "node_outputs": {},
+                "column_select": {}
+            }
+
+            # 这一步循环通常很快，除非节点成千上万，否则不需要移出
+            for node in self.graph.all_nodes():
+                node_comp_cls = ComponentScanner().get_component(getattr(node, 'FULL_PATH', 'unknown'))
+                stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"
+                runtime["node_id2stable_key"][node.id] = stable_key
+                runtime["node_states"][stable_key] = self.node_status.get(node.id, "unrun")
+
+                # 这里的 _input_values 可能很大，但这里只是引用传递，很快
+                runtime["node_inputs"][stable_key] = getattr(node, '_input_values', {})
+                runtime["node_outputs"][stable_key] = getattr(node, '_output_values', {})
+                runtime["column_select"][stable_key] = getattr(node, 'column_select', {})
+
+            full_data = {
+                "version": "1.0",
+                "graph": graph_data,
+                "runtime": runtime,
+                "global_variable": self.global_variables.serialize()
+            }
+
+        except Exception as e:
+            if self._save_progress:
+                self._save_progress.close()
+            logger.error(f"保存前数据准备失败: {e}")
+            MessageManager.error("保存失败", f"数据准备错误: {e}", self.parent)
+            return
+
+        # [步骤2] 启动子线程进行 JSON 序列化和 IO
+        save_task = SaveTask(file_path, full_data)
+        # 传递 show_info 参数给回调
+        save_task.signals.finished.connect(lambda: self._on_save_finished(file_path, show_info))
+        save_task.signals.error.connect(self._on_save_error)
+
+        # 启动线程池
+        self.parent.thread_pool.start(save_task)
+
+    @pyqtSlot(str, bool)
+    def _on_save_finished(self, file_path, show_info):
+        """保存成功后的回调（主线程）"""
+        try:
+            # [步骤3] 生成缩略图 (必须在主线程，因为涉及 render)
+            # 此时文件已保存完毕，UI 仍然被遮罩锁住
+            self.do_generate_thumbnail(file_path)
+
+            if show_info:
+                MessageManager.success("保存成功", "工作流保存成功！", self.parent)
+
+        except Exception as e:
+            logger.error(f"保存后处理失败: {e}")
+        finally:
+            if self._save_progress:
+                self._save_progress.close()
+                self._save_progress = None
+
+    @pyqtSlot(str)
+    def _on_save_error(self, error_msg):
+        """保存失败的回调"""
+        if self._save_progress:
+            self._save_progress.close()
+            self._save_progress = None
+        MessageManager.error("保存失败", f"写入文件错误: {error_msg}", self.parent)
 
     def do_generate_thumbnail(self, workflow_path):
-        """在主线程中安全生成缩略图（临时替换 WebEngineView）"""
-
+        """在主线程中安全生成缩略图"""
         scene = self.graph.viewer().scene()
         chart_widgets_backup = {}
 
         try:
+            # 临时替换复杂的控件为占位符，避免截图时崩溃或渲染错误
             for node in self.graph.all_nodes():
                 if node.model.type_.startswith("visualize"):
                     view = node.view
@@ -133,17 +135,15 @@ class CanvasIO(QObject):
                         if isinstance(item, QGraphicsProxyWidget):
                             proxy = item
                             original_widget = proxy.widget()
-                            if original_widget and hasattr(original_widget, 'view') and hasattr(original_widget.view, 'page'):
+                            # 简单的 duck typing 检查
+                            if original_widget and hasattr(original_widget, 'view'):
                                 placeholder = QLabel("[图表预览]")
                                 placeholder.setAlignment(Qt.AlignCenter)
-                                placeholder.setStyleSheet("""
-                                    background: #2a2a2a;
-                                    color: #aaa;
-                                    border: 1px solid #444;
-                                """)
+                                placeholder.setStyleSheet("background: #2a2a2a; color: #aaa; border: 1px solid #444;")
                                 chart_widgets_backup[proxy] = original_widget
                                 proxy.setWidget(placeholder)
 
+            # 计算包围盒
             rect = QRectF()
             for node in self.graph.all_nodes():
                 item_rect = node.view.sceneBoundingRect()
@@ -167,8 +167,8 @@ class CanvasIO(QObject):
 
         except Exception as e:
             logger.error(f"缩略图生成失败: {e}")
-            return ""
         finally:
+            # 恢复原始控件
             for proxy, original_widget in chart_widgets_backup.items():
                 proxy.setWidget(original_widget)
 
@@ -177,6 +177,9 @@ class CanvasIO(QObject):
             logger.info(f"✅ 预览图已保存: {png_path}")
             self.parent.canvas_saved.emit(self.parent.file_path)
 
+    # ────────────────────────────────
+    # 加载逻辑保持原样，或者你也可以在这里做同样的优化
+    # ────────────────────────────────
     def load_full_workflow(self, file_path):
         self.workflow_loader = WorkflowLoader(file_path, self.graph, self.parent.node_uuid_map)
         self.workflow_loader.finished.connect(
@@ -194,29 +197,45 @@ class CanvasIO(QObject):
                 self._start_finish_loading(runtime_data, node_status_data)
                 return
 
-            # --- 初始化进度条 ---
+            # ─────────────────────────────────────────────────────────────
+            # 修改点 1：替换为你的 ModernProgressOverlay
+            # ─────────────────────────────────────────────────────────────
             progress = ModernProgressOverlay(self.parent)
-            progress.bar.setMaximum(total_nodes)
-            progress.show()  # 这会触发 showEvent 自动居中
+            progress.set_maximum(total_nodes)  # 设置最大值
+            progress.set_text("正在加载节点...")
+
+            # 设置为模态，防止用户点到底下的窗口（和原版 setWindowModality(Qt.WindowModal) 一样）
+            progress.setWindowModality(Qt.WindowModal)
+            progress.show()
+
+            # 强制立即把进度条画出来，防止刚开始是个白框
+            QApplication.processEvents()
+            # ─────────────────────────────────────────────────────────────
 
             original_add_node = self.graph.add_node
-            # 使用列表或 nonlocal 记录数量
-            ctx = {"count": 0}
+            # 使用列表保持引用，和你原代码一致
+            count = [0]
 
             def patched_add_node(node, pos=None, inherite_graph_style=True):
-                # 核心加载
+                # 执行原始添加逻辑
                 result = original_add_node(node, pos, False, False, inherite_graph_style)
 
-                ctx["count"] += 1
-                curr = ctx["count"]
+                count[0] += 1
 
-                # 降低刷新频率：每 2% 更新一次 UI，避免频繁刷新导致的卡顿
-                update_step = max(1, total_nodes // 50)
-                if curr % update_step == 0 or curr == total_nodes:
-                    progress.set_value(curr)
-                    progress.set_text(f"正在生成节点 ({curr}/{total_nodes})...")
-                    # 关键：ExcludeUserInputEvents 防止用户在加载时乱点界面
-                    QApplication.processEvents(QEventLoop.ExcludeUserInputEvents)
+                # ─────────────────────────────────────────────────────────────
+                # 修改点 2：更新自定义控件并强制刷新
+                # ─────────────────────────────────────────────────────────────
+                progress.set_value(count[0])
+                progress.set_text(f"正在加载节点 ({count[0]}/{total_nodes})...")  # 可选：更新文字
+
+                # 【核心】自定义控件不像原生控件那么智能，
+                # 如果 processEvents 不够，repaint() 是强制命令：“现在立刻重绘自己，别等了”
+                progress.repaint()
+
+                # 你的原版代码里就有这句，这句非常重要，千万保留！
+                # 它让界面主循环有机会去处理上面的 repaint 请求
+                QApplication.processEvents()
+                # ─────────────────────────────────────────────────────────────
 
                 return result
 
@@ -225,13 +244,16 @@ class CanvasIO(QObject):
                 self.graph.deserialize_session(graph_data)
             finally:
                 self.graph.add_node = original_add_node
-                progress.close()
+                progress.close()  # 关闭自定义进度条
 
             self._start_finish_loading(runtime_data, node_status_data)
 
         except Exception as e:
             logger.error(f"❌ 加载失败: {traceback.format_exc()}")
             MessageManager.error("加载失败", f"工作流加载失败: {str(e)}", self.parent)
+            # 确保异常时进度条也能关掉
+            if 'progress' in locals():
+                progress.close()
 
     def _start_finish_loading(self, runtime_data, node_status_data):
         worker = FinishLoadingWorker()
@@ -244,7 +266,8 @@ class CanvasIO(QObject):
             worker=worker
         )
         task.setAutoDelete(True)
-        task.worker_ref = worker  # 防止 worker 被 GC
+        # 必须持有引用，否则 signals 可能会在槽函数执行前被垃圾回收
+        task.worker_ref = worker
 
         self.parent.thread_pool.start(task)
 

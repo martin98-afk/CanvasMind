@@ -25,7 +25,7 @@ class IPythonConsoleToolWindow(ToolWindow):
         self._main_console_mapping = {}
         layout.addWidget(self.console)
 
-    def get_or_create_main_console(self, workflow_id, name="Main"):
+    def get_or_create_main_console(self, workflow_id, env_name, name="Main"):
         """
         获取或创建指定工作流的主进程 ID。
         如果该工作流已经有关联的 ID，直接返回；否则新建一个。
@@ -37,7 +37,7 @@ class IPythonConsoleToolWindow(ToolWindow):
                 return cid
 
         # 创建新的主进程控制台
-        new_id = self.add_console(env_name=f"{name}")
+        new_id = self.add_console(env_name=env_name, tab_name=name, closable=False)
         self._main_console_mapping[workflow_id] = new_id
         return new_id
 
@@ -88,9 +88,9 @@ class IPythonConsoleToolWindow(ToolWindow):
 
     # --- 针对多控制台的新增快捷方法 ---
 
-    def add_console(self, env_name=None):
+    def add_console(self, env_name=None, tab_name=None, closable=True):
         """手动添加一个新控制台并返回其 ID"""
-        return self.console.add_new_console_tab(env_name=env_name)
+        return self.console.add_new_console_tab(env_name=env_name, tab_name=tab_name, closable=closable)
 
     def close_console_by_id(self, console_id):
         """供外部调用的关闭接口"""

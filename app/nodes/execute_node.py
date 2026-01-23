@@ -466,11 +466,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                                               kernel_manager)
                 else:
                     self._execute_via_subprocess(python_exe, local_script_path, log_file_path, check_cancel)
-
-
             try:
                 if os.path.exists(result_path):
-                    print(result_path)
                     output = _safe_load_pickle(result_path)
                     for port in comp_obj.outputs:
                         if port.type != ArgumentType.UPLOAD:

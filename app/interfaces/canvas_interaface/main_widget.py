@@ -77,7 +77,7 @@ class CanvasPage(QWidget):
         self.environment_manager = EnvironmentManager(self)
 
         # 2. 运行控制逻辑
-        self.canvas_runner = CanvasRunner(self.get_current_python_exe, self)
+        self.canvas_runner = CanvasRunner(self)
         self.multi_runner = CanvasMultiRunner(self)
 
         # 3. 辅助工具
@@ -210,10 +210,7 @@ class CanvasPage(QWidget):
 
     def get_console_id(self):
         workflow_id = str(self.file_path) if self.file_path else self.objectName()
-        return self.ipython_kernel.get_or_create_main_console(
-            workflow_id,
-            name=self.workflow_name
-        )
+        return self.ipython_kernel.get_or_create_main_console(workflow_id, self.env_data.get("name"))
 
     def rename_node_vars(self, old_name, new_name):
         old_name = re.sub(r'\s+', '_', old_name)

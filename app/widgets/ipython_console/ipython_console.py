@@ -4,7 +4,7 @@ from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
     QLabel, QVBoxLayout, QWidget, QStackedWidget
 )
-from qfluentwidgets import TabBar, ComboBox, CommandBar, Action, FluentIcon
+from qfluentwidgets import TabBar, ComboBox, CommandBar, Action, FluentIcon, TabCloseButtonDisplayMode
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
 from app.server_manager.ipython_server.ipython_kernel_manager import IPythonKernelManager
@@ -204,7 +204,7 @@ class IPythonConsoleManager(QWidget):
             self.var_explorer.set_kernel_manager(kernel_manager)
             self.var_explorer.start_auto_refresh()
 
-    def add_new_console_tab(self, env_name=None):
+    def add_new_console_tab(self, env_name=None, tab_name=None, closable=True):
         """
         创建新控制台标签
         :param env_name: 可选，指定环境名称（需存在于 package_manager 中）
@@ -222,28 +222,17 @@ class IPythonConsoleManager(QWidget):
             console_widget.env_selector.combo.setCurrentText(env_name)
 
         initial_env = console_widget.env_selector.combo.currentText()
-        tab_title = f"Console ({initial_env})" if initial_env else "Console"
+        tab_title = f"{tab_name} ({initial_env})" if tab_name else f"Console {initial_env}"
 
         index = self.stacked_widget.addWidget(console_widget)
         # 在 qfluentwidgets 中，routeKey 存储在 TabItem 中
-        self.tab_bar.addTab(routeKey=console_id, text=tab_title)
+        tab = self.tab_bar.addTab(routeKey=console_id, text=tab_title)
+        if not closable:
+            tab.setCloseButtonDisplayMode(TabCloseButtonDisplayMode.NEVER)
         self.tab_bar.setCurrentIndex(index)
         self.stacked_widget.setCurrentIndex(index)
-
-        # 闭包记录当前 ID 方便更新标题
-        console_widget.env_selector.env_changed.connect(
-            lambda path, cid=console_id: self.update_tab_title_by_id(cid)
-        )
         self.set_var_explorer()
         return console_id
-
-    def update_tab_title_by_id(self, console_id):
-        """【新增】通过 ID 更新标题，解决 Tab 移动后 index 不准的问题"""
-        idx = self.tab_bar.tabIndex(console_id)
-        if idx != -1:
-            console_widget = self.consoles.get(console_id)
-            env_name = console_widget.env_selector.combo.currentText()
-            self.tab_bar.setTabText(idx, f"Console ({env_name})")
 
     def update_tab_title(self, index):
         """保持原有的 index 标题更新逻辑（兼容性保留）"""

@@ -1,12 +1,16 @@
 import json
-import traceback
 import os
+import traceback
+from pathlib import Path
 
-from PyQt5.QtCore import pyqtSignal, QThread, QRectF, Qt
+from PyQt5.QtCore import QObject, pyqtSlot
+from PyQt5.QtCore import pyqtSignal, QThread, QRectF, Qt, QRunnable
 from PyQt5.QtGui import QPainter, QImage
 from loguru import logger
+
 from app.scan_components import ComponentScanner
 from app.utils.utils import deserialize_from_json
+from app.utils.utils import serialize_for_json
 
 
 def get_node_uuid(full_path: str) -> str:
@@ -15,6 +19,95 @@ def get_node_uuid(full_path: str) -> str:
         return node_comp_cls.uuid
     else:
         return "unknown"
+
+
+# ────────────────────────────────
+# 保存功能的辅助类（用于子线程）
+# ────────────────────────────────
+class SaveWorkerSignals(QObject):
+    """保存任务的信号"""
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+
+
+class SaveTask(QRunnable):
+    """后台保存任务：负责耗时的序列化和IO操作"""
+
+    def __init__(self, file_path, full_data):
+        super().__init__()
+        self.file_path = file_path
+        self.full_data = full_data  # 这是一个纯 Python 字典，不包含任何 Qt 对象
+        self.signals = SaveWorkerSignals()
+
+    @pyqtSlot()
+    def run(self):
+        try:
+            # 1. 确保目录存在
+            Path(self.file_path).parent.mkdir(parents=True, exist_ok=True)
+
+            # 2. 序列化数据 (耗时操作：处理 numpy, pandas 等转换)
+            # 注意：serialize_for_json 不应访问任何 Qt 对象，只处理数据
+            serialized_data = serialize_for_json(self.full_data)
+
+            # 3. 写入文件 (IO 阻塞操作)
+            with open(self.file_path, 'w', encoding='utf-8') as f:
+                json.dump(serialized_data, f, indent=2, ensure_ascii=False)
+
+            self.signals.finished.emit()
+
+        except Exception as e:
+            err_msg = traceback.format_exc()
+            logger.error(f"SaveTask failed: {err_msg}")
+            self.signals.error.emit(str(e))
+
+
+# ────────────────────────────────
+# 加载辅助类
+# ────────────────────────────────
+class FinishLoadingWorker(QObject):
+    finished = pyqtSignal(object, object)
+
+
+class FinishLoadingTask(QRunnable):
+    def __init__(self, graph, runtime_data, node_status_data, worker: FinishLoadingWorker):
+        super().__init__()
+        self.graph = graph
+        self.runtime_data = runtime_data
+        self.node_status_data = node_status_data
+        self.worker = worker
+
+    @pyqtSlot()
+    def run(self):
+        try:
+            target_env = self.runtime_data.get("environment")
+
+            restored = {}
+            for node in self.graph.all_nodes():
+                full_path = getattr(node, 'FULL_PATH', 'unknown')
+                node_comp_cls = ComponentScanner().get_component(full_path)
+                stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"
+
+                ns = self.node_status_data.get(stable_key, {})
+                node_inputs = ns.get("node_inputs", {}) or {}
+                node_outputs = ns.get("node_outputs", {}) or {}
+                column_select = ns.get("column_select", {}) or {}
+                status_str = ns.get("node_states", "unrun") or "unrun"
+
+                input_vals = deserialize_from_json(node_inputs)
+                output_vals = deserialize_from_json(node_outputs)
+
+                restored[node.id] = {
+                    "input_values": input_vals,
+                    "output_values": output_vals,
+                    "column_select": column_select,
+                    "status_str": status_str,
+                }
+
+            self.worker.finished.emit(restored, target_env)
+
+        except Exception as e:
+            logger.error(f"FinishLoadingTask failed: {traceback.format_exc()}")
+            self.worker.finished.emit(None, None)
 
 
 class ThumbnailGenerator(QThread):
