@@ -28,7 +28,8 @@ class CanvasRunner(QObject):
         km = self.parent.ipython_kernel.get_kernel_manager_by_id(main_id)
         # 运行前确保主进程内核已启动
         python_exe = self.get_python_exe()
-        self.parent.ipython_kernel.start_kernel(python_exe, console_id=main_id)
+        if not km.is_alive() and python_exe.get("type") != "ssh":
+            self.parent.ipython_kernel.start_kernel(python_exe, console_id=main_id)
         self._scheduler = WorkflowScheduler(
             graph=self.parent.graph,
             component_map=self.parent.component_map,

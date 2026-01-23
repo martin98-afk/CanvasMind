@@ -41,6 +41,7 @@ class CanvasPage(QWidget):
 
     def __init__(self, parent=None, object_name: Path = None, manager=None):
         super().__init__()
+        # --- 第一阶段：基础数据准备 (必须同步) ---
         self.parent = parent
         self.manager = manager
         self.file_path = object_name
@@ -51,47 +52,39 @@ class CanvasPage(QWidget):
         self._pending_property_update = None
         # 线程池
         self.thread_pool = QThreadPool.globalInstance()
-        # 全局变量
-        self.global_variables = GlobalVariableContext()
-        # 初始化 NodeGraph
+        # --- 第二阶段：UI 框架搭建 (视觉先行) ---
+        # 立即初始化图表视图，否则 load_full_workflow 会没地方渲染
         self.graph = CustomNodeGraph(viewer=CustomNodeViewer(), parent=self)
-        self.canvas_widget = self.graph.viewer()
-        # 去除边框
-        self.canvas_widget.setStyleSheet("QWidget {border: none;}")
-        self.canvas_widget.keyPressEvent = self._canvas_key_press_event
-        # 启用画布拖拽
-        self.canvas_widget.setAcceptDrops(True)
-        self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
-        self.canvas_widget.dropEvent = self.canvas_drop_event
-        self.canvas_widget.installEventFilter(self)
-        # ========== 注册工具 ====================
-        # --- 节点操作 ---
-        self.node_operations = NodeOperations(self, self.graph, self.manager.recommendation_engine, self.thread_pool)
-        # 注册节点
+        # 节点注册
+        # 1. 节点操作与注册 (扫描组件是耗时的)
+        self.node_operations = NodeOperations(self, self.graph, self.manager.recommendation_engine,
+                                              QThreadPool.globalInstance())
+        # 异步注册或分批注册节点（如果节点非常多）
         self.node_operations.register_components()
-        # --- 快捷组件工具管理 ---
-        self.quick_manager = QuickComponentManager(self, self.component_map)
-        # --- 自动保存相关 ---
-        self._auto_saver = AutoSaver(self, self.config)
-        # --- 环境管理 ---
-        self.environment_manager = EnvironmentManager(self)
-        # --- 画布io管理 ---
-        self.canvas_io = CanvasIO(
-            self.graph,
-            self.environment_manager,
-            self.global_variables,
-            self
-        )
-        # --- 画布运行管理 ---
-        self.canvas_runner = CanvasRunner(self.get_current_python_exe, self)
-        # 连接ipython控制台
-        self.connect_kernel(self.environment_manager.get_current_python_exe())
-        # 多任务并行器，不直接生成ipython实例，触发执行时单独创建。
-        self.multi_runner = CanvasMultiRunner(self)
-        # =======================================
-        # 初始化ui
+        self.canvas_widget = self.graph.viewer()
+        self.canvas_widget.setStyleSheet("QWidget {border: none;}")
+
+        # 初始化 UI 管理器并构建布局
         self.ui_manager = CanvasUISetUp(self)
         self.ui_manager.setup_ui()
+
+        # 全局变量与基础 IO 工具（加载文件必须）
+        self.global_variables = GlobalVariableContext() # 画布全局变量
+        self.canvas_io = CanvasIO(self.graph, self.global_variables, self)
+
+    def _deferred_initialization(self):
+        # 1. 环境管理
+        self.environment_manager = EnvironmentManager(self)
+
+        # 2. 运行控制逻辑
+        self.canvas_runner = CanvasRunner(self.get_current_python_exe, self)
+        self.multi_runner = CanvasMultiRunner(self)
+
+        # 3. 辅助工具
+        self.quick_manager = QuickComponentManager(self, self.component_map)
+        self._auto_saver = AutoSaver(self, self.config)
+
+        # 4. LLM 上下文 (这个通常涉及大量对象绑定，延迟处理)
         # 注册大模型画布上下文
         self.llm_context_provider = LLMContextProvider(
             graph=self.graph,
@@ -102,13 +95,19 @@ class CanvasPage(QWidget):
             select_node_callback=self.select_node_by_name,
             parent=self
         )
-        # 初始化右键菜单
-        self.node_operations.setup_context_menu()
-        # 连接ui信号
-        self.load_env_combos()
-        self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
-
+        # 5. 最后连接信号
+        self.canvas_widget.keyPressEvent = self._canvas_key_press_event
+        # 启用画布拖拽
+        self.canvas_widget.setAcceptDrops(True)
+        self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
+        self.canvas_widget.dropEvent = self.canvas_drop_event
+        self.canvas_widget.installEventFilter(self)
         self._connect_signals()
+        self.node_operations.setup_context_menu()
+
+        # 6. 延迟启动内核 (内核启动最慢，建议按需启动或延迟500ms)
+        QTimer.singleShot(500, self.connect_kernel)
+        self.ui_manager.update_position()
 
     @property
     def nav_panel(self):
@@ -247,9 +246,6 @@ class CanvasPage(QWidget):
     def hide_splitter(self):
         self.ui_manager.hide_splitter()
 
-    def load_env_combos(self):
-        self.environment_manager.load_env_combos()
-
     def on_environment_changed(self):
         self.environment_manager.on_environment_changed()
 
@@ -319,6 +315,7 @@ class CanvasPage(QWidget):
 
     def load_full_workflow(self, file_path=None):
         self.canvas_io.load_full_workflow(file_path)
+        QTimer.singleShot(0, self._deferred_initialization)
 
     def create_name_label(self):
         self.ui_manager.create_name_label()
@@ -408,6 +405,7 @@ class CanvasPage(QWidget):
     def _connect_signals(self):
         """连接调度器信号到 UI 回调"""
         # 界面刷新信号
+        self.ui_manager.connect_signals()
         self.graph.node_created.connect(self.node_operations.on_node_created)
         self.graph.port_connected.connect(self._on_port_connected)
         self.graph.viewer().node_selection_changed.connect(
@@ -415,6 +413,7 @@ class CanvasPage(QWidget):
         )
         self.ui_manager.log_window.cardDoubleClicked.connect(self.node_operations.select_nodes_by_name)
         self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
+        self.canvas_io.canvas_loaded.connect(self.environment_manager.load_env_combos)
 
         # 连接自动组件同步刷新信号
         ComponentScanner.register_on_change(self.nav_view.refresh_components)
@@ -464,22 +463,23 @@ class CanvasPage(QWidget):
             self.ui_manager.close_btn.clicked.disconnect()
         except TypeError:
             pass
-
-        self.canvas_runner.workflow_started.disconnect(self._on_workflow_started)
-        self.canvas_runner.workflow_paused.disconnect(self._on_workflow_paused)
-        self.canvas_runner.workflow_resumed.disconnect(self._on_workflow_resumed)
-        self.canvas_runner.workflow_cancelled.disconnect(self._on_workflow_cancelled)
-        self.canvas_runner.workflow_finished.disconnect(self._on_workflow_finished)
-        self.canvas_runner.workflow_error.disconnect(self._on_workflow_error)
-        self.canvas_runner.node_status_changed.disconnect(self.set_node_status_by_id)
-        self.canvas_runner.property_changed.disconnect()
-        self.canvas_runner.node_vars_changed.disconnect()
-
-        self.config.canvas_grid_mode.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
-        self.config.canvas_pipelayout.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
-        self.config.canvas_direction.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
+        try:
+            self.canvas_runner.workflow_paused.disconnect(self._on_workflow_paused)
+            self.canvas_runner.workflow_resumed.disconnect(self._on_workflow_resumed)
+            self.canvas_runner.workflow_cancelled.disconnect(self._on_workflow_cancelled)
+            self.canvas_runner.workflow_finished.disconnect(self._on_workflow_finished)
+            self.canvas_runner.workflow_error.disconnect(self._on_workflow_error)
+            self.canvas_runner.node_status_changed.disconnect(self.set_node_status_by_id)
+            self.canvas_runner.workflow_started.disconnect(self._on_workflow_started)
+            self.canvas_runner.property_changed.disconnect()
+            self.canvas_runner.node_vars_changed.disconnect()
+        except TypeError:
+            pass
 
         try:
+            self.config.canvas_grid_mode.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
+            self.config.canvas_pipelayout.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
+            self.config.canvas_direction.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
             self.env_combo.currentIndexChanged.disconnect(self.on_environment_changed)
             self.env_changed.disconnect(self.connect_kernel)
             self.global_variables_changed.disconnect(self._on_global_variables_changed)

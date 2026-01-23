@@ -25,12 +25,11 @@ class FinishLoadingWorker(QObject):
 
 
 class FinishLoadingTask(QRunnable):
-    def __init__(self, graph, runtime_data, node_status_data, env_manager, worker: FinishLoadingWorker):
+    def __init__(self, graph, runtime_data, node_status_data, worker: FinishLoadingWorker):
         super().__init__()
         self.graph = graph
         self.runtime_data = runtime_data
         self.node_status_data = node_status_data
-        self.env_manager = env_manager
         self.worker = worker
 
     @pyqtSlot()
@@ -72,11 +71,12 @@ class FinishLoadingTask(QRunnable):
 # ────────────────────────────────
 class CanvasIO(QObject):
     canvas_saved = pyqtSignal(Path)
+    canvas_loaded = pyqtSignal(object)
 
-    def __init__(self, graph, env_manager, global_variables, parent):
+    def __init__(self, graph, global_variables, parent):
         super().__init__(parent)
+        self.canvas_env = None  # 用于恢复画布保存时的env环境
         self.graph = graph
-        self.env_manager = env_manager
         self.global_variables = global_variables
         self.parent = parent
         self.node_status = parent.node_status
@@ -87,8 +87,8 @@ class CanvasIO(QObject):
             node_data["custom"].pop("global_variable", None)
 
         runtime = {
-            "environment": self.env_manager.env_combo.currentData(),
-            "environment_exe": self.env_manager.get_current_python_exe(),
+            "environment": self.parent.environment_manager.env_combo.currentData(),
+            "environment_exe": self.parent.environment_manager.get_current_python_exe(),
             "node_id2stable_key": {},
             "node_states": {},
             "node_inputs": {},
@@ -103,7 +103,6 @@ class CanvasIO(QObject):
             runtime["node_inputs"][stable_key] = getattr(node, '_input_values', {})
             runtime["node_outputs"][stable_key] = getattr(node, '_output_values', {})
             runtime["column_select"][stable_key] = getattr(node, 'column_select', {})
-
         full_data = {
             "version": "1.0",
             "graph": graph_data,
@@ -231,7 +230,6 @@ class CanvasIO(QObject):
             graph=self.graph,
             runtime_data=runtime_data,
             node_status_data=node_status_data,
-            env_manager=self.env_manager,
             worker=worker
         )
         task.setAutoDelete(True)
@@ -246,12 +244,7 @@ class CanvasIO(QObject):
             return
 
         # --- 主线程 UI 更新 ---
-        if target_env:
-            for i in range(self.env_manager.env_combo.count()):
-                if self.env_manager.env_combo.itemData(i) == target_env:
-                    self.env_manager.env_combo.setCurrentIndex(i)
-                    break
-
+        self.canvas_loaded.emit(target_env)
         from app.nodes.status_node import NodeStatus
         for node in self.graph.all_nodes():
             data = restored_data.get(node.id)

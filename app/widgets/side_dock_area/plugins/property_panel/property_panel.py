@@ -425,7 +425,6 @@ class PropertyPanel(QWidget):
         if self.global_panel_widget: self.global_panel_widget.copy_as_expression(prefix, var_name)
 
     def _add_output_to_global_variable(self, node, port_name):
-        self.update_properties(None)
         self.global_panel_widget.add_output_to_global_var(self.main_window, node, port_name)
 
     def _delete_output_from_global_variable(self, node, port_name):

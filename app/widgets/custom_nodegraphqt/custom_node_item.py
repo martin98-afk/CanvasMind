@@ -721,6 +721,21 @@ class CustomNodeItem(NodeItem):
             self._draw_node_horizontal()
             self.update()
 
+    def add_widget(self, widget):
+        """
+        覆盖父类方法，确保新添加的插件遵循当前的折叠/Proxy状态
+        """
+        # 调用父类逻辑完成添加
+        super(CustomNodeItem, self).add_widget(widget)
+
+        # 获取刚添加的这个 ProxyWidget
+        # widget 是封装后的 NodeWidget，它的 .widget() 返回 QGraphicsProxyWidget
+        if hasattr(widget, 'widget'):
+            proxy_widget = widget.widget()
+            # 立即同步当前的可见性逻辑
+            visible = not self._is_collapsed and not self._proxy_mode
+            proxy_widget.setVisible(visible)
+
     def add_input(self, name='input', multi_port=False, display_name=True,
                   locked=False, painter_func=None):
         """

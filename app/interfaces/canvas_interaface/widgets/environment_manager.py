@@ -9,21 +9,21 @@ class EnvironmentManager:
     def __init__(self, parent):
         self.parent = parent
         self.env_data = None
+        self.env_combo = self.parent.env_combo
         self.parent.parent.package_manager.env_changed.connect(self.load_env_combos)
 
-    def load_env_combos(self):
-        self.env_combo = self.parent.env_combo
-        current_env = self.env_combo.currentText()
+    def load_env_combos(self, env_data=None):
+        envs = self.parent.parent.package_manager.get_all_environments()
         self.env_combo.clear()
         if hasattr(self.parent.parent, 'package_manager') and self.parent.parent.package_manager:
-            envs = self.parent.parent.package_manager.get_all_environments()
             for env in envs:
                 self.env_combo.addItem(env["name"], userData=env)
-            if current_env:
-                self.env_combo.setCurrentText(current_env)
+            if env_data and env_data in envs:
+                self.env_combo.setCurrentText(env_data.get("name"))
             else:
                 self.env_combo.setCurrentText(self.parent.config.current_env_selected.value)
             self.env_data = self.env_combo.currentData()
+        self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
 
     def on_environment_changed(self):
         current_text = self.env_combo.currentText()

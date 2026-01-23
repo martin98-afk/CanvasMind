@@ -671,6 +671,7 @@ def create_dynamic_code_node(parent_window=None):
 
                 # 清理
                 ssh.exec_command(f"rm -rf {remote_run_dir}")
+                self._log_message(self.persistent_id, "✅ 节点在ssh远程环境执行完成")
             except Exception as e:
                 raise Exception(f"SSH远程执行失败: {str(e)}")
             finally:
