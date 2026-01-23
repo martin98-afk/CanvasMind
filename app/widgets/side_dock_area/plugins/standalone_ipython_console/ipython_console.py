@@ -58,13 +58,10 @@ class IPythonConsoleToolWindow(ToolWindow):
         """中断内核：支持 ID 路由"""
         return self.console.interrupt_kernel(console_id=console_id)
 
-    def start_kernel(self, python_exe: str, console_id=None):
+    def start_kernel(self, python_exe: str, env_name: str, console_id=None):
         """启动内核：支持 ID 路由"""
         # 注意：如果 Manager 内部 start_kernel 需要 path，确保 Manager 已实现该转发
-        target = self.console._get_console_by_id_or_current(console_id)
-        if target:
-            return target.start_kernel(python_exe)
-        return False
+        return self.console.start_kernel(python_exe, env_name, console_id=console_id)
 
     def stop_kernel(self, console_id=None):
         """停止内核：支持 ID 路由"""

@@ -323,9 +323,10 @@ class IPythonConsoleManager(QWidget):
         target = self._get_console_by_id_or_current(console_id)
         return target.interrupt_kernel() if target else False
 
-    def start_kernel(self, python_exe, console_id=None):
+    def start_kernel(self, python_exe, env_name, console_id=None):
         target = self._get_console_by_id_or_current(console_id)
         if target:
+            target.env_selector.combo.setCurrentText(env_name)
             target.start_kernel(python_exe)
 
     def restart_kernel(self, console_id=None):
