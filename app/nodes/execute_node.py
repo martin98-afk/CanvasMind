@@ -470,6 +470,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
             try:
                 if os.path.exists(result_path):
+                    print(result_path)
                     output = _safe_load_pickle(result_path)
                     for port in comp_obj.outputs:
                         if port.type != ArgumentType.UPLOAD:

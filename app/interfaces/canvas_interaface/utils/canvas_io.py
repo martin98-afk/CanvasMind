@@ -4,7 +4,7 @@ import time
 import traceback
 from pathlib import Path
 
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt, QRectF, QRunnable, pyqtSlot
+from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt, QRectF, QRunnable, pyqtSlot, QEventLoop
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QProgressDialog, QApplication, QGraphicsProxyWidget, QLabel
 
@@ -13,6 +13,7 @@ from app.utils.utils import serialize_for_json, deserialize_from_json
 from .logger import get_logger
 from .utils import WorkflowLoader
 from ..widgets.message_manager import MessageManager
+from ..widgets.progress_overlay import ModernProgressOverlay
 
 logger = get_logger("CanvasIO")
 
@@ -187,27 +188,36 @@ class CanvasIO(QObject):
             self.global_variables.deserialize(global_variable)
             nodes_data = graph_data.get("nodes", {})
             total_nodes = len(nodes_data)
+
             if total_nodes == 0:
                 self.graph.deserialize_session(graph_data)
                 self._start_finish_loading(runtime_data, node_status_data)
                 return
 
-            progress = QProgressDialog("正在加载节点...", "取消", 0, total_nodes, self.parent)
-            progress.setWindowModality(Qt.WindowModal)
-            progress.setWindowTitle("加载中")
-            progress.setCancelButton(None)
-            progress.setAutoClose(True)
-            progress.setMinimumDuration(0)
-            progress.setValue(0)
+            # --- 初始化进度条 ---
+            progress = ModernProgressOverlay(self.parent)
+            progress.bar.setMaximum(total_nodes)
+            progress.show()  # 这会触发 showEvent 自动居中
 
             original_add_node = self.graph.add_node
-            count = [0]
+            # 使用列表或 nonlocal 记录数量
+            ctx = {"count": 0}
 
             def patched_add_node(node, pos=None, inherite_graph_style=True):
+                # 核心加载
                 result = original_add_node(node, pos, False, False, inherite_graph_style)
-                count[0] += 1
-                progress.setValue(count[0])
-                QApplication.processEvents()
+
+                ctx["count"] += 1
+                curr = ctx["count"]
+
+                # 降低刷新频率：每 2% 更新一次 UI，避免频繁刷新导致的卡顿
+                update_step = max(1, total_nodes // 50)
+                if curr % update_step == 0 or curr == total_nodes:
+                    progress.set_value(curr)
+                    progress.set_text(f"正在生成节点 ({curr}/{total_nodes})...")
+                    # 关键：ExcludeUserInputEvents 防止用户在加载时乱点界面
+                    QApplication.processEvents(QEventLoop.ExcludeUserInputEvents)
+
                 return result
 
             self.graph.add_node = patched_add_node
@@ -218,6 +228,7 @@ class CanvasIO(QObject):
                 progress.close()
 
             self._start_finish_loading(runtime_data, node_status_data)
+
         except Exception as e:
             logger.error(f"❌ 加载失败: {traceback.format_exc()}")
             MessageManager.error("加载失败", f"工作流加载失败: {str(e)}", self.parent)
