@@ -16,6 +16,7 @@ from app.interfaces.canvas_interaface.constants import TEMPLATE_START_SIZES
 from app.interfaces.canvas_interaface.llm_context import LLMContextProvider
 from app.interfaces.canvas_interaface.utils.auto_saver import AutoSaver
 from app.interfaces.canvas_interaface.utils.canvas_io import CanvasIO
+from app.interfaces.canvas_interaface.utils.canvas_multi_runner import CanvasMultiRunner
 from app.interfaces.canvas_interaface.utils.canvas_runner import CanvasRunner
 from app.interfaces.canvas_interaface.utils.exporter import CanvasExporter
 from app.interfaces.canvas_interaface.utils.node_operations import NodeOperations
@@ -82,9 +83,11 @@ class CanvasPage(QWidget):
             self
         )
         # --- 画布运行管理 ---
-        self.canvas_runner = CanvasRunner(
-            self.environment_manager.get_current_python_exe, self
-        )
+        self.canvas_runner = CanvasRunner(self.get_current_python_exe, self)
+        # 连接ipython控制台
+        self.connect_kernel(self.environment_manager.get_current_python_exe())
+        # 多任务并行器，不直接生成ipython实例，触发执行时单独创建。
+        self.multi_runner = CanvasMultiRunner(self)
         # =======================================
         # 初始化ui
         self.ui_manager = CanvasUISetUp(self)
@@ -104,16 +107,7 @@ class CanvasPage(QWidget):
         # 连接ui信号
         self.load_env_combos()
         self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
-        # 连接ipython控制台
-        self.connect_kernel(self.environment_manager.get_current_python_exe())
-        self.env_changed.connect(self.connect_kernel)
-        self.graph.node_created.connect(self.node_operations.on_node_created)
-        self.graph.port_connected.connect(self._on_port_connected)
-        self.graph.viewer().node_selection_changed.connect(
-            lambda: QtCore.QTimer.singleShot(0, self.on_selection_changed)
-        )
-        self.ui_manager.log_window.cardDoubleClicked.connect(self.node_operations.select_nodes_by_name)
-        self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
+
         self._connect_signals()
 
     @property
@@ -215,6 +209,13 @@ class CanvasPage(QWidget):
     def env_data(self):
         return self.environment_manager.env_data
 
+    def get_console_id(self):
+        workflow_id = str(self.file_path) if self.file_path else self.objectName()
+        return self.ipython_kernel.get_or_create_main_console(
+            workflow_id,
+            name=self.workflow_name
+        )
+
     def rename_node_vars(self, old_name, new_name):
         old_name = re.sub(r'\s+', '_', old_name)
         new_name = re.sub(r'\s+', '_', new_name)
@@ -277,11 +278,11 @@ class CanvasPage(QWidget):
         return self.node_operations.select_nodes_by_name(name_list)
 
     def connect_kernel(self, python_exe):
+        # 直接通过 runner 获取当前画布对应的主 ID 并启动
         if python_exe and self.env_data.get("type") != "ssh":
-            if self.ipython_kernel.kernel_manager.python_exe_path != python_exe or \
-                    not self.ipython_kernel.kernel_manager.get_kernel_info().get("is_alive"):
-                self.ipython_kernel.kernel_manager.shutdown_kernel()
-                self.ipython_kernel.start_kernel(python_exe)
+            main_id = self.get_console_id()
+            self.ipython_kernel.stop_kernel(main_id)
+            self.ipython_kernel.start_kernel(python_exe, console_id=main_id)
 
     def run_from(self, node):
         self.canvas_runner.run_from(node)
@@ -406,6 +407,15 @@ class CanvasPage(QWidget):
 
     def _connect_signals(self):
         """连接调度器信号到 UI 回调"""
+        # 界面刷新信号
+        self.graph.node_created.connect(self.node_operations.on_node_created)
+        self.graph.port_connected.connect(self._on_port_connected)
+        self.graph.viewer().node_selection_changed.connect(
+            lambda: QtCore.QTimer.singleShot(0, self.on_selection_changed)
+        )
+        self.ui_manager.log_window.cardDoubleClicked.connect(self.node_operations.select_nodes_by_name)
+        self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
+
         # 连接自动组件同步刷新信号
         ComponentScanner.register_on_change(self.nav_view.refresh_components)
         ComponentScanner.register_on_change(self.node_operations.register_components, False)
@@ -421,7 +431,8 @@ class CanvasPage(QWidget):
                 self.switch_to_parent()
             )
         )
-
+        # 环境变化自动重连主ipython进程
+        self.env_changed.connect(self.connect_kernel)
         # 状态信号
         self.canvas_runner.workflow_started.connect(self._on_workflow_started)
         self.canvas_runner.workflow_paused.connect(self._on_workflow_paused)
