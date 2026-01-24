@@ -6,7 +6,8 @@
 <div align="center">
   <h1>可视化编程流程算法开发工具</h1>
   
-  [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md)| [📘 使用手册](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/)
+  [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md)| [📘 使用手册](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/) | [b站相关介绍视频](https://www.bilibili.com/video/BV153zCBGEU2?spm_id_from=333.788.videopod.sections&vd_source=730f7f3382f460e22f17a3b2c58f0256)
+
 </div>
 
 <div align="center">
