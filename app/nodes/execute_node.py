@@ -432,13 +432,6 @@ def create_node_class(full_path, file_path, parent_window=None):
             run_dir = self.CACHE_PATH / "run_scripts" / run_id
             shutil.rmtree(run_dir, ignore_errors=True)
             run_dir.mkdir(parents=True, exist_ok=True)
-            # 将组件扩展全部复制到运行目录
-            extension_dir = Path(resource_path("app/component_extensions")) / comp_obj.uuid
-            if extension_dir.exists():
-                if not (extension_dir / "manifest.json").exists():
-                    raise FileNotFoundError(f"组件包损坏: 缺少 manifest.json ({extension_dir})")
-                shutil.copytree(extension_dir, run_dir, dirs_exist_ok=True)
-
             local_script_path = run_dir / "exec_script.py"
             local_comp_path = run_dir / "component.py"
             params_path = run_dir / "params.pkl"
@@ -462,6 +455,13 @@ def create_node_class(full_path, file_path, parent_window=None):
                 self._execute_via_ssh(comp_obj, env_data, run_dir, log_file_path, error_path, check_cancel)
             else:
                 shutil.copyfile(resource_path("app/components/base.py"), str(run_dir.parent / "base.py"))
+                # 将组件扩展全部复制到运行目录
+                extension_dir = Path(resource_path("app/component_extensions")) / self.uuid
+                if extension_dir.exists():
+                    if not (extension_dir / "manifest.json").exists():
+                        raise FileNotFoundError(f"组件包损坏: 缺少 manifest.json ({extension_dir})")
+                    shutil.copytree(extension_dir, self.CACHE_PATH / "workspace" / self.persistent_id,
+                                    dirs_exist_ok=True)
                 # 本地执行 (Subprocess 或 IPython)
                 python_exe = env_data['path']
                 # 注意：本地执行脚本中的路径需要是本地绝对路径
@@ -562,7 +562,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                 if local_upload_dir.exists():
                     sftp_upload_dir(sftp, local_upload_dir, upload_dir)
                 # 将本地运行目录上传至ssh服务器
-                sftp_upload_dir(sftp, run_dir, upload_dir)
+                sftp_upload_dir(sftp, resource_path(f"app/component_extensions/{self.uuid}"), upload_dir)
+                sftp_upload_dir(sftp, run_dir, remote_run_dir)
                 sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}/base.py")
                 if os.path.exists(log_file_path):
                     sftp.put(log_file_path, log_path)

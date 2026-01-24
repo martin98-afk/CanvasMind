@@ -67,6 +67,7 @@ def run_node():
         # 2. 工作目录和当前路径设置
         node_output_dir = Path(WORKFLOW_PATH) / "workspace" / NODE_ID
         node_output_dir.mkdir(parents=True, exist_ok=True)
+        sys.path.insert(0, str(node_output_dir))
         os.chdir(str(node_output_dir))
 
         # ==================== 智能加载与实例化逻辑 ====================

@@ -24,6 +24,7 @@ class ComponentDevelopUISetUp:
     def __init__(self, parent):
         self.parent = parent
         self.current_comp_uuid = None
+        self._current_template_code = DEFAULT_NODE_TEMPLATE
 
     # --- ui构建 ---
     def setup_ui(self):
