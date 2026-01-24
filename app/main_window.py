@@ -38,7 +38,7 @@ class LowCodeWindow(FluentWindow):
         self._init_services()
         self._init_pages()
         self._setup_navigation()
-        QTimer.singleShot(0, self.finish_splash_screen)
+        QTimer.singleShot(400, self.finish_splash_screen)
 
     # region [1. 窗口基础设置]
     def _init_window(self):

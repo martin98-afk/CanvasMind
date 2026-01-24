@@ -20,7 +20,6 @@ class QuickComponentManager(QObject):
         return self.config.get(self.config.quick_components)
 
     def set_quick_components(self, value):
-        print(value)
         self.config.set(self.config.quick_components, value)
         self.config.save_config()
         self.quick_components_changed.emit()

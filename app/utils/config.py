@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-from pathlib import Path
+import json
+import sys
+from enum import Enum
 from uuid import uuid4
 
-from qfluentwidgets import ConfigSerializer, ConfigItem, QConfig, OptionsValidator, BoolValidator, FolderListValidator, \
-    RangeValidator, OptionsConfigItem, ConfigValidator, RangeConfigItem
-from enum import Enum
+from qfluentwidgets import ConfigSerializer, ConfigItem, QConfig, OptionsValidator, BoolValidator, RangeValidator, \
+    OptionsConfigItem, ConfigValidator, RangeConfigItem
 
-from app.utils.utils import resource_path
 from app.widgets.card_widget.list_setting_card import ListValidator
 
 
@@ -26,7 +26,6 @@ class ListDictValidator(ConfigValidator):
 
 class QuickComponentsSerializer(ConfigSerializer):
     def serialize(self, value):
-        print(value)
         return value  # list[dict] 是 JSON-safe
 
     def deserialize(self, value):
@@ -150,7 +149,7 @@ class Settings(QConfig):
         "Canvas",
         "QuickComponents",
         [],  # 默认值
-        ListValidator()
+        serializer=QuickComponentsSerializer()
     )
 
     # ========== 运行环境管理配置 ==========
