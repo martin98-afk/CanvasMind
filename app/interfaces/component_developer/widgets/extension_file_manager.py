@@ -5,15 +5,15 @@ from pathlib import Path
 
 from PyQt5.QtCore import Qt, pyqtSignal, QUrl
 from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFileSystemModel, QMenu, QInputDialog, QFileDialog)
-from qfluentwidgets import (FluentIcon, Action, CommandBar, MessageBox)
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFileSystemModel, QInputDialog, QFileDialog)
+# 核心改动：引入 RoundMenu
+from qfluentwidgets import (FluentIcon, Action, CommandBar, MessageBox, RoundMenu, MenuAnimationType)
 
 from app.interfaces.component_developer.widgets.file_tree_view import DragDropTreeView
 from app.utils.utils import get_icon
 
 
 class ExtensionFileManager(QWidget):
-    # 发送文件路径的信号
     file_double_clicked = pyqtSignal(str)
 
     def __init__(self, parent=None):
@@ -26,11 +26,9 @@ class ExtensionFileManager(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(5)
 
-        # === 工具栏 ===
         self.command_bar = CommandBar(self)
         self.command_bar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
 
-        # 将Action逻辑改为基于“当前选中”项，如果未选中则基于根目录
         self.command_bar.addActions([
             Action(FluentIcon.ADD, self.tr("新建"),
                    triggered=lambda: self._show_create_menu_for_index(self.tree.currentIndex())),
@@ -42,20 +40,16 @@ class ExtensionFileManager(QWidget):
         ])
         layout.addWidget(self.command_bar)
 
-        # === 文件模型 ===
         self.model = QFileSystemModel()
-        self.model.setReadOnly(False)  # 允许重命名/删除
+        self.model.setReadOnly(False)
 
-        # === 树视图 ===
         self.tree = DragDropTreeView()
         self.tree.setModel(self.model)
         self.tree.setHeaderHidden(True)
 
-        # 隐藏 Size, Type, Date 列，只留 Name
         for i in range(1, 4):
             self.tree.hideColumn(i)
 
-        # === 信号连接 ===
         self.tree.doubleClicked.connect(self._on_double_click)
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self._show_context_menu)
@@ -70,96 +64,95 @@ class ExtensionFileManager(QWidget):
             except OSError:
                 return
 
-        # QFileSystemModel 需要一点时间加载
         self.model.setRootPath(self.root_path)
         root_index = self.model.index(self.root_path)
         self.tree.setRootIndex(root_index)
 
     def _refresh_tree(self):
-        """强制刷新Model，解决外部变动不更新的问题"""
-        # 重新设置一下 root path 可以触发刷新
         self.model.setRootPath(self.root_path)
 
     def _on_double_click(self, index):
-        """
-        双击处理逻辑：
-        1. 如果是文件 -> 发射信号打开
-        2. 如果是文件夹 -> 展开/折叠 (Tree View 默认行为，但为了保险可以手动控制)
-        """
         path = self.model.filePath(index)
         if self.model.isDir(index):
-            # 文件夹：切换展开/折叠状态
             if self.tree.isExpanded(index):
                 self.tree.collapse(index)
             else:
                 self.tree.expand(index)
         else:
-            # 文件：发射打开信号
             self.file_double_clicked.emit(path)
 
     def _get_context_path(self, index):
-        """
-        计算操作的基础路径：
-        1. 如果 index 无效，返回根目录
-        2. 如果 index 是文件夹，返回该文件夹路径
-        3. 如果 index 是文件，返回其父目录
-        """
         if not index.isValid():
             return self.root_path
-
         if self.model.isDir(index):
             return self.model.filePath(index)
         else:
             return os.path.dirname(self.model.filePath(index))
 
-    # ================= 右键菜单 =================
+    # ================= 修改后的右键菜单 =================
     def _show_context_menu(self, position):
         index = self.tree.indexAt(position)
-
-        # 获取当前点击位置的上下文路径
         context_path = self._get_context_path(index)
 
-        menu = QMenu()
+        # 1. 创建 RoundMenu
+        menu = RoundMenu(parent=self)
 
-        # 新建子菜单
-        new_menu = menu.addMenu(FluentIcon.ADD.icon(), self.tr("新建"))
-        self._add_create_actions(new_menu, context_path)
-
-        menu.addSeparator()
-
-        # 上传
-        menu.addAction(get_icon("upload"), self.tr("上传文件"), lambda: self._upload_files(context_path))
-        menu.addAction(FluentIcon.FOLDER_ADD.icon(), self.tr("上传文件夹"), lambda: self._upload_folder(context_path))
+        # 2. 新建子菜单 (在 FluentWidgets 中，子菜单也是一个 RoundMenu)
+        new_submenu = RoundMenu(title=self.tr("新建"), parent=menu)
+        new_submenu.setIcon(FluentIcon.ADD)
+        self._add_create_actions(new_submenu, context_path)
+        menu.addMenu(new_submenu)
 
         menu.addSeparator()
+
+        # 3. 使用 Action 添加菜单项
+        menu.addAction(Action(get_icon("upload"), self.tr("上传文件"),
+                              triggered=lambda: self._upload_files(context_path)))
+        menu.addAction(Action(FluentIcon.FOLDER_ADD, self.tr("上传文件夹"),
+                              triggered=lambda: self._upload_folder(context_path)))
 
         if index.isValid():
-            # 针对选中项的操作
-            menu.addAction(get_icon("重命名"), self.tr("重命名"), lambda: self.tree.edit(index))  # 调用 Qt 原生编辑接口
-            menu.addAction(FluentIcon.DELETE.icon(), self.tr("删除"), lambda: self._delete_item(index))
             menu.addSeparator()
-            menu.addAction(FluentIcon.FOLDER.icon(), self.tr("打开系统位置"),
-                           lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(self.model.filePath(index))))
+            menu.addAction(Action(get_icon("重命名"), self.tr("重命名"),
+                                  triggered=lambda: self.tree.edit(index)))
+            menu.addAction(Action(FluentIcon.DELETE, self.tr("删除"),
+                                  triggered=lambda: self._delete_item(index)))
+            menu.addSeparator()
+            menu.addAction(Action(FluentIcon.FOLDER, self.tr("打开系统位置"),
+                                  triggered=lambda: QDesktopServices.openUrl(
+                                      QUrl.fromLocalFile(context_path))))
 
-        # 在鼠标位置弹出
-        menu.exec_(self.tree.viewport().mapToGlobal(position))
+        # 4. 弹出菜单，建议使用 exec 而非 exec_，并传入动画类型
+        menu.exec(self.tree.viewport().mapToGlobal(position), aniType=MenuAnimationType.DROP_DOWN)
 
     def _show_create_menu_for_index(self, index):
         """工具栏调用新建菜单"""
         path = self._get_context_path(index)
-        menu = QMenu(self)
+        menu = RoundMenu(parent=self)
         self._add_create_actions(menu, path)
-        menu.exec_(self.cursor().pos())
+        # 在按钮下方弹出（这里简单处理为鼠标位置）
+        menu.exec(self.cursor().pos(), aniType=MenuAnimationType.DROP_DOWN)
 
     def _add_create_actions(self, menu, base_dir):
-        """向菜单添加新建选项"""
-        formats = [("Python", "py"), ("Text", "txt"), ("JSON", "json"), ("Markdown", "md")]
-        for label, ext in formats:
-            menu.addAction(f"{label} (.{ext})", lambda e=ext, p=base_dir: self._create_file(e, p))
-        menu.addSeparator()
-        menu.addAction(FluentIcon.FOLDER_ADD.icon(), self.tr("文件夹"), lambda: self._create_folder(base_dir))
+        """向 RoundMenu 添加新建选项"""
+        formats = [
+            ("Python", "py", FluentIcon.CODE),
+            ("Text", "txt", FluentIcon.DOCUMENT),
+            ("JSON", "json", FluentIcon.DEVELOPER_TOOLS),
+            ("Markdown", "md", FluentIcon.LABEL)
+        ]
 
-    # ================= 实际操作逻辑 =================
+        for label, ext, icon in formats:
+            # 使用 Action 对象
+            action = Action(icon, f"{label} (.{ext})", self)
+            action.triggered.connect(lambda checked, e=ext, p=base_dir: self._create_file(e, p))
+            menu.addAction(action)
+
+        menu.addSeparator()
+        menu.addAction(Action(FluentIcon.FOLDER_ADD, self.tr("文件夹"),
+                              triggered=lambda: self._create_folder(base_dir)))
+
+    # ================= 实际操作逻辑 (保持不变) =================
 
     def _create_file(self, ext, base_dir):
         if not base_dir: base_dir = self.root_path
@@ -186,17 +179,13 @@ class ExtensionFileManager(QWidget):
     def _delete_item(self, index):
         file_path = self.model.filePath(index)
         name = self.model.fileName(index)
-
-        # 使用 FluentWidgets 的 MessageBox
         w = MessageBox(self.tr("确认删除"), self.tr(f"确定要永久删除 '{name}' 吗？此操作无法撤销。"), self.window())
         if w.exec():
             try:
                 if self.model.isDir(index):
                     shutil.rmtree(file_path)
-                    self.model.rmdir(index)  # 通知 Model
                 else:
                     os.remove(file_path)
-                    self.model.remove(index)  # 通知 Model
             except Exception as e:
                 MessageBox(self.tr("删除失败"), str(e), self.window()).exec()
 
@@ -211,9 +200,7 @@ class ExtensionFileManager(QWidget):
                     print(f"Upload file error: {e}")
 
     def _upload_folder(self, dest_dir):
-        """新增：上传（复制）文件夹"""
         if not dest_dir: dest_dir = self.root_path
-        # QFileDialog 不支持同时选文件和文件夹，所以这是单独的
         src_dir = QFileDialog.getExistingDirectory(self, self.tr("选择文件夹"), "")
         if src_dir:
             try:

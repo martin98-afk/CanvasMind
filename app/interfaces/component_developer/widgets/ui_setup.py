@@ -220,8 +220,12 @@ try:
     from app.components.base import *
 except:
     from _internal.app.components.base import *
+import sys
+sys.path.insert(0, r"{extention_path}")
 """
-        current_code = local_import + self.code_editor.get_code()
+        extention_path = rf"{(Path(resource_path('app/component_extensions')) / self.current_comp_uuid).resolve()}"
+
+        current_code = local_import.format(extention_path=extention_path) + self.code_editor.get_code()
         if not current_code.strip():
             MessageManager.warning(self.parent.tr("代码编辑器为空，无法运行！"), "", self.parent)
             return

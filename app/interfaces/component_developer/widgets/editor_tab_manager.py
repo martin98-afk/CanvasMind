@@ -102,64 +102,97 @@ class ComponentTabManager(TabWidget):
         layout.addWidget(self.cancel_btn)
 
     def _on_save_clicked(self):
-        """处理保存按钮点击逻辑"""
+        """
+        核心保存逻辑：
+        1. 如果在主 Tab (Index 0)：保存所有附属文件 + 触发主组件保存信号。
+        2. 如果在其他 Tab：只保存当前文件。
+        """
         index = self.currentIndex()
 
         if index == 0:
-            # === 情况1：主 Tab ===
-            # 将事件交给上层处理（通常是保存整个组件结构）
+            # === 场景 A: 在主界面保存 -> 全部保存 ===
+            saved_files_count = 0
+
+            # 遍历所有附属 Tab (从索引 1 开始)
+            for i in range(1, self.count()):
+                widget = self.widget(i)
+                # silent=True 表示保存成功时不单独弹窗，避免瞬间弹出多个提示
+                if self._save_single_file(widget, silent=True):
+                    saved_files_count += 1
+
+            # 发送信号，通知外部保存主代码/节点配置
             self.saveSignal.emit()
+
+            # 统一展示成功提示
+            msg = "主组件已保存"
+            if saved_files_count > 0:
+                msg += f"，并同步保存了 {saved_files_count} 个附属文件"
+
+            InfoBar.success(
+                title='全部保存成功',
+                content=msg,
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=2000,
+                parent=self._parent_ref
+            )
+
         else:
-            # === 情况2：其他文件 Tab ===
-            # 直接在内部保存文件
-            self._save_current_file_tab()
+            # === 场景 B: 在其他文件 Tab 保存 -> 只保存当前 ===
+            current_widget = self.currentWidget()
+            self._save_single_file(current_widget, silent=False)
 
-    def _save_current_file_tab(self):
-        """保存当前打开的文件Tab"""
-        widget = self.currentWidget()
-
-        # 1. 检查是否有文件路径属性
+    def _save_single_file(self, widget, silent=False):
+        """
+        保存单个 Widget 对应的文件
+        :param widget: 编辑器控件对象
+        :param silent: 是否静默保存（True则不弹成功提示，False则弹）
+        :return: bool 是否执行了保存操作
+        """
+        # 1. 检查必要属性
         if not hasattr(widget, 'property_file_path'):
-            return
+            return False
 
         file_path = widget.property_file_path
 
-        # 2. 获取内容 (针对 CodeEditorWidget)
+        # 2. 获取内容
         content = None
         if hasattr(widget, 'get_code'):
             content = widget.get_code()
-        # 如果未来支持文本编辑器等其他控件，可在此扩展 elif hasattr(widget, 'toPlainText'): ...
 
         if content is None:
-            # 如果是图片预览(Image Viewer)等没有文本内容的控件，直接忽略
-            return
+            return False  # 可能是图片浏览或其他非文本控件
 
         # 3. 写入文件
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(content)
 
-            # 4. 弹出成功提示
-            InfoBar.success(
-                title='保存成功',
-                content=f"已保存文件：{os.path.basename(file_path)}",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=2000,
-                parent=self
-            )
+            if not silent:
+                InfoBar.success(
+                    title='保存成功',
+                    content=f"已保存文件：{os.path.basename(file_path)}",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP_RIGHT,
+                    duration=2000,
+                    parent=self._parent_ref
+                )
+            return True  # 保存成功
+
         except Exception as e:
-            # 弹出错误提示
+            # 即使是 silent 模式，保存失败也必须报错
             InfoBar.error(
                 title='保存失败',
-                content=str(e),
+                content=f"{os.path.basename(file_path)}: {str(e)}",
                 orient=Qt.Horizontal,
                 isClosable=True,
-                position=InfoBarPosition.TOP,
+                position=InfoBarPosition.TOP_RIGHT,
                 duration=3000,
-                parent=self
+                parent=self._parent_ref
             )
+            return False
 
     def init_main_editor(self, widget, name):
         """初始化默认的、不可关闭的主代码编辑器"""

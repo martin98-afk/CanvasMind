@@ -53,6 +53,7 @@ def create_node_class(full_path, file_path, parent_window=None):
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
             self.parent_window = parent_window
+            self._set_icon()
             self.CACHE_PATH.mkdir(exist_ok=True, parents=True)
             self.set_property("version", "latest")
             if hasattr(ComponentScanner().get_component_by_uuid(self.uuid), "icon"):
@@ -76,6 +77,15 @@ def create_node_class(full_path, file_path, parent_window=None):
             # 调试模式信号连接
             self.view.debug_signal.connect(self._toggle_debug_mode)
             self.view.rename_signal.connect(parent_window.rename_node_vars)
+
+        def _set_icon(self):
+            """自动寻找扩展文件中的图标"""
+            extension_path = Path(resource_path("app/component_extensions")) / self.uuid
+            # 支持icon格式
+            for icon_path in (extension_path / "assets/component_icon").glob("*"):
+                if icon_path.is_file() and icon_path.suffix in [".png", ".jpg", ".jpeg", ".gif", ".svg", "ico"]:
+                    self.set_icon(str(icon_path))
+                    break
 
         @property
         def uuid(self):
