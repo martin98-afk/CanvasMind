@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.415cfe4e-9f67-49e9-9349-0071b764fbfb",
+  "uuid": "415cfe4e-9f67-49e9-9349-0071b764fbfb",
+  "name": "excel读取器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "",
+  "category": "数据集成",
+  "main": "main.py",
+  "updated_at": "2026-01-24 15:18:51",
+  "author": "black"
+}
