@@ -56,9 +56,6 @@ class LowCodeWindow(FluentWindow):
         self.window_height = int(0.85 * screen_height)
         desktop = QApplication.desktop().availableGeometry()
         self.desktop_w, self.desktop_h = desktop.width(), desktop.height()
-        self.window_width = int(0.8 * self.desktop_w)
-        self.window_height = int(0.85 * self.desktop_h)
-
         # 初始化位置
         self.move(self.desktop_w // 2 - self.width() // 2, self.desktop_h // 2 - self.height() // 2)
         self.navigationInterface.setExpandWidth(175)
@@ -222,10 +219,10 @@ class LowCodeWindow(FluentWindow):
     def finish_splash_screen(self):
         self.splashScreen.finish()
         self.resize(self.window_width, self.window_height)
-        self.move(
-            self.desktop_w // 2 - self.width() // 2,
-            self.desktop_h // 2 - self.height() // 2
-        )
+        desktop = QApplication.desktop().availableGeometry()
+        self.desktop_w, self.desktop_h = desktop.width(), desktop.height()
+        # 初始化位置
+        self.move(self.desktop_w // 2 - self.width() // 2, self.desktop_h // 2 - self.height() // 2)
         if self.config.auto_check_update.value:
             QtCore.QTimer.singleShot(500, self.updater.check_update)
     # endregion

@@ -222,7 +222,7 @@ class IPythonConsoleManager(QWidget):
             console_widget.env_selector.combo.setCurrentText(env_name)
 
         initial_env = console_widget.env_selector.combo.currentText()
-        tab_title = f"{tab_name} ({initial_env})" if tab_name else f"Console {initial_env}"
+        tab_title = f"{tab_name}" if tab_name else f"Console {initial_env}"
 
         index = self.stacked_widget.addWidget(console_widget)
         # 在 qfluentwidgets 中，routeKey 存储在 TabItem 中
@@ -323,9 +323,10 @@ class IPythonConsoleManager(QWidget):
         target = self._get_console_by_id_or_current(console_id)
         return target.interrupt_kernel() if target else False
 
-    def start_kernel(self, python_exe, console_id=None):
+    def start_kernel(self, python_exe, env_name, console_id=None):
         target = self._get_console_by_id_or_current(console_id)
         if target:
+            target.env_selector.combo.setCurrentText(env_name)
             target.start_kernel(python_exe)
 
     def restart_kernel(self, console_id=None):

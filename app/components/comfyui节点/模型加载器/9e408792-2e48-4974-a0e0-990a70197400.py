@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 class ComfyWanScheduledLoraLoader(BaseComponent):
     requirements = "torch,comfy"
     name = "Wan2.1分段LoRA加载器"
-    category = "comfyui节点/视频生成"
+    category = "comfyui节点/模型加载器"
     description = "支持设置 LoRA 在采样的哪个阶段生效（高噪/低噪控制）"
     
     inputs = [

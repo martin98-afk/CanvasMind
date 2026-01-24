@@ -275,7 +275,7 @@ class CanvasPage(QWidget):
         if self.env_data and self.env_data.get("type") != "ssh":
             main_id = self.get_console_id()
             self.ipython_kernel.stop_kernel(main_id)
-            self.ipython_kernel.start_kernel(self.env_data.get("path"), console_id=main_id)
+            self.ipython_kernel.start_kernel(self.env_data.get("path"), self.env_data.get("name"), console_id=main_id)
 
     def run_from(self, node):
         self.canvas_runner.run_from(node)

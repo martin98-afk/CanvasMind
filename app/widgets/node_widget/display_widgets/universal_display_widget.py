@@ -88,7 +88,7 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
 
     def _is_audio_path(self, value):
         if not isinstance(value, str) or not os.path.exists(value): return False
-        return os.path.splitext(value)[1].lower() in ['.mp3', '.wav', '.ogg', '.flac']
+        return os.path.splitext(value)[1].lower() in ['.mp3', '.wav', '.flac', '.m4a', '.ogg']
 
     def _is_table_data(self, value):
         # 如果是列表且元素是字典，判定为表格

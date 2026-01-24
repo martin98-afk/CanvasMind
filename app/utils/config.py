@@ -26,6 +26,7 @@ class ListDictValidator(ConfigValidator):
 
 class QuickComponentsSerializer(ConfigSerializer):
     def serialize(self, value):
+        print(value)
         return value  # list[dict] 是 JSON-safe
 
     def deserialize(self, value):
@@ -36,6 +37,33 @@ class QuickComponentsSerializer(ConfigSerializer):
 
 class Settings(QConfig):
     _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    @classmethod
+    def get_instance(cls):
+        """获取配置实例（单例模式）"""
+        if cls._instance is None:
+            cls._instance = cls()
+            CONFIG_FILE = resource_path("../app.config")
+            try:
+                cls._instance.load(CONFIG_FILE)
+            except:
+                # 首次运行，保存默认配置
+                cls._instance.save(CONFIG_FILE)
+                print(f"✅ 已创建默认配置文件: {CONFIG_FILE}")
+        return cls._instance
+
+    @classmethod
+    def save_config(cls):
+        """保存配置"""
+        print("触发保存")
+        if cls._instance:
+            cls._instance.save()
+
     # 版本信息
     current_version = "v0.3.0"
     user_name = ConfigItem("General", "UserName", str(uuid4().hex))
@@ -125,7 +153,7 @@ class Settings(QConfig):
         "Canvas",
         "QuickComponents",
         [],  # 默认值
-        serializer=QuickComponentsSerializer()
+        ListValidator()
     )
 
     # ========== 运行环境管理配置 ==========
@@ -162,28 +190,3 @@ class Settings(QConfig):
     # ========== 云组件库API ==========
     STEIN_URL = ConfigItem("CloudAPI", "Stein", "https://api.steinhq.com/v1/storages/69606496affba40a6237b4c2/sheet1")
     SHEETY_URL = ConfigItem("CloudAPI", "Sheety", "https://api.sheety.co/fe7b5d36457f54901b6078c05196e0a0/云组件库/sheet1")
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    @classmethod
-    def get_instance(cls):
-        """获取配置实例（单例模式）"""
-        if cls._instance is None:
-            cls._instance = cls()
-            CONFIG_FILE = resource_path("../app.config")
-            try:
-                cls._instance.load(CONFIG_FILE)
-            except:
-                # 首次运行，保存默认配置
-                cls._instance.save(CONFIG_FILE)
-                print(f"✅ 已创建默认配置文件: {CONFIG_FILE}")
-        return cls._instance
-
-    @classmethod
-    def save_config(cls):
-        """保存配置"""
-        if cls._instance:
-            cls._instance.save()

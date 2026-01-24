@@ -447,6 +447,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         if file_path not in self.opened_workflows:
             canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
             canvas_page.create_name_label()
+            canvas_page._deferred_initialization(),
+            canvas_page.environment_manager.load_env_combos()
             canvas_page.property_panel.set_allowed_update(True)
             canvas_page.property_panel.update_properties(None)
             canvas_page.canvas_deleted.connect(
