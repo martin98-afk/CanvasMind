@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.0f3ca001-5e1b-4e2c-9bd7-a763c3f89f93",
+  "uuid": "0f3ca001-5e1b-4e2c-9bd7-a763c3f89f93",
+  "name": "Wan 2.6 图生视频",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "上传图片并调用 Wan 2.6 模型生成视频（异步任务）",
+  "category": "API调用/图生视频",
+  "main": "main.py",
+  "updated_at": "2026-01-24 19:33:14",
+  "author": "black"
+}

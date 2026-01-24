@@ -20,7 +20,7 @@ from qfluentwidgets import (
 
 from app.scan_components import ComponentScanner
 from app.utils.config import Settings
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, resource_path
 from app.widgets.dialog_widget.new_component_dialog import NewComponentDialog
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 
@@ -279,8 +279,10 @@ class ComponentTreeWidget(TreeWidget):
 
         try:
             file_path = self._file_map.get(full_path)
+            uuid = Path(file_path).name
             if file_path and Path(file_path).exists():
                 Path(file_path).unlink()
+                Path(resource_path(f"app/components_extensions/{uuid}")).unlink(missing_ok=True)
                 self._show_success("组件删除成功！")
             else:
                 self._show_warning("组件文件不存在")

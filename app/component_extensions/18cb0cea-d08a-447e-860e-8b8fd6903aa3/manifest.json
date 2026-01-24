@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.18cb0cea-d08a-447e-860e-8b8fd6903aa3",
+  "uuid": "18cb0cea-d08a-447e-860e-8b8fd6903aa3",
+  "name": "GGUF CLIP加载器(多模态)",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "加载 GGUF 或常规 CLIP 模型，支持单/双/三/四 CLIP 加载 (如 SDXL/SD3/Flux)",
+  "category": "comfyui节点/模型加载器",
+  "main": "main.py",
+  "updated_at": "2026-01-24 20:53:33",
+  "author": "black"
+}

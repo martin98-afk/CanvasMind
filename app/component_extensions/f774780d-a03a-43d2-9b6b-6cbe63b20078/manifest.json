@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.f774780d-a03a-43d2-9b6b-6cbe63b20078",
+  "uuid": "f774780d-a03a-43d2-9b6b-6cbe63b20078",
+  "name": "GGUF Unet模型加载器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "加载 GGUF 格式的扩散模型(UNet)，支持自定义精度和设备加载策略",
+  "category": "comfyui节点/模型加载器",
+  "main": "main.py",
+  "updated_at": "2026-01-24 21:52:48",
+  "author": "black"
+}

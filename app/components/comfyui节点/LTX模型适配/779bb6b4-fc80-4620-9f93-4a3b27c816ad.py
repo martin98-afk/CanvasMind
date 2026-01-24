@@ -46,7 +46,7 @@ class ComfyLTXVideoLatent(BaseComponent):
         ),
     }
     outputs = [
-        PortDefinition(name="latent", label="视频潜空间", type=ArgumentType.TEXT),
+        PortDefinition(name="latent", label="视频潜空间", type=ArgumentType.OBJECT),
     ]
 
     def run(self, params, inputs=None):

@@ -50,7 +50,8 @@ class ComponentStorageManager:
     def _on_component_pasted(self, full_path):
         self._load_component(full_path=full_path, component=self.parent.component_tree._copied_component)
         # 源码路径修改
-        source_file = f"{str(uuid.uuid4())}.py"
+        new_uuid = str(uuid.uuid4())
+        source_file = f"{new_uuid}.py"
         self._current_component_file = self._current_component_file.parent / source_file
         self._save_component(delete_original_file=False)
 

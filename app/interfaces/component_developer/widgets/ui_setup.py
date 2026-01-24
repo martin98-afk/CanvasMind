@@ -59,6 +59,7 @@ class ComponentDevelopUISetUp:
         # Page 2: 扩展文件管理器
         self.file_manager = ExtensionFileManager(self.parent)
         self.file_manager.file_double_clicked.connect(self._on_file_open_request)
+        self.file_manager.set_root_path(str(Path(resource_path("app/component_extensions"))))
         self.left_stack.addWidget(self.file_manager)
 
         left_layout.addWidget(self.left_stack)
@@ -204,6 +205,7 @@ class ComponentDevelopUISetUp:
                 self.tab_manager.close_all_non_main_tabs()
             self.current_comp_uuid = None
             self.segment.setCurrentItem("component_list")
+            self.file_manager.set_root_path(str(Path(resource_path("app/component_extensions"))))
 
     def _switch_template(self, template_name, template_code):
         self._current_template_code = template_code
