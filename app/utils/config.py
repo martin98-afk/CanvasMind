@@ -48,24 +48,21 @@ class Settings(QConfig):
         """获取配置实例（单例模式）"""
         if cls._instance is None:
             cls._instance = cls()
-            CONFIG_FILE = resource_path("../app.config")
+            CONFIG_FILE = "app.config"
             try:
                 cls._instance.load(CONFIG_FILE)
             except:
-                # 首次运行，保存默认配置
-                cls._instance.save(CONFIG_FILE)
                 print(f"✅ 已创建默认配置文件: {CONFIG_FILE}")
         return cls._instance
 
     @classmethod
     def save_config(cls):
         """保存配置"""
-        print("触发保存")
         if cls._instance:
             cls._instance.save()
 
     # 版本信息
-    current_version = "v0.3.0"
+    current_version = "v0.3.1"
     user_name = ConfigItem("General", "UserName", str(uuid4().hex))
     # 通用设置
     auto_check_update = ConfigItem("General", "AutoCheckUpdate", True, BoolValidator())

@@ -1,11 +1,12 @@
 {
-  "id": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
-  "name": "文本内容输入",
+  "id": "com.canvasmind.c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+  "uuid": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+  "name": "文本输入",
   "version": "1.0.2",
   "api_version": "2.0",
-  "description": "文本内容输入",
-  "author": "DeveloperX",
+  "description": "文本输入内容",
+  "category": "数据集成",
   "main": "main.py",
-  "frontend": "web/index.js",
-  "permissions": ["network", "filesystem"]
+  "updated_at": "2026-01-24 15:23:11",
+  "author": "DeveloperX"
 }

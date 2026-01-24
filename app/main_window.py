@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import QPlainTextEdit, QApplication, QDesktopWidget
 from loguru import logger
 from qfluentwidgets import (
     FluentWindow, Theme, setTheme, NavigationItemPosition,
-    SplashScreen, FluentIcon
+    SplashScreen, FluentIcon, setFontFamilies
 )
 
 # --- 页面模块 ---
@@ -82,7 +82,7 @@ class LowCodeWindow(FluentWindow):
         plugin_manager.load_plugins(plugin_dir)
         # ------------加载配置
         self.config = Settings.get_instance()
-        self.config.save()  # 确保默认配置落盘
+        setFontFamilies([self.config.canvas_font_type.value])
 
     # endregion
 
