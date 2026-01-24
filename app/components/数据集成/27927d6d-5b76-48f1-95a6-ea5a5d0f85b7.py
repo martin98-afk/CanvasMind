@@ -16,6 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
+    requirements = "assets"
     name = "文件上传"
     category = "数据集成"
     description = "接收本地上传文件"
@@ -26,6 +27,8 @@ class Component(BaseComponent):
     ]
 
     def run(self, params, inputs=None):
+        from assets.test import count_plus
+        print(count_plus(3))
         file_path = params.dict().get("file_upload")
         if file_path.endswith("png") or file_path.endswith("jpg") or file_path.endswith("jpeg"):
             # 使用特定格式通知主进程拦截

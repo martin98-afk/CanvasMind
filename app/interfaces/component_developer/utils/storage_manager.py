@@ -3,6 +3,9 @@ import ast
 import shutil
 import traceback
 import uuid
+import json
+import os
+from datetime import datetime
 from pathlib import Path
 
 from PyQt5.QtCore import QTimer
@@ -16,22 +19,32 @@ from app.scan_components import resource_path, ComponentScanner
 
 # =================================================================
 # 存储管理核心 (ComponentStorageManager)
-# 负责：多级目录映射、物理保存、克隆迁移、旧文件清理
+# 负责：多级目录映射、物理保存、克隆迁移、旧文件清理、扩展包管理
 # =================================================================
 class ComponentStorageManager:
     _saving = False
 
     def __init__(self, parent):
         self.parent = parent
+        # 兼容性引用，方便调用 UI 更新方法
+        self.ui = getattr(self.parent, 'ui_manager', None)
+
         self.editor = self.parent.code_editor
         self._current_component_file = None
         self._current_component_code = ""  # 存储当前加载的代码
-        self.base_dir = Path(resource_path("app/components/custom"))
+        self.base_dir = Path(resource_path("app/components"))
+        self.extension_base_dir = Path(resource_path("app/component_extensions"))
         self.scanner = ComponentScanner()
+
+        # 确保扩展根目录存在
+        self.extension_base_dir.mkdir(parents=True, exist_ok=True)
 
     def _on_component_created(self, component_info):
         self.parent.requirements_edit.setText("")
+        # 新建前清理环境
+        self._clear_ui_context()
         self._create_new_component(component_info)
+        # 立即保存一次以生成 UUID 和 文件夹
         self._save_component()
 
     def _on_component_pasted(self, full_path):
@@ -53,10 +66,19 @@ class ComponentStorageManager:
         self.editor.replace_text_preserving_view(template)
         self._current_component_file = None
 
+        # 重置文件树到根目录
+        if self.ui:
+            self.ui.file_manager.set_root_path(str(self.extension_base_dir))
+
     def _load_component_filepath(self, component_path: Path):
         file_map = {value: key for key, value in self.scanner.get_file_maps().items()}
         full_path = file_map.get(Path(component_path))
-        QTimer.singleShot(300, lambda: self.parent.update_usage_table(self.scanner.get_component(full_path).uuid))
+
+        # 预先获取组件 UUID
+        comp = self.scanner.get_component(full_path)
+        uuid_str = comp.uuid if comp else None
+
+        QTimer.singleShot(300, lambda: self.parent.update_usage_table(uuid_str))
         QTimer.singleShot(300, lambda: self._load_component(full_path))
 
     def _load_component(self, full_path=None, component=None, uuid=None):
@@ -64,6 +86,10 @@ class ComponentStorageManager:
             if uuid is not None:
                 component = self.scanner.get_component_by_uuid(uuid)
             component = component or self.scanner.get_component(full_path)
+
+            # 【核心逻辑】清理 Tab
+            self._clear_ui_context()
+
             full_path = full_path or f"{component.category}/{component.name}"
             if full_path:
                 category = "/".join(full_path.split("/")[:-1])
@@ -112,11 +138,20 @@ class ComponentStorageManager:
                 self.parent._load_history_list(self._current_component_file)
             else:
                 self.parent.history_table.setRowCount(0)
+
+            # 【核心逻辑】加载并刷新扩展环境
+            comp_uuid = component.uuid if hasattr(component, 'uuid') else self._current_component_file.stem
+            self._ensure_extension_environment(comp_uuid, component)
+
+            # 更新 UI 状态
+            if self.ui:
+                self.ui.current_comp_uuid = comp_uuid
+                self.ui._update_file_manager_path(comp_uuid)
+
             QTimer.singleShot(300, lambda: self.parent.update_usage_table(component.uuid))
         except Exception as e:
             logger.error(traceback.format_exc())
             MessageManager.error(f"加载组件失败: {str(e)}", "", self.parent)
-
 
     def _save_component(self, delete_original_file: bool = True):
         if self._saving:
@@ -127,6 +162,8 @@ class ComponentStorageManager:
             self.parent.sync_basic_info_to_code()
             name = self.parent.name_edit.text().strip()
             category = self.parent.category_edit.currentText().strip()
+            description = self.parent.description_edit.toPlainText().strip()
+
             if not name or not category:
                 MessageManager.warning("请输入组件名称和分类！", "", self.parent)
                 return
@@ -145,6 +182,16 @@ class ComponentStorageManager:
                 return
 
             self._save_component_to_file(category, name, code, self._current_component_file, delete_original_file)
+
+            # 【核心逻辑】保存 Manifest
+            comp_uuid = self._current_component_file.stem
+            comp_info = {
+                "name": name,
+                "category": category,
+                "description": description
+            }
+            self._update_extension_manifest(comp_uuid, comp_info)
+
             if self._current_component_file:
                 current_signature = {
                     "inputs": self.parent.input_port_editor.get_ports(serialize=True),
@@ -159,7 +206,8 @@ class ComponentStorageManager:
                 )
                 self.parent._load_history_list(self._current_component_file)
             QTimer.singleShot(
-                1000, lambda: self._load_component(full_path=f"{category}/{name}", uuid=self._current_component_file.stem)
+                1000,
+                lambda: self._load_component(full_path=f"{category}/{name}", uuid=self._current_component_file.stem)
             )
             MessageManager.success("组件保存成功！", "", self.parent)
         except Exception as e:
@@ -229,6 +277,16 @@ class ComponentStorageManager:
                 code=new_code,
                 current_signature=sig
             )
+
+            # 同步更新 manifest
+            if hasattr(comp_obj, 'uuid'):
+                info = {
+                    "name": name,
+                    "category": getattr(comp_obj, 'category', ''),
+                    "description": getattr(comp_obj, 'description', '')
+                }
+                self._update_extension_manifest(comp_obj.uuid, info)
+
             MessageManager.success(f"组件已保存：{name}", "", self.parent)
         except Exception as e:
             logger.error(traceback.format_exc())
@@ -270,3 +328,62 @@ class ComponentStorageManager:
             logger.error(traceback.format_exc())
             logger.warning(f"AST extraction failed for {file_path}:{class_name} - {e}")
         return ""
+
+    # --- 扩展包管理辅助方法 ---
+
+    def _clear_ui_context(self):
+        """清理 UI 上下文"""
+        if self.ui and hasattr(self.ui, 'tab_manager'):
+            self.ui.tab_manager.close_all_non_main_tabs()
+
+    def _ensure_extension_environment(self, uuid_str, component_obj=None):
+        """确保组件扩展文件夹存在并同步 Manifest"""
+        if not uuid_str: return
+
+        target_dir = self.extension_base_dir / uuid_str
+        if not target_dir.exists():
+            shutil.copytree(self.extension_base_dir / "example_extension", target_dir, dirs_exist_ok=True)
+
+        # 写入或更新 manifest
+        info = {
+            "name": getattr(component_obj, 'name', '') if component_obj else '',
+            "category": getattr(component_obj, 'category', '') if component_obj else '',
+            "description": getattr(component_obj, 'description', '') if component_obj else ''
+        }
+        self._update_extension_manifest(uuid_str, info)
+
+        # 更新文件管理器根目录 (如果 UI 存在)
+        if self.ui:
+            self.ui.file_manager.set_root_path(str(target_dir))
+
+    def _update_extension_manifest(self, uuid_str, info: dict):
+        """生成或更新 manifest.json"""
+        target_dir = self.extension_base_dir / uuid_str
+        manifest_path = target_dir / "manifest.json"
+
+        existing_data = {}
+        if manifest_path.exists():
+            try:
+                with open(manifest_path, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+            except:
+                pass
+
+        manifest = {
+            "id": f"com.canvasmind.{uuid_str}",
+            "uuid": uuid_str,
+            "name": info.get("name", existing_data.get("name", "Unnamed")),
+            "version": existing_data.get("version", "1.0.0"),
+            "api_version": "2.0",
+            "description": info.get("description", existing_data.get("description", "")),
+            "category": info.get("category", existing_data.get("category", "Custom")),
+            "main": "main.py",
+            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "author": existing_data.get("author", os.getlogin())
+        }
+
+        try:
+            with open(manifest_path, 'w', encoding='utf-8') as f:
+                json.dump(manifest, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Manifest update failed: {e}")
