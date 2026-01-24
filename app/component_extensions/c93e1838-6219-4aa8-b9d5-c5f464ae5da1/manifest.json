@@ -1,0 +1,11 @@
+{
+  "id": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+  "name": "文本内容输入",
+  "version": "1.0.2",
+  "api_version": "2.0",
+  "description": "文本内容输入",
+  "author": "DeveloperX",
+  "main": "main.py",
+  "frontend": "web/index.js",
+  "permissions": ["network", "filesystem"]
+}
