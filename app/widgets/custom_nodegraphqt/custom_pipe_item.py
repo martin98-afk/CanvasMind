@@ -222,7 +222,6 @@ class CustomPipeItem(PipeItem):
     def reset(self):
         self._active = False
         self._highlight = False
-        self._running = False
         self.set_pipe_styling(color=self.color, width=3, style=self.style)
         self.setZValue(Z_VAL_PIPE)
         self.stop_flow()

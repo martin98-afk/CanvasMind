@@ -1,97 +1,269 @@
 # -*- coding: utf-8 -*-
 import os
-
 import cv2
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer, QSize
-from PyQt5.QtCore import QUrl
+from PyQt5 import QtWidgets, QtCore
+from PyQt5.QtCore import QThread, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, QUrl, QSize
 from PyQt5.QtGui import QImage
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+# 关键修改：Qt5 的导入方式
 from PyQt5.QtWidgets import *
 from PyQt5.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QFrame, QSlider
-from PyQt5.QtWidgets import QWidget, QComboBox
-from Qt import QtWidgets, QtCore
-from qfluentwidgets import ToolButton, FluentIcon
-from qfluentwidgets.multimedia import SimpleMediaPlayBar
+from PyQt5.QtWidgets import QWidget
+from Qt import QtWidgets
+from qfluentwidgets import FluentIcon
+# 引入 qfluentwidgets 的基础控件
+from qfluentwidgets import ToolButton, Slider, FluentIcon as FIF
 
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 
 
+class MiniAudioPlayer(QtWidgets.QWidget):
+    """
+    适配 PyQt5 的自定义迷你音频播放器 (带音量控制)
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(50)
+
+        # --- 1. 初始化播放器 ---
+        self.player = QMediaPlayer(self)
+        self.player.setVolume(50)  # 默认 50% 音量
+
+        self.is_slider_pressed = False
+        self.last_volume = 50  # 用于记录静音前的音量
+
+        # --- 2. 初始化 UI 界面 ---
+        self._init_ui()
+
+        # --- 3. 信号连接 ---
+        self._connect_signals()
+
+    def _init_ui(self):
+        self.h_layout = QtWidgets.QHBoxLayout(self)
+        self.h_layout.setContentsMargins(10, 5, 10, 5)
+        self.h_layout.setSpacing(8)  # 稍微调小间距以容纳更多控件
+
+        # 1. 播放/暂停按钮
+        self.playBtn = ToolButton(FIF.PLAY, self)
+        self.playBtn.setFixedSize(30, 30)
+        self.playBtn.setIconSize(QSize(14, 14))
+
+        # 2. 当前时间
+        self.lblCurrent = QtWidgets.QLabel("00:00", self)
+        self.lblCurrent.setStyleSheet("color: #666; font-size: 12px;")
+
+        # 3. 进度条 (自适应宽度)
+        self.slider = Slider(Qt.Horizontal, self)
+        self.slider.setRange(0, 0)
+        self.slider.setMinimumWidth(200)
+        # 4. 总时长
+        self.lblTotal = QtWidgets.QLabel("00:00", self)
+        self.lblTotal.setStyleSheet("color: #666; font-size: 12px;")
+
+        # --- 新增音量控制部分 ---
+
+        # 5. 音量按钮 (点击静音)
+        self.volumeBtn = ToolButton(FIF.VOLUME, self)
+        self.volumeBtn.setFixedSize(28, 28)
+        self.volumeBtn.setIconSize(QSize(14, 14))
+
+        # 6. 音量滑块 (固定宽度，比较短)
+        self.volumeSlider = Slider(Qt.Horizontal, self)
+        self.volumeSlider.setFixedSize(100, 28)  # 宽度60，高度和按钮对其
+        self.volumeSlider.setRange(0, 100)
+        self.volumeSlider.setValue(50)
+
+        # 添加到布局
+        self.h_layout.addWidget(self.playBtn)
+        self.h_layout.addWidget(self.lblCurrent)
+        self.h_layout.addWidget(self.slider, 1)  # 1 表示拉伸
+        self.h_layout.addWidget(self.lblTotal)
+
+        # 分割线或间距 (可选)
+        self.h_layout.addSpacing(5)
+
+        self.h_layout.addWidget(self.volumeBtn)
+        self.h_layout.addWidget(self.volumeSlider)
+
+    def _connect_signals(self):
+        # 播放控制
+        self.playBtn.clicked.connect(self._toggle_play)
+
+        # 播放器回调
+        self.player.positionChanged.connect(self._on_position_changed)
+        self.player.durationChanged.connect(self._on_duration_changed)
+        self.player.mediaStatusChanged.connect(self._on_media_status_changed)
+        self.player.stateChanged.connect(self._on_state_changed)
+
+        # 进度滑块交互
+        self.slider.sliderPressed.connect(self._on_slider_pressed)
+        self.slider.sliderReleased.connect(self._on_slider_released)
+        self.slider.valueChanged.connect(self._on_slider_moved)
+
+        # --- 音量交互 ---
+        self.volumeSlider.valueChanged.connect(self._on_volume_changed)
+        self.volumeBtn.clicked.connect(self._toggle_mute)
+
+    def set_source(self, file_path):
+        self.stop()
+        if not os.path.exists(file_path):
+            return
+
+        url = QUrl.fromLocalFile(file_path)
+        content = QMediaContent(url)
+        self.player.setMedia(content)
+
+        self.playBtn.setIcon(FIF.PLAY)
+        self.playBtn.setEnabled(True)
+
+    def play(self):
+        self.player.play()
+
+    def stop(self):
+        self.player.stop()
+        self.playBtn.setIcon(FIF.PLAY)
+        self.slider.setValue(0)
+        self.lblCurrent.setText("00:00")
+
+    def _toggle_play(self):
+        if self.player.state() == QMediaPlayer.PlayingState:
+            self.player.pause()
+        else:
+            self.player.play()
+
+    def _on_state_changed(self, state):
+        if state == QMediaPlayer.PlayingState:
+            self.playBtn.setIcon(FIF.PAUSE)
+        else:
+            self.playBtn.setIcon(FIF.PLAY)
+
+    def _on_duration_changed(self, duration):
+        self.slider.setRange(0, duration)
+        self.lblTotal.setText(self._format_time(duration))
+
+    def _on_position_changed(self, position):
+        if not self.is_slider_pressed:
+            self.slider.setValue(position)
+        self.lblCurrent.setText(self._format_time(position))
+
+    def _on_slider_pressed(self):
+        self.is_slider_pressed = True
+
+    def _on_slider_released(self):
+        self.is_slider_pressed = False
+        self.player.setPosition(self.slider.value())
+
+    def _on_slider_moved(self, value):
+        if self.is_slider_pressed:
+            self.lblCurrent.setText(self._format_time(value))
+
+    def _on_media_status_changed(self, status):
+        if status == QMediaPlayer.EndOfMedia:
+            self.playBtn.setIcon(FIF.PLAY)
+
+    # --- 音量控制逻辑 ---
+
+    def _on_volume_changed(self, value):
+        """滑块拖动时调用"""
+        self.player.setMuted(False)  # 只要动了滑块，就取消静音
+        self.player.setVolume(value)
+
+        # 更新图标状态
+        if value == 0:
+            self.volumeBtn.setIcon(FIF.MUTE)
+        else:
+            self.volumeBtn.setIcon(FIF.VOLUME)
+
+    def _toggle_mute(self):
+        """点击喇叭图标时调用"""
+        if self.player.isMuted() or self.volumeSlider.value() == 0:
+            # 恢复音量
+            self.player.setMuted(False)
+            vol = self.last_volume if self.last_volume > 0 else 50
+            self.volumeSlider.setValue(vol)
+            self.volumeBtn.setIcon(FIF.VOLUME)
+        else:
+            # 静音
+            self.last_volume = self.volumeSlider.value()  # 记住当前音量
+            self.player.setMuted(True)
+            self.volumeSlider.setValue(0)  # 视觉上归零
+            self.volumeBtn.setIcon(FIF.MUTE)
+
+    @staticmethod
+    def _format_time(ms):
+        seconds = (ms // 1000) % 60
+        minutes = (ms // 60000)
+        return f"{minutes:02d}:{seconds:02d}"
+
+
 class AudioPlayWidget(QtWidgets.QWidget):
-    valueChanged = QtCore.Signal(object)
-    sizeHintChanged = QtCore.Signal()
+    valueChanged = QtCore.pyqtSignal(object)
+    sizeHintChanged = QtCore.pyqtSignal()
     EXTS = ['.mp3', '.wav', '.flac', '.m4a', '.ogg']
+    fixed_height = True
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._file_path = None
 
-        # 1. 关键修复：设置主布局并去掉外边距，防止在节点内偏移
+        # 1. 布局设置
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.setSpacing(2)
+        self.main_layout.setSpacing(0)
 
-        # 2. 关键修复：将父对象设为 self，而不是外部传入的 parent
-        # 播放控制条 (音频播放时使用)
-        self.playBar = SimpleMediaPlayBar()
-        self.playBar.setFixedSize(220, 180)
-        # 将控件添加到布局
-        self.main_layout.addWidget(self.playBar)
+        # 2. 替换为自定义的 MiniAudioPlayer
+        self.playerWidget = MiniAudioPlayer(self)
+        self.main_layout.addWidget(self.playerWidget)
 
-        # 初始状态
-        self.playBar.hide()
+        # 初始状态隐藏
+        self.playerWidget.hide()
 
     def set_value(self, file_path):
         """传入本地文件路径"""
         if self._file_path == file_path:
             return
 
-        # 停止当前的播放（非常重要，防止切换时背景声音还在响）
         self.stop()
-
         self._file_path = file_path
 
         if not file_path or not os.path.exists(file_path):
-            self.playBar.hide()
-            self.updateGeometry()
-            self.sizeHintChanged.emit()
+            self.playerWidget.hide()
+            self._update_node_size()
             return
 
         ext = os.path.splitext(file_path)[1].lower()
-        audio_exts = self.EXTS
 
-        url = QUrl.fromLocalFile(file_path)
+        if ext in self.EXTS:
+            self.playerWidget.show()
+            self.playerWidget.set_source(file_path)
+        else:
+            self.playerWidget.hide()
 
-        if ext in audio_exts:
-            # 音频模式：隐藏 VideoWidget，只显示控制条
-            self.playBar.show()
-            # 根据 qfluentwidgets 版本，通常访问内部播放器如下：
-            self.playBar.player.setSource(url)
-
-        self.updateGeometry()
-        # 关键：通知 NodeGraphQt 节点尺寸已变化，需要重绘
-        self.sizeHintChanged.emit()
+        self._update_node_size()
         self.valueChanged.emit(file_path)
 
+    def _update_node_size(self):
+        """通知节点更新尺寸"""
+        self.updateGeometry()
+        self.sizeHintChanged.emit()
+
     def play(self):
-        self.playBar.play()
+        self.playerWidget.play()
 
     def stop(self):
-        """停止所有播放器"""
-        try:
-            if hasattr(self.playBar, 'stop'):
-                self.playBar.stop()
-        except:
-            pass
+        self.playerWidget.stop()
 
     def get_value(self):
         return self._file_path
 
     def sizeHint(self):
-        # 根据当前显示的控件返回对应的尺寸
-        if self._file_path:
-            return QSize(100, 50)
-        return QSize(200, 50)
+        # 动态计算尺寸：如果不显示，高度为0（或者极小）
+        if self._file_path and not self.playerWidget.isHidden():
+            return QSize(250, 50)  # 宽度可以稍微大一点，高度固定50
+        return QSize(250, 0)  # 没有文件时尽量收缩
 
     def closeEvent(self, event):
         self.stop()

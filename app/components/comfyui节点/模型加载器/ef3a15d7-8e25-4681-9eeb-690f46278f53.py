@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 class ComfyLoraLoader(BaseComponent):
     requirements = "comfy"
     name = "LoRA加载器"
-    category = "comfyui节点"
+    category = "comfyui节点/模型加载器"
     description = "为模型和 CLIP 叠加 LoRA 补丁"
     
     inputs = [

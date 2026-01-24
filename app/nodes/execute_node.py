@@ -6,6 +6,8 @@ import re
 import shutil
 import subprocess
 import time
+from pathlib import Path
+
 import paramiko  # 确保环境已安装 paramiko
 
 from PyQt5 import QtCore
@@ -421,6 +423,12 @@ def create_node_class(full_path, file_path, parent_window=None):
             shutil.rmtree(run_dir, ignore_errors=True)
             run_dir.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(resource_path("app/components/base.py"), str(run_dir.parent / "base.py"))
+            # 将组件扩展全部复制到运行目录
+            extension_dir = Path(resource_path("app/component_extensions")) / comp_obj.uuid
+            if extension_dir.exists():
+                if not (extension_dir / "manifest.json").exists():
+                    raise FileNotFoundError(f"组件包损坏: 缺少 manifest.json ({extension_dir})")
+                shutil.copytree(extension_dir, run_dir, dirs_exist_ok=True)
 
             local_script_path = run_dir / "exec_script.py"
             local_comp_path = run_dir / "component.py"

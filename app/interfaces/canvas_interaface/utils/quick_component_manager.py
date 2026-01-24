@@ -20,7 +20,9 @@ class QuickComponentManager(QObject):
         return self.config.get(self.config.quick_components)
 
     def set_quick_components(self, value):
+        print(value)
         self.config.set(self.config.quick_components, value)
+        self.config.save_config()
         self.quick_components_changed.emit()
 
     def open_add_dialog(self):
@@ -31,6 +33,7 @@ class QuickComponentManager(QObject):
                     "full_path": dialog.selected_full_path,
                     "icon_path": dialog.selected_icon_path
                 }]
+                print(new_list)
                 self.set_quick_components(new_list)
 
     def remove_component(self, full_path):

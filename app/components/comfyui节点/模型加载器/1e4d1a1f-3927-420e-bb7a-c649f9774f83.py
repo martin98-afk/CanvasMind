@@ -16,8 +16,8 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "模型加载器"
-    category = "comfyui节点"
+    name = "通用三模型加载器"
+    category = "comfyui节点/模型加载器"
     description = "使用 ComfyUI 后端加载 Checkpoint (.safetensors/.ckpt)"
     requirements = "numpy,comfy,folder_paths,nodes"
     inputs = [
@@ -72,20 +72,17 @@ class Component(BaseComponent):
         ckpt_path = params.ckpt_path
         clip_path = params.clip_path
         vae_path = params.vae_path
-        if not os.path.exists(ckpt_path):
-            raise FileNotFoundError(f"找不到模型: {ckpt_path}")
-
-        self.logger.info(f"ComfyUI 正在解析模型: {ckpt_path}")
-        
         # 调用 ComfyUI 的核心加载函数
         # 它会自动识别是 SD1.5, SDXL 还是其他，并返回封装好的 Patcher 对象
         embedding_directory=folder_paths.get_folder_paths("embeddings")
+        model, clip, vae = None, None, None
         if m_type == "Wan":
             self.logger.info("正在以 Wan2.1 模式加载模型...")
             
             # 1. 加载 DiT 模型 (Wan 2.1 建议使用专用的加载方式)
             # 注意：Wan 2.1 通常不包含在 guess_config 里，建议直接加载
-            model = comfy.sd.load_diffusion_model(ckpt_path)
+            if ckpt_path and os.path.exists(ckpt_path):
+                model = comfy.sd.load_diffusion_model(ckpt_path)
 
             # 2. 关键修复：加载 T5 CLIP
             # 必须指定 clip_type 为 WAN，否则会报 size mismatch 错误
@@ -108,11 +105,12 @@ class Component(BaseComponent):
         else:
             # 标准加载逻辑 (SD1.5, SDXL, Flux)
             self.logger.info("正在以标准模式加载模型...")
-            out = comfy.sd.load_checkpoint_guess_config(
-                ckpt_path, output_vae=True, output_clip=True, 
-                embedding_directory=folder_paths.get_folder_paths("embeddings")
-            )
-            model, clip, vae = out[0], out[1], out[2]
+            if ckpt_path and os.path.exists(ckpt_path):
+                out = comfy.sd.load_checkpoint_guess_config(
+                    ckpt_path, output_vae=True, output_clip=True, 
+                    embedding_directory=folder_paths.get_folder_paths("embeddings")
+                )
+                model, clip, vae = out[0], out[1], out[2]
 
             if clip is None and clip_path and os.path.exists(clip_path):
                 self.logger.info(f"正在从外部路径加载 CLIP: {clip_path}")
@@ -123,8 +121,8 @@ class Component(BaseComponent):
                     embedding_directory=folder_paths.get_folder_paths("embeddings")
                 )
             if vae_path and os.path.exists(vae_path):
-                    sd = comfy.utils.load_torch_file(vae_path)
-                    vae = comfy.sd.VAE(sd=sd)
+                sd = comfy.utils.load_torch_file(vae_path)
+                vae = comfy.sd.VAE(sd=sd)
         return {
             "model": model,
             "clip": clip,

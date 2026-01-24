@@ -24,7 +24,7 @@ class ComfySD3CLIPLoader(BaseComponent):
     description = ""
     requirements = "comfy"
     name = "SD3.5三模型CLIP加载器"
-    category = "comfyui节点"
+    category = "comfyui节点/模型加载器"
     
     properties = {
         "clip_l": PropertyDefinition(
