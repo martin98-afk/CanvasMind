@@ -2,8 +2,11 @@
 import os
 import sys
 import warnings
+
+import NodeGraphQt
 import matplotlib
 import qtconsole.client
+from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import QTranslator, QCoreApplication  # 必须导入这个
 from PyQt5.QtGui import QPalette, QColor
 
@@ -29,6 +32,26 @@ def enable_dpi_scale():
 def enable_opengl():
     QApplication.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
     QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
+
+
+def patch_nodegraphqt():
+    """解决nodegraphqt内部函数问题"""
+    def add_label_item(self, label, node_id):
+        item = QtGui.QStandardItem(label)
+        item.setToolTip(node_id)
+        metrics = QtGui.QFontMetrics(item.font())
+        if hasattr(metrics, 'horizontalAdvance'):
+            width = metrics.horizontalAdvance(item.text())
+        else:
+            width = metrics.width(item.text())
+        width *= 1.5
+        item.setSizeHint(QtCore.QSize(int(width), 20))
+        self.model().appendRow(item)
+        self.selectionModel().setCurrentIndex(
+            self.model().indexFromItem(item),
+            QtCore.QItemSelectionModel.ClearAndSelect)
+    # 动态替换掉库里的原始函数
+    NodeGraphQt.widgets.viewer_nav.NodeNavigationWidget.add_label_item = add_label_item
 
 
 def create_application():
@@ -84,6 +107,7 @@ def load_localization(app,  language="en"):
 # 启动应
 # ----------------------------
 if __name__ == '__main__':
+    patch_nodegraphqt()
     os.environ['PYTHONIOENCODING'] = 'utf-8'
     app = create_application()
     # load_localization(app)

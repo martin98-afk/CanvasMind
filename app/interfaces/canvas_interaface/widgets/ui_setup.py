@@ -16,6 +16,7 @@ from ..constants import (BUTTONS_CONTAINER_X_OFFSET, DEFAULT_SPLITTER_SIZES,
 
 
 class CanvasUISetUp:
+
     def __init__(self, parent):
         self.parent = parent
         self.nav_view = None
@@ -48,7 +49,7 @@ class CanvasUISetUp:
         # 3. 分割器
         self.splitter = ModernSplitter(Qt.Horizontal)
         self.splitter.addWidget(self.nav_panel)
-        self.splitter.addWidget(self.parent.canvas_widget)
+        self.splitter.addWidget(self.parent.graph.widget)
         self.splitter.addWidget(self.side_dock_area)
         self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
         self.last_right_width = DEFAULT_SPLITTER_SIZES[2]
@@ -82,7 +83,7 @@ class CanvasUISetUp:
         self.echart_node.clicked.connect(lambda: self.parent.create_next_node("visualize.MediaNode"))
         self.code_node.clicked.connect(lambda: self.parent.create_next_node("dynamic.DYNAMIC_CODE"))
         self.note_node.clicked.connect(lambda: self.parent.create_backdrop_node("general.StickyNote", init_io=False))
-
+        self.group_node.clicked.connect(lambda: self.parent.create_group_node())
         # --- 快捷组件管理 ---
         if hasattr(self.parent, 'quick_manager'):
             self.add_quick_btn.clicked.connect(self.parent.quick_manager.open_add_dialog)
@@ -146,12 +147,13 @@ class CanvasUISetUp:
         self.iterate_node = self._build_tool_btn(get_icon("更新"), "创建迭代")
         self.loop_node = self._build_tool_btn(get_icon("无限"), "创建循环")
         self.branch_node = self._build_tool_btn(get_icon("条件分支"), "创建分支")
+        self.group_node = self._build_tool_btn(get_icon("组节点"), "创建组节点")
         self.echart_node = self._build_tool_btn(get_icon("多媒体"), "媒体展示")
         self.code_node = self._build_tool_btn(get_icon("代码执行"), "代码节点")
         self.note_node = self._build_tool_btn(get_icon("文本注释"), "注释节点")
 
         for btn in [self.iterate_node, self.loop_node, self.branch_node, self.echart_node, self.code_node,
-                    self.note_node]:
+                    self.group_node, self.note_node]:
             self.node_layout.addWidget(btn)
 
         self.node_layout.addWidget(CardSeparator(self.nodes_container))

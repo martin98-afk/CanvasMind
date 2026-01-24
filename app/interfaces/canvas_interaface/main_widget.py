@@ -320,6 +320,9 @@ class CanvasPage(QWidget):
     def create_next_node(self, key, icon_path=None):
         self.node_operations.create_next_node(key, icon_path)
 
+    def create_group_node(self):
+        self.node_operations.create_group_node()
+
     def create_backdrop_node(self, key, init_io=True):
         self.node_operations.create_backdrop_node(key, init_io)
 
@@ -404,6 +407,7 @@ class CanvasPage(QWidget):
         # 界面刷新信号
         self.ui_manager.connect_signals()
         self.graph.node_created.connect(self.node_operations.on_node_created)
+        self.graph.node_double_clicked.connect(self.node_operations.on_node_double_clicked)
         self.graph.port_connected.connect(self._on_port_connected)
         self.graph.viewer().node_selection_changed.connect(
             lambda: QtCore.QTimer.singleShot(0, self.on_selection_changed)
