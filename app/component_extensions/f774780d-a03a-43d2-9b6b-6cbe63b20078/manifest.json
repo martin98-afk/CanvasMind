@@ -7,6 +7,6 @@
   "description": "加载 GGUF 格式的扩散模型(UNet)，支持自定义精度和设备加载策略",
   "category": "comfyui节点/模型加载器",
   "main": "main.py",
-  "updated_at": "2026-01-24 21:52:48",
+  "updated_at": "2026-01-25 10:43:38",
   "author": "black"
 }

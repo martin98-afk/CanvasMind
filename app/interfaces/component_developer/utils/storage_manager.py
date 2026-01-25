@@ -154,13 +154,67 @@ class ComponentStorageManager:
             logger.error(traceback.format_exc())
             MessageManager.error(f"加载组件失败: {str(e)}", "", self.parent)
 
+    def _merge_requirements_from_extension(self):
+        """
+        检查当前组件的扩展资源目录是否存在 requirements.txt。
+        如果有，读取内容并合并到 UI 的 Requirements 编辑框中。
+        """
+        if not self._current_component_file:
+            return
+
+        try:
+            # 获取当前组件 UUID (文件名作为 UUID)
+            uuid_str = self._current_component_file.stem
+            extension_path = self.extension_base_dir / uuid_str
+            # 递归查找requirements.txt
+            file_reqs = set()
+            for req_file_path in extension_path.rglob("requirements.txt"):
+                # 读取文件内容
+                with open(req_file_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#'):
+                            file_reqs.add(line)
+
+            if not file_reqs:
+                return
+
+            # 获取当前 UI 中的内容
+            current_text = self.parent.requirements_edit.toPlainText()
+            # 分割处理，支持逗号或换行符
+            ui_reqs = set()
+            for r in current_text.replace(',', '\n').split('\n'):
+                r = r.strip()
+                if r:
+                    ui_reqs.add(r)
+
+            # 合并逻辑：将文件中的新依赖加入 UI，取并集
+            new_reqs = ui_reqs | file_reqs
+
+            # 如果有新内容，则更新 UI
+            if new_reqs != ui_reqs:
+                # 排序后重新设置回 UI，保持整洁
+                sorted_reqs = sorted(list(new_reqs))
+                self.parent.requirements_edit.setText('\n'.join(sorted_reqs))
+                logger.info(f"已自动合并 requirements.txt 中的依赖: {file_reqs - ui_reqs}")
+
+        except Exception as e:
+            logger.warning(f"自动合并 requirements.txt 失败: {e}")
+
     def _save_component(self, delete_original_file: bool = True):
         if self._saving:
             return
         self._saving = True
         try:
+            # 1. 自动分析代码中的 import
             self.parent.analyze_code_for_requirements()
+
+            # 2. 自动合并扩展目录下的 requirements.txt
+            self._merge_requirements_from_extension()
+
+            # 3. 将 UI 信息（包括合并后的 Requirements）同步回代码字符串
             self.parent.sync_basic_info_to_code()
+
             name = self.parent.name_edit.text().strip()
             category = self.parent.category_edit.currentText().strip()
             description = self.parent.description_edit.toPlainText().strip()

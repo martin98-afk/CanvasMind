@@ -30,10 +30,10 @@ class ExtensionFileManager(QWidget):
         self.command_bar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
 
         self.command_bar.addActions([
-            Action(FluentIcon.ADD, self.tr("新建"),
-                   triggered=lambda: self._show_create_menu_for_index(self.tree.currentIndex())),
             Action(get_icon("upload"), self.tr("上传文件"),
                    triggered=lambda: self._upload_files(self._get_context_path(self.tree.currentIndex()))),
+            Action(FluentIcon.ADD, self.tr("新建"),
+                   triggered=lambda: self._show_create_menu_for_index(self.tree.currentIndex())),
             Action(FluentIcon.FOLDER_ADD, self.tr("上传文件夹"),
                    triggered=lambda: self._upload_folder(self._get_context_path(self.tree.currentIndex()))),
             Action(FluentIcon.SYNC, self.tr("刷新"), triggered=self._refresh_tree),
@@ -118,6 +118,12 @@ class ExtensionFileManager(QWidget):
             menu.addAction(Action(FluentIcon.DELETE, self.tr("删除"),
                                   triggered=lambda: self._delete_item(index)))
             menu.addSeparator()
+            menu.addAction(
+                Action(
+                    FluentIcon.COPY, "复制路径",
+                    triggered=lambda: self.tree._copy_path_to_clipboard(self.model.filePath(index))
+                )
+            )
             menu.addAction(Action(FluentIcon.FOLDER, self.tr("打开系统位置"),
                                   triggered=lambda: QDesktopServices.openUrl(
                                       QUrl.fromLocalFile(context_path))))

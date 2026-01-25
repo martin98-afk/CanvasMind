@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class ComfyUIConfig(BaseComponent):
-    requirements = "comfy"
+    requirements = "# comfy"
     name = "ComfyUI全局配置"
     category = "comfyui节点"
     description = "自动初始化ComfyUI环境并设置显存管理策略"
