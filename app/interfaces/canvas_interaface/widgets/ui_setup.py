@@ -3,7 +3,7 @@ import os
 
 from PyQt5.QtCore import Qt, QSize, QPoint, QTimer
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
-from qfluentwidgets import TransparentToolButton, FluentIcon, RoundMenu, Action, LineEdit, ComboBox, Flyout
+from qfluentwidgets import TransparentToolButton, FluentIcon, RoundMenu, Action, LineEdit, ComboBox
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 from qtpy import QtGui
 
@@ -23,7 +23,7 @@ class CanvasUISetUp:
         self.nav_view = None
         self.nodes_container = None
         self._hidden_quick_components = []
-
+        self.is_zen_mode = False
         # UI 引用
         self.env_combo = None
         self.run_btn = None
@@ -38,6 +38,7 @@ class CanvasUISetUp:
         self.btn_mode_toggle = None  # 框选/拖拽切换
         self.btn_zoom_fit = None  # 缩放至适应
         self.btn_canvas_setting = None
+        self.btn_zen_mode = None
         self.view = None
 
     def setup_ui(self):
@@ -101,6 +102,7 @@ class CanvasUISetUp:
         self.btn_zoom_fit.clicked.connect(
             lambda: self.parent.canvas_widget.zoom_to_nodes([n.view for n in self.parent.graph.all_nodes()])
         )
+        self.btn_zen_mode.clicked.connect(self.toggle_zen_mode)
         self.btn_canvas_setting.clicked.connect(self._show_canvas_settings)
         # --- 顶部名称标签 ---
         self.create_name_label()
@@ -201,20 +203,15 @@ class CanvasUISetUp:
 
         # 2. 缩放至适应按钮
         self.btn_zoom_fit = self._build_tool_btn(get_icon("适应屏幕"), "缩放至适应")
+        self.btn_zen_mode = self._build_tool_btn(get_icon("三图居中"), "切换纯净模式")
         self.btn_canvas_setting = self._build_tool_btn(FluentIcon.SETTING, "画布设置")
         self.view = CanvasSettingPopup(self.parent, self.parent.config)
         self.view.hide()
         layout.addWidget(self.btn_mode_toggle)
         layout.addWidget(self.btn_zoom_fit)
+        layout.addWidget(self.btn_zen_mode)
         layout.addWidget(self.btn_canvas_setting)
         # 设置容器背景样式（毛玻璃或半透明）
-        self.canvas_controls_container.setStyleSheet("""
-            QWidget {
-                background: rgba(40, 40, 40, 180);
-                border-radius: 6px;
-                border: 1px solid rgba(255, 255, 255, 30);
-            }
-        """)
         self.canvas_controls_container.show()
 
     def _build_tool_btn(self, icon, tooltip):
@@ -266,8 +263,8 @@ class CanvasUISetUp:
             ctrl_h = self.canvas_controls_container.height()
 
             # 距离右边 20px，底边 20px
-            target_x = canvas_w - ctrl_w - 20
-            target_y = canvas_h - ctrl_h - 20
+            target_x = canvas_w - ctrl_w - 5
+            target_y = canvas_h - ctrl_h - 5
             self.canvas_controls_container.move(max(0, target_x), max(0, target_y))
 
     def _update_name_label_width(self, line_edit):
@@ -421,6 +418,31 @@ class CanvasUISetUp:
             viewer.set_navigation_mode(True)  # 1: MODE_NAVIGATION (Panning)
             self.btn_mode_toggle.setIcon(FluentIcon.MOVE)
             self.btn_mode_toggle.setToolTip("当前模式: 拖拽 (点击切换为框选)")
+
+    def toggle_zen_mode(self):
+        """切换纯净模式：隐藏/显示左右侧边栏"""
+        if not self.is_zen_mode:
+            # --- 进入纯净模式 ---
+            # 记录当前各部分宽度，以便还原
+            current_sizes = self.splitter.sizes()
+            # 如果当前不是全屏状态（中间宽度不占满），才记录
+            if current_sizes[0] > 0 or current_sizes[2] > 0:
+                self.saved_splitter_sizes = current_sizes
+
+            # 计算总宽度并设置：[左, 中, 右] -> [0, 总计, 0]
+            total_width = sum(current_sizes)
+            self.splitter.setSizes([0, total_width, 0])
+
+            # 更新图标为“还原”
+            self.btn_zen_mode.setIcon(get_icon("画布2"))
+            self.is_zen_mode = True
+        else:
+            # --- 还原状态 ---
+            self.splitter.setSizes(self.saved_splitter_sizes)
+
+            # 更新图标为“全屏”
+            self.btn_zen_mode.setIcon(get_icon("三图居中"))
+            self.is_zen_mode = False
 
     def _show_canvas_settings(self):
         """弹出设置面板 (Flyout 形式)"""

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import Qt, QPoint, pyqtSignal
+from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QApplication, QSizePolicy
 from qfluentwidgets import (ScrollArea, SettingCardGroup, SimpleCardWidget,
-                            SwitchSettingCard, RangeSettingCard, OptionsSettingCard)
+                            SwitchSettingCard, RangeSettingCard, OptionsSettingCard, InfoBar)
 
 from app.utils.utils import get_icon
 
@@ -13,7 +13,10 @@ class CanvasSettingPopup(QWidget):
     def __init__(self, parent, config):
         super().__init__(parent)
         self.cfg = config
-
+        self._save_timer = QTimer(self)
+        self._save_timer.setSingleShot(True)  # 单次触发
+        self._save_timer.setInterval(500)  # 延迟 500ms 保存 (可根据需求调整)
+        self._save_timer.timeout.connect(self._perform_save_to_disk)  # 绑定真实保存函数
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
@@ -64,7 +67,30 @@ class CanvasSettingPopup(QWidget):
         """)
 
     def onConfigChanged(self):
-        pass
+        """
+        配置改变时的槽函数（轻量级）。
+        只触发内存更新信号和重置保存计时器，不进行磁盘 IO。
+        """
+        self._save_timer.start()
+
+    def _perform_save_to_disk(self):
+        """
+        【内部方法】真正执行磁盘写入操作。
+        由计时器触发，避免 IO 阻塞 UI。
+        """
+        try:
+            self.cfg.save_config()
+            # 可选：如果你想在控制台看保存时机，取消下面注释
+            # print("✅ 配置已写入硬盘")
+        except Exception as e:
+            print(f"❌ 保存配置失败: {e}")
+            # 如果保存失败，可以弹个窗提示
+            InfoBar.error(
+                title=self.tr("保存失败"),
+                content=str(e),
+                parent=self,
+                duration=3000
+            )
 
     def setup_canvas_run_settings(self):
         group = SettingCardGroup("画布运行设置", self.scroll_content)
@@ -98,6 +124,20 @@ class CanvasSettingPopup(QWidget):
 
     def setup_canvas_display_settings(self):
         group = SettingCardGroup("画布显示设置", self.scroll_content)
+        self.nodeResizeMemoryCard = SwitchSettingCard(
+            get_icon("画布"),
+            self.tr("缩放记忆"),
+            configItem=self.cfg.canvas_resize_memory,
+            parent=group
+        )
+        self.nodeResizeMemoryCard.checkedChanged.connect(self.onConfigChanged)
+        self.NodeProxyCard = RangeSettingCard(
+            self.cfg.node_proxy_size,
+            get_icon("画布"),
+            self.tr("绘制距离"),
+            parent=group
+        )
+        self.NodeProxyCard.valueChanged.connect(self.onConfigChanged)
         self.showGridCard = OptionsSettingCard(self.cfg.canvas_grid_mode, get_icon("画布"), "显示网格",
                                                texts=["线网格", "点网格", "无网格"], parent=group)
         self.pipelayoutCard = OptionsSettingCard(self.cfg.canvas_pipelayout, get_icon("画布"), "连线类型",
@@ -109,6 +149,8 @@ class CanvasSettingPopup(QWidget):
         self.pipelayoutCard.optionChanged.connect(self.onConfigChanged)
         self.canvasFontCard.optionChanged.connect(self.onConfigChanged)
 
+        group.addSettingCard(self.nodeResizeMemoryCard)
+        group.addSettingCard(self.NodeProxyCard)
         group.addSettingCard(self.showGridCard)
         group.addSettingCard(self.pipelayoutCard)
         group.addSettingCard(self.canvasFontCard)
