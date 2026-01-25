@@ -34,6 +34,7 @@
     <file>spyder.ico</file>
     <file>string.svg</file>
     <file>upload.svg</file>
+    <file>三图居中.svg</file>
     <file>从模板创建.svg</file>
     <file>从此处运行.svg</file>
     <file>代码执行.svg</file>
@@ -89,11 +90,13 @@
     <file>更多.svg</file>
     <file>更新.svg</file>
     <file>条件分支.png</file>
+    <file>框选.svg</file>
     <file>模型.png</file>
     <file>清空参数.svg</file>
     <file>环境变量.svg</file>
     <file>用户名.svg</file>
     <file>画布.svg</file>
+    <file>画布2.svg</file>
     <file>画布管理.svg</file>
     <file>知识检索.svg</file>
     <file>知识问答.svg</file>
@@ -117,6 +120,7 @@
     <file>运行记录.svg</file>
     <file>远程重启.svg</file>
     <file>追加.svg</file>
+    <file>适应屏幕.svg</file>
     <file>逻辑回归A.svg</file>
     <file>配置.svg</file>
     <file>重命名.svg</file>

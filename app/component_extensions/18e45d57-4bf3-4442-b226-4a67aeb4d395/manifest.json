@@ -7,6 +7,6 @@
   "description": "基于提示词创建声音，输出为标准音频文件流",
   "category": "comfyui节点/Qwen-TTS",
   "main": "main.py",
-  "updated_at": "2026-01-25 16:43:38",
+  "updated_at": "2026-01-25 20:45:10",
   "author": "black"
 }

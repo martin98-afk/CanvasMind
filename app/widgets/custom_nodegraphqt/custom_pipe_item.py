@@ -220,6 +220,7 @@ class CustomPipeItem(PipeItem):
         self.start_flow()
 
     def reset(self):
+        self._running = False
         self._active = False
         self._highlight = False
         self.set_pipe_styling(color=self.color, width=3, style=self.style)
