@@ -657,6 +657,7 @@ class CustomNodeItem(NodeItem):
 
     @AbstractNodeItem.name.setter
     def name(self, name=''):
+        if self.name == name: return
         self.rename_signal.emit(self.name, name)
         AbstractNodeItem.name.fset(self, name)
         self._text_item.setPlainText(name)

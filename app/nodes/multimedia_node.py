@@ -68,6 +68,8 @@ def create_media_node(parent_window):
             for cp in connected_ports:
                 upstream_node = cp.node()
                 # 获取上游节点的输出值
+                if not hasattr(upstream_node, "_output_values"):
+                    continue
                 val = upstream_node._output_values.get(cp.name())
                 if val is not None:
                     results.append(val)
