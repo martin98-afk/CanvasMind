@@ -2,8 +2,6 @@
 
 这是一个二合一节点，集成了 **文本提示分割 (Grounding)** 和 **交互式点击分割 (Segmentation)**。
 
-![样例图片](./assets/example.png)
-
 ### ⚙️ 属性参数
 
 | 参数名 | 说明 |
