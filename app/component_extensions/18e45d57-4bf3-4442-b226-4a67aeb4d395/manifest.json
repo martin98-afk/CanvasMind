@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.18e45d57-4bf3-4442-b226-4a67aeb4d395",
+  "uuid": "18e45d57-4bf3-4442-b226-4a67aeb4d395",
+  "name": "Qwen3 TTS 声音设计",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "基于提示词创建声音，输出为标准音频文件流",
+  "category": "comfyui节点/Qwen-TTS",
+  "main": "main.py",
+  "updated_at": "2026-01-25 16:43:38",
+  "author": "black"
+}

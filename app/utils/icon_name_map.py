@@ -28,6 +28,7 @@ ICON_NAME_TO_FILE = {
     "number": "number.svg",
     "Picture": "Picture.svg",
     "python": "python.svg",
+    "readme": "readme.svg",
     "spyder": "spyder.ico",
     "string": "string.svg",
     "Sync": "Sync.svg",

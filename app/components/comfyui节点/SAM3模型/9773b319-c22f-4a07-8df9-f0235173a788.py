@@ -23,11 +23,11 @@ class ComfySAM3Segmenter(BaseComponent):
     name = "SAM3统一分割器"
     category = "comfyui节点/SAM3模型"
     description = "集成了SAM3的文本描述分割(Grounding)和点击互动分割(Segmentation)功能"
-    requirements = "Pillow,comfy-env>0.0.1,comfy-test>0.0.1,comfyui-sam3,einops>=0.6.0,ftfy==6.1.1,huggingface_hub,iopath>=0.1.10,nodes,numpy>=1.26,opencv-python>=4.8.0,psutil>=5.9.0,pycocotools>=2.0.6,regex,safetensors>=0.4.0,scikit-image>=0.19.0,timm>=1.0.17,tqdm,typing_extensions"
+    requirements = "Pillow,comfy-env>0.0.1,comfy-test>0.0.1,# comfyui-sam3,einops>=0.6.0,ftfy==6.1.1,huggingface_hub,iopath>=0.1.10,# nodes,numpy>=1.26,opencv-python>=4.8.0,psutil>=5.9.0,pycocotools>=2.0.6,regex,safetensors>=0.4.0,scikit-image>=0.19.0,timm>=1.0.17,tqdm,typing_extensions,sam3_nodes,torch"
     
     outputs = [
-        PortDefinition(name="mask", label="MASK", type=ArgumentType.OBJECT),
-        PortDefinition(name="image", label="IMAGE", type=ArgumentType.OBJECT),
+        PortDefinition(name="mask", label="MASK", type=ArgumentType.IMAGE),
+        PortDefinition(name="image", label="IMAGE", type=ArgumentType.IMAGE),
         PortDefinition(name="json_boxes", label="BOXES (JSON)", type=ArgumentType.TEXT),
     ]
     
@@ -64,9 +64,51 @@ class ComfySAM3Segmenter(BaseComponent):
             label="多重掩码 (Multimask)",
         ),
     }
+    
+    def tensor_to_pil(self, tensor, is_mask=False):
+        """
+        辅助函数：将 ComfyUI 的 Tensor 转换为 PIL Image
+        """
+        import torch
+        import numpy as np
+        from PIL import Image
+        if tensor is None:
+            return None
+            
+        # 1. 如果已经是 PIL，直接返回
+        if isinstance(tensor, Image.Image):
+            return tensor
+            
+        # 2. 移动到 CPU 并转为 Numpy
+        if isinstance(tensor, torch.Tensor):
+            image_np = tensor.cpu().detach().numpy()
+        else:
+            image_np = np.array(tensor)
+
+        # 3. 处理维度
+        # ComfyUI Mask 通常是 [Batch, H, W] -> 需要变为 [H, W]
+        # ComfyUI Image 通常是 [Batch, H, W, C] -> 需要变为 [H, W, C]
+        if image_np.ndim == 4: # [B, H, W, C]
+            image_np = image_np[0]
+        elif image_np.ndim == 3: # [B, H, W] (Mask) 或 [H, W, C]
+            if is_mask: 
+                # Mask [B, H, W] 取第一个 batch
+                image_np = image_np[0]
+            # 如果不是 Mask 且是 3维，通常无需处理，除非是 [C, H, W] 但 ComfyUI 默认是 [H,W,C]
+
+        # 4. 转换数值范围并创建 PIL
+        if is_mask:
+            # Mask 通常是 0.0-1.0 的 float，需要转换为 0-255 的 uint8
+            # 模式 'L' (灰度)
+            return Image.fromarray((image_np * 255).astype(np.uint8), mode='L')
+        else:
+            # Image 通常是 0.0-1.0 的 float，需要转换为 0-255 的 uint8
+            # 模式 'RGB'
+            return Image.fromarray((image_np * 255).astype(np.uint8), mode='RGB')
+
 
     def run(self, params, inputs=None):
-        from nodes.segmentation import SAM3Grounding, SAM3Segmentation
+        from sam3_nodes.segmentation import SAM3Grounding, SAM3Segmentation
 
         # 获取输入
         sam3_model = inputs.get("sam3_model")
@@ -76,6 +118,11 @@ class ComfySAM3Segmenter(BaseComponent):
             raise ValueError("必须连接 'sam3_model' 和 'image' 输入")
 
         mode = params.get("mode")
+        
+        # 定义变量存储结果，以便最后统一转换
+        raw_mask = None
+        raw_visualization = None
+        json_boxes = "[]"
         
         # === 分支 1: 文本分割 (Grounding) ===
         if mode == "Text Grounding":
@@ -91,7 +138,6 @@ class ComfySAM3Segmenter(BaseComponent):
             grounding_node = SAM3Grounding()
             
             # 调用 segment 方法
-            # 注意：这里我们只用到了基础参数，positive/negative boxes 留空
             result = grounding_node.segment(
                 sam3_model=sam3_model,
                 image=image,
@@ -104,17 +150,15 @@ class ComfySAM3Segmenter(BaseComponent):
             )
             
             # Grounding 返回: (masks, visualization, boxes, scores)
-            return {
-                "mask": result[0],
-                "image": result[1],
-                "json_boxes": result[2]
-            }
+            raw_mask = result[0]
+            raw_visualization = result[1]
+            json_boxes = result[2]
 
         # === 分支 2: 交互式分割 (Segmentation) ===
         else:
             self.logger.info("正在执行 SAM3 交互式分割...")
             
-            # 1. 构造 Box 数据 (替代 SAM3CreateBox 节点)
+            # 1. 构造 Box 数据
             box_data = None
             box_str = params.get("box_input", "").strip()
             if box_str:
@@ -131,7 +175,7 @@ class ComfySAM3Segmenter(BaseComponent):
                 except Exception as e:
                     self.logger.warning(f"解析框坐标失败: {e}")
 
-            # 2. 构造 Point 数据 (替代 SAM3CreatePoint 节点)
+            # 2. 构造 Point 数据
             pos_points_data = None
             point_str = params.get("point_input", "").strip()
             if point_str:
@@ -165,9 +209,19 @@ class ComfySAM3Segmenter(BaseComponent):
             )
             
             # Segmentation 返回: (mask, mask_logits, visualization, boxes, scores)
-            # 我们只需要 mask, image(visualization), boxes
-            return {
-                "mask": result[0],
-                "image": result[2], # 注意索引：2是visualization
-                "json_boxes": result[3]
-            }
+            # 索引 0 是 mask, 索引 2 是 visualization, 索引 3 是 boxes
+            raw_mask = result[0]
+            raw_visualization = result[2]
+            json_boxes = result[3]
+
+        # === 格式转换 (Tensor -> PIL) ===
+        self.logger.info("正在转换图像格式...")
+        
+        pil_mask = self.tensor_to_pil(raw_mask, is_mask=True)
+        pil_image = self.tensor_to_pil(raw_visualization, is_mask=False)
+
+        return {
+            "mask": pil_mask,
+            "image": pil_image,
+            "json_boxes": json_boxes
+        }

@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.9773b319-c22f-4a07-8df9-f0235173a788",
+  "uuid": "9773b319-c22f-4a07-8df9-f0235173a788",
+  "name": "SAM3统一分割器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "集成了SAM3的文本描述分割(Grounding)和点击互动分割(Segmentation)功能",
+  "category": "comfyui节点/SAM3模型",
+  "main": "main.py",
+  "updated_at": "2026-01-25 17:06:38",
+  "author": "black"
+}

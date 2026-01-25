@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.9c5791f0-a258-4007-a28b-37b7f0032b1c",
+  "uuid": "9c5791f0-a258-4007-a28b-37b7f0032b1c",
+  "name": "Qwen3 TTS 模型加载",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "加载 Qwen3-TTS 模型，支持指定本地路径或使用标准目录下的模型",
+  "category": "comfyui节点/Qwen-TTS",
+  "main": "main.py",
+  "updated_at": "2026-01-25 16:16:03",
+  "author": "black"
+}

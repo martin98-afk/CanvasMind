@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.b4e3a0b6-7a51-4f9c-b731-a11ef72debfe",
+  "uuid": "b4e3a0b6-7a51-4f9c-b731-a11ef72debfe",
+  "name": "ComfyUI全局配置",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "自动初始化ComfyUI环境并设置显存管理策略",
+  "category": "comfyui节点",
+  "main": "main.py",
+  "updated_at": "2026-01-25 11:42:28",
+  "author": "black"
+}

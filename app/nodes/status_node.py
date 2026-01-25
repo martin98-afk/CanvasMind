@@ -96,5 +96,3 @@ class StatusNode(BasicNodeWithGlobalProperty):
             self.border_color = (255, 0, 0, 255)  # 只有失败时才给醒目的红框
         else:
             self.border_color = (46, 57, 66, 255)  # 恢复默认边框
-
-        self.update()

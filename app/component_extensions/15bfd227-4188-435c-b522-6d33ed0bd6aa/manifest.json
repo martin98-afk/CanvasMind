@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.15bfd227-4188-435c-b522-6d33ed0bd6aa",
+  "uuid": "15bfd227-4188-435c-b522-6d33ed0bd6aa",
+  "name": "SAM3模型加载器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "直接从本地 nodes 模块加载 SAM3 模型",
+  "category": "comfyui节点/SAM3模型",
+  "main": "main.py",
+  "updated_at": "2026-01-25 15:00:54",
+  "author": "black"
+}

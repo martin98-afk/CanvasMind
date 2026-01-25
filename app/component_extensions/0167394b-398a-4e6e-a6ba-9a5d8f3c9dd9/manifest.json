@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.0167394b-398a-4e6e-a6ba-9a5d8f3c9dd9",
+  "uuid": "0167394b-398a-4e6e-a6ba-9a5d8f3c9dd9",
+  "name": "Qwen3 TTS 自定义声音",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "使用预设说话人ID生成 (需 CustomVoice 模型)",
+  "category": "comfyui节点/Qwen-TTS",
+  "main": "main.py",
+  "updated_at": "2026-01-25 16:52:28",
+  "author": "black"
+}

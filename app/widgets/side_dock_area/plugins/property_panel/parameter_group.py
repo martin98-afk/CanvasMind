@@ -1,14 +1,16 @@
+# -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QListWidgetItem
 from qfluentwidgets import PushButton, ListWidget, FluentIcon, InfoBar, TransparentToolButton, BodyLabel, LineEdit, \
     ToggleToolButton, SearchLineEdit
 
+from app.templates.global_custom_var_template import PARAMETER_TEMPLATE
 from app.widgets.dialog_widget.step_messageboxbase import StepMessageBoxBase
 
 
 class ParameterGroupDialog(StepMessageBoxBase):
     """参数组编辑对话框 - 使用 StepMessageBoxBase"""
 
-    def __init__(self, parent=None, group_name="", group_data=None, is_new=True, templates=None):
+    def __init__(self, parent=None, group_name="", group_data=None, is_new=True):
         # 定义步骤
         steps = [
             {"name": "template_selection", "title": "选择模板"},
@@ -19,7 +21,7 @@ class ParameterGroupDialog(StepMessageBoxBase):
         self.group_name = group_name
         self.group_data = group_data or {}
         self.is_new = is_new
-        self.templates = templates or {}
+        self.templates = PARAMETER_TEMPLATE
         self.selected_template_name = None
 
         # 设置对话框大小

@@ -306,6 +306,9 @@ class CanvasUISetUp:
         menu.exec_(button.mapToGlobal(pos))
 
     # ================= 属性面板/分割器控制 =================
+    @property
+    def node_doc(self):
+        return self.side_dock_area.get_tool_instance("节点说明")
 
     @property
     def property_panel(self):

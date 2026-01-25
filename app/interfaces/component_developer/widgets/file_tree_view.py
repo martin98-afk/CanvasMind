@@ -225,8 +225,7 @@ class DragDropTreeView(TreeView):
             dst = os.path.join(dst_dir, name)
             # 简单的重名处理
             if os.path.exists(dst):
-                base, ext = os.path.splitext(name)
-                dst = os.path.join(dst_dir, f"{base}_copy{ext}")
+                self._remove_path_safely(dst)
 
             if os.path.isdir(src):
                 shutil.copytree(src, dst)
