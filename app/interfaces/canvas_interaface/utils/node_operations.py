@@ -242,6 +242,12 @@ class NodeOperations:
                 },
                 {"node_type": f"dynamic.StatusDynamicNode_*"},
                 {
+                    "name": "查看节点文档",
+                    "func": lambda graph, node: self.show_node_doc(node),
+                    "node_type": f"dynamic.StatusDynamicNode_*",
+                    "icon": get_icon("readme")
+                },
+                {
                     "name": "删除节点",
                     "func": lambda graph, node: self.delete_node(node),
                     "node_type": f"dynamic.StatusDynamicNode_*",
@@ -252,6 +258,10 @@ class NodeOperations:
 
     def edit_node(self, node):
         self.parent.node_request_edit.emit(node.uuid)
+
+    def show_node_doc(self, node):
+        self.parent.side_dock_area.switch_to("节点说明")
+        self.parent.node_doc.show_node_doc(node.name(), node.uuid)
 
     def on_node_created(self, node):
         self._node_id_cache[node.id] = node
@@ -302,111 +312,113 @@ class NodeOperations:
         graph.begin_undo('智能节点分组')
         selected_ids = [n.id for n in selected_nodes]
 
-        # 1. 计算选择节点的边界 (Bounding Box) 用于内部布局
+        # 1. 计算边界
         xs = [n.x_pos() for n in selected_nodes]
         ys = [n.y_pos() for n in selected_nodes]
         min_x, max_x = min(xs), max(xs)
         min_y, max_y = min(ys), max(ys)
         center_y = (min_y + max_y) / 2
-
-        # 计算外部放置组节点的中心位置
         avg_pos = [sum(xs) / len(selected_nodes), sum(ys) / len(selected_nodes)]
 
-        # 2. 分析边界连接
+        # 2. 分析边界连接并分类
         input_map = {}  # {(内部节点ID, 内部输入端口名): 组端口名}
         output_map = {}  # {(内部节点ID, 内部输出端口名): 组端口名}
-        ext_in_conns = []  # [(外部输出端口对象, 组节点输入端口名)]
-        ext_out_conns = []  # [(组节点输出端口名, 外部输入端口对象)]
+        ext_in_conns = []  # [(外部输出端口, 组输入端口名)]
+        ext_out_conns = []  # [(组输出端口名, 外部输入端口)]
 
         for node in selected_nodes:
-            # 处理输入：谁连向了我
+            # 处理输入
             for in_port in node.input_ports():
                 for cp in in_port.connected_ports():
                     if cp.node().id not in selected_ids:
-                        port_key = (node.id, in_port.name())
-                        if port_key not in input_map:
-                            g_port_name = f"in_{in_port.name()}"
-                            # 避免重名
-                            idx = 0
-                            while g_port_name in input_map.values():
-                                g_port_name = f"in_{in_port.name()}_{idx}"
-                                idx += 1
-                            input_map[port_key] = g_port_name
-                        ext_in_conns.append((cp, input_map[port_key]))
+                        g_port_name = f"in_{in_port.name()}"
+                        # 避免重复生成同名端口
+                        idx = 0
+                        while g_port_name in input_map.values():
+                            g_port_name = f"in_{in_port.name()}_{idx}"
+                            idx += 1
+                        input_map[(node.id, in_port.name())] = g_port_name
+                        ext_in_conns.append((cp, g_port_name))
 
-            # 处理输出：我连向了谁
+            # 处理输出
             for out_port in node.output_ports():
                 for cp in out_port.connected_ports():
                     if cp.node().id not in selected_ids:
-                        port_key = (node.id, out_port.name())
-                        if port_key not in output_map:
-                            g_port_name = f"out_{out_port.name()}"
-                            idx = 0
-                            while g_port_name in output_map.values():
-                                g_port_name = f"out_{out_port.name()}_{idx}"
-                                idx += 1
-                            output_map[port_key] = g_port_name
-                        ext_out_conns.append((output_map[port_key], cp))
+                        g_port_name = f"out_{out_port.name()}"
+                        idx = 0
+                        while g_port_name in output_map.values():
+                            g_port_name = f"out_{out_port.name()}_{idx}"
+                            idx += 1
+                        output_map[(node.id, out_port.name())] = g_port_name
+                        ext_out_conns.append((g_port_name, cp))
 
-        # 3. 序列化选中的节点
+        # 3. 序列化选中节点
         session_data = graph._serialize(selected_nodes)
 
-        # 4. 创建组节点并添加端口
+        # 【重要修复】清除 session_data 中指向外部节点的无效连接
+        # 仅保留 out 和 in 都在 selected_ids 里的连接
+        if 'connections' in session_data:
+            internal_connections = []
+            for conn in session_data['connections']:
+                out_node_id = conn['out'][0]
+                in_node_id = conn['in'][0]
+                if out_node_id in selected_ids and in_node_id in selected_ids:
+                    internal_connections.append(conn)
+            session_data['connections'] = internal_connections
+
+        # 4. 创建组节点
         group_node = graph.create_node('general.GroupNode', name='智能分组', pos=avg_pos)
 
-        # 排序端口名使外观整齐
-        sorted_inputs = sorted(list(set(input_map.values())))
-        sorted_outputs = sorted(list(set(output_map.values())))
+        # 5. 注入内部端口节点及连接
+        margin = 200
+        v_spacing = 80
 
-        for p_name in sorted_inputs:
-            group_node.add_input(p_name)
-        for p_name in sorted_outputs:
-            group_node.add_output(p_name)
-
-        # 5. 在 Session Data 中注入内部端口节点及其连接
-        # 布局参数
-        margin = 300
-        v_spacing = 150
-
-        # 注入输入端口节点
+        # 处理输入端口
         for i, ((node_id, in_p_name), g_p_name) in enumerate(input_map.items()):
+            group_node.add_input(g_p_name)  # 先在组节点上创建端口
             p_node_id = f"internal_in_{g_p_name}"
             y_pos = center_y + (i - len(input_map) / 2) * v_spacing
 
+            # 注入 PortInputNode
             session_data['nodes'][p_node_id] = {
                 'type_': 'nodeGraphQt.nodes.PortInputNode',
                 'name': g_p_name,
                 'pos': [min_x - margin, y_pos],
-                'custom': {}, 'inputs': {}, 'outputs': {}
+                'custom': {'port_name': g_p_name},  # 关键：部分版本需要 port_name 映射
+                'inputs': {},
+                'outputs': {'out': {}}
             }
-            # 关键修复：PortInputNode 的输出端口名始终是 "out"
-            session_data.setdefault('connections', []).append({
+            # 建立内部连接：PortInputNode -> 内部节点
+            session_data['connections'].append({
                 'out': [p_node_id, 'out'],
                 'in': [node_id, in_p_name]
             })
 
-        # 注入输出端口节点
+        # 处理输出端口
         for i, ((node_id, out_p_name), g_p_name) in enumerate(output_map.items()):
+            group_node.add_output(g_p_name)  # 先在组节点上创建端口
             p_node_id = f"internal_out_{g_p_name}"
             y_pos = center_y + (i - len(output_map) / 2) * v_spacing
 
+            # 注入 PortOutputNode
             session_data['nodes'][p_node_id] = {
                 'type_': 'nodeGraphQt.nodes.PortOutputNode',
                 'name': g_p_name,
                 'pos': [max_x + margin, y_pos],
-                'custom': {}, 'inputs': {}, 'outputs': {}
+                'custom': {'port_name': g_p_name},
+                'inputs': {'in': {}},
+                'outputs': {}
             }
-            # 关键修复：PortOutputNode 的输入端口名始终是 "in"
-            session_data.setdefault('connections', []).append({
-                'in': [p_node_id, 'in'],
-                'out': [node_id, out_p_name]
+            # 建立内部连接：内部节点 -> PortOutputNode
+            session_data['connections'].append({
+                'out': [node_id, out_p_name],
+                'in': [p_node_id, 'in']
             })
 
         # 6. 应用子图数据
         group_node.set_sub_graph_session(session_data)
 
-        # 7. 还原主图的外部物理连接
-        # 注意：NodeGraphQt 的端口访问通常是通过 inputs() 和 outputs() 字典
+        # 7. 还原主图外部连接
         g_inputs = group_node.inputs()
         g_outputs = group_node.outputs()
 
@@ -416,10 +428,10 @@ class NodeOperations:
         for g_out_name, ext_in_port in ext_out_conns:
             g_outputs[g_out_name].connect_to(ext_in_port)
 
-        # 8. 清理：删除原节点并选中新组
+        # 8. 清理
         graph.delete_nodes(selected_nodes)
-        graph.end_undo()
         group_node.set_selected(True)
+        graph.end_undo()
 
     def create_backdrop_node(self, key, init_io=True):
         selected_nodes = self.graph.selected_nodes()

@@ -201,6 +201,14 @@ class CanvasPage(QWidget):
         return self.ui_manager.log_window
 
     @property
+    def side_dock_area(self):
+        return self.ui_manager.side_dock_area
+
+    @property
+    def node_doc(self):
+        return self.ui_manager.node_doc
+
+    @property
     def scheduler(self):
         return self.canvas_runner._scheduler
 
