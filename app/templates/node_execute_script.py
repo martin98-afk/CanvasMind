@@ -143,6 +143,8 @@ def run_node():
         node_logger.error(f"执行异常: {{e}}")
 
     finally:
+        # 移除添加的系统路径，防止污染
+        sys.path.remove(str(node_output_dir))
         # ==================== 内存防溢出清理 ====================
         if not IS_MEMORY_RESIDENT and module:
             node_logger.debug("非驻留模式：执行内存清理")
