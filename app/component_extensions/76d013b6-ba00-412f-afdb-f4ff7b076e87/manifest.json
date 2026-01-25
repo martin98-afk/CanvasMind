@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.76d013b6-ba00-412f-afdb-f4ff7b076e87",
+  "uuid": "76d013b6-ba00-412f-afdb-f4ff7b076e87",
+  "name": "Qwen3 TTS 声音克隆",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "基于参考音频克隆声音 (需 Base 模型)",
+  "category": "comfyui节点/Qwen-TTS",
+  "main": "main.py",
+  "updated_at": "2026-01-25 16:52:05",
+  "author": "black"
+}

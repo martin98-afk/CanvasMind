@@ -1,0 +1,5 @@
+modelscope
+# Fix dependency conflicts by upgrading old packages
+tf-keras>=2.18
+mediapipe>=0.10.31
+transparent-background>=1.3.4
