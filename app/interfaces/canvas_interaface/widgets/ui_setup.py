@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
 import os
-from pathlib import Path
+
 from PyQt5.QtCore import Qt, QSize, QPoint, QTimer
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
-from qfluentwidgets import TransparentToolButton, FluentIcon, RoundMenu, Action, LineEdit, ComboBox
+from qfluentwidgets import TransparentToolButton, FluentIcon, RoundMenu, Action, LineEdit, ComboBox, Flyout
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
-from qtpy import QtGui, QtCore
+from qtpy import QtGui
 
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from .canvas_left_panel import LeftPanel
+from .canvas_setting_popup import CanvasSettingPopup
 from ..constants import (BUTTONS_CONTAINER_X_OFFSET, DEFAULT_SPLITTER_SIZES,
                          PIPELINE_STYLE, PIPELINE_DIRECTION, MAX_VISIBLE_QUICK_BUTTONS, GRID_STYLE)
 
@@ -36,7 +37,8 @@ class CanvasUISetUp:
         self.canvas_controls_container = None
         self.btn_mode_toggle = None  # 框选/拖拽切换
         self.btn_zoom_fit = None  # 缩放至适应
-        self.btn_minimap = None  # 缩略图开关
+        self.btn_canvas_setting = None
+        self.view = None
 
     def setup_ui(self):
         """第一阶段：构建纯 UI 框架（只负责实例化和布局，不负责位置微调和信号）"""
@@ -99,8 +101,7 @@ class CanvasUISetUp:
         self.btn_zoom_fit.clicked.connect(
             lambda: self.parent.canvas_widget.zoom_to_nodes([n.view for n in self.parent.graph.all_nodes()])
         )
-        # 3. 缩略图控制
-        self.btn_minimap.clicked.connect(self._toggle_minimap)
+        self.btn_canvas_setting.clicked.connect(self._show_canvas_settings)
         # --- 顶部名称标签 ---
         self.create_name_label()
 
@@ -199,17 +200,13 @@ class CanvasUISetUp:
         self.btn_mode_toggle.setChecked(True)  # 默认拖拽
 
         # 2. 缩放至适应按钮
-        self.btn_zoom_fit = self._build_tool_btn(FluentIcon.ZOOM_IN, "缩放至适应 (快捷键: F)")
-
-        # 3. 缩略图开关
-        self.btn_minimap = self._build_tool_btn(FluentIcon.TILES, "显示/隐藏缩略图")
-        self.btn_minimap.setCheckable(True)
-        self.btn_minimap.setChecked(True)  # 默认开启
-
+        self.btn_zoom_fit = self._build_tool_btn(get_icon("适应屏幕"), "缩放至适应")
+        self.btn_canvas_setting = self._build_tool_btn(FluentIcon.SETTING, "画布设置")
+        self.view = CanvasSettingPopup(self.parent, self.parent.config)
+        self.view.hide()
         layout.addWidget(self.btn_mode_toggle)
         layout.addWidget(self.btn_zoom_fit)
-        layout.addWidget(self.btn_minimap)
-
+        layout.addWidget(self.btn_canvas_setting)
         # 设置容器背景样式（毛玻璃或半透明）
         self.canvas_controls_container.setStyleSheet("""
             QWidget {
@@ -425,14 +422,9 @@ class CanvasUISetUp:
             self.btn_mode_toggle.setIcon(FluentIcon.MOVE)
             self.btn_mode_toggle.setToolTip("当前模式: 拖拽 (点击切换为框选)")
 
-    def _toggle_minimap(self):
-        """控制 NodeGraphQt 的缩略图显示"""
-        # NodeGraphQt 的 overview 实际上是 QGraphicsView 的一部分
-        viewer = self.parent.graph.viewer()
-        overview = viewer.get_scene_overview()
-        if overview:
-            visible = self.btn_minimap.isChecked()
-            overview.setVisible(visible)
+    def _show_canvas_settings(self):
+        """弹出设置面板 (Flyout 形式)"""
+        self.view.show_at_button(self.btn_canvas_setting)
 
     def destroy_all(self):
         try:
