@@ -33,6 +33,10 @@ class CanvasUISetUp:
         self.close_btn = None
         self.name_container = None
         self.buttons_container = None
+        self.canvas_controls_container = None
+        self.btn_mode_toggle = None  # 框选/拖拽切换
+        self.btn_zoom_fit = None  # 缩放至适应
+        self.btn_minimap = None  # 缩略图开关
 
     def setup_ui(self):
         """第一阶段：构建纯 UI 框架（只负责实例化和布局，不负责位置微调和信号）"""
@@ -49,7 +53,7 @@ class CanvasUISetUp:
         # 3. 分割器
         self.splitter = ModernSplitter(Qt.Horizontal)
         self.splitter.addWidget(self.nav_panel)
-        self.splitter.addWidget(self.parent.graph.widget)
+        self.splitter.addWidget(self.parent.canvas_widget)
         self.splitter.addWidget(self.side_dock_area)
         self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
         self.last_right_width = DEFAULT_SPLITTER_SIZES[2]
@@ -62,7 +66,7 @@ class CanvasUISetUp:
         self._create_environment_selector_base()
         self._create_floating_buttons_base()
         self._create_floating_nodes_base()
-
+        self._create_canvas_controls_base()
         # 5. 初始化样式
         self._setup_pipeline_style()
         self._init_unified_font()
@@ -89,7 +93,14 @@ class CanvasUISetUp:
             self.add_quick_btn.clicked.connect(self.parent.quick_manager.open_add_dialog)
             self.more_quick_button.clicked.connect(self._show_more_quick_menu)
             self._refresh_quick_buttons()
-
+        # 1. 切换框选/拖拽模式
+        self.btn_mode_toggle.clicked.connect(self._toggle_viewer_mode)
+        # 2. 缩放至适应
+        self.btn_zoom_fit.clicked.connect(
+            lambda: self.parent.canvas_widget.zoom_to_nodes([n.view for n in self.parent.graph.all_nodes()])
+        )
+        # 3. 缩略图控制
+        self.btn_minimap.clicked.connect(self._toggle_minimap)
         # --- 顶部名称标签 ---
         self.create_name_label()
 
@@ -172,6 +183,43 @@ class CanvasUISetUp:
         self.node_layout.addWidget(self.add_quick_btn)
         self.nodes_container.show()
 
+    def _create_canvas_controls_base(self):
+        """创建右下角画布控制栏"""
+        self.canvas_controls_container = QWidget(self.parent.graph.viewer())
+        self.canvas_controls_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+
+        layout = QHBoxLayout(self.canvas_controls_container)
+        layout.setSpacing(8)
+        layout.setContentsMargins(10, 5, 10, 5)
+
+        # 1. 模式切换按钮 (框选 vs 拖拽)
+        # NodeGraphQt 默认左键是框选，按住 Alt 是拖拽。我们要实现点击切换默认行为
+        self.btn_mode_toggle = self._build_tool_btn(get_icon("框选"), "当前模式: 框选 (点击切换为拖拽)")
+        self.btn_mode_toggle.setCheckable(True)
+        self.btn_mode_toggle.setChecked(True)  # 默认拖拽
+
+        # 2. 缩放至适应按钮
+        self.btn_zoom_fit = self._build_tool_btn(FluentIcon.ZOOM_IN, "缩放至适应 (快捷键: F)")
+
+        # 3. 缩略图开关
+        self.btn_minimap = self._build_tool_btn(FluentIcon.TILES, "显示/隐藏缩略图")
+        self.btn_minimap.setCheckable(True)
+        self.btn_minimap.setChecked(True)  # 默认开启
+
+        layout.addWidget(self.btn_mode_toggle)
+        layout.addWidget(self.btn_zoom_fit)
+        layout.addWidget(self.btn_minimap)
+
+        # 设置容器背景样式（毛玻璃或半透明）
+        self.canvas_controls_container.setStyleSheet("""
+            QWidget {
+                background: rgba(40, 40, 40, 180);
+                border-radius: 6px;
+                border: 1px solid rgba(255, 255, 255, 30);
+            }
+        """)
+        self.canvas_controls_container.show()
+
     def _build_tool_btn(self, icon, tooltip):
         btn = TransparentToolButton(icon, parent=self.parent.canvas_widget)
         btn.setIconSize(QSize(18, 18))
@@ -214,6 +262,16 @@ class CanvasUISetUp:
                 self._update_name_label_width(name_edit)
                 target_x = (canvas_w - self.name_container.width()) // 2
                 self.name_container.move(max(0, target_x), 0)
+
+        if hasattr(self, 'canvas_controls_container') and self.canvas_controls_container:
+            self.canvas_controls_container.adjustSize()
+            ctrl_w = self.canvas_controls_container.width()
+            ctrl_h = self.canvas_controls_container.height()
+
+            # 距离右边 20px，底边 20px
+            target_x = canvas_w - ctrl_w - 20
+            target_y = canvas_h - ctrl_h - 20
+            self.canvas_controls_container.move(max(0, target_x), max(0, target_y))
 
     def _update_name_label_width(self, line_edit):
         """辅助计算名称输入框宽度"""
@@ -352,6 +410,29 @@ class CanvasUISetUp:
         sizes[2] = 0
         self.splitter.setSizes(sizes)
         self.side_dock_area.hide()
+
+    def _toggle_viewer_mode(self):
+        """切换左键模式：框选 vs 导航"""
+        viewer = self.parent.graph.viewer()
+        if self.btn_mode_toggle.isChecked():
+            # 切换为框选模式
+            viewer.set_navigation_mode(False)  # 0: MODE_SELECTION
+            self.btn_mode_toggle.setIcon(get_icon("框选"))
+            self.btn_mode_toggle.setToolTip("当前模式: 框选 (点击切换为拖拽)")
+        else:
+            # 切换为拖拽模式
+            viewer.set_navigation_mode(True)  # 1: MODE_NAVIGATION (Panning)
+            self.btn_mode_toggle.setIcon(FluentIcon.MOVE)
+            self.btn_mode_toggle.setToolTip("当前模式: 拖拽 (点击切换为框选)")
+
+    def _toggle_minimap(self):
+        """控制 NodeGraphQt 的缩略图显示"""
+        # NodeGraphQt 的 overview 实际上是 QGraphicsView 的一部分
+        viewer = self.parent.graph.viewer()
+        overview = viewer.get_scene_overview()
+        if overview:
+            visible = self.btn_minimap.isChecked()
+            overview.setVisible(visible)
 
     def destroy_all(self):
         try:

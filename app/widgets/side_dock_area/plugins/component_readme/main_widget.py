@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtWidgets import QVBoxLayout, QTextBrowser, QFrame
 from qfluentwidgets import (StrongBodyLabel, FluentIcon, CaptionLabel)
 
+from app.utils.utils import resource_path
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 
@@ -151,7 +152,7 @@ class NodeDocToolWindow(ToolWindow):
         self.uuid_label.setText(f"组件ID: {node_uuid}")
 
         # 1. 路径定位
-        base_dir = os.path.abspath(os.path.join(os.getcwd(), "app", "component_extensions", node_uuid))
+        base_dir = resource_path(f"app/component_extensions/{node_uuid}")
         readme_path = os.path.join(base_dir, "README.md")
 
         if os.path.exists(readme_path):

@@ -79,6 +79,7 @@ class CustomNodeViewer(NodeViewer):
 
     def __init__(self, parent=None, undo_stack=None):
         super(CustomNodeViewer, self).__init__(parent)
+        self._navigation_mode = False
         self.setScene(CustomNodeScene(self))
         # --- 性能优化：初始开启抗锯齿 ---
         self.setRenderHint(QtGui.QPainter.Antialiasing, True)
@@ -190,7 +191,15 @@ class CustomNodeViewer(NodeViewer):
         self.accept_connection_types = None
         self.reject_connection_types = None
 
-    # --- 新增：处理对齐逻辑 ---
+    def set_navigation_mode(self, enabled):
+        """设置是否为拖拽模式"""
+        self._navigation_mode = enabled
+        # 切换模式时，如果正在拉框，强制取消
+        if enabled and self._rubber_band.isActive:
+            self._rubber_band.hide()
+            self._rubber_band.isActive = False
+
+    # --- 处理对齐逻辑 ---
     def _handle_snapping(self, moving_nodes):
         """
         计算吸附并更新对齐虚线
@@ -359,9 +368,10 @@ class CustomNodeViewer(NodeViewer):
         self.setRenderHint(QtGui.QPainter.TextAntialiasing, False)
         self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, False)
         # ----------------------------------------
-
         if (event.button() == QtCore.Qt.MiddleButton or
-                (event.button() == QtCore.Qt.LeftButton and event.modifiers() == QtCore.Qt.AltModifier)):
+            (event.button() == QtCore.Qt.LeftButton and event.modifiers() == QtCore.Qt.AltModifier) or
+            (event.button() == QtCore.Qt.LeftButton and self._navigation_mode)  # <--- 新增条件
+        ):
             self._panning = True
         if event.button() == QtCore.Qt.LeftButton:
             self.LMB_state = True
@@ -443,7 +453,7 @@ class CustomNodeViewer(NodeViewer):
         selection.update(self.selected_nodes())
         self._node_positions.update({n: n.xy_pos for n in selection})
 
-        if self.LMB_state and not items:
+        if self.LMB_state and not items and not self._navigation_mode:
             rect = QtCore.QRect(self._previous_pos, QtCore.QSize())
             rect = rect.normalized()
             map_rect = self.mapToScene(rect).boundingRect()
@@ -468,14 +478,21 @@ class CustomNodeViewer(NodeViewer):
             super(NodeViewer, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        super(CustomNodeViewer, self).mouseMoveEvent(event)
+        # 2. 注入导航模式下的平移逻辑 (模仿 Alt+LMB)
+        if self._navigation_mode and self.LMB_state and not self.ALT_state:
+            previous_pos = self.mapToScene(self._previous_pos)
+            current_pos = self.mapToScene(event.pos())
+            delta = previous_pos - current_pos
+            self._set_viewer_pan(delta.x(), delta.y())
 
-        # 1. 基础条件判断
+        super(CustomNodeViewer, self).mouseMoveEvent(event)
+        # 1. 修正基础条件判断：如果是导航模式，则不判定为“正在拖动节点”
         is_dragging_nodes = (
                 self.LMB_state and
                 not self.ALT_state and
                 not self.SHIFT_state and
-                not self._rubber_band.isActive
+                not self._rubber_band.isActive and
+                not self._navigation_mode  # <--- 新增：导航模式下屏蔽节点对齐/拖拽
         )
 
         if is_dragging_nodes:
@@ -483,16 +500,11 @@ class CustomNodeViewer(NodeViewer):
                 i for i in self.scene().selectedItems()
                 if isinstance(i, AbstractNodeItem)
             ]
-
-            # --- 新增：核心拦截逻辑 ---
-            # 如果选中的节点中，有任何一个正在执行缩放操作，则不触发对齐
             if any(getattr(n, '_is_resizing', False) for n in selected_nodes):
                 if self._snap_lines_item.isVisible():
                     self._snap_lines_item.hide()
-                return  # 直接跳过对齐逻辑
-            # ------------------------
-
-            self._handle_snapping(selected_nodes)
+            else:
+                self._handle_snapping(selected_nodes)
         else:
             if self._snap_lines_item.isVisible():
                 self._snap_lines_item.hide()
