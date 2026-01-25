@@ -4,15 +4,17 @@ import os
 import pickle
 import tempfile
 import uuid
-from collections import deque
 
+import cv2
+import numpy as np
 from PyQt5.QtCore import Qt, QPoint, QPointF, QByteArray, QBuffer
 from PyQt5.QtGui import (
     QImage, QPixmap, QPainter, QPen, QColor
 )
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame
 )
+from loguru import logger
 from qfluentwidgets import MessageBoxBase, SubtitleLabel, ToolButton, Slider, FluentIcon, StrongBodyLabel
 
 from app.plugins.base import InteractivePlugin
@@ -50,12 +52,53 @@ class MaskCanvas(QWidget):
             if "," in b64: b64 = b64.split(",")[-1]
             data = base64.b64decode(b64)
             img = QImage.fromData(data)
+            if img.isNull(): return
+
+            # 1. 统一原图格式
+            img = img.convertToFormat(QImage.Format_ARGB32_Premultiplied)
             self.original_pixmap = QPixmap.fromImage(img)
-            # 使用高性能 ARGB 格式
-            self.mask_image = QImage(img.size(), QImage.Format_ARGB32_Premultiplied)
+
+            w, h = img.width(), img.height()
+
+            # 2. 初始化遮罩层（全透明）
+            self.mask_image = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
             self.mask_image.fill(Qt.transparent)
-        except:
-            pass
+
+            # 3. 智能识别：是“扣底图”还是“实心图”？
+            if img.hasAlphaChannel():
+                ptr_src = img.constBits()
+                ptr_src.setsize(img.byteCount())
+                # 获取原图 Alpha 通道
+                src_arr = np.frombuffer(ptr_src, np.uint8).reshape((h, w, 4))
+                alpha_channel = src_arr[:, :, 3]
+
+                # 【关键修复】检查是否存在透明像素
+                # 如果最小值也是 255，说明整张图都是实心的（没有透明背景），此时不应该生成遮罩
+                min_alpha = np.min(alpha_channel)
+
+                if min_alpha < 250:  # 只有当存在透明区域时，才执行自动遮罩
+                    # 逻辑：原图不透明的地方(Alpha>0) -> 变成遮罩色
+                    mask_indices = alpha_channel > 0
+
+                    if np.any(mask_indices):
+                        ptr_mask = self.mask_image.bits()
+                        ptr_mask.setsize(self.mask_image.byteCount())
+                        mask_arr = np.frombuffer(ptr_mask, np.uint8).reshape((h, w, 4))
+
+                        # 计算预乘颜色
+                        c = self.mask_color
+                        a = c.alpha()
+                        r = int(c.red() * (a / 255))
+                        g = int(c.green() * (a / 255))
+                        b = int(c.blue() * (a / 255))
+
+                        # 赋值
+                        mask_arr[mask_indices] = [b, g, r, a]
+
+            self.fit_view()
+            self.update()
+        except Exception as e:
+            logger.exception(f"Error loading image: {e}")
 
     def fit_view(self):
         if not self.original_pixmap or self.width() <= 0: return
@@ -84,12 +127,18 @@ class MaskCanvas(QWidget):
         painter.save()
         painter.translate(self.offset)
         painter.scale(self.scale_factor, self.scale_factor)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, self.scale_factor < 1.0)
+
+        # 【性能优化】只有在静止状态（不拖拽、不绘画）时才开启平滑抗锯齿
+        if not self.is_panning and not self.is_drawing and self.scale_factor < 1.0:
+            painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        else:
+            painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
+
         painter.drawPixmap(0, 0, self.original_pixmap)
         painter.drawImage(0, 0, self.mask_image)
         painter.restore()
 
-        # 2. 画笔圆圈实时预览 (始终跟随)
+        # 2. 画笔圆圈实时预览
         if not self.is_panning and self.draw_mode != "fill":
             painter.setRenderHint(QPainter.Antialiasing)
             r = (self.brush_size * self.scale_factor) / 2
@@ -159,49 +208,77 @@ class MaskCanvas(QWidget):
         p.drawLine(p1, p2)
 
     def flood_fill(self, start_pt):
-        """种子填充：点击透明区域则填充"""
+        """修复颜色不一致的高性能填充"""
         w, h = self.mask_image.width(), self.mask_image.height()
-        if not (0 <= start_pt.x() < w and 0 <= start_pt.y() < h): return
+        sx, sy = start_pt.x(), start_pt.y()
+        if not (0 <= sx < w and 0 <= sy < h): return
 
-        # 获取点击位置颜色
-        target_color = self.mask_image.pixelColor(start_pt)
-        if target_color.alpha() > 10: return  # 如果点在已有蒙版上，不处理
+        # 获取数据指针
+        ptr = self.mask_image.bits() # 注意这里用 bits() 只有读写权限
+        ptr.setsize(self.mask_image.byteCount())
+        img_arr = np.frombuffer(ptr, np.uint8).reshape((h, w, 4))
 
-        # BFS 填充
-        fill_color = self.mask_color
-        q = deque([start_pt])
+        # 检查点击位置是否已经是遮罩色 (避免重复计算)
+        # 比较 Alpha 值即可
+        if img_arr[sy, sx, 3] > 10: return
 
-        # 性能考虑：小图直接填，大图建议后期用 mask 连通域
-        # 下面演示逻辑为快速填充整个连通的透明区域
-        visited = set()
+        # 准备 OpenCV 填充用的 mask
+        # 提取当前遮罩的 alpha 通道作为屏障
+        current_alpha = img_arr[:, :, 3].copy()
+        h_mask, w_mask = h + 2, w + 2
+        fill_mask = np.zeros((h_mask, w_mask), np.uint8)
 
-        p = QPainter(self.mask_image)
-        p.setCompositionMode(QPainter.CompositionMode_SourceOver)
-        p.setPen(fill_color)
+        # 填充算法 (loDiff/upDiff 控制容差)
+        cv2.floodFill(current_alpha, fill_mask, (sx, sy), 255, loDiff=5, upDiff=5)
 
-        # 简单高效的 Scanline 填充替代方案：如果是在封闭圆圈内，这里填满。
-        # 这里用简化的算法演示，实际在大图上请确保效率
-        pixel_to_fill = []
-        target_alpha = 0
+        # 提取填充区域
+        filled_region = fill_mask[1:-1, 1:-1] == 1
 
-        queue = deque([(start_pt.x(), start_pt.y())])
-        processed = set([(start_pt.x(), start_pt.y())])
+        # 【关键修复】应用预乘颜色，使其与画笔一致
+        c = self.mask_color
+        a = c.alpha()
+        # 必须进行预乘： C_new = C_origin * (Alpha / 255)
+        r = int(c.red() * (a / 255))
+        g = int(c.green() * (a / 255))
+        b = int(c.blue() * (a / 255))
 
-        while queue:
-            x, y = queue.popleft()
-            pixel_to_fill.append(QPoint(x, y))
-            if len(pixel_to_fill) > 500000: break  # 防止死循环或溢出
+        # 赋值 [B, G, R, A]
+        img_arr[filled_region] = [b, g, r, a]
 
-            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                nx, ny = x + dx, y + dy
-                if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in processed:
-                    c = self.mask_image.pixelColor(nx, ny)
-                    if c.alpha() <= 10:
-                        processed.add((nx, ny))
-                        queue.append((nx, ny))
+        # 触发重绘
+        self.update()
 
-        for pt in pixel_to_fill:
-            self.mask_image.setPixelColor(pt, fill_color)
+    def invert_mask(self):
+        """高性能遮罩取反"""
+        self.push_undo()  # 记录撤销
+
+        w, h = self.mask_image.width(), self.mask_image.height()
+
+        # 获取内存视图
+        ptr = self.mask_image.bits()
+        ptr.setsize(self.mask_image.byteCount())
+        img_arr = np.frombuffer(ptr, np.uint8).reshape((h, w, 4))
+
+        # 1. 识别区域
+        # Alpha通道为0的是“未遮罩区”，大于0的是“已遮罩区”
+        alpha_channel = img_arr[:, :, 3]
+        to_fill_indices = alpha_channel == 0  # 原本透明的地方 -> 需要填色
+        to_clear_indices = alpha_channel > 0  # 原本有色的地方 -> 需要清空
+
+        # 2. 准备遮罩颜色 (预乘处理，确保颜色一致)
+        c = self.mask_color
+        a = c.alpha()
+        r = int(c.red() * (a / 255))
+        g = int(c.green() * (a / 255))
+        b = int(c.blue() * (a / 255))
+
+        # 3. 执行取反 (直接操作内存，毫秒级)
+        # 先把原本有色的清空
+        img_arr[to_clear_indices] = 0
+        # 再把原本透明的填满
+        img_arr[to_fill_indices] = [b, g, r, a]
+
+        self.update()
 
     def push_undo(self):
         if len(self.undo_stack) > 30: self.undo_stack.pop(0)
@@ -282,14 +359,18 @@ class ComfyEditor(QWidget):
         rp_lyt.setSpacing(10)
         self.btn_undo = ComfyToolButton(FluentIcon.LEFT_ARROW, "撤销 (Ctrl+Z)")
         self.btn_reset = ComfyToolButton(get_icon("缩放"), "居中 (R)")
+        self.btn_invert = ComfyToolButton(FluentIcon.SYNC, "反选遮罩 (I)")
+
         self.btn_clear = ComfyToolButton(FluentIcon.DELETE, "清空 (C)")
 
         self.btn_undo.setCheckable(False)
         self.btn_reset.setCheckable(False)
+        self.btn_invert.setCheckable(False)  # 新增
         self.btn_clear.setCheckable(False)
 
         rp_lyt.addWidget(self.btn_undo)
         rp_lyt.addWidget(self.btn_reset)
+        rp_lyt.addWidget(self.btn_invert)  # 新增
         rp_lyt.addWidget(self.btn_clear)
         rp_lyt.addStretch()
 
@@ -299,6 +380,7 @@ class ComfyEditor(QWidget):
         self.btn_fill.clicked.connect(lambda: self.set_mode("fill"))
         self.btn_undo.clicked.connect(self.canvas.undo)
         self.btn_reset.clicked.connect(self.canvas.fit_view)
+        self.btn_invert.clicked.connect(self.canvas.invert_mask)
         self.btn_clear.clicked.connect(self.canvas.clear)
         self.sld.valueChanged.connect(lambda v: setattr(self.canvas, 'brush_size', v))
 

@@ -7,6 +7,6 @@
   "description": "加载 GGUF 或常规 CLIP 模型，支持单/双/三/四 CLIP 加载 (如 SDXL/SD3/Flux)",
   "category": "comfyui节点/模型加载器",
   "main": "main.py",
-  "updated_at": "2026-01-24 20:53:33",
+  "updated_at": "2026-01-25 10:43:41",
   "author": "black"
 }

@@ -1,123 +1,247 @@
 import os
 import shutil
+import subprocess
+import sys
 
-from PyQt5.QtWidgets import QAbstractItemView
-from qfluentwidgets import TreeView
+from PyQt5.QtCore import Qt, QUrl, QMimeData, pyqtSignal
+from PyQt5.QtGui import QKeySequence, QDesktopServices
+from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QMessageBox, QFileSystemModel)
+
+# 引入 FluentWidgets 组件
+from qfluentwidgets import TreeView, RoundMenu, Action, FluentIcon as FIF
+from loguru import logger
 
 
 class DragDropTreeView(TreeView):
     """
-    专业级文件树视图
-    特性：
-    1. 支持外部文件拖入上传 (Copy)
-    2. 支持内部文件拖拽移动 (Move)
-    3. 优化双击行为：文件夹展开/折叠，文件打开
-    4. 禁用双击重命名，改为 F2 或右键
+    【PyCharm 级体验】文件树视图 (Fluent 风格版)
     """
+
+    fileClicked = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # 开启拖拽
+        self._setup_ui()
+        self._setup_drag_drop()
+
+    def _setup_ui(self):
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.setEditTriggers(QAbstractItemView.EditKeyPressed)
+        self.setAnimated(True)
+        self.setIndentation(20)
+
+        # 开启右键菜单
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
+
+    def _setup_drag_drop(self):
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
         self.setDragDropMode(QAbstractItemView.DragDrop)
 
-        # 【关键优化】设置选择模式为扩展选择（支持多选）
-        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+    # ==============================
+    # 核心：Fluent 风格右键菜单 (RoundMenu)
+    # ==============================
+    def _show_context_menu(self, position):
+        index = self.indexAt(position)
+        if not index.isValid():
+            return
 
-        # 【关键优化】禁用双击编辑（防止双击打开文件时触发重命名）
-        self.setEditTriggers(QAbstractItemView.EditKeyPressed)
+        model = self.model()
+        file_path = model.filePath(index)
 
-        # 优化动画
-        self.setAnimated(True)
-        self.setIndentation(20)
+        # 使用 RoundMenu
+        menu = RoundMenu(parent=self)
 
+        # 1. 打开
+        action_open = Action(FIF.edit, "打开 (Enter)", self)
+        action_open.triggered.connect(lambda: self._on_enter_pressed())
+
+        # 2. 在资源管理器显示 (使用 Folder 图标)
+        action_reveal = Action(FIF.FOLDER, "在资源管理器中显示", self)
+        action_reveal.triggered.connect(lambda: self._reveal_in_explorer(file_path))
+
+        # 3. 复制路径 (使用 Copy 图标)
+        action_copy_path = Action(FIF.COPY, "复制路径", self)
+        action_copy_path.triggered.connect(lambda: self._copy_path_to_clipboard(file_path))
+
+        # 4. 重命名 (使用 Edit 图标)
+        action_rename = Action(FIF.edit, "重命名 (F2)", self)
+        action_rename.triggered.connect(self._rename_selected)
+
+        # 5. 删除 (使用 Delete 图标)
+        action_delete = Action(FIF.DELETE, "删除 (Delete)", self)
+        action_delete.triggered.connect(self._delete_selected)
+
+        # 组装菜单
+        menu.addAction(action_open)
+        menu.addSeparator()
+        menu.addAction(action_rename)
+        menu.addAction(action_delete)
+        menu.addSeparator()
+        menu.addAction(action_copy_path)
+        menu.addAction(action_reveal)
+
+        # 显示菜单
+        menu.exec(self.viewport().mapToGlobal(position))
+
+    # ==============================
+    # 快捷键处理
+    # ==============================
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Delete:
+            self._delete_selected()
+        elif event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+            self._on_enter_pressed()
+        elif event.key() == Qt.Key_F2:
+            self._rename_selected()
+        elif event.matches(QKeySequence.Copy):
+            self._copy_selection_to_clipboard()
+        elif event.matches(QKeySequence.Paste):
+            self._paste_from_clipboard()
+        else:
+            super().keyPressEvent(event)
+
+    # ==============================
+    # 功能逻辑实现
+    # ==============================
+    def _copy_path_to_clipboard(self, path):
+        QApplication.clipboard().setText(path)
+        logger.info(f"路径已复制: {path}")
+
+    def _delete_selected(self):
+        paths = self._get_selected_paths()
+        if not paths: return
+
+        count = len(paths)
+        msg = f"确定要永久删除这 {count} 个项目吗？" if count > 1 else f"确定要删除 '{os.path.basename(paths[0])}' 吗？"
+        reply = QMessageBox.question(self, "删除确认", msg, QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
+            for path in paths:
+                self._remove_path_safely(path)
+
+    def _remove_path_safely(self, path):
+        try:
+            logger.info(f"正在删除: {path}")
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            else:
+                os.remove(path)
+        except Exception as e:
+            logger.error(f"删除失败: {e}")
+            QMessageBox.critical(self, "错误", f"无法删除: {e}")
+
+    def _copy_selection_to_clipboard(self):
+        paths = self._get_selected_paths()
+        if not paths: return
+        mime = QMimeData()
+        mime.setUrls([QUrl.fromLocalFile(p) for p in paths])
+        QApplication.clipboard().setMimeData(mime)
+        logger.info(f"已复制 {len(paths)} 个文件")
+
+    def _paste_from_clipboard(self):
+        mime = QApplication.clipboard().mimeData()
+        if not mime.hasUrls(): return
+        dest_dir = self._get_current_target_dir()
+        for url in mime.urls():
+            src = url.toLocalFile()
+            if os.path.exists(src):
+                self._copy_file_or_dir(src, dest_dir)
+
+    def _get_selected_paths(self):
+        return [self.model().filePath(idx) for idx in self.selectedIndexes() if idx.column() == 0]
+
+    def _get_current_target_dir(self):
+        idx = self.currentIndex()
+        if not idx.isValid(): return self.model().rootPath()
+        return self.model().filePath(idx) if self.model().isDir(idx) else os.path.dirname(self.model().filePath(idx))
+
+    def _on_enter_pressed(self):
+        idx = self.currentIndex()
+        if not idx.isValid(): return
+        if self.model().isDir(idx):
+            self.collapse(idx) if self.isExpanded(idx) else self.expand(idx)
+        else:
+            self.fileClicked.emit(self.model().filePath(idx))
+
+    def _rename_selected(self):
+        if self.currentIndex().isValid(): self.edit(self.currentIndex())
+
+    def _reveal_in_explorer(self, path):
+        try:
+            if os.name == 'nt':
+                subprocess.run(['explorer', '/select,', os.path.normpath(path)])
+            elif sys.platform == 'darwin':
+                subprocess.run(['open', '-R', path])
+            else:
+                subprocess.run(['xdg-open', os.path.dirname(path)])
+        except Exception as e:
+            logger.error(f"无法打开文件浏览器: {e}")
+
+    # ==============================
+    # 拖拽逻辑
+    # ==============================
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
         else:
-            # 允许内部拖拽（默认行为通常是移动）
             super().dragEnterEvent(event)
 
     def dragMoveEvent(self, event):
-        # 确保拖拽时高亮目标文件夹
         if event.mimeData().hasUrls() or self.model():
             event.acceptProposedAction()
         else:
             super().dragMoveEvent(event)
 
     def dropEvent(self, event):
-        """处理文件放置逻辑"""
         model = self.model()
-        # 获取目标索引
-        index = self.indexAt(event.pos())
+        idx = self.indexAt(event.pos())
+        dest_dir = model.rootPath() if not idx.isValid() else (
+            model.filePath(idx) if model.isDir(idx) else os.path.dirname(model.filePath(idx)))
 
-        # 计算目标路径
-        if not index.isValid():
-            # 如果拖到了空白处，目标是根目录
-            dest_dir = model.rootPath()
-        elif model.isDir(index):
-            # 如果拖到了文件夹上，目标是该文件夹
-            dest_dir = model.filePath(index)
-        else:
-            # 如果拖到了文件上，目标是该文件所在的父目录
-            dest_dir = os.path.dirname(model.filePath(index))
-
-        # === 情况1：外部文件拖入 (复制操作) ===
-        if event.mimeData().hasUrls() and not (event.source() == self):
+        if event.mimeData().hasUrls() and event.source() != self:
             for url in event.mimeData().urls():
-                src_path = url.toLocalFile()
-                if os.path.exists(src_path):
-                    self._copy_file_or_dir(src_path, dest_dir)
+                src = url.toLocalFile()
+                if os.path.exists(src): self._copy_file_or_dir(src, dest_dir)
             event.acceptProposedAction()
-
-        # === 情况2：内部文件拖拽 (移动操作) ===
         elif event.source() == self:
-            # 获取选中的所有行
-            selected_indexes = self.selectedIndexes()
-            # 过滤掉非第一列的索引（QFileSystemModel每一行有4列，我们只需要处理一次）
-            paths_to_move = []
-            for idx in selected_indexes:
-                if idx.column() == 0:
-                    paths_to_move.append(model.filePath(idx))
-
-            for src_path in paths_to_move:
-                # 防止移动到自己里面，或者移动到当前所在目录
-                if os.path.dirname(src_path) == dest_dir:
-                    continue
-                if src_path == dest_dir:
-                    continue
-
-                self._move_file_or_dir(src_path, dest_dir)
-
-            # 通知视图更新（有时Model反应慢）
+            for src in self._get_selected_paths():
+                if os.path.dirname(src) != dest_dir and src != dest_dir:
+                    self._move_file_or_dir(src, dest_dir)
             event.acceptProposedAction()
         else:
             super().dropEvent(event)
 
     def _copy_file_or_dir(self, src, dst_dir):
-        """辅助函数：复制"""
         try:
             name = os.path.basename(src)
-            dst_path = os.path.join(dst_dir, name)
-            if os.path.exists(dst_path):
-                # 简单处理重名：跳过 (实际项目中可以改为弹窗询问)
-                print(f"Skipped {name}, already exists.")
-                return
-
+            dst = os.path.join(dst_dir, name)
+            if os.path.abspath(src) == os.path.abspath(dst):
+                dst = os.path.join(dst_dir, f"{os.path.splitext(name)[0]}_copy{os.path.splitext(name)[1]}")
+            if os.path.exists(dst):
+                if os.path.isdir(dst):
+                    shutil.rmtree(dst)
+                else:
+                    os.remove(dst)
             if os.path.isdir(src):
-                shutil.copytree(src, dst_path)
+                shutil.copytree(src, dst)
             else:
-                shutil.copy2(src, dst_path)
+                shutil.copy2(src, dst)
+            logger.info(f"复制: {src} -> {dst}")
         except Exception as e:
-            print(f"Copy error: {e}")
+            logger.exception(f"复制失败: {e}")
 
     def _move_file_or_dir(self, src, dst_dir):
-        """辅助函数：移动"""
         try:
-            name = os.path.basename(src)
-            dst_path = os.path.join(dst_dir, name)
-            shutil.move(src, dst_path)
+            dst = os.path.join(dst_dir, os.path.basename(src))
+            if os.path.exists(dst):
+                if os.path.isdir(dst):
+                    shutil.rmtree(dst)
+                else:
+                    os.remove(dst)
+            shutil.move(src, dst)
+            logger.info(f"移动: {src} -> {dst}")
         except Exception as e:
-            print(f"Move error: {e}")
+            logger.exception(f"移动失败: {e}")

@@ -113,7 +113,11 @@ class SyncCodeToUI(QObject):
             logger.warning(f"代码 → UI 同步失败: {e}")
 
     def _analyze_code_for_requirements(self):
-        """优化后的依赖分析：只增不减，保留手动添加的项和版本号"""
+        """
+        依赖分析：
+        1. 只增不减，保留手动添加的项和版本号。
+        2. 智能识别被注释的依赖（如 # my_lib），如果发现已在注释中存在，则不再自动添加。
+        """
         code = self.code_editor.get_code()
         if not code.strip():
             return
@@ -140,42 +144,54 @@ class SyncCodeToUI(QObject):
             if mod not in BUILTIN_MODULES and mod != "app"  # 排除自身应用包
         }
 
-        # 3. 获取 UI 现有的依赖（解析为字典 {包名: 原始行内容}）
+        # 3. 获取 UI 现有的依赖（解析为两组：生效的 和 被注释的）
         current_text = self.parent.requirements_edit.toPlainText()
-        existing_reqs_map = {}  # key: lowercase_pkg_name, value: full_line
+        existing_reqs_map = {}  # key: lowercase_pkg_name (生效的)
+        commented_reqs_set = set()  # set: lowercase_pkg_name (被注释的)
 
         lines = current_text.splitlines()
         for line in lines:
             stripped = line.strip()
-            if not stripped or stripped.startswith('#'):
+            if not stripped:
                 continue
+
+            # 核心修改：分别处理生效行和注释行
+            is_comment = stripped.startswith('#')
+            content_to_check = stripped.lstrip('#').strip() if is_comment else stripped
+
             # 提取包名（支持 requests==2.0, requests>=2.0 等格式）
-            match = re.match(r'^([a-zA-Z0-9._-]+)', stripped)
+            # 正则解释：匹配开头的包名字符
+            match = re.match(r'^([a-zA-Z0-9._-]+)', content_to_check)
             if match:
                 pkg_name = match.group(1).lower()
-                existing_reqs_map[pkg_name] = line
+                if is_comment:
+                    commented_reqs_set.add(pkg_name)
+                else:
+                    existing_reqs_map[pkg_name] = line
 
-        # 4. 合并逻辑：保留旧的，添加新的
+        # 4. 合并逻辑：保留旧的，添加新的（但在注释列表里的除外）
         has_changed = False
         final_lines = list(lines)  # 先拷贝一份现有的
 
         for pkg in external_packages:
             pkg_lower = pkg.lower()
-            if pkg_lower not in existing_reqs_map:
-                # 发现新包，添加
+
+            # 既不在生效列表中，也不在注释列表中，才会被自动添加
+            if pkg_lower not in existing_reqs_map and pkg_lower not in commented_reqs_set:
                 final_lines.append(pkg)
-                existing_reqs_map[pkg_lower] = pkg  # 防止重复添加
+                existing_reqs_map[pkg_lower] = pkg  # 更新 map 防止循环中重复添加
                 has_changed = True
                 logger.info(f"检测到新依赖并添加: {pkg}")
-            else:
-                # 包已存在，不做任何操作（保留用户原有的版本号和格式）
+            elif pkg_lower in commented_reqs_set:
+                # Debug日志，可根据需要开启
+                # logger.debug(f"依赖 {pkg} 已被手动注释，跳过自动添加")
                 pass
 
         # 5. 更新 UI
         if has_changed:
             updated_text = '\n'.join(final_lines)
-            # 避免正在编辑时刷新
-            if not self._updating_requirements_from_analysis:
+            # 避免正在编辑时刷新导致光标跳动或死循环
+            if not getattr(self, '_updating_requirements_from_analysis', False):
                 self._updating_requirements_from_analysis = True
                 self.parent.requirements_edit.setPlainText(updated_text)
                 self._updating_requirements_from_analysis = False
